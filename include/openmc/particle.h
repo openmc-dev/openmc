@@ -21,11 +21,12 @@ namespace openmc {
 // Forward declare the Surface class for use in Particle::cross_vacuum_bc, etc.
 class Surface;
 
-//============================================================================
-//! State of a particle being transported through geometry
-//! This class defines actions particles can take. Its base
-//! class defines particle data layout in memory.
-//============================================================================
+/*
+ * The Particle class encompasses data and methods for transporting particles
+ * through their lifecycle. Its base class defines particle data layout in
+ * memory. A more detailed description of the rationale behind this approach
+ * can be found in particle_data.h.
+ */
 
 class Particle : public ParticleData {
 public:

@@ -164,6 +164,32 @@ struct BoundaryInfo {
 //! Defines how particle data is laid out in memory
 //============================================================================
 
+/*
+ * This class was added in order to separate the layout and access of particle
+ * data from particle physics operations during a development effort to get
+ * OpenMC running on GPUs. In the event-based Monte Carlo method, one creates
+ * an array of particles on which actions like cross section lookup and surface
+ * crossing are done en masse, which works best on vector computers of yore and
+ * modern GPUs. It has been shown in the below publication that arranging
+ * particle data into a structure of arrays rather than an array of structures
+ * enhances performance on GPUs. For instance, rather than having an
+ * std::vector<Particle> where consecutive particle energies would be separated
+ * by about 400 bytes, one would create a structure which has a single
+ * std::vector<double> of energies.  The motivation here is that more coalesced
+ * memory accesses occur, in the parlance of GPU programming.
+ *
+ * So, this class enables switching between the array-of-structures and
+ * structure- of-array data layout at compile time. In GPU branches of the
+ * code, our Particle class inherits from a class that provides an array of
+ * particle energies, and can access them using the E() method (defined below).
+ * In the CPU code, we inherit from this class which gives the conventional
+ * layout of particle data, useful for history-based tracking.
+ *
+ * As a result, we always use the E(), r_last(), etc. methods to access
+ * particle data in order to keep a unified interface between
+ * structure-of-array and array-of-structure code on either CPU or GPU code
+ * while sharing the same physics code on each codebase.
+ */
 class ParticleData {
 
 public:

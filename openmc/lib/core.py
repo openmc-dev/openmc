@@ -11,7 +11,7 @@ from .error import _error_handler
 import openmc.lib
 
 
-class _Bank(Structure):
+class _SourceSite(Structure):
     _fields_ = [('r', c_double*3),
                 ('u', c_double*3),
                 ('E', c_double),
@@ -73,7 +73,7 @@ _run_linsolver_argtypes = [_array_1d_dble, _array_1d_dble, _array_1d_dble,
                            c_double]
 _dll.openmc_run_linsolver.argtypes = _run_linsolver_argtypes
 _dll.openmc_run_linsolver.restype = c_int
-_dll.openmc_source_bank.argtypes = [POINTER(POINTER(_Bank)), POINTER(c_int64)]
+_dll.openmc_source_bank.argtypes = [POINTER(POINTER(_SourceSite)), POINTER(c_int64)]
 _dll.openmc_source_bank.restype = c_int
 _dll.openmc_source_bank.errcheck = _error_handler
 _dll.openmc_simulation_init.restype = c_int
@@ -342,13 +342,13 @@ def source_bank():
 
     """
     # Get pointer to source bank
-    ptr = POINTER(_Bank)()
+    ptr = POINTER(_SourceSite)()
     n = c_int64()
     _dll.openmc_source_bank(ptr, n)
 
     try:
         # Convert to numpy array with appropriate datatype
-        bank_dtype = np.dtype(_Bank)
+        bank_dtype = np.dtype(_SourceSite)
         return as_array(ptr, (n.value,)).view(bank_dtype)
 
     except ValueError as err:

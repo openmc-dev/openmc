@@ -13,7 +13,7 @@ namespace mpi {
   extern bool master;
 
 #ifdef OPENMC_MPI
-  extern MPI_Datatype bank;
+  extern MPI_Datatype source_site;
   extern MPI_Comm intracomm;
 #endif
 

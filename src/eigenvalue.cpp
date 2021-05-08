@@ -230,7 +230,7 @@ void synchronize_bank()
       // process
       if (neighbor != mpi::rank) {
         requests.emplace_back();
-        MPI_Isend(&temp_sites[index_local], static_cast<int>(n), mpi::bank,
+        MPI_Isend(&temp_sites[index_local], static_cast<int>(n), mpi::source_site,
           neighbor, mpi::rank, mpi::intracomm, &requests.back());
       }
 
@@ -276,7 +276,7 @@ void synchronize_bank()
       // asynchronous receive for the source sites
 
       requests.emplace_back();
-      MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n), mpi::bank,
+      MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n), mpi::source_site,
             neighbor, neighbor, mpi::intracomm, &requests.back());
 
     } else {

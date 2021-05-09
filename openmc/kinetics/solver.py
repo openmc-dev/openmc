@@ -38,13 +38,13 @@ class Solver:
         Mesh by which to tally currents
     geometry : openmc.geometry.Geometry
         Geometry which describes the problem being solved.
-    settings_file : openmc.settings.SettingsFile
+    settings : openmc.settings.Settings
         Settings file describing the general settings for each simulation.
-    materials_file : openmc.materials.MaterialsFile
+    materials : openmc.materials.Materials
         Materials file containing the materials info for each simulation.
     transient : OrderedDict()
         Ordered dictionary describing the material changes during the transient.
-    mgxs_lib_file : openmc.materials.MGXSLibrary
+    mgxs_lib : openmc.materials.MGXSLibrary
         MGXS Library file containing the multi-group xs for mg Monte Carlo.
     clock : openmc.kinetics.Clock
         Clock object.
@@ -69,6 +69,8 @@ class Solver:
         Whether to use delayed groups in representing chi-delayed.
     chi_delayed_by_mesh : bool
         Whether to use a mesh in representing chi-delayed.
+    use_pcmfd : bool
+        Whether to use p-CMFD
     num_delayed_groups : int
         The number of delayed neutron precursor groups.
     states : OrderedDict of openmc.kinetics.State
@@ -83,8 +85,6 @@ class Solver:
         The core volume used to normalize the initial power.
     log_file_name : str
         Log file name (excluding directory prefix).
-    job_file : str
-        Name of job file to use to run jobs.
     multi_group : bool
         Whether the OpenMC run is multi-group or continuous-energy.
     min_outer_iters : int
@@ -101,10 +101,10 @@ class Solver:
         self._unity_mesh = None
         self._tally_mesh = None
         self._geometry = None
-        self._settings_file = None
-        self._materials_file = None
+        self._settings = None
+        self._materials = None
         self._transient = None
-        self._mgxs_lib_file = None
+        self._mgxs_lib = None
         self._clock = None
         self._one_group = None
         self._energy_groups = None
@@ -123,7 +123,6 @@ class Solver:
         self._seed = 1
         self._core_volume = 1.
         self._log_file_name = 'log_file.h5'
-        self._job_file = 'job.pbs'
         self._multi_group = True
         self._inner_tolerance = 1.e-6
         self._outer_tolerance = 1.e-6
@@ -157,20 +156,20 @@ class Solver:
         return self._geometry
 
     @property
-    def settings_file(self):
-        return self._settings_file
+    def settings(self):
+        return self._settings
 
     @property
-    def materials_file(self):
-        return self._materials_file
+    def materials(self):
+        return self._materials
 
     @property
     def transient(self):
         return self._transient
 
     @property
-    def mgxs_lib_file(self):
-        return self._mgxs_lib_file
+    def mgxs_lib(self):
+        return self._mgxs_lib
 
     @property
     def clock(self):
@@ -253,10 +252,6 @@ class Solver:
         return self._log_file_name
 
     @property
-    def job_file(self):
-        return self._job_file
-
-    @property
     def multi_group(self):
         return self._multi_group
 
@@ -312,21 +307,21 @@ class Solver:
     def geometry(self, geometry):
         self._geometry = geometry
 
-    @settings_file.setter
-    def settings_file(self, settings_file):
-        self._settings_file = settings_file
+    @settings.setter
+    def settings(self, settings):
+        self._settings = settings
 
-    @materials_file.setter
-    def materials_file(self, materials_file):
-        self._materials_file = materials_file
+    @materials.setter
+    def materials(self, materials):
+        self._materials = materials
 
     @transient.setter
     def transient(self, transient):
         self._transient = transient
 
-    @mgxs_lib_file.setter
-    def mgxs_lib_file(self, mgxs_lib_file):
-        self._mgxs_lib_file = mgxs_lib_file
+    @mgxs_lib.setter
+    def mgxs_lib(self, mgxs_lib):
+        self._mgxs_lib = mgxs_lib
 
     @clock.setter
     def clock(self, clock):
@@ -407,10 +402,6 @@ class Solver:
     @log_file_name.setter
     def log_file_name(self, name):
         self._log_file_name = name
-
-    @job_file.setter
-    def job_file(self, job_file):
-        self._job_file = job_file
 
     @multi_group.setter
     def multi_group(self, multi_group):
@@ -515,12 +506,12 @@ class Solver:
         self.setup_openmc(time_point, method)
 
         # Names of the statepoint and summary files
-        sp_old_name = '{}/statepoint.{}.h5'.format(self.directory, self.settings_file.batches)
+        sp_old_name = '{}/statepoint.{}.h5'.format(self.directory, self.settings.batches)
         sp_new_name = '{}/statepoint_{:.6f}_sec.{}.h5'\
-                      .format(self.directory, self.clock.times[time_point], self.settings_file.batches)
+                      .format(self.directory, self.clock.times[time_point], self.settings.batches)
         sum_old_name = '{}/summary.h5'.format(self.directory)
         sum_new_name = '{}/summary_{:.6f}_sec.h5'.format(self.directory, self.clock.times[time_point])
-        old_source = '{}/source.{}.h5'.format(self.directory, self.settings_file.batches)
+        old_source = '{}/source.{}.h5'.format(self.directory, self.settings.batches)
         new_source = '{}/source.h5'.format(self.directory)
 
         # Run OpenMC
@@ -625,10 +616,10 @@ class Solver:
         self.states['START'].dump_to_log_file
 
         # Reset the source to be the last source bank written to file
-        self.settings_file.source   = openmc.Source(filename='source.h5')
-        self.settings_file.batches  = self.settings_file.batches - self.settings_file.inactive + 10
-        self.settings_file.inactive = 10
-        self.settings_file.sourcepoint['batches'] = [self.settings_file.batches]
+        self.settings.source   = openmc.Source(filename='source.h5')
+        self.settings.batches  = self.settings.batches - self.settings.inactive + 10
+        self.settings.inactive = 10
+        self.settings.sourcepoint['batches'] = [self.settings.batches]
 
     def copy_states(self, time_from, time_to):
 
@@ -780,18 +771,18 @@ class Solver:
     def setup_openmc(self, time_point, method):
 
         # Get a fresh copy of the settings file
-        settings_file = copy.deepcopy(self.settings_file)
+        settings = copy.deepcopy(self.settings)
 
         # Create a new random seed for the xml file
         if self.constant_seed:
-            settings_file.seed = self.seed
+            settings.seed = self.seed
         else:
-            settings_file.seed = np.random.randint(1, 1e6, 1)[0]
+            settings.seed = np.random.randint(1, 1e6, 1)[0]
 
-        if self.mgxs_lib_file:
-            self.materials_file.cross_sections = './mgxs.h5'
-            self.mgxs_lib_file.export_to_hdf5(self.directory + '/mgxs.h5')
-            settings_file.energy_mode = 'multi-group'
+        if self.mgxs_lib:
+            self.materials.cross_sections = './mgxs.h5'
+            self.mgxs_lib.export_to_hdf5(self.directory + '/mgxs.h5')
+            settings.energy_mode = 'multi-group'
 
         # Create MGXS
         state = self.states[time_point]
@@ -802,19 +793,19 @@ class Solver:
         self.geometry.time = self.clock.times[time_point]
 
         materials_list = []
-        for material in self.materials_file:
+        for material in self.materials:
             time = round(self.geometry.time,4)
-            if settings_file.energy_mode == 'multi-group':
+            if settings.energy_mode == 'multi-group':
                 material.set_density('macro',self.transient[material.name][time]['density'])
             else:
                 material.set_density('g/cm3',self.transient[material.name][time]['density'])
             material.temperature = self.transient[material.name][time]['temperature']
             materials_list.append(material)
-        self.materials_file = openmc.Materials(materials_list)
+        self.materials = openmc.Materials(materials_list)
         
         self.geometry.export_to_xml(self.directory + '/geometry.xml')
-        self.materials_file.export_to_xml(self.directory + '/materials.xml')
-        settings_file.export_to_xml(self.directory + '/settings.xml')
+        self.materials.export_to_xml(self.directory + '/materials.xml')
+        settings.export_to_xml(self.directory + '/settings.xml')
         self.generate_tallies_file(time_point)
 
     @property

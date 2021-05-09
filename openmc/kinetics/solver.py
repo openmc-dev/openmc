@@ -56,6 +56,9 @@ class Solver:
         EnergyGroups used to tally the transport cross section that will be
         condensed to get the diffusion coefficients in the coarse group
         structure.
+    tally_groups : openmc.mgxs.groups.EnergyGroups
+        EnergyGroups used in all tallies except the diffusion coefficients
+        (see fine_groups).
     initial_power : float
         The initial core power (in MWth).
     k_crit : float

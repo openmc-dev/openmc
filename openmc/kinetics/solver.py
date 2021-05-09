@@ -737,7 +737,7 @@ class Solver:
         if not os.path.exists(self.directory):
             os.makedirs(self.directory)
 
-        # Create states and run initial OpenMC on initial state
+        # Create states
         self.create_state('START')
 
         # Compute the initial steady state flux

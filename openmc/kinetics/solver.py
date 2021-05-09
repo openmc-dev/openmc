@@ -77,10 +77,6 @@ class Solver:
         States of the problem.
     use_pregenerated_sps : bool
         Whether to use pregenerated statepoint files.
-    constant_seed : bool
-        Whether to use a constant seed in the OpenMC solve.
-    seed : int
-        The constant seed.
     core_volume : float
         The core volume used to normalize the initial power.
     log_file_name : str
@@ -119,8 +115,6 @@ class Solver:
         self._num_delayed_groups = 6
         self._states = OrderedDict()
         self._use_pregenerated_sps = False
-        self._constant_seed = True
-        self._seed = 1
         self._core_volume = 1.
         self._log_file_name = 'log_file.h5'
         self._multi_group = True
@@ -234,14 +228,6 @@ class Solver:
     @property
     def use_pregenerated_sps(self):
         return self._use_pregenerated_sps
-
-    @property
-    def constant_seed(self):
-        return self._constant_seed
-
-    @property
-    def seed(self):
-        return self._seed
 
     @property
     def core_volume(self):
@@ -387,14 +373,6 @@ class Solver:
     def use_pregenerated_sps(self, use_pregenerated_sps):
         self._use_pregenerated_sps = use_pregenerated_sps
 
-    @constant_seed.setter
-    def constant_seed(self, constant_seed):
-        self._constant_seed = constant_seed
-
-    @seed.setter
-    def seed(self, seed):
-        self._seed = seed
-
     @core_volume.setter
     def core_volume(self, core_volume):
         self._core_volume = core_volume
@@ -479,8 +457,6 @@ class Solver:
         f.attrs['num_delayed_groups'] = self.num_delayed_groups
         f.attrs['num_outer_time_steps'] = self.num_outer_time_steps
         f.attrs['use_pregenerated_sps'] = self.use_pregenerated_sps
-        f.attrs['constant_seed'] = self.constant_seed
-        f.attrs['seed'] = self.seed
         f.attrs['core_volume'] = self.core_volume
         f.attrs['k_crit'] = self.k_crit
         f.attrs['method'] = self.method
@@ -772,12 +748,6 @@ class Solver:
 
         # Get a fresh copy of the settings file
         settings = copy.deepcopy(self.settings)
-
-        # Create a new random seed for the xml file
-        if self.constant_seed:
-            settings.seed = self.seed
-        else:
-            settings.seed = np.random.randint(1, 1e6, 1)[0]
 
         if self.mgxs_lib:
             self.materials.cross_sections = './mgxs.h5'

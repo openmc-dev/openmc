@@ -14,6 +14,7 @@ settings_file.batches = 200
 settings_file.inactive = 100
 settings_file.particles = 1000
 settings_file.output = {'tallies': False}
+settings_file.seed = 1
 
 # Create an initial uniform spatial source distribution over fissionable zones
 lower_left = [-0.62992, -0.62992, -182.88]
@@ -112,8 +113,6 @@ solver.clock                        = clock
 solver.mpi_procs                    = 1
 solver.threads                      = 1
 solver.core_volume                  = np.pi*0.39218**2*365.76
-solver.constant_seed                = True
-solver.seed                         = 1
 solver.min_outer_iters              = 1
 solver.use_pcmfd                    = False
 solver.use_agd                      = False

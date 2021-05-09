@@ -84,8 +84,6 @@ class Solver:
         The core volume used to normalize the initial power.
     log_file_name : str
         Log file name (excluding directory prefix).
-    multi_group : bool
-        Whether the OpenMC run is multi-group or continuous-energy.
     min_outer_iters : int
         Minimum number of outer iterations to take
 
@@ -120,7 +118,6 @@ class Solver:
         self._use_pregenerated_sps = False
         self._core_volume = 1.
         self._log_file_name = 'log_file.h5'
-        self._multi_group = True
         self._inner_tolerance = 1.e-6
         self._outer_tolerance = 1.e-6
         self._method = 'ADIABATIC'
@@ -239,10 +236,6 @@ class Solver:
     @property
     def log_file_name(self):
         return self._log_file_name
-
-    @property
-    def multi_group(self):
-        return self._multi_group
 
     @property
     def inner_tolerance(self):
@@ -383,10 +376,6 @@ class Solver:
     @log_file_name.setter
     def log_file_name(self, name):
         self._log_file_name = name
-
-    @multi_group.setter
-    def multi_group(self, multi_group):
-        self._multi_group = multi_group
 
     @inner_tolerance.setter
     def inner_tolerance(self, tolerance):
@@ -530,7 +519,6 @@ class Solver:
         state.amplitude_mesh = self.amplitude_mesh
         state.unity_mesh = self.unity_mesh
         state.tally_mesh = self.tally_mesh
-        state.multi_group = self.multi_group
         state.energy_groups = self.energy_groups
         state.fine_groups = self.fine_groups
         state.one_group = self.one_group

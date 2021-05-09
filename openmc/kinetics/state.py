@@ -67,8 +67,6 @@ class State(ABC):
         The core volume used to normalize the initial power.
     log_file : str
         Log file name (including directory prefix).
-    multi_group : bool
-        Whether the OpenMC run is multi-group or continuous-energy.
 
     """
 
@@ -96,7 +94,6 @@ class State(ABC):
         self._core_volume = 1.
 
         self._log_file = None
-        self._multi_group = True
         self._use_agd = False
         self._use_pcmfd = False
         self.states = states
@@ -180,10 +177,6 @@ class State(ABC):
     def log_file(self):
         return self._log_file
 
-    @property
-    def multi_group(self):
-        return self._multi_group
-
     @states.setter
     def states(self, states):
         self._states = states
@@ -262,10 +255,6 @@ class State(ABC):
     @log_file.setter
     def log_file(self, log_file):
         self._log_file = log_file
-
-    @multi_group.setter
-    def multi_group(self, multi_group):
-        self._multi_group = multi_group
 
     @property
     def shape_dimension(self):

@@ -11,6 +11,7 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 
 import openmc
+import openmc.checkvalue as cv
 import openmc.kinetics
 from openmc.kinetics.clock import TIME_POINTS
 import openmc.mgxs
@@ -255,11 +256,13 @@ class Solver:
 
     @directory.setter
     def directory(self, directory):
+        cv.check_type('directory', directory, str)
         self._directory = directory
 
     @amplitude_mesh.setter
     def amplitude_mesh(self, mesh):
 
+        cv.check_type('amplitude mesh', mesh, openmc.RegularMesh)
         self._amplitude_mesh = mesh
         unity_mesh = openmc.RegularMesh()
         unity_mesh.dimension = [1,1,1]
@@ -279,50 +282,62 @@ class Solver:
 
     @shape_mesh.setter
     def shape_mesh(self, mesh):
+        cv.check_type('shape mesh', mesh, openmc.RegularMesh)
         self._shape_mesh = mesh
 
     @tally_mesh.setter
     def tally_mesh(self, mesh):
+        cv.check_type('tally mesh', mesh, openmc.RegularMesh)
         self._tally_mesh = mesh
 
     @geometry.setter
     def geometry(self, geometry):
+        cv.check_type('geometry', geometry, openmc.geometry.Geometry)
         self._geometry = geometry
 
     @settings.setter
     def settings(self, settings):
+        cv.check_type('settings', settings, openmc.settings.Settings)
         self._settings = settings
 
     @materials.setter
     def materials(self, materials):
+        cv.check_type('materials', materials, openmc.Materials)
         self._materials = materials
 
     @transient.setter
     def transient(self, transient):
+        cv.check_type('transients', transient, dict)
         self._transient = transient
 
     @mgxs_lib.setter
     def mgxs_lib(self, mgxs_lib):
+        cv.check_type('mgxs library', mgxs_lib, openmc.materials.MGXSLibrary)
         self._mgxs_lib = mgxs_lib
 
     @clock.setter
     def clock(self, clock):
+        cv.check_type('clock', clock, openmc.kinetics.Clock)
         self._clock = copy.deepcopy(clock)
 
     @one_group.setter
     def one_group(self, one_group):
+        cv.check_type('one-group structure', one_group, openmc.mgxs.groups.EnergyGroups)
         self._one_group = one_group
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
+        cv.check_type('energy-group structure', energy_groups, openmc.mgxs.groups.EnergyGroups)
         self._energy_groups = energy_groups
 
     @fine_groups.setter
     def fine_groups(self, fine_groups):
+        cv.check_type('fine-group structure', fine_groups, openmc.mgxs.groups.EnergyGroups)
         self._fine_groups = fine_groups
 
     @tally_groups.setter
     def tally_groups(self, tally_groups):
+        cv.check_type('tally group structure', tally_groups, openmc.mgxs.groups.EnergyGroups)
         self._tally_groups = tally_groups
 
     @initial_power.setter
@@ -343,22 +358,27 @@ class Solver:
 
     @chi_delayed_by_delayed_group.setter
     def chi_delayed_by_delayed_group(self, chi_delayed_by_delayed_group):
+        cv.check_type('chi delayed by group boolean', chi_delayed_by_delayed_group, bool)
         self._chi_delayed_by_delayed_group = chi_delayed_by_delayed_group
 
     @chi_delayed_by_mesh.setter
     def chi_delayed_by_mesh(self, chi_delayed_by_mesh):
+        cv.check_type('chi delayed by mesh boolean', chi_delayed_by_mesh, bool)
         self._chi_delayed_by_mesh = chi_delayed_by_mesh
 
     @use_agd.setter
     def use_agd(self, use_agd):
+        cv.check_type('agd boolean', use_agd, bool)
         self._use_agd = use_agd
 
     @use_pcmfd.setter
     def use_pcmfd(self, use_pcmfd):
+        cv.check_type('pcmfd boolean', use_pcmfd, bool)
         self._use_pcmfd = use_pcmfd
 
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
+        cv.check_type('number of delayed groups', num_delayed_groups, int)
         self._num_delayed_groups = num_delayed_groups
 
     @states.setter
@@ -367,30 +387,37 @@ class Solver:
 
     @use_pregenerated_sps.setter
     def use_pregenerated_sps(self, use_pregenerated_sps):
+        cv.check_type('pregenerated sps boolean', use_pregenerated_sps, bool)
         self._use_pregenerated_sps = use_pregenerated_sps
 
     @core_volume.setter
     def core_volume(self, core_volume):
+        cv.check_type('core volume', core_volume, float)
         self._core_volume = core_volume
 
     @log_file_name.setter
     def log_file_name(self, name):
+        cv.check_type('log file name', name, str)
         self._log_file_name = name
 
     @inner_tolerance.setter
     def inner_tolerance(self, tolerance):
+        cv.check_type('inner tolerance', tolerance, float)
         self._inner_tolerance = tolerance
 
     @outer_tolerance.setter
     def outer_tolerance(self, tolerance):
+        cv.check_type('outer tolerance', tolerance, float)
         self._outer_tolerance = tolerance
 
     @method.setter
     def method(self, method):
+        cv.check_value('method', method, ['ADIABATIC', 'OMEGA'])
         self._method = method
 
     @min_outer_iters.setter
     def min_outer_iters(self, iters):
+        cv.check_type('minimum outer iterations', iters, int)
         self._min_outer_iters = iters
 
     @property

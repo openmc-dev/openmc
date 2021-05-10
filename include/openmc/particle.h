@@ -261,9 +261,9 @@ public:
   //
   //! \param surf The surface (with the vacuum boundary condition) that the
   //!   particle struck.
-  //#pragma omp declare target
+  #pragma omp declare target
   void cross_vacuum_bc(const Surface& surf);
-  //#pragma omp end declare target
+  #pragma omp end declare target
 
   //! Cross a reflective boundary condition.
   //

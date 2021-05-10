@@ -135,8 +135,10 @@ extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
 extern "C" void rotate_angle_c(double uvw[3], double mu, const double* phi,
   uint64_t* seed);
 
+#pragma omp declare target
 Direction rotate_angle(Direction u, double mu, const double* phi,
   uint64_t* seed);
+#pragma omp end declare target
 
 //==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct

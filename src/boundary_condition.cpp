@@ -35,9 +35,9 @@ std::string BoundaryCondition::type() const
 void BoundaryCondition::handle_particle(Particle& p, const Surface& surf) const
 {
   switch(type_){
-    //case BCType::Vacuum:                return VacuumBC_handle_particle(p, surf); break;
+    case BCType::Vacuum:                return VacuumBC_handle_particle(p, surf); break;
     case BCType::Reflective:            return ReflectiveBC_handle_particle(p, surf); break;
-    //case BCType::White:                 return WhiteBC_handle_particle(p, surf); break;
+    case BCType::White:                 return WhiteBC_handle_particle(p, surf); break;
     //case BCType::TranslationalPeriodic: return TranslationalPeriodicBC_handle_particle(p, surf); break;
     //case BCType::RotationalPeriodic:    return RotationalPeriodicBC_handle_particle(p, surf); break;
     default: printf("error!\n");

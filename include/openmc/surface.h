@@ -137,10 +137,10 @@ public:
   //! \return Outgoing direction of the ray
   #pragma omp declare target
   Direction reflect(Position r, Direction u, Particle* p) const;
-  #pragma omp end declare target
 
   Direction diffuse_reflect(Position r, Direction u,
     uint64_t* seed) const;
+  #pragma omp end declare target
 
   //! Evaluate the equation describing the surface.
   //!

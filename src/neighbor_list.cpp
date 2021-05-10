@@ -10,7 +10,7 @@ namespace openmc{
   
   void NeighborList::push_back(int32_t new_elem)
   {
-    printf("pushing back %d\n", new_elem);
+    //printf("pushing back %d\n", new_elem);
     for( int i = 0; i < NEIGHBOR_SIZE; i++)
     {
       // This line checks to see if the new_elem is already in the list
@@ -39,6 +39,9 @@ namespace openmc{
       // Case 3: The element was already initialized to a different cell_id, so it will return some other value != -1 and != new_elem
       // so, we continue reading through the list.
     }
+
+    // If we reach this point, the neighbor list was found to be already full. new_elem was not successfully appended
+    printf("A neighbor list has reached capacity. Increase size of NEIGHBOR_SIZE variable!\n");
   }
 
 } // namespace openmc

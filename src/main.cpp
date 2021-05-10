@@ -2,9 +2,13 @@
 #ifdef OPENMC_MPI
 #include <mpi.h>
 #endif
+
+/*
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+*/
+
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -21,7 +25,7 @@ int main(int argc, char* argv[]) {
   int err;
 
   // TODO: Remove this
-  omp_set_num_threads(1);
+  //omp_set_num_threads(1);
 
   // Initialize run -- when run with MPI, pass communicator
 #ifdef OPENMC_MPI

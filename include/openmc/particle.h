@@ -249,7 +249,9 @@ public:
   void event_advance();
   #pragma omp end declare target
   void event_advance_tally();
+  #pragma omp declare target
   void event_cross_surface();
+  #pragma omp end declare target
   void event_collide();
   void event_revive_from_secondary();
   void event_death();

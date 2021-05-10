@@ -286,25 +286,25 @@ Particle::event_cross_surface()
       boundary_.lattice_translation[1] != 0 ||
       boundary_.lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
-    #pragma omp target update to(this[:1])
-    #pragma omp target update to(model::device_cells[:model::cells.size()])
-    #pragma omp target
+    //#pragma omp target update to(this[:1])
+    //#pragma omp target update to(model::device_cells[:model::cells.size()])
+    //#pragma omp target
     {
     cross_lattice(*this, boundary_);
     }
-    #pragma omp target update from(this[:1])
-    #pragma omp target update from(model::device_cells[:model::cells.size()])
+    //#pragma omp target update from(this[:1])
+    //#pragma omp target update from(model::device_cells[:model::cells.size()])
     event_ = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
-    #pragma omp target update to(this[:1])
-    #pragma omp target update to(model::device_cells[:model::cells.size()])
-    #pragma omp target
+    //#pragma omp target update to(this[:1])
+    //#pragma omp target update to(model::device_cells[:model::cells.size()])
+    //#pragma omp target
     {
     this->cross_surface();
     }
-    #pragma omp target update from(this[:1])
-    #pragma omp target update from(model::device_cells[:model::cells.size()])
+    //#pragma omp target update from(this[:1])
+    //#pragma omp target update from(model::device_cells[:model::cells.size()])
     event_ = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents

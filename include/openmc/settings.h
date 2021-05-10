@@ -86,7 +86,9 @@ extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
 extern std::vector<std::string> res_scat_nuclides;  //!< Nuclides using res. upscattering treatment
+#pragma omp declare target
 extern RunMode run_mode;                 //!< Run mode (eigenvalue, fixed src, etc.)
+#pragma omp end declare target
 extern std::unordered_set<int> sourcepoint_batch; //!< Batches when source should be written
 extern std::unordered_set<int> statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int> source_write_surf_id; //!< Surface ids where sources will be written

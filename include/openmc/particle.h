@@ -255,7 +255,9 @@ public:
   void event_death();
 
   //! Cross a surface and handle boundary conditions
+  #pragma omp declare target
   void cross_surface();
+  #pragma omp end declare target
 
   //! Cross a vacuum boundary condition.
   //

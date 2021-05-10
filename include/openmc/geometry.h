@@ -17,7 +17,7 @@ namespace openmc {
 
 namespace model {
 
-  #pragma omp declare target
+#pragma omp declare target
 extern int root_universe;  //!< Index of root universe
 #pragma omp end declare target
 extern "C" int n_coord_levels; //!< Number of CSG coordinate levels

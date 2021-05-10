@@ -290,7 +290,14 @@ Particle::event_cross_surface()
     event_ = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
+    #pragma omp target update to(this[:1])
+    #pragma omp target update to(model::device_cells[:model::cells.size()])
+    #pragma omp target
+    {
     this->cross_surface();
+    }
+    #pragma omp target update from(this[:1])
+    #pragma omp target update from(model::device_cells[:model::cells.size()])
     event_ = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
@@ -475,14 +482,14 @@ Particle::cross_surface()
 
   // Handle any applicable boundary conditions.
   if (surf->bc_.type_ != BoundaryCondition::BCType::Transmission && settings::run_mode != RunMode::PLOTTING) {
-    #pragma omp target update to(this[:1])
-    #pragma omp target update to(model::device_cells[:model::cells.size()])
-    #pragma omp target
+    //#pragma omp target update to(this[:1])
+    //#pragma omp target update to(model::device_cells[:model::cells.size()])
+    //#pragma omp target
     {
     surf->bc_.handle_particle(*this, *surf);
     }
-    #pragma omp target update from(this[:1])
-    #pragma omp target update from(model::device_cells[:model::cells.size()])
+    //#pragma omp target update from(this[:1])
+    //#pragma omp target update from(model::device_cells[:model::cells.size()])
     return;
   }
 
@@ -508,14 +515,14 @@ Particle::cross_surface()
 #endif
 
   bool did_find_cell;
-  #pragma omp target update to(this[:1])
-  #pragma omp target update to(model::device_cells[:model::cells.size()])
-  #pragma omp target map(from: did_find_cell)
+  //#pragma omp target update to(this[:1])
+  //#pragma omp target update to(model::device_cells[:model::cells.size()])
+  //#pragma omp target map(from: did_find_cell)
   {
     did_find_cell = neighbor_list_find_cell(*this);
   }
-  #pragma omp target update from(this[:1])
-  #pragma omp target update from(model::device_cells[:model::cells.size()])
+  //#pragma omp target update from(this[:1])
+  //#pragma omp target update from(model::device_cells[:model::cells.size()])
 
   if (did_find_cell)
     return;
@@ -529,12 +536,12 @@ Particle::cross_surface()
   //bool found = exhaustive_find_cell(*this);
   bool found;
  
-  #pragma omp target update to(this[:1])
-  #pragma omp target map(from: found)
+  //#pragma omp target update to(this[:1])
+  //#pragma omp target map(from: found)
   {
     found = exhaustive_find_cell(*this);
   }
-  #pragma omp target update from(this[:1])
+  //#pragma omp target update from(this[:1])
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is

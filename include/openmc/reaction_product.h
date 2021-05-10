@@ -51,40 +51,63 @@ public:
 
   void serialize(DataBuffer& buffer) const;
 
-  void copy_to_device();
-  void release_from_device();
-
   Particle::Type particle_; //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode
   double decay_rate_; //!< Decay rate (for delayed neutron precursors) in [1/s]
   std::unique_ptr<Function1D> yield_; //!< Yield as a function of energy
   std::vector<Tabulated1D> applicability_; //!< Applicability of distribution
   std::vector<Secondary> distribution_; //!< Secondary angle-energy distribution
-
-  Secondary* device_distribution_;
 };
 
 class ReactionProductFlat {
 public:
   // Constructors
-  explicit ReactionProductFlat(const ReactionProduct& product);
+  #pragma omp declare target
+  explicit ReactionProductFlat(const uint8_t* data);
+  #pragma omp end declare target
 
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
   Particle::Type particle() const;
   ReactionProduct::EmissionMode emission_mode() const;
   double decay_rate() const;
-  //Function1DFlat yield() const;
+  Function1DFlat yield() const;
   Tabulated1DFlat applicability(gsl::index i) const;
   AngleEnergyFlat distribution(gsl::index i) const;
 
-  const uint8_t* data() const { return buffer_.data_; }
+  size_t n_distribution() const { return n_distribution_; }
 
 private:
   // Data members
+  const uint8_t* data_;
   size_t yield_size_;
   size_t n_applicability_;
   size_t n_distribution_;
+};
+
+class ReactionProductFlatContainer {
+public:
+  // Constructors
+  explicit ReactionProductFlatContainer(const ReactionProduct& product);
+
+  #pragma omp declare target
+  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
+
+  void copy_to_device();
+  void release_from_device();
+
+  ReactionProductFlat obj() const;
+
+  Particle::Type particle() const { return this->obj().particle(); }
+  ReactionProduct::EmissionMode emission_mode() const { return this->obj().emission_mode(); }
+  double decay_rate() const { return this->obj().decay_rate(); }
+  Function1DFlat yield() const { return this->obj().yield(); }
+  AngleEnergyFlat distribution(gsl::index i) const { return this->obj().distribution(i); }
+
+  const uint8_t* data() const { return buffer_.data_; }
+private:
+  // Data members
   DataBuffer buffer_;
 };
 

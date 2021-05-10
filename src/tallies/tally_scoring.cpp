@@ -777,7 +777,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         // Get yield and apply to score
         auto m = data::nuclides[p.event_nuclide_]->reaction_index_[p.event_mt_];
         const auto& rxn {*data::nuclides[p.event_nuclide_]->reactions_[m]};
-        score = p.wgt_last_ * flux * (*rxn.products_[0].yield_)(E);
+        score = p.wgt_last_ * flux * rxn.products_[0].yield()(E);
       }
       break;
 
@@ -1121,7 +1121,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
                 auto d = filt.groups()[d_bin];
                 auto yield
                   = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
-                auto rate = rxn.products_[d].decay_rate_;
+                auto rate = rxn.products_[d].decay_rate();
                 score = p.wgt_absorb_ * yield
                   * p.neutron_xs_[p.event_nuclide_].fission
                   / p.neutron_xs_[p.event_nuclide_].absorption
@@ -1144,7 +1144,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               for (auto d = 0; d < rxn.products_.size() - 2; ++d) {
                 auto yield
                   = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d+1);
-                auto rate = rxn.products_[d+1].decay_rate_;
+                auto rate = rxn.products_[d+1].decay_rate();
                 score += rate * p.wgt_absorb_
                   * p.neutron_xs_[p.event_nuclide_].fission * yield
                   / p.neutron_xs_[p.event_nuclide_].absorption * flux;
@@ -1168,7 +1168,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             if (g != 0) {
               const auto& nuc {*data::nuclides[p.event_nuclide_]};
               const auto& rxn {*nuc.fission_rx_[0]};
-              auto rate = rxn.products_[g].decay_rate_;
+              auto rate = rxn.products_[g].decay_rate();
               score += simulation::keff * bank.wgt * rate * flux;
               if (tally.delayedgroup_filter_ != C_NONE) {
                 auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
@@ -1202,7 +1202,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               auto d = filt.groups()[d_bin];
               auto yield
                 = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
-              auto rate = rxn.products_[d].decay_rate_;
+              auto rate = rxn.products_[d].decay_rate();
               score = p.neutron_xs_[i_nuclide].fission * yield * flux
                 * atom_density * rate;
               score_fission_delayed_dg(i_tally, d_bin, score, score_index, p.filter_matches_);
@@ -1218,7 +1218,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             for (auto d = 0; d < rxn.products_.size() - 2; ++d) {
               auto yield
                 = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d+1);
-              auto rate = rxn.products_[d+1].decay_rate_;
+              auto rate = rxn.products_[d+1].decay_rate();
               score += p.neutron_xs_[i_nuclide].fission * flux
                 * yield * atom_density * rate;
             }
@@ -1242,7 +1242,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
                     auto d = filt.groups()[d_bin];
                     auto yield
                       = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
-                    auto rate = rxn.products_[d].decay_rate_;
+                    auto rate = rxn.products_[d].decay_rate();
                     score = p.neutron_xs_[j_nuclide].fission * yield
                       * flux * atom_density * rate;
                     score_fission_delayed_dg(i_tally, d_bin, score,
@@ -1270,7 +1270,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
                   for (auto d = 0; d < rxn.products_.size() - 2; ++d) {
                     auto yield
                       = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d+1);
-                    auto rate = rxn.products_[d+1].decay_rate_;
+                    auto rate = rxn.products_[d+1].decay_rate();
                     score += p.neutron_xs_[j_nuclide].fission
                       * yield * atom_density * flux * rate;
                   }

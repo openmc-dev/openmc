@@ -99,9 +99,7 @@ void move_read_only_data_to_device()
   for (auto& nuc : data::nuclides) {
     std::cout << "Moving " << nuc->name_ << " data to device..." << std::endl;
     for (auto& rx : nuc->reactions_) {
-      for (auto& product : rx->products_) {
-        product.copy_to_device();
-      }
+      rx->copy_to_device();
     }
   }
   
@@ -133,9 +131,7 @@ void release_data_from_device()
   std::cout << "Releasing data from device..." << std::endl;
   for (auto& nuc : data::nuclides) {
     for (auto& rx : nuc->reactions_) {
-      for (auto& product : rx->products_) {
-        product.release_from_device();
-      }
+      rx->release_from_device();
     }
   }
 }

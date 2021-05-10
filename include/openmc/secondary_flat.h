@@ -33,6 +33,7 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
+  const uint8_t* data() const { return data_; }
   AngleEnergyType type() const;
 private:
   // Data members

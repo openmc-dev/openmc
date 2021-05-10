@@ -37,6 +37,9 @@ public:
   double collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
     gsl::span<const double> flux, const std::vector<double>& grid) const;
 
+  void copy_to_device();
+  void release_from_device();
+
   //! Cross section at a single temperature
   struct TemperatureXS {
     int threshold;
@@ -48,7 +51,9 @@ public:
   bool scatter_in_cm_; //!< scattering system in center-of-mass?
   bool redundant_;     //!< redundant reaction?
   std::vector<TemperatureXS> xs_; //!< Cross section at each temperature
-  std::vector<ReactionProduct> products_; //!< Reaction products
+  std::vector<ReactionProductFlatContainer> products_; //!< Reaction products
+
+  ReactionProductFlatContainer* device_products_;
 };
 
 //==============================================================================

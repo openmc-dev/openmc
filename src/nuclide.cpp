@@ -327,8 +327,9 @@ void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, cons
       int n = rx->xs_[t].value.size();
       auto xs = xt::adapt(rx->xs_[t].value);
 
-      for (const auto& p : rx->products_) {
-        if (p.particle_ == Particle::Type::photon) {
+      for (const auto& p_container : rx->products_) {
+        auto p = p_container.obj();
+        if (p.particle() == Particle::Type::photon) {
           auto pprod = xt::view(xs_[t], xt::range(j, j+n), XS_PHOTON_PROD);
           for (int k = 0; k < n; ++k) {
             double E = grid_[t].energy[k+j];
@@ -346,7 +347,7 @@ void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, cons
               }
             }
 
-            pprod[k] += f * xs[k] * (*p.yield_)(E);
+            pprod[k] += f * xs[k] * p.yield()(E);
           }
         }
       }
@@ -382,7 +383,7 @@ void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, cons
   // Determine number of delayed neutron precursors
   if (fissionable_) {
     for (const auto& product : fission_rx_[0]->products_) {
-      if (product.emission_mode_ == EmissionMode::delayed) {
+      if (product.emission_mode() == EmissionMode::delayed) {
         ++n_precursor_;
       }
     }
@@ -482,24 +483,24 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 
   switch (mode) {
   case EmissionMode::prompt:
-    return (*fission_rx_[0]->products_[0].yield_)(E);
+    return fission_rx_[0]->products_[0].yield()(E);
   case EmissionMode::delayed:
     if (n_precursor_ > 0) {
       auto rx = fission_rx_[0];
       if (group >= 1 && group < rx->products_.size()) {
         // If delayed group specified, determine yield immediately
-        return (*rx->products_[group].yield_)(E);
+        return rx->products_[group].yield()(E);
       } else {
         double nu {0.0};
 
         for (int i = 1; i < rx->products_.size(); ++i) {
           // Skip any non-neutron products
-          const auto& product = rx->products_[i];
-          if (product.particle_ != Particle::Type::neutron) continue;
+          const auto& product = rx->products_[i].obj();
+          if (product.particle() != Particle::Type::neutron) continue;
 
           // Evaluate yield
-          if (product.emission_mode_ == EmissionMode::delayed) {
-            nu += (*product.yield_)(E);
+          if (product.emission_mode() == EmissionMode::delayed) {
+            nu += product.yield()(E);
           }
         }
         return nu;
@@ -511,7 +512,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
     if (total_nu_) {
       return (*total_nu_)(E);
     } else {
-      return (*fission_rx_[0]->products_[0].yield_)(E);
+      return fission_rx_[0]->products_[0].yield()(E);
     }
   }
   UNREACHABLE();

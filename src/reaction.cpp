@@ -59,7 +59,8 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
   for (const auto& name : group_names(group)) {
     if (name.rfind("product_", 0) == 0) {
       hid_t pgroup = open_group(group, name.c_str());
-      products_.emplace_back(pgroup);
+      ReactionProduct p(pgroup);
+      products_.emplace_back(p);
       close_group(pgroup);
     }
   }
@@ -72,9 +73,11 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
   // (isotropic is assumed). To preserve the RNG stream, we explicitly
   // mark fission reactions so that we avoid the angle sampling.
   if (is_fission(mt_)) {
-    for (auto& p : products_) {
-      if (p.particle_ == Particle::Type::neutron) {
-        for (auto& d : p.distribution_) {
+    for (auto& p_container : products_) {
+      auto p = p_container.obj();
+      if (p.particle() == Particle::Type::neutron) {
+        for (int i = 0; i < p.n_distribution(); ++i) {
+          auto d = p.distribution(i);
           if (d.type() == AngleEnergyType::UNCORRELATED) {
             UncorrelatedAngleEnergyFlat dist(d.data());
             dist.set_fission(true);
@@ -148,6 +151,24 @@ Reaction::collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
   }
 
   return xs_flux_sum;
+}
+
+void Reaction::copy_to_device()
+{
+  device_products_ = products_.data();
+
+  #pragma omp target enter data map(to: device_products_[:products_.size()])
+  for (auto& product : products_) {
+    product.copy_to_device();
+  }
+}
+
+void Reaction::release_from_device()
+{
+  for (auto& product : products_) {
+    product.release_from_device();
+  }
+  #pragma omp target exit data map(release: device_products_[:products_.size()])
 }
 
 //==============================================================================

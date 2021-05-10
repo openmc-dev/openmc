@@ -573,7 +573,8 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
       + f*(rx->xs_[i_temp].value[i_grid - threshold + 1]));
 
     for (int j = 0; j < rx->products_.size(); ++j) {
-      if (rx->products_[j].particle_ == Particle::Type::photon) {
+      auto product = rx->products_[j].obj();
+      if (product.particle() == Particle::Type::photon) {
         // For fission, artificially increase the photon yield to account
         // for delayed photons
         double f = 1.0;
@@ -588,7 +589,7 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
         }
 
         // add to cumulative probability
-        prob += f * (*rx->products_[j].yield_)(p.E_) * xs;
+        prob += f * product.yield()(p.E_) * xs;
 
         *i_rx = i;
         *i_product = j;
@@ -762,7 +763,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   // Sample scattering angle, checking if angle distribution is present (assume
   // isotropic otherwise)
   double mu_cm;
-  auto& d = rx.products_[0].distribution_[0];
+  const auto& d = rx.products_[0].distribution(0);
   UncorrelatedAngleEnergyFlat d_(d.data());
   if (!d_.angle().empty()) {
     mu_cm = d_.angle().sample(p.E_, p.current_seed());
@@ -1044,7 +1045,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
     int group;
     for (group = 1; group < nuc->n_precursor_; ++group) {
       // determine delayed neutron precursor yield for group j
-      double yield = (*rx.products_[group].yield_)(E_in);
+      double yield = rx.products_[group].yield()(E_in);
 
       // Check if this group is sampled
       prob += yield;
@@ -1063,7 +1064,12 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
     while (true) {
       // sample from energy/angle distribution -- note that mu has already been
       // sampled above and doesn't need to be resampled
-      rx.products_[group].sample(E_in, site->E, mu, seed);
+
+      auto& products = rx.device_products_;
+      #pragma omp target map(from: site->E, mu) map(tofrom: seed[:1])
+      {
+        products[group].sample(E_in, site->E, mu, seed);
+      }
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
@@ -1088,7 +1094,11 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
     // sample from prompt neutron energy distribution
     int n_sample = 0;
     while (true) {
-      rx.products_[0].sample(E_in, site->E, mu, seed);
+      auto& products = rx.device_products_;
+      #pragma omp target map(from: site->E, mu) map(tofrom: seed[:1])
+      {
+        products[0].sample(E_in, site->E, mu, seed);
+      }
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
@@ -1113,7 +1123,12 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   // sample outgoing energy and scattering cosine
   double E;
   double mu;
-  rx.products_[0].sample(E_in, E, mu, p.current_seed());
+  auto* seed = p.current_seed();
+  auto& products = rx.device_products_;
+  #pragma omp target map(from: E, mu) map(tofrom: seed[:1])
+  {
+    products[0].sample(E_in, E, mu, seed);
+  }
 
   // if scattering system is in center-of-mass, transfer cosine of scattering
   // angle and outgoing energy from CM to LAB
@@ -1142,7 +1157,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
 
   // evaluate yield
-  double yield = (*rx.products_[0].yield_)(E_in);
+  double yield = rx.products_[0].yield()(E_in);
   if (std::floor(yield) == yield) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {

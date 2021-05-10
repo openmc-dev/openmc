@@ -130,7 +130,7 @@ void ReactionProduct::serialize(DataBuffer& buffer) const
   }
   for (const auto& d : distribution_) {
     locators.push_back(n);
-    n += buffer_nbytes(d);
+    n += buffer_nbytes(*d);
   }
 
   buffer.add(applicability_.size());                   // 8
@@ -164,19 +164,11 @@ void ReactionProduct::serialize(DataBuffer& buffer) const
 //   #pragma omp target exit data map(release: device_distribution_[:distribution_.size()])
 // }
 
-ReactionProductFlat::ReactionProductFlat(const ReactionProduct& product)
+ReactionProductFlat::ReactionProductFlat(const uint8_t* data) : data_(data)
 {
-  // Determine number of bytes needed and create allocation
-  size_t n = buffer_nbytes(product);
-
-  // Write into buffer
-  buffer_.reserve(n);
-  product.serialize(buffer_);
-  Ensures(n == buffer_.size());
-
-  yield_size_ = *reinterpret_cast<const size_t*>(this->data() + 16);
-  n_applicability_ = *reinterpret_cast<const size_t*>(this->data() + 24 + yield_size_);
-  n_distribution_ = *reinterpret_cast<const size_t*>(this->data() + 32 + yield_size_);
+  yield_size_ = *reinterpret_cast<const size_t*>(data_ + 16);
+  n_applicability_ = *reinterpret_cast<const size_t*>(data_ + 24 + yield_size_);
+  n_distribution_ = *reinterpret_cast<const size_t*>(data_ + 32 + yield_size_);
 }
 
 void ReactionProductFlat::sample(double E_in, double& E_out, double& mu,
@@ -192,58 +184,79 @@ void ReactionProductFlat::sample(double E_in, double& E_out, double& mu,
 
       // If i-th distribution is sampled, sample energy from the distribution
       if (c <= prob) {
-        #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
-        {
-          this->distribution(i).sample(E_in, E_out, mu, seed);
-        }
-        break;
+        this->distribution(i).sample(E_in, E_out, mu, seed);
       }
     }
   } else {
     // If only one distribution is present, go ahead and sample it
-    #pragma omp target map(from: E_out, mu) map(tofrom: seed[:1])
-    {
-      this->distribution(0).sample(E_in, E_out, mu, seed);
-    }
+    this->distribution(0).sample(E_in, E_out, mu, seed);
   }
 }
 
 Particle::Type ReactionProductFlat::particle() const
 {
-  return *reinterpret_cast<const Particle::Type*>(this->data());
+  return *reinterpret_cast<const Particle::Type*>(data_);
 }
 
 ReactionProduct::EmissionMode ReactionProductFlat::emission_mode() const
 {
-  return *reinterpret_cast<const ReactionProduct::EmissionMode*>(this->data() + 4);
+  return *reinterpret_cast<const ReactionProduct::EmissionMode*>(data_ + 4);
 }
 
 double ReactionProductFlat::decay_rate() const
 {
-  return *reinterpret_cast<const double*>(this->data() + 8);
+  return *reinterpret_cast<const double*>(data_ + 8);
 }
 
-// TODO: We need to separate out Function1DFlat into an owning version and a
-// non-owning version since ReactionProduct owns the buffer that the funciton is
-// inside
-
-// Function1DFlat ReactionProductFlat::yield() const
-// {
-//   return Function1DFlat()
-// }
+Function1DFlat ReactionProductFlat::yield() const
+{
+  return Function1DFlat(data_ + 24);
+}
 
 Tabulated1DFlat ReactionProductFlat::applicability(gsl::index i) const
 {
-  auto indices = reinterpret_cast<const int*>(this->data() + 40 + yield_size_);
+  auto indices = reinterpret_cast<const int*>(data_ + 40 + yield_size_);
   size_t offset = indices[i];
-  return Tabulated1DFlat(this->data() + offset);
+  return Tabulated1DFlat(data_ + offset);
 }
 
 AngleEnergyFlat ReactionProductFlat::distribution(gsl::index i) const
 {
-  auto indices = reinterpret_cast<const int*>(this->data() + 40 + yield_size_);
+  auto indices = reinterpret_cast<const int*>(data_ + 40 + yield_size_);
   size_t offset = indices[n_applicability_ + i];
-  return AngleEnergyFlat(this->data() + offset);
+  return AngleEnergyFlat(data_ + offset);
+}
+
+ReactionProductFlatContainer::ReactionProductFlatContainer(const ReactionProduct& product)
+{
+  // Determine number of bytes needed and create allocation
+  size_t n = buffer_nbytes(product);
+
+  // Write into buffer
+  buffer_.reserve(n);
+  product.serialize(buffer_);
+  Ensures(n == buffer_.size());
+}
+
+ReactionProductFlat ReactionProductFlatContainer::obj() const
+{
+  return ReactionProductFlat(buffer_.data_);
+}
+
+void ReactionProductFlatContainer::sample(double E_in, double& E_out, double& mu,
+  uint64_t* seed) const
+{
+  this->obj().sample(E_in, E_out, mu, seed);
+}
+
+void ReactionProductFlatContainer::copy_to_device()
+{
+  buffer_.copy_to_device();
+}
+
+void ReactionProductFlatContainer::release_from_device()
+{
+  buffer_.release_device();
 }
 
 }

@@ -35,11 +35,11 @@ std::string BoundaryCondition::type() const
 void BoundaryCondition::handle_particle(Particle& p, const Surface& surf) const
 {
   switch(type_){
-    case BCType::Vacuum:                return VacuumBC_handle_particle(p, surf); break;
+    //case BCType::Vacuum:                return VacuumBC_handle_particle(p, surf); break;
     case BCType::Reflective:            return ReflectiveBC_handle_particle(p, surf); break;
-    case BCType::White:                 return WhiteBC_handle_particle(p, surf); break;
-    case BCType::TranslationalPeriodic: return TranslationalPeriodicBC_handle_particle(p, surf); break;
-    case BCType::RotationalPeriodic:    return RotationalPeriodicBC_handle_particle(p, surf); break;
+    //case BCType::White:                 return WhiteBC_handle_particle(p, surf); break;
+    //case BCType::TranslationalPeriodic: return TranslationalPeriodicBC_handle_particle(p, surf); break;
+    //case BCType::RotationalPeriodic:    return RotationalPeriodicBC_handle_particle(p, surf); break;
     default: printf("error!\n");
   }
 }
@@ -92,14 +92,14 @@ BoundaryCondition::ReflectiveBC_handle_particle(Particle& p, const Surface& surf
   Direction u = surf.reflect(p.r(), p.u(), &p);
   u /= u.norm();
 
-  #pragma omp target update to(p)
-  #pragma omp target update to(model::device_cells[:model::cells.size()])
-  #pragma omp target
+  //#pragma omp target update to(p)
+  //#pragma omp target update to(model::device_cells[:model::cells.size()])
+  //#pragma omp target
   {
   p.cross_reflective_bc(surf, u);
   }
-  #pragma omp target update from(p)
-  #pragma omp target update from(model::device_cells[:model::cells.size()])
+  //#pragma omp target update from(p)
+  //#pragma omp target update from(model::device_cells[:model::cells.size()])
 }
 
 //==============================================================================

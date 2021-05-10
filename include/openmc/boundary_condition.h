@@ -38,9 +38,13 @@ public:
   //!   to directly modify anything about the particle, but it will do so
   //!   indirectly by calling the particle's appropriate cross_*_bc function.
   //! \param surf The specific surface on the boundary the particle struck.
+  #pragma omp declare target
   void handle_particle(Particle& p, const Surface& surf) const;
+  #pragma omp end declare target
 void VacuumBC_handle_particle(Particle& p, const Surface& surf) const;
+  #pragma omp declare target
 void ReflectiveBC_handle_particle(Particle& p, const Surface& surf) const;
+  #pragma omp end declare target
 void WhiteBC_handle_particle(Particle& p, const Surface& surf) const;
 void TranslationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;
 void RotationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;

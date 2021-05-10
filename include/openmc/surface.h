@@ -135,7 +135,9 @@ public:
   //! \param[in] u Incident direction of the ray
   //! \param[inout] p Pointer to the particle
   //! \return Outgoing direction of the ray
+  #pragma omp declare target
   Direction reflect(Position r, Direction u, Particle* p) const;
+  #pragma omp end declare target
 
   Direction diffuse_reflect(Position r, Direction u,
     uint64_t* seed) const;

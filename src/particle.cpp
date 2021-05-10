@@ -465,7 +465,14 @@ Particle::cross_surface()
 
   // Handle any applicable boundary conditions.
   if (surf->bc_.type_ != BoundaryCondition::BCType::Transmission && settings::run_mode != RunMode::PLOTTING) {
+    #pragma omp target update to(this[:1])
+    #pragma omp target update to(model::device_cells[:model::cells.size()])
+    #pragma omp target
+    {
     surf->bc_.handle_particle(*this, *surf);
+    }
+    #pragma omp target update from(this[:1])
+    #pragma omp target update from(model::device_cells[:model::cells.size()])
     return;
   }
 

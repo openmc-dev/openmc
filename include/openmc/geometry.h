@@ -17,7 +17,9 @@ namespace openmc {
 
 namespace model {
 
+  #pragma omp declare target
 extern int root_universe;  //!< Index of root universe
+#pragma omp end declare target
 extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
 extern std::vector<int64_t> overlap_check_count;
@@ -48,8 +50,8 @@ bool check_cell_overlap(Particle& p, bool error=true);
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-bool exhaustive_find_cell(Particle& p);
 #pragma omp declare target
+bool exhaustive_find_cell(Particle& p);
 bool neighbor_list_find_cell(Particle& p); // Only usable on surface crossings
 #pragma omp end declare target
 

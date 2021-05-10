@@ -44,6 +44,7 @@ LocalCoord::rotate(const double* rotation)
   this->rotated = true;
 }
 
+#pragma omp declare target
 void
 LocalCoord::reset()
 {
@@ -55,6 +56,7 @@ LocalCoord::reset()
   lattice_z = 0;
   rotated = false;
 }
+#pragma omp end declare target
 
 //==============================================================================
 // Particle implementation
@@ -444,11 +446,18 @@ Particle::cross_surface()
 {
   int i_surface = std::abs(surface_);
   // TODO: off-by-one
-  const auto surf {&model::surfaces[i_surface - 1]};
+  //const auto surf {&model::surfaces[i_surface - 1]};
+  const auto surf {&model::device_surfaces[i_surface - 1]};
+  /*
   if (settings::verbosity >= 10 || trace_) {
     write_message(1, "    Crossing surface {}", surf->id_);
   }
+  */
 
+  if (surf->surf_source_) {
+    printf("Error - surface sources not currently supported in GPU implementation!\n");
+  }
+  /*
   if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
     Particle::Bank site;
     site.r = this->r();
@@ -462,6 +471,7 @@ Particle::cross_surface()
     site.progeny_id = this->n_progeny_;
     int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
   }
+  */
 
   // Handle any applicable boundary conditions.
   if (surf->bc_.type_ != BoundaryCondition::BCType::Transmission && settings::run_mode != RunMode::PLOTTING) {
@@ -516,7 +526,15 @@ Particle::cross_surface()
   // Remove lower coordinate levels and assignment of surface
   surface_ = 0;
   n_coord_ = 1;
-  bool found = exhaustive_find_cell(*this);
+  //bool found = exhaustive_find_cell(*this);
+  bool found;
+ 
+  #pragma omp target update to(this[:1])
+  #pragma omp target map(from: found)
+  {
+    found = exhaustive_find_cell(*this);
+  }
+  #pragma omp target update from(this[:1])
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
@@ -531,9 +549,12 @@ Particle::cross_surface()
     // undefined region in the geometry.
 
     if (!exhaustive_find_cell(*this)) {
+      /*
       this->mark_as_lost("After particle " + std::to_string(id_) +
         " crossed surface " + std::to_string(surf->id_) +
         " it could not be located in any cell and it did not leak.");
+        */
+      printf("ERROR - LOST PARTICLE!\n");
       return;
     }
   }

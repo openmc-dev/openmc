@@ -397,12 +397,12 @@ bool exhaustive_find_cell(Particle& p)
     p.coord_[i].reset();
   }
   bool found;
-  #pragma omp target update to(p) 
-  #pragma omp target map(from: found)
+  //#pragma omp target update to(p) 
+  //#pragma omp target map(from: found)
   {
     found = find_cell_inner(p, nullptr);
   }
-  #pragma omp target update from(p) 
+  //#pragma omp target update from(p) 
   return found;
 }
 

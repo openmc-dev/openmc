@@ -286,7 +286,14 @@ Particle::event_cross_surface()
       boundary_.lattice_translation[1] != 0 ||
       boundary_.lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
+    #pragma omp target update to(this[:1])
+    #pragma omp target update to(model::device_cells[:model::cells.size()])
+    #pragma omp target
+    {
     cross_lattice(*this, boundary_);
+    }
+    #pragma omp target update from(this[:1])
+    #pragma omp target update from(model::device_cells[:model::cells.size()])
     event_ = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
@@ -301,9 +308,13 @@ Particle::event_cross_surface()
     event_ = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
+  // TODO: Add this capability back in
+  // NOTE: The lack of this capability is enforced in device_alloc.cpp
+  /*
   if (!model::active_surface_tallies.empty()) {
     score_surface_tally(*this, model::active_surface_tallies);
   }
+  */
 }
 
 void

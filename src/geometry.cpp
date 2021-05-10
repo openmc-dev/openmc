@@ -412,13 +412,16 @@ void
 cross_lattice(Particle& p, const BoundaryInfo& boundary)
 {
   auto& coord {p.coord_[p.n_coord_ - 1]};
-  auto& lat {model::lattices[coord.lattice]};
+  //auto& lat {model::lattices[coord.lattice]};
+  auto& lat {model::device_lattices[coord.lattice]};
 
+  /*(
   if (settings::verbosity >= 10 || p.trace_) {
     write_message(fmt::format(
       "    Crossing lattice {}. Current position ({},{},{}). r={}",
       lat.id_, coord.lattice_x, coord.lattice_y, coord.lattice_z, p.r()), 1);
   }
+  */
 
   // Set the lattice indices.
   coord.lattice_x += boundary.lattice_translation[0];
@@ -428,8 +431,8 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
 
   // Set the new coordinate position.
   const auto& upper_coord {p.coord_[p.n_coord_ - 2]};
-  const auto& cell {model::cells[upper_coord.cell]};
-  //const auto& cell {model::device_cells[upper_coord.cell]};
+  //const auto& cell {model::cells[upper_coord.cell]};
+  const auto& cell {model::device_cells[upper_coord.cell]};
   Position r = upper_coord.r;
   r -= cell.translation_;
   //if (!cell.rotation_.empty()) {
@@ -443,8 +446,11 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
     p.n_coord_ = 1;
     bool found = exhaustive_find_cell(p);
     if (!found && p.alive_) {
+      /*
       p.mark_as_lost(fmt::format("Could not locate particle {} after "
         "crossing a lattice boundary", p.id_));
+        */
+      printf("Error - particle lost after crossing a lattice boundary!!\n");
     }
 
   } else {
@@ -458,8 +464,11 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
       p.n_coord_ = 1;
       bool found = exhaustive_find_cell(p);
       if (!found && p.alive_) {
+        /*
         p.mark_as_lost(fmt::format("Could not locate particle {} after "
           "crossing a lattice boundary", p.id_));
+          */
+        printf("Error - particle lost after crossing a lattice boundary!!\n");
       }
     }
   }

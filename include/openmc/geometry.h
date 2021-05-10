@@ -59,7 +59,9 @@ bool neighbor_list_find_cell(Particle& p); // Only usable on surface crossings
 //! Move a particle into a new lattice tile.
 //==============================================================================
 
+#pragma omp declare target
 void cross_lattice(Particle& p, const BoundaryInfo& boundary);
+#pragma omp end declare target
 
 //==============================================================================
 //! Find the next boundary a particle will intersect.

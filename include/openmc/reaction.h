@@ -10,6 +10,7 @@
 #include <gsl/gsl>
 #include "hdf5.h"
 
+#include "openmc/particle.h"
 #include "openmc/reaction_product.h"
 
 namespace openmc {
@@ -26,6 +27,9 @@ public:
   //! \param[in] group HDF5 group containing reaction data
   //! \param[in] temperatures Desired temperatures for cross sections
   explicit Reaction(hid_t group, const std::vector<int>& temperatures);
+
+  double xs(gsl::index i_temp, gsl::index i_grid, double interp_factor) const;
+  double xs(const NuclideMicroXS& micro) const;
 
   //! \brief Calculate reaction rate based on group-wise flux distribution
   //

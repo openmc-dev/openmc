@@ -492,13 +492,13 @@ Particle::cross_surface()
 
   bool did_find_cell;
   #pragma omp target update to(this[:1])
-  //#pragma omp target update to(model::device_cells[:model::cells.size()])
+  #pragma omp target update to(model::device_cells[:model::cells.size()])
   #pragma omp target map(from: did_find_cell)
   {
     did_find_cell = neighbor_list_find_cell(*this);
   }
   #pragma omp target update from(this[:1])
-  //#pragma omp target update from(model::device_cells[:model::cells.size()])
+  #pragma omp target update from(model::device_cells[:model::cells.size()])
 
   if (did_find_cell)
     return;
@@ -573,7 +573,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
       " off surface in a lower universe.");
       */
     printf("error - cannot reflect particle\n");
-    this->mark_as_lost_short();
+    //this->mark_as_lost_short();
     return;
   }
 
@@ -611,17 +611,17 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   //if (!settings::dagmc) {
     n_coord_ = 1;
     bool did_find_cell;
-  #pragma omp target update to(this[:1])
+  //#pragma omp target update to(this[:1])
   //#pragma omp target update to(model::device_cells[:model::cells.size()])
-  #pragma omp target map(from: did_find_cell)
+  //#pragma omp target map(from: did_find_cell)
   {
     did_find_cell = neighbor_list_find_cell(*this);
   }
-  #pragma omp target update from(this[:1])
+  //#pragma omp target update from(this[:1])
   //#pragma omp target update from(model::device_cells[:model::cells.size()])
 
     if (!did_find_cell) {
-      this->mark_as_lost_short();
+      //this->mark_as_lost_short();
       printf("lost particle reflecting\n");
       /*
       this->mark_as_lost("Couldn't find particle after reflecting from surface "
@@ -675,13 +675,13 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
   n_coord_ = 1;
   bool did_find_cell;
   #pragma omp target update to(this[:1])
-  //#pragma omp target update to(model::device_cells[:model::cells.size()])
+  #pragma omp target update to(model::device_cells[:model::cells.size()])
   #pragma omp target map(from: did_find_cell)
   {
     did_find_cell = neighbor_list_find_cell(*this);
   }
   #pragma omp target update from(this[:1])
-  //#pragma omp target update from(model::device_cells[:model::cells.size()])
+  #pragma omp target update from(model::device_cells[:model::cells.size()])
 
   if (!did_find_cell) {
     this->mark_as_lost("Couldn't find particle after hitting periodic "

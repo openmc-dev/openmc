@@ -7,6 +7,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/surface.h"
+#include "openmc/cell.h"
   
 /*
   switch(type_){
@@ -91,7 +92,14 @@ BoundaryCondition::ReflectiveBC_handle_particle(Particle& p, const Surface& surf
   Direction u = surf.reflect(p.r(), p.u(), &p);
   u /= u.norm();
 
+  #pragma omp target update to(p)
+  #pragma omp target update to(model::device_cells[:model::cells.size()])
+  #pragma omp target
+  {
   p.cross_reflective_bc(surf, u);
+  }
+  #pragma omp target update from(p)
+  #pragma omp target update from(model::device_cells[:model::cells.size()])
 }
 
 //==============================================================================
@@ -103,7 +111,6 @@ BoundaryCondition::WhiteBC_handle_particle(Particle& p, const Surface& surf) con
 {
   Direction u = surf.diffuse_reflect(p.r(), p.u(), p.current_seed());
   u /= u.norm();
-
   p.cross_reflective_bc(surf, u);
 }
 

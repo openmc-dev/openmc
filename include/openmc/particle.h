@@ -205,21 +205,19 @@ public:
   // Methods and accessors
 
   // Accessors for position in global coordinates
+  #pragma omp declare target
   Position& r() { return coord_[0].r; }
   const Position& r() const { return coord_[0].r; }
 
   // Accessors for position in local coordinates
-  #pragma omp declare target
   Position& r_local() { return coord_[n_coord_ - 1].r; }
   const Position& r_local() const { return coord_[n_coord_ - 1].r; }
-  #pragma omp end declare target
 
   // Accessors for direction in global coordinates
   Direction& u() { return coord_[0].u; }
   const Direction& u() const { return coord_[0].u; }
 
   // Accessors for direction in local coordinates
-  #pragma omp declare target
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
   #pragma omp end declare target
@@ -263,16 +261,19 @@ public:
   //
   //! \param surf The surface (with the vacuum boundary condition) that the
   //!   particle struck.
-  #pragma omp declare target
+  //#pragma omp declare target
   void cross_vacuum_bc(const Surface& surf);
-  #pragma omp end declare target
+  //#pragma omp end declare target
 
   //! Cross a reflective boundary condition.
   //
   //! \param surf The surface (with the reflective boundary condition) that the
   //!   particle struck.
   //! \param new_u The direction of the particle after reflection.
+  #pragma omp declare target
   void cross_reflective_bc(const Surface& surf, Direction new_u);
+  #pragma omp end declare target
+
 
   //! Cross a periodic boundary condition.
   //

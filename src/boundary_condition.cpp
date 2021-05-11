@@ -9,7 +9,7 @@
 #include "openmc/surface.h"
 
 
-//#include "openmc/cell.h" // NOTE: This header is unnecessary logically, but if left out results in a segmentation fault at JIT compile time on some compilers.
+#include "openmc/cell.h" // NOTE: This header is unnecessary logically, but if left out results in a segmentation fault at JIT compile time on some compilers.
   
 /*
   switch(type_){

@@ -59,7 +59,9 @@ public:
   #pragma omp end declare target
 
   //! clear data from a single coordinate level
+  #pragma omp declare target
   void reset();
+  #pragma omp end declare target
 
   Position r; //!< particle position
   Direction u; //!< particle direction
@@ -223,7 +225,9 @@ public:
   #pragma omp end declare target
 
   //! resets all coordinate levels for the particle
+  #pragma omp declare target
   void clear();
+  #pragma omp end declare target
 
   //! create a secondary particle
   //
@@ -241,7 +245,9 @@ public:
   //! site may have been produced from an external source, from fission, or
   //! simply as a secondary particle.
   //! \param src Source site data
+  #pragma omp declare target
   void from_source(const Bank* src);
+  #pragma omp end declare target
 
   // Coarse-grained particle events
   void event_calculate_xs();
@@ -253,7 +259,9 @@ public:
   void event_cross_surface();
   #pragma omp end declare target
   void event_collide();
+  #pragma omp declare target
   void event_revive_from_secondary();
+  #pragma omp end declare target
   void event_death();
 
   //! Cross a surface and handle boundary conditions

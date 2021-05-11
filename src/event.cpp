@@ -181,6 +181,7 @@ void process_surface_crossing_events()
     int64_t buffer_idx = simulation::surface_crossing_queue.device_data_[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_cross_surface();
+    p.event_revive_from_secondary();
   }
   
   #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
@@ -191,7 +192,7 @@ void process_surface_crossing_events()
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     //p.event_cross_surface();
-    p.event_revive_from_secondary();
+    //p.event_revive_from_secondary();
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
   }

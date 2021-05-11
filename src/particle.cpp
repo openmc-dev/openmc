@@ -44,7 +44,6 @@ LocalCoord::rotate(const double* rotation)
   this->rotated = true;
 }
 
-#pragma omp declare target
 void
 LocalCoord::reset()
 {
@@ -56,7 +55,6 @@ LocalCoord::reset()
   lattice_z = 0;
   rotated = false;
 }
-#pragma omp end declare target
 
 //==============================================================================
 // Particle implementation
@@ -136,9 +134,12 @@ Particle::from_source(const Bank* src)
     E_ = src->E;
     g_ = 0;
   } else {
+    printf("Error - MG mode not supported yet on device.\n");
+    /*
     g_ = static_cast<int>(src->E);
     g_last_ = static_cast<int>(src->E);
     E_ = data::mg.energy_bin_avg_[g_];
+    */
   }
   E_last_ = E_;
 }
@@ -395,8 +396,11 @@ Particle::event_revive_from_secondary()
   // If particle has too many events, display warning and kill it
   ++n_event_;
   if (n_event_ == MAX_EVENTS) {
+    printf("Particle %d underwent max number of events.\n", id_);
+    /*
     warning("Particle " + std::to_string(id_) +
       " underwent maximum number of events.");
+      */
     alive_ = false;
   }
 
@@ -412,7 +416,9 @@ Particle::event_revive_from_secondary()
     n_event_ = 0;
 
     // Enter new particle in particle track file
+    /*
     if (write_track_) add_particle_track(*this);
+    */
   }
 }
 

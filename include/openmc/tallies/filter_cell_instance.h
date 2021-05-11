@@ -3,13 +3,12 @@
 
 #include <cstdint>
 #include <unordered_map>
-#include <vector>
 
 #include <gsl/gsl>
 
 #include "openmc/cell.h"
 #include "openmc/tallies/filter.h"
-
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -43,7 +42,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<CellInstance>& cell_instances() const { return cell_instances_; }
+  const vector<CellInstance>& cell_instances() const { return cell_instances_; }
 
   void set_cell_instances(gsl::span<CellInstance> instances);
 
@@ -52,7 +51,7 @@ private:
   // Data members
 
   //! The indices of the cells binned by this filter.
-  std::vector<CellInstance> cell_instances_;
+  vector<CellInstance> cell_instances_;
 
   //! A map from cell/instance indices to filter bin indices.
   std::unordered_map<CellInstance, gsl::index, CellInstanceHash> map_;

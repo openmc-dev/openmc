@@ -157,7 +157,7 @@ partition_universes()
         if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
           ++n_zplanes;
           if (n_zplanes > 5) {
-            univ->partitioner_ = std::make_unique<UniversePartitioner>(*univ);
+            univ->partitioner_ = make_unique<UniversePartitioner>(*univ);
             break;
           }
         }
@@ -191,9 +191,8 @@ assign_temperatures()
 
 //==============================================================================
 
-void
-get_temperatures(std::vector<std::vector<double>>& nuc_temps,
-  std::vector<std::vector<double>>& thermal_temps)
+void get_temperatures(
+  vector<vector<double>>& nuc_temps, vector<vector<double>>& thermal_temps)
 {
   for (const auto& cell : model::cells) {
     // Skip non-material cells.
@@ -205,7 +204,7 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
       if (i_material == MATERIAL_VOID) continue;
 
       // Get temperature(s) of cell (rounding to nearest integer)
-      std::vector<double> cell_temps;
+      vector<double> cell_temps;
       if (cell->sqrtkT_.size() == 1) {
         double sqrtkT = cell->sqrtkT_[0];
         cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
@@ -351,7 +350,7 @@ prepare_distribcell()
   // Search through universes for material cells and assign each one a
   // unique distribcell array index.
   int distribcell_index = 0;
-  std::vector<int32_t> target_univ_ids;
+  vector<int32_t> target_univ_ids;
   for (const auto& u : model::universes) {
     for (auto idx : u->cells_) {
       if (distribcells.find(idx) != distribcells.end()) {
@@ -495,8 +494,8 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   // The target must be further down the geometry tree and contained in a fill
   // cell or lattice cell in this universe.  Find which cell contains the
   // target.
-  std::vector<std::int32_t>::const_reverse_iterator cell_it
-       {search_univ.cells_.crbegin()};
+  vector<std::int32_t>::const_reverse_iterator cell_it {
+    search_univ.cells_.crbegin()};
   for (; cell_it != search_univ.cells_.crend(); ++cell_it) {
     Cell& c = *model::cells[*cell_it];
 

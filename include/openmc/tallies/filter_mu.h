@@ -1,11 +1,10 @@
 #ifndef OPENMC_TALLIES_FILTER_MU_H
 #define OPENMC_TALLIES_FILTER_MU_H
 
-#include <vector>
-
 #include <gsl/gsl>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -45,7 +44,7 @@ private:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<double> bins_;
+  vector<double> bins_;
 };
 
 } // namespace openmc

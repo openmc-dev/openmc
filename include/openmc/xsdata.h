@@ -4,14 +4,12 @@
 #ifndef OPENMC_XSDATA_H
 #define OPENMC_XSDATA_H
 
-#include <memory>
-#include <vector>
-
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/memory.h"
 #include "openmc/scattdata.h"
-
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -99,7 +97,7 @@ class XsData {
     // [angle][incoming group][outgoing group][delayed group]
     xt::xtensor<double, 4> chi_delayed;
     // scatter has the following dimensions: [angle]
-    std::vector<std::shared_ptr<ScattData>> scatter;
+    vector<std::shared_ptr<ScattData>> scatter;
 
     XsData() = default;
 
@@ -138,8 +136,8 @@ class XsData {
     //!
     //! @param micros Microscopic objects to combine.
     //! @param scalars Scalars to multiply the microscopic data by.
-    void
-    combine(const std::vector<XsData*>& those_xs, const std::vector<double>& scalars);
+    void combine(
+      const vector<XsData*>& those_xs, const vector<double>& scalars);
 
     //! \brief Checks to see if this and that are able to be combined
     //!

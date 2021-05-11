@@ -28,8 +28,8 @@ public:
   //! Construct an iterator over all filter bin combinations.
   //
   //! \param end if true, the returned iterator indicates the end of a loop.
-  FilterBinIter(const Tally& tally, bool end,
-      std::vector<FilterMatch>* particle_filter_matches);
+  FilterBinIter(
+    const Tally& tally, bool end, vector<FilterMatch>* particle_filter_matches);
 
   bool operator==(const FilterBinIter& other) const
   {return index_ == other.index_;}
@@ -42,7 +42,7 @@ public:
   int index_ {1};
   double weight_ {1.};
 
-  std::vector<FilterMatch>& filter_matches_;
+  vector<FilterMatch>& filter_matches_;
 
 private:
   void compute_index_weight();
@@ -93,7 +93,7 @@ void score_tracklength_tally(Particle& p, double distance);
 //
 //! \param p The particle being tracked
 //! \param tallies A vector of tallies to score to
-void score_surface_tally(Particle& p, const std::vector<int>& tallies);
+void score_surface_tally(Particle& p, const vector<int>& tallies);
 
 } // namespace openmc
 

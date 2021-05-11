@@ -2,19 +2,18 @@
 #define OPENMC_TALLIES_FILTER_H
 
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
+#include "pugixml.hpp"
 #include <gsl/gsl>
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/memory.h"
 #include "openmc/particle.h"
 #include "openmc/tallies/filter_match.h"
-#include "pugixml.hpp"
-
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -120,7 +119,7 @@ private:
 namespace model {
   extern "C" int32_t n_filters;
   extern std::unordered_map<int, int> filter_map;
-  extern std::vector<std::unique_ptr<Filter>> tally_filters;
+  extern vector<unique_ptr<Filter>> tally_filters;
 }
 
 //==============================================================================

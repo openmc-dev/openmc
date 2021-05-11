@@ -4,11 +4,10 @@
 #ifndef OPENMC_SCATTDATA_H
 #define OPENMC_SCATTDATA_H
 
-#include <vector>
-
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -32,12 +31,10 @@ class ScattData {
          const double_2dvec& in_mult);
 
     //! \brief Combines microscopic ScattDatas into a macroscopic one.
-    void
-    base_combine(size_t max_order, size_t order_dim,
-         const std::vector<ScattData*>& those_scatts,
-         const std::vector<double>& scalars, xt::xtensor<int, 1>& in_gmin,
-         xt::xtensor<int, 1>& in_gmax, double_2dvec& sparse_mult,
-         double_3dvec& sparse_scatter);
+    void base_combine(size_t max_order, size_t order_dim,
+      const vector<ScattData*>& those_scatts, const vector<double>& scalars,
+      xt::xtensor<int, 1>& in_gmin, xt::xtensor<int, 1>& in_gmax,
+      double_2dvec& sparse_mult, double_3dvec& sparse_scatter);
 
   public:
 
@@ -85,9 +82,8 @@ class ScattData {
     //!
     //! @param those_scatts Microscopic objects to combine.
     //! @param scalars Scalars to multiply the microscopic data by.
-    virtual void
-    combine(const std::vector<ScattData*>& those_scatts,
-         const std::vector<double>& scalars) = 0;
+    virtual void combine(const vector<ScattData*>& those_scatts,
+      const vector<double>& scalars) = 0;
 
     //! \brief Getter for the dimensionality of the scattering order.
     //!
@@ -151,9 +147,8 @@ class ScattDataLegendre: public ScattData {
     init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
          const double_2dvec& in_mult, const double_3dvec& coeffs);
 
-    void
-    combine(const std::vector<ScattData*>& those_scatts,
-            const std::vector<double>& scalars);
+    void combine(
+      const vector<ScattData*>& those_scatts, const vector<double>& scalars);
 
     //! \brief Find the maximal value of the angular distribution to use as a
     // bounding box with rejection sampling.
@@ -192,9 +187,8 @@ class ScattDataHistogram: public ScattData {
     init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
          const double_2dvec& in_mult, const double_3dvec& coeffs);
 
-    void
-    combine(const std::vector<ScattData*>& those_scatts,
-            const std::vector<double>& scalars);
+    void combine(
+      const vector<ScattData*>& those_scatts, const vector<double>& scalars);
 
     double
     calc_f(int gin, int gout, double mu);
@@ -233,9 +227,8 @@ class ScattDataTabular: public ScattData {
     init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
          const double_2dvec& in_mult, const double_3dvec& coeffs);
 
-    void
-    combine(const std::vector<ScattData*>& those_scatts,
-            const std::vector<double>& scalars);
+    void combine(
+      const vector<ScattData*>& those_scatts, const vector<double>& scalars);
 
     double
     calc_f(int gin, int gout, double mu);

@@ -54,7 +54,7 @@ void
 AzimuthalFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
-  Direction u = (estimator == TallyEstimator::TRACKLENGTH) ? p.u() : p.u_last_;
+  Direction u = (estimator == TallyEstimator::TRACKLENGTH) ? p.u() : p.u_last();
   double phi = std::atan2(u.y, u.x);
 
   if (phi >= bins_.front() && phi <= bins_.back()) {

@@ -183,7 +183,7 @@ void load_dagmc_geometry()
   dagmcMetaData DMD(model::DAG, false, false);
   DMD.load_property_data();
 
-  std::vector<std::string> keywords {"temp"};
+  vector<std::string> keywords {"temp"};
   std::map<std::string, std::string> dum;
   std::string delimiters = ":/";
   rval = model::DAG->parse_properties(keywords, dum, delimiters.c_str());
@@ -211,7 +211,7 @@ void load_dagmc_geometry()
     // Populate the Universe vector and dict
     auto it = model::universe_map.find(dagmc_univ_id);
     if (it == model::universe_map.end()) {
-      model::universes.push_back(std::make_unique<Universe>());
+      model::universes.push_back(make_unique<Universe>());
       model::universes.back()->id_ = dagmc_univ_id;
       model::universes.back()->cells_.push_back(i);
       model::universe_map[dagmc_univ_id] = model::universes.size() - 1;

@@ -1,15 +1,17 @@
 #ifndef OPENMC_GEOMETRY_H
 #define OPENMC_GEOMETRY_H
 
-#include <array>
 #include <cmath>
 #include <cstdint>
-#include <vector>
 
-#include "openmc/particle.h"
-
+#include "openmc/array.h"
+#include "openmc/constants.h"
+#include "openmc/vector.h"
 
 namespace openmc {
+
+class BoundaryInfo;
+class Particle;
 
 //==============================================================================
 // Global variables
@@ -20,7 +22,7 @@ namespace model {
 extern int root_universe;  //!< Index of root universe
 extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
-extern std::vector<int64_t> overlap_check_count;
+extern vector<int64_t> overlap_check_count;
 
 } // namespace model
 

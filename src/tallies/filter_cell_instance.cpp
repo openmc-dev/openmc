@@ -24,7 +24,7 @@ CellInstanceFilter::from_xml(pugi::xml_node node)
   Expects(cells.size() % 2 == 0);
 
   // Convert into vector of CellInstance
-  std::vector<CellInstance> instances;
+  vector<CellInstance> instances;
   for (gsl::index i = 0; i < cells.size() / 2; ++i) {
     int32_t cell_id = cells[2*i];
     gsl::index instance = cells[2*i + 1];
@@ -69,8 +69,8 @@ void
 CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                          FilterMatch& match) const
 {
-  gsl::index index_cell = p.coord_[p.n_coord_ - 1].cell;
-  gsl::index instance = p.cell_instance_;
+  gsl::index index_cell = p.coord(p.n_coord() - 1).cell;
+  gsl::index instance = p.cell_instance();
   auto search = map_.find({index_cell, instance});
   if (search != map_.end()) {
     int index_bin = search->second;

@@ -143,7 +143,7 @@ int openmc_finalize()
 
   // Free all MPI types
 #ifdef OPENMC_MPI
-  if (mpi::bank != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::bank);
+  if (mpi::source_site != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::source_site);
 #endif
 
   return 0;

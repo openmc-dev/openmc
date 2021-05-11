@@ -4,21 +4,21 @@
 #ifndef OPENMC_NUCLIDE_H
 #define OPENMC_NUCLIDE_H
 
-#include <array>
-#include <memory> // for unique_ptr
 #include <unordered_map>
 #include <utility> // for pair
-#include <vector>
 
 #include <gsl/gsl>
 #include <hdf5.h>
 
+#include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/endf.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
 #include "openmc/urr.h"
+#include "openmc/vector.h"
 #include "openmc/wmp.h"
 
 namespace openmc {
@@ -32,12 +32,12 @@ public:
   // Types, aliases
   using EmissionMode = ReactionProduct::EmissionMode;
   struct EnergyGrid {
-    std::vector<int> grid_index;
-    std::vector<double> energy;
+    vector<int> grid_index;
+    vector<double> energy;
   };
 
   // Constructors/destructors
-  Nuclide(hid_t group, const std::vector<double>& temperature);
+  Nuclide(hid_t group, const vector<double>& temperature);
   ~Nuclide();
 
   //! Initialize logarithmic grid for energy searches
@@ -78,40 +78,41 @@ public:
   gsl::index index_; //!< Index in the nuclides array
 
   // Temperature dependent cross section data
-  std::vector<double> kTs_; //!< temperatures in eV (k*T)
-  std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
-  std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
+  vector<double> kTs_;                //!< temperatures in eV (k*T)
+  vector<EnergyGrid> grid_;           //!< Energy grid at each temperature
+  vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
 
   // Multipole data
-  std::unique_ptr<WindowedMultipole> multipole_;
+  unique_ptr<WindowedMultipole> multipole_;
 
   // Fission data
   bool fissionable_ {false}; //!< Whether nuclide is fissionable
   bool has_partial_fission_ {false}; //!< has partial fission reactions?
-  std::vector<Reaction*> fission_rx_; //!< Fission reactions
+  vector<Reaction*> fission_rx_;     //!< Fission reactions
   int n_precursor_ {0}; //!< Number of delayed neutron precursors
-  std::unique_ptr<Function1D> total_nu_; //!< Total neutron yield
-  std::unique_ptr<Function1D> fission_q_prompt_; //!< Prompt fission energy release
-  std::unique_ptr<Function1D> fission_q_recov_; //!< Recoverable fission energy release
-  std::unique_ptr<Function1D> prompt_photons_; //!< Prompt photon energy release
-  std::unique_ptr<Function1D> delayed_photons_; //!< Delayed photon energy release
-  std::unique_ptr<Function1D> fragments_; //!< Fission fragment energy release
-  std::unique_ptr<Function1D> betas_; //!< Delayed beta energy release
+  unique_ptr<Function1D> total_nu_;         //!< Total neutron yield
+  unique_ptr<Function1D> fission_q_prompt_; //!< Prompt fission energy release
+  unique_ptr<Function1D>
+    fission_q_recov_; //!< Recoverable fission energy release
+  unique_ptr<Function1D> prompt_photons_;  //!< Prompt photon energy release
+  unique_ptr<Function1D> delayed_photons_; //!< Delayed photon energy release
+  unique_ptr<Function1D> fragments_;       //!< Fission fragment energy release
+  unique_ptr<Function1D> betas_;           //!< Delayed beta energy release
 
   // Resonance scattering information
   bool resonant_ {false};
-  std::vector<double> energy_0K_;
-  std::vector<double> elastic_0K_;
-  std::vector<double> xs_cdf_;
+  vector<double> energy_0K_;
+  vector<double> elastic_0K_;
+  vector<double> xs_cdf_;
 
   // Unresolved resonance range information
   bool urr_present_ {false};
   int urr_inelastic_ {C_NONE};
-  std::vector<UrrData> urr_data_;
+  vector<UrrData> urr_data_;
 
-  std::vector<std::unique_ptr<Reaction>> reactions_; //!< Reactions
-  std::array<size_t, 902> reaction_index_; //!< Index of each reaction
-  std::vector<int> index_inelastic_scatter_;
+  vector<unique_ptr<Reaction>> reactions_; //!< Reactions
+  array<size_t, 902> reaction_index_;      //!< Index of each reaction
+  vector<int> index_inelastic_scatter_;
 
 private:
   void create_derived(const Function1D* prompt_photons, const Function1D* delayed_photons);
@@ -146,8 +147,8 @@ namespace data {
 
 // Minimum/maximum transport energy for each particle type. Order corresponds to
 // that of the ParticleType enum
-extern std::array<double, 2> energy_min;
-extern std::array<double, 2> energy_max;
+extern array<double, 2> energy_min;
+extern array<double, 2> energy_max;
 
 //! Minimum temperature in [K] that nuclide data is available at
 extern double temperature_min;
@@ -156,7 +157,7 @@ extern double temperature_min;
 extern double temperature_max;
 
 extern std::unordered_map<std::string, int> nuclide_map;
-extern std::vector<std::unique_ptr<Nuclide>> nuclides;
+extern vector<unique_ptr<Nuclide>> nuclides;
 
 } // namespace data
 

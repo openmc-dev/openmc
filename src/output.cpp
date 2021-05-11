@@ -146,62 +146,62 @@ std::string time_stamp()
 void print_particle(Particle& p)
 {
   // Display particle type and ID.
-  switch (p.type_) {
-    case Particle::Type::neutron:
-      fmt::print("Neutron ");
-      break;
-    case Particle::Type::photon:
-      fmt::print("Photon ");
-      break;
-    case Particle::Type::electron:
-      fmt::print("Electron ");
-      break;
-    case Particle::Type::positron:
-      fmt::print("Positron ");
-      break;
-    default:
-      fmt::print("Unknown Particle ");
+  switch (p.type()) {
+  case ParticleType::neutron:
+    fmt::print("Neutron ");
+    break;
+  case ParticleType::photon:
+    fmt::print("Photon ");
+    break;
+  case ParticleType::electron:
+    fmt::print("Electron ");
+    break;
+  case ParticleType::positron:
+    fmt::print("Positron ");
+    break;
+  default:
+    fmt::print("Unknown Particle ");
   }
-  fmt::print("{}\n", p.id_);
+  fmt::print("{}\n", p.id());
 
   // Display particle geometry hierarchy.
-  for (auto i = 0; i < p.n_coord_; i++) {
+  for (auto i = 0; i < p.n_coord(); i++) {
     fmt::print("  Level {}\n", i);
 
-    if (p.coord_[i].cell != C_NONE) {
-      const Cell& c {*model::cells[p.coord_[i].cell]};
+    if (p.coord(i).cell != C_NONE) {
+      const Cell& c {*model::cells[p.coord(i).cell]};
       fmt::print("    Cell             = {}\n", c.id_);
     }
 
-    if (p.coord_[i].universe != C_NONE) {
-      const Universe& u {*model::universes[p.coord_[i].universe]};
+    if (p.coord(i).universe != C_NONE) {
+      const Universe& u {*model::universes[p.coord(i).universe]};
       fmt::print("    Universe         = {}\n", u.id_);
     }
 
-    if (p.coord_[i].lattice != C_NONE) {
-      const Lattice& lat {*model::lattices[p.coord_[i].lattice]};
+    if (p.coord(i).lattice != C_NONE) {
+      const Lattice& lat {*model::lattices[p.coord(i).lattice]};
       fmt::print("    Lattice          = {}\n", lat.id_);
-      fmt::print("    Lattice position = ({},{},{})\n", p.coord_[i].lattice_x,
-        p.coord_[i].lattice_y, p.coord_[i].lattice_z);
+      fmt::print("    Lattice position = ({},{},{})\n", p.coord(i).lattice_i[0],
+        p.coord(i).lattice_i[1], p.coord(i).lattice_i[2]);
     }
 
-    fmt::print("    r = {}\n", p.coord_[i].r);
-    fmt::print("    u = {}\n", p.coord_[i].u);
+    fmt::print("    r = {}\n", p.coord(i).r);
+    fmt::print("    u = {}\n", p.coord(i).u);
   }
 
   // Display miscellaneous info.
-  if (p.surface_ != 0) {
+  if (p.surface() != 0) {
     // Surfaces identifiers are >= 1, but indices are >= 0 so we need -1
-    const Surface& surf {*model::surfaces[std::abs(p.surface_)-1]};
-    fmt::print("  Surface = {}\n", (p.surface_ > 0) ? surf.id_ : -surf.id_);
+    const Surface& surf {*model::surfaces[std::abs(p.surface()) - 1]};
+    fmt::print("  Surface = {}\n", (p.surface() > 0) ? surf.id_ : -surf.id_);
   }
-  fmt::print("  Weight = {}\n", p.wgt_);
+  fmt::print("  Weight = {}\n", p.wgt());
   if (settings::run_CE) {
-    fmt::print("  Energy = {}\n", p.E_);
+    fmt::print("  Energy = {}\n", p.E());
   } else {
-    fmt::print("  Energy Group = {}\n", p.g_);
+    fmt::print("  Energy Group = {}\n", p.g());
   }
-  fmt::print("  Delayed Group = {}\n\n", p.delayed_group_);
+  fmt::print("  Delayed Group = {}\n\n", p.delayed_group());
 }
 
 //==============================================================================
@@ -269,17 +269,16 @@ void
 print_overlap_check()
 {
   #ifdef OPENMC_MPI
-    std::vector<int64_t> temp(model::overlap_check_count);
-    MPI_Reduce(temp.data(), model::overlap_check_count.data(),
-               model::overlap_check_count.size(), MPI_INT64_T,
-               MPI_SUM, 0, mpi::intracomm);
-  #endif
+  vector<int64_t> temp(model::overlap_check_count);
+  MPI_Reduce(temp.data(), model::overlap_check_count.data(),
+    model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
+#endif
 
   if (mpi::master) {
     header("cell overlap check summary", 1);
     fmt::print(" Cell ID      No. Overlap Checks\n");
 
-    std::vector<int32_t> sparse_cell_ids;
+    vector<int32_t> sparse_cell_ids;
     for (int i = 0; i < model::cells.size(); i++) {
       fmt::print(" {:8} {:17}\n", model::cells[i]->id_, model::overlap_check_count[i]);
       if (model::overlap_check_count[i] < 10) {
@@ -606,7 +605,7 @@ write_tallies()
     }
 
     // Initialize Filter Matches Object
-    std::vector<FilterMatch> filter_matches;
+    vector<FilterMatch> filter_matches;
     // Allocate space for tally filter matches
     filter_matches.resize(model::tally_filters.size());
 

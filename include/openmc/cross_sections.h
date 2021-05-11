@@ -5,7 +5,8 @@
 
 #include <string>
 #include <map>
-#include <vector>
+
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -31,7 +32,7 @@ public:
 
   // Data members
   Type type_; //!< Type of data library
-  std::vector<std::string> materials_; //!< Materials contained in library
+  vector<std::string> materials_; //!< Materials contained in library
   std::string path_; //!< File path to library
 };
 
@@ -47,7 +48,7 @@ namespace data {
 extern std::map<LibraryKey, std::size_t> library_map;
 
 //!< Data libraries
-extern std::vector<Library> libraries;
+extern vector<Library> libraries;
 
 } // namespace data
 
@@ -64,8 +65,8 @@ void read_cross_sections_xml();
 //
 //! \param[in] nuc_temps Temperatures for each nuclide in [K]
 //! \param[in] thermal_temps Temperatures for each thermal scattering table in [K]
-void read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
-  const std::vector<std::vector<double>>& thermal_temps);
+void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
+  const vector<vector<double>>& thermal_temps);
 
 //! Read cross_sections.xml and populate data libraries
 void read_ce_cross_sections_xml();

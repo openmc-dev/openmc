@@ -31,11 +31,11 @@ class RingSource : public openmc::Source {
     }
 
     // Samples from an instance of this class.
-    openmc::Particle::Bank sample(uint64_t* seed) const
+    openmc::SourceSite sample(uint64_t* seed) const
     {
-      openmc::Particle::Bank particle;
+      openmc::SourceSite particle;
       // wgt
-      particle.particle = openmc::Particle::Type::neutron;
+      particle.particle = openmc::ParticleType::neutron;
       particle.wgt = 1.0;
       // position
       double angle = 2.0 * M_PI * openmc::prn(seed);

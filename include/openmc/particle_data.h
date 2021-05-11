@@ -170,7 +170,7 @@ struct BoundaryInfo {
  * OpenMC running on GPUs. In the event-based Monte Carlo method, one creates
  * an array of particles on which actions like cross section lookup and surface
  * crossing are done en masse, which works best on vector computers of yore and
- * modern GPUs. It has been shown in the below publication that arranging
+ * modern GPUs. It has been shown in the below publication [1] that arranging
  * particle data into a structure of arrays rather than an array of structures
  * enhances performance on GPUs. For instance, rather than having an
  * std::vector<Particle> where consecutive particle energies would be separated
@@ -189,6 +189,11 @@ struct BoundaryInfo {
  * particle data in order to keep a unified interface between
  * structure-of-array and array-of-structure code on either CPU or GPU code
  * while sharing the same physics code on each codebase.
+ *
+ * [1] Hamilton, Steven P., Stuart R. Slattery, and Thomas M. Evans.
+ *   “Multigroup Monte Carlo on GPUs: Comparison of History- and Event-Based
+ *   Algorithms.” Annals of Nuclear Energy 113 (March 2018): 506–18.
+ *   https://doi.org/10.1016/j.anucene.2017.11.032.
  */
 class ParticleData {
 

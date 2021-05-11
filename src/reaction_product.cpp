@@ -1,6 +1,5 @@
 #include "openmc/reaction_product.h"
 
-#include <memory> // for unique_ptr
 #include <string> // for string
 
 #include <fmt/core.h>
@@ -8,6 +7,7 @@
 #include "openmc/endf.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/memory.h"
 #include "openmc/particle.h"
 #include "openmc/random_lcg.h"
 #include "openmc/secondary_correlated.h"
@@ -42,7 +42,7 @@ ReactionProduct::ReactionProduct(hid_t group)
   if (emission_mode_ == EmissionMode::delayed) {
     if (attribute_exists(group, "decay_rate")) {
       read_attribute(group, "decay_rate", decay_rate_);
-    } else if (particle_ == Particle::Type::neutron) {
+    } else if (particle_ == ParticleType::neutron) {
       warning(fmt::format("Decay rate doesn't exist for delayed neutron "
         "emission ({}).", object_name(group)));
     }
@@ -69,13 +69,13 @@ ReactionProduct::ReactionProduct(hid_t group)
     // Determine distribution type and read data
     read_attribute(dgroup, "type", temp);
     if (temp == "uncorrelated") {
-      distribution_.push_back(std::make_unique<UncorrelatedAngleEnergy>(dgroup));
+      distribution_.push_back(make_unique<UncorrelatedAngleEnergy>(dgroup));
     } else if (temp == "correlated") {
-      distribution_.push_back(std::make_unique<CorrelatedAngleEnergy>(dgroup));
+      distribution_.push_back(make_unique<CorrelatedAngleEnergy>(dgroup));
     } else if (temp == "nbody") {
-      distribution_.push_back(std::make_unique<NBodyPhaseSpace>(dgroup));
+      distribution_.push_back(make_unique<NBodyPhaseSpace>(dgroup));
     } else if (temp == "kalbach-mann") {
-      distribution_.push_back(std::make_unique<KalbachMann>(dgroup));
+      distribution_.push_back(make_unique<KalbachMann>(dgroup));
     }
 
     close_group(dgroup);

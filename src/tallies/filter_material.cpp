@@ -48,7 +48,7 @@ void
 MaterialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
-  auto search = map_.find(p.material_);
+  auto search = map_.find(p.material());
   if (search != map_.end()) {
     match.bins_.push_back(search->second);
     match.weights_.push_back(1.0);
@@ -59,7 +59,7 @@ void
 MaterialFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  std::vector<int32_t> material_ids;
+  vector<int32_t> material_ids;
   for (auto c : materials_) material_ids.push_back(model::materials[c]->id_);
   write_dataset(filter_group, "bins", material_ids);
 }

@@ -42,19 +42,19 @@ IdData::IdData(size_t h_res, size_t v_res)
 void
 IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
   // set cell data
-  if (p.n_coord_ <= level) {
+  if (p.n_coord() <= level) {
     data_(y, x, 0) = NOT_FOUND;
   } else {
-    data_(y, x, 0) = model::cells.at(p.coord_.at(level).cell)->id_;
+    data_(y, x, 0) = model::cells.at(p.coord(level).cell)->id_;
   }
 
   // set material data
-  Cell* c = model::cells.at(p.coord_.at(p.n_coord_ - 1).cell).get();
-  if (p.material_ == MATERIAL_VOID) {
+  Cell* c = model::cells.at(p.coord(p.n_coord() - 1).cell).get();
+  if (p.material() == MATERIAL_VOID) {
     data_(y, x, 1) = MATERIAL_VOID;
     return;
   } else if (c->type_ == Fill::MATERIAL) {
-    Material* m = model::materials.at(p.material_).get();
+    Material* m = model::materials.at(p.material()).get();
     data_(y, x, 1) = m->id_;
   }
 }
@@ -69,10 +69,10 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
 
 void
 PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
-  Cell* c = model::cells.at(p.coord_.at(p.n_coord_ - 1).cell).get();
-  data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
-  if (c->type_ != Fill::UNIVERSE && p.material_ != MATERIAL_VOID) {
-    Material* m = model::materials.at(p.material_).get();
+  Cell* c = model::cells.at(p.coord(p.n_coord() - 1).cell).get();
+  data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
+  if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {
+    Material* m = model::materials.at(p.material()).get();
     data_(y,x,1) = m->density_gpcc_;
   }
 }
@@ -88,7 +88,7 @@ void PropertyData::set_overlap(size_t y, size_t x) {
 namespace model {
 
 std::unordered_map<int, int> plot_map;
-std::vector<Plot> plots;
+vector<Plot> plots;
 uint64_t plotter_seed = 1;
 
 } // namespace model
@@ -244,7 +244,7 @@ Plot::set_output_path(pugi::xml_node plot_node)
   path_plot_ = filename;
 
   // Copy plot pixel size
-  std::vector<int> pxls = get_node_array<int>(plot_node, "pixels");
+  vector<int> pxls = get_node_array<int>(plot_node, "pixels");
   if (PlotType::slice == type_) {
     if (pxls.size() == 2) {
       pixels_[0] = pxls[0];
@@ -268,7 +268,7 @@ Plot::set_bg_color(pugi::xml_node plot_node)
 {
   // Copy plot background color
   if (check_for_node(plot_node, "background")) {
-    std::vector<int> bg_rgb = get_node_array<int>(plot_node, "background");
+    vector<int> bg_rgb = get_node_array<int>(plot_node, "background");
     if (PlotType::voxel == type_) {
       if (mpi::master) {
         warning(fmt::format("Background color ignored in voxel plot {}", id_));
@@ -320,7 +320,7 @@ void
 Plot::set_width(pugi::xml_node plot_node)
 {
   // Copy plotting width
-  std::vector<double> pl_width = get_node_array<double>(plot_node, "width");
+  vector<double> pl_width = get_node_array<double>(plot_node, "width");
   if (PlotType::slice == type_) {
     if (pl_width.size() == 2) {
       width_.x = pl_width[0];
@@ -391,7 +391,7 @@ Plot::set_user_colors(pugi::xml_node plot_node)
 
   for (auto cn : plot_node.children("color")) {
     // Make sure 3 values are specified for RGB
-    std::vector<int> user_rgb = get_node_array<int>(cn, "rgb");
+    vector<int> user_rgb = get_node_array<int>(cn, "rgb");
     if (user_rgb.size() != 3) {
       fatal_error(fmt::format("Bad RGB in plot {}", id_));
     }
@@ -461,7 +461,7 @@ Plot::set_meshlines(pugi::xml_node plot_node)
       // Check for color
       if (check_for_node(meshlines_node, "color")) {
         // Check and make sure 3 values are specified for RGB
-        std::vector<int> ml_rgb = get_node_array<int>(meshlines_node, "color");
+        vector<int> ml_rgb = get_node_array<int>(meshlines_node, "color");
         if (ml_rgb.size() != 3) {
           fatal_error(fmt::format("Bad RGB for meshlines color in plot {}", id_));
         }
@@ -544,7 +544,7 @@ Plot::set_mask(pugi::xml_node plot_node)
       pugi::xml_node mask_node = mask_nodes[0].node();
 
       // Determine how many components there are and allocate
-      std::vector<int> iarray = get_node_array<int>(mask_node, "components");
+      vector<int> iarray = get_node_array<int>(mask_node, "components");
       if (iarray.size() == 0) {
         fatal_error(fmt::format("Missing <components> in mask of plot {}", id_));
       }
@@ -575,7 +575,7 @@ Plot::set_mask(pugi::xml_node plot_node)
       for (int j = 0; j < colors_.size(); j++) {
         if (std::find(iarray.begin(), iarray.end(), j) == iarray.end()) {
           if (check_for_node(mask_node, "background")) {
-            std::vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
+            vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
             colors_[j] = bg_rgb;
           } else {
             colors_[j] = WHITE;
@@ -599,7 +599,7 @@ void Plot::set_overlap_color(pugi::xml_node plot_node) {
         warning(fmt::format(
           "Overlap color specified in plot {} but overlaps won't be shown.", id_));
       }
-      std::vector<int> olap_clr = get_node_array<int>(plot_node, "overlap_color");
+      vector<int> olap_clr = get_node_array<int>(plot_node, "overlap_color");
       if (olap_clr.size() == 3) {
         overlap_color_ = olap_clr;
       } else {
@@ -778,7 +778,7 @@ void draw_mesh_lines(Plot const& pl, ImageData& data)
 void create_voxel(Plot const& pl)
 {
   // compute voxel widths in each direction
-  std::array<double, 3> vox;
+  array<double, 3> vox;
   vox[0] = pl.width_[0]/(double)pl.pixels_[0];
   vox[1] = pl.width_[1]/(double)pl.pixels_[1];
   vox[2] = pl.width_[2]/(double)pl.pixels_[2];
@@ -803,7 +803,7 @@ void create_voxel(Plot const& pl)
 
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
-  std::array<int, 3> pixels;
+  array<int, 3> pixels;
   std::copy(pl.pixels_.begin(), pl.pixels_.end(), pixels.begin());
   write_attribute(file_id, "num_voxels", pixels);
   write_attribute(file_id, "voxel_width", vox);

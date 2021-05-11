@@ -135,7 +135,7 @@ private:
   Position r_; //!< Single position at which sites are generated
 };
 
-using UPtrSpace = std::unique_ptr<SpatialDistribution>;
+using UPtrSpace = unique_ptr<SpatialDistribution>;
 
 } // namespace openmc
 

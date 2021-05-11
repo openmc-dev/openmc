@@ -3,9 +3,7 @@
 #include <cstddef>
 #include <cstdlib> // for getenv
 #include <cstring>
-#include <memory>
 #include <string>
-#include <vector>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -19,6 +17,7 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
@@ -32,6 +31,7 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
+#include "openmc/vector.h"
 
 #ifdef LIBMESH
 #include "libmesh/libmesh.h"
@@ -74,10 +74,12 @@ if (!settings::libmesh_init && !libMesh::initialized()) {
   // pass command line args, empty MPI communicator, and number of threads.
   // Because libMesh was not initialized, we assume that OpenMC is the primary
   // application and that its main MPI comm should be used.
-  settings::libmesh_init = std::make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
+  settings::libmesh_init =
+    make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
 #else
   // pass command line args, empty MPI communicator, and number of threads
-  settings::libmesh_init = std::make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
+  settings::libmesh_init =
+    make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
 #endif
 
   settings::libmesh_comm = &(settings::libmesh_init->comm());
@@ -132,7 +134,7 @@ void initialize_mpi(MPI_Comm intracomm)
   mpi::master = (mpi::rank == 0);
 
   // Create bank datatype
-  Particle::Bank b;
+  SourceSite b;
   MPI_Aint disp[9];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
@@ -149,8 +151,8 @@ void initialize_mpi(MPI_Comm intracomm)
 
   int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
-  MPI_Type_create_struct(9, blocks, disp, types, &mpi::bank);
-  MPI_Type_commit(&mpi::bank);
+  MPI_Type_create_struct(9, blocks, disp, types, &mpi::source_site);
+  MPI_Type_commit(&mpi::source_site);
 }
 #endif // OPENMC_MPI
 

@@ -4,14 +4,13 @@
 #ifndef OPENMC_SECONDARY_KALBACH_H
 #define OPENMC_SECONDARY_KALBACH_H
 
-#include <vector>
-
 #include "hdf5.h"
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/angle_energy.h"
 #include "openmc/constants.h"
 #include "openmc/endf.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -45,11 +44,11 @@ private:
   };
 
   int n_region_; //!< Number of interpolation regions
-  std::vector<int> breakpoints_; //!< Breakpoints between regions
-  std::vector<Interpolation> interpolation_; //!< Interpolation laws
-  std::vector<double> energy_; //!< Energies [eV] at which distributions
-                               //!< are tabulated
-  std::vector<KMTable> distribution_; //!< Distribution at each energy
+  vector<int> breakpoints_;             //!< Breakpoints between regions
+  vector<Interpolation> interpolation_; //!< Interpolation laws
+  vector<double> energy_;        //!< Energies [eV] at which distributions
+                                 //!< are tabulated
+  vector<KMTable> distribution_; //!< Distribution at each energy
 };
 
 } // namespace openmc

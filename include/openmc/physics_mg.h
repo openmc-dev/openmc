@@ -5,10 +5,8 @@
 #define OPENMC_PHYSICS_MG_H
 
 #include "openmc/capi.h"
-#include "openmc/particle.h"
 #include "openmc/nuclide.h"
-
-#include <vector>
+#include "openmc/particle.h"
 
 namespace openmc {
 

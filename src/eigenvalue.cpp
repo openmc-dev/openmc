@@ -5,6 +5,7 @@
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xview.hpp"
 
+#include "openmc/array.h"
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -17,11 +18,10 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
-#include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/timer.h"
 
 #include <algorithm> // for min
-#include <array>
 #include <cmath> // for sqrt, abs, pow
 #include <iterator> // for back_inserter
 #include <string>
@@ -36,8 +36,8 @@ namespace openmc {
 namespace simulation {
 
 double keff_generation;
-std::array<double, 2> k_sum;
-std::vector<double> entropy;
+array<double, 2> k_sum;
+vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
 
 } // namespace simulation
@@ -137,7 +137,7 @@ void synchronize_bank()
   // Allocate temporary source bank -- we don't really know how many fission
   // sites were created, so overallocate by a factor of 3
   int64_t index_temp = 0;
-  std::vector<Particle::Bank> temp_sites(3*simulation::work_per_rank);
+  vector<SourceSite> temp_sites(3 * simulation::work_per_rank);
 
   for (int64_t i = 0; i < simulation::fission_bank.size(); i++ ) {
     const auto& site = simulation::fission_bank[i];
@@ -214,7 +214,7 @@ void synchronize_bank()
   // SEND BANK SITES TO NEIGHBORS
 
   int64_t index_local = 0;
-  std::vector<MPI_Request> requests;
+  vector<MPI_Request> requests;
 
   if (start < settings::n_particles) {
     // Determine the index of the processor which has the first part of the
@@ -230,7 +230,7 @@ void synchronize_bank()
       // process
       if (neighbor != mpi::rank) {
         requests.emplace_back();
-        MPI_Isend(&temp_sites[index_local], static_cast<int>(n), mpi::bank,
+        MPI_Isend(&temp_sites[index_local], static_cast<int>(n), mpi::source_site,
           neighbor, mpi::rank, mpi::intracomm, &requests.back());
       }
 
@@ -276,7 +276,7 @@ void synchronize_bank()
       // asynchronous receive for the source sites
 
       requests.emplace_back();
-      MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n), mpi::bank,
+      MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n), mpi::source_site,
             neighbor, neighbor, mpi::intracomm, &requests.back());
 
     } else {
@@ -372,7 +372,7 @@ int openmc_get_keff(double* k_combined)
   // Copy estimates of k-effective and its variance (not variance of the mean)
   const auto& gt = simulation::global_tallies;
 
-  std::array<double, 3> kv {};
+  array<double, 3> kv {};
   xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});
   kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
   kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
@@ -427,7 +427,7 @@ int openmc_get_keff(double* k_combined)
 
     // Initialize variables
     double g = 0.0;
-    std::array<double, 3> S {};
+    array<double, 3> S {};
 
     for (int l = 0; l < 3; ++l) {
       // Permutations of estimates
@@ -601,7 +601,7 @@ void write_eigenvalue_hdf5(hid_t group)
   write_dataset(group, "k_col_abs", simulation::k_col_abs);
   write_dataset(group, "k_col_tra", simulation::k_col_tra);
   write_dataset(group, "k_abs_tra", simulation::k_abs_tra);
-  std::array<double, 2> k_combined;
+  array<double, 2> k_combined;
   openmc_get_keff(k_combined.data());
   write_dataset(group, "k_combined", k_combined);
 }

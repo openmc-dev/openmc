@@ -267,9 +267,8 @@ int64_t work_per_rank;
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
-std::vector<double> k_generation;
-std::vector<int64_t> work_index;
-
+vector<double> k_generation;
+vector<int64_t> work_index;
 
 } // namespace simulation
 
@@ -464,74 +463,61 @@ void initialize_history(Particle& p, int64_t index_source)
     auto site = sample_external_source(&seed);
     p.from_source(&site);
   }
-  p.current_work_ = index_source;
+  p.current_work() = index_source;
 
   // set identifier for particle
-  p.id_ = simulation::work_index[mpi::rank] + index_source;
+  p.id() = simulation::work_index[mpi::rank] + index_source;
 
   // set progeny count to zero
-  p.n_progeny_ = 0;
+  p.n_progeny() = 0;
 
   // Reset particle event counter
-  p.n_event_ = 0;
+  p.n_event() = 0;
 
   // set random number seed
-  int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
-    * settings::n_particles + p.id_;
-  init_particle_seeds(particle_seed, p.seeds_);
+  int64_t particle_seed =
+    (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
+    p.id();
+  init_particle_seeds(particle_seed, p.seeds());
 
   // set particle trace
-  p.trace_ = false;
+  p.trace() = false;
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
-      p.id_ == settings::trace_particle) p.trace_ = true;
+      p.id() == settings::trace_particle)
+    p.trace() = true;
 
   // Set particle track.
-  p.write_track_ = false;
+  p.write_track() = false;
   if (settings::write_all_tracks) {
-    p.write_track_ = true;
+    p.write_track() = true;
   } else if (settings::track_identifiers.size() > 0) {
     for (const auto& t : settings::track_identifiers) {
       if (simulation::current_batch == t[0] &&
-          simulation::current_gen == t[1] &&
-          p.id_ == t[2]) {
-        p.write_track_ = true;
+          simulation::current_gen == t[1] && p.id() == t[2]) {
+        p.write_track() = true;
         break;
       }
     }
   }
 
   // Display message if high verbosity or trace is on
-  if (settings::verbosity >= 9 || p.trace_) {
-    write_message("Simulating Particle {}", p.id_);
+  if (settings::verbosity >= 9 || p.trace()) {
+    write_message("Simulating Particle {}", p.id());
   }
 
   // Add paricle's starting weight to count for normalizing tallies later
   #pragma omp atomic
-  simulation::total_weight += p.wgt_;
+  simulation::total_weight += p.wgt();
 
-  initialize_history_partial(p);
-}
-
-void initialize_history_partial(Particle& p)
-{
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
-    for (auto& micro : p.neutron_xs_) micro.last_E = 0.0;
+    p.invalidate_neutron_xs();
   }
 
   // Prepare to write out particle track.
-  if (p.write_track_) add_particle_track(p);
-
-  // Every particle starts with no accumulated flux derivative.
-  if (!model::active_tallies.empty())
-  {
-    p.flux_derivs_.resize(model::tally_derivs.size(), 0.0);
-    std::fill(p.flux_derivs_.begin(), p.flux_derivs_.end(), 0.0);
-  }
-
-  // Allocate space for tally filter matches
-  p.filter_matches_.resize(model::tally_filters.size());
+  if (p.write_track())
+    add_particle_track(p);
 }
 
 int overall_generation()
@@ -571,7 +557,7 @@ void initialize_data()
   data::energy_min = {0.0, 0.0};
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
-      int neutron = static_cast<int>(Particle::Type::neutron);
+      int neutron = static_cast<int>(ParticleType::neutron);
       data::energy_min[neutron] = std::max(data::energy_min[neutron],
         nuc->grid_[0].energy.front());
       data::energy_max[neutron] = std::min(data::energy_max[neutron],
@@ -582,7 +568,7 @@ void initialize_data()
   if (settings::photon_transport) {
     for (const auto& elem : data::elements) {
       if (elem->energy_.size() >= 1) {
-        int photon = static_cast<int>(Particle::Type::photon);
+        int photon = static_cast<int>(ParticleType::photon);
         int n = elem->energy_.size();
         data::energy_min[photon] = std::max(data::energy_min[photon],
           std::exp(elem->energy_(1)));
@@ -595,7 +581,7 @@ void initialize_data()
       // Determine if minimum/maximum energy for bremsstrahlung is greater/less
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
-        int photon = static_cast<int>(Particle::Type::photon);
+        int photon = static_cast<int>(ParticleType::photon);
         int n_e = data::ttb_e_grid.size();
         data::energy_min[photon] = std::max(data::energy_min[photon],
           std::exp(data::ttb_e_grid(1)));
@@ -611,7 +597,7 @@ void initialize_data()
     // grid has not been allocated
     if (nuc->grid_.size() > 0) {
       double max_E = nuc->grid_[0].energy.back();
-      int neutron = static_cast<int>(Particle::Type::neutron);
+      int neutron = static_cast<int>(ParticleType::neutron);
       if (max_E == data::energy_max[neutron]) {
         write_message(7, "Maximum neutron transport energy: {} eV for {}",
           data::energy_max[neutron], nuc->name_);
@@ -628,7 +614,7 @@ void initialize_data()
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
-  int neutron = static_cast<int>(Particle::Type::neutron);
+  int neutron = static_cast<int>(ParticleType::neutron);
   simulation::log_spacing = std::log(data::energy_max[neutron] /
     data::energy_min[neutron]) / settings::n_log_bins;
 }
@@ -678,13 +664,13 @@ void transport_history_based_single_particle(Particle& p)
   while (true) {
     p.event_calculate_xs();
     p.event_advance();
-    if (p.collision_distance_ > p.boundary_.distance) {
+    if (p.collision_distance() > p.boundary().distance) {
       p.event_cross_surface();
     } else {
       p.event_collide();
     }
     p.event_revive_from_secondary();
-    if (!p.alive_)
+    if (!p.alive())
       break;
   }
   p.event_death();

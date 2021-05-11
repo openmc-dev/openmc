@@ -97,7 +97,7 @@ void sample_neutron_reaction(Particle& p)
   const auto& nuc {data::nuclides[i_nuclide]};
 
   if (nuc->fissionable_) {
-    auto& rx = sample_fission(i_nuclide, p);
+    auto rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);
     } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
@@ -151,7 +151,7 @@ void sample_neutron_reaction(Particle& p)
 }
 
 void
-create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
+create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
@@ -505,7 +505,7 @@ int sample_element(Particle& p)
   fatal_error("Did not sample any element during collision.");
 }
 
-Reaction& sample_fission(int i_nuclide, Particle& p)
+ReactionFlat sample_fission(int i_nuclide, Particle& p)
 {
   // Get pointer to nuclide
   const auto& nuc {data::nuclides[i_nuclide]};
@@ -514,14 +514,14 @@ Reaction& sample_fission(int i_nuclide, Particle& p)
   // default to the first reaction if we know that there are no partial fission
   // reactions
   if (p.neutron_xs_[i_nuclide].use_ptable || !nuc->has_partial_fission_) {
-    return *nuc->fission_rx_[0];
+    return nuc->fission_rx_[0]->obj();
   }
 
   // Check to see if we are in a windowed multipole range.  WMP only supports
   // the first fission reaction.
   if (nuc->multipole_) {
     if (p.E_ >= nuc->multipole_->E_min_ && p.E_ <= nuc->multipole_->E_max_) {
-      return *nuc->fission_rx_[0];
+      return nuc->fission_rx_[0]->obj();
     }
   }
 
@@ -533,10 +533,10 @@ Reaction& sample_fission(int i_nuclide, Particle& p)
   // Loop through each partial fission reaction type
   for (auto& rx : nuc->fission_rx_) {
     // add to cumulative probability
-    prob += rx->xs(micro);
+    prob += rx->obj().xs(micro);
 
     // Create fission bank sites if fission occurs
-    if (prob > cutoff) return *rx;
+    if (prob > cutoff) return rx->obj();
   }
 
   // If we reached here, no reaction was sampled
@@ -554,20 +554,20 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
   const auto& nuc {data::nuclides[i_nuclide]};
   for (int i = 0; i < nuc->reactions_.size(); ++i) {
     // Evaluate neutron cross section
-    const auto& rx = nuc->reactions_[i];
-    double xs = rx->xs(micro);
+    const auto& rx = nuc->reactions_[i].obj();
+    double xs = rx.xs(micro);
 
     // if cross section is zero for this reaction, skip it
     if (xs == 0.0) continue;
 
-    for (int j = 0; j < rx->products_.size(); ++j) {
-      auto product = rx->products_[j].obj();
+    for (int j = 0; j < rx.n_products(); ++j) {
+      auto product = rx.products(j);
       if (product.particle() == Particle::Type::photon) {
         // For fission, artificially increase the photon yield to account
         // for delayed photons
         double f = 1.0;
         if (settings::delayed_photon_scaling) {
-          if (is_fission(rx->mt_)) {
+          if (is_fission(rx.mt())) {
             if (nuc->prompt_photons_ && nuc->delayed_photons_) {
               double energy_prompt = (*nuc->prompt_photons_)(p.E_);
               double energy_delayed = (*nuc->delayed_photons_)(p.E_);
@@ -649,7 +649,7 @@ void scatter(Particle& p, int i_nuclide)
     double kT = nuc->multipole_ ? p.sqrtkT_*p.sqrtkT_ : nuc->kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
-    elastic_scatter(i_nuclide, *nuc->reactions_[0], kT, p);
+    elastic_scatter(i_nuclide, nuc->reactions_[0].obj(), kT, p);
 
     p.event_mt_ = ELASTIC;
     sampled = true;
@@ -683,13 +683,13 @@ void scatter(Particle& p, int i_nuclide)
       }
 
       // add to cumulative probability
-      prob += nuc->reactions_[i]->xs(micro);
+      prob += nuc->reactions_[i].obj().xs(micro);
     }
 
     // Perform collision physics for inelastic scattering
-    const auto& rx {nuc->reactions_[i]};
-    inelastic_scatter(*nuc, *rx, p);
-    p.event_mt_ = rx->mt_;
+    const auto& rx {nuc->reactions_[i].obj()};
+    inelastic_scatter(*nuc, rx, p);
+    p.event_mt_ = rx.mt();
   }
 
   // Set event component
@@ -713,7 +713,7 @@ void scatter(Particle& p, int i_nuclide)
   }
 }
 
-void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
+void elastic_scatter(int i_nuclide, const ReactionFlat& rx, double kT,
   Particle& p)
 {
   // get pointer to nuclide
@@ -744,7 +744,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   // Sample scattering angle, checking if angle distribution is present (assume
   // isotropic otherwise)
   double mu_cm;
-  const auto& d = rx.products_[0].distribution(0);
+  const auto& d = rx.products(0).distribution(0);
   UncorrelatedAngleEnergyFlat d_(d.data());
   if (!d_.angle().empty()) {
     mu_cm = d_.angle().sample(p.E_, p.current_seed());
@@ -996,7 +996,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
   return vt * rotate_angle(u, mu, nullptr, seed);
 }
 
-void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Particle::Bank* site, uint64_t* seed)
+void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, Particle::Bank* site, uint64_t* seed)
 {
   // Sample cosine of angle -- fission neutrons are always emitted
   // isotropically. Sometimes in ACE data, fission reactions actually have
@@ -1026,7 +1026,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
     int group;
     for (group = 1; group < nuc->n_precursor_; ++group) {
       // determine delayed neutron precursor yield for group j
-      double yield = rx.products_[group].yield()(E_in);
+      double yield = rx.products(group).yield()(E_in);
 
       // Check if this group is sampled
       prob += yield;
@@ -1046,10 +1046,10 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
       // sample from energy/angle distribution -- note that mu has already been
       // sampled above and doesn't need to be resampled
 
-      auto& products = rx.device_products_;
+      auto product = rx.products(group);
       #pragma omp target map(from: site->E, mu) map(tofrom: seed[:1])
       {
-        products[group].sample(E_in, site->E, mu, seed);
+        product.sample(E_in, site->E, mu, seed);
       }
 
       // resample if energy is greater than maximum neutron energy
@@ -1075,10 +1075,10 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
     // sample from prompt neutron energy distribution
     int n_sample = 0;
     while (true) {
-      auto& products = rx.device_products_;
+      auto product = rx.products(0);
       #pragma omp target map(from: site->E, mu) map(tofrom: seed[:1])
       {
-        products[0].sample(E_in, site->E, mu, seed);
+        product.sample(E_in, site->E, mu, seed);
       }
 
       // resample if energy is greater than maximum neutron energy
@@ -1096,7 +1096,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
   }
 }
 
-void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
+void inelastic_scatter(const Nuclide& nuc, const ReactionFlat& rx, Particle& p)
 {
   // copy energy of neutron
   double E_in = p.E_;
@@ -1105,15 +1105,15 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   double E;
   double mu;
   auto* seed = p.current_seed();
-  auto& products = rx.device_products_;
+  auto product = rx.products(0);
   #pragma omp target map(from: E, mu) map(tofrom: seed[:1])
   {
-    products[0].sample(E_in, E, mu, seed);
+    product.sample(E_in, E, mu, seed);
   }
 
   // if scattering system is in center-of-mass, transfer cosine of scattering
   // angle and outgoing energy from CM to LAB
-  if (rx.scatter_in_cm_) {
+  if (rx.scatter_in_cm()) {
     double E_cm = E;
 
     // determine outgoing energy in lab
@@ -1138,7 +1138,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
 
   // evaluate yield
-  double yield = rx.products_[0].yield()(E_in);
+  double yield = rx.products(0).yield()(E_in);
   if (std::floor(yield) == yield) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
@@ -1166,10 +1166,10 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     sample_photon_product(i_nuclide, p, &i_rx, &i_product);
 
     // Sample the outgoing energy and angle
-    auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
+    auto rx = data::nuclides[i_nuclide]->reactions_[i_rx].obj();
     double E;
     double mu;
-    rx->products_[i_product].sample(p.E_, E, mu, p.current_seed());
+    rx.products(i_product).sample(p.E_, E, mu, p.current_seed());
 
     // Sample the new direction
     Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
@@ -1180,7 +1180,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // Stedry, "Self-consistent energy normalization for quasistatic reactor
     // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
     double wgt;
-    if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
+    if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx.mt())) {
       wgt = simulation::keff * p.wgt_;
     } else {
       wgt = p.wgt_;

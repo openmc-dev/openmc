@@ -12,6 +12,7 @@
 
 #include "openmc/particle.h"
 #include "openmc/reaction_product.h"
+#include "openmc/serialize.h"
 
 namespace openmc {
 
@@ -41,8 +42,7 @@ public:
   double collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
     gsl::span<const double> flux, const std::vector<double>& grid) const;
 
-  void copy_to_device();
-  void release_from_device();
+  void serialize(DataBuffer& buffer) const;
 
   //! Cross section at a single temperature
   struct TemperatureXS {
@@ -55,9 +55,51 @@ public:
   bool scatter_in_cm_; //!< scattering system in center-of-mass?
   bool redundant_;     //!< redundant reaction?
   std::vector<TemperatureXS> xs_; //!< Cross section at each temperature
-  std::vector<ReactionProductFlatContainer> products_; //!< Reaction products
+  std::vector<ReactionProduct> products_; //!< Reaction products
+};
 
-  ReactionProductFlatContainer* device_products_;
+class ReactionFlat {
+public:
+  // Constructors
+  #pragma omp declare target
+  explicit ReactionFlat(const uint8_t* data);
+  #pragma omp end declare target
+
+  double xs(gsl::index i_temp, gsl::index i_grid, double interp_factor) const;
+  double xs(const NuclideMicroXS& micro) const;
+
+  double collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
+    gsl::span<const double> flux, const std::vector<double>& grid) const;
+
+  // Accessors
+  int mt() const;
+  double q_value() const;
+  bool scatter_in_cm() const;
+  bool redundant() const;
+  int xs_threshold(gsl::index i_temp) const;
+  gsl::span<const double> xs_value(gsl::index i_temp) const;
+  ReactionProductFlat products(gsl::index i) const;
+  size_t n_xs() const { return n_xs_; }
+  size_t n_products() const { return n_products_; }
+private:
+  const uint8_t* data_;
+  size_t n_xs_;
+  size_t n_products_;
+};
+
+class ReactionFlatContainer {
+public:
+  // Constructors
+  explicit ReactionFlatContainer(const Reaction& rx);
+
+  void copy_to_device();
+  void release_from_device();
+
+  ReactionFlat obj() const;
+  int mt() const { return this->obj().mt(); }
+private:
+  // Data members
+  DataBuffer buffer_;
 };
 
 //==============================================================================

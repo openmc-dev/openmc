@@ -295,6 +295,7 @@ list(APPEND libopenmc_SOURCES
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/particle_data.cpp
   src/particle_restart.cpp
   src/photon.cpp
   src/physics.cpp

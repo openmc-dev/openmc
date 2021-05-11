@@ -39,7 +39,7 @@ void CollisionFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   // Get the number of collisions for the particle
-  auto n = p.n_collision_;
+  auto n = p.n_collision();
 
   // Bin the collision number. Must fit exactly the desired collision number.
   auto search = map_.find(n);

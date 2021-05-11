@@ -37,8 +37,7 @@ namespace openmc {
 namespace data {
 
 std::map<LibraryKey, std::size_t> library_map;
-std::vector<Library> libraries;
-
+vector<Library> libraries;
 }
 
 //==============================================================================
@@ -182,16 +181,15 @@ void read_cross_sections_xml()
   }
 }
 
-void
-read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
-  const std::vector<std::vector<double>>& thermal_temps)
+void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
+  const vector<vector<double>>& thermal_temps)
 {
   std::unordered_set<std::string> already_read;
 
   // Construct a vector of nuclide names because we haven't loaded nuclide data
   // yet, but we need to know the name of the i-th nuclide
-  std::vector<std::string> nuclide_names(data::nuclide_map.size());
-  std::vector<std::string> thermal_names(data::thermal_scatt_map.size());
+  vector<std::string> nuclide_names(data::nuclide_map.size());
+  vector<std::string> thermal_names(data::thermal_scatt_map.size());
   for (const auto& kv : data::nuclide_map) {
     nuclide_names[kv.second] = kv.first;
   }
@@ -238,8 +236,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 
         // Read thermal scattering data from HDF5
         hid_t group = open_group(file_id, name.c_str());
-        data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(
-          group, thermal_temps[i_table]));
+        data::thermal_scatt.push_back(
+          make_unique<ThermalScattering>(group, thermal_temps[i_table]));
         close_group(group);
         file_close(file_id);
 

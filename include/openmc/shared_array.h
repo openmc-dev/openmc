@@ -4,8 +4,7 @@
 //! \file shared_array.h
 //! \brief Shared array data structure
 
-#include <memory>
-
+#include "openmc/memory.h"
 
 namespace openmc {
 
@@ -38,7 +37,7 @@ public:
   //! space for
   SharedArray(int64_t capacity) : capacity_(capacity)
   {
-    data_ = std::make_unique<T[]>(capacity);
+    data_ = make_unique<T[]>(capacity);
   }
 
   //==========================================================================
@@ -55,7 +54,7 @@ public:
   //! \param capacity The number of elements to allocate in the container
   void reserve(int64_t capacity)
   {
-    data_ = std::make_unique<T[]>(capacity);
+    data_ = make_unique<T[]>(capacity);
     capacity_ = capacity;
   }
 
@@ -120,7 +119,7 @@ private:
   //==========================================================================
   // Data members
 
-  std::unique_ptr<T[]> data_; //!< An RAII handle to the elements
+  unique_ptr<T[]> data_; //!< An RAII handle to the elements
   int64_t size_ {0}; //!< The current number of elements 
   int64_t capacity_ {0}; //!< The total space allocated for elements
 

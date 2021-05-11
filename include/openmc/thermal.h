@@ -2,17 +2,17 @@
 #define OPENMC_THERMAL_H
 
 #include <cstddef>
-#include <memory>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/memory.h"
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -24,7 +24,7 @@ class ThermalScattering;
 
 namespace data {
 extern std::unordered_map<std::string, int> thermal_scatt_map;
-extern std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+extern vector<unique_ptr<ThermalScattering>> thermal_scatt;
 }
 
 //==============================================================================
@@ -58,8 +58,9 @@ private:
     Reaction() { }
 
     // Data members
-    std::unique_ptr<Function1D> xs; //!< Cross section
-    std::unique_ptr<AngleEnergy> distribution; //!< Secondary angle-energy distribution
+    unique_ptr<Function1D> xs; //!< Cross section
+    unique_ptr<AngleEnergy>
+      distribution; //!< Secondary angle-energy distribution
   };
 
   // Inelastic scattering data
@@ -77,7 +78,7 @@ private:
 
 class ThermalScattering {
 public:
-  ThermalScattering(hid_t group, const std::vector<double>& temperature);
+  ThermalScattering(hid_t group, const vector<double>& temperature);
 
   //! Determine inelastic/elastic cross section at given energy
   //!
@@ -103,11 +104,11 @@ public:
   std::string name_; //!< name of table, e.g. "c_H_in_H2O"
   double awr_;       //!< weight of nucleus in neutron masses
   double energy_max_; //!< maximum energy for thermal scattering in [eV]
-  std::vector<double> kTs_;  //!< temperatures in [eV] (k*T)
-  std::vector<std::string> nuclides_; //!< Valid nuclides
+  vector<double> kTs_;           //!< temperatures in [eV] (k*T)
+  vector<std::string> nuclides_; //!< Valid nuclides
 
   //! cross sections and distributions at each temperature
-  std::vector<ThermalData> data_;
+  vector<ThermalData> data_;
 };
 
 void free_memory_thermal();

@@ -1,11 +1,10 @@
 #ifndef OPENMC_TALLIES_FILTER_DELAYEDGROUP_H
 #define OPENMC_TALLIES_FILTER_DELAYEDGROUP_H
 
-#include <vector>
-
 #include <gsl/gsl>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -41,7 +40,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<int>& groups() const { return groups_; }
+  const vector<int>& groups() const { return groups_; }
 
   void set_groups(gsl::span<int> groups);
 
@@ -49,7 +48,7 @@ private:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<int> groups_;
+  vector<int> groups_;
 };
 
 } // namespace openmc

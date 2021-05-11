@@ -1,20 +1,20 @@
 #ifndef OPENMC_SURFACE_H
 #define OPENMC_SURFACE_H
 
-#include <memory>  // for unique_ptr
 #include <limits>  // For numeric_limits
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
 
+#include "dagmc.h"
 #include "openmc/boundary_condition.h"
 #include "openmc/constants.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
-#include "dagmc.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -26,7 +26,7 @@ class Surface;
 
 namespace model {
   extern std::unordered_map<int, int> surface_map;
-  extern std::vector<std::unique_ptr<Surface>> surfaces;
+  extern vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================

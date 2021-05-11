@@ -1,11 +1,11 @@
 #ifndef OPENMC_TALLIES_FILTER_COLLISIONS_H
 #define OPENMC_TALLIES_FILTER_COLLISIONS_H
 
-#include <vector>
 #include <unordered_map>
 #include <gsl/gsl>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -37,14 +37,14 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<int>& bins() const { return bins_; }
+  const vector<int>& bins() const { return bins_; }
   void set_bins(gsl::span<const int> bins);
 
 protected:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<int> bins_;
+  vector<int> bins_;
 
   std::unordered_map<int,int> map_;
 

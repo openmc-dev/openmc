@@ -25,14 +25,15 @@ namespace openmc {
 // consistent locality improvements. 
 struct EventQueueItem{
   int64_t idx;         //!< particle index in event-based particle buffer
-  Particle::Type type; //!< particle type
+  ParticleType type;   //!< particle type
   int64_t material;    //!< material that particle is in
   double E;            //!< particle energy
 
   // Constructors
   EventQueueItem() = default;
-  EventQueueItem(const Particle& p, int64_t buffer_idx) :
-    idx(buffer_idx), type(p.type_), material(p.material_), E(p.E_) {}
+  EventQueueItem(const Particle& p, int64_t buffer_idx)
+    : idx(buffer_idx), type(p.type()), material(p.material()), E(p.E())
+  {}
 
   // Compare by particle type, then by material type (4.5% fuel/7.0% fuel/cladding/etc),
   // then by energy.
@@ -64,7 +65,7 @@ extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
 
 // Particle buffer
-extern std::vector<Particle>  particles;
+extern vector<Particle> particles;
 
 } // namespace simulation
 

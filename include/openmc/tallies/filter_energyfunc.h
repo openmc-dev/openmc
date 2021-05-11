@@ -1,9 +1,8 @@
 #ifndef OPENMC_TALLIES_FILTER_ENERGYFUNC_H
 #define OPENMC_TALLIES_FILTER_ENERGYFUNC_H
 
-#include <vector>
-
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -43,8 +42,8 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<double>& energy() const { return energy_; }
-  const std::vector<double>& y() const { return y_; }
+  const vector<double>& energy() const { return energy_; }
+  const vector<double>& y() const { return y_; }
   void set_data(gsl::span<const double> energy, gsl::span<const double> y);
 
 private:
@@ -52,10 +51,10 @@ private:
   // Data members
 
   //! Incident neutron energy interpolation grid.
-  std::vector<double> energy_;
+  vector<double> energy_;
 
   //! Interpolant values.
-  std::vector<double> y_;
+  vector<double> y_;
 };
 
 } // namespace openmc

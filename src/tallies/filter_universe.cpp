@@ -48,8 +48,8 @@ void
 UniverseFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
-  for (int i = 0; i < p.n_coord_; i++) {
-    auto search = map_.find(p.coord_[i].universe);
+  for (int i = 0; i < p.n_coord(); i++) {
+    auto search = map_.find(p.coord(i).universe);
     if (search != map_.end()) {
       match.bins_.push_back(search->second);
       match.weights_.push_back(1.0);
@@ -61,7 +61,7 @@ void
 UniverseFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  std::vector<int32_t> universe_ids;
+  vector<int32_t> universe_ids;
   for (auto u : universes_) universe_ids.push_back(model::universes[u]->id_);
   write_dataset(filter_group, "bins", universe_ids);
 }

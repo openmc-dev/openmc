@@ -1,8 +1,8 @@
 #ifndef OPENMC_TALLIES_FILTER_AZIMUTHAL_H
 #define OPENMC_TALLIES_FILTER_AZIMUTHAL_H
 
+#include "openmc/vector.h"
 #include <string>
-#include <vector>
 
 #include <gsl/gsl>
 
@@ -45,7 +45,7 @@ private:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<double> bins_;
+  vector<double> bins_;
 };
 
 } // namespace openmc

@@ -3,11 +3,11 @@
 
 #include <cstdint>
 #include <unordered_map>
-#include <vector>
 
 #include <gsl/gsl>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -40,9 +40,9 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  std::vector<int32_t>& materials() { return materials_; }
+  vector<int32_t>& materials() { return materials_; }
 
-  const std::vector<int32_t>& materials() const { return materials_; }
+  const vector<int32_t>& materials() const { return materials_; }
 
   void set_materials(gsl::span<const int32_t> materials);
 
@@ -51,7 +51,7 @@ private:
   // Data members
 
   //! The indices of the materials binned by this filter.
-  std::vector<int32_t> materials_;
+  vector<int32_t> materials_;
 
   //! A map from material indices to filter bin indices.
   std::unordered_map<int32_t, int> map_;

@@ -2,7 +2,6 @@
 #include <algorithm> // for copy, equal, min, min_element
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
-#include <memory> // for allocator
 #include <string>
 #include <gsl/gsl>
 
@@ -25,11 +24,12 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
-#include "openmc/tallies/tally.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/xml_interface.h"
 
 #ifdef LIBMESH
@@ -53,13 +53,13 @@ const bool LIBMESH_ENABLED = false;
 namespace model {
 
 std::unordered_map<int32_t, int32_t> mesh_map;
-std::vector<std::unique_ptr<Mesh>> meshes;
+vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
 #ifdef LIBMESH
 namespace settings {
-std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
+unique_ptr<libMesh::LibMeshInit> libmesh_init;
 const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
 }
 #endif
@@ -143,7 +143,7 @@ Mesh::set_id(int32_t id) {
 
 std::string
 StructuredMesh::bin_label(int bin) const {
-  std::vector<int> ijk(n_dimension_);
+  vector<int> ijk(n_dimension_);
   get_indices_from_bin(bin, ijk.data());
 
   if (n_dimension_ > 2) {
@@ -192,7 +192,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
 void
 UnstructuredMesh::surface_bins_crossed(Position r0,
                                        Position r1,
-                                       std::vector<int>& bins) const {
+                                       vector<int>& bins) const {
   fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
 
@@ -210,7 +210,7 @@ UnstructuredMesh::to_hdf5(hid_t group) const
     write_dataset(mesh_group, "filename", filename_);
     write_dataset(mesh_group, "library", this->library());
     // write volume of each element
-    std::vector<double> tet_vols;
+    vector<double> tet_vols;
     xt::xtensor<double, 2> centroids({static_cast<size_t>(this->n_bins()), 3});
     for (int i = 0; i < this->n_bins(); i++) {
       tet_vols.emplace_back(this->volume(i));
@@ -264,7 +264,7 @@ void StructuredMesh::get_indices_from_bin(int bin, int* ijk) const
 int StructuredMesh::get_bin(Position r) const
 {
   // Determine indices
-  std::vector<int> ijk(n_dimension_);
+  vector<int> ijk(n_dimension_);
   bool in_mesh;
   get_indices(r, ijk.data(), &in_mesh);
   if (!in_mesh) return -1;
@@ -283,14 +283,12 @@ int StructuredMesh::n_surface_bins() const
   return 4 * n_dimension_ * n_bins();
 }
 
-xt::xtensor<double, 1>
-StructuredMesh::count_sites(const Particle::Bank* bank,
-                            int64_t length,
-                            bool* outside) const
+xt::xtensor<double, 1> StructuredMesh::count_sites(
+  const SourceSite* bank, int64_t length, bool* outside) const
 {
   // Determine shape of array for counts
   std::size_t m = this->n_bins();
-  std::vector<std::size_t> shape = {m};
+  vector<std::size_t> shape = {m};
 
   // Create array of zeros
   xt::xarray<double> cnt {shape, 0.0};
@@ -585,8 +583,8 @@ bool StructuredMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
 void StructuredMesh::bins_crossed(Position r0,
                                   Position r1,
                                   const Direction& u,
-                                  std::vector<int>& bins,
-                                  std::vector<double>& lengths) const
+                                  vector<int>& bins,
+                                  vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
@@ -602,7 +600,7 @@ void StructuredMesh::bins_crossed(Position r0,
   Position r = r1 - TINY_BIT*u;
 
   // Determine the mesh indices for the starting and ending coords. Here, we
-  // use arrays for ijk0 and ijk1 instead of std::vector because we obtain a
+  // use arrays for ijk0 and ijk1 instead of vector because we obtain a
   // small performance improvement by forcing this data to live on the stack,
   // rather than on the heap. We know the maximum length is 3, and by
   // ensuring that all loops are only indexed up to n_dimension, we will not
@@ -800,11 +798,11 @@ void
 RegularMesh::surface_bins_crossed(Position r0,
                                   Position r1,
                                   const Direction& u,
-                                  std::vector<int>& bins) const
+                                  vector<int>& bins) const
 {
   // Determine indices for starting and ending location.
   int n = n_dimension_;
-  std::vector<int> ijk0(n), ijk1(n);
+  vector<int> ijk0(n), ijk1(n);
   bool start_in_mesh;
   get_indices(r0, ijk0.data(), &start_in_mesh);
   bool end_in_mesh;
@@ -813,7 +811,7 @@ RegularMesh::surface_bins_crossed(Position r0,
   // Check if the track intersects any part of the mesh.
   if (!start_in_mesh) {
     Position r0_copy = r0;
-    std::vector<int> ijk0_copy(ijk0);
+    vector<int> ijk0_copy(ijk0);
     if (!intersects(r0_copy, r1, ijk0_copy.data())) return;
   }
 
@@ -940,11 +938,11 @@ RegularMesh::surface_bins_crossed(Position r0,
   }
 }
 
-std::pair<std::vector<double>, std::vector<double>>
-RegularMesh::plot(Position plot_ll, Position plot_ur) const
+std::pair<vector<double>, vector<double>> RegularMesh::plot(
+  Position plot_ll, Position plot_ur) const
 {
   // Figure out which axes lie in the plane of the plot.
-  std::array<int, 2> axes {-1, -1};
+  array<int, 2> axes {-1, -1};
   if (plot_ur.z == plot_ll.z) {
     axes[0] = 0;
     if (n_dimension_ > 1) axes[1] = 1;
@@ -959,7 +957,7 @@ RegularMesh::plot(Position plot_ll, Position plot_ur) const
   }
 
   // Get the coordinates of the mesh lines along both of the axes.
-  std::array<std::vector<double>, 2> axis_lines;
+  array<vector<double>, 2> axis_lines;
   for (int i_ax = 0; i_ax < 2; ++i_ax) {
     int axis = axes[i_ax];
     if (axis == -1) continue;
@@ -989,14 +987,12 @@ void RegularMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
-xt::xtensor<double, 1>
-RegularMesh::count_sites(const Particle::Bank* bank,
-                         int64_t length,
-                         bool* outside) const
+xt::xtensor<double, 1> RegularMesh::count_sites(
+  const SourceSite* bank, int64_t length, bool* outside) const
 {
   // Determine shape of array for counts
   std::size_t m = this->n_bins();
-  std::vector<std::size_t> shape = {m};
+  vector<std::size_t> shape = {m};
 
   // Create array of zeros
   xt::xarray<double> cnt {shape, 0.0};
@@ -1104,7 +1100,7 @@ int RectilinearMesh::set_grid()
 void RectilinearMesh::surface_bins_crossed(Position r0,
                                            Position r1,
                                            const Direction& u,
-                                           std::vector<int>& bins) const
+                                           vector<int>& bins) const
 {
   // Determine indices for starting and ending location.
   int ijk0[3], ijk1[3];
@@ -1268,11 +1264,11 @@ int RectilinearMesh::get_index_in_direction(double r, int i) const
   return lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
 }
 
-std::pair<std::vector<double>, std::vector<double>>
-RectilinearMesh::plot(Position plot_ll, Position plot_ur) const
+std::pair<vector<double>, vector<double>> RectilinearMesh::plot(
+  Position plot_ll, Position plot_ur) const
 {
   // Figure out which axes lie in the plane of the plot.
-  std::array<int, 2> axes {-1, -1};
+  array<int, 2> axes {-1, -1};
   if (plot_ur.z == plot_ll.z) {
     axes = {0, 1};
   } else if (plot_ur.y == plot_ll.y) {
@@ -1284,10 +1280,10 @@ RectilinearMesh::plot(Position plot_ll, Position plot_ur) const
   }
 
   // Get the coordinates of the mesh lines along both of the axes.
-  std::array<std::vector<double>, 2> axis_lines;
+  array<vector<double>, 2> axis_lines;
   for (int i_ax = 0; i_ax < 2; ++i_ax) {
     int axis = axes[i_ax];
-    std::vector<double>& lines {axis_lines[i_ax]};
+    vector<double>& lines {axis_lines[i_ax]};
 
     for (auto coord : grid_[axis]) {
       if (coord >= plot_ll[axis] && coord <= plot_ur[axis])
@@ -1370,9 +1366,9 @@ openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
 
   for (int i = 0; i < n; ++i) {
     if (std::strcmp(type, "regular") == 0) {
-      model::meshes.push_back(std::make_unique<RegularMesh>());
+      model::meshes.push_back(make_unique<RegularMesh>());
     } else if (std::strcmp(type, "rectilinear") == 0) {
-      model::meshes.push_back(std::make_unique<RectilinearMesh>());
+      model::meshes.push_back(make_unique<RectilinearMesh>());
     } else {
       throw std::runtime_error{"Unknown mesh type: " + std::string(type)};
     }
@@ -1393,14 +1389,14 @@ extern "C" int openmc_add_unstructured_mesh(const char filename[],
 
 #ifdef DAGMC
   if (lib_name == "moab") {
-    model::meshes.push_back(std::move(std::make_unique<MOABMesh>(mesh_file)));
+    model::meshes.push_back(std::move(make_unique<MOABMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
 
 #ifdef LIBMESH
   if (lib_name == "libmesh") {
-    model::meshes.push_back(std::move(std::make_unique<LibMesh>(mesh_file)));
+    model::meshes.push_back(std::move(make_unique<LibMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
@@ -1470,7 +1466,7 @@ openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims)
   RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   // Copy dimension
-  std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
+  vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   mesh->shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
   mesh->n_dimension_ = mesh->shape_.size();
   return 0;
@@ -1504,7 +1500,7 @@ openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
   if (int err = check_mesh_type<RegularMesh>(index)) return err;
   RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
-  std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
+  vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
     m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
     m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
@@ -1587,7 +1583,7 @@ MOABMesh::MOABMesh(const std::string& filename) {
 
 void MOABMesh::initialize() {
   // create MOAB instance
-  mbi_ = std::make_unique<moab::Core>();
+  mbi_ = make_unique<moab::Core>();
   // load unstructured mesh file
   moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
   if (rval != moab::MB_SUCCESS) {
@@ -1647,7 +1643,7 @@ MOABMesh::build_kdtree(const moab::Range& all_tets)
   all_tets_and_tris.merge(all_tris);
 
   // create a kd-tree instance
-  kdtree_ = std::make_unique<moab::AdaptiveKDTree>(mbi_.get());
+  kdtree_ = make_unique<moab::AdaptiveKDTree>(mbi_.get());
 
   // build the tree
   rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
@@ -1657,15 +1653,13 @@ MOABMesh::build_kdtree(const moab::Range& all_tets)
   }
 }
 
-void
-MOABMesh::intersect_track(const moab::CartVect& start,
-                          const moab::CartVect& dir,
-                          double track_len,
-                          std::vector<double>& hits) const {
+void MOABMesh::intersect_track(const moab::CartVect& start,
+  const moab::CartVect& dir, double track_len, vector<double>& hits) const
+{
   hits.clear();
 
   moab::ErrorCode rval;
-  std::vector<moab::EntityHandle> tris;
+  vector<moab::EntityHandle> tris;
   // get all intersections with triangles in the tet mesh
   // (distances are relative to the start point, not the previous intersection)
   rval = kdtree_->ray_intersect_triangles(kdtree_root_,
@@ -1685,15 +1679,14 @@ MOABMesh::intersect_track(const moab::CartVect& start,
 
   // sorts by first component of std::pair by default
   std::sort(hits.begin(), hits.end());
-
 }
 
 void
 MOABMesh::bins_crossed(Position r0,
                        Position r1,
                        const Direction& u,
-                       std::vector<int>& bins,
-                       std::vector<double>& lengths) const
+                       vector<int>& bins,
+                       vector<double>& lengths) const
 {
   moab::CartVect start(r0.x, r0.y, r0.z);
   moab::CartVect end(r1.x, r1.y, r1.z);
@@ -1706,7 +1699,7 @@ MOABMesh::bins_crossed(Position r0,
   start -= TINY_BIT * dir;
   end += TINY_BIT * dir;
 
-  std::vector<double> hits;
+  vector<double> hits;
   intersect_track(start, dir, track_len, hits);
 
   bins.clear();
@@ -1805,7 +1798,7 @@ std::string MOABMesh::library() const
 
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
 {
-  std::vector<moab::EntityHandle> conn;
+  vector<moab::EntityHandle> conn;
   moab::ErrorCode rval = mbi_->get_connectivity(&tet, 1, conn);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to get tet connectivity");
@@ -1820,10 +1813,8 @@ double MOABMesh::tet_volume(moab::EntityHandle tet) const
   return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-void MOABMesh::surface_bins_crossed(Position r0,
-                                    Position r1,
-                                    const Direction& u,
-                                    std::vector<int>& bins) const
+void MOABMesh::surface_bins_crossed(
+  Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
 
   // TODO: Implement triangle crossings here
@@ -1850,7 +1841,7 @@ MOABMesh::compute_barycentric_data(const moab::Range& tets) {
   // compute the barycentric data for each tet element
   // and store it as a 3x3 matrix
   for (auto& tet : tets) {
-    std::vector<moab::EntityHandle> verts;
+    vector<moab::EntityHandle> verts;
     rval = mbi_->get_connectivity(&tet, 1, verts);
     if (rval != moab::MB_SUCCESS) {
       fatal_error("Failed to get connectivity of tet on umesh: " + filename_);
@@ -1878,7 +1869,7 @@ MOABMesh::point_in_tet(const moab::CartVect& r,
   moab::ErrorCode rval;
 
   // get tet vertices
-  std::vector<moab::EntityHandle> verts;
+  vector<moab::EntityHandle> verts;
   rval = mbi_->get_connectivity(&tet, 1, verts);
   if (rval != moab::MB_SUCCESS) {
     warning("Failed to get vertices of tet in umesh: " + filename_);
@@ -1930,8 +1921,8 @@ int MOABMesh::get_index_from_bin(int bin) const
   return bin;
 }
 
-std::pair<std::vector<double>, std::vector<double>>
-MOABMesh::plot(Position plot_ll, Position plot_ur) const
+std::pair<vector<double>, vector<double>> MOABMesh::plot(
+  Position plot_ll, Position plot_ur) const
 {
   // TODO: Implement mesh lines
   return {};
@@ -1982,7 +1973,7 @@ MOABMesh::centroid(int bin) const
   auto tet = this->get_ent_handle_from_bin(bin);
 
   // look up the tet connectivity
-  std::vector<moab::EntityHandle> conn;
+  vector<moab::EntityHandle> conn;
   rval = mbi_->get_connectivity(&tet, 1, conn);
   if (rval != moab::MB_SUCCESS) {
     warning("Failed to get connectivity of a mesh element.");
@@ -1990,7 +1981,7 @@ MOABMesh::centroid(int bin) const
   }
 
   // get the coordinates
-  std::vector<moab::CartVect> coords(conn.size());
+  vector<moab::CartVect> coords(conn.size());
   rval = mbi_->get_coords(conn.data(), conn.size(), coords[0].array());
   if (rval != moab::MB_SUCCESS) {
     warning("Failed to get the coordinates of a mesh element.");
@@ -2089,10 +2080,8 @@ void MOABMesh::remove_scores()
   tag_names_.clear();
 }
 
-void
-MOABMesh::set_score_data(const std::string& score,
-                         const std::vector<double>& values,
-                         const std::vector<double>& std_dev)
+void MOABMesh::set_score_data(const std::string& score,
+  const vector<double>& values, const vector<double>& std_dev)
 {
   auto score_tags = this->get_score_tags(score);
 
@@ -2157,7 +2146,7 @@ void LibMesh::initialize()
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
 
-  m_ = std::make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
+  m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
   m_->read(filename_);
   m_->prepare_for_use();
 
@@ -2169,7 +2158,7 @@ void LibMesh::initialize()
   // create an equation system for storing values
   eq_system_name_ = fmt::format("mesh_{}_system", id_);
 
-  equation_systems_ = std::make_unique<libMesh::EquationSystems>(*m_);
+  equation_systems_ = make_unique<libMesh::EquationSystems>(*m_);
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
@@ -2209,11 +2198,8 @@ int LibMesh::n_bins() const
   return m_->n_elem();
 }
 
-void
-LibMesh::surface_bins_crossed(Position r0,
-                              Position r1,
-                              const Direction& u,
-                              std::vector<int>& bins) const
+void LibMesh::surface_bins_crossed(
+  Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
   // TODO: Implement triangle crossings here
   throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
@@ -2263,10 +2249,8 @@ LibMesh::remove_scores()
   variable_map_.clear();
 }
 
-void
-LibMesh::set_score_data(const std::string& var_name,
-                        const std::vector<double>& values,
-                        const std::vector<double>& std_dev)
+void LibMesh::set_score_data(const std::string& var_name,
+  const vector<double>& values, const vector<double>& std_dev)
 {
   auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
 
@@ -2285,13 +2269,13 @@ LibMesh::set_score_data(const std::string& var_name,
     auto bin = get_bin_from_element(*it);
 
     // set value
-    std::vector<libMesh::dof_id_type> value_dof_indices;
+    vector<libMesh::dof_id_type> value_dof_indices;
     dof_map.dof_indices(*it, value_dof_indices, value_num);
     Ensures(value_dof_indices.size() == 1);
     eqn_sys.solution->set(value_dof_indices[0], values.at(bin));
 
     // set std dev
-    std::vector<libMesh::dof_id_type> std_dev_dof_indices;
+    vector<libMesh::dof_id_type> std_dev_dof_indices;
     dof_map.dof_indices(*it, std_dev_dof_indices, std_dev_num);
     Ensures(std_dev_dof_indices.size() == 1);
     eqn_sys.solution->set(std_dev_dof_indices[0], std_dev.at(bin));
@@ -2310,8 +2294,8 @@ void
 LibMesh::bins_crossed(Position r0,
                       Position r1,
                       const Direction& u,
-                      std::vector<int>& bins,
-                      std::vector<double>& lengths) const
+                      vector<int>& bins,
+                      vector<double>& lengths) const
 {
   // TODO: Implement triangle crossings here
   fatal_error("Tracklength tallies on libMesh instances are not implemented.");
@@ -2348,8 +2332,8 @@ LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
   return bin;
 }
 
-std::pair<std::vector<double>, std::vector<double>>
-LibMesh::plot(Position plot_ll, Position plot_ur) const
+std::pair<vector<double>, vector<double>> LibMesh::plot(
+  Position plot_ll, Position plot_ur) const
 {
   return {};
 }
@@ -2389,16 +2373,16 @@ void read_meshes(pugi::xml_node root)
 
     // Read mesh and add to vector
     if (mesh_type == "regular") {
-      model::meshes.push_back(std::make_unique<RegularMesh>(node));
+      model::meshes.push_back(make_unique<RegularMesh>(node));
     } else if (mesh_type == "rectilinear") {
-      model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
+      model::meshes.push_back(make_unique<RectilinearMesh>(node));
 #ifdef DAGMC
     } else if (mesh_type == "unstructured" && mesh_lib == "moab") {
-      model::meshes.push_back(std::make_unique<MOABMesh>(node));
+      model::meshes.push_back(make_unique<MOABMesh>(node));
 #endif
 #ifdef LIBMESH
     } else if (mesh_type == "unstructured" && mesh_lib == "libmesh") {
-      model::meshes.push_back(std::make_unique<LibMesh>(node));
+      model::meshes.push_back(make_unique<LibMesh>(node));
 #endif
     } else if (mesh_type == "unstructured") {
       fatal_error("Unstructured mesh support is not enabled or the mesh library is invalid.");
@@ -2420,7 +2404,7 @@ void meshes_to_hdf5(hid_t group)
 
   if (n_meshes > 0) {
     // Write IDs of meshes
-    std::vector<int> ids;
+    vector<int> ids;
     for (const auto& m : model::meshes) {
       m->to_hdf5(meshes_group);
       ids.push_back(m->id_);

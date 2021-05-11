@@ -5,7 +5,6 @@
 #endif
 
 #include <algorithm> // for move
-#include <memory> // for unique_ptr
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -15,15 +14,16 @@
 #include "xtensor/xadapt.hpp"
 
 #include "openmc/bank.h"
+#include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
-#include "openmc/capi.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -39,8 +39,7 @@ namespace openmc {
 
 namespace model {
 
-std::vector<std::unique_ptr<Source>> external_sources;
-
+vector<unique_ptr<Source>> external_sources;
 }
 
 //==============================================================================
@@ -56,9 +55,9 @@ IndependentSource::IndependentSource(pugi::xml_node node)
   if (check_for_node(node, "particle")) {
     auto temp_str = get_node_value(node, "particle", true, true);
     if (temp_str == "neutron") {
-      particle_ = Particle::Type::neutron;
+      particle_ = ParticleType::neutron;
     } else if (temp_str == "photon") {
-      particle_ = Particle::Type::photon;
+      particle_ = ParticleType::photon;
       settings::photon_transport = true;
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);
@@ -141,9 +140,9 @@ IndependentSource::IndependentSource(pugi::xml_node node)
   }
 }
 
-Particle::Bank IndependentSource::sample(uint64_t* seed) const
+SourceSite IndependentSource::sample(uint64_t* seed) const
 {
-  Particle::Bank site;
+  SourceSite site;
 
   // Set weight to one by default
   site.wgt = 1.0;
@@ -263,7 +262,7 @@ FileSource::FileSource(std::string path)
   file_close(file_id);
 }
 
-Particle::Bank FileSource::sample(uint64_t* seed) const
+SourceSite FileSource::sample(uint64_t* seed) const
 {
   size_t i_site = sites_.size()*prn(seed);
   return sites_[i_site];
@@ -349,7 +348,7 @@ void initialize_source()
   }
 }
 
-Particle::Bank sample_external_source(uint64_t* seed)
+SourceSite sample_external_source(uint64_t* seed)
 {
   // Determine total source strength
   double total_strength = 0.0;
@@ -368,7 +367,7 @@ Particle::Bank sample_external_source(uint64_t* seed)
   }
 
   // Sample source site from i-th source distribution
-  Particle::Bank site {model::external_sources[i]->sample(seed)};
+  SourceSite site {model::external_sources[i]->sample(seed)};
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {

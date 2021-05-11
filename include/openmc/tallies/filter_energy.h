@@ -1,11 +1,10 @@
 #ifndef OPENMC_TALLIES_FILTER_ENERGY_H
 #define OPENMC_TALLIES_FILTER_ENERGY_H
 
-#include <vector>
-
 #include <gsl/gsl>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -38,7 +37,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<double>& bins() const { return bins_; }
+  const vector<double>& bins() const { return bins_; }
   void set_bins(gsl::span<const double> bins);
 
   bool matches_transport_groups() const { return matches_transport_groups_; }
@@ -47,7 +46,7 @@ protected:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<double> bins_;
+  vector<double> bins_;
 
   //! True if transport group number can be used directly to get bin number
   bool matches_transport_groups_ {false};

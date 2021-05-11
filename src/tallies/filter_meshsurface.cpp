@@ -11,7 +11,7 @@ void
 MeshSurfaceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
-  Position r0 = p.r_last_current_;
+  Position r0 = p.r_last_current();
   Position r1 = p.r();
   if (translated_) {
     r0 -= translation();

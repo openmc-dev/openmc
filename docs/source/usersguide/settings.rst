@@ -295,11 +295,11 @@ below.
 
   class CustomSource : public openmc::Source
   {
-    openmc::Particle::Bank sample(uint64_t* seed) const
+    openmc::SourceSite sample(uint64_t* seed) const
     {
-      openmc::Particle::Bank particle;
+      openmc::SourceSite particle;
       // weight
-      particle.particle = openmc::Particle::Type::neutron;
+      particle.particle = openmc::ParticleType::neutron;
       particle.wgt = 1.0;
       // position
       double angle = 2.0 * M_PI * openmc::prn(seed);
@@ -370,11 +370,11 @@ the source class when it is created:
     CustomSource(double energy) : energy_{energy} { }
 
     // Samples from an instance of this class.
-    openmc::Particle::Bank sample(uint64_t* seed) const
+    openmc::SourceSite sample(uint64_t* seed) const
     {
-      openmc::Particle::Bank particle;
+      openmc::SourceSite particle;
       // weight
-      particle.particle = openmc::Particle::Type::neutron;
+      particle.particle = openmc::ParticleType::neutron;
       particle.wgt = 1.0;
       // position
       particle.r.x = 0.0;

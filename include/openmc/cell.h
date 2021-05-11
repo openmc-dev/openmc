@@ -4,10 +4,8 @@
 #include <cstdint>
 #include <functional> // for hash
 #include <limits>
-#include <memory> // for unique_ptr
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include <gsl/gsl>
 #include "hdf5.h"
@@ -15,9 +13,11 @@
 #include "dagmc.h"
 
 #include "openmc/constants.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -50,10 +50,10 @@ class UniversePartitioner;
 
 namespace model {
   extern std::unordered_map<int32_t, int32_t> cell_map;
-  extern std::vector<std::unique_ptr<Cell>> cells;
+  extern vector<unique_ptr<Cell>> cells;
 
   extern std::unordered_map<int32_t, int32_t> universe_map;
-  extern std::vector<std::unique_ptr<Universe>> universes;
+  extern vector<unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================
@@ -64,7 +64,7 @@ class Universe
 {
 public:
   int32_t id_;                  //!< Unique ID
-  std::vector<int32_t> cells_;  //!< Cells within this universe
+  vector<int32_t> cells_;       //!< Cells within this universe
 
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -72,7 +72,7 @@ public:
 
   BoundingBox bounding_box() const;
 
-  std::unique_ptr<UniversePartitioner> partitioner_;
+  unique_ptr<UniversePartitioner> partitioner_;
 };
 
 //==============================================================================
@@ -151,13 +151,12 @@ public:
 
   //! Get all cell instances contained by this cell
   //! \return Map with cell indexes as keys and instances as values
-  std::unordered_map<int32_t, std::vector<int32_t>>
-  get_contained_cells() const;
+  std::unordered_map<int32_t, vector<int32_t>> get_contained_cells() const;
 
 protected:
-  void
-  get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>>& contained_cells,
-                            std::vector<ParentCell>& parent_cells) const;
+  void get_contained_cells_inner(
+    std::unordered_map<int32_t, vector<int32_t>>& contained_cells,
+    vector<ParentCell>& parent_cells) const;
 
 public:
   //----------------------------------------------------------------------------
@@ -176,18 +175,18 @@ public:
   //! \brief Material(s) within this cell.
   //!
   //! May be multiple materials for distribcell.
-  std::vector<int32_t> material_;
+  vector<int32_t> material_;
 
   //! \brief Temperature(s) within this cell.
   //!
   //! The stored values are actually sqrt(k_Boltzmann * T) for each temperature
   //! T. The units are sqrt(eV).
-  std::vector<double> sqrtkT_;
+  vector<double> sqrtkT_;
 
   //! Definition of spatial region as Boolean expression of half-spaces
-  std::vector<std::int32_t> region_;
+  vector<std::int32_t> region_;
   //! Reverse Polish notation for region expression
-  std::vector<std::int32_t> rpn_;
+  vector<std::int32_t> rpn_;
   bool simple_;  //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
@@ -201,9 +200,9 @@ public:
   //! give the rotation matrix in row-major order. When the user specifies
   //! rotation angles about the x-, y- and z- axes in degrees, these values are
   //! also present at the end of the vector, making it of length 12.
-  std::vector<double> rotation_;
+  vector<double> rotation_;
 
-  std::vector<int32_t> offset_;  //!< Distribcell offset table
+  vector<int32_t> offset_; //!< Distribcell offset table
 };
 
 struct CellInstanceItem {
@@ -234,27 +233,25 @@ protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   BoundingBox bounding_box_simple() const;
-  static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
+  static BoundingBox bounding_box_complex(vector<int32_t> rpn);
 
   //! Applies DeMorgan's laws to a section of the RPN
   //! \param start Starting point for token modification
   //! \param stop Stopping point for token modification
-  static void apply_demorgan(std::vector<int32_t>::iterator start,
-                             std::vector<int32_t>::iterator stop);
+  static void apply_demorgan(
+    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
 
   //! Removes complement operators from the RPN
   //! \param rpn The rpn to remove complement operators from.
-  static void remove_complement_ops(std::vector<int32_t>& rpn);
+  static void remove_complement_ops(vector<int32_t>& rpn);
 
   //! Returns the beginning position of a parenthesis block (immediately before
   //! two surface tokens) in the RPN given a starting position at the end of
   //! that block (immediately after two surface tokens)
   //! \param start Starting position of the search
   //! \param rpn The rpn being searched
-  static std::vector<int32_t>::iterator
-  find_left_parenthesis(std::vector<int32_t>::iterator start,
-                        const std::vector<int32_t>& rpn);
-
+  static vector<int32_t>::iterator find_left_parenthesis(
+    vector<int32_t>::iterator start, const vector<int32_t>& rpn);
 };
 
 //==============================================================================
@@ -293,11 +290,11 @@ public:
   explicit UniversePartitioner(const Universe& univ);
 
   //! Return the list of cells that could contain the given coordinates.
-  const std::vector<int32_t>& get_cells(Position r, Direction u) const;
+  const vector<int32_t>& get_cells(Position r, Direction u) const;
 
 private:
   //! A sorted vector of indices to surfaces that partition the universe
-  std::vector<int32_t> surfs_;
+  vector<int32_t> surfs_;
 
   //! Vectors listing the indices of the cells that lie within each partition
   //
@@ -306,7 +303,7 @@ private:
   //! `partitions_.back()` gives the cells that lie on the positive side of
   //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
   //! between `surfs_[i-1]` and `surfs_[i]`.
-  std::vector<std::vector<int32_t>> partitions_;
+  vector<vector<int32_t>> partitions_;
 };
 
 

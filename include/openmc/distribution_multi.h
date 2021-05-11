@@ -1,7 +1,7 @@
 #ifndef DISTRIBUTION_MULTI_H
 #define DISTRIBUTION_MULTI_H
 
-#include <memory>
+#include "openmc/memory.h"
 
 #include "pugixml.hpp"
 
@@ -84,7 +84,7 @@ public:
   Direction sample(uint64_t* seed) const;
 };
 
-using UPtrAngle = std::unique_ptr<UnitSphereDistribution>;
+using UPtrAngle = unique_ptr<UnitSphereDistribution>;
 
 } // namespace openmc
 

@@ -1,10 +1,9 @@
 #ifndef OPENMC_TALLIES_FILTER_PARTICLE_H
 #define OPENMC_TALLIES_FILTER_PARTICLE_H
 
-#include <vector>
-
 #include "openmc/particle.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -37,15 +36,15 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<Particle::Type>& particles() const { return particles_; }
+  const vector<ParticleType>& particles() const { return particles_; }
 
-  void set_particles(gsl::span<Particle::Type> particles);
+  void set_particles(gsl::span<ParticleType> particles);
 
 private:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<Particle::Type> particles_;
+  vector<ParticleType> particles_;
 };
 
 } // namespace openmc

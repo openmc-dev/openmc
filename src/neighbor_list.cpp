@@ -33,7 +33,7 @@ namespace openmc{
 
       // Case 1: The element was not initialized yet, so the previous line had the effect of setting it to new_elem and returning -1.
       // Case 2: The element was already initialized to the current new_elem, so the atomicCAS call will return new_elem
-      if( retrieved_id == -1 || retrieved_id == new_elem)
+      if (retrieved_id == -1 || retrieved_id == new_elem)
         return;
 
       // Case 3: The element was already initialized to a different cell_id, so it will return some other value != -1 and != new_elem

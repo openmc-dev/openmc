@@ -100,7 +100,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       i_cell = neighbor_list->list_[i];
 
       // If the neighbor list item is -1, this means the end of the list has been found
-      if( i_cell == -1 )
+      if (i_cell == -1)
         break;
 
       // Make sure the search cell is in the same universe.

@@ -287,25 +287,11 @@ Particle::event_cross_surface()
       boundary_.lattice_translation[1] != 0 ||
       boundary_.lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
-    //#pragma omp target update to(this[:1])
-    //#pragma omp target update to(model::device_cells[:model::cells.size()])
-    //#pragma omp target
-    {
     cross_lattice(*this, boundary_);
-    }
-    //#pragma omp target update from(this[:1])
-    //#pragma omp target update from(model::device_cells[:model::cells.size()])
     event_ = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
-    //#pragma omp target update to(this[:1])
-    //#pragma omp target update to(model::device_cells[:model::cells.size()])
-    //#pragma omp target
-    {
     this->cross_surface();
-    }
-    //#pragma omp target update from(this[:1])
-    //#pragma omp target update from(model::device_cells[:model::cells.size()])
     event_ = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
@@ -499,14 +485,7 @@ Particle::cross_surface()
 
   // Handle any applicable boundary conditions.
   if (surf->bc_.type_ != BoundaryCondition::BCType::Transmission && settings::run_mode != RunMode::PLOTTING) {
-    //#pragma omp target update to(this[:1])
-    //#pragma omp target update to(model::device_cells[:model::cells.size()])
-    //#pragma omp target
-    {
     surf->bc_.handle_particle(*this, *surf);
-    }
-    //#pragma omp target update from(this[:1])
-    //#pragma omp target update from(model::device_cells[:model::cells.size()])
     return;
   }
 
@@ -531,17 +510,7 @@ Particle::cross_surface()
   }
 #endif
 
-  bool did_find_cell;
-  //#pragma omp target update to(this[:1])
-  //#pragma omp target update to(model::device_cells[:model::cells.size()])
-  //#pragma omp target map(from: did_find_cell)
-  {
-    did_find_cell = neighbor_list_find_cell(*this);
-  }
-  //#pragma omp target update from(this[:1])
-  //#pragma omp target update from(model::device_cells[:model::cells.size()])
-
-  if (did_find_cell)
+  if (neighbor_list_find_cell(*this))
     return;
 
   // ==========================================================================
@@ -550,15 +519,7 @@ Particle::cross_surface()
   // Remove lower coordinate levels and assignment of surface
   surface_ = 0;
   n_coord_ = 1;
-  //bool found = exhaustive_find_cell(*this);
-  bool found;
- 
-  //#pragma omp target update to(this[:1])
-  //#pragma omp target map(from: found)
-  {
-    found = exhaustive_find_cell(*this);
-  }
-  //#pragma omp target update from(this[:1])
+  bool found = exhaustive_find_cell(*this);
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
@@ -660,19 +621,10 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // boundary, it is necessary to redetermine the particle's coordinates in
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
-  //if (!settings::dagmc) {
+  if (!settings::dagmc) {
     n_coord_ = 1;
-    bool did_find_cell;
-  //#pragma omp target update to(this[:1])
-  //#pragma omp target update to(model::device_cells[:model::cells.size()])
-  //#pragma omp target map(from: did_find_cell)
-  {
-    did_find_cell = neighbor_list_find_cell(*this);
-  }
-  //#pragma omp target update from(this[:1])
-  //#pragma omp target update from(model::device_cells[:model::cells.size()])
 
-    if (!did_find_cell) {
+    if (!neighbor_list_find_cell(*this)) {
       //this->mark_as_lost_short();
       printf("lost particle reflecting\n");
       /*
@@ -681,7 +633,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
                          */
       return;
     }
-  //}
+  }
 
   // Set previous coordinate going slightly past surface crossing
   r_last_current_ = this->r() + TINY_BIT*this->u();

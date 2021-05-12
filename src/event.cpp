@@ -191,8 +191,6 @@ void process_surface_crossing_events()
   for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
-    //p.event_cross_surface();
-    //p.event_revive_from_secondary();
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
   }

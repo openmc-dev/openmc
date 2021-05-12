@@ -597,13 +597,7 @@ bool
 Cell::contains(Position r, Direction u, int32_t on_surface) const
 {
   if (simple_) {
-    bool does_contain;
-    //#pragma omp target map(from: does_contain)
-    {
-      does_contain = contains_simple(r, u, on_surface);
-    }
-    return does_contain;
-    //return contains_simple(r, u, on_surface);
+    return contains_simple(r, u, on_surface);
   } else {
     printf("ERROR - Complex CSG cell geometry not yet supported on device!\n");
     return false;
@@ -619,7 +613,6 @@ Cell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
-  //for (int32_t token : rpn_) {
   for (int i = 0; i < rpn_.size(); i++) {
     int32_t token = device_rpn_[i];
     // Ignore this token if it corresponds to an operator rather than a region.
@@ -628,8 +621,6 @@ Cell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {std::fabs(token) == std::fabs(on_surface)};
-    //double d {model::surfaces[abs(token)-1].distance(r, u, coincident)};
-    //double d {model::device_surfaces[abs(token)-1].distance(r, u, coincident)};
     double d {model::device_surfaces[(int) std::fabs(token)-1].distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
@@ -834,7 +825,6 @@ BoundingBox Cell::bounding_box() const {
 bool
 Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
-  //for (int32_t token : rpn_) {
   for (int32_t i = 0; i < rpn_.size(); i++) {
     int32_t token = device_rpn_[i];
     // Assume that no tokens are operators. Evaluate the sense of particle with
@@ -846,43 +836,12 @@ Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
       return false;
     } else {
       // Note the off-by-one indexing
-      //bool sense = model::surfaces[abs(token)-1].sense(r, u);
-      bool sense;
-      //#pragma omp target map(from:sense)
-      {
-        sense = model::device_surfaces[std::abs(token)-1].sense(r, u);
-        //sense = model::surfaces[std::abs(token)-1].sense(r, u);
-      }
-      if (sense != (token > 0)) {return false;}
-    }
-  }
-  return true;
-}
-
-
-/*
-bool
-Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
-{
-  for (int32_t token : rpn_) {
-    // Assume that no tokens are operators. Evaluate the sense of particle with
-    // respect to the surface and see if the token matches the sense. If the
-    // particle's surface attribute is set and matches the token, that
-    // overrides the determination based on sense().
-    if (token == on_surface) {
-    } else if (-token == on_surface) {
-      return false;
-    } else {
-      // Note the off-by-one indexing
-      //bool sense = model::surfaces[abs(token)-1].sense(r, u);
-      //bool sense = model::surfaces[std::abs(token)-1].sense(r, u);
       bool sense = model::device_surfaces[std::abs(token)-1].sense(r, u);
       if (sense != (token > 0)) {return false;}
     }
   }
   return true;
 }
-*/
 
 //==============================================================================
 

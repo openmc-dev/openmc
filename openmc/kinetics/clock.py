@@ -10,7 +10,7 @@ TIME_POINTS = ['START',
 
 class Clock:
 
-    def __init__(self, start=0., end=3., dt_inner=None, t_outer=None):
+    def __init__(self, dt_inner, t_outer):
 
         # Initialize coordinates
         self.dt_inner = dt_inner
@@ -19,10 +19,10 @@ class Clock:
         # Create a dictionary of clock times
         self._times = {}
         for t in TIME_POINTS:
-            self._times[t] = start
+            self._times[t] = t_outer[0]
 
         # Reset the end time
-        self._times['END'] = end
+        self._times['END'] = t_outer[-1]
         self._outer_step = 0
 
     def __repr__(self):
@@ -67,10 +67,6 @@ class Clock:
     @property
     def dt_outer(self):
         return self.t_outer[self.outer_step + 1] - self.t_outer[self.outer_step]
-
-    @times.setter
-    def times(self, times):
-        self._times = float(times)
 
     @outer_step.setter
     def outer_step(self, outer_step):

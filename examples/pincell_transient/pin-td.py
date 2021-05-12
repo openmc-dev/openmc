@@ -59,7 +59,7 @@ one_group.group_edges = [fine_groups.group_edges[0], fine_groups.group_edges[-1]
 
 # Instantiate a clock object
 t_outer = np.arange(0., 1.0, 5.e-1)
-clock = openmc.kinetics.Clock(start=0., end=0.5, dt_inner=1.e-2, t_outer=t_outer)
+clock = openmc.kinetics.Clock(dt_inner=1.e-2, t_outer=t_outer)
 
 # Prescribe the transient as a dictionary of densities and temperatures 
 transient = {}

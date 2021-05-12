@@ -46,16 +46,8 @@ void BoundaryCondition::handle_particle(Particle& p, const Surface& surf) const
   }
 }
 
-BoundaryCondition::BoundaryCondition(BCType type)
+BoundaryCondition::BoundaryCondition(BCType type, int i_surf, int j_surf) : type_(type), i_surf_(i_surf), j_surf_(j_surf)
 {
-  type_ = type;
-}
-
-BoundaryCondition::BoundaryCondition(BCType type, int i_surf, int j_surf)
-{
-  type_ = type;
-  i_surf_ = i_surf;
-  j_surf_ = j_surf;
   switch(type_)
   {
     case BCType::TranslationalPeriodic: init_TranslationalPeriodicBC(); break;

@@ -26,8 +26,8 @@ public:
     RotationalPeriodic
   };
   
-  BoundaryCondition() {type_ = BCType::Transmission;}
-  BoundaryCondition(BCType type);
+  BoundaryCondition() = default;
+  BoundaryCondition(BCType type) : type_(type) {};
   BoundaryCondition(BCType type, int i_surf, int j_surf);
 
   void init_TranslationalPeriodicBC();
@@ -50,7 +50,7 @@ void RotationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) cons
   //! Return a string classification of this BC.
   std::string type() const;
 
-  BCType type_;
+  BCType type_ {BCType::Transmission};
   int i_surf_;
   int j_surf_;
   Position translation_;

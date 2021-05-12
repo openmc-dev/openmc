@@ -64,11 +64,7 @@ class Solver:
         The initial core power (in MWth).
     k_crit : float
         The initial eigenvalue.
-    mpi_args : list of str, optional
-        MPI execute command and any additional MPI arguments to pass,
-        e.g. ['mpiexec', '-n', '8'].
-    threads : int
-        The number of OpenMP threads to use.
+    run_kwargs : dictionary of keyword arguments passed to openmc.run.
     chi_delayed_by_delayed_group : bool
         Whether to use delayed groups in representing chi-delayed.
     chi_delayed_by_mesh : bool
@@ -110,8 +106,7 @@ class Solver:
         self._fine_groups = None
         self._initial_power = 1.
         self._k_crit = 1.0
-        self._mpi_args = None
-        self._threads = 1
+        self._run_kwargs = None
         self._chi_delayed_by_delayed_group = False
         self._chi_delayed_by_mesh = False
         self._num_delayed_groups = 6
@@ -195,12 +190,8 @@ class Solver:
         return self._k_crit
 
     @property
-    def mpi_args(self):
-        return self._mpi_args
-
-    @property
-    def threads(self):
-        return self._threads
+    def run_kwargs(self):
+        return self._run_kwargs
 
     @property
     def chi_delayed_by_delayed_group(self):
@@ -348,13 +339,9 @@ class Solver:
     def k_crit(self, k_crit):
         self._k_crit = k_crit
 
-    @mpi_args.setter
-    def mpi_args(self, mpi_args):
-        self._mpi_args = mpi_args
-
-    @threads.setter
-    def threads(self, threads):
-        self._threads = threads
+    @run_kwargs.setter
+    def run_kwargs(self, run_kwargs):
+        self._run_kwargs = run_kwargs
 
     @chi_delayed_by_delayed_group.setter
     def chi_delayed_by_delayed_group(self, chi_delayed_by_delayed_group):
@@ -511,8 +498,7 @@ class Solver:
 
         # Run OpenMC
         if not self.use_pregenerated_sps:
-            openmc.run(threads=self.threads, mpi_args=self.mpi_args,
-                           cwd=self.directory)
+            openmc.run(cwd=self.directory, **self.run_kwargs)
 
             # Rename the statepoint and summary files
             copyfile(sp_old_name, sp_new_name)

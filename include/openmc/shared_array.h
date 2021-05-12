@@ -52,13 +52,8 @@ public:
 
   //! Return a reference to the element at specified location i. No bounds
   //! checking is performed.
-  #pragma omp declare target
   T& operator[](int64_t i) {return data_[i];}
   const T& operator[](int64_t i) const { return data_[i]; }
-  #pragma omp end declare target
-  
-  T& device_at(int64_t i) {return device_data_[i];}
-  const T& device_at(int64_t i) const { return device_data_[i]; }
 
   //! Allocate space in the container for the specified number of elements.
   //! reserve() does not change the size of the container.
@@ -114,9 +109,7 @@ public:
   }
 
   //! Return the number of elements in the container
-  #pragma omp declare target
   int64_t size() {return size_;}
-  #pragma omp end declare target
 
   //! Resize the container to contain a specified number of elements. This is
   //! useful in cases where the container is written to in a non-thread safe manner,
@@ -135,35 +128,29 @@ public:
 
   void allocate_on_device()
   {
-    device_data_ = data_; 
-    #pragma omp target enter data map(alloc: device_data_[:capacity_], size_)
+    #pragma omp target enter data map(alloc: data_[:capacity_], size_)
   }
 
   void copy_host_to_device()
   {
-    #pragma omp target update to(device_data_[:capacity_], size_)
+    #pragma omp target update to(this[:1])
+    #pragma omp target update to(data_[:capacity_], size_)
   }
   
   void copy_device_to_host()
   {
-    //#pragma omp target update from(device_data_[:capacity_])
+    #pragma omp target update from(data_[:capacity_])
+    #pragma omp target update from(this[:1])
   }
   
   //==========================================================================
   // Data members
 
-  #pragma omp declare target
-  T* device_data_; //!< An RAII handle to the elements
-  #pragma omp end declare target
-
   private: 
 
-  #pragma omp declare target
-  T* data_; //!< An RAII handle to the elements
+  T* data_ {NULL}; //!< An RAII handle to the elements
   int64_t size_ {0}; //!< The current number of elements 
   int64_t capacity_ {0}; //!< The total space allocated for elements
-  #pragma omp end declare target
-
 }; 
 
 } // namespace openmc

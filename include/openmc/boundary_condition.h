@@ -15,7 +15,6 @@ class Surface;
 
 class BoundaryCondition {
 public:
-
   // Types of BoundaryCondition
   enum class BCType {
     Transmission,
@@ -25,7 +24,7 @@ public:
     TranslationalPeriodic,
     RotationalPeriodic
   };
-  
+
   BoundaryCondition() = default;
   BoundaryCondition(BCType type) : type_(type) {};
   BoundaryCondition(BCType type, int i_surf, int j_surf);
@@ -40,12 +39,12 @@ public:
   //! \param surf The specific surface on the boundary the particle struck.
   #pragma omp declare target
   void handle_particle(Particle& p, const Surface& surf) const;
-void VacuumBC_handle_particle(Particle& p, const Surface& surf) const;
-void ReflectiveBC_handle_particle(Particle& p, const Surface& surf) const;
-void WhiteBC_handle_particle(Particle& p, const Surface& surf) const;
+  void VacuumBC_handle_particle(Particle& p, const Surface& surf) const;
+  void ReflectiveBC_handle_particle(Particle& p, const Surface& surf) const;
+  void WhiteBC_handle_particle(Particle& p, const Surface& surf) const;
   #pragma omp end declare target
-void TranslationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;
-void RotationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;
+  void TranslationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;
+  void RotationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;
 
   //! Return a string classification of this BC.
   std::string type() const;

@@ -678,7 +678,7 @@ Cell::to_hdf5(hid_t cell_group) const
     std::vector<int32_t> mat_ids;
     for (auto i_mat : material_) {
       if (i_mat != MATERIAL_VOID) {
-        mat_ids.push_back(model::materials[i_mat]->id_);
+        mat_ids.push_back(model::materials[i_mat].id_);
       } else {
         mat_ids.push_back(MATERIAL_VOID);
       }

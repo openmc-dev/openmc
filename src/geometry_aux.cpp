@@ -185,7 +185,7 @@ assign_temperatures()
         c.sqrtkT_.push_back(0);
       } else {
         const auto& mat {model::materials[i_mat]};
-        c.sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
+        c.sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat.temperature()));
       }
     }
   }
@@ -220,7 +220,7 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
       }
 
       const auto& mat {model::materials[i_material]};
-      for (const auto& i_nuc : mat->nuclide_) {
+      for (const auto& i_nuc : mat.nuclide_) {
         for (double temperature : cell_temps) {
           // Add temperature if it hasn't already been added
           if (!contains(nuc_temps[i_nuc], temperature))
@@ -228,7 +228,7 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
         }
       }
 
-      for (const auto& table : mat->thermal_tables_) {
+      for (const auto& table : mat.thermal_tables_) {
         // Get index in data::thermal_scatt array
         int i_sab = table.index_table;
 

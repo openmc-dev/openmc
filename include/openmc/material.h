@@ -27,7 +27,11 @@ class Material;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> material_map;
-extern std::vector<std::unique_ptr<Material>> materials;
+//extern std::vector<std::unique_ptr<Material>> materials;
+extern std::vector<Material> materials;
+#pragma omp declare target
+extern Material* device_materials;
+#pragma omp end declare target
 
 } // namespace model
 
@@ -51,6 +55,9 @@ public:
   Material() {};
   explicit Material(pugi::xml_node material_node);
   ~Material();
+  Material(const Material&) = default; // copy constructor
+  Material& operator=(Material&&) = default; // move assignment
+  Material& operator=(const Material&) = default; // copy assignment
 
   //----------------------------------------------------------------------------
   // Methods
@@ -159,7 +166,7 @@ public:
   // Thermal scattering tables
   std::vector<ThermalTable> thermal_tables_;
 
-  std::unique_ptr<Bremsstrahlung> ttb_;
+  Bremsstrahlung ttb_;
 
 private:
   //----------------------------------------------------------------------------

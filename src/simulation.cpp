@@ -106,7 +106,7 @@ int openmc_simulation_init()
 
   // Set up material nuclide index mapping
   for (auto& mat : model::materials) {
-    mat->init_nuclide_index();
+    mat.init_nuclide_index();
   }
 
   // Reset global variables -- this is done before loading state point (as that
@@ -163,7 +163,7 @@ int openmc_simulation_finalize()
 
   // Clear material nuclide mapping
   for (auto& mat : model::materials) {
-    mat->mat_nuclide_index_.clear();
+    mat.mat_nuclide_index_.clear();
   }
 
   // Increment total number of generations

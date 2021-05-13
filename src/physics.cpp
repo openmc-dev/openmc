@@ -455,13 +455,13 @@ int sample_nuclide(Particle& p)
 
   // Get pointers to nuclide/density arrays
   const auto& mat {model::materials[p.material_]};
-  int n = mat->nuclide_.size();
+  int n = mat.nuclide_.size();
 
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
     // Get atom density
-    int i_nuclide = mat->nuclide_[i];
-    double atom_density = mat->atom_density_[i];
+    int i_nuclide = mat.nuclide_[i];
+    double atom_density = mat.atom_density_[i];
 
     // Increment probability to compare to cutoff
     prob += atom_density * p.neutron_xs_[i_nuclide].total;
@@ -482,10 +482,10 @@ int sample_element(Particle& p)
   const auto& mat {model::materials[p.material_]};
 
   double prob = 0.0;
-  for (int i = 0; i < mat->element_.size(); ++i) {
+  for (int i = 0; i < mat.element_.size(); ++i) {
     // Find atom density
-    int i_element = mat->element_[i];
-    double atom_density = mat->atom_density_[i];
+    int i_element = mat.element_[i];
+    double atom_density = mat.atom_density_[i];
 
     // Determine microscopic cross section
     double sigma = atom_density * p.photon_xs_[i_element].total;
@@ -494,7 +494,7 @@ int sample_element(Particle& p)
     prob += sigma;
     if (prob > cutoff) {
       // Save which nuclide particle had collision with for tally purpose
-      p.event_nuclide_ = mat->nuclide_[i];
+      p.event_nuclide_ = mat.nuclide_[i];
 
       return i_element;
     }
@@ -715,9 +715,9 @@ void scatter(Particle& p, int i_nuclide)
 
   // Sample new outgoing angle for isotropic-in-lab scattering
   const auto& mat {model::materials[p.material_]};
-  if (!mat->p0_.empty()) {
-    int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];
-    if (mat->p0_[i_nuc_mat]) {
+  if (!mat.p0_.empty()) {
+    int i_nuc_mat = mat.mat_nuclide_index_[i_nuclide];
+    if (mat.p0_[i_nuc_mat]) {
       // Sample isotropic-in-lab outgoing direction
       double mu = 2.0*prn(p.current_seed()) - 1.0;
       double phi = 2.0*PI*prn(p.current_seed());

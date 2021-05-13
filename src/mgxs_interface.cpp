@@ -122,24 +122,24 @@ void MgxsInterface::create_macro_xs()
   auto kTs = get_mat_kTs();
 
   // Force all nuclides in a material to be the same representation.
-  // Therefore type(nuclides[mat->nuclide_[0]]) dictates type(macroxs).
+  // Therefore type(nuclides[mat.nuclide_[0]]) dictates type(macroxs).
   // At the same time, we will find the scattering type, as that will dictate
   // how we allocate the scatter object within macroxs.
   for (int i = 0; i < model::materials.size(); ++i) {
     if (kTs[i].size() > 0) {
       // Convert atom_densities to a vector
       auto& mat {model::materials[i]};
-      std::vector<double> atom_densities(mat->atom_density_.begin(),
-        mat->atom_density_.end());
+      std::vector<double> atom_densities(mat.atom_density_.begin(),
+        mat.atom_density_.end());
 
       // Build array of pointers to nuclides's Mgxs objects needed for this
       // material
       std::vector<Mgxs*> mgxs_ptr;
-      for (int i_nuclide : mat->nuclide_) {
+      for (int i_nuclide : mat.nuclide_) {
         mgxs_ptr.push_back(&nuclides_[i_nuclide]);
       }
 
-      macro_xs_.emplace_back(mat->name_, kTs[i], mgxs_ptr, atom_densities,
+      macro_xs_.emplace_back(mat.name_, kTs[i], mgxs_ptr, atom_densities,
           num_energy_groups_, num_delayed_groups_);
     } else {
       // Preserve the ordering of materials by including a blank entry
@@ -262,7 +262,7 @@ void set_mg_interface_nuclides_and_temps()
 
   // Loop over materials to find xs and temperature to be read
   for (const auto& mat : model::materials) {
-    for (int i_nuc : mat->nuclide_) {
+    for (int i_nuc : mat.nuclide_) {
       std::string& name = nuclide_names[i_nuc];
 
       if (already_read.find(name) == already_read.end()) {
@@ -277,10 +277,10 @@ void set_mg_interface_nuclides_and_temps()
 void mark_fissionable_mgxs_materials()
 {
   // Loop over all files
-  for (const auto& mat : model::materials) {
-    for (int i_nuc : mat->nuclide_) {
+  for (auto& mat : model::materials) {
+    for (int i_nuc : mat.nuclide_) {
       if (data::mg.nuclides_[i_nuc].fissionable) {
-        mat->fissionable_ = true;
+        mat.fissionable_ = true;
       }
     }
   }

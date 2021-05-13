@@ -57,8 +57,13 @@ namespace simulation {
 // vector, as they will be shared between threads and may be appended to at the
 // same time. To facilitate this, the SharedArray thread_safe_append() method
 // is provided which controls the append operations using atomics.
+
+// Note: we only need to declare the xs queues as global items as the rest
+// are only used within the lexical scope of a target construct. 
+#pragma omp declare target
 extern SharedArray<EventQueueItem> calculate_fuel_xs_queue;
 extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
+#pragma omp end declare target
 extern SharedArray<EventQueueItem> advance_particle_queue;
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;

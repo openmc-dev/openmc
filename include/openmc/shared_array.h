@@ -32,10 +32,20 @@ public:
   //! Default constructor.
   SharedArray() = default;
 
+  // Note: the destructor is not defined due to OpenMP offloading restrictions.
+  // The problem is that since the
+  // SharedArray is a global variable that is accessed beyond the local
+  // scope of a target construct (i.e., from within a function in a target
+  // region), the variable must be marked as "declare target". When doing
+  // so with a global variable a copy is constructed in place on device
+  // and will therefore also be destructed in place on device (which involves
+  // dynamic memory usage as well as calling delete on a mapped host pointer).
+  /*
   ~SharedArray()
   {
     this->clear();
   }
+  */
 
   //! Construct a zero size container with space to hold capacity number of
   //! elements.
@@ -79,12 +89,14 @@ public:
   {
     // Atomically capture the index we want to write to
     int64_t idx;
-    #pragma omp atomic capture seq_cst
+    //#pragma omp atomic capture seq_cst
+    #pragma omp atomic capture
     idx = size_++;
 
     // Check that we haven't written off the end of the array
     if (idx >= capacity_) {
-      #pragma omp atomic write seq_cst
+      //#pragma omp atomic write seq_cst
+      #pragma omp atomic write
       size_ = capacity_;
       return -1;
     }
@@ -128,6 +140,7 @@ public:
 
   void allocate_on_device()
   {
+    //#pragma omp target enter data map(alloc: this[:1])
     #pragma omp target enter data map(alloc: data_[:capacity_], size_)
   }
 

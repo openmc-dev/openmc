@@ -390,7 +390,7 @@ def test_reset(lib_run):
         for i in range(20):
             openmc.lib.next_batch()
 
-        # Make sure there are 5 realizations for the 5 active batches.
+        # Make sure there are 15 realizations for the 15 active batches.
         assert openmc.lib.num_realizations() == 15
         assert openmc.lib.tallies[2].num_realizations == 15
         _, keff_sd1 = openmc.lib.keff()

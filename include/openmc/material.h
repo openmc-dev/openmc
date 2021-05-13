@@ -55,9 +55,6 @@ public:
   Material() {};
   explicit Material(pugi::xml_node material_node);
   ~Material();
-  Material(const Material&) = default; // copy constructor
-  Material& operator=(Material&&) = default; // move assignment
-  Material& operator=(const Material&) = default; // copy assignment
 
   //----------------------------------------------------------------------------
   // Methods

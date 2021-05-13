@@ -135,17 +135,11 @@ Surface::Surface(pugi::xml_node surf_node, Surface::SurfaceType type) : type_(ty
     if (surf_bc == "transmission" || surf_bc == "transmit" ||surf_bc.empty()) {
       // Leave the bc_ a nullptr
     } else if (surf_bc == "vacuum") {
-      //bc_ = std::make_shared<VacuumBC>();
-      //bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::Vacuum);
       bc_ = BoundaryCondition(BoundaryCondition::BCType::Vacuum);
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
-      //bc_ = std::make_shared<ReflectiveBC>();
-      //bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::Reflective);
       bc_ = BoundaryCondition(BoundaryCondition::BCType::Reflective);
     } else if (surf_bc == "white") {
-      //bc_ = std::make_shared<WhiteBC>();
-      //bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::White);
       bc_ = BoundaryCondition(BoundaryCondition::BCType::White);
     } else if (surf_bc == "periodic") {
       // periodic BC's are handled separately
@@ -694,23 +688,9 @@ BoundingBox Surface::SurfaceYCylinder_bounding_box(bool pos_side) const {
 // SurfaceZCylinder implementation
 //==============================================================================
 
-/*
 double Surface::SurfaceZCylinder_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 1>(r, x0_, y0_, radius_);
-}
-*/
-double Surface::SurfaceZCylinder_evaluate(Position r) const
-{
-  double x0 = x0_;
-  double y0 = y0_;
-  double radius = radius_;
-  double result;
-  //#pragma omp target map (to: x0, y0, radius) map(from: result)
-  {
-    result = axis_aligned_cylinder_evaluate<0, 1>(r, x0, y0, radius);
-  }
-  return result;
 }
 
 double Surface::SurfaceZCylinder_distance(Position r, Direction u, bool coincident) const
@@ -1075,55 +1055,6 @@ void Surface::SurfaceQuadric_to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 // Dispatchers
 //==============================================================================
-/*
-double Surface::evaluate(Position r) const
-{
-  double evaluation = 0.0;
-  #pragma omp target map(to: r) map(from:evaluation)
-  {
-    switch(type_){
-      case SurfaceType::SurfaceXPlane:    evaluation =  SurfaceXPlane_evaluate(r);    break;
-      case SurfaceType::SurfaceYPlane:    evaluation =  SurfaceYPlane_evaluate(r);    break;
-      case SurfaceType::SurfaceZPlane:    evaluation =  SurfaceZPlane_evaluate(r);    break;
-      case SurfaceType::SurfacePlane:     evaluation =  SurfacePlane_evaluate(r);     break;
-      case SurfaceType::SurfaceXCylinder: evaluation =  SurfaceXCylinder_evaluate(r); break;
-      case SurfaceType::SurfaceYCylinder: evaluation =  SurfaceYCylinder_evaluate(r); break;
-      case SurfaceType::SurfaceZCylinder: evaluation =  SurfaceZCylinder_evaluate(r); break;
-      case SurfaceType::SurfaceSphere:    evaluation =  SurfaceSphere_evaluate(r);    break;
-      case SurfaceType::SurfaceXCone:     evaluation =  SurfaceXCone_evaluate(r);     break;
-      case SurfaceType::SurfaceYCone:     evaluation =  SurfaceYCone_evaluate(r);     break;
-      case SurfaceType::SurfaceZCone:     evaluation =  SurfaceZCone_evaluate(r);     break;
-      case SurfaceType::SurfaceQuadric:   evaluation =  SurfaceQuadric_evaluate(r);   break;
-    }
-  }
-  return evaluation;
-}
-*/
-/*
-double Surface::evaluate(Position r) const
-{
-  double evaluation = 0.0;
-  Surface inner = *this;
-  #pragma omp target map(to: r, inner) map(from:evaluation)
-  {
-    switch(inner.type_){
-      case SurfaceType::SurfaceXPlane:    evaluation =  inner.SurfaceXPlane_evaluate(r);    break;
-      case SurfaceType::SurfaceYPlane:    evaluation =  inner.SurfaceYPlane_evaluate(r);    break;
-      case SurfaceType::SurfaceZPlane:    evaluation =  inner.SurfaceZPlane_evaluate(r);    break;
-      case SurfaceType::SurfacePlane:     evaluation =  inner.SurfacePlane_evaluate(r);     break;
-      case SurfaceType::SurfaceXCylinder: evaluation =  inner.SurfaceXCylinder_evaluate(r); break;
-      case SurfaceType::SurfaceYCylinder: evaluation =  inner.SurfaceYCylinder_evaluate(r); break;
-      case SurfaceType::SurfaceZCylinder: evaluation =  inner.SurfaceZCylinder_evaluate(r); break;
-      case SurfaceType::SurfaceSphere:    evaluation =  inner.SurfaceSphere_evaluate(r);    break;
-      case SurfaceType::SurfaceXCone:     evaluation =  inner.SurfaceXCone_evaluate(r);     break;
-      case SurfaceType::SurfaceYCone:     evaluation =  inner.SurfaceYCone_evaluate(r);     break;
-      case SurfaceType::SurfaceZCone:     evaluation =  inner.SurfaceZCone_evaluate(r);     break;
-      case SurfaceType::SurfaceQuadric:   evaluation =  inner.SurfaceQuadric_evaluate(r);   break;
-    }
-  }
-  return evaluation;
-}
-*/
 
 double Surface::evaluate(Position r) const
 {
@@ -1204,15 +1135,10 @@ BoundingBox Surface::bounding_box(bool pos_side) const
     case SurfaceType::SurfaceXPlane:    return SurfaceXPlane_bounding_box(pos_side);    break;
     case SurfaceType::SurfaceYPlane:    return SurfaceYPlane_bounding_box(pos_side);    break;
     case SurfaceType::SurfaceZPlane:    return SurfaceZPlane_bounding_box(pos_side);    break;
-    //case SurfaceType::SurfacePlane:     return SurfacePlane_bounding_box(pos_side);     break;
     case SurfaceType::SurfaceXCylinder: return SurfaceXCylinder_bounding_box(pos_side); break;
     case SurfaceType::SurfaceYCylinder: return SurfaceYCylinder_bounding_box(pos_side); break;
     case SurfaceType::SurfaceZCylinder: return SurfaceZCylinder_bounding_box(pos_side); break;
     case SurfaceType::SurfaceSphere:    return SurfaceSphere_bounding_box(pos_side);    break;
-    //case SurfaceType::SurfaceXCone:     return SurfaceXCone_bounding_box(pos_side);     break;
-    //case SurfaceType::SurfaceYCone:     return SurfaceYCone_bounding_box(pos_side);     break;
-    //case SurfaceType::SurfaceZCone:     return SurfaceZCone_bounding_box(pos_side);     break;
-    //case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_bounding_box(pos_side);   break;
     default: return {};
   }
 }
@@ -1225,16 +1151,6 @@ bool Surface::periodic_translate(const Surface* other, Position& r,
     case SurfaceType::SurfaceYPlane:    return SurfaceYPlane_periodic_translate(other, r, u);    break;
     case SurfaceType::SurfaceZPlane:    return SurfaceZPlane_periodic_translate(other, r, u);    break;
     case SurfaceType::SurfacePlane:     return SurfacePlane_periodic_translate(other, r, u);     break;
-                           /*
-    case SurfaceType::SurfaceXCylinder: return SurfaceXCylinder_periodic_translate(other, r, u); break;
-    case SurfaceType::SurfaceYCylinder: return SurfaceYCylinder_periodic_translate(other, r, u); break;
-    case SurfaceType::SurfaceZCylinder: return SurfaceZCylinder_periodic_translate(other, r, u); break;
-    case SurfaceType::SurfaceSphere:    return SurfaceSphere_periodic_translate(other, r, u);    break;
-    case SurfaceType::SurfaceXCone:     return SurfaceXCone_periodic_translate(other, r, u);     break;
-    case SurfaceType::SurfaceYCone:     return SurfaceYCone_periodic_translate(other, r, u);     break;
-    case SurfaceType::SurfaceZCone:     return SurfaceZCone_periodic_translate(other, r, u);     break;
-    case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_periodic_translate(other, r, u);   break;
-    */
     default: return false;
   }
 }
@@ -1383,13 +1299,9 @@ void read_surfaces(pugi::xml_node node)
     // planes are parallel which indicates a translational periodic boundary
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
-      //surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
-      //surf1.bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::TranslationalPeriodic, i_surf, j_surf);
       surf1.bc_ = BoundaryCondition(BoundaryCondition::BCType::TranslationalPeriodic, i_surf, j_surf);
       surf2.bc_ = surf1.bc_;
     } else {
-      //surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
-      //surf1.bc_ = std::make_shared<BoundaryCondition>(BoundaryCondition::BCType::RotationalPeriodic, i_surf, j_surf);
       surf1.bc_ = BoundaryCondition(BoundaryCondition::BCType::RotationalPeriodic, i_surf, j_surf);
       surf2.bc_ = surf1.bc_;
     }

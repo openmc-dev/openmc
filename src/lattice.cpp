@@ -421,7 +421,6 @@ Lattice::RectLattice_index(std::array<int, 3> i_xyz)
   int ny {n_cells_[1]};
   int nz {n_cells_[2]};
   int indx = nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0];
-  //return universes_[indx];
   return device_universes_[indx];
 }
 
@@ -556,7 +555,6 @@ Lattice::RectLattice_offset(int map, const int i_xyz[3])
   int nx {n_cells_[0]};
   int ny {n_cells_[1]};
   int nz {n_cells_[2]};
-  //return offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
   return device_offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
 }
 
@@ -569,7 +567,6 @@ Lattice::RectLattice_offset(int map, int indx) const
   int nx {n_cells_[0]};
   int ny {n_cells_[1]};
   int nz {n_cells_[2]};
-  //return offsets_[nx*ny*nz*map + indx];
   return device_offsets_[nx*ny*nz*map + indx];
 }
 
@@ -894,7 +891,6 @@ Lattice::HexLattice_index(std::array<int, 3> i_xyz)
   int indx = (2*n_rings_-1)*(2*n_rings_-1) * i_xyz[2]
               + (2*n_rings_-1) * i_xyz[1]
               + i_xyz[0];
-  //return universes_[indx];
   return device_universes_[indx];
 }
 
@@ -1205,7 +1201,6 @@ Lattice::HexLattice_offset(int map, const int i_xyz[3])
   int nx {2*n_rings_ - 1};
   int ny {2*n_rings_ - 1};
   int nz {n_axial_};
-  //return offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
   return device_offsets_[nx*ny*nz*map + nx*ny*i_xyz[2] + nx*i_xyz[1] + i_xyz[0]];
 }
 
@@ -1215,7 +1210,6 @@ Lattice::HexLattice_offset(int map, int indx) const
   int nx {2*n_rings_ - 1};
   int ny {2*n_rings_ - 1};
   int nz {n_axial_};
-  //return offsets_[nx*ny*nz*map + indx];
   return device_offsets_[nx*ny*nz*map + indx];
 }
 

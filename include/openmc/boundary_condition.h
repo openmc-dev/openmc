@@ -15,7 +15,6 @@ class Surface;
 
 class BoundaryCondition {
 public:
-
   // Types of BoundaryCondition
   enum class BCType {
     Transmission,
@@ -25,9 +24,9 @@ public:
     TranslationalPeriodic,
     RotationalPeriodic
   };
-  
-  BoundaryCondition() {type_ = BCType::Transmission;}
-  BoundaryCondition(BCType type);
+
+  BoundaryCondition() = default;
+  BoundaryCondition(BCType type) : type_(type) {};
   BoundaryCondition(BCType type, int i_surf, int j_surf);
 
   void init_TranslationalPeriodicBC();
@@ -40,105 +39,22 @@ public:
   //! \param surf The specific surface on the boundary the particle struck.
   #pragma omp declare target
   void handle_particle(Particle& p, const Surface& surf) const;
-void VacuumBC_handle_particle(Particle& p, const Surface& surf) const;
-void ReflectiveBC_handle_particle(Particle& p, const Surface& surf) const;
-void WhiteBC_handle_particle(Particle& p, const Surface& surf) const;
+  void VacuumBC_handle_particle(Particle& p, const Surface& surf) const;
+  void ReflectiveBC_handle_particle(Particle& p, const Surface& surf) const;
+  void WhiteBC_handle_particle(Particle& p, const Surface& surf) const;
   #pragma omp end declare target
-void TranslationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;
-void RotationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;
+  void TranslationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;
+  void RotationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const;
 
   //! Return a string classification of this BC.
   std::string type() const;
 
-  BCType type_;
+  BCType type_ {BCType::Transmission};
   int i_surf_;
   int j_surf_;
   Position translation_;
   double angle_;
 };
-
-/*
-//==============================================================================
-//! A BC that kills particles, indicating they left the problem.
-//==============================================================================
-
-class VacuumBC : public BoundaryCondition {
-public:
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
-};
-
-//==============================================================================
-//! A BC that returns particles via specular reflection.
-//==============================================================================
-
-class ReflectiveBC : public BoundaryCondition {
-public:
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
-
-};
-
-//==============================================================================
-//! A BC that returns particles via diffuse reflection.
-//==============================================================================
-
-class WhiteBC : public BoundaryCondition {
-public:
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
-
-};
-
-//==============================================================================
-//! A BC that moves particles to another part of the problem.
-//==============================================================================
-
-class PeriodicBC : public BoundaryCondition {
-public:
-  PeriodicBC(int i_surf, int j_surf)
-    : i_surf_(i_surf), j_surf_(j_surf)
-  {};
-
-protected:
-  int i_surf_;
-  int j_surf_;
-};
-
-//==============================================================================
-//! A BC that moves particles to another part of the problem without rotation.
-//==============================================================================
-
-class TranslationalPeriodicBC : public PeriodicBC {
-public:
-  TranslationalPeriodicBC(int i_surf, int j_surf);
-
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
-
-protected:
-  //! Vector along which incident particles will be moved
-  Position translation_;
-};
-
-//==============================================================================
-//! A BC that rotates particles about a global axis.
-//
-//! Currently only rotations about the z-axis are supported.
-//==============================================================================
-
-class RotationalPeriodicBC : public PeriodicBC {
-public:
-  RotationalPeriodicBC(int i_surf, int j_surf);
-
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
-
-protected:
-  //! Angle about the axis by which particle coordinates will be rotated
-  double angle_;
-};
-*/
 
 } // namespace openmc
 #endif // OPENMC_BOUNDARY_CONDITION_H

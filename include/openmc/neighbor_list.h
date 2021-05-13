@@ -7,8 +7,6 @@
 #include <mutex>
 #include <assert.h>
 
-//#include "openmc/openmp_interface.h"
-
 #define NEIGHBOR_SIZE 11 // limited by triso regression test
 
 namespace openmc{

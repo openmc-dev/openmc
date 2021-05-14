@@ -420,69 +420,67 @@ class Solver:
 
     def create_log_file(self):
 
-        f = h5py.File(self.log_file, 'w')
+        with h5py.File(self.log_file, 'w') as f:
 
-        f.require_group('shape')
-        f['shape'].attrs['id'] = self.shape_mesh.id
-        f['shape'].attrs['name'] = self.shape_mesh.name
-        f['shape'].attrs['dimension'] = self.shape_mesh.dimension
-        f['shape'].attrs['lower_left'] = self.shape_mesh.lower_left
-        if self.shape_mesh.width:
-            f['shape'].attrs['width'] = self.shape_mesh.width
-        else:
-            f['shape'].attrs['width'] = [(i-j)/k for i,j,k in zip(
-                self.shape_mesh.upper_right, 
-                self.shape_mesh.lower_left, 
-                self.shape_mesh.dimension)]
+            f.require_group('shape')
+            f['shape'].attrs['id'] = self.shape_mesh.id
+            f['shape'].attrs['name'] = self.shape_mesh.name
+            f['shape'].attrs['dimension'] = self.shape_mesh.dimension
+            f['shape'].attrs['lower_left'] = self.shape_mesh.lower_left
+            if self.shape_mesh.width:
+                f['shape'].attrs['width'] = self.shape_mesh.width
+            else:
+                f['shape'].attrs['width'] = [(i-j)/k for i,j,k in zip(
+                    self.shape_mesh.upper_right, 
+                    self.shape_mesh.lower_left, 
+                    self.shape_mesh.dimension)]
 
-        f.require_group('amplitude')
-        f['amplitude'].attrs['id'] = self.amplitude_mesh.id
-        f['amplitude'].attrs['name'] = self.amplitude_mesh.name
-        f['amplitude'].attrs['dimension'] = self.amplitude_mesh.dimension
-        f['amplitude'].attrs['lower_left'] = self.amplitude_mesh.lower_left
-        if self.amplitude_mesh.width:
-            f['amplitude'].attrs['width'] = self.amplitude_mesh.width
-        else:
-            f['amplitude'].attrs['width'] = [(i-j)/k for i,j,k in zip(
-                self.amplitude_mesh.upper_right, 
-                self.amplitude_mesh.lower_left, 
-                self.amplitude_mesh.dimension)]
+            f.require_group('amplitude')
+            f['amplitude'].attrs['id'] = self.amplitude_mesh.id
+            f['amplitude'].attrs['name'] = self.amplitude_mesh.name
+            f['amplitude'].attrs['dimension'] = self.amplitude_mesh.dimension
+            f['amplitude'].attrs['lower_left'] = self.amplitude_mesh.lower_left
+            if self.amplitude_mesh.width:
+                f['amplitude'].attrs['width'] = self.amplitude_mesh.width
+            else:
+                f['amplitude'].attrs['width'] = [(i-j)/k for i,j,k in zip(
+                    self.amplitude_mesh.upper_right, 
+                    self.amplitude_mesh.lower_left, 
+                    self.amplitude_mesh.dimension)]
 
-        for groups,name in \
-            zip([self.one_group, self.energy_groups, self.fine_groups, self.tally_groups],
-                ['one_group', 'energy_groups', 'fine_groups', 'tally_groups']):
-            f.require_group(name)
-            f[name].attrs['group_edges'] = groups.group_edges
-            f[name].attrs['num_groups'] = groups.num_groups
+            for groups,name in \
+                zip([self.one_group, self.energy_groups, self.fine_groups, self.tally_groups],
+                    ['one_group', 'energy_groups', 'fine_groups', 'tally_groups']):
+                f.require_group(name)
+                f[name].attrs['group_edges'] = groups.group_edges
+                f[name].attrs['num_groups'] = groups.num_groups
 
-        f.attrs['num_delayed_groups'] = self.num_delayed_groups
-        f.attrs['chi_delayed_by_delayed_group'] \
-            = self.chi_delayed_by_delayed_group
-        f.attrs['chi_delayed_by_mesh'] = self.chi_delayed_by_mesh
-        f.attrs['use_agd'] = self.use_agd
-        f.attrs['use_pcmfd'] = self.use_pcmfd
-        f.attrs['num_delayed_groups'] = self.num_delayed_groups
-        f.attrs['num_outer_time_steps'] = self.num_outer_time_steps
-        f.attrs['use_pregenerated_sps'] = self.use_pregenerated_sps
-        f.attrs['core_volume'] = self.core_volume
-        f.attrs['k_crit'] = self.k_crit
-        f.attrs['method'] = self.method
-        f.attrs['pnl'] = self.states['START'].pnl
-        f.require_group('clock')
-        f['clock'].attrs['dt_outer'] = self.clock.dt_outer
-        f['clock'].attrs['dt_inner'] = self.clock.dt_inner
-        f.require_group('OUTER_STEPS')
-        f.require_group('INNER_STEPS')
-        f.create_dataset('beta', data=self.states['START'].beta())
-        f.create_dataset('beta_shape', data=self.states['START'].beta_shape())
-        f.create_dataset('beta_eff', data=self.states['START'].beta_eff)
-        f.create_dataset('power', data=self.states['START'].power)
-        f.create_dataset('decay_rate', data=self.states['START'].decay_rate)
-        f.create_dataset('inverse_velocity', data=self.states['START'].inverse_velocity)
-        total = self.states['START'].absorption + self.states['START'].outscatter
-        f.create_dataset('total', data=total)
-
-        f.close()
+            f.attrs['num_delayed_groups'] = self.num_delayed_groups
+            f.attrs['chi_delayed_by_delayed_group'] \
+                = self.chi_delayed_by_delayed_group
+            f.attrs['chi_delayed_by_mesh'] = self.chi_delayed_by_mesh
+            f.attrs['use_agd'] = self.use_agd
+            f.attrs['use_pcmfd'] = self.use_pcmfd
+            f.attrs['num_delayed_groups'] = self.num_delayed_groups
+            f.attrs['num_outer_time_steps'] = self.num_outer_time_steps
+            f.attrs['use_pregenerated_sps'] = self.use_pregenerated_sps
+            f.attrs['core_volume'] = self.core_volume
+            f.attrs['k_crit'] = self.k_crit
+            f.attrs['method'] = self.method
+            f.attrs['pnl'] = self.states['START'].pnl
+            f.require_group('clock')
+            f['clock'].attrs['dt_outer'] = self.clock.dt_outer
+            f['clock'].attrs['dt_inner'] = self.clock.dt_inner
+            f.require_group('OUTER_STEPS')
+            f.require_group('INNER_STEPS')
+            f.create_dataset('beta', data=self.states['START'].beta())
+            f.create_dataset('beta_shape', data=self.states['START'].beta_shape())
+            f.create_dataset('beta_eff', data=self.states['START'].beta_eff)
+            f.create_dataset('power', data=self.states['START'].power)
+            f.create_dataset('decay_rate', data=self.states['START'].decay_rate)
+            f.create_dataset('inverse_velocity', data=self.states['START'].inverse_velocity)
+            total = self.states['START'].absorption + self.states['START'].outscatter
+            f.create_dataset('total', data=total)
 
     def run_openmc(self, time_point, method='ADIABATIC'):
 
@@ -755,7 +753,7 @@ class Solver:
 
         if self.mgxs_lib:
             self.materials.cross_sections = './mgxs.h5'
-            self.mgxs_lib.export_to_hdf5(self.directory / 'mgxs.h5')
+            self.mgxs_lib.export_to_hdf5(str(self.directory / 'mgxs.h5'))
             settings.energy_mode = 'multi-group'
 
         # Create MGXS

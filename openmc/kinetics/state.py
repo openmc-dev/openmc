@@ -792,23 +792,21 @@ class OuterState(State):
     def dump_to_log_file(self):
 
         time_point = str(self.clock.times[self.time_point])
-        f = h5py.File(self._log_file, 'a')
-        if time_point not in f['OUTER_STEPS'].keys():
-            f['OUTER_STEPS'].require_group(time_point)
+        with h5py.File(self._log_file, 'a') as f:
+            if time_point not in f['OUTER_STEPS'].keys():
+                f['OUTER_STEPS'].require_group(time_point)
 
-        if 'shape' not in f['OUTER_STEPS'][time_point].keys():
-            f['OUTER_STEPS'][time_point].create_dataset('shape', data=self.shape)
-            f['OUTER_STEPS'][time_point].create_dataset('power', data=self.power)
-            f['OUTER_STEPS'][time_point].create_dataset('kappa_fission', data=self.kappa_fission)
-        else:
-            shape = f['OUTER_STEPS'][time_point]['shape']
-            shape[...] = self.shape
-            power = f['OUTER_STEPS'][time_point]['power']
-            power[...] = self.power
-            kappa_fission = f['OUTER_STEPS'][time_point]['kappa_fission']
-            kappa_fission[...] = self.kappa_fission
-
-        f.close()
+            if 'shape' not in f['OUTER_STEPS'][time_point].keys():
+                f['OUTER_STEPS'][time_point].create_dataset('shape', data=self.shape)
+                f['OUTER_STEPS'][time_point].create_dataset('power', data=self.power)
+                f['OUTER_STEPS'][time_point].create_dataset('kappa_fission', data=self.kappa_fission)
+            else:
+                shape = f['OUTER_STEPS'][time_point]['shape']
+                shape[...] = self.shape
+                power = f['OUTER_STEPS'][time_point]['power']
+                power[...] = self.power
+                kappa_fission = f['OUTER_STEPS'][time_point]['kappa_fission']
+                kappa_fission[...] = self.kappa_fission
 
     def compute_initial_precursor_concentration(self):
         flux = np.tile(self.flux, self.nd).flatten()
@@ -1465,24 +1463,22 @@ class InnerState(State):
     def dump_to_log_file(self):
 
         time_point = str(self.clock.times[self.time_point])
-        f = h5py.File(self._log_file, 'a')
-        if time_point not in f['INNER_STEPS'].keys():
-            f['INNER_STEPS'].require_group(time_point)
+        with h5py.File(self._log_file, 'a') as f:
+            if time_point not in f['INNER_STEPS'].keys():
+                f['INNER_STEPS'].require_group(time_point)
 
-        if 'amplitude' not in f['INNER_STEPS'][time_point].keys():
-            f['INNER_STEPS'][time_point].create_dataset('amplitude', data=self.amplitude)
-            f['INNER_STEPS'][time_point].create_dataset('flux', data=self.flux)
-            f['INNER_STEPS'][time_point].create_dataset('power', data=self.power)
-        else:
-            amp = f['INNER_STEPS'][time_point]['amplitude']
-            amp[...] = self.amplitude
-            flux = f['INNER_STEPS'][time_point]['flux']
-            flux[...] = self.flux
-            power = f['INNER_STEPS'][time_point]['power']
-            power[...] = self.power
+            if 'amplitude' not in f['INNER_STEPS'][time_point].keys():
+                f['INNER_STEPS'][time_point].create_dataset('amplitude', data=self.amplitude)
+                f['INNER_STEPS'][time_point].create_dataset('flux', data=self.flux)
+                f['INNER_STEPS'][time_point].create_dataset('power', data=self.power)
+            else:
+                amp = f['INNER_STEPS'][time_point]['amplitude']
+                amp[...] = self.amplitude
+                flux = f['INNER_STEPS'][time_point]['flux']
+                flux[...] = self.flux
+                power = f['INNER_STEPS'][time_point]['power']
+                power[...] = self.power
 
-        f['INNER_STEPS'][time_point].attrs['reactivity'] = self.reactivity
-        f['INNER_STEPS'][time_point].attrs['beta_eff'] = self.beta_eff.sum()
-        f['INNER_STEPS'][time_point].attrs['core_power_density'] = self.core_power_density
-
-        f.close()
+            f['INNER_STEPS'][time_point].attrs['reactivity'] = self.reactivity
+            f['INNER_STEPS'][time_point].attrs['beta_eff'] = self.beta_eff.sum()
+            f['INNER_STEPS'][time_point].attrs['core_power_density'] = self.core_power_density

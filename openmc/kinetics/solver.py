@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import copy
 import os
+import pathlib
 from shutil import copyfile, move
 import subprocess
 import sys
@@ -27,8 +28,8 @@ class Solver:
 
     Attributes
     ----------
-    directory : str
-        A directory to save the transient simulation data.
+    directory : pathlib.Path
+        A path to the directory where transient simulation data is saved.
     shape_mesh : openmc.RegularMesh
         Mesh by which shape is computed on.
     unity_mesh : openmc.RegularMesh
@@ -123,7 +124,7 @@ class Solver:
 
     @property
     def directory(self):
-        return self._directory
+        return pathlib.Path(self._directory)
 
     @property
     def amplitude_mesh(self):
@@ -303,7 +304,7 @@ class Solver:
 
     @mgxs_lib.setter
     def mgxs_lib(self, mgxs_lib):
-        cv.check_type('mgxs library', mgxs_lib, openmc.materials.MGXSLibrary)
+        cv.check_type('mgxs library', mgxs_lib, openmc.mgxs_library.MGXSLibrary)
         self._mgxs_lib = mgxs_lib
 
     @clock.setter
@@ -413,8 +414,8 @@ class Solver:
 
     @property
     def log_file(self):
-        log_file = self.directory + '/' + self.log_file_name
-        log_file = log_file.replace(' ', '-')
+        log_file = self.log_file_name.replace(' ', '-')
+        log_file = self.directory / log_file
         return log_file
 
     def create_log_file(self):
@@ -488,13 +489,13 @@ class Solver:
         self.setup_openmc(time_point, method)
 
         # Names of the statepoint and summary files
-        sp_old_name = '{}/statepoint.{}.h5'.format(self.directory, self.settings.batches)
-        sp_new_name = '{}/statepoint_{:.6f}_sec.{}.h5'\
-                      .format(self.directory, self.clock.times[time_point], self.settings.batches)
-        sum_old_name = '{}/summary.h5'.format(self.directory)
-        sum_new_name = '{}/summary_{:.6f}_sec.h5'.format(self.directory, self.clock.times[time_point])
-        old_source = '{}/source.{}.h5'.format(self.directory, self.settings.batches)
-        new_source = '{}/source.h5'.format(self.directory)
+        sp_old_name = self.directory / 'statepoint.{}.h5'.format(self.settings.batches)
+        sp_new_name = self.directory / 'statepoint_{:.6f}_sec.{}.h5'\
+                      .format(self.clock.times[time_point], self.settings.batches)
+        sum_old_name = self.directory / 'summary.h5'
+        sum_new_name = self.directory / 'summary_{:.6f}_sec.h5'.format(self.clock.times[time_point])
+        old_source = self.directory / 'source.{}.h5'.format(self.settings.batches)
+        new_source = self.directory / 'source.h5'
 
         # Run OpenMC
         if not self.use_pregenerated_sps:
@@ -506,8 +507,8 @@ class Solver:
             move(old_source, new_source)
 
         # Load the summary and statepoint files
-        summary_file = openmc.Summary(sum_new_name)
-        statepoint_file = openmc.StatePoint(sp_new_name, False)
+        summary_file = openmc.Summary(str(sum_new_name))
+        statepoint_file = openmc.StatePoint(str(sp_new_name), False)
         statepoint_file.link_with_summary(summary_file)
 
         # Load mgxs library
@@ -730,13 +731,12 @@ class Solver:
                 tallies_file.append(tally, True)
 
         # Export the tallies file to xml
-        tallies_file.export_to_xml(self.directory + '/tallies.xml')
+        tallies_file.export_to_xml(self.directory / 'tallies.xml')
 
     def solve(self):
 
         # Create run directory
-        if not os.path.exists(self.directory):
-            os.makedirs(self.directory)
+        self.directory.mkdir(exist_ok=True)
 
         # Create states
         self.create_state('START')
@@ -755,7 +755,7 @@ class Solver:
 
         if self.mgxs_lib:
             self.materials.cross_sections = './mgxs.h5'
-            self.mgxs_lib.export_to_hdf5(self.directory + '/mgxs.h5')
+            self.mgxs_lib.export_to_hdf5(self.directory / 'mgxs.h5')
             settings.energy_mode = 'multi-group'
 
         # Create MGXS
@@ -777,9 +777,9 @@ class Solver:
             materials_list.append(material)
         self.materials = openmc.Materials(materials_list)
         
-        self.geometry.export_to_xml(self.directory + '/geometry.xml')
-        self.materials.export_to_xml(self.directory + '/materials.xml')
-        settings.export_to_xml(self.directory + '/settings.xml')
+        self.geometry.export_to_xml(self.directory / 'geometry.xml')
+        self.materials.export_to_xml(self.directory / 'materials.xml')
+        settings.export_to_xml(self.directory / 'settings.xml')
         self.generate_tallies_file(time_point)
 
     @property

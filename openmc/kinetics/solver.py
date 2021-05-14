@@ -71,7 +71,7 @@ class Solver:
     chi_delayed_by_mesh : bool
         Whether to use a mesh in representing chi-delayed.
     use_pcmfd : bool
-        Whether to use p-CMFD
+        Whether to use p-CMFD.
     num_delayed_groups : int
         The number of delayed neutron precursor groups.
     states : OrderedDict of openmc.kinetics.State
@@ -83,7 +83,7 @@ class Solver:
     log_file_name : str
         Log file name (excluding directory prefix).
     min_outer_iters : int
-        Minimum number of outer iterations to take
+        Minimum number of outer iterations to take.
 
     """
 
@@ -400,6 +400,9 @@ class Solver:
 
     @method.setter
     def method(self, method):
+        # The omega method solves equations (2.29) and (2.30) in Shaner's thesis.
+        # The adiabatic method sets the frequencies = 0 which simply those same
+        # equations to the instantaneous eigenstate. 
         cv.check_value('method', method, ['ADIABATIC', 'OMEGA'])
         self._method = method
 
@@ -419,6 +422,9 @@ class Solver:
         return log_file
 
     def _create_log_file(self):
+        """Write a log file that stores information about the transient.
+
+        """
 
         with h5py.File(self.log_file, 'w') as f:
 
@@ -483,6 +489,17 @@ class Solver:
             f.create_dataset('total', data=total)
 
     def _run_openmc(self, time_point, method='ADIABATIC'):
+        """Run a simulation at a given time point.
+
+        Parameters
+        ----------
+        time_point : str
+            Refers to the present time step of the simulation.
+        method : str
+            The approximation to the time-derivatives in the Monte Carlo simulation.
+            'ADIABATIC' approximates the time-derivatives as 0.
+
+        """
 
         self._setup_openmc(time_point, method)
 
@@ -516,6 +533,14 @@ class Solver:
         self.states[time_point]._load_mgxs()
 
     def _create_state(self, time_point):
+        """Modify state as needed to reflect current values in solver.
+
+        Parameters
+        ----------
+        time_point : str
+            Refers to the present time step of the simulation.
+
+        """
 
         if time_point in ('START', 'END', 'FORWARD_OUTER', 'PREVIOUS_OUTER'):
             state = openmc.kinetics.OuterState(self.states)
@@ -551,6 +576,9 @@ class Solver:
         self.states[time_point] = state
 
     def _compute_initial_flux(self):
+        """Run a simulation at the starting state.
+
+        """
 
         # Run OpenMC to obtain XS
         self._run_openmc('START')
@@ -601,6 +629,16 @@ class Solver:
         self.settings.sourcepoint['batches'] = [self.settings.batches]
 
     def _copy_states(self, time_from, time_to):
+        """Use old state as starting point for new state.
+
+        Parameters
+        ----------
+        time_from : str
+            Time point being copied from.
+        time_to : str
+            Time point being copied into.
+
+        """
 
         state_from            = self.states[time_from]
         state_to              = self.states[time_to]
@@ -618,6 +656,14 @@ class Solver:
             state_to._load_mgxs()
 
     def _take_inner_step(self, i):
+        """Perform an inner time step using CMFD.
+
+        Parameters
+        ----------
+        i : int
+            Counter for the number of inner time steps.
+
+        """
 
         # Increment clock
         times     = self.clock.times
@@ -651,6 +697,17 @@ class Solver:
                          state_fwd.beta_eff.sum(), state_fwd.pnl))
 
     def _take_outer_step(self, outer_step):
+        """Perform a complete outer time step, first by running the next outer 
+        time point Monte Carlo simulation, then calling _take_inner_time_step()
+        for all the inner time steps. This is done in a loop until the residual
+        is below tolerance.
+
+        Parameters
+        ----------
+        outer_step : int
+            Counter for the number of outer time steps.
+
+        """
 
         # Increment clock
         times     = self.clock.times
@@ -715,6 +772,15 @@ class Solver:
         self.clock.outer_step += 1
 
     def _generate_tallies_file(self, time_point):
+        """Write a file that stores information about the tallies at a given time point.
+        Note these files will overwrite each other throughout the transient. 
+
+        Parameters
+        ----------
+        time_point : str
+            Refers to the present time step of the simulation.
+
+        """
 
         # Generate a new tallies file
         tallies_file = openmc.Tallies()
@@ -732,6 +798,9 @@ class Solver:
         tallies_file.export_to_xml(self.directory / 'tallies.xml')
 
     def solve(self):
+        """Run a transient simulation based on input created in an OpenMC input file.
+
+        """
 
         # Create run directory
         self.directory.mkdir(exist_ok=True)
@@ -747,6 +816,17 @@ class Solver:
             self._take_outer_step(i)
 
     def _setup_openmc(self, time_point, method):
+        """Prepare a simulation at a given time point.
+
+        Parameters
+        ----------
+        time_point : str
+            Refers to the present time step of the simulation.
+        method : str
+            The approximation to the time-derivatives in the Monte Carlo simulation.
+            'ADIABATIC' approximates the time-derivatives as 0.
+
+        """
 
         # Get a fresh copy of the settings file
         settings = copy.deepcopy(self.settings)

@@ -22,9 +22,9 @@ class State(ABC):
     shape_mesh : openmc.RegularMesh
         Mesh by which power is reconstructed on.
     unity_mesh : openmc.RegularMesh
-        Mesh with one cell convering the entire geometry..
+        Mesh with one cell convering the entire geometry.
     tally_mesh : openmc.RegularMesh
-        Mesh to tally currents
+        Mesh to tally currents.
     one_group : openmc.mgxs.groups.EnergyGroups
         EnergyGroups which specifies the a one-energy-group structure.
     energy_groups : openmc.mgxs.groups.EnergyGroups
@@ -54,9 +54,9 @@ class State(ABC):
     chi_delayed_by_mesh : bool
         Whether to use a mesh in representing chi-delayed.
     use_agd : bool
-        Whether to use artificial grid diffusion
+        Whether to use artificial grid diffusion.
     use_pcmfd : bool
-        Whether to use p-CMFD
+        Whether to use p-CMFD.
     num_delayed_groups : int
         The number of delayed neutron precursor groups.
     time_point : str
@@ -421,6 +421,7 @@ class State(ABC):
     @property
     def coupling_matrix(self):
 
+        # The time-dependent CMFD matrix (TCMFD) according to equation (2.63) in Shaner's thesis
         diags, dc_linear_data, dc_nonlinear_data = self.coupling_terms
 
         # Form a matrix of the surface diffusion coefficients corrections
@@ -476,6 +477,20 @@ class State(ABC):
         return (delayed_production / production)
 
     def beta(self, integrated=False):
+        """Calculate beta.
+
+        Parameters
+        ----------
+        integrated : bool
+            Whether or not beta is integrated.
+
+        Returns
+        -------
+        np.array
+            Values of beta in each spatial cell.
+
+        """
+
         flux = np.tile(self.flux, self.nd).reshape((self.shape_nxyz, self.nd, self.ng))
 
         delayed_production = self.delayed_production
@@ -506,6 +521,20 @@ class State(ABC):
         return delayed_production / production
 
     def beta_shape(self, integrated=False):
+        """Calculate the shape of beta.
+
+        Parameters
+        ----------
+        integrated : bool
+            Whether or not beta is integrated.
+
+        Returns
+        -------
+        np.array
+            Values of beta in each spatial cell, normalized to represent the shape.
+
+        """
+
         flux = np.tile(self.flux, self.nd).reshape((self.shape_nxyz, self.nd, self.ng))
 
         delayed_production = self.delayed_production
@@ -549,6 +578,30 @@ class State(ABC):
         return delayed_production / production
 
 class OuterState(State):
+    """State to store all the variables that describe the outer state at a given time point.
+
+    Attributes
+    ----------
+    shape : np.ndarray
+        Numpy array used to store the shape function.
+    mgxs_lib : OrderedDict of OrderedDict of openmc.tallies
+        Dict of Dict of tallies. The first Dict is indexed by time point
+        and the second Dict is indexed by rxn type.
+    chi_delayed_by_delayed_group : bool
+        Whether to use delayed groups in representing chi-delayed.
+    chi_delayed_by_mesh : bool
+        Whether to use a mesh in representing chi-delayed.
+    use_agd : bool
+        Whether to use artificial grid diffusion.
+    use_pcmfd : bool
+        Whether to use p-CMFD.
+    mgxs_loaded : bool
+        Whether mgxs are loaded.
+    method : str
+        The approximation to the time-derivatives in the Monte Carlo simulation.
+        'ADIABATIC' approximates the time-derivatives as 0.
+
+    """
 
     def __init__(self, states):
         super().__init__(states)
@@ -773,6 +826,11 @@ class OuterState(State):
         return self._diffusion_coefficient
 
     def _extract_shape(self):
+        """Calculate the shape of the flux from the full flux.
+
+        """
+
+        # The full flux is decomposed into shape and amplitude, see equation (2.23) in Shaner's thesis.
 
         # Get the current power
         power = self.core_power_density
@@ -809,6 +867,10 @@ class OuterState(State):
                 kappa_fission[...] = self.kappa_fission
 
     def _compute_initial_precursor_concentration(self):
+        """Compute the initial precursor concentrations.
+
+        """
+
         flux = np.tile(self.flux, self.nd).flatten()
         del_fis_rate = self.delayed_nu_fission.flatten() * flux
         del_fis_rate.shape = (self.shape_nxyz, self.nd, self.ng)
@@ -816,6 +878,10 @@ class OuterState(State):
         self.precursors = openmc.kinetics.nan_inf_to_zero(precursors)
 
     def _load_mgxs(self):
+        """Load all the multi-group cross sections for the problem.
+
+        """
+
         self.mgxs_loaded = False
         self.delayed_nu_fission
         self.inscatter
@@ -833,7 +899,7 @@ class OuterState(State):
         self.mgxs_loaded = True
 
     def _initialize_mgxs(self):
-        """Initialize all the tallies for the problem.
+        """Initialize all the multi-group cross sections for the problem.
 
         """
 
@@ -926,6 +992,18 @@ class OuterState(State):
 
     @property
     def coupling_terms(self):
+        """Calculate the coupling terms needed for CMFD.
+
+        Returns
+        -------
+        diags : list
+            Diagonal entries of the CMFD matrix.
+        dc_linear_data : np.array
+            Contains linear finite difference diffusion terms.
+        dc_nonlinear_data : np.array
+            Contains non-linear finite difference diffusion terms.
+
+        """
 
         # Get the dimensions of the mesh
         nz , ny , nx  = self.amplitude_dimension
@@ -1184,6 +1262,16 @@ class OuterState(State):
 
 
 class InnerState(State):
+    """State to store all the variables that describe the inner state at a given time point.
+
+    Attributes
+    ----------
+    fwd_state : State object
+        Refers to the state of the next outer step.
+    pre_state : State object
+        Refers to the state of the previous outer step.
+
+    """
 
     def __init__(self, states):
         super().__init__(states)

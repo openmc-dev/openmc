@@ -20,7 +20,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
             }
          }
     ]

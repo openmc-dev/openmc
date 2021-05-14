@@ -62,7 +62,7 @@ class Solver:
         EnergyGroups used in all tallies except the diffusion coefficients
         (see fine_groups).
     initial_power : float
-        The initial core power (in MWth).
+        The initial core power (in W).
     k_crit : float
         The initial eigenvalue.
     run_kwargs : dictionary of keyword arguments passed to openmc.run.
@@ -754,7 +754,6 @@ class Solver:
         if self.mgxs_lib:
             self.materials.cross_sections = './mgxs.h5'
             self.mgxs_lib.export_to_hdf5(str(self.directory / 'mgxs.h5'))
-            settings.energy_mode = 'multi-group'
 
         # Create MGXS
         state = self.states[time_point]

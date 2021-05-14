@@ -18,6 +18,7 @@ settings_file.inactive = 40
 settings_file.particles = 1000
 settings_file.output = {'tallies': False}
 settings_file.seed = 1
+settings_file.energy_mode = 'multi-group'
 
 # Create an initial uniform spatial source distribution over fissionable zones
 source_bounds  = [-32.13, -10.71, -64.26, 10.71,  32.13,  64.26]

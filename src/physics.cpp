@@ -1045,12 +1045,7 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
     while (true) {
       // sample from energy/angle distribution -- note that mu has already been
       // sampled above and doesn't need to be resampled
-
-      auto product = rx.products(group);
-      #pragma omp target map(from: site->E, mu) map(tofrom: seed[:1])
-      {
-        product.sample(E_in, site->E, mu, seed);
-      }
+      rx.products(group).sample(E_in, site->E, mu, seed);
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
@@ -1075,11 +1070,7 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
     // sample from prompt neutron energy distribution
     int n_sample = 0;
     while (true) {
-      auto product = rx.products(0);
-      #pragma omp target map(from: site->E, mu) map(tofrom: seed[:1])
-      {
-        product.sample(E_in, site->E, mu, seed);
-      }
+      rx.products(0).sample(E_in, site->E, mu, seed);
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
@@ -1105,11 +1096,7 @@ void inelastic_scatter(const Nuclide& nuc, const ReactionFlat& rx, Particle& p)
   double E;
   double mu;
   auto* seed = p.current_seed();
-  auto product = rx.products(0);
-  #pragma omp target map(from: E, mu) map(tofrom: seed[:1])
-  {
-    product.sample(E_in, E, mu, seed);
-  }
+  rx.products(0).sample(E_in, E, mu, seed);
 
   // if scattering system is in center-of-mass, transfer cosine of scattering
   // angle and outgoing energy from CM to LAB

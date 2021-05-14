@@ -9,26 +9,6 @@
 
 namespace openmc {
 
-  /*
-void * device_alloc( size_t sz, int device_id )
-{
-  void * ptr = NULL;
-
-  if( sz > 0 )
-  {
-    ptr = (void *) malloc(sz);
-    assert(ptr != NULL);
-  }
-
-  return ptr;
-}
-
-void device_memcpy( void * dst_ptr, void * src_ptr, size_t sz, int dst_id, int src_id)
-{
-  memcpy(dst_ptr, src_ptr, sz);
-}
-*/
-
 void enforce_assumptions()
 {
   // Notably, I have commented this capability out of particle::cross_vacuum_bc and particle::cross_reflective_bc
@@ -38,10 +18,23 @@ void enforce_assumptions()
   assert(model::active_surface_tallies.empty() && "Surface tallies not yet supported.");
 }
 
+void move_settings_to_device()
+{
+  #pragma omp target update to(settings::dagmc)
+  #pragma omp target update to(settings::run_CE)
+  #pragma omp target update to(settings::max_lost_particles)
+  #pragma omp target update to(settings::rel_max_lost_particles)
+  #pragma omp target update to(settings::gen_per_batch)
+  #pragma omp target update to(settings::run_mode)
+}
+
 void move_read_only_data_to_device()
 {
   // Enforce any device-specific assumptions or limitations on user inputs
   enforce_assumptions();
+
+  // Copy all global settings into device globals
+  move_settings_to_device();
 
   int host_id = omp_get_initial_device();
   int device_id = omp_get_default_device();

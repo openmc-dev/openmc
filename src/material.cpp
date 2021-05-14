@@ -339,13 +339,7 @@ Material::Material(pugi::xml_node node)
 
 Material::~Material()
 {
-  // As Material objects are added to the materials vector, they can be
-  // moved, triggering unwanted removal.  I can't think of a case where
-  // someone would need to add then delete a material within the same
-  // simulation (except at end of simulation), so this function does
-  // not seem necessary. Perhaps if someone is sitting in an interactive
-  // python session though this could happen?
-  //model::material_map.erase(id_);
+  model::material_map.erase(id_);
 }
 
 void Material::finalize()
@@ -1251,10 +1245,16 @@ void read_materials_xml()
 
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
+
+  // Count the number of materials
+  int n_material_nodes = std::distance(root.children("material").begin(), root.children("material").end());
+
+  // Resize the material vector
+  model::materials.reserve(n_material_nodes);
+
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.emplace_back(material_node);
   }
-  model::materials.shrink_to_fit();
 }
 
 void free_memory_material()

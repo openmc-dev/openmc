@@ -17,7 +17,9 @@ namespace openmc {
 
 namespace model {
 
+#pragma omp declare target
 extern int root_universe;  //!< Index of root universe
+#pragma omp end declare target
 extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
 extern std::vector<int64_t> overlap_check_count;
@@ -28,9 +30,11 @@ extern std::vector<int64_t> overlap_check_count;
 //! Check two distances by coincidence tolerance
 //==============================================================================
 
+#pragma omp declare target
 inline bool coincident(double d1, double d2) {
   return std::abs(d1 - d2) < FP_COINCIDENT;
 }
+#pragma omp end declare target
 
 //==============================================================================
 //! Check for overlapping cells at a particle's position.
@@ -46,14 +50,18 @@ bool check_cell_overlap(Particle& p, bool error=true);
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
+#pragma omp declare target
 bool exhaustive_find_cell(Particle& p);
 bool neighbor_list_find_cell(Particle& p); // Only usable on surface crossings
+#pragma omp end declare target
 
 //==============================================================================
 //! Move a particle into a new lattice tile.
 //==============================================================================
 
+#pragma omp declare target
 void cross_lattice(Particle& p, const BoundaryInfo& boundary);
+#pragma omp end declare target
 
 //==============================================================================
 //! Find the next boundary a particle will intersect.

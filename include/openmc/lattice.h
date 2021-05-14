@@ -67,9 +67,11 @@ public:
 
   ~Lattice() {}
 
+  #pragma omp declare target
   int32_t& operator[](std::array<int, 3> i_xyz);
   int32_t& RectLattice_index(std::array<int, 3> i_xyz);
   int32_t& HexLattice_index(std::array<int, 3> i_xyz);
+  #pragma omp end declare target
 
   LatticeIter begin();
   LatticeIter end();
@@ -92,6 +94,7 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return true if the given indices fit within the lattice bounds.  False
   //!   otherwise.
+  #pragma omp declare target
   bool are_valid_indices(const int i_xyz[3]) const;
   bool RectLattice_are_valid_indices(const int i_xyz[3]) const;
   bool HexLattice_are_valid_indices(const int i_xyz[3]) const;
@@ -102,6 +105,7 @@ public:
     int i_xyz_[3] {i_xyz[0], i_xyz[1], i_xyz[2]};
     return are_valid_indices(i_xyz_);
   }
+  #pragma omp end declare target
 
   //! \brief Find the next lattice surface crossing
   //! \param r A 3D Cartesian coordinate.
@@ -121,9 +125,11 @@ public:
   //! \brief Find the lattice tile indices for a given point.
   //! \param r A 3D Cartesian coordinate.
   //! \return An array containing the indices of a lattice tile.
+  #pragma omp declare target
   std::array<int, 3> get_indices(Position r, Direction u) const;
   std::array<int, 3> RectLattice_get_indices(Position r, Direction u) const;
   std::array<int, 3> HexLattice_get_indices(Position r, Direction u) const;
+  #pragma omp end declare target
 
   //! \brief Get coordinates local to a lattice tile.
   //! \param r A 3D Cartesian coordinate.
@@ -151,12 +157,14 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree under this lattice tile.
+  #pragma omp declare target
   int32_t& offset(int map, const int i_xyz[3]);
   int32_t offset(int map, int indx) const;
   int32_t& RectLattice_offset(int map, const int i_xyz[3]);
   int32_t& HexLattice_offset(int map, const int i_xyz[3]);
   int32_t RectLattice_offset(int map, int indx) const;
   int32_t HexLattice_offset(int map, int indx) const;
+  #pragma omp end declare target
 
   //! \brief Get the distribcell offset for a lattice tile.
   //! \param The map index for the target cell.

@@ -76,7 +76,9 @@ namespace model {
 
   //extern std::vector<std::unique_ptr<Universe>> universes;
   extern std::vector<Universe> universes;
+  #pragma omp declare target
   extern Universe* device_universes;
+  #pragma omp end declare target
   extern std::unordered_map<int32_t, int32_t> universe_map;
 } // namespace model
 
@@ -137,8 +139,10 @@ public:
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
+  #pragma omp declare target
   bool
   contains(Position r, Direction u, int32_t on_surface) const;
+  #pragma omp end declare target
 
   //! Find the oncoming boundary of this cell.
   #pragma omp declare target
@@ -247,7 +251,9 @@ public:
   int32_t* device_offset_{NULL};
 
 protected:
+  #pragma omp declare target
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
+  #pragma omp end declare target
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   BoundingBox bounding_box_simple() const;
   static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);

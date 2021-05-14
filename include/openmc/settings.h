@@ -28,7 +28,9 @@ extern bool check_overlaps;           //!< check overlaps in geometry?
 extern bool confidence_intervals;     //!< use confidence intervals for results?
 extern bool create_fission_neutrons;  //!< create fission neutrons (fixed source)?
 extern "C" bool cmfd_run;             //!< is a CMFD run?
+#pragma omp declare target
 extern "C" bool dagmc;                //!< indicator of DAGMC geometry
+#pragma omp end declare target
 extern bool delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on;           //!< calculate Shannon entropy?
 extern bool event_based;              //!< use event-based mode (instead of history-based)
@@ -41,7 +43,9 @@ extern "C" bool photon_transport;     //!< photon transport turned on?
 extern "C" bool reduce_tallies;       //!< reduce tallies at end of batch?
 extern bool res_scat_on;              //!< use resonance upscattering method?
 extern "C" bool restart_run;          //!< restart run?
+#pragma omp declare target
 extern "C" bool run_CE;               //!< run with continuous-energy data?
+#pragma omp end declare target
 extern bool source_latest;            //!< write latest source at each batch?
 extern bool source_separate;          //!< write source to separate file?
 extern bool source_write;             //!< write source in HDF5 files?
@@ -86,7 +90,9 @@ extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
 extern std::vector<std::string> res_scat_nuclides;  //!< Nuclides using res. upscattering treatment
+#pragma omp declare target
 extern RunMode run_mode;                 //!< Run mode (eigenvalue, fixed src, etc.)
+#pragma omp end declare target
 extern std::unordered_set<int> sourcepoint_batch; //!< Batches when source should be written
 extern std::unordered_set<int> statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int> source_write_surf_id; //!< Surface ids where sources will be written

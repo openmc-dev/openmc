@@ -107,7 +107,7 @@ public:
   int id_;                    //!< Unique ID
   SurfaceType type_;                    //!< Surface type
   std::string name_; //!< User-defined name
-  std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
+  BoundaryCondition bc_; //!< Boundary condition
   bool surf_source_ {false};     //!< Activate source banking for the surface?
 
   // Actual values;
@@ -126,23 +126,28 @@ public:
   //!   point is very close to the surface.
   //! \return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
+  #pragma omp declare target
   bool sense(Position r, Direction u) const;
+  #pragma omp end declare target
 
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
   //! \param[inout] p Pointer to the particle
   //! \return Outgoing direction of the ray
+  #pragma omp declare target
   Direction reflect(Position r, Direction u, Particle* p) const;
 
   Direction diffuse_reflect(Position r, Direction u,
     uint64_t* seed) const;
+  #pragma omp end declare target
 
   //! Evaluate the equation describing the surface.
   //!
   //! Surfaces can be described by some function f(x, y, z) = 0.  This member
   //! function evaluates that mathematical function.
   //! \param r A 3D Cartesian coordinate.
+  #pragma omp declare target
   double evaluate(Position r) const;
  double SurfaceXPlane_evaluate(Position r) const;   
  double SurfaceYPlane_evaluate(Position r) const;   
@@ -162,7 +167,6 @@ public:
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  #pragma omp declare target
   double distance(Position r, Direction u, bool coincident) const;
  double SurfaceXPlane_distance(Position r, Direction u, bool coincident) const;   
  double SurfaceYPlane_distance(Position r, Direction u, bool coincident) const;   

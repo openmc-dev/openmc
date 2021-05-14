@@ -135,12 +135,12 @@ Surface::Surface(pugi::xml_node surf_node, Surface::SurfaceType type) : type_(ty
     if (surf_bc == "transmission" || surf_bc == "transmit" ||surf_bc.empty()) {
       // Leave the bc_ a nullptr
     } else if (surf_bc == "vacuum") {
-      bc_ = std::make_shared<VacuumBC>();
+      bc_ = BoundaryCondition(BoundaryCondition::BCType::Vacuum);
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
-      bc_ = std::make_shared<ReflectiveBC>();
+      bc_ = BoundaryCondition(BoundaryCondition::BCType::Reflective);
     } else if (surf_bc == "white") {
-      bc_ = std::make_shared<WhiteBC>();
+      bc_ = BoundaryCondition(BoundaryCondition::BCType::White);
     } else if (surf_bc == "periodic") {
       // periodic BC's are handled separately
     } else {
@@ -227,8 +227,8 @@ Surface::to_hdf5(hid_t group_id) const
 
   hid_t surf_group = create_group(group_id, group_name);
 
-  if (bc_) {
-    write_string(surf_group, "boundary_type", bc_->type(), false);
+  if (bc_.type_ != BoundaryCondition::BCType::Transmission) {
+    write_string(surf_group, "boundary_type", bc_.type(), false);
   } else {
     write_string(surf_group, "boundary_type", "transmission", false);
   }
@@ -540,6 +540,7 @@ bool Surface::SurfacePlane_periodic_translate(const Surface* other, Position& r,
 // The template parameters indicate the axes perpendicular to the axis of the
 // cylinder.  offset1 and offset2 should correspond with i1 and i2,
 // respectively.
+  #pragma omp declare target
 template<int i1, int i2> double
 axis_aligned_cylinder_evaluate(Position r, double offset1,
                                double offset2, double radius)
@@ -548,11 +549,13 @@ axis_aligned_cylinder_evaluate(Position r, double offset1,
   const double r2 = r.get<i2>() - offset2;
   return r1*r1 + r2*r2 - radius*radius;
 }
+#pragma omp end declare target
+  
 
+  #pragma omp declare target
 // The first template parameter indicates which axis the cylinder is aligned to.
 // The other two parameters indicate the other two axes.  offset1 and offset2
 // should correspond with i2 and i3, respectively.
-  #pragma omp declare target
 template<int i1, int i2, int i3> double
 axis_aligned_cylinder_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double radius)
@@ -796,6 +799,7 @@ BoundingBox Surface::SurfaceSphere_bounding_box(bool pos_side) const {
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
 // and offset3 should correspond with i1, i2, and i3, respectively.
+  #pragma omp declare target
 template<int i1, int i2, int i3> double
 axis_aligned_cone_evaluate(Position r, double offset1,
                            double offset2, double offset3, double radius_sq)
@@ -805,6 +809,7 @@ axis_aligned_cone_evaluate(Position r, double offset1,
   const double r3 = r.get<i3>() - offset3;
   return r2*r2 + r3*r3 - radius_sq*r1*r1;
 }
+  #pragma omp end declare target
 
 // The first template parameter indicates which axis the cone is aligned to.
 // The other two parameters indicate the other two axes.  offset1, offset2,
@@ -1050,6 +1055,7 @@ void Surface::SurfaceQuadric_to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 // Dispatchers
 //==============================================================================
+
 double Surface::evaluate(Position r) const
 {
   switch(type_){
@@ -1129,15 +1135,10 @@ BoundingBox Surface::bounding_box(bool pos_side) const
     case SurfaceType::SurfaceXPlane:    return SurfaceXPlane_bounding_box(pos_side);    break;
     case SurfaceType::SurfaceYPlane:    return SurfaceYPlane_bounding_box(pos_side);    break;
     case SurfaceType::SurfaceZPlane:    return SurfaceZPlane_bounding_box(pos_side);    break;
-    //case SurfaceType::SurfacePlane:     return SurfacePlane_bounding_box(pos_side);     break;
     case SurfaceType::SurfaceXCylinder: return SurfaceXCylinder_bounding_box(pos_side); break;
     case SurfaceType::SurfaceYCylinder: return SurfaceYCylinder_bounding_box(pos_side); break;
     case SurfaceType::SurfaceZCylinder: return SurfaceZCylinder_bounding_box(pos_side); break;
     case SurfaceType::SurfaceSphere:    return SurfaceSphere_bounding_box(pos_side);    break;
-    //case SurfaceType::SurfaceXCone:     return SurfaceXCone_bounding_box(pos_side);     break;
-    //case SurfaceType::SurfaceYCone:     return SurfaceYCone_bounding_box(pos_side);     break;
-    //case SurfaceType::SurfaceZCone:     return SurfaceZCone_bounding_box(pos_side);     break;
-    //case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_bounding_box(pos_side);   break;
     default: return {};
   }
 }
@@ -1150,16 +1151,6 @@ bool Surface::periodic_translate(const Surface* other, Position& r,
     case SurfaceType::SurfaceYPlane:    return SurfaceYPlane_periodic_translate(other, r, u);    break;
     case SurfaceType::SurfaceZPlane:    return SurfaceZPlane_periodic_translate(other, r, u);    break;
     case SurfaceType::SurfacePlane:     return SurfacePlane_periodic_translate(other, r, u);     break;
-                           /*
-    case SurfaceType::SurfaceXCylinder: return SurfaceXCylinder_periodic_translate(other, r, u); break;
-    case SurfaceType::SurfaceYCylinder: return SurfaceYCylinder_periodic_translate(other, r, u); break;
-    case SurfaceType::SurfaceZCylinder: return SurfaceZCylinder_periodic_translate(other, r, u); break;
-    case SurfaceType::SurfaceSphere:    return SurfaceSphere_periodic_translate(other, r, u);    break;
-    case SurfaceType::SurfaceXCone:     return SurfaceXCone_periodic_translate(other, r, u);     break;
-    case SurfaceType::SurfaceYCone:     return SurfaceYCone_periodic_translate(other, r, u);     break;
-    case SurfaceType::SurfaceZCone:     return SurfaceZCone_periodic_translate(other, r, u);     break;
-    case SurfaceType::SurfaceQuadric:   return SurfaceQuadric_periodic_translate(other, r, u);   break;
-    */
     default: return false;
   }
 }
@@ -1308,10 +1299,10 @@ void read_surfaces(pugi::xml_node node)
     // planes are parallel which indicates a translational periodic boundary
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
-      surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf1.bc_ = BoundaryCondition(BoundaryCondition::BCType::TranslationalPeriodic, i_surf, j_surf);
       surf2.bc_ = surf1.bc_;
     } else {
-      surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
+      surf1.bc_ = BoundaryCondition(BoundaryCondition::BCType::RotationalPeriodic, i_surf, j_surf);
       surf2.bc_ = surf1.bc_;
     }
   }
@@ -1320,7 +1311,7 @@ void read_surfaces(pugi::xml_node node)
   // surface
   bool boundary_exists = false;
   for (const auto& surf : model::surfaces) {
-    if (surf.bc_) {
+    if (surf.bc_.type_ != BoundaryCondition::BCType::Transmission) {
       boundary_exists = true;
       break;
     }

@@ -54,10 +54,14 @@ class Surface;
 class LocalCoord {
 public:
   //void rotate(const std::vector<double>& rotation);
+  #pragma omp declare target
   void rotate(const double* rotation);
+  #pragma omp end declare target
 
   //! clear data from a single coordinate level
+  #pragma omp declare target
   void reset();
+  #pragma omp end declare target
 
   Position r; //!< particle position
   Direction u; //!< particle direction
@@ -203,6 +207,7 @@ public:
   // Methods and accessors
 
   // Accessors for position in global coordinates
+  #pragma omp declare target
   Position& r() { return coord_[0].r; }
   const Position& r() const { return coord_[0].r; }
 
@@ -217,9 +222,12 @@ public:
   // Accessors for direction in local coordinates
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
+  #pragma omp end declare target
 
   //! resets all coordinate levels for the particle
+  #pragma omp declare target
   void clear();
+  #pragma omp end declare target
 
   //! create a secondary particle
   //
@@ -237,7 +245,9 @@ public:
   //! site may have been produced from an external source, from fission, or
   //! simply as a secondary particle.
   //! \param src Source site data
+  #pragma omp declare target
   void from_source(const Bank* src);
+  #pragma omp end declare target
 
   // Coarse-grained particle events
   void event_calculate_xs();
@@ -245,26 +255,37 @@ public:
   void event_advance();
   #pragma omp end declare target
   void event_advance_tally();
+  #pragma omp declare target
   void event_cross_surface();
+  #pragma omp end declare target
   void event_collide();
+  #pragma omp declare target
   void event_revive_from_secondary();
+  #pragma omp end declare target
   void event_death();
 
   //! Cross a surface and handle boundary conditions
+  #pragma omp declare target
   void cross_surface();
+  #pragma omp end declare target
 
   //! Cross a vacuum boundary condition.
   //
   //! \param surf The surface (with the vacuum boundary condition) that the
   //!   particle struck.
+  #pragma omp declare target
   void cross_vacuum_bc(const Surface& surf);
+  #pragma omp end declare target
 
   //! Cross a reflective boundary condition.
   //
   //! \param surf The surface (with the reflective boundary condition) that the
   //!   particle struck.
   //! \param new_u The direction of the particle after reflection.
+  #pragma omp declare target
   void cross_reflective_bc(const Surface& surf, Direction new_u);
+  #pragma omp end declare target
+
 
   //! Cross a periodic boundary condition.
   //

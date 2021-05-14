@@ -1,7 +1,7 @@
-
 #ifdef OPENMC_MPI
 #include <mpi.h>
 #endif
+
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"

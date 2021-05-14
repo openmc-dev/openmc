@@ -74,84 +74,151 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
   bool found = false;
   int32_t i_cell = C_NONE;
   if (neighbor_list) {
-    //printf("searching neighbor_list\n");
-    //for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
-    for (int64_t i = 0; i < neighbor_list->get_length(); i++) {
-      //i_cell = *it;
+    // TODO: ALSO MOVE ALL THE CELL DATA
+    //#pragma omp target update to(p, neighbor_list[:1])
+    //#pragma omp target map(tofrom: found, i_cell)
+    {
+    for (int64_t i = 0; i < NEIGHBOR_SIZE ; i++) {
+
+      // Perform an atomic read of the neighbor list
+
+      // TODO: The below is the correct version.
+      // Note: Gives a runtime JIT compiler error (can't find the flush function or something)
+      //#pragma omp atomic read seq_cst
+      
+      // TODO: The below is the workaround
+      // Note: gives a link time error
+      /*
+      __sync_synchronize();
+      #pragma omp atomic read
       i_cell = neighbor_list->list_[i];
+      __sync_synchronize();
+      */
+
+      // TODO: The below is the workaround for the workaround
+      #pragma omp atomic read
+      i_cell = neighbor_list->list_[i];
+
+      // If the neighbor list item is -1, this means the end of the list has been found
+      if (i_cell == -1)
+        break;
 
       // Make sure the search cell is in the same universe.
       int i_universe = p.coord_[p.n_coord_-1].universe;
-      if (model::cells[i_cell].universe_ != i_universe) continue;
+      //if (model::cells[i_cell].universe_ != i_universe) continue;
+      if (model::device_cells[i_cell].universe_ != i_universe) continue;
 
       // Check if this cell contains the particle.
       Position r {p.r_local()};
       Direction u {p.u_local()};
       auto surf = p.surface_;
-      if (model::cells[i_cell].contains(r, u, surf)) {
+      //if (model::cells[i_cell].contains(r, u, surf)) {
+      if (model::device_cells[i_cell].contains(r, u, surf)) {
         p.coord_[p.n_coord_-1].cell = i_cell;
         found = true;
         break;
       }
     }
+    } // END TARGET REGION
+    // TODO: ALSO MOVE ALL THE CELL DATA
+    //#pragma omp target update from(p, neighbor_list[:1])
+    if( !found )
+      return found;
   }
+
 
   // Check successively lower coordinate levels until finding material fill
   for (;;++p.n_coord_) {
     // If neighbor lists did not find a cell, must do exhaustive search
     if (i_cell == C_NONE) {
+      //Particle p_inner = p;
+      //#pragma omp target update to(p)
+      //#pragma omp target map(tofrom: i_cell, found)
+      {
       int i_universe = p.coord_[p.n_coord_-1].universe;
-      const auto& univ {model::universes[i_universe]};
+      //const auto& univ {model::universes[i_universe]};
+      const auto& univ {model::device_universes[i_universe]};
       int ncells;
       int32_t* cells;
       if(!univ.partitioner_){
-        cells = model::universes[i_universe].cells_.data();
-        ncells = model::universes[i_universe].cells_.size();
+        //cells = model::universes[i_universe].cells_.data();
+        cells = model::device_universes[i_universe].device_cells_;
+        //ncells = model::universes[i_universe].cells_.size();
+        ncells = model::device_universes[i_universe].cells_.size();
       } else {
-        cells= univ.partitioner_->get_cells(p.r_local(), p.u_local(), ncells);
+        printf("Error - universe partitioner not yet supported on device!\n");
+        //cells= univ.partitioner_->get_cells(p.r_local(), p.u_local(), ncells);
       }
+      //printf("ncells = %d\n", ncells);
 
       for (int i = 0; i < ncells; i++) {
         i_cell = cells[i];
+        //printf("i_cell = %d\n", i_cell);
+        //i_cell = model::device_cells[i];
 
         // Make sure the search cell is in the same universe.
         int i_universe = p.coord_[p.n_coord_-1].universe;
-        if (model::cells[i_cell].universe_ != i_universe) continue;
+        //if (model::cells[i_cell].universe_ != i_universe) continue;
+        if (model::device_cells[i_cell].universe_ != i_universe) continue;
 
         // Check if this cell contains the particle.
         Position r {p.r_local()};
         Direction u {p.u_local()};
         auto surf = p.surface_;
+
+
+        bool does_contain;
+        //#pragma omp target map(from:does_contain)
+        {
+          does_contain = model::device_cells[i_cell].contains(r, u, surf);
+        }
+        if (does_contain) {
+          p.coord_[p.n_coord_-1].cell = i_cell;
+          found = true;
+          break;
+        }
+        /*
         if (model::cells[i_cell].contains(r, u, surf)) {
           p.coord_[p.n_coord_-1].cell = i_cell;
           found = true;
           break;
         }
+        */
       }
+      }
+      //#pragma omp target update from(p)
+      //p = p_inner;
     }
     if (!found) {
       return found;
     }
 
     // Announce the cell that the particle is entering.
-    if (found && (settings::verbosity >= 10 || p.trace_)) {
-      auto msg = fmt::format("    Entering cell {}", model::cells[i_cell].id_);
-      write_message(msg, 1);
-    }
+    //if (found && (settings::verbosity >= 10 || p.trace_)) {
+    //  auto msg = fmt::format("    Entering cell {}", model::cells[i_cell].id_);
+    //  write_message(msg, 1);
+    //}
 
-    Cell& c {model::cells[i_cell]};
+    //Cell& c {model::cells[i_cell]};
+    Cell& c {model::device_cells[i_cell]};
     if (c.type_ == Fill::MATERIAL) {
       // Found a material cell which means this is the lowest coord level.
 
+      //#pragma omp target update to(p)
+      //#pragma omp target
+      {
       // Find the distribcell instance number.
       int offset = 0;
       if (c.distribcell_index_ >= 0) {
         for (int i = 0; i < p.n_coord_; i++) {
-          const auto& c_i {model::cells[p.coord_[i].cell]};
+          //const auto& c_i {model::cells[p.coord_[i].cell]};
+          const auto& c_i {model::device_cells[p.coord_[i].cell]};
           if (c_i.type_ == Fill::UNIVERSE) {
-            offset += c_i.offset_[c.distribcell_index_];
+            //offset += c_i.offset_[c.distribcell_index_];
+            offset += c_i.device_offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
-            auto& lat {model::lattices[p.coord_[i + 1].lattice]};
+            //auto& lat {model::lattices[p.coord_[i + 1].lattice]};
+            auto& lat {model::device_lattices[p.coord_[i + 1].lattice]};
             int i_xyz[3] {p.coord_[i + 1].lattice_x, p.coord_[i + 1].lattice_y,
               p.coord_[i + 1].lattice_z};
             if (lat.are_valid_indices(i_xyz)) {
@@ -165,22 +232,33 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       // Set the material and temperature.
       p.material_last_ = p.material_;
       if (c.material_.size() > 1) {
-        p.material_ = c.material_[p.cell_instance_];
+        //p.material_ = c.material_[p.cell_instance_];
+        p.material_ = c.device_material_[p.cell_instance_];
       } else {
-        p.material_ = c.material_[0];
+        //p.material_ = c.material_[0];
+        p.material_ = c.device_material_[0];
       }
       p.sqrtkT_last_ = p.sqrtkT_;
       if (c.sqrtkT_.size() > 1) {
-        p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
+        //p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
+        p.sqrtkT_ = c.device_sqrtkT_[p.cell_instance_];
       } else {
-        p.sqrtkT_ = c.sqrtkT_[0];
+        //p.sqrtkT_ = c.sqrtkT_[0];
+        p.sqrtkT_ = c.device_sqrtkT_[0];
       }
+
+      } // End OMP target
+      //#pragma omp target update from(p)
 
       return true;
 
     } else if (c.type_ == Fill::UNIVERSE) {
       //========================================================================
       //! Found a lower universe, update this coord level then search the next.
+      
+      //#pragma omp target update to(p)
+      //#pragma omp target
+      {
 
       // Set the lower coordinate level universe.
       auto& coord {p.coord_[p.n_coord_]};
@@ -198,13 +276,19 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       if (c.rotation_length_ != 0) {
         coord.rotate(c.rotation_);
       }
+      } // END OMP TARGET
+      //#pragma omp target update from(p)
 
     } else if (c.type_ == Fill::LATTICE) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
+      
+      //#pragma omp target update to(p)
+      //#pragma omp target
+      {
 
-      Lattice& lat {model::lattices[c.fill_]};
-      //Lattice& lat {model::device_lattices[c.fill_]};
+      //Lattice& lat {model::lattices[c.fill_]};
+      Lattice& lat {model::device_lattices[c.fill_]};
 
       // Set the position and direction.
       auto& coord {p.coord_[p.n_coord_]};
@@ -239,12 +323,17 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         if (lat.outer_ != NO_OUTER_UNIVERSE) {
           coord.universe = lat.outer_;
         } else {
+          /*
           warning(fmt::format("Particle {} is outside lattice {} but the "
                               "lattice has no defined outer universe.",
             p.id_, lat.id_));
           return false;
+          */
+          printf("ERROR: particle %d is outside lattice %d but the lattice has no defined outer universe! Undefined behavior to follow...\n", p.id_, lat.id_);
         }
       }
+      } // END OMP TARGET
+      //#pragma omp target update from(p)
     }
     i_cell = C_NONE; // trip non-neighbor cell search at next iteration
   }
@@ -259,20 +348,39 @@ bool neighbor_list_find_cell(Particle& p)
   // Get the cell this particle was in previously.
   auto coord_lvl = p.n_coord_ - 1;
   auto i_cell = p.coord_[coord_lvl].cell;
-  Cell& c {model::cells[i_cell]};
+  //Cell& c {model::cells[i_cell]};
+  Cell& c {model::device_cells[i_cell]};
 
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
-  bool found = find_cell_inner(p, &c.neighbors_);
+  bool found;
+  //#pragma omp target update to(p, c) 
+  //#pragma omp target map(from: found)
+  {
+    found = find_cell_inner(p, &c.neighbors_);
+  }
+  //#pragma omp target update from(p, c)
   if (found)
     return found;
 
   // The particle could not be found in the neighbor list.  Try searching all
   // cells in this universe, and update the neighbor list if we find a new
   // neighboring cell.
-  found = find_cell_inner(p, nullptr);
+  //#pragma omp target update to(p, c) 
+  //#pragma omp target map(tofrom: found)
+  {
+    found = find_cell_inner(p, nullptr);
+  }
+  //#pragma omp target update from(p, c)
   if (found)
+  {
+    //#pragma omp target update to(p, c) 
+    //#pragma omp target
+    {
     c.neighbors_.push_back(p.coord_[coord_lvl].cell);
+    }
+    //#pragma omp target update from(p, c)
+  }
   return found;
 }
 
@@ -288,7 +396,14 @@ bool exhaustive_find_cell(Particle& p)
   for (int i = p.n_coord_; i < 6; i++) {
     p.coord_[i].reset();
   }
-  return find_cell_inner(p, nullptr);
+  bool found;
+  //#pragma omp target update to(p) 
+  //#pragma omp target map(from: found)
+  {
+    found = find_cell_inner(p, nullptr);
+  }
+  //#pragma omp target update from(p) 
+  return found;
 }
 
 //==============================================================================
@@ -297,13 +412,16 @@ void
 cross_lattice(Particle& p, const BoundaryInfo& boundary)
 {
   auto& coord {p.coord_[p.n_coord_ - 1]};
-  auto& lat {model::lattices[coord.lattice]};
+  //auto& lat {model::lattices[coord.lattice]};
+  auto& lat {model::device_lattices[coord.lattice]};
 
+  /*(
   if (settings::verbosity >= 10 || p.trace_) {
     write_message(fmt::format(
       "    Crossing lattice {}. Current position ({},{},{}). r={}",
       lat.id_, coord.lattice_x, coord.lattice_y, coord.lattice_z, p.r()), 1);
   }
+  */
 
   // Set the lattice indices.
   coord.lattice_x += boundary.lattice_translation[0];
@@ -313,8 +431,8 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
 
   // Set the new coordinate position.
   const auto& upper_coord {p.coord_[p.n_coord_ - 2]};
-  const auto& cell {model::cells[upper_coord.cell]};
-  //const auto& cell {model::device_cells[upper_coord.cell]};
+  //const auto& cell {model::cells[upper_coord.cell]};
+  const auto& cell {model::device_cells[upper_coord.cell]};
   Position r = upper_coord.r;
   r -= cell.translation_;
   //if (!cell.rotation_.empty()) {
@@ -328,8 +446,11 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
     p.n_coord_ = 1;
     bool found = exhaustive_find_cell(p);
     if (!found && p.alive_) {
+      /*
       p.mark_as_lost(fmt::format("Could not locate particle {} after "
         "crossing a lattice boundary", p.id_));
+        */
+      printf("Error - particle lost after crossing a lattice boundary!!\n");
     }
 
   } else {
@@ -343,8 +464,11 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
       p.n_coord_ = 1;
       bool found = exhaustive_find_cell(p);
       if (!found && p.alive_) {
+        /*
         p.mark_as_lost(fmt::format("Could not locate particle {} after "
           "crossing a lattice boundary", p.id_));
+          */
+        printf("Error - particle lost after crossing a lattice boundary!!\n");
       }
     }
   }

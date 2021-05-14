@@ -24,19 +24,15 @@ struct Position {
   // Unary operators
   #pragma omp declare target
   Position& operator+=(Position);
-  #pragma omp end declare target
   Position& operator+=(double);
-  #pragma omp declare target
   Position& operator-=(Position);
-  #pragma omp end declare target
   Position& operator-=(double);
   Position& operator*=(Position);
-  #pragma omp declare target
   Position& operator*=(double);
-  #pragma omp end declare target
   Position& operator/=(Position);
   Position& operator/=(double);
   Position operator-() const;
+  #pragma omp end declare target
 
   #pragma omp declare target
   const double& operator[](int i) const {
@@ -102,6 +98,7 @@ struct Position {
   double z = 0.;
 };
 
+#pragma omp declare target
 // Compile-time known member index access functions
 template<>
 inline const double& Position::get<0>() const
@@ -133,6 +130,7 @@ inline double& Position::get<2>()
 {
   return z;
 }
+#pragma omp end declare target
 
 // Binary operators
 inline Position operator+(Position a, Position b) { return a += b; }

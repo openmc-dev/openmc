@@ -8,29 +8,92 @@
 #include "openmc/error.h"
 #include "openmc/surface.h"
 
+
+#include "openmc/cell.h" // NOTE: This header is unnecessary logically, but if left out results in a segmentation fault at JIT compile time on some compilers.
+  
+/*
+  switch(type_){
+    case BCType::Vacuum:                return VacuumBCzz; break;
+    case BCType::Reflective:            return ReflectiveBCzz; break;
+    case BCType::White:                 return WhiteBCzz; break;
+    case BCType::TranslationalPeriodic: return TranslationalPeriodicBCzz; break;
+    case BCType::RotationalPeriodic:    return RotationalPeriodicBCzz; break;
+  }
+  */
+
 namespace openmc {
+
+std::string BoundaryCondition::type() const
+{
+  switch(type_){
+    case BCType::Transmission:     return "transmission";     break;
+    case BCType::Vacuum:     return "vacuum";     break;
+    case BCType::Reflective: return "reflective"; break;
+    case BCType::White:      return "white";      break;
+    default:                 return "periodic";   break;
+  }
+}
+  
+void BoundaryCondition::handle_particle(Particle& p, const Surface& surf) const
+{
+  switch(type_){
+    case BCType::Vacuum:                return VacuumBC_handle_particle(p, surf); break;
+    case BCType::Reflective:            return ReflectiveBC_handle_particle(p, surf); break;
+    case BCType::White:                 return WhiteBC_handle_particle(p, surf); break;
+    //case BCType::TranslationalPeriodic: return TranslationalPeriodicBC_handle_particle(p, surf); break;
+    //case BCType::RotationalPeriodic:    return RotationalPeriodicBC_handle_particle(p, surf); break;
+    default: printf("error!\n");
+  }
+}
+
+BoundaryCondition::BoundaryCondition(BCType type, int i_surf, int j_surf) : type_(type), i_surf_(i_surf), j_surf_(j_surf)
+{
+  switch(type_)
+  {
+    case BCType::TranslationalPeriodic: init_TranslationalPeriodicBC(); break;
+    case BCType::RotationalPeriodic:    init_RotationalPeriodicBC(); break;
+    default: printf("ERROR - wrong BC type specified!\n"); break;
+  }
+}
+
+
 
 //==============================================================================
 // VacuumBC implementation
 //==============================================================================
 
+
 void
-VacuumBC::handle_particle(Particle& p, const Surface& surf) const
+BoundaryCondition::VacuumBC_handle_particle(Particle& p, const Surface& surf) const
 {
-  p.cross_vacuum_bc(surf);
+  // TODO: This does not work for some reason.
+  //#pragma omp target update to(p, surf)
+  //#pragma omp target
+  {
+    p.cross_vacuum_bc(surf);
+  }
+ // #pragma omp target update from(p, surf)
 }
+
 
 //==============================================================================
 // ReflectiveBC implementation
 //==============================================================================
 
 void
-ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
+BoundaryCondition::ReflectiveBC_handle_particle(Particle& p, const Surface& surf) const
 {
   Direction u = surf.reflect(p.r(), p.u(), &p);
   u /= u.norm();
 
+  //#pragma omp target update to(p)
+  //#pragma omp target update to(model::device_cells[:model::cells.size()])
+  //#pragma omp target
+  {
   p.cross_reflective_bc(surf, u);
+  }
+  //#pragma omp target update from(p)
+  //#pragma omp target update from(model::device_cells[:model::cells.size()])
 }
 
 //==============================================================================
@@ -38,11 +101,10 @@ ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
 //==============================================================================
 
 void
-WhiteBC::handle_particle(Particle& p, const Surface& surf) const
+BoundaryCondition::WhiteBC_handle_particle(Particle& p, const Surface& surf) const
 {
   Direction u = surf.diffuse_reflect(p.r(), p.u(), p.current_seed());
   u /= u.norm();
-
   p.cross_reflective_bc(surf, u);
 }
 
@@ -65,8 +127,7 @@ bool is_plane(Surface& surf)
 }
 
 
-TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
-  : PeriodicBC(i_surf, j_surf)
+void BoundaryCondition::init_TranslationalPeriodicBC()
 {
   Surface& surf1 {model::surfaces[i_surf_]};
   Surface& surf2 {model::surfaces[j_surf_]};
@@ -74,17 +135,23 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
   // Make sure the first surface has an appropriate type.
   if(!is_plane(surf1))
   {
+    /*
     throw std::invalid_argument(fmt::format("Surface {} is an invalid type for "
       "translational periodic BCs. Only planes are supported for these BCs.",
       surf1.id_));
+      */
+    printf("ERROR: surface is invalid type for BC\n");
   }
 
   // Make sure the second surface has an appropriate type.
   if(!is_plane(surf2))
   {
+    /*
     throw std::invalid_argument(fmt::format("Surface {} is an invalid type for "
       "translational periodic BCs. Only planes are supported for these BCs.",
       surf2.id_));
+      */
+    printf("ERROR: surface is invalid type for BC\n");
   }
 
   // Compute the distance from the first surface to the origin.  Check the
@@ -119,7 +186,7 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
 }
 
 void
-TranslationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
+BoundaryCondition::TranslationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const
 {
   // TODO: off-by-one on surface indices throughout this function.
   int i_particle_surf = std::abs(p.surface_) - 1;
@@ -135,8 +202,11 @@ TranslationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
     new_r = p.r() - translation_;
     new_surface = p.surface_ > 0 ? i_surf_ + 1 : -(i_surf_ + 1);
   } else {
+    /*
     throw std::runtime_error("Called BoundaryCondition::handle_particle after "
       "hitting a surface, but that surface is not recognized by the BC.");
+      */
+    printf("ERROR- invalid BC surface!\n");
   }
 
   // Pass the new location and surface to the particle.
@@ -157,8 +227,7 @@ bool is_plane_xy(Surface& surf)
   return false;
 }
 
-RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
-  : PeriodicBC(i_surf, j_surf)
+void BoundaryCondition::init_RotationalPeriodicBC()
 {
   Surface& surf1 {model::surfaces[i_surf_]};
   Surface& surf2 {model::surfaces[j_surf_]};
@@ -170,9 +239,12 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
   else if( surf1.type_ == Surface::SurfaceType::SurfacePlane )
     surf1_is_xyplane = false;
   else {
+    /*
     throw std::invalid_argument(fmt::format("Surface {} is an invalid type for "
       "rotational periodic BCs. Only x-planes, y-planes, or general planes "
       "(that are perpendicular to z) are supported for these BCs.", surf1.id_));
+      */
+    printf("ERROR - invalid rotational BC!\n");
   }
 
   // Check the type of the second surface
@@ -182,9 +254,12 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
   else if( surf2.type_ == Surface::SurfaceType::SurfacePlane )
     surf1_is_xyplane = false;
   else {
+    /*
     throw std::invalid_argument(fmt::format("Surface {} is an invalid type for "
       "rotational periodic BCs. Only x-planes, y-planes, or general planes "
       "(that are perpendicular to z) are supported for these BCs.", surf2.id_));
+      */
+    printf("ERROR - invalid rotational BC!\n");
   }
 
   // Compute the surface normal vectors and make sure they are perpendicular
@@ -192,26 +267,38 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
   Direction norm1 = surf1.normal({0, 0, 0});
   Direction norm2 = surf2.normal({0, 0, 0});
   if (std::abs(norm1.z) > FP_PRECISION) {
+    /*
     throw std::invalid_argument(fmt::format("Rotational periodic BCs are only "
       "supported for rotations about the z-axis, but surface {} is not "
       "perpendicular to the z-axis.", surf1.id_));
+      */
+    printf("ERROR - invalid rotational BC!\n");
   }
   if (std::abs(norm2.z) > FP_PRECISION) {
+    /*
     throw std::invalid_argument(fmt::format("Rotational periodic BCs are only "
       "supported for rotations about the z-axis, but surface {} is not "
       "perpendicular to the z-axis.", surf2.id_));
+      */
+    printf("ERROR - invalid rotational BC!\n");
   }
 
   // Make sure both surfaces intersect the origin
   if (std::abs(surf1.evaluate({0, 0, 0})) > FP_COINCIDENT) {
+    /*
     throw std::invalid_argument(fmt::format("Rotational periodic BCs are only "
       "supported for rotations about the origin, but surface {} does not "
       "intersect the origin.", surf1.id_));
+      */
+    printf("ERROR - invalid rotational BC!\n");
   }
   if (std::abs(surf2.evaluate({0, 0, 0})) > FP_COINCIDENT) {
+    /*
     throw std::invalid_argument(fmt::format("Rotational periodic BCs are only "
       "supported for rotations about the origin, but surface {} does not "
       "intersect the origin.", surf2.id_));
+      */
+    printf("ERROR - invalid rotational BC!\n");
   }
 
   // Compute the BC rotation angle.  Here it is assumed that both surface
@@ -227,14 +314,17 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));
   if (rem > FP_REL_PRECISION && rem < 1 - FP_REL_PRECISION) {
+    /*
     warning(fmt::format("Rotational periodic BC specified with a rotation "
       "angle of {} degrees which does not evenly divide 360 degrees.",
       angle_ * 180 / PI));
+      */
+    printf("Warning, bad rotation angle on periodic BC!\n");
   }
 }
 
 void
-RotationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
+BoundaryCondition::RotationalPeriodicBC_handle_particle(Particle& p, const Surface& surf) const
 {
   // TODO: off-by-one on surface indices throughout this function.
   int i_particle_surf = std::abs(p.surface_) - 1;
@@ -251,8 +341,11 @@ RotationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
     theta = -angle_;
     new_surface = p.surface_ > 0 ? -(i_surf_ + 1) : i_surf_ + 1;
   } else {
+    /*
     throw std::runtime_error("Called BoundaryCondition::handle_particle after "
       "hitting a surface, but that surface is not recognized by the BC.");
+      */
+    printf("Error in BC handle particle!\n");
   }
 
   // Rotate the particle's position and direction about the z-axis.

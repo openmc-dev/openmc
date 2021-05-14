@@ -134,9 +134,12 @@ Particle::from_source(const Bank* src)
     E_ = src->E;
     g_ = 0;
   } else {
+    printf("Error - MG mode not supported yet on device.\n");
+    /*
     g_ = static_cast<int>(src->E);
     g_last_ = static_cast<int>(src->E);
     E_ = data::mg.energy_bin_avg_[g_];
+    */
   }
   E_last_ = E_;
 }
@@ -292,9 +295,13 @@ Particle::event_cross_surface()
     event_ = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
+  // TODO: Add this capability back in
+  // NOTE: The lack of this capability is enforced in device_alloc.cpp
+  /*
   if (!model::active_surface_tallies.empty()) {
     score_surface_tally(*this, model::active_surface_tallies);
   }
+  */
 }
 
 void
@@ -375,8 +382,11 @@ Particle::event_revive_from_secondary()
   // If particle has too many events, display warning and kill it
   ++n_event_;
   if (n_event_ == MAX_EVENTS) {
+    printf("Particle %d underwent max number of events.\n", id_);
+    /*
     warning("Particle " + std::to_string(id_) +
       " underwent maximum number of events.");
+      */
     alive_ = false;
   }
 
@@ -392,7 +402,9 @@ Particle::event_revive_from_secondary()
     n_event_ = 0;
 
     // Enter new particle in particle track file
+    /*
     if (write_track_) add_particle_track(*this);
+    */
   }
 }
 
@@ -444,11 +456,18 @@ Particle::cross_surface()
 {
   int i_surface = std::abs(surface_);
   // TODO: off-by-one
-  const auto surf {&model::surfaces[i_surface - 1]};
+  //const auto surf {&model::surfaces[i_surface - 1]};
+  const auto surf {&model::device_surfaces[i_surface - 1]};
+  /*
   if (settings::verbosity >= 10 || trace_) {
     write_message(1, "    Crossing surface {}", surf->id_);
   }
+  */
 
+  if (surf->surf_source_) {
+    printf("Error - surface sources not currently supported in GPU implementation!\n");
+  }
+  /*
   if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
     Particle::Bank site;
     site.r = this->r();
@@ -462,10 +481,11 @@ Particle::cross_surface()
     site.progeny_id = this->n_progeny_;
     int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
   }
+  */
 
   // Handle any applicable boundary conditions.
-  if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
-    surf->bc_->handle_particle(*this, *surf);
+  if (surf->bc_.type_ != BoundaryCondition::BCType::Transmission && settings::run_mode != RunMode::PLOTTING) {
+    surf->bc_.handle_particle(*this, *surf);
     return;
   }
 
@@ -514,9 +534,12 @@ Particle::cross_surface()
     // undefined region in the geometry.
 
     if (!exhaustive_find_cell(*this)) {
+      /*
       this->mark_as_lost("After particle " + std::to_string(id_) +
         " crossed surface " + std::to_string(surf->id_) +
         " it could not be located in any cell and it did not leak.");
+        */
+      printf("ERROR - LOST PARTICLE!\n");
       return;
     }
   }
@@ -532,6 +555,7 @@ Particle::cross_vacuum_bc(const Surface& surf)
   // forward slightly so that if the mesh boundary is on the surface, it is
   // still processed
 
+  /*
   if (!model::active_meshsurf_tallies.empty()) {
     // TODO: Find a better solution to score surface currents than
     // physically moving the particle forward slightly
@@ -539,14 +563,17 @@ Particle::cross_vacuum_bc(const Surface& surf)
     this->r() += TINY_BIT * this->u();
     score_surface_tally(*this, model::active_meshsurf_tallies);
   }
+  */
 
   // Score to global leakage tally
   keff_tally_leakage_ += wgt_;
 
   // Display message
+  /*
   if (settings::verbosity >= 10 || trace_) {
     write_message(1, "    Leaked out of surface {}", surf.id_);
   }
+  */
 }
 
 void
@@ -554,8 +581,12 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 {
   // Do not handle reflective boundary conditions on lower universes
   if (n_coord_ != 1) {
+    /*
     this->mark_as_lost("Cannot reflect particle " + std::to_string(id_) +
       " off surface in a lower universe.");
+      */
+    printf("error - cannot reflect particle\n");
+    //this->mark_as_lost_short();
     return;
   }
 
@@ -566,6 +597,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // the particle slightly back in case the surface crossing is coincident
   // with a mesh boundary
 
+  /*
   if (!model::active_surface_tallies.empty()) {
     score_surface_tally(*this, model::active_surface_tallies);
   }
@@ -576,6 +608,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
     score_surface_tally(*this, model::active_meshsurf_tallies);
     this->r() = r;
   }
+  */
 
   // Set the new particle direction
   this->u() = new_u;
@@ -590,9 +623,14 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   if (!settings::dagmc) {
     n_coord_ = 1;
+
     if (!neighbor_list_find_cell(*this)) {
+      //this->mark_as_lost_short();
+      printf("lost particle reflecting\n");
+      /*
       this->mark_as_lost("Couldn't find particle after reflecting from surface "
                          + std::to_string(surf.id_) + ".");
+                         */
       return;
     }
   }
@@ -601,9 +639,11 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   r_last_current_ = this->r() + TINY_BIT*this->u();
 
   // Diagnostic message
+  /*
   if (settings::verbosity >= 10 || trace_) {
     write_message(1, "    Reflected from surface {}", surf.id_);
   }
+  */
 }
 
 void
@@ -637,8 +677,17 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
 
   // Figure out what cell particle is in now
   n_coord_ = 1;
+  bool did_find_cell;
+  #pragma omp target update to(this[:1])
+  #pragma omp target update to(model::device_cells[:model::cells.size()])
+  #pragma omp target map(from: did_find_cell)
+  {
+    did_find_cell = neighbor_list_find_cell(*this);
+  }
+  #pragma omp target update from(this[:1])
+  #pragma omp target update from(model::device_cells[:model::cells.size()])
 
-  if (!neighbor_list_find_cell(*this)) {
+  if (!did_find_cell) {
     this->mark_as_lost("Couldn't find particle after hitting periodic "
       "boundary on surface " + std::to_string(surf.id_) + ". The normal vector "
       "of one periodic surface may need to be reversed.");

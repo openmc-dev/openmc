@@ -314,7 +314,7 @@ double Tabulated1DFlat::operator()(double x) const
   case Interpolation::log_log:
     r = log(x/x0)/log(x1/x0);
     return y0*exp(r*log(y1/y0));
-  default:
+  default: printf("Invalid interpolation scheme!\n");
     //throw std::runtime_error{"Invalid interpolation scheme."};
   }
 }

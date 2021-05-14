@@ -114,6 +114,7 @@ void NBodyPhaseSpaceFlat::sample(double E_in, double& E_out, double& mu,
   default:
     printf("Error! N-body phase space with >5 bodies.\n");
     // throw std::runtime_error{"N-body phase space with >5 bodies."};
+    printf("N-body phase space with >5 bodies.\n");
   }
 
   // Now determine v and E_out

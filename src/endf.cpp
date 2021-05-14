@@ -316,6 +316,7 @@ double Tabulated1DFlat::operator()(double x) const
     return y0*exp(r*log(y1/y0));
   default: printf("Invalid interpolation scheme!\n");
     //throw std::runtime_error{"Invalid interpolation scheme."};
+    printf("Invalid interpolation scheme\n");
   }
 }
 

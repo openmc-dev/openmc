@@ -339,9 +339,12 @@ Material::Material(pugi::xml_node node)
 
 Material::~Material()
 {
-  // As Material objects are added to the materials vector, they can be moved, triggering unwanted removal.
-  // I can't think of a case where someone would need to add then delete a material within the same simulation (except at end of simulation),
-  // so this function does not seem necessary. Perhaps if someone is sitting in an interactive python session though this could happen?
+  // As Material objects are added to the materials vector, they can be
+  // moved, triggering unwanted removal.  I can't think of a case where
+  // someone would need to add then delete a material within the same
+  // simulation (except at end of simulation), so this function does
+  // not seem necessary. Perhaps if someone is sitting in an interactive
+  // python session though this could happen?
   //model::material_map.erase(id_);
 }
 

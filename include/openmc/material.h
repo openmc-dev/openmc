@@ -27,7 +27,6 @@ class Material;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> material_map;
-//extern std::vector<std::unique_ptr<Material>> materials;
 extern std::vector<Material> materials;
 #pragma omp declare target
 extern Material* device_materials;

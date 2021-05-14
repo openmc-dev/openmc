@@ -89,14 +89,16 @@ public:
   {
     // Atomically capture the index we want to write to
     int64_t idx;
-    //#pragma omp atomic capture seq_cst
-    #pragma omp atomic capture
+    // NOTE: The seq_cst is required for correctness but is not yet
+    // well supported on device
+    #pragma omp atomic capture //seq_cst
     idx = size_++;
 
     // Check that we haven't written off the end of the array
     if (idx >= capacity_) {
-      //#pragma omp atomic write seq_cst
-      #pragma omp atomic write
+      // NOTE: The seq_cst is required for correctness but is not yet
+      // well supported on device
+      #pragma omp atomic write //seq_cst
       size_ = capacity_;
       return -1;
     }
@@ -140,7 +142,6 @@ public:
 
   void allocate_on_device()
   {
-    //#pragma omp target enter data map(alloc: this[:1])
     #pragma omp target enter data map(alloc: data_[:capacity_], size_)
   }
 

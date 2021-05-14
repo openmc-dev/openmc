@@ -772,7 +772,7 @@ class OuterState(State):
         self._diffusion_coefficient.shape = (self.amplitude_nxyz, self.ng)
         return self._diffusion_coefficient
 
-    def extract_shape(self):
+    def _extract_shape(self):
 
         # Get the current power
         power = self.core_power_density
@@ -808,14 +808,14 @@ class OuterState(State):
                 kappa_fission = f['OUTER_STEPS'][time_point]['kappa_fission']
                 kappa_fission[...] = self.kappa_fission
 
-    def compute_initial_precursor_concentration(self):
+    def _compute_initial_precursor_concentration(self):
         flux = np.tile(self.flux, self.nd).flatten()
         del_fis_rate = self.delayed_nu_fission.flatten() * flux
         del_fis_rate.shape = (self.shape_nxyz, self.nd, self.ng)
         precursors = del_fis_rate.sum(axis=2) / self.decay_rate / self.k_crit
         self.precursors = openmc.kinetics.nan_inf_to_zero(precursors)
 
-    def load_mgxs(self):
+    def _load_mgxs(self):
         self.mgxs_loaded = False
         self.delayed_nu_fission
         self.inscatter
@@ -832,7 +832,7 @@ class OuterState(State):
         self.diffusion_coefficient
         self.mgxs_loaded = True
 
-    def initialize_mgxs(self):
+    def _initialize_mgxs(self):
         """Initialize all the tallies for the problem.
 
         """

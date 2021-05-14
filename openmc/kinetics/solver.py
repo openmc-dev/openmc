@@ -418,7 +418,7 @@ class Solver:
         log_file = self.directory / log_file
         return log_file
 
-    def create_log_file(self):
+    def _create_log_file(self):
 
         with h5py.File(self.log_file, 'w') as f:
 
@@ -482,9 +482,9 @@ class Solver:
             total = self.states['START'].absorption + self.states['START'].outscatter
             f.create_dataset('total', data=total)
 
-    def run_openmc(self, time_point, method='ADIABATIC'):
+    def _run_openmc(self, time_point, method='ADIABATIC'):
 
-        self.setup_openmc(time_point, method)
+        self._setup_openmc(time_point, method)
 
         # Names of the statepoint and summary files
         sp_old_name = self.directory / 'statepoint.{}.h5'.format(self.settings.batches)
@@ -513,9 +513,9 @@ class Solver:
         for mgxs in self.states[time_point].mgxs_lib.values():
             mgxs.load_from_statepoint(statepoint_file)
 
-        self.states[time_point].load_mgxs()
+        self.states[time_point]._load_mgxs()
 
-    def create_state(self, time_point):
+    def _create_state(self, time_point):
 
         if time_point in ('START', 'END', 'FORWARD_OUTER', 'PREVIOUS_OUTER'):
             state = openmc.kinetics.OuterState(self.states)
@@ -550,10 +550,10 @@ class Solver:
 
         self.states[time_point] = state
 
-    def compute_initial_flux(self):
+    def _compute_initial_flux(self):
 
         # Run OpenMC to obtain XS
-        self.run_openmc('START')
+        self._run_openmc('START')
 
         # Get the START state
         state = self.states['START']
@@ -581,16 +581,16 @@ class Solver:
         state.k_crit = self.k_crit
 
         # Compute the initial precursor concentration
-        state.compute_initial_precursor_concentration()
+        state._compute_initial_precursor_concentration()
 
         # Copy data to all other states
         for time_point in TIME_POINTS:
             if time_point != 'START':
-                self.create_state(time_point)
-                self.copy_states('START', time_point)
+                self._create_state(time_point)
+                self._copy_states('START', time_point)
 
         # Create hdf5 log file
-        self.create_log_file()
+        self._create_log_file()
         #self.states['PREVIOUS_INNER'].dump_to_log_file
         self.states['START'].dump_to_log_file
 
@@ -600,7 +600,7 @@ class Solver:
         self.settings.inactive = 10
         self.settings.sourcepoint['batches'] = [self.settings.batches]
 
-    def copy_states(self, time_from, time_to):
+    def _copy_states(self, time_from, time_to):
 
         state_from            = self.states[time_from]
         state_to              = self.states[time_to]
@@ -615,9 +615,9 @@ class Solver:
                 and time_from in ['START', 'END', 'PREVIOUS_OUTER', 'FORWARD_OUTER']:
             state_to.shape    = state_from.shape
             state_to.mgxs_lib = state_from.mgxs_lib
-            state_to.load_mgxs()
+            state_to._load_mgxs()
 
-    def take_inner_step(self, i):
+    def _take_inner_step(self, i):
 
         # Increment clock
         times     = self.clock.times
@@ -625,7 +625,7 @@ class Solver:
         state_fwd = self.states['FORWARD_INNER']
 
         # Update the values for the time step
-        self.copy_states('FORWARD_INNER', 'PREVIOUS_INNER')
+        self._copy_states('FORWARD_INNER', 'PREVIOUS_INNER')
 
         # Increment forward in time
         times['FORWARD_INNER'] += self.clock.dt_inner
@@ -650,7 +650,7 @@ class Solver:
                          state_fwd.reactivity * 1.e5,
                          state_fwd.beta_eff.sum(), state_fwd.pnl))
 
-    def take_outer_step(self, outer_step):
+    def _take_outer_step(self, outer_step):
 
         # Increment clock
         times     = self.clock.times
@@ -671,10 +671,10 @@ class Solver:
 
                 # Take inner steps
                 for i in range(self.num_inner_time_steps):
-                    self.take_inner_step(i)
+                    self._take_inner_step(i)
 
                 # Copy the shape, amp, and and precursors to FORWARD_OUTER
-                self.copy_states('FORWARD_INNER', 'FORWARD_OUTER')
+                self._copy_states('FORWARD_INNER', 'FORWARD_OUTER')
 
                 new_power = state_fwd.power
                 residual_array = (power_old - new_power) / new_power
@@ -695,26 +695,26 @@ class Solver:
 
                 # Run OpenMC on forward out state
                 if iteration == 1:
-                    self.run_openmc('FORWARD_OUTER')
+                    self._run_openmc('FORWARD_OUTER')
                 else:
-                    self.run_openmc('FORWARD_OUTER', self.method)
+                    self._run_openmc('FORWARD_OUTER', self.method)
 
-                state_fwd.extract_shape()
+                state_fwd._extract_shape()
 
                 # Reset the inner states
-                self.copy_states('PREVIOUS_OUTER', 'FORWARD_INNER')
-                self.copy_states('PREVIOUS_OUTER', 'PREVIOUS_INNER')
+                self._copy_states('PREVIOUS_OUTER', 'FORWARD_INNER')
+                self._copy_states('PREVIOUS_OUTER', 'PREVIOUS_INNER')
 
         # Dump data at FORWARD_OUT state to log file
         state_fwd.dump_to_log_file
 
         # Copy the converged forward state to the previous state
-        self.copy_states('FORWARD_OUTER', 'PREVIOUS_OUTER')
+        self._copy_states('FORWARD_OUTER', 'PREVIOUS_OUTER')
 
         # Increment the clock time step
         self.clock.outer_step += 1
 
-    def generate_tallies_file(self, time_point):
+    def _generate_tallies_file(self, time_point):
 
         # Generate a new tallies file
         tallies_file = openmc.Tallies()
@@ -737,16 +737,16 @@ class Solver:
         self.directory.mkdir(exist_ok=True)
 
         # Create states
-        self.create_state('START')
+        self._create_state('START')
 
         # Compute the initial steady state flux
-        self.compute_initial_flux()
+        self._compute_initial_flux()
 
         # Solve the transient
         for i in range(self.clock.num_outer_steps):
-            self.take_outer_step(i)
+            self._take_outer_step(i)
 
-    def setup_openmc(self, time_point, method):
+    def _setup_openmc(self, time_point, method):
 
         # Get a fresh copy of the settings file
         settings = copy.deepcopy(self.settings)
@@ -759,7 +759,7 @@ class Solver:
         # Create MGXS
         state = self.states[time_point]
 
-        state.initialize_mgxs()
+        state._initialize_mgxs()
 
         # Create the xml files
         self.geometry.time = self.clock.times[time_point]
@@ -778,7 +778,7 @@ class Solver:
         self.geometry.export_to_xml(self.directory / 'geometry.xml')
         self.materials.export_to_xml(self.directory / 'materials.xml')
         settings.export_to_xml(self.directory / 'settings.xml')
-        self.generate_tallies_file(time_point)
+        self._generate_tallies_file(time_point)
 
     @property
     def num_outer_time_steps(self):

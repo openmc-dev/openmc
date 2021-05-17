@@ -521,6 +521,8 @@ class Material(IDManagerMixin):
             if element is None:
                 msg = 'Element name "{}" not recognised'.format(el)
                 raise ValueError(msg)
+        else:
+            element = element.title()
 
         if self._macroscopic is not None:
             msg = 'Unable to add an Element to Material ID="{}" as a ' \

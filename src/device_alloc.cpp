@@ -95,9 +95,8 @@ void move_read_only_data_to_device()
   
   // Materials /////////////////////////////////////////////////////////
   
-  std::cout << "Moving " << model::materials.size() << " materials to device..." << std::endl;
-  model::device_materials = model::materials.data();
-  #pragma omp target enter data map(to: model::device_materials[:model::materials.size()])
+  std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
+  #pragma omp target enter data map(to: model::materials[:model::materials_size])
   // TODO: Deep copy of materials
 }
 

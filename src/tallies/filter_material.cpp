@@ -36,7 +36,7 @@ MaterialFilter::set_materials(gsl::span<const int32_t> materials)
   // Update materials and mapping
   for (auto& index : materials) {
     Expects(index >= 0);
-    Expects(index < model::materials.size());
+    Expects(index < model::materials_size);
     materials_.push_back(index);
     map_[index] = materials_.size() - 1;
   }

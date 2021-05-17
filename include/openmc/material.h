@@ -27,9 +27,9 @@ class Material;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> material_map;
-extern std::vector<Material> materials;
 #pragma omp declare target
-extern Material* device_materials;
+extern Material* materials;
+extern uint64_t materials_size;
 #pragma omp end declare target
 
 } // namespace model

@@ -3,9 +3,11 @@
 #include "openmc/array.h"
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
+#include "openmc/distribution_multi.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -648,13 +650,13 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   // p(mu) = C/(1 - beta*mu)^2 using the inverse transform method.
   double beta = std::sqrt(*E_electron*(*E_electron + 2.0*MASS_ELECTRON_EV))
     / (*E_electron + MASS_ELECTRON_EV)  ;
-  double rn = 2.0*prn(seed) - 1.0;
+  double rn = uniform_distribution(-1., 1., seed);
   *mu_electron = (rn + beta)/(rn*beta + 1.0);
 
   // Sample the scattering angle of the positron
   beta = std::sqrt(*E_positron*(*E_positron + 2.0*MASS_ELECTRON_EV))
     / (*E_positron + MASS_ELECTRON_EV);
-  rn = 2.0*prn(seed) - 1.0;
+  rn = uniform_distribution(-1., 1., seed);
   *mu_positron = (rn + beta)/(rn*beta + 1.0);
 }
 
@@ -662,12 +664,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
 {
   // If no transitions, assume fluorescent photon from captured free electron
   if (shell.n_transitions == 0) {
-    double mu = 2.0*prn(p.current_seed()) - 1.0;
-    double phi = 2.0*PI*prn(p.current_seed());
-    Direction u;
-    u.x = mu;
-    u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-    u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+    Direction u = isotropic_direction(p.current_seed());
     double E = shell.binding_energy;
     p.create_secondary(p.wgt(), u, E, ParticleType::photon);
     return;
@@ -687,12 +684,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
   int secondary = shell.transition_subshells(i_transition, 1);
 
   // Sample angle isotropically
-  double mu = 2.0*prn(p.current_seed()) - 1.0;
-  double phi = 2.0*PI*prn(p.current_seed());
-  Direction u;
-  u.x = mu;
-  u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-  u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+  Direction u = isotropic_direction(p.current_seed());
 
   // Get the transition energy
   double E = shell.transition_energy(i_transition);
@@ -735,7 +727,7 @@ std::pair<double, double> klein_nishina(double alpha, uint64_t* seed)
     while (true) {
       if (prn(seed) < t) {
         // Left branch of flow chart
-        double r = 2.0*prn(seed);
+        double r = uniform_distribution(0.0, 2.0, seed);
         x = 1.0 + alpha*r;
         if (prn(seed) < 4.0/x*(1.0 - 1.0/x)) {
           mu = 1 - r;

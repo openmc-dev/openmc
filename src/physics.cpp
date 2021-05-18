@@ -3,6 +3,7 @@
 #include "openmc/bank.h"
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
+#include "openmc/distribution_multi.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
@@ -12,6 +13,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/physics_common.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/reaction.h"
 #include "openmc/secondary_uncorrelated.h"
@@ -116,9 +118,7 @@ void sample_neutron_reaction(Particle& p)
 
   // Create secondary photons
   if (settings::photon_transport) {
-    p.stream() = STREAM_PHOTON;
     sample_secondary_photons(p, i_nuclide);
-    p.stream() = STREAM_TRACKING;
   }
 
   // If survival biasing is being used, the following subroutine adjusts the
@@ -298,7 +298,7 @@ void sample_photon_reaction(Particle& p)
     }
 
     // Create Compton electron
-    double phi = 2.0*PI*prn(p.current_seed());
+    double phi = uniform_distribution(0., 2.0*PI, p.current_seed());
     double E_electron = (alpha - alpha_out)*MASS_ELECTRON_EV - e_b;
     int electron = static_cast<int>(ParticleType::electron);
     if (E_electron >= settings::energy_cutoff[electron]) {
@@ -359,7 +359,7 @@ void sample_photon_reaction(Particle& p)
           }
         }
 
-        double phi = 2.0*PI*prn(p.current_seed());
+        double phi = uniform_distribution(0., 2.0*PI, p.current_seed());
         Direction u;
         u.x = mu;
         u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
@@ -428,12 +428,7 @@ void sample_positron_reaction(Particle& p)
   }
 
   // Sample angle isotropically
-  double mu = 2.0*prn(p.current_seed()) - 1.0;
-  double phi = 2.0*PI*prn(p.current_seed());
-  Direction u;
-  u.x = mu;
-  u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-  u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+  Direction u = isotropic_direction(p.current_seed());
 
   // Create annihilation photon pair traveling in opposite directions
   p.create_secondary(p.wgt(), u, MASS_ELECTRON_EV, ParticleType::photon);
@@ -717,13 +712,7 @@ void scatter(Particle& p, int i_nuclide)
     int i_nuc_mat = mat->mat_nuclide_index_[i_nuclide];
     if (mat->p0_[i_nuc_mat]) {
       // Sample isotropic-in-lab outgoing direction
-      double mu = 2.0*prn(p.current_seed()) - 1.0;
-      double phi = 2.0*PI*prn(p.current_seed());
-
-      // Change direction of particle
-      p.u().x = mu;
-      p.u().y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-      p.u().z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+      p.u() = isotropic_direction(p.current_seed());
       p.mu() = u_old.dot(p.u());
     }
   }
@@ -765,7 +754,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
   if (!d_->angle().empty()) {
     mu_cm = d_->angle().sample(p.E(), p.current_seed());
   } else {
-    mu_cm = 2.0*prn(p.current_seed()) - 1.0;
+    mu_cm = uniform_distribution(-1., 1., p.current_seed());
   }
 
   // Determine direction cosines in CM
@@ -996,7 +985,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
     double beta_vt = std::sqrt(beta_vt_sq);
 
     // Sample cosine of angle between neutron and target velocity
-    mu = 2.0*prn(seed) - 1.0;
+    mu = uniform_distribution(-1., 1., seed);
 
     // Determine rejection probability
     double accept_prob = std::sqrt(beta_vn*beta_vn + beta_vt_sq -
@@ -1017,18 +1006,6 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
   SourceSite* site, uint64_t* seed)
 {
-  // Sample cosine of angle -- fission neutrons are always emitted
-  // isotropically. Sometimes in ACE data, fission reactions actually have
-  // an angular distribution listed, but for those that do, it's simply just
-  // a uniform distribution in mu
-  double mu = 2.0 * prn(seed) - 1.0;
-
-  // Sample azimuthal angle uniformly in [0,2*pi)
-  double phi = 2.0*PI*prn(seed);
-  site->u.x = mu;
-  site->u.y = std::sqrt(1.0 - mu*mu) * std::cos(phi);
-  site->u.z = std::sqrt(1.0 - mu*mu) * std::sin(phi);
-
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
   double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
@@ -1060,50 +1037,37 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
     // set the delayed group for the particle born from fission
     site->delayed_group = group;
 
-    int n_sample = 0;
-    while (true) {
-      // sample from energy/angle distribution -- note that mu has already been
-      // sampled above and doesn't need to be resampled
-      rx.products_[group].sample(E_in, site->E, mu, seed);
-
-      // resample if energy is greater than maximum neutron energy
-      constexpr int neutron = static_cast<int>(ParticleType::neutron);
-      if (site->E < data::energy_max[neutron]) break;
-
-      // check for large number of resamples
-      ++n_sample;
-      if (n_sample == MAX_SAMPLE) {
-        // particle_write_restart(p)
-        fatal_error("Resampled energy distribution maximum number of times "
-          "for nuclide " + nuc->name_);
-      }
-    }
-
   } else {
     // ====================================================================
     // PROMPT NEUTRON SAMPLED
 
     // set the delayed group for the particle born from fission to 0
     site->delayed_group = 0;
+  }
 
-    // sample from prompt neutron energy distribution
-    int n_sample = 0;
-    while (true) {
-      rx.products_[0].sample(E_in, site->E, mu, seed);
+  // sample from prompt neutron energy distribution
+  int n_sample = 0;
+  double mu;
+  while (true) {
+    rx.products_[site->delayed_group].sample(E_in, site->E, mu, seed);
 
-      // resample if energy is greater than maximum neutron energy
-      constexpr int neutron = static_cast<int>(ParticleType::neutron);
-      if (site->E < data::energy_max[neutron]) break;
+    // resample if energy is greater than maximum neutron energy
+    constexpr int neutron = static_cast<int>(ParticleType::neutron);
+    if (site->E < data::energy_max[neutron]) break;
 
-      // check for large number of resamples
-      ++n_sample;
-      if (n_sample == MAX_SAMPLE) {
-        // particle_write_restart(p)
-        fatal_error("Resampled energy distribution maximum number of times "
-          "for nuclide " + nuc->name_);
-      }
+    // check for large number of resamples
+    ++n_sample;
+    if (n_sample == MAX_SAMPLE) {
+      // particle_write_restart(p)
+      fatal_error("Resampled energy distribution maximum number of times "
+        "for nuclide " + nuc->name_);
     }
   }
+
+  // Sample azimuthal angle uniformly in [0, 2*pi) and assign angle
+  // TODO: account for dependence on incident neutron?
+  Direction ref(1., 0., 0.);
+  site->u = rotate_angle(ref, mu, nullptr, seed);
 }
 
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)

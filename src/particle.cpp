@@ -86,11 +86,7 @@ void
 Particle::event_calculate_xs()
 {
   // Set the random number stream
-  if (type() == ParticleType::neutron) {
-    stream() = STREAM_TRACKING;
-  } else {
-    stream() = STREAM_PHOTON;
-  }
+  stream() = STREAM_TRACKING;
 
   // Store pre-collision particle properties
   wgt_last() = wgt();

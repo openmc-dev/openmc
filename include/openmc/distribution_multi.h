@@ -57,6 +57,8 @@ private:
 //! Uniform distribution on the unit sphere
 //==============================================================================
 
+Direction isotropic_direction(uint64_t* seed);
+
 class Isotropic : public UnitSphereDistribution {
 public:
   Isotropic() { };

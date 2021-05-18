@@ -1255,13 +1255,10 @@ void read_materials_xml()
   model::materials_size = std::distance(root.children("material").begin(), root.children("material").end());
 
   // Resize the material vector
-  //model::materials.reserve(materials_size);
   model::materials = (Material *) malloc( model::materials_size * sizeof(Material));
 
   int i = 0;
   for (pugi::xml_node material_node : root.children("material")) {
-    //model::materials.emplace_back(material_node);
-    //model::materials.emplace_back(material_node);
     new (model::materials + i++) Material(material_node);
   }
 }
@@ -1496,7 +1493,7 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_end) *index_end = model::materials_size + n - 1;
 
   // Allocate temporary buffer
-  Material * tmp = (Material *) malloc(n * sizeof(Material)); 
+  Material* tmp = (Material*) malloc(n * sizeof(Material)); 
 
   // Transfer data from existing buffer to temporary one
   for (int32_t i = 0; i < model::materials_size; i++) {
@@ -1513,8 +1510,8 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
     model::materials[i].~Material();
   }
   free(model::materials);
-  model::materials = tmp;
 
+  model::materials = tmp;
   model::materials_size += n;
 
   return 0;

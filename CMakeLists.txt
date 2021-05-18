@@ -48,6 +48,10 @@ endif()
 #===============================================================================
 if(dagmc)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
+    message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
+    Please update DAGMC to version 3.2.0 or greater.")
+  endif()
 endif()
 
 #===============================================================================

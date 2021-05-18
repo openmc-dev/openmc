@@ -220,6 +220,7 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
       }
 
       const auto& mat {model::materials[i_material]};
+      printf("mat.nuclide_ = %p\n", mat.nuclide_.data());
       for (const auto& i_nuc : mat.nuclide_) {
         for (double temperature : cell_temps) {
           // Add temperature if it hasn't already been added

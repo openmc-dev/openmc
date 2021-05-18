@@ -50,6 +50,7 @@ uint64_t materials_size;
 
 Material::Material(pugi::xml_node node)
 {
+  printf("initializing material..\n");
   index_ = model::materials_size; // Avoids warning about narrowing
 
   if (check_for_node(node, "id")) {
@@ -1486,9 +1487,25 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
 {
   if (index_start) *index_start = model::materials_size;
   if (index_end) *index_end = model::materials_size + n - 1;
-  for (int32_t i = 0; i < n; i++) {
-    model::materials.emplace_back();
+
+  // Allocate temporary buffer
+  Material * tmp = (Material *) malloc(n * sizeof(Material)); 
+
+  // Transfer data from existing buffer to temporary one
+  for (int32_t i = 0; i < model::materials_size; i++) {
+    tmp[i] = model::materials[i];
   }
+
+  // Construct extended elements
+  for (int32_t i = 0; i < n; i++) {
+    new (tmp + model::materials_size + i++) Material();
+  }
+
+  // Delete existing materials array and assign to new pointer
+  delete[] model::materials;
+  model::materials = tmp;
+  model::materials_size += n;
+
   return 0;
 }
 

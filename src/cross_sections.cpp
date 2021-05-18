@@ -335,7 +335,6 @@ void finalize_cross_sections(){
       double_2dvec nuc_temps(data::nuclide_map.size());
       double_2dvec thermal_temps(data::thermal_scatt_map.size());
       get_temperatures(nuc_temps, thermal_temps);
-      printf("success\n");
 
       // Read continuous-energy cross sections from HDF5
       read_ce_cross_sections(nuc_temps, thermal_temps);

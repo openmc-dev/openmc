@@ -1265,7 +1265,11 @@ void read_materials_xml()
 
 void free_memory_material()
 {
+  for (int i = 0; i < model::materials_size; i++) {
+    model::materials[i].~Material();
+  }
   free(model::materials);
+  model::materials_size = 0;
   model::material_map.clear();
 }
 
@@ -1485,6 +1489,7 @@ openmc_material_set_volume(int32_t index, double volume)
 extern "C" int
 openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
 {
+  printf("extending material array\n");
   if (index_start) *index_start = model::materials_size;
   if (index_end) *index_end = model::materials_size + n - 1;
 
@@ -1502,8 +1507,12 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   }
 
   // Delete existing materials array and assign to new pointer
-  delete[] model::materials;
+  for (int i = 0; i < model::materials_size; i++) {
+    model::materials[i].~Material();
+  }
+  free(model::materials);
   model::materials = tmp;
+
   model::materials_size += n;
 
   return 0;

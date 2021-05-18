@@ -221,13 +221,18 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
 
       const auto& mat {model::materials[i_material]};
       printf("mat.nuclide_ = %p\n", mat.nuclide_.data());
+      printf("i_material = %d\n", i_material);
       for (const auto& i_nuc : mat.nuclide_) {
         for (double temperature : cell_temps) {
+          printf("temp = %lf\n", temperature);
+          printf("attempting to read i_nuc = %d  from nuc_temps of length %d\n", nuc_temps.size());
           // Add temperature if it hasn't already been added
           if (!contains(nuc_temps[i_nuc], temperature))
+            printf("attempting push back!\n");
             nuc_temps[i_nuc].push_back(temperature);
         }
       }
+      printf("POINT 1\n");
 
       for (const auto& table : mat.thermal_tables_) {
         // Get index in data::thermal_scatt array

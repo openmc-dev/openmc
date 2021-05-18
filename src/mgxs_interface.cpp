@@ -125,7 +125,7 @@ void MgxsInterface::create_macro_xs()
   // Therefore type(nuclides[mat.nuclide_[0]]) dictates type(macroxs).
   // At the same time, we will find the scattering type, as that will dictate
   // how we allocate the scatter object within macroxs.
-  for (int i = 0; i < model::materials.size(); ++i) {
+  for (int i = 0; i < model::materials_size; ++i) {
     if (kTs[i].size() > 0) {
       // Convert atom_densities to a vector
       auto& mat {model::materials[i]};
@@ -152,7 +152,7 @@ void MgxsInterface::create_macro_xs()
 
 std::vector<std::vector<double>> MgxsInterface::get_mat_kTs()
 {
-  std::vector<std::vector<double>> kTs(model::materials.size());
+  std::vector<std::vector<double>> kTs(model::materials_size);
 
   for (const auto& cell : model::cells) {
     // Skip non-material cells
@@ -261,7 +261,8 @@ void set_mg_interface_nuclides_and_temps()
   std::unordered_set<std::string> already_read;
 
   // Loop over materials to find xs and temperature to be read
-  for (const auto& mat : model::materials) {
+  for (int i = 0; i < model::materials_size; i++) {
+    const auto& mat = model::materials[i];
     for (int i_nuc : mat.nuclide_) {
       std::string& name = nuclide_names[i_nuc];
 
@@ -277,7 +278,8 @@ void set_mg_interface_nuclides_and_temps()
 void mark_fissionable_mgxs_materials()
 {
   // Loop over all files
-  for (auto& mat : model::materials) {
+  for (int i = 0; i < model::materials_size; i++) {
+    auto& mat = model::materials[i];
     for (int i_nuc : mat.nuclide_) {
       if (data::mg.nuclides_[i_nuc].fissionable) {
         mat.fissionable_ = true;

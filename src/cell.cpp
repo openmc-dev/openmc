@@ -1230,7 +1230,7 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
           c.material_.push_back(MATERIAL_VOID);
           //assert(c.material_length_ < MATERIAL_SIZE );
           //c.material_[c.material_length_++] = MATERIAL_VOID;
-        } else if (i_mat >= 0 && i_mat < model::materials.size()) {
+        } else if (i_mat >= 0 && i_mat < model::materials_size) {
           c.material_.push_back(i_mat);
           //assert(c.material_length_ < MATERIAL_SIZE );
           //c.material_[c.material_length_++] = i_mat;

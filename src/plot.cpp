@@ -365,7 +365,7 @@ Plot::set_default_colors(pugi::xml_node plot_node)
     colors_.resize(model::cells.size());
   } else if("material" == pl_color_by) {
     color_by_ = PlotColorBy::mats;
-    colors_.resize(model::materials.size());
+    colors_.resize(model::materials_size);
   } else {
     fatal_error(fmt::format("Unsupported plot color type '{}' in plot {}",
       pl_color_by, id_));

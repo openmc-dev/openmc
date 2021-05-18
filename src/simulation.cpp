@@ -105,7 +105,8 @@ int openmc_simulation_init()
   }
 
   // Set up material nuclide index mapping
-  for (auto& mat : model::materials) {
+  for (int i = 0; i < model::materials_size; i++) {
+    auto& mat = model::materials[i];
     mat.init_nuclide_index();
   }
 
@@ -162,7 +163,8 @@ int openmc_simulation_finalize()
   release_data_from_device();
 
   // Clear material nuclide mapping
-  for (auto& mat : model::materials) {
+  for (int i = 0; i < model::materials_size; i++) {
+    auto& mat = model::materials[i];
     mat.mat_nuclide_index_.clear();
   }
 

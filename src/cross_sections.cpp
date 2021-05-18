@@ -200,7 +200,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   }
 
   // Read cross sections
-  for (const auto& mat : model::materials) {
+  for (int i = 0; i < model::materials_size; i++) {
+    const auto& mat = model::materials[i];
     for (int i_nuc : mat.nuclide_) {
       // Find name of corresponding nuclide. Because we haven't actually loaded
       // data, we don't have the name available, so instead we search through
@@ -219,7 +220,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   }
 
   // Perform final tasks -- reading S(a,b) tables, normalizing densities
-  for (auto& mat : model::materials) {
+  for (int i = 0; i < model::materials_size; i++) {
+    auto& mat = model::materials[i];
     for (const auto& table : mat.thermal_tables_) {
       // Get name of S(a,b) table
       int i_table = table.index_table;

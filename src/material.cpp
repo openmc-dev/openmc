@@ -50,8 +50,11 @@ uint64_t materials_size;
 
 Material::Material(pugi::xml_node node)
 {
-  printf("initializing material..\n");
-  index_ = model::materials_size; // Avoids warning about narrowing
+  // Declare a static variable to track this material's index in
+  // the model::materials array
+  static uint64_t unique_index = 0;
+
+  index_ = unique_index++; // Avoids warning about narrowing
 
   if (check_for_node(node, "id")) {
     this->set_id(std::stoi(get_node_value(node, "id")));

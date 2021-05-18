@@ -475,8 +475,10 @@ void initialize_history(Particle& p, int64_t index_source)
   // set defaults
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // set defaults for eigenvalue simulations from primary bank
-    p.from_source(&simulation::source_bank[index_source - 1]);
+    p.from_source(&simulation::device_source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    printf("fixed source mode not yet supported on device.\n");
+    /*
     // initialize random number seed
     int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
       simulation::work_index[mpi::rank] + index_source;
@@ -484,9 +486,11 @@ void initialize_history(Particle& p, int64_t index_source)
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
     p.from_source(&site);
+    */
   }
   p.current_work_ = index_source;
 
+  /*
   // set identifier for particle
   p.id_ = simulation::work_index[mpi::rank] + index_source;
 
@@ -532,6 +536,7 @@ void initialize_history(Particle& p, int64_t index_source)
   simulation::total_weight += p.wgt_;
 
   initialize_history_partial(p);
+  */
 }
 
 void initialize_history_partial(Particle& p)
@@ -735,6 +740,9 @@ void transport_event_based()
 {
   int64_t remaining_work = simulation::work_per_rank;
   int64_t source_offset = 0;
+
+  // Transfer source bank to device
+  #pragma omp target update to(simulation::device_source_bank[:simulation::source_bank.size()])
 
   // To cap the total amount of memory used to store particle object data, the
   // number of particles in flight at any point in time can bet set. In the case

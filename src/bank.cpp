@@ -16,6 +16,7 @@ namespace openmc {
 namespace simulation {
 
 std::vector<Particle::Bank> source_bank;
+Particle::Bank* device_source_bank;
 
 SharedArray<Particle::Bank> surf_source_bank;
 

@@ -70,9 +70,13 @@ void dispatch_xs_event(int64_t buffer_idx)
 void process_init_events(int64_t n_particles, int64_t source_offset)
 {
   simulation::time_event_init.start();
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for
+  #else
   #pragma omp parallel for schedule(runtime)
+  #endif
   for (int64_t i = 0; i < n_particles; i++) {
-    initialize_history(simulation::particles[i], source_offset + i + 1);
+    initialize_history(simulation::device_particles[i], source_offset + i + 1);
     dispatch_xs_event(i);
   }
   simulation::time_event_init.stop();

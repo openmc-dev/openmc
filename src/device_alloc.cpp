@@ -1,5 +1,6 @@
 #include "openmc/device_alloc.h"
 
+#include "openmc/bank.h"
 #include "openmc/cell.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
@@ -91,6 +92,10 @@ void move_read_only_data_to_device()
   std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
   #pragma omp target enter data map(to: model::materials[:model::materials_size])
   // TODO: Deep copy of materials
+  
+  // Source Bank ///////////////////////////////////////////////////////
+  simulation::device_source_bank = simulation::source_bank.data();
+  #pragma omp target enter data map(alloc: simulation::device_source_bank[:simulation::source_bank.size()])
 }
 
 void release_data_from_device()

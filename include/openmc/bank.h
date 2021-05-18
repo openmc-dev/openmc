@@ -17,6 +17,9 @@ namespace openmc {
 namespace simulation {
 
 extern std::vector<Particle::Bank> source_bank;
+#pragma omp declare target
+extern Particle::Bank* device_source_bank;
+#pragma omp end declare target
 
 extern SharedArray<Particle::Bank> surf_source_bank;
 

@@ -70,6 +70,12 @@ void dispatch_xs_event(int64_t buffer_idx)
 void process_init_events(int64_t n_particles, int64_t source_offset)
 {
   simulation::time_event_init.start();
+
+  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  
+  simulation::calculate_fuel_xs_queue.copy_host_to_device();
+  simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
+
   #ifdef USE_DEVICE
   #pragma omp target teams distribute parallel for
   #else
@@ -79,6 +85,12 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
     initialize_history(simulation::device_particles[i], source_offset + i + 1);
     dispatch_xs_event(i);
   }
+  
+  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  
+  simulation::calculate_fuel_xs_queue.copy_device_to_host();
+  simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
+
   simulation::time_event_init.stop();
 }
 

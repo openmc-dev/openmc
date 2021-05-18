@@ -1,254 +1,254 @@
 total
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.414825   0.022793
-0         1         2   total  0.660170   0.047519
+1         1         1   total  0.416386   0.014741
+0         1         2   total  0.658651   0.060521
 transport
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.363092   0.023838
-0         1         2   total  0.644851   0.047675
+1         1         1   total  0.378343   0.016533
+0         1         2   total  0.641137   0.060797
 nu-transport
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.363092   0.023838
-0         1         2   total  0.644851   0.047675
+1         1         1   total  0.378437   0.016556
+0         1         2   total  0.641137   0.060797
 absorption
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.027408   0.002692
-0         1         2   total  0.264511   0.023367
+1         1         1   total  0.027335   0.002038
+0         1         2   total  0.263007   0.029616
 capture
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.019845   0.002643
-0         1         2   total  0.071719   0.025208
+1         1         1   total  0.019722   0.001980
+0         1         2   total  0.071284   0.032059
 fission
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.007563   0.000508
-0         1         2   total  0.192791   0.017106
+1         1         1   total  0.007613   0.000245
+0         1         2   total  0.191723   0.021698
 nu-fission
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.019432   0.001323
-0         1         2   total  0.469775   0.041682
+1         1         1   total  0.019339   0.000628
+0         1         2   total  0.467173   0.052872
 kappa-fission
    material  group in nuclide          mean     std. dev.
-1         1         1   total  1.474570e+06  9.923536e+04
-0         1         2   total  3.728689e+07  3.308375e+06
+1         1         1   total  1.482697e+06  4.755501e+04
+0         1         2   total  3.708035e+07  4.196524e+06
 scatter
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.387418   0.020626
-0         1         2   total  0.395659   0.025125
+1         1         1   total  0.389051   0.013216
+0         1         2   total  0.395644   0.031715
 nu-scatter
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.385188   0.026946
-0         1         2   total  0.412389   0.015425
+1         1         1   total  0.392313   0.009662
+0         1         2   total  0.385086   0.024132
 scatter matrix
     material  group in  group out legendre nuclide      mean  std. dev.
-12         1         1          1       P0   total  0.384199   0.027001
-13         1         1          1       P1   total  0.051870   0.006983
-14         1         1          1       P2   total  0.020069   0.002846
-15         1         1          1       P3   total  0.009478   0.002234
-8          1         1          2       P0   total  0.000989   0.000482
-9          1         1          2       P1   total -0.000207   0.000149
-10         1         1          2       P2   total -0.000103   0.000184
-11         1         1          2       P3   total  0.000234   0.000128
-4          1         2          1       P0   total  0.000925   0.000925
-5          1         2          1       P1   total -0.000768   0.000768
-6          1         2          1       P2   total  0.000494   0.000494
-7          1         2          1       P3   total -0.000171   0.000172
-0          1         2          2       P0   total  0.411465   0.015245
-1          1         2          2       P1   total  0.016482   0.004502
-2          1         2          2       P2   total  0.006371   0.010551
-3          1         2          2       P3   total -0.010499   0.010438
+12         1         1          1       P0   total  0.391262   0.009858
+13         1         1          1       P1   total  0.038043   0.007486
+14         1         1          1       P2   total  0.019717   0.003619
+15         1         1          1       P3   total  0.018917   0.001007
+8          1         1          2       P0   total  0.000876   0.000554
+9          1         1          2       P1   total -0.000275   0.000386
+10         1         1          2       P2   total  0.000074   0.000114
+11         1         1          2       P3   total  0.000141   0.000113
+4          1         2          1       P0   total  0.000000   0.000000
+5          1         2          1       P1   total  0.000000   0.000000
+6          1         2          1       P2   total  0.000000   0.000000
+7          1         2          1       P3   total  0.000000   0.000000
+0          1         2          2       P0   total  0.385086   0.024132
+1          1         2          2       P1   total  0.019196   0.005279
+2          1         2          2       P2   total -0.005654   0.006088
+3          1         2          2       P3   total  0.002768   0.007045
 nu-scatter matrix
     material  group in  group out legendre nuclide      mean  std. dev.
-12         1         1          1       P0   total  0.384199   0.027001
-13         1         1          1       P1   total  0.051870   0.006983
-14         1         1          1       P2   total  0.020069   0.002846
-15         1         1          1       P3   total  0.009478   0.002234
-8          1         1          2       P0   total  0.000989   0.000482
-9          1         1          2       P1   total -0.000207   0.000149
-10         1         1          2       P2   total -0.000103   0.000184
-11         1         1          2       P3   total  0.000234   0.000128
-4          1         2          1       P0   total  0.000925   0.000925
-5          1         2          1       P1   total -0.000768   0.000768
-6          1         2          1       P2   total  0.000494   0.000494
-7          1         2          1       P3   total -0.000171   0.000172
-0          1         2          2       P0   total  0.411465   0.015245
-1          1         2          2       P1   total  0.016482   0.004502
-2          1         2          2       P2   total  0.006371   0.010551
-3          1         2          2       P3   total -0.010499   0.010438
+12         1         1          1       P0   total  0.391437   0.009813
+13         1         1          1       P1   total  0.037949   0.007537
+14         1         1          1       P2   total  0.019705   0.003623
+15         1         1          1       P3   total  0.018991   0.001065
+8          1         1          2       P0   total  0.000876   0.000554
+9          1         1          2       P1   total -0.000275   0.000386
+10         1         1          2       P2   total  0.000074   0.000114
+11         1         1          2       P3   total  0.000141   0.000113
+4          1         2          1       P0   total  0.000000   0.000000
+5          1         2          1       P1   total  0.000000   0.000000
+6          1         2          1       P2   total  0.000000   0.000000
+7          1         2          1       P3   total  0.000000   0.000000
+0          1         2          2       P0   total  0.385086   0.024132
+1          1         2          2       P1   total  0.019196   0.005279
+2          1         2          2       P2   total -0.005654   0.006088
+3          1         2          2       P3   total  0.002768   0.007045
 multiplicity matrix
-   material  group in  group out nuclide  mean  std. dev.
-3         1         1          1   total   1.0   0.078516
-2         1         1          2   total   1.0   0.687184
-1         1         2          1   total   1.0   1.414214
-0         1         2          2   total   1.0   0.041130
+   material  group in  group out nuclide      mean  std. dev.
+3         1         1          1   total  1.000448   0.020416
+2         1         1          2   total  1.000000   0.894427
+1         1         2          1   total  0.000000   0.000000
+0         1         2          2   total  1.000000   0.085266
 nu-fission matrix
    material  group in  group out nuclide      mean  std. dev.
-3         1         1          1   total  0.020142   0.003149
+3         1         1          1   total  0.017516   0.001935
 2         1         1          2   total  0.000000   0.000000
-1         1         2          1   total  0.454366   0.027426
+1         1         2          1   total  0.498681   0.013398
 0         1         2          2   total  0.000000   0.000000
 scatter probability matrix
    material  group in  group out nuclide      mean  std. dev.
-3         1         1          1   total  0.997433   0.078224
-2         1         1          2   total  0.002567   0.001256
-1         1         2          1   total  0.002242   0.002243
-0         1         2          2   total  0.997758   0.041053
+3         1         1          1   total  0.997766   0.020541
+2         1         1          2   total  0.002234   0.001413
+1         1         2          1   total  0.000000   0.000000
+0         1         2          2   total  1.000000   0.085266
 consistent scatter matrix
     material  group in  group out legendre nuclide      mean  std. dev.
-12         1         1          1       P0   total  0.386423   0.036629
-13         1         1          1       P1   total  0.052170   0.007767
-14         1         1          1       P2   total  0.020185   0.003138
-15         1         1          1       P3   total  0.009533   0.002327
-8          1         1          2       P0   total  0.000995   0.000489
-9          1         1          2       P1   total -0.000208   0.000150
-10         1         1          2       P2   total -0.000104   0.000186
-11         1         1          2       P3   total  0.000236   0.000130
-4          1         2          1       P0   total  0.000887   0.000889
-5          1         2          1       P1   total -0.000737   0.000738
-6          1         2          1       P2   total  0.000474   0.000475
-7          1         2          1       P3   total -0.000165   0.000165
-0          1         2          2       P0   total  0.394772   0.029871
-1          1         2          2       P1   total  0.015813   0.004443
-2          1         2          2       P2   total  0.006113   0.010131
-3          1         2          2       P3   total -0.010073   0.010037
+12         1         1          1       P0   total  0.388182   0.015419
+13         1         1          1       P1   total  0.037744   0.007517
+14         1         1          1       P2   total  0.019562   0.003641
+15         1         1          1       P3   total  0.018769   0.001154
+8          1         1          2       P0   total  0.000869   0.000551
+9          1         1          2       P1   total -0.000273   0.000383
+10         1         1          2       P2   total  0.000073   0.000113
+11         1         1          2       P3   total  0.000140   0.000112
+4          1         2          1       P0   total  0.000000   0.000000
+5          1         2          1       P1   total  0.000000   0.000000
+6          1         2          1       P2   total  0.000000   0.000000
+7          1         2          1       P3   total  0.000000   0.000000
+0          1         2          2       P0   total  0.395644   0.046302
+1          1         2          2       P1   total  0.019723   0.005763
+2          1         2          2       P2   total -0.005809   0.006281
+3          1         2          2       P3   total  0.002843   0.007244
 consistent nu-scatter matrix
     material  group in  group out legendre nuclide      mean  std. dev.
-12         1         1          1       P0   total  0.386423   0.047563
-13         1         1          1       P1   total  0.052170   0.008781
-14         1         1          1       P2   total  0.020185   0.003515
-15         1         1          1       P3   total  0.009533   0.002444
-8          1         1          2       P0   total  0.000995   0.000841
-9          1         1          2       P1   total -0.000208   0.000208
-10         1         1          2       P2   total -0.000104   0.000199
-11         1         1          2       P3   total  0.000236   0.000208
-4          1         2          1       P0   total  0.000887   0.001538
-5          1         2          1       P1   total -0.000737   0.001277
-6          1         2          1       P2   total  0.000474   0.000821
-7          1         2          1       P3   total -0.000165   0.000285
-0          1         2          2       P0   total  0.394772   0.033999
-1          1         2          2       P1   total  0.015813   0.004491
-2          1         2          2       P2   total  0.006113   0.010134
-3          1         2          2       P3   total -0.010073   0.010045
+12         1         1          1       P0   total  0.388355   0.017343
+13         1         1          1       P1   total  0.037760   0.007560
+14         1         1          1       P2   total  0.019571   0.003664
+15         1         1          1       P3   total  0.018777   0.001216
+8          1         1          2       P0   total  0.000869   0.000953
+9          1         1          2       P1   total -0.000273   0.000454
+10         1         1          2       P2   total  0.000073   0.000131
+11         1         1          2       P3   total  0.000140   0.000168
+4          1         2          1       P0   total  0.000000   0.000000
+5          1         2          1       P1   total  0.000000   0.000000
+6          1         2          1       P2   total  0.000000   0.000000
+7          1         2          1       P3   total  0.000000   0.000000
+0          1         2          2       P0   total  0.395644   0.057288
+1          1         2          2       P1   total  0.019723   0.006004
+2          1         2          2       P2   total -0.005809   0.006300
+3          1         2          2       P3   total  0.002843   0.007248
 chi
    material  group out nuclide  mean  std. dev.
-1         1          1   total   1.0   0.046071
+1         1          1   total   1.0   0.029903
 0         1          2   total   0.0   0.000000
 chi-prompt
    material  group out nuclide  mean  std. dev.
-1         1          1   total   1.0   0.051471
+1         1          1   total   1.0   0.028494
 0         1          2   total   0.0   0.000000
 inverse-velocity
    material  group in nuclide          mean     std. dev.
-1         1         1   total  5.709324e-08  4.687938e-09
-0         1         2   total  2.855739e-06  2.442164e-07
+1         1         1   total  6.148626e-08  3.647428e-09
+0         1         2   total  2.844242e-06  3.098231e-07
 prompt-nu-fission
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.019239   0.001310
-0         1         2   total  0.466719   0.041411
+1         1         1   total  0.019154   0.000623
+0         1         2   total  0.464134   0.052528
 prompt-nu-fission matrix
    material  group in  group out nuclide      mean  std. dev.
-3         1         1          1   total  0.020142   0.003149
+3         1         1          1   total  0.017516   0.001935
 2         1         1          2   total  0.000000   0.000000
-1         1         2          1   total  0.445819   0.028675
+1         1         2          1   total  0.495450   0.012592
 0         1         2          2   total  0.000000   0.000000
 diffusion-coefficient
    material  group in legendre nuclide       mean  std. dev.
-2         1         1       P0   total  10.942878  12.704137
-3         1         1       P1   total   0.918041   0.075837
-0         1         2       P0   total   1.370855   0.292448
-1         1         2       P1   total   0.516916   0.050251
+2         1         1       P0   total  13.267434   9.377780
+3         1         1       P1   total   0.881035   0.050823
+0         1         2       P0   total   1.242844   0.316720
+1         1         2       P1   total   0.519910   0.064395
 nu-diffusion-coefficient
    material  group in legendre nuclide       mean  std. dev.
-2         1         1       P0   total  10.942878  12.704137
-3         1         1       P1   total   0.918041   0.075837
-0         1         2       P0   total   1.370855   0.292448
-1         1         2       P1   total   0.516916   0.050251
+2         1         1       P0   total  13.360612   9.496523
+3         1         1       P1   total   0.880816   0.050843
+0         1         2       P0   total   1.242844   0.316720
+1         1         2       P1   total   0.519910   0.064395
 (n,elastic)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.358207   0.019662
-0         1         2   total  0.395659   0.025125
+1         1         1   total  0.361427   0.011879
+0         1         2   total  0.395644   0.031715
 (n,level)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.000619   0.000049
+1         1         1   total  0.000549   0.000035
 0         1         2   total  0.000000   0.000000
 (n,2n)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.000121   0.000054
+1         1         1   total  0.000058   0.000012
 0         1         2   total  0.000000   0.000000
 (n,na)
    material  group in nuclide          mean     std. dev.
-1         1         1   total  9.209364e-11  9.154237e-11
+1         1         1   total  4.608391e-11  2.324841e-11
 0         1         2   total  0.000000e+00  0.000000e+00
 (n,nc)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.009458   0.000768
+1         1         1   total  0.008349   0.000869
 0         1         2   total  0.000000   0.000000
 (n,gamma)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.019720   0.002260
-0         1         2   total  0.071719   0.006262
+1         1         1   total  0.019640   0.001935
+0         1         2   total  0.071284   0.007918
 (n,a)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.000124   0.000023
+1         1         1   total  0.000082   0.000016
 0         1         2   total  0.000000   0.000000
 (n,Xa)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.000124   0.000023
+1         1         1   total  0.000082   0.000016
 0         1         2   total  0.000000   0.000000
 heating
    material  group in nuclide          mean     std. dev.
-1         1         1   total  1.287977e+06  8.806399e+04
-0         1         2   total  3.222710e+07  2.903396e+06
+1         1         1   total  1.302118e+06  4.240633e+04
+0         1         2   total  3.235834e+07  3.683247e+06
 damage-energy
    material  group in nuclide         mean   std. dev.
-1         1         1   total  2471.829371  114.012620
-0         1         2   total  1357.269536  120.427363
+1         1         1   total  2323.848080  106.914413
+0         1         2   total  1349.749682  152.756195
 (n,n1)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.011877   0.000507
+1         1         1   total  0.011709   0.000412
 0         1         2   total  0.000000   0.000000
 (n,a0)
    material  group in nuclide      mean  std. dev.
-1         1         1   total  0.000115   0.000024
+1         1         1   total  0.000076   0.000018
 0         1         2   total  0.000000   0.000000
 (n,nc) matrix
    material  group in  group out nuclide      mean  std. dev.
-3         1         1          1   total  0.010878   0.001184
+3         1         1          1   total  0.007009   0.000797
 2         1         1          2   total  0.000000   0.000000
 1         1         2          1   total  0.000000   0.000000
 0         1         2          2   total  0.000000   0.000000
 (n,n1) matrix
+   material  group in  group out nuclide     mean  std. dev.
+3         1         1          1   total  0.01209    0.00108
+2         1         1          2   total  0.00000    0.00000
+1         1         2          1   total  0.00000    0.00000
+0         1         2          2   total  0.00000    0.00000
+(n,2n) matrix
    material  group in  group out nuclide      mean  std. dev.
-3         1         1          1   total  0.011043   0.000937
+3         1         1          1   total  0.000175   0.000175
 2         1         1          2   total  0.000000   0.000000
 1         1         2          1   total  0.000000   0.000000
 0         1         2          2   total  0.000000   0.000000
-(n,2n) matrix
-   material  group in  group out nuclide  mean  std. dev.
-3         1         1          1   total   0.0        0.0
-2         1         1          2   total   0.0        0.0
-1         1         2          1   total   0.0        0.0
-0         1         2          2   total   0.0        0.0
 delayed-nu-fission
     material  delayedgroup  group in nuclide      mean     std. dev.
-1          1             1         1   total  0.000004  2.897486e-07
-3          1             2         1   total  0.000027  1.850037e-06
-5          1             3         1   total  0.000028  1.970979e-06
-7          1             4         1   total  0.000074  5.226103e-06
-9          1             5         1   total  0.000041  2.998308e-06
-11         1             6         1   total  0.000017  1.226547e-06
-0          1             1         2   total  0.000107  9.491556e-06
-2          1             2         2   total  0.000552  4.899251e-05
-4          1             3         2   total  0.000527  4.677253e-05
-6          1             4         2   total  0.001182  1.048679e-04
-8          1             5         2   total  0.000485  4.299445e-05
-10         1             6         2   total  0.000203  1.801022e-05
+1          1             1         1   total  0.000004  1.358228e-07
+3          1             2         1   total  0.000027  8.873679e-07
+5          1             3         1   total  0.000028  1.017223e-06
+7          1             4         1   total  0.000071  3.064066e-06
+9          1             5         1   total  0.000039  2.180731e-06
+11         1             6         1   total  0.000016  8.808101e-07
+0          1             1         2   total  0.000106  1.203961e-05
+2          1             2         2   total  0.000549  6.214477e-05
+4          1             3         2   total  0.000524  5.932882e-05
+6          1             4         2   total  0.001175  1.330202e-04
+8          1             5         2   total  0.000482  5.453651e-05
+10         1             6         2   total  0.000202  2.284515e-05
 chi-delayed
     material  delayedgroup  group out nuclide  mean  std. dev.
 1          1             1          1   total   0.0   0.000000
-3          1             2          1   total   1.0   0.869128
-5          1             3          1   total   1.0   1.414214
-7          1             4          1   total   1.0   0.360359
-9          1             5          1   total   0.0   0.000000
+3          1             2          1   total   1.0   1.414214
+5          1             3          1   total   0.0   0.000000
+7          1             4          1   total   1.0   1.414214
+9          1             5          1   total   1.0   1.414214
 11         1             6          1   total   0.0   0.000000
 0          1             1          2   total   0.0   0.000000
 2          1             2          2   total   0.0   0.000000
@@ -258,26 +258,26 @@ chi-delayed
 10         1             6          2   total   0.0   0.000000
 beta
     material  delayedgroup  group in nuclide      mean  std. dev.
-1          1             1         1   total  0.000222   0.000018
-3          1             2         1   total  0.001388   0.000115
-5          1             3         1   total  0.001463   0.000122
-7          1             4         1   total  0.003822   0.000321
-9          1             5         1   total  0.002135   0.000183
-11         1             6         1   total  0.000875   0.000075
-0          1             1         2   total  0.000228   0.000025
-2          1             2         2   total  0.001175   0.000127
-4          1             3         2   total  0.001122   0.000122
-6          1             4         2   total  0.002516   0.000273
-8          1             5         2   total  0.001031   0.000112
-10         1             6         2   total  0.000432   0.000047
+1          1             1         1   total  0.000225   0.000006
+3          1             2         1   total  0.001373   0.000038
+5          1             3         1   total  0.001433   0.000045
+7          1             4         1   total  0.003692   0.000142
+9          1             5         1   total  0.002016   0.000106
+11         1             6         1   total  0.000827   0.000043
+0          1             1         2   total  0.000228   0.000032
+2          1             2         2   total  0.001175   0.000163
+4          1             3         2   total  0.001122   0.000156
+6          1             4         2   total  0.002516   0.000349
+8          1             5         2   total  0.001031   0.000143
+10         1             6         2   total  0.000432   0.000060
 decay-rate
    material  delayedgroup nuclide      mean  std. dev.
-0         1             1   total  0.013355   0.001272
-1         1             2   total  0.032600   0.003048
-2         1             3   total  0.121083   0.011182
-3         1             4   total  0.305910   0.027728
-4         1             5   total  0.861934   0.075425
-5         1             6   total  2.895065   0.253942
+0         1             1   total  0.013356   0.001466
+1         1             2   total  0.032598   0.003432
+2         1             3   total  0.121086   0.012382
+3         1             4   total  0.305945   0.029907
+4         1             5   total  0.862061   0.077144
+5         1             6   total  2.895499   0.260691
 delayed-nu-fission matrix
     material  delayedgroup  group in  group out nuclide      mean  std. dev.
 3          1             1         1          1   total  0.000000   0.000000
@@ -293,10 +293,10 @@ delayed-nu-fission matrix
 18         1             5         1          2   total  0.000000   0.000000
 22         1             6         1          2   total  0.000000   0.000000
 1          1             1         2          1   total  0.000000   0.000000
-5          1             2         2          1   total  0.002538   0.001561
-9          1             3         2          1   total  0.001186   0.001186
-13         1             4         2          1   total  0.004823   0.001234
-17         1             5         2          1   total  0.000000   0.000000
+5          1             2         2          1   total  0.001133   0.001133
+9          1             3         2          1   total  0.000000   0.000000
+13         1             4         2          1   total  0.000988   0.000989
+17         1             5         2          1   total  0.001109   0.001109
 21         1             6         2          1   total  0.000000   0.000000
 0          1             1         2          2   total  0.000000   0.000000
 4          1             2         2          2   total  0.000000   0.000000
@@ -306,24 +306,24 @@ delayed-nu-fission matrix
 20         1             6         2          2   total  0.000000   0.000000
 total
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.313738   0.015582
-0         2         2   total  0.300821   0.028052
+1         2         1   total  0.312441   0.009893
+0         2         2   total  0.300527   0.023155
 transport
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.275508   0.017742
-0         2         2   total  0.312035   0.032384
+1         2         1   total  0.275347   0.016021
+0         2         2   total  0.300167   0.026917
 nu-transport
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.275508   0.017742
-0         2         2   total  0.312035   0.032384
+1         2         1   total  0.275347   0.016021
+0         2         2   total  0.300167   0.026917
 absorption
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.001575   0.000323
-0         2         2   total  0.005400   0.000618
+1         2         1   total  0.001395   0.000129
+0         2         2   total  0.005202   0.000498
 capture
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.001575   0.000323
-0         2         2   total  0.005400   0.000618
+1         2         1   total  0.001395   0.000129
+0         2         2   total  0.005202   0.000498
 fission
    material  group in nuclide  mean  std. dev.
 1         2         1   total   0.0        0.0
@@ -338,54 +338,54 @@ kappa-fission
 0         2         2   total   0.0        0.0
 scatter
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.312163   0.015322
-0         2         2   total  0.295421   0.027446
+1         2         1   total  0.311046   0.009880
+0         2         2   total  0.295325   0.022678
 nu-scatter
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.310121   0.033788
-0         2         2   total  0.296264   0.043792
+1         2         1   total  0.310433   0.013519
+0         2         2   total  0.287667   0.061288
 scatter matrix
-    material  group in  group out legendre nuclide      mean  std. dev.
-12         2         1          1       P0   total  0.310121   0.033788
-13         2         1          1       P1   total  0.038230   0.008484
-14         2         1          1       P2   total  0.020745   0.004696
-15         2         1          1       P3   total  0.007964   0.003732
-8          2         1          2       P0   total  0.000000   0.000000
-9          2         1          2       P1   total  0.000000   0.000000
-10         2         1          2       P2   total  0.000000   0.000000
-11         2         1          2       P3   total  0.000000   0.000000
-4          2         2          1       P0   total  0.000000   0.000000
-5          2         2          1       P1   total  0.000000   0.000000
-6          2         2          1       P2   total  0.000000   0.000000
-7          2         2          1       P3   total  0.000000   0.000000
-0          2         2          2       P0   total  0.296264   0.043792
-1          2         2          2       P1   total -0.011214   0.016180
-2          2         2          2       P2   total  0.008837   0.011504
-3          2         2          2       P3   total -0.003270   0.007329
+    material  group in  group out legendre nuclide          mean     std. dev.
+12         2         1          1       P0   total  3.099468e-01  1.368691e-02
+13         2         1          1       P1   total  3.709418e-02  1.260219e-02
+14         2         1          1       P2   total  2.620103e-02  2.237097e-03
+15         2         1          1       P3   total  1.039112e-02  2.917283e-03
+8          2         1          2       P0   total  4.858100e-04  4.860246e-04
+9          2         1          2       P1   total  3.762752e-04  3.764414e-04
+10         2         1          2       P2   total  1.942506e-04  1.943364e-04
+11         2         1          2       P3   total -9.482181e-08  9.486370e-08
+4          2         2          1       P0   total  0.000000e+00  0.000000e+00
+5          2         2          1       P1   total  0.000000e+00  0.000000e+00
+6          2         2          1       P2   total  0.000000e+00  0.000000e+00
+7          2         2          1       P3   total  0.000000e+00  0.000000e+00
+0          2         2          2       P0   total  2.876667e-01  6.128794e-02
+1          2         2          2       P1   total -2.172735e-03  1.616275e-02
+2          2         2          2       P2   total  9.596560e-03  1.756046e-02
+3          2         2          2       P3   total -5.006322e-03  1.249952e-02
 nu-scatter matrix
-    material  group in  group out legendre nuclide      mean  std. dev.
-12         2         1          1       P0   total  0.310121   0.033788
-13         2         1          1       P1   total  0.038230   0.008484
-14         2         1          1       P2   total  0.020745   0.004696
-15         2         1          1       P3   total  0.007964   0.003732
-8          2         1          2       P0   total  0.000000   0.000000
-9          2         1          2       P1   total  0.000000   0.000000
-10         2         1          2       P2   total  0.000000   0.000000
-11         2         1          2       P3   total  0.000000   0.000000
-4          2         2          1       P0   total  0.000000   0.000000
-5          2         2          1       P1   total  0.000000   0.000000
-6          2         2          1       P2   total  0.000000   0.000000
-7          2         2          1       P3   total  0.000000   0.000000
-0          2         2          2       P0   total  0.296264   0.043792
-1          2         2          2       P1   total -0.011214   0.016180
-2          2         2          2       P2   total  0.008837   0.011504
-3          2         2          2       P3   total -0.003270   0.007329
+    material  group in  group out legendre nuclide          mean     std. dev.
+12         2         1          1       P0   total  3.099468e-01  1.368691e-02
+13         2         1          1       P1   total  3.709418e-02  1.260219e-02
+14         2         1          1       P2   total  2.620103e-02  2.237097e-03
+15         2         1          1       P3   total  1.039112e-02  2.917283e-03
+8          2         1          2       P0   total  4.858100e-04  4.860246e-04
+9          2         1          2       P1   total  3.762752e-04  3.764414e-04
+10         2         1          2       P2   total  1.942506e-04  1.943364e-04
+11         2         1          2       P3   total -9.482181e-08  9.486370e-08
+4          2         2          1       P0   total  0.000000e+00  0.000000e+00
+5          2         2          1       P1   total  0.000000e+00  0.000000e+00
+6          2         2          1       P2   total  0.000000e+00  0.000000e+00
+7          2         2          1       P3   total  0.000000e+00  0.000000e+00
+0          2         2          2       P0   total  2.876667e-01  6.128794e-02
+1          2         2          2       P1   total -2.172735e-03  1.616275e-02
+2          2         2          2       P2   total  9.596560e-03  1.756046e-02
+3          2         2          2       P3   total -5.006322e-03  1.249952e-02
 multiplicity matrix
    material  group in  group out nuclide  mean  std. dev.
-3         2         1          1   total   1.0   0.108779
-2         2         1          2   total   0.0   0.000000
+3         2         1          1   total   1.0   0.046178
+2         2         1          2   total   1.0   1.414214
 1         2         2          1   total   0.0   0.000000
-0         2         2          2   total   1.0   0.142427
+0         2         2          2   total   1.0   0.204230
 nu-fission matrix
    material  group in  group out nuclide  mean  std. dev.
 3         2         1          1   total   0.0        0.0
@@ -393,47 +393,47 @@ nu-fission matrix
 1         2         2          1   total   0.0        0.0
 0         2         2          2   total   0.0        0.0
 scatter probability matrix
-   material  group in  group out nuclide  mean  std. dev.
-3         2         1          1   total   1.0   0.108779
-2         2         1          2   total   0.0   0.000000
-1         2         2          1   total   0.0   0.000000
-0         2         2          2   total   1.0   0.142427
+   material  group in  group out nuclide      mean  std. dev.
+3         2         1          1   total  0.998435   0.046097
+2         2         1          2   total  0.001565   0.001566
+1         2         2          1   total  0.000000   0.000000
+0         2         2          2   total  1.000000   0.204230
 consistent scatter matrix
-    material  group in  group out legendre nuclide      mean  std. dev.
-12         2         1          1       P0   total  0.312163   0.037253
-13         2         1          1       P1   total  0.038481   0.008743
-14         2         1          1       P2   total  0.020882   0.004835
-15         2         1          1       P3   total  0.008017   0.003776
-8          2         1          2       P0   total  0.000000   0.000000
-9          2         1          2       P1   total  0.000000   0.000000
-10         2         1          2       P2   total  0.000000   0.000000
-11         2         1          2       P3   total  0.000000   0.000000
-4          2         2          1       P0   total  0.000000   0.000000
-5          2         2          1       P1   total  0.000000   0.000000
-6          2         2          1       P2   total  0.000000   0.000000
-7          2         2          1       P3   total  0.000000   0.000000
-0          2         2          2       P0   total  0.295421   0.050236
-1          2         2          2       P1   total -0.011182   0.016162
-2          2         2          2       P2   total  0.008811   0.011495
-3          2         2          2       P3   total -0.003261   0.007313
+    material  group in  group out legendre nuclide          mean     std. dev.
+12         2         1          1       P0   total  3.105594e-01  1.740367e-02
+13         2         1          1       P1   total  3.716750e-02  1.269205e-02
+14         2         1          1       P2   total  2.625282e-02  2.417618e-03
+15         2         1          1       P3   total  1.041166e-02  2.945041e-03
+8          2         1          2       P0   total  4.867703e-04  4.872749e-04
+9          2         1          2       P1   total  3.770190e-04  3.774098e-04
+10         2         1          2       P2   total  1.946345e-04  1.948363e-04
+11         2         1          2       P3   total -9.500924e-08  9.510772e-08
+4          2         2          1       P0   total  0.000000e+00  0.000000e+00
+5          2         2          1       P1   total  0.000000e+00  0.000000e+00
+6          2         2          1       P2   total  0.000000e+00  0.000000e+00
+7          2         2          1       P3   total  0.000000e+00  0.000000e+00
+0          2         2          2       P0   total  2.953250e-01  6.443681e-02
+1          2         2          2       P1   total -2.230578e-03  1.659337e-02
+2          2         2          2       P2   total  9.852041e-03  1.803392e-02
+3          2         2          2       P3   total -5.139601e-03  1.283456e-02
 consistent nu-scatter matrix
-    material  group in  group out legendre nuclide      mean  std. dev.
-12         2         1          1       P0   total  0.312163   0.050407
-13         2         1          1       P1   total  0.038481   0.009693
-14         2         1          1       P2   total  0.020882   0.005342
-15         2         1          1       P3   total  0.008017   0.003876
-8          2         1          2       P0   total  0.000000   0.000000
-9          2         1          2       P1   total  0.000000   0.000000
-10         2         1          2       P2   total  0.000000   0.000000
-11         2         1          2       P3   total  0.000000   0.000000
-4          2         2          1       P0   total  0.000000   0.000000
-5          2         2          1       P1   total  0.000000   0.000000
-6          2         2          1       P2   total  0.000000   0.000000
-7          2         2          1       P3   total  0.000000   0.000000
-0          2         2          2       P0   total  0.295421   0.065529
-1          2         2          2       P1   total -0.011182   0.016240
-2          2         2          2       P2   total  0.008811   0.011563
-3          2         2          2       P3   total -0.003261   0.007328
+    material  group in  group out legendre nuclide          mean     std. dev.
+12         2         1          1       P0   total  3.105594e-01  2.255119e-02
+13         2         1          1       P1   total  3.716750e-02  1.280757e-02
+14         2         1          1       P2   total  2.625282e-02  2.704548e-03
+15         2         1          1       P3   total  1.041166e-02  2.984029e-03
+8          2         1          2       P0   total  4.867703e-04  8.434023e-04
+9          2         1          2       P1   total  3.770190e-04  6.532417e-04
+10         2         1          2       P2   total  1.946345e-04  3.372334e-04
+11         2         1          2       P3   total -9.500924e-08  1.646177e-07
+4          2         2          1       P0   total  0.000000e+00  0.000000e+00
+5          2         2          1       P1   total  0.000000e+00  0.000000e+00
+6          2         2          1       P2   total  0.000000e+00  0.000000e+00
+7          2         2          1       P3   total  0.000000e+00  0.000000e+00
+0          2         2          2       P0   total  2.953250e-01  8.826037e-02
+1          2         2          2       P1   total -2.230578e-03  1.659963e-02
+2          2         2          2       P2   total  9.852041e-03  1.814582e-02
+3          2         2          2       P3   total -5.139601e-03  1.287741e-02
 chi
    material  group out nuclide  mean  std. dev.
 1         2          1   total   0.0        0.0
@@ -444,8 +444,8 @@ chi-prompt
 0         2          2   total   0.0        0.0
 inverse-velocity
    material  group in nuclide          mean     std. dev.
-1         2         1   total  5.995979e-08  4.553085e-09
-0         2         2   total  2.985490e-06  3.417020e-07
+1         2         1   total  6.397171e-08  3.117086e-09
+0         2         2   total  2.875630e-06  2.751730e-07
 prompt-nu-fission
    material  group in nuclide  mean  std. dev.
 1         2         1   total   0.0        0.0
@@ -457,74 +457,74 @@ prompt-nu-fission matrix
 1         2         2          1   total   0.0        0.0
 0         2         2          2   total   0.0        0.0
 diffusion-coefficient
-   material  group in legendre nuclide       mean   std. dev.
-2         2         1       P0   total  92.158584  948.055013
-3         2         1       P1   total   1.209886    0.097583
-0         2         2       P0   total  73.145434  834.775399
-1         2         2       P1   total   1.068256    0.148711
+   material  group in legendre nuclide        mean   std. dev.
+2         2         1       P0   total  133.637358  904.804108
+3         2         1       P1   total    1.210594    0.082668
+0         2         2       P0   total   34.754997  241.483530
+1         2         2       P1   total    1.110491    0.131041
 nu-diffusion-coefficient
-   material  group in legendre nuclide       mean   std. dev.
-2         2         1       P0   total  92.158584  948.055013
-3         2         1       P1   total   1.209886    0.097583
-0         2         2       P0   total  73.145434  834.775399
-1         2         2       P1   total   1.068256    0.148711
+   material  group in legendre nuclide        mean   std. dev.
+2         2         1       P0   total  133.637358  904.804108
+3         2         1       P1   total    1.210594    0.082668
+0         2         2       P0   total   34.754997  241.483530
+1         2         2       P1   total    1.110491    0.131041
 (n,elastic)
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.301031   0.014977
-0         2         2   total  0.295421   0.027446
+1         2         1   total  0.301494   0.009403
+0         2         2   total  0.295325   0.022678
 (n,level)
    material  group in nuclide  mean  std. dev.
 1         2         1   total   0.0        0.0
 0         2         2   total   0.0        0.0
 (n,2n)
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.000005   0.000005
+1         2         1   total  0.000005   0.000003
 0         2         2   total  0.000000   0.000000
 (n,na)
    material  group in nuclide          mean     std. dev.
-1         2         1   total  1.259778e-09  1.152715e-09
+1         2         1   total  1.085156e-09  6.357350e-10
 0         2         2   total  0.000000e+00  0.000000e+00
 (n,nc)
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.002607   0.000356
+1         2         1   total  0.001947   0.000276
 0         2         2   total  0.000000   0.000000
 (n,gamma)
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.001571   0.000323
-0         2         2   total  0.005400   0.000618
+1         2         1   total  0.001392   0.000128
+0         2         2   total  0.005201   0.000498
 (n,a)
    material  group in nuclide          mean     std. dev.
-1         2         1   total  1.032353e-06  1.308817e-07
-0         2         2   total  2.735898e-07  2.541726e-08
+1         2         1   total  8.373873e-07  5.295954e-08
+0         2         2   total  2.735007e-07  2.100237e-08
 (n,Xa)
    material  group in nuclide          mean     std. dev.
-1         2         1   total  1.033613e-06  1.318182e-07
-0         2         2   total  2.735898e-07  2.541726e-08
+1         2         1   total  8.384725e-07  5.277215e-08
+0         2         2   total  2.735007e-07  2.100237e-08
 heating
    material  group in nuclide         mean   std. dev.
-1         2         1   total  2819.023866  149.123603
-0         2         2   total     2.414215    0.196172
+1         2         1   total  2151.700349  142.319459
+0         2         2   total     1.947222    0.155279
 damage-energy
    material  group in nuclide         mean  std. dev.
-1         2         1   total  1712.186983  87.224250
-0         2         2   total     0.294202   0.032716
+1         2         1   total  1591.760682  90.145807
+0         2         2   total     0.284888   0.026354
 (n,n1)
    material  group in nuclide      mean  std. dev.
-1         2         1   total  0.003108   0.000252
-0         2         2   total  0.000000   0.000000
+1         2         1   total  0.002962    0.00032
+0         2         2   total  0.000000    0.00000
 (n,a0)
    material  group in nuclide          mean     std. dev.
-1         2         1   total  8.426133e-07  7.088213e-08
-0         2         2   total  2.733143e-07  2.539166e-08
+1         2         1   total  7.199126e-07  5.011215e-08
+0         2         2   total  2.732253e-07  2.098122e-08
 (n,nc) matrix
    material  group in  group out nuclide      mean  std. dev.
-3         2         1          1   total  0.001782   0.000845
+3         2         1          1   total  0.002915   0.000493
 2         2         1          2   total  0.000000   0.000000
 1         2         2          1   total  0.000000   0.000000
 0         2         2          2   total  0.000000   0.000000
 (n,n1) matrix
    material  group in  group out nuclide      mean  std. dev.
-3         2         1          1   total  0.002228   0.000725
+3         2         1          1   total  0.002429   0.001332
 2         2         1          2   total  0.000000   0.000000
 1         2         2          1   total  0.000000   0.000000
 0         2         2          2   total  0.000000   0.000000
@@ -612,24 +612,24 @@ delayed-nu-fission matrix
 20         2             6         2          2   total   0.0        0.0
 total
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.664572   0.031215
-0         3         2   total  2.052384   0.224343
+1         3         1   total  0.684512   0.015513
+0         3         2   total  2.038387   0.113839
 transport
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.283323   0.035206
-0         3         2   total  1.499740   0.230902
+1         3         1   total  0.291947   0.019086
+0         3         2   total  1.464248   0.116005
 nu-transport
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.283323   0.035206
-0         3         2   total  1.499740   0.230902
+1         3         1   total  0.291947   0.019086
+0         3         2   total  1.464248   0.116005
 absorption
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.000690   0.000044
-0         3         2   total  0.031687   0.003747
+1         3         1   total  0.000715   0.000032
+0         3         2   total  0.031290   0.001882
 capture
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.000690   0.000044
-0         3         2   total  0.031687   0.003747
+1         3         1   total  0.000715   0.000032
+0         3         2   total  0.031290   0.001882
 fission
    material  group in nuclide  mean  std. dev.
 1         3         1   total   0.0        0.0
@@ -644,54 +644,54 @@ kappa-fission
 0         3         2   total   0.0        0.0
 scatter
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.663882   0.031173
-0         3         2   total  2.020697   0.220604
+1         3         1   total  0.683797   0.015496
+0         3         2   total  2.007097   0.111979
 nu-scatter
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.671269   0.026186
-0         3         2   total  2.035388   0.258060
+1         3         1   total  0.684650   0.017888
+0         3         2   total  1.992357   0.090997
 scatter matrix
     material  group in  group out legendre nuclide      mean  std. dev.
-12         3         1          1       P0   total  0.639901   0.024709
-13         3         1          1       P1   total  0.381167   0.016243
-14         3         1          1       P2   total  0.152392   0.008156
-15         3         1          1       P3   total  0.009148   0.003889
-8          3         1          2       P0   total  0.031368   0.001728
-9          3         1          2       P1   total  0.008758   0.000926
-10         3         1          2       P2   total -0.002568   0.001014
-11         3         1          2       P3   total -0.003785   0.000817
-4          3         2          1       P0   total  0.000443   0.000445
-5          3         2          1       P1   total  0.000400   0.000401
-6          3         2          1       P2   total  0.000320   0.000321
-7          3         2          1       P3   total  0.000214   0.000215
-0          3         2          2       P0   total  2.034945   0.257800
-1          3         2          2       P1   total  0.509940   0.051236
-2          3         2          2       P2   total  0.111175   0.013020
-3          3         2          2       P3   total  0.024988   0.008312
+12         3         1          1       P0   total  0.654867   0.017215
+13         3         1          1       P1   total  0.392566   0.011118
+14         3         1          1       P2   total  0.165345   0.005121
+15         3         1          1       P3   total  0.016963   0.003137
+8          3         1          2       P0   total  0.029783   0.000974
+9          3         1          2       P1   total  0.008810   0.000479
+10         3         1          2       P2   total -0.002652   0.000630
+11         3         1          2       P3   total -0.002872   0.000517
+4          3         2          1       P0   total  0.000000   0.000000
+5          3         2          1       P1   total  0.000000   0.000000
+6          3         2          1       P2   total  0.000000   0.000000
+7          3         2          1       P3   total  0.000000   0.000000
+0          3         2          2       P0   total  1.992357   0.090997
+1          3         2          2       P1   total  0.526383   0.022569
+2          3         2          2       P2   total  0.108016   0.009047
+3          3         2          2       P3   total  0.016856   0.010707
 nu-scatter matrix
     material  group in  group out legendre nuclide      mean  std. dev.
-12         3         1          1       P0   total  0.639901   0.024709
-13         3         1          1       P1   total  0.381167   0.016243
-14         3         1          1       P2   total  0.152392   0.008156
-15         3         1          1       P3   total  0.009148   0.003889
-8          3         1          2       P0   total  0.031368   0.001728
-9          3         1          2       P1   total  0.008758   0.000926
-10         3         1          2       P2   total -0.002568   0.001014
-11         3         1          2       P3   total -0.003785   0.000817
-4          3         2          1       P0   total  0.000443   0.000445
-5          3         2          1       P1   total  0.000400   0.000401
-6          3         2          1       P2   total  0.000320   0.000321
-7          3         2          1       P3   total  0.000214   0.000215
-0          3         2          2       P0   total  2.034945   0.257800
-1          3         2          2       P1   total  0.509940   0.051236
-2          3         2          2       P2   total  0.111175   0.013020
-3          3         2          2       P3   total  0.024988   0.008312
+12         3         1          1       P0   total  0.654867   0.017215
+13         3         1          1       P1   total  0.392566   0.011118
+14         3         1          1       P2   total  0.165345   0.005121
+15         3         1          1       P3   total  0.016963   0.003137
+8          3         1          2       P0   total  0.029783   0.000974
+9          3         1          2       P1   total  0.008810   0.000479
+10         3         1          2       P2   total -0.002652   0.000630
+11         3         1          2       P3   total -0.002872   0.000517
+4          3         2          1       P0   total  0.000000   0.000000
+5          3         2          1       P1   total  0.000000   0.000000
+6          3         2          1       P2   total  0.000000   0.000000
+7          3         2          1       P3   total  0.000000   0.000000
+0          3         2          2       P0   total  1.992357   0.090997
+1          3         2          2       P1   total  0.526383   0.022569
+2          3         2          2       P2   total  0.108016   0.009047
+3          3         2          2       P3   total  0.016856   0.010707
 multiplicity matrix
    material  group in  group out nuclide  mean  std. dev.
-3         3         1          1   total   1.0   0.038609
-2         3         1          2   total   1.0   0.067667
-1         3         2          1   total   1.0   1.414214
-0         3         2          2   total   1.0   0.135929
+3         3         1          1   total   1.0   0.020014
+2         3         1          2   total   1.0   0.034047
+1         3         2          1   total   0.0   0.000000
+0         3         2          2   total   1.0   0.048455
 nu-fission matrix
    material  group in  group out nuclide  mean  std. dev.
 3         3         1          1   total   0.0        0.0
@@ -700,46 +700,46 @@ nu-fission matrix
 0         3         2          2   total   0.0        0.0
 scatter probability matrix
    material  group in  group out nuclide      mean  std. dev.
-3         3         1          1   total  0.953271   0.036018
-2         3         1          2   total  0.046729   0.002547
-1         3         2          1   total  0.000218   0.000219
-0         3         2          2   total  0.999782   0.135885
+3         3         1          1   total  0.956499   0.018759
+2         3         1          2   total  0.043501   0.001202
+1         3         2          1   total  0.000000   0.000000
+0         3         2          2   total  1.000000   0.048455
 consistent scatter matrix
     material  group in  group out legendre nuclide      mean  std. dev.
-12         3         1          1       P0   total  0.632859   0.038142
-13         3         1          1       P1   total  0.376973   0.023715
-14         3         1          1       P2   total  0.150715   0.010664
-15         3         1          1       P3   total  0.009047   0.003868
-8          3         1          2       P0   total  0.031023   0.002232
-9          3         1          2       P1   total  0.008661   0.000999
-10         3         1          2       P2   total -0.002540   0.001010
-11         3         1          2       P3   total -0.003743   0.000826
-4          3         2          1       P0   total  0.000440   0.000445
-5          3         2          1       P1   total  0.000397   0.000401
-6          3         2          1       P2   total  0.000317   0.000321
-7          3         2          1       P3   total  0.000212   0.000215
-0          3         2          2       P0   total  2.020256   0.352194
-1          3         2          2       P1   total  0.506260   0.079140
-2          3         2          2       P2   total  0.110372   0.018488
-3          3         2          2       P3   total  0.024808   0.008771
+12         3         1          1       P0   total  0.654051   0.019602
+13         3         1          1       P1   total  0.392076   0.012456
+14         3         1          1       P2   total  0.165139   0.005640
+15         3         1          1       P3   total  0.016942   0.003143
+8          3         1          2       P0   total  0.029746   0.001063
+9          3         1          2       P1   total  0.008799   0.000495
+10         3         1          2       P2   total -0.002648   0.000631
+11         3         1          2       P3   total -0.002868   0.000518
+4          3         2          1       P0   total  0.000000   0.000000
+5          3         2          1       P1   total  0.000000   0.000000
+6          3         2          1       P2   total  0.000000   0.000000
+7          3         2          1       P3   total  0.000000   0.000000
+0          3         2          2       P0   total  2.007097   0.148316
+1          3         2          2       P1   total  0.530278   0.038286
+2          3         2          2       P2   total  0.108815   0.011091
+3          3         2          2       P3   total  0.016981   0.010831
 consistent nu-scatter matrix
     material  group in  group out legendre nuclide      mean  std. dev.
-12         3         1          1       P0   total  0.632859   0.045297
-13         3         1          1       P1   total  0.376973   0.027825
-14         3         1          1       P2   total  0.150715   0.012148
-15         3         1          1       P3   total  0.009047   0.003884
-8          3         1          2       P0   total  0.031023   0.003064
-9          3         1          2       P1   total  0.008661   0.001159
-10         3         1          2       P2   total -0.002540   0.001024
-11         3         1          2       P3   total -0.003743   0.000864
-4          3         2          1       P0   total  0.000440   0.000765
-5          3         2          1       P1   total  0.000397   0.000690
-6          3         2          1       P2   total  0.000317   0.000551
-7          3         2          1       P3   total  0.000212   0.000369
-0          3         2          2       P0   total  2.020256   0.446601
-1          3         2          2       P1   total  0.506260   0.104875
-2          3         2          2       P2   total  0.110372   0.023809
-3          3         2          2       P3   total  0.024808   0.009397
+12         3         1          1       P0   total  0.654051   0.023571
+13         3         1          1       P1   total  0.392076   0.014722
+14         3         1          1       P2   total  0.165139   0.006537
+15         3         1          1       P3   total  0.016942   0.003161
+8          3         1          2       P0   total  0.029746   0.001468
+9          3         1          2       P1   total  0.008799   0.000579
+10         3         1          2       P2   total -0.002648   0.000637
+11         3         1          2       P3   total -0.002868   0.000528
+4          3         2          1       P0   total  0.000000   0.000000
+5          3         2          1       P1   total  0.000000   0.000000
+6          3         2          1       P2   total  0.000000   0.000000
+7          3         2          1       P3   total  0.000000   0.000000
+0          3         2          2       P0   total  2.007097   0.177359
+1          3         2          2       P1   total  0.530278   0.046109
+2          3         2          2       P2   total  0.108815   0.012281
+3          3         2          2       P3   total  0.016981   0.010862
 chi
    material  group out nuclide  mean  std. dev.
 1         3          1   total   0.0        0.0
@@ -750,8 +750,8 @@ chi-prompt
 0         3          2   total   0.0        0.0
 inverse-velocity
    material  group in nuclide          mean     std. dev.
-1         3         1   total  6.022078e-08  3.780437e-09
-0         3         2   total  3.044955e-06  3.600077e-07
+1         3         1   total  6.447396e-08  2.866174e-09
+0         3         2   total  3.006811e-06  1.808751e-07
 prompt-nu-fission
    material  group in nuclide  mean  std. dev.
 1         3         1   total   0.0        0.0
@@ -764,31 +764,31 @@ prompt-nu-fission matrix
 0         3         2          2   total   0.0        0.0
 diffusion-coefficient
    material  group in legendre nuclide       mean  std. dev.
-2         3         1       P0   total  13.561252  21.988396
-3         3         1       P1   total   1.176515   0.154807
-0         3         2       P0   total  -2.459765   6.393743
-1         3         2       P1   total   0.222261   0.040518
+2         3         1       P0   total  11.244053   8.794903
+3         3         1       P1   total   1.141761   0.081143
+0         3         2       P0   total  -2.888333   3.736106
+1         3         2       P1   total   0.227648   0.021613
 nu-diffusion-coefficient
    material  group in legendre nuclide       mean  std. dev.
-2         3         1       P0   total  13.561252  21.988396
-3         3         1       P1   total   1.176515   0.154807
-0         3         2       P0   total  -2.459765   6.393743
-1         3         2       P1   total   0.222261   0.040518
+2         3         1       P0   total  11.244053   8.794903
+3         3         1       P1   total   1.141761   0.081143
+0         3         2       P0   total  -2.888333   3.736106
+1         3         2       P1   total   0.227648   0.021613
 (n,elastic)
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.663837   0.031175
-0         3         2   total  2.020697   0.220604
+1         3         1   total  0.683777   0.015496
+0         3         2   total  2.007097   0.111979
 (n,level)
-   material  group in nuclide      mean  std. dev.
-1         3         1   total  0.000045   0.000027
-0         3         2   total  0.000000   0.000000
+   material  group in nuclide     mean  std. dev.
+1         3         1   total  0.00002   0.000006
+0         3         2   total  0.00000   0.000000
 (n,2n)
    material  group in nuclide  mean  std. dev.
 1         3         1   total   0.0        0.0
 0         3         2   total   0.0        0.0
 (n,na)
    material  group in nuclide          mean     std. dev.
-1         3         1   total  6.743945e-11  6.604830e-11
+1         3         1   total  3.714897e-11  2.058007e-11
 0         3         2   total  0.000000e+00  0.000000e+00
 (n,nc)
    material  group in nuclide  mean  std. dev.
@@ -796,32 +796,32 @@ nu-diffusion-coefficient
 0         3         2   total   0.0        0.0
 (n,gamma)
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.000219   0.000014
-0         3         2   total  0.011034   0.001305
+1         3         1   total  0.000234   0.000010
+0         3         2   total  0.010896   0.000655
 (n,a)
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.000471   0.000031
-0         3         2   total  0.020653   0.002442
+1         3         1   total  0.000481   0.000022
+0         3         2   total  0.020394   0.001227
 (n,Xa)
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.000472   0.000031
-0         3         2   total  0.020653   0.002442
+1         3         1   total  0.000481   0.000022
+0         3         2   total  0.020394   0.001227
 heating
    material  group in nuclide          mean    std. dev.
-1         3         1   total  86854.045343  3785.266424
-0         3         2   total  61907.411870  6000.898789
+1         3         1   total  64982.284489  3654.924951
+0         3         2   total  49786.819570  2967.698779
 damage-energy
    material  group in nuclide         mean  std. dev.
-1         3         1   total  1186.090822  44.862980
-0         3         2   total   337.187426  39.868517
+1         3         1   total  1147.965123  36.313921
+0         3         2   total   332.961479  20.030541
 (n,n1)
-   material  group in nuclide      mean     std. dev.
-1         3         1   total  0.000001  6.118682e-07
-0         3         2   total  0.000000  0.000000e+00
+   material  group in nuclide          mean     std. dev.
+1         3         1   total  7.030461e-07  2.133325e-07
+0         3         2   total  0.000000e+00  0.000000e+00
 (n,a0)
    material  group in nuclide      mean  std. dev.
-1         3         1   total  0.000084   0.000012
-0         3         2   total  0.001299   0.000154
+1         3         1   total  0.000068   0.000011
+0         3         2   total  0.001283   0.000077
 (n,nc) matrix
    material  group in  group out nuclide  mean  std. dev.
 3         3         1          1   total   0.0        0.0

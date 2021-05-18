@@ -34,11 +34,9 @@ public:
 
   // Accessors
   AngleDistribution& angle() { return angle_; }
-  bool& fission() { return fission_; }
 private:
   AngleDistribution angle_; //!< Angle distribution
   unique_ptr<EnergyDistribution> energy_; //!< Energy distribution
-  bool fission_ {false}; //!< Whether distribution is use for fission
 };
 
 } // namespace openmc

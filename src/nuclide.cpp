@@ -813,9 +813,7 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // reuse random numbers for the same nuclide at different temperatures,
   // therefore preserving correlation of temperature in probability tables.
   p.stream() = STREAM_URR_PTABLE;
-  //TODO: to maintain the same random number stream as the Fortran code this
-  //replaces, the seed is set with index_ + 1 instead of index_
-  double r = future_prn(static_cast<int64_t>(index_ + 1), *p.current_seed());
+  double r = future_prn(static_cast<int64_t>(index_), *p.current_seed());
   p.stream() = STREAM_TRACKING;
 
   int i_low = 0;

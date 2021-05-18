@@ -178,20 +178,20 @@ ATOMIC_SYMBOL = {0: 'n', 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
 ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
 # Values here are from the Committee on Data for Science and Technology
-# (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
+# (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
 # The value of the Boltzman constant in units of eV / K
-K_BOLTZMANN = 8.6173303e-5
+K_BOLTZMANN = 8.617333262e-5
 
 # Unit conversions
 EV_PER_MEV = 1.0e6
-JOULE_PER_EV = 1.6021766208e-19
+JOULE_PER_EV = 1.602176634e-19
 
 # Avogadro's constant
-AVOGADRO = 6.022140857e23
+AVOGADRO = 6.02214076e23
 
 # Neutron mass in units of amu
-NEUTRON_MASS = 1.00866491588
+NEUTRON_MASS = 1.00866491595
 
 # Used in atomic_mass function as a cache
 _ATOMIC_MASS = {}

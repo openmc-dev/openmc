@@ -290,6 +290,7 @@ const RegularMesh* ufs_mesh {nullptr};
 
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
+int64_t* device_work_index;
 
 
 } // namespace simulation
@@ -490,9 +491,11 @@ void initialize_history(Particle& p, int64_t index_source)
   }
   p.current_work_ = index_source;
 
-  /*
   // set identifier for particle
-  p.id_ = simulation::work_index[mpi::rank] + index_source;
+  p.id_ = simulation::device_work_index[mpi::rank] + index_source;
+  printf("p id = %d\n", 
+  
+  /*
 
   // set progeny count to zero
   p.n_progeny_ = 0;

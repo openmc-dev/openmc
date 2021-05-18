@@ -94,9 +94,16 @@ void move_read_only_data_to_device()
   // TODO: Deep copy of materials
   
   // Source Bank ///////////////////////////////////////////////////////
+  
   simulation::device_source_bank = simulation::source_bank.data();
   #pragma omp target enter data map(alloc: simulation::device_source_bank[:simulation::source_bank.size()])
+
+  // MPI Work Indices ///////////////////////////////////////////////////
+ 
+  simulation::device_work_index = simulation::work_index.data();
+  #pragma omp target enter data map(to: simulation::device_work_index[:simulation::work_index.size()])
 }
+
 
 void release_data_from_device()
 {

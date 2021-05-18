@@ -50,6 +50,9 @@ extern const RegularMesh* ufs_mesh;
 
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
+#pragma omp declare target
+extern int64_t* device_work_index;
+#pragma omp end declare target
 
 } // namespace simulation
 

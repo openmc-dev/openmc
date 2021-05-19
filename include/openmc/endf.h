@@ -187,8 +187,8 @@ public:
   double operator()(double E) const;
   #pragma omp end declare target
 private:
-  double bound_xs() const { return *reinterpret_cast<const double*>(data_ + 4); }
-  double debye_waller() const { return *reinterpret_cast<const double*>(data_ + 12); }
+  double bound_xs() const { return *reinterpret_cast<const double*>(data_ + 8); }
+  double debye_waller() const { return *reinterpret_cast<const double*>(data_ + 16); }
 
   const uint8_t* data_;
 };

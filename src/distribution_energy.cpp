@@ -82,10 +82,10 @@ double DiscretePhoton::sample(double E, uint64_t* seed) const
 
 void DiscretePhoton::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(EnergyDistType::DISCRETE_PHOTON));
-  buffer.add(primary_flag_);
-  buffer.add(energy_);
-  buffer.add(A_);
+  buffer.add(static_cast<int>(EnergyDistType::DISCRETE_PHOTON)); // 4
+  buffer.add(primary_flag_);                                     // 4
+  buffer.add(energy_);                                           // 8
+  buffer.add(A_);                                                // 8
 }
 
 double DiscretePhotonFlat::sample(double E, uint64_t* seed) const
@@ -115,9 +115,10 @@ double LevelInelastic::sample(double E, uint64_t* seed) const
 
 void LevelInelastic::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(EnergyDistType::LEVEL_INELASTIC));
-  buffer.add(threshold_);
-  buffer.add(mass_ratio_);
+  buffer.add(static_cast<int>(EnergyDistType::LEVEL_INELASTIC)); // 4
+  buffer.align(8);                                               // 4
+  buffer.add(threshold_);                                        // 8
+  buffer.add(mass_ratio_);                                       // 8
 }
 
 double LevelInelasticFlat::sample(double E, uint64_t* seed) const
@@ -340,26 +341,27 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
 void ContinuousTabular::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(EnergyDistType::CONTINUOUS_TABULAR));
-  buffer.add(n_region_);
-  buffer.add(breakpoints_);
+  buffer.add(static_cast<int>(EnergyDistType::CONTINUOUS_TABULAR)); // 4
+  buffer.add(n_region_);                                            // 4
+  buffer.add(breakpoints_);                                         // 4*n_region_
   std::vector<int> interp;
   for (const auto& v : interpolation_) {
     interp.push_back(static_cast<int>(v));
   }
-  buffer.add(interp);
-  buffer.add(energy_.size());
-  buffer.add(energy_);
+  buffer.add(interp);                            // 4*n_region_
+  buffer.add(energy_.size());                    // 8
+  buffer.add(energy_);                           // 8*energy size
 
   // Create locators
   std::vector<int> locators;
-  int offset = 4 + 4 + (4 + 4)*n_region_ + 8 + (8 + 4)*energy_.size();
+  int offset = 4 + 4 + (4 + 4)*n_region_ + 8 + aligned((8 + 4)*energy_.size(), 8);
   for (const auto& dist : distribution_) {
     locators.push_back(offset);
     size_t n_eout = dist.e_out.size();
     offset += 4 + 4 + 8 + 8 * 3*n_eout;
   }
   buffer.add(locators);
+  buffer.align(8);
 
   // Write distributions
   for (const auto& dist : distribution_) {
@@ -589,8 +591,9 @@ double MaxwellEnergy::sample(double E, uint64_t* seed) const
 
 void MaxwellEnergy::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(EnergyDistType::MAXWELL));
-  buffer.add(u_);
+  buffer.add(static_cast<int>(EnergyDistType::MAXWELL)); // 4
+  buffer.align(8);                                       // 4
+  buffer.add(u_);                                        // 8
   theta_.serialize(buffer);
 }
 
@@ -610,12 +613,12 @@ double MaxwellFlat::sample(double E, uint64_t* seed) const
 
 double MaxwellFlat::u() const
 {
-  return *reinterpret_cast<const double*>(data_ + 4);
+  return *reinterpret_cast<const double*>(data_ + 8);
 }
 
 Tabulated1DFlat MaxwellFlat::theta() const
 {
-  return Tabulated1DFlat(data_ + 4 + 8);
+  return Tabulated1DFlat(data_ + 16);
 }
 
 
@@ -652,8 +655,9 @@ double Evaporation::sample(double E, uint64_t* seed) const
 
 void Evaporation::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(EnergyDistType::EVAPORATION));
-  buffer.add(u_);
+  buffer.add(static_cast<int>(EnergyDistType::EVAPORATION));  // 4
+  buffer.align(8);                                            // 4
+  buffer.add(u_);                                             // 8
   theta_.serialize(buffer);
 }
 
@@ -678,12 +682,12 @@ double EvaporationFlat::sample(double E, uint64_t* seed) const
 
 double EvaporationFlat::u() const
 {
-  return *reinterpret_cast<const double*>(data_ + 4);
+  return *reinterpret_cast<const double*>(data_ + 8);
 }
 
 Tabulated1DFlat EvaporationFlat::theta() const
 {
-  return Tabulated1DFlat(data_ + 4 + 8);
+  return Tabulated1DFlat(data_ + 16);
 }
 
 //==============================================================================
@@ -721,10 +725,11 @@ double WattEnergy::sample(double E, uint64_t* seed) const
 
 void WattEnergy::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(EnergyDistType::WATT));
-  buffer.add(u_);
+  buffer.add(static_cast<int>(EnergyDistType::WATT)); // 4
+  buffer.align(8);                                    // 4
+  buffer.add(u_);                                     // 8
   size_t n = buffer_nbytes(a_);
-  buffer.add(20 + n); // offset for b
+  buffer.add(24 + n); // offset for b                    8
   a_.serialize(buffer);
   b_.serialize(buffer);
 }
@@ -747,17 +752,17 @@ double WattFlat::sample(double E, uint64_t* seed) const
 
 double WattFlat::u() const
 {
-  return *reinterpret_cast<const double*>(data_ + 4);
+  return *reinterpret_cast<const double*>(data_ + 8);
 }
 
 Tabulated1DFlat WattFlat::a() const
 {
-  return Tabulated1DFlat(data_ + 4 + 16);
+  return Tabulated1DFlat(data_ + 24);
 }
 
 Tabulated1DFlat WattFlat::b() const
 {
-  auto offset = *reinterpret_cast<const size_t*>(data_ + 4 + 8);
+  auto offset = *reinterpret_cast<const size_t*>(data_ + 16);
   return Tabulated1DFlat(data_ + offset);
 }
 

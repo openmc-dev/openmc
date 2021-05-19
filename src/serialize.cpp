@@ -32,6 +32,13 @@ void DataBuffer::reserve(size_t n)
   offset_ = 0;
 }
 
+void DataBuffer::align(int n)
+{
+  if (offset_ % n != 0) {
+    offset_ += (n - offset_ % n);
+  }
+}
+
 void DataBuffer::copy_to_device() const
 {
   #pragma omp target enter data map(to: data_[:offset_])

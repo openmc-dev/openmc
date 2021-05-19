@@ -265,12 +265,12 @@ double Tabular::sample(uint64_t* seed) const
 
 void Tabular::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(interp_));
+  buffer.add(static_cast<int>(interp_));  // 4
   int n = x_.size();
-  buffer.add(n);
-  buffer.add(x_);
-  buffer.add(p_);
-  buffer.add(c_);
+  buffer.add(n);                          // 4
+  buffer.add(x_);                         // 8*n
+  buffer.add(p_);                         // 8*n
+  buffer.add(c_);                         // 8*n
 }
 
 TabularFlat::TabularFlat(const uint8_t* data) : data_(data)

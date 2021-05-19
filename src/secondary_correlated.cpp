@@ -270,15 +270,15 @@ void CorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
 
 void CorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(AngleEnergyType::CORRELATED));
+  buffer.add(static_cast<int>(AngleEnergyType::CORRELATED)); // 4
 
   // Determine size of buffer needed
-  size_t n = 4 + 4 + (4 + 4)*n_region_ + 8 + (8 + 4)*energy_.size();
+  size_t n = 4 + 4 + (4 + 4)*n_region_ + 8 + aligned((8 + 4)*energy_.size(), 8);
   std::vector<int> locators;
   for (const auto& dist : distribution_) {
     locators.push_back(n);
     size_t n_eout = dist.e_out.size();
-    n += 4 + 4 + 8 + (8*3 + 4)*n_eout;
+    n += aligned(4 + 4 + 8 + (8*3 + 4)*n_eout, 8);
 
     for (const auto& adist : dist.angle) {
       n += buffer_nbytes(*adist);
@@ -286,36 +286,38 @@ void CorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
   }
 
   // Write interpolation information
-  buffer.add(n_region_);
-  buffer.add(breakpoints_);
+  buffer.add(n_region_);     // 4
+  buffer.add(breakpoints_);  // 4*n_region_
   std::vector<int> interp;
   for (auto v : interpolation_) {
     interp.push_back(static_cast<int>(v));
   }
-  buffer.add(interp);
+  buffer.add(interp);        // 4*n_region_
 
   // Write incident energies and locators
-  buffer.add(energy_.size());
-  buffer.add(energy_);
-  buffer.add(locators);
+  buffer.add(energy_.size()); // 8
+  buffer.add(energy_);        // 8*energy size
+  buffer.add(locators);       // 4*energy size
+  buffer.align(8);
 
   // Write distributions
   for (const auto& dist : distribution_) {
-    buffer.add(dist.n_discrete);
-    buffer.add(static_cast<int>(dist.interpolation));
-    buffer.add(dist.e_out.size());
-    buffer.add(dist.e_out);
-    buffer.add(dist.p);
-    buffer.add(dist.c);
+    buffer.add(dist.n_discrete);                       // 4
+    buffer.add(static_cast<int>(dist.interpolation));  // 4
+    buffer.add(dist.e_out.size());                     // 8
+    buffer.add(dist.e_out);                            // 8*e_out size
+    buffer.add(dist.p);                                // 8*e_out size
+    buffer.add(dist.c);                                // 8*e_out size
 
     // Write locators for angle distributions
     std::vector<int> angle_dist_offsets;
-    int offset = 4 + 4 + 8 + (8*3 + 4)*dist.e_out.size();
+    int offset = 4 + 4 + 8 + aligned((8*3 + 4)*dist.e_out.size(), 8);
     for (const auto& adist : dist.angle) {
       angle_dist_offsets.push_back(offset);
       offset += buffer_nbytes(*adist);
     }
-    buffer.add(angle_dist_offsets);
+    buffer.add(angle_dist_offsets);   // 4*e_out size
+    buffer.align(8);
 
     // Write angle distributions
     for (const auto& adist : dist.angle) {

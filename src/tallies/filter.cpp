@@ -15,6 +15,7 @@
 #include "openmc/tallies/filter_cellborn.h"
 #include "openmc/tallies/filter_cellfrom.h"
 #include "openmc/tallies/filter_cell_instance.h"
+#include "openmc/tallies/filter_collision.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_distribcell.h"
 #include "openmc/tallies/filter_energyfunc.h"
@@ -33,7 +34,7 @@
 #include "openmc/tallies/filter_zernike.h"
 
 // explicit template instantiation definition
-template class std::vector<openmc::FilterMatch>;
+template class openmc::vector<openmc::FilterMatch>;
 
 namespace openmc {
 
@@ -43,7 +44,7 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> filter_map;
-  std::vector<std::unique_ptr<Filter>> tally_filters;
+  vector<unique_ptr<Filter>> tally_filters;
 }
 
 //==============================================================================
@@ -74,7 +75,7 @@ T* Filter::create(int32_t id) {
   static_assert(std::is_base_of<Filter, T>::value,
                 "Type specified is not derived from openmc::Filter");
   // Create filter and add to filters vector
-  auto filter = std::make_unique<T>();
+  auto filter = make_unique<T>();
   auto ptr_out = filter.get();
   model::tally_filters.emplace_back(std::move(filter));
   // Assign ID
@@ -125,6 +126,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<EnergyFunctionFilter>(id);
   } else if (type == "energy") {
     return Filter::create<EnergyFilter>(id);
+  } else if (type == "collision") {
+    return Filter::create<CollisionFilter>(id);
   } else if (type == "energyout") {
     return Filter::create<EnergyoutFilter>(id);
   } else if (type == "legendre") {

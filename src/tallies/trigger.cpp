@@ -87,6 +87,8 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
             case TriggerMetric::relative_error:
               uncertainty = rel_err;
               break;
+            case TriggerMetric::not_active:
+              UNREACHABLE();
           }
 
           // Compute the uncertainty / threshold ratio.
@@ -164,8 +166,7 @@ check_triggers()
   // If all the triggers are satisfied, alert the user and return.
   if (std::max(keff_ratio, tally_ratio) <= 1.) {
     simulation::satisfy_triggers = true;
-    write_message("Triggers satisfied for batch "
-      + std::to_string(current_batch), 7);
+    write_message(7, "Triggers satisfied for batch {}", current_batch);
     return;
   }
 

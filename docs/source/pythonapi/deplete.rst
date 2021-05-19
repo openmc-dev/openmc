@@ -112,6 +112,16 @@ for a depletion chain:
    FissionYieldDistribution
    FissionYield
 
+The :class:`Chain` class uses information from the following module variable:
+
+.. data:: chain.REACTIONS
+
+   Dictionary that maps transmutation reaction names to information needed when
+   a chain is being generated: MT values, the change in atomic/mass numbers
+   resulting from the reaction, and what secondaries are produced.
+
+   :type: dict
+
 The following classes are used during a depletion simulation and store auxiliary
 data, such as number densities and reaction rates for each material.
 
@@ -171,7 +181,7 @@ total system energy.
    helpers.DirectReactionRateHelper
    helpers.EnergyScoreHelper
    helpers.FissionYieldCutoffHelper
-
+   helpers.FluxCollapseHelper
 
 Abstract Base Classes
 ---------------------
@@ -197,7 +207,7 @@ OpenMC simulations back on to the :class:`abc.TransportOperator`
    :nosignatures:
    :template: myclass.rst
 
-   abc.EnergyHelper
+   abc.NormalizationHelper
    abc.FissionYieldHelper
    abc.ReactionRateHelper
    abc.TalliedFissionYieldHelper

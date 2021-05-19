@@ -27,15 +27,16 @@ namespace openmc {
 //==============================================================================
 
 namespace data {
-std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
 std::unordered_map<std::string, int> thermal_scatt_map;
+vector<unique_ptr<ThermalScattering>> thermal_scatt;
 }
 
 //==============================================================================
 // ThermalScattering implementation
 //==============================================================================
 
-ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& temperature)
+ThermalScattering::ThermalScattering(
+  hid_t group, const vector<double>& temperature)
 {
   // Get name of table from group
   name_ = object_name(group);
@@ -65,7 +66,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
   // Determine actual temperatures to read -- start by checking whether a
   // temperature range was given, in which case all temperatures in the range
   // are loaded irrespective of what temperatures actually appear in the model
-  std::vector<int> temps_to_read;
+  vector<int> temps_to_read;
   if (settings::temperature_range[1] > 0.0) {
     for (const auto& T : temps_available) {
       if (settings::temperature_range[0] <= T &&
@@ -151,25 +152,22 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 {
   // Determine temperature for S(a,b) table
   double kT = sqrtkT*sqrtkT;
-  int i;
-  if (settings::temperature_method == TemperatureMethod::NEAREST) {
-    // If using nearest temperature, do linear search on temperature
-    for (i = 0; i < kTs_.size(); ++i) {
-      if (std::abs(kTs_[i] - kT) < K_BOLTZMANN*settings::temperature_tolerance) {
-        break;
-      }
-    }
-  } else {
-    // Find temperatures that bound the actual temperature
-    for (i = 0; i < kTs_.size() - 1; ++i) {
-      if (kTs_[i] <= kT && kT < kTs_[i+1]) {
-        break;
-      }
-    }
+  int i = 0;
 
-    // Randomly sample between temperature i and i+1
-    double f = (kT - kTs_[i]) / (kTs_[i+1] - kTs_[i]);
-    if (f > prn(seed)) ++i;
+  auto n = kTs_.size();
+  if (n > 1) {
+    // Find temperatures that bound the actual temperature
+    while (kTs_[i+1] < kT && i + 1 < n - 1) ++i;
+
+    if (settings::temperature_method == TemperatureMethod::NEAREST) {
+      // Pick closer of two bounding temperatures
+      if (kT - kTs_[i] > kTs_[i+1] - kT) ++i;
+
+    } else {
+      // Randomly sample between temperature i and i+1
+      double f = (kT - kTs_[i]) / (kTs_[i+1] - kTs_[i]);
+      if (f > prn(seed)) ++i;
+    }
   }
 
   // Set temperature index
@@ -206,15 +204,14 @@ ThermalData::ThermalData(hid_t group)
     read_attribute(dgroup, "type", temp);
     if (temp == "coherent_elastic") {
       auto xs = dynamic_cast<CoherentElasticXS*>(elastic_.xs.get());
-      elastic_.distribution = std::make_unique<CoherentElasticAE>(*xs);
+      elastic_.distribution = make_unique<CoherentElasticAE>(*xs);
     } else {
       if (temp == "incoherent_elastic") {
-        elastic_.distribution = std::make_unique<IncoherentElasticAE>(dgroup);
+        elastic_.distribution = make_unique<IncoherentElasticAE>(dgroup);
       } else if (temp == "incoherent_elastic_discrete") {
         auto xs = dynamic_cast<Tabulated1D*>(elastic_.xs.get());
-        elastic_.distribution = std::make_unique<IncoherentElasticAEDiscrete>(
-          dgroup, xs->x()
-        );
+        elastic_.distribution =
+          make_unique<IncoherentElasticAEDiscrete>(dgroup, xs->x());
       }
     }
 
@@ -234,12 +231,11 @@ ThermalData::ThermalData(hid_t group)
     std::string temp;
     read_attribute(dgroup, "type", temp);
     if (temp == "incoherent_inelastic") {
-      inelastic_.distribution = std::make_unique<IncoherentInelasticAE>(dgroup);
+      inelastic_.distribution = make_unique<IncoherentInelasticAE>(dgroup);
     } else if (temp == "incoherent_inelastic_discrete") {
       auto xs = dynamic_cast<Tabulated1D*>(inelastic_.xs.get());
-      inelastic_.distribution = std::make_unique<IncoherentInelasticAEDiscrete>(
-        dgroup, xs->x()
-      );
+      inelastic_.distribution =
+        make_unique<IncoherentInelasticAEDiscrete>(dgroup, xs->x());
     }
 
     close_group(inelastic_group);

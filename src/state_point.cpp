@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint> // for int64_t
 #include <string>
-#include <vector>
 
 #include <fmt/core.h>
 #include "xtensor/xbuilder.hpp" // for empty_like
@@ -27,12 +26,15 @@
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/timer.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
 extern "C" int
 openmc_statepoint_write(const char* filename, bool* write_source)
 {
+  simulation::time_statepoint.start();
+
   // Set the filename
   std::string filename_;
   if (filename) {
@@ -139,7 +141,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_attribute(filters_group, "n_filters", model::tally_filters.size());
     if (!model::tally_filters.empty()) {
       // Write filter IDs
-      std::vector<int32_t> filter_ids;
+      vector<int32_t> filter_ids;
       filter_ids.reserve(model::tally_filters.size());
       for (const auto& filt : model::tally_filters)
         filter_ids.push_back(filt->id());
@@ -159,16 +161,11 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     write_attribute(tallies_group, "n_tallies", model::tallies.size());
     if (!model::tallies.empty()) {
       // Write tally IDs
-      std::vector<int32_t> tally_ids;
+      vector<int32_t> tally_ids;
       tally_ids.reserve(model::tallies.size());
       for (const auto& tally : model::tallies)
         tally_ids.push_back(tally->id_);
       write_attribute(tallies_group, "ids", tally_ids);
-
-#ifdef DAGMC
-      // write unstructured mesh tallies to VTK if possible
-      write_unstructured_mesh_results();
-#endif
 
       // Write all tally information except results
       for (const auto& tally : model::tallies) {
@@ -198,7 +195,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         // Write the ID of each filter attached to this tally
         write_dataset(tally_group, "n_filters", tally->filters().size());
         if (!tally->filters().empty()) {
-          std::vector<int32_t> filter_ids;
+          vector<int32_t> filter_ids;
           filter_ids.reserve(tally->filters().size());
           for (auto i_filt : tally->filters())
             filter_ids.push_back(model::tally_filters[i_filt]->id());
@@ -206,7 +203,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         }
 
         // Write the nuclides this tally scores
-        std::vector<std::string> nuclides;
+        vector<std::string> nuclides;
         for (auto i_nuclide : tally->nuclides_) {
           if (i_nuclide == -1) {
             nuclides.push_back("total");
@@ -224,7 +221,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
           model::tally_derivs[tally->deriv_].id);
 
         // Write the tally score bins
-        std::vector<std::string> scores;
+        vector<std::string> scores;
         for (auto sc : tally->scores_) scores.push_back(reaction_name(sc));
         write_dataset(tally_group, "n_score_bins", scores.size());
         write_dataset(tally_group, "score_bins", scores);
@@ -272,7 +269,9 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   } else if (mpi::master) {
     // Write number of global realizations
     write_dataset(file_id, "n_realizations", simulation::n_realizations);
+  }
 
+  if (mpi::master) {
     // Write out the runtime metrics.
     using namespace simulation;
     hid_t runtime_group = create_group(file_id, "runtime");
@@ -289,11 +288,10 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       write_dataset(runtime_group, "synchronizing fission bank", time_bank.elapsed());
       write_dataset(runtime_group, "sampling source sites", time_bank_sample.elapsed());
       write_dataset(runtime_group, "SEND-RECV source sites", time_bank_sendrecv.elapsed());
-    } else {
-      write_dataset(runtime_group, "sampling source sites", time_sample_source.elapsed());
     }
     write_dataset(runtime_group, "accumulating tallies", time_tallies.elapsed());
     write_dataset(runtime_group, "total", time_total.elapsed());
+    write_dataset(runtime_group, "writing statepoints", time_statepoint.elapsed());
     close_group(runtime_group);
 
     file_close(file_id);
@@ -308,9 +306,16 @@ openmc_statepoint_write(const char* filename, bool* write_source)
   // Write the source bank if desired
   if (write_source_) {
     if (mpi::master || parallel) file_id = file_open(filename_, 'a', true);
-    write_source_bank(file_id);
+    write_source_bank(file_id, false);
     if (mpi::master || parallel) file_close(file_id);
   }
+
+#if defined(LIBMESH) || defined(DAGMC)
+  // write unstructured mesh tally files
+  write_unstructured_mesh_results();
+#endif
+
+  simulation::time_statepoint.stop();
 
   return 0;
 }
@@ -346,7 +351,7 @@ void load_state_point()
 
   // Read revision number for state point file and make sure it matches with
   // current version
-  std::array<int, 2> array;
+  array<int, 2> array;
   read_attribute(file_id, "version", array);
   if (array != VERSION_STATEPOINT) {
     fatal_error("State point version does not match current version in OpenMC.");
@@ -480,11 +485,11 @@ void load_state_point()
         + "...", 5);
 
       // Open source file
-      file_id = file_open(settings::path_source.c_str(), 'r', true);
+      file_id = file_open(settings::path_sourcepoint.c_str(), 'r', true);
     }
 
     // Read source
-    read_source_bank(file_id);
+    read_source_bank(file_id, simulation::source_bank, true);
 
   }
 
@@ -501,20 +506,52 @@ hid_t h5banktype() {
   H5Tinsert(postype, "z", HOFFSET(Position, z), H5T_NATIVE_DOUBLE);
 
   // Create bank datatype
-  hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct Particle::Bank));
-  H5Tinsert(banktype, "r", HOFFSET(Particle::Bank, r), postype);
-  H5Tinsert(banktype, "u", HOFFSET(Particle::Bank, u), postype);
-  H5Tinsert(banktype, "E", HOFFSET(Particle::Bank, E), H5T_NATIVE_DOUBLE);
-  H5Tinsert(banktype, "wgt", HOFFSET(Particle::Bank, wgt), H5T_NATIVE_DOUBLE);
-  H5Tinsert(banktype, "delayed_group", HOFFSET(Particle::Bank, delayed_group), H5T_NATIVE_INT);
-  H5Tinsert(banktype, "particle", HOFFSET(Particle::Bank, particle), H5T_NATIVE_INT);
+  //
+  // If you make changes to the compound datatype here, make sure you update:
+  // - openmc/source.py
+  // - openmc/statepoint.py
+  // - docs/source/io_formats/statepoint.rst
+  // - docs/source/io_formats/source.rst
+  hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct SourceSite));
+  H5Tinsert(banktype, "r", HOFFSET(SourceSite, r), postype);
+  H5Tinsert(banktype, "u", HOFFSET(SourceSite, u), postype);
+  H5Tinsert(banktype, "E", HOFFSET(SourceSite, E), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "wgt", HOFFSET(SourceSite, wgt), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "delayed_group", HOFFSET(SourceSite, delayed_group),
+    H5T_NATIVE_INT);
+  H5Tinsert(banktype, "surf_id", HOFFSET(SourceSite, surf_id), H5T_NATIVE_INT);
+  H5Tinsert(
+    banktype, "particle", HOFFSET(SourceSite, particle), H5T_NATIVE_INT);
 
   H5Tclose(postype);
   return banktype;
 }
 
+vector<int64_t> calculate_surf_source_size()
+{
+  vector<int64_t> surf_source_index;
+  surf_source_index.reserve(mpi::n_procs + 1);
+
+#ifdef OPENMC_MPI
+  surf_source_index.resize(mpi::n_procs);
+  vector<int64_t> bank_size(mpi::n_procs);
+
+  // Populate the surf_source_index with cumulative sum of the number of
+  // surface source banks per process
+  int64_t size = simulation::surf_source_bank.size();
+  MPI_Scan(&size, bank_size.data(), 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
+  MPI_Allgather(bank_size.data(), 1, MPI_INT64_T, surf_source_index.data(), 1, MPI_INT64_T, mpi::intracomm);
+  surf_source_index.insert(surf_source_index.begin(), 0);
+#else
+  surf_source_index.push_back(0);
+  surf_source_index.push_back(simulation::surf_source_bank.size());
+#endif
+
+  return surf_source_index;
+}
+
 void
-write_source_point(const char* filename)
+write_source_point(const char* filename, bool surf_source_bank)
 {
   // When using parallel HDF5, the file is written to collectively by all
   // processes. With MPI-only, the file is opened and written by the master
@@ -544,29 +581,54 @@ write_source_point(const char* filename)
   }
 
   // Get pointer to source bank and write to file
-  write_source_bank(file_id);
+  write_source_bank(file_id, surf_source_bank);
 
   if (mpi::master || parallel) file_close(file_id);
 }
 
 void
-write_source_bank(hid_t group_id)
+write_source_bank(hid_t group_id, bool surf_source_bank)
 {
   hid_t banktype = h5banktype();
 
+  // Set total and individual process dataspace sizes for source bank
+  int64_t dims_size = settings::n_particles;
+  int64_t count_size = simulation::work_per_rank;
+
+  // Set vectors for source bank and starting bank index of each process
+  vector<int64_t>* bank_index = &simulation::work_index;
+  vector<SourceSite>* source_bank = &simulation::source_bank;
+  vector<int64_t> surf_source_index_vector;
+  vector<SourceSite> surf_source_bank_vector;
+
+  // Reset dataspace sizes and vectors for surface source bank
+  if (surf_source_bank) {
+    surf_source_index_vector = calculate_surf_source_size();
+    dims_size = surf_source_index_vector[mpi::n_procs];
+    count_size = simulation::surf_source_bank.size();
+
+    bank_index = &surf_source_index_vector;
+
+    // Copy data in a SharedArray into a vector.
+    surf_source_bank_vector.resize(count_size);
+    surf_source_bank_vector.assign(simulation::surf_source_bank.data(),
+                                   simulation::surf_source_bank.data() + count_size);
+    source_bank = &surf_source_bank_vector;
+  }
+
 #ifdef PHDF5
   // Set size of total dataspace for all procs and rank
-  hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)};
+  hsize_t dims[] {static_cast<hsize_t>(dims_size)};
   hid_t dspace = H5Screate_simple(1, dims, nullptr);
   hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   // Create another data space but for each proc individually
-  hsize_t count[] {static_cast<hsize_t>(simulation::work_per_rank)};
+  hsize_t count[] {static_cast<hsize_t>(count_size)};
   hid_t memspace = H5Screate_simple(1, count, nullptr);
 
   // Select hyperslab for this dataspace
-  hsize_t start[] {static_cast<hsize_t>(simulation::work_index[mpi::rank])};
+  hsize_t start[] {static_cast<hsize_t>((*bank_index)[mpi::rank])};
   H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
   // Set up the property list for parallel writing
@@ -574,7 +636,7 @@ write_source_bank(hid_t group_id)
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
 
   // Write data to file in parallel
-  H5Dwrite(dset, banktype, memspace, dspace, plist, simulation::source_bank.data());
+  H5Dwrite(dset, banktype, memspace, dspace, plist, source_bank->data());
 
   // Free resources
   H5Sclose(dspace);
@@ -586,38 +648,35 @@ write_source_bank(hid_t group_id)
 
   if (mpi::master) {
     // Create dataset big enough to hold all source sites
-    hsize_t dims[] {static_cast<hsize_t>(settings::n_particles)};
+    hsize_t dims[] {static_cast<hsize_t>(dims_size)};
     hid_t dspace = H5Screate_simple(1, dims, nullptr);
     hid_t dset = H5Dcreate(group_id, "source_bank", banktype, dspace,
                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-    // Save source bank sites since the souce_bank array is overwritten below
+    // Save source bank sites since the array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<Particle::Bank> temp_source {simulation::source_bank.begin(),
-      simulation::source_bank.begin() + simulation::work_per_rank};
+    vector<SourceSite> temp_source {source_bank->begin(), source_bank->end()};
 #endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {
       // Create memory space
-      hsize_t count[] {static_cast<hsize_t>(simulation::work_index[i+1] -
-        simulation::work_index[i])};
+      hsize_t count[] {static_cast<hsize_t>((*bank_index)[i+1] - (*bank_index)[i])};
       hid_t memspace = H5Screate_simple(1, count, nullptr);
 
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv(simulation::source_bank.data(), count[0], mpi::bank, i, i,
+        MPI_Recv(source_bank->data(), count[0], mpi::source_site, i, i,
                  mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 
       // Select hyperslab for this dataspace
       dspace = H5Dget_space(dset);
-      hsize_t start[] {static_cast<hsize_t>(simulation::work_index[i])};
+      hsize_t start[] {static_cast<hsize_t>((*bank_index)[i])};
       H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab
-      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT,
-        simulation::source_bank.data());
+      H5Dwrite(dset, banktype, memspace, dspace, H5P_DEFAULT, (*source_bank).data());
 
       H5Sclose(memspace);
       H5Sclose(dspace);
@@ -628,11 +687,11 @@ write_source_bank(hid_t group_id)
 
 #ifdef OPENMC_MPI
     // Restore state of source bank
-    std::copy(temp_source.begin(), temp_source.end(), simulation::source_bank.begin());
+    std::copy(temp_source.begin(), temp_source.end(), source_bank->begin());
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(simulation::source_bank.data(), simulation::work_per_rank, mpi::bank,
+    MPI_Send(source_bank->data(), count_size, mpi::source_site,
       0, mpi::rank, mpi::intracomm);
 #endif
   }
@@ -641,52 +700,84 @@ write_source_bank(hid_t group_id)
   H5Tclose(banktype);
 }
 
+// Determine member names of a compound HDF5 datatype
+std::string dtype_member_names(hid_t dtype_id)
+{
+  int nmembers = H5Tget_nmembers(dtype_id);
+  std::string names;
+  for (int i = 0; i < nmembers; i++) {
+    names = names.append(H5Tget_member_name(dtype_id, i));
+    if (i < nmembers - 1) names += ", ";
+  }
+  return names;
+}
 
-void read_source_bank(hid_t group_id)
+void read_source_bank(
+  hid_t group_id, vector<SourceSite>& sites, bool distribute)
 {
   hid_t banktype = h5banktype();
 
   // Open the dataset
   hid_t dset = H5Dopen(group_id, "source_bank", H5P_DEFAULT);
 
-  // Create another data space but for each proc individually
-  hsize_t dims[] {static_cast<hsize_t>(simulation::work_per_rank)};
-  hid_t memspace = H5Screate_simple(1, dims, nullptr);
-
-  // Make sure source bank is big enough
-  hid_t dspace = H5Dget_space(dset);
-  hsize_t dims_all[1];
-  H5Sget_simple_extent_dims(dspace, dims_all, nullptr);
-  if (simulation::work_index[mpi::n_procs] > dims_all[0]) {
-    fatal_error("Number of source sites in source file is less "
-                "than number of source particles per generation.");
+  // Make sure number of members matches
+  hid_t dtype = H5Dget_type(dset);
+  auto file_member_names = dtype_member_names(dtype);
+  auto bank_member_names = dtype_member_names(banktype);
+  if (file_member_names != bank_member_names) {
+    fatal_error(fmt::format("Source site attributes in file do not match what is "
+      "expected for this version of OpenMC. File attributes = ({}). Expected "
+      "attributes = ({})", file_member_names, bank_member_names));
   }
 
-  // Select hyperslab for each process
-  hsize_t start[] {static_cast<hsize_t>(simulation::work_index[mpi::rank])};
-  H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, dims, nullptr);
+  hid_t dspace = H5Dget_space(dset);
+  hsize_t n_sites;
+  H5Sget_simple_extent_dims(dspace, &n_sites, nullptr);
+
+  // Make sure vector is big enough in case where we're reading entire source on
+  // each process
+  if (!distribute) sites.resize(n_sites);
+
+  hid_t memspace;
+  if (distribute) {
+    if (simulation::work_index[mpi::n_procs] > n_sites) {
+      fatal_error("Number of source sites in source file is less "
+                  "than number of source particles per generation.");
+    }
+
+    // Create another data space but for each proc individually
+    hsize_t n_sites_local = simulation::work_per_rank;
+    memspace = H5Screate_simple(1, &n_sites_local, nullptr);
+
+    // Select hyperslab for each process
+    hsize_t offset = simulation::work_index[mpi::rank];
+    H5Sselect_hyperslab(dspace, H5S_SELECT_SET, &offset, nullptr, &n_sites_local, nullptr);
+  } else {
+    memspace = H5S_ALL;
+  }
 
 #ifdef PHDF5
     // Read data in parallel
   hid_t plist = H5Pcreate(H5P_DATASET_XFER);
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
-  H5Dread(dset, banktype, memspace, dspace, plist, simulation::source_bank.data());
+  H5Dread(dset, banktype, memspace, dspace, plist, sites.data());
   H5Pclose(plist);
 #else
-  H5Dread(dset, banktype, memspace, dspace, H5P_DEFAULT, simulation::source_bank.data());
+  H5Dread(dset, banktype, memspace, dspace, H5P_DEFAULT, sites.data());
 #endif
 
   // Close all ids
   H5Sclose(dspace);
-  H5Sclose(memspace);
+  if (distribute) H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
 }
 
-#ifdef DAGMC
 void write_unstructured_mesh_results() {
 
   for (auto& tally : model::tallies) {
+
+    vector<std::string> tally_scores;
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
       if (filter->type() != "mesh") continue;
@@ -697,6 +788,8 @@ void write_unstructured_mesh_results() {
       auto umesh = dynamic_cast<UnstructuredMesh*>(model::meshes[mesh_idx].get());
 
       if (!umesh) continue;
+
+      if (!umesh->output_) continue;
 
       // if this tally has more than one filter, print
       // warning and skip writing the mesh
@@ -709,55 +802,75 @@ void write_unstructured_mesh_results() {
 
       int n_realizations = tally->n_realizations_;
 
-      // write each score/nuclide combination for this tally
-      for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
-        for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
+      for (int score_idx = 0; score_idx < tally->scores_.size(); score_idx++) {
+        for (int nuc_idx = 0; nuc_idx < tally->nuclides_.size(); nuc_idx++) {
+          // combine the score and nuclide into a name for the value
+          auto score_str = fmt::format("{}_{}",
+                           tally->score_name(score_idx),
+                           tally->nuclide_name(nuc_idx));
+          // add this score to the mesh
+          // (this is in a separate loop because all variables need to be added
+          //  to libMesh's equation system before any are initialized, which
+          //  happens in set_score_data)
+          umesh->add_score(score_str);
+        }
+      }
+
+      for (int score_idx = 0; score_idx < tally->scores_.size(); score_idx++) {
+        for (int nuc_idx = 0; nuc_idx < tally->nuclides_.size(); nuc_idx++) {
+          // combine the score and nuclide into a name for the value
+          auto score_str = fmt::format("{}_{}",
+                                       tally->score_name(score_idx),
+                                       tally->nuclide_name(nuc_idx));
 
           // index for this nuclide and score
-          int nuc_score_idx = i_score + i_nuc*tally->scores_.size();
+          int nuc_score_idx = score_idx + nuc_idx*tally->scores_.size();
 
           // construct result vectors
-          std::vector<double> mean_vec, std_dev_vec;
+          vector<double> mean_vec(umesh->n_bins()),
+            std_dev_vec(umesh->n_bins());
           for (int j = 0; j < tally->results_.shape()[0]; j++) {
-            // mean
+            // get the volume for this bin
+            double volume = umesh->volume(j);
+            // compute the mean
             double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
-            mean_vec.push_back(mean);
-            // std. dev.
+            mean_vec.at(j) = mean / volume;
+
+            // compute the standard deviation
             double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
+            double std_dev {0.0};
             if (n_realizations > 1) {
-              double std_dev = sum_sq/n_realizations - mean*mean;
+              std_dev = sum_sq/n_realizations - mean*mean;
               std_dev = std::sqrt(std_dev / (n_realizations - 1));
-              std_dev_vec.push_back(std_dev);
-            } else {
-              std_dev_vec.push_back(0.0);
             }
+            std_dev_vec[j] = std_dev / volume;
           }
-
-          // generate a name for the value
-          std::string nuclide_name = "total"; // start with total by default
-          if (tally->nuclides_[i_nuc] > -1) {
-            nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
-          }
-
-          std::string score_name = tally->score_name(i_score);
-          auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
+#ifdef OPENMC_MPI
+          MPI_Bcast(mean_vec.data(), mean_vec.size(), MPI_DOUBLE, 0, mpi::intracomm);
+          MPI_Bcast(std_dev_vec.data(), std_dev_vec.size(), MPI_DOUBLE, 0, mpi::intracomm);
+#endif
+          // set the data for this score
           umesh->set_score_data(score_str, mean_vec, std_dev_vec);
         }
       }
 
       // Generate a file name based on the tally id
       // and the current batch number
-      int w = std::to_string(settings::n_max_batches).size();
+      size_t batch_width {std::to_string(settings::n_max_batches).size()};
       std::string filename = fmt::format("tally_{0}.{1:0{2}}",
                                          tally->id_,
                                          simulation::current_batch,
-                                         w);
+                                         batch_width);
+
+      if (umesh->library() == "moab" && !mpi::master) continue;
+
       // Write the unstructured mesh and data to file
       umesh->write(filename);
+
+      umesh->remove_scores();
     }
   }
 }
-#endif
 
 void write_tally_results_nr(hid_t file_id)
 {
@@ -768,9 +881,6 @@ void write_tally_results_nr(hid_t file_id)
   if (mpi::master) {
     // Write number of realizations
     write_dataset(file_id, "n_realizations", simulation::n_realizations);
-
-    // Write number of global tallies
-    write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES);
 
     tallies_group = open_group(file_id, "tallies");
   }
@@ -803,7 +913,7 @@ void write_tally_results_nr(hid_t file_id)
     if (!t->active_) continue;
     if (!t->writable_) continue;
 
-    if (mpi::master && !object_exists(file_id, "tallies_present")) {
+    if (mpi::master && !attribute_exists(file_id, "tallies_present")) {
       write_attribute(file_id, "tallies_present", 1);
     }
 
@@ -812,7 +922,7 @@ void write_tally_results_nr(hid_t file_id)
       xt::range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1));
 
     // Make copy of tally values in contiguous array
-    xt::xtensor<double, 2> values = values_view;
+    xt::xtensor<double, 3> values = values_view;
 
     if (mpi::master) {
       // Open group for tally
@@ -858,6 +968,8 @@ void write_tally_results_nr(hid_t file_id)
       // Indicate that tallies are off
       write_dataset(file_id, "tallies_present", 0);
     }
+
+    close_group(tallies_group);
   }
 }
 

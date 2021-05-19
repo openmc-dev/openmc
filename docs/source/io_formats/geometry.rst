@@ -173,11 +173,11 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     *Default*: A region filling all space.
 
   :temperature:
-    The temperature of the cell in Kelvin. If windowed-multipole data is
-    avalable, this temperature will be used to Doppler broaden some cross
-    sections in the resolved resonance region. A list of temperatures can be
-    specified for the "distributed temperature" feature. This will give each
-    unique instance of the cell its own temperature.
+    The temperature of the cell in Kelvin. The temperature may be used in
+    windowed multipole Doppler broadening or interpolation of pointwise cross
+    sections versus temperature. A list of temperatures can be specified for the
+    "distributed temperature" feature. This will give each unique instance of
+    the cell its own temperature.
 
     *Default*: If a material default temperature is supplied, it is used. In the
     absence of a material default temperature, the :ref:`global default

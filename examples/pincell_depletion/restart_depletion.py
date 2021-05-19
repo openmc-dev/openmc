@@ -12,7 +12,7 @@ with openmc.StatePoint(statepoint) as sp:
     geometry = sp.summary.geometry
 
 # Load previous depletion results
-previous_results = openmc.deplete.ResultsList("depletion_results.h5")
+previous_results = openmc.deplete.ResultsList.from_hdf5("depletion_results.h5")
 
 ###############################################################################
 #                      Transport calculation settings

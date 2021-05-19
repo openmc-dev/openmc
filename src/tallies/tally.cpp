@@ -1,11 +1,12 @@
 #include "openmc/tallies/tally.h"
 
+#include "openmc/array.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
-#include "openmc/message_passing.h"
 #include "openmc/mesh.h"
+#include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
@@ -18,6 +19,7 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_cellfrom.h"
+#include "openmc/tallies/filter_collision.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_legendre.h"
@@ -34,7 +36,6 @@
 #include "xtensor/xview.hpp"
 
 #include <algorithm> // for max
-#include <array>
 #include <cstddef> // for size_t
 #include <string>
 
@@ -46,13 +47,13 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> tally_map;
-  std::vector<std::unique_ptr<Tally>> tallies;
-  std::vector<int> active_tallies;
-  std::vector<int> active_analog_tallies;
-  std::vector<int> active_tracklength_tallies;
-  std::vector<int> active_collision_tallies;
-  std::vector<int> active_meshsurf_tallies;
-  std::vector<int> active_surface_tallies;
+  vector<unique_ptr<Tally>> tallies;
+  vector<int> active_tallies;
+  vector<int> active_analog_tallies;
+  vector<int> active_tracklength_tallies;
+  vector<int> active_collision_tallies;
+  vector<int> active_meshsurf_tallies;
+  vector<int> active_surface_tallies;
 }
 
 namespace simulation {
@@ -64,180 +65,6 @@ double global_tally_absorption;
 double global_tally_collision;
 double global_tally_tracklength;
 double global_tally_leakage;
-
-int
-score_str_to_int(std::string score_str)
-{
-  if (score_str == "flux")
-    return SCORE_FLUX;
-
-  if (score_str == "total" || score_str == "(n,total)")
-    return SCORE_TOTAL;
-
-  if (score_str == "scatter")
-    return SCORE_SCATTER;
-
-  if (score_str == "nu-scatter")
-    return SCORE_NU_SCATTER;
-
-  if (score_str == "absorption")
-    return SCORE_ABSORPTION;
-
-  if (score_str == "fission" || score_str == "18")
-    return SCORE_FISSION;
-
-  if (score_str == "nu-fission")
-    return SCORE_NU_FISSION;
-
-  if (score_str == "decay-rate")
-    return SCORE_DECAY_RATE;
-
-  if (score_str == "delayed-nu-fission")
-    return SCORE_DELAYED_NU_FISSION;
-
-  if (score_str == "prompt-nu-fission")
-    return SCORE_PROMPT_NU_FISSION;
-
-  if (score_str == "kappa-fission")
-    return SCORE_KAPPA_FISSION;
-
-  if (score_str == "inverse-velocity")
-    return SCORE_INVERSE_VELOCITY;
-
-  if (score_str == "fission-q-prompt")
-    return SCORE_FISS_Q_PROMPT;
-
-  if (score_str == "fission-q-recoverable")
-    return SCORE_FISS_Q_RECOV;
-
-  if (score_str == "heating")
-    return HEATING;
-
-  if (score_str == "heating-local")
-    return HEATING_LOCAL;
-
-  if (score_str == "current")
-    return SCORE_CURRENT;
-
-  if (score_str == "events")
-    return SCORE_EVENTS;
-
-  if (score_str == "elastic" || score_str == "(n,elastic)")
-    return ELASTIC;
-
-  if (score_str == "n2n" || score_str == "(n,2n)")
-    return N_2N;
-
-  if (score_str == "n3n" || score_str == "(n,3n)")
-    return N_3N;
-
-  if (score_str == "n4n" || score_str == "(n,4n)")
-    return N_4N;
-
-  if (score_str == "(n,2nd)")
-    return N_2ND;
-  if (score_str == "(n,na)")
-    return N_2NA;
-  if (score_str == "(n,n3a)")
-    return N_N3A;
-  if (score_str == "(n,2na)")
-    return N_2NA;
-  if (score_str == "(n,3na)")
-    return N_3NA;
-  if (score_str == "(n,np)")
-    return N_NP;
-  if (score_str == "(n,n2a)")
-    return N_N2A;
-  if (score_str == "(n,2n2a)")
-    return N_2N2A;
-  if (score_str == "(n,nd)")
-    return N_ND;
-  if (score_str == "(n,nt)")
-    return N_NT;
-  if (score_str == "(n,nHe-3)")
-    return N_N3HE;
-  if (score_str == "(n,nd2a)")
-    return N_ND2A;
-  if (score_str == "(n,nt2a)")
-    return N_NT2A;
-  if (score_str == "(n,3nf)")
-    return N_3NF;
-  if (score_str == "(n,2np)")
-    return N_2NP;
-  if (score_str == "(n,3np)")
-    return N_3NP;
-  if (score_str == "(n,n2p)")
-    return N_N2P;
-  if (score_str == "(n,npa)")
-    return N_NPA;
-  if (score_str == "(n,n1)")
-    return N_N1;
-  if (score_str == "(n,nc)")
-    return N_NC;
-  if (score_str == "(n,gamma)")
-    return N_GAMMA;
-  if (score_str == "(n,p)")
-    return N_P;
-  if (score_str == "(n,d)")
-    return N_D;
-  if (score_str == "(n,t)")
-    return N_T;
-  if (score_str == "(n,3He)")
-    return N_3HE;
-  if (score_str == "(n,a)")
-    return N_A;
-  if (score_str == "(n,2a)")
-    return N_2A;
-  if (score_str == "(n,3a)")
-    return N_3A;
-  if (score_str == "(n,2p)")
-    return N_2P;
-  if (score_str == "(n,pa)")
-    return N_PA;
-  if (score_str == "(n,t2a)")
-    return N_T2A;
-  if (score_str == "(n,d2a)")
-    return N_D2A;
-  if (score_str == "(n,pd)")
-    return N_PD;
-  if (score_str == "(n,pt)")
-    return N_PT;
-  if (score_str == "(n,da)")
-    return N_DA;
-  if (score_str == "(n,Xp)" || score_str == "H1-production")
-    return N_XP;
-  if (score_str == "(n,Xd)" || score_str == "H2-production")
-    return N_XD;
-  if (score_str == "(n,Xt)" || score_str == "H3-production")
-    return N_XT;
-  if (score_str == "(n,X3He)" || score_str == "He3-production")
-    return N_X3HE;
-  if (score_str == "(n,Xa)" || score_str == "He4-production")
-    return N_XA;
-  if (score_str == "damage-energy")
-    return DAMAGE_ENERGY;
-
-  // So far we have not identified this score string.  Check to see if it is a
-  // deprecated score.
-  if (score_str.rfind("scatter-", 0) == 0
-      || score_str.rfind("nu-scatter-", 0) == 0
-      || score_str.rfind("total-y", 0) == 0
-      || score_str.rfind("flux-y", 0) == 0)
-    fatal_error(score_str + " is no longer an available score");
-
-
-  // Assume the given string is a reaction MT number.  Make sure it's a natural
-  // number then return.
-  int MT;
-  try {
-    MT = std::stoi(score_str);
-  } catch (const std::invalid_argument& ex) {
-    throw std::invalid_argument("Invalid tally score \"" + score_str + "\"");
-  }
-  if (MT < 1)
-    throw std::invalid_argument("Invalid tally score \"" + score_str + "\"");
-  return MT;
-}
 
 //==============================================================================
 // Tally object implementation
@@ -276,13 +103,13 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Determine number of filters
-  std::vector<int> filter_ids;
+  vector<int> filter_ids;
   if (check_for_node(node, "filters")) {
     filter_ids = get_node_array<int>(node, "filters");
   }
 
   // Allocate and store filter user ids
-  std::vector<Filter*> filters;
+  vector<Filter*> filters;
   for (int filter_id : filter_ids) {
     // Determine if filter ID is valid
     auto it = model::filter_map.find(filter_id);
@@ -369,7 +196,7 @@ Tally::Tally(pugi::xml_node node)
       const auto& f = model::tally_filters[particle_filter_index].get();
       auto pf = dynamic_cast<ParticleFilter*>(f);
       for (auto p : pf->particles()) {
-        if (p != Particle::Type::neutron) {
+        if (p != ParticleType::neutron) {
           warning(fmt::format("Particle filter other than NEUTRON used with "
             "photon transport turned off. All tallies for particle type {}"
             " will have no scores", static_cast<int>(p)));
@@ -456,6 +283,21 @@ Tally::Tally(pugi::xml_node node)
         "Invalid estimator '{}' on tally {}", est, id_)};
     }
   }
+
+#ifdef LIBMESH
+  // ensure a tracklength tally isn't used with a libMesh filter
+  for (auto i : this->filters_) {
+    auto df = dynamic_cast<MeshFilter*>(model::tally_filters[i].get());
+    if (df) {
+      auto lm = dynamic_cast<LibMesh*>(model::meshes[df->mesh()].get());
+      if (lm && estimator_ == TallyEstimator::TRACKLENGTH) {
+        fatal_error("A tracklength estimator cannot be used with "
+                    "an unstructured LibMesh tally.");
+      }
+    }
+  }
+#endif
+
 }
 
 Tally::~Tally()
@@ -466,7 +308,7 @@ Tally::~Tally()
 Tally*
 Tally::create(int32_t id)
 {
-  model::tallies.push_back(std::make_unique<Tally>(id));
+  model::tallies.push_back(make_unique<Tally>(id));
   return model::tallies.back().get();
 }
 
@@ -546,12 +388,10 @@ Tally::set_scores(pugi::xml_node node)
   set_scores(scores);
 }
 
-void
-Tally::set_scores(const std::vector<std::string>& scores)
+void Tally::set_scores(const vector<std::string>& scores)
 {
   // Reset state and prepare for the new scores.
   scores_.clear();
-  depletion_rx_ = false;
   scores_.reserve(scores.size());
 
   // Check for the presence of certain restrictive filters.
@@ -584,7 +424,8 @@ Tally::set_scores(const std::vector<std::string>& scores)
         fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
     }
 
-    auto score = score_str_to_int(score_str);
+    // Determine integer code for score
+    int score = reaction_type(score_str);
 
     switch (score) {
     case SCORE_FLUX:
@@ -620,15 +461,6 @@ Tally::set_scores(const std::vector<std::string>& scores)
         if (energyout_present || legendre_present)
           estimator_ = TallyEstimator::ANALOG;
       }
-      break;
-
-    case N_2N:
-    case N_3N:
-    case N_4N:
-    case N_GAMMA:
-    case N_P:
-    case N_A:
-      depletion_rx_ = true;
       break;
 
     case SCORE_CURRENT:
@@ -708,8 +540,7 @@ Tally::set_nuclides(pugi::xml_node node)
   }
 }
 
-void
-Tally::set_nuclides(const std::vector<std::string>& nuclides)
+void Tally::set_nuclides(const vector<std::string>& nuclides)
 {
   nuclides_.clear();
 
@@ -762,7 +593,7 @@ Tally::init_triggers(pugi::xml_node node)
     }
 
     // Read the trigger scores.
-    std::vector<std::string> trigger_scores;
+    vector<std::string> trigger_scores;
     if (check_for_node(trigger_node, "scores")) {
       trigger_scores = get_node_array<std::string>(trigger_node, "scores");
     } else {
@@ -815,7 +646,7 @@ void Tally::accumulate()
     double total_source = 0.0;
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       for (const auto& s : model::external_sources) {
-        total_source += s.strength();
+        total_source += s->strength();
       }
     } else {
       total_source = 1.0;
@@ -825,6 +656,7 @@ void Tally::accumulate()
     double norm = total_source / (settings::n_particles * settings::gen_per_batch);
 
     // Accumulate each result
+    #pragma omp parallel for
     for (int i = 0; i < results_.shape()[0]; ++i) {
       for (int j = 0; j < results_.shape()[1]; ++j) {
         double val = results_(i, j, TallyResult::VALUE) * norm;
@@ -842,6 +674,17 @@ Tally::score_name(int score_idx) const {
     fatal_error("Index in scores array is out of bounds.");
   }
   return reaction_name(scores_[score_idx]);
+}
+
+std::string
+Tally::nuclide_name(int nuclide_idx) const {
+  if (nuclide_idx < 0 || nuclide_idx >= nuclides_.size()) {
+    fatal_error("Index in nuclides array is out of bounds");
+  }
+
+  int nuclide = nuclides_.at(nuclide_idx);
+  if (nuclide == -1) { return "total"; }
+  return data::nuclides.at(nuclide)->name_;
 }
 
 //==============================================================================
@@ -894,35 +737,41 @@ void read_tallies_xml()
   }
 
   for (auto node_tal : root.children("tally")) {
-    model::tallies.push_back(std::make_unique<Tally>(node_tal));
+    model::tallies.push_back(make_unique<Tally>(node_tal));
   }
 }
 
 #ifdef OPENMC_MPI
 void reduce_tally_results()
 {
-  for (int i_tally : model::active_tallies) {
-    // Skip any tallies that are not active
-    auto& tally {model::tallies[i_tally]};
+  // Don't reduce tally is no_reduce option is on
+  if (settings::reduce_tallies) {
+    for (int i_tally : model::active_tallies) {
+      // Skip any tallies that are not active
+      auto& tally {model::tallies[i_tally]};
 
-    // Get view of accumulated tally values
-    auto values_view = xt::view(tally->results_, xt::all(), xt::all(), static_cast<int>(TallyResult::VALUE));
+      // Get view of accumulated tally values
+      auto values_view = xt::view(tally->results_, xt::all(), xt::all(), static_cast<int>(TallyResult::VALUE));
 
-    // Make copy of tally values in contiguous array
-    xt::xtensor<double, 2> values = values_view;
-    xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
+      // Make copy of tally values in contiguous array
+      xt::xtensor<double, 2> values = values_view;
+      xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
 
-    // Reduce contiguous set of tally results
-    MPI_Reduce(values.data(), values_reduced.data(), values.size(),
-      MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+      // Reduce contiguous set of tally results
+      MPI_Reduce(values.data(), values_reduced.data(), values.size(),
+        MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
 
-    // Transfer values on master and reset on other ranks
-    if (mpi::master) {
-      values_view = values_reduced;
-    } else {
-      values_view = 0.0;
+      // Transfer values on master and reset on other ranks
+      if (mpi::master) {
+        values_view = values_reduced;
+      } else {
+        values_view = 0.0;
+      }
     }
   }
+
+  // Note that global tallies are *always* reduced even when no_reduce option is
+  // on.
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
@@ -957,11 +806,11 @@ accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (settings::reduce_tallies) reduce_tally_results();
+  if (mpi::n_procs > 1) reduce_tally_results();
 #endif
 
   // Increase number of realizations (only used for global tallies)
-  simulation::n_realizations += settings::reduce_tallies ? 1 : mpi::n_procs;
+  simulation::n_realizations += 1;
 
   // Accumulate on master only unless run is not reduced then do it on all
   if (mpi::master || !settings::reduce_tallies) {
@@ -1032,9 +881,6 @@ setup_active_tallies()
       case TallyType::SURFACE:
         model::active_surface_tallies.push_back(i);
       }
-
-      // Check if tally contains depletion reactions and if so, set flag
-      if (tally.depletion_rx_) simulation::need_depletion_rx = true;
     }
   }
 }
@@ -1070,7 +916,7 @@ openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::tallies.size();
   if (index_end) *index_end = model::tallies.size() + n - 1;
   for (int i = 0; i < n; ++i) {
-    model::tallies.push_back(std::make_unique<Tally>(-1));
+    model::tallies.push_back(make_unique<Tally>(-1));
   }
   return 0;
 }
@@ -1260,7 +1106,7 @@ openmc_tally_set_scores(int32_t index, int n, const char** scores)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  std::vector<std::string> scores_str(scores, scores+n);
+  vector<std::string> scores_str(scores, scores + n);
   try {
     model::tallies[index]->set_scores(scores_str);
   } catch (const std::invalid_argument& ex) {
@@ -1295,8 +1141,8 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  std::vector<std::string> words(nuclides, nuclides+n);
-  std::vector<int> nucs;
+  vector<std::string> words(nuclides, nuclides + n);
+  vector<int> nucs;
   for (auto word : words){
     if (word == "total") {
       nucs.push_back(-1);
@@ -1340,7 +1186,7 @@ openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices)
   // Set the filters.
   try {
     // Convert indices to filter pointers
-    std::vector<Filter*> filters;
+    vector<Filter*> filters;
     for (gsl::index i = 0; i < n; ++i) {
       int32_t i_filt = indices[i];
       filters.push_back(model::tally_filters.at(i_filt).get());

@@ -1,7 +1,12 @@
+#ifdef OPENMC_MPI
+#include <mpi.h>
+#endif
 
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/message_passing.h"
 #include "openmc/summary.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
@@ -10,7 +15,13 @@
 using namespace openmc;
 
 int main(int argc, char** argv) {
-  openmc_init(argc, argv, nullptr);
+#ifdef OPENMC_MPI
+  MPI_Comm world {MPI_COMM_WORLD};
+  int err = openmc_init(argc, argv, &world);
+#else
+  int err = openmc_init(argc, argv, nullptr);
+#endif
+  if (err) fatal_error(openmc_err_msg);
 
   // create a new cell filter
   auto cell_filter = Filter::create<CellFilter>();
@@ -48,9 +59,18 @@ int main(int argc, char** argv) {
   // the summary file will be used to check that
   // temperatures were set correctly so clear
   // error output can be provided
+#ifdef OPENMC_MPI
+  if (openmc::mpi::master) openmc::write_summary();
+#else
   openmc::write_summary();
+#endif
 
   openmc_run();
   openmc_finalize();
+
+#ifdef OPENMC_MPI
+  MPI_Finalize();
+#endif
+
   return 0;
 }

@@ -81,7 +81,7 @@ Coupling and Multi-physics
   264-274 (2017).
 
 - Tianliang Hu, Liangzhu Cao, Hongchun Wu, Xianan Du, and Mingtao He, "`Coupled
-  neutrons and thermal-hydraulics simulation of molten salt reactors based on
+  neutronics and thermal-hydraulics simulation of molten salt reactors based on
   OpenMC/TANSY <https://doi.org/10.1016/j.anucene.2017.05.002>`_,"
   *Ann. Nucl. Energy*, **109**, 260-276 (2017).
 

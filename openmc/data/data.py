@@ -178,20 +178,20 @@ ATOMIC_SYMBOL = {0: 'n', 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
 ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
 # Values here are from the Committee on Data for Science and Technology
-# (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
+# (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
 # The value of the Boltzman constant in units of eV / K
-K_BOLTZMANN = 8.6173303e-5
+K_BOLTZMANN = 8.617333262e-5
 
 # Unit conversions
 EV_PER_MEV = 1.0e6
-JOULE_PER_EV = 1.6021766208e-19
+JOULE_PER_EV = 1.602176634e-19
 
 # Avogadro's constant
-AVOGADRO = 6.022140857e23
+AVOGADRO = 6.02214076e23
 
 # Neutron mass in units of amu
-NEUTRON_MASS = 1.00866491588
+NEUTRON_MASS = 1.00866491595
 
 # Used in atomic_mass function as a cache
 _ATOMIC_MASS = {}
@@ -236,10 +236,8 @@ def atomic_mass(isotope):
         for element in ['C', 'Zn', 'Pt', 'Os', 'Tl']:
             isotope_zero = element.lower() + '0'
             _ATOMIC_MASS[isotope_zero] = 0.
-            for iso, abundance in NATURAL_ABUNDANCE.items():
-                if re.match(r'{}\d+'.format(element), iso):
-                    _ATOMIC_MASS[isotope_zero] += abundance * \
-                                                  _ATOMIC_MASS[iso.lower()]
+            for iso, abundance in isotopes(element):
+                _ATOMIC_MASS[isotope_zero] += abundance * _ATOMIC_MASS[iso.lower()]
 
     # Get rid of metastable information
     if '_' in isotope:
@@ -257,7 +255,7 @@ def atomic_weight(element):
     Parameters
     ----------
     element : str
-        Name of element, e.g. 'H', 'U'
+        Element symbol (e.g., 'H') or name (e.g., 'helium')
 
     Returns
     -------
@@ -266,9 +264,8 @@ def atomic_weight(element):
 
     """
     weight = 0.
-    for nuclide, abundance in NATURAL_ABUNDANCE.items():
-        if re.match(r'{}\d+'.format(element), nuclide):
-            weight += atomic_mass(nuclide) * abundance
+    for nuclide, abundance in isotopes(element):
+        weight += atomic_mass(nuclide) * abundance
     if weight > 0.:
         return weight
     else:
@@ -402,6 +399,43 @@ def gnd_name(Z, A, m=0):
         return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
     else:
         return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+
+
+def isotopes(element):
+    """Return naturally occurring isotopes and their abundances
+
+    .. versionadded:: 0.12.1
+
+    Parameters
+    ----------
+    element : str
+        Element symbol (e.g., 'H') or name (e.g., 'helium')
+
+    Returns
+    -------
+    list
+        A list of tuples of (isotope, abundance)
+
+    Raises
+    ------
+    ValueError
+        If the element name is not recognized
+
+    """
+    # Convert name to symbol if needed
+    if len(element) > 2:
+        symbol = ELEMENT_SYMBOL.get(element.lower())
+        if symbol is None:
+            raise ValueError('Element name "{}" not recognised'.format(element))
+        element = symbol
+
+    # Get the nuclides present in nature
+    result = []
+    for kv in sorted(NATURAL_ABUNDANCE.items()):
+        if re.match(r'{}\d+'.format(element), kv[0]):
+            result.append(kv)
+
+    return result
 
 
 def zam(name):

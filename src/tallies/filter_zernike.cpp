@@ -39,7 +39,7 @@ ZernikeFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 
   if (r <= 1.0) {
     // Compute and return the Zernike weights.
-    std::vector<double> zn(n_bins_);
+    vector<double> zn(n_bins_);
     calc_zn(order_, r, theta, zn.data());
     for (int i = 0; i < n_bins_; i++) {
       match.bins_.push_back(i);
@@ -98,7 +98,7 @@ ZernikeRadialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 
   if (r <= 1.0) {
     // Compute and return the Zernike weights.
-    std::vector<double> zn(n_bins_);
+    vector<double> zn(n_bins_);
     calc_zn_rad(order_, r, zn.data());
     for (int i = 0; i < n_bins_; i++) {
       match.bins_.push_back(i);

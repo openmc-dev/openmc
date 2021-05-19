@@ -4,14 +4,15 @@
 #include <cmath>     // for log, sqrt, sinh
 #include <cstddef>   // for size_t
 #include <iterator>  // for back_inserter
-#include <vector>
 
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -43,9 +44,9 @@ KalbachMann::KalbachMann(hid_t group)
 
   // Get outgoing energy distribution data
   dset = open_dataset(group, "distribution");
-  std::vector<int> offsets;
-  std::vector<int> interp;
-  std::vector<int> n_discrete;
+  vector<int> offsets;
+  vector<int> interp;
+  vector<int> n_discrete;
   read_attribute(dset, "offsets", offsets);
   read_attribute(dset, "interpolation", interp);
   read_attribute(dset, "n_discrete_lines", n_discrete);
@@ -115,14 +116,6 @@ KalbachMann::KalbachMann(hid_t group)
 
 void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
-  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-  // Before the secondary distribution refactor, an isotropic polar cosine was
-  // always sampled but then overwritten with the polar cosine sampled from the
-  // correlated distribution. To preserve the random number stream, we keep
-  // this dummy sampling here but can remove it later (will change answers)
-  mu = 2.0*prn(seed) - 1.0;
-  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
   auto n_energy_in = energy_.size();
@@ -230,7 +223,7 @@ void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t* seed)
 
   // Sampled correlated angle from Kalbach-Mann parameters
   if (prn(seed) > km_r) {
-    double T = (2.0*prn(seed) - 1.0) * std::sinh(km_a);
+    double T = uniform_distribution(-1., 1., seed) * std::sinh(km_a);
     mu = std::log(T + std::sqrt(T*T + 1.0))/km_a;
   } else {
     double r1 = prn(seed);

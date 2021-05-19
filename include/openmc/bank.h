@@ -2,11 +2,11 @@
 #define OPENMC_BANK_H
 
 #include <cstdint>
-#include <vector>
 
-#include "openmc/shared_array.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/shared_array.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -16,11 +16,13 @@ namespace openmc {
 
 namespace simulation {
 
-extern std::vector<Particle::Bank> source_bank;
+extern vector<SourceSite> source_bank;
 
-extern SharedArray<Particle::Bank> fission_bank;
+extern SharedArray<SourceSite> surf_source_bank;
 
-extern std::vector<int64_t> progeny_per_particle;
+extern SharedArray<SourceSite> fission_bank;
+
+extern vector<int64_t> progeny_per_particle;
 
 } // namespace simulation
 

@@ -6,7 +6,7 @@
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/random_lcg.h"
+#include "openmc/random_dist.h"
 
 namespace openmc {
 
@@ -29,7 +29,7 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
 
     std::string type;
     read_attribute(energy_group, "type", type);
-    using UPtrEDist = std::unique_ptr<EnergyDistribution>;
+    using UPtrEDist = unique_ptr<EnergyDistribution>;
     if (type == "discrete_photon") {
       energy_ = UPtrEDist{new DiscretePhoton{energy_group}};
     } else if (type == "level") {
@@ -55,16 +55,11 @@ UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
   uint64_t* seed) const
 {
   // Sample cosine of scattering angle
-  if (fission_) {
-    // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    // For fission, the angle is not used, so just assign a dummy value
-    mu = 1.0;
-    // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-  } else if (!angle_.empty()) {
+  if (!angle_.empty()) {
     mu = angle_.sample(E_in, seed);
   } else {
     // no angle distribution given => assume isotropic for all energies
-    mu = 2.0*prn(seed) - 1.0;
+    mu = uniform_distribution(-1., 1., seed);
   }
 
   // Sample outgoing energy

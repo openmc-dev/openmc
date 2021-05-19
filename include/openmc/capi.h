@@ -18,7 +18,7 @@ extern "C" {
   int openmc_cell_set_name(int32_t index, const char* name);
   int openmc_cell_set_fill(int32_t index, int type, int32_t n, const int32_t* indices);
   int openmc_cell_set_id(int32_t index, int32_t id);
-  int openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance);
+  int openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance, bool set_contained = false);
   int openmc_energy_filter_get_bins(int32_t index, const double** energies, size_t* n);
   int openmc_energy_filter_set_bins(int32_t index, size_t n, const double* energies);
   int openmc_energyfunc_filter_get_energy(int32_t index, size_t* n, const double** energy);
@@ -28,7 +28,8 @@ extern "C" {
   int openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_filters(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end);
-  int openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end);
+  int openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
+                           int32_t* index_end);
   int openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_filter_get_id(int32_t index, int32_t* id);
   int openmc_filter_get_type(int32_t index, char* type);
@@ -46,6 +47,7 @@ extern "C" {
   int openmc_get_mesh_index(int32_t id, int32_t* index);
   int openmc_get_n_batches(int* n_batches, bool get_max_batches);
   int openmc_get_nuclide_index(const char name[], int* index);
+  int openmc_add_unstructured_mesh(const char filename[], const char library[], int* id);
   int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
   void openmc_get_tally_next_id(int32_t* id);
@@ -72,12 +74,10 @@ extern "C" {
   int openmc_material_filter_set_bins(int32_t index, size_t n, const int32_t* bins);
   int openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh);
+  int openmc_mesh_filter_get_translation(int32_t index, double translation[3]);
+  int openmc_mesh_filter_set_translation(int32_t index, double translation[3]);
   int openmc_mesh_get_id(int32_t index, int32_t* id);
-  int openmc_mesh_get_dimension(int32_t index, int** id, int* n);
-  int openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n);
   int openmc_mesh_set_id(int32_t index, int32_t id);
-  int openmc_mesh_set_dimension(int32_t index, int n, const int* dims);
-  int openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur, const double* width);
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_new_filter(const char* type, int32_t* index);
@@ -86,6 +86,15 @@ extern "C" {
   int openmc_plot_geometry();
   int openmc_id_map(const void* slice, int32_t* data_out);
   int openmc_property_map(const void* slice, double* data_out);
+  int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
+                       double** grid_y, int* ny, double** grid_z, int* nz);
+  int openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
+                       const int nx, const double* grid_y, const int ny,
+                       const double* grid_z, const int nz);
+  int openmc_regular_mesh_get_dimension(int32_t index, int** id, int* n);
+  int openmc_regular_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n);
+  int openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims);
+  int openmc_regular_mesh_set_params(int32_t index, int n, const double* ll, const double* ur, const double* width);
   int openmc_reset();
   int openmc_reset_timers();
   int openmc_run();
@@ -131,27 +140,38 @@ extern "C" {
   int openmc_zernike_filter_set_params(int32_t index, const double* x,
                                        const double* y, const double* r);
 
+  //! Sets the mesh and energy grid for CMFD reweight
+  //! \param[in] meshtyally_id id of CMFD Mesh Tally
+  //! \param[in] cmfd_indices indices storing spatial and energy dimensions of CMFD problem
+  //! \param[in] norm CMFD normalization factor
+  extern "C" void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indices,
+                                               const double norm);
+
+  //! Sets the mesh and energy grid for CMFD reweight
+  //! \param[in] feedback whether or not to run CMFD feedback
+  //! \param[in] cmfd_src computed CMFD source
+  extern "C" void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src);
+
   //! Sets the fixed variables that are used for CMFD linear solver
-  //! \param[in] CSR format index pointer array of loss matrix
-  //! \param[in] length of indptr
-  //! \param[in] CSR format index array of loss matrix
-  //! \param[in] number of non-zero elements in CMFD loss matrix
-  //! \param[in] dimension n of nxn CMFD loss matrix
-  //! \param[in] spectral radius of CMFD matrices and tolerances
-  //! \param[in] indices storing spatial and energy dimensions of CMFD problem
-  //! \param[in] coremap for problem, storing accelerated regions
+  //! \param[in] indptr CSR format index pointer array of loss matrix
+  //! \param[in] len_indptr length of indptr
+  //! \param[in] indices CSR format index array of loss matrix
+  //! \param[in] n_elements number of non-zero elements in CMFD loss matrix
+  //! \param[in] dim dimension n of nxn CMFD loss matrix
+  //! \param[in] spectral spectral radius of CMFD matrices and tolerances
+  //! \param[in] map coremap for problem, storing accelerated regions
+  //! \param[in] use_all_threads whether to use all threads when running CMFD solver
   extern "C" void openmc_initialize_linsolver(const int* indptr, int len_indptr,
                                               const int* indices, int n_elements,
                                               int dim, double spectral,
-                                              const int* cmfd_indices,
                                               const int* map, bool use_all_threads);
 
   //! Runs a Gauss Seidel linear solver to solve CMFD matrix equations
   //! linear solver
-  //! \param[in] CSR format data array of coefficient matrix
-  //! \param[in] right hand side vector
-  //! \param[out] unknown vector
-  //! \param[in] tolerance on final error
+  //! \param[in] A_data CSR format data array of coefficient matrix
+  //! \param[in] b right hand side vector
+  //! \param[out] x unknown vector
+  //! \param[in] tol tolerance on final error
   //! \return number of inner iterations required to reach convergence
   extern "C" int openmc_run_linsolver(const double* A_data, const double* b,
                                       double* x, double tol);

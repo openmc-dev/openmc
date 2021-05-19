@@ -11,7 +11,15 @@ void
 MeshSurfaceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
-  model::meshes[mesh_]->surface_bins_crossed(p, match.bins_);
+  Position r0 = p.r_last_current();
+  Position r1 = p.r();
+  if (translated_) {
+    r0 -= translation();
+    r1 -= translation();
+  }
+
+  Direction u = p.u();
+  model::meshes[mesh_]->surface_bins_crossed(r0, r1, u, match.bins_);
   for (auto b : match.bins_) match.weights_.push_back(1.0);
 }
 

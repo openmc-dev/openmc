@@ -35,8 +35,8 @@ public:
 
   // Observer pointers
   Distribution* x() const { return x_.get(); }
-  Distribution* y() const { return x_.get(); }
-  Distribution* z() const { return x_.get(); }
+  Distribution* y() const { return y_.get(); }
+  Distribution* z() const { return z_.get(); }
 private:
   UPtrDist x_; //!< Distribution of x coordinates
   UPtrDist y_; //!< Distribution of y coordinates
@@ -135,7 +135,7 @@ private:
   Position r_; //!< Single position at which sites are generated
 };
 
-using UPtrSpace = std::unique_ptr<SpatialDistribution>;
+using UPtrSpace = unique_ptr<SpatialDistribution>;
 
 } // namespace openmc
 

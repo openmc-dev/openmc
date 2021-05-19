@@ -46,6 +46,22 @@ def test_cell_instance():
     assert instances.apply(lambda x: x in (0, 1, 2)).all()
 
 
+def test_collision():
+    f = openmc.CollisionFilter([1, 5, 3, 2, 8])
+    assert f.bins[0] == 1
+    assert f.bins[1] == 5
+    assert f.bins[-1] == 8
+    assert len(f.bins) == 5
+
+    # Make sure __repr__ works
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'collision'
+
+
 def test_legendre():
     n = 5
     f = openmc.LegendreFilter(n)

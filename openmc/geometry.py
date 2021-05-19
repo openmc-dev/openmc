@@ -568,7 +568,8 @@ class Geometry:
         # Iterate through all cells contained in the geometry
         for cell in self.get_all_cells().values():
             # Recursively remove redundant surfaces from regions
-            cell.region.remove_redundant_surfaces(redundant_surfaces)
+            if cell.region:
+                cell.region.remove_redundant_surfaces(redundant_surfaces)
 
     def determine_paths(self, instances_only=False):
         """Determine paths through CSG tree for cells and materials.

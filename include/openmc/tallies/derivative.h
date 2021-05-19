@@ -2,9 +2,9 @@
 #define OPENMC_TALLIES_DERIVATIVE_H
 
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 #include <unordered_map>
-#include <vector>
 
 #include "pugixml.hpp"
 
@@ -70,8 +70,8 @@ void score_track_derivative(Particle& p, double distance);
 namespace openmc {
 
 namespace model {
-extern std::vector<TallyDerivative> tally_derivs;
 extern std::unordered_map<int, int> tally_deriv_map;
+extern vector<TallyDerivative> tally_derivs;
 } // namespace model
 
 } // namespace openmc

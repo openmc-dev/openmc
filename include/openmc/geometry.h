@@ -1,15 +1,17 @@
 #ifndef OPENMC_GEOMETRY_H
 #define OPENMC_GEOMETRY_H
 
-#include <array>
 #include <cmath>
 #include <cstdint>
-#include <vector>
 
-#include "openmc/particle.h"
-
+#include "openmc/array.h"
+#include "openmc/constants.h"
+#include "openmc/vector.h"
 
 namespace openmc {
+
+class BoundaryInfo;
+class Particle;
 
 //==============================================================================
 // Global variables
@@ -18,9 +20,9 @@ namespace openmc {
 namespace model {
 
 extern int root_universe;  //!< Index of root universe
-extern int n_coord_levels; //!< Number of CSG coordinate levels
+extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
-extern std::vector<int64_t> overlap_check_count;
+extern vector<int64_t> overlap_check_count;
 
 } // namespace model
 
@@ -43,14 +45,11 @@ bool check_cell_overlap(Particle& p, bool error=true);
 //!
 //! \param p A particle to be located.  This function will populate the
 //!   geometry-dependent data fields of the particle.
-//! \param use_neighbor_lists If true, neighbor lists will be used to accelerate
-//!   the geometry search, but this only works if the cell attribute of the
-//!   particle's lowest coordinate level is valid and meaningful.
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-
-bool find_cell(Particle& p, bool use_neighbor_lists);
+bool exhaustive_find_cell(Particle& p);
+bool neighbor_list_find_cell(Particle& p); // Only usable on surface crossings
 
 //==============================================================================
 //! Move a particle into a new lattice tile.

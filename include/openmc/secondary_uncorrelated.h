@@ -4,14 +4,13 @@
 #ifndef OPENMC_SECONDARY_UNCORRELATED_H
 #define OPENMC_SECONDARY_UNCORRELATED_H
 
-#include <memory>
-#include <vector>
-
 #include "hdf5.h"
 
 #include "openmc/angle_energy.h"
 #include "openmc/distribution_angle.h"
 #include "openmc/distribution_energy.h"
+#include "openmc/memory.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -35,11 +34,9 @@ public:
 
   // Accessors
   AngleDistribution& angle() { return angle_; }
-  bool& fission() { return fission_; }
 private:
   AngleDistribution angle_; //!< Angle distribution
-  std::unique_ptr<EnergyDistribution> energy_; //!< Energy distribution
-  bool fission_ {false}; //!< Whether distribution is use for fission
+  unique_ptr<EnergyDistribution> energy_; //!< Energy distribution
 };
 
 } // namespace openmc

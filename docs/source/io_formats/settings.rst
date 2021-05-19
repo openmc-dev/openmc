@@ -462,9 +462,23 @@ attributes/sub-elements:
   :library:
     If this attribute is given, it indicates that the source is to be
     instantiated from an externally compiled source function. This source can be
-    as complex as is required to define the source for your problem. The only
-    requirement is that there is a function called ``sample_source()``. More
-    documentation on how to build sources can be found in :ref:`custom_source`.
+    as complex as is required to define the source for your problem. The library
+    has a few basic requirements:
+
+    * It must contain a class that inherits from ``openmc::Source``;
+    * The class must implement a function called ``sample()``;
+    * There must be an ``openmc_create_source()`` function that creates the source
+      as a unique pointer. This function can be used to pass parameters through to
+      the source from the XML, if needed.
+
+    More documentation on how to build sources can be found in :ref:`custom_source`.
+
+    *Default*: None
+
+  :parameters:
+    If this attribute is given, it provides the parameters to pass through to the
+    class generated using the ``library`` parameter . More documentation on how to
+    build parametrized sources can be found in :ref:`parameterized_custom_source`.
 
     *Default*: None
 
@@ -708,6 +722,42 @@ attributes/sub-elements:
     this element to "true" and specify batches to write a permanent source bank.
 
     *Default*: false
+
+---------------------------
+``<surf_src_read>`` Element
+---------------------------
+
+The ``<surf_src_read>`` element specifies a surface source file for OpenMC to
+read source bank for initializing histories.
+This element has the following attributes/sub-elements:
+
+  :path:
+    Absolute or relative path to a surface source file to read in source bank.
+
+    *Default*: ``surface_source.h5`` in current working directory
+
+----------------------------
+``<surf_src_write>`` Element
+----------------------------
+
+The ``<surf_src_write>`` element triggers OpenMC to bank particles crossing
+certain surfaces and write out the source bank in a separate file called
+``surface_source.h5``.
+This element has the following attributes/sub-elements:
+
+  :surface_ids:
+    A list of integers separated by spaces indicating the unique IDs of surfaces
+    for which crossing particles will be banked.
+
+    *Default*: None
+
+  :max_particles:
+    An integer indicating the maximum number of particles to be banked on
+    specified surfaces per processor. The size of source bank in
+    ``surface_source.h5`` is limited to this value times the number of
+    processors.
+
+    *Default*: None
 
 ------------------------------
 ``<survival_biasing>`` Element

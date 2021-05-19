@@ -2,6 +2,9 @@
 
 #include "Faddeeva.hh"
 
+#include "openmc/constants.h"
+#include "openmc/random_lcg.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -537,8 +540,8 @@ void calc_zn(int n, double rho, double phi, double zn[]) {
   double sin_phi = std::sin(phi);
   double cos_phi = std::cos(phi);
 
-  std::vector<double> sin_phi_vec(n + 1); // Sin[n * phi]
-  std::vector<double> cos_phi_vec(n + 1); // Cos[n * phi]
+  vector<double> sin_phi_vec(n + 1); // Sin[n * phi]
+  vector<double> cos_phi_vec(n + 1); // Cos[n * phi]
   sin_phi_vec[0] = 1.0;
   cos_phi_vec[0] = 1.0;
   sin_phi_vec[1] = 2.0 * cos_phi;
@@ -556,7 +559,7 @@ void calc_zn(int n, double rho, double phi, double zn[]) {
   // ===========================================================================
   // Calculate R_pq(rho)
   // Matrix forms of the coefficients which are easier to work with
-  std::vector<std::vector<double>> zn_mat(n + 1, std::vector<double>(n + 1));
+  vector<vector<double>> zn_mat(n + 1, vector<double>(n + 1));
 
   // Fill the main diagonal first (Eq 3.9 in Chong)
   for (int p = 0; p <= n; p++) {
@@ -662,115 +665,16 @@ Direction rotate_angle(Direction u, double mu, const double* phi, uint64_t* seed
             mu*u.z - a*b*cosphi};
   } else {
     b = std::sqrt(1. - u.y*u.y);
-    return {mu*u.x + a*(u.x*u.y*cosphi + u.z*sinphi) / b,
-            mu*u.y - a*b*cosphi,
-            mu*u.z + a*(u.y*u.z*cosphi - u.x*sinphi) / b};
-    // TODO: use the following code to make PolarAzimuthal distributions match
-    // spherical coordinate conventions. Remove the related fixup code in
-    // PolarAzimuthal::sample.
-    //return {mu*u.x + a*(-u.x*u.y*sinphi + u.z*cosphi) / b,
-    //        mu*u.y + a*b*sinphi,
-    //        mu*u.z - a*(u.y*u.z*sinphi + u.x*cosphi) / b};
-  }
-}
-
-
-double maxwell_spectrum(double T, uint64_t* seed) {
-  // Set the random numbers
-  double r1 = prn(seed);
-  double r2 = prn(seed);
-  double r3 = prn(seed);
-
-  // determine cosine of pi/2*r
-  double c = std::cos(PI / 2. * r3);
-
-  // Determine outgoing energy
-  double E_out = -T * (std::log(r1) + std::log(r2) * c * c);
-
-  return E_out;
-}
-
-
-double normal_variate(double mean, double standard_deviation, uint64_t* seed) {
-  // perhaps there should be a limit to the number of resamples
-  while ( true ) {
-    double v1 = 2 * prn(seed) - 1.;
-    double v2 = 2 * prn(seed) - 1.;
-
-    double r = std::pow(v1, 2) + std::pow(v2, 2);
-    double r2 = std::pow(r, 2);
-    if (r2 < 1) {
-      double z = std::sqrt(-2.0 * std::log(r2)/r2);
-      z *= (prn(seed) <= 0.5) ? v1 : v2;
-      return mean + standard_deviation*z;
-    }
-  }
-}
-
-double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed) {
-  // note sigma here is a factor of 2 shy of equation
-  // 8 in https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-  double sigma = std::sqrt(2.*e0*kt/m_rat);
-  return normal_variate(e0, sigma, seed);
-}
-
-
-double watt_spectrum(double a, double b, uint64_t* seed) {
-  double w = maxwell_spectrum(a, seed);
-  double E_out = w + 0.25 * a * a * b + (2. * prn(seed) - 1.) * std::sqrt(a * a * b * w);
-
-  return E_out;
-}
-
-
-void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
-{
-  // Factors is already pre-allocated
-  double sqrtE = std::sqrt(E);
-  double beta = sqrtE * dopp;
-  double half_inv_dopp2 = 0.5 / (dopp * dopp);
-  double quarter_inv_dopp4 = half_inv_dopp2 * half_inv_dopp2;
-
-  double erf_beta;    // error function of beta
-  double exp_m_beta2; // exp(-beta**2)
-  if (beta > 6.0) {
-    // Save time, ERF(6) is 1 to machine precision.
-    // beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
-    erf_beta = 1.;
-    exp_m_beta2 = 0.;
-  } else {
-    erf_beta = std::erf(beta);
-    exp_m_beta2 = std::exp(-beta * beta);
-  }
-
-  // Assume that, for sure, we'll use a second order (1/E, 1/V, const)
-  // fit, and no less.
-
-  factors[0] = erf_beta / E;
-  factors[1] = 1. / sqrtE;
-  factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 /
-       (beta * SQRT_PI);
-
-  // Perform recursive broadening of high order components
-  for (int i = 0; i < n - 3; i++) {
-    double ip1_dbl = i + 1;
-    if (i != 0) {
-      factors[i + 3] = -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl *
-           quarter_inv_dopp4 + factors[i + 1] *
-           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
-    } else {
-      // Although it's mathematically identical, factors[0] will contain
-      // nothing, and we don't want to have to worry about memory.
-      factors[i + 3] = factors[i + 1] *
-           (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
-    }
+    return {mu*u.x + a*(-u.x*u.y*sinphi + u.z*cosphi) / b,
+            mu*u.y + a*b*sinphi,
+            mu*u.z - a*(u.y*u.z*sinphi + u.x*cosphi) / b};
   }
 }
 
 
 void spline(int n, const double x[], const double y[], double z[])
 {
-  std::vector<double> c_new(n-1);
+  vector<double> c_new(n - 1);
 
   // Set natural boundary conditions
   c_new[0] = 0.0;

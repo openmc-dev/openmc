@@ -4,7 +4,8 @@ import re
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
-from openmc.data import NATURAL_ABUNDANCE, atomic_mass
+from openmc.data import NATURAL_ABUNDANCE, atomic_mass, \
+    isotopes as natural_isotopes
 
 
 class Element(str):
@@ -119,10 +120,7 @@ class Element(str):
             cv.check_greater_than('enrichment', enrichment, 0., equality=True)
 
         # Get the nuclides present in nature
-        natural_nuclides = set()
-        for nuclide in sorted(NATURAL_ABUNDANCE.keys()):
-            if re.match(r'{}\d+'.format(self), nuclide):
-                natural_nuclides.add(nuclide)
+        natural_nuclides = {name for name, abundance in natural_isotopes(self)}
 
         # Create dict to store the expanded nuclides and abundances
         abundances = OrderedDict()
@@ -151,30 +149,28 @@ class Element(str):
             mutual_nuclides = sorted(list(mutual_nuclides))
             absent_nuclides = sorted(list(absent_nuclides))
 
-            # If all natural nuclides are present in the library,
-            # expand element using all natural nuclides
+            # If all naturally ocurring isotopes are present in the library,
+            # add them based on their abundance
             if len(absent_nuclides) == 0:
                 for nuclide in mutual_nuclides:
                     abundances[nuclide] = NATURAL_ABUNDANCE[nuclide]
 
-            # If no natural elements are present in the library, check if the
-            # 0 nuclide is present. If so, set the abundance to 1 for this
-            # nuclide. Else, raise an error.
-            elif len(mutual_nuclides) == 0:
-                nuclide_0 = self + '0'
-                if nuclide_0 in library_nuclides:
-                    abundances[nuclide_0] = 1.0
-                else:
-                    msg = 'Unable to expand element {0} because the cross '\
-                          'section library provided does not contain any of '\
-                          'the natural isotopes for that element.'\
-                          .format(self)
-                    raise ValueError(msg)
+            # If some naturally occurring isotopes are not present in the
+            # library, check if the "natural" nuclide (e.g., C0) is present. If
+            # so, set the abundance to 1 for this nuclide.
+            elif (self + '0') in library_nuclides:
+                abundances[self + '0'] = 1.0
 
-            # If some, but not all, natural nuclides are in the library, add
-            # the mutual nuclides. For the absent nuclides, add them based on
-            # our knowledge of the common cross section libraries
-            # (ENDF, JEFF, and JENDL)
+            elif len(mutual_nuclides) == 0:
+                msg = ('Unable to expand element {} because the cross '
+                       'section library provided does not contain any of '
+                       'the natural isotopes for that element.'
+                       .format(self))
+                raise ValueError(msg)
+
+            # If some naturally occurring isotopes are in the library, add them.
+            # For the absent nuclides, add them based on our knowledge of the
+            # common cross section libraries (ENDF, JEFF, and JENDL)
             else:
                 # Add the mutual isotopes
                 for nuclide in mutual_nuclides:

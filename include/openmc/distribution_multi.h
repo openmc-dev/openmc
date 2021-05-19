@@ -1,7 +1,7 @@
 #ifndef DISTRIBUTION_MULTI_H
 #define DISTRIBUTION_MULTI_H
 
-#include <memory>
+#include "openmc/memory.h"
 
 #include "pugixml.hpp"
 
@@ -57,6 +57,8 @@ private:
 //! Uniform distribution on the unit sphere
 //==============================================================================
 
+Direction isotropic_direction(uint64_t* seed);
+
 class Isotropic : public UnitSphereDistribution {
 public:
   Isotropic() { };
@@ -82,7 +84,7 @@ public:
   Direction sample(uint64_t* seed) const;
 };
 
-using UPtrAngle = std::unique_ptr<UnitSphereDistribution>;
+using UPtrAngle = unique_ptr<UnitSphereDistribution>;
 
 } // namespace openmc
 

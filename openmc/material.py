@@ -654,6 +654,8 @@ class Material(IDManagerMixin):
             if enrichment_target is not None and element == re.sub(r'\d+$', '', enrichment_target):
                 self.add_element(element, percent, percent_type, enrichment,
                                  enrichment_target, enrichment_type)
+            elif enrichment is not None and enrichment_target is None and element == 'U':
+                self.add_element(element, percent, percent_type, enrichment)
             else:
                 self.add_element(element, percent, percent_type)
 
@@ -1076,6 +1078,10 @@ class Material(IDManagerMixin):
         # Compute mass density for the new material and set it
         new_density = np.sum([dens for dens in mass_per_cc.values()])
         new_mat.set_density('g/cm3', new_density)
+
+        # If any of the involved materials is depletable, the new material is 
+        # depletable
+        new_mat.depletable = any(mat.depletable for mat in materials)
 
         return new_mat
 

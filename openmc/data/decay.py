@@ -298,6 +298,8 @@ class Decay(EqualityMixin):
         applications.
     decay_constant : uncertainties.UFloat
         Decay constant in inverse seconds.
+    decay_energy : uncertainties.UFloat
+        Average energy in [eV] per decay for decay heat applications
     half_life : uncertainties.UFloat
         Half-life of the decay in seconds.
     modes : list
@@ -347,7 +349,7 @@ class Decay(EqualityMixin):
             items, values = get_list_record(file_obj)
             self.half_life = ufloat(items[0], items[1])
             NC = items[4]//2
-            pairs = [x for x in zip(values[::2], values[1::2])]
+            pairs = list(zip(values[::2], values[1::2]))
             ex = self.average_energies
             ex['light'] = ufloat(*pairs[0])
             ex['electromagnetic'] = ufloat(*pairs[1])
@@ -359,7 +361,7 @@ class Decay(EqualityMixin):
                 ex['conversion'] = ufloat(*pairs[6])
                 ex['gamma'] = ufloat(*pairs[7])
                 ex['xray'] = ufloat(*pairs[8])
-                ex['Bremsstrahlung'] = ufloat(*pairs[9])
+                ex['bremsstrahlung'] = ufloat(*pairs[9])
                 ex['annihilation'] = ufloat(*pairs[10])
                 ex['alpha'] = ufloat(*pairs[11])
                 ex['recoil'] = ufloat(*pairs[12])
@@ -463,6 +465,14 @@ class Decay(EqualityMixin):
         else:
             mu, sigma = self.half_life
             return ufloat(log(2.)/mu, log(2.)/mu**2*sigma)
+
+    @property
+    def decay_energy(self):
+        energy = self.average_energies
+        if energy:
+            return energy['light'] + energy['electromagnetic'] + energy['heavy']
+        else:
+            return ufloat(0, 0)
 
     @classmethod
     def from_endf(cls, ev_or_filename):

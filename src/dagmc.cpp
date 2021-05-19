@@ -2,6 +2,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/constants.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry.h"
@@ -25,9 +26,9 @@
 namespace openmc {
 
 #ifdef DAGMC
-const bool dagmc_enabled = true;
+const bool DAGMC_ENABLED = true;
 #else
-const bool dagmc_enabled = false;
+const bool DAGMC_ENABLED = false;
 #endif
 
 }
@@ -66,7 +67,7 @@ bool get_uwuw_materials_xml(std::string& s) {
     ss << "<materials>\n";
     const auto& mat_lib = uwuw.material_library;
     // write materials
-    for (auto mat : mat_lib) { ss << mat.second.openmc("atom"); }
+    for (auto mat : mat_lib) { ss << mat.second->openmc("atom"); }
     // write footer
     ss << "</materials>";
     s = ss.str();
@@ -101,12 +102,15 @@ bool write_uwuw_materials_xml() {
   return found_uwuw_mats;
 }
 
-void legacy_assign_material(const std::string& mat_string, DAGCell* c)
+void legacy_assign_material(std::string mat_string, DAGCell* c)
 {
   bool mat_found_by_name = false;
   // attempt to find a material with a matching name
+  to_lower(mat_string);
   for (const auto& m : model::materials) {
-    if (mat_string == m->name_) {
+    std::string m_name = m->name();
+    to_lower(m_name);
+    if (mat_string == m_name) {
       // assign the material with that name
       if (!mat_found_by_name) {
         mat_found_by_name = true;
@@ -179,7 +183,7 @@ void load_dagmc_geometry()
   dagmcMetaData DMD(model::DAG, false, false);
   DMD.load_property_data();
 
-  std::vector<std::string> keywords {"temp"};
+  vector<std::string> keywords {"temp"};
   std::map<std::string, std::string> dum;
   std::string delimiters = ":/";
   rval = model::DAG->parse_properties(keywords, dum, delimiters.c_str());
@@ -207,7 +211,7 @@ void load_dagmc_geometry()
     // Populate the Universe vector and dict
     auto it = model::universe_map.find(dagmc_univ_id);
     if (it == model::universe_map.end()) {
-      model::universes.push_back(std::make_unique<Universe>());
+      model::universes.push_back(make_unique<Universe>());
       model::universes.back()->id_ = dagmc_univ_id;
       model::universes.back()->cells_.push_back(i);
       model::universe_map[dagmc_univ_id] = model::universes.size() - 1;
@@ -239,7 +243,7 @@ void load_dagmc_geometry()
         std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
         if (uwuw.material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW
-          int mat_number = uwuw.material_library[uwuw_mat].metadata["mat_number"].asInt();
+          int mat_number = uwuw.material_library.get_material(uwuw_mat).metadata["mat_number"].asInt();
           c->material_.push_back(mat_number);
         } else {
           fatal_error(fmt::format("Material with value {} not found in the "
@@ -263,10 +267,8 @@ void load_dagmc_geometry()
       MB_CHK_ERR_CONT(rval);
       double temp = std::stod(temp_value);
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
-    } else if (mat->temperature_ > 0.0) {
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature_));
     } else {
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
     }
 
   }
@@ -295,16 +297,21 @@ void load_dagmc_geometry()
     s->id_ = model::DAG->id_by_index(2, s->dag_index_);
     s->dagmc_ptr_ = model::DAG;
 
+    if (contains(settings::source_write_surf_id, s->id_)) {
+      s->surf_source_ = true;
+    }
+
     // set BCs
     std::string bc_value = DMD.get_surface_property("boundary", surf_handle);
     to_lower(bc_value);
     if (bc_value.empty() || bc_value == "transmit" || bc_value == "transmission") {
-      // set to transmission by default
-      s->bc_ = Surface::BoundaryType::TRANSMIT;
+      // Leave the bc_ a nullptr
     } else if (bc_value == "vacuum") {
-      s->bc_ = Surface::BoundaryType::VACUUM;
+      s->bc_ = std::make_shared<VacuumBC>();
     } else if (bc_value == "reflective" || bc_value == "reflect" || bc_value == "reflecting") {
-      s->bc_ = Surface::BoundaryType::REFLECT;
+      s->bc_ = std::make_shared<ReflectiveBC>();
+    } else if (bc_value == "white") {
+      fatal_error("White boundary condition not supported in DAGMC.");
     } else if (bc_value == "periodic") {
       fatal_error("Periodic boundary condition not supported in DAGMC.");
     } else {
@@ -320,7 +327,7 @@ void load_dagmc_geometry()
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
       // set graveyard surface BC's to vacuum
-      s->bc_ = Surface::BoundaryType::VACUUM;
+      s->bc_ = std::make_shared<VacuumBC>();
     }
 
     // add to global array and map

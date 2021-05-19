@@ -4,11 +4,10 @@
 #ifndef OPENMC_DISTRIBUTION_ANGLE_H
 #define OPENMC_DISTRIBUTION_ANGLE_H
 
-#include <vector> // for vector
-
 #include "hdf5.h"
 
 #include "openmc/distribution.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -32,8 +31,8 @@ public:
   bool empty() const { return energy_.empty(); }
 
 private:
-  std::vector<double> energy_;
-  std::vector<UPtrDist> distribution_;
+  vector<double> energy_;
+  vector<unique_ptr<Tabular>> distribution_;
 };
 
 } // namespace openmc

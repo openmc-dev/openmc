@@ -186,10 +186,10 @@ The data governing the interaction of particles with various nuclei or materials
 are represented using a multi-group library format specific to the OpenMC code.
 The format is described in the :ref:`mgxs_lib_spec`. The data itself can be
 prepared via traditional paths or directly from a continuous-energy OpenMC
-calculation by use of the Python API as is shown in the
-:ref:`notebook_mg_mode_part_i` example notebook. This multi-group library
-consists of meta-data (such as the energy group structure) and multiple `xsdata`
-objects which contains the required microscopic or macroscopic multi-group data.
+calculation by use of the Python API as is shown in an `example notebook
+<../examples/mg-mode-part-i.ipynb>`_. This multi-group library consists of
+meta-data (such as the energy group structure) and multiple `xsdata` objects
+which contains the required microscopic or macroscopic multi-group data.
 
 At a minimum, the library must contain the absorption cross section
 (:math:`\sigma_{a,g}`) and a scattering matrix. If the problem is an eigenvalue
@@ -269,12 +269,12 @@ or even isotropic scattering.
 
 .. _logarithmic mapping technique:
    https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
-.. _Hwang: http://www.ans.org/pubs/journals/nse/a_16381
+.. _Hwang: https://doi.org/10.13182/NSE87-A16381
 .. _Josey: https://doi.org/10.1016/j.jcp.2015.08.013
 .. _WMP Library: https://github.com/mit-crpg/WMP_Library
-.. _MCNP: http://mcnp.lanl.gov
+.. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
-.. _NJOY: http://t2.lanl.gov/codes.shtml
-.. _ENDF/B data: http://www.nndc.bnl.gov/endf
+.. _NJOY: https://www.njoy21.io/NJOY21/
+.. _ENDF/B data: https://www.nndc.bnl.gov/endf/b8.0/
 .. _Leppanen: https://doi.org/10.1016/j.anucene.2009.03.019
 .. _algorithms: http://ab-initio.mit.edu/wiki/index.php/Faddeeva_Package

@@ -27,8 +27,8 @@ class Plot;
 
 namespace model {
 
-extern std::vector<Plot> plots; //!< Plot instance container
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
+extern vector<Plot> plots;                    //!< Plot instance container
 
 extern uint64_t plotter_prn_seeds[N_STREAMS]; // Random number seeds used for plotter
 extern int plotter_stream; // Stream index used by the plotter
@@ -45,7 +45,8 @@ struct RGBColor {
   RGBColor(const int v[3]) : red(v[0]), green(v[1]), blue(v[2]) { };
   RGBColor(int r, int g, int b) : red(r), green(g), blue(b) { };
 
-  RGBColor(const std::vector<int> &v) {
+  RGBColor(const vector<int>& v)
+  {
     if (v.size() != 3) {
       throw std::out_of_range("Incorrect vector size for RGBColor.");
     }
@@ -121,7 +122,7 @@ public:
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
-  std::array<size_t, 3> pixels_; //!< Plot size in pixels
+  array<size_t, 3> pixels_; //!< Plot size in pixels
   bool color_overlaps_; //!< Show overlapping cells?
   int level_; //!< Plot universe level
 };
@@ -171,7 +172,7 @@ T PlotBase::get_map() const {
     Particle p;
     p.r() = xyz;
     p.u() = dir;
-    p.coord_[0].universe = model::root_universe;
+    p.coord(0).universe = model::root_universe;
     int level = level_;
     int j{};
 
@@ -180,11 +181,11 @@ T PlotBase::get_map() const {
       p.r()[out_i] =  xyz[out_i] - out_pixel * y;
       for (int x = 0; x < width; x++) {
         p.r()[in_i] = xyz[in_i] + in_pixel * x;
-        p.n_coord_ = 1;
+        p.n_coord() = 1;
         // local variables
-        bool found_cell = find_cell(p, 0);
-        j = p.n_coord_ - 1;
-        if (level >=0) {j = level + 1;}
+        bool found_cell = exhaustive_find_cell(p);
+        j = p.n_coord() - 1;
+        if (level >= 0) { j = level; }
         if (found_cell) {
           data.set_value(y, x, p, j);
         }
@@ -230,7 +231,7 @@ public:
   RGBColor meshlines_color_; //!< Color of meshlines on the plot
   RGBColor not_found_ {WHITE}; //!< Plot background color
   RGBColor overlap_color_ {RED}; //!< Plot overlap color
-  std::vector<RGBColor> colors_; //!< Plot colors
+  vector<RGBColor> colors_;      //!< Plot colors
   std::string path_plot_; //!< Plot output filename
 };
 
@@ -241,12 +242,12 @@ public:
 //! Add mesh lines to image data of a plot object
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
-void draw_mesh_lines(Plot pl, ImageData& data);
+void draw_mesh_lines(Plot const& pl, ImageData& data);
 
 //! Write a ppm image to file using a plot object's image data
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
-void output_ppm(Plot pl, const ImageData& data);
+void output_ppm(Plot const& pl, const ImageData& data);
 
 //! Initialize a voxel file
 //! \param[in] id of an open hdf5 file
@@ -280,11 +281,11 @@ void read_plots_xml();
 
 //! Create a ppm image for a plot object
 //! \param[in] plot object
-void create_ppm(Plot pl);
+void create_ppm(Plot const& pl);
 
 //! Create an hdf5 voxel file for a plot object
 //! \param[in] plot object
-void create_voxel(Plot pl);
+void create_voxel(Plot const& pl);
 
 //! Create a randomly generated RGB color
 //! \return RGBColor with random value

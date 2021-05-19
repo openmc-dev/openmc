@@ -354,7 +354,7 @@ class Tally(IDManagerMixin):
             if nuc in visited_nuclides:
                 msg = 'Unable to add a duplicate nuclide "{}" to Tally ID="{}" ' \
                       'since duplicate nuclides are not supported in the OpenMC ' \
-                      'Python API'.format(nuclide, self.id)
+                      'Python API'.format(nuc, self.id)
                 raise ValueError(msg)
             visited_nuclides.add(nuc)
 

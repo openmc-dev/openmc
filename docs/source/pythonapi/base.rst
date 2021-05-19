@@ -22,8 +22,18 @@ Simulation Settings
    :template: myclass.rst
 
    openmc.Source
+   openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.Settings
+
+The following function can be used for generating a source file:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.write_source_file
 
 Material Specification
 ----------------------
@@ -108,6 +118,7 @@ Constructing Tallies
    openmc.CellFromFilter
    openmc.CellbornFilter
    openmc.CellInstanceFilter
+   openmc.CollisionFilter
    openmc.SurfaceFilter
    openmc.MeshFilter
    openmc.MeshSurfaceFilter

@@ -50,7 +50,7 @@ Contributing
 ------------
 
 Now that you understand the basic development workflow, let's discuss how an
-individual to contribute to development. Note that this would apply to both new
+individual can contribute to development. Note that this would apply to both new
 features and bug fixes. The general steps for contributing are as follows:
 
 1. Fork the main openmc repository from `openmc-dev/openmc`_. This will create a
@@ -122,11 +122,11 @@ can interfere with virtual environments.
 
 .. _git: http://git-scm.com/
 .. _GitHub: https://github.com/
-.. _git flow: http://nvie.com/git-model
-.. _valgrind: http://valgrind.org/
+.. _git flow: https://nvie.com/git-model
+.. _valgrind: https://www.valgrind.org/
 .. _style guide: https://docs.openmc.org/en/latest/devguide/styleguide.html
-.. _pull request: https://help.github.com/articles/using-pull-requests
+.. _pull request: https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests
 .. _openmc-dev/openmc: https://github.com/openmc-dev/openmc
-.. _paid plan: https://github.com/plans
+.. _paid plan: https://github.com/pricing
 .. _Bitbucket: https://bitbucket.org
 .. _pip: https://pip.pypa.io/en/stable/

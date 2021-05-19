@@ -30,7 +30,7 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  18: '(n,fission)', 19: '(n,f)', 20: '(n,nf)', 21: '(n,2nf)',
                  22: '(n,na)', 23: '(n,n3a)', 24: '(n,2na)', 25: '(n,3na)',
                  27: '(n,absorption)', 28: '(n,np)', 29: '(n,n2a)',
-                 30: '(n,2n2a)', 32: '(n,nd)', 33: '(n,nt)', 34: '(n,nHe-3)',
+                 30: '(n,2n2a)', 32: '(n,nd)', 33: '(n,nt)', 34: '(n,n3He)',
                  35: '(n,nd2a)', 36: '(n,nt2a)', 37: '(n,4n)', 38: '(n,3nf)',
                  41: '(n,2np)', 42: '(n,3np)', 44: '(n,n2p)', 45: '(n,npa)',
                  91: '(n,nc)', 101: '(n,disappear)', 102: '(n,gamma)',
@@ -45,7 +45,7 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  170: '(n,5nd)', 171: '(n,6nd)', 172: '(n,3nt)', 173: '(n,4nt)',
                  174: '(n,5nt)', 175: '(n,6nt)', 176: '(n,2n3He)',
                  177: '(n,3n3He)', 178: '(n,4n3He)', 179: '(n,3n2p)',
-                 180: '(n,3n3a)', 181: '(n,3npa)', 182: '(n,dt)',
+                 180: '(n,3n2a)', 181: '(n,3npa)', 182: '(n,dt)',
                  183: '(n,npd)', 184: '(n,npt)', 185: '(n,ndt)',
                  186: '(n,np3He)', 187: '(n,nd3He)', 188: '(n,nt3He)',
                  189: '(n,nta)', 190: '(n,2n2p)', 191: '(n,p3He)',
@@ -56,13 +56,16 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  301: 'heating', 444: 'damage-energy',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
                  849: '(n,ac)', 891: '(n,2nc)', 901: 'heating-local'}
-REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(50, 91)})
+REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(51, 91)})
 REACTION_NAME.update({i: '(n,p{})'.format(i - 600) for i in range(600, 649)})
 REACTION_NAME.update({i: '(n,d{})'.format(i - 650) for i in range(650, 699)})
 REACTION_NAME.update({i: '(n,t{})'.format(i - 700) for i in range(700, 749)})
 REACTION_NAME.update({i: '(n,3He{})'.format(i - 750) for i in range(750, 799)})
 REACTION_NAME.update({i: '(n,a{})'.format(i - 800) for i in range(800, 849)})
 REACTION_NAME.update({i: '(n,2n{})'.format(i - 875) for i in range(875, 891)})
+
+REACTION_MT = {name: mt for mt, name in REACTION_NAME.items()}
+REACTION_MT['fission'] = 18
 
 FISSION_MTS = (18, 19, 20, 21, 38)
 
@@ -422,7 +425,12 @@ def _get_fission_products_endf(ev):
             file_obj = StringIO(ev.section[5, 455])
             items = get_head_record(file_obj)
             nk = items[4]
-            if nk != len(decay_constants):
+            if nk > 1 and len(decay_constants) == 1:
+                # If only one precursor group is listed in MF=1, MT=455, use the
+                # energy spectra from MF=5 to split them into different groups
+                for _ in range(nk - 1):
+                    products.append(deepcopy(products[1]))
+            elif nk != len(decay_constants):
                 raise ValueError(
                     'Number of delayed neutron fission spectra ({}) does not '
                     'match number of delayed neutron precursors ({}).'.format(
@@ -695,7 +703,7 @@ def _get_photon_products_endf(ev, rx):
                     # TODO: Get file 15 distribution
                     pass
                 elif law == 2:
-                    energy = items[1]
+                    energy = items[0]
                     primary_flag = items[2]
                     dist.energy = DiscretePhoton(primary_flag, energy,
                                                  ev.target['mass'])

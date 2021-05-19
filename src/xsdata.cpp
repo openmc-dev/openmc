@@ -37,7 +37,7 @@ XsData::XsData(bool fissionable, AngleDistributionType scatter_format, int n_pol
     fatal_error("Invalid scatter_format!");
   }
   // allocate all [temperature][angle][in group] quantities
-  std::vector<size_t> shape {n_ang, n_g_};
+  vector<size_t> shape {n_ang, n_g_};
   total = xt::zeros<double>(shape);
   absorption = xt::zeros<double>(shape);
   inverse_velocity = xt::zeros<double>(shape);
@@ -93,7 +93,7 @@ XsData::from_hdf5(hid_t xsdata_grp, bool fissionable, AngleDistributionType scat
     fission_from_hdf5(xsdata_grp, n_ang, is_isotropic);
   }
   // Get the non-fission-specific data
-  read_nd_vector(xsdata_grp, "decay rate", decay_rate);
+  read_nd_vector(xsdata_grp, "decay-rate", decay_rate);
   read_nd_vector(xsdata_grp, "absorption", absorption, true);
   read_nd_vector(xsdata_grp, "inverse-velocity", inverse_velocity);
 
@@ -509,9 +509,8 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, AngleDistributionType 
 
 //==============================================================================
 
-void
-XsData::combine(const std::vector<XsData*>& those_xs,
-                const std::vector<double>& scalars)
+void XsData::combine(
+  const vector<XsData*>& those_xs, const vector<double>& scalars)
 {
   // Combine the non-scattering data
   for (size_t i = 0; i < those_xs.size(); i++) {
@@ -529,16 +528,29 @@ XsData::combine(const std::vector<XsData*>& those_xs,
       kappa_fission += scalar * that->kappa_fission;
       fission += scalar * that->fission;
       delayed_nu_fission += scalar * that->delayed_nu_fission;
-      chi_prompt += scalar * that->chi_prompt;
-      chi_delayed += scalar * that->chi_delayed;
+      chi_prompt += scalar *
+           xt::view(xt::sum(that->prompt_nu_fission, {1}),
+                    xt::all(), xt::newaxis(), xt::newaxis()) *
+           that->chi_prompt;
+      chi_delayed += scalar *
+           xt::view(xt::sum(that->delayed_nu_fission, {2}),
+                    xt::all(), xt::all(), xt::newaxis(), xt::newaxis()) *
+           that->chi_delayed;
     }
     decay_rate += scalar * that->decay_rate;
   }
 
+  // Ensure the chi_prompt and chi_delayed are normalized to 1 for each
+  // azimuthal angle and delayed group (for chi_delayed)
+  chi_prompt /=
+    xt::view(xt::sum(chi_prompt, {2}), xt::all(), xt::all(), xt::newaxis());
+  chi_delayed /= xt::view(xt::sum(chi_delayed, {3}), xt::all(), xt::all(),
+                          xt::all(), xt::newaxis());
+
   // Allow the ScattData object to combine itself
   for (size_t a = 0; a < total.shape()[0]; a++) {
     // Build vector of the scattering objects to incorporate
-    std::vector<ScattData*> those_scatts(those_xs.size());
+    vector<ScattData*> those_scatts(those_xs.size());
     for (size_t i = 0; i < those_xs.size(); i++) {
       those_scatts[i] = those_xs[i]->scatter[a].get();
     }

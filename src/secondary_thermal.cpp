@@ -11,8 +11,8 @@
 namespace openmc {
 
 // Helper function to get index on incident energy grid
-void
-get_energy_index(const std::vector<double>& energies, double E, int& i, double& f)
+void get_energy_index(
+  const vector<double>& energies, double E, int& i, double& f)
 {
   // Get index and interpolation factor for elastic grid
   i = 0;
@@ -81,9 +81,9 @@ IncoherentElasticAE::sample(double E_in, double& E_out, double& mu,
 // IncoherentElasticAEDiscrete implementation
 //==============================================================================
 
-IncoherentElasticAEDiscrete::IncoherentElasticAEDiscrete(hid_t group,
-  const std::vector<double>& energy)
-  : energy_{energy}
+IncoherentElasticAEDiscrete::IncoherentElasticAEDiscrete(
+  hid_t group, const vector<double>& energy)
+  : energy_ {energy}
 {
   read_dataset(group, "mu_out", mu_out_);
 }
@@ -135,9 +135,9 @@ IncoherentElasticAEDiscrete::sample(double E_in, double& E_out, double& mu,
 // IncoherentInelasticAEDiscrete implementation
 //==============================================================================
 
-IncoherentInelasticAEDiscrete::IncoherentInelasticAEDiscrete(hid_t group,
-  const std::vector<double>& energy)
-  : energy_{energy}
+IncoherentInelasticAEDiscrete::IncoherentInelasticAEDiscrete(
+  hid_t group, const vector<double>& energy)
+  : energy_ {energy}
 {
   read_dataset(group, "energy_out", energy_out_);
   read_dataset(group, "mu_out", mu_out_);

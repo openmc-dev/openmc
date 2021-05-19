@@ -33,6 +33,8 @@
 #include <mpi.h>
 #endif
 
+#include <fmt/format.h>
+
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -77,10 +79,8 @@ int openmc_simulation_init()
   // Determine how much work each process should do
   calculate_work();
 
-  // Allocate source and fission banks for eigenvalue simulations
-  if (settings::run_mode == RunMode::EIGENVALUE) {
-    allocate_banks();
-  }
+  // Allocate source, fission and surface source banks.
+  allocate_banks();
 
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
@@ -105,7 +105,6 @@ int openmc_simulation_init()
   simulation::current_batch = 0;
   simulation::k_generation.clear();
   simulation::entropy.clear();
-  simulation::need_depletion_rx = false;
   openmc_reset();
 
   // If this is a restart run, load the state point data and binary source
@@ -118,12 +117,6 @@ int openmc_simulation_init()
     if (settings::run_mode == RunMode::EIGENVALUE) {
       initialize_source();
     }
-  }
-
-  // If fixed source and using custom source library then need to load
-  if (settings::run_mode == RunMode::FIXED_SOURCE &&
-      !settings::path_source_library.empty()) {
-    load_custom_source_library();
   }
 
   // Display header
@@ -172,12 +165,6 @@ int openmc_simulation_finalize()
     t->active_ = false;
   }
 
-  // If fixed source and using custom source library then need to close
-  if (settings::run_mode == RunMode::FIXED_SOURCE &&
-      !settings::path_source_library.empty()) {
-    close_custom_source_library();
-  }
-
   // Stop timers and show timing statistics
   simulation::time_finalize.stop();
   simulation::time_total.stop();
@@ -188,7 +175,6 @@ int openmc_simulation_finalize()
   if (settings::check_overlaps) print_overlap_check();
 
   // Reset flags
-  simulation::need_depletion_rx = false;
   simulation::initialized = false;
   return 0;
 }
@@ -281,9 +267,8 @@ int64_t work_per_rank;
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
-std::vector<double> k_generation;
-std::vector<int64_t> work_index;
-
+vector<double> k_generation;
+vector<int64_t> work_index;
 
 } // namespace simulation
 
@@ -293,10 +278,19 @@ std::vector<int64_t> work_index;
 
 void allocate_banks()
 {
-  // Allocate source bank
-  simulation::source_bank.resize(simulation::work_per_rank);
-  // Allocate fission bank
-  init_fission_bank(3*simulation::work_per_rank);
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // Allocate source bank
+    simulation::source_bank.resize(simulation::work_per_rank);
+
+    // Allocate fission bank
+    init_fission_bank(3*simulation::work_per_rank);
+  }
+
+  if (settings::surf_source_write) {
+    // Allocate surface source bank
+    simulation::surf_source_bank.reserve(settings::max_surface_particles);
+  }
+
 }
 
 void initialize_batch()
@@ -305,8 +299,7 @@ void initialize_batch()
   ++simulation::current_batch;
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    int b = simulation::current_batch;
-    write_message("Simulating batch " + std::to_string(b), 6);
+    write_message(6, "Simulating batch {}", simulation::current_batch);
   }
 
   // Reset total starting particle weight used for normalizing tallies
@@ -388,6 +381,12 @@ void finalize_batch()
       write_source_point(filename.c_str());
     }
   }
+
+  // Write out surface source if requested.
+  if (settings::surf_source_write && simulation::current_batch == settings::n_batches) {
+    auto filename = settings::path_output + "surface_source.h5";
+    write_source_point(filename.c_str(), true);
+  }
 }
 
 void initialize_generation()
@@ -452,7 +451,10 @@ void finalize_generation()
 void initialize_history(Particle& p, int64_t index_source)
 {
   // set defaults
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // set defaults for eigenvalue simulations from primary bank
+    p.from_source(&simulation::source_bank[index_source - 1]);
+  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed
     int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
       simulation::work_index[mpi::rank] + index_source;
@@ -460,75 +462,62 @@ void initialize_history(Particle& p, int64_t index_source)
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
     p.from_source(&site);
-  } else if (settings::run_mode == RunMode::EIGENVALUE) {
-    // set defaults for eigenvalue simulations from primary bank
-    p.from_source(&simulation::source_bank[index_source - 1]);
   }
-  p.current_work_ = index_source;
+  p.current_work() = index_source;
 
   // set identifier for particle
-  p.id_ = simulation::work_index[mpi::rank] + index_source;
+  p.id() = simulation::work_index[mpi::rank] + index_source;
 
   // set progeny count to zero
-  p.n_progeny_ = 0;
+  p.n_progeny() = 0;
+
+  // Reset particle event counter
+  p.n_event() = 0;
 
   // set random number seed
-  int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
-    * settings::n_particles + p.id_;
-  init_particle_seeds(particle_seed, p.seeds_);
+  int64_t particle_seed =
+    (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
+    p.id();
+  init_particle_seeds(particle_seed, p.seeds());
 
   // set particle trace
-  p.trace_ = false;
+  p.trace() = false;
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
-      p.id_ == settings::trace_particle) p.trace_ = true;
+      p.id() == settings::trace_particle)
+    p.trace() = true;
 
   // Set particle track.
-  p.write_track_ = false;
+  p.write_track() = false;
   if (settings::write_all_tracks) {
-    p.write_track_ = true;
+    p.write_track() = true;
   } else if (settings::track_identifiers.size() > 0) {
     for (const auto& t : settings::track_identifiers) {
       if (simulation::current_batch == t[0] &&
-          simulation::current_gen == t[1] &&
-          p.id_ == t[2]) {
-        p.write_track_ = true;
+          simulation::current_gen == t[1] && p.id() == t[2]) {
+        p.write_track() = true;
         break;
       }
     }
   }
 
   // Display message if high verbosity or trace is on
-  if (settings::verbosity >= 9 || p.trace_) {
-    write_message("Simulating Particle " + std::to_string(p.id_));
+  if (settings::verbosity >= 9 || p.trace()) {
+    write_message("Simulating Particle {}", p.id());
   }
 
   // Add paricle's starting weight to count for normalizing tallies later
   #pragma omp atomic
-  simulation::total_weight += p.wgt_;
+  simulation::total_weight += p.wgt();
 
-  initialize_history_partial(p);
-}
-
-void initialize_history_partial(Particle& p)
-{
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
-    for (auto& micro : p.neutron_xs_) micro.last_E = 0.0;
+    p.invalidate_neutron_xs();
   }
 
   // Prepare to write out particle track.
-  if (p.write_track_) add_particle_track(p);
-
-  // Every particle starts with no accumulated flux derivative.
-  if (!model::active_tallies.empty())
-  {
-    p.flux_derivs_.resize(model::tally_derivs.size(), 0.0);
-    std::fill(p.flux_derivs_.begin(), p.flux_derivs_.end(), 0.0);
-  }
-
-  // Allocate space for tally filter matches
-  p.filter_matches_.resize(model::tally_filters.size());
+  if (p.write_track())
+    add_particle_track(p);
 }
 
 int overall_generation()
@@ -568,7 +557,7 @@ void initialize_data()
   data::energy_min = {0.0, 0.0};
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
-      int neutron = static_cast<int>(Particle::Type::neutron);
+      int neutron = static_cast<int>(ParticleType::neutron);
       data::energy_min[neutron] = std::max(data::energy_min[neutron],
         nuc->grid_[0].energy.front());
       data::energy_max[neutron] = std::min(data::energy_max[neutron],
@@ -579,7 +568,7 @@ void initialize_data()
   if (settings::photon_transport) {
     for (const auto& elem : data::elements) {
       if (elem->energy_.size() >= 1) {
-        int photon = static_cast<int>(Particle::Type::photon);
+        int photon = static_cast<int>(ParticleType::photon);
         int n = elem->energy_.size();
         data::energy_min[photon] = std::max(data::energy_min[photon],
           std::exp(elem->energy_(1)));
@@ -592,7 +581,7 @@ void initialize_data()
       // Determine if minimum/maximum energy for bremsstrahlung is greater/less
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
-        int photon = static_cast<int>(Particle::Type::photon);
+        int photon = static_cast<int>(ParticleType::photon);
         int n_e = data::ttb_e_grid.size();
         data::energy_min[photon] = std::max(data::energy_min[photon],
           std::exp(data::ttb_e_grid(1)));
@@ -608,11 +597,10 @@ void initialize_data()
     // grid has not been allocated
     if (nuc->grid_.size() > 0) {
       double max_E = nuc->grid_[0].energy.back();
-      int neutron = static_cast<int>(Particle::Type::neutron);
+      int neutron = static_cast<int>(ParticleType::neutron);
       if (max_E == data::energy_max[neutron]) {
-        write_message("Maximum neutron transport energy: " +
-          std::to_string(data::energy_max[neutron]) + " eV for " +
-          nuc->name_, 7);
+        write_message(7, "Maximum neutron transport energy: {} eV for {}",
+          data::energy_max[neutron], nuc->name_);
         if (mpi::master && data::energy_max[neutron] < 20.0e6) {
           warning("Maximum neutron energy is below 20 MeV. This may bias "
             "the results.");
@@ -626,7 +614,7 @@ void initialize_data()
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
-  int neutron = static_cast<int>(Particle::Type::neutron);
+  int neutron = static_cast<int>(ParticleType::neutron);
   simulation::log_spacing = std::log(data::energy_max[neutron] /
     data::energy_min[neutron]) / settings::n_log_bins;
 }
@@ -676,13 +664,13 @@ void transport_history_based_single_particle(Particle& p)
   while (true) {
     p.event_calculate_xs();
     p.event_advance();
-    if (p.collision_distance_ > p.boundary_.distance) {
+    if (p.collision_distance() > p.boundary().distance) {
       p.event_cross_surface();
     } else {
       p.event_collide();
     }
     p.event_revive_from_secondary();
-    if (!p.alive_)
+    if (!p.alive())
       break;
   }
   p.event_death();

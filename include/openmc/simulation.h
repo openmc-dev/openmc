@@ -41,9 +41,7 @@ extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 #pragma omp declare target
 extern "C" int total_gen;        //!< total number of generations simulated
-#pragma omp end declare target
 extern double total_weight;  //!< Total source weight in a batch
-#pragma omp declare target
 extern int64_t work_per_rank;         //!< number of particles per MPI rank
 #pragma omp end declare target
 

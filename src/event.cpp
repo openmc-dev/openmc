@@ -90,6 +90,13 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   
   simulation::calculate_fuel_xs_queue.copy_device_to_host();
   simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
+  
+  // Transfer total weight from device -> host if the kernel was run on device.
+  // Note: the pre-kernel transfer host -> device happens in initialize_batch() at the
+  // point the variable is reset to 0.
+  #ifdef USE_DEVICE
+  #pragma omp target update from(simulation::total_weight)
+  #endif
 
   simulation::time_event_init.stop();
 }

@@ -330,6 +330,7 @@ void initialize_batch()
 
   // Reset total starting particle weight used for normalizing tallies
   simulation::total_weight = 0.0;
+  #pragma omp target update to(simulation::total_weight)
 
   // Determine if this batch is the first inactive or active batch.
   bool first_inactive = false;
@@ -509,18 +510,18 @@ void initialize_history(Particle& p, int64_t index_source)
   init_particle_seeds(particle_seed, p.seeds_);
   
   printf("p id = %d seed = %ld\n", p.id_, particle_seed);
-  
-  
-  /*
 
   // set particle trace
   p.trace_ = false;
+  /*
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
       p.id_ == settings::trace_particle) p.trace_ = true;
+  */
 
   // Set particle track.
   p.write_track_ = false;
+  /*
   if (settings::write_all_tracks) {
     p.write_track_ = true;
   } else if (settings::track_identifiers.size() > 0) {
@@ -538,13 +539,13 @@ void initialize_history(Particle& p, int64_t index_source)
   if (settings::verbosity >= 9 || p.trace_) {
     write_message("Simulating Particle {}", p.id_);
   }
+  */
 
   // Add paricle's starting weight to count for normalizing tallies later
   #pragma omp atomic
   simulation::total_weight += p.wgt_;
 
-  initialize_history_partial(p);
-  */
+  //initialize_history_partial(p);
 }
 
 void initialize_history_partial(Particle& p)

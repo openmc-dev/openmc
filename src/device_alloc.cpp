@@ -42,6 +42,7 @@ void move_settings_to_device()
   #pragma omp target update to(simulation::total_gen)
   #pragma omp target update to(simulation::current_batch)
   #pragma omp target update to(simulation::current_gen)
+  #pragma omp target update to(simulation::total_weight)
 }
 
 void move_read_only_data_to_device()

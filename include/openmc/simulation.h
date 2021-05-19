@@ -78,10 +78,10 @@ void initialize_generation();
 //! Full initialization of a particle history
 #pragma omp declare target
 void initialize_history(Particle& p, int64_t index_source);
-#pragma omp end declare target
 
 //! Helper function for initialize_history() that is called independently elsewhere
 void initialize_history_partial(Particle& p);
+#pragma omp end declare target
 
 //! Finalize a batch
 //!

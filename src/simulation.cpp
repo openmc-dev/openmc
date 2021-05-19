@@ -545,7 +545,7 @@ void initialize_history(Particle& p, int64_t index_source)
   #pragma omp atomic
   simulation::total_weight += p.wgt_;
 
-  //initialize_history_partial(p);
+  initialize_history_partial(p);
 }
 
 void initialize_history_partial(Particle& p)
@@ -556,23 +556,13 @@ void initialize_history_partial(Particle& p)
   }
 
   // Prepare to write out particle track.
-  if (p.write_track_) add_particle_track(p);
+  //if (p.write_track_) add_particle_track(p);
 
   // Every particle starts with no accumulated flux derivative.
-  if (!model::active_tallies.empty())
-  {
-    //std::cout << "flux_derivs_ size = " << model::tally_derivs.size() << std::endl;
-    //p->flux_derivs_.resize(model::tally_derivs.size(), 0.0);
-    //std::fill(p->flux_derivs_.begin(), p->flux_derivs_.end(), 0.0);
-    assert(FLUX_DERIVS_SIZE >= model::tally_derivs.size());
-    std::fill(p.flux_derivs_, p.flux_derivs_ + FLUX_DERIVS_SIZE, 0.0);
-  }
-
-  // Allocate space for tally filter matches
-  //p->filter_matches_.resize(model::tally_filters.size());
-  //if(model::tally_filters.size() > FILTER_MATCHES_SIZE)
-  //  std::cout << "filter_matches size = " << model::tally_filters.size() << std::endl;
-  assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
+  // Note: This is not harmful even if there are no active tallies, and
+  // doing so without condition avoids having to access model::active_tallies
+  // which is not yet on device.
+  std::fill(p.flux_derivs_, p.flux_derivs_ + FLUX_DERIVS_SIZE, 0.0);
 
   // Set secondary bank to 0 length
   p.secondary_bank_length_ = 0;

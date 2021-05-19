@@ -8,6 +8,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/simulation.h"
 
+#include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
 
 
@@ -20,6 +21,10 @@ void enforce_assumptions()
   
   // Commented out of particle::cross_reflective_bc
   assert(model::active_surface_tallies.empty() && "Surface tallies not yet supported.");
+    
+  // Assertions made when initializing particles
+  assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
+  assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
 }
 
 void move_settings_to_device()

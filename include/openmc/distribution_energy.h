@@ -153,7 +153,16 @@ private:
 
 class CTTableFlat {
 public:
+  // These declare target directives result in an error at link time on the
+  // Intel compiler due to a bug (CMPLRLLVM-26916). However, they are necessary
+  // for LLVM.
+  #ifndef __INTEL_LLVM_COMPILER
+  #pragma omp declare target
+  #endif
   explicit CTTableFlat(const uint8_t* data);
+  #ifndef __INTEL_LLVM_COMPILER
+  #pragma omp end declare target
+  #endif
 
   Interpolation interpolation() const;
   int n_discrete() const;
@@ -167,7 +176,13 @@ private:
 
 class ContinuousTabularFlat {
 public:
+  #ifndef __INTEL_LLVM_COMPILER
+  #pragma omp declare target
+  #endif
   explicit ContinuousTabularFlat(const uint8_t* data);
+  #ifndef __INTEL_LLVM_COMPILER
+  #pragma omp end declare target
+  #endif
 
   double sample(double E, uint64_t* seed) const;
 private:

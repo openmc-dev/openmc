@@ -58,13 +58,14 @@ CoherentElasticAE::sample(double E_in, double& E_out, double& mu,
 
 void CoherentElasticAE::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(AngleEnergyType::COHERENT_ELASTIC));
+  buffer.add(static_cast<int>(AngleEnergyType::COHERENT_ELASTIC)); // 4
+  buffer.align(8);                                                 // 4
   xs_.serialize(buffer);
 }
 
 CoherentElasticXSFlat CoherentElasticAEFlat::xs() const
 {
-  return CoherentElasticXSFlat(data_ + 4);
+  return CoherentElasticXSFlat(data_ + 8);
 }
 
 void
@@ -115,13 +116,14 @@ IncoherentElasticAE::sample(double E_in, double& E_out, double& mu,
 
 void IncoherentElasticAE::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_ELASTIC));
-  buffer.add(debye_waller_);
+  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_ELASTIC)); // 4
+  buffer.align(8);                                                   // 4
+  buffer.add(debye_waller_);                                         // 8
 }
 
 double IncoherentElasticAEFlat::debye_waller() const
 {
-  return *reinterpret_cast<const double*>(data_ + 4);
+  return *reinterpret_cast<const double*>(data_ + 8);
 }
 
 void
@@ -192,25 +194,26 @@ IncoherentElasticAEDiscrete::sample(double E_in, double& E_out, double& mu,
 
 void IncoherentElasticAEDiscrete::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_ELASTIC_DISCRETE));
+  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_ELASTIC_DISCRETE)); // 4
   auto shape = mu_out_.shape();
-  buffer.add(shape[0]);
-  buffer.add(shape[1]);
-  buffer.add(energy_);
-  buffer.add(mu_out_);
+  buffer.align(8);       // 4
+  buffer.add(shape[0]);  // 8
+  buffer.add(shape[1]);  // 8
+  buffer.add(energy_);   // 8*...
+  buffer.add(mu_out_);   // 8*...
 }
 
 IncoherentElasticAEDiscreteFlat::IncoherentElasticAEDiscreteFlat(const uint8_t* data)
   : data_(data)
 {
-  n_e_out_ = *reinterpret_cast<const size_t*>(data_ + 4);
-  n_mu_ = *reinterpret_cast<const size_t*>(data_ + 12);
-  mu_out_ = reinterpret_cast<const double*>(data_ + 20 + 8*n_e_out_);
+  n_e_out_ = *reinterpret_cast<const size_t*>(data_ + 8);
+  n_mu_ = *reinterpret_cast<const size_t*>(data_ + 16);
+  mu_out_ = reinterpret_cast<const double*>(data_ + 24 + 8*n_e_out_);
 }
 
 gsl::span<const double> IncoherentElasticAEDiscreteFlat::energy() const
 {
-  auto start = reinterpret_cast<const double*>(data_ + 20);
+  auto start = reinterpret_cast<const double*>(data_ + 24);
   return {start, n_e_out_};
 }
 
@@ -338,36 +341,35 @@ IncoherentInelasticAEDiscrete::sample(double E_in, double& E_out, double& mu,
 
 void IncoherentInelasticAEDiscrete::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_INELASTIC_DISCRETE));
+  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_INELASTIC_DISCRETE)); // 4
   auto shape = mu_out_.shape();
-  buffer.add(skewed_);
-  buffer.add(shape[0]);
-  buffer.add(shape[1]);
-  buffer.add(shape[2]);
-  buffer.add(energy_);
-  buffer.add(energy_out_);
-  buffer.add(mu_out_);
+  buffer.add(static_cast<int>(skewed_));  // 4
+  buffer.add(shape[0]);                   // 8
+  buffer.add(shape[1]);                   // 8
+  buffer.add(shape[2]);                   // 8
+  buffer.add(energy_);                    // 8*...
+  buffer.add(energy_out_);                // 8*...
+  buffer.add(mu_out_);                    // 8*...
 }
 
 IncoherentInelasticAEDiscreteFlat::IncoherentInelasticAEDiscreteFlat(const uint8_t* data)
   : data_(data)
 {
-  constexpr size_t bool_size = sizeof(bool);
-  n_energy_ = *reinterpret_cast<const size_t*>(data_ + 4 + bool_size);
-  n_e_out_ = *reinterpret_cast<const size_t*>(data_ + 4 + bool_size + 8);
-  n_mu_ = *reinterpret_cast<const size_t*>(data_ + 4 + bool_size + 16);
-  energy_out_ = reinterpret_cast<const double*>(data_ + 28 + bool_size + 8*n_energy_);
-  mu_out_ = reinterpret_cast<const double*>(data_ + 28 + bool_size + 8*n_energy_*(1 + n_e_out_));
+  n_energy_ = *reinterpret_cast<const size_t*>(data_ + 8);
+  n_e_out_ = *reinterpret_cast<const size_t*>(data_ + 16);
+  n_mu_ = *reinterpret_cast<const size_t*>(data_ + 24);
+  energy_out_ = reinterpret_cast<const double*>(data_ + 32 + 8*n_energy_);
+  mu_out_ = reinterpret_cast<const double*>(data_ + 32 + 8*n_energy_*(1 + n_e_out_));
 }
 
 bool IncoherentInelasticAEDiscreteFlat::skewed() const
 {
-  return *reinterpret_cast<const bool*>(data_ + 4);
+  return *reinterpret_cast<const int*>(data_ + 4);
 }
 
 gsl::span<const double> IncoherentInelasticAEDiscreteFlat::energy() const
 {
-  auto start = reinterpret_cast<const double*>(data_ + 28 + sizeof(bool));
+  auto start = reinterpret_cast<const double*>(data_ + 32);
   return {start, n_energy_};
 }
 
@@ -572,10 +574,10 @@ IncoherentInelasticAE::sample(double E_in, double& E_out, double& mu,
 
 void IncoherentInelasticAE::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_INELASTIC));
+  buffer.add(static_cast<int>(AngleEnergyType::INCOHERENT_INELASTIC)); // 4
 
   // Calculate offsets for distributions
-  size_t offset = 4 + 8 + (8 + 4)*energy_.size();
+  size_t offset = 4 + 4 + aligned((8 + 4)*energy_.size(), 8);
   std::vector<int> offsets;
   for (const auto& dist : distribution_) {
     offsets.push_back(offset);
@@ -586,19 +588,20 @@ void IncoherentInelasticAE::serialize(DataBuffer& buffer) const
   }
 
   // Write energy grid and offsets
-  buffer.add(energy_.size());
-  buffer.add(energy_);
-  buffer.add(offsets);
+  buffer.add(static_cast<int>(energy_.size()));  // 4
+  buffer.add(energy_);                           // 8*energy size
+  buffer.add(offsets);                           // 4*energy size
+  buffer.align(8);
 
   // Write distributions
   for (const auto& dist : distribution_) {
     auto shape = dist.mu.shape();
-    buffer.add(shape[0]);
-    buffer.add(shape[1]);
-    buffer.add(dist.e_out);
-    buffer.add(dist.e_out_pdf);
-    buffer.add(dist.e_out_cdf);
-    buffer.add(dist.mu);
+    buffer.add(shape[0]);       // 8
+    buffer.add(shape[1]);       // 8
+    buffer.add(dist.e_out);     // 8*...
+    buffer.add(dist.e_out_pdf); // 8*...
+    buffer.add(dist.e_out_cdf); // 8*...
+    buffer.add(dist.mu);        // 8*...
   }
 }
 
@@ -610,7 +613,7 @@ IncoherentInelasticAEFlat::IncoherentInelasticAEFlat(const uint8_t* data)
 
 gsl::span<const double> IncoherentInelasticAEFlat::energy() const
 {
-  auto start = reinterpret_cast<const double*>(data_ + 12);
+  auto start = reinterpret_cast<const double*>(data_ + 8);
   return {start, n_energy_};
 }
 
@@ -647,7 +650,7 @@ double DistEnergySabFlat::mu(gsl::index i, gsl::index j) const
 
 DistEnergySabFlat IncoherentInelasticAEFlat::distribution(gsl::index i) const
 {
-  auto offsets = reinterpret_cast<const int*>(data_ + 12 + 8*n_energy_);
+  auto offsets = reinterpret_cast<const int*>(data_ + 8 + 8*n_energy_);
   return DistEnergySabFlat(data_ + offsets[i]);
 }
 

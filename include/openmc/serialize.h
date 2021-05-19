@@ -32,6 +32,7 @@ public:
 
   template<typename T> void add(const std::vector<T>& value);
   template<typename T, std::size_t N> void add(const xt::xtensor<T, N>& value);
+  void align(int n);
 
   void copy_to_device() const;
   void release_device() const;
@@ -78,6 +79,11 @@ size_t buffer_nbytes(const T& obj)
   buffer.mode_ = DataBuffer::Mode::count;
   obj.serialize(buffer);
   return buffer.size();
+}
+
+inline size_t aligned(size_t n, int alignment)
+{
+  return n + (alignment - ((n - 1) % alignment + 1));
 }
 
 } // namespace openmc

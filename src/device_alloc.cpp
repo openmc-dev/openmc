@@ -4,9 +4,12 @@
 #include "openmc/cell.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
+#include "openmc/simulation.h"
 
 #include "openmc/tallies/tally.h"
+
 
 namespace openmc {
 
@@ -21,12 +24,18 @@ void enforce_assumptions()
 
 void move_settings_to_device()
 {
+  // settings.h
   #pragma omp target update to(settings::dagmc)
   #pragma omp target update to(settings::run_CE)
   #pragma omp target update to(settings::max_lost_particles)
   #pragma omp target update to(settings::rel_max_lost_particles)
   #pragma omp target update to(settings::gen_per_batch)
   #pragma omp target update to(settings::run_mode)
+
+  // message_passing.h
+  #pragma omp target update to(mpi::rank)
+  #pragma omp target update to(mpi::n_procs)
+  #pragma omp target update to(mpi::master)
 }
 
 void move_read_only_data_to_device()

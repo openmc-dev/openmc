@@ -493,7 +493,7 @@ void initialize_history(Particle& p, int64_t index_source)
 
   // set identifier for particle
   p.id_ = simulation::device_work_index[mpi::rank] + index_source;
-  printf("p id = %d\n", 
+  printf("p id = %d\n", p.id_);
   
   /*
 

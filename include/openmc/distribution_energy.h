@@ -111,8 +111,8 @@ public:
 
   double sample(double E, uint64_t* seed) const;
 private:
-  double threshold() const { return *reinterpret_cast<const double*>(data_ + 4); }
-  double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 12); }
+  double threshold() const { return *reinterpret_cast<const double*>(data_ + 8); }
+  double mass_ratio() const { return *reinterpret_cast<const double*>(data_ + 16); }
 
   const uint8_t* data_;
 };

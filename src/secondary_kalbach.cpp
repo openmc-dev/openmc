@@ -242,10 +242,10 @@ void KalbachMann::sample(double E_in, double& E_out, double& mu, uint64_t* seed)
 
 void KalbachMann::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(AngleEnergyType::KALBACH_MANN));
+  buffer.add(static_cast<int>(AngleEnergyType::KALBACH_MANN)); // 4
 
   // Determine size of buffer needed
-  size_t n = 4 + 4 + (4 + 4)*n_region_ + 8 + (8 + 4)*energy_.size();
+  size_t n = 4 + 4 + (4 + 4)*n_region_ + 8 + aligned((8 + 4)*energy_.size(), 8);
   std::vector<int> locators;
   for (const auto& dist : distribution_) {
     locators.push_back(n);
@@ -254,29 +254,30 @@ void KalbachMann::serialize(DataBuffer& buffer) const
   }
 
   // Write interpolation information
-  buffer.add(n_region_);
-  buffer.add(breakpoints_);
+  buffer.add(n_region_);         // 4
+  buffer.add(breakpoints_);      // 4*n_regions_
   std::vector<int> interp;
   for (auto v : interpolation_) {
     interp.push_back(static_cast<int>(v));
   }
-  buffer.add(interp);
+  buffer.add(interp);            // 4*n_regions_
 
   // Write incident energies and locators
-  buffer.add(energy_.size());
-  buffer.add(energy_);
-  buffer.add(locators);
+  buffer.add(energy_.size());    // 8
+  buffer.add(energy_);           // 8*energy size
+  buffer.add(locators);          // 4*energy size
+  buffer.align(8);
 
   // Write distributions
   for (const auto& dist : distribution_) {
-    buffer.add(dist.n_discrete);
-    buffer.add(static_cast<int>(dist.interpolation));
-    buffer.add(dist.e_out.size());
-    buffer.add(dist.e_out);
-    buffer.add(dist.p);
-    buffer.add(dist.c);
-    buffer.add(dist.r);
-    buffer.add(dist.a);
+    buffer.add(dist.n_discrete);                       // 4
+    buffer.add(static_cast<int>(dist.interpolation));  // 4
+    buffer.add(dist.e_out.size());                     // 8
+    buffer.add(dist.e_out);                            // 8*e_out size
+    buffer.add(dist.p);                                // 8*e_out size
+    buffer.add(dist.c);                                // 8*e_out size
+    buffer.add(dist.r);                                // 8*e_out size
+    buffer.add(dist.a);                                // 8*e_out size
   }
 }
 

@@ -69,11 +69,11 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
 
 void NBodyPhaseSpace::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(AngleEnergyType::NBODY));
-  buffer.add(n_bodies_);
-  buffer.add(mass_ratio_);
-  buffer.add(A_);
-  buffer.add(Q_);
+  buffer.add(static_cast<int>(AngleEnergyType::NBODY)); // 4
+  buffer.add(n_bodies_);                                // 4
+  buffer.add(mass_ratio_);                              // 8
+  buffer.add(A_);                                       // 8
+  buffer.add(Q_);                                       // 8
 }
 
 void NBodyPhaseSpaceFlat::sample(double E_in, double& E_out, double& mu,

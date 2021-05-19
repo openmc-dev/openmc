@@ -125,9 +125,9 @@ double Polynomial::operator()(double x) const
 
 void Polynomial::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(FunctionType::POLYNOMIAL));
-  buffer.add(coef_.size());
-  buffer.add(coef_);
+  buffer.add(static_cast<int>(FunctionType::POLYNOMIAL)); // 4
+  buffer.add(static_cast<int>(coef_.size()));             // 4
+  buffer.add(coef_);                                      // 8*coef size
 }
 
 double PolynomialFlat::operator()(double x) const
@@ -144,8 +144,8 @@ double PolynomialFlat::operator()(double x) const
 
 gsl::span<const double> PolynomialFlat::coef() const
 {
-  auto n = *reinterpret_cast<const size_t*>(data_ + 4);
-  auto start = reinterpret_cast<const double*>(data_ + 4 + 8);
+  size_t n = *reinterpret_cast<const int*>(data_ + 4);
+  auto start = reinterpret_cast<const double*>(data_ + 8);
   return {start, n};
 }
 
@@ -238,24 +238,24 @@ double Tabulated1D::operator()(double x) const
 
 void Tabulated1D::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(FunctionType::TABULATED));
-  buffer.add(n_regions_);
-  buffer.add(nbt_);
+  buffer.add(static_cast<int>(FunctionType::TABULATED)); // 4
+  buffer.add(static_cast<int>(n_regions_));              // 4
+  buffer.add(nbt_);                                      // 4*n_regions_
   std::vector<int> interp;
   for (auto x : int_) {
     interp.push_back(static_cast<int>(x));
   }
-  buffer.add(interp);
+  buffer.add(interp);                                    // 4*n_regions_
 
-  buffer.add(n_pairs_);
-  buffer.add(x_);
-  buffer.add(y_);
+  buffer.add(n_pairs_);                                  // 8
+  buffer.add(x_);                                        // 8*n_pairs_
+  buffer.add(y_);                                        // 8*n_pairs_
 }
 
 Tabulated1DFlat::Tabulated1DFlat(const uint8_t* data) : data_(data)
 {
-  n_regions_ = *reinterpret_cast<const size_t*>(data_ + 4);
-  n_pairs_ = *reinterpret_cast<const size_t*>(data_ + 4 + 8 + (4 + 4)*n_regions_);
+  n_regions_ = *reinterpret_cast<const int*>(data_ + 4);
+  n_pairs_ = *reinterpret_cast<const size_t*>(data_ + 4 + 4 + (4 + 4)*n_regions_);
 }
 
 double Tabulated1DFlat::operator()(double x) const
@@ -321,25 +321,25 @@ double Tabulated1DFlat::operator()(double x) const
 
 gsl::span<const int> Tabulated1DFlat::nbt() const
 {
-  auto start = reinterpret_cast<const int*>(data_ + 4 + 8);
+  auto start = reinterpret_cast<const int*>(data_ + 8);
   return {start, n_regions_};
 }
 
 Interpolation Tabulated1DFlat::interp(gsl::index i) const
 {
-  auto start = reinterpret_cast<const int*>(data_ + 4 + 8 + 4*n_regions_);
+  auto start = reinterpret_cast<const int*>(data_ + 8 + 4*n_regions_);
   return static_cast<Interpolation>(start[i]);
 }
 
 gsl::span<const double> Tabulated1DFlat::x() const
 {
-  auto start = reinterpret_cast<const double*>(data_ + 20 + (4 + 4)*n_regions_);
+  auto start = reinterpret_cast<const double*>(data_ + 16 + (4 + 4)*n_regions_);
   return {start, n_pairs_};
 }
 
 gsl::span<const double> Tabulated1DFlat::y() const
 {
-  auto start = reinterpret_cast<const double*>(data_ + 20 + (4 + 4)*n_regions_ + 8*n_pairs_);
+  auto start = reinterpret_cast<const double*>(data_ + 16 + (4 + 4)*n_regions_ + 8*n_pairs_);
   return {start, n_pairs_};
 }
 
@@ -376,10 +376,10 @@ double CoherentElasticXS::operator()(double E) const
 
 void CoherentElasticXS::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(FunctionType::COHERENT_ELASTIC));
-  buffer.add(bragg_edges_.size());
-  buffer.add(bragg_edges_);
-  buffer.add(factors_);
+  buffer.add(static_cast<int>(FunctionType::COHERENT_ELASTIC)); // 4
+  buffer.add(static_cast<int>(bragg_edges_.size()));            // 4
+  buffer.add(bragg_edges_);                                     // 8*bragg size
+  buffer.add(factors_);                                         // 8*bragg size
 }
 
 double CoherentElasticXSFlat::operator()(double E) const
@@ -398,15 +398,15 @@ double CoherentElasticXSFlat::operator()(double E) const
 
 gsl::span<const double> CoherentElasticXSFlat::bragg_edges() const
 {
-  auto n = *reinterpret_cast<const size_t*>(data_ + 4);
-  auto start = reinterpret_cast<const double*>(data_ + 12);
+  size_t n = *reinterpret_cast<const int*>(data_ + 4);
+  auto start = reinterpret_cast<const double*>(data_ + 8);
   return {start, n};
 }
 
 gsl::span<const double> CoherentElasticXSFlat::factors() const
 {
-  auto n = *reinterpret_cast<const size_t*>(data_ + 4);
-  auto start = reinterpret_cast<const double*>(data_ + 12 + 8*n);
+  size_t n = *reinterpret_cast<const int*>(data_ + 4);
+  auto start = reinterpret_cast<const double*>(data_ + 8 + 8*n);
   return {start, n};
 }
 
@@ -431,9 +431,10 @@ double IncoherentElasticXS::operator()(double E) const
 
 void IncoherentElasticXS::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(FunctionType::INCOHERENT_ELASTIC));
-  buffer.add(bound_xs_);
-  buffer.add(debye_waller_);
+  buffer.add(static_cast<int>(FunctionType::INCOHERENT_ELASTIC)); // 4
+  buffer.align(8);                                                // 4
+  buffer.add(bound_xs_);                                          // 8
+  buffer.add(debye_waller_);                                      // 8
 }
 
 double IncoherentElasticXSFlat::operator()(double E) const

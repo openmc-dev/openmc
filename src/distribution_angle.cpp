@@ -97,17 +97,19 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
 void AngleDistribution::serialize(DataBuffer& buffer) const
 {
   int n = energy_.size();
-  buffer.add(n);
-  buffer.add(energy_);
+  buffer.add(n);           // 4
+  buffer.align(8);         // 4
+  buffer.add(energy_);     // 8*n
 
   // Create locators
   std::vector<int> locators;
-  int offset = 0;
+  int offset = aligned(8 + (8 + 4)*energy_.size(), 8);
   for (const auto& dist : distribution_) {
     locators.push_back(offset);
     offset += buffer_nbytes(*dist);
   }
-  buffer.add(locators);
+  buffer.add(locators);    // 4*n
+  buffer.align(8);         // 0 or 4
 
   // Write distributions
   for (const auto& dist : distribution_) {
@@ -156,17 +158,16 @@ double AngleDistributionFlat::sample(double E, uint64_t* seed) const
 
 gsl::span<const double> AngleDistributionFlat::energy() const
 {
-  auto start = reinterpret_cast<const double*>(data_ + 4);
+  auto start = reinterpret_cast<const double*>(data_ + 8);
   return {start, n_};
 }
 
 TabularFlat AngleDistributionFlat::distribution(gsl::index i) const
 {
-  auto indices = reinterpret_cast<const int*>(data_ + 4 + 8*n_);
+  auto indices = reinterpret_cast<const int*>(data_ + 8 + 8*n_);
   size_t idx = indices[i];
 
-  size_t offset_dist = 4 + (8 + 4)*n_;
-  return TabularFlat(data_ + offset_dist + idx);
+  return TabularFlat(data_ + idx);
 }
 
 } // namespace openmc

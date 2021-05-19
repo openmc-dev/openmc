@@ -270,7 +270,7 @@ void process_death_events(int64_t n_particles)
   #pragma omp target update from(global_tally_tracklength)
   #pragma omp target update from(global_tally_leakage)
 
-  // Move particle n_progency array back to host
+  // Move particle progeny count array back to host
   #pragma omp target update from(simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
 
   #endif

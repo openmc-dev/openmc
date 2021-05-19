@@ -36,7 +36,7 @@ MaterialFilter::set_materials(gsl::span<const int32_t> materials)
   // Update materials and mapping
   for (auto& index : materials) {
     Expects(index >= 0);
-    Expects(index < model::materials.size());
+    Expects(index < model::materials_size);
     materials_.push_back(index);
     map_[index] = materials_.size() - 1;
   }
@@ -63,14 +63,14 @@ MaterialFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   std::vector<int32_t> material_ids;
-  for (auto c : materials_) material_ids.push_back(model::materials[c]->id_);
+  for (auto c : materials_) material_ids.push_back(model::materials[c].id_);
   write_dataset(filter_group, "bins", material_ids);
 }
 
 std::string
 MaterialFilter::text_label(int bin) const
 {
-  return fmt::format("Material {}", model::materials[materials_[bin]]->id_);
+  return fmt::format("Material {}", model::materials[materials_[bin]].id_);
 }
 
 //==============================================================================

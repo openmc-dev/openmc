@@ -124,11 +124,12 @@ void write_geometry(hid_t file)
 void write_materials(hid_t file)
 {
   // write number of materials
-  write_dataset(file, "n_materials", model::materials.size());
+  write_dataset(file, "n_materials", model::materials_size);
 
   hid_t materials_group = create_group(file, "materials");
-  for (const auto& mat : model::materials) {
-    mat->to_hdf5(materials_group);
+  for (int i = 0; i < model::materials_size; i++) {
+    const auto& mat = model::materials[i];
+    mat.to_hdf5(materials_group);
   }
   close_group(materials_group);
 }

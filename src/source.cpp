@@ -178,7 +178,7 @@ Particle::Bank IndependentSource::sample(uint64_t* seed) const
           if (mat_index == MATERIAL_VOID) {
             found = false;
           } else {
-            if (!model::materials[mat_index]->fissionable_) found = false;
+            if (!model::materials[mat_index].fissionable_) found = false;
           }
         }
       }

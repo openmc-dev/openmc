@@ -27,7 +27,10 @@ class Material;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> material_map;
-extern std::vector<std::unique_ptr<Material>> materials;
+#pragma omp declare target
+extern Material* materials;
+extern uint64_t materials_size;
+#pragma omp end declare target
 
 } // namespace model
 
@@ -159,7 +162,7 @@ public:
   // Thermal scattering tables
   std::vector<ThermalTable> thermal_tables_;
 
-  std::unique_ptr<Bremsstrahlung> ttb_;
+  Bremsstrahlung ttb_;
 
 private:
   //----------------------------------------------------------------------------

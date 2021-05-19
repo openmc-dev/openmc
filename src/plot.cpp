@@ -54,7 +54,7 @@ IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
     data_(y, x, 1) = MATERIAL_VOID;
     return;
   } else if (c->type_ == Fill::MATERIAL) {
-    Material* m = model::materials.at(p.material_).get();
+    Material* m = &model::materials[p.material_];
     data_(y, x, 1) = m->id_;
   }
 }
@@ -72,7 +72,7 @@ PropertyData::set_value(size_t y, size_t x, const Particle& p, int level) {
   Cell* c = &model::cells.at(p.coord_[p.n_coord_ - 1].cell);
   data_(y,x,0) = (p.sqrtkT_ * p.sqrtkT_) / K_BOLTZMANN;
   if (c->type_ != Fill::UNIVERSE && p.material_ != MATERIAL_VOID) {
-    Material* m = model::materials.at(p.material_).get();
+    Material* m = &model::materials[p.material_];
     data_(y,x,1) = m->density_gpcc_;
   }
 }
@@ -365,7 +365,7 @@ Plot::set_default_colors(pugi::xml_node plot_node)
     colors_.resize(model::cells.size());
   } else if("material" == pl_color_by) {
     color_by_ = PlotColorBy::mats;
-    colors_.resize(model::materials.size());
+    colors_.resize(model::materials_size);
   } else {
     fatal_error(fmt::format("Unsupported plot color type '{}' in plot {}",
       pl_color_by, id_));

@@ -2,6 +2,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/lattice.h"
+#include "openmc/material.h"
 #include "openmc/nuclide.h"
 
 #include "openmc/tallies/tally.h"
@@ -91,6 +92,12 @@ void move_read_only_data_to_device()
       }
     }
   }
+  
+  // Materials /////////////////////////////////////////////////////////
+  
+  std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
+  #pragma omp target enter data map(to: model::materials[:model::materials_size])
+  // TODO: Deep copy of materials
 }
 
 void release_data_from_device()

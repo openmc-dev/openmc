@@ -122,7 +122,7 @@ void ReactionProduct::serialize(DataBuffer& buffer) const
   buffer.add(yield_size);                              // 8
   yield_->serialize(buffer);                           // yield_size
 
-  size_t n = 4 + 4 + 8 + 8 + yield_size + 16 + 4*(applicability_.size() + distribution_.size());
+  size_t n = 40 + yield_size + aligned(4*(applicability_.size() + distribution_.size()), 8);
   std::vector<int> locators;
   for (const auto& func : applicability_) {
     locators.push_back(n);
@@ -136,6 +136,7 @@ void ReactionProduct::serialize(DataBuffer& buffer) const
   buffer.add(applicability_.size());                   // 8
   buffer.add(distribution_.size());                    // 8
   buffer.add(locators);                                // 4 * (app + dist size)
+  buffer.align(8);
 
   for (const auto& func : applicability_) {
     func.serialize(buffer);

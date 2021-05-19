@@ -165,16 +165,17 @@ Reaction::collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
 void Reaction::serialize(DataBuffer& buffer) const
 {
   buffer.add(mt_);                                // 4
+  buffer.align(8);                                // 4
   buffer.add(q_value_);                           // 8
   buffer.add(static_cast<int>(scatter_in_cm_));   // 4
   buffer.add(static_cast<int>(redundant_));       // 4
 
   // Determine locators for cross sections and products
-  size_t n = 36 + 4*(xs_.size() + products_.size());
+  size_t n = 40 + aligned(4*(xs_.size() + products_.size()), 8);
   std::vector<int> locators;
   for (const auto& xs : xs_) {
     locators.push_back(n);
-    n += 4 + 8 + 8*xs.value.size();
+    n += 8 + 8*xs.value.size();
   }
   for (const auto& p : products_) {
     locators.push_back(n);
@@ -184,12 +185,13 @@ void Reaction::serialize(DataBuffer& buffer) const
   buffer.add(xs_.size());        // 8
   buffer.add(products_.size());  // 8
   buffer.add(locators);          // 4 * (xs + product size)
+  buffer.align(8);
 
   // Write cross sections
   for (const auto& xs : xs_) {
-    buffer.add(xs.threshold);
-    buffer.add(xs.value.size());
-    buffer.add(xs.value);
+    buffer.add(xs.threshold);                      // 4
+    buffer.add(static_cast<int>(xs.value.size())); // 4
+    buffer.add(xs.value);                          // 8*xs size
   }
 
   // Write reaction products
@@ -200,18 +202,18 @@ void Reaction::serialize(DataBuffer& buffer) const
 
 ReactionFlat::ReactionFlat(const uint8_t* data) : data_(data)
 {
-  n_xs_ = *reinterpret_cast<const size_t*>(data_ + 20);
-  n_products_ = *reinterpret_cast<const size_t*>(data_ + 28);
+  n_xs_ = *reinterpret_cast<const size_t*>(data_ + 24);
+  n_products_ = *reinterpret_cast<const size_t*>(data_ + 32);
 }
 
 double ReactionFlat::xs(gsl::index i_temp, gsl::index i_grid, double interp_factor) const
 {
   // Get pointer to beginning of xs array
-  auto indices = reinterpret_cast<const int*>(data_ + 36);
+  auto indices = reinterpret_cast<const int*>(data_ + 40);
   auto xs_data = data_ + indices[i_temp];
 
   int threshold = *reinterpret_cast<const int*>(xs_data);
-  auto xs_value = reinterpret_cast<const double*>(xs_data + 12);
+  auto xs_value = reinterpret_cast<const double*>(xs_data + 8);
 
   // If energy is below threshold, return 0. Otherwise interpolate between
   // nearest grid points
@@ -295,38 +297,38 @@ int ReactionFlat::mt() const
 
 double ReactionFlat::q_value() const
 {
-  return *reinterpret_cast<const double*>(data_ + 4);
+  return *reinterpret_cast<const double*>(data_ + 8);
 }
 
 bool ReactionFlat::scatter_in_cm() const
 {
-  return *reinterpret_cast<const int*>(data_ + 12);
+  return *reinterpret_cast<const int*>(data_ + 16);
 }
 
 bool ReactionFlat::redundant() const
 {
-  return *reinterpret_cast<const int*>(data_ + 16);
+  return *reinterpret_cast<const int*>(data_ + 20);
 }
 
 int ReactionFlat::xs_threshold(gsl::index i_temp) const
 {
-  auto indices = reinterpret_cast<const int*>(data_ + 36);
+  auto indices = reinterpret_cast<const int*>(data_ + 40);
   int offset = indices[i_temp];
   return *reinterpret_cast<const int*>(data_ + offset);
 }
 
 gsl::span<const double> ReactionFlat::xs_value(gsl::index i_temp) const
 {
-  auto indices = reinterpret_cast<const int*>(data_ + 36);
+  auto indices = reinterpret_cast<const int*>(data_ + 40);
   int offset = indices[i_temp];
-  size_t n = *reinterpret_cast<const size_t*>(data_ + offset + 4);
-  auto array = reinterpret_cast<const double*>(data_ + offset + 12);
+  size_t n = *reinterpret_cast<const int*>(data_ + offset + 4);
+  auto array = reinterpret_cast<const double*>(data_ + offset + 8);
   return {array, n};
 }
 
 ReactionProductFlat ReactionFlat::products(gsl::index i) const
 {
-  auto indices = reinterpret_cast<const int*>(data_ + 36);
+  auto indices = reinterpret_cast<const int*>(data_ + 40);
   return ReactionProductFlat(data_ + indices[n_xs_ + i]);
 }
 

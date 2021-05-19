@@ -591,8 +591,9 @@ double MaxwellEnergy::sample(double E, uint64_t* seed) const
 
 void MaxwellEnergy::serialize(DataBuffer& buffer) const
 {
-  buffer.add(static_cast<int>(EnergyDistType::MAXWELL));
-  buffer.add(u_);
+  buffer.add(static_cast<int>(EnergyDistType::MAXWELL)); // 4
+  buffer.align(8);                                       // 4
+  buffer.add(u_);                                        // 8
   theta_.serialize(buffer);
 }
 
@@ -612,12 +613,12 @@ double MaxwellFlat::sample(double E, uint64_t* seed) const
 
 double MaxwellFlat::u() const
 {
-  return *reinterpret_cast<const double*>(data_ + 4);
+  return *reinterpret_cast<const double*>(data_ + 8);
 }
 
 Tabulated1DFlat MaxwellFlat::theta() const
 {
-  return Tabulated1DFlat(data_ + 4 + 8);
+  return Tabulated1DFlat(data_ + 16);
 }
 
 

@@ -170,6 +170,7 @@ int openmc_simulation_finalize()
 
   // Increment total number of generations
   simulation::total_gen += simulation::current_batch*settings::gen_per_batch;
+  #pragma omp target update to(simulation::total_gen)
 
 #ifdef OPENMC_MPI
   broadcast_results();
@@ -216,6 +217,7 @@ int openmc_next_batch(int* status)
   // =======================================================================
   // LOOP OVER GENERATIONS
   for (current_gen = 1; current_gen <= settings::gen_per_batch; ++current_gen) {
+    #pragma omp target update to(current_gen)
 
     initialize_generation();
 
@@ -320,6 +322,7 @@ void initialize_batch()
 {
   // Increment current batch
   ++simulation::current_batch;
+  #pragma omp target update to(simulation::current_batch)
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     write_message(6, "Simulating batch {}", simulation::current_batch);
@@ -493,9 +496,6 @@ void initialize_history(Particle& p, int64_t index_source)
 
   // set identifier for particle
   p.id_ = simulation::device_work_index[mpi::rank] + index_source;
-  printf("p id = %d\n", p.id_);
-  
-  /*
 
   // set progeny count to zero
   p.n_progeny_ = 0;
@@ -507,6 +507,11 @@ void initialize_history(Particle& p, int64_t index_source)
   int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
     * settings::n_particles + p.id_;
   init_particle_seeds(particle_seed, p.seeds_);
+  
+  printf("p id = %d seed = %ld\n", p.id_, particle_seed);
+  
+  
+  /*
 
   // set particle trace
   p.trace_ = false;

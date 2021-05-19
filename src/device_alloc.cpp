@@ -31,11 +31,17 @@ void move_settings_to_device()
   #pragma omp target update to(settings::rel_max_lost_particles)
   #pragma omp target update to(settings::gen_per_batch)
   #pragma omp target update to(settings::run_mode)
+  #pragma omp target update to(settings::n_particles)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)
   #pragma omp target update to(mpi::n_procs)
   #pragma omp target update to(mpi::master)
+
+  // simulation.h
+  #pragma omp target update to(simulation::total_gen)
+  #pragma omp target update to(simulation::current_batch)
+  #pragma omp target update to(simulation::current_gen)
 }
 
 void move_read_only_data_to_device()

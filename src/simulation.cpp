@@ -512,8 +512,6 @@ void initialize_history(Particle& p, int64_t index_source)
   int64_t particle_seed = (simulation::total_gen + overall_generation() - 1)
     * settings::n_particles + p.id_;
   init_particle_seeds(particle_seed, p.seeds_);
-  
-  printf("p id = %d seed = %ld\n", p.id_, particle_seed);
 
   // set particle trace
   p.trace_ = false;

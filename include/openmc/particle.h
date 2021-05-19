@@ -251,18 +251,14 @@ public:
 
   // Coarse-grained particle events
   void event_calculate_xs();
-  #pragma omp declare target
-  void event_advance();
-  #pragma omp end declare target
   void event_advance_tally();
-  #pragma omp declare target
-  void event_cross_surface();
-  #pragma omp end declare target
   void event_collide();
   #pragma omp declare target
+  void event_advance();
+  void event_cross_surface();
   void event_revive_from_secondary();
-  #pragma omp end declare target
   void event_death();
+  #pragma omp end declare target
 
   //! Cross a surface and handle boundary conditions
   #pragma omp declare target

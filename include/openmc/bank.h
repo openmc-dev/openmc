@@ -27,6 +27,10 @@ extern SharedArray<Particle::Bank> fission_bank;
 
 extern std::vector<int64_t> progeny_per_particle;
 
+#pragma omp declare target
+extern int64_t* device_progeny_per_particle;
+#pragma omp end declare target
+
 } // namespace simulation
 
 //==============================================================================

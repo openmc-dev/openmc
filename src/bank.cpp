@@ -30,6 +30,7 @@ SharedArray<Particle::Bank> fission_bank;
 // this generation for the particle located at that index. This vector is
 // used to efficiently sort the fission bank after each iteration.
 std::vector<int64_t> progeny_per_particle;
+int64_t* device_progeny_per_particle;
 
 } // namespace simulation
 

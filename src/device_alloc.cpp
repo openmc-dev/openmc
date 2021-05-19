@@ -123,6 +123,11 @@ void move_read_only_data_to_device()
  
   simulation::device_work_index = simulation::work_index.data();
   #pragma omp target enter data map(to: simulation::device_work_index[:simulation::work_index.size()])
+  
+  // Progeny per Particle ///////////////////////////////////////////////////
+ 
+  simulation::device_progeny_per_particle = simulation::progeny_per_particle.data();
+  #pragma omp target enter data map(alloc: simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
 }
 
 

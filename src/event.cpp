@@ -1,3 +1,4 @@
+#include "openmc/bank.h"
 #include "openmc/cell.h"
 #include "openmc/event.h"
 #include "openmc/lattice.h"
@@ -5,6 +6,7 @@
 #include "openmc/simulation.h"
 #include "openmc/surface.h"
 #include "openmc/timer.h"
+#include "openmc/tallies/tally.h"
 
 namespace openmc {
 
@@ -243,12 +245,36 @@ void process_collision_events()
 void process_death_events(int64_t n_particles)
 {
   simulation::time_event_death.start();
+  
+  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for
+  #else
   #pragma omp parallel for schedule(runtime)
+  #endif
   for (int64_t i = 0; i < n_particles; i++) {
-    //Particle& p = simulation::device_particles[i];
-    Particle& p = simulation::particles[i];
+    Particle& p = simulation::device_particles[i];
     p.event_death();
   }
+  
+  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+
+  #ifdef USE_DEVICE
+
+  // Move global tallies back to host if executed on device.
+  // NOTE: the pre-kernel host->device transfer happens in
+  // finalize_generation()
+  #pragma omp target update from(global_tally_collision)
+  #pragma omp target update from(global_tally_absorption)
+  #pragma omp target update from(global_tally_tracklength)
+  #pragma omp target update from(global_tally_leakage)
+
+  // Move particle n_progency array back to host
+  #pragma omp target update from(simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
+
+  #endif
+
   simulation::time_event_death.stop();
 }
 

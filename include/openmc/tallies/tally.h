@@ -160,10 +160,12 @@ namespace simulation {
   extern "C" int32_t n_realizations;
 }
 
+#pragma omp declare target
 extern double global_tally_absorption;
 extern double global_tally_collision;
 extern double global_tally_tracklength;
 extern double global_tally_leakage;
+#pragma omp end declare target
 
 //==============================================================================
 // Non-member functions

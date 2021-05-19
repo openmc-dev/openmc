@@ -446,10 +446,14 @@ void finalize_generation()
   // reset tallies
   if (settings::run_mode == RunMode::EIGENVALUE) {
     global_tally_collision = 0.0;
+    #pragma omp target update to(global_tally_collision)
     global_tally_absorption = 0.0;
+    #pragma omp target update to(global_tally_absorption)
     global_tally_tracklength = 0.0;
+    #pragma omp target update to(global_tally_tracklength)
   }
   global_tally_leakage = 0.0;
+  #pragma omp target update to(global_tally_leakage)
 
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // If using shared memory, stable sort the fission bank (by parent IDs)

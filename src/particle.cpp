@@ -416,10 +416,12 @@ Particle::event_death()
   #endif
 
   // Finish particle track output.
+  /*
   if (write_track_) {
     write_particle_track(*this);
     finalize_particle_track(*this);
   }
+  */
 
   // Contribute tally reduction variables to global accumulator
   #pragma omp atomic
@@ -440,8 +442,8 @@ Particle::event_death()
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    int64_t offset = id_ - 1 - simulation::work_index[mpi::rank];
-    simulation::progeny_per_particle[offset] = n_progeny_;
+    int64_t offset = id_ - 1 - simulation::device_work_index[mpi::rank];
+    simulation::device_progeny_per_particle[offset] = n_progeny_;
   }
 
   //if( nu_bank_.capacity() > NU_BANK_SIZE )

@@ -85,32 +85,6 @@ private:
   size_t n_distribution_;
 };
 
-class ReactionProductFlatContainer {
-public:
-  // Constructors
-  explicit ReactionProductFlatContainer(const ReactionProduct& product);
-
-  #pragma omp declare target
-  void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
-  #pragma omp end declare target
-
-  void copy_to_device();
-  void release_from_device();
-
-  ReactionProductFlat obj() const;
-
-  Particle::Type particle() const { return this->obj().particle(); }
-  ReactionProduct::EmissionMode emission_mode() const { return this->obj().emission_mode(); }
-  double decay_rate() const { return this->obj().decay_rate(); }
-  Function1DFlat yield() const { return this->obj().yield(); }
-  AngleEnergyFlat distribution(gsl::index i) const { return this->obj().distribution(i); }
-
-  const uint8_t* data() const { return buffer_.data_; }
-private:
-  // Data members
-  DataBuffer buffer_;
-};
-
 } // namespace opemc
 
 #endif // OPENMC_REACTION_PRODUCT_H

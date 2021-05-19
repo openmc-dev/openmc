@@ -147,24 +147,6 @@ void ReactionProduct::serialize(DataBuffer& buffer) const
   }
 }
 
-// void ReactionProduct::copy_to_device()
-// {
-//   device_distribution_ = distribution_.data();
-
-//   #pragma omp target enter data map(to: device_distribution_[:distribution_.size()])
-//   for (auto& d : distribution_) {
-//     d.copy_to_device();
-//   }
-// }
-
-// void ReactionProduct::release_from_device()
-// {
-//   for (auto& d : distribution_) {
-//     d.release_device();
-//   }
-//   #pragma omp target exit data map(release: device_distribution_[:distribution_.size()])
-// }
-
 ReactionProductFlat::ReactionProductFlat(const uint8_t* data) : data_(data)
 {
   yield_size_ = *reinterpret_cast<const size_t*>(data_ + 16);
@@ -226,38 +208,6 @@ AngleEnergyFlat ReactionProductFlat::distribution(gsl::index i) const
   auto indices = reinterpret_cast<const int*>(data_ + 40 + yield_size_);
   size_t offset = indices[n_applicability_ + i];
   return AngleEnergyFlat(data_ + offset);
-}
-
-ReactionProductFlatContainer::ReactionProductFlatContainer(const ReactionProduct& product)
-{
-  // Determine number of bytes needed and create allocation
-  size_t n = buffer_nbytes(product);
-
-  // Write into buffer
-  buffer_.reserve(n);
-  product.serialize(buffer_);
-  Ensures(n == buffer_.size());
-}
-
-ReactionProductFlat ReactionProductFlatContainer::obj() const
-{
-  return ReactionProductFlat(buffer_.data_);
-}
-
-void ReactionProductFlatContainer::sample(double E_in, double& E_out, double& mu,
-  uint64_t* seed) const
-{
-  this->obj().sample(E_in, E_out, mu, seed);
-}
-
-void ReactionProductFlatContainer::copy_to_device()
-{
-  buffer_.copy_to_device();
-}
-
-void ReactionProductFlatContainer::release_from_device()
-{
-  buffer_.release_device();
 }
 
 }

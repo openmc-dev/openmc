@@ -1273,6 +1273,23 @@ void free_memory_material()
   model::material_map.clear();
 }
 
+void Material::copy_to_device()
+{
+  device_nuclide_ = nuclide_.data();
+  #pragma omp target enter data map(to: device_nuclide_[:nuclide_.size()])
+  device_element_ = element_.data();
+  #pragma omp target enter data map(to: device_element_[:element_.size()])
+  device_mat_nuclide_index_ = mat_nuclide_index_.data();
+  #pragma omp target enter data map(to: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
+}
+
+void Material::release_from_device()
+{
+  #pragma omp target exit data map(release: device_nuclide_[:nuclide_.size()])
+  #pragma omp target exit data map(release: device_element_[:element_.size()])
+  #pragma omp target exit data map(release: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
+}
+
 //==============================================================================
 // C API
 //==============================================================================

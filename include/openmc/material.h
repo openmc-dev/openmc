@@ -138,13 +138,18 @@ public:
   //! Get temperature of material
   //! \return Temperature in [K]
   double temperature() const;
+  
+  void copy_to_device();
+  void release_from_device();
 
   //----------------------------------------------------------------------------
   // Data
   int32_t id_ {C_NONE}; //!< Unique ID
   std::string name_; //!< Name of material
   std::vector<int> nuclide_; //!< Indices in nuclides vector
+  int* device_nuclide_;
   std::vector<int> element_; //!< Indices in elements vector
+  int* device_element_;
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_; //!< Total atom density in [atom/b-cm]
   double density_gpcc_; //!< Total atom density in [g/cm^3]
@@ -158,6 +163,7 @@ public:
   // corresponding nuclide in the nuclide_ vector. If it is not present in the
   // material, the entry is set to -1.
   std::vector<int> mat_nuclide_index_;
+  int* device_mat_nuclide_index_;
 
   // Thermal scattering tables
   std::vector<ThermalTable> thermal_tables_;

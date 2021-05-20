@@ -169,6 +169,7 @@ public:
 
   // Thermal scattering tables
   std::vector<ThermalTable> thermal_tables_;
+  ThermalTable* device_thermal_tables_;
 
   Bremsstrahlung ttb_;
 

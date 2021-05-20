@@ -8,7 +8,6 @@
 #include "hdf5.h"
 #include "pugixml.hpp"
 
-#include "dagmc.h"
 #include "openmc/boundary_condition.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr

@@ -117,7 +117,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     }
 
     if (!found) { return found; }
-    i_cell = p.coord_[p.n_coord_ - 1].cell;
+    i_cell = p.coord(p.n_coord() - 1).cell;
 
     // Announce the cell that the particle is entering.
     if (found && (settings::verbosity >= 10 || p.trace())) {

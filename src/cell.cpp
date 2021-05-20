@@ -223,15 +223,15 @@ Universe::find_cell(Particle& p) const {
 
   for (auto it = cells.begin(); it != cells.end(); it++) {
     int32_t i_cell = *it;
-    int32_t i_univ = p.coord_[p.n_coord_-1].universe;
+    int32_t i_univ = p.coord(p.n_coord()-1).universe;
     if (model::cells[i_cell]->universe_ != i_univ) continue;
 
     // Check if this cell contains the particle;
     Position r {p.r_local()};
     Direction u {p.u_local()};
-    auto surf = p.surface_;
+    auto surf = p.surface();
     if (model::cells[i_cell]->contains(r, u, surf)) {
-      p.coord_[p.n_coord_-1].cell = i_cell;
+      p.coord(p.n_coord()-1).cell = i_cell;
       return true;
     }
   }

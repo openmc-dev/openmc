@@ -156,7 +156,8 @@ public:
   double volume_ {-1.0}; //!< Volume in [cm^3]
   bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
-  std::vector<bool> p0_; //!< Indicate which nuclides are to be treated with iso-in-lab scattering
+  std::vector<int> p0_; //!< Indicate which nuclides are to be treated with iso-in-lab scattering
+  int* device_p0_;
 
   // To improve performance of tallying, we store an array (direct address
   // table) that indicates for each nuclide in data::nuclides the index of the

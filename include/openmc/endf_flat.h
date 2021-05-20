@@ -18,16 +18,28 @@ enum class FunctionType {
 
 class Function1DFlat {
 public:
-  explicit Function1DFlat(const Function1D& func);
-  explicit Function1DFlat(DataBuffer buffer);
+  // Constructors
+  explicit Function1DFlat(const uint8_t* data) : data_(data) { }
+
+  double operator()(double x) const;
+
+  FunctionType type() const;
+private:
+  // Data members
+  const uint8_t* data_;
+};
+
+class Function1DFlatContainer {
+public:
+  explicit Function1DFlatContainer(const Function1D& func);
 
   double operator()(double x) const;
 
   const uint8_t* data() const { return buffer_.data_; }
-  FunctionType type() const { return type_; }
+  FunctionType type() const { return this->func().type(); }
+  Function1DFlat func() const { return Function1DFlat(buffer_.data_); }
+
 private:
-  // Data members
-  FunctionType type_;
   DataBuffer buffer_;
 };
 

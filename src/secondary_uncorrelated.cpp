@@ -83,10 +83,9 @@ void UncorrelatedAngleEnergy::serialize(DataBuffer& buffer) const
   int energy_offset = energy_ ? 16 + bytes_angle : 0;
   buffer.add(energy_offset); // 4
 
-  // Write placeholder for fission
-  int fission = 0;
-  buffer.add(fission); // 4
-  buffer.align(8);     // 4
+  // Write fission
+  buffer.add(static_cast<int>(fission_)); // 4
+  buffer.align(8);                        // 4
 
   // Create buffer and serialize data
   angle_.serialize(buffer);

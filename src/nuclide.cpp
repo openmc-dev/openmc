@@ -201,11 +201,11 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   for (auto name : group_names(rxs_group)) {
     if (starts_with(name, "reaction_")) {
       hid_t rx_group = open_group(rxs_group, name.c_str());
-      reactions_.push_back(std::make_unique<Reaction>(rx_group, temps_to_read));
+      Reaction rx(rx_group, temps_to_read);
+      reactions_.emplace_back(rx);
 
       // Check for 0K elastic scattering
-      const auto& rx = reactions_.back();
-      if (rx->mt_ == ELASTIC) {
+      if (rx.mt_ == ELASTIC) {
         if (object_exists(rx_group, "0K")) {
           hid_t temp_group = open_group(rx_group, "0K");
           read_dataset(temp_group, "xs", elastic_0K_);
@@ -215,7 +215,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
       close_group(rx_group);
 
       // Determine reaction indices for inelastic scattering reactions
-      if (is_inelastic_scatter(rx->mt_) && !rx->redundant_) {
+      if (is_inelastic_scatter(rx.mt_) && !rx.redundant_) {
         index_inelastic_scatter_.push_back(reactions_.size() - 1);
       }
     }
@@ -259,7 +259,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 
       if (urr_data_[0].inelastic_flag_ > 0) {
         for (int i = 0; i < reactions_.size(); i++) {
-          if (reactions_[i]->mt_ == urr_data_[0].inelastic_flag_) {
+          if (reactions_[i].mt() == urr_data_[0].inelastic_flag_) {
             urr_inelastic_ = i;
           }
         }
@@ -277,25 +277,25 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   if (object_exists(group, "total_nu")) {
     // Read total nu data
     hid_t nu_group = open_group(group, "total_nu");
-    total_nu_ = std::make_unique<Function1DFlat>(*read_function(nu_group, "yield"));
+    total_nu_ = std::make_unique<Function1DFlatContainer>(*read_function(nu_group, "yield"));
     close_group(nu_group);
   }
 
   // Read fission energy release data if present
   if (object_exists(group, "fission_energy_release")) {
     hid_t fer_group = open_group(group, "fission_energy_release");
-    fission_q_prompt_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "q_prompt"));
-    fission_q_recov_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "q_recoverable"));
+    fission_q_prompt_ = std::make_unique<Function1DFlatContainer>(*read_function(fer_group, "q_prompt"));
+    fission_q_recov_ = std::make_unique<Function1DFlatContainer>(*read_function(fer_group, "q_recoverable"));
 
     // Read fission fragment and delayed beta energy release. This is needed for
     // energy normalization in k-eigenvalue calculations
-    fragments_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "fragments"));
-    betas_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "betas"));
+    fragments_ = std::make_unique<Function1DFlatContainer>(*read_function(fer_group, "fragments"));
+    betas_ = std::make_unique<Function1DFlatContainer>(*read_function(fer_group, "betas"));
 
     // We need prompt/delayed photon energy release for scaling fission photon
     // production
-    prompt_photons_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "prompt_photons"));
-    delayed_photons_ = std::make_unique<Function1DFlat>(*read_function(fer_group, "delayed_photons"));
+    prompt_photons_ = std::make_unique<Function1DFlatContainer>(*read_function(fer_group, "prompt_photons"));
+    delayed_photons_ = std::make_unique<Function1DFlatContainer>(*read_function(fer_group, "delayed_photons"));
     close_group(fer_group);
   }
 
@@ -307,7 +307,7 @@ Nuclide::~Nuclide()
   data::nuclide_map.erase(name_);
 }
 
-void Nuclide::create_derived(const Function1DFlat* prompt_photons, const Function1DFlat* delayed_photons)
+void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons)
 {
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section
@@ -317,18 +317,21 @@ void Nuclide::create_derived(const Function1DFlat* prompt_photons, const Functio
 
   reaction_index_.fill(C_NONE);
   for (int i = 0; i < reactions_.size(); ++i) {
-    const auto& rx {reactions_[i]};
+    const auto& rx {reactions_[i].obj()};
 
     // Set entry in direct address table for reaction
-    reaction_index_[rx->mt_] = i;
+    reaction_index_[rx.mt()] = i;
 
     for (int t = 0; t < kTs_.size(); ++t) {
-      int j = rx->xs_[t].threshold;
-      int n = rx->xs_[t].value.size();
-      auto xs = xt::adapt(rx->xs_[t].value);
+      int j = rx.xs_threshold(t);
+      auto xs_span = rx.xs_value(t);
+      size_t n = xs_span.size();
+      std::vector<size_t> shape = {n};
+      auto xs = xt::adapt(xs_span.data(), n, xt::no_ownership(), shape);
 
-      for (const auto& p : rx->products_) {
-        if (p.particle_ == Particle::Type::photon) {
+      for (int i = 0; i < rx.n_products(); ++i) {
+        auto p = rx.products(i);
+        if (p.particle() == Particle::Type::photon) {
           auto pprod = xt::view(xs_[t], xt::range(j, j+n), XS_PHOTON_PROD);
           for (int k = 0; k < n; ++k) {
             double E = grid_[t].energy[k+j];
@@ -337,7 +340,7 @@ void Nuclide::create_derived(const Function1DFlat* prompt_photons, const Functio
             // for delayed photons
             double f = 1.0;
             if (settings::delayed_photon_scaling) {
-              if (is_fission(rx->mt_)) {
+              if (is_fission(rx.mt())) {
                 if (prompt_photons && delayed_photons) {
                   double energy_prompt = (*prompt_photons)(E);
                   double energy_delayed = (*delayed_photons)(E);
@@ -346,13 +349,13 @@ void Nuclide::create_derived(const Function1DFlat* prompt_photons, const Functio
               }
             }
 
-            pprod[k] += f * xs[k] * (*p.yield_)(E);
+            pprod[k] += f * xs[k] * p.yield()(E);
           }
         }
       }
 
       // Skip redundant reactions
-      if (rx->redundant_) continue;
+      if (rx.redundant()) continue;
 
       // Add contribution to total cross section
       auto total = xt::view(xs_[t], xt::range(j,j+n), XS_TOTAL);
@@ -360,11 +363,11 @@ void Nuclide::create_derived(const Function1DFlat* prompt_photons, const Functio
 
       // Add contribution to absorption cross section
       auto absorption = xt::view(xs_[t], xt::range(j,j+n), XS_ABSORPTION);
-      if (is_disappearance(rx->mt_)) {
+      if (is_disappearance(rx.mt())) {
         absorption += xs;
       }
 
-      if (is_fission(rx->mt_)) {
+      if (is_fission(rx.mt())) {
         fissionable_ = true;
         auto fission = xt::view(xs_[t], xt::range(j,j+n), XS_FISSION);
         fission += xs;
@@ -372,8 +375,8 @@ void Nuclide::create_derived(const Function1DFlat* prompt_photons, const Functio
 
         // Keep track of fission reactions
         if (t == 0) {
-          fission_rx_.push_back(rx.get());
-          if (rx->mt_ == N_F) has_partial_fission_ = true;
+          fission_rx_.push_back(&reactions_[i]);
+          if (rx.mt() == N_F) has_partial_fission_ = true;
         }
       }
     }
@@ -381,8 +384,10 @@ void Nuclide::create_derived(const Function1DFlat* prompt_photons, const Functio
 
   // Determine number of delayed neutron precursors
   if (fissionable_) {
-    for (const auto& product : fission_rx_[0]->products_) {
-      if (product.emission_mode_ == EmissionMode::delayed) {
+    auto fission_rx = fission_rx_[0]->obj();
+    for (int i = 0; i < fission_rx.n_products(); ++i) {
+      auto product = fission_rx.products(i);
+      if (product.emission_mode() == EmissionMode::delayed) {
         ++n_precursor_;
       }
     }
@@ -480,26 +485,26 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 {
   if (!fissionable_) return 0.0;
 
+  auto rx = fission_rx_[0]->obj();
   switch (mode) {
   case EmissionMode::prompt:
-    return (*fission_rx_[0]->products_[0].yield_)(E);
+    return rx.products(0).yield()(E);
   case EmissionMode::delayed:
     if (n_precursor_ > 0) {
-      auto rx = fission_rx_[0];
-      if (group >= 1 && group < rx->products_.size()) {
+      if (group >= 1 && group < rx.n_products()) {
         // If delayed group specified, determine yield immediately
-        return (*rx->products_[group].yield_)(E);
+        return rx.products(group).yield()(E);
       } else {
         double nu {0.0};
 
-        for (int i = 1; i < rx->products_.size(); ++i) {
+        for (int i = 1; i < rx.n_products(); ++i) {
           // Skip any non-neutron products
-          const auto& product = rx->products_[i];
-          if (product.particle_ != Particle::Type::neutron) continue;
+          const auto& product = rx.products(i);
+          if (product.particle() != Particle::Type::neutron) continue;
 
           // Evaluate yield
-          if (product.emission_mode_ == EmissionMode::delayed) {
-            nu += (*product.yield_)(E);
+          if (product.emission_mode() == EmissionMode::delayed) {
+            nu += product.yield()(E);
           }
         }
         return nu;
@@ -511,7 +516,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
     if (total_nu_) {
       return (*total_nu_)(E);
     } else {
-      return (*fission_rx_[0]->products_[0].yield_)(E);
+      return rx.products(0).yield()(E);
     }
   }
   UNREACHABLE();
@@ -522,12 +527,9 @@ void Nuclide::calculate_elastic_xs(Particle& p) const
   // Get temperature index, grid index, and interpolation factor
   auto& micro {p.neutron_xs_[index_]};
   int i_temp = micro.index_temp;
-  int i_grid = micro.index_grid;
-  double f = micro.interp_factor;
 
   if (i_temp >= 0) {
-    const auto& xs = reactions_[0]->xs_[i_temp].value;
-    micro.elastic = (1.0 - f)*xs[i_grid] + f*xs[i_grid + 1];
+    micro.elastic = reactions_[0].obj().xs(micro);
   }
 }
 
@@ -707,21 +709,18 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
         // reaction xs appropriately
         int i_rx = reaction_index_[DEPLETION_RX[j]];
         if (i_rx >= 0) {
-          const auto& rx = reactions_[i_rx];
-          const auto& rx_xs = rx->xs_[i_temp].value;
+          const auto& rx = reactions_[i_rx].obj();
 
           // Physics says that (n,gamma) is not a threshold reaction, so we don't
           // need to specifically check its threshold index
           if (j == 0) {
-            micro.reaction[0] = (1.0 - f)*rx_xs[i_grid]
-              + f*rx_xs[i_grid + 1];
+            micro.reaction[0] = rx.xs(i_temp, i_grid, f);
             continue;
           }
 
-          int threshold = rx->xs_[i_temp].threshold;
+          int threshold = rx.xs_threshold(i_temp);
           if (i_grid >= threshold) {
-            micro.reaction[j] = (1.0 - f)*rx_xs[i_grid - threshold] +
-              f*rx_xs[i_grid - threshold + 1];
+            micro.reaction[j] = rx.xs(i_temp, i_grid, f);
           } else if (j >= 3) {
             // One can show that the the threshold for (n,(x+1)n) is always
             // higher than the threshold for (n,xn). Thus, if we are below
@@ -879,16 +878,9 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // Determine the treatment of inelastic scattering
   double inelastic = 0.;
   if (urr.inelastic_flag_ != C_NONE) {
-    // get interpolation factor
-    f = micro.interp_factor;
-
     // Determine inelastic scattering cross section
-    Reaction* rx = reactions_[urr_inelastic_].get();
-    int xs_index = micro.index_grid - rx->xs_[i_temp].threshold;
-    if (xs_index >= 0) {
-      inelastic = (1. - f) * rx->xs_[i_temp].value[xs_index] +
-           f * rx->xs_[i_temp].value[xs_index + 1];
-    }
+    auto rx = reactions_[urr_inelastic_].obj();
+    inelastic = rx.xs(micro);
   }
 
   // Multiply by smooth cross-section if needed
@@ -966,7 +958,7 @@ double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double
 
   int i_rx = reaction_index_[MT];
   if (i_rx < 0) return 0.0;
-  const auto& rx = reactions_[i_rx];
+  const auto& rx = reactions_[i_rx].obj();
 
   // Determine temperature index
   gsl::index i_temp;
@@ -975,17 +967,35 @@ double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double
 
   // Get reaction rate at lower temperature
   const auto& grid_low = grid_[i_temp].energy;
-  double rr_low = rx->collapse_rate(i_temp, energy, flux, grid_low);
+  double rr_low = rx.collapse_rate(i_temp, energy, flux, grid_low);
 
   if (f > 0.0) {
     // Interpolate between reaction rate at lower and higher temperature
     const auto& grid_high = grid_[i_temp + 1].energy;
-    double rr_high = rx->collapse_rate(i_temp + 1, energy, flux, grid_high);
+    double rr_high = rx.collapse_rate(i_temp + 1, energy, flux, grid_high);
     return rr_low + f*(rr_high - rr_low);
   } else {
     // If interpolation factor is zero, return reaction rate at lower temperature
     return rr_low;
   }
+}
+
+void Nuclide::copy_to_device()
+{
+  device_reactions_ = reactions_.data();
+
+  #pragma omp target enter data map(to: device_reactions_[:reactions_.size()])
+  for (auto& rx : reactions_) {
+    rx.copy_to_device();
+  }
+}
+
+void Nuclide::release_from_device()
+{
+  for (auto& rx : reactions_) {
+    rx.release_from_device();
+  }
+  #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
 }
 
 //==============================================================================

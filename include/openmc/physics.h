@@ -48,11 +48,11 @@ int sample_nuclide(Particle& p);
 
 //! Determine the average total, prompt, and delayed neutrons produced from
 //! fission and creates appropriate bank sites.
-void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx);
+void create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx);
 
 int sample_element(Particle& p);
 
-Reaction& sample_fission(int i_nuclide, Particle& p);
+ReactionFlat sample_fission(int i_nuclide, Particle& p);
 
 void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product);
 
@@ -61,7 +61,7 @@ void absorption(Particle& p, int i_nuclide);
 void scatter(Particle& p, int i_nuclide);
 
 //! Treats the elastic scattering of a neutron with a target.
-void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
+void elastic_scatter(int i_nuclide, const ReactionFlat& rx, double kT,
   Particle& p);
 
 void sab_scatter(int i_nuclide, int i_sab, Particle& p);
@@ -80,12 +80,12 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 Direction sample_cxs_target_velocity(double awr, double E, Direction u, double kT,
   uint64_t* seed);
 
-void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
+void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in,
   Particle::Bank* site, uint64_t* seed);
 
 //! handles all reactions with a single secondary neutron (other than fission),
 //! i.e. level scattering, (n,np), (n,na), etc.
-void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p);
+void inelastic_scatter(const Nuclide& nuc, const ReactionFlat& rx, Particle& p);
 
 void sample_secondary_photons(Particle& p, int i_nuclide);
 

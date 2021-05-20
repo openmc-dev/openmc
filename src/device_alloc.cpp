@@ -98,14 +98,7 @@ void move_read_only_data_to_device()
   // Nuclides /////////////////////////////////////////////////////////
   for (auto& nuc : data::nuclides) {
     std::cout << "Moving " << nuc->name_ << " data to device..." << std::endl;
-    for (auto& rx : nuc->reactions_) {
-      for (auto& product : rx->products_) {
-        for (auto& d : product.distribution_) {
-          #pragma omp target enter data map(to: d)
-          d.copy_to_device();
-        }
-      }
-    }
+    nuc->copy_to_device();
   }
   
   // Materials /////////////////////////////////////////////////////////
@@ -135,14 +128,7 @@ void release_data_from_device()
 {
   std::cout << "Releasing data from device..." << std::endl;
   for (auto& nuc : data::nuclides) {
-    for (auto& rx : nuc->reactions_) {
-      for (auto& product : rx->products_) {
-        for (auto& d : product.distribution_) {
-          d.release_device();
-          #pragma omp target exit data map(release: d)
-        }
-      }
-    }
+    nuc->release_from_device();
   }
 }
 

@@ -69,6 +69,9 @@ public:
   double collapse_rate(int MT, double temperature, gsl::span<const double> energy,
     gsl::span<const double> flux) const;
 
+  void copy_to_device();
+  void release_from_device();
+
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"
   int Z_; //!< Atomic number
@@ -88,15 +91,15 @@ public:
   // Fission data
   bool fissionable_ {false}; //!< Whether nuclide is fissionable
   bool has_partial_fission_ {false}; //!< has partial fission reactions?
-  std::vector<Reaction*> fission_rx_; //!< Fission reactions
+  std::vector<ReactionFlatContainer*> fission_rx_; //!< Fission reactions
   int n_precursor_ {0}; //!< Number of delayed neutron precursors
-  std::unique_ptr<Function1DFlat> total_nu_; //!< Total neutron yield
-  std::unique_ptr<Function1DFlat> fission_q_prompt_; //!< Prompt fission energy release
-  std::unique_ptr<Function1DFlat> fission_q_recov_; //!< Recoverable fission energy release
-  std::unique_ptr<Function1DFlat> prompt_photons_; //!< Prompt photon energy release
-  std::unique_ptr<Function1DFlat> delayed_photons_; //!< Delayed photon energy release
-  std::unique_ptr<Function1DFlat> fragments_; //!< Fission fragment energy release
-  std::unique_ptr<Function1DFlat> betas_; //!< Delayed beta energy release
+  std::unique_ptr<Function1DFlatContainer> total_nu_; //!< Total neutron yield
+  std::unique_ptr<Function1DFlatContainer> fission_q_prompt_; //!< Prompt fission energy release
+  std::unique_ptr<Function1DFlatContainer> fission_q_recov_; //!< Recoverable fission energy release
+  std::unique_ptr<Function1DFlatContainer> prompt_photons_; //!< Prompt photon energy release
+  std::unique_ptr<Function1DFlatContainer> delayed_photons_; //!< Delayed photon energy release
+  std::unique_ptr<Function1DFlatContainer> fragments_; //!< Fission fragment energy release
+  std::unique_ptr<Function1DFlatContainer> betas_; //!< Delayed beta energy release
 
   // Resonance scattering information
   bool resonant_ {false};
@@ -109,12 +112,13 @@ public:
   int urr_inelastic_ {C_NONE};
   std::vector<UrrData> urr_data_;
 
-  std::vector<std::unique_ptr<Reaction>> reactions_; //!< Reactions
+  std::vector<ReactionFlatContainer> reactions_; //!< Reactions
   std::array<size_t, 902> reaction_index_; //!< Index of each reaction
   std::vector<int> index_inelastic_scatter_;
 
+  ReactionFlatContainer* device_reactions_;
 private:
-  void create_derived(const Function1DFlat* prompt_photons, const Function1DFlat* delayed_photons);
+  void create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons);
 
   //! Determine temperature index and interpolation factor
   //

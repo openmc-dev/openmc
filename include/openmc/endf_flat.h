@@ -21,7 +21,9 @@ public:
   // Constructors
   explicit Function1DFlat(const uint8_t* data) : data_(data) { }
 
+  #pragma omp declare target
   double operator()(double x) const;
+  #pragma omp end declare target
 
   FunctionType type() const;
 private:

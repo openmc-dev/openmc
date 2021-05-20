@@ -301,7 +301,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 
   this->create_derived(prompt_photons_.get(), delayed_photons_.get());
 }
-  
+
 void Nuclide::flatten_xs_data()
 {
   // Allocate array to store 1D jagged offsets for each temperature
@@ -352,7 +352,7 @@ void Nuclide::flatten_xs_data()
 Nuclide::~Nuclide()
 {
   data::nuclide_map.erase(name_);
-  
+
   // These arrays are only allocated if 1D flattening function was called
   if (flat_temp_offsets_ != nullptr) {
     delete[] flat_temp_offsets_;
@@ -752,10 +752,10 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.index_grid = i_grid;
     micro.interp_factor = f;
 
-    // 1D indexing conversion 
+    // 1D indexing conversion
     int i_grid1D = i_grid * 5;
     int i_next1D = (i_grid + 1) * 5;
-    
+
     // Calculate microscopic nuclide total cross section
     micro.total = (1.0 - f)*xs[i_grid1D + XS_TOTAL]
           + f*xs[i_next1D + XS_TOTAL];
@@ -1071,13 +1071,16 @@ double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double
 void Nuclide::copy_to_device()
 {
   // Reactions
+  device_index_inelastic_scatter_ = index_inelastic_scatter_.data();
   device_reactions_ = reactions_.data();
 
+  #pragma omp target enter data map(to: this[:1])
+  #pragma omp target enter data map(to: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
   #pragma omp target enter data map(to: device_reactions_[:reactions_.size()])
   for (auto& rx : reactions_) {
     rx.copy_to_device();
   }
-  
+
   // Regular pointwise XS data
   device_kTs_ = kTs_.data();
   #pragma omp target enter data map(to: device_kTs_[:kTs_.size()])
@@ -1101,6 +1104,8 @@ void Nuclide::release_from_device()
     rx.release_from_device();
   }
   #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
+  #pragma omp target exit data map(release: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
+  #pragma omp target exit data map(release: this[:1])
 
   // Regular pointwise XS data
   #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])
@@ -1108,7 +1113,7 @@ void Nuclide::release_from_device()
   #pragma omp target exit data map(release: flat_grid_energy_[:total_energy_gridpoints_])
   #pragma omp target exit data map(release: flat_grid_index_[:total_index_gridpoints_])
   #pragma omp target exit data map(release: flat_xs_[:total_energy_gridpoints_*5])
-  
+
   // URR data
   for (auto& u : urr_data_) {
     #pragma omp target exit data map(release: u.device_energy_[:u.n_energy_])

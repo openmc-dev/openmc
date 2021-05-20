@@ -128,6 +128,7 @@ public:
   std::array<size_t, 902> reaction_index_; //!< Index of each reaction
   std::vector<int> index_inelastic_scatter_;
 
+  int* device_index_inelastic_scatter_;
   ReactionFlatContainer* device_reactions_;
 private:
   void create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons);

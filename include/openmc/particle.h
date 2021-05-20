@@ -216,8 +216,10 @@ public:
   const Position& r_local() const { return coord_[n_coord_ - 1].r; }
 
   // Accessors for direction in global coordinates
+  #pragma omp declare target
   Direction& u() { return coord_[0].u; }
   const Direction& u() const { return coord_[0].u; }
+  #pragma omp end declare target
 
   // Accessors for direction in local coordinates
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
@@ -237,7 +239,9 @@ public:
   //! \param u Direction of the secondary particle
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
+  #pragma omp declare target
   void create_secondary(double wgt, Direction u, double E, Type type);
+  #pragma omp end declare target
 
   //! initialize from a source site
   //
@@ -324,7 +328,7 @@ public:
   // TODO: neutron_xs_ can eventually be converted to an allocated array, with size fixed at runtime
   //std::vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
   NuclideMicroXS neutron_xs_[NEUTRON_XS_SIZE]; //!< Microscopic neutron cross sections
-  
+
   // TODO: photon_xs_ can eventually be converted to an allocated array, with size fixed at runtime
   //std::vector<ElementMicroXS> photon_xs_; //!< Microscopic photon cross sections
   ElementMicroXS photon_xs_[PHOTON_XS_SIZE]; //!< Microscopic photon cross sections
@@ -435,7 +439,7 @@ public:
   bool trace_ {false};     //!< flag to show debug information
 
   double collision_distance_; // distance to particle's next closest collision
-  
+
   double advance_distance_; // distance the particle actually advanced this event
 
   int n_event_ {0}; // number of events executed in this particle's history

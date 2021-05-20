@@ -626,7 +626,7 @@ void scatter(Particle& p, int i_nuclide)
   Direction u_old {p.u()};
 
   // Get pointer to nuclide and grid index/interpolation factor
-  const auto& nuc {data::nuclides[i_nuclide]};
+  const auto& nuc {data::nuclides[i_nuclide].get()};
   const auto& micro {p.neutron_xs_[i_nuclide]};
   int i_temp =  micro.index_temp;
 
@@ -670,26 +670,37 @@ void scatter(Particle& p, int i_nuclide)
     // =======================================================================
     // INELASTIC SCATTERING
 
+    const auto& nuc_obj = *nuc;
+
     int j = 0;
     int i = 0;
-    while (prob < cutoff) {
-      i = nuc->index_inelastic_scatter_[j];
-      ++j;
 
-      // Check to make sure inelastic scattering reaction sampled
-      if (i >= nuc->reactions_.size()) {
-        p.write_restart();
-        fatal_error("Did not sample any reaction for nuclide " + nuc->name_);
+    #pragma omp target update to(p)
+    #pragma omp target
+    {
+      while (prob < cutoff) {
+        i = nuc_obj.device_index_inelastic_scatter_[j];
+        ++j;
+
+        /*
+        // Check to make sure inelastic scattering reaction sampled
+        if (i >= nuc->reactions_.size()) {
+          p.write_restart();
+          fatal_error("Did not sample any reaction for nuclide " + nuc->name_);
+        }
+        */
+
+        // add to cumulative probability
+        auto rx = nuc_obj.device_reactions_[i].obj();
+        prob += rx.xs(micro);
       }
 
-      // add to cumulative probability
-      prob += nuc->reactions_[i].obj().xs(micro);
+      // Perform collision physics for inelastic scattering
+      auto rx = nuc_obj.device_reactions_[i].obj();
+      inelastic_scatter(nuc_obj, rx, p);
+      p.event_mt_ = rx.mt();
     }
-
-    // Perform collision physics for inelastic scattering
-    const auto& rx {nuc->reactions_[i].obj()};
-    inelastic_scatter(*nuc, rx, p);
-    p.event_mt_ = rx.mt();
+    #pragma omp target update from(p)
   }
 
   // Set event component

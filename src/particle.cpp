@@ -96,7 +96,7 @@ Particle::create_secondary(double wgt, Direction u, double E, Type type)
   //secondary_bank_.emplace_back();
 
   //auto& bank {secondary_bank_.back()};
-  assert(secondary_bank_length_ < SECONDARY_BANK_SIZE);
+  //assert(secondary_bank_length_ < SECONDARY_BANK_SIZE);
   auto& bank = secondary_bank_[secondary_bank_length_++];
   bank.particle = type;
   bank.wgt = wgt;
@@ -230,7 +230,7 @@ Particle::event_advance()
   } else {
     collision_distance_ = -std::log(prn(this->current_seed())) / macro_xs_.total;
   }
-  
+
   //if( id_ == 1 )
   //  printf("distance to collision = %.3le\n", collision_distance_);
 

@@ -281,9 +281,9 @@ Material::Material(pugi::xml_node node)
   bool is_all_pos = true;
   bool is_all_neg = true;
   for (int i = 0; i < n; ++i) {
-    if (atom_density_[i] > 0 )
+    if (atom_density_[i] > 0)
       is_all_neg = false;
-    if (atom_density_[i] < 0 )
+    if (atom_density_[i] < 0)
       is_all_pos = false;
   }
   if (!(is_all_pos || is_all_neg)) {

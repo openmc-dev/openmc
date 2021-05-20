@@ -605,13 +605,14 @@ void initialize_data()
   // Determine minimum/maximum energy for incident neutron/photon data
   data::energy_max = {INFTY, INFTY};
   data::energy_min = {0.0, 0.0};
-  for (const auto& nuc : data::nuclides) {
-    if (nuc->grid_.size() >= 1) {
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    const auto& nuc = data::nuclides[i];
+    if (nuc.grid_.size() >= 1) {
       int neutron = static_cast<int>(Particle::Type::neutron);
       data::energy_min[neutron] = std::max(data::energy_min[neutron],
-        nuc->grid_[0].energy.front());
+        nuc.grid_[0].energy.front());
       data::energy_max[neutron] = std::min(data::energy_max[neutron],
-        nuc->grid_[0].energy.back());
+        nuc.grid_[0].energy.back());
     }
   }
 
@@ -642,15 +643,16 @@ void initialize_data()
   }
 
   // Show which nuclide results in lowest energy for neutron transport
-  for (const auto& nuc : data::nuclides) {
+  for (int i = 0; i < data::nuclides_size; ++i) {
     // If a nuclide is present in a material that's not used in the model, its
     // grid has not been allocated
-    if (nuc->grid_.size() > 0) {
-      double max_E = nuc->grid_[0].energy.back();
+    const auto& nuc = data::nuclides[i];
+    if (nuc.grid_.size() > 0) {
+      double max_E = nuc.grid_[0].energy.back();
       int neutron = static_cast<int>(Particle::Type::neutron);
       if (max_E == data::energy_max[neutron]) {
         write_message(7, "Maximum neutron transport energy: {} eV for {}",
-          data::energy_max[neutron], nuc->name_);
+          data::energy_max[neutron], nuc.name_);
         if (mpi::master && data::energy_max[neutron] < 20.0e6) {
           warning("Maximum neutron energy is below 20 MeV. This may bias "
             "the results.");
@@ -661,8 +663,8 @@ void initialize_data()
   }
 
   // Set up logarithmic grid for nuclides
-  for (auto& nuc : data::nuclides) {
-    nuc->init_grid();
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    data::nuclides[i].init_grid();
   }
   int neutron = static_cast<int>(Particle::Type::neutron);
   simulation::log_spacing = std::log(data::energy_max[neutron] /

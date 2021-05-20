@@ -173,7 +173,11 @@ extern double temperature_min;
 extern double temperature_max;
 
 extern std::unordered_map<std::string, int> nuclide_map;
-extern std::vector<std::unique_ptr<Nuclide>> nuclides;
+#pragma omp declare target
+extern Nuclide* nuclides;
+extern size_t nuclides_size;
+#pragma omp end declare target
+extern size_t nuclides_capacity;
 
 } // namespace data
 

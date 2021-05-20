@@ -51,11 +51,11 @@ void write_nuclides(hid_t file)
   std::vector<std::string> macro_names;
   std::vector<double> awrs;
 
-  for (int i = 0; i < data::nuclides.size(); ++i) {
+  for (int i = 0; i < data::nuclides_size; ++i) {
     if (settings::run_CE) {
       const auto& nuc {data::nuclides[i]};
-      nuc_names.push_back(nuc->name_);
-      awrs.push_back(nuc->awr_);
+      nuc_names.push_back(nuc.name_);
+      awrs.push_back(nuc.awr_);
     } else {
       const auto& nuc {data::mg.nuclides_[i]};
       if (nuc.awr != MACROSCOPIC_AWR) {

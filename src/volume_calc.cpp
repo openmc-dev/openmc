@@ -226,7 +226,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 
       // Create 2D array to store atoms/uncertainty for each nuclide. Later this
       // is compressed into vectors storing only those nuclides that are non-zero
-      auto n_nuc = data::nuclides.size();
+      auto n_nuc = data::nuclides_size;
       xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
 
 #ifdef OPENMC_MPI
@@ -408,7 +408,7 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
 
     std::vector<std::string> nucnames;
     for (int i_nuc : result.nuclides) {
-      nucnames.push_back(data::nuclides[i_nuc]->name_);
+      nucnames.push_back(data::nuclides[i_nuc].name_);
     }
 
     // Create array of total # of atoms with uncertainty for each nuclide

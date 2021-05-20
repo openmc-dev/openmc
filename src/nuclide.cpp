@@ -35,7 +35,9 @@ std::array<double, 2> energy_max {INFTY, INFTY};
 double temperature_min {0.0};
 double temperature_max {INFTY};
 std::unordered_map<std::string, int> nuclide_map;
-std::vector<std::unique_ptr<Nuclide>> nuclides;
+Nuclide* nuclides;
+size_t nuclides_size;
+size_t nuclides_capacity;
 } // namespace data
 
 //==============================================================================
@@ -51,7 +53,7 @@ int Nuclide::XS_PHOTON_PROD {4};
 Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 {
   // Set index of nuclide in global vector
-  index_ = data::nuclides.size();
+  index_ = data::nuclides_size;
 
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
@@ -1074,7 +1076,6 @@ void Nuclide::copy_to_device()
   device_index_inelastic_scatter_ = index_inelastic_scatter_.data();
   device_reactions_ = reactions_.data();
 
-  #pragma omp target enter data map(to: this[:1])
   #pragma omp target enter data map(to: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
   #pragma omp target enter data map(to: device_reactions_[:reactions_.size()])
   for (auto& rx : reactions_) {
@@ -1105,7 +1106,6 @@ void Nuclide::release_from_device()
   }
   #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
   #pragma omp target exit data map(release: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
-  #pragma omp target exit data map(release: this[:1])
 
   // Regular pointwise XS data
   #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])
@@ -1147,7 +1147,7 @@ void check_data_version(hid_t file_id)
 extern "C" size_t
 nuclides_size()
 {
-  return data::nuclides.size();
+  return data::nuclides_size;
 }
 
 //==============================================================================
@@ -1177,7 +1177,9 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
     // Read nuclide data from HDF5
     hid_t group = open_group(file_id, name);
     std::vector<double> temperature{temps, temps + n};
-    data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature));
+
+    new(data::nuclides + data::nuclides_size) Nuclide(group, temperature);
+    ++data::nuclides_size;
 
     close_group(group);
     file_close(file_id);
@@ -1234,8 +1236,8 @@ openmc_get_nuclide_index(const char* name, int* index)
 extern "C" int
 openmc_nuclide_name(int index, const char** name)
 {
-  if (index >= 0 && index < data::nuclides.size()) {
-    *name = data::nuclides[index]->name_.data();
+  if (index >= 0 && index < data::nuclides_size) {
+    *name = data::nuclides[index].name_.data();
     return 0;
   } else {
     set_errmsg("Index in nuclides vector is out of bounds.");
@@ -1247,13 +1249,13 @@ extern "C" int
 openmc_nuclide_collapse_rate(int index, int MT, double temperature,
   const double* energy, const double* flux, int n, double* xs)
 {
-  if (index < 0 || index >= data::nuclides.size()) {
+  if (index < 0 || index >= data::nuclides_size) {
     set_errmsg("Index in nuclides vector is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
   try {
-    *xs = data::nuclides[index]->collapse_rate(MT, temperature,
+    *xs = data::nuclides[index].collapse_rate(MT, temperature,
       {energy, energy + n + 1}, {flux, flux + n});
   } catch (const std::out_of_range& e) {
     fmt::print("Caught error\n");
@@ -1265,7 +1267,12 @@ openmc_nuclide_collapse_rate(int index, int MT, double temperature,
 
 void nuclides_clear()
 {
-  data::nuclides.clear();
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    data::nuclides[i].~Nuclide();
+  }
+  free(data::nuclides);
+  data::nuclides_capacity = 0;
+  data::nuclides_size = 0;
   data::nuclide_map.clear();
 }
 

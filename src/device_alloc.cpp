@@ -98,18 +98,21 @@ void move_read_only_data_to_device()
   }
 
   // Nuclides /////////////////////////////////////////////////////////
-  for (auto& nuc : data::nuclides) {
-    std::cout << "Moving " << nuc->name_ << " data to device..." << std::endl;
+  #pragma omp target update to(data::nuclides_size)
+  #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    auto& nuc = data::nuclides[i];
+    std::cout << "Moving " << nuc.name_ << " data to device..." << std::endl;
 
     // URR data flattening
-    for (auto& u : nuc->urr_data_) {
+    for (auto& u : nuc.urr_data_) {
       u.flatten_urr_data();
     }
 
     // Pointwise XS data flattening
-    nuc->flatten_xs_data();
+    nuc.flatten_xs_data();
 
-    nuc->copy_to_device();
+    nuc.copy_to_device();
   }
 
   // Materials /////////////////////////////////////////////////////////
@@ -140,8 +143,8 @@ void move_read_only_data_to_device()
 void release_data_from_device()
 {
   std::cout << "Releasing data from device..." << std::endl;
-  for (auto& nuc : data::nuclides) {
-    nuc->release_from_device();
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    data::nuclides[i].release_from_device();
   }
 }
 

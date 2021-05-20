@@ -9,7 +9,6 @@
 
 #include "openmc/array.h"
 #include "openmc/container_util.h"
-#include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"

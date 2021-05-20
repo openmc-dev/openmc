@@ -1096,7 +1096,7 @@ void Material::add_nuclide(const std::string& name, double density)
       density_ += density - atom_density_[i];
       density_gpcc_ += (density - atom_density_[i])
         * awr * MASS_NEUTRON / N_AVOGADRO;
-      atom_density_[i]= density;
+      atom_density_[i] = density;
       return;
     }
   }

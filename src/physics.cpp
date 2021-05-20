@@ -44,13 +44,13 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::weightwindow_on && settings::ww_fine_mesh->n_ww) { 
+    if (settings::weightwindow_on && settings::ww_mesh->n_ww) { 
       split_particle(p); 
     }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::weightwindow_on && settings::ww_fine_mesh->p_ww) { 
+    if (settings::weightwindow_on && settings::ww_mesh->p_ww) { 
       split_particle(p); 
     }
     break;
@@ -1166,32 +1166,45 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
   }
 }
 
-	
+// split a particle on the basis of the statistical weight
+// of the current location	
 void split_particle(Particle& p)
 {
-  if (p.E_ <= 0 || !p.alive_) return;
+  // skip dead or no energy
+  if (p.E() <= 0 || !p.alive()) return;
 	
   // Particle's position, weight and energy
   Position pos  = p.r();
-  double weight = p.wgt_;
-  double E = p.E_;	      
+  double weight = p.wgt();
+  double E = p.E();	      
 
   // Check if this particle is in the weight weindow mesh and get the mesh bins in each direction
   int ijk[3] = {0};     // mesh bin in each direction
   bool in_mesh;  
-  settings::ww_fine_mesh->mesh_->get_indices(pos, ijk, &in_mesh);
-  if (!in_mesh) return;
+  settings::ww_mesh->get_indices(pos, ijk, &in_mesh);
+  // no vr if not inside the mesh
+  if (!in_mesh) {
+    std::cout << "Particle not inside the weight window mesh" << std::endl;
+    std::cout << "ensure weight window covers entire  mesh" << std::endl;
+  }
+  return;
 
-  auto params = settings::ww_fine_mesh->get_params(p);
+  // get the paramters 
+  auto params = settings::ww_mesh->get_params(p);
 	
-  if (weight >= params.upper_weight) {
+  // if particles weight is above the weight window 
+  // split until they are within the window
+  if (weight > params.upper_weight) {
     double number = weight/params.upper_weight;  
     double num = std::min(std::ceil(number), double(params.max_split));
 
-    for (int l = 0; l < num - 1; ++l)  { p.create_secondary(weight/num, p.u(), p.E_, p.type_); }
-    p.wgt_ = weight/num; 
-    p.wgt_last_ = p.wgt_;
-	  
+    for (int l = 0; l < num - 1; ++l)  { 
+      p.create_secondary(weight/num, p.u(), p.E(), p.type()); 
+    }
+    p.wgt() = weight/num; 
+    p.wgt_last() = p.wgt();
+	// if the particle weight is below the window  
+  // roulette until the weight is high enough
   } else if (weight <= params.lower_weight) {  
     double number = weight/params.survival_weight;
     if (number < 1.0/params.max_split) {
@@ -1200,15 +1213,15 @@ void split_particle(Particle& p)
     }
 
     if (prn(p.current_seed())<=number)  {
-      p.wgt_ = params.survival_weight;
-      p.wgt_last_ = p.wgt_;
+      p.wgt() = params.survival_weight;
+      p.wgt_last() = p.wgt();
     } else {       
-      p.alive_ = false;
-      p.wgt_ = 0.0;
-      p.wgt_last_ = p.wgt_;
+      p.alive() = false;
+      p.wgt() = 0.0;
+      p.wgt_last() = p.wgt();
     }
   }
-	
+  // else particle is in the window
 }
 
 	

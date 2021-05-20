@@ -73,7 +73,7 @@ bool write_initial_source    {false};
 bool weightwindow_on         {false};
 
 // weight windows
-std::unique_ptr<WeightWindowMesh> ww_fine_mesh;
+std::unique_ptr<WeightWindowMesh> ww_mesh;
   
 std::string path_cross_sections;
 std::string path_input;
@@ -427,7 +427,7 @@ void read_settings_xml()
   if (check_for_node(root, "weightwindow")) {
     weightwindow_on = true;
     xml_node ww_node = root.child("weightwindow");
-    ww_fine_mesh = std::make_unique<WeightWindowMesh>(ww_node);
+    ww_mesh = std::make_unique<WeightWindowMesh>(ww_node);
   }
   
   // ==========================================================================

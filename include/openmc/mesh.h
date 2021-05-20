@@ -14,6 +14,7 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
+#include "openmc/bank.h"
 
 #ifdef DAGMC
 #include "moab/Core.hpp"
@@ -272,9 +273,6 @@ public:
   RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
   
-  // new constructors for weight window
-  RectilinearMesh(const std::vector<double>& x_grid, const std::vector<double>& y_grid, const std::vector<double>& z_grid);
-
   // Overriden methods
   void
   surface_bins_crossed(Position r0,
@@ -349,82 +347,19 @@ public:
   void to_hdf5(hid_t group) const override;
 
   // Data members
-<<<<<<< HEAD
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   
   // check grids for rectilinear meshes
   void check_grids(const std::vector<std::vector<double>>& grids);
   
-=======
   bool output_ {true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
 
->>>>>>> upstream/develop
 private:
   //! Setup method for the mesh. Builds data structures,
   //! sets up element mapping, creates bounding boxes, etc.
   virtual void initialize() = 0;
 };
-  
-// Weight Window Mesh class 
-class WeightWindowMesh 
-{
-public:
-  // Constructors
-  WeightWindowMesh(pugi::xml_node node);
-
-  //! source weight biasing in energy
-  //
-  //! \param[in] site, particle in bank, modify the weight based on the input energy biasing
-  //! \param[in] seed, random number seed
-  void weight_biasing(Particle::Bank& site, uint64_t* seed);
-  
-  // weight window mesh and energy group
-  std::unique_ptr<RectilinearMesh>  mesh_;   //!< RectilinearMesh for Weight window
-  int ww_type;   //!< weight window input file type
-  std::vector<double> n_energy_group; //!< energy group for neutron
-  std::vector<double> p_energy_group; //!< energy group for photon
-  std::vector<double> n_ww_lower;  //!< lower weight window for mesh for neutron
-  std::vector<double> p_ww_lower;  //!< lower weight window for mesh for photon
-  bool n_ww;   //!< flag for neutron use weight window
-  bool p_ww;   //!< flag for photon use weight window
-  
-  // WWP
-  // neutron
-  double n_upper_ratio;  //!< upper weight window = upper_ratio * lower weight window
-  double n_survival_ratio;  //!< survival weight = survival_ratio * lower weight window
-  int n_max_split;   //!< max number of split particles
-  double n_multiplier;   //!< multiplier for weight window lower bounds
-
-  // photon
-  double p_upper_ratio;   //!< upper weight window = upper_ratio * lower weight window
-  double p_survival_ratio;  //!< survival weight = survival_ratio * lower weight window
-  int p_max_split;   //!< max number of split particles
-  double p_multiplier;  //!< multiplier for weight window lower bounds
-
-  // source weight biasing in energy
-  bool user_defined_biasing;      //!< use user difined weight or not
-  std::vector<double> biasing_energy;   //!< energy group for weight biasing
-  std::vector<double> origin_probability; //!< probability for each group
-  std::vector<double> cumulative_probability; //!< cumulative probability for each group
-  std::vector<double> biasing;   //!< biasing for each energy group
-  std::vector<double> cumulative_biasing;   //!< cumulative probability for biasing for each energy group
-  
-  struct WWParams {
-    double lower_weight;
-    double upper_weight;
-    double survival_weight;
-    int max_split;
-  };
-  
-  WWParams params;  //!< weight windows parameters
-  
-  // Get weight windows parameters given particle
-  WeightWindowMesh::WWParams get_params(Particle& p) const;
-
-};
-// Weight Window Mesh class
-
 
 #ifdef DAGMC
 

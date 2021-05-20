@@ -357,6 +357,7 @@ list(APPEND libopenmc_SOURCES
   src/track_output.cpp
   src/urr.cpp
   src/volume_calc.cpp
+  src/weight_windows.cpp
   src/wmp.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)

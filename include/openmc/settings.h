@@ -14,6 +14,7 @@
 #include "openmc/constants.h"
 #include "openmc/mesh.h"
 #include "openmc/vector.h"
+#include "openmc/weight_windows.h"
 
 namespace openmc {
 
@@ -60,7 +61,7 @@ extern bool write_initial_source;     //!< write out initial source file?
 extern bool weightwindow_on;          //!< use weight window or not
 
 // weight window   
-extern std::unique_ptr<WeightWindowMesh>  ww_fine_mesh;  //!< weight window mesh
+extern std::unique_ptr<WeightWindowMesh>  ww_mesh;  //!< weight window mesh
   
 // Paths to various files
 extern std::string path_cross_sections;   //!< path to cross_sections.xml

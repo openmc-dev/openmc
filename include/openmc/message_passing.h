@@ -8,9 +8,11 @@
 namespace openmc {
 namespace mpi {
 
+  #pragma omp declare target
   extern int rank;
   extern int n_procs;
   extern bool master;
+  #pragma omp end declare target
 
 #ifdef OPENMC_MPI
   extern MPI_Datatype bank;

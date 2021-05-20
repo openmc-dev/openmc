@@ -170,6 +170,7 @@ int openmc_simulation_finalize()
 
   // Increment total number of generations
   simulation::total_gen += simulation::current_batch*settings::gen_per_batch;
+  #pragma omp target update to(simulation::total_gen)
 
 #ifdef OPENMC_MPI
   broadcast_results();
@@ -216,6 +217,7 @@ int openmc_next_batch(int* status)
   // =======================================================================
   // LOOP OVER GENERATIONS
   for (current_gen = 1; current_gen <= settings::gen_per_batch; ++current_gen) {
+    #pragma omp target update to(current_gen)
 
     initialize_generation();
 
@@ -290,6 +292,7 @@ const RegularMesh* ufs_mesh {nullptr};
 
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
+int64_t* device_work_index;
 
 
 } // namespace simulation
@@ -319,6 +322,7 @@ void initialize_batch()
 {
   // Increment current batch
   ++simulation::current_batch;
+  #pragma omp target update to(simulation::current_batch)
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     write_message(6, "Simulating batch {}", simulation::current_batch);
@@ -326,6 +330,7 @@ void initialize_batch()
 
   // Reset total starting particle weight used for normalizing tallies
   simulation::total_weight = 0.0;
+  #pragma omp target update to(simulation::total_weight)
 
   // Determine if this batch is the first inactive or active batch.
   bool first_inactive = false;
@@ -441,10 +446,14 @@ void finalize_generation()
   // reset tallies
   if (settings::run_mode == RunMode::EIGENVALUE) {
     global_tally_collision = 0.0;
+    #pragma omp target update to(global_tally_collision)
     global_tally_absorption = 0.0;
+    #pragma omp target update to(global_tally_absorption)
     global_tally_tracklength = 0.0;
+    #pragma omp target update to(global_tally_tracklength)
   }
   global_tally_leakage = 0.0;
+  #pragma omp target update to(global_tally_leakage)
 
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // If using shared memory, stable sort the fission bank (by parent IDs)
@@ -475,8 +484,10 @@ void initialize_history(Particle& p, int64_t index_source)
   // set defaults
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // set defaults for eigenvalue simulations from primary bank
-    p.from_source(&simulation::source_bank[index_source - 1]);
+    p.from_source(&simulation::device_source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    printf("fixed source mode not yet supported on device.\n");
+    /*
     // initialize random number seed
     int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
       simulation::work_index[mpi::rank] + index_source;
@@ -484,11 +495,12 @@ void initialize_history(Particle& p, int64_t index_source)
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
     p.from_source(&site);
+    */
   }
   p.current_work_ = index_source;
 
   // set identifier for particle
-  p.id_ = simulation::work_index[mpi::rank] + index_source;
+  p.id_ = simulation::device_work_index[mpi::rank] + index_source;
 
   // set progeny count to zero
   p.n_progeny_ = 0;
@@ -503,12 +515,15 @@ void initialize_history(Particle& p, int64_t index_source)
 
   // set particle trace
   p.trace_ = false;
+  /*
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
       p.id_ == settings::trace_particle) p.trace_ = true;
+  */
 
   // Set particle track.
   p.write_track_ = false;
+  /*
   if (settings::write_all_tracks) {
     p.write_track_ = true;
   } else if (settings::track_identifiers.size() > 0) {
@@ -526,6 +541,7 @@ void initialize_history(Particle& p, int64_t index_source)
   if (settings::verbosity >= 9 || p.trace_) {
     write_message("Simulating Particle {}", p.id_);
   }
+  */
 
   // Add paricle's starting weight to count for normalizing tallies later
   #pragma omp atomic
@@ -542,23 +558,13 @@ void initialize_history_partial(Particle& p)
   }
 
   // Prepare to write out particle track.
-  if (p.write_track_) add_particle_track(p);
+  //if (p.write_track_) add_particle_track(p);
 
   // Every particle starts with no accumulated flux derivative.
-  if (!model::active_tallies.empty())
-  {
-    //std::cout << "flux_derivs_ size = " << model::tally_derivs.size() << std::endl;
-    //p->flux_derivs_.resize(model::tally_derivs.size(), 0.0);
-    //std::fill(p->flux_derivs_.begin(), p->flux_derivs_.end(), 0.0);
-    assert(FLUX_DERIVS_SIZE >= model::tally_derivs.size());
-    std::fill(p.flux_derivs_, p.flux_derivs_ + FLUX_DERIVS_SIZE, 0.0);
-  }
-
-  // Allocate space for tally filter matches
-  //p->filter_matches_.resize(model::tally_filters.size());
-  //if(model::tally_filters.size() > FILTER_MATCHES_SIZE)
-  //  std::cout << "filter_matches size = " << model::tally_filters.size() << std::endl;
-  assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
+  // Note: This is not harmful even if there are no active tallies, and
+  // doing so without condition avoids having to access model::active_tallies
+  // which is not yet on device.
+  std::fill(p.flux_derivs_, p.flux_derivs_ + FLUX_DERIVS_SIZE, 0.0);
 
   // Set secondary bank to 0 length
   p.secondary_bank_length_ = 0;
@@ -735,6 +741,9 @@ void transport_event_based()
 {
   int64_t remaining_work = simulation::work_per_rank;
   int64_t source_offset = 0;
+
+  // Transfer source bank to device
+  #pragma omp target update to(simulation::device_source_bank[:simulation::source_bank.size()])
 
   // To cap the total amount of memory used to store particle object data, the
   // number of particles in flight at any point in time can bet set. In the case

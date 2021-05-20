@@ -24,8 +24,8 @@ namespace simulation {
 
 #pragma omp declare target
 extern "C" int current_batch;    //!< current batch
-#pragma omp end declare target
 extern "C" int current_gen;      //!< current fission generation
+#pragma omp end declare target
 extern "C" bool initialized;     //!< has simulation been initialized?
 extern "C" double keff;          //!< average k over batches
 extern "C" double keff_std;      //!< standard deviation of average k
@@ -39,9 +39,9 @@ extern "C" int n_lost_particles; //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
+#pragma omp declare target
 extern "C" int total_gen;        //!< total number of generations simulated
 extern double total_weight;  //!< Total source weight in a batch
-#pragma omp declare target
 extern int64_t work_per_rank;         //!< number of particles per MPI rank
 #pragma omp end declare target
 
@@ -50,6 +50,9 @@ extern const RegularMesh* ufs_mesh;
 
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;
+#pragma omp declare target
+extern int64_t* device_work_index;
+#pragma omp end declare target
 
 } // namespace simulation
 
@@ -73,10 +76,12 @@ void initialize_batch();
 void initialize_generation();
 
 //! Full initialization of a particle history
+#pragma omp declare target
 void initialize_history(Particle& p, int64_t index_source);
 
 //! Helper function for initialize_history() that is called independently elsewhere
 void initialize_history_partial(Particle& p);
+#pragma omp end declare target
 
 //! Finalize a batch
 //!

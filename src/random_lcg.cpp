@@ -6,7 +6,9 @@
 namespace openmc {
 
 // Starting seed
+#pragma omp declare target
 int64_t master_seed {1};
+#pragma omp end declare target
 
 // LCG parameters
 constexpr uint64_t prn_mult   {2806196910506780709LL};   // multiplication
@@ -118,6 +120,7 @@ extern "C" int64_t openmc_get_seed() {return master_seed;}
 extern "C" void openmc_set_seed(int64_t new_seed)
 {
   master_seed = new_seed;
+  #pragma omp target update to(master_seed)
 }
 
 } // namespace openmc

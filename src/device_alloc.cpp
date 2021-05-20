@@ -1,33 +1,18 @@
 #include "openmc/device_alloc.h"
 
+#include "openmc/bank.h"
 #include "openmc/cell.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
+#include "openmc/simulation.h"
 
+#include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
 
+
 namespace openmc {
-
-  /*
-void * device_alloc( size_t sz, int device_id )
-{
-  void * ptr = NULL;
-
-  if( sz > 0 )
-  {
-    ptr = (void *) malloc(sz);
-    assert(ptr != NULL);
-  }
-
-  return ptr;
-}
-
-void device_memcpy( void * dst_ptr, void * src_ptr, size_t sz, int dst_id, int src_id)
-{
-  memcpy(dst_ptr, src_ptr, sz);
-}
-*/
 
 void enforce_assumptions()
 {
@@ -36,12 +21,42 @@ void enforce_assumptions()
   
   // Commented out of particle::cross_reflective_bc
   assert(model::active_surface_tallies.empty() && "Surface tallies not yet supported.");
+    
+  // Assertions made when initializing particles
+  assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
+  assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
+}
+
+void move_settings_to_device()
+{
+  // settings.h
+  #pragma omp target update to(settings::dagmc)
+  #pragma omp target update to(settings::run_CE)
+  #pragma omp target update to(settings::max_lost_particles)
+  #pragma omp target update to(settings::rel_max_lost_particles)
+  #pragma omp target update to(settings::gen_per_batch)
+  #pragma omp target update to(settings::run_mode)
+  #pragma omp target update to(settings::n_particles)
+
+  // message_passing.h
+  #pragma omp target update to(mpi::rank)
+  #pragma omp target update to(mpi::n_procs)
+  #pragma omp target update to(mpi::master)
+
+  // simulation.h
+  #pragma omp target update to(simulation::total_gen)
+  #pragma omp target update to(simulation::current_batch)
+  #pragma omp target update to(simulation::current_gen)
+  #pragma omp target update to(simulation::total_weight)
 }
 
 void move_read_only_data_to_device()
 {
   // Enforce any device-specific assumptions or limitations on user inputs
   enforce_assumptions();
+
+  // Copy all global settings into device globals
+  move_settings_to_device();
 
   int host_id = omp_get_initial_device();
   int device_id = omp_get_default_device();
@@ -98,7 +113,23 @@ void move_read_only_data_to_device()
   std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
   #pragma omp target enter data map(to: model::materials[:model::materials_size])
   // TODO: Deep copy of materials
+  
+  // Source Bank ///////////////////////////////////////////////////////
+  
+  simulation::device_source_bank = simulation::source_bank.data();
+  #pragma omp target enter data map(alloc: simulation::device_source_bank[:simulation::source_bank.size()])
+
+  // MPI Work Indices ///////////////////////////////////////////////////
+ 
+  simulation::device_work_index = simulation::work_index.data();
+  #pragma omp target enter data map(to: simulation::device_work_index[:simulation::work_index.size()])
+  
+  // Progeny per Particle ///////////////////////////////////////////////////
+ 
+  simulation::device_progeny_per_particle = simulation::progeny_per_particle.data();
+  #pragma omp target enter data map(alloc: simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
 }
+
 
 void release_data_from_device()
 {

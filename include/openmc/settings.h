@@ -73,8 +73,8 @@ extern "C" int32_t n_inactive;               //!< number of inactive batches
 extern "C" int32_t max_lost_particles;     //!< maximum number of lost particles
 extern double rel_max_lost_particles;   //!< maximum number of lost particles, relative to the total number of particles
 extern "C" int32_t gen_per_batch;            //!< number of generations per batch
-#pragma omp end declare target
 extern "C" int64_t n_particles;              //!< number of particles per generation
+#pragma omp end declare target
 
 
 extern int64_t max_particles_in_flight; //!< Max num. event-based particles in flight

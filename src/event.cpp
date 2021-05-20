@@ -1,3 +1,4 @@
+#include "openmc/bank.h"
 #include "openmc/cell.h"
 #include "openmc/event.h"
 #include "openmc/lattice.h"
@@ -5,6 +6,7 @@
 #include "openmc/simulation.h"
 #include "openmc/surface.h"
 #include "openmc/timer.h"
+#include "openmc/tallies/tally.h"
 
 namespace openmc {
 
@@ -70,11 +72,34 @@ void dispatch_xs_event(int64_t buffer_idx)
 void process_init_events(int64_t n_particles, int64_t source_offset)
 {
   simulation::time_event_init.start();
+
+  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  
+  simulation::calculate_fuel_xs_queue.copy_host_to_device();
+  simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
+
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for
+  #else
   #pragma omp parallel for schedule(runtime)
+  #endif
   for (int64_t i = 0; i < n_particles; i++) {
-    initialize_history(simulation::particles[i], source_offset + i + 1);
+    initialize_history(simulation::device_particles[i], source_offset + i + 1);
     dispatch_xs_event(i);
   }
+  
+  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  
+  simulation::calculate_fuel_xs_queue.copy_device_to_host();
+  simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
+  
+  // Transfer total weight from device -> host if the kernel was run on device.
+  // Note: the pre-kernel transfer host -> device happens in initialize_batch() at the
+  // point the variable is reset to 0.
+  #ifdef USE_DEVICE
+  #pragma omp target update from(simulation::total_weight)
+  #endif
+
   simulation::time_event_init.stop();
 }
 
@@ -220,12 +245,36 @@ void process_collision_events()
 void process_death_events(int64_t n_particles)
 {
   simulation::time_event_death.start();
+  
+  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for
+  #else
   #pragma omp parallel for schedule(runtime)
+  #endif
   for (int64_t i = 0; i < n_particles; i++) {
-    //Particle& p = simulation::device_particles[i];
-    Particle& p = simulation::particles[i];
+    Particle& p = simulation::device_particles[i];
     p.event_death();
   }
+  
+  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+
+  #ifdef USE_DEVICE
+
+  // Move global tallies back to host if executed on device.
+  // NOTE: the pre-kernel host->device transfer happens in
+  // finalize_generation()
+  #pragma omp target update from(global_tally_collision)
+  #pragma omp target update from(global_tally_absorption)
+  #pragma omp target update from(global_tally_tracklength)
+  #pragma omp target update from(global_tally_leakage)
+
+  // Move particle progeny count array back to host
+  #pragma omp target update from(simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
+
+  #endif
+
   simulation::time_event_death.stop();
 }
 

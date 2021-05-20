@@ -151,6 +151,7 @@ public:
   std::vector<int> element_; //!< Indices in elements vector
   int* device_element_;
   std::vector<double> atom_density_; //!< Nuclide atom density in [atom/b-cm]
+  double* device_atom_density_;
   double density_; //!< Total atom density in [atom/b-cm]
   double density_gpcc_; //!< Total atom density in [g/cm^3]
   double volume_ {-1.0}; //!< Volume in [cm^3]

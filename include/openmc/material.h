@@ -150,7 +150,7 @@ public:
   int* device_nuclide_;
   std::vector<int> element_; //!< Indices in elements vector
   int* device_element_;
-  std::vector<double> atom_density_; //!< Nuclide atom density in [atom/b-cm]
+  xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double* device_atom_density_;
   double density_; //!< Total atom density in [atom/b-cm]
   double density_gpcc_; //!< Total atom density in [g/cm^3]

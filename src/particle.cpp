@@ -288,7 +288,7 @@ Particle::event_collide()
   if (!model::active_tallies.empty()) score_collision_derivative(*this);
 
   #ifdef DAGMC
-  history_.reset();
+  history().reset();
   #endif
 }
 
@@ -323,7 +323,7 @@ void
 Particle::event_death()
 {
   #ifdef DAGMC
-  history_.reset();
+  history().reset();
   #endif
 
   // Finish particle track output.
@@ -394,18 +394,18 @@ Particle::cross_surface()
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type_ == GeometryType::DAG) {
     auto surfp = dynamic_cast<DAGSurface*>(surf);
-    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[n_coord_ - 1]].get());
-    auto univp = static_cast<DAGUniverse*>(model::universes[coord_[n_coord_ - 1].universe].get());
+    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last(n_coord() - 1)].get());
+    auto univp = static_cast<DAGUniverse*>(model::universes[coord(n_coord() - 1).universe].get());
     // determine the next cell for this crossing
     int32_t i_cell = next_cell(univp, cellp, surfp) - 1;
     // save material and temp
-    material_last_ = material_;
-    sqrtkT_last_ = sqrtkT_;
+    material_last() = material();
+    sqrtkT_last() = sqrtkT();
     // set new cell value
-    coord_[n_coord_ - 1].cell = i_cell;
-    cell_instance_ = 0;
-    material_ = model::cells[i_cell]->material_[0];
-    sqrtkT_ = model::cells[i_cell]->sqrtkT_[0];
+    coord(n_coord() - 1).cell = i_cell;
+    cell_instance() = 0;
+    material() = model::cells[i_cell]->material_[0];
+    sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
     return;
   }
 #endif
@@ -506,7 +506,7 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 
   // if we're crossing a CSG surface, make sure the DAG history is reset
   #ifdef DAGMC
-  if (surf.geom_type_ != GeometryType::DAG) history_.reset();
+  if (surf.geom_type_ != GeometryType::DAG) history().reset();
   #endif
 
   // If a reflective surface is coincident with a lattice or universe

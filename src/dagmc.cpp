@@ -355,7 +355,7 @@ DAGUniverse::find_cell(Particle &p) const {
   // cells, place it in the implicit complement
   bool found = Universe::find_cell(p);
   if (!found && model::universe_map[this->id_] != model::root_universe) {
-    p.coord_[p.n_coord_ - 1].cell = implicit_complement_idx();
+    p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
     found = true;
   }
   return found;
@@ -504,10 +504,10 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
   Expects(p);
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
-  if (u != p->last_dir_) { p->last_dir_ = u; p->history_.reset(); }
-  if (on_surface == 0) { p->history_.reset(); }
+  if (u != p->last_dir()) { p->last_dir() = u; p->history().reset(); }
+  if (on_surface == 0) { p->history().reset(); }
 
-  const auto& univ = model::universes[p->coord_[p->n_coord_ - 1].universe];
+  const auto& univ = model::universes[p->coord(p->n_coord() - 1).universe];
 
   DAGUniverse* dag_univ = static_cast<DAGUniverse*>(univ.get());
   if (!dag_univ) fatal_error("DAGMC call made for particle in a non-DAGMC universe");
@@ -518,7 +518,7 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history_);
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history());
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {
@@ -610,15 +610,15 @@ Direction
 DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
   Expects(p);
-  p->history_.reset_to_last_intersection();
+  p->history().reset_to_last_intersection();
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history_);
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history());
   MB_CHK_ERR_CONT(rval);
-  p->last_dir_ = u.reflect(dir);
-  return p->last_dir_;
+  p->last_dir() = u.reflect(dir);
+  return p->last_dir();
 }
 
 //==============================================================================

@@ -1101,6 +1101,32 @@ void Material::add_nuclide(const std::string& name, double density)
     * MASS_NEUTRON / N_AVOGADRO;
 }
 
+void Material::copy_to_device()
+{
+  device_nuclide_ = nuclide_.data();
+  #pragma omp target enter data map(to: device_nuclide_[:nuclide_.size()])
+  device_element_ = element_.data();
+  #pragma omp target enter data map(to: device_element_[:element_.size()])
+  device_mat_nuclide_index_ = mat_nuclide_index_.data();
+  #pragma omp target enter data map(to: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
+  device_p0_ = p0_.data();
+  #pragma omp target enter data map(to: device_p0_[:p0_.size()])
+  device_atom_density_ = atom_density_.data();
+  #pragma omp target enter data map(to: device_atom_density_[:atom_density_.size()])
+  device_thermal_tables_ = thermal_tables_.data();
+  #pragma omp target enter data map(to: device_thermal_tables_[:thermal_tables_.size()])
+}
+
+void Material::release_from_device()
+{
+  #pragma omp target exit data map(release: device_nuclide_[:nuclide_.size()])
+  #pragma omp target exit data map(release: device_element_[:element_.size()])
+  #pragma omp target exit data map(release: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
+  #pragma omp target exit data map(release: device_p0_[:p0_.size()])
+  #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])
+  #pragma omp target exit data map(release: device_thermal_tables_[:thermal_tables_.size()])
+}
+
 //==============================================================================
 // Non-method functions
 //==============================================================================
@@ -1271,32 +1297,6 @@ void free_memory_material()
   free(model::materials);
   model::materials_size = 0;
   model::material_map.clear();
-}
-
-void Material::copy_to_device()
-{
-  device_nuclide_ = nuclide_.data();
-  #pragma omp target enter data map(to: device_nuclide_[:nuclide_.size()])
-  device_element_ = element_.data();
-  #pragma omp target enter data map(to: device_element_[:element_.size()])
-  device_mat_nuclide_index_ = mat_nuclide_index_.data();
-  #pragma omp target enter data map(to: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
-  device_p0_ = p0_.data();
-  #pragma omp target enter data map(to: device_p0_[:p0_.size()])
-  device_atom_density_ = atom_density_.data();
-  #pragma omp target enter data map(to: device_atom_density_[:atom_density_.size()])
-  device_thermal_tables_ = thermal_tables_.data();
-  #pragma omp target enter data map(to: device_thermal_tables_[:thermal_tables_.size()])
-}
-
-void Material::release_from_device()
-{
-  #pragma omp target exit data map(release: device_nuclide_[:nuclide_.size()])
-  #pragma omp target exit data map(release: device_element_[:element_.size()])
-  #pragma omp target exit data map(release: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
-  #pragma omp target exit data map(release: device_p0_[:p0_.size()])
-  #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])
-  #pragma omp target exit data map(release: device_thermal_tables_[:thermal_tables_.size()])
 }
 
 //==============================================================================
@@ -1519,7 +1519,7 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_end) *index_end = model::materials_size + n - 1;
 
   // Allocate temporary buffer
-  Material* tmp = static_cast<Material*>(malloc(n * sizeof(Material))); 
+  Material* tmp = static_cast<Material*>(malloc(n * sizeof(Material)));
 
   // Transfer data from existing buffer to temporary one
   for (int32_t i = 0; i < model::materials_size; i++) {

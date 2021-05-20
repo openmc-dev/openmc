@@ -138,7 +138,7 @@ public:
   //! Get temperature of material
   //! \return Temperature in [K]
   double temperature() const;
-  
+
   void copy_to_device();
   void release_from_device();
 

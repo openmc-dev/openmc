@@ -84,10 +84,16 @@ void collision(Particle& p)
 void sample_neutron_reaction(Particle& p)
 {
   // Sample a nuclide within the material
-  int i_nuclide = sample_nuclide(p);
+  int i_nuclide;
+  #pragma omp target update to(p)
+  #pragma omp target map(from: i_nuclide)
+  {
+    i_nuclide = sample_nuclide(p);
 
-  // Save which nuclide particle had collision with
-  p.event_nuclide_ = i_nuclide;
+    // Save which nuclide particle had collision with
+    p.event_nuclide_ = i_nuclide;
+  }
+  #pragma omp target update from(p)
 
   // Create fission bank sites. Note that while a fission reaction is sampled,
   // it never actually "happens", i.e. the weight of the particle does not
@@ -454,23 +460,26 @@ int sample_nuclide(Particle& p)
   double cutoff = prn(p.current_seed()) * p.macro_xs_.total;
 
   // Get pointers to nuclide/density arrays
-  const auto& mat {model::materials[p.material_]};
+  const auto& mat = model::materials[p.material_];
   int n = mat.nuclide_.size();
 
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
     // Get atom density
-    int i_nuclide = mat.nuclide_[i];
-    double atom_density = mat.atom_density_[i];
+    int i_nuclide = mat.device_nuclide_[i];
+    double atom_density = mat.device_atom_density_[i];
 
     // Increment probability to compare to cutoff
     prob += atom_density * p.neutron_xs_[i_nuclide].total;
     if (prob >= cutoff) return i_nuclide;
   }
 
+  /*
   // If we reach here, no nuclide was sampled
   p.write_restart();
   throw std::runtime_error{"Did not sample any nuclide during collision."};
+  */
+  printf("Did not sample any nuclide during collision.\n");
 }
 
 int sample_element(Particle& p)

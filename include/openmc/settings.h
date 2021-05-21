@@ -53,7 +53,9 @@ extern bool source_separate;          //!< write source to separate file?
 extern bool source_write;             //!< write source in HDF5 files?
 extern bool surf_source_write;        //!< write surface source file?
 extern bool surf_source_read;         //!< read surface source file?
+#pragma omp declare target
 extern bool survival_biasing;         //!< use survival biasing?
+#pragma omp end declare target
 extern bool temperature_multipole;    //!< use multipole data?
 extern "C" bool trigger_on;           //!< tally triggers enabled?
 extern bool trigger_predict;          //!< predict batches for triggers?

@@ -124,24 +124,26 @@ void sample_neutron_reaction(Particle& p)
         }
       }
     }
+
+    /*
+    // Create secondary photons
+    if (settings::photon_transport) {
+      p.stream_ = STREAM_PHOTON;
+      sample_secondary_photons(p, i_nuclide);
+      p.stream_ = STREAM_TRACKING;
+    }
+    */
+
+    // If survival biasing is being used, the following subroutine adjusts the
+    // weight of the particle. Otherwise, it checks to see if absorption occurs
+
+    if (p.neutron_xs_[i_nuclide].absorption > 0.0) {
+      absorption(p, i_nuclide);
+    } else {
+      p.wgt_absorb_ = 0.0;
+    }
   }
   #pragma omp target update from(p)
-
-  // Create secondary photons
-  if (settings::photon_transport) {
-    p.stream_ = STREAM_PHOTON;
-    sample_secondary_photons(p, i_nuclide);
-	  p.stream_ = STREAM_TRACKING;
-  }
-
-  // If survival biasing is being used, the following subroutine adjusts the
-  // weight of the particle. Otherwise, it checks to see if absorption occurs
-
-  if (p.neutron_xs_[i_nuclide].absorption > 0.0) {
-    absorption(p, i_nuclide);
-  } else {
-    p.wgt_absorb_ = 0.0;
-  }
   if (!p.alive_) return;
 
   // Sample a scattering reaction and determine the secondary energy of the

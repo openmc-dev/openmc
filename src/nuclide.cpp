@@ -745,13 +745,17 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       int i_high = grid_index[i_log_union + 1] + 1;
 
       // Perform binary search over reduced range
-      // TODO: Iterative binary search. The recursive one seems to work on llvm/V100 but elsewhere
-      double E = p.E_;
-      //#pragma omp target map(from: i_grid)
-      {
-        //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
-        i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], E);
+      // TODO: Iterative binary search. The recursive one seems to work on llvm/V100 but not elsewhere
+      //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
+
+      // Iterative linear search (may be faster on device anyway due to reduced branching)
+      for (; i_low < i_high; i_low++) {
+        if (i_low == i_high - 1)
+          break;
+        if (p.E_ >= energy[i_low] && p.E_ < energy[i_low + 1])
+          break;
       }
+      i_grid = i_low;
     }
 
     // check for rare case where two energy points are the same
@@ -765,18 +769,13 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.index_grid = i_grid;
     micro.interp_factor = f;
 
+    // 1D indexing conversion 
     int i_grid1D = i_grid * 5;
     int i_next1D = (i_grid + 1) * 5;
     
     // Calculate microscopic nuclide total cross section
-    double og_total = (1.0 - f)*xs_[i_temp](i_grid, XS_TOTAL)
-          + f*xs_[i_temp](i_grid+1, XS_TOTAL);
-
-    // Calculate microscopic nuclide total cross section
     micro.total = (1.0 - f)*xs[i_grid1D + XS_TOTAL]
           + f*xs[i_next1D + XS_TOTAL];
-
-    assert(og_total == micro.total);
 
     // Calculate microscopic nuclide absorption cross section
     micro.absorption = (1.0 - f)*xs[i_grid1D + XS_ABSORPTION]

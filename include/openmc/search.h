@@ -8,8 +8,6 @@
 
 namespace openmc {
 
-//! Perform binary search
-
 template<class It, class T>
 typename std::iterator_traits<It>::difference_type
 lower_bound_index(It first, It last, const T& value)

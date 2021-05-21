@@ -684,7 +684,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       {
         double max_diff = INFTY;
         for (int t = 0; t < kTs_.size(); ++t) {
-          double diff = std::abs(kTs_[t] - kT);
+          double diff = std::abs(device_kTs_[t] - kT);
           if (diff < max_diff) {
             i_temp = t;
             max_diff = diff;
@@ -696,11 +696,11 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     case TemperatureMethod::INTERPOLATION:
       // Find temperatures that bound the actual temperature
       for (i_temp = 0; i_temp < kTs_.size() - 1; ++i_temp) {
-        if (kTs_[i_temp] <= kT && kT < kTs_[i_temp + 1]) break;
+        if (device_kTs_[i_temp] <= kT && kT < device_kTs_[i_temp + 1]) break;
       }
 
       // Randomly sample between temperature i and i+1
-      f = (kT - kTs_[i_temp]) / (kTs_[i_temp + 1] - kTs_[i_temp]);
+      f = (kT - device_kTs_[i_temp]) / (device_kTs_[i_temp + 1] - device_kTs_[i_temp]);
       if (f > prn(p.current_seed())) ++i_temp;
       break;
     }
@@ -709,30 +709,48 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     // reduce the energy range over which a binary search needs to be
     // performed
 
-    const auto& grid {grid_[i_temp]};
+    //const auto& grid {grid_[i_temp]};
+    //const auto& grid {grid_[i_temp]};
     const auto& xs {xs_[i_temp]};
 
+    // Offset index grid
+    int index_offset = i_temp * (settings::n_log_bins + 1);
+    int* grid_index = &flat_grid_index_[index_offset];
+
+    // Offset energy grid
+    int energy_offset = flat_temp_offsets_[i_temp];
+    double* energy = &flat_grid_energy_[energy_offset];
+
+    // Determine # of gridpoints for this temperature
+    int num_gridpoints;
+    if (i_temp < kTs_.size() - 1) {
+      num_gridpoints = flat_temp_offsets_[i_temp + 1] - energy_offset;
+    } else {
+      num_gridpoints = total_energy_gridpoints_ - energy_offset;
+    }
+
     int i_grid;
-    if (p.E_ < grid.energy.front()) {
+    if (p.E_ < energy[0]) {
       i_grid = 0;
-    } else if (p.E_ > grid.energy.back()) {
-      i_grid = grid.energy.size() - 2;
+    } else if (p.E_ > energy[num_gridpoints-1]) {
+      i_grid = num_gridpoints - 2;
     } else {
       // Determine bounding indices based on which equal log-spaced
       // interval the energy is in
-      int i_low  = grid.grid_index[i_log_union];
-      int i_high = grid.grid_index[i_log_union + 1] + 1;
+      int i_low  = grid_index[i_log_union];
+      int i_high = grid_index[i_log_union + 1] + 1;
 
       // Perform binary search over reduced range
-      i_grid = i_low + lower_bound_index(&grid.energy[i_low], &grid.energy[i_high], p.E_);
+      // TODO: Iterative binary search...
+      i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
     }
 
     // check for rare case where two energy points are the same
-    if (grid.energy[i_grid] == grid.energy[i_grid + 1]) ++i_grid;
+    if (energy[i_grid] == energy[i_grid + 1]) ++i_grid;
 
     // calculate interpolation factor
-    f = (p.E_ - grid.energy[i_grid]) /
-      (grid.energy[i_grid + 1]- grid.energy[i_grid]);
+    f = (p.E_ - energy[i_grid]) /
+      (energy[i_grid + 1]- energy[i_grid]);
 
     micro.index_temp = i_temp;
     micro.index_grid = i_grid;

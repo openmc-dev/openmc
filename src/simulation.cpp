@@ -484,7 +484,7 @@ void initialize_history(Particle& p, int64_t index_source)
   // set defaults
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // set defaults for eigenvalue simulations from primary bank
-    p.from_source(&simulation::device_source_bank[index_source - 1]);
+    p.from_source(simulation::device_source_bank[index_source - 1]);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     printf("fixed source mode not yet supported on device.\n");
     /*
@@ -494,7 +494,7 @@ void initialize_history(Particle& p, int64_t index_source)
     uint64_t seed = init_seed(id, STREAM_SOURCE);
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
-    p.from_source(&site);
+    p.from_source(site);
     */
   }
   p.current_work_ = index_source;

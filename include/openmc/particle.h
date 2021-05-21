@@ -250,7 +250,7 @@ public:
   //! simply as a secondary particle.
   //! \param src Source site data
   #pragma omp declare target
-  void from_source(const Bank* src);
+  void from_source(const Bank& src);
   #pragma omp end declare target
 
   // Coarse-grained particle events

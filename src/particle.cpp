@@ -108,7 +108,7 @@ Particle::create_secondary(double wgt, Direction u, double E, Type type)
 }
 
 void
-Particle::from_source(const Bank* src)
+Particle::from_source(const Bank& src)
 {
   // Reset some attributes
   this->clear();
@@ -122,22 +122,22 @@ Particle::from_source(const Bank* src)
   std::fill(flux_derivs_, flux_derivs_ + FLUX_DERIVS_SIZE, 0.0);
 
   // Copy attributes from source bank site
-  type_ = src->particle;
-  wgt_ = src->wgt;
-  wgt_last_ = src->wgt;
-  this->r() = src->r;
-  this->u() = src->u;
-  r_last_current_ = src->r;
-  r_last_ = src->r;
-  u_last_ = src->u;
+  type_ = src.particle;
+  wgt_ = src.wgt;
+  wgt_last_ = src.wgt;
+  this->r() = src.r;
+  this->u() = src.u;
+  r_last_current_ = src.r;
+  r_last_ = src.r;
+  u_last_ = src.u;
   if (settings::run_CE) {
-    E_ = src->E;
+    E_ = src.E;
     g_ = 0;
   } else {
     printf("Error - MG mode not supported yet on device.\n");
     /*
-    g_ = static_cast<int>(src->E);
-    g_last_ = static_cast<int>(src->E);
+    g_ = static_cast<int>(src.E);
+    g_last_ = static_cast<int>(src.E);
     E_ = data::mg.energy_bin_avg_[g_];
     */
   }
@@ -396,8 +396,8 @@ Particle::event_revive_from_secondary()
     //if (secondary_bank_.empty()) return;
     if (secondary_bank_length_ == 0) return;
 
-    //this->from_source(&secondary_bank_.back());
-    this->from_source(&secondary_bank_[--secondary_bank_length_]);
+    //this->from_source(secondary_bank_.back());
+    this->from_source(secondary_bank_[--secondary_bank_length_]);
     //secondary_bank_.pop_back();
     n_event_ = 0;
 

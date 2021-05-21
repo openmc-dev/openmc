@@ -26,7 +26,9 @@ namespace settings {
 extern bool assume_separate;          //!< assume tallies are spatially separate?
 extern bool check_overlaps;           //!< check overlaps in geometry?
 extern bool confidence_intervals;     //!< use confidence intervals for results?
+#pragma omp declare target
 extern bool create_fission_neutrons;  //!< create fission neutrons (fixed source)?
+#pragma omp end declare target
 extern "C" bool cmfd_run;             //!< is a CMFD run?
 #pragma omp declare target
 extern "C" bool dagmc;                //!< indicator of DAGMC geometry

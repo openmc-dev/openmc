@@ -92,54 +92,40 @@ void sample_neutron_reaction(Particle& p)
 
     // Save which nuclide particle had collision with
     p.event_nuclide_ = i_nuclide;
+
+    // Create fission bank sites. Note that while a fission reaction is sampled,
+    // it never actually "happens", i.e. the weight of the particle does not
+    // change when sampling fission sites. The following block handles all
+    // absorption (including fission)
+
+    const auto& nuc {data::nuclides[i_nuclide]};
+
+    if (nuc.fissionable_) {
+      auto rx = sample_fission(i_nuclide, p);
+
+      if (settings::run_mode == RunMode::EIGENVALUE) {
+        create_fission_sites(p, i_nuclide, rx);
+      } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::create_fission_neutrons) {
+        create_fission_sites(p, i_nuclide, rx);
+
+        // Make sure particle population doesn't grow out of control for
+        // subcritical multiplication problems.
+        //if (p->secondary_bank_.size() >= 10000) {
+        if (p.secondary_bank_length_ >= 10000) {
+          /*
+          fatal_error("The secondary particle bank appears to be growing without "
+          "bound. You are likely running a subcritical multiplication problem "
+          "with k-effective close to or greater than one.");
+          */
+          printf("The secondary particle bank appears to be growing without "
+          "bound. You are likely running a subcritical multiplication problem "
+          "with k-effective close to or greater than one.\n");
+        }
+      }
+    }
   }
   #pragma omp target update from(p)
-
-  // Create fission bank sites. Note that while a fission reaction is sampled,
-  // it never actually "happens", i.e. the weight of the particle does not
-  // change when sampling fission sites. The following block handles all
-  // absorption (including fission)
-
-  const auto& nuc {data::nuclides[i_nuclide]};
-
-  if (nuc.fissionable_) {
-    int mt;
-    #pragma omp target map(from: mt)
-    {
-      auto rx = sample_fission(i_nuclide, p);
-      mt = rx.mt();
-    }
-    #pragma omp target update from(p)
-    int i_rx = nuc.reaction_index_[mt];
-
-    if (settings::run_mode == RunMode::EIGENVALUE) {
-      #pragma omp target update to(p)
-      #pragma omp target
-      {
-        auto rx = nuc.device_reactions_[i_rx].obj();
-        create_fission_sites(p, i_nuclide, rx);
-      }
-      #pragma omp target update from(p)
-    } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
-      settings::create_fission_neutrons) {
-      #pragma omp target update to(p)
-      #pragma omp target
-      {
-        auto rx = nuc.device_reactions_[i_rx].obj();
-        create_fission_sites(p, i_nuclide, rx);
-      }
-      #pragma omp target update from(p)
-
-      // Make sure particle population doesn't grow out of control for
-      // subcritical multiplication problems.
-      //if (p->secondary_bank_.size() >= 10000) {
-      if (p.secondary_bank_length_ >= 10000) {
-        fatal_error("The secondary particle bank appears to be growing without "
-        "bound. You are likely running a subcritical multiplication problem "
-        "with k-effective close to or greater than one.");
-      }
-    }
-  }
 
   // Create secondary photons
   if (settings::photon_transport) {

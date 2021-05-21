@@ -48,7 +48,9 @@ public:
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 
   // Methods
+  #pragma omp declare target
   double nu(double E, EmissionMode mode, int group=0) const;
+  #pragma omp end declare target
   void calculate_elastic_xs(Particle& p) const;
 
   //! Determines the microscopic 0K elastic cross section at a trial relative
@@ -111,6 +113,7 @@ public:
   std::unique_ptr<Function1DFlatContainer> delayed_photons_; //!< Delayed photon energy release
   std::unique_ptr<Function1DFlatContainer> fragments_; //!< Fission fragment energy release
   std::unique_ptr<Function1DFlatContainer> betas_; //!< Delayed beta energy release
+  Function1DFlatContainer* device_total_nu_;
 
   // Resonance scattering information
   bool resonant_ {false};
@@ -129,6 +132,7 @@ public:
   std::vector<int> index_inelastic_scatter_;
 
   int* device_index_inelastic_scatter_;
+  ReactionFlatContainer** device_fission_rx_;
   ReactionFlatContainer* device_reactions_;
 private:
   void create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons);
@@ -165,6 +169,9 @@ namespace data {
 // that of the ParticleType enum
 extern std::array<double, 2> energy_min;
 extern std::array<double, 2> energy_max;
+#pragma omp declare target
+extern double* device_energy_max;
+#pragma omp end declare target
 
 //! Minimum temperature in [K] that nuclide data is available at
 extern double temperature_min;

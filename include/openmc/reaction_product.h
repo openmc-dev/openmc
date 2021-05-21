@@ -70,8 +70,8 @@ public:
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
   #pragma omp end declare target
 
-  Particle::Type particle() const;
   #pragma omp declare target
+  Particle::Type particle() const;
   ReactionProduct::EmissionMode emission_mode() const;
   double decay_rate() const;
   Function1DFlat yield() const;

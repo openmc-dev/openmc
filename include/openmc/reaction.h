@@ -76,8 +76,8 @@ public:
   int mt() const;
   double q_value() const;
   bool scatter_in_cm() const;
-  #pragma omp end declare target
   bool redundant() const;
+  #pragma omp end declare target
   int xs_threshold(gsl::index i_temp) const;
   gsl::span<const double> xs_value(gsl::index i_temp) const;
   #pragma omp declare target

@@ -32,6 +32,7 @@ namespace openmc {
 namespace data {
 std::array<double, 2> energy_min {0.0, 0.0};
 std::array<double, 2> energy_max {INFTY, INFTY};
+double* device_energy_max;
 double temperature_min {0.0};
 double temperature_max {INFTY};
 std::unordered_map<std::string, int> nuclide_map;
@@ -451,6 +452,8 @@ void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, cons
   }
 
   // Calculate nu-fission cross section
+  device_fission_rx_ = fission_rx_.data();
+  device_total_nu_ = total_nu_.get();
   for (int t = 0; t < kTs_.size(); ++t) {
     if (fissionable_) {
       int n = grid_[t].energy.size();
@@ -542,7 +545,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 {
   if (!fissionable_) return 0.0;
 
-  auto rx = fission_rx_[0]->obj();
+  auto rx = device_fission_rx_[0]->obj();
   switch (mode) {
   case EmissionMode::prompt:
     return rx.products(0).yield()(E);
@@ -570,8 +573,8 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
       return 0.0;
     }
   case EmissionMode::total:
-    if (total_nu_) {
-      return (*total_nu_)(E);
+    if (device_total_nu_) {
+      return (*device_total_nu_)(E);
     } else {
       return rx.products(0).yield()(E);
     }
@@ -1075,9 +1078,15 @@ void Nuclide::copy_to_device()
   // Reactions
   device_index_inelastic_scatter_ = index_inelastic_scatter_.data();
   device_reactions_ = reactions_.data();
+  device_fission_rx_ = fission_rx_.data();
+  device_total_nu_ = total_nu_.get();
 
   #pragma omp target enter data map(to: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
   #pragma omp target enter data map(to: device_reactions_[:reactions_.size()])
+  if (total_nu_) {
+    #pragma omp target enter data map(to: device_total_nu_[:1])
+    total_nu_->copy_to_device();
+  }
   for (auto& rx : reactions_) {
     rx.copy_to_device();
   }
@@ -1096,6 +1105,22 @@ void Nuclide::copy_to_device()
   for (auto& u : urr_data_) {
     #pragma omp target enter data map(to: u.device_energy_[:u.n_energy_])
     #pragma omp target enter data map(to: u.device_prob_[:u.n_total_prob_])
+  }
+
+  // Because fission_rx_ is an array of host pointers, if we copy it over as an
+  // array, we'll simply have an identical array of host pointers in device
+  // memory. To get around this, we run a target region on device to manually
+  // set the pointers on the device.
+  #pragma omp target enter data map(alloc: device_fission_rx_[:fission_rx_.size()])
+  #pragma omp target
+  {
+    int i_fis = 0;
+    for (int i = 0; i < this->reactions_.size(); ++i) {
+      auto rx = this->device_reactions_[i].obj();
+      if (is_fission(rx.mt()) && !rx.redundant()) {
+        device_fission_rx_[i_fis++] = &this->device_reactions_[i];
+      }
+    }
   }
 }
 

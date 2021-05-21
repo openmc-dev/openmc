@@ -56,5 +56,14 @@ double Function1DFlatContainer::operator()(double x) const
   return this->func()(x);
 }
 
+void Function1DFlatContainer::copy_to_device()
+{
+  buffer_.copy_to_device();
+}
+
+void Function1DFlatContainer::release_from_device()
+{
+  buffer_.release_device();
+}
 
 } // namespace openmc

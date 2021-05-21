@@ -98,6 +98,8 @@ void move_read_only_data_to_device()
   }
 
   // Nuclides /////////////////////////////////////////////////////////
+  data::device_energy_max = data::energy_max.data();
+  #pragma omp target enter data map(to: data::device_energy_max[:2])
   #pragma omp target update to(data::nuclides_size)
   #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
   for (int i = 0; i < data::nuclides_size; ++i) {

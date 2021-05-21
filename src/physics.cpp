@@ -103,7 +103,16 @@ void sample_neutron_reaction(Particle& p)
   const auto& nuc {data::nuclides[i_nuclide]};
 
   if (nuc.fissionable_) {
-    auto rx = sample_fission(i_nuclide, p);
+    int mt;
+    #pragma omp target map(from: mt)
+    {
+      auto rx = sample_fission(i_nuclide, p);
+      mt = rx.mt();
+    }
+    #pragma omp target update from(p)
+    int i_rx = nuc.reaction_index_[mt];
+    auto rx = nuc.device_reactions_[i_rx].obj();
+
     if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);
     } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
@@ -161,7 +170,7 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
-  double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
+  double weight = 1.0; //settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
   double nu_t = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
@@ -200,7 +209,16 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
     site.surf_id = 0;
 
     // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, rx, p.E_, &site, p.current_seed());
+    int mt = rx.mt();
+    int i_rx = data::nuclides[i_nuclide].reaction_index_[mt];
+    #pragma omp target update to(p)
+    #pragma omp target map(tofrom: site)
+    {
+      auto& rx_c = data::nuclides[i_nuclide].device_reactions_[i_rx];
+      auto rx_obj = rx_c.obj();
+      sample_fission_neutron(i_nuclide, rx_obj, p.E_, &site, p.current_seed());
+    }
+    #pragma omp target update from(p)
 
     // Store fission site in bank
     if (use_fission_bank) {
@@ -523,14 +541,14 @@ ReactionFlat sample_fission(int i_nuclide, Particle& p)
   // default to the first reaction if we know that there are no partial fission
   // reactions
   if (p.neutron_xs_[i_nuclide].use_ptable || !nuc.has_partial_fission_) {
-    return nuc.fission_rx_[0]->obj();
+    return nuc.device_fission_rx_[0]->obj();
   }
 
   // Check to see if we are in a windowed multipole range.  WMP only supports
   // the first fission reaction.
   if (nuc.multipole_) {
     if (p.E_ >= nuc.multipole_->E_min_ && p.E_ <= nuc.multipole_->E_max_) {
-      return nuc.fission_rx_[0]->obj();
+      return nuc.device_fission_rx_[0]->obj();
     }
   }
 
@@ -540,7 +558,9 @@ ReactionFlat sample_fission(int i_nuclide, Particle& p)
   double prob = 0.0;
 
   // Loop through each partial fission reaction type
-  for (auto& rx : nuc.fission_rx_) {
+  for (int i = 0; i < nuc.fission_rx_.size(); ++i) {
+    auto& rx = nuc.device_fission_rx_[i];
+
     // add to cumulative probability
     prob += rx->obj().xs(micro);
 
@@ -549,7 +569,8 @@ ReactionFlat sample_fission(int i_nuclide, Particle& p)
   }
 
   // If we reached here, no reaction was sampled
-  throw std::runtime_error{"No fission reaction was sampled for " + nuc.name_};
+  // throw std::runtime_error{"No fission reaction was sampled for " + nuc.name_};
+  printf("No fission reaction was sampled.\n");
 }
 
 void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product)
@@ -1067,14 +1088,16 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
-      if (site->E < data::energy_max[neutron]) break;
+      if (site->E < data::device_energy_max[neutron]) break;
 
       // check for large number of resamples
       ++n_sample;
       if (n_sample == MAX_SAMPLE) {
         // particle_write_restart(p)
+        /*
         fatal_error("Resampled energy distribution maximum number of times "
           "for nuclide " + nuc.name_);
+        */
       }
     }
 
@@ -1092,14 +1115,16 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
-      if (site->E < data::energy_max[neutron]) break;
+      if (site->E < data::device_energy_max[neutron]) break;
 
       // check for large number of resamples
       ++n_sample;
       if (n_sample == MAX_SAMPLE) {
         // particle_write_restart(p)
+        /*
         fatal_error("Resampled energy distribution maximum number of times "
           "for nuclide " + nuc.name_);
+        */
       }
     }
   }

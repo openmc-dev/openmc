@@ -98,6 +98,7 @@ void move_read_only_data_to_device()
   // Nuclides /////////////////////////////////////////////////////////
   for (auto& nuc : data::nuclides) {
     std::cout << "Moving " << nuc->name_ << " data to device..." << std::endl;
+    nuc->flatten_xs_data();
     nuc->copy_to_device();
   }
   

@@ -301,10 +301,76 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 
   this->create_derived(prompt_photons_.get(), delayed_photons_.get());
 }
+  
+void Nuclide::flatten_xs_data()
+{
+  // Prepare flattened 1D XS data for use on device
+  /*
+  std::vector<double> kTs_; //!< temperatures in eV (k*T)
+  double* device_kTs_;
+  std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
+  std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
+  */
+
+  // Flattened 1D temperature dependent cross section data
+  /*
+  int* flat_temp_offsets_;
+  int* flat_grid_index_;
+  double* flat_grid_energy_;
+  double* flat_xs_;
+  */
+
+  // Allocate array to store 1D jagged offsets for each temperature
+  int n_temps = kTs_.size();
+  flat_temp_offsets_ = new int[n_temps];
+
+  // Compute offsets for each temperature and total # of gridpoints
+  total_energy_gridpoints_ = 0;
+  for (int t = 0; t < n_temps; t++) {
+    flat_temp_offsets_[t] = total_energy_gridpoints_;
+    total_energy_gridpoints_ += grid_[t].energy.size();
+  }
+
+  total_index_gridpoints_ = n_temps * (settings::n_log_bins + 1);
+
+  // Allocate space for grid information and populate
+  flat_grid_energy_ = new double[total_energy_gridpoints_];
+  flat_grid_index_ = new int[total_index_gridpoints_];
+  for (int t = 0; t < n_temps; t++) {
+    int energy_offset = flat_temp_offsets_[t];
+
+    for (int e = 0; e < grid_[t].energy.size(); e++) {
+      flat_grid_energy_[energy_offset + e] = grid_[t].energy[e];
+    }
+
+    int grid_offset = t * (settings::n_log_bins + 1);
+
+    for (int i = 0; i < grid_[t].grid_index.size(); i++) {
+      flat_grid_index_[grid_offset + i] = grid_[t].grid_index[i];
+    }
+  }
+
+  // Allocate space for XS data and fill
+  flat_xs_ = new double[total_energy_gridpoints_ * 5];
+  int idx = 0;
+  for (int t = 0; t < n_temps; t++) {
+    for (int e = 0; e < grid_[t].energy.size(); e++) {
+      for (int x = 0; x < 5; x++) {
+        flat_xs_[idx++] = xs_[t](e, x);
+      }
+    }
+  }
+  assert(idx == total_energy_gridpoints_ * 5);
+}
 
 Nuclide::~Nuclide()
 {
   data::nuclide_map.erase(name_);
+  
+  delete [] flat_temp_offsets_;
+  delete [] flat_grid_index_;
+  delete [] flat_grid_energy_;
+  delete [] flat_xs_;
 }
 
 void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons)
@@ -988,6 +1054,13 @@ void Nuclide::copy_to_device()
   for (auto& rx : reactions_) {
     rx.copy_to_device();
   }
+  
+  device_kTs_ = kTs_.data();
+  #pragma omp target enter data map(to: device_kTs_[:kTs_.size()])
+  #pragma omp target enter data map(to: flat_temp_offsets_[:kTs_.size()])
+  #pragma omp target enter data map(to: flat_grid_energy_[:total_energy_gridpoints_])
+  #pragma omp target enter data map(to: flat_grid_index_[:total_index_gridpoints_])
+  #pragma omp target enter data map(to: flat_xs_[:total_energy_gridpoints_*5])
 }
 
 void Nuclide::release_from_device()
@@ -996,6 +1069,12 @@ void Nuclide::release_from_device()
     rx.release_from_device();
   }
   #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
+
+  #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])
+  #pragma omp target exit data map(release: flat_temp_offsets_[:kTs_.size()])
+  #pragma omp target exit data map(release: flat_grid_energy_[:total_energy_gridpoints_])
+  #pragma omp target exit data map(release: flat_grid_index_[:total_index_gridpoints_])
+  #pragma omp target exit data map(release: flat_xs_[:total_energy_gridpoints_*5])
 }
 
 //==============================================================================

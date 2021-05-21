@@ -744,8 +744,10 @@ void transport_event_based()
   int64_t remaining_work = simulation::work_per_rank;
   int64_t source_offset = 0;
 
-  // Transfer source bank to device
+  // Transfer source/fission bank to device
   #pragma omp target update to(simulation::device_source_bank[:simulation::source_bank.size()])
+  simulation::fission_bank.copy_host_to_device();
+  #pragma omp target update to(simulation::keff)
 
   // To cap the total amount of memory used to store particle object data, the
   // number of particles in flight at any point in time can bet set. In the case
@@ -797,6 +799,9 @@ void transport_event_based()
     remaining_work -= n_particles;
     source_offset += n_particles;
   }
+
+  // Copy back fission bank to host
+  simulation::fission_bank.copy_device_to_host();
 }
 
 } // namespace openmc

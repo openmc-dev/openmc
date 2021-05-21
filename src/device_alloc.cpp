@@ -129,6 +129,7 @@ void move_read_only_data_to_device()
 
   simulation::device_source_bank = simulation::source_bank.data();
   #pragma omp target enter data map(alloc: simulation::device_source_bank[:simulation::source_bank.size()])
+  simulation::fission_bank.allocate_on_device();
 
   // MPI Work Indices ///////////////////////////////////////////////////
 

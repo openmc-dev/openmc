@@ -111,13 +111,24 @@ void sample_neutron_reaction(Particle& p)
     }
     #pragma omp target update from(p)
     int i_rx = nuc.reaction_index_[mt];
-    auto rx = nuc.device_reactions_[i_rx].obj();
 
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      create_fission_sites(p, i_nuclide, rx);
+      #pragma omp target update to(p)
+      #pragma omp target
+      {
+        auto rx = nuc.device_reactions_[i_rx].obj();
+        create_fission_sites(p, i_nuclide, rx);
+      }
+      #pragma omp target update from(p)
     } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
       settings::create_fission_neutrons) {
-      create_fission_sites(p, i_nuclide, rx);
+      #pragma omp target update to(p)
+      #pragma omp target
+      {
+        auto rx = nuc.device_reactions_[i_rx].obj();
+        create_fission_sites(p, i_nuclide, rx);
+      }
+      #pragma omp target update from(p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
@@ -209,29 +220,24 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
     site.surf_id = 0;
 
     // Sample delayed group and angle/energy for fission reaction
-    int mt = rx.mt();
-    int i_rx = data::nuclides[i_nuclide].reaction_index_[mt];
-    #pragma omp target update to(p)
-    #pragma omp target map(tofrom: site)
-    {
-      auto& rx_c = data::nuclides[i_nuclide].device_reactions_[i_rx];
-      auto rx_obj = rx_c.obj();
-      sample_fission_neutron(i_nuclide, rx_obj, p.E_, &site, p.current_seed());
-    }
-    #pragma omp target update from(p)
+    sample_fission_neutron(i_nuclide, rx, p.E_, &site, p.current_seed());
 
     // Store fission site in bank
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
       if (idx == -1) {
+        /*
         warning("The shared fission bank is full. Additional fission sites created "
             "in this generation will not be banked.");
+        */
+        printf("The shared fission bank is full. Additional fission sites created "
+          "in this generation will not be banked.");
         skipped++;
         break;
       }
     } else {
       //p->secondary_bank_.push_back(site);
-      assert(p.secondary_bank_length_ < SECONDARY_BANK_SIZE);
+      //assert(p.secondary_bank_length_ < SECONDARY_BANK_SIZE);
       p.secondary_bank_[p.secondary_bank_length_++] = site;
     }
 
@@ -247,7 +253,7 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
     if (use_fission_bank) {
       //p->nu_bank_.emplace_back();
       //Particle::NuBank* nu_bank_entry = &p->nu_bank_.back();
-      assert(i < NU_BANK_SIZE);
+      //assert(i < NU_BANK_SIZE);
       Particle::NuBank* nu_bank_entry = &p.nu_bank_[i];
       nu_bank_entry->wgt              = site.wgt;
       nu_bank_entry->E                = site.E;

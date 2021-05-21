@@ -711,7 +711,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
     //const auto& grid {grid_[i_temp]};
     //const auto& grid {grid_[i_temp]};
-    const auto& xs {xs_[i_temp]};
+    //const auto& xs {xs_[i_temp]};
 
     // Offset index grid
     int index_offset = i_temp * (settings::n_log_bins + 1);
@@ -720,6 +720,10 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     // Offset energy grid
     int energy_offset = flat_temp_offsets_[i_temp];
     double* energy = &flat_grid_energy_[energy_offset];
+
+    // Offset xs
+    int xs_offset = flat_temp_offsets_[i_temp] * 5;
+    double* xs = &flat_xs_[xs_offset];
 
     // Determine # of gridpoints for this temperature
     int num_gridpoints;
@@ -741,9 +745,9 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       int i_high = grid_index[i_log_union + 1] + 1;
 
       // Perform binary search over reduced range
-      // TODO: Iterative binary search...
+      // TODO: Iterative binary search. The recursive one seems to work on llvm/V100 but elsewhere
       double E = p.E_;
-      #pragma omp target map(from: i_grid)
+      //#pragma omp target map(from: i_grid)
       {
         //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
         i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], E);
@@ -761,30 +765,39 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.index_grid = i_grid;
     micro.interp_factor = f;
 
+    int i_grid1D = i_grid * 5;
+    int i_next1D = (i_grid + 1) * 5;
+    
     // Calculate microscopic nuclide total cross section
-    micro.total = (1.0 - f)*xs(i_grid, XS_TOTAL)
-          + f*xs(i_grid + 1, XS_TOTAL);
+    double og_total = (1.0 - f)*xs_[i_temp](i_grid, XS_TOTAL)
+          + f*xs_[i_temp](i_grid+1, XS_TOTAL);
+
+    // Calculate microscopic nuclide total cross section
+    micro.total = (1.0 - f)*xs[i_grid1D + XS_TOTAL]
+          + f*xs[i_next1D + XS_TOTAL];
+
+    assert(og_total == micro.total);
 
     // Calculate microscopic nuclide absorption cross section
-    micro.absorption = (1.0 - f)*xs(i_grid, XS_ABSORPTION)
-      + f*xs(i_grid + 1, XS_ABSORPTION);
+    micro.absorption = (1.0 - f)*xs[i_grid1D + XS_ABSORPTION]
+      + f*xs[i_next1D + XS_ABSORPTION];
 
     if (fissionable_) {
       // Calculate microscopic nuclide total cross section
-      micro.fission = (1.0 - f)*xs(i_grid, XS_FISSION)
-            + f*xs(i_grid + 1, XS_FISSION);
+      micro.fission = (1.0 - f)*xs[i_grid1D + XS_FISSION]
+            + f*xs[i_next1D + XS_FISSION];
 
       // Calculate microscopic nuclide nu-fission cross section
-      micro.nu_fission = (1.0 - f)*xs(i_grid, XS_NU_FISSION)
-        + f*xs(i_grid + 1, XS_NU_FISSION);
+      micro.nu_fission = (1.0 - f)*xs[i_grid1D + XS_NU_FISSION]
+        + f*xs[i_next1D + XS_NU_FISSION];
     } else {
       micro.fission = 0.0;
       micro.nu_fission = 0.0;
     }
 
     // Calculate microscopic nuclide photon production cross section
-    micro.photon_prod = (1.0 - f)*xs(i_grid, XS_PHOTON_PROD)
-      + f*xs(i_grid + 1, XS_PHOTON_PROD);
+    micro.photon_prod = (1.0 - f)*xs[i_grid1D + XS_PHOTON_PROD]
+      + f*xs[i_next1D + XS_PHOTON_PROD];
 
     // Depletion-related reactions
     if (simulation::need_depletion_rx) {

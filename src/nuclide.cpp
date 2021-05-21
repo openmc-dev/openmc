@@ -742,7 +742,12 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
       // Perform binary search over reduced range
       // TODO: Iterative binary search...
-      i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
+      double E = p.E_;
+      #pragma omp target map(from: i_grid)
+      {
+        //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
+        i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], E);
+      }
     }
 
     // check for rare case where two energy points are the same

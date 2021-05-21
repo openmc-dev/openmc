@@ -705,14 +705,6 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       break;
     }
 
-    // Determine the energy grid index using a logarithmic mapping to
-    // reduce the energy range over which a binary search needs to be
-    // performed
-
-    //const auto& grid {grid_[i_temp]};
-    //const auto& grid {grid_[i_temp]};
-    //const auto& xs {xs_[i_temp]};
-
     // Offset index grid
     int index_offset = i_temp * (settings::n_log_bins + 1);
     int* grid_index = &flat_grid_index_[index_offset];
@@ -733,6 +725,10 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       num_gridpoints = total_energy_gridpoints_ - energy_offset;
     }
 
+    // Determine the energy grid index using a logarithmic mapping to
+    // reduce the energy range over which a binary search needs to be
+    // performed
+
     int i_grid;
     if (p.E_ < energy[0]) {
       i_grid = 0;
@@ -749,10 +745,8 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
 
       // Iterative linear search (may be faster on device anyway due to reduced branching)
-      for (; i_low < i_high; i_low++) {
-        if (i_low == i_high - 1)
-          break;
-        if (p.E_ >= energy[i_low] && p.E_ < energy[i_low + 1])
+      for (; i_low < i_high - 1; i_low++) {
+        if (p.E_ < energy[i_low + 1])
           break;
       }
       i_grid = i_low;

@@ -41,13 +41,9 @@ void collision(Particle& p)
   // Sample reaction for the material the particle is in
   switch (p.type_) {
   case Particle::Type::neutron:
-    #pragma omp target update to(p)
-    #pragma omp target
-    {
-      sample_neutron_reaction(p);
-    }
-    #pragma omp target update from(p)
+    sample_neutron_reaction(p);
     break;
+  /*
   case Particle::Type::photon:
     sample_photon_reaction(p);
     break;
@@ -57,16 +53,18 @@ void collision(Particle& p)
   case Particle::Type::positron:
     sample_positron_reaction(p);
     break;
+  */
   }
 
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type_);
-  if (p.E_ < settings::energy_cutoff[type]) {
+  if (p.E_ < settings::device_energy_cutoff[type]) {
     p.alive_ = false;
     p.wgt_ = 0.0;
   }
 
   // Display information about collision
+  /*
   if (settings::verbosity >= 10 || p.trace_) {
     std::string msg;
     if (p.event_ == TallyEvent::KILL) {
@@ -84,6 +82,7 @@ void collision(Particle& p)
     }
     write_message(msg, 1);
   }
+  */
 }
 
 void sample_neutron_reaction(Particle& p)

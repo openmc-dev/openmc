@@ -325,7 +325,13 @@ Particle::event_collide()
   surface_ = 0;
 
   if (settings::run_CE) {
-    collision(*this);
+    auto& p {*this};
+    #pragma omp target update to(p)
+    #pragma omp target
+    {
+      collision(*this);
+    }
+    #pragma omp target update from(p)
   } else {
     collision_mg(*this);
   }

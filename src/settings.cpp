@@ -88,6 +88,7 @@ int64_t max_particles_in_flight {100000};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
+double* device_energy_cutoff;
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};

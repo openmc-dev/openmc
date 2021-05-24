@@ -16,7 +16,9 @@ namespace openmc {
 //==============================================================================
 
 //! Sample a nuclide and reaction and then calls the appropriate routine
+#pragma omp declare target
 void collision(Particle& p);
+#pragma omp end declare target
 
 //! Samples an incident neutron reaction
 void sample_neutron_reaction(Particle& p);

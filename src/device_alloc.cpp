@@ -47,6 +47,8 @@ void move_settings_to_device()
   #pragma omp target update to(settings::res_scat_energy_max)
   #pragma omp target update to(settings::weight_cutoff)
   #pragma omp target update to(settings::weight_survive)
+  settings::device_energy_cutoff = settings::energy_cutoff.data();
+  #pragma omp target enter data map(to: settings::device_energy_cutoff[:4])
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)

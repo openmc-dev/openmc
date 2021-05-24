@@ -434,7 +434,7 @@ void Material::init_thermal()
     bool found = false;
     for (int j = 0; j < nuclide_.size(); ++j) {
       const auto& name {data::nuclides[nuclide_[j]].name_};
-      if (contains(data::thermal_scatt[table.index_table]->nuclides_, name)) {
+      if (contains(data::thermal_scatt[table.index_table].nuclides_, name)) {
         tables.push_back({table.index_table, j, table.fraction});
         found = true;
       }
@@ -443,7 +443,7 @@ void Material::init_thermal()
     // Check to make sure thermal scattering table matched a nuclide
     if (!found) {
       fatal_error("Thermal scattering table " + data::thermal_scatt[
-        table.index_table]->name_  + " did not match any nuclide on material "
+        table.index_table].name_  + " did not match any nuclide on material "
         + std::to_string(id_));
     }
   }
@@ -796,7 +796,7 @@ void Material::calculate_neutron_xs(Particle& p) const
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
-        if (p.E_ > data::thermal_scatt[i_sab]->energy_max_) i_sab = C_NONE;
+        if (p.E_ > data::thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
 
         // Increment position in thermal_tables_
         ++j;
@@ -1051,7 +1051,7 @@ void Material::to_hdf5(hid_t group) const
   if (!thermal_tables_.empty()) {
     std::vector<std::string> sab_names;
     for (const auto& table : thermal_tables_) {
-      sab_names.push_back(data::thermal_scatt[table.index_table]->name_);
+      sab_names.push_back(data::thermal_scatt[table.index_table].name_);
     }
     write_dataset(material_group, "sab_names", sab_names);
   }

@@ -27,7 +27,7 @@ class ThermalScattering;
 
 namespace data {
 extern std::unordered_map<std::string, int> thermal_scatt_map;
-extern std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+extern std::vector<ThermalScattering> thermal_scatt;
 }
 
 //==============================================================================

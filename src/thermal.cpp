@@ -29,6 +29,7 @@ namespace openmc {
 namespace data {
 std::unordered_map<std::string, int> thermal_scatt_map;
 std::vector<ThermalScattering> thermal_scatt;
+ThermalScattering* device_thermal_scatt;
 }
 
 //==============================================================================
@@ -181,6 +182,29 @@ ThermalScattering::has_nuclide(const char* name) const
 {
   std::string nuc {name};
   return std::find(nuclides_.begin(), nuclides_.end(), nuc) != nuclides_.end();
+}
+
+void ThermalScattering::copy_to_device()
+{
+  device_data_ = data_.data();
+  #pragma omp target enter data map(to: device_data_[:data_.size()])
+  for (auto& d : data_) {
+    if (d.elastic_.xs) {
+      d.elastic_.device_xs = d.elastic_.xs.get();
+      d.elastic_.device_distribution = d.elastic_.distribution.get();
+      #pragma omp target enter data map(to: d.elastic_.device_xs[:1])
+      #pragma omp target enter data map(to: d.elastic_.device_distribution[:1])
+      d.elastic_.device_xs->copy_to_device();
+      d.elastic_.device_distribution->copy_to_device();
+    }
+
+    d.inelastic_.device_xs = d.inelastic_.xs.get();
+    d.inelastic_.device_distribution = d.inelastic_.distribution.get();
+    #pragma omp target enter data map(to: d.inelastic_.device_xs[:1])
+    #pragma omp target enter data map(to: d.inelastic_.device_distribution[:1])
+    d.inelastic_.device_xs->copy_to_device();
+    d.inelastic_.device_distribution->copy_to_device();
+  }
 }
 
 //==============================================================================

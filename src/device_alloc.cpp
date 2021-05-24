@@ -7,6 +7,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/simulation.h"
+#include "openmc/thermal.h"
 
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
@@ -102,7 +103,7 @@ void move_read_only_data_to_device()
     lattice.allocate_and_copy_to_device();
   }
 
-  // Nuclides /////////////////////////////////////////////////////////
+  // Nuclear data /////////////////////////////////////////////////////
   data::device_energy_max = data::energy_max.data();
   #pragma omp target enter data map(to: data::device_energy_max[:2])
   #pragma omp target update to(data::nuclides_size)
@@ -120,6 +121,12 @@ void move_read_only_data_to_device()
     nuc.flatten_xs_data();
 
     nuc.copy_to_device();
+  }
+
+  data::device_thermal_scatt = data::thermal_scatt.data();
+  #pragma omp target enter data map(to: data::device_thermal_scatt[:data::thermal_scatt.size()])
+  for (auto& ts : data::thermal_scatt) {
+    ts.copy_to_device();
   }
 
   // Materials /////////////////////////////////////////////////////////

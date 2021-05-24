@@ -975,6 +975,10 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
     }
   }
 
+  ///////////////////////////////////////////////////////////
+  // TODO: Offload everything below to device
+  ///////////////////////////////////////////////////////////
+
   // Determine the treatment of inelastic scattering
   double inelastic = 0.;
   if (urr.inelastic_flag_ != C_NONE) {

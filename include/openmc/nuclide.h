@@ -51,11 +51,11 @@ public:
   #pragma omp declare target
   double nu(double E, EmissionMode mode, int group=0) const;
   void calculate_elastic_xs(Particle& p) const;
-  #pragma omp end declare target
 
   //! Determines the microscopic 0K elastic cross section at a trial relative
   //! energy used in resonance scattering
   double elastic_xs_0K(double E) const;
+  #pragma omp end declare target
 
   //! \brief Determines cross sections in the unresolved resonance range
   //! from probability tables.
@@ -120,6 +120,9 @@ public:
   std::vector<double> energy_0K_;
   std::vector<double> elastic_0K_;
   std::vector<double> xs_cdf_;
+  double* device_energy_0K_;
+  double* device_elastic_0K_;
+  double* device_xs_cdf_;
 
   // Unresolved resonance range information
   bool urr_present_ {false};

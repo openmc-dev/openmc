@@ -91,7 +91,7 @@ public:
   // Flattened 1D temperature dependent cross section data
   int total_energy_gridpoints_;
   int total_index_gridpoints_;
-  int* flat_temp_offsets_ {NULL};
+  int* flat_temp_offsets_ {nullptr};
   int* flat_grid_index_;
   double* flat_grid_energy_;
   double* flat_xs_;

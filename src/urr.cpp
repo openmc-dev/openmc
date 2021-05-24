@@ -36,4 +36,9 @@ void UrrData::flatten_urr_data()
   n_total_prob_ = n_energy_ * 6 * n_bands_;
 }
 
+int UrrData::get_offset(int i_energy, URRTableParam type) const
+{
+  return i_energy * 6 * n_bands_ + static_cast<int>(type) * n_bands_;
+}
+
 }

@@ -33,6 +33,9 @@ public:
   explicit UrrData(hid_t group_id);
 
   void flatten_urr_data();
+  #pragma omp declare target
+  int get_offset(int i_energy, URRTableParam type) const;
+  #pragma omp end declare target
 };
 
 } // namespace openmc

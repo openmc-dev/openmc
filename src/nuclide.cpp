@@ -898,10 +898,12 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   p.stream_ = STREAM_TRACKING;
 
   int i_low = 0;
-  while (urr.prob_(i_energy, URRTableParam::CUM_PROB, i_low) <= r) {++i_low;};
+  int offset_low = urr.get_offset(i_energy, URRTableParam::CUM_PROB);
+  while (urr.device_prob_[offset_low + i_low] <= r) {++i_low;};
 
   int i_up = 0;
-  while (urr.prob_(i_energy + 1, URRTableParam::CUM_PROB, i_up) <= r) {++i_up;};
+  int offset_high = urr.get_offset(i_energy + 1, URRTableParam::CUM_PROB);
+  while (urr.device_prob_[offset_high + i_up] <= r) {++i_up;};
 
   // Determine elastic, fission, and capture cross sections from the
   // probability table
@@ -911,49 +913,63 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   double f;
   if (urr.interp_ == Interpolation::lin_lin) {
     // Determine the interpolation factor on the table
-    f = (p.E_ - urr.energy_(i_energy)) /
-         (urr.energy_(i_energy + 1) - urr.energy_(i_energy));
+    f = (p.E_ - urr.device_energy_[i_energy]) /
+         (urr.device_energy_[i_energy + 1] - urr.device_energy_[i_energy]);
 
-    elastic = (1. - f) * urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) +
-         f * urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up);
-    fission = (1. - f) * urr.prob_(i_energy, URRTableParam::FISSION, i_low) +
-         f * urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up);
-    capture = (1. - f) * urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) +
-         f * urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up);
+    offset_low = urr.get_offset(i_energy, URRTableParam::ELASTIC);
+    offset_high = urr.get_offset(i_energy + 1, URRTableParam::ELASTIC);
+    elastic = (1. - f) * urr.device_prob_[offset_low + i_low] +
+         f * urr.device_prob_[offset_high + i_up];
+
+    offset_low = urr.get_offset(i_energy, URRTableParam::FISSION);
+    offset_high = urr.get_offset(i_energy + 1, URRTableParam::FISSION);
+    fission = (1. - f) * urr.device_prob_[offset_low + i_low] +
+         f * urr.device_prob_[offset_high + i_up];
+    
+    offset_low = urr.get_offset(i_energy, URRTableParam::N_GAMMA);
+    offset_high = urr.get_offset(i_energy + 1, URRTableParam::N_GAMMA);
+    capture = (1. - f) * urr.device_prob_[offset_low + i_low] +
+         f * urr.device_prob_[offset_high + i_up];
   } else if (urr.interp_ == Interpolation::log_log) {
     // Determine interpolation factor on the table
-    f = std::log(p.E_ / urr.energy_(i_energy)) /
-         std::log(urr.energy_(i_energy + 1) / urr.energy_(i_energy));
-
+    f = std::log(p.E_ / urr.device_energy_[i_energy]) /
+         std::log(urr.device_energy_[i_energy + 1] / urr.device_energy_[i_energy]);
+    
+    offset_low = urr.get_offset(i_energy, URRTableParam::ELASTIC);
+    offset_high = urr.get_offset(i_energy + 1, URRTableParam::ELASTIC);
     // Calculate the elastic cross section/factor
-    if ((urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up) > 0.)) {
+    if ((urr.device_prob_[offset_low + i_low] > 0.) &&
+        (urr.device_prob_[offset_high + i_up] > 0.)) {
       elastic =
            std::exp((1. - f) *
-                    std::log(urr.prob_(i_energy, URRTableParam::ELASTIC, i_low)) +
-                    f * std::log(urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up)));
+                    std::log(urr.device_prob_[offset_low + i_low]) +
+                    f * std::log(urr.device_prob_[offset_high + i_up]));
     } else {
       elastic = 0.;
     }
 
+    offset_low = urr.get_offset(i_energy, URRTableParam::FISSION);
+    offset_high = urr.get_offset(i_energy + 1, URRTableParam::FISSION);
     // Calculate the fission cross section/factor
-    if ((urr.prob_(i_energy, URRTableParam::FISSION, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up) > 0.)) {
+    if ((urr.device_prob_[offset_low + i_low] > 0.) &&
+        (urr.device_prob_[offset_high + i_up] > 0.)) {
       fission =
            std::exp((1. - f) *
-                    std::log(urr.prob_(i_energy, URRTableParam::FISSION, i_low)) +
-                    f * std::log(urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up)));
+                    std::log(urr.device_prob_[offset_low + i_low]) +
+                    f * std::log(urr.device_prob_[offset_high + i_up]));
     } else {
       fission = 0.;
     }
 
+    offset_low = urr.get_offset(i_energy, URRTableParam::N_GAMMA);
+    offset_high = urr.get_offset(i_energy + 1, URRTableParam::N_GAMMA);
     // Calculate the capture cross section/factor
-    if ((urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up) > 0.)) {
+    if ((urr.device_prob_[offset_low + i_low] > 0.) &&
+        (urr.device_prob_[offset_high + i_up] > 0.)) {
       capture =
            std::exp((1. - f) *
-                    std::log(urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low)) +
-                    f * std::log(urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up)));
+                    std::log(urr.device_prob_[offset_low + i_low]) +
+                    f * std::log(urr.device_prob_[offset_high + i_up]));
     } else {
       capture = 0.;
     }

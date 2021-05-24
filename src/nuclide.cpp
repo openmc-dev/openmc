@@ -344,6 +344,8 @@ void Nuclide::flatten_xs_data()
       }
     }
   }
+
+  // Sanity check
   assert(idx == total_energy_gridpoints_ * 5);
 }
 
@@ -351,10 +353,13 @@ Nuclide::~Nuclide()
 {
   data::nuclide_map.erase(name_);
   
-  delete[] flat_temp_offsets_;
-  delete[] flat_grid_index_;
-  delete[] flat_grid_energy_;
-  delete[] flat_xs_;
+  // These arrays are only allocated if 1D flattening function was called
+  if (flat_temp_offsets_ != NULL) {
+    delete[] flat_temp_offsets_;
+    delete[] flat_grid_index_;
+    delete[] flat_grid_energy_;
+    delete[] flat_xs_;
+  }
 }
 
 void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons)

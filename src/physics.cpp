@@ -176,7 +176,7 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
     i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].total;
 
   // Sample the number of neutrons produced
-  int nu = static_cast<int>(nu_t);
+  int nu = std::floor(nu_t);
   if (prn(p.current_seed()) <= (nu_t - nu)) ++nu;
 
   // Begin banking the source neutrons

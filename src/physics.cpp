@@ -148,7 +148,12 @@ void sample_neutron_reaction(Particle& p)
 
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
-  scatter(p, i_nuclide);
+  #pragma omp target update to(p)
+  #pragma omp target
+  {
+    scatter(p, i_nuclide);
+  }
+  #pragma omp target update from(p)
 
   // Advance URR seed stream 'N' times after energy changes
   if (p.E_ != p.E_last_) {
@@ -670,15 +675,10 @@ void scatter(Particle& p, int i_nuclide)
     // NON-S(A,B) ELASTIC SCATTERING
 
     // Determine temperature
-    double kT = nuc.multipole_ ? p.sqrtkT_*p.sqrtkT_ : nuc.kTs_[i_temp];
+    double kT = nuc.multipole_ ? p.sqrtkT_*p.sqrtkT_ : nuc.device_kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
-    #pragma omp target update to(p)
-    #pragma omp target
-    {
     elastic_scatter(i_nuclide, nuc.device_reactions_[0].obj(), kT, p);
-    }
-    #pragma omp target update from(p)
 
     p.event_mt_ = ELASTIC;
     sampled = true;
@@ -689,12 +689,7 @@ void scatter(Particle& p, int i_nuclide)
     // =======================================================================
     // S(A,B) SCATTERING
 
-    #pragma omp target update to(p)
-    #pragma omp target
-    {
-      sab_scatter(i_nuclide, micro.index_sab, p);
-    }
-    #pragma omp target update from(p)
+    sab_scatter(i_nuclide, micro.index_sab, p);
 
     p.event_mt_ = ELASTIC;
     sampled = true;
@@ -707,38 +702,34 @@ void scatter(Particle& p, int i_nuclide)
     int j = 0;
     int i = 0;
 
-    #pragma omp target update to(p)
-    #pragma omp target
-    {
-      while (prob < cutoff) {
-        i = nuc.device_index_inelastic_scatter_[j];
-        ++j;
+    while (prob < cutoff) {
+      i = nuc.device_index_inelastic_scatter_[j];
+      ++j;
 
-        /*
-        // Check to make sure inelastic scattering reaction sampled
-        if (i >= nuc.reactions_.size()) {
-          p.write_restart();
-          fatal_error("Did not sample any reaction for nuclide " + nuc.name_);
-        }
-        */
-
-        // add to cumulative probability
-        auto rx = nuc.device_reactions_[i].obj();
-        prob += rx.xs(micro);
+      /*
+      // Check to make sure inelastic scattering reaction sampled
+      if (i >= nuc.reactions_.size()) {
+        p.write_restart();
+        fatal_error("Did not sample any reaction for nuclide " + nuc.name_);
       }
+      */
 
-      // Perform collision physics for inelastic scattering
+      // add to cumulative probability
       auto rx = nuc.device_reactions_[i].obj();
-      inelastic_scatter(nuc, rx, p);
-      p.event_mt_ = rx.mt();
+      prob += rx.xs(micro);
     }
-    #pragma omp target update from(p)
+
+    // Perform collision physics for inelastic scattering
+    auto rx = nuc.device_reactions_[i].obj();
+    inelastic_scatter(nuc, rx, p);
+    p.event_mt_ = rx.mt();
   }
 
   // Set event component
   p.event_ = TallyEvent::SCATTER;
 
   // Sample new outgoing angle for isotropic-in-lab scattering
+  /*
   const auto& mat {model::materials[p.material_]};
   if (!mat.p0_.empty()) {
     int i_nuc_mat = mat.mat_nuclide_index_[i_nuclide];
@@ -754,6 +745,7 @@ void scatter(Particle& p, int i_nuclide)
       p.mu_ = u_old.dot(p.u());
     }
   }
+  */
 }
 
 void elastic_scatter(int i_nuclide, const ReactionFlat& rx, double kT,

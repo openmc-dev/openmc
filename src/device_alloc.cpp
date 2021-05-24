@@ -38,6 +38,7 @@ void move_settings_to_device()
   #pragma omp target update to(settings::run_mode)
   #pragma omp target update to(settings::n_particles)
   #pragma omp target update to(settings::temperature_method)
+  #pragma omp target update to(settings::urr_ptables_on)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)

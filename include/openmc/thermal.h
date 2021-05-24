@@ -56,8 +56,10 @@ public:
   //! \param[out] E_out Outgoing neutron energy in [eV]
   //! \param[out] mu Outgoing scattering angle cosine
   //! \param[inout] seed Pseudorandom seed pointer
+  #pragma omp declare target
   void sample(const NuclideMicroXS& micro_xs, double E_in,
               double* E_out, double* mu, uint64_t* seed);
+  #pragma omp end declare target
 private:
   struct Reaction {
     // Default constructor

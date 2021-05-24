@@ -689,7 +689,12 @@ void scatter(Particle& p, int i_nuclide)
     // =======================================================================
     // S(A,B) SCATTERING
 
-    sab_scatter(i_nuclide, micro.index_sab, p);
+    #pragma omp target update to(p)
+    #pragma omp target
+    {
+      sab_scatter(i_nuclide, micro.index_sab, p);
+    }
+    #pragma omp target update from(p)
 
     p.event_mt_ = ELASTIC;
     sampled = true;
@@ -825,7 +830,8 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 
   // Sample energy and angle
   double E_out;
-  data::thermal_scatt[i_sab].data_[i_temp].sample(micro, p.E_, &E_out, &p.mu_, p.current_seed());
+  auto& sab_data = data::device_thermal_scatt[i_sab].device_data_[i_temp];
+  sab_data.sample(micro, p.E_, &E_out, &p.mu_, p.current_seed());
 
   // Set energy to outgoing, change direction of particle
   p.E_ = E_out;

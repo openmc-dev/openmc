@@ -290,9 +290,9 @@ ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
 {
   // Determine whether inelastic or elastic scattering will occur
   if (prn(seed) < micro_xs.thermal_elastic / micro_xs.thermal) {
-    elastic_.distribution->sample(E, *E_out, *mu, seed);
+    elastic_.device_distribution->sample(E, *E_out, *mu, seed);
   } else {
-    inelastic_.distribution->sample(E, *E_out, *mu, seed);
+    inelastic_.device_distribution->sample(E, *E_out, *mu, seed);
   }
 
   // Because of floating-point roundoff, it may be possible for mu to be

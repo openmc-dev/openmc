@@ -74,7 +74,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   simulation::time_event_init.start();
 
   #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
-  
+
   simulation::calculate_fuel_xs_queue.copy_host_to_device();
   simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
 
@@ -87,12 +87,12 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
     initialize_history(simulation::device_particles[i], source_offset + i + 1);
     dispatch_xs_event(i);
   }
-  
+
   #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
-  
+
   simulation::calculate_fuel_xs_queue.copy_device_to_host();
   simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
-  
+
   // Transfer total weight from device -> host if the kernel was run on device.
   // Note: the pre-kernel transfer host -> device happens in initialize_batch() at the
   // point the variable is reset to 0.
@@ -231,7 +231,12 @@ void process_collision_events()
   for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
-    p.event_collide();
+    #pragma omp target update to(p)
+    #pragma omp target
+    {
+      p.event_collide();
+    }
+    #pragma omp target update from(p)
     p.event_revive_from_secondary();
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
@@ -245,7 +250,7 @@ void process_collision_events()
 void process_death_events(int64_t n_particles)
 {
   simulation::time_event_death.start();
-  
+
   #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
   #ifdef USE_DEVICE
@@ -257,7 +262,7 @@ void process_death_events(int64_t n_particles)
     Particle& p = simulation::device_particles[i];
     p.event_death();
   }
-  
+
   #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
 
   #ifdef USE_DEVICE

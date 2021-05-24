@@ -318,8 +318,10 @@ Particle::event_collide()
   // since the direction of the particle will change and we need to use the
   // pre-collision direction to figure out what mesh surfaces were crossed
 
+  /*
   if (!model::active_meshsurf_tallies.empty())
     score_surface_tally(*this, model::active_meshsurf_tallies);
+  */
 
   // Clear surface component
   surface_ = 0;
@@ -333,12 +335,15 @@ Particle::event_collide()
     }
     #pragma omp target update from(p)
   } else {
+    /*
     collision_mg(*this);
+    */
   }
 
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
+  /*
   if (!model::active_collision_tallies.empty()) score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {
     if (settings::run_CE) {
@@ -347,6 +352,7 @@ Particle::event_collide()
       score_analog_tally_mg(*this);
     }
   }
+  */
 
   // Reset banked weight during collision
   n_bank_ = 0;
@@ -369,7 +375,7 @@ Particle::event_collide()
   for (int j = 0; j < n_coord_ - 1; ++j) {
     if (coord_[j + 1].rotated) {
       // If next level is rotated, apply rotation matrix
-      const auto& m {model::cells[coord_[j].cell].rotation_};
+      const auto& m {model::device_cells[coord_[j].cell].rotation_};
       const auto& u {coord_[j].u};
       coord_[j + 1].u = u.rotate(m);
     } else {
@@ -379,7 +385,9 @@ Particle::event_collide()
   }
 
   // Score flux derivative accumulators for differential tallies.
+  /*
   if (!model::active_tallies.empty()) score_collision_derivative(*this);
+  */
 }
 
 void

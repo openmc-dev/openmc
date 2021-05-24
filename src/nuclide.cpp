@@ -354,7 +354,7 @@ Nuclide::~Nuclide()
   data::nuclide_map.erase(name_);
   
   // These arrays are only allocated if 1D flattening function was called
-  if (flat_temp_offsets_ != NULL) {
+  if (flat_temp_offsets_ != nullptr) {
     delete[] flat_temp_offsets_;
     delete[] flat_grid_index_;
     delete[] flat_grid_energy_;

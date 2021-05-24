@@ -65,7 +65,6 @@ uint64_t init_seed(int64_t id, int offset);
 
 #pragma omp declare target
 void init_particle_seeds(int64_t id, uint64_t* seeds);
-#pragma omp end declare target
 
 //==============================================================================
 //! Advance the random number seed 'n' times from the current seed. This
@@ -76,6 +75,7 @@ void init_particle_seeds(int64_t id, uint64_t* seeds);
 //==============================================================================
 
 void advance_prn_seed(int64_t n, uint64_t* seed);
+#pragma omp end declare target
 
 //==============================================================================
 //! Advance a random number seed 'n' times.

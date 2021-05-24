@@ -9,7 +9,9 @@
 namespace openmc {
 
 //! \brief Performs the russian roulette operation for a particle
+#pragma omp declare target
 void russian_roulette(Particle& p);
+#pragma omp end declare target
 
 } // namespace openmc
 #endif // OPENMC_PHYSICS_COMMON_H

@@ -45,6 +45,8 @@ void move_settings_to_device()
   #pragma omp target update to(settings::res_scat_method)
   #pragma omp target update to(settings::res_scat_energy_min)
   #pragma omp target update to(settings::res_scat_energy_max)
+  #pragma omp target update to(settings::weight_cutoff)
+  #pragma omp target update to(settings::weight_survive)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)

@@ -673,7 +673,12 @@ void scatter(Particle& p, int i_nuclide)
     double kT = nuc.multipole_ ? p.sqrtkT_*p.sqrtkT_ : nuc.kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
-    elastic_scatter(i_nuclide, nuc.reactions_[0].obj(), kT, p);
+    #pragma omp target update to(p)
+    #pragma omp target
+    {
+    elastic_scatter(i_nuclide, nuc.device_reactions_[0].obj(), kT, p);
+    }
+    #pragma omp target update from(p)
 
     p.event_mt_ = ELASTIC;
     sampled = true;
@@ -862,6 +867,7 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     // sample target velocity with the constant cross section (cxs) approx.
     return sample_cxs_target_velocity(nuc.awr_, E, u, kT, seed);
 
+  /*
   case ResScatMethod::dbrc:
   case ResScatMethod::rvs: {
     double E_red = std::sqrt(nuc.awr_ * E / kT);
@@ -973,6 +979,7 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
       }
     }
     } // case RVS, DBRC
+    */
   } // switch (sampling_method)
 
   UNREACHABLE();

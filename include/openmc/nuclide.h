@@ -50,8 +50,8 @@ public:
   // Methods
   #pragma omp declare target
   double nu(double E, EmissionMode mode, int group=0) const;
-  #pragma omp end declare target
   void calculate_elastic_xs(Particle& p) const;
+  #pragma omp end declare target
 
   //! Determines the microscopic 0K elastic cross section at a trial relative
   //! energy used in resonance scattering

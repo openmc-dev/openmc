@@ -589,7 +589,8 @@ void Nuclide::calculate_elastic_xs(Particle& p) const
   int i_temp = micro.index_temp;
 
   if (i_temp >= 0) {
-    micro.elastic = reactions_[0].obj().xs(micro);
+    auto rx = device_reactions_[0].obj();
+    micro.elastic = rx.xs(micro);
   }
 }
 

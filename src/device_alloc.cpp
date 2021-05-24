@@ -41,6 +41,9 @@ void move_settings_to_device()
   #pragma omp target update to(settings::urr_ptables_on)
   #pragma omp target update to(settings::create_fission_neutrons)
   #pragma omp target update to(settings::survival_biasing)
+  #pragma omp target update to(settings::res_scat_method)
+  #pragma omp target update to(settings::res_scat_energy_min)
+  #pragma omp target update to(settings::res_scat_energy_max)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)

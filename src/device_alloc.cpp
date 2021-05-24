@@ -99,7 +99,15 @@ void move_read_only_data_to_device()
   // Nuclides /////////////////////////////////////////////////////////
   for (auto& nuc : data::nuclides) {
     std::cout << "Moving " << nuc->name_ << " data to device..." << std::endl;
+
+    // URR data flattening
+    for (auto& u : nuc->urr_data_) {
+      u.flatten_urr_data();
+    }
+
+    // Pointwise XS data flattening
     nuc->flatten_xs_data();
+
     nuc->copy_to_device();
   }
   

@@ -1066,6 +1066,7 @@ double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double
 
 void Nuclide::copy_to_device()
 {
+  // Reactions
   device_reactions_ = reactions_.data();
 
   #pragma omp target enter data map(to: device_reactions_[:reactions_.size()])
@@ -1073,12 +1074,21 @@ void Nuclide::copy_to_device()
     rx.copy_to_device();
   }
   
+  // Regular pointwise XS data
   device_kTs_ = kTs_.data();
   #pragma omp target enter data map(to: device_kTs_[:kTs_.size()])
   #pragma omp target enter data map(to: flat_temp_offsets_[:kTs_.size()])
   #pragma omp target enter data map(to: flat_grid_energy_[:total_energy_gridpoints_])
   #pragma omp target enter data map(to: flat_grid_index_[:total_index_gridpoints_])
   #pragma omp target enter data map(to: flat_xs_[:total_energy_gridpoints_*5])
+
+  // URR data
+  device_urr_data_ = urr_data_.data();
+  #pragma omp target enter data map(to: device_urr_data_[:urr_data_.size()])
+  for (auto& u : urr_data_) {
+    #pragma omp target enter data map(to: u.device_energy_[:u.n_energy_])
+    #pragma omp target enter data map(to: u.device_prob_[:u.n_total_prob_])
+  }
 }
 
 void Nuclide::release_from_device()
@@ -1088,11 +1098,19 @@ void Nuclide::release_from_device()
   }
   #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
 
+  // Regular pointwise XS data
   #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])
   #pragma omp target exit data map(release: flat_temp_offsets_[:kTs_.size()])
   #pragma omp target exit data map(release: flat_grid_energy_[:total_energy_gridpoints_])
   #pragma omp target exit data map(release: flat_grid_index_[:total_index_gridpoints_])
   #pragma omp target exit data map(release: flat_xs_[:total_energy_gridpoints_*5])
+  
+  // URR data
+  for (auto& u : urr_data_) {
+    #pragma omp target exit data map(release: u.device_energy_[:u.n_energy_])
+    #pragma omp target exit data map(release: u.device_prob_[:u.n_total_prob_])
+  }
+  #pragma omp target exit data map(release: device_urr_data_[:urr_data_.size()])
 }
 
 //==============================================================================

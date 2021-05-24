@@ -833,9 +833,9 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
   if (settings::urr_ptables_on && urr_present_ && !use_mp) {
-    int n = urr_data_[micro.index_temp].n_energy_;
-    if ((p.E_ > urr_data_[micro.index_temp].energy_(0)) &&
-        (p.E_ < urr_data_[micro.index_temp].energy_(n-1))) {
+    int n = device_urr_data_[micro.index_temp].n_energy_;
+    if ((p.E_ > device_urr_data_[micro.index_temp].device_energy_[0]) &&
+        (p.E_ < device_urr_data_[micro.index_temp].device_energy_[n-1])) {
       this->calculate_urr_xs(micro.index_temp, p);
     }
   }
@@ -879,11 +879,11 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   micro.use_ptable = true;
 
   // Create a shorthand for the URR data
-  const auto& urr = urr_data_[i_temp];
+  const auto& urr = device_urr_data_[i_temp];
 
   // Determine the energy table
   int i_energy = 0;
-  while (p.E_ >= urr.energy_(i_energy + 1)) {++i_energy;};
+  while (p.E_ >= urr.device_energy_[i_energy + 1]) {++i_energy;};
 
   // Sample the probability table using the cumulative distribution
 

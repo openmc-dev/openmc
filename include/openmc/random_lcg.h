@@ -40,7 +40,9 @@ double prn(uint64_t* seed);
 //! @return A random number between 0 and 1
 //==============================================================================
 
+#pragma omp declare target
 double future_prn(int64_t n, uint64_t seed);
+#pragma omp end declare target
 
 //==============================================================================
 //! Set a RNG seed to a unique value based on a unique particle ID by striding

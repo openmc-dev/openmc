@@ -37,6 +37,7 @@ void move_settings_to_device()
   #pragma omp target update to(settings::gen_per_batch)
   #pragma omp target update to(settings::run_mode)
   #pragma omp target update to(settings::n_particles)
+  #pragma omp target update to(settings::temperature_method)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)
@@ -98,6 +99,7 @@ void move_read_only_data_to_device()
   // Nuclides /////////////////////////////////////////////////////////
   for (auto& nuc : data::nuclides) {
     std::cout << "Moving " << nuc->name_ << " data to device..." << std::endl;
+    nuc->flatten_xs_data();
     nuc->copy_to_device();
   }
   

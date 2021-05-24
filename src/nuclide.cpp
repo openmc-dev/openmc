@@ -301,10 +301,65 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 
   this->create_derived(prompt_photons_.get(), delayed_photons_.get());
 }
+  
+void Nuclide::flatten_xs_data()
+{
+  // Allocate array to store 1D jagged offsets for each temperature
+  int n_temps = kTs_.size();
+  flat_temp_offsets_ = new int[n_temps];
+
+  // Compute offsets for each temperature and total # of gridpoints
+  total_energy_gridpoints_ = 0;
+  for (int t = 0; t < n_temps; t++) {
+    flat_temp_offsets_[t] = total_energy_gridpoints_;
+    total_energy_gridpoints_ += grid_[t].energy.size();
+  }
+
+  total_index_gridpoints_ = n_temps * (settings::n_log_bins + 1);
+
+  // Allocate space for grid information and populate
+  flat_grid_energy_ = new double[total_energy_gridpoints_];
+  flat_grid_index_ = new int[total_index_gridpoints_];
+  for (int t = 0; t < n_temps; t++) {
+    int energy_offset = flat_temp_offsets_[t];
+
+    for (int e = 0; e < grid_[t].energy.size(); e++) {
+      flat_grid_energy_[energy_offset + e] = grid_[t].energy[e];
+    }
+
+    int grid_offset = t * (settings::n_log_bins + 1);
+
+    for (int i = 0; i < grid_[t].grid_index.size(); i++) {
+      flat_grid_index_[grid_offset + i] = grid_[t].grid_index[i];
+    }
+  }
+
+  // Allocate space for XS data and fill
+  flat_xs_ = new double[total_energy_gridpoints_ * 5];
+  int idx = 0;
+  for (int t = 0; t < n_temps; t++) {
+    for (int e = 0; e < grid_[t].energy.size(); e++) {
+      for (int x = 0; x < 5; x++) {
+        flat_xs_[idx++] = xs_[t](e, x);
+      }
+    }
+  }
+
+  // Sanity check
+  assert(idx == total_energy_gridpoints_ * 5);
+}
 
 Nuclide::~Nuclide()
 {
   data::nuclide_map.erase(name_);
+  
+  // These arrays are only allocated if 1D flattening function was called
+  if (flat_temp_offsets_ != nullptr) {
+    delete[] flat_temp_offsets_;
+    delete[] flat_grid_index_;
+    delete[] flat_grid_energy_;
+    delete[] flat_xs_;
+  }
 }
 
 void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons)
@@ -618,7 +673,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       {
         double max_diff = INFTY;
         for (int t = 0; t < kTs_.size(); ++t) {
-          double diff = std::abs(kTs_[t] - kT);
+          double diff = std::abs(device_kTs_[t] - kT);
           if (diff < max_diff) {
             i_temp = t;
             max_diff = diff;
@@ -630,72 +685,101 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     case TemperatureMethod::INTERPOLATION:
       // Find temperatures that bound the actual temperature
       for (i_temp = 0; i_temp < kTs_.size() - 1; ++i_temp) {
-        if (kTs_[i_temp] <= kT && kT < kTs_[i_temp + 1]) break;
+        if (device_kTs_[i_temp] <= kT && kT < device_kTs_[i_temp + 1]) break;
       }
 
       // Randomly sample between temperature i and i+1
-      f = (kT - kTs_[i_temp]) / (kTs_[i_temp + 1] - kTs_[i_temp]);
+      f = (kT - device_kTs_[i_temp]) / (device_kTs_[i_temp + 1] - device_kTs_[i_temp]);
       if (f > prn(p.current_seed())) ++i_temp;
       break;
+    }
+
+    // Offset index grid
+    int index_offset = i_temp * (settings::n_log_bins + 1);
+    int* grid_index = &flat_grid_index_[index_offset];
+
+    // Offset energy grid
+    int energy_offset = flat_temp_offsets_[i_temp];
+    double* energy = &flat_grid_energy_[energy_offset];
+
+    // Offset xs
+    int xs_offset = flat_temp_offsets_[i_temp] * 5;
+    double* xs = &flat_xs_[xs_offset];
+
+    // Determine # of gridpoints for this temperature
+    int num_gridpoints;
+    if (i_temp < kTs_.size() - 1) {
+      num_gridpoints = flat_temp_offsets_[i_temp + 1] - energy_offset;
+    } else {
+      num_gridpoints = total_energy_gridpoints_ - energy_offset;
     }
 
     // Determine the energy grid index using a logarithmic mapping to
     // reduce the energy range over which a binary search needs to be
     // performed
 
-    const auto& grid {grid_[i_temp]};
-    const auto& xs {xs_[i_temp]};
-
     int i_grid;
-    if (p.E_ < grid.energy.front()) {
+    if (p.E_ < energy[0]) {
       i_grid = 0;
-    } else if (p.E_ > grid.energy.back()) {
-      i_grid = grid.energy.size() - 2;
+    } else if (p.E_ > energy[num_gridpoints-1]) {
+      i_grid = num_gridpoints - 2;
     } else {
       // Determine bounding indices based on which equal log-spaced
       // interval the energy is in
-      int i_low  = grid.grid_index[i_log_union];
-      int i_high = grid.grid_index[i_log_union + 1] + 1;
+      int i_low  = grid_index[i_log_union];
+      int i_high = grid_index[i_log_union + 1] + 1;
 
       // Perform binary search over reduced range
-      i_grid = i_low + lower_bound_index(&grid.energy[i_low], &grid.energy[i_high], p.E_);
+      // Note the STL-based binary search seems to work on llvm/V100 but not elsewhere
+      //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
+
+      // Iterative linear search (may be faster on device anyway due to reduced branching)
+      for (; i_low < i_high - 1; i_low++) {
+        if (p.E_ < energy[i_low + 1])
+          break;
+      }
+      i_grid = i_low;
     }
 
     // check for rare case where two energy points are the same
-    if (grid.energy[i_grid] == grid.energy[i_grid + 1]) ++i_grid;
+    if (energy[i_grid] == energy[i_grid + 1]) ++i_grid;
 
     // calculate interpolation factor
-    f = (p.E_ - grid.energy[i_grid]) /
-      (grid.energy[i_grid + 1]- grid.energy[i_grid]);
+    f = (p.E_ - energy[i_grid]) /
+      (energy[i_grid + 1]- energy[i_grid]);
 
     micro.index_temp = i_temp;
     micro.index_grid = i_grid;
     micro.interp_factor = f;
 
+    // 1D indexing conversion 
+    int i_grid1D = i_grid * 5;
+    int i_next1D = (i_grid + 1) * 5;
+    
     // Calculate microscopic nuclide total cross section
-    micro.total = (1.0 - f)*xs(i_grid, XS_TOTAL)
-          + f*xs(i_grid + 1, XS_TOTAL);
+    micro.total = (1.0 - f)*xs[i_grid1D + XS_TOTAL]
+          + f*xs[i_next1D + XS_TOTAL];
 
     // Calculate microscopic nuclide absorption cross section
-    micro.absorption = (1.0 - f)*xs(i_grid, XS_ABSORPTION)
-      + f*xs(i_grid + 1, XS_ABSORPTION);
+    micro.absorption = (1.0 - f)*xs[i_grid1D + XS_ABSORPTION]
+      + f*xs[i_next1D + XS_ABSORPTION];
 
     if (fissionable_) {
       // Calculate microscopic nuclide total cross section
-      micro.fission = (1.0 - f)*xs(i_grid, XS_FISSION)
-            + f*xs(i_grid + 1, XS_FISSION);
+      micro.fission = (1.0 - f)*xs[i_grid1D + XS_FISSION]
+            + f*xs[i_next1D + XS_FISSION];
 
       // Calculate microscopic nuclide nu-fission cross section
-      micro.nu_fission = (1.0 - f)*xs(i_grid, XS_NU_FISSION)
-        + f*xs(i_grid + 1, XS_NU_FISSION);
+      micro.nu_fission = (1.0 - f)*xs[i_grid1D + XS_NU_FISSION]
+        + f*xs[i_next1D + XS_NU_FISSION];
     } else {
       micro.fission = 0.0;
       micro.nu_fission = 0.0;
     }
 
     // Calculate microscopic nuclide photon production cross section
-    micro.photon_prod = (1.0 - f)*xs(i_grid, XS_PHOTON_PROD)
-      + f*xs(i_grid + 1, XS_PHOTON_PROD);
+    micro.photon_prod = (1.0 - f)*xs[i_grid1D + XS_PHOTON_PROD]
+      + f*xs[i_next1D + XS_PHOTON_PROD];
 
     // Depletion-related reactions
     if (simulation::need_depletion_rx) {
@@ -988,6 +1072,13 @@ void Nuclide::copy_to_device()
   for (auto& rx : reactions_) {
     rx.copy_to_device();
   }
+  
+  device_kTs_ = kTs_.data();
+  #pragma omp target enter data map(to: device_kTs_[:kTs_.size()])
+  #pragma omp target enter data map(to: flat_temp_offsets_[:kTs_.size()])
+  #pragma omp target enter data map(to: flat_grid_energy_[:total_energy_gridpoints_])
+  #pragma omp target enter data map(to: flat_grid_index_[:total_index_gridpoints_])
+  #pragma omp target enter data map(to: flat_xs_[:total_energy_gridpoints_*5])
 }
 
 void Nuclide::release_from_device()
@@ -996,6 +1087,12 @@ void Nuclide::release_from_device()
     rx.release_from_device();
   }
   #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
+
+  #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])
+  #pragma omp target exit data map(release: flat_temp_offsets_[:kTs_.size()])
+  #pragma omp target exit data map(release: flat_grid_energy_[:total_energy_gridpoints_])
+  #pragma omp target exit data map(release: flat_grid_index_[:total_index_gridpoints_])
+  #pragma omp target exit data map(release: flat_xs_[:total_energy_gridpoints_*5])
 }
 
 //==============================================================================

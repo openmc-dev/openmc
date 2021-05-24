@@ -69,6 +69,8 @@ public:
   double collapse_rate(int MT, double temperature, gsl::span<const double> energy,
     gsl::span<const double> flux) const;
 
+  void flatten_xs_data();
+
   void copy_to_device();
   void release_from_device();
 
@@ -82,8 +84,17 @@ public:
 
   // Temperature dependent cross section data
   std::vector<double> kTs_; //!< temperatures in eV (k*T)
+  double* device_kTs_;
   std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
   std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
+  
+  // Flattened 1D temperature dependent cross section data
+  int total_energy_gridpoints_;
+  int total_index_gridpoints_;
+  int* flat_temp_offsets_ {nullptr};
+  int* flat_grid_index_;
+  double* flat_grid_energy_;
+  double* flat_xs_;
 
   // Multipole data
   std::unique_ptr<WindowedMultipole> multipole_;

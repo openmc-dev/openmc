@@ -97,7 +97,9 @@ extern std::unordered_set<int> sourcepoint_batch; //!< Batches when source shoul
 extern std::unordered_set<int> statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int> source_write_surf_id; //!< Surface ids where sources will be written
 extern int64_t max_surface_particles;    //!< maximum number of particles to be banked on surfaces per process
+#pragma omp declare target
 extern TemperatureMethod temperature_method;           //!< method for choosing temperatures
+#pragma omp end declare target
 extern double temperature_tolerance;     //!< Tolerance in [K] on choosing temperatures
 extern double temperature_default;       //!< Default T in [K]
 extern std::array<double, 2> temperature_range;  //!< Min/max T in [K] over which to load xs

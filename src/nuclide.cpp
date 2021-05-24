@@ -304,22 +304,6 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
   
 void Nuclide::flatten_xs_data()
 {
-  // Prepare flattened 1D XS data for use on device
-  /*
-  std::vector<double> kTs_; //!< temperatures in eV (k*T)
-  double* device_kTs_;
-  std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
-  std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
-  */
-
-  // Flattened 1D temperature dependent cross section data
-  /*
-  int* flat_temp_offsets_;
-  int* flat_grid_index_;
-  double* flat_grid_energy_;
-  double* flat_xs_;
-  */
-
   // Allocate array to store 1D jagged offsets for each temperature
   int n_temps = kTs_.size();
   flat_temp_offsets_ = new int[n_temps];
@@ -367,10 +351,10 @@ Nuclide::~Nuclide()
 {
   data::nuclide_map.erase(name_);
   
-  delete [] flat_temp_offsets_;
-  delete [] flat_grid_index_;
-  delete [] flat_grid_energy_;
-  delete [] flat_xs_;
+  delete[] flat_temp_offsets_;
+  delete[] flat_grid_index_;
+  delete[] flat_grid_energy_;
+  delete[] flat_xs_;
 }
 
 void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons)
@@ -741,7 +725,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       int i_high = grid_index[i_log_union + 1] + 1;
 
       // Perform binary search over reduced range
-      // TODO: Iterative binary search. The recursive one seems to work on llvm/V100 but not elsewhere
+      // Note the STL-based binary search seems to work on llvm/V100 but not elsewhere
       //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
 
       // Iterative linear search (may be faster on device anyway due to reduced branching)

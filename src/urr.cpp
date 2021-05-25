@@ -36,9 +36,9 @@ void UrrData::flatten_urr_data()
   n_total_prob_ = n_energy_ * 6 * n_bands_;
 }
 
-double UrrData::prob(int i_energy, int i_tableparam, int band) const
+double UrrData::prob(int i_energy, URRTableParam i_tableparam, int band) const
 {
-  return device_prob_[i_energy * 6 * n_bands_ + i_tableparam * n_bands_ + band];
+  return device_prob_[i_energy * 6 * n_bands_ + static_cast<int>(i_tableparam) * n_bands_ + band];
 }
 
 }

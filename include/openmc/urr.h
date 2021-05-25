@@ -35,7 +35,7 @@ public:
   void flatten_urr_data();
 
   #pragma omp declare target
-  double prob(int i_energy, int i_tableparam, int band) const;
+  double prob(int i_energy, URRTableParam i_tableparam, int band) const;
   #pragma omp end declare target
 };
 

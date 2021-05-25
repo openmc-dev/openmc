@@ -44,13 +44,13 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::weightwindow_on && settings::ww_mesh->n_ww) { 
+    if (settings::weightwindow_on && settings::ww_settings->n_ww) { 
       split_particle(p); 
     }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::weightwindow_on && settings::ww_mesh->p_ww) { 
+    if (settings::weightwindow_on && settings::ww_settings->p_ww) { 
       split_particle(p); 
     }
     break;
@@ -1181,16 +1181,19 @@ void split_particle(Particle& p)
   // Check if this particle is in the weight weindow mesh and get the mesh bins in each direction
   int ijk[3] = {0};     // mesh bin in each direction
   bool in_mesh;  
-  settings::ww_mesh->get_indices(pos, ijk, &in_mesh);
+  // this is likely expensive 
+  // would like a more generic wrapper in case of cell based
+  // ww's
+  settings::ww_settings->mesh_->get_indices(pos, ijk, &in_mesh);
   // no vr if not inside the mesh
+  std::cout << "splitting" << std::endl;
   if (!in_mesh) {
-    std::cout << "Particle not inside the weight window mesh" << std::endl;
-    std::cout << "ensure weight window covers entire  mesh" << std::endl;
+    std::cout << "particle not in mesh" << std::endl;
+    return;
   }
-  return;
 
   // get the paramters 
-  auto params = settings::ww_mesh->get_params(p);
+  auto params = settings::ww_settings->get_params(p);
 	
   // if particles weight is above the weight window 
   // split until they are within the window
@@ -1212,7 +1215,7 @@ void split_particle(Particle& p)
       params.survival_weight = weight/number;
     }
 
-    if (prn(p.current_seed())<=number)  {
+    if (prn(p.current_seed()) <= number)  {
       p.wgt() = params.survival_weight;
       p.wgt_last() = p.wgt();
     } else {       

@@ -1,4 +1,5 @@
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/search.h"
@@ -7,214 +8,234 @@
 
 namespace openmc {
 
+// read the weight window file
+void read_weight_window_xml() {
+  using namespace weight_window;
+  using namespace settings;
+  using namespace pugi;
+
+  // Check if weight_window.xml exists                                                         
+  std::string filename = path_input + "weight_windows.xml";
+  
+  // Parse settings.xml file                                                              
+  xml_document doc;                                                                       
+  if (file_exists(filename)) {
+    auto result = doc.load_file(filename.c_str());                                          
+    if (!result) {                                                                          
+      fatal_error("Error processing weight_windows.xml file.");                                   
+    }
+    // Get root element                                                                     
+    xml_node root = doc.document_element();     
+    std::cout << " Reading weight window XML file ..." << std::endl;
+    // try and read a weight window
+    settings::ww_settings = std::make_shared<weight_window::WeightWindow>(root);
+  }                                                                                      
+}
+
 //==============================================================================
 // WeightWindowMesh implementation
 //==============================================================================
 
-WeightWindowMesh::WeightWindowMesh() 
+using namespace weight_window;
+
+WeightWindow::WeightWindow() 
 {
   // default parameters
   n_ww = false;                  // flag for neutron use weight window
   p_ww = false;                  // flag for photon use weight window
   user_defined_biasing = false;  // flag for weight biasing in energy
-  
-  // WWP
-  // neutron
-  n_upper_ratio    = 5.;         // upper weight window = upper_ratio * lower weight window
-  n_survival_ratio = 3.;         // survival weight = survival_ratio * lower weight window
-  n_max_split      = 5;          // max number of split particles
-  n_multiplier     = 1.;         // multiplier for weight window lower bounds
 
-  // photon
-  p_upper_ratio    = 5.;         // upper weight window = upper_ratio * lower weight window
-  p_survival_ratio = 3.;         // survival weight = survival_ratio * lower weight window
-  p_max_split      = 5;          // max number of split particles
-  p_multiplier     = 1.;         // multiplier for weight window lower bounds
+  // upper weight window = upper_ratio * lower weight window
+  weight_params[ParticleType::neutron].upper_ratio = 5.; 
+  // survival weight = survival_ratio * lower weight window  
+  weight_params[ParticleType::neutron].survival_ratio = 3.; 
+  // max number of split particles
+  weight_params[ParticleType::neutron].max_split = 5; 
+  // multiplier for weight window lower bounds
+  weight_params[ParticleType::neutron].multiplier = 1.0; 
+  
+  // upper weight window = upper_ratio * lower weight window
+  weight_params[ParticleType::photon].upper_ratio = 5.; 
+  // survival weight = survival_ratio * lower weight window  
+  weight_params[ParticleType::photon].survival_ratio = 3.; 
+  // max number of split particles
+  weight_params[ParticleType::photon].max_split = 5; 
+  // multiplier for weight window lower bounds
+  weight_params[ParticleType::photon].multiplier = 1.0; 
+
 }
 
-WeightWindowMesh::WeightWindowMesh(pugi::xml_node node)
+WeightWindow::WeightWindow(pugi::xml_node node)
 {
   using namespace pugi;
 
-  WeightWindowMesh(); // call the default constructor
-   
-  // construct the mesh
-  mesh_ = make_unique<RectilinearMesh>(node);
-
-  // Energy group
-  if (check_for_node(node, "energy")) {
-    xml_node weightwindow_energy = node.child("energy");
-    // energy group for neutron
-    if (check_for_node(weightwindow_energy, "neutron")) {
-      n_ww = true; // turn on the flag
-      n_energy_group = get_node_array<double>(weightwindow_energy, "neutron");
-      n_energy_group.insert(n_energy_group.begin(), 0);
-    }
-          
-    // energy group for photon
-    if (check_for_node(weightwindow_energy, "photon")) {
-      if (!settings::photon_transport) { 
-        fatal_error("Photon transport is not on but weight window for photon is used"); 
-      }  
-      p_ww = true; // turn on the flag
-      p_energy_group = get_node_array<double>(weightwindow_energy, "photon");
-      p_energy_group.insert(p_energy_group.begin(), 0);
-    }   
-  } else { 
-    fatal_error("Must assign energy group for weight window"); 
-  }  
-
-  // read wwinp file
-  if (check_for_node(node, "lower_ww")) {
-    auto value = get_node_xarray<double>(node, "lower_ww");
-    int groups = 0;  // total energy groups for neutron and photon
-    if (n_ww) groups += n_energy_group.size() - 1;
-    if (p_ww) groups += p_energy_group.size() - 1;
-    if ( value.size() != ( mesh_->n_bins()* groups ) ) { 
-        fatal_error("The number of lower weight window bounds is not the same as energy-space mesh cell numbers");  
-        }
-    // neutron lower weight window bound first     
-    if (n_ww) {
-      for (int i = 0; i < mesh_->n_bins()*(n_energy_group.size()-1); i++) {   
-        n_ww_lower.push_back(value.at(i));
-      }  
-    } 
-        // photon lower weight window bound later
-    if (p_ww) {
-      auto offset = mesh_->n_bins()*(n_energy_group.size()-1);
-      for (int i = 0; i < mesh_->n_bins()*(p_energy_group.size()-1); i++) {   
-        p_ww_lower.push_back(value.at(i + offset));
-      }   
-    } 
-  } else { 
-    fatal_error("Must assign lower weight window bound for weight window"); 
-  }  
-
-    
-  // WWP-- weight window parameters
-  // neutron
-  if (check_for_node(node, "neutron_parameters")) {
-    xml_node neutron_wwp = node.child("neutron_parameters");
-        
-    // upper weight window
-    if (check_for_node(neutron_wwp,"upper")) {
-      n_upper_ratio = std::stod(get_node_value(neutron_wwp, "upper"));
-      if (n_upper_ratio < 2 ) fatal_error("Upper to lower weight window ratio must bigger than 2.");
-    }
-      
-    // survival weight window
-    if (check_for_node(neutron_wwp, "survival")) {
-      n_survival_ratio = std::stod(get_node_value(neutron_wwp, "survival"));
-      if (n_survival_ratio <= 1 || n_survival_ratio >= n_upper_ratio )  
-        fatal_error("Survival to lower weight window ratio must bigger than 1 "
-                    "and less than the upper to lower weight window ratio.");
-    }
-      
-    // max split
-    if (check_for_node(neutron_wwp, "max_split")) {
-      n_max_split = std::stoi(get_node_value(neutron_wwp, "max_split"));
-      if (n_max_split <= 1 ) fatal_error("Max split number must larger than 1.");
-    }
-      
-    // multiplier for weight window lower bounds
-    if (check_for_node(neutron_wwp, "multiplier")) {
-      n_multiplier = std::stod(get_node_value(neutron_wwp, "multiplier"));
-      if (n_multiplier <= 0 ) fatal_error("Multiplier for lower weight window must larger than 0.");
-    }      
+  WeightWindow(); // call the default constructor
+  
+  // check for a mesh
+  if (check_for_node(node, "mesh")) { 
+    xml_node mesh = node.child("mesh");
+    mesh_ = make_unique<RectilinearMesh>(mesh);
   }
-  // neutron      
-        
-  // photon
-  if (check_for_node(node, "photon_parameters")) {
-    xml_node photon_wwp = node.child("photon_parameters");
-        
-    // upper weight window
-    if (check_for_node(photon_wwp, "upper")) {
-      p_upper_ratio = std::stod(get_node_value(photon_wwp, "upper"));
-      if (p_upper_ratio < 2 ) fatal_error("Upper to lower weight window ratio must larger than 2.");
+
+  // make sure we have a particle section
+  if (check_for_node(node, "particle")) {
+    // read the particle section
+    std::string particle_name = "neutron";
+    openmc::ParticleType particle_type;
+    if ( particle_name == "neutron") {
+      particle_type = openmc::ParticleType::neutron;
+      n_ww = true;
     }
-      
-    // survival weight window
-    if (check_for_node(photon_wwp, "survival")) {
-      p_survival_ratio = std::stod(get_node_value(photon_wwp, "survival"));
-      if (p_survival_ratio <= 1 || p_survival_ratio >= p_upper_ratio )  
-        fatal_error("Survival to lower weight window ratio must bigger than 1 "
-                    "and less than the upper to lower weight window ratio.");
+    if ( particle_name == "photon") { 
+      particle_type = openmc::ParticleType::photon;
+      p_ww = true;
     }
-      
-    // max split
-    if (check_for_node(photon_wwp, "max_split")) {
-      p_max_split = std::stoi(get_node_value(photon_wwp, "max_split"));
-      if (p_max_split <= 1 ) fatal_error("Max split number must larger than 1.");
-    }
-      
-    // multiplier for weight window lower bounds
-    if (check_for_node(photon_wwp, "multiplier")) {
-      p_multiplier = std::stod(get_node_value(photon_wwp, "multiplier"));
-      if (p_multiplier <= 0 ) fatal_error("Multiplier for lower weight window must larger than 0.");
-    }     
+    xml_node particle = node.child("particle");
+    weight_params[particle_type] = read_particle_settings(particle);
+  } else {
+    fatal_error("Weight window file is missing a particle section");   
   }
-  // photon
-    
+
   // user defined source weight biasing in energy
   if (check_for_node(node, "user_defined_biasing")) {
-    user_defined_biasing = true;
-    xml_node node_user_defined_biasing = node.child("user_defined_biasing");
-    
-    // energy group for source weight biasing
-    if (check_for_node(node_user_defined_biasing, "biasing_energy")) {
-      biasing_energy = get_node_array<double>(node_user_defined_biasing, "biasing_energy");
-      biasing_energy.insert(biasing_energy.begin(), 0.);
-    } else {
-      fatal_error("Must provide energy groups for biasing.");
-    }
+    read_user_biasing(node);  
+  }
+  std::cout << n_ww << std::endl;
+  std::cout << weight_params[ParticleType::neutron].upper_ratio << std::endl;
+  std::cout << weight_params[ParticleType::neutron].multiplier << std::endl;
+  std::cout << weight_params[ParticleType::neutron].survival_ratio << std::endl;
+  std::cout << weight_params[ParticleType::neutron].max_split << std::endl;
+}
 
-    // origin probability for each energy group
-    if (check_for_node(node_user_defined_biasing, "origin_probability")) {
-      auto value = get_node_xarray<double>(node_user_defined_biasing, "origin_probability");
-      if (value.size() != biasing_energy.size() - 1) fatal_error("Origin probabilities and biasing energies must have the same number of values.");
-      origin_probability.push_back(0.);
+// read the particle specific settings 
+WWParams WeightWindow::read_particle_settings(pugi::xml_node node) 
+{ 
+  using namespace pugi;
+
+  WWParams settings;
+  
+  // 
+  if (!check_for_node(node, "parameters")) {
+    fatal_error("<parameters> section is missing from the" 
+      "weight_windows.xml file.");
+  } else {
+    pugi::xml_node parameters = node.child("parameters");
+  
+    // get the upper bound - optional - could be defined as a mesh parameter
+    settings.upper_ratio = std::stod(get_node_value(parameters, "upper_bound"));
+    if(settings.upper_ratio < 2) fatal_error("upper bound must be larger than 2");
+
+    // get the survival value
+    settings.survival_ratio = std::stod(get_node_value(parameters, "survival"));
+    if(settings.survival_ratio <= 1 
+      || settings.survival_ratio >= settings.upper_ratio) 
+        fatal_error("Survival to lower weight window ratio must bigger than 1"
+                  "and less than the upper to lower weight window ratio.");   
+     
+    // get the max split
+    settings.max_split = std::stod(get_node_value(parameters, "max_split"));
+    if(settings.max_split <= 1) fatal_error("max split must be larger than 1");
+     
+    // multiplier
+    settings.multiplier = std::stod(get_node_value(parameters, "multiplier"));
+    if(settings.multiplier <= 0) fatal_error("multiplier must be larger than 0");
+  }  
+
+  // 
+  if (!check_for_node(node, "energy")) {
+    fatal_error("<energy> section is missing from the " 
+      "weight_windows.xml file.");
+  } else {
+    settings.energy_bounds = get_node_array<double>(node, "energy");   
+  }
+
+  // read the lower weight bounds
+  if (!check_for_node(node, "lower_ww")) {
+    fatal_error("<lower_ww> section is missing from the " 
+      "weight_windows.xml file.");
+  } else {
+    settings.lower_ww = get_node_array<double>(node, "lower_ww");    
+    if (settings.lower_ww.size() != 
+      mesh_->n_bins()*(settings.energy_bounds.size()-1)) {
+         fatal_error("not enough entries in the lower_ww section");
+      }
+  }
+
+  // read the upper weight bounds
+  if (check_for_node(node, "upper_ww")) {
+    settings.upper_ww = get_node_array<double>(node, "upper_ww");  
+    // ensure there are enough entries
+    if (settings.upper_ww.size() != 
+      mesh_->n_bins()*(settings.energy_bounds.size()-1)) {
+         fatal_error("not enough entries in the upper_ww section");
+    }
+  }
+
+  // maybe multply out a vector for the upper bounds for consistency
+
+  return settings;
+}
+
+// read any source biasing settings
+void WeightWindow::read_user_biasing(pugi::xml_node node) {
+  using namespace pugi;
+  // set user defined biasing
+  user_defined_biasing = true;
+  xml_node node_user_defined_biasing = node.child("user_defined_biasing");
+    
+  // energy group for source weight biasing
+  if (check_for_node(node_user_defined_biasing, "biasing_energy")) {
+    biasing_energy = get_node_array<double>(node_user_defined_biasing, "biasing_energy");
+    biasing_energy.insert(biasing_energy.begin(), 0.);
+  } else {
+    fatal_error("Must provide energy groups for biasing.");
+  }
+
+  // origin probability for each energy group
+  if (check_for_node(node_user_defined_biasing, "origin_probability")) {
+    auto value = get_node_xarray<double>(node_user_defined_biasing, "origin_probability");
+    if (value.size() != biasing_energy.size() - 1) fatal_error("Origin probabilities and biasing energies must have the same number of values.");
+    origin_probability.push_back(0.);
+    cumulative_probability.push_back(0.);
+    for (int i = 0; i < value.size(); i++) {
+      origin_probability.push_back(value.at(i));
       cumulative_probability.push_back(0.);
-      for (int i = 0; i < value.size(); i++) {
-        origin_probability.push_back(value.at(i));
-        cumulative_probability.push_back(0.);
-      }
-      // normalization
-      double total_probability = std::accumulate(origin_probability.begin(), origin_probability.end(), 0.0);
-      for (int i = 1; i < origin_probability.size(); i++) {   
-        origin_probability.at(i) = origin_probability.at(i)/total_probability;
-        cumulative_probability.at(i) = cumulative_probability.at(i-1) + origin_probability.at(i);
-      }
-    } else {
-      fatal_error("Must provide origin_probability for each group.");
     }
+    // normalization
+    double total_probability = std::accumulate(origin_probability.begin(), origin_probability.end(), 0.0);
+    for (int i = 1; i < origin_probability.size(); i++) {   
+      origin_probability.at(i) = origin_probability.at(i)/total_probability;
+      cumulative_probability.at(i) = cumulative_probability.at(i-1) + origin_probability.at(i);
+    }
+  } else {
+    fatal_error("Must provide origin_probability for each group.");
+  }
       
-    // biasing weight for each energy group
-    if (check_for_node(node_user_defined_biasing, "biasing")) {
-      auto value = get_node_xarray<double>(node_user_defined_biasing, "biasing");
-      if (value.size() != biasing_energy.size() - 1) {
-        fatal_error("Biasing and biasing energies must have the same number of values.");
-      }
-      biasing.push_back(0);
-      cumulative_biasing.push_back(0);
-      for (double v : value) {
-        biasing.push_back(v);
-        cumulative_biasing.push_back(0);
-      }
-      // normalization
-      double total_probability = std::accumulate(biasing.begin(), biasing.end(), 0.0);
-      for (int i = 1; i < biasing.size(); i++) {
-        biasing[i] = biasing[i]/total_probability;
-        cumulative_biasing[i] = cumulative_biasing[i-1] + biasing[i];
-      }
-    } else {
-      fatal_error("Must provide biasing for each energy group.");
+  // biasing weight for each energy group
+  if (check_for_node(node_user_defined_biasing, "biasing")) {
+    auto value = get_node_xarray<double>(node_user_defined_biasing, "biasing");
+    if (value.size() != biasing_energy.size() - 1) {
+      fatal_error("Biasing and biasing energies must have the same number of values.");
     }
+    biasing.push_back(0);
+    cumulative_biasing.push_back(0);
+    for (double v : value) {
+      biasing.push_back(v);
+      cumulative_biasing.push_back(0);
+    }
+    // normalization
+    double total_probability = std::accumulate(biasing.begin(), biasing.end(), 0.0);
+    for (int i = 1; i < biasing.size(); i++) {
+      biasing[i] = biasing[i]/total_probability;
+      cumulative_biasing[i] = cumulative_biasing[i-1] + biasing[i];
+    }
+  } else {
+    fatal_error("Must provide biasing for each energy group.");
   }
 }
   
 //! source weight biasing in energy
-void WeightWindowMesh::weight_biasing(SourceSite& site, uint64_t* seed) 
+void WeightWindow::weight_biasing(SourceSite& site, uint64_t* seed) 
 {
   int i = 0;
   double r = prn(seed);
@@ -224,44 +245,41 @@ void WeightWindowMesh::weight_biasing(SourceSite& site, uint64_t* seed)
   site.wgt *= origin_probability[i+1] / biasing[i+1];
 }
   
-//! Get weight windows parameters given particle
-WeightWindowMesh::WWParams WeightWindowMesh::get_params(Particle& p) const
+//! Get weight windows parameters given particle - essentially
+// given a location tell the particle the right bounds
+ParticleWeightParams WeightWindow::get_params(Particle& p) const
 {	
   // Particle's position and energy
   Position pos  = p.r();
   double E = p.E();
-  
-  std::vector<double> energy_group;
-  std::vector<double> ww_lower;
-  WWParams params;
-	
-  // Determine which set of weight window values to be used based on particle type
-  if (p.type() == ParticleType::neutron) {
-    energy_group = n_energy_group;
-    ww_lower = n_ww_lower;
-    params.lower_weight = n_multiplier;       
-    params.upper_weight = n_upper_ratio;
-    params.survival_weight = n_survival_ratio;
-    params.max_split = n_max_split;
-  } else if (p.type() == ParticleType::photon) {
-    energy_group = p_energy_group;
-    ww_lower = p_ww_lower;
-    params.lower_weight = p_multiplier;       
-    params.upper_weight = p_upper_ratio;
-    params.survival_weight = p_survival_ratio;
-    params.max_split = p_max_split;
-  }
 
+  // get the settings for the weight window
+  ParticleType type = p.type();
+  WWParams ww_settings = weight_params.at(type);
+	
   // get the mesh bin in energy group
-  int energy_bin = lower_bound_index(energy_group.begin(), energy_group.end(), E);
+  int energy_bin = lower_bound_index(ww_settings.energy_bounds.begin(), 
+                     ww_settings.energy_bounds.end(), E);
 
   // indices in weight window vector
-  int indices = mesh_->get_bin(pos);
-  indices += energy_bin*mesh_->n_bins(); 
+  int indices = mesh_->get_bin(pos);            
+  // indices points to the correct weight given 
+  // an energy
+  indices += ww_settings.energy_bounds.size()*
+             mesh_->n_bins(); 
 
-  params.lower_weight = params.lower_weight*ww_lower[indices];  // equal to multiplier * lower weight window bound (from input file)
-  params.upper_weight = params.lower_weight*params.upper_weight;           // equal to multiplied lower weight window bound * upper/lower ratio
-  params.survival_weight = params.lower_weight*params.survival_weight;     // equal to multiplied lower weight window bound * survival/lower ratio
+  ParticleWeightParams params;
+  // set the weight for the current location
+  params.lower_weight = ww_settings.multiplier*
+                         ww_settings.lower_ww[indices];  
+  // set the upper weight bound
+  params.upper_weight = ww_settings.upper_ratio*
+                         params.lower_weight;
+  // set the survival weight
+  params.survival_weight = params.lower_weight*
+                          ww_settings.survival_ratio;
+  // set the max split
+  params.max_split = ww_settings.max_split;
   
   return params;
 }

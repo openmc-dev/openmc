@@ -73,7 +73,7 @@ bool write_initial_source    {false};
 bool weightwindow_on         {false};
 
 // weight windows
-std::unique_ptr<WeightWindowMesh> ww_mesh;
+std::shared_ptr<weight_window::WeightWindow> ww_settings;
   
 std::string path_cross_sections;
 std::string path_input;
@@ -421,15 +421,7 @@ void read_settings_xml()
     if (mpi::master) warning("The <threads> element has been deprecated. Use "
       "the OMP_NUM_THREADS environment variable to set the number of threads.");
   } 
-  
-  // ==========================================================================
-  // Weight window, add by Yuan
-  if (check_for_node(root, "weightwindow")) {
-    weightwindow_on = true;
-    xml_node ww_node = root.child("weightwindow");
-    ww_mesh = std::make_unique<WeightWindowMesh>(ww_node);
-  }
-  
+    
   // ==========================================================================
   // EXTERNAL SOURCE
 

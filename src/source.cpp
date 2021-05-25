@@ -215,8 +215,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   }
   
   // source weight biasing in energy
-  if (settings::weightwindow_on && settings::ww_mesh->user_defined_biasing)  { 
-    settings::ww_mesh->weight_biasing(site, seed); 
+  if (settings::weightwindow_on && settings::ww_settings->user_defined_biasing)  { 
+    settings::ww_settings->weight_biasing(site, seed); 
   } else {
     // origin code
     while (true) {

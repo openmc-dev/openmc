@@ -103,11 +103,6 @@ WeightWindow::WeightWindow(pugi::xml_node node)
   if (check_for_node(node, "user_defined_biasing")) {
     read_user_biasing(node);  
   }
-  std::cout << n_ww << std::endl;
-  std::cout << weight_params[ParticleType::neutron].upper_ratio << std::endl;
-  std::cout << weight_params[ParticleType::neutron].multiplier << std::endl;
-  std::cout << weight_params[ParticleType::neutron].survival_ratio << std::endl;
-  std::cout << weight_params[ParticleType::neutron].max_split << std::endl;
 }
 
 // read the particle specific settings 
@@ -282,21 +277,7 @@ ParticleWeightParams WeightWindow::get_params(Particle& p) const
                           ww_settings.survival_ratio;
   // set the max split
   params.max_split = ww_settings.max_split;
-  /*
-  std::cout << n_ww << std::endl;
-  std::cout << weight_params.at(ParticleType::neutron).upper_ratio << std::endl;
-  std::cout << weight_params.at(ParticleType::neutron).multiplier << std::endl;
-  std::cout << weight_params.at(ParticleType::neutron).survival_ratio << std::endl;
-  std::cout << weight_params.at(ParticleType::neutron).max_split << std::endl;
-  std::cout << "index: " << indices << std::endl;
-  std::cout << ww_settings.lower_ww[indices] << std::endl;
-  std::cout << int(p.type())  << " ";
-  std::cout << p.wgt() << " ";
-  std::cout << ww_settings.multiplier << " ";
-  std::cout << params.lower_weight << " ";
-  std::cout << params.upper_weight << " ";
-  std::cout << params.max_split << std::endl;
-  */
+  
   return params;
 }
 

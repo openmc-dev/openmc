@@ -559,7 +559,9 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 
         for (int i = 1; i < rx.n_products(); ++i) {
           // Skip any non-neutron products
-          const auto& product = rx.products(i);
+          // GPU NOTE: if you change 'auto' to 'const auto&' here, you get an
+          // illegal memory access on V100
+          auto product = rx.products(i);
           if (product.particle() != Particle::Type::neutron) continue;
 
           // Evaluate yield

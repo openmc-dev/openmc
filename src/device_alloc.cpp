@@ -38,6 +38,7 @@ void move_settings_to_device()
   #pragma omp target update to(settings::run_mode)
   #pragma omp target update to(settings::n_particles)
   #pragma omp target update to(settings::temperature_method)
+  #pragma omp target update to(settings::urr_ptables_on)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)
@@ -99,7 +100,15 @@ void move_read_only_data_to_device()
   // Nuclides /////////////////////////////////////////////////////////
   for (auto& nuc : data::nuclides) {
     std::cout << "Moving " << nuc->name_ << " data to device..." << std::endl;
+
+    // URR data flattening
+    for (auto& u : nuc->urr_data_) {
+      u.flatten_urr_data();
+    }
+
+    // Pointwise XS data flattening
     nuc->flatten_xs_data();
+
     nuc->copy_to_device();
   }
   

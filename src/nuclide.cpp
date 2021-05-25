@@ -833,9 +833,9 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
   if (settings::urr_ptables_on && urr_present_ && !use_mp) {
-    int n = urr_data_[micro.index_temp].n_energy_;
-    if ((p.E_ > urr_data_[micro.index_temp].energy_(0)) &&
-        (p.E_ < urr_data_[micro.index_temp].energy_(n-1))) {
+    int n = device_urr_data_[micro.index_temp].n_energy_;
+    if ((p.E_ > device_urr_data_[micro.index_temp].device_energy_[0]) &&
+        (p.E_ < device_urr_data_[micro.index_temp].device_energy_[n-1])) {
       this->calculate_urr_xs(micro.index_temp, p);
     }
   }
@@ -879,11 +879,11 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   micro.use_ptable = true;
 
   // Create a shorthand for the URR data
-  const auto& urr = urr_data_[i_temp];
+  const auto& urr = device_urr_data_[i_temp];
 
   // Determine the energy table
   int i_energy = 0;
-  while (p.E_ >= urr.energy_(i_energy + 1)) {++i_energy;};
+  while (p.E_ >= urr.device_energy_[i_energy + 1]) {++i_energy;};
 
   // Sample the probability table using the cumulative distribution
 
@@ -898,10 +898,10 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   p.stream_ = STREAM_TRACKING;
 
   int i_low = 0;
-  while (urr.prob_(i_energy, URRTableParam::CUM_PROB, i_low) <= r) {++i_low;};
+  while (urr.prob(i_energy, URRTableParam::CUM_PROB, i_low) <= r) {++i_low;};
 
   int i_up = 0;
-  while (urr.prob_(i_energy + 1, URRTableParam::CUM_PROB, i_up) <= r) {++i_up;};
+  while (urr.prob(i_energy + 1, URRTableParam::CUM_PROB, i_up) <= r) {++i_up;};
 
   // Determine elastic, fission, and capture cross sections from the
   // probability table
@@ -911,53 +911,57 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   double f;
   if (urr.interp_ == Interpolation::lin_lin) {
     // Determine the interpolation factor on the table
-    f = (p.E_ - urr.energy_(i_energy)) /
-         (urr.energy_(i_energy + 1) - urr.energy_(i_energy));
+    f = (p.E_ - urr.device_energy_[i_energy]) /
+         (urr.device_energy_[i_energy + 1] - urr.device_energy_[i_energy]);
 
-    elastic = (1. - f) * urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) +
-         f * urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up);
-    fission = (1. - f) * urr.prob_(i_energy, URRTableParam::FISSION, i_low) +
-         f * urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up);
-    capture = (1. - f) * urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) +
-         f * urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up);
+    elastic = (1. - f) * urr.prob(i_energy, URRTableParam::ELASTIC, i_low) +
+         f * urr.prob(i_energy + 1, URRTableParam::ELASTIC, i_up);
+    fission = (1. - f) * urr.prob(i_energy, URRTableParam::FISSION, i_low) +
+         f * urr.prob(i_energy + 1, URRTableParam::FISSION, i_up);
+    capture = (1. - f) * urr.prob(i_energy, URRTableParam::N_GAMMA, i_low) +
+         f * urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up);
   } else if (urr.interp_ == Interpolation::log_log) {
     // Determine interpolation factor on the table
-    f = std::log(p.E_ / urr.energy_(i_energy)) /
-         std::log(urr.energy_(i_energy + 1) / urr.energy_(i_energy));
+    f = std::log(p.E_ / urr.device_energy_[i_energy]) /
+         std::log(urr.device_energy_[i_energy + 1] / urr.device_energy_[i_energy]);
 
     // Calculate the elastic cross section/factor
-    if ((urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up) > 0.)) {
+    if ((urr.prob(i_energy, URRTableParam::ELASTIC, i_low) > 0.) &&
+        (urr.prob(i_energy + 1, URRTableParam::ELASTIC, i_up) > 0.)) {
       elastic =
            std::exp((1. - f) *
-                    std::log(urr.prob_(i_energy, URRTableParam::ELASTIC, i_low)) +
-                    f * std::log(urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up)));
+                    std::log(urr.prob(i_energy, URRTableParam::ELASTIC, i_low)) +
+                    f * std::log(urr.prob(i_energy + 1, URRTableParam::ELASTIC, i_up)));
     } else {
       elastic = 0.;
     }
 
     // Calculate the fission cross section/factor
-    if ((urr.prob_(i_energy, URRTableParam::FISSION, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up) > 0.)) {
+    if ((urr.prob(i_energy, URRTableParam::FISSION, i_low) > 0.) &&
+        (urr.prob(i_energy + 1, URRTableParam::FISSION, i_up) > 0.)) {
       fission =
            std::exp((1. - f) *
-                    std::log(urr.prob_(i_energy, URRTableParam::FISSION, i_low)) +
-                    f * std::log(urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up)));
+                    std::log(urr.prob(i_energy, URRTableParam::FISSION, i_low)) +
+                    f * std::log(urr.prob(i_energy + 1, URRTableParam::FISSION, i_up)));
     } else {
       fission = 0.;
     }
 
     // Calculate the capture cross section/factor
-    if ((urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up) > 0.)) {
+    if ((urr.prob(i_energy, URRTableParam::N_GAMMA, i_low) > 0.) &&
+        (urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up) > 0.)) {
       capture =
            std::exp((1. - f) *
-                    std::log(urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low)) +
-                    f * std::log(urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up)));
+                    std::log(urr.prob(i_energy, URRTableParam::N_GAMMA, i_low)) +
+                    f * std::log(urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up)));
     } else {
       capture = 0.;
     }
   }
+
+  ///////////////////////////////////////////////////////////
+  // TODO: Offload everything below to device
+  ///////////////////////////////////////////////////////////
 
   // Determine the treatment of inelastic scattering
   double inelastic = 0.;
@@ -1066,6 +1070,7 @@ double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double
 
 void Nuclide::copy_to_device()
 {
+  // Reactions
   device_reactions_ = reactions_.data();
 
   #pragma omp target enter data map(to: device_reactions_[:reactions_.size()])
@@ -1073,12 +1078,21 @@ void Nuclide::copy_to_device()
     rx.copy_to_device();
   }
   
+  // Regular pointwise XS data
   device_kTs_ = kTs_.data();
   #pragma omp target enter data map(to: device_kTs_[:kTs_.size()])
   #pragma omp target enter data map(to: flat_temp_offsets_[:kTs_.size()])
   #pragma omp target enter data map(to: flat_grid_energy_[:total_energy_gridpoints_])
   #pragma omp target enter data map(to: flat_grid_index_[:total_index_gridpoints_])
   #pragma omp target enter data map(to: flat_xs_[:total_energy_gridpoints_*5])
+
+  // URR data
+  device_urr_data_ = urr_data_.data();
+  #pragma omp target enter data map(to: device_urr_data_[:urr_data_.size()])
+  for (auto& u : urr_data_) {
+    #pragma omp target enter data map(to: u.device_energy_[:u.n_energy_])
+    #pragma omp target enter data map(to: u.device_prob_[:u.n_total_prob_])
+  }
 }
 
 void Nuclide::release_from_device()
@@ -1088,11 +1102,19 @@ void Nuclide::release_from_device()
   }
   #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
 
+  // Regular pointwise XS data
   #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])
   #pragma omp target exit data map(release: flat_temp_offsets_[:kTs_.size()])
   #pragma omp target exit data map(release: flat_grid_energy_[:total_energy_gridpoints_])
   #pragma omp target exit data map(release: flat_grid_index_[:total_index_gridpoints_])
   #pragma omp target exit data map(release: flat_xs_[:total_energy_gridpoints_*5])
+  
+  // URR data
+  for (auto& u : urr_data_) {
+    #pragma omp target exit data map(release: u.device_energy_[:u.n_energy_])
+    #pragma omp target exit data map(release: u.device_prob_[:u.n_total_prob_])
+  }
+  #pragma omp target exit data map(release: device_urr_data_[:urr_data_.size()])
 }
 
 //==============================================================================

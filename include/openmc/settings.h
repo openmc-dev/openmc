@@ -56,7 +56,9 @@ extern bool temperature_multipole;    //!< use multipole data?
 extern "C" bool trigger_on;           //!< tally triggers enabled?
 extern bool trigger_predict;          //!< predict batches for triggers?
 extern bool ufs_on;                   //!< uniform fission site method on?
+#pragma omp declare target
 extern bool urr_ptables_on;           //!< use unresolved resonance prob. tables?
+#pragma omp end declare target
 extern bool write_all_tracks;         //!< write track files for every particle?
 extern bool write_initial_source;     //!< write out initial source file?
 

@@ -28,4 +28,17 @@ UrrData::UrrData(hid_t group_id)
   read_dataset(group_id, "table", prob_);
 }
 
+void UrrData::flatten_urr_data()
+{
+  device_energy_ = energy_.data();
+  device_prob_ = prob_.data();
+  n_bands_ = prob_.shape(2);
+  n_total_prob_ = n_energy_ * 6 * n_bands_;
+}
+
+double UrrData::prob(int i_energy, URRTableParam i_tableparam, int band) const
+{
+  return device_prob_[i_energy * 6 * n_bands_ + static_cast<int>(i_tableparam) * n_bands_ + band];
+}
+
 }

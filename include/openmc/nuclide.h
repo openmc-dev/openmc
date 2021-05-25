@@ -122,6 +122,7 @@ public:
   bool urr_present_ {false};
   int urr_inelastic_ {C_NONE};
   std::vector<UrrData> urr_data_;
+  UrrData* device_urr_data_;
 
   std::vector<ReactionFlatContainer> reactions_; //!< Reactions
   std::array<size_t, 902> reaction_index_; //!< Index of each reaction

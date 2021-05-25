@@ -44,13 +44,13 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::weightwindow_on && settings::ww_settings->n_ww) { 
+    if (settings::ww_settings->n_ww) { 
       split_particle(p); 
     }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::weightwindow_on && settings::ww_settings->p_ww) { 
+    if (settings::ww_settings->p_ww) { 
       split_particle(p); 
     }
     break;
@@ -1186,7 +1186,6 @@ void split_particle(Particle& p)
   // ww's
   settings::ww_settings->mesh_->get_indices(pos, ijk, &in_mesh);
   // no vr if not inside the mesh
-  std::cout << "splitting" << std::endl;
   if (!in_mesh) {
     std::cout << "particle not in mesh" << std::endl;
     return;

@@ -29,7 +29,9 @@ void read_weight_window_xml() {
     std::cout << " Reading weight window XML file ..." << std::endl;
     // try and read a weight window
     settings::ww_settings = std::make_shared<weight_window::WeightWindow>(root);
-  }                                                                                      
+  } else {
+    settings::ww_settings = std::make_shared<weight_window::WeightWindow>();
+  }                                                                       
 }
 
 //==============================================================================
@@ -92,6 +94,7 @@ WeightWindow::WeightWindow(pugi::xml_node node)
     }
     xml_node particle = node.child("particle");
     weight_params[particle_type] = read_particle_settings(particle);
+    
   } else {
     fatal_error("Weight window file is missing a particle section");   
   }
@@ -265,8 +268,7 @@ ParticleWeightParams WeightWindow::get_params(Particle& p) const
   int indices = mesh_->get_bin(pos);            
   // indices points to the correct weight given 
   // an energy
-  indices += ww_settings.energy_bounds.size()*
-             mesh_->n_bins(); 
+  indices += energy_bin*mesh_->n_bins(); 
 
   ParticleWeightParams params;
   // set the weight for the current location
@@ -280,7 +282,21 @@ ParticleWeightParams WeightWindow::get_params(Particle& p) const
                           ww_settings.survival_ratio;
   // set the max split
   params.max_split = ww_settings.max_split;
-  
+  /*
+  std::cout << n_ww << std::endl;
+  std::cout << weight_params.at(ParticleType::neutron).upper_ratio << std::endl;
+  std::cout << weight_params.at(ParticleType::neutron).multiplier << std::endl;
+  std::cout << weight_params.at(ParticleType::neutron).survival_ratio << std::endl;
+  std::cout << weight_params.at(ParticleType::neutron).max_split << std::endl;
+  std::cout << "index: " << indices << std::endl;
+  std::cout << ww_settings.lower_ww[indices] << std::endl;
+  std::cout << int(p.type())  << " ";
+  std::cout << p.wgt() << " ";
+  std::cout << ww_settings.multiplier << " ";
+  std::cout << params.lower_weight << " ";
+  std::cout << params.upper_weight << " ";
+  std::cout << params.max_split << std::endl;
+  */
   return params;
 }
 

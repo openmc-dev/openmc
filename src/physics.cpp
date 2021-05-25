@@ -722,11 +722,10 @@ void scatter(Particle& p, int i_nuclide)
   p.event_ = TallyEvent::SCATTER;
 
   // Sample new outgoing angle for isotropic-in-lab scattering
-  /*
   const auto& mat {model::materials[p.material_]};
-  if (!mat.p0_.empty()) {
-    int i_nuc_mat = mat.mat_nuclide_index_[i_nuclide];
-    if (mat.p0_[i_nuc_mat]) {
+  if (mat.device_p0_) {
+    int i_nuc_mat = mat.device_mat_nuclide_index_[i_nuclide];
+    if (mat.device_p0_[i_nuc_mat]) {
       // Sample isotropic-in-lab outgoing direction
       double mu = 2.0*prn(p.current_seed()) - 1.0;
       double phi = 2.0*PI*prn(p.current_seed());
@@ -738,7 +737,6 @@ void scatter(Particle& p, int i_nuclide)
       p.mu_ = u_old.dot(p.u());
     }
   }
-  */
 }
 
 void elastic_scatter(int i_nuclide, const ReactionFlat& rx, double kT,

@@ -32,6 +32,8 @@ public:
   //! \brief Load the URR data from the provided HDF5 group
   explicit UrrData(hid_t group_id);
 
+  void flatten_urr_data();
+
   #pragma omp declare target
   double prob(int i_energy, int i_tableparam, int band) const;
   #pragma omp end declare target

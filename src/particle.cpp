@@ -381,6 +381,12 @@ Particle::cross_surface()
     int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
   }
 
+  // if we're crossing a CSG surface, make sure the DAG history is reset
+  #ifdef DAGMC
+  if (surf->geom_type_ != GeometryType::DAG) history().reset();
+  #endif
+
+
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
     surf->bc_->handle_particle(*this, *surf);
@@ -503,11 +509,6 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // Reassign particle's cell and surface
   coord(0).cell = cell_last(n_coord_last() - 1);
   surface() = -surface();
-
-  // if we're crossing a CSG surface, make sure the DAG history is reset
-  #ifdef DAGMC
-  if (surf.geom_type_ != GeometryType::DAG) history().reset();
-  #endif
 
   // If a reflective surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in

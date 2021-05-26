@@ -14,10 +14,10 @@ extern __constant__ unsigned* dead_particle_indices;
 __global__ void scan_for_dead_particles(unsigned n_particles);
 
 template<unsigned BLOCK_SIZE>
-__global__ void refill_dead_particle_slots(unsigned n_refilled,
-  unsigned source_offset,
-  EventQueueItem* __restrict__ calculate_nonfuel_xs_queue,
-  EventQueueItem* __restrict__ calculate_fuel_xs_queue)
+__global__ void __launch_bounds__(BLOCK_SIZE)
+  refill_dead_particle_slots(unsigned n_refilled, unsigned source_offset,
+    EventQueueItem* __restrict__ calculate_nonfuel_xs_queue,
+    EventQueueItem* __restrict__ calculate_fuel_xs_queue)
 {
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
   bool nonfuel = false;

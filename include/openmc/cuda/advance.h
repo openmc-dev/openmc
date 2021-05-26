@@ -14,10 +14,10 @@ extern __managed__ unsigned managed_surface_crossing_queue_index;
 extern __managed__ unsigned managed_collision_queue_index;
 
 template<unsigned BLOCK_SIZE>
-__global__ void process_advance_events_device(
-  EventQueueItem* __restrict__ queue, unsigned queue_size,
-  EventQueueItem* __restrict__ surface_crossing_queue,
-  EventQueueItem* __restrict__ collision_queue)
+__global__ void __launch_bounds__(BLOCK_SIZE)
+  process_advance_events_device(EventQueueItem* __restrict__ queue,
+    unsigned queue_size, EventQueueItem* __restrict__ surface_crossing_queue,
+    EventQueueItem* __restrict__ collision_queue)
 {
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;
   bool surface = false;

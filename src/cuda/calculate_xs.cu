@@ -1,6 +1,7 @@
 #include "openmc/cuda/calculate_xs.h"
 #include "openmc/geometry.h" // find_cell
 #include "openmc/search.h"
+#include "openmc/settings.h" // BLOCKSIZE
 
 namespace openmc {
 namespace gpu {
@@ -17,7 +18,7 @@ __constant__ bool need_depletion_rx;
 __managed__ unsigned managed_calculate_fuel_queue_index;
 __managed__ unsigned managed_calculate_nonfuel_queue_index;
 
-__global__ void process_calculate_xs_events_device(
+__global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
   EventQueueItem* __restrict__ queue, unsigned queue_size)
 {
   unsigned tid = threadIdx.x + blockDim.x * blockIdx.x;

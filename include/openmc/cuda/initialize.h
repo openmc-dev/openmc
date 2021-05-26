@@ -10,8 +10,8 @@ namespace openmc {
 namespace gpu {
 
 template<unsigned BLOCK_SIZE>
-__global__ void process_initialize_events_device(unsigned queue_size,
-  unsigned source_offset,
+__global__ __launch_bounds__(BLOCK_SIZE) void process_initialize_events_device(
+  unsigned queue_size, unsigned source_offset,
   EventQueueItem* __restrict__ calculate_nonfuel_xs_queue,
   EventQueueItem* __restrict__ calculate_fuel_xs_queue)
 {

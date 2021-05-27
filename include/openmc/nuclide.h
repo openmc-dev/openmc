@@ -89,7 +89,7 @@ public:
   double* device_kTs_;
   std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
   std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
-  
+
   // Flattened 1D temperature dependent cross section data
   int total_energy_gridpoints_;
   int total_index_gridpoints_;
@@ -171,9 +171,8 @@ namespace data {
 // Minimum/maximum transport energy for each particle type. Order corresponds to
 // that of the ParticleType enum
 extern std::array<double, 2> energy_min;
-extern std::array<double, 2> energy_max;
 #pragma omp declare target
-extern double* device_energy_max;
+extern std::array<double, 2> energy_max;
 #pragma omp end declare target
 
 //! Minimum temperature in [K] that nuclide data is available at

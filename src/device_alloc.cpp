@@ -47,8 +47,7 @@ void move_settings_to_device()
   #pragma omp target update to(settings::res_scat_energy_max)
   #pragma omp target update to(settings::weight_cutoff)
   #pragma omp target update to(settings::weight_survive)
-  settings::device_energy_cutoff = settings::energy_cutoff.data();
-  #pragma omp target enter data map(to: settings::device_energy_cutoff[:4])
+  #pragma omp target update to(settings::energy_cutoff)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)
@@ -108,8 +107,7 @@ void move_read_only_data_to_device()
   }
 
   // Nuclear data /////////////////////////////////////////////////////
-  data::device_energy_max = data::energy_max.data();
-  #pragma omp target enter data map(to: data::device_energy_max[:2])
+  #pragma omp target update to(data::energy_max)
   #pragma omp target update to(data::nuclides_size)
   #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
   for (int i = 0; i < data::nuclides_size; ++i) {

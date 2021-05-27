@@ -86,9 +86,8 @@ extern "C" int64_t n_particles;              //!< number of particles per genera
 extern int64_t max_particles_in_flight; //!< Max num. event-based particles in flight
 
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons
-extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type
 #pragma omp declare target
-extern double* device_energy_cutoff;
+extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type
 #pragma omp end declare target
 extern int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;                //!< Maximum Legendre order for multigroup data

@@ -58,7 +58,7 @@ void collision(Particle& p)
 
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type_);
-  if (p.E_ < settings::device_energy_cutoff[type]) {
+  if (p.E_ < settings::energy_cutoff[type]) {
     p.alive_ = false;
     p.wgt_ = 0.0;
   }
@@ -1077,7 +1077,7 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
-      if (site->E < data::device_energy_max[neutron]) break;
+      if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples
       ++n_sample;
@@ -1104,7 +1104,7 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
 
       // resample if energy is greater than maximum neutron energy
       constexpr int neutron = static_cast<int>(Particle::Type::neutron);
-      if (site->E < data::device_energy_max[neutron]) break;
+      if (site->E < data::energy_max[neutron]) break;
 
       // check for large number of resamples
       ++n_sample;

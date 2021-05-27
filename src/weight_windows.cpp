@@ -253,7 +253,17 @@ ParticleWeightParams WeightWindow::get_params(Particle& p) const
 
   // get the settings for the weight window
   ParticleType type = p.type();
-  WWParams ww_settings = weight_params.at(type);
+
+  // 
+  WWParams ww_settings;
+  auto it = weight_params.find(p.type());
+  // return if
+  if( it != weight_params.end()) {
+    ww_settings = it->second;
+  } else {
+    // no ww settings found - return in
+    return (ParticleWeightParams){0,1,0.5,1};
+  }
 	
   // get the mesh bin in energy group
   int energy_bin = lower_bound_index(ww_settings.energy_bounds.begin(), 

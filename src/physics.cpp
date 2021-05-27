@@ -1173,48 +1173,52 @@ void split_particle(Particle& p)
   // skip dead or no energy
   if (p.E() <= 0 || !p.alive()) return;
 	
-  // Particle's position, weight and energy
-  Position pos  = p.r();
-  double weight = p.wgt();
-  double E = p.E();	      
-
   // Check if this particle is in the weight weindow mesh and get the mesh bins in each direction
   int ijk[3] = {0};     // mesh bin in each direction
   bool in_mesh;  
+
   // this is likely expensive 
   // would like a more generic wrapper in case of cell based
   // ww's
-  settings::ww_settings->mesh_->get_indices(pos, ijk, &in_mesh);
-  // no vr if not inside the mesh
+  settings::ww_settings->mesh_->get_indices(p.r(), ijk, &in_mesh);
+  // not in the mesh - dont do VR
   if (!in_mesh) {
-    std::cout << "particle not in mesh" << std::endl;
     return;
   }
 
   // get the paramters 
   auto params = settings::ww_settings->get_params(p);
-	
+  double weight = p.wgt();
+  
   // if particles weight is above the weight window 
   // split until they are within the window
   if (weight > params.upper_weight) {
-    double number = weight/params.upper_weight;  
-    double num = std::min(std::ceil(number), double(params.max_split));
+    double n_split = weight/params.upper_weight;  
+    n_split = std::min(std::ceil(n_split), double(params.max_split));
 
-    for (int l = 0; l < num - 1; ++l)  { 
-      p.create_secondary(weight/num, p.u(), p.E(), p.type()); 
+    /*
+    // dont split if the lower weight is 0
+    if( n_split== 0.0 ) return;
+    */
+    
+    // possibility of some round off 
+    for (int l = 0; l < int(n_split) - 1; l++)  { 
+      p.create_secondary(weight/n_split, p.u(), p.E(), p.type()); 
     }
-    p.wgt() = weight/num; 
+    // todo maybe weight should be weight - sum of child weight
+    p.wgt() = weight/n_split; 
     p.wgt_last() = p.wgt();
-	// if the particle weight is below the window  
-  // roulette until the weight is high enough
-  } else if (weight <= params.lower_weight) {  
-    double number = weight/params.survival_weight;
-    if (number < 1.0/params.max_split) {
-      number = 1.0/params.max_split;
-      params.survival_weight = weight/number;
-    }
 
-    if (prn(p.current_seed()) <= number)  {
+    // if the particle weight is below the window  
+    // roulette until the weight is high enough
+  } else if (weight <= params.lower_weight) {  
+    double n_split = weight/params.survival_weight;
+    if (n_split < 1.0/params.max_split) {
+      n_split = 1.0/params.max_split;
+      params.survival_weight = weight/n_split;
+    }
+   
+    if (prn(p.current_seed()) <= n_split)  {
       p.wgt() = params.survival_weight;
       p.wgt_last() = p.wgt();
     } else {       

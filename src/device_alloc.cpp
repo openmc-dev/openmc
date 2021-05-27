@@ -47,6 +47,7 @@ void move_settings_to_device()
   #pragma omp target update to(settings::res_scat_energy_max)
   #pragma omp target update to(settings::weight_cutoff)
   #pragma omp target update to(settings::weight_survive)
+  settings::energy_cutoff[0]; // Lazy extern template expansion workaround
   #pragma omp target update to(settings::energy_cutoff)
 
   // message_passing.h

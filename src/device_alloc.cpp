@@ -108,6 +108,7 @@ void move_read_only_data_to_device()
   }
 
   // Nuclear data /////////////////////////////////////////////////////
+  data::energy_max[0]; // Lazy extern template expansion workaround
   #pragma omp target update to(data::energy_max)
   #pragma omp target update to(data::nuclides_size)
   #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])

@@ -207,6 +207,24 @@ void ThermalScattering::copy_to_device()
   }
 }
 
+void ThermalScattering::release_from_device()
+{
+  for (auto& d : data_) {
+    if (d.elastic_.xs) {
+      d.elastic_.device_xs->release_from_device();
+      d.elastic_.device_distribution->release_device();
+      #pragma omp target exit data map(release: d.elastic_.device_xs[:1])
+      #pragma omp target exit data map(release: d.elastic_.device_distribution[:1])
+    }
+
+    d.inelastic_.device_xs->release_from_device();
+    d.inelastic_.device_distribution->release_device();
+    #pragma omp target exit data map(release: d.inelastic_.device_xs[:1])
+    #pragma omp target exit data map(release: d.inelastic_.device_distribution[:1])
+  }
+  #pragma omp target exit data map(release: device_data_[:data_.size()])
+}
+
 //==============================================================================
 // ThermalData implementation
 //==============================================================================

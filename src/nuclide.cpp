@@ -1140,6 +1140,7 @@ void Nuclide::release_from_device()
   }
   #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
   #pragma omp target exit data map(release: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
+  #pragma omp target exit data map(release: device_fission_rx_[:fission_rx_.size()])
 
   // Regular pointwise XS data
   #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])

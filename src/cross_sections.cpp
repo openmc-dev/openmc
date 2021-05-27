@@ -296,6 +296,12 @@ void read_ce_cross_sections_xml()
   }
   auto root = doc.document_element();
 
+  // Check that if OpenMC is compiled to use single precision nuclear data,
+  // we're indeed dealing with a single precision nuclear data library.
+  if (check_for_node(root, "single_precision")) {
+
+  }
+
   std::string directory;
   if (check_for_node(root, "directory")) {
     // Copy directory information if present

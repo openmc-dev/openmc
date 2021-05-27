@@ -33,7 +33,7 @@ public:
   using EmissionMode = ReactionProduct::EmissionMode;
   struct EnergyGrid {
     vector<int> grid_index;
-    vector<double> energy;
+    vector<xsfloat> energy;
   };
 
   // Constructors/destructors
@@ -48,12 +48,12 @@ public:
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 
   // Methods
-  double nu(double E, EmissionMode mode, int group=0) const;
+  xsfloat nu(xsfloat E, EmissionMode mode, int group=0) const;
   void calculate_elastic_xs(Particle& p) const;
 
   //! Determines the microscopic 0K elastic cross section at a trial relative
   //! energy used in resonance scattering
-  double elastic_xs_0K(double E) const;
+  xsfloat elastic_xs_0K(xsfloat E) const;
 
   //! \brief Determines cross sections in the unresolved resonance range
   //! from probability tables.
@@ -66,8 +66,8 @@ public:
   //! \param[in] energy Energy group boundaries in [eV]
   //! \param[in] flux Flux in each energy group (not normalized per eV)
   //! \return Reaction rate
-  double collapse_rate(int MT, double temperature, gsl::span<const double> energy,
-    gsl::span<const double> flux) const;
+  xsfloat collapse_rate(int MT, xsfloat temperature, gsl::span<const xsfloat> energy,
+    gsl::span<const xsfloat> flux) const;
 
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"
@@ -78,9 +78,9 @@ public:
   gsl::index index_; //!< Index in the nuclides array
 
   // Temperature dependent cross section data
-  vector<double> kTs_;                //!< temperatures in eV (k*T)
+  vector<xsfloat> kTs_;                //!< temperatures in eV (k*T)
   vector<EnergyGrid> grid_;           //!< Energy grid at each temperature
-  vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
+  vector<xt::xtensor<xsfloat, 2>> xs_; //!< Cross sections at each temperature
 
   // Multipole data
   unique_ptr<WindowedMultipole> multipole_;
@@ -101,9 +101,9 @@ public:
 
   // Resonance scattering information
   bool resonant_ {false};
-  vector<double> energy_0K_;
-  vector<double> elastic_0K_;
-  vector<double> xs_cdf_;
+  vector<xsfloat> energy_0K_;
+  vector<xsfloat> elastic_0K_;
+  vector<xsfloat> xs_cdf_;
 
   // Unresolved resonance range information
   bool urr_present_ {false};
@@ -121,7 +121,7 @@ private:
   //
   //! \param[in] T Temperature in [K]
   //! \return Temperature index and interpolation factor
-  std::pair<gsl::index, double> find_temperature(double T) const;
+  std::pair<gsl::index, xsfloat> find_temperature(xsfloat T) const;
 
   static int XS_TOTAL;
   static int XS_ABSORPTION;
@@ -137,7 +137,7 @@ private:
 //! Checks for the right version of nuclear data within HDF5 files
 void check_data_version(hid_t file_id);
 
-bool multipole_in_range(const Nuclide& nuc, double E);
+bool multipole_in_range(const Nuclide& nuc, xsfloat E);
 
 //==============================================================================
 // Global variables
@@ -147,14 +147,14 @@ namespace data {
 
 // Minimum/maximum transport energy for each particle type. Order corresponds to
 // that of the ParticleType enum
-extern array<double, 2> energy_min;
-extern array<double, 2> energy_max;
+extern array<xsfloat, 2> energy_min;
+extern array<xsfloat, 2> energy_max;
 
 //! Minimum temperature in [K] that nuclide data is available at
-extern double temperature_min;
+extern xsfloat temperature_min;
 
 //! Maximum temperature in [K] that nuclide data is available at
-extern double temperature_max;
+extern xsfloat temperature_max;
 
 extern std::unordered_map<std::string, int> nuclide_map;
 extern vector<unique_ptr<Nuclide>> nuclides;

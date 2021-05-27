@@ -794,6 +794,8 @@ const hid_t H5TypeMap<unsigned int>::type_id = H5T_NATIVE_UINT;
 template<>
 const hid_t H5TypeMap<int64_t>::type_id = H5T_NATIVE_INT64;
 template<>
+const hid_t H5TypeMap<float>::type_id = H5T_NATIVE_FLOAT;
+template<>
 const hid_t H5TypeMap<double>::type_id = H5T_NATIVE_DOUBLE;
 template <>
 const hid_t H5TypeMap<char>::type_id = H5T_NATIVE_CHAR;

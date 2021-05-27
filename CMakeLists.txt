@@ -32,6 +32,7 @@ option(optimize "Turn on all compiler optimization flags"              OFF)
 option(coverage "Compile with coverage analysis flags"                 OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"              OFF)
 option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
+option(fp32_xs  "Use single precision floats for cross sections"       OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -52,6 +53,15 @@ if(dagmc)
     message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
     Please update DAGMC to version 3.2.0 or greater.")
   endif()
+endif()
+
+#===============================================================================
+# Mixed precision nuclear data options
+#===============================================================================
+if(fp32_xs)
+  target_compile_definitions(libopenmc PUBLIC xsfloat=float)
+else()
+  target_compile_definitions(libopenmc PUBLIC xsfloat=double)
 endif()
 
 #===============================================================================

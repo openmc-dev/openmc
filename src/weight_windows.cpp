@@ -25,8 +25,11 @@ void read_weight_window_xml() {
       fatal_error("Error processing weight_windows.xml file.");                                   
     }
     // Get root element                                                                     
-    xml_node root = doc.document_element();     
-    std::cout << " Reading weight window XML file ..." << std::endl;
+    xml_node root = doc.document_element();
+
+      // Display output message
+    write_message("Reading weight window XML file...", 5);
+
     // try and read a weight window
     settings::ww_settings = std::make_shared<weight_window::WeightWindow>(root);
   } else {
@@ -55,6 +58,8 @@ WeightWindow::WeightWindow()
   weight_params[ParticleType::neutron].max_split = 5; 
   // multiplier for weight window lower bounds
   weight_params[ParticleType::neutron].multiplier = 1.0; 
+  // weight cutoff for the problem
+  weight_params[ParticleType::neutron].weight_cutoff = 1.0e-24; 
   
   // upper weight window = upper_ratio * lower weight window
   weight_params[ParticleType::photon].upper_ratio = 5.; 
@@ -63,8 +68,9 @@ WeightWindow::WeightWindow()
   // max number of split particles
   weight_params[ParticleType::photon].max_split = 5; 
   // multiplier for weight window lower bounds
-  weight_params[ParticleType::photon].multiplier = 1.0; 
-
+  weight_params[ParticleType::photon].multiplier = 1.0;
+  // weight cutoff for the problem
+  weight_params[ParticleType::photon].weight_cutoff = 1.0e-24; 
 }
 
 WeightWindow::WeightWindow(pugi::xml_node node)
@@ -137,7 +143,12 @@ WWParams WeightWindow::read_particle_settings(pugi::xml_node node)
     // multiplier
     settings.multiplier = std::stod(get_node_value(parameters, "multiplier"));
     if(settings.multiplier <= 0) fatal_error("multiplier must be larger than 0");
-  }  
+
+      // multiplier
+    settings.weight_cutoff = std::stod(get_node_value(parameters, "weight_cutoff"));
+    if(settings.weight_cutoff <= 0) fatal_error("multiplier must be larger than 0");
+    if(settings.weight_cutoff > 1) fatal_error("multiplier must be less than 1");
+}  
 
   // 
   if (!check_for_node(node, "energy")) {
@@ -258,19 +269,25 @@ ParticleWeightParams WeightWindow::get_params(Particle& p) const
   WWParams ww_settings;
   auto it = weight_params.find(p.type());
   // return if
+
+  // if we dont find the particle in the map return
+  // in the window - no spliting will happen
   if( it != weight_params.end()) {
     ww_settings = it->second;
   } else {
     // no ww settings found - return in
-    return (ParticleWeightParams){0,1,0.5,1};
+    return (ParticleWeightParams){0,1,0.5,1,1e-12};
   }
 	
-  // get the mesh bin in energy group
+  // indices in weight window vector
+  int indices = mesh_->get_bin(pos);
+
+  // no ww settings found - return in
+  if ( indices < 0 ) return (ParticleWeightParams){0,1,0.5,1,1e-12};
+
+    // get the mesh bin in energy group
   int energy_bin = lower_bound_index(ww_settings.energy_bounds.begin(), 
                      ww_settings.energy_bounds.end(), E);
-
-  // indices in weight window vector
-  int indices = mesh_->get_bin(pos);            
   // indices points to the correct weight given 
   // an energy
   indices += energy_bin*mesh_->n_bins(); 
@@ -287,6 +304,9 @@ ParticleWeightParams WeightWindow::get_params(Particle& p) const
                           ww_settings.survival_ratio;
   // set the max split
   params.max_split = ww_settings.max_split;
+
+  // set the weight cutoff
+  params.weight_cutoff = ww_settings.weight_cutoff;
   
   return params;
 }

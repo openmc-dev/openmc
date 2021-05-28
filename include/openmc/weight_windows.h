@@ -12,10 +12,11 @@ namespace weight_window {
 
 // struct to pass specific location data 
 struct ParticleWeightParams {
- double lower_weight;
- double upper_weight;
+  double lower_weight;
+  double upper_weight;
   double survival_weight;
   int max_split;
+  double weight_cutoff;
 };
 
 // generic struct to contain the ww settings
@@ -24,6 +25,7 @@ struct WWParams {
   double multiplier;
   double survival_ratio;
   int max_split;
+  double weight_cutoff;
   std::vector<double> energy_bounds;
   std::vector<double> lower_ww;
   std::vector<double> upper_ww;

@@ -1172,34 +1172,26 @@ void split_particle(Particle& p)
 {
   // skip dead or no energy
   if (p.E() <= 0 || !p.alive()) return;
-	
-  // Check if this particle is in the weight weindow mesh and get the mesh bins in each direction
-  int ijk[3] = {0};     // mesh bin in each direction
-  bool in_mesh;  
-
-  // this is likely expensive 
-  // would like a more generic wrapper in case of cell based
-  // ww's
-  settings::ww_settings->mesh_->get_indices(p.r(), ijk, &in_mesh);
-  // not in the mesh - dont do VR
-  if (!in_mesh) {
-    return;
-  }
-
+  
   // get the paramters 
   auto params = settings::ww_settings->get_params(p);
   double weight = p.wgt();
+
+  // first check to see if particle should be killed for
+  // weight cutoff
+  if ( p.wgt() < params.weight_cutoff ) {
+    p.alive() = false;
+    p.wgt() = 0.0;
+    p.wgt_last() = p.wgt();
+    return;
+  }
   
   // if particles weight is above the weight window 
   // split until they are within the window
   if (weight > params.upper_weight) {
     double n_split = weight/params.upper_weight;  
     n_split = std::min(std::ceil(n_split), double(params.max_split));
-
-    /*
-    // dont split if the lower weight is 0
-    if( n_split== 0.0 ) return;
-    */
+    std::cout << n_split << " " << params.upper_weight << " " << weight << " " << p.secondary_bank().size() << " " << p.r() << " " << p.E() << std::endl;
     
     // possibility of some round off 
     for (int l = 0; l < int(n_split) - 1; l++)  { 
@@ -1208,7 +1200,7 @@ void split_particle(Particle& p)
     // todo maybe weight should be weight - sum of child weight
     p.wgt() = weight/n_split; 
     p.wgt_last() = p.wgt();
-
+   
     // if the particle weight is below the window  
     // roulette until the weight is high enough
   } else if (weight <= params.lower_weight) {  
@@ -1226,8 +1218,8 @@ void split_particle(Particle& p)
       p.wgt() = 0.0;
       p.wgt_last() = p.wgt();
     }
-  }
   // else particle is in the window
+  }
 }
 
 	

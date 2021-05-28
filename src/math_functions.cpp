@@ -111,7 +111,7 @@ void calc_pn_c(int n, double x, double pnx[])
 }
 
 
-double evaluate_legendre(int n, const double data[], double x)
+double evaluate_legendre(int n, const xsfloat data[], xsfloat x)
 {
   double* pnx = new double[n + 1];
   double val = 0.0;
@@ -672,9 +672,9 @@ Direction rotate_angle(Direction u, double mu, const double* phi, uint64_t* seed
 }
 
 
-void spline(int n, const double x[], const double y[], double z[])
+void spline(int n, const xsfloat x[], const xsfloat y[], xsfloat z[])
 {
-  vector<double> c_new(n - 1);
+  vector<xsfloat> c_new(n - 1);
 
   // Set natural boundary conditions
   c_new[0] = 0.0;
@@ -683,10 +683,10 @@ void spline(int n, const double x[], const double y[], double z[])
 
   // Solve using tridiagonal matrix algorithm; first do forward sweep
   for (int i = 1; i < n - 1; i++) {
-    double a = x[i] - x[i-1];
-    double c = x[i+1] - x[i];
-    double b = 2.0*(a + c);
-    double d = 6.0*((y[i+1] - y[i])/c - (y[i] - y[i-1])/a);
+    xsfloat a = x[i] - x[i-1];
+    xsfloat c = x[i+1] - x[i];
+    xsfloat b = 2.0*(a + c);
+    xsfloat d = 6.0*((y[i+1] - y[i])/c - (y[i] - y[i-1])/a);
 
     c_new[i] = c/(b - a*c_new[i-1]);
     z[i] = (d - a*z[i-1])/(b - a*c_new[i-1]);
@@ -699,8 +699,8 @@ void spline(int n, const double x[], const double y[], double z[])
 }
 
 
-double spline_interpolate(int n, const double x[], const double y[],
-  const double z[], double xint)
+xsfloat spline_interpolate(int n, const xsfloat x[], const xsfloat y[],
+  const xsfloat z[], xsfloat xint)
 {
   // Find the lower bounding index in x of xint
   int i = n - 1;
@@ -708,20 +708,20 @@ double spline_interpolate(int n, const double x[], const double y[],
     if (xint >= x[i]) break;
   }
 
-  double h = x[i+1] - x[i];
-  double r = xint - x[i];
+  xsfloat h = x[i+1] - x[i];
+  xsfloat r = xint - x[i];
 
   // Compute the coefficients
-  double b = (y[i+1] - y[i])/h - (h/6.0)*(z[i+1] + 2.0*z[i]);
-  double c = z[i]/2.0;
-  double d = (z[i+1] - z[i])/(h*6.0);
+  xsfloat b = (y[i+1] - y[i])/h - (h/6.0)*(z[i+1] + 2.0*z[i]);
+  xsfloat c = z[i]/2.0;
+  xsfloat d = (z[i+1] - z[i])/(h*6.0);
 
   return y[i] + b*r + c*r*r + d*r*r*r;
 }
 
 
-double spline_integrate(int n, const double x[], const double y[],
-  const double z[], double xa, double xb)
+xsfloat spline_integrate(int n, const xsfloat x[], const xsfloat y[],
+  const xsfloat z[], xsfloat xa, xsfloat xb)
 {
   // Find the lower bounding index in x of the lower limit of integration.
   int ia = n - 1;
@@ -736,18 +736,18 @@ double spline_integrate(int n, const double x[], const double y[],
   }
 
   // Evaluate the integral
-  double s = 0.0;
+  xsfloat s = 0.0;
   for (int i = ia; i <= ib; i++) {
-    double h = x[i+1] - x[i];
+    xsfloat h = x[i+1] - x[i];
 
     // Compute the coefficients
-    double b = (y[i+1] - y[i])/h - (h/6.0)*(z[i+1] + 2.0*z[i]);
-    double c = z[i]/2.0;
-    double d = (z[i+1] - z[i])/(h*6.0);
+    xsfloat b = (y[i+1] - y[i])/h - (h/6.0)*(z[i+1] + 2.0*z[i]);
+    xsfloat c = z[i]/2.0;
+    xsfloat d = (z[i+1] - z[i])/(h*6.0);
 
     // Subtract the integral from x[ia] to xa
     if (i == ia) {
-      double r = xa - x[ia];
+      xsfloat r = xa - x[ia];
       s = s - (y[i]*r + b/2.0*r*r + c/3.0*r*r*r + d/4.0*r*r*r*r);
     }
 

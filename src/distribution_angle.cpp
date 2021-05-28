@@ -29,7 +29,7 @@ AngleDistribution::AngleDistribution(hid_t group)
   hid_t dset = open_dataset(group, "mu");
   read_attribute(dset, "offsets", offsets);
   read_attribute(dset, "interpolation", interp);
-  xt::xarray<double> temp;
+  xt::xarray<xsfloat> temp;
   read_dataset(dset, temp);
   close_dataset(dset);
 
@@ -47,9 +47,9 @@ AngleDistribution::AngleDistribution(hid_t group)
     auto xs = xt::view(temp, 0, xt::range(j, j+n));
     auto ps = xt::view(temp, 1, xt::range(j, j+n));
     auto cs = xt::view(temp, 2, xt::range(j, j+n));
-    vector<double> x {xs.begin(), xs.end()};
-    vector<double> p {ps.begin(), ps.end()};
-    vector<double> c {cs.begin(), cs.end()};
+    vector<xsfloat> x {xs.begin(), xs.end()};
+    vector<xsfloat> p {ps.begin(), ps.end()};
+    vector<xsfloat> c {cs.begin(), cs.end()};
 
     // To get answers that match ACE data, for now we still use the tabulated
     // CDF values that were passed through to the HDF5 library. At a later
@@ -62,7 +62,7 @@ AngleDistribution::AngleDistribution(hid_t group)
   }
 }
 
-double AngleDistribution::sample(double E, uint64_t* seed) const
+xsfloat AngleDistribution::sample(xsfloat E, uint64_t* seed) const
 {
   // Determine number of incoming energies
   auto n = energy_.size();
@@ -70,7 +70,7 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
   int i;
-  double r;
+  xsfloat r;
   if (E < energy_[0]) {
     i = 0;
     r = 0.0;
@@ -86,7 +86,7 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
   if (r > prn(seed)) ++i;
 
   // Sample i-th distribution
-  double mu = distribution_[i]->sample(seed);
+  xsfloat mu = distribution_[i]->sample(seed);
 
   // Make sure mu is in range [-1,1] and return
   if (std::abs(mu) > 1.0) mu = std::copysign(1.0, mu);

@@ -27,23 +27,23 @@ class ScattData {
     //! \brief Initializes the attributes of the base class.
     void
     base_init(int order, const xt::xtensor<int, 1>& in_gmin,
-         const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_energy,
-         const double_2dvec& in_mult);
+         const xt::xtensor<int, 1>& in_gmax, const xsfloat_2dvec& in_energy,
+         const xsfloat_2dvec& in_mult);
 
     //! \brief Combines microscopic ScattDatas into a macroscopic one.
     void base_combine(size_t max_order, size_t order_dim,
-      const vector<ScattData*>& those_scatts, const vector<double>& scalars,
+      const vector<ScattData*>& those_scatts, const vector<xsfloat>& scalars,
       xt::xtensor<int, 1>& in_gmin, xt::xtensor<int, 1>& in_gmax,
-      double_2dvec& sparse_mult, double_3dvec& sparse_scatter);
+      xsfloat_2dvec& sparse_mult, xsfloat_3dvec& sparse_scatter);
 
   public:
 
-    double_2dvec energy;            // Normalized p0 matrix for sampling Eout
-    double_2dvec mult;              // nu-scatter multiplication (nu-scatt/scatt)
-    double_3dvec dist;              // Angular distribution
+    xsfloat_2dvec energy;            // Normalized p0 matrix for sampling Eout
+    xsfloat_2dvec mult;              // nu-scatter multiplication (nu-scatt/scatt)
+    xsfloat_3dvec dist;              // Angular distribution
     xt::xtensor<int, 1> gmin;    // minimum outgoing group
     xt::xtensor<int, 1> gmax;    // maximum outgoing group
-    xt::xtensor<double, 1> scattxs; // Isotropic Sigma_{s,g_{in}}
+    xt::xtensor<xsfloat, 1> scattxs; // Isotropic Sigma_{s,g_{in}}
 
     //! \brief Calculates the value of normalized f(mu).
     //!
@@ -54,8 +54,8 @@ class ScattData {
     //! @param gout Outgoing energy group of interest.
     //! @param mu Cosine of the change-in-angle of interest.
     //! @return The value of f(mu).
-    virtual double
-    calc_f(int gin, int gout, double mu) = 0;
+    virtual xsfloat
+    calc_f(int gin, int gout, xsfloat mu) = 0;
 
     //! \brief Samples the outgoing energy and angle from the ScattData info.
     //!
@@ -65,7 +65,7 @@ class ScattData {
     //! @param wgt Weight of the particle to be adjusted.
     //! @param seed Pseudorandom number seed pointer
     virtual void
-    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed) = 0;
+    sample(int gin, int& gout, xsfloat& mu, double& wgt, uint64_t* seed) = 0;
 
     //! \brief Initializes the ScattData object from a given scatter and
     //!   multiplicity matrix.
@@ -76,14 +76,14 @@ class ScattData {
     //! @param coeffs Input sparse scattering matrix
     virtual void
     init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
-         const double_2dvec& in_mult, const double_3dvec& coeffs) = 0;
+         const xsfloat_2dvec& in_mult, const xsfloat_3dvec& coeffs) = 0;
 
     //! \brief Combines the microscopic data.
     //!
     //! @param those_scatts Microscopic objects to combine.
     //! @param scalars Scalars to multiply the microscopic data by.
     virtual void combine(const vector<ScattData*>& those_scatts,
-      const vector<double>& scalars) = 0;
+      const vector<xsfloat>& scalars) = 0;
 
     //! \brief Getter for the dimensionality of the scattering order.
     //!
@@ -99,7 +99,7 @@ class ScattData {
     //! @param max_order If Legendre this is the maximum value of "n" in "Pn"
     //!   requested; ignored otherwise.
     //! @return The dense scattering matrix.
-    virtual xt::xtensor<double, 3>
+    virtual xt::xtensor<xsfloat, 3>
     get_matrix(size_t max_order) = 0;
 
     //! \brief Samples the outgoing energy from the ScattData info.
@@ -121,8 +121,8 @@ class ScattData {
     //! @param mu Cosine of the change-in-angle, for scattering quantities;
     //!   use nullptr if irrelevant.
     //! @return Requested cross section value.
-    double
-    get_xs(MgxsType xstype, int gin, const int* gout, const double* mu);
+    xsfloat
+    get_xs(MgxsType xstype, int gin, const int* gout, const xsfloat* mu);
 };
 
 //==============================================================================
@@ -134,7 +134,7 @@ class ScattDataLegendre: public ScattData {
   protected:
 
     // Maximal value for rejection sampling from a rectangle
-    double_2dvec max_val;
+    xsfloat_2dvec max_val;
 
     // Friend convert_legendre_to_tabular so it has access to protected
     // parameters
@@ -145,26 +145,26 @@ class ScattDataLegendre: public ScattData {
 
     void
     init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
-         const double_2dvec& in_mult, const double_3dvec& coeffs);
+         const xsfloat_2dvec& in_mult, const xsfloat_3dvec& coeffs);
 
     void combine(
-      const vector<ScattData*>& those_scatts, const vector<double>& scalars);
+      const vector<ScattData*>& those_scatts, const vector<xsfloat>& scalars);
 
     //! \brief Find the maximal value of the angular distribution to use as a
     // bounding box with rejection sampling.
     void
     update_max_val();
 
-    double
-    calc_f(int gin, int gout, double mu);
+    xsfloat
+    calc_f(int gin, int gout, xsfloat mu);
 
     void
-    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
+    sample(int gin, int& gout, xsfloat& mu, double& wgt, uint64_t* seed);
 
     size_t
     get_order() {return dist[0][0].size() - 1;};
 
-    xt::xtensor<double, 3>
+    xt::xtensor<xsfloat, 3>
     get_matrix(size_t max_order);
 };
 
@@ -177,29 +177,29 @@ class ScattDataHistogram: public ScattData {
 
   protected:
 
-    xt::xtensor<double, 1> mu; // Angle distribution mu bin boundaries
-    double dmu;                // Quick storage of the mu spacing
-    double_3dvec fmu;          // The angular distribution histogram
+    xt::xtensor<xsfloat, 1> mu; // Angle distribution mu bin boundaries
+    xsfloat dmu;                // Quick storage of the mu spacing
+    xsfloat_3dvec fmu;          // The angular distribution histogram
 
   public:
 
     void
     init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
-         const double_2dvec& in_mult, const double_3dvec& coeffs);
+         const xsfloat_2dvec& in_mult, const xsfloat_3dvec& coeffs);
 
     void combine(
-      const vector<ScattData*>& those_scatts, const vector<double>& scalars);
+      const vector<ScattData*>& those_scatts, const vector<xsfloat>& scalars);
 
-    double
-    calc_f(int gin, int gout, double mu);
+    xsfloat
+    calc_f(int gin, int gout, xsfloat mu);
 
     void
-    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
+    sample(int gin, int& gout, xsfloat& mu, double& wgt, uint64_t* seed);
 
     size_t
     get_order() {return dist[0][0].size();};
 
-    xt::xtensor<double, 3>
+    xt::xtensor<xsfloat, 3>
     get_matrix(size_t max_order);
 };
 
@@ -212,9 +212,9 @@ class ScattDataTabular: public ScattData {
 
   protected:
 
-    xt::xtensor<double, 1> mu; // Angle distribution mu grid points
-    double dmu;                // Quick storage of the mu spacing
-    double_3dvec fmu;          // The angular distribution function
+    xt::xtensor<xsfloat, 1> mu; // Angle distribution mu grid points
+    xsfloat dmu;                // Quick storage of the mu spacing
+    xsfloat_3dvec fmu;          // The angular distribution function
 
     // Friend convert_legendre_to_tabular so it has access to protected
     // parameters
@@ -225,21 +225,21 @@ class ScattDataTabular: public ScattData {
 
     void
     init(const xt::xtensor<int, 1>& in_gmin, const xt::xtensor<int, 1>& in_gmax,
-         const double_2dvec& in_mult, const double_3dvec& coeffs);
+         const xsfloat_2dvec& in_mult, const xsfloat_3dvec& coeffs);
 
     void combine(
-      const vector<ScattData*>& those_scatts, const vector<double>& scalars);
+      const vector<ScattData*>& those_scatts, const vector<xsfloat>& scalars);
 
-    double
-    calc_f(int gin, int gout, double mu);
+    xsfloat
+    calc_f(int gin, int gout, xsfloat mu);
 
     void
-    sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
+    sample(int gin, int& gout, xsfloat& mu, double& wgt, uint64_t* seed);
 
     size_t
     get_order() {return dist[0][0].size();};
 
-    xt::xtensor<double, 3>
+    xt::xtensor<xsfloat, 3>
     get_matrix(size_t max_order);
 };
 

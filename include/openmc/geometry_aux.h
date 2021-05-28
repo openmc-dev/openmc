@@ -43,7 +43,7 @@ void assign_temperatures();
 //==============================================================================
 
 void get_temperatures(
-  vector<vector<double>>& nuc_temps, vector<vector<double>>& thermal_temps);
+  vector<vector<xsfloat>>& nuc_temps, vector<vector<xsfloat>>& thermal_temps);
 
 //==============================================================================
 //! \brief Perform final setup for geometry

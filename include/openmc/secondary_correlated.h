@@ -25,9 +25,9 @@ public:
   struct CorrTable {
     int n_discrete; //!< Number of discrete lines
     Interpolation interpolation; //!< Interpolation law
-    xt::xtensor<double, 1> e_out; //!< Outgoing energies [eV]
-    xt::xtensor<double, 1> p; //!< Probability density
-    xt::xtensor<double, 1> c; //!< Cumulative distribution
+    xt::xtensor<xsfloat, 1> e_out; //!< Outgoing energies [eV]
+    xt::xtensor<xsfloat, 1> p; //!< Probability density
+    xt::xtensor<xsfloat, 1> c; //!< Cumulative distribution
     vector<unique_ptr<Tabular>> angle; //!< Angle distribution
   };
 
@@ -38,12 +38,12 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(double E_in, double& E_out, double& mu,
+  void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const override;
 
   // energy property
-  vector<double>& energy() { return energy_; }
-  const vector<double>& energy() const { return energy_; }
+  vector<xsfloat>& energy() { return energy_; }
+  const vector<xsfloat>& energy() const { return energy_; }
 
   // distribution property
   vector<CorrTable>& distribution() { return distribution_; }
@@ -53,7 +53,7 @@ private:
   int n_region_; //!< Number of interpolation regions
   vector<int> breakpoints_;             //!< Breakpoints between regions
   vector<Interpolation> interpolation_; //!< Interpolation laws
-  vector<double> energy_;          //!< Energies [eV] at which distributions
+  vector<xsfloat> energy_;          //!< Energies [eV] at which distributions
                                    //!< are tabulated
   vector<CorrTable> distribution_; //!< Distribution at each energy
 };

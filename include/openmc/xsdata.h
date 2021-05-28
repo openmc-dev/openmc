@@ -76,26 +76,26 @@ class XsData {
 
     // The following quantities have the following dimensions:
     // [angle][incoming group]
-    xt::xtensor<double, 2> total;
-    xt::xtensor<double, 2> absorption;
-    xt::xtensor<double, 2> nu_fission;
-    xt::xtensor<double, 2> prompt_nu_fission;
-    xt::xtensor<double, 2> kappa_fission;
-    xt::xtensor<double, 2> fission;
-    xt::xtensor<double, 2> inverse_velocity;
+    xt::xtensor<xsfloat, 2> total;
+    xt::xtensor<xsfloat, 2> absorption;
+    xt::xtensor<xsfloat, 2> nu_fission;
+    xt::xtensor<xsfloat, 2> prompt_nu_fission;
+    xt::xtensor<xsfloat, 2> kappa_fission;
+    xt::xtensor<xsfloat, 2> fission;
+    xt::xtensor<xsfloat, 2> inverse_velocity;
 
     // decay_rate has the following dimensions:
     // [angle][delayed group]
-    xt::xtensor<double, 2> decay_rate;
+    xt::xtensor<xsfloat, 2> decay_rate;
     // delayed_nu_fission has the following dimensions:
     // [angle][delayed group][incoming group]
-    xt::xtensor<double, 3> delayed_nu_fission;
+    xt::xtensor<xsfloat, 3> delayed_nu_fission;
     // chi_prompt has the following dimensions:
     // [angle][incoming group][outgoing group]
-    xt::xtensor<double, 3> chi_prompt;
+    xt::xtensor<xsfloat, 3> chi_prompt;
     // chi_delayed has the following dimensions:
     // [angle][incoming group][outgoing group][delayed group]
-    xt::xtensor<double, 4> chi_delayed;
+    xt::xtensor<xsfloat, 4> chi_delayed;
     // scatter has the following dimensions: [angle]
     vector<std::shared_ptr<ScattData>> scatter;
 
@@ -137,7 +137,7 @@ class XsData {
     //! @param micros Microscopic objects to combine.
     //! @param scalars Scalars to multiply the microscopic data by.
     void combine(
-      const vector<XsData*>& those_xs, const vector<double>& scalars);
+      const vector<XsData*>& those_xs, const vector<xsfloat>& scalars);
 
     //! \brief Checks to see if this and that are able to be combined
     //!

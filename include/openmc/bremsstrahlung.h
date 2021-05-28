@@ -14,9 +14,9 @@ namespace openmc {
 class BremsstrahlungData {
 public:
   // Data
-  xt::xtensor<double, 2> pdf; //!< Bremsstrahlung energy PDF
-  xt::xtensor<double, 2> cdf; //!< Bremsstrahlung energy CDF
-  xt::xtensor<double, 1> yield; //!< Photon yield
+  xt::xtensor<xsfloat, 2> pdf; //!< Bremsstrahlung energy PDF
+  xt::xtensor<xsfloat, 2> cdf; //!< Bremsstrahlung energy CDF
+  xt::xtensor<xsfloat, 1> yield; //!< Photon yield
 };
 
 class Bremsstrahlung {
@@ -32,8 +32,8 @@ public:
 
 namespace data {
 
-extern xt::xtensor<double, 1> ttb_e_grid; //! energy T of incident electron in [eV]
-extern xt::xtensor<double, 1> ttb_k_grid; //! reduced energy W/T of emitted photon
+extern xt::xtensor<xsfloat, 1> ttb_e_grid; //! energy T of incident electron in [eV]
+extern xt::xtensor<xsfloat, 1> ttb_k_grid; //! reduced energy W/T of emitted photon
 
 } // namespace data
 
@@ -41,7 +41,7 @@ extern xt::xtensor<double, 1> ttb_k_grid; //! reduced energy W/T of emitted phot
 // Global variables
 //==============================================================================
 
-void thick_target_bremsstrahlung(Particle& p, double* E_lost);
+void thick_target_bremsstrahlung(Particle& p, xsfloat* E_lost);
 
 } // namespace openmc
 

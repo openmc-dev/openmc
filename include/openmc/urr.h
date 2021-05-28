@@ -21,8 +21,8 @@ public:
   int absorption_flag_;           //!< other absorption flag
   bool multiply_smooth_;          //!< multiply by smooth cross section?
   int n_energy_;                  //!< number of energy points
-  xt::xtensor<double, 1> energy_; //!< incident energies
-  xt::xtensor<double, 3> prob_;   //!< Actual probability tables
+  xt::xtensor<float, 1> energy_; //!< incident energies
+  xt::xtensor<float, 3> prob_;   //!< Actual probability tables
 
   //! \brief Load the URR data from the provided HDF5 group
   explicit UrrData(hid_t group_id);

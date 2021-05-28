@@ -31,8 +31,8 @@ namespace openmc {
 
 namespace data {
 array<xsfloat, 2> energy_min {0.0, 0.0};
-array<xsfloat, 2> energy_max {INFTY, INFTY};
-xsfloat temperature_min {INFTY};
+array<xsfloat, 2> energy_max {XSINFTY, XSINFTY};
+xsfloat temperature_min {XSINFTY};
 xsfloat temperature_max {0.0};
 std::unordered_map<std::string, int> nuclide_map;
 vector<unique_ptr<Nuclide>> nuclides;
@@ -89,7 +89,7 @@ Nuclide::Nuclide(hid_t group, const vector<xsfloat>& temperature)
   vector<int> temps_to_read;
   int n = temperature.size();
   xsfloat T_min = n > 0 ? settings::temperature_range[0] : 0.0;
-  xsfloat T_max = n > 0 ? settings::temperature_range[1] : INFTY;
+  xsfloat T_max = n > 0 ? settings::temperature_range[1] : XSINFTY;
   if (T_max > 0.0) {
     // Determine first available temperature below or equal to T_min
     auto T_min_it = std::upper_bound(temps_available.begin(), temps_available.end(), T_min);
@@ -111,7 +111,7 @@ Nuclide::Nuclide(hid_t group, const vector<xsfloat>& temperature)
     for (xsfloat T_desired : temperature) {
 
       // Determine closest temperature
-      xsfloat min_delta_T = INFTY;
+      xsfloat min_delta_T = XSINFTY;
       xsfloat T_actual = 0.0;
       for (auto T : temps_available) {
         xsfloat delta_T = std::abs(T - T_desired);
@@ -454,7 +454,7 @@ void Nuclide::init_grid()
   xsfloat spacing = std::log(E_max/E_min)/M;
 
   // Create equally log-spaced energy grid
-  auto umesh = xt::linspace(0.0, M*spacing, M+1);
+  auto umesh = xt::linspace(XSZERO, M*spacing, M+1);
 
   for (auto& grid : grid_) {
     // Resize array for storing grid indices
@@ -614,7 +614,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     switch (settings::temperature_method) {
     case TemperatureMethod::NEAREST:
       {
-        xsfloat max_diff = INFTY;
+        xsfloat max_diff = XSINFTY;
         for (int t = 0; t < kTs_.size(); ++t) {
           xsfloat diff = std::abs(kTs_[t] - kT);
           if (diff < max_diff) {
@@ -935,7 +935,7 @@ std::pair<gsl::index, xsfloat> Nuclide::find_temperature(xsfloat T) const
   switch (settings::temperature_method) {
   case TemperatureMethod::NEAREST:
     {
-      xsfloat max_diff = INFTY;
+      xsfloat max_diff = XSINFTY;
       for (gsl::index t = 0; t < n; ++t) {
         xsfloat diff = std::abs(kTs_[t] - kT);
         if (diff < max_diff) {
@@ -960,7 +960,7 @@ std::pair<gsl::index, xsfloat> Nuclide::find_temperature(xsfloat T) const
 }
 
 xsfloat Nuclide::collapse_rate(int MT, xsfloat temperature, gsl::span<const xsfloat> energy,
-  gsl::span<const xsfloat> flux) const
+  gsl::span<const double> flux) const
 {
   Expects(MT > 0);
   Expects(energy.size() > 0);
@@ -1022,7 +1022,7 @@ nuclides_size()
 // C API
 //==============================================================================
 
-extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
+extern "C" int openmc_load_nuclide(const char* name, const xsfloat* temps, int n)
 {
   if (data::nuclide_map.find(name) == data::nuclide_map.end() ||
       data::nuclide_map.at(name) >= data::elements.size()) {
@@ -1113,7 +1113,7 @@ openmc_nuclide_name(int index, const char** name)
 
 extern "C" int
 openmc_nuclide_collapse_rate(int index, int MT, double temperature,
-  const double* energy, const double* flux, int n, double* xs)
+  const xsfloat* energy, const double* flux, int n, double* xs)
 {
   if (index < 0 || index >= data::nuclides.size()) {
     set_errmsg("Index in nuclides vector is out of bounds.");

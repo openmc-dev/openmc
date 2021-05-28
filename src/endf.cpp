@@ -109,11 +109,11 @@ Polynomial::Polynomial(hid_t dset)
   read_dataset(dset, coef_);
 }
 
-double Polynomial::operator()(double x) const
+xsfloat Polynomial::operator()(xsfloat x) const
 {
   // Use Horner's rule to evaluate polynomial. Note that coefficients are
   // ordered in increasing powers of x.
-  double y = 0.0;
+  xsfloat y = XSZERO;
   for (auto c = coef_.crbegin(); c != coef_.crend(); ++c) {
     y = y*x + *c;
   }
@@ -139,7 +139,7 @@ Tabulated1D::Tabulated1D(hid_t dset)
   for (const auto i : int_temp)
     int_.push_back(int2interp(i));
 
-  xt::xarray<double> arr;
+  xt::xarray<xsfloat> arr;
   read_dataset(dset, arr);
 
   auto xs = xt::view(arr, 0);
@@ -150,7 +150,7 @@ Tabulated1D::Tabulated1D(hid_t dset)
   n_pairs_ = x_.size();
 }
 
-double Tabulated1D::operator()(double x) const
+xsfloat Tabulated1D::operator()(xsfloat x) const
 {
   // find which bin the abscissa is in -- if the abscissa is outside the
   // tabulated range, the first or last point is chosen, i.e. no interpolation
@@ -182,13 +182,13 @@ double Tabulated1D::operator()(double x) const
   if (interp == Interpolation::histogram) return y_[i];
 
   // determine bounding values
-  double x0 = x_[i];
-  double x1 = x_[i + 1];
-  double y0 = y_[i];
-  double y1 = y_[i + 1];
+  xsfloat x0 = x_[i];
+  xsfloat x1 = x_[i + 1];
+  xsfloat y0 = y_[i];
+  xsfloat y1 = y_[i + 1];
 
   // determine interpolation factor and interpolated value
-  double r;
+  xsfloat r;
   switch (interp) {
   case Interpolation::lin_lin:
     r = (x - x0)/(x1 - x0);
@@ -214,7 +214,7 @@ double Tabulated1D::operator()(double x) const
 CoherentElasticXS::CoherentElasticXS(hid_t dset)
 {
   // Read 2D array from dataset
-  xt::xarray<double> arr;
+  xt::xarray<xsfloat> arr;
   read_dataset(dset, arr);
 
   // Get views for Bragg edges and structure factors
@@ -226,7 +226,7 @@ CoherentElasticXS::CoherentElasticXS(hid_t dset)
   std::copy(s.begin(), s.end(), std::back_inserter(factors_));
 }
 
-double CoherentElasticXS::operator()(double E) const
+xsfloat CoherentElasticXS::operator()(xsfloat E) const
 {
   if (E < bragg_edges_[0]) {
     // If energy is below that of the lowest Bragg peak, the elastic cross
@@ -244,16 +244,16 @@ double CoherentElasticXS::operator()(double E) const
 
 IncoherentElasticXS::IncoherentElasticXS(hid_t dset)
 {
-  array<double, 2> tmp;
+  array<xsfloat, 2> tmp;
   read_dataset(dset, nullptr, tmp);
   bound_xs_ = tmp[0];
   debye_waller_ = tmp[1];
 }
 
-double IncoherentElasticXS::operator()(double E) const
+xsfloat IncoherentElasticXS::operator()(xsfloat E) const
 {
   // Determine cross section using ENDF-102, Eq. (7.5)
-  double W = debye_waller_;
+  auto const& W = debye_waller_;
   return bound_xs_ / 2.0 * ((1 - std::exp(-4.0*E*W))/(2.0*E*W));
 }
 

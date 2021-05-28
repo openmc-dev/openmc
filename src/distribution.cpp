@@ -21,7 +21,7 @@ namespace openmc {
 
 Discrete::Discrete(pugi::xml_node node)
 {
-  auto params = get_node_array<double>(node, "parameters");
+  auto params = get_node_array<xsfloat>(node, "parameters");
 
   std::size_t n = params.size();
   std::copy(params.begin(), params.begin() + n/2, std::back_inserter(x_));
@@ -30,18 +30,18 @@ Discrete::Discrete(pugi::xml_node node)
   normalize();
 }
 
-Discrete::Discrete(const double* x, const double* p, int n)
+Discrete::Discrete(const xsfloat* x, const xsfloat* p, int n)
   : x_{x, x+n}, p_{p, p+n}
 {
   normalize();
 }
 
-double Discrete::sample(uint64_t* seed) const
+xsfloat Discrete::sample(uint64_t* seed) const
 {
   int n = x_.size();
   if (n > 1) {
-    double xi = prn(seed);
-    double c = 0.0;
+    xsfloat xi = prn(seed);
+    xsfloat c = 0.0;
     for (int i = 0; i < n; ++i) {
       c += p_[i];
       if (xi < c) return x_[i];
@@ -55,7 +55,7 @@ double Discrete::sample(uint64_t* seed) const
 void Discrete::normalize()
 {
   // Renormalize density function so that it sums to unity
-  double norm = std::accumulate(p_.begin(), p_.end(), 0.0);
+  xsfloat norm = std::accumulate(p_.begin(), p_.end(), 0.0);
   for (auto& p_i : p_) {
     p_i /= norm;
   }
@@ -77,7 +77,7 @@ Uniform::Uniform(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-double Uniform::sample(uint64_t* seed) const
+xsfloat Uniform::sample(uint64_t* seed) const
 {
   return a_ + prn(seed)*(b_ - a_);
 }
@@ -91,7 +91,7 @@ Maxwell::Maxwell(pugi::xml_node node)
   theta_ = std::stod(get_node_value(node, "parameters"));
 }
 
-double Maxwell::sample(uint64_t* seed) const
+xsfloat Maxwell::sample(uint64_t* seed) const
 {
   return maxwell_spectrum(theta_, seed);
 }
@@ -111,7 +111,7 @@ Watt::Watt(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-double Watt::sample(uint64_t* seed) const
+xsfloat Watt::sample(uint64_t* seed) const
 {
   return watt_spectrum(a_, b_, seed);
 }
@@ -131,7 +131,7 @@ Normal::Normal(pugi::xml_node node)
   std_dev_ = params.at(1);
 }
 
-double Normal::sample(uint64_t* seed) const
+xsfloat Normal::sample(uint64_t* seed) const
 {
   return normal_variate(mean_value_, std_dev_, seed);
 }
@@ -152,7 +152,7 @@ Muir::Muir(pugi::xml_node node)
   kt_ = params.at(2);
 }
 
-double Muir::sample(uint64_t* seed) const
+xsfloat Muir::sample(uint64_t* seed) const
 {
   return muir_spectrum(e0_, m_rat_, kt_, seed);
 }
@@ -177,20 +177,20 @@ Tabular::Tabular(pugi::xml_node node)
   }
 
   // Read and initialize tabular distribution
-  auto params = get_node_array<double>(node, "parameters");
+  auto params = get_node_array<xsfloat>(node, "parameters");
   std::size_t n = params.size() / 2;
-  const double* x = params.data();
-  const double* p = x + n;
+  const xsfloat* x = params.data();
+  const xsfloat* p = x + n;
   init(x, p, n);
 }
 
-Tabular::Tabular(const double* x, const double* p, int n, Interpolation interp, const double* c)
+Tabular::Tabular(const xsfloat* x, const xsfloat* p, int n, Interpolation interp, const xsfloat* c)
   : interp_{interp}
 {
   init(x, p, n, c);
 }
 
-void Tabular::init(const double* x, const double* p, std::size_t n, const double* c)
+void Tabular::init(const xsfloat* x, const xsfloat* p, std::size_t n, const xsfloat* c)
 {
   // Copy x/p arrays into vectors
   std::copy(x, x + n, std::back_inserter(x_));
@@ -225,13 +225,13 @@ void Tabular::init(const double* x, const double* p, std::size_t n, const double
   }
 }
 
-double Tabular::sample(uint64_t* seed) const
+xsfloat Tabular::sample(uint64_t* seed) const
 {
   // Sample value of CDF
-  double c = prn(seed);
+  xsfloat c = prn(seed);
 
   // Find first CDF bin which is above the sampled value
-  double c_i = c_[0];
+  xsfloat c_i = c_[0];
   int i;
   std::size_t n = c_.size();
   for (i = 0; i < n - 1; ++i) {
@@ -240,8 +240,8 @@ double Tabular::sample(uint64_t* seed) const
   }
 
   // Determine bounding PDF values
-  double x_i = x_[i];
-  double p_i = p_[i];
+  xsfloat const& x_i = x_[i];
+  xsfloat const& p_i = p_[i];
 
   if (interp_ == Interpolation::histogram) {
     // Histogram interpolation
@@ -252,14 +252,14 @@ double Tabular::sample(uint64_t* seed) const
     }
   } else {
     // Linear-linear interpolation
-    double x_i1 = x_[i + 1];
-    double p_i1 = p_[i + 1];
+    xsfloat const& x_i1 = x_[i + 1];
+    xsfloat const& p_i1 = p_[i + 1];
 
-    double m = (p_i1 - p_i)/(x_i1 - x_i);
+    xsfloat m = (p_i1 - p_i)/(x_i1 - x_i);
     if (m == 0.0) {
       return x_i + (c - c_i)/p_i;
     } else {
-      return x_i + (std::sqrt(std::max(0.0, p_i*p_i + 2*m*(c - c_i))) - p_i)/m;
+      return x_i + (std::sqrt(std::max(XSZERO, p_i*p_i + 2*m*(c - c_i))) - p_i)/m;
     }
   }
 }
@@ -268,15 +268,15 @@ double Tabular::sample(uint64_t* seed) const
 // Equiprobable implementation
 //==============================================================================
 
-double Equiprobable::sample(uint64_t* seed) const
+xsfloat Equiprobable::sample(uint64_t* seed) const
 {
   std::size_t n = x_.size();
 
-  double r = prn(seed);
+  xsfloat r = prn(seed);
   int i = std::floor((n - 1)*r);
 
-  double xl = x_[i];
-  double xr = x_[i+i];
+  xsfloat const& xl = x_[i];
+  xsfloat const& xr = x_[i+i];
   return xl + ((n - 1)*r - i) * (xr - xl);
 }
 

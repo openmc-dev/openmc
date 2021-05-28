@@ -467,22 +467,22 @@ void Material::init_thermal()
   thermal_tables_ = tables;
 }
 
-void Material::collision_stopping_power(double* s_col, bool positron)
+void Material::collision_stopping_power(xsfloat* s_col, bool positron)
 {
   // Average electron number and average atomic weight
-  double electron_density = 0.0;
-  double mass_density = 0.0;
+  xsfloat electron_density = 0.0;
+  xsfloat mass_density = 0.0;
 
   // Log of the mean excitation energy of the material
-  double log_I = 0.0;
+  xsfloat log_I = 0.0;
 
   // Effective number of conduction electrons in the material
-  double n_conduction = 0.0;
+  xsfloat n_conduction = 0.0;
 
   // Oscillator strength and square of the binding energy for each oscillator
   // in material
-  vector<double> f;
-  vector<double> e_b_sq;
+  vector<xsfloat> f;
+  vector<xsfloat> e_b_sq;
 
   for (int i = 0; i < element_.size(); ++i) {
     const auto& elm = *data::elements[element_[i]];
@@ -513,7 +513,7 @@ void Material::collision_stopping_power(double* s_col, bool positron)
   double density = (density_ < 0.0) ? -density_ : mass_density / N_AVOGADRO;
 
   // Calculate the square of the plasma energy
-  double e_p_sq = PLANCK_C * PLANCK_C * PLANCK_C * N_AVOGADRO *
+  xsfloat e_p_sq = PLANCK_C * PLANCK_C * PLANCK_C * N_AVOGADRO *
     electron_density * density / (2.0 * PI * PI * FINE_STRUCTURE *
     MASS_ELECTRON_EV * mass_density);
 
@@ -585,9 +585,9 @@ void Material::init_bremsstrahlung()
     ttb->yield = xt::empty<double>({n_e});
 
     // Allocate temporary arrays
-    xt::xtensor<double, 1> stopping_power_collision({n_e}, 0.0);
-    xt::xtensor<double, 1> stopping_power_radiative({n_e}, 0.0);
-    xt::xtensor<double, 2> dcs({n_e, n_k}, 0.0);
+    xt::xtensor<xsfloat, 1> stopping_power_collision({n_e}, 0.0);
+    xt::xtensor<xsfloat, 1> stopping_power_radiative({n_e}, 0.0);
+    xt::xtensor<xsfloat, 2> dcs({n_e, n_k}, 0.0);
 
     double Z_eq_sq = 0.0;
     double sum_density = 0.0;
@@ -639,39 +639,39 @@ void Material::init_bremsstrahlung()
     }
 
     // Total material stopping power
-    xt::xtensor<double, 1> stopping_power = stopping_power_collision +
+    xt::xtensor<xsfloat, 1> stopping_power = stopping_power_collision +
       stopping_power_radiative;
 
     // Loop over photon energies
-    xt::xtensor<double, 1> f({n_e}, 0.0);
-    xt::xtensor<double, 1> z({n_e}, 0.0);
+    xt::xtensor<xsfloat, 1> f({n_e}, 0.0);
+    xt::xtensor<xsfloat, 1> z({n_e}, 0.0);
     for (int i = 0; i < n_e - 1; ++i) {
-      double w = data::ttb_e_grid(i);
+      auto w = data::ttb_e_grid(i);
 
       // Loop over incident particle energies
       for (int j = i; j < n_e; ++j) {
-        double e = data::ttb_e_grid(j);
+        auto e = data::ttb_e_grid(j);
 
         // Reduced photon energy
-        double k = w / e;
+        auto k = w / e;
 
         // Find the lower bounding index of the reduced photon energy
         int i_k = lower_bound_index(data::ttb_k_grid.cbegin(),
           data::ttb_k_grid.cend(), k);
 
         // Get the interpolation bounds
-        double k_l = data::ttb_k_grid(i_k);
-        double k_r = data::ttb_k_grid(i_k + 1);
-        double x_l = dcs(j, i_k);
-        double x_r = dcs(j, i_k + 1);
+         auto k_l = data::ttb_k_grid(i_k);
+         auto k_r = data::ttb_k_grid(i_k + 1);
+         auto x_l = dcs(j, i_k);
+         auto x_r = dcs(j, i_k + 1);
 
         // Find the value of the DCS using linear interpolation in reduced
         // photon energy k
-        double x = x_l + (k - k_l)*(x_r - x_l)/(k_r - k_l);
+        auto x = x_l + (k - k_l)*(x_r - x_l)/(k_r - k_l);
 
         // Square of the ratio of the speed of light to the velocity of the
         // charged particle
-        double beta_sq = e * (e + 2.0 * MASS_ELECTRON_EV) / ((e +
+        auto beta_sq = e * (e + 2.0 * MASS_ELECTRON_EV) / ((e +
           MASS_ELECTRON_EV) * (e + MASS_ELECTRON_EV));
 
         // Compute the integrand of the PDF
@@ -686,7 +686,7 @@ void Material::init_bremsstrahlung()
       if (n > 2) {
         spline(n, &data::ttb_e_grid(i), &f(i), &z(i));
 
-        double c = 0.0;
+        auto c = 0.0;
         for (int j = i; j < n_e - 1; ++j) {
           c += spline_integrate(n, &data::ttb_e_grid(i), &f(i), &z(i),
             data::ttb_e_grid(j), data::ttb_e_grid(j+1));
@@ -696,10 +696,10 @@ void Material::init_bremsstrahlung()
 
       // Integrate the last two points using trapezoidal rule in log-log space
       } else {
-        double e_l = std::log(data::ttb_e_grid(i));
-        double e_r = std::log(data::ttb_e_grid(i+1));
-        double x_l = std::log(f(i));
-        double x_r = std::log(f(i+1));
+        auto e_l = std::log(data::ttb_e_grid(i));
+        auto e_r = std::log(data::ttb_e_grid(i+1));
+        auto x_l = std::log(f(i));
+        auto x_r = std::log(f(i+1));
 
         ttb->pdf(i+1,i) = 0.5*(e_r - e_l)*(std::exp(e_l + x_l) + std::exp(e_r + x_r));
       }
@@ -716,10 +716,10 @@ void Material::init_bremsstrahlung()
       for (int i = 0; i < j; ++i) {
         // Integrate the CDF from the PDF using the trapezoidal rule in log-log
         // space
-        double w_l = std::log(data::ttb_e_grid(i));
-        double w_r = std::log(data::ttb_e_grid(i+1));
-        double x_l = std::log(ttb->pdf(j,i));
-        double x_r = std::log(ttb->pdf(j,i+1));
+        auto w_l = std::log(data::ttb_e_grid(i));
+        auto w_r = std::log(data::ttb_e_grid(i+1));
+        auto x_l = std::log(ttb->pdf(j,i));
+        auto x_r = std::log(ttb->pdf(j,i+1));
 
         c += 0.5*(w_r - w_l)*(std::exp(w_l + x_l) + std::exp(w_r + x_r));
         ttb->cdf(j,i+1) = c;
@@ -747,11 +747,9 @@ void Material::init_nuclide_index()
 
 void Material::calculate_xs(Particle& p) const
 {
-  // Set all material macroscopic cross sections to zero
+  // The functions after this increment on macroscopic cross section components
+  // in a loop over nuclides or elements.
   p.macro_xs().total = 0.0;
-  p.macro_xs().absorption = 0.0;
-  p.macro_xs().fission = 0.0;
-  p.macro_xs().nu_fission = 0.0;
 
   if (p.type() == ParticleType::neutron) {
     this->calculate_neutron_xs(p);
@@ -762,6 +760,10 @@ void Material::calculate_xs(Particle& p) const
 
 void Material::calculate_neutron_xs(Particle& p) const
 {
+  p.macro_xs().neutron.absorption = 0.0;
+  p.macro_xs().neutron.fission = 0.0;
+  p.macro_xs().neutron.nu_fission = 0.0;
+
   // Find energy index on energy grid
   int neutron = static_cast<int>(ParticleType::neutron);
   int i_grid =
@@ -824,18 +826,19 @@ void Material::calculate_neutron_xs(Particle& p) const
 
     // Add contributions to cross sections
     p.macro_xs().total += atom_density * micro.total;
-    p.macro_xs().absorption += atom_density * micro.absorption;
-    p.macro_xs().fission += atom_density * micro.fission;
-    p.macro_xs().nu_fission += atom_density * micro.nu_fission;
+    p.macro_xs().neutron.absorption += atom_density * micro.absorption;
+    p.macro_xs().neutron.fission += atom_density * micro.fission;
+    p.macro_xs().neutron.nu_fission += atom_density * micro.nu_fission;
   }
 }
 
 void Material::calculate_photon_xs(Particle& p) const
 {
-  p.macro_xs().coherent = 0.0;
-  p.macro_xs().incoherent = 0.0;
-  p.macro_xs().photoelectric = 0.0;
-  p.macro_xs().pair_production = 0.0;
+  p.macro_xs().total = 0.0;
+  p.macro_xs().photon.coherent = 0.0;
+  p.macro_xs().photon.incoherent = 0.0;
+  p.macro_xs().photon.photoelectric = 0.0;
+  p.macro_xs().photon.pair_production = 0.0;
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -859,10 +862,10 @@ void Material::calculate_photon_xs(Particle& p) const
 
     // Add contributions to material macroscopic cross sections
     p.macro_xs().total += atom_density * micro.total;
-    p.macro_xs().coherent += atom_density * micro.coherent;
-    p.macro_xs().incoherent += atom_density * micro.incoherent;
-    p.macro_xs().photoelectric += atom_density * micro.photoelectric;
-    p.macro_xs().pair_production += atom_density * micro.pair_production;
+    p.macro_xs().photon.coherent += atom_density * micro.coherent;
+    p.macro_xs().photon.incoherent += atom_density * micro.incoherent;
+    p.macro_xs().photon.photoelectric += atom_density * micro.photoelectric;
+    p.macro_xs().photon.pair_production += atom_density * micro.pair_production;
   }
 }
 
@@ -1099,8 +1102,8 @@ void Material::add_nuclide(const std::string& name, double density)
 // Non-method functions
 //==============================================================================
 
-double sternheimer_adjustment(const vector<double>& f,
-  const vector<double>& e_b_sq, double e_p_sq, double n_conduction,
+double sternheimer_adjustment(const vector<xsfloat>& f,
+  const vector<xsfloat>& e_b_sq, double e_p_sq, double n_conduction,
   double log_I, double tol, int max_iter)
 {
   // Get the total number of oscillators
@@ -1144,7 +1147,7 @@ double sternheimer_adjustment(const vector<double>& f,
   return rho;
 }
 
-double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
+double density_effect(const vector<xsfloat>& f, const vector<xsfloat>& e_b_sq,
   double e_p_sq, double n_conduction, double rho, double E, double tol,
   int max_iter)
 {

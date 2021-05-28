@@ -20,6 +20,7 @@ struct Position {
   Position(double x_, double y_, double z_) : x{x_}, y{y_}, z{z_} { };
   Position(const double xyz[]) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
   Position(const vector<double>& xyz) : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
+  Position(const vector<float>& xyz) : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
   Position(const array<double, 3>& xyz) : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
 
   // Unary operators

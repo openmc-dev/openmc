@@ -284,13 +284,13 @@ void sample_photon_reaction(Particle& p)
   // Incoherent (Compton) scattering
   prob += micro.incoherent;
   if (prob > cutoff) {
-    double alpha_out, mu;
+    xsfloat alpha_out, mu;
     int i_shell;
     element.compton_scatter(alpha, true, &alpha_out, &mu, &i_shell, p.current_seed());
 
     // Determine binding energy of shell. The binding energy is 0.0 if
     // doppler broadening is not used.
-    double e_b;
+    xsfloat e_b;
     if (i_shell == -1) {
       e_b = 0.0;
     } else {
@@ -384,8 +384,8 @@ void sample_photon_reaction(Particle& p)
   // Pair production
   prob += micro.pair_production;
   if (prob > cutoff) {
-    double E_electron, E_positron;
-    double mu_electron, mu_positron;
+    xsfloat E_electron, E_positron;
+    xsfloat mu_electron, mu_positron;
     element.pair_production(alpha, &E_electron, &E_positron,
       &mu_electron, &mu_positron, p.current_seed());
 
@@ -409,7 +409,7 @@ void sample_electron_reaction(Particle& p)
   // TODO: create reaction types
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
-    double E_lost;
+    xsfloat E_lost;
     thick_target_bremsstrahlung(p, &E_lost);
   }
 
@@ -423,7 +423,7 @@ void sample_positron_reaction(Particle& p)
   // TODO: create reaction types
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
-    double E_lost;
+    xsfloat E_lost;
     thick_target_bremsstrahlung(p, &E_lost);
   }
 
@@ -792,12 +792,10 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
   int i_temp = micro.index_temp_sab;
 
   // Sample energy and angle
-  double E_out;
   data::thermal_scatt[i_sab]->data_[i_temp].sample(
-    micro, p.E(), &E_out, &p.mu(), p.current_seed());
+    micro, p.E(), &p.E(), &p.mu(), p.current_seed());
 
   // Set energy to outgoing, change direction of particle
-  p.E() = E_out;
   p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
 }
 
@@ -1047,7 +1045,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
 
   // sample from prompt neutron energy distribution
   int n_sample = 0;
-  double mu;
+  xsfloat mu;
   while (true) {
     rx.products_[site->delayed_group].sample(E_in, site->E, mu, seed);
 
@@ -1076,8 +1074,8 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   double E_in = p.E();
 
   // sample outgoing energy and scattering cosine
-  double E;
-  double mu;
+  xsfloat E;
+  xsfloat mu;
   rx.products_[0].sample(E_in, E, mu, p.current_seed());
 
   // if scattering system is in center-of-mass, transfer cosine of scattering
@@ -1136,8 +1134,8 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
 
     // Sample the outgoing energy and angle
     auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
-    double E;
-    double mu;
+    xsfloat E;
+    xsfloat mu;
     rx->products_[i_product].sample(p.E(), E, mu, p.current_seed());
 
     // Sample the new direction

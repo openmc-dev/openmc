@@ -56,15 +56,6 @@ if(dagmc)
 endif()
 
 #===============================================================================
-# Mixed precision nuclear data options
-#===============================================================================
-if(fp32_xs)
-  target_compile_definitions(libopenmc PUBLIC xsfloat=float)
-else()
-  target_compile_definitions(libopenmc PUBLIC xsfloat=double)
-endif()
-
-#===============================================================================
 # Check for submodules perhaps already on system
 #===============================================================================
 
@@ -381,6 +372,15 @@ if(MSVC)
   target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
 else()
   add_library(libopenmc SHARED ${libopenmc_SOURCES})
+endif()
+
+#===============================================================================
+# Mixed precision nuclear data options
+#===============================================================================
+if(fp32_xs)
+  target_compile_definitions(libopenmc PUBLIC xsfloat=float)
+else()
+  target_compile_definitions(libopenmc PUBLIC xsfloat=double)
 endif()
 
 # Avoid vs error lnk1149 :output filename matches input filename

@@ -51,7 +51,7 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
 }
 
 void
-UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
+UncorrelatedAngleEnergy::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
   uint64_t* seed) const
 {
   // Sample cosine of scattering angle

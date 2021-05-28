@@ -55,7 +55,7 @@ sample_reaction(Particle& p)
 
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs.
-  if (p.macro_xs().absorption > 0.) {
+  if (p.macro_xs().neutron.absorption > 0.) {
     absorption(p);
   } else {
     p.wgt_absorb() = 0.;
@@ -98,7 +98,7 @@ create_fission_sites(Particle& p)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt() / simulation::keff * weight * p.macro_xs().nu_fission /
+  xsfloat nu_t = p.wgt() / simulation::keff * weight * p.macro_xs().neutron.nu_fission /
                 p.macro_xs().total;
 
   // Sample the number of neutrons produced
@@ -113,7 +113,7 @@ create_fission_sites(Particle& p)
 
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
-  double nu_d[MAX_DELAYED_GROUPS] = {0.};
+  xsfloat nu_d[MAX_DELAYED_GROUPS] = {0.};
 
   // Clear out particle's nu fission bank
   p.nu_bank().clear();
@@ -136,10 +136,10 @@ create_fission_sites(Particle& p)
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
-    double mu = 2.*prn(p.current_seed()) - 1.;
+    xsfloat mu = 2.*prn(p.current_seed()) - 1.;
 
     // Sample the azimuthal angle uniformly in [0, 2.pi)
-    double phi = 2. * PI * prn(p.current_seed() );
+    xsfloat phi = 2. * PI * prn(p.current_seed() );
     site.u.x = mu;
     site.u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
     site.u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
@@ -210,7 +210,7 @@ absorption(Particle& p)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p.wgt_absorb() = p.wgt() * p.macro_xs().absorption / p.macro_xs().total;
+    p.wgt_absorb() = p.wgt() * p.macro_xs().neutron.absorption / p.macro_xs().total;
 
     // Adjust weight of particle by the probability of absorption
     p.wgt() -= p.wgt_absorb();
@@ -218,11 +218,11 @@ absorption(Particle& p)
 
     // Score implicit absorpion estimate of keff
     p.keff_tally_absorption() +=
-      p.wgt_absorb() * p.macro_xs().nu_fission / p.macro_xs().absorption;
+      p.wgt_absorb() * p.macro_xs().neutron.nu_fission / p.macro_xs().neutron.absorption;
   } else {
-    if (p.macro_xs().absorption > prn(p.current_seed()) * p.macro_xs().total) {
+    if (p.macro_xs().neutron.absorption > prn(p.current_seed()) * p.macro_xs().total) {
       p.keff_tally_absorption() +=
-        p.wgt() * p.macro_xs().nu_fission / p.macro_xs().absorption;
+        p.wgt() * p.macro_xs().neutron.nu_fission / p.macro_xs().neutron.absorption;
       p.alive() = false;
       p.event() = TallyEvent::ABSORB;
     }

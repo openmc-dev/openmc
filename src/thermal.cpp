@@ -36,7 +36,7 @@ vector<unique_ptr<ThermalScattering>> thermal_scatt;
 //==============================================================================
 
 ThermalScattering::ThermalScattering(
-  hid_t group, const vector<double>& temperature)
+  hid_t group, const vector<xsfloat>& temperature)
 {
   // Get name of table from group
   name_ = object_name(group);
@@ -54,10 +54,10 @@ ThermalScattering::ThermalScattering(
   // Determine temperatures available
   auto dset_names = dataset_names(kT_group);
   auto n = dset_names.size();
-  auto temps_available = xt::empty<double>({n});
+  auto temps_available = xt::empty<xsfloat>({n});
   for (int i = 0; i < dset_names.size(); ++i) {
     // Read temperature value
-    double T;
+    xsfloat T;
     read_dataset(kT_group, dset_names[i].data(), T);
     temps_available[i] = T / K_BOLTZMANN;
   }
@@ -132,7 +132,7 @@ ThermalScattering::ThermalScattering(
     std::string temp_str = fmt::format("{}K", T);
 
     // Read exact temperature value
-    double kT;
+    xsfloat kT;
     read_dataset(kT_group, temp_str.data(), kT);
     kTs_.push_back(kT);
 
@@ -146,12 +146,12 @@ ThermalScattering::ThermalScattering(
 }
 
 void
-ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
-                                double* elastic, double* inelastic,
+ThermalScattering::calculate_xs(xsfloat E, xsfloat sqrtkT, int* i_temp,
+                                xsfloat* elastic, xsfloat* inelastic,
                                 uint64_t* seed) const
 {
   // Determine temperature for S(a,b) table
-  double kT = sqrtkT*sqrtkT;
+  xsfloat kT = sqrtkT*sqrtkT;
   int i = 0;
 
   auto n = kTs_.size();
@@ -165,7 +165,7 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 
     } else {
       // Randomly sample between temperature i and i+1
-      double f = (kT - kTs_[i]) / (kTs_[i+1] - kTs_[i]);
+      xsfloat f = (kT - kTs_[i]) / (kTs_[i+1] - kTs_[i]);
       if (f > prn(seed)) ++i;
     }
   }
@@ -243,7 +243,7 @@ ThermalData::ThermalData(hid_t group)
 }
 
 void
-ThermalData::calculate_xs(double E, double* elastic, double* inelastic) const
+ThermalData::calculate_xs(xsfloat E, xsfloat* elastic, xsfloat* inelastic) const
 {
   // Calculate thermal elastic scattering cross section
   if (elastic_.xs) {
@@ -257,8 +257,8 @@ ThermalData::calculate_xs(double E, double* elastic, double* inelastic) const
 }
 
 void
-ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
-                    double* E_out, double* mu, uint64_t* seed)
+ThermalData::sample(const NuclideMicroXS& micro_xs, xsfloat E,
+                    xsfloat* E_out, xsfloat* mu, uint64_t* seed)
 {
   // Determine whether inelastic or elastic scattering will occur
   if (prn(seed) < micro_xs.thermal_elastic / micro_xs.thermal) {

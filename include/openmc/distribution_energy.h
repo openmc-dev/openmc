@@ -21,7 +21,7 @@ namespace openmc {
 
 class EnergyDistribution {
 public:
-  virtual double sample(double E, uint64_t* seed) const = 0;
+  virtual xsfloat sample(xsfloat E, uint64_t* seed) const = 0;
   virtual ~EnergyDistribution() = default;
 };
 
@@ -37,7 +37,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  xsfloat sample(xsfloat E, uint64_t* seed) const;
 private:
   int primary_flag_; //!< Indicator of whether the photon is a primary or
                      //!< non-primary photon.
@@ -57,7 +57,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  xsfloat sample(xsfloat E, uint64_t* seed) const;
 private:
   double threshold_; //!< Energy threshold in lab, (A + 1)/A * |Q|
   double mass_ratio_; //!< (A/(A+1))^2
@@ -77,21 +77,21 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  xsfloat sample(xsfloat E, uint64_t* seed) const;
 private:
   //! Outgoing energy for a single incoming energy
   struct CTTable {
     Interpolation interpolation; //!< Interpolation law
     int n_discrete; //!< Number of of discrete energies
-    xt::xtensor<double, 1> e_out; //!< Outgoing energies in [eV]
-    xt::xtensor<double, 1> p; //!< Probability density
-    xt::xtensor<double, 1> c; //!< Cumulative distribution
+    xt::xtensor<xsfloat, 1> e_out; //!< Outgoing energies in [eV]
+    xt::xtensor<xsfloat, 1> p; //!< Probability density
+    xt::xtensor<xsfloat, 1> c; //!< Cumulative distribution
   };
 
   int n_region_; //!< Number of inteprolation regions
   vector<int> breakpoints_;             //!< Breakpoints between regions
   vector<Interpolation> interpolation_; //!< Interpolation laws
-  vector<double> energy_;               //!< Incident energy in [eV]
+  vector<xsfloat> energy_;               //!< Incident energy in [eV]
   vector<CTTable> distribution_; //!< Distributions for each incident energy
 };
 
@@ -107,7 +107,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  xsfloat sample(xsfloat E, uint64_t* seed) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_; //!< Restriction energy
@@ -126,7 +126,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  xsfloat sample(xsfloat E, uint64_t* seed) const;
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
   double u_; //!< Restriction energy
@@ -145,7 +145,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  xsfloat sample(xsfloat E, uint64_t* seed) const;
 private:
   Tabulated1D a_; //!< Energy-dependent 'a' parameter
   Tabulated1D b_; //!< Energy-dependent 'b' parameter

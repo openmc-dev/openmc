@@ -140,9 +140,9 @@ Particle::event_calculate_xs()
     }
   } else {
     macro_xs().total = 0.0;
-    macro_xs().absorption = 0.0;
-    macro_xs().fission = 0.0;
-    macro_xs().nu_fission = 0.0;
+    macro_xs().neutron.absorption = 0.0;
+    macro_xs().neutron.fission = 0.0;
+    macro_xs().neutron.nu_fission = 0.0;
   }
 }
 
@@ -177,7 +177,7 @@ Particle::event_advance()
   // Score track-length estimate of k-eff
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
-    keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
+    keff_tally_tracklength() += wgt() * distance * macro_xs().neutron.nu_fission;
   }
 
   // Score flux derivative accumulators for differential tallies.
@@ -222,7 +222,7 @@ Particle::event_collide()
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
-    keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
+    keff_tally_collision() += wgt() * macro_xs().neutron.nu_fission / macro_xs().total;
   }
 
   // Score surface current tallies -- this has to be done before the collision

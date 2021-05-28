@@ -650,9 +650,9 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           }
         } else {
           if (p.type() == Type::neutron) {
-            score = (p.macro_xs().total - p.macro_xs().absorption) * flux;
+            score = (p.macro_xs().total - p.macro_xs().neutron.absorption) * flux;
           } else {
-            score = (p.macro_xs().coherent + p.macro_xs().incoherent) * flux;
+            score = (p.macro_xs().photon.coherent + p.macro_xs().photon.incoherent) * flux;
           }
         }
       }
@@ -712,10 +712,10 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           }
         } else {
           if (p.type() == Type::neutron) {
-            score = p.macro_xs().absorption * flux;
+            score = p.macro_xs().neutron.absorption * flux;
           } else {
             score =
-              (p.macro_xs().photoelectric + p.macro_xs().pair_production) *
+              (p.macro_xs().photon.photoelectric + p.macro_xs().photon.pair_production) *
               flux;
           }
         }
@@ -724,7 +724,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_FISSION:
-      if (p.macro_xs().absorption == 0)
+      if (p.macro_xs().neutron.absorption == 0)
         continue;
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
@@ -751,14 +751,14 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         if (i_nuclide >= 0) {
           score = p.neutron_xs(i_nuclide).fission * atom_density * flux;
         } else {
-          score = p.macro_xs().fission * flux;
+          score = p.macro_xs().neutron.fission * flux;
         }
       }
       break;
 
 
     case SCORE_NU_FISSION:
-      if (p.macro_xs().absorption == 0)
+      if (p.macro_xs().neutron.absorption == 0)
         continue;
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing || p.fission()) {
@@ -795,14 +795,14 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         if (i_nuclide >= 0) {
           score = p.neutron_xs(i_nuclide).nu_fission * atom_density * flux;
         } else {
-          score = p.macro_xs().nu_fission * flux;
+          score = p.macro_xs().neutron.nu_fission * flux;
         }
       }
       break;
 
 
     case SCORE_PROMPT_NU_FISSION:
-      if (p.macro_xs().absorption == 0)
+      if (p.macro_xs().neutron.absorption == 0)
         continue;
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing || p.fission()) {
@@ -865,7 +865,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_DELAYED_NU_FISSION:
-      if (p.macro_xs().absorption == 0)
+      if (p.macro_xs().neutron.absorption == 0)
         continue;
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing || p.fission()) {
@@ -1013,7 +1013,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_DECAY_RATE:
-      if (p.macro_xs().absorption == 0)
+      if (p.macro_xs().neutron.absorption == 0)
         continue;
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {
@@ -1199,7 +1199,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_KAPPA_FISSION:
-      if (p.macro_xs().absorption == 0.)
+      if (p.macro_xs().neutron.absorption == 0.)
         continue;
       score = 0.;
       // Kappa-fission values are determined from the Q-value listed for the
@@ -1297,7 +1297,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
     case SCORE_FISS_Q_PROMPT:
     case SCORE_FISS_Q_RECOV:
-      if (p.macro_xs().absorption == 0.)
+      if (p.macro_xs().neutron.absorption == 0.)
         continue;
       score = score_fission_q(p, score_bin, tally, flux, i_nuclide, atom_density);
       break;
@@ -1380,11 +1380,11 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             micro.pair_production;
           score = xs * atom_density * flux;
         } else {
-          double xs = (score_bin == COHERENT)     ? p.macro_xs().coherent
-                      : (score_bin == INCOHERENT) ? p.macro_xs().incoherent
+          double xs = (score_bin == COHERENT)     ? p.macro_xs().photon.coherent
+                      : (score_bin == INCOHERENT) ? p.macro_xs().photon.incoherent
                       : (score_bin == PHOTOELECTRIC)
-                        ? p.macro_xs().photoelectric
-                        : p.macro_xs().pair_production;
+                        ? p.macro_xs().photon.photoelectric
+                        : p.macro_xs().photon.pair_production;
           score = xs * flux;
         }
       }
@@ -1677,7 +1677,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
           score = atom_density * flux
             * nuc_xs.get_xs(MgxsType::ABSORPTION, p_g);
         } else {
-          score = p.macro_xs().absorption * flux;
+          score = p.macro_xs().neutron.absorption * flux;
         }
       }
       break;

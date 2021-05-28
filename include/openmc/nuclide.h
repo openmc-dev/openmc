@@ -37,7 +37,7 @@ public:
   };
 
   // Constructors/destructors
-  Nuclide(hid_t group, const vector<double>& temperature);
+  Nuclide(hid_t group, const vector<xsfloat>& temperature);
   ~Nuclide();
 
   //! Initialize logarithmic grid for energy searches
@@ -67,7 +67,7 @@ public:
   //! \param[in] flux Flux in each energy group (not normalized per eV)
   //! \return Reaction rate
   xsfloat collapse_rate(int MT, xsfloat temperature, gsl::span<const xsfloat> energy,
-    gsl::span<const xsfloat> flux) const;
+    gsl::span<const double> flux) const;
 
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"

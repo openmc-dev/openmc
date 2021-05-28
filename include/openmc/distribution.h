@@ -21,7 +21,7 @@ namespace openmc {
 class Distribution {
 public:
   virtual ~Distribution() = default;
-  virtual double sample(uint64_t* seed) const = 0;
+  virtual xsfloat sample(uint64_t* seed) const = 0;
 };
 
 //==============================================================================
@@ -31,20 +31,20 @@ public:
 class Discrete : public Distribution {
 public:
   explicit Discrete(pugi::xml_node node);
-  Discrete(const double* x, const double* p, int n);
+  Discrete(const xsfloat* x, const xsfloat* p, int n);
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  xsfloat sample(uint64_t* seed) const;
 
   // Properties
-  const vector<double>& x() const { return x_; }
-  const vector<double>& p() const { return p_; }
+  const vector<xsfloat>& x() const { return x_; }
+  const vector<xsfloat>& p() const { return p_; }
 
 private:
-  vector<double> x_; //!< Possible outcomes
-  vector<double> p_; //!< Probability of each outcome
+  vector<xsfloat> x_; //!< Possible outcomes
+  vector<xsfloat> p_; //!< Probability of each outcome
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();
@@ -57,18 +57,18 @@ private:
 class Uniform : public Distribution {
 public:
   explicit Uniform(pugi::xml_node node);
-  Uniform(double a, double b) : a_{a}, b_{b} {};
+  Uniform(xsfloat a, xsfloat b) : a_{a}, b_{b} {};
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  xsfloat sample(uint64_t* seed) const;
 
-  double a() const { return a_; }
-  double b() const { return b_; }
+  xsfloat a() const { return a_; }
+  xsfloat b() const { return b_; }
 private:
-  double a_; //!< Lower bound of distribution
-  double b_; //!< Upper bound of distribution
+  xsfloat a_; //!< Lower bound of distribution
+  xsfloat b_; //!< Upper bound of distribution
 };
 
 //==============================================================================
@@ -83,7 +83,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  xsfloat sample(uint64_t* seed) const;
 
   double theta() const { return theta_; }
 private:
@@ -102,7 +102,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  xsfloat sample(uint64_t* seed) const;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -123,7 +123,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  xsfloat sample(uint64_t* seed) const;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
@@ -145,7 +145,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  xsfloat sample(uint64_t* seed) const;
 
   double e0() const { return e0_; }
   double m_rat() const { return m_rat_; }
@@ -166,31 +166,31 @@ private:
 class Tabular : public Distribution {
 public:
   explicit Tabular(pugi::xml_node node);
-  Tabular(const double* x, const double* p, int n, Interpolation interp,
-          const double* c=nullptr);
+  Tabular(const xsfloat* x, const xsfloat* p, int n, Interpolation interp,
+          const xsfloat* c=nullptr);
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  xsfloat sample(uint64_t* seed) const;
 
   // x property
-  vector<double>& x() { return x_; }
-  const vector<double>& x() const { return x_; }
-  const vector<double>& p() const { return p_; }
+  vector<xsfloat>& x() { return x_; }
+  const vector<xsfloat>& x() const { return x_; }
+  const vector<xsfloat>& p() const { return p_; }
   Interpolation interp() const { return interp_; }
 private:
-  vector<double> x_;      //!< tabulated independent variable
-  vector<double> p_;      //!< tabulated probability density
-  vector<double> c_;      //!< cumulative distribution at tabulated values
+  vector<xsfloat> x_;      //!< tabulated independent variable
+  vector<xsfloat> p_;      //!< tabulated probability density
+  vector<xsfloat> c_;      //!< cumulative distribution at tabulated values
   Interpolation interp_;  //!< interpolation rule
 
   //! Initialize tabulated probability density function
   //! \param x Array of values for independent variable
   //! \param p Array of tabulated probabilities
   //! \param n Number of tabulated values
-  void init(const double* x, const double* p, std::size_t n,
-            const double* c=nullptr);
+  void init(const xsfloat* x, const xsfloat* p, std::size_t n,
+            const xsfloat* c=nullptr);
 };
 
 //==============================================================================
@@ -200,17 +200,17 @@ private:
 class Equiprobable : public Distribution {
 public:
   explicit Equiprobable(pugi::xml_node node);
-  Equiprobable(const double* x, int n) : x_{x, x+n} { };
+  Equiprobable(const xsfloat* x, int n) : x_{x, x+n} { };
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  xsfloat sample(uint64_t* seed) const;
 
-  const vector<double>& x() const { return x_; }
+  const vector<xsfloat>& x() const { return x_; }
 
 private:
-  vector<double> x_; //! Possible outcomes
+  vector<xsfloat> x_; //! Possible outcomes
 };
 
 using UPtrDist = unique_ptr<Distribution>;

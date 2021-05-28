@@ -16,6 +16,9 @@ namespace openmc {
 using double_2dvec = vector<vector<double>>;
 using double_3dvec = vector<vector<vector<double>>>;
 using double_4dvec = vector<vector<vector<vector<double>>>>;
+using xsfloat_2dvec = vector<vector<xsfloat>>;
+using xsfloat_3dvec = vector<vector<vector<xsfloat>>>;
+using xsfloat_4dvec = vector<vector<vector<vector<xsfloat>>>>;
 
 // ============================================================================
 // VERSIONING NUMBERS
@@ -72,7 +75,9 @@ constexpr double EXTSRC_REJECT_FRACTION {0.05};
 // TODO: replace with <numbers> when we go for C++20
 constexpr double PI {3.141592653589793238462643383279502884L};
 const double SQRT_PI {std::sqrt(PI)};
-constexpr double INFTY {std::numeric_limits<xsfloat>::max()};
+constexpr double INFTY {std::numeric_limits<double>::max()};
+constexpr xsfloat XSINFTY {std::numeric_limits<xsfloat>::max()};
+constexpr xsfloat XSZERO {static_cast<xsfloat>(0.0)};
 
 // Values here are from the Committee on Data for Science and Technology
 // (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).

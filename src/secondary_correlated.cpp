@@ -50,12 +50,12 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
   read_attribute(dset, "interpolation", interp);
   read_attribute(dset, "n_discrete_lines", n_discrete);
 
-  xt::xarray<double> eout;
+  xt::xarray<xsfloat> eout;
   read_dataset(dset, eout);
   close_dataset(dset);
 
   // Read angle distributions
-  xt::xarray<double> mu;
+  xt::xarray<xsfloat> mu;
   read_dataset(group, "mu", mu);
 
   for (int i = 0; i < n_energy; ++i) {
@@ -136,9 +136,9 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
       auto ps = xt::view(mu, 1, xt::range(offset_mu, offset_mu + m));
       auto cs = xt::view(mu, 2, xt::range(offset_mu, offset_mu + m));
 
-      vector<double> x {xs.begin(), xs.end()};
-      vector<double> p {ps.begin(), ps.end()};
-      vector<double> c {cs.begin(), cs.end()};
+      vector<xsfloat> x {xs.begin(), xs.end()};
+      vector<xsfloat> p {ps.begin(), ps.end()};
+      vector<xsfloat> c {cs.begin(), cs.end()};
 
       // To get answers that match ACE data, for now we still use the tabulated
       // CDF values that were passed through to the HDF5 library. At a later
@@ -154,13 +154,13 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
 }
 
 void CorrelatedAngleEnergy::sample(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+  xsfloat E_in, xsfloat& E_out, xsfloat& mu, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
   auto n_energy_in = energy_.size();
   int i;
-  double r;
+  xsfloat r;
   if (E_in < energy_[0]) {
     i = 0;
     r = 0.0;
@@ -178,22 +178,22 @@ void CorrelatedAngleEnergy::sample(
   // Interpolation for energy E1 and EK
   int n_energy_out = distribution_[i].e_out.size();
   int n_discrete = distribution_[i].n_discrete;
-  double E_i_1 = distribution_[i].e_out[n_discrete];
-  double E_i_K = distribution_[i].e_out[n_energy_out - 1];
+  xsfloat E_i_1 = distribution_[i].e_out[n_discrete];
+  xsfloat E_i_K = distribution_[i].e_out[n_energy_out - 1];
 
   n_energy_out = distribution_[i + 1].e_out.size();
   n_discrete = distribution_[i + 1].n_discrete;
-  double E_i1_1 = distribution_[i + 1].e_out[n_discrete];
-  double E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
+  xsfloat E_i1_1 = distribution_[i + 1].e_out[n_discrete];
+  xsfloat E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
 
-  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
-  double E_K = E_i_K + r * (E_i1_K - E_i_K);
+  xsfloat E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
+  xsfloat E_K = E_i_K + r * (E_i1_K - E_i_K);
 
   // Determine outgoing energy bin
   n_energy_out = distribution_[l].e_out.size();
   n_discrete = distribution_[l].n_discrete;
-  double r1 = prn(seed);
-  double c_k = distribution_[l].c[0];
+  xsfloat r1 = prn(seed);
+  xsfloat c_k = distribution_[l].c[0];
   int k = 0;
   int end = n_energy_out - 2;
 
@@ -208,7 +208,7 @@ void CorrelatedAngleEnergy::sample(
   }
 
   // Continuous portion
-  double c_k1;
+  xsfloat c_k1;
   for (int j = n_discrete; j < end; ++j) {
     k = j;
     c_k1 = distribution_[l].c[k + 1];
@@ -218,8 +218,8 @@ void CorrelatedAngleEnergy::sample(
     c_k = c_k1;
   }
 
-  double E_l_k = distribution_[l].e_out[k];
-  double p_l_k = distribution_[l].p[k];
+  xsfloat E_l_k = distribution_[l].e_out[k];
+  xsfloat p_l_k = distribution_[l].p[k];
   if (distribution_[l].interpolation == Interpolation::histogram) {
     // Histogram interpolation
     if (p_l_k > 0.0 && k >= n_discrete) {
@@ -230,10 +230,10 @@ void CorrelatedAngleEnergy::sample(
 
   } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
     // Linear-linear interpolation
-    double E_l_k1 = distribution_[l].e_out[k + 1];
-    double p_l_k1 = distribution_[l].p[k + 1];
+    xsfloat E_l_k1 = distribution_[l].e_out[k + 1];
+    xsfloat p_l_k1 = distribution_[l].p[k + 1];
 
-    double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
+    xsfloat frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
     if (frac == 0.0) {
       E_out = E_l_k + (r1 - c_k) / p_l_k;
     } else {

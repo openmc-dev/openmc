@@ -57,7 +57,7 @@ extern "C" void calc_pn_c(int n, double x, double pnx[]);
 //!   evaluated at x
 //==============================================================================
 
-extern "C" double evaluate_legendre(int n, const double data[], double x);
+extern "C" double evaluate_legendre(int n, const xsfloat data[], xsfloat x);
 
 //==============================================================================
 //! Calculate the n-th order real spherical harmonics for a given angle (in
@@ -152,7 +152,7 @@ Direction rotate_angle(Direction u, double mu, const double* phi,
 //!   value of x.
 //==============================================================================
 
-void spline(int n, const double x[], const double y[], double z[]);
+void spline(int n, const xsfloat x[], const xsfloat y[], xsfloat z[]);
 
 //==============================================================================
 //! Determine the cubic spline interpolated y-value for a given x-value.
@@ -167,8 +167,8 @@ void spline(int n, const double x[], const double y[], double z[]);
 //! \return      Interpolated value
 //==============================================================================
 
-double spline_interpolate(int n, const double x[], const double y[],
-  const double z[], double xint);
+xsfloat spline_interpolate(int n, const xsfloat x[], const xsfloat y[],
+  const xsfloat z[], xsfloat xint);
 
 //==============================================================================
 //! Evaluate the definite integral of the interpolating cubic spline between
@@ -185,8 +185,8 @@ double spline_interpolate(int n, const double x[], const double y[],
 //! \return    Integral
 //==============================================================================
 
-double spline_integrate(int n, const double x[], const double y[],
-  const double z[], double xa, double xb);
+xsfloat spline_integrate(int n, const xsfloat x[], const xsfloat y[],
+  const xsfloat z[], xsfloat xa, xsfloat xb);
 
 //! Evaluate the Faddeeva function
 //!

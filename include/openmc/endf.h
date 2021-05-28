@@ -39,7 +39,7 @@ bool is_inelastic_scatter(int MT);
 
 class Function1D {
 public:
-  virtual double operator()(double x) const = 0;
+  virtual xsfloat operator()(xsfloat x) const = 0;
   virtual ~Function1D() = default;
 };
 
@@ -56,9 +56,9 @@ public:
   //! Evaluate the polynomials
   //! \param[in] x independent variable
   //! \return Polynomial evaluated at x
-  double operator()(double x) const override;
+  xsfloat operator()(xsfloat x) const override;
 private:
-  vector<double> coef_; //!< Polynomial coefficients
+  vector<xsfloat> coef_; //!< Polynomial coefficients
 };
 
 //==============================================================================
@@ -76,19 +76,19 @@ public:
   //! Evaluate the tabulated function
   //! \param[in] x independent variable
   //! \return Function evaluated at x
-  double operator()(double x) const override;
+  xsfloat operator()(xsfloat x) const override;
 
   // Accessors
-  const vector<double>& x() const { return x_; }
-  const vector<double>& y() const { return y_; }
+  const vector<xsfloat>& x() const { return x_; }
+  const vector<xsfloat>& y() const { return y_; }
 
 private:
   std::size_t n_regions_ {0}; //!< number of interpolation regions
   vector<int> nbt_;           //!< values separating interpolation regions
   vector<Interpolation> int_; //!< interpolation schemes
   std::size_t n_pairs_; //!< number of (x,y) pairs
-  vector<double> x_;    //!< values of abscissa
-  vector<double> y_;    //!< values of ordinate
+  vector<xsfloat> x_;    //!< values of abscissa
+  vector<xsfloat> y_;    //!< values of ordinate
 };
 
 //==============================================================================
@@ -99,14 +99,14 @@ class CoherentElasticXS : public Function1D {
 public:
   explicit CoherentElasticXS(hid_t dset);
 
-  double operator()(double E) const override;
+  xsfloat operator()(xsfloat E) const override;
 
-  const vector<double>& bragg_edges() const { return bragg_edges_; }
-  const vector<double>& factors() const { return factors_; }
+  const vector<xsfloat>& bragg_edges() const { return bragg_edges_; }
+  const vector<xsfloat>& factors() const { return factors_; }
 
 private:
-  vector<double> bragg_edges_; //!< Bragg edges in [eV]
-  vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
+  vector<xsfloat> bragg_edges_; //!< Bragg edges in [eV]
+  vector<xsfloat> factors_;     //!< Partial sums of structure factors [eV-b]
 };
 
 //==============================================================================
@@ -117,7 +117,7 @@ class IncoherentElasticXS : public Function1D {
 public:
   explicit IncoherentElasticXS(hid_t dset);
 
-  double operator()(double E) const override;
+  xsfloat operator()(xsfloat E) const override;
 private:
   double bound_xs_; //!< Characteristic bound xs in [b]
   double debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]

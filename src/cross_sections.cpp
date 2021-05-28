@@ -181,8 +181,8 @@ void read_cross_sections_xml()
   }
 }
 
-void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
-  const vector<vector<double>>& thermal_temps)
+void read_ce_cross_sections(const vector<vector<xsfloat>>& nuc_temps,
+  const vector<vector<xsfloat>>& thermal_temps)
 {
   std::unordered_set<std::string> already_read;
 
@@ -299,7 +299,10 @@ void read_ce_cross_sections_xml()
   // Check that if OpenMC is compiled to use single precision nuclear data,
   // we're indeed dealing with a single precision nuclear data library.
   if (check_for_node(root, "single_precision")) {
-
+    if (sizeof(xsfloat) != 4)
+      fatal_error("It appears you're loading a single precision nuclear data library,"
+          " but OpenMC was not compiled for this. Turn on the fp32_xs compile option"
+          " if you'd like to use this.");
   }
 
   std::string directory;
@@ -334,8 +337,8 @@ void finalize_cross_sections(){
     simulation::time_read_xs.start();
     if (settings::run_CE) {
       // Determine desired temperatures for each nuclide and S(a,b) table
-      double_2dvec nuc_temps(data::nuclide_map.size());
-      double_2dvec thermal_temps(data::thermal_scatt_map.size());
+      vector<vector<xsfloat>> nuc_temps(data::nuclide_map.size());
+      vector<vector<xsfloat>> thermal_temps(data::thermal_scatt_map.size());
       get_temperatures(nuc_temps, thermal_temps);
 
       // Read continuous-energy cross sections from HDF5

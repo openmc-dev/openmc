@@ -34,13 +34,13 @@ public:
   //! \param[in] flux Flux in each energy group (not normalized per eV)
   //! \param[in] grid Nuclide energy grid
   //! \return Reaction rate
-  double collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
-    gsl::span<const double> flux, const vector<double>& grid) const;
+  xsfloat collapse_rate(gsl::index i_temp, gsl::span<const xsfloat> energy,
+    gsl::span<const double> flux, const vector<xsfloat>& grid) const;
 
   //! Cross section at a single temperature
   struct TemperatureXS {
     int threshold;
-    vector<double> value;
+    vector<xsfloat> value;
   };
 
   int mt_;             //!< ENDF MT value

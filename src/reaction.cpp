@@ -65,9 +65,9 @@ Reaction::Reaction(hid_t group, const vector<int>& temperatures)
   }
 }
 
-double Reaction::collapse_rate(gsl::index i_temp,
-  gsl::span<const double> energy, gsl::span<const double> flux,
-  const vector<double>& grid) const
+xsfloat Reaction::collapse_rate(gsl::index i_temp,
+  gsl::span<const xsfloat> energy, gsl::span<const double> flux,
+  const vector<xsfloat>& grid) const
 {
   // Find index corresponding to first energy
   const auto& xs = xs_[i_temp].value;

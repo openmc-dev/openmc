@@ -24,14 +24,14 @@ public:
   //! \param[in] E Particle energy in [eV]
   //! \param[inout] seed pseudorandom number seed pointer
   //! \return Cosine of the angle in the range [-1,1]
-  double sample(double E, uint64_t* seed) const;
+  xsfloat sample(xsfloat E, uint64_t* seed) const;
 
   //! Determine whether angle distribution is empty
   //! \return Whether distribution is empty
   bool empty() const { return energy_.empty(); }
 
 private:
-  vector<double> energy_;
+  vector<xsfloat> energy_;
   vector<unique_ptr<Tabular>> distribution_;
 };
 

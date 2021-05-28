@@ -166,7 +166,7 @@ private:
   // Private methods
 
   //! Calculate the collision stopping power
-  void collision_stopping_power(double* s_col, bool positron);
+  void collision_stopping_power(xsfloat* s_col, bool positron);
 
   //! Initialize bremsstrahlung data
   void init_bremsstrahlung();
@@ -192,12 +192,12 @@ private:
 //==============================================================================
 
 //! Calculate Sternheimer adjustment factor
-double sternheimer_adjustment(const vector<double>& f,
-  const vector<double>& e_b_sq, double e_p_sq, double n_conduction,
+double sternheimer_adjustment(const vector<xsfloat>& f,
+  const vector<xsfloat>& e_b_sq, double e_p_sq, double n_conduction,
   double log_I, double tol, int max_iter);
 
 //! Calculate density effect correction
-double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
+double density_effect(const vector<xsfloat>& f, const vector<xsfloat>& e_b_sq,
   double e_p_sq, double n_conduction, double rho, double E, double tol,
   int max_iter);
 

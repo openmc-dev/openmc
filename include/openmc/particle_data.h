@@ -43,7 +43,7 @@ enum class ParticleType { neutron, photon, electron, positron };
 struct SourceSite {
   Position r;
   Direction u;
-  double E;
+  xsfloat E;
   double wgt;
   int delayed_group;
   int surf_id;
@@ -54,7 +54,7 @@ struct SourceSite {
 
 //! Saved ("banked") state of a particle, for nu-fission tallying
 struct NuBank {
-  double E;          //!< particle energy
+  xsfloat E;          //!< particle energy
   double wgt;        //!< particle weight
   int delayed_group; //!< particle delayed group
 };
@@ -82,34 +82,34 @@ public:
 
 struct NuclideMicroXS {
   // Microscopic cross sections in barns
-  double total;      //!< total cross section
-  double absorption; //!< absorption (disappearance)
-  double fission;    //!< fission
-  double nu_fission; //!< neutron production from fission
+  xsfloat total;      //!< total cross section
+  xsfloat absorption; //!< absorption (disappearance)
+  xsfloat fission;    //!< fission
+  xsfloat nu_fission; //!< neutron production from fission
 
-  double elastic;         //!< If sab_frac is not 1 or 0, then this value is
+  xsfloat elastic;         //!< If sab_frac is not 1 or 0, then this value is
                           //!<   averaged over bound and non-bound nuclei
-  double thermal;         //!< Bound thermal elastic & inelastic scattering
-  double thermal_elastic; //!< Bound thermal elastic scattering
-  double photon_prod;     //!< microscopic photon production xs
+  xsfloat thermal;         //!< Bound thermal elastic & inelastic scattering
+  xsfloat thermal_elastic; //!< Bound thermal elastic scattering
+  xsfloat photon_prod;     //!< microscopic photon production xs
 
   // Cross sections for depletion reactions (note that these are not stored in
   // macroscopic cache)
-  double reaction[DEPLETION_RX.size()];
+  xsfloat reaction[DEPLETION_RX.size()];
 
   // Indicies and factors needed to compute cross sections from the data tables
   int index_grid;       //!< Index on nuclide energy grid
   int index_temp;       //!< Temperature index for nuclide
-  double interp_factor; //!< Interpolation factor on nuc. energy grid
+  xsfloat interp_factor; //!< Interpolation factor on nuc. energy grid
   int index_sab {-1};   //!< Index in sab_tables
   int index_temp_sab;   //!< Temperature index for sab_tables
-  double sab_frac;      //!< Fraction of atoms affected by S(a,b)
+  xsfloat sab_frac;      //!< Fraction of atoms affected by S(a,b)
   bool use_ptable;      //!< In URR range with probability tables?
 
   // Energy and temperature last used to evaluate these cross sections.  If
   // these values have changed, then the cross sections must be re-evaluated.
-  double last_E {0.0};      //!< Last evaluated energy
-  double last_sqrtkT {0.0}; //!< Last temperature in sqrt(Boltzmann constant
+  xsfloat last_E {0.0};      //!< Last evaluated energy
+  xsfloat last_sqrtkT {0.0}; //!< Last temperature in sqrt(Boltzmann constant
                             //!< * temperature (eV))
 };
 
@@ -120,13 +120,13 @@ struct NuclideMicroXS {
 
 struct ElementMicroXS {
   int index_grid;         //!< index on element energy grid
-  double last_E {0.0};    //!< last evaluated energy in [eV]
-  double interp_factor;   //!< interpolation factor on energy grid
-  double total;           //!< microscopic total photon xs
-  double coherent;        //!< microscopic coherent xs
-  double incoherent;      //!< microscopic incoherent xs
-  double photoelectric;   //!< microscopic photoelectric xs
-  double pair_production; //!< microscopic pair production xs
+  xsfloat last_E {0.0};    //!< last evaluated energy in [eV]
+  xsfloat interp_factor;   //!< interpolation factor on energy grid
+  xsfloat total;           //!< microscopic total photon xs
+  xsfloat coherent;        //!< microscopic coherent xs
+  xsfloat incoherent;      //!< microscopic incoherent xs
+  xsfloat photoelectric;   //!< microscopic photoelectric xs
+  xsfloat pair_production; //!< microscopic pair production xs
 };
 
 //==============================================================================
@@ -134,18 +134,26 @@ struct ElementMicroXS {
 // particle is traveling through
 //==============================================================================
 
-struct MacroXS {
-  double total;       //!< macroscopic total xs
-  double absorption;  //!< macroscopic absorption xs
-  double fission;     //!< macroscopic fission xs
-  double nu_fission;  //!< macroscopic production xs
-  double photon_prod; //!< macroscopic photon production xs
+struct NeutronMacroXS {
+  xsfloat total;       //!< macroscopic total xs
+  xsfloat absorption;  //!< macroscopic absorption xs
+  xsfloat fission;     //!< macroscopic fission xs
+  xsfloat nu_fission;  //!< macroscopic production xs
+};
 
+struct PhotonMacroXS {
   // Photon cross sections
-  double coherent;        //!< macroscopic coherent xs
-  double incoherent;      //!< macroscopic incoherent xs
-  double photoelectric;   //!< macroscopic photoelectric xs
-  double pair_production; //!< macroscopic pair production xs
+  xsfloat total;           //!< macroscopic total xs
+  xsfloat coherent;        //!< macroscopic coherent xs
+  xsfloat incoherent;      //!< macroscopic incoherent xs
+  xsfloat photoelectric;   //!< macroscopic photoelectric xs
+  xsfloat pair_production; //!< macroscopic pair production xs
+};
+
+union MacroXS {
+  xsfloat total;
+  NeutronMacroXS neutron;
+  PhotonMacroXS photon;
 };
 
 //==============================================================================
@@ -221,14 +229,14 @@ private:
   vector<int> cell_last_;      //!< coordinates for all levels
 
   // Energy data
-  double E_;      //!< post-collision energy in eV
-  double E_last_; //!< pre-collision energy in eV
+  xsfloat E_;      //!< post-collision energy in eV
+  xsfloat E_last_; //!< pre-collision energy in eV
   int g_ {0};     //!< post-collision energy group (MG only)
   int g_last_;    //!< pre-collision energy group (MG only)
 
   // Other physical data
   double wgt_ {1.0};  //!< particle weight
-  double mu_;         //!< angle of scatter
+  xsfloat mu_;         //!< angle of scatter
   bool alive_ {true}; //!< is particle alive?
 
   // Other physical data
@@ -264,8 +272,8 @@ private:
   BoundaryInfo boundary_;
 
   // Temperature of current cell
-  double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
-  double sqrtkT_last_ {0.0}; //!< last temperature
+  xsfloat sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
+  xsfloat sqrtkT_last_ {0.0}; //!< last temperature
 
   // Statistical data
   int n_collision_ {0}; //!< number of collisions
@@ -337,18 +345,18 @@ public:
   int& cell_last(int i) { return cell_last_[i]; }
   const int& cell_last(int i) const { return cell_last_[i]; }
 
-  double& E() { return E_; }
-  const double& E() const { return E_; }
-  double& E_last() { return E_last_; }
-  const double& E_last() const { return E_last_; }
+  xsfloat& E() { return E_; }
+  const xsfloat& E() const { return E_; }
+  xsfloat& E_last() { return E_last_; }
+  const xsfloat& E_last() const { return E_last_; }
   int& g() { return g_; }
   const int& g() const { return g_; }
   int& g_last() { return g_last_; }
   const int& g_last() const { return g_last_; }
 
   double& wgt() { return wgt_; }
-  double& mu() { return mu_; }
-  const double& mu() const { return mu_; }
+  xsfloat& mu() { return mu_; }
+  const xsfloat& mu() const { return mu_; }
   bool& alive() { return alive_; }
 
   Position& r_last_current() { return r_last_current_; }
@@ -386,9 +394,9 @@ public:
 
   BoundaryInfo& boundary() { return boundary_; }
 
-  double& sqrtkT() { return sqrtkT_; }
-  const double& sqrtkT() const { return sqrtkT_; }
-  double& sqrtkT_last() { return sqrtkT_last_; }
+  xsfloat& sqrtkT() { return sqrtkT_; }
+  const xsfloat& sqrtkT() const { return sqrtkT_; }
+  xsfloat& sqrtkT_last() { return sqrtkT_last_; }
 
   int& n_collision() { return n_collision_; }
   const int& n_collision() const { return n_collision_; }

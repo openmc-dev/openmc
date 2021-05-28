@@ -29,7 +29,7 @@ namespace data {
 }
 
 MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
-  const vector<std::string> xs_to_read, const vector<vector<double>> xs_temps)
+  const vector<std::string> xs_to_read, const vector<vector<xsfloat>> xs_temps)
 {
   read_header(path_cross_sections);
   set_nuclides_and_temperatures(xs_to_read, xs_temps);
@@ -37,7 +37,7 @@ MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
 }
 
 void MgxsInterface::set_nuclides_and_temperatures(
-  vector<std::string> xs_to_read, vector<vector<double>> xs_temps)
+  vector<std::string> xs_to_read, vector<vector<xsfloat>> xs_temps)
 {
   // Check to remove all duplicates
   xs_to_read_ = xs_to_read;
@@ -94,7 +94,7 @@ void MgxsInterface::init()
 //==============================================================================
 
 void MgxsInterface::add_mgxs(
-  hid_t file_id, const std::string& name, const vector<double>& temperature)
+  hid_t file_id, const std::string& name, const vector<xsfloat>& temperature)
 {
   write_message(5, "Loading {} data...", name);
 
@@ -147,9 +147,9 @@ void MgxsInterface::create_macro_xs()
 
 //==============================================================================
 
-vector<vector<double>> MgxsInterface::get_mat_kTs()
+vector<vector<xsfloat>> MgxsInterface::get_mat_kTs()
 {
-  vector<vector<double>> kTs(model::materials.size());
+  vector<vector<xsfloat>> kTs(model::materials.size());
 
   for (const auto& cell : model::cells) {
     // Skip non-material cells
@@ -161,9 +161,9 @@ vector<vector<double>> MgxsInterface::get_mat_kTs()
       if (i_material == MATERIAL_VOID) continue;
 
       // Get temperature of cell (rounding to nearest integer)
-      double sqrtkT = cell->sqrtkT_.size() == 1 ?
+      xsfloat sqrtkT = cell->sqrtkT_.size() == 1 ?
         cell->sqrtkT_[j] : cell->sqrtkT_[0];
-      double kT = sqrtkT * sqrtkT;
+      xsfloat kT = sqrtkT * sqrtkT;
 
       // Add temperature if it hasn't already been added
       if (!contains(kTs[i_material], kT)) {
@@ -245,8 +245,8 @@ void put_mgxs_header_data_to_globals()
 void set_mg_interface_nuclides_and_temps()
 {
   // Get temperatures from global data
-  vector<vector<double>> nuc_temps(data::nuclide_map.size());
-  vector<vector<double>> dummy;
+  vector<vector<xsfloat>> nuc_temps(data::nuclide_map.size());
+  vector<vector<xsfloat>> dummy;
   get_temperatures(nuc_temps, dummy);
 
   // Build vector of nuclide names which are to be read

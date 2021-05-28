@@ -26,7 +26,7 @@ DiscretePhoton::DiscretePhoton(hid_t group)
   read_attribute(group, "atomic_weight_ratio", A_);
 }
 
-double DiscretePhoton::sample(double E, uint64_t* seed) const
+xsfloat DiscretePhoton::sample(xsfloat E, uint64_t* seed) const
 {
   if (primary_flag_ == 2) {
     return energy_ + A_/(A_+ 1)*E;
@@ -45,7 +45,7 @@ LevelInelastic::LevelInelastic(hid_t group)
   read_attribute(group, "mass_ratio", mass_ratio_);
 }
 
-double LevelInelastic::sample(double E, uint64_t* seed) const
+xsfloat LevelInelastic::sample(xsfloat E, uint64_t* seed) const
 {
   return mass_ratio_*(E - threshold_);
 }
@@ -85,7 +85,7 @@ ContinuousTabular::ContinuousTabular(hid_t group)
   read_attribute(dset, "interpolation", interp);
   read_attribute(dset, "n_discrete_lines", n_discrete);
 
-  xt::xarray<double> eout;
+  xt::xarray<xsfloat> eout;
   read_dataset(dset, eout);
   close_dataset(dset);
 
@@ -147,7 +147,7 @@ ContinuousTabular::ContinuousTabular(hid_t group)
   } // incoming energies
 }
 
-double ContinuousTabular::sample(double E, uint64_t* seed) const
+xsfloat ContinuousTabular::sample(xsfloat E, uint64_t* seed) const
 {
   // Read number of interpolation regions and incoming energies
   bool histogram_interp;
@@ -161,7 +161,7 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   // outside the range of the tabulated energies, choose the first or last bins
   auto n_energy_in = energy_.size();
   int i;
-  double r;
+  xsfloat r;
   if (E < energy_[0]) {
     i = 0;
     r = 0.0;
@@ -184,22 +184,22 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   // Interpolation for energy E1 and EK
   int n_energy_out = distribution_[i].e_out.size();
   int n_discrete = distribution_[i].n_discrete;
-  double E_i_1 = distribution_[i].e_out[n_discrete];
-  double E_i_K = distribution_[i].e_out[n_energy_out - 1];
+  xsfloat E_i_1 = distribution_[i].e_out[n_discrete];
+  xsfloat E_i_K = distribution_[i].e_out[n_energy_out - 1];
 
   n_energy_out = distribution_[i+1].e_out.size();
   n_discrete = distribution_[i+1].n_discrete;
-  double E_i1_1 = distribution_[i+1].e_out[n_discrete];
-  double E_i1_K = distribution_[i+1].e_out[n_energy_out - 1];
+  xsfloat E_i1_1 = distribution_[i+1].e_out[n_discrete];
+  xsfloat E_i1_K = distribution_[i+1].e_out[n_energy_out - 1];
 
-  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
-  double E_K = E_i_K + r * (E_i1_K - E_i_K);
+  xsfloat E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
+  xsfloat E_K = E_i_K + r * (E_i1_K - E_i_K);
 
   // Determine outgoing energy bin
   n_energy_out = distribution_[l].e_out.size();
   n_discrete = distribution_[l].n_discrete;
-  double r1 = prn(seed);
-  double c_k = distribution_[l].c[0];
+  xsfloat r1 = prn(seed);
+  xsfloat c_k = distribution_[l].c[0];
   int k = 0;
   int end = n_energy_out - 2;
 
@@ -214,7 +214,7 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
   }
 
   // Continuous portion
-  double c_k1;
+  xsfloat c_k1;
   for (int j = n_discrete; j < end; ++j) {
     k = j;
     c_k1 = distribution_[l].c[k+1];
@@ -223,9 +223,9 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
     c_k = c_k1;
   }
 
-  double E_l_k = distribution_[l].e_out[k];
-  double p_l_k = distribution_[l].p[k];
-  double E_out = E_l_k;
+  xsfloat E_l_k = distribution_[l].e_out[k];
+  xsfloat p_l_k = distribution_[l].p[k];
+  xsfloat E_out = E_l_k;
   if (distribution_[l].interpolation == Interpolation::histogram) {
     // Histogram interpolation
     if (p_l_k > 0.0 && k >= n_discrete) {
@@ -234,11 +234,11 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
   } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
     // Linear-linear interpolation
-    double E_l_k1 = distribution_[l].e_out[k+1];
-    double p_l_k1 = distribution_[l].p[k+1];
+    xsfloat E_l_k1 = distribution_[l].e_out[k+1];
+    xsfloat p_l_k1 = distribution_[l].p[k+1];
 
     if (E_l_k != E_l_k1) {
-      double frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k);
+      xsfloat frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k);
       if (frac == 0.0) {
         E_out = E_l_k + (r1 - c_k)/p_l_k;
       } else {
@@ -276,14 +276,14 @@ MaxwellEnergy::MaxwellEnergy(hid_t group)
   close_dataset(dset);
 }
 
-double MaxwellEnergy::sample(double E, uint64_t* seed) const
+xsfloat MaxwellEnergy::sample(xsfloat E, uint64_t* seed) const
 {
   // Get temperature corresponding to incoming energy
-  double theta = theta_(E);
+  xsfloat theta = theta_(E);
 
   while (true) {
     // Sample maxwell fission spectrum
-    double E_out = maxwell_spectrum(theta, seed);
+    xsfloat E_out = maxwell_spectrum(theta, seed);
 
     // Accept energy based on restriction energy
     if (E_out <= E - u_) return E_out;
@@ -302,17 +302,17 @@ Evaporation::Evaporation(hid_t group)
   close_dataset(dset);
 }
 
-double Evaporation::sample(double E, uint64_t* seed) const
+xsfloat Evaporation::sample(xsfloat E, uint64_t* seed) const
 {
   // Get temperature corresponding to incoming energy
-  double theta = theta_(E);
+  xsfloat theta = theta_(E);
 
-  double y = (E - u_)/theta;
-  double v = 1.0 - std::exp(-y);
+  xsfloat y = (E - u_)/theta;
+  xsfloat v = 1.0 - std::exp(-y);
 
   // Sample outgoing energy based on evaporation spectrum probability
   // density function
-  double x;
+  xsfloat x;
   while (true) {
     x = -std::log((1.0 - v*prn(seed))*(1.0 - v*prn(seed)));
     if (x <= y) break;
@@ -339,15 +339,15 @@ WattEnergy::WattEnergy(hid_t group)
   close_dataset(dset);
 }
 
-double WattEnergy::sample(double E, uint64_t* seed) const
+xsfloat WattEnergy::sample(xsfloat E, uint64_t* seed) const
 {
   // Determine Watt parameters at incident energy
-  double a = a_(E);
-  double b = b_(E);
+  xsfloat a = a_(E);
+  xsfloat b = b_(E);
 
   while (true) {
     // Sample energy-dependent Watt fission spectrum
-    double E_out = watt_spectrum(a, b, seed);
+    xsfloat E_out = watt_spectrum(a, b, seed);
 
     // Accept energy based on restriction energy
     if (E_out <= E - u_) return E_out;

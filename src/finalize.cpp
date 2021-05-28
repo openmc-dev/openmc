@@ -127,10 +127,10 @@ int openmc_finalize()
   simulation::entropy_mesh = nullptr;
   simulation::ufs_mesh = nullptr;
 
-  data::energy_max = {INFTY, INFTY};
-  data::energy_min = {0.0, 0.0};
-  data::temperature_min = 0.0;
-  data::temperature_max = INFTY;
+  data::energy_max = {XSINFTY, XSINFTY};
+  data::energy_min = {XSZERO, XSZERO};
+  data::temperature_min = XSZERO;
+  data::temperature_max = XSINFTY;
   model::root_universe = -1;
   openmc::openmc_set_seed(DEFAULT_SEED);
 

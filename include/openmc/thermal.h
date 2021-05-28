@@ -41,7 +41,7 @@ public:
   //! \param[in] E Incident neutron energy in [eV]
   //! \param[out] elastic Elastic scattering cross section in [b]
   //! \param[out] inelastic Inelastic scattering cross section in [b]
-  void calculate_xs(double E, double* elastic, double* inelastic) const;
+  void calculate_xs(xsfloat E, xsfloat* elastic, xsfloat* inelastic) const;
 
   //! Sample an outgoing energy and angle
   //
@@ -50,8 +50,8 @@ public:
   //! \param[out] E_out Outgoing neutron energy in [eV]
   //! \param[out] mu Outgoing scattering angle cosine
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(const NuclideMicroXS& micro_xs, double E_in,
-              double* E_out, double* mu, uint64_t* seed);
+  void sample(const NuclideMicroXS& micro_xs, xsfloat E_in,
+              xsfloat* E_out, xsfloat* mu, uint64_t* seed);
 private:
   struct Reaction {
     // Default constructor
@@ -78,7 +78,7 @@ private:
 
 class ThermalScattering {
 public:
-  ThermalScattering(hid_t group, const vector<double>& temperature);
+  ThermalScattering(hid_t group, const vector<xsfloat>& temperature);
 
   //! Determine inelastic/elastic cross section at given energy
   //!
@@ -88,8 +88,8 @@ public:
   //! \param[out] elastic Thermal elastic scattering cross section
   //! \param[out] inelastic Thermal inelastic scattering cross section
   //! \param[inout] seed Pseudorandom seed pointer
-  void calculate_xs(double E, double sqrtkT, int* i_temp, double* elastic,
-                    double* inelastic, uint64_t* seed) const;
+  void calculate_xs(xsfloat E, xsfloat sqrtkT, int* i_temp, xsfloat* elastic,
+                    xsfloat* inelastic, uint64_t* seed) const;
 
   //! Determine whether table applies to a particular nuclide
   //!
@@ -98,13 +98,13 @@ public:
   bool has_nuclide(const char* name) const;
 
   // Sample an outgoing energy and angle
-  void sample(const NuclideMicroXS& micro_xs, double E_in,
-              double* E_out, double* mu);
+  void sample(const NuclideMicroXS& micro_xs, xsfloat E_in,
+              xsfloat* E_out, xsfloat* mu);
 
   std::string name_; //!< name of table, e.g. "c_H_in_H2O"
   double awr_;       //!< weight of nucleus in neutron masses
   double energy_max_; //!< maximum energy for thermal scattering in [eV]
-  vector<double> kTs_;           //!< temperatures in [eV] (k*T)
+  vector<xsfloat> kTs_;           //!< temperatures in [eV] (k*T)
   vector<std::string> nuclides_; //!< Valid nuclides
 
   //! cross sections and distributions at each temperature

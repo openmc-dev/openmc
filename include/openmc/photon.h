@@ -27,15 +27,15 @@ public:
 
   int index_subshell;  //!< index in SUBSHELLS
   int threshold;
-  double n_electrons;
-  double binding_energy;
-  xt::xtensor<double, 1> cross_section;
+  xsfloat n_electrons;
+  xsfloat binding_energy;
+  xt::xtensor<xsfloat, 1> cross_section;
 
   // Transition data
   int n_transitions;
   xt::xtensor<int, 2> transition_subshells;
-  xt::xtensor<double, 1> transition_energy;
-  xt::xtensor<double, 1> transition_probability;
+  xt::xtensor<xsfloat, 1> transition_energy;
+  xt::xtensor<xsfloat, 1> transition_probability;
 };
 
 class PhotonInteraction {
@@ -47,13 +47,13 @@ public:
   // Methods
   void calculate_xs(Particle& p) const;
 
-  void compton_scatter(double alpha, bool doppler, double* alpha_out,
-    double* mu, int* i_shell, uint64_t* seed) const;
+  void compton_scatter(xsfloat alpha, bool doppler, xsfloat* alpha_out,
+    xsfloat* mu, int* i_shell, uint64_t* seed) const;
 
-  double rayleigh_scatter(double alpha, uint64_t* seed) const;
+  xsfloat rayleigh_scatter(xsfloat alpha, uint64_t* seed) const;
 
-  void pair_production(double alpha, double* E_electron, double* E_positron,
-    double* mu_electron, double* mu_positron, uint64_t* seed) const;
+  void pair_production(xsfloat alpha, xsfloat* E_electron, xsfloat* E_positron,
+    xsfloat* mu_electron, xsfloat* mu_positron, uint64_t* seed) const;
 
   void atomic_relaxation(const ElectronSubshell& shell, Particle& p) const;
 
@@ -63,14 +63,14 @@ public:
   gsl::index index_; //!< Index in global elements vector
 
   // Microscopic cross sections
-  xt::xtensor<double, 1> energy_;
-  xt::xtensor<double, 1> coherent_;
-  xt::xtensor<double, 1> incoherent_;
-  xt::xtensor<double, 1> photoelectric_total_;
-  xt::xtensor<double, 1> pair_production_total_;
-  xt::xtensor<double, 1> pair_production_electron_;
-  xt::xtensor<double, 1> pair_production_nuclear_;
-  xt::xtensor<double, 1> heating_;
+  xt::xtensor<xsfloat, 1> energy_;
+  xt::xtensor<xsfloat, 1> coherent_;
+  xt::xtensor<xsfloat, 1> incoherent_;
+  xt::xtensor<xsfloat, 1> photoelectric_total_;
+  xt::xtensor<xsfloat, 1> pair_production_total_;
+  xt::xtensor<xsfloat, 1> pair_production_electron_;
+  xt::xtensor<xsfloat, 1> pair_production_nuclear_;
+  xt::xtensor<xsfloat, 1> heating_;
 
   // Form factors
   Tabulated1D incoherent_form_factor_;
@@ -84,22 +84,22 @@ public:
   vector<ElectronSubshell> shells_;
 
   // Compton profile data
-  xt::xtensor<double, 2> profile_pdf_;
-  xt::xtensor<double, 2> profile_cdf_;
-  xt::xtensor<double, 1> binding_energy_;
-  xt::xtensor<double, 1> electron_pdf_;
+  xt::xtensor<xsfloat, 2> profile_pdf_;
+  xt::xtensor<xsfloat, 2> profile_cdf_;
+  xt::xtensor<xsfloat, 1> binding_energy_;
+  xt::xtensor<xsfloat, 1> electron_pdf_;
 
   // Stopping power data
-  double I_; // mean excitation energy
+  xsfloat I_; // mean excitation energy
   xt::xtensor<int, 1> n_electrons_;
-  xt::xtensor<double, 1> ionization_energy_;
-  xt::xtensor<double, 1> stopping_power_radiative_;
+  xt::xtensor<xsfloat, 1> ionization_energy_;
+  xt::xtensor<xsfloat, 1> stopping_power_radiative_;
 
   // Bremsstrahlung scaled DCS
-  xt::xtensor<double, 2> dcs_;
+  xt::xtensor<xsfloat, 2> dcs_;
 
 private:
-  void compton_doppler(double alpha, double mu, double* E_out, int* i_shell,
+  void compton_doppler(xsfloat alpha, xsfloat mu, xsfloat* E_out, int* i_shell,
                        uint64_t* seed) const;
 };
 
@@ -107,7 +107,7 @@ private:
 // Non-member functions
 //==============================================================================
 
-std::pair<double, double> klein_nishina(double alpha, uint64_t* seed);
+std::pair<xsfloat, xsfloat> klein_nishina(xsfloat alpha, uint64_t* seed);
 
 void free_memory_photon();
 
@@ -117,7 +117,7 @@ void free_memory_photon();
 
 namespace data {
 
-extern xt::xtensor<double, 1> compton_profile_pz; //! Compton profile momentum grid
+extern xt::xtensor<xsfloat, 1> compton_profile_pz; //! Compton profile momentum grid
 
 //! Photon interaction data for each element
 extern std::unordered_map<std::string, int> element_map;

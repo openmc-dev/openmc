@@ -21,7 +21,7 @@ namespace openmc {
 //==============================================================================
 
 struct CacheData {
-  double sqrtkT; // last temperature corresponding to t
+  xsfloat sqrtkT; // last temperature corresponding to t
   int t; // temperature index
   int a; // angle index
   // last angle that corresponds to a
@@ -37,7 +37,7 @@ struct CacheData {
 class Mgxs {
   private:
 
-    xt::xtensor<double, 1> kTs;   // temperature in eV (k * T)
+    xt::xtensor<xsfloat, 1> kTs;   // temperature in eV (k * T)
     AngleDistributionType scatter_format; // flag for if this is legendre, histogram, or tabular
     int num_groups;     // number of energy groups
     int num_delayed_groups; // number of delayed neutron groups
@@ -46,8 +46,8 @@ class Mgxs {
     bool is_isotropic; // used to skip search for angle indices if isotropic
     int n_pol;
     int n_azi;
-    vector<double> polar;
-    vector<double> azimuthal;
+    vector<xsfloat> polar;
+    vector<xsfloat> azimuthal;
 
     //! \brief Initializes the Mgxs object metadata
     //!
@@ -62,9 +62,9 @@ class Mgxs {
     //! @param in_polar Polar angle grid.
     //! @param in_azimuthal Azimuthal angle grid.
     void init(const std::string& in_name, double in_awr,
-      const vector<double>& in_kTs, bool in_fissionable,
+      const vector<xsfloat>& in_kTs, bool in_fissionable,
       AngleDistributionType in_scatter_format, bool in_is_isotropic,
-      const vector<double>& in_polar, const vector<double>& in_azimuthal);
+      const vector<xsfloat>& in_polar, const vector<xsfloat>& in_azimuthal);
 
     //! \brief Initializes the Mgxs object metadata from the HDF5 file
     //!
@@ -73,7 +73,7 @@ class Mgxs {
     //! @param temps_to_read Resultant list of temperatures in the library
     //!   to read which correspond to the requested temperatures.
     //! @param order_dim Resultant dimensionality of the scattering order.
-    void metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
+    void metadata_from_hdf5(hid_t xs_id, const vector<xsfloat>& temperature,
       vector<int>& temps_to_read, int& order_dim);
 
     //! \brief Performs the actual act of combining the microscopic data for a
@@ -84,7 +84,7 @@ class Mgxs {
     //! @param micro_ts The temperature index of the microscopic objects that
     //!   corresponds to the temperature of interest.
     //! @param this_t The temperature index of the macroscopic object.
-    void combine(const vector<Mgxs*>& micros, const vector<double>& scalars,
+    void combine(const vector<Mgxs*>& micros, const vector<xsfloat>& scalars,
       const vector<int>& micro_ts, int this_t);
 
     //! \brief Checks to see if this and that are able to be combined
@@ -110,7 +110,7 @@ class Mgxs {
     //! @param temperature Temperatures to read.
     //! @param num_group number of energy groups
     //! @param num_delay number of delayed groups
-    Mgxs(hid_t xs_id, const vector<double>& temperature, int num_group,
+    Mgxs(hid_t xs_id, const vector<xsfloat>& temperature, int num_group,
       int num_delay);
 
     //! \brief Constructor that initializes and populates all data to build a
@@ -122,8 +122,8 @@ class Mgxs {
     //! @param atom_densities Atom densities of those microscopic quantities.
     //! @param num_group number of energy groups
     //! @param num_delay number of delayed groups
-    Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
-      const vector<Mgxs*>& micros, const vector<double>& atom_densities,
+    Mgxs(const std::string& in_name, const vector<xsfloat>& mat_kTs,
+      const vector<Mgxs*>& micros, const vector<xsfloat>& atom_densities,
       int num_group, int num_delay);
 
     //! \brief Provides a cross section value given certain parameters
@@ -137,11 +137,11 @@ class Mgxs {
     //!   use nullptr if irrelevant.
     //! @param dg delayed group index; use nullptr if irrelevant.
     //! @return Requested cross section value.
-    double
-    get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
+    xsfloat
+    get_xs(MgxsType xstype, int gin, const int* gout, const xsfloat* mu,
       const int* dg);
 
-    inline double
+    inline xsfloat
     get_xs(MgxsType xstype, int gin)
     {return get_xs(xstype, gin, nullptr, nullptr, nullptr);}
 
@@ -163,7 +163,7 @@ class Mgxs {
     //! @param wgt Weight of the particle to be adjusted.
     //! @param seed Pseudorandom seed pointer.
     void
-    sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
+    sample_scatter(int gin, int& gout, xsfloat& mu, double& wgt, uint64_t* seed);
 
     //! \brief Calculates cross section quantities needed for tracking.
     //!
@@ -175,7 +175,7 @@ class Mgxs {
     //!
     //! @param sqrtkT Temperature of the material.
     void
-    set_temperature_index(double sqrtkT);
+    set_temperature_index(xsfloat sqrtkT);
 
     //! \brief Sets the angle index in cache given a direction
     //!

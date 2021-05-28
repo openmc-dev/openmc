@@ -22,7 +22,7 @@ NBodyPhaseSpace::NBodyPhaseSpace(hid_t group)
   read_attribute(group, "q_value", Q_);
 }
 
-void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
+void NBodyPhaseSpace::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
   uint64_t* seed) const
 {
   // By definition, the distribution of the angle is isotropic for an N-body
@@ -30,14 +30,14 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
   mu = uniform_distribution(-1., 1., seed);
 
   // Determine E_max parameter
-  double Ap = mass_ratio_;
-  double E_max = (Ap - 1.0)/Ap * (A_/(A_ + 1.0)*E_in + Q_);
+  auto const& Ap = mass_ratio_;
+  xsfloat E_max = (Ap - 1.0)/Ap * (A_/(A_ + 1.0)*E_in + Q_);
 
   // x is essentially a Maxwellian distribution
-  double x = maxwell_spectrum(1.0, seed);
+  xsfloat x = maxwell_spectrum(1.0, seed);
 
-  double y;
-  double r1, r2, r3, r4, r5, r6;
+  xsfloat y;
+  xsfloat r1, r2, r3, r4, r5, r6;
   switch (n_bodies_) {
   case 3:
     y = maxwell_spectrum(1.0, seed);
@@ -62,7 +62,7 @@ void NBodyPhaseSpace::sample(double E_in, double& E_out, double& mu,
   }
 
   // Now determine v and E_out
-  double v = x/(x + y);
+  xsfloat v = x/(x + y);
   E_out = E_max * v;
 }
 

@@ -95,7 +95,7 @@ void ReactionProduct::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
 
       // If i-th distribution is sampled, sample energy from the distribution
       if (c <= prob) {
-        distribution_[i]->sample(E_in, E_in, mu, seed);
+        distribution_[i]->sample(E_in, E_out, mu, seed);
         break;
       }
     }

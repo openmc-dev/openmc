@@ -844,7 +844,12 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     int n = device_urr_data_[micro.index_temp].n_energy_;
     if ((p.E_ > device_urr_data_[micro.index_temp].device_energy_[0]) &&
         (p.E_ < device_urr_data_[micro.index_temp].device_energy_[n-1])) {
-      this->calculate_urr_xs(micro.index_temp, p);
+      #pragma omp target update to(p)
+      #pragma omp target
+      {
+        this->calculate_urr_xs(micro.index_temp, p);
+      }
+      #pragma omp target update from(p)
     }
   }
 

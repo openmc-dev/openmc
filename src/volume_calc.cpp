@@ -33,7 +33,7 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::vector<VolumeCalculation> volume_calcs;
+vector<VolumeCalculation> volume_calcs;
 }
 
 //==============================================================================
@@ -94,12 +94,14 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
 }
 
-std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
+vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 {
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
-  std::vector<std::vector<int>> master_indices(n); // List of material indices for each domain
-  std::vector<std::vector<int>> master_hits(n); // Number of hits for each material in each domain
+  vector<vector<int>> master_indices(
+    n); // List of material indices for each domain
+  vector<vector<int>> master_hits(
+    n); // Number of hits for each material in each domain
   int iterations = 0;
 
   // Divide work over MPI processes
@@ -119,8 +121,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     #pragma omp parallel
     {
       // Variables that are private to each thread
-      std::vector<std::vector<int>> indices(n);
-      std::vector<std::vector<int>> hits(n);
+      vector<vector<int>> indices(n);
+      vector<vector<int>> hits(n);
       Particle p;
 
       // Sample locations and count hits
@@ -129,7 +131,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         int64_t id = iterations * n_samples_ + i;
         uint64_t seed = init_seed(id, STREAM_VOLUME);
 
-        p.n_coord_ = 1;
+        p.n_coord() = 1;
         Position xi {prn(&seed), prn(&seed), prn(&seed)};
         p.r() = lower_left_ + xi*(upper_right_ - lower_left_);
         p.u() = {0.5, 0.5, 0.5};
@@ -139,28 +141,33 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           continue;
 
         if (domain_type_ == TallyDomain::MATERIAL) {
-          if (p.material_ != MATERIAL_VOID) {
+          if (p.material() != MATERIAL_VOID) {
             for (int i_domain = 0; i_domain < n; i_domain++) {
-              if (model::materials[p.material_]->id_ == domain_ids_[i_domain]) {
-                this->check_hit(p.material_, indices[i_domain], hits[i_domain]);
+              if (model::materials[p.material()]->id_ ==
+                  domain_ids_[i_domain]) {
+                this->check_hit(
+                  p.material(), indices[i_domain], hits[i_domain]);
                 break;
               }
             }
           }
         } else if (domain_type_ == TallyDomain::CELL) {
-          for (int level = 0; level < p.n_coord_; ++level) {
+          for (int level = 0; level < p.n_coord(); ++level) {
             for (int i_domain=0; i_domain < n; i_domain++) {
-              if (model::cells[p.coord_[level].cell]->id_ == domain_ids_[i_domain]) {
-                this->check_hit(p.material_, indices[i_domain], hits[i_domain]);
+              if (model::cells[p.coord(level).cell]->id_ ==
+                  domain_ids_[i_domain]) {
+                this->check_hit(
+                  p.material(), indices[i_domain], hits[i_domain]);
                 break;
               }
             }
           }
         } else if (domain_type_ == TallyDomain::UNIVERSE) {
-          for (int level = 0; level < p.n_coord_; ++level) {
+          for (int level = 0; level < p.n_coord(); ++level) {
             for (int i_domain = 0; i_domain < n; ++i_domain) {
-              if (model::universes[p.coord_[level].universe]->id_ == domain_ids_[i_domain]) {
-                check_hit(p.material_, indices[i_domain], hits[i_domain]);
+              if (model::universes[p.coord(level).universe]->id_ ==
+                  domain_ids_[i_domain]) {
+                check_hit(p.material(), indices[i_domain], hits[i_domain]);
                 break;
               }
             }
@@ -190,6 +197,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
               if (indices[i_domain][j] == master_indices[i_domain][k]) {
                 master_hits[i_domain][k] += hits[i_domain][j];
                 already_added = true;
+                break;
               }
             }
             if (!already_added) {
@@ -218,7 +226,7 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     double trigger_val = -INFTY;
 
     // Set size for members of the Result struct
-    std::vector<Result> results(n);
+    vector<Result> results(n);
 
     for (int i_domain = 0; i_domain < n; ++i_domain) {
       // Get reference to result for this domain
@@ -233,28 +241,34 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       if (mpi::master) {
         for (int j = 1; j < mpi::n_procs; j++) {
           int q;
-          MPI_Recv(&q, 1, MPI_INTEGER, j, 0, mpi::intracomm, MPI_STATUS_IGNORE);
-          int buffer[2*q];
-          MPI_Recv(&buffer[0], 2*q, MPI_INTEGER, j, 1, mpi::intracomm, MPI_STATUS_IGNORE);
+          MPI_Recv(&q, 1, MPI_INTEGER, j, 2*j, mpi::intracomm, MPI_STATUS_IGNORE);
+          vector<int> buffer(2 * q);
+          MPI_Recv(buffer.data(), 2*q, MPI_INTEGER, j, 2*j + 1, mpi::intracomm, MPI_STATUS_IGNORE);
           for (int k = 0; k < q; ++k) {
+            bool already_added = false;
             for (int m = 0; m < master_indices[i_domain].size(); ++m) {
               if (buffer[2*k] == master_indices[i_domain][m]) {
                 master_hits[i_domain][m] += buffer[2*k + 1];
+                already_added = true;
                 break;
               }
+            }
+            if (!already_added) {
+              master_indices[i_domain].push_back(buffer[2*k]);
+              master_hits[i_domain].push_back(buffer[2*k + 1]);
             }
           }
         }
       } else {
         int q = master_indices[i_domain].size();
-        int buffer[2*q];
+        vector<int> buffer(2 * q);
         for (int k = 0; k < q; ++k) {
           buffer[2*k] = master_indices[i_domain][k];
           buffer[2*k + 1] = master_hits[i_domain][k];
         }
 
-        MPI_Send(&q, 1, MPI_INTEGER, 0, 0, mpi::intracomm);
-        MPI_Send(&buffer[0], 2*q, MPI_INTEGER, 0, 1, mpi::intracomm);
+        MPI_Send(&q, 1, MPI_INTEGER, 0, 2*mpi::rank, mpi::intracomm);
+        MPI_Send(buffer.data(), 2*q, MPI_INTEGER, 0, 2*mpi::rank + 1, mpi::intracomm);
       }
 #endif
 
@@ -341,8 +355,8 @@ std::vector<VolumeCalculation::Result> VolumeCalculation::execute() const
   } // end while
 }
 
-void VolumeCalculation::to_hdf5(const std::string& filename,
-  const std::vector<Result>& results) const
+void VolumeCalculation::to_hdf5(
+  const std::string& filename, const vector<Result>& results) const
 {
   // Create HDF5 file
   hid_t file_id = file_open(filename, 'w');
@@ -406,7 +420,7 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
     // Create array of nuclide names from the vector
     auto n_nuc = result.nuclides.size();
 
-    std::vector<std::string> nucnames;
+    vector<std::string> nucnames;
     for (int i_nuc : result.nuclides) {
       nucnames.push_back(data::nuclides[i_nuc]->name_);
     }
@@ -426,8 +440,8 @@ void VolumeCalculation::to_hdf5(const std::string& filename,
   file_close(file_id);
 }
 
-void VolumeCalculation::check_hit(int i_material, std::vector<int>& indices,
-  std::vector<int>& hits) const
+void VolumeCalculation::check_hit(
+  int i_material, vector<int>& indices, vector<int>& hits) const
 {
 
   // Check if this material was previously hit and if so, increment count

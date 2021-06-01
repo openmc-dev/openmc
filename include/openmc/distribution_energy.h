@@ -4,13 +4,12 @@
 #ifndef OPENMC_DISTRIBUTION_ENERGY_H
 #define OPENMC_DISTRIBUTION_ENERGY_H
 
-#include <vector>
-
 #include "xtensor/xtensor.hpp"
 #include "hdf5.h"
 
 #include "openmc/constants.h"
 #include "openmc/endf.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -90,10 +89,10 @@ private:
   };
 
   int n_region_; //!< Number of inteprolation regions
-  std::vector<int> breakpoints_; //!< Breakpoints between regions
-  std::vector<Interpolation> interpolation_; //!< Interpolation laws
-  std::vector<double> energy_; //!< Incident energy in [eV]
-  std::vector<CTTable> distribution_; //!< Distributions for each incident energy
+  vector<int> breakpoints_;             //!< Breakpoints between regions
+  vector<Interpolation> interpolation_; //!< Interpolation laws
+  vector<double> energy_;               //!< Incident energy in [eV]
+  vector<CTTable> distribution_; //!< Distributions for each incident energy
 };
 
 //===============================================================================

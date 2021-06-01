@@ -113,7 +113,7 @@ void
 TranslationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
 {
   // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface_) - 1;
+  int i_particle_surf = std::abs(p.surface()) - 1;
 
   // Figure out which of the two BC surfaces were struck then find the
   // particle's new location and surface.
@@ -121,10 +121,10 @@ TranslationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
   int new_surface;
   if (i_particle_surf == i_surf_) {
     new_r = p.r() + translation_;
-    new_surface = p.surface_ > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
+    new_surface = p.surface() > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
   } else if (i_particle_surf == j_surf_) {
     new_r = p.r() - translation_;
-    new_surface = p.surface_ > 0 ? i_surf_ + 1 : -(i_surf_ + 1);
+    new_surface = p.surface() > 0 ? i_surf_ + 1 : -(i_surf_ + 1);
   } else {
     throw std::runtime_error("Called BoundaryCondition::handle_particle after "
       "hitting a surface, but that surface is not recognized by the BC.");
@@ -222,7 +222,7 @@ void
 RotationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
 {
   // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface_) - 1;
+  int i_particle_surf = std::abs(p.surface()) - 1;
 
   // Figure out which of the two BC surfaces were struck to figure out if a
   // forward or backward rotation is required.  Specify the other surface as
@@ -231,10 +231,10 @@ RotationalPeriodicBC::handle_particle(Particle& p, const Surface& surf) const
   int new_surface;
   if (i_particle_surf == i_surf_) {
     theta = angle_;
-    new_surface = p.surface_ > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
+    new_surface = p.surface() > 0 ? -(j_surf_ + 1) : j_surf_ + 1;
   } else if (i_particle_surf == j_surf_) {
     theta = -angle_;
-    new_surface = p.surface_ > 0 ? -(i_surf_ + 1) : i_surf_ + 1;
+    new_surface = p.surface() > 0 ? -(i_surf_ + 1) : i_surf_ + 1;
   } else {
     throw std::runtime_error("Called BoundaryCondition::handle_particle after "
       "hitting a surface, but that surface is not recognized by the BC.");

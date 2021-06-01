@@ -88,7 +88,7 @@ int64_t max_particles_in_flight {100000};
 int event_queue_refill_interval {100};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
-std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
+array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -97,7 +97,7 @@ int n_max_batches;
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
-std::vector<std::string> res_scat_nuclides;
+vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
@@ -106,11 +106,11 @@ int64_t max_surface_particles;
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
-std::array<double, 2> temperature_range {0.0, 0.0};
+array<double, 2> temperature_range {0.0, 0.0};
 int trace_batch;
 int trace_gen;
 int64_t trace_particle;
-std::vector<std::array<int, 3>> track_identifiers;
+vector<array<int, 3>> track_identifiers;
 int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
@@ -432,7 +432,7 @@ void read_settings_xml()
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
-      model::external_sources.push_back(std::make_unique<FileSource>(path));
+      model::external_sources.push_back(make_unique<FileSource>(path));
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);
@@ -442,9 +442,10 @@ void read_settings_xml()
       }
 
       // Create custom source
-      model::external_sources.push_back(std::make_unique<CustomSourceWrapper>(path, parameters));
+      model::external_sources.push_back(
+        make_unique<CustomSourceWrapper>(path, parameters));
     } else {
-      model::external_sources.push_back(std::make_unique<IndependentSource>(node));
+      model::external_sources.push_back(make_unique<IndependentSource>(node));
     }
   }
 
@@ -459,16 +460,14 @@ void read_settings_xml()
     if (check_for_node(node_ssr, "path")) {
       path = get_node_value(node_ssr, "path", false, true);
     }
-    model::external_sources.push_back(std::make_unique<FileSource>(path));
+    model::external_sources.push_back(make_unique<FileSource>(path));
   }
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum
   if (model::external_sources.empty()) {
-    model::external_sources.push_back(std::make_unique<IndependentSource>(
-      UPtrSpace{new SpatialPoint({0.0, 0.0, 0.0})},
-      UPtrAngle{new Isotropic()},
-      UPtrDist{new Watt(0.988e6, 2.249e-6)}
-    ));
+    model::external_sources.push_back(make_unique<IndependentSource>(
+      UPtrSpace {new SpatialPoint({0.0, 0.0, 0.0})},
+      UPtrAngle {new Isotropic()}, UPtrDist {new Watt(0.988e6, 2.249e-6)}));
   }
 
   // Check if we want to write out source

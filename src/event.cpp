@@ -18,7 +18,7 @@ SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 SharedArray<int64_t> dead_particle_indices;
 
-std::vector<Particle>  particles;
+vector<Particle> particles;
 
 } // namespace simulation
 
@@ -52,7 +52,8 @@ void free_event_queues(void)
 void dispatch_xs_event(int64_t buffer_idx)
 {
   Particle& p = simulation::particles[buffer_idx];
-  if (p.material_ == MATERIAL_VOID || !model::materials[p.material_]->fissionable_) {
+  if (p.material() == MATERIAL_VOID ||
+      !model::materials[p.material()]->fissionable_) {
     simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
   } else {
     simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
@@ -111,7 +112,7 @@ void process_advance_particle_events()
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_advance();
-    if (p.collision_distance_ > p.boundary_.distance) {
+    if (p.collision_distance() > p.boundary().distance) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
     } else {
       simulation::collision_queue.thread_safe_append({p, buffer_idx});
@@ -133,7 +134,7 @@ void process_surface_crossing_events()
     Particle& p = simulation::particles[buffer_idx];
     p.event_cross_surface();
     p.event_revive_from_secondary();
-    if (p.alive_)
+    if (p.alive())
       dispatch_xs_event(buffer_idx);
   }
 
@@ -152,7 +153,7 @@ void process_collision_events()
     Particle& p = simulation::particles[buffer_idx];
     p.event_collide();
     p.event_revive_from_secondary();
-    if (p.alive_)
+    if (p.alive())
       dispatch_xs_event(buffer_idx);
   }
 

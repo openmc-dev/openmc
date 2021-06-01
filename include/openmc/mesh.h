@@ -4,16 +4,16 @@
 #ifndef OPENMC_MESH_H
 #define OPENMC_MESH_H
 
-#include <memory> // for unique_ptr
-#include <vector>
 #include <unordered_map>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/vector.h"
 
 #ifdef DAGMC
 #include "moab/Core.hpp"
@@ -47,14 +47,14 @@ class Mesh;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> mesh_map;
-extern std::vector<std::unique_ptr<Mesh>> meshes;
+extern vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
 #ifdef LIBMESH
 namespace settings {
 // used when creating new libMesh::Mesh instances
-extern std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
+extern unique_ptr<libMesh::LibMeshInit> libmesh_init;
 extern const libMesh::Parallel::Communicator* libmesh_comm;
 }
 #endif
@@ -71,18 +71,28 @@ public:
 
   //! Determine which bins were crossed by a particle
   //
-  //! \param[in] p Particle to check
+  //! \param[in] r0 Previous position of the particle
+  //! \param[in] r1 Current position of the particle
+  //! \param[in] u Particle direction
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  virtual void bins_crossed(const Particle& p, std::vector<int>& bins,
-                            std::vector<double>& lengths) const = 0;
+  virtual void bins_crossed(Position r0,
+                            Position r1,
+                            const Direction& u,
+                            vector<int>& bins,
+                            vector<double>& lengths) const = 0;
 
   //! Determine which surface bins were crossed by a particle
   //
-  //! \param[in] p Particle to check
+  //! \param[in] r0 Previous position of the particle
+  //! \param[in] r1 Current position of the particle
+  //! \param[in] u Particle direction
   //! \param[out] bins Surface bins that were crossed
   virtual void
-  surface_bins_crossed(const Particle& p, std::vector<int>& bins) const = 0;
+  surface_bins_crossed(Position r0,
+                       Position r1,
+                       const Direction& u,
+                       vector<int>& bins) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -112,8 +122,8 @@ public:
   //!   of the plot's axes.  For example an xy-slice plot will get back a vector
   //!   of x-coordinates and another of y-coordinates.  These vectors may be
   //!   empty for low-dimensional meshes.
-  virtual std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const = 0;
+  virtual std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const = 0;
 
   //! Return a string representation of the mesh bin
   //
@@ -137,16 +147,19 @@ public:
 
   int n_surface_bins() const override;
 
-  void bins_crossed(const Particle& p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
+  void bins_crossed(Position r0,
+                    Position r1,
+                    const Direction& u,
+                    vector<int>& bins,
+                    vector<double>& lengths) const override;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
   //! \param[in] Pointer to bank sites
   //! \param[in] Number of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
-  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
-                                     int64_t length, bool* outside) const;
+  xt::xtensor<double, 1> count_sites(
+    const SourceSite* bank, int64_t length, bool* outside) const;
 
   //! Get bin given mesh indices
   //
@@ -219,9 +232,11 @@ public:
   RegularMesh(pugi::xml_node node);
 
   // Overriden methods
-
-  void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
-  const override;
+  void
+  surface_bins_crossed(Position r0,
+                       Position r1,
+                       const Direction& u,
+                       vector<int>& bins) const override;
 
   int get_index_in_direction(double r, int i) const override;
 
@@ -229,8 +244,8 @@ public:
 
   double negative_grid_boundary(int* ijk, int i) const override;
 
-  std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const override;
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 
@@ -241,9 +256,8 @@ public:
   //! \param[in] bank Array of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
-                                     int64_t length,
-                                     bool* outside) const;
+  xt::xtensor<double, 1> count_sites(
+    const SourceSite* bank, int64_t length, bool* outside) const;
 
   // Data members
   double volume_frac_; //!< Volume fraction of each mesh element
@@ -259,9 +273,11 @@ public:
   RectilinearMesh(pugi::xml_node node);
 
   // Overriden methods
-
-  void surface_bins_crossed(const Particle& p, std::vector<int>& bins)
-  const override;
+  void
+  surface_bins_crossed(Position r0,
+                       Position r1,
+                       const Direction& u,
+                       vector<int>& bins) const override;
 
   int get_index_in_direction(double r, int i) const override;
 
@@ -269,12 +285,12 @@ public:
 
   double negative_grid_boundary(int* ijk, int i) const override;
 
-  std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const override;
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 
-  std::vector<std::vector<double>> grid_;
+  vector<vector<double>> grid_;
 
   int set_grid();
 };
@@ -299,8 +315,7 @@ public:
   //! Set the value of a bin for a variable on the internal
   //  mesh instance
   virtual void set_score_data(const std::string& var_name,
-                              const std::vector<double>& values,
-                              const std::vector<double>& std_dev) = 0;
+    const vector<double>& values, const vector<double>& std_dev) = 0;
 
   //! Write the unstructured mesh to file
   //
@@ -324,8 +339,9 @@ public:
 
   std::string bin_label(int bin) const override;
 
-  void surface_bins_crossed(const Particle& p,
-                            std::vector<int>& bins) const override;
+  void surface_bins_crossed(Position r0,
+                            Position r1,
+                            vector<int>& bins) const;
 
   void to_hdf5(hid_t group) const override;
 
@@ -348,9 +364,14 @@ public:
   MOABMesh(pugi::xml_node);
   MOABMesh(const std::string& filename);
 
-  void bins_crossed(const Particle& p,
-                    std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
+  void bins_crossed(Position r0,
+                    Position r1,
+                    const Direction& u,
+                    vector<int>& bins,
+                    vector<double>& lengths) const override;
+
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   int get_bin(Position r) const;
 
@@ -358,8 +379,8 @@ public:
 
   int n_surface_bins() const override;
 
-  std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const override;
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
 
   std::string library() const override;
 
@@ -370,9 +391,8 @@ public:
   void remove_scores() override;
 
   //! Set data for a score
-  void set_score_data(const std::string& score,
-                      const std::vector<double>& values,
-                      const std::vector<double>& std_dev) override;
+  void set_score_data(const std::string& score, const vector<double>& values,
+    const vector<double>& std_dev) override;
 
   //! Write the mesh with any current tally data
   void write(const std::string& base_filename) const;
@@ -391,11 +411,8 @@ private:
   //! \param[in] dir Normalized particle direction
   //! \param[in] track_len length of particle track
   //! \param[out] Mesh intersections
-  void
-  intersect_track(const moab::CartVect& start,
-                  const moab::CartVect& dir,
-                  double track_len,
-                  std::vector<double>& hits) const;
+  void intersect_track(const moab::CartVect& start, const moab::CartVect& dir,
+    double track_len, vector<double>& hits) const;
 
   //! Calculate the volume for a given tetrahedron handle.
   //
@@ -479,10 +496,10 @@ private:
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
   moab::EntityHandle tetset_; //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
-  std::unique_ptr<moab::Interface> mbi_; //!< MOAB instance
-  std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
-  std::vector<moab::Matrix3> baryc_data_; //!< Barycentric data for tetrahedra
-  std::vector<std::string> tag_names_; //!< Names of score tags added to the mesh
+  unique_ptr<moab::Interface> mbi_;         //!< MOAB instance
+  unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
+  vector<moab::Matrix3> baryc_data_;        //!< Barycentric data for tetrahedra
+  vector<std::string> tag_names_; //!< Names of score tags added to the mesh
 };
 
 #endif
@@ -496,9 +513,14 @@ public:
   LibMesh(const std::string& filename);
 
   // Methods
-  void bins_crossed(const Particle& p,
-                    std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
+  void bins_crossed(Position r0,
+                    Position r1,
+                    const Direction& u,
+                    vector<int>& bins,
+                    vector<double>& lengths) const override;
+
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   int get_bin(Position r) const override;
 
@@ -506,16 +528,15 @@ public:
 
   int n_surface_bins() const override;
 
-  std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const override;
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
 
   void add_score(const std::string& var_name) override;
 
   void remove_scores() override;
 
-  void set_score_data(const std::string& var_name,
-                      const std::vector<double>& values,
-                      const std::vector<double>& std_dev) override;
+  void set_score_data(const std::string& var_name, const vector<double>& values,
+    const vector<double>& std_dev) override;
 
   void write(const std::string& base_filename) const override;
 
@@ -536,9 +557,11 @@ private:
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
-  std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
-  std::vector<std::unique_ptr<libMesh::PointLocatorBase>> pl_; //!< per-thread point locators
-  std::unique_ptr<libMesh::EquationSystems> equation_systems_; //!< pointer to the equation systems of the mesh
+  unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
+  vector<unique_ptr<libMesh::PointLocatorBase>>
+    pl_; //!< per-thread point locators
+  unique_ptr<libMesh::EquationSystems>
+    equation_systems_;         //!< pointer to the equation systems of the mesh
   std::string eq_system_name_; //!< name of the equation system holding OpenMC results
   std::unordered_map<std::string, unsigned int> variable_map_; //!< mapping of variable names (tally scores) to libMesh variable numbers
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh

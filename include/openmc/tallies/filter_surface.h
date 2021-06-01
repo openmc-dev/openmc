@@ -3,11 +3,11 @@
 
 #include <cstdint>
 #include <unordered_map>
-#include <vector>
 
 #include <gsl/gsl>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -47,7 +47,7 @@ private:
   // Data members
 
   //! The indices of the surfaces binned by this filter.
-  std::vector<int32_t> surfaces_;
+  vector<int32_t> surfaces_;
 
   //! A map from surface indices to filter bin indices.
   std::unordered_map<int32_t, int> map_;

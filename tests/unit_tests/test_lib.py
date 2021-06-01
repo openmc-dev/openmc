@@ -119,9 +119,9 @@ def test_cell(lib_init):
 def test_cell_temperature(lib_init):
     cell = openmc.lib.cells[1]
     cell.set_temperature(100.0, 0)
-    assert cell.get_temperature(0) == 100.0
+    assert cell.get_temperature(0) == pytest.approx(100.0)
     cell.set_temperature(200)
-    assert cell.get_temperature() == 200.0
+    assert cell.get_temperature() == pytest.approx(200.0)
 
 
 def test_new_cell(lib_init):
@@ -387,12 +387,12 @@ def test_reset(lib_run):
     openmc.lib.hard_reset()
     openmc.lib.simulation_init()
     try:
-        for i in range(10):
+        for i in range(20):
             openmc.lib.next_batch()
 
-        # Make sure there are 5 realizations for the 5 active batches.
-        assert openmc.lib.num_realizations() == 5
-        assert openmc.lib.tallies[2].num_realizations == 5
+        # Make sure there are 15 realizations for the 15 active batches.
+        assert openmc.lib.num_realizations() == 15
+        assert openmc.lib.tallies[2].num_realizations == 15
         _, keff_sd1 = openmc.lib.keff()
         tally_sd1 = openmc.lib.tallies[2].std_dev[0]
 
@@ -470,11 +470,17 @@ def test_regular_mesh(lib_init):
         assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
 
+    translation = (1.0, 2.0, 3.0)
+
     mf = openmc.lib.MeshFilter(mesh)
     assert mf.mesh == mesh
+    mf.translation = translation
+    assert mf.translation == translation
 
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
+    msf.translation = translation
+    assert msf.translation == translation
 
 
 def test_rectilinear_mesh(lib_init):

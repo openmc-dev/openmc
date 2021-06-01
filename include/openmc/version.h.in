@@ -1,4 +1,4 @@
-#include <array>
+#include "openmc/array.h"
 
 namespace openmc {
 

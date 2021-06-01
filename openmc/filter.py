@@ -716,6 +716,9 @@ class MeshFilter(Filter):
         The mesh object that events will be tallied onto
     id : int
         Unique identifier for the filter
+    translation : Iterable of float
+        This array specifies a vector that is used to translate (shift)
+        the mesh for this filter
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -727,6 +730,7 @@ class MeshFilter(Filter):
     def __init__(self, mesh, filter_id=None):
         self.mesh = mesh
         self.id = filter_id
+        self._translation = None
 
     def __hash__(self):
         string = type(self).__name__ + '\n'
@@ -737,6 +741,7 @@ class MeshFilter(Filter):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
         return string
 
     @classmethod
@@ -754,7 +759,12 @@ class MeshFilter(Filter):
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
+
         out = cls(mesh_obj, filter_id=filter_id)
+
+        translation = group.get('translation')
+        if translation:
+            out.translation = translation[()]
 
         return out
 
@@ -773,6 +783,16 @@ class MeshFilter(Filter):
                 self.bins = list(range(len(mesh.volumes)))
         else:
             self.bins = list(mesh.indices)
+
+    @property
+    def translation(self):
+        return self._translation
+
+    @translation.setter
+    def translation(self, t):
+        cv.check_type('mesh filter translation', t, Iterable, Real)
+        cv.check_length('mesh filter translation', t, 3)
+        self._translation = np.asarray(t)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -854,6 +874,8 @@ class MeshFilter(Filter):
         """
         element = super().to_xml_element()
         element[0].text = str(self.mesh.id)
+        if self.translation is not None:
+            element.set('translation', ' '.join(map(str, self.translation)))
         return element
 
 
@@ -873,6 +895,9 @@ class MeshSurfaceFilter(MeshFilter):
         The mesh ID
     mesh : openmc.MeshBase
         The mesh object that events will be tallied onto
+    translation : Iterable of float
+        This array specifies a vector that is used to translate (shift)
+        the mesh for this filter
     id : int
         Unique identifier for the filter
     bins : list of tuple
@@ -971,9 +996,9 @@ class CollisionFilter(Filter):
     Parameters
     ----------
     bins : Iterable of int
-        A list or iterable of the number of collisions, as integer values. 
-        The events whose post-scattering collision number equals one of 
-        the provided values will be counted. 
+        A list or iterable of the number of collisions, as integer values.
+        The events whose post-scattering collision number equals one of
+        the provided values will be counted.
     filter_id : int
         Unique identifier for the filter
 

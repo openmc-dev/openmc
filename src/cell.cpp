@@ -33,10 +33,10 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int32_t, int32_t> cell_map;
-  std::vector<std::unique_ptr<Cell>> cells;
+  vector<unique_ptr<Cell>> cells;
 
   std::unordered_map<int32_t, int32_t> universe_map;
-  std::vector<std::unique_ptr<Universe>> universes;
+  vector<unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================
@@ -46,10 +46,10 @@ namespace model {
 //! operators.
 //==============================================================================
 
-std::vector<int32_t>
-tokenize(const std::string region_spec) {
+vector<int32_t> tokenize(const std::string region_spec)
+{
   // Check for an empty region_spec first.
-  std::vector<int32_t> tokens;
+  vector<int32_t> tokens;
   if (region_spec.empty()) {
     return tokens;
   }
@@ -113,11 +113,10 @@ tokenize(const std::string region_spec) {
 //! This function uses the shunting-yard algorithm.
 //==============================================================================
 
-std::vector<int32_t>
-generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
+vector<int32_t> generate_rpn(int32_t cell_id, vector<int32_t> infix)
 {
-  std::vector<int32_t> rpn;
-  std::vector<int32_t> stack;
+  vector<int32_t> rpn;
+  vector<int32_t> stack;
 
   for (int32_t token : infix) {
     if (token < OP_UNION) {
@@ -197,7 +196,7 @@ Universe::to_hdf5(hid_t universes_group) const
 
   // Write the contained cells.
   if (cells_.size() > 0) {
-    std::vector<int32_t> cell_ids;
+    vector<int32_t> cell_ids;
     for (auto i_cell : cells_) cell_ids.push_back(model::cells[i_cell]->id_);
     write_dataset(group, "cells", cell_ids);
   }
@@ -333,8 +332,8 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // universe), more than one material (distribmats), and some materials may
   // be "void".
   if (material_present) {
-    std::vector<std::string> mats
-         {get_node_array<std::string>(cell_node, "material", true)};
+    vector<std::string> mats {
+      get_node_array<std::string>(cell_node, "material", true)};
     if (mats.size() > 0) {
       material_.reserve(mats.size());
       for (std::string mat : mats) {
@@ -563,7 +562,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
   // Write fill information.
   if (type_ == Fill::MATERIAL) {
     write_dataset(group, "fill_type", "material");
-    std::vector<int32_t> mat_ids;
+    vector<int32_t> mat_ids;
     for (auto i_mat : material_) {
       if (i_mat != MATERIAL_VOID) {
         mat_ids.push_back(model::materials[i_mat]->id_);
@@ -577,7 +576,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
       write_dataset(group, "material", mat_ids);
     }
 
-    std::vector<double> temps;
+    vector<double> temps;
     for (auto sqrtkT_val : sqrtkT_)
       temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
     write_dataset(group, "temperature", temps);
@@ -590,7 +589,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
     }
     if (!rotation_.empty()) {
       if (rotation_.size() == 12) {
-        std::array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
+        array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
         write_dataset(group, "rotation", rot);
       } else {
         write_dataset(group, "rotation", rotation_);
@@ -613,8 +612,8 @@ BoundingBox CSGCell::bounding_box_simple() const {
   return bbox;
 }
 
-void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
-                             std::vector<int32_t>::iterator stop)
+void CSGCell::apply_demorgan(
+  vector<int32_t>::iterator start, vector<int32_t>::iterator stop)
 {
   while (start < stop) {
     if (*start < OP_UNION) { *start *= -1; }
@@ -624,9 +623,9 @@ void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
   }
 }
 
-std::vector<int32_t>::iterator
-CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
-                               const std::vector<int32_t>& rpn) {
+vector<int32_t>::iterator CSGCell::find_left_parenthesis(
+  vector<int32_t>::iterator start, const vector<int32_t>& rpn)
+{
   // start search at zero
   int parenthesis_level = 0;
   auto it = start;
@@ -657,12 +656,13 @@ CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
   return it;
 }
 
-void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
+void CSGCell::remove_complement_ops(vector<int32_t>& rpn)
+{
   auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   while (it != rpn.end()) {
     // find the opening parenthesis (if any)
     auto left = find_left_parenthesis(it, rpn);
-    std::vector<int32_t> tmp(left, it+1);
+    vector<int32_t> tmp(left, it + 1);
 
     // apply DeMorgan's law to any surfaces/operators between these
     // positions in the RPN
@@ -674,11 +674,12 @@ void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
   }
 }
 
-BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
+BoundingBox CSGCell::bounding_box_complex(vector<int32_t> rpn)
+{
   // remove complements by adjusting surface signs and operators
   remove_complement_ops(rpn);
 
-  std::vector<BoundingBox> stack(rpn.size());
+  vector<BoundingBox> stack(rpn.size());
   int i_stack = -1;
 
   for (auto& token : rpn) {
@@ -731,7 +732,7 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
-  std::vector<bool> stack(rpn_.size());
+  vector<bool> stack(rpn_.size());
   int i_stack = -1;
 
   for (int32_t token : rpn_) {
@@ -787,9 +788,9 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
   Expects(p);
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
-  if (u != p->last_dir_ || on_surface == 0) {
-    p->history_.reset();
-    p->last_dir_ = u;
+  if (u != p->last_dir() || on_surface == 0) {
+    p->history().reset();
+    p->last_dir() = u;
   }
 
   moab::ErrorCode rval;
@@ -798,7 +799,7 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history_);
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history());
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {
@@ -945,8 +946,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   }
 }
 
-const std::vector<int32_t>&
-UniversePartitioner::get_cells(Position r, Direction u) const
+const vector<int32_t>& UniversePartitioner::get_cells(
+  Position r, Direction u) const
 {
   // Perform a binary search for the partition containing the given coordinates.
   int left = 0;
@@ -998,7 +999,7 @@ void read_cells(pugi::xml_node node)
   // Loop over XML cell elements and populate the array.
   model::cells.reserve(n_cells);
   for (pugi::xml_node cell_node : node.children("cell")) {
-    model::cells.push_back(std::make_unique<CSGCell>(cell_node));
+    model::cells.push_back(make_unique<CSGCell>(cell_node));
   }
 
   // Fill the cell map.
@@ -1017,7 +1018,7 @@ void read_cells(pugi::xml_node node)
     int32_t uid = model::cells[i]->universe_;
     auto it = model::universe_map.find(uid);
     if (it == model::universe_map.end()) {
-      model::universes.push_back(std::make_unique<Universe>());
+      model::universes.push_back(make_unique<Universe>());
       model::universes.back()->id_ = uid;
       model::universes.back()->cells_.push_back(i);
       model::universe_map[uid] = model::universes.size() - 1;
@@ -1175,11 +1176,10 @@ openmc_cell_set_name(int32_t index, const char* name) {
   return 0;
 }
 
-
-std::unordered_map<int32_t, std::vector<int32_t>>
-Cell::get_contained_cells() const {
-  std::unordered_map<int32_t, std::vector<int32_t>> contained_cells;
-  std::vector<ParentCell> parent_cells;
+std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells() const
+{
+  std::unordered_map<int32_t, vector<int32_t>> contained_cells;
+  vector<ParentCell> parent_cells;
 
   // if this cell is filled w/ a material, it contains no other cells
   if (type_ != Fill::MATERIAL) {
@@ -1190,9 +1190,9 @@ Cell::get_contained_cells() const {
 }
 
 //! Get all cells within this cell
-void
-Cell::get_contained_cells_inner(std::unordered_map<int32_t, std::vector<int32_t>>& contained_cells,
-                                std::vector<ParentCell>& parent_cells) const
+void Cell::get_contained_cells_inner(
+  std::unordered_map<int32_t, vector<int32_t>>& contained_cells,
+  vector<ParentCell>& parent_cells) const
 {
 
   // filled by material, determine instance based on parent cells
@@ -1285,7 +1285,7 @@ openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::cells.size();
   if (index_end) *index_end = model::cells.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
-    model::cells.push_back(std::make_unique<CSGCell>());
+    model::cells.push_back(make_unique<CSGCell>());
   }
   return 0;
 }

@@ -54,6 +54,15 @@ def test_elements():
         m.add_element('U', 1.0, enrichment=70.0, enrichment_target='U235')
     with pytest.raises(ValueError):
         m.add_element('He', 1.0, enrichment=17.0, enrichment_target='He6')
+    with pytest.raises(ValueError):
+        m.add_element('li', 1.0)  # should fail as 1st char is lowercase
+    with pytest.raises(ValueError):
+        m.add_element('LI', 1.0)  # should fail as 2nd char is uppercase
+    with pytest.raises(ValueError):
+        m.add_element('Xx', 1.0)  # should fail as Xx is not an element
+    with pytest.raises(ValueError):
+        m.add_element('n', 1.0)  # check to avoid n for neutron being accepted
+
 
 def test_elements_by_name():
     """Test adding elements by name"""

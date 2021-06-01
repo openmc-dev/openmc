@@ -18,7 +18,7 @@ namespace data {
 
 xt::xtensor<double, 1> ttb_e_grid;
 xt::xtensor<double, 1> ttb_k_grid;
-std::vector<Bremsstrahlung> ttb;
+vector<Bremsstrahlung> ttb;
 
 } // namespace data
 
@@ -28,20 +28,22 @@ std::vector<Bremsstrahlung> ttb;
 
 void thick_target_bremsstrahlung(Particle& p, double* E_lost)
 {
-  if (p.material_ == MATERIAL_VOID) return;
+  if (p.material() == MATERIAL_VOID)
+    return;
 
-  int photon = static_cast<int>(Particle::Type::photon);
-  if (p.E_ < settings::energy_cutoff[photon]) return;
+  int photon = static_cast<int>(ParticleType::photon);
+  if (p.E() < settings::energy_cutoff[photon])
+    return;
 
   // Get bremsstrahlung data for this material and particle type
   BremsstrahlungData* mat;
-  if (p.type_ == Particle::Type::positron) {
-    mat = &model::materials[p.material_]->ttb_->positron;
+  if (p.type() == ParticleType::positron) {
+    mat = &model::materials[p.material()]->ttb_->positron;
   } else {
-    mat = &model::materials[p.material_]->ttb_->electron;
+    mat = &model::materials[p.material()]->ttb_->electron;
   }
 
-  double e = std::log(p.E_);
+  double e = std::log(p.E());
   auto n_e = data::ttb_e_grid.size();
 
   // Find the lower bounding index of the incident electron energy
@@ -108,7 +110,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
 
     if (w > settings::energy_cutoff[photon]) {
       // Create secondary photon
-      p.create_secondary(p.wgt_, p.u(), w, Particle::Type::photon);
+      p.create_secondary(p.wgt(), p.u(), w, ParticleType::photon);
       *E_lost += w;
     }
   }

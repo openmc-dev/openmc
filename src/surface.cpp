@@ -1,6 +1,5 @@
 #include "openmc/surface.h"
 
-#include <array>
 #include <cmath>
 #include <utility>
 #include <set>
@@ -8,15 +7,16 @@
 #include <fmt/core.h>
 #include <gsl/gsl>
 
+#include "openmc/array.h"
 #include "openmc/container_util.h"
-#include "openmc/error.h"
 #include "openmc/dagmc.h"
+#include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
-#include "openmc/random_lcg.h"
-#include "openmc/math_functions.h"
 
 namespace openmc {
 
@@ -26,7 +26,7 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> surface_map;
-  std::vector<std::unique_ptr<Surface>> surfaces;
+  vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================
@@ -264,15 +264,15 @@ Direction DAGSurface::normal(Position r) const
 Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
   Expects(p);
-  p->history_.reset_to_last_intersection();
+  p->history().reset_to_last_intersection();
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history_);
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history());
   MB_CHK_ERR_CONT(rval);
-  p->last_dir_ = u.reflect(dir);
-  return p->last_dir_;
+  p->last_dir() = u.reflect(dir);
+  return p->last_dir();
 }
 
 void DAGSurface::to_hdf5(hid_t group_id) const {}
@@ -322,7 +322,7 @@ Direction SurfaceXPlane::normal(Position r) const
 void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-plane", false);
-  std::array<double, 1> coeffs {{x0_}};
+  array<double, 1> coeffs {{x0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -364,7 +364,7 @@ Direction SurfaceYPlane::normal(Position r) const
 void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-plane", false);
-  std::array<double, 1> coeffs {{y0_}};
+  array<double, 1> coeffs {{y0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -406,7 +406,7 @@ Direction SurfaceZPlane::normal(Position r) const
 void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-plane", false);
-  std::array<double, 1> coeffs {{z0_}};
+  array<double, 1> coeffs {{z0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -459,7 +459,7 @@ SurfacePlane::normal(Position r) const
 void SurfacePlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "plane", false);
-  std::array<double, 4> coeffs {{A_, B_, C_, D_}};
+  array<double, 4> coeffs {{A_, B_, C_, D_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -567,7 +567,7 @@ Direction SurfaceXCylinder::normal(Position r) const
 void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cylinder", false);
-  std::array<double, 3> coeffs {{y0_, z0_, radius_}};
+  array<double, 3> coeffs {{y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -607,7 +607,7 @@ Direction SurfaceYCylinder::normal(Position r) const
 void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cylinder", false);
-  std::array<double, 3> coeffs {{x0_, z0_, radius_}};
+  array<double, 3> coeffs {{x0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -648,7 +648,7 @@ Direction SurfaceZCylinder::normal(Position r) const
 void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cylinder", false);
-  std::array<double, 3> coeffs {{x0_, y0_, radius_}};
+  array<double, 3> coeffs {{x0_, y0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -725,7 +725,7 @@ Direction SurfaceSphere::normal(Position r) const
 void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "sphere", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
+  array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -854,7 +854,7 @@ Direction SurfaceXCone::normal(Position r) const
 void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cone", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -887,7 +887,7 @@ Direction SurfaceYCone::normal(Position r) const
 void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cone", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -920,7 +920,7 @@ Direction SurfaceZCone::normal(Position r) const
 void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cone", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -1025,7 +1025,7 @@ SurfaceQuadric::normal(Position r) const
 void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "quadric", false);
-  std::array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};
+  array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -1054,40 +1054,40 @@ void read_surfaces(pugi::xml_node node)
       // Allocate and initialize the new surface
 
       if (surf_type == "x-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceXPlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceXPlane>(surf_node));
 
       } else if (surf_type == "y-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceYPlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceYPlane>(surf_node));
 
       } else if (surf_type == "z-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceZPlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceZPlane>(surf_node));
 
       } else if (surf_type == "plane") {
-        model::surfaces.push_back(std::make_unique<SurfacePlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfacePlane>(surf_node));
 
       } else if (surf_type == "x-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCylinder>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceXCylinder>(surf_node));
 
       } else if (surf_type == "y-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCylinder>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceYCylinder>(surf_node));
 
       } else if (surf_type == "z-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCylinder>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceZCylinder>(surf_node));
 
       } else if (surf_type == "sphere") {
-        model::surfaces.push_back(std::make_unique<SurfaceSphere>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceSphere>(surf_node));
 
       } else if (surf_type == "x-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCone>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceXCone>(surf_node));
 
       } else if (surf_type == "y-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCone>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceYCone>(surf_node));
 
       } else if (surf_type == "z-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCone>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceZCone>(surf_node));
 
       } else if (surf_type == "quadric") {
-        model::surfaces.push_back(std::make_unique<SurfaceQuadric>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceQuadric>(surf_node));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));

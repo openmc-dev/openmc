@@ -48,6 +48,10 @@ endif()
 #===============================================================================
 if(dagmc)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
+    message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
+    Please update DAGMC to version 3.2.0 or greater.")
+  endif()
 endif()
 
 #===============================================================================
@@ -295,6 +299,7 @@ list(APPEND libopenmc_SOURCES
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/particle_data.cpp
   src/particle_restart.cpp
   src/photon.cpp
   src/physics.cpp
@@ -303,6 +308,7 @@ list(APPEND libopenmc_SOURCES
   src/plot.cpp
   src/position.cpp
   src/progress_bar.cpp
+  src/random_dist.cpp
   src/random_lcg.cpp
   src/reaction.cpp
   src/reaction_product.cpp

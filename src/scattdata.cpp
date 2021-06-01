@@ -70,12 +70,10 @@ ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
 
 //==============================================================================
 
-void
-ScattData::base_combine(size_t max_order, size_t order_dim,
-     const std::vector<ScattData*>& those_scatts,
-     const std::vector<double>& scalars, xt::xtensor<int, 1>& in_gmin,
-     xt::xtensor<int, 1>& in_gmax, double_2dvec& sparse_mult,
-     double_3dvec& sparse_scatter)
+void ScattData::base_combine(size_t max_order, size_t order_dim,
+  const vector<ScattData*>& those_scatts, const vector<double>& scalars,
+  xt::xtensor<int, 1>& in_gmin, xt::xtensor<int, 1>& in_gmax,
+  double_2dvec& sparse_mult, double_3dvec& sparse_scatter)
 {
   size_t groups = those_scatts[0] -> energy.size();
 
@@ -378,9 +376,8 @@ ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt,
 
 //==============================================================================
 
-void
-ScattDataLegendre::combine(const std::vector<ScattData*>& those_scatts,
-                           const std::vector<double>& scalars)
+void ScattDataLegendre::combine(
+  const vector<ScattData*>& those_scatts, const vector<double>& scalars)
 {
   // Find the max order in the data set and make sure we can combine the sets
   size_t max_order = 0;
@@ -595,9 +592,8 @@ ScattDataHistogram::get_matrix(size_t max_order)
 
 //==============================================================================
 
-void
-ScattDataHistogram::combine(const std::vector<ScattData*>& those_scatts,
-                            const std::vector<double>& scalars)
+void ScattDataHistogram::combine(
+  const vector<ScattData*>& those_scatts, const vector<double>& scalars)
 {
   // Find the max order in the data set and make sure we can combine the sets
   size_t max_order = those_scatts[0]->get_order();
@@ -814,9 +810,8 @@ ScattDataTabular::get_matrix(size_t max_order)
 
 //==============================================================================
 
-void
-ScattDataTabular::combine(const std::vector<ScattData*>& those_scatts,
-                          const std::vector<double>& scalars)
+void ScattDataTabular::combine(
+  const vector<ScattData*>& those_scatts, const vector<double>& scalars)
 {
   // Find the max order in the data set and make sure we can combine the sets
   size_t max_order = those_scatts[0]->get_order();

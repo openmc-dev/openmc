@@ -350,7 +350,7 @@ void Material::finalize()
 {
   // Set fissionable if any nuclide is fissionable
   for (const auto& i_nuc : nuclide_) {
-    if (data::nuclides[i_nuc]->fissionable_) {
+    if (data::nuclides[i_nuc].fissionable_) {
       fissionable_ = true;
       break;
     }
@@ -377,7 +377,7 @@ void Material::normalize_density()
     // determine atomic weight ratio
     int i_nuc = nuclide_[i];
     double awr = settings::run_CE ?
-      data::nuclides[i_nuc]->awr_ : data::mg.nuclides_[i_nuc].awr;
+      data::nuclides[i_nuc].awr_ : data::mg.nuclides_[i_nuc].awr;
 
     // if given weight percent, convert all values so that they are divided
     // by awr. thus, when a sum is done over the values, it's actually
@@ -397,7 +397,7 @@ void Material::normalize_density()
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       double awr = settings::run_CE ?
-        data::nuclides[i_nuc]->awr_ : data::mg.nuclides_[i_nuc].awr;
+        data::nuclides[i_nuc].awr_ : data::mg.nuclides_[i_nuc].awr;
       sum_percent += atom_density_(i)*awr;
     }
     sum_percent = 1.0 / sum_percent;
@@ -411,7 +411,7 @@ void Material::normalize_density()
   density_gpcc_ = 0.0;
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
-    double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_ : 1.0;
+    double awr = settings::run_CE ? data::nuclides[i_nuc].awr_ : 1.0;
     density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
   }
 }
@@ -433,8 +433,8 @@ void Material::init_thermal()
     // name
     bool found = false;
     for (int j = 0; j < nuclide_.size(); ++j) {
-      const auto& name {data::nuclides[nuclide_[j]]->name_};
-      if (contains(data::thermal_scatt[table.index_table]->nuclides_, name)) {
+      const auto& name {data::nuclides[nuclide_[j]].name_};
+      if (contains(data::thermal_scatt[table.index_table].nuclides_, name)) {
         tables.push_back({table.index_table, j, table.fraction});
         found = true;
       }
@@ -443,7 +443,7 @@ void Material::init_thermal()
     // Check to make sure thermal scattering table matched a nuclide
     if (!found) {
       fatal_error("Thermal scattering table " + data::thermal_scatt[
-        table.index_table]->name_  + " did not match any nuclide on material "
+        table.index_table].name_  + " did not match any nuclide on material "
         + std::to_string(id_));
     }
   }
@@ -453,7 +453,7 @@ void Material::init_thermal()
     for (int k = j+1; k < tables.size(); ++k) {
       if (tables[j].index_nuclide == tables[k].index_nuclide) {
         int index = nuclide_[tables[j].index_nuclide];
-        auto name = data::nuclides[index]->name_;
+        auto name = data::nuclides[index].name_;
         fatal_error(name + " in material " + std::to_string(id_) + " was found "
           "in multiple thermal scattering tables. Each nuclide can appear in "
           "only one table per material.");
@@ -491,7 +491,7 @@ void Material::collision_stopping_power(double* s_col, bool positron)
 
   for (int i = 0; i < element_.size(); ++i) {
     const auto& elm = *data::elements[element_[i]];
-    double awr = data::nuclides[nuclide_[i]]->awr_;
+    double awr = data::nuclides[nuclide_[i]].awr_;
 
     // Get atomic density of nuclide given atom/weight percent
     double atom_density = (atom_density_[0] > 0.0) ?
@@ -605,7 +605,7 @@ void Material::init_bremsstrahlung()
     for (int i = 0; i < n; ++i) {
       // Get pointer to current element
       const auto& elm = *data::elements[element_[i]];
-      double awr = data::nuclides[nuclide_[i]]->awr_;
+      double awr = data::nuclides[nuclide_[i]].awr_;
 
       // Get atomic density and mass density of nuclide given atom/weight percent
       double atom_density = (atom_density_[0] > 0.0) ?
@@ -742,7 +742,7 @@ void Material::init_bremsstrahlung()
 void Material::init_nuclide_index()
 {
   int n = settings::run_CE ?
-    data::nuclides.size() : data::mg.nuclides_.size();
+    data::nuclides_size : data::mg.nuclides_.size();
   mat_nuclide_index_.resize(n);
   std::fill(mat_nuclide_index_.begin(), mat_nuclide_index_.end(), C_NONE);
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -796,7 +796,7 @@ void Material::calculate_neutron_xs(Particle& p) const
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
-        if (p.E_ > data::thermal_scatt[i_sab]->energy_max_) i_sab = C_NONE;
+        if (p.E_ > data::thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
 
         // Increment position in thermal_tables_
         ++j;
@@ -818,7 +818,7 @@ void Material::calculate_neutron_xs(Particle& p) const
         || p.sqrtkT_ != micro.last_sqrtkT
         || i_sab != micro.index_sab
         || sab_frac != micro.sab_frac) {
-      data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);
+      data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p);
     }
 
     // ======================================================================
@@ -924,7 +924,7 @@ void Material::set_density(double density, gsl::cstring_span units)
     density_gpcc_ = 0.0;
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
-      double awr = data::nuclides[i_nuc]->awr_;
+      double awr = data::nuclides[i_nuc].awr_;
       density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
     }
   } else if (units == "g/cm3" || units == "g/cc") {
@@ -1022,7 +1022,7 @@ void Material::to_hdf5(hid_t group) const
   if (settings::run_CE) {
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
-      nuc_names.push_back(data::nuclides[i_nuc]->name_);
+      nuc_names.push_back(data::nuclides[i_nuc].name_);
       nuc_densities.push_back(atom_density_(i));
     }
   } else {
@@ -1051,7 +1051,7 @@ void Material::to_hdf5(hid_t group) const
   if (!thermal_tables_.empty()) {
     std::vector<std::string> sab_names;
     for (const auto& table : thermal_tables_) {
-      sab_names.push_back(data::thermal_scatt[table.index_table]->name_);
+      sab_names.push_back(data::thermal_scatt[table.index_table].name_);
     }
     write_dataset(material_group, "sab_names", sab_names);
   }
@@ -1064,8 +1064,8 @@ void Material::add_nuclide(const std::string& name, double density)
   // Check if nuclide is already in material
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
-    if (data::nuclides[i_nuc]->name_ == name) {
-      double awr = data::nuclides[i_nuc]->awr_;
+    if (data::nuclides[i_nuc].name_ == name) {
+      double awr = data::nuclides[i_nuc].awr_;
       density_ += density - atom_density_(i);
       density_gpcc_ += (density - atom_density_(i))
         * awr * MASS_NEUTRON / N_AVOGADRO;
@@ -1097,8 +1097,34 @@ void Material::add_nuclide(const std::string& name, double density)
   atom_density_ = atom_density;
 
   density_ += density;
-  density_gpcc_ += density * data::nuclides[i_nuc]->awr_
+  density_gpcc_ += density * data::nuclides[i_nuc].awr_
     * MASS_NEUTRON / N_AVOGADRO;
+}
+
+void Material::copy_to_device()
+{
+  device_nuclide_ = nuclide_.data();
+  #pragma omp target enter data map(to: device_nuclide_[:nuclide_.size()])
+  device_element_ = element_.data();
+  #pragma omp target enter data map(to: device_element_[:element_.size()])
+  device_mat_nuclide_index_ = mat_nuclide_index_.data();
+  #pragma omp target enter data map(to: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
+  device_p0_ = p0_.data();
+  #pragma omp target enter data map(to: device_p0_[:p0_.size()])
+  device_atom_density_ = atom_density_.data();
+  #pragma omp target enter data map(to: device_atom_density_[:atom_density_.size()])
+  device_thermal_tables_ = thermal_tables_.data();
+  #pragma omp target enter data map(to: device_thermal_tables_[:thermal_tables_.size()])
+}
+
+void Material::release_from_device()
+{
+  #pragma omp target exit data map(release: device_nuclide_[:nuclide_.size()])
+  #pragma omp target exit data map(release: device_element_[:element_.size()])
+  #pragma omp target exit data map(release: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
+  #pragma omp target exit data map(release: device_p0_[:p0_.size()])
+  #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])
+  #pragma omp target exit data map(release: device_thermal_tables_[:thermal_tables_.size()])
 }
 
 //==============================================================================
@@ -1271,32 +1297,6 @@ void free_memory_material()
   free(model::materials);
   model::materials_size = 0;
   model::material_map.clear();
-}
-
-void Material::copy_to_device()
-{
-  device_nuclide_ = nuclide_.data();
-  #pragma omp target enter data map(to: device_nuclide_[:nuclide_.size()])
-  device_element_ = element_.data();
-  #pragma omp target enter data map(to: device_element_[:element_.size()])
-  device_mat_nuclide_index_ = mat_nuclide_index_.data();
-  #pragma omp target enter data map(to: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
-  device_p0_ = p0_.data();
-  #pragma omp target enter data map(to: device_p0_[:p0_.size()])
-  device_atom_density_ = atom_density_.data();
-  #pragma omp target enter data map(to: device_atom_density_[:atom_density_.size()])
-  device_thermal_tables_ = thermal_tables_.data();
-  #pragma omp target enter data map(to: device_thermal_tables_[:thermal_tables_.size()])
-}
-
-void Material::release_from_device()
-{
-  #pragma omp target exit data map(release: device_nuclide_[:nuclide_.size()])
-  #pragma omp target exit data map(release: device_element_[:element_.size()])
-  #pragma omp target exit data map(release: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
-  #pragma omp target exit data map(release: device_p0_[:p0_.size()])
-  #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])
-  #pragma omp target exit data map(release: device_thermal_tables_[:thermal_tables_.size()])
 }
 
 //==============================================================================
@@ -1519,7 +1519,7 @@ openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_end) *index_end = model::materials_size + n - 1;
 
   // Allocate temporary buffer
-  Material* tmp = static_cast<Material*>(malloc(n * sizeof(Material))); 
+  Material* tmp = static_cast<Material*>(malloc(n * sizeof(Material)));
 
   // Transfer data from existing buffer to temporary one
   for (int32_t i = 0; i < model::materials_size; i++) {

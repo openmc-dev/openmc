@@ -7,6 +7,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/simulation.h"
+#include "openmc/thermal.h"
 
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
@@ -18,10 +19,10 @@ void enforce_assumptions()
 {
   // Notably, I have commented this capability out of particle::cross_vacuum_bc and particle::cross_reflective_bc
   assert(model::active_meshsurf_tallies.empty() && "Mesh surface tallies not yet supported.");
-  
+
   // Commented out of particle::cross_reflective_bc
   assert(model::active_surface_tallies.empty() && "Surface tallies not yet supported.");
-    
+
   // Assertions made when initializing particles
   assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
   assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
@@ -39,6 +40,15 @@ void move_settings_to_device()
   #pragma omp target update to(settings::n_particles)
   #pragma omp target update to(settings::temperature_method)
   #pragma omp target update to(settings::urr_ptables_on)
+  #pragma omp target update to(settings::create_fission_neutrons)
+  #pragma omp target update to(settings::survival_biasing)
+  #pragma omp target update to(settings::res_scat_method)
+  #pragma omp target update to(settings::res_scat_energy_min)
+  #pragma omp target update to(settings::res_scat_energy_max)
+  #pragma omp target update to(settings::weight_cutoff)
+  #pragma omp target update to(settings::weight_survive)
+  settings::energy_cutoff[0]; // Lazy extern template expansion workaround
+  #pragma omp target update to(settings::energy_cutoff)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)
@@ -97,41 +107,53 @@ void move_read_only_data_to_device()
     lattice.allocate_and_copy_to_device();
   }
 
-  // Nuclides /////////////////////////////////////////////////////////
-  for (auto& nuc : data::nuclides) {
-    std::cout << "Moving " << nuc->name_ << " data to device..." << std::endl;
+  // Nuclear data /////////////////////////////////////////////////////
+  data::energy_max[0]; // Lazy extern template expansion workaround
+  #pragma omp target update to(data::energy_max)
+  #pragma omp target update to(data::nuclides_size)
+  #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    auto& nuc = data::nuclides[i];
+    std::cout << "Moving " << nuc.name_ << " data to device..." << std::endl;
 
     // URR data flattening
-    for (auto& u : nuc->urr_data_) {
+    for (auto& u : nuc.urr_data_) {
       u.flatten_urr_data();
     }
 
     // Pointwise XS data flattening
-    nuc->flatten_xs_data();
+    nuc.flatten_xs_data();
 
-    nuc->copy_to_device();
+    nuc.copy_to_device();
   }
-  
+
+  data::device_thermal_scatt = data::thermal_scatt.data();
+  #pragma omp target enter data map(to: data::device_thermal_scatt[:data::thermal_scatt.size()])
+  for (auto& ts : data::thermal_scatt) {
+    ts.copy_to_device();
+  }
+
   // Materials /////////////////////////////////////////////////////////
-  
+
   std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
   #pragma omp target enter data map(to: model::materials[:model::materials_size])
   for (int i = 0; i < model::materials_size; i++) {
     model::materials[i].copy_to_device();
   }
-  
+
   // Source Bank ///////////////////////////////////////////////////////
-  
+
   simulation::device_source_bank = simulation::source_bank.data();
   #pragma omp target enter data map(alloc: simulation::device_source_bank[:simulation::source_bank.size()])
+  simulation::fission_bank.allocate_on_device();
 
   // MPI Work Indices ///////////////////////////////////////////////////
- 
+
   simulation::device_work_index = simulation::work_index.data();
   #pragma omp target enter data map(to: simulation::device_work_index[:simulation::work_index.size()])
-  
+
   // Progeny per Particle ///////////////////////////////////////////////////
- 
+
   simulation::device_progeny_per_particle = simulation::progeny_per_particle.data();
   #pragma omp target enter data map(alloc: simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
 }
@@ -140,8 +162,8 @@ void move_read_only_data_to_device()
 void release_data_from_device()
 {
   std::cout << "Releasing data from device..." << std::endl;
-  for (auto& nuc : data::nuclides) {
-    nuc->release_from_device();
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    data::nuclides[i].release_from_device();
   }
 }
 

@@ -23,7 +23,9 @@ extern Particle::Bank* device_source_bank;
 
 extern SharedArray<Particle::Bank> surf_source_bank;
 
+#pragma omp declare target
 extern SharedArray<Particle::Bank> fission_bank;
+#pragma omp end declare target
 
 extern std::vector<int64_t> progeny_per_particle;
 

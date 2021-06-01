@@ -125,7 +125,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         } else if (deriv.variable == DerivativeVariable::NUCLIDE_DENSITY) {
           write_dataset(deriv_group, "independent variable", "nuclide_density");
           write_dataset(deriv_group, "nuclide",
-            data::nuclides[deriv.diff_nuclide]->name_);
+            data::nuclides[deriv.diff_nuclide].name_);
         } else if (deriv.variable == DerivativeVariable::TEMPERATURE) {
           write_dataset(deriv_group, "independent variable", "temperature");
         } else {
@@ -215,7 +215,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
             nuclides.push_back("total");
           } else {
             if (settings::run_CE) {
-              nuclides.push_back(data::nuclides[i_nuclide]->name_);
+              nuclides.push_back(data::nuclides[i_nuclide].name_);
             } else {
               nuclides.push_back(data::mg.nuclides_[i_nuclide].name);
             }
@@ -826,7 +826,7 @@ void write_unstructured_mesh_results() {
           // generate a name for the value
           std::string nuclide_name = "total"; // start with total by default
           if (tally->nuclides_[i_nuc] > -1) {
-            nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
+            nuclide_name = data::nuclides[tally->nuclides_[i_nuc]].name_;
           }
 
           std::string score_name = tally->score_name(i_score);

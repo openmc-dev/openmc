@@ -26,7 +26,9 @@ namespace settings {
 extern bool assume_separate;          //!< assume tallies are spatially separate?
 extern bool check_overlaps;           //!< check overlaps in geometry?
 extern bool confidence_intervals;     //!< use confidence intervals for results?
+#pragma omp declare target
 extern bool create_fission_neutrons;  //!< create fission neutrons (fixed source)?
+#pragma omp end declare target
 extern "C" bool cmfd_run;             //!< is a CMFD run?
 #pragma omp declare target
 extern "C" bool dagmc;                //!< indicator of DAGMC geometry
@@ -51,7 +53,9 @@ extern bool source_separate;          //!< write source to separate file?
 extern bool source_write;             //!< write source in HDF5 files?
 extern bool surf_source_write;        //!< write surface source file?
 extern bool surf_source_read;         //!< read surface source file?
+#pragma omp declare target
 extern bool survival_biasing;         //!< use survival biasing?
+#pragma omp end declare target
 extern bool temperature_multipole;    //!< use multipole data?
 extern "C" bool trigger_on;           //!< tally triggers enabled?
 extern bool trigger_predict;          //!< predict batches for triggers?
@@ -82,15 +86,19 @@ extern "C" int64_t n_particles;              //!< number of particles per genera
 extern int64_t max_particles_in_flight; //!< Max num. event-based particles in flight
 
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons
+#pragma omp declare target
 extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type
+#pragma omp end declare target
 extern int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;                //!< Maximum Legendre order for multigroup data
 extern int n_log_bins;               //!< number of bins for logarithmic energy grid
 extern int n_batches;                //!< number of (inactive+active) batches
 extern int n_max_batches;            //!< Maximum number of batches
+#pragma omp declare target
 extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min;   //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max;   //!< Max energy in [eV] for res. upscattering
+#pragma omp end declare target
 extern std::vector<std::string> res_scat_nuclides;  //!< Nuclides using res. upscattering treatment
 #pragma omp declare target
 extern RunMode run_mode;                 //!< Run mode (eigenvalue, fixed src, etc.)
@@ -111,8 +119,10 @@ extern int64_t trace_particle;           //!< Particle ID to enable trace on
 extern std::vector<std::array<int, 3>> track_identifiers; //!< Particle numbers for writing tracks
 extern int trigger_batch_interval;   //!< Batch interval for triggers
 extern "C" int verbosity;                //!< How verbose to make output
+#pragma omp declare target
 extern double weight_cutoff;         //!< Weight cutoff for Russian roulette
 extern double weight_survive;        //!< Survival weight after Russian roulette
+#pragma omp end declare target
 } // namespace settings
 
 //==============================================================================

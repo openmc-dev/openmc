@@ -186,6 +186,12 @@ void
 read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   const std::vector<std::vector<double>>& thermal_temps)
 {
+  // Set the size of the nuclides array
+  data::nuclides_capacity = data::nuclide_map.size();
+  data::nuclides_size = 0;
+  data::nuclides = static_cast<Nuclide*>(malloc(data::nuclides_capacity * sizeof(Nuclide)));
+  data::thermal_scatt.reserve(data::thermal_scatt_map.size());
+
   std::unordered_set<std::string> already_read;
 
   // Construct a vector of nuclide names because we haven't loaded nuclide data
@@ -240,8 +246,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 
         // Read thermal scattering data from HDF5
         hid_t group = open_group(file_id, name.c_str());
-        data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(
-          group, thermal_temps[i_table]));
+        data::thermal_scatt.push_back({group, thermal_temps[i_table]});
         close_group(group);
         file_close(file_id);
 
@@ -266,8 +271,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   // If the user wants multipole, make sure we found a multipole library.
   if (settings::temperature_multipole) {
     bool mp_found = false;
-    for (const auto& nuc : data::nuclides) {
-      if (nuc->multipole_) {
+    for (int i = 0; i < data::nuclides_size; ++i) {
+      if (data::nuclides[i].multipole_) {
         mp_found = true;
         break;
       }

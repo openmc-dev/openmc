@@ -23,7 +23,9 @@ Interpolation int2interp(int i);
 //! Determine whether MT number corresponds to a fission reaction
 //! \param[in] MT ENDF MT value
 //! \return Whether corresponding reaction is a fission reaction
+#pragma omp declare target
 bool is_fission(int MT);
+#pragma omp end declare target
 
 //! Determine if a given MT number is that of a disappearance reaction, i.e., a
 //! reaction with no neutron in the exit channel

@@ -27,7 +27,10 @@ class ThermalScattering;
 
 namespace data {
 extern std::unordered_map<std::string, int> thermal_scatt_map;
-extern std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+extern std::vector<ThermalScattering> thermal_scatt;
+#pragma omp declare target
+extern ThermalScattering* device_thermal_scatt;
+#pragma omp end declare target
 }
 
 //==============================================================================
@@ -53,8 +56,10 @@ public:
   //! \param[out] E_out Outgoing neutron energy in [eV]
   //! \param[out] mu Outgoing scattering angle cosine
   //! \param[inout] seed Pseudorandom seed pointer
+  #pragma omp declare target
   void sample(const NuclideMicroXS& micro_xs, double E_in,
               double* E_out, double* mu, uint64_t* seed);
+  #pragma omp end declare target
 private:
   struct Reaction {
     // Default constructor
@@ -63,6 +68,8 @@ private:
     // Data members
     std::unique_ptr<Function1DFlatContainer> xs; //!< Cross section
     std::unique_ptr<AngleEnergyFlatContainer> distribution; //!< Secondary angle-energy distribution
+    Function1DFlatContainer* device_xs;
+    AngleEnergyFlatContainer* device_distribution;
   };
 
   // Inelastic scattering data
@@ -103,6 +110,9 @@ public:
   void sample(const NuclideMicroXS& micro_xs, double E_in,
               double* E_out, double* mu);
 
+  void copy_to_device();
+  void release_from_device();
+
   std::string name_; //!< name of table, e.g. "c_H_in_H2O"
   double awr_;       //!< weight of nucleus in neutron masses
   double energy_max_; //!< maximum energy for thermal scattering in [eV]
@@ -111,6 +121,7 @@ public:
 
   //! cross sections and distributions at each temperature
   std::vector<ThermalData> data_;
+  ThermalData* device_data_;
 };
 
 void free_memory_thermal();

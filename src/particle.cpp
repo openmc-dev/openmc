@@ -74,9 +74,9 @@ Particle::Particle()
   }
 
   // Create microscopic cross section caches
-  //neutron_xs_.resize(data::nuclides.size());
-  //std::cout << "neutron_xs size = " << data::nuclides.size() << std::endl;
-  assert(NEUTRON_XS_SIZE >= data::nuclides.size());
+  //neutron_xs_.resize(data::nuclides_size);
+  //std::cout << "neutron_xs size = " << data::nuclides_size << std::endl;
+  assert(NEUTRON_XS_SIZE >= data::nuclides_size);
   //std::cout << "photon_xs size = " << data::elements.size() << std::endl;
   assert(PHOTON_XS_SIZE >= data::elements.size());
   //photon_xs_.resize(data::elements.size());
@@ -96,7 +96,7 @@ Particle::create_secondary(double wgt, Direction u, double E, Type type)
   //secondary_bank_.emplace_back();
 
   //auto& bank {secondary_bank_.back()};
-  assert(secondary_bank_length_ < SECONDARY_BANK_SIZE);
+  //assert(secondary_bank_length_ < SECONDARY_BANK_SIZE);
   auto& bank = secondary_bank_[secondary_bank_length_++];
   bank.particle = type;
   bank.wgt = wgt;
@@ -108,7 +108,7 @@ Particle::create_secondary(double wgt, Direction u, double E, Type type)
 }
 
 void
-Particle::from_source(const Bank* src)
+Particle::from_source(const Bank& src)
 {
   // Reset some attributes
   this->clear();
@@ -122,22 +122,22 @@ Particle::from_source(const Bank* src)
   std::fill(flux_derivs_, flux_derivs_ + FLUX_DERIVS_SIZE, 0.0);
 
   // Copy attributes from source bank site
-  type_ = src->particle;
-  wgt_ = src->wgt;
-  wgt_last_ = src->wgt;
-  this->r() = src->r;
-  this->u() = src->u;
-  r_last_current_ = src->r;
-  r_last_ = src->r;
-  u_last_ = src->u;
+  type_ = src.particle;
+  wgt_ = src.wgt;
+  wgt_last_ = src.wgt;
+  this->r() = src.r;
+  this->u() = src.u;
+  r_last_current_ = src.r;
+  r_last_ = src.r;
+  u_last_ = src.u;
   if (settings::run_CE) {
-    E_ = src->E;
+    E_ = src.E;
     g_ = 0;
   } else {
     printf("Error - MG mode not supported yet on device.\n");
     /*
-    g_ = static_cast<int>(src->E);
-    g_last_ = static_cast<int>(src->E);
+    g_ = static_cast<int>(src.E);
+    g_last_ = static_cast<int>(src.E);
     E_ = data::mg.energy_bin_avg_[g_];
     */
   }
@@ -230,7 +230,7 @@ Particle::event_advance()
   } else {
     collision_distance_ = -std::log(prn(this->current_seed())) / macro_xs_.total;
   }
-  
+
   //if( id_ == 1 )
   //  printf("distance to collision = %.3le\n", collision_distance_);
 
@@ -318,8 +318,10 @@ Particle::event_collide()
   // since the direction of the particle will change and we need to use the
   // pre-collision direction to figure out what mesh surfaces were crossed
 
+  /*
   if (!model::active_meshsurf_tallies.empty())
     score_surface_tally(*this, model::active_meshsurf_tallies);
+  */
 
   // Clear surface component
   surface_ = 0;
@@ -327,12 +329,15 @@ Particle::event_collide()
   if (settings::run_CE) {
     collision(*this);
   } else {
+    /*
     collision_mg(*this);
+    */
   }
 
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
+  /*
   if (!model::active_collision_tallies.empty()) score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {
     if (settings::run_CE) {
@@ -341,6 +346,7 @@ Particle::event_collide()
       score_analog_tally_mg(*this);
     }
   }
+  */
 
   // Reset banked weight during collision
   n_bank_ = 0;
@@ -363,7 +369,7 @@ Particle::event_collide()
   for (int j = 0; j < n_coord_ - 1; ++j) {
     if (coord_[j + 1].rotated) {
       // If next level is rotated, apply rotation matrix
-      const auto& m {model::cells[coord_[j].cell].rotation_};
+      const auto& m {model::device_cells[coord_[j].cell].rotation_};
       const auto& u {coord_[j].u};
       coord_[j + 1].u = u.rotate(m);
     } else {
@@ -373,7 +379,9 @@ Particle::event_collide()
   }
 
   // Score flux derivative accumulators for differential tallies.
+  /*
   if (!model::active_tallies.empty()) score_collision_derivative(*this);
+  */
 }
 
 void
@@ -396,8 +404,8 @@ Particle::event_revive_from_secondary()
     //if (secondary_bank_.empty()) return;
     if (secondary_bank_length_ == 0) return;
 
-    //this->from_source(&secondary_bank_.back());
-    this->from_source(&secondary_bank_[--secondary_bank_length_]);
+    //this->from_source(secondary_bank_.back());
+    this->from_source(secondary_bank_[--secondary_bank_length_]);
     //secondary_bank_.pop_back();
     n_event_ = 0;
 

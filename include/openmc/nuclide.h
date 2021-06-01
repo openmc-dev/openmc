@@ -48,12 +48,14 @@ public:
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 
   // Methods
+  #pragma omp declare target
   double nu(double E, EmissionMode mode, int group=0) const;
   void calculate_elastic_xs(Particle& p) const;
 
   //! Determines the microscopic 0K elastic cross section at a trial relative
   //! energy used in resonance scattering
   double elastic_xs_0K(double E) const;
+  #pragma omp end declare target
 
   //! \brief Determines cross sections in the unresolved resonance range
   //! from probability tables.
@@ -87,7 +89,7 @@ public:
   double* device_kTs_;
   std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
   std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
-  
+
   // Flattened 1D temperature dependent cross section data
   int total_energy_gridpoints_;
   int total_index_gridpoints_;
@@ -111,12 +113,16 @@ public:
   std::unique_ptr<Function1DFlatContainer> delayed_photons_; //!< Delayed photon energy release
   std::unique_ptr<Function1DFlatContainer> fragments_; //!< Fission fragment energy release
   std::unique_ptr<Function1DFlatContainer> betas_; //!< Delayed beta energy release
+  Function1DFlatContainer* device_total_nu_;
 
   // Resonance scattering information
   bool resonant_ {false};
   std::vector<double> energy_0K_;
   std::vector<double> elastic_0K_;
   std::vector<double> xs_cdf_;
+  double* device_energy_0K_;
+  double* device_elastic_0K_;
+  double* device_xs_cdf_;
 
   // Unresolved resonance range information
   bool urr_present_ {false};
@@ -128,6 +134,8 @@ public:
   std::array<size_t, 902> reaction_index_; //!< Index of each reaction
   std::vector<int> index_inelastic_scatter_;
 
+  int* device_index_inelastic_scatter_;
+  ReactionFlatContainer** device_fission_rx_;
   ReactionFlatContainer* device_reactions_;
 private:
   void create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons);
@@ -163,7 +171,9 @@ namespace data {
 // Minimum/maximum transport energy for each particle type. Order corresponds to
 // that of the ParticleType enum
 extern std::array<double, 2> energy_min;
+#pragma omp declare target
 extern std::array<double, 2> energy_max;
+#pragma omp end declare target
 
 //! Minimum temperature in [K] that nuclide data is available at
 extern double temperature_min;
@@ -172,7 +182,11 @@ extern double temperature_min;
 extern double temperature_max;
 
 extern std::unordered_map<std::string, int> nuclide_map;
-extern std::vector<std::unique_ptr<Nuclide>> nuclides;
+#pragma omp declare target
+extern Nuclide* nuclides;
+extern size_t nuclides_size;
+#pragma omp end declare target
+extern size_t nuclides_capacity;
 
 } // namespace data
 

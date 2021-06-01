@@ -21,7 +21,9 @@ public:
   // Constructors
   explicit Function1DFlat(const uint8_t* data) : data_(data) { }
 
+  #pragma omp declare target
   double operator()(double x) const;
+  #pragma omp end declare target
 
   FunctionType type() const;
 private:
@@ -33,7 +35,12 @@ class Function1DFlatContainer {
 public:
   explicit Function1DFlatContainer(const Function1D& func);
 
+  #pragma omp declare target
   double operator()(double x) const;
+  #pragma omp end declare target
+
+  void copy_to_device();
+  void release_from_device();
 
   const uint8_t* data() const { return buffer_.data_; }
   FunctionType type() const { return this->func().type(); }

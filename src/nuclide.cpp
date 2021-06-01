@@ -35,7 +35,9 @@ std::array<double, 2> energy_max {INFTY, INFTY};
 double temperature_min {0.0};
 double temperature_max {INFTY};
 std::unordered_map<std::string, int> nuclide_map;
-std::vector<std::unique_ptr<Nuclide>> nuclides;
+Nuclide* nuclides;
+size_t nuclides_size;
+size_t nuclides_capacity;
 } // namespace data
 
 //==============================================================================
@@ -51,7 +53,7 @@ int Nuclide::XS_PHOTON_PROD {4};
 Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 {
   // Set index of nuclide in global vector
-  index_ = data::nuclides.size();
+  index_ = data::nuclides_size;
 
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
@@ -301,7 +303,7 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 
   this->create_derived(prompt_photons_.get(), delayed_photons_.get());
 }
-  
+
 void Nuclide::flatten_xs_data()
 {
   // Allocate array to store 1D jagged offsets for each temperature
@@ -352,7 +354,7 @@ void Nuclide::flatten_xs_data()
 Nuclide::~Nuclide()
 {
   data::nuclide_map.erase(name_);
-  
+
   // These arrays are only allocated if 1D flattening function was called
   if (flat_temp_offsets_ != nullptr) {
     delete[] flat_temp_offsets_;
@@ -449,6 +451,8 @@ void Nuclide::create_derived(const Function1DFlatContainer* prompt_photons, cons
   }
 
   // Calculate nu-fission cross section
+  device_fission_rx_ = fission_rx_.data();
+  device_total_nu_ = total_nu_.get();
   for (int t = 0; t < kTs_.size(); ++t) {
     if (fissionable_) {
       int n = grid_[t].energy.size();
@@ -540,7 +544,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 {
   if (!fissionable_) return 0.0;
 
-  auto rx = fission_rx_[0]->obj();
+  auto rx = device_fission_rx_[0]->obj();
   switch (mode) {
   case EmissionMode::prompt:
     return rx.products(0).yield()(E);
@@ -554,7 +558,9 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
 
         for (int i = 1; i < rx.n_products(); ++i) {
           // Skip any non-neutron products
-          const auto& product = rx.products(i);
+          // GPU NOTE: if you change 'auto' to 'const auto&' here, you get an
+          // illegal memory access on V100
+          auto product = rx.products(i);
           if (product.particle() != Particle::Type::neutron) continue;
 
           // Evaluate yield
@@ -568,8 +574,8 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
       return 0.0;
     }
   case EmissionMode::total:
-    if (total_nu_) {
-      return (*total_nu_)(E);
+    if (device_total_nu_) {
+      return (*device_total_nu_)(E);
     } else {
       return rx.products(0).yield()(E);
     }
@@ -584,7 +590,8 @@ void Nuclide::calculate_elastic_xs(Particle& p) const
   int i_temp = micro.index_temp;
 
   if (i_temp >= 0) {
-    micro.elastic = reactions_[0].obj().xs(micro);
+    auto rx = device_reactions_[0].obj();
+    micro.elastic = rx.xs(micro);
   }
 }
 
@@ -592,23 +599,24 @@ double Nuclide::elastic_xs_0K(double E) const
 {
   // Determine index on nuclide energy grid
   int i_grid;
-  if (E < energy_0K_.front()) {
+  size_t n = energy_0K_.size();
+  if (E < device_energy_0K_[0]) {
     i_grid = 0;
-  } else if (E > energy_0K_.back()) {
-    i_grid = energy_0K_.size() - 2;
+  } else if (E > device_energy_0K_[n-1]) {
+    i_grid = n - 2;
   } else {
-    i_grid = lower_bound_index(energy_0K_.begin(), energy_0K_.end(), E);
+    i_grid = lower_bound_index(device_energy_0K_, device_energy_0K_ + n, E);
   }
 
   // check for rare case where two energy points are the same
-  if (energy_0K_[i_grid] == energy_0K_[i_grid+1]) ++i_grid;
+  if (device_energy_0K_[i_grid] == device_energy_0K_[i_grid+1]) ++i_grid;
 
   // calculate interpolation factor
-  double f = (E - energy_0K_[i_grid]) /
-    (energy_0K_[i_grid + 1] - energy_0K_[i_grid]);
+  double f = (E - device_energy_0K_[i_grid]) /
+    (device_energy_0K_[i_grid + 1] - device_energy_0K_[i_grid]);
 
   // Calculate microscopic nuclide elastic cross section
-  return (1.0 - f)*elastic_0K_[i_grid] + f*elastic_0K_[i_grid + 1];
+  return (1.0 - f)*device_elastic_0K_[i_grid] + f*device_elastic_0K_[i_grid + 1];
 }
 
 void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p)
@@ -752,10 +760,10 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.index_grid = i_grid;
     micro.interp_factor = f;
 
-    // 1D indexing conversion 
+    // 1D indexing conversion
     int i_grid1D = i_grid * 5;
     int i_next1D = (i_grid + 1) * 5;
-    
+
     // Calculate microscopic nuclide total cross section
     micro.total = (1.0 - f)*xs[i_grid1D + XS_TOTAL]
           + f*xs[i_next1D + XS_TOTAL];
@@ -855,7 +863,7 @@ void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
   int i_temp;
   double elastic;
   double inelastic;
-  data::thermal_scatt[i_sab]->calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic, p.current_seed());
+  data::thermal_scatt[i_sab].calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic, p.current_seed());
 
   // Store the S(a,b) cross sections.
   micro.thermal = sab_frac * (elastic + inelastic);
@@ -1071,16 +1079,30 @@ double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double
 void Nuclide::copy_to_device()
 {
   // Reactions
+  device_index_inelastic_scatter_ = index_inelastic_scatter_.data();
   device_reactions_ = reactions_.data();
+  device_fission_rx_ = fission_rx_.data();
+  device_total_nu_ = total_nu_.get();
 
+  #pragma omp target enter data map(to: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
   #pragma omp target enter data map(to: device_reactions_[:reactions_.size()])
+  if (total_nu_) {
+    #pragma omp target enter data map(to: device_total_nu_[:1])
+    total_nu_->copy_to_device();
+  }
   for (auto& rx : reactions_) {
     rx.copy_to_device();
   }
-  
+
   // Regular pointwise XS data
   device_kTs_ = kTs_.data();
+  device_energy_0K_ = energy_0K_.data();
+  device_elastic_0K_ = elastic_0K_.data();
+  device_xs_cdf_ = xs_cdf_.data();
   #pragma omp target enter data map(to: device_kTs_[:kTs_.size()])
+  #pragma omp target enter data map(to: device_energy_0K_[:energy_0K_.size()])
+  #pragma omp target enter data map(to: device_elastic_0K_[:elastic_0K_.size()])
+  #pragma omp target enter data map(to: device_xs_cdf_[:xs_cdf_.size()])
   #pragma omp target enter data map(to: flat_temp_offsets_[:kTs_.size()])
   #pragma omp target enter data map(to: flat_grid_energy_[:total_energy_gridpoints_])
   #pragma omp target enter data map(to: flat_grid_index_[:total_index_gridpoints_])
@@ -1093,6 +1115,22 @@ void Nuclide::copy_to_device()
     #pragma omp target enter data map(to: u.device_energy_[:u.n_energy_])
     #pragma omp target enter data map(to: u.device_prob_[:u.n_total_prob_])
   }
+
+  // Because fission_rx_ is an array of host pointers, if we copy it over as an
+  // array, we'll simply have an identical array of host pointers in device
+  // memory. To get around this, we run a target region on device to manually
+  // set the pointers on the device.
+  #pragma omp target enter data map(alloc: device_fission_rx_[:fission_rx_.size()])
+  #pragma omp target
+  {
+    int i_fis = 0;
+    for (int i = 0; i < this->reactions_.size(); ++i) {
+      auto rx = this->device_reactions_[i].obj();
+      if (is_fission(rx.mt()) && !rx.redundant()) {
+        device_fission_rx_[i_fis++] = &this->device_reactions_[i];
+      }
+    }
+  }
 }
 
 void Nuclide::release_from_device()
@@ -1101,14 +1139,19 @@ void Nuclide::release_from_device()
     rx.release_from_device();
   }
   #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
+  #pragma omp target exit data map(release: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
+  #pragma omp target exit data map(release: device_fission_rx_[:fission_rx_.size()])
 
   // Regular pointwise XS data
   #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])
+  #pragma omp target exit data map(release: device_xs_cdf_[:xs_cdf_.size()])
+  #pragma omp target exit data map(release: device_elastic_0K_[:elastic_0K_.size()])
+  #pragma omp target exit data map(release: device_energy_0K_[:energy_0K_.size()])
   #pragma omp target exit data map(release: flat_temp_offsets_[:kTs_.size()])
   #pragma omp target exit data map(release: flat_grid_energy_[:total_energy_gridpoints_])
   #pragma omp target exit data map(release: flat_grid_index_[:total_index_gridpoints_])
   #pragma omp target exit data map(release: flat_xs_[:total_energy_gridpoints_*5])
-  
+
   // URR data
   for (auto& u : urr_data_) {
     #pragma omp target exit data map(release: u.device_energy_[:u.n_energy_])
@@ -1142,7 +1185,7 @@ void check_data_version(hid_t file_id)
 extern "C" size_t
 nuclides_size()
 {
-  return data::nuclides.size();
+  return data::nuclides_size;
 }
 
 //==============================================================================
@@ -1172,7 +1215,9 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
     // Read nuclide data from HDF5
     hid_t group = open_group(file_id, name);
     std::vector<double> temperature{temps, temps + n};
-    data::nuclides.push_back(std::make_unique<Nuclide>(group, temperature));
+
+    new(data::nuclides + data::nuclides_size) Nuclide(group, temperature);
+    ++data::nuclides_size;
 
     close_group(group);
     file_close(file_id);
@@ -1229,8 +1274,8 @@ openmc_get_nuclide_index(const char* name, int* index)
 extern "C" int
 openmc_nuclide_name(int index, const char** name)
 {
-  if (index >= 0 && index < data::nuclides.size()) {
-    *name = data::nuclides[index]->name_.data();
+  if (index >= 0 && index < data::nuclides_size) {
+    *name = data::nuclides[index].name_.data();
     return 0;
   } else {
     set_errmsg("Index in nuclides vector is out of bounds.");
@@ -1242,13 +1287,13 @@ extern "C" int
 openmc_nuclide_collapse_rate(int index, int MT, double temperature,
   const double* energy, const double* flux, int n, double* xs)
 {
-  if (index < 0 || index >= data::nuclides.size()) {
+  if (index < 0 || index >= data::nuclides_size) {
     set_errmsg("Index in nuclides vector is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
   try {
-    *xs = data::nuclides[index]->collapse_rate(MT, temperature,
+    *xs = data::nuclides[index].collapse_rate(MT, temperature,
       {energy, energy + n + 1}, {flux, flux + n});
   } catch (const std::out_of_range& e) {
     fmt::print("Caught error\n");
@@ -1260,7 +1305,12 @@ openmc_nuclide_collapse_rate(int index, int MT, double temperature,
 
 void nuclides_clear()
 {
-  data::nuclides.clear();
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    data::nuclides[i].~Nuclide();
+  }
+  free(data::nuclides);
+  data::nuclides_capacity = 0;
+  data::nuclides_size = 0;
   data::nuclide_map.clear();
 }
 

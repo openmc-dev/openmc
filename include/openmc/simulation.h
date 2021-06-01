@@ -27,7 +27,9 @@ extern "C" int current_batch;    //!< current batch
 extern "C" int current_gen;      //!< current fission generation
 #pragma omp end declare target
 extern "C" bool initialized;     //!< has simulation been initialized?
+#pragma omp declare target
 extern "C" double keff;          //!< average k over batches
+#pragma omp end declare target
 extern "C" double keff_std;      //!< standard deviation of average k
 extern "C" double k_col_abs;     //!< sum over batches of k_collision * k_absorption
 extern "C" double k_col_tra;     //!< sum over batches of k_collision * k_tracklength

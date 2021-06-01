@@ -63,22 +63,26 @@ public:
   // Constructors
   #pragma omp declare target
   explicit ReactionFlat(const uint8_t* data);
-  #pragma omp end declare target
 
   double xs(gsl::index i_temp, gsl::index i_grid, double interp_factor) const;
   double xs(const NuclideMicroXS& micro) const;
+  #pragma omp end declare target
 
   double collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
     gsl::span<const double> flux, const std::vector<double>& grid) const;
 
   // Accessors
+  #pragma omp declare target
   int mt() const;
   double q_value() const;
   bool scatter_in_cm() const;
   bool redundant() const;
+  #pragma omp end declare target
   int xs_threshold(gsl::index i_temp) const;
   gsl::span<const double> xs_value(gsl::index i_temp) const;
+  #pragma omp declare target
   ReactionProductFlat products(gsl::index i) const;
+  #pragma omp end declare target
   size_t n_xs() const { return n_xs_; }
   size_t n_products() const { return n_products_; }
 private:
@@ -95,7 +99,9 @@ public:
   void copy_to_device();
   void release_from_device();
 
+  #pragma omp declare target
   ReactionFlat obj() const;
+  #pragma omp end declare target
   int mt() const { return this->obj().mt(); }
 private:
   // Data members

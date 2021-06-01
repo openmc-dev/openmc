@@ -66,12 +66,16 @@ public:
   explicit ReactionProductFlat(const uint8_t* data);
   #pragma omp end declare target
 
+  #pragma omp declare target
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
+  #pragma omp end declare target
 
+  #pragma omp declare target
   Particle::Type particle() const;
   ReactionProduct::EmissionMode emission_mode() const;
   double decay_rate() const;
   Function1DFlat yield() const;
+  #pragma omp end declare target
   Tabulated1DFlat applicability(gsl::index i) const;
   AngleEnergyFlat distribution(gsl::index i) const;
 

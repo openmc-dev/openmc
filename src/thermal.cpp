@@ -28,7 +28,8 @@ namespace openmc {
 
 namespace data {
 std::unordered_map<std::string, int> thermal_scatt_map;
-std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+std::vector<ThermalScattering> thermal_scatt;
+ThermalScattering* device_thermal_scatt;
 }
 
 //==============================================================================
@@ -183,6 +184,47 @@ ThermalScattering::has_nuclide(const char* name) const
   return std::find(nuclides_.begin(), nuclides_.end(), nuc) != nuclides_.end();
 }
 
+void ThermalScattering::copy_to_device()
+{
+  device_data_ = data_.data();
+  #pragma omp target enter data map(to: device_data_[:data_.size()])
+  for (auto& d : data_) {
+    if (d.elastic_.xs) {
+      d.elastic_.device_xs = d.elastic_.xs.get();
+      d.elastic_.device_distribution = d.elastic_.distribution.get();
+      #pragma omp target enter data map(to: d.elastic_.device_xs[:1])
+      #pragma omp target enter data map(to: d.elastic_.device_distribution[:1])
+      d.elastic_.device_xs->copy_to_device();
+      d.elastic_.device_distribution->copy_to_device();
+    }
+
+    d.inelastic_.device_xs = d.inelastic_.xs.get();
+    d.inelastic_.device_distribution = d.inelastic_.distribution.get();
+    #pragma omp target enter data map(to: d.inelastic_.device_xs[:1])
+    #pragma omp target enter data map(to: d.inelastic_.device_distribution[:1])
+    d.inelastic_.device_xs->copy_to_device();
+    d.inelastic_.device_distribution->copy_to_device();
+  }
+}
+
+void ThermalScattering::release_from_device()
+{
+  for (auto& d : data_) {
+    if (d.elastic_.xs) {
+      d.elastic_.device_xs->release_from_device();
+      d.elastic_.device_distribution->release_device();
+      #pragma omp target exit data map(release: d.elastic_.device_xs[:1])
+      #pragma omp target exit data map(release: d.elastic_.device_distribution[:1])
+    }
+
+    d.inelastic_.device_xs->release_from_device();
+    d.inelastic_.device_distribution->release_device();
+    #pragma omp target exit data map(release: d.inelastic_.device_xs[:1])
+    #pragma omp target exit data map(release: d.inelastic_.device_distribution[:1])
+  }
+  #pragma omp target exit data map(release: device_data_[:data_.size()])
+}
+
 //==============================================================================
 // ThermalData implementation
 //==============================================================================
@@ -266,9 +308,9 @@ ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
 {
   // Determine whether inelastic or elastic scattering will occur
   if (prn(seed) < micro_xs.thermal_elastic / micro_xs.thermal) {
-    elastic_.distribution->sample(E, *E_out, *mu, seed);
+    elastic_.device_distribution->sample(E, *E_out, *mu, seed);
   } else {
-    inelastic_.distribution->sample(E, *E_out, *mu, seed);
+    inelastic_.device_distribution->sample(E, *E_out, *mu, seed);
   }
 
   // Because of floating-point roundoff, it may be possible for mu to be

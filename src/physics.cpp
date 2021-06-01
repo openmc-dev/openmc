@@ -43,6 +43,7 @@ void collision(Particle& p)
   case Particle::Type::neutron:
     sample_neutron_reaction(p);
     break;
+  /*
   case Particle::Type::photon:
     sample_photon_reaction(p);
     break;
@@ -52,6 +53,7 @@ void collision(Particle& p)
   case Particle::Type::positron:
     sample_positron_reaction(p);
     break;
+  */
   }
 
   // Kill particle if energy falls below cutoff
@@ -62,23 +64,25 @@ void collision(Particle& p)
   }
 
   // Display information about collision
+  /*
   if (settings::verbosity >= 10 || p.trace_) {
     std::string msg;
     if (p.event_ == TallyEvent::KILL) {
       msg = fmt::format("    Killed. Energy = {} eV.", p.E_);
     } else if (p.type_ == Particle::Type::neutron) {
       msg = fmt::format("    {} with {}. Energy = {} eV.",
-        reaction_name(p.event_mt_), data::nuclides[p.event_nuclide_]->name_,
+        reaction_name(p.event_mt_), data::nuclides[p.event_nuclide_].name_,
         p.E_);
     } else if (p.type_ == Particle::Type::photon) {
       msg = fmt::format("    {} with {}. Energy = {} eV.",
         reaction_name(p.event_mt_),
-        to_element(data::nuclides[p.event_nuclide_]->name_), p.E_);
+        to_element(data::nuclides[p.event_nuclide_].name_), p.E_);
     } else {
       msg = fmt::format("    Disappeared. Energy = {} eV.", p.E_);
     }
     write_message(msg, 1);
   }
+  */
 }
 
 void sample_neutron_reaction(Particle& p)
@@ -96,31 +100,39 @@ void sample_neutron_reaction(Particle& p)
 
   const auto& nuc {data::nuclides[i_nuclide]};
 
-  if (nuc->fissionable_) {
+  if (nuc.fissionable_) {
     auto rx = sample_fission(i_nuclide, p);
+
     if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);
     } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
-      settings::create_fission_neutrons) {
+        settings::create_fission_neutrons) {
       create_fission_sites(p, i_nuclide, rx);
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
       //if (p->secondary_bank_.size() >= 10000) {
       if (p.secondary_bank_length_ >= 10000) {
+        /*
         fatal_error("The secondary particle bank appears to be growing without "
         "bound. You are likely running a subcritical multiplication problem "
         "with k-effective close to or greater than one.");
+        */
+        printf("The secondary particle bank appears to be growing without "
+        "bound. You are likely running a subcritical multiplication problem "
+        "with k-effective close to or greater than one.\n");
       }
     }
   }
 
+  /*
   // Create secondary photons
   if (settings::photon_transport) {
     p.stream_ = STREAM_PHOTON;
     sample_secondary_photons(p, i_nuclide);
-	  p.stream_ = STREAM_TRACKING;
+    p.stream_ = STREAM_TRACKING;
   }
+  */
 
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs
@@ -139,7 +151,7 @@ void sample_neutron_reaction(Particle& p)
   // Advance URR seed stream 'N' times after energy changes
   if (p.E_ != p.E_last_) {
     p.stream_ = STREAM_URR_PTABLE;
-    advance_prn_seed(data::nuclides.size(), p.current_seed());
+    advance_prn_seed(data::nuclides_size, p.current_seed());
     p.stream_ = STREAM_TRACKING;
   }
 
@@ -155,14 +167,14 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
-  double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
+  double weight = 1.0; //settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
   double nu_t = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
     i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].total;
 
   // Sample the number of neutrons produced
-  int nu = static_cast<int>(nu_t);
+  int nu = std::floor(nu_t);
   if (prn(p.current_seed()) <= (nu_t - nu)) ++nu;
 
   // Begin banking the source neutrons
@@ -200,14 +212,18 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
       if (idx == -1) {
+        /*
         warning("The shared fission bank is full. Additional fission sites created "
             "in this generation will not be banked.");
+        */
+        printf("The shared fission bank is full. Additional fission sites created "
+          "in this generation will not be banked.");
         skipped++;
         break;
       }
     } else {
       //p->secondary_bank_.push_back(site);
-      assert(p.secondary_bank_length_ < SECONDARY_BANK_SIZE);
+      //assert(p.secondary_bank_length_ < SECONDARY_BANK_SIZE);
       p.secondary_bank_[p.secondary_bank_length_++] = site;
     }
 
@@ -223,7 +239,7 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
     if (use_fission_bank) {
       //p->nu_bank_.emplace_back();
       //Particle::NuBank* nu_bank_entry = &p->nu_bank_.back();
-      assert(i < NU_BANK_SIZE);
+      //assert(i < NU_BANK_SIZE);
       Particle::NuBank* nu_bank_entry = &p.nu_bank_[i];
       nu_bank_entry->wgt              = site.wgt;
       nu_bank_entry->E                = site.E;
@@ -454,23 +470,26 @@ int sample_nuclide(Particle& p)
   double cutoff = prn(p.current_seed()) * p.macro_xs_.total;
 
   // Get pointers to nuclide/density arrays
-  const auto& mat {model::materials[p.material_]};
+  const auto& mat = model::materials[p.material_];
   int n = mat.nuclide_.size();
 
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
     // Get atom density
-    int i_nuclide = mat.nuclide_[i];
-    double atom_density = mat.atom_density_[i];
+    int i_nuclide = mat.device_nuclide_[i];
+    double atom_density = mat.device_atom_density_[i];
 
     // Increment probability to compare to cutoff
     prob += atom_density * p.neutron_xs_[i_nuclide].total;
     if (prob >= cutoff) return i_nuclide;
   }
 
+  /*
   // If we reach here, no nuclide was sampled
   p.write_restart();
   throw std::runtime_error{"Did not sample any nuclide during collision."};
+  */
+  printf("Did not sample any nuclide during collision.\n");
 }
 
 int sample_element(Particle& p)
@@ -513,15 +532,15 @@ ReactionFlat sample_fission(int i_nuclide, Particle& p)
   // If we're in the URR, by default use the first fission reaction. We also
   // default to the first reaction if we know that there are no partial fission
   // reactions
-  if (p.neutron_xs_[i_nuclide].use_ptable || !nuc->has_partial_fission_) {
-    return nuc->fission_rx_[0]->obj();
+  if (p.neutron_xs_[i_nuclide].use_ptable || !nuc.has_partial_fission_) {
+    return nuc.device_fission_rx_[0]->obj();
   }
 
   // Check to see if we are in a windowed multipole range.  WMP only supports
   // the first fission reaction.
-  if (nuc->multipole_) {
-    if (p.E_ >= nuc->multipole_->E_min_ && p.E_ <= nuc->multipole_->E_max_) {
-      return nuc->fission_rx_[0]->obj();
+  if (nuc.multipole_) {
+    if (p.E_ >= nuc.multipole_->E_min_ && p.E_ <= nuc.multipole_->E_max_) {
+      return nuc.device_fission_rx_[0]->obj();
     }
   }
 
@@ -531,7 +550,9 @@ ReactionFlat sample_fission(int i_nuclide, Particle& p)
   double prob = 0.0;
 
   // Loop through each partial fission reaction type
-  for (auto& rx : nuc->fission_rx_) {
+  for (int i = 0; i < nuc.fission_rx_.size(); ++i) {
+    auto& rx = nuc.device_fission_rx_[i];
+
     // add to cumulative probability
     prob += rx->obj().xs(micro);
 
@@ -540,7 +561,8 @@ ReactionFlat sample_fission(int i_nuclide, Particle& p)
   }
 
   // If we reached here, no reaction was sampled
-  throw std::runtime_error{"No fission reaction was sampled for " + nuc->name_};
+  // throw std::runtime_error{"No fission reaction was sampled for " + nuc.name_};
+  printf("No fission reaction was sampled.\n");
 }
 
 void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product)
@@ -552,9 +574,9 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
 
   // Loop through each reaction type
   const auto& nuc {data::nuclides[i_nuclide]};
-  for (int i = 0; i < nuc->reactions_.size(); ++i) {
+  for (int i = 0; i < nuc.reactions_.size(); ++i) {
     // Evaluate neutron cross section
-    const auto& rx = nuc->reactions_[i].obj();
+    const auto& rx = nuc.reactions_[i].obj();
     double xs = rx.xs(micro);
 
     // if cross section is zero for this reaction, skip it
@@ -568,9 +590,9 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
         double f = 1.0;
         if (settings::delayed_photon_scaling) {
           if (is_fission(rx.mt())) {
-            if (nuc->prompt_photons_ && nuc->delayed_photons_) {
-              double energy_prompt = (*nuc->prompt_photons_)(p.E_);
-              double energy_delayed = (*nuc->delayed_photons_)(p.E_);
+            if (nuc.prompt_photons_ && nuc.delayed_photons_) {
+              double energy_prompt = (*nuc.prompt_photons_)(p.E_);
+              double energy_delayed = (*nuc.delayed_photons_)(p.E_);
               f = (energy_prompt + energy_delayed)/(energy_prompt);
             }
           }
@@ -637,7 +659,7 @@ void scatter(Particle& p, int i_nuclide)
 
   // Calculate elastic cross section if it wasn't precalculated
   if (micro.elastic == CACHE_INVALID) {
-    nuc->calculate_elastic_xs(p);
+    nuc.calculate_elastic_xs(p);
   }
 
   double prob = micro.elastic - micro.thermal;
@@ -646,10 +668,10 @@ void scatter(Particle& p, int i_nuclide)
     // NON-S(A,B) ELASTIC SCATTERING
 
     // Determine temperature
-    double kT = nuc->multipole_ ? p.sqrtkT_*p.sqrtkT_ : nuc->kTs_[i_temp];
+    double kT = nuc.multipole_ ? p.sqrtkT_*p.sqrtkT_ : nuc.device_kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
-    elastic_scatter(i_nuclide, nuc->reactions_[0].obj(), kT, p);
+    elastic_scatter(i_nuclide, nuc.device_reactions_[0].obj(), kT, p);
 
     p.event_mt_ = ELASTIC;
     sampled = true;
@@ -672,23 +694,27 @@ void scatter(Particle& p, int i_nuclide)
 
     int j = 0;
     int i = 0;
+
     while (prob < cutoff) {
-      i = nuc->index_inelastic_scatter_[j];
+      i = nuc.device_index_inelastic_scatter_[j];
       ++j;
 
+      /*
       // Check to make sure inelastic scattering reaction sampled
-      if (i >= nuc->reactions_.size()) {
+      if (i >= nuc.reactions_.size()) {
         p.write_restart();
-        fatal_error("Did not sample any reaction for nuclide " + nuc->name_);
+        fatal_error("Did not sample any reaction for nuclide " + nuc.name_);
       }
+      */
 
       // add to cumulative probability
-      prob += nuc->reactions_[i].obj().xs(micro);
+      auto rx = nuc.device_reactions_[i].obj();
+      prob += rx.xs(micro);
     }
 
     // Perform collision physics for inelastic scattering
-    const auto& rx {nuc->reactions_[i].obj()};
-    inelastic_scatter(*nuc, rx, p);
+    auto rx = nuc.device_reactions_[i].obj();
+    inelastic_scatter(nuc, rx, p);
     p.event_mt_ = rx.mt();
   }
 
@@ -697,9 +723,9 @@ void scatter(Particle& p, int i_nuclide)
 
   // Sample new outgoing angle for isotropic-in-lab scattering
   const auto& mat {model::materials[p.material_]};
-  if (!mat.p0_.empty()) {
-    int i_nuc_mat = mat.mat_nuclide_index_[i_nuclide];
-    if (mat.p0_[i_nuc_mat]) {
+  if (mat.device_p0_) {
+    int i_nuc_mat = mat.device_mat_nuclide_index_[i_nuclide];
+    if (mat.device_p0_[i_nuc_mat]) {
       // Sample isotropic-in-lab outgoing direction
       double mu = 2.0*prn(p.current_seed()) - 1.0;
       double phi = 2.0*PI*prn(p.current_seed());
@@ -720,7 +746,7 @@ void elastic_scatter(int i_nuclide, const ReactionFlat& rx, double kT,
   const auto& nuc {data::nuclides[i_nuclide]};
 
   double vel = std::sqrt(p.E_);
-  double awr = nuc->awr_;
+  double awr = nuc.awr_;
 
   // Neutron velocity in LAB
   Direction v_n = vel*p.u();
@@ -728,7 +754,7 @@ void elastic_scatter(int i_nuclide, const ReactionFlat& rx, double kT,
   // Sample velocity of target nucleus
   Direction v_t {};
   if (!p.neutron_xs_[i_nuclide].use_ptable) {
-    v_t = sample_target_velocity(*nuc, p.E_, p.u(), v_n,
+    v_t = sample_target_velocity(nuc, p.E_, p.u(), v_n,
       p.neutron_xs_[i_nuclide].elastic, kT, p.current_seed());
   }
 
@@ -787,7 +813,8 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 
   // Sample energy and angle
   double E_out;
-  data::thermal_scatt[i_sab]->data_[i_temp].sample(micro, p.E_, &E_out, &p.mu_, p.current_seed());
+  auto& sab_data = data::device_thermal_scatt[i_sab].device_data_[i_temp];
+  sab_data.sample(micro, p.E_, &E_out, &p.mu_, p.current_seed());
 
   // Set energy to outgoing, change direction of particle
   p.E_ = E_out;
@@ -838,24 +865,25 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     // find lower and upper energy bound indices
     // lower index
     int i_E_low;
-    if (E_low < nuc.energy_0K_.front()) {
+    size_t n = nuc.energy_0K_.size();
+    if (E_low < nuc.device_energy_0K_[0]) {
       i_E_low = 0;
-    } else if (E_low > nuc.energy_0K_.back()) {
-      i_E_low = nuc.energy_0K_.size() - 2;
+    } else if (E_low > nuc.device_energy_0K_[n-1]) {
+      i_E_low = n - 2;
     } else {
-      i_E_low = lower_bound_index(nuc.energy_0K_.begin(),
-        nuc.energy_0K_.end(), E_low);
+      i_E_low = lower_bound_index(nuc.device_energy_0K_,
+        nuc.device_energy_0K_ + n, E_low);
     }
 
     // upper index
     int i_E_up;
-    if (E_up < nuc.energy_0K_.front()) {
+    if (E_up < nuc.device_energy_0K_[0]) {
       i_E_up = 0;
-    } else if (E_up > nuc.energy_0K_.back()) {
-      i_E_up = nuc.energy_0K_.size() - 2;
+    } else if (E_up > nuc.device_energy_0K_[n-1]) {
+      i_E_up = n - 2;
     } else {
-      i_E_up = lower_bound_index(nuc.energy_0K_.begin(),
-        nuc.energy_0K_.end(), E_up);
+      i_E_up = lower_bound_index(nuc.device_energy_0K_,
+        nuc.device_energy_0K_ + n, E_up);
     }
 
     if (i_E_up == i_E_low) {
@@ -866,18 +894,18 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
     if (sampling_method == ResScatMethod::dbrc) {
       // interpolate xs since we're not exactly at the energy indices
-      double xs_low = nuc.elastic_0K_[i_E_low];
-      double m = (nuc.elastic_0K_[i_E_low + 1] - xs_low)
-        / (nuc.energy_0K_[i_E_low + 1] - nuc.energy_0K_[i_E_low]);
-      xs_low += m * (E_low - nuc.energy_0K_[i_E_low]);
-      double xs_up = nuc.elastic_0K_[i_E_up];
-      m = (nuc.elastic_0K_[i_E_up + 1] - xs_up)
-        / (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
-      xs_up += m * (E_up - nuc.energy_0K_[i_E_up]);
+      double xs_low = nuc.device_elastic_0K_[i_E_low];
+      double m = (nuc.device_elastic_0K_[i_E_low + 1] - xs_low)
+        / (nuc.device_energy_0K_[i_E_low + 1] - nuc.device_energy_0K_[i_E_low]);
+      xs_low += m * (E_low - nuc.device_energy_0K_[i_E_low]);
+      double xs_up = nuc.device_elastic_0K_[i_E_up];
+      m = (nuc.device_elastic_0K_[i_E_up + 1] - xs_up)
+        / (nuc.device_energy_0K_[i_E_up + 1] - nuc.device_energy_0K_[i_E_up]);
+      xs_up += m * (E_up - nuc.device_energy_0K_[i_E_up]);
 
       // get max 0K xs value over range of practical relative energies
-      double xs_max = *std::max_element(&nuc.elastic_0K_[i_E_low + 1],
-        &nuc.elastic_0K_[i_E_up + 1]);
+      double xs_max = *std::max_element(&nuc.device_elastic_0K_[i_E_low + 1],
+        &nuc.device_elastic_0K_[i_E_up + 1]);
       xs_max = std::max({xs_low, xs_max, xs_up});
 
       while (true) {
@@ -900,17 +928,17 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     } else if (sampling_method == ResScatMethod::rvs) {
       // interpolate xs CDF since we're not exactly at the energy indices
       // cdf value at lower bound attainable energy
-      double m = (nuc.xs_cdf_[i_E_low] - nuc.xs_cdf_[i_E_low - 1])
-        / (nuc.energy_0K_[i_E_low + 1] - nuc.energy_0K_[i_E_low]);
-      double cdf_low = nuc.xs_cdf_[i_E_low - 1]
-            + m * (E_low - nuc.energy_0K_[i_E_low]);
-      if (E_low <= nuc.energy_0K_.front()) cdf_low = 0.0;
+      double m = (nuc.device_xs_cdf_[i_E_low] - nuc.device_xs_cdf_[i_E_low - 1])
+        / (nuc.device_energy_0K_[i_E_low + 1] - nuc.device_energy_0K_[i_E_low]);
+      double cdf_low = nuc.device_xs_cdf_[i_E_low - 1]
+            + m * (E_low - nuc.device_energy_0K_[i_E_low]);
+      if (E_low <= nuc.device_energy_0K_[0]) cdf_low = 0.0;
 
       // cdf value at upper bound attainable energy
-      m = (nuc.xs_cdf_[i_E_up] - nuc.xs_cdf_[i_E_up - 1])
-        / (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
-      double cdf_up = nuc.xs_cdf_[i_E_up - 1]
-        + m*(E_up - nuc.energy_0K_[i_E_up]);
+      m = (nuc.device_xs_cdf_[i_E_up] - nuc.device_xs_cdf_[i_E_up - 1])
+        / (nuc.device_energy_0K_[i_E_up + 1] - nuc.device_energy_0K_[i_E_up]);
+      double cdf_up = nuc.device_xs_cdf_[i_E_up - 1]
+        + m*(E_up - nuc.device_energy_0K_[i_E_up]);
 
       while (true) {
         // directly sample Maxwellian
@@ -918,14 +946,14 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
         // sample a relative energy using the xs cdf
         double cdf_rel = cdf_low + prn(seed)*(cdf_up - cdf_low);
-        int i_E_rel = lower_bound_index(&nuc.xs_cdf_[i_E_low-1],
-          &nuc.xs_cdf_[i_E_up+1], cdf_rel);
-        double E_rel = nuc.energy_0K_[i_E_low + i_E_rel];
-        double m = (nuc.xs_cdf_[i_E_low + i_E_rel]
-              - nuc.xs_cdf_[i_E_low + i_E_rel - 1])
-              / (nuc.energy_0K_[i_E_low + i_E_rel + 1]
-              -  nuc.energy_0K_[i_E_low + i_E_rel]);
-        E_rel += (cdf_rel - nuc.xs_cdf_[i_E_low + i_E_rel - 1]) / m;
+        int i_E_rel = lower_bound_index(&nuc.device_xs_cdf_[i_E_low-1],
+          &nuc.device_xs_cdf_[i_E_up+1], cdf_rel);
+        double E_rel = nuc.device_energy_0K_[i_E_low + i_E_rel];
+        double m = (nuc.device_xs_cdf_[i_E_low + i_E_rel]
+              - nuc.device_xs_cdf_[i_E_low + i_E_rel - 1])
+              / (nuc.device_energy_0K_[i_E_low + i_E_rel + 1]
+              -  nuc.device_energy_0K_[i_E_low + i_E_rel]);
+        E_rel += (cdf_rel - nuc.device_xs_cdf_[i_E_low + i_E_rel - 1]) / m;
 
         // perform rejection sampling on cosine between
         // neutron and target velocities
@@ -1012,8 +1040,8 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
 
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
-  double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
-  double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  double nu_t = nuc.nu(E_in, Nuclide::EmissionMode::total);
+  double nu_d = nuc.nu(E_in, Nuclide::EmissionMode::delayed);
   double beta = nu_d / nu_t;
 
   if (prn(seed) < beta) {
@@ -1024,7 +1052,7 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
     double xi = prn(seed)*nu_d;
     double prob = 0.0;
     int group;
-    for (group = 1; group < nuc->n_precursor_; ++group) {
+    for (group = 1; group < nuc.n_precursor_; ++group) {
       // determine delayed neutron precursor yield for group j
       double yield = rx.products(group).yield()(E_in);
 
@@ -1036,7 +1064,7 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
     // if the sum of the probabilities is slightly less than one and the
     // random number is greater, j will be greater than nuc %
     // n_precursor -- check for this condition
-    group = std::min(group, nuc->n_precursor_);
+    group = std::min(group, nuc.n_precursor_);
 
     // set the delayed group for the particle born from fission
     site->delayed_group = group;
@@ -1055,8 +1083,10 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
       ++n_sample;
       if (n_sample == MAX_SAMPLE) {
         // particle_write_restart(p)
+        /*
         fatal_error("Resampled energy distribution maximum number of times "
-          "for nuclide " + nuc->name_);
+          "for nuclide " + nuc.name_);
+        */
       }
     }
 
@@ -1080,8 +1110,10 @@ void sample_fission_neutron(int i_nuclide, const ReactionFlat& rx, double E_in, 
       ++n_sample;
       if (n_sample == MAX_SAMPLE) {
         // particle_write_restart(p)
+        /*
         fatal_error("Resampled energy distribution maximum number of times "
-          "for nuclide " + nuc->name_);
+          "for nuclide " + nuc.name_);
+        */
       }
     }
   }
@@ -1153,7 +1185,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     sample_photon_product(i_nuclide, p, &i_rx, &i_product);
 
     // Sample the outgoing energy and angle
-    auto rx = data::nuclides[i_nuclide]->reactions_[i_rx].obj();
+    auto rx = data::nuclides[i_nuclide].reactions_[i_rx].obj();
     double E;
     double mu;
     rx.products(i_product).sample(p.E_, E, mu, p.current_seed());

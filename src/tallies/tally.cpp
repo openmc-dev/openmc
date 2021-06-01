@@ -511,8 +511,8 @@ Tally::set_nuclides(pugi::xml_node node)
     // This tally should bin every nuclide in the problem.  It should also bin
     // the total material rates.  To achieve this, set the nuclides_ vector to
     // 0, 1, 2, ..., -1.
-    nuclides_.reserve(data::nuclides.size() + 1);
-    for (auto i = 0; i < data::nuclides.size(); ++i)
+    nuclides_.reserve(data::nuclides_size + 1);
+    for (auto i = 0; i < data::nuclides_size; ++i)
       nuclides_.push_back(i);
     nuclides_.push_back(-1);
     all_nuclides_ = true;

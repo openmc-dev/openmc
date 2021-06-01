@@ -724,7 +724,11 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
 
 
     case SCORE_FISSION:
-      if (p.macro_xs().neutron.absorption == 0)
+      // Currently there is no photofission in OpenMC, so only neutrons can
+      // produce fission. Moreover, by definition, without absorption, fission
+      // is impossible.
+      if (p.type() != ParticleType::neutron ||
+          p.macro_xs().neutron.absorption == 0)
         continue;
       if (tally.estimator_ == TallyEstimator::ANALOG) {
         if (settings::survival_biasing) {

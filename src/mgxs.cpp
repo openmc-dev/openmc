@@ -311,7 +311,7 @@ Mgxs::Mgxs(
 //==============================================================================
 
 Mgxs::Mgxs(const std::string& in_name, const vector<xsfloat>& mat_kTs,
-  const vector<Mgxs*>& micros, const vector<xsfloat>& atom_densities,
+  const vector<Mgxs*>& micros, const vector<double>& atom_densities,
   int num_group, int num_delay)
   : num_groups(num_group), num_delayed_groups(num_delay)
 {

@@ -123,7 +123,7 @@ class Mgxs {
     //! @param num_group number of energy groups
     //! @param num_delay number of delayed groups
     Mgxs(const std::string& in_name, const vector<xsfloat>& mat_kTs,
-      const vector<Mgxs*>& micros, const vector<xsfloat>& atom_densities,
+      const vector<Mgxs*>& micros, const vector<double>& atom_densities,
       int num_group, int num_delay);
 
     //! \brief Provides a cross section value given certain parameters

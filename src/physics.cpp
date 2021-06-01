@@ -792,7 +792,7 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
   int i_temp = micro.index_temp_sab;
 
   // Sample energy and angle
-  double E_out;
+  xsfloat E_out;
   data::thermal_scatt[i_sab]->data_[i_temp].sample(
     micro, p.E(), &E_out, &p.mu(), p.current_seed());
 

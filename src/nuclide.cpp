@@ -975,7 +975,7 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   double inelastic = 0.;
   if (urr.inelastic_flag_ != C_NONE) {
     // Determine inelastic scattering cross section
-    auto rx = reactions_[urr_inelastic_].obj();
+    auto rx = device_reactions_[urr_inelastic_].obj();
     inelastic = rx.xs(micro);
   }
 

@@ -792,10 +792,12 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
   int i_temp = micro.index_temp_sab;
 
   // Sample energy and angle
+  double E_out;
   data::thermal_scatt[i_sab]->data_[i_temp].sample(
-    micro, p.E(), &p.E(), &p.mu(), p.current_seed());
+    micro, p.E(), &E_out, &p.mu(), p.current_seed());
 
   // Set energy to outgoing, change direction of particle
+  p.E() = E_out;
   p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
 }
 

@@ -47,7 +47,9 @@ public:
   //! \param[in] E Incident neutron energy in [eV]
   //! \param[out] elastic Elastic scattering cross section in [b]
   //! \param[out] inelastic Inelastic scattering cross section in [b]
+  #pragma omp declare target
   void calculate_xs(double E, double* elastic, double* inelastic) const;
+  #pragma omp end declare target
 
   //! Sample an outgoing energy and angle
   //
@@ -97,8 +99,10 @@ public:
   //! \param[out] elastic Thermal elastic scattering cross section
   //! \param[out] inelastic Thermal inelastic scattering cross section
   //! \param[inout] seed Pseudorandom seed pointer
+  #pragma omp declare target
   void calculate_xs(double E, double sqrtkT, int* i_temp, double* elastic,
                     double* inelastic, uint64_t* seed) const;
+  #pragma omp end declare target
 
   //! Determine whether table applies to a particular nuclide
   //!
@@ -117,6 +121,7 @@ public:
   double awr_;       //!< weight of nucleus in neutron masses
   double energy_max_; //!< maximum energy for thermal scattering in [eV]
   std::vector<double> kTs_;  //!< temperatures in [eV] (k*T)
+  double* device_kTs_;
   std::vector<std::string> nuclides_; //!< Valid nuclides
 
   //! cross sections and distributions at each temperature

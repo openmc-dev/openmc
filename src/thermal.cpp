@@ -157,15 +157,15 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   auto n = kTs_.size();
   if (n > 1) {
     // Find temperatures that bound the actual temperature
-    while (kTs_[i+1] < kT && i + 1 < n - 1) ++i;
+    while (device_kTs_[i+1] < kT && i + 1 < n - 1) ++i;
 
     if (settings::temperature_method == TemperatureMethod::NEAREST) {
       // Pick closer of two bounding temperatures
-      if (kT - kTs_[i] > kTs_[i+1] - kT) ++i;
+      if (kT - device_kTs_[i] > device_kTs_[i+1] - kT) ++i;
 
     } else {
       // Randomly sample between temperature i and i+1
-      double f = (kT - kTs_[i]) / (kTs_[i+1] - kTs_[i]);
+      double f = (kT - device_kTs_[i]) / (device_kTs_[i+1] - device_kTs_[i]);
       if (f > prn(seed)) ++i;
     }
   }
@@ -173,8 +173,11 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   // Set temperature index
   *i_temp = i;
 
+  //#pragma omp target map(from: elastic[:1], inelastic[:1])
+  {
   // Calculate cross sections for ith temperature
-  data_[i].calculate_xs(E, elastic, inelastic);
+  device_data_[i].calculate_xs(E, elastic, inelastic);
+  }
 }
 
 bool
@@ -205,6 +208,8 @@ void ThermalScattering::copy_to_device()
     d.inelastic_.device_xs->copy_to_device();
     d.inelastic_.device_distribution->copy_to_device();
   }
+  device_kTs_ = kTs_.data();
+  #pragma omp target enter data map(to: device_kTs_[:kTs_.size()])
 }
 
 void ThermalScattering::release_from_device()
@@ -223,6 +228,8 @@ void ThermalScattering::release_from_device()
     #pragma omp target exit data map(release: d.inelastic_.device_distribution[:1])
   }
   #pragma omp target exit data map(release: device_data_[:data_.size()])
+  
+  #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])
 }
 
 //==============================================================================
@@ -291,15 +298,22 @@ ThermalData::ThermalData(hid_t group)
 void
 ThermalData::calculate_xs(double E, double* elastic, double* inelastic) const
 {
+  printf("Inside ThermalData::caclulate_xs...\n");
+  //#pragma omp target map(from: elastic[:1], inelastic[:1])
+  {
   // Calculate thermal elastic scattering cross section
-  if (elastic_.xs) {
-    *elastic = (*elastic_.xs)(E);
+  if (elastic_.device_xs) {
+    *elastic = (*elastic_.device_xs)(E);
   } else {
     *elastic = 0.0;
   }
 
   // Calculate thermal inelastic scattering cross section
-  *inelastic = (*inelastic_.xs)(E);
+  //#pragma omp target map(from: inelastic[:1])
+  //{
+  *inelastic = (*inelastic_.device_xs)(E);
+  //}
+  }
 }
 
 void

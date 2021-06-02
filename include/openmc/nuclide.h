@@ -45,10 +45,10 @@ public:
 
   void calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p);
 
+  #pragma omp declare target
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 
   // Methods
-  #pragma omp declare target
   double nu(double E, EmissionMode mode, int group=0) const;
   void calculate_elastic_xs(Particle& p) const;
 

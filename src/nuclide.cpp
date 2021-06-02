@@ -836,7 +836,14 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
   // and sab_elastic cross sections and correct the total and elastic cross
   // sections.
 
-  if (i_sab >= 0) this->calculate_sab_xs(i_sab, sab_frac, p);
+  if (i_sab >= 0) {
+    #pragma omp target update to(p)
+    #pragma omp target
+    {
+      this->calculate_sab_xs(i_sab, sab_frac, p);
+    }
+    #pragma omp target update from(p)
+  }
 
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
@@ -868,7 +875,7 @@ void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
   int i_temp;
   double elastic;
   double inelastic;
-  data::thermal_scatt[i_sab].calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic, p.current_seed());
+  data::device_thermal_scatt[i_sab].calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic, p.current_seed());
 
   // Store the S(a,b) cross sections.
   micro.thermal = sab_frac * (elastic + inelastic);

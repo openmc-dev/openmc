@@ -173,11 +173,8 @@ ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
   // Set temperature index
   *i_temp = i;
 
-  //#pragma omp target map(from: elastic[:1], inelastic[:1])
-  {
   // Calculate cross sections for ith temperature
   device_data_[i].calculate_xs(E, elastic, inelastic);
-  }
 }
 
 bool
@@ -298,9 +295,6 @@ ThermalData::ThermalData(hid_t group)
 void
 ThermalData::calculate_xs(double E, double* elastic, double* inelastic) const
 {
-  printf("Inside ThermalData::caclulate_xs...\n");
-  //#pragma omp target map(from: elastic[:1], inelastic[:1])
-  {
   // Calculate thermal elastic scattering cross section
   if (elastic_.device_xs) {
     *elastic = (*elastic_.device_xs)(E);
@@ -309,11 +303,7 @@ ThermalData::calculate_xs(double E, double* elastic, double* inelastic) const
   }
 
   // Calculate thermal inelastic scattering cross section
-  //#pragma omp target map(from: inelastic[:1])
-  //{
   *inelastic = (*inelastic_.device_xs)(E);
-  //}
-  }
 }
 
 void

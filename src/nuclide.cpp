@@ -681,10 +681,10 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     double f;
     int i_temp = -1;
     // Good w/this
-    #pragma omp target update to(this[:1])
-    #pragma omp target update to(p)
-    #pragma omp target map(tofrom: f, i_temp)
-    {
+    //#pragma omp target update to(this[:1])
+    //#pragma omp target update to(p)
+    //#pragma omp target map(tofrom: f, i_temp)
+    //{
     switch (settings::temperature_method) {
     case TemperatureMethod::NEAREST:
       {
@@ -825,8 +825,8 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.photon_prod = (1.0 - f)*xs[i_grid1D + XS_PHOTON_PROD]
       + f*xs[i_next1D + XS_PHOTON_PROD];
 
-    }
-    #pragma omp target update from(p)
+    //}
+    //#pragma omp target update from(p)
 
     // Depletion-related reactions
     if (simulation::need_depletion_rx) {

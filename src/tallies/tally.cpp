@@ -507,8 +507,11 @@ void Tally::set_scores(const vector<std::string>& scores)
   if (type_ == TallyType::SURFACE || type_ == TallyType::MESH_SURFACE) {
     if (scores_.size() != 1)
       fatal_error("Cannot tally other scores in the same tally as surface "
-        "currents");
+        "currents.");
   }
+  if ((surface_present || meshsurface_present) && scores_[0] != SCORE_CURRENT)
+    fatal_error("Cannot tally score other than 'current' when using a surface "
+      "or mesh-surface filter.");
 }
 
 void

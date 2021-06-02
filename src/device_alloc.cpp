@@ -62,6 +62,7 @@ void move_settings_to_device()
   #pragma omp target update to(simulation::current_gen)
   #pragma omp target update to(simulation::total_weight)
   #pragma omp target update to(simulation::need_depletion_rx)
+  #pragma omp target update to(simulation::log_spacing)
 }
 
 void move_read_only_data_to_device()
@@ -110,13 +111,15 @@ void move_read_only_data_to_device()
   }
 
   // Nuclear data /////////////////////////////////////////////////////
+  data::energy_min[0]; // Lazy extern template expansion workaround
   data::energy_max[0]; // Lazy extern template expansion workaround
+  #pragma omp target update to(data::energy_min)
   #pragma omp target update to(data::energy_max)
   #pragma omp target update to(data::nuclides_size)
-  #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
+
+  // Flatten nuclides before copying
   for (int i = 0; i < data::nuclides_size; ++i) {
     auto& nuc = data::nuclides[i];
-    std::cout << "Moving " << nuc.name_ << " data to device..." << std::endl;
 
     // URR data flattening
     for (auto& u : nuc.urr_data_) {
@@ -125,7 +128,12 @@ void move_read_only_data_to_device()
 
     // Pointwise XS data flattening
     nuc.flatten_xs_data();
+  }
 
+  #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    auto& nuc = data::nuclides[i];
+    std::cout << "Moving " << nuc.name_ << " data to device..." << std::endl;
     nuc.copy_to_device();
   }
 

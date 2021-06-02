@@ -759,9 +759,15 @@ void Material::calculate_xs(Particle& p) const
   p.macro_xs_.nu_fission = 0.0;
 
   if (p.type_ == Particle::Type::neutron) {
+    //#pragma omp target update to(p)
+    //#pragma omp target
+    {
     this->calculate_neutron_xs(p);
+    }
+    //#pragma omp target update from(p)
   } else if (p.type_ == Particle::Type::photon) {
-    this->calculate_photon_xs(p);
+    printf("Photon XS lookups not yet supported on device.\n");
+    //this->calculate_photon_xs(p);
   }
 }
 
@@ -788,7 +794,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     // Check if this nuclide matches one of the S(a,b) tables specified.
     // This relies on thermal_tables_ being sorted by .index_nuclide
     if (check_sab) {
-      const auto& sab {thermal_tables_[j]};
+      const auto& sab {device_thermal_tables_[j]};
       if (i == sab.index_nuclide) {
         // Get index in sab_tables
         i_sab = sab.index_table;
@@ -796,7 +802,7 @@ void Material::calculate_neutron_xs(Particle& p) const
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
-        if (p.E_ > data::thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
+        if (p.E_ > data::device_thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
 
         // Increment position in thermal_tables_
         ++j;
@@ -810,7 +816,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine microscopic cross sections for this nuclide
-    int i_nuclide = nuclide_[i];
+    int i_nuclide = device_nuclide_[i];
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {p.neutron_xs_[i_nuclide]};
@@ -825,7 +831,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     // ADD TO MACROSCOPIC CROSS SECTION
 
     // Copy atom density of nuclide in material
-    double atom_density = atom_density_(i);
+    double atom_density = device_atom_density_[i];
 
     // Add contributions to cross sections
     p.macro_xs_.total += atom_density * micro.total;

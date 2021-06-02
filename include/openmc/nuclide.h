@@ -172,8 +172,8 @@ namespace data {
 
 // Minimum/maximum transport energy for each particle type. Order corresponds to
 // that of the ParticleType enum
-extern std::array<double, 2> energy_min;
 #pragma omp declare target
+extern std::array<double, 2> energy_min;
 extern std::array<double, 2> energy_max;
 #pragma omp end declare target
 

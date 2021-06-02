@@ -191,7 +191,12 @@ Particle::event_calculate_xs()
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
         // sections again.
+        //#pragma omp target update to(this[:1])
+        //#pragma omp target
+        {
         model::materials[material_].calculate_xs(*this);
+        }
+        //#pragma omp target update from(this[:1])
       }
     } else {
       // Get the MG data; unlike the CE case above, we have to re-calculate

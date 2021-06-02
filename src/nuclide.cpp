@@ -630,12 +630,15 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
   // Check to see if there is multipole data present at this energy
   bool use_mp = false;
+  /*
   if (multipole_) {
     use_mp = (p.E_ >= multipole_->E_min_ && p.E_ <= multipole_->E_max_);
   }
+  */
 
   // Evaluate multipole or interpolate
   if (use_mp) {
+    /*
     // Call multipole kernel
     double sig_s, sig_a, sig_f;
     std::tie(sig_s, sig_a, sig_f) = multipole_->evaluate(p.E_, p.sqrtkT_);
@@ -671,6 +674,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.index_grid = -1;
     micro.interp_factor = 0.0;
 
+    */
   } else {
     // Find the appropriate temperature index.
     double kT = p.sqrtkT_*p.sqrtkT_;

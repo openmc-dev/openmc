@@ -43,9 +43,9 @@ public:
   //! Initialize logarithmic grid for energy searches
   void init_grid();
 
+  #pragma omp declare target
   void calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p);
 
-  #pragma omp declare target
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 
   // Methods
@@ -146,11 +146,13 @@ private:
   //! \return Temperature index and interpolation factor
   std::pair<gsl::index, double> find_temperature(double T) const;
 
+  #pragma omp declare target
   static int XS_TOTAL;
   static int XS_ABSORPTION;
   static int XS_FISSION;
   static int XS_NU_FISSION;
   static int XS_PHOTON_PROD;
+  #pragma omp end declare target
 };
 
 //==============================================================================

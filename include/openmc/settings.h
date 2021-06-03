@@ -24,7 +24,9 @@ namespace settings {
 
 // Boolean flags
 extern bool assume_separate;          //!< assume tallies are spatially separate?
+#pragma omp declare target
 extern bool check_overlaps;           //!< check overlaps in geometry?
+#pragma omp end declare target
 extern bool confidence_intervals;     //!< use confidence intervals for results?
 #pragma omp declare target
 extern bool create_fission_neutrons;  //!< create fission neutrons (fixed source)?

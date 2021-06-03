@@ -117,17 +117,28 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
 
   int64_t offset = simulation::advance_particle_queue.size();;
+  
+  //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update to(model::device_cells[:model::cells.size()])
 
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
-    Particle* p = &simulation::particles[queue[i].idx];
-    p->event_calculate_xs();
+    Particle& p = simulation::device_particles[queue[i].idx];
+    //#pragma omp target update to(p)
+    //#pragma omp target
+    {
+      p.event_calculate_xs();
+    }
+    //#pragma omp target update from(p)
 
     // After executing a calculate_xs event, particles will
     // always require an advance event. Therefore, we don't need to use
     // the protected enqueuing function.
     simulation::advance_particle_queue[offset + i] = queue[i];
   }
+  
+  //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update from(model::device_cells[:model::cells.size()])
 
   simulation::advance_particle_queue.resize(offset + queue.size());
 

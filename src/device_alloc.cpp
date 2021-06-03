@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/cell.h"
+#include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
@@ -50,6 +51,7 @@ void move_settings_to_device()
   settings::energy_cutoff[0]; // Lazy extern template expansion workaround
   #pragma omp target update to(settings::energy_cutoff)
   #pragma omp target update to(settings::n_log_bins)
+  #pragma omp target update to(settings::check_overlaps)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)
@@ -63,6 +65,9 @@ void move_settings_to_device()
   #pragma omp target update to(simulation::total_weight)
   #pragma omp target update to(simulation::need_depletion_rx)
   #pragma omp target update to(simulation::log_spacing)
+
+  // geometry.h
+  #pragma omp target update to(model::root_universe)
 }
 
 void move_read_only_data_to_device()

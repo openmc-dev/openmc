@@ -254,9 +254,9 @@ public:
   #pragma omp end declare target
 
   // Coarse-grained particle events
-  void event_calculate_xs();
   void event_advance_tally();
   #pragma omp declare target
+  void event_calculate_xs();
   void event_collide();
   void event_advance();
   void event_cross_surface();

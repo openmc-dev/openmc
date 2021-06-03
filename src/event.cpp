@@ -91,8 +91,11 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
 
   //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
 
-  simulation::calculate_fuel_xs_queue.copy_device_to_host();
-  simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
+  //simulation::calculate_fuel_xs_queue.copy_device_to_host();
+  //simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
+  
+  simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
+  simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
 
   // Transfer total weight from device -> host if the kernel was run on device.
   // Note: the pre-kernel transfer host -> device happens in initialize_batch() at the
@@ -120,8 +123,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   
   //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
-  queue.copy_host_to_device();
-  simulation::advance_particle_queue.copy_host_to_device();
+  //simulation::advance_particle_queue.copy_host_to_device();
 
   #ifdef USE_DEVICE
   // This pragma results in illegal memory errors at runtime
@@ -143,7 +145,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // After executing a calculate_xs event, particles will
   // always require an advance event. Therefore, we don't need to use
   // the protected enqueuing function.
-  simulation::advance_particle_queue.copy_device_to_host();
+  //simulation::advance_particle_queue.copy_device_to_host();
   simulation::advance_particle_queue.resize(offset + queue.size());
   /*
   for (int64_t i = 0; i < queue.size(); i++) {
@@ -161,9 +163,9 @@ void process_advance_particle_events()
   simulation::time_event_advance_particle.start();
 
   // Move queue and particles host->device
-  simulation::advance_particle_queue.copy_host_to_device();
-  simulation::surface_crossing_queue.copy_host_to_device();
-  simulation::collision_queue.copy_host_to_device();
+  //simulation::advance_particle_queue.copy_host_to_device();
+  //simulation::surface_crossing_queue.copy_host_to_device();
+  //simulation::collision_queue.copy_host_to_device();
   //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
   #ifdef USE_DEVICE
@@ -184,8 +186,10 @@ void process_advance_particle_events()
     }
   }
   //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
-  simulation::surface_crossing_queue.copy_device_to_host();
-  simulation::collision_queue.copy_device_to_host();
+  //simulation::surface_crossing_queue.copy_device_to_host();
+  simulation::surface_crossing_queue.sync_size_device_to_host();
+  //simulation::collision_queue.copy_device_to_host();
+  simulation::collision_queue.sync_size_device_to_host();
 
 
   // DEBUGGING REGION
@@ -225,9 +229,9 @@ void process_surface_crossing_events()
 {
   simulation::time_event_surface_crossing.start();
   
-  simulation::surface_crossing_queue.copy_host_to_device();
-  simulation::calculate_fuel_xs_queue.copy_host_to_device();
-  simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
+  //simulation::surface_crossing_queue.copy_host_to_device();
+  //simulation::calculate_fuel_xs_queue.copy_host_to_device();
+  //simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
   //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
   #pragma omp target update to(model::device_cells[:model::cells.size()])
 
@@ -248,8 +252,10 @@ void process_surface_crossing_events()
   //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
   #pragma omp target update from(model::device_cells[:model::cells.size()])
   
-  simulation::calculate_fuel_xs_queue.copy_device_to_host();
-  simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
+  //simulation::calculate_fuel_xs_queue.copy_device_to_host();
+  simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
+  //simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
+  simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
 
   simulation::surface_crossing_queue.resize(0);
 
@@ -260,9 +266,9 @@ void process_collision_events()
 {
   simulation::time_event_collision.start();
 
-  simulation::collision_queue.copy_host_to_device();
-  simulation::calculate_fuel_xs_queue.copy_host_to_device();
-  simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
+  //simulation::collision_queue.copy_host_to_device();
+  //simulation::calculate_fuel_xs_queue.copy_host_to_device();
+  //simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
   //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
   #ifdef USE_DEVICE
@@ -280,8 +286,10 @@ void process_collision_events()
   }
 
   //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
-  simulation::calculate_fuel_xs_queue.copy_device_to_host();
-  simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
+  //simulation::calculate_fuel_xs_queue.copy_device_to_host();
+  simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
+  //simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
+  simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
 
   simulation::collision_queue.resize(0);
 

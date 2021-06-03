@@ -74,7 +74,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
 {
   simulation::time_event_init.start();
 
-  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
   simulation::calculate_fuel_xs_queue.sync_size_host_to_device();
   simulation::calculate_nonfuel_xs_queue.sync_size_host_to_device();
@@ -89,7 +89,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
     dispatch_xs_event(i);
   }
 
-  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
 
   simulation::calculate_fuel_xs_queue.copy_device_to_host();
   simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
@@ -118,7 +118,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 
   int64_t offset = simulation::advance_particle_queue.size();;
   
-  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
   queue.copy_host_to_device();
   simulation::advance_particle_queue.copy_host_to_device();
@@ -138,7 +138,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     simulation::advance_particle_queue[offset + i] = queue[i];
   }
   
-  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
   
   // After executing a calculate_xs event, particles will
   // always require an advance event. Therefore, we don't need to use
@@ -164,7 +164,7 @@ void process_advance_particle_events()
   simulation::advance_particle_queue.copy_host_to_device();
   simulation::surface_crossing_queue.copy_host_to_device();
   simulation::collision_queue.copy_host_to_device();
-  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
   #ifdef USE_DEVICE
   #pragma omp target teams distribute parallel for
@@ -183,7 +183,7 @@ void process_advance_particle_events()
       simulation::collision_queue.thread_safe_append({p, buffer_idx});
     }
   }
-  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
   simulation::surface_crossing_queue.copy_device_to_host();
   simulation::collision_queue.copy_device_to_host();
 
@@ -228,7 +228,7 @@ void process_surface_crossing_events()
   simulation::surface_crossing_queue.copy_host_to_device();
   simulation::calculate_fuel_xs_queue.copy_host_to_device();
   simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
-  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
   #pragma omp target update to(model::device_cells[:model::cells.size()])
 
   #ifdef USE_DEVICE
@@ -245,7 +245,7 @@ void process_surface_crossing_events()
       dispatch_xs_event(buffer_idx);
   }
   
-  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
   #pragma omp target update from(model::device_cells[:model::cells.size()])
   
   simulation::calculate_fuel_xs_queue.copy_device_to_host();
@@ -263,7 +263,7 @@ void process_collision_events()
   simulation::collision_queue.copy_host_to_device();
   simulation::calculate_fuel_xs_queue.copy_host_to_device();
   simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
-  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
   #ifdef USE_DEVICE
   #pragma omp target teams distribute parallel for
@@ -279,7 +279,7 @@ void process_collision_events()
       dispatch_xs_event(buffer_idx);
   }
 
-  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
   simulation::calculate_fuel_xs_queue.copy_device_to_host();
   simulation::calculate_nonfuel_xs_queue.copy_device_to_host();
 
@@ -292,7 +292,7 @@ void process_death_events(int64_t n_particles)
 {
   simulation::time_event_death.start();
 
-  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
   #ifdef USE_DEVICE
   #pragma omp target teams distribute parallel for
@@ -304,7 +304,7 @@ void process_death_events(int64_t n_particles)
     p.event_death();
   }
 
-  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
 
   #ifdef USE_DEVICE
 

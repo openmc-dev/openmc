@@ -770,12 +770,14 @@ void transport_event_based()
         simulation::advance_particle_queue.size(),
         simulation::surface_crossing_queue.size(),
         simulation::collision_queue.size()});
+      /*
       printf("Max event is %ld\n", max);
-       printf("fuel xs size = %ld\n", simulation::calculate_fuel_xs_queue.size())
-       printf("nonfuel xs size = %ld\n", simulation::calculate_nonfuel_xs_queue.size())
+       printf("fuel xs size = %ld\n", simulation::calculate_fuel_xs_queue.size());
+       printf("nonfuel xs size = %ld\n", simulation::calculate_nonfuel_xs_queue.size());
        printf("advance size = %ld\n", simulation::advance_particle_queue.size());
        printf("surf crossing size = %ld\n", simulation::surface_crossing_queue.size());
        printf("collision size = %ld\n", simulation::collision_queue.size());
+       */
 
       // Execute event with the longest queue
       if (max == 0) {

@@ -156,6 +156,7 @@ public:
 
   void allocate_on_device()
   {
+    #pragma omp target update to(this[:1])
     #pragma omp target enter data map(alloc: data_[:capacity_])
   }
 

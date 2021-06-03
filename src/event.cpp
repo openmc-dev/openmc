@@ -114,8 +114,12 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   #ifdef USE_DEVICE
   // This pragma results in illegal memory errors at runtime
   //#pragma omp target teams distribute parallel for
-  // This pragma works
-  #pragma omp target
+
+  // This pragma works but is slow due to serialization
+  //#pragma omp target
+  
+  // This pragma works and seems reasonably fast
+  #pragma omp target teams distribute
   #else
   #pragma omp parallel for schedule(runtime)
   #endif

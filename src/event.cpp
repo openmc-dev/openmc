@@ -76,8 +76,8 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
 
   #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
-  simulation::calculate_fuel_xs_queue.copy_host_to_device();
-  simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
+  simulation::calculate_fuel_xs_queue.sync_size_host_to_device();
+  simulation::calculate_nonfuel_xs_queue.sync_size_host_to_device();
 
   #ifdef USE_DEVICE
   #pragma omp target teams distribute parallel for
@@ -121,6 +121,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
 
   queue.copy_host_to_device();
+  simulation::advance_particle_queue.copy_host_to_device();
 
   #ifdef USE_DEVICE
   // This pragma results in illegal memory errors at runtime
@@ -134,6 +135,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     int64_t buffer_idx = queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_calculate_xs();
+    simulation::advance_particle_queue[offset + i] = queue[i];
   }
   
   #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
@@ -141,10 +143,13 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // After executing a calculate_xs event, particles will
   // always require an advance event. Therefore, we don't need to use
   // the protected enqueuing function.
+  simulation::advance_particle_queue.copy_device_to_host();
   simulation::advance_particle_queue.resize(offset + queue.size());
+  /*
   for (int64_t i = 0; i < queue.size(); i++) {
     simulation::advance_particle_queue[offset + i] = queue[i];
   }
+  */
 
   queue.resize(0);
 

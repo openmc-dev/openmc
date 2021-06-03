@@ -133,6 +133,16 @@ public:
   //! \param size The new size of the container
   void resize(int64_t size) {size_ = size;}
 
+  void sync_size_host_to_device()
+  {
+    #pragma omp target update to(this[:1])
+  }
+  
+  void sync_size_device_to_host()
+  {
+    #pragma omp target update from(this[:1])
+  }
+
   //! Return the number of elements that the container has currently allocated
   //! space for.
   int64_t capacity() {return capacity_;}
@@ -143,13 +153,13 @@ public:
 
   void allocate_on_device()
   {
-    #pragma omp target enter data map(alloc: data_[:capacity_], size_)
+    #pragma omp target enter data map(alloc: data_[:capacity_])
   }
 
   void copy_host_to_device()
   {
     #pragma omp target update to(this[:1])
-    #pragma omp target update to(data_[:capacity_], size_)
+    #pragma omp target update to(data_[:capacity_])
   }
   
   void copy_device_to_host()

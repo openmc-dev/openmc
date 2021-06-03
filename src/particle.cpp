@@ -147,10 +147,6 @@ Particle::from_source(const Bank& src)
 void
 Particle::event_calculate_xs()
 {
-        #pragma omp target update to(this[:1])
-        #pragma omp target
-        {
-
   // Set the random number stream
   if (type_ == Particle::Type::neutron) {
     stream_ = STREAM_TRACKING;
@@ -168,50 +164,22 @@ Particle::event_calculate_xs()
   event_ = TallyEvent::KILL;
   event_nuclide_ = NUCLIDE_NONE;
   event_mt_ = REACTION_NONE;
-        
-        }
-        #pragma omp target update from(this[:1])
-  
-  // Bad
-        //#pragma omp target update to(this[:1])
-        //#pragma omp target
-        //{
 
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (coord_[n_coord_ - 1].cell == C_NONE) {
-    #pragma omp target update to(model::device_cells[:model::cells.size()])
-        #pragma omp target update to(this[:1])
-        #pragma omp target
-        {
     if (!exhaustive_find_cell(*this)) {
       //this->mark_as_lost("Could not find the cell containing particle "
       //  + std::to_string(id_));
-      //printf("Could not find the cell containing particle %d\n", id_);
-      //return;
-      printf("Could not find particle\n");
+      printf("Could not find the cell containing particle %d\n", id_);
+      return;
     }
-        }
-        #pragma omp target update from(this[:1])
-    #pragma omp target update from(model::device_cells[:model::cells.size()])
-
-
-        #pragma omp target update to(this[:1])
-        #pragma omp target
-        {
 
     // Set birth cell attribute
     if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
-        }
-        #pragma omp target update from(this[:1])
   }
   
-  // Good
-        #pragma omp target update to(this[:1])
-        #pragma omp target
-        {
-
   // Write particle track.
   //if (write_track_) write_particle_track(*this);
 
@@ -220,11 +188,6 @@ Particle::event_calculate_xs()
     //check_cell_overlap(*this);
   }
 
-  // Good
-        //#pragma omp target update to(this[:1])
-        //#pragma omp target
-        //{
-
   // Calculate microscopic and macroscopic cross sections
   if (material_ != MATERIAL_VOID) {
     if (settings::run_CE) {
@@ -232,12 +195,7 @@ Particle::event_calculate_xs()
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
         // sections again.
-        //#pragma omp target update to(this[:1])
-        //#pragma omp target
-        {
         model::materials[material_].calculate_xs(*this);
-        }
-        //#pragma omp target update from(this[:1])
       }
     } else {
       printf("multigroup mode not yet supported on device.\n");
@@ -257,8 +215,6 @@ Particle::event_calculate_xs()
     macro_xs_.fission    = 0.0;
     macro_xs_.nu_fission = 0.0;
   }
-        }
-        #pragma omp target update from(this[:1])
 }
 
 void

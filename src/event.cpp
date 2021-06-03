@@ -118,14 +118,14 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 
   int64_t offset = simulation::advance_particle_queue.size();;
   
-  //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
+  #pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
   //#pragma omp target update to(model::device_cells[:model::cells.size()])
 
   #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
     Particle& p = simulation::device_particles[queue[i].idx];
     //#pragma omp target update to(p)
-    //#pragma omp target
+    #pragma omp target
     {
       p.event_calculate_xs();
     }
@@ -137,7 +137,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     simulation::advance_particle_queue[offset + i] = queue[i];
   }
   
-  //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
+  #pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
   //#pragma omp target update from(model::device_cells[:model::cells.size()])
 
   simulation::advance_particle_queue.resize(offset + queue.size());

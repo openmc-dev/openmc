@@ -261,9 +261,11 @@ void
 Particle::event_advance_tally()
 {
   // Score track-length tallies
+  /*
   if (!model::active_tracklength_tallies.empty()) {
     score_tracklength_tally(*this, advance_distance_);
   }
+  */
 
   // Score track-length estimate of k-eff
   if (settings::run_mode == RunMode::EIGENVALUE &&
@@ -272,9 +274,11 @@ Particle::event_advance_tally()
   }
 
   // Score flux derivative accumulators for differential tallies.
+  /*
   if (!model::active_tallies.empty()) {
     score_track_derivative(*this, advance_distance_);
   }
+  */
 }
 
 void

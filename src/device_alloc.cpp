@@ -27,6 +27,9 @@ void enforce_assumptions()
   // Assertions made when initializing particles
   assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
   assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
+  
+  assert(model::active_tracklength_tallies.empty() && "Tracklength tallies not yet supported.");
+  assert(model::active_tallies.empty() && "Tallies not yet supported.");
 }
 
 void move_settings_to_device()

@@ -233,7 +233,7 @@ void process_surface_crossing_events()
   //simulation::calculate_fuel_xs_queue.copy_host_to_device();
   //simulation::calculate_nonfuel_xs_queue.copy_host_to_device();
   //#pragma omp target update to(simulation::device_particles[:simulation::particles.size()])
-  #pragma omp target update to(model::device_cells[:model::cells.size()])
+  //#pragma omp target update to(model::device_cells[:model::cells.size()])
 
   #ifdef USE_DEVICE
   #pragma omp target teams distribute parallel for
@@ -250,7 +250,7 @@ void process_surface_crossing_events()
   }
   
   //#pragma omp target update from(simulation::device_particles[:simulation::particles.size()])
-  #pragma omp target update from(model::device_cells[:model::cells.size()])
+  //#pragma omp target update from(model::device_cells[:model::cells.size()])
   
   //simulation::calculate_fuel_xs_queue.copy_device_to_host();
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();

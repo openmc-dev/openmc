@@ -39,7 +39,7 @@ def cpp_driver(request):
             target_link_libraries(main OpenMC::libopenmc)
             set_target_properties(main PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
             set(CMAKE_CXX_FLAGS "-pedantic-errors")
-
+            add_compile_definitions(DAGMC=1)
             """.format(openmc_dir)))
 
     # Create temporary build directory and change to there
@@ -93,7 +93,7 @@ class ExternalMoabTest(PyAPITestHarness):
 
     def _test_output_created(self):
         pass
-    
+
     # Directly compare results of unstructured  mesh with internal and external moab
     def _compare_results(self):
 

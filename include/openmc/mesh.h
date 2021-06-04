@@ -366,6 +366,7 @@ public:
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
   MOABMesh(const std::string& filename);
+  MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
 
   // Overridden Methods
 

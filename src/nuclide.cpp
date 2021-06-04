@@ -680,11 +680,6 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     double kT = p.sqrtkT_*p.sqrtkT_;
     double f;
     int i_temp = -1;
-    // Good w/this
-    //#pragma omp target update to(this[:1])
-    //#pragma omp target update to(p)
-    //#pragma omp target map(tofrom: f, i_temp)
-    //{
     switch (settings::temperature_method) {
     case TemperatureMethod::NEAREST:
       {
@@ -710,11 +705,6 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       if (f > prn(p.current_seed())) ++i_temp;
       break;
     }
-    // Good w/this
-    //#pragma omp target update to(this[:1])
-    //#pragma omp target update to(p)
-    //#pragma omp target map(tofrom: f)
-    //{
 
     // Offset index grid
     int index_offset = i_temp * (settings::n_log_bins + 1);
@@ -728,41 +718,19 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     int xs_offset = flat_temp_offsets_[i_temp] * 5;
     double* xs = &flat_xs_[xs_offset];
     
-    // Good w/this
-    //#pragma omp target update to(p)
-    //#pragma omp target update to(this[:1])
-    //#pragma omp target map(tofrom: f)
-    //{
-
-    //int tgp = total_energy_gridpoints_;
     // Determine # of gridpoints for this temperature
     int num_gridpoints;
     if (i_temp < kTs_.size() - 1) {
       num_gridpoints = flat_temp_offsets_[i_temp + 1] - energy_offset;
     } else {
-      // Good?
-      //#pragma omp target update to(this[:1])
-      //#pragma omp target map(from: num_gridpoints) map(to:energy_offset, tgp)
-      //{
       num_gridpoints = total_energy_gridpoints_ - energy_offset;
-      //num_gridpoints = tgp - energy_offset;
-      //}
     }
-    
-    // Good
-    //#pragma omp target update to(p)
-    //#pragma omp target map(tofrom: f)
-    //{
 
     // Determine the energy grid index using a logarithmic mapping to
     // reduce the energy range over which a binary search needs to be
     // performed
 
     int i_grid;
-    // Good
-    //#pragma omp target update to(p)
-    //#pragma omp target map(tofrom: i_grid, f)
-    //{
     if (p.E_ < energy[0]) {
       i_grid = 0;
     } else if (p.E_ > energy[num_gridpoints-1]) {
@@ -825,9 +793,6 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.photon_prod = (1.0 - f)*xs[i_grid1D + XS_PHOTON_PROD]
       + f*xs[i_next1D + XS_PHOTON_PROD];
 
-    //}
-    //#pragma omp target update from(p)
-
     // Depletion-related reactions
     if (simulation::need_depletion_rx) {
       printf("Depletion-related reactions not yet implemented!\n");
@@ -879,12 +844,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
   // sections.
 
   if (i_sab >= 0) {
-    //#pragma omp target update to(p)
-    //#pragma omp target
-    {
       this->calculate_sab_xs(i_sab, sab_frac, p);
-    }
-    //#pragma omp target update from(p)
   }
 
   // If the particle is in the unresolved resonance range and there are
@@ -893,12 +853,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     int n = device_urr_data_[micro.index_temp].n_energy_;
     if ((p.E_ > device_urr_data_[micro.index_temp].device_energy_[0]) &&
         (p.E_ < device_urr_data_[micro.index_temp].device_energy_[n-1])) {
-      //#pragma omp target update to(p)
-      //#pragma omp target
-      {
         this->calculate_urr_xs(micro.index_temp, p);
-      }
-      //#pragma omp target update from(p)
     }
   }
 
@@ -1020,10 +975,6 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
       capture = 0.;
     }
   }
-
-  ///////////////////////////////////////////////////////////
-  // TODO: Offload everything below to device
-  ///////////////////////////////////////////////////////////
 
   // Determine the treatment of inelastic scattering
   double inelastic = 0.;

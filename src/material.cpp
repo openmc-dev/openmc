@@ -759,12 +759,7 @@ void Material::calculate_xs(Particle& p) const
   p.macro_xs_.nu_fission = 0.0;
 
   if (p.type_ == Particle::Type::neutron) {
-    //#pragma omp target update to(p)
-    //#pragma omp target
-    {
     this->calculate_neutron_xs(p);
-    }
-    //#pragma omp target update from(p)
   } else if (p.type_ == Particle::Type::photon) {
     printf("Photon XS lookups not yet supported on device.\n");
     //this->calculate_photon_xs(p);

@@ -115,7 +115,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // This pragma results in illegal memory errors at runtime
   //#pragma omp target teams distribute parallel for
   // This pragma works but only runs one thread per block
-  #pragma omp target teams distribute parallel for thread_limit(1)
+  #pragma omp target teams distribute
   #else
   #pragma omp parallel for schedule(runtime)
   #endif

@@ -90,7 +90,7 @@ extern vector<uint64_t> seeds; // N_STREAMS pitch
 extern vector<int> stream;
 
 extern vector<int> secondary_bank_current_indx;
-extern vector<ParticleBank> secondary_bank; // max_secondary_particles pitch
+extern vector<SourceSite> secondary_bank; // max_secondary_particles pitch
 
 extern vector<int64_t> current_work;
 extern vector<double> flux_derivs;         // tally_derivs.size() pitch
@@ -152,8 +152,7 @@ extern __constant__ char* write_track;
 extern __constant__ uint64_t* seeds; // N_STREAMS pitch
 extern __constant__ int* stream;
 extern __constant__ int* secondary_bank_current_indx;
-extern __constant__ ParticleBank*
-  secondary_bank; // max_secondary_particles pitch
+extern __constant__ SourceSite* secondary_bank; // max_secondary_particles pitch
 extern __constant__ int64_t* current_work;
 extern __constant__ double* flux_derivs;         // tally_derivs.size() pitch
 extern __constant__ FilterMatch* filter_matches; // tally_filters.size() pitch
@@ -768,7 +767,7 @@ public:
 #endif
   }
 
-  HD ParticleBank& secondary_bank(const int& i)
+  HD SourceSite& secondary_bank(const int& i)
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::secondary_bank[p * soa::max_secondary_particles + i];
@@ -1127,7 +1126,7 @@ public:
 #endif
   }
 
-  HD void secondary_bank_push_back(ParticleBank& site)
+  HD void secondary_bank_push_back(SourceSite& site)
   {
 #ifdef __CUDA_ARCH__
     // Check we're not writing into the next particle's space
@@ -1144,7 +1143,7 @@ public:
 #endif
   }
 
-  HD ParticleBank& secondary_bank_back()
+  HD SourceSite& secondary_bank_back()
   {
 #ifdef __CUDA_ARCH__
     assert(soa::gpu::secondary_bank_current_indx[p] > 0);
@@ -1155,7 +1154,7 @@ public:
 #endif
   }
 
-  HD ParticleBank* secondary_bank_end()
+  HD SourceSite* secondary_bank_end()
   {
 #ifdef __CUDA_ARCH__
     return &secondary_bank(soa::gpu::secondary_bank_current_indx[p]);
@@ -1173,7 +1172,7 @@ public:
 #endif
   }
 
-  HD ParticleBank& secondary_bank_emplace_back()
+  HD SourceSite& secondary_bank_emplace_back()
   {
 #ifdef __CUDA_ARCH__
     return secondary_bank(soa::gpu::secondary_bank_current_indx[p]++);

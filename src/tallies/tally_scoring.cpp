@@ -56,8 +56,8 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
 }
 
 FilterBinIter::FilterBinIter(
-  const Tally& tally, bool end, vector<FilterMatch>* particle_filter_matches)
-  : filter_matches_ {*particle_filter_matches}, tally_ {tally}
+  const Tally& tally, bool end, FilterMatch* particle_filter_matches)
+  : filter_matches_ {particle_filter_matches}, tally_ {tally}
 {
   // Handle the special case for an iterator that points to the end.
   if (end) {
@@ -145,11 +145,7 @@ FilterBinIter::compute_index_weight()
 //! Helper function used to increment tallies with a delayed group filter.
 
 void score_fission_delayed_dg(int i_tally, int d_bin, double score,
-<<<<<<< HEAD
-  int score_index, vector<FilterMatch>& filter_matches)
-=======
   int score_index, FilterMatch* filter_matches)
->>>>>>> 799f80382 (SOA event mode works now)
 {
   // Save the original delayed group bin
   auto& tally {*model::tallies[i_tally]};

@@ -253,7 +253,7 @@ xsfloat CoherentElasticXS::operator()(xsfloat E) const
 
 IncoherentElasticXS::IncoherentElasticXS(hid_t dset)
 {
-  array<xsfloat, 2> tmp;
+  std::array<xsfloat, 2> tmp;
   read_dataset(dset, nullptr, tmp);
   bound_xs_ = tmp[0];
   debye_waller_ = tmp[1];

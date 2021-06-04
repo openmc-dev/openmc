@@ -122,7 +122,7 @@ public:
   Position origin_; //!< Plot origin in geometry
   Position width_; //!< Plot width in geometry
   PlotBasis basis_; //!< Plot basis (XY/XZ/YZ)
-  array<size_t, 3> pixels_; //!< Plot size in pixels
+  std::array<size_t, 3> pixels_; //!< Plot size in pixels
   bool color_overlaps_; //!< Show overlapping cells?
   int level_; //!< Plot universe level
 };

@@ -1,8 +1,6 @@
 #ifndef OPENMC_HDF5_INTERFACE_H
 #define OPENMC_HDF5_INTERFACE_H
 
-#include "openmc/string.h"
-#include "openmc/vector.h"
 #include <algorithm> // for min
 #include <complex>
 #include <cstddef>
@@ -18,6 +16,7 @@
 #include "openmc/array.h"
 #include "openmc/error.h"
 #include "openmc/position.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -144,7 +143,8 @@ void read_attribute(hid_t obj_id, const char* name, T& buffer)
 
 // array version
 template<typename T, std::size_t N>
-inline void read_attribute(hid_t obj_id, const char* name, array<T, N>& buffer)
+inline void read_attribute(
+  hid_t obj_id, const char* name, std::array<T, N>& buffer)
 {
   read_attr(obj_id, name, H5TypeMap<T>::type_id, buffer.data());
 }
@@ -261,7 +261,7 @@ read_dataset(hid_t obj_id, const char* name, std::string& str, bool indep=false)
 // array version
 template<typename T, std::size_t N>
 inline void read_dataset(
-  hid_t dset, const char* name, array<T, N>& buffer, bool indep = false)
+  hid_t dset, const char* name, std::array<T, N>& buffer, bool indep = false)
 {
   read_dataset_lowlevel(dset, name, H5TypeMap<T>::type_id, H5S_ALL, indep,
                         buffer.data());
@@ -357,7 +357,7 @@ void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr,
   close_dataset(dset);
 
   // cast from hsize_t to size_t
-  vector<size_t> shape(hsize_t_shape.size());
+  std::vector<size_t> shape(hsize_t_shape.size());
   for (int i = 0; i < shape.size(); i++) {
     shape[i] = static_cast<size_t>(hsize_t_shape[i]);
   }
@@ -376,7 +376,7 @@ void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr,
 inline void
 read_dataset(hid_t obj_id, const char* name, Position& r, bool indep=false)
 {
-  array<double, 3> x;
+  std::array<double, 3> x;
   read_dataset(obj_id, name, x, indep);
   r.x = x[0];
   r.y = x[1];
@@ -441,7 +441,7 @@ write_attribute(hid_t obj_id, const char* name, const std::string& buffer)
 
 template<typename T, std::size_t N>
 inline void write_attribute(
-  hid_t obj_id, const char* name, const array<T, N>& buffer)
+  hid_t obj_id, const char* name, const std::array<T, N>& buffer)
 {
   hsize_t dims[] {N};
   write_attr(obj_id, 1, dims, name, H5TypeMap<T>::type_id, buffer.data());
@@ -458,7 +458,7 @@ inline void write_attribute(
 inline void
 write_attribute(hid_t obj_id, const char* name, Position r)
 {
-  array<double, 3> buffer {r.x, r.y, r.z};
+  std::array<double, 3> buffer {r.x, r.y, r.z};
   write_attribute(obj_id, name, buffer);
 }
 
@@ -485,7 +485,7 @@ write_dataset(hid_t obj_id, const char* name, const char* buffer)
 
 template<typename T, std::size_t N>
 inline void write_dataset(
-  hid_t obj_id, const char* name, const array<T, N>& buffer)
+  hid_t obj_id, const char* name, const std::array<T, N>& buffer)
 {
   hsize_t dims[] {N};
   write_dataset_lowlevel(obj_id, 1, dims, name, H5TypeMap<T>::type_id,
@@ -542,7 +542,7 @@ write_dataset(hid_t obj_id, const char* name, const xt::xcontainer<D>& arr)
 inline void
 write_dataset(hid_t obj_id, const char* name, Position r)
 {
-  array<double, 3> buffer {r.x, r.y, r.z};
+  std::array<double, 3> buffer {r.x, r.y, r.z};
   write_dataset(obj_id, name, buffer);
 }
 

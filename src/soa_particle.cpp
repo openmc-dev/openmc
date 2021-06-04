@@ -397,7 +397,7 @@ vector<int> n_collision;
 vector<char> write_track;
 vector<uint64_t> seeds; // N_STREAMS pitch
 vector<int> stream;
-vector<ParticleBank> secondary_bank; // max_secondary_particles pitch
+vector<SourceSite> secondary_bank; // max_secondary_particles pitch
 vector<int> secondary_bank_current_indx;
 vector<int64_t> current_work;
 vector<double> flux_derivs;         // tally_derivs.size() pitch
@@ -457,7 +457,7 @@ __constant__ char* write_track;
 __constant__ uint64_t* seeds; // N_STREAMS pitch
 __constant__ int* stream;
 __constant__ int* secondary_bank_current_indx;
-__constant__ ParticleBank* secondary_bank; // max_secondary_particles pitch
+__constant__ SourceSite* secondary_bank; // max_secondary_particles pitch
 __constant__ int64_t* current_work;
 __constant__ double* flux_derivs;         // tally_derivs.size() pitch
 __constant__ FilterMatch* filter_matches; // tally_filters.size() pitch

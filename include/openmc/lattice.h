@@ -275,10 +275,10 @@ private:
   };
 
   //! Fill universes_ vector for 'y' orientation
-  void fill_lattice_y(const vector<string>& univ_words);
+  void fill_lattice_y(const vector<std::string>& univ_words);
 
   //! Fill universes_ vector for 'x' orientation
-  void fill_lattice_x(const vector<string>& univ_words);
+  void fill_lattice_x(const vector<std::string>& univ_words);
 
   int n_rings_;                   //!< Number of radial tile positions
   int n_axial_;                   //!< Number of axial tile positions

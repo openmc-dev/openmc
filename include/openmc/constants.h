@@ -27,13 +27,13 @@ using xsfloat_4dvec = vector<vector<vector<vector<xsfloat>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {17, 0};
-constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
-constexpr array<int, 2> VERSION_TRACK {2, 0};
-constexpr array<int, 2> VERSION_SUMMARY {6, 0};
-constexpr array<int, 2> VERSION_VOLUME {1, 0};
-constexpr array<int, 2> VERSION_VOXEL {2, 0};
-constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
+constexpr std::array<int, 2> VERSION_STATEPOINT {17, 0};
+constexpr std::array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
+constexpr std::array<int, 2> VERSION_TRACK {2, 0};
+constexpr std::array<int, 2> VERSION_SUMMARY {6, 0};
+constexpr std::array<int, 2> VERSION_VOLUME {1, 0};
+constexpr std::array<int, 2> VERSION_VOXEL {2, 0};
+constexpr std::array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -77,7 +77,7 @@ constexpr double PI {3.141592653589793238462643383279502884L};
 const double SQRT_PI {std::sqrt(PI)};
 constexpr double INFTY {std::numeric_limits<double>::max()};
 constexpr xsfloat XSINFTY {std::numeric_limits<xsfloat>::max()};
-constexpr xsfloat XSZERO {static_cast<xsfloat>(0.0)};
+constexpr xsfloat XSZERO = 0.0;
 
 // Values here are from the Committee on Data for Science and Technology
 // (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
@@ -95,10 +95,10 @@ constexpr double N_AVOGADRO       {0.602214076}; // Avogadro's number in 10^24/m
 constexpr double K_BOLTZMANN      {8.617333262e-5}; // Boltzmann constant in eV/K
 
 // Electron subshell labels
-constexpr array<const char*, 39> SUBSHELLS = {"K", "L1", "L2", "L3", "M1", "M2",
-  "M3", "M4", "M5", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "O1", "O2", "O3",
-  "O4", "O5", "O6", "O7", "O8", "O9", "P1", "P2", "P3", "P4", "P5", "P6", "P7",
-  "P8", "P9", "P10", "P11", "Q1", "Q2", "Q3"};
+constexpr std::array<const char*, 39> SUBSHELLS = {"K", "L1", "L2", "L3", "M1",
+  "M2", "M3", "M4", "M5", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "O1", "O2",
+  "O3", "O4", "O5", "O6", "O7", "O8", "O9", "P1", "P2", "P3", "P4", "P5", "P6",
+  "P7", "P8", "P9", "P10", "P11", "Q1", "Q2", "Q3"};
 
 // Void material and nuclide
 // TODO: refactor and remove
@@ -243,7 +243,7 @@ enum ReactionType {
   HEATING_LOCAL = 901
 };
 
-constexpr array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
+constexpr std::array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
 
 enum class URRTableParam {
   CUM_PROB,

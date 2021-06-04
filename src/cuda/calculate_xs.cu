@@ -40,9 +40,9 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
   p.event_mt() = REACTION_NONE;
 
   p.macro_xs().total = 0.0;
-  p.macro_xs().absorption = 0.0;
-  p.macro_xs().fission = 0.0;
-  p.macro_xs().nu_fission = 0.0;
+  p.macro_xs().neutron.absorption = 0.0;
+  p.macro_xs().neutron.fission = 0.0;
+  p.macro_xs().neutron.nu_fission = 0.0;
 
   // Skip void material
   if (mat_idx == -1)
@@ -142,9 +142,9 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
 
     double const& atom_density = m.atom_density_[i];
     p.macro_xs().total += atom_density * micro->total;
-    p.macro_xs().absorption += atom_density * micro->absorption;
-    p.macro_xs().fission += atom_density * micro->fission;
-    p.macro_xs().nu_fission += atom_density * micro->nu_fission;
+    p.macro_xs().neutron.absorption += atom_density * micro->absorption;
+    p.macro_xs().neutron.fission += atom_density * micro->fission;
+    p.macro_xs().neutron.nu_fission += atom_density * micro->nu_fission;
   }
 }
 

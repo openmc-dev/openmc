@@ -482,7 +482,7 @@ void read_settings_xml()
     if (check_for_node(node_ssr, "path")) {
       path = get_node_value(node_ssr, "path", false, true);
     }
-    model::external_sources.push_back(make_unique<FileSource>(path));
+    model::external_sources.push_back(openmc::make_unique<FileSource>(path));
   }
 
   // If no source specified, default to isotropic point source at origin with Watt spectrum

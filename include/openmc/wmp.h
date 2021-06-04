@@ -29,7 +29,7 @@ constexpr int FIT_A {1}; // Absorption
 constexpr int FIT_F {2}; // Fission
 
 // Multipole HDF5 file version
-constexpr array<int, 2> WMP_VERSION {1, 1};
+constexpr std::array<int, 2> WMP_VERSION {1, 1};
 
 //========================================================================
 // Windowed multipole data

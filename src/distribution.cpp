@@ -7,6 +7,7 @@
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
 
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
@@ -268,7 +269,10 @@ xsfloat Tabular::sample(uint64_t* seed) const
     if (m == 0.0) {
       return x_i + (c - c_i)/p_i;
     } else {
-      return x_i + (std::sqrt(std::max(XSZERO, p_i*p_i + 2*m*(c - c_i))) - p_i)/m;
+      constexpr xsfloat zero = 0.0;
+      return x_i +
+             (std::sqrt(std::max(zero, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
+               m;
     }
   }
 }

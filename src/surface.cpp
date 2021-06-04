@@ -324,7 +324,7 @@ HD Direction SurfaceXPlane::normal(Position r) const
 void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-plane", false);
-  array<double, 1> coeffs {{x0_}};
+  std::array<double, 1> coeffs {{x0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -367,7 +367,7 @@ HD Direction SurfaceYPlane::normal(Position r) const
 void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-plane", false);
-  array<double, 1> coeffs {{y0_}};
+  std::array<double, 1> coeffs {{y0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -410,7 +410,7 @@ HD Direction SurfaceZPlane::normal(Position r) const
 void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-plane", false);
-  array<double, 1> coeffs {{z0_}};
+  std::array<double, 1> coeffs {{z0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -460,7 +460,7 @@ Direction HD SurfacePlane::normal(Position r) const
 void SurfacePlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "plane", false);
-  array<double, 4> coeffs {{A_, B_, C_, D_}};
+  std::array<double, 4> coeffs {{A_, B_, C_, D_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -570,7 +570,7 @@ HD Direction SurfaceXCylinder::normal(Position r) const
 void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cylinder", false);
-  array<double, 3> coeffs {{y0_, z0_, radius_}};
+  std::array<double, 3> coeffs {{y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -612,7 +612,7 @@ HD Direction SurfaceYCylinder::normal(Position r) const
 void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cylinder", false);
-  array<double, 3> coeffs {{x0_, z0_, radius_}};
+  std::array<double, 3> coeffs {{x0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -655,7 +655,7 @@ HD Direction SurfaceZCylinder::normal(Position r) const
 void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cylinder", false);
-  array<double, 3> coeffs {{x0_, y0_, radius_}};
+  std::array<double, 3> coeffs {{x0_, y0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -733,7 +733,7 @@ HD Direction SurfaceSphere::normal(Position r) const
 void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "sphere", false);
-  array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
+  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -862,7 +862,7 @@ HD Direction SurfaceXCone::normal(Position r) const
 void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cone", false);
-  array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -895,7 +895,7 @@ HD Direction SurfaceYCone::normal(Position r) const
 void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cone", false);
-  array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -928,7 +928,7 @@ HD Direction SurfaceZCone::normal(Position r) const
 void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cone", false);
-  array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -1031,7 +1031,7 @@ Direction HD SurfaceQuadric::normal(Position r) const
 void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "quadric", false);
-  array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};
+  std::array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 

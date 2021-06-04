@@ -83,7 +83,7 @@ xt::xtensor<double, 1> count_bank_sites(xt::xtensor<int, 1>& bins, bool* outside
 {
   // Determine shape of array for counts
   std::size_t cnt_size = cmfd::nx * cmfd::ny * cmfd::nz * cmfd::ng;
-  vector<std::size_t> cnt_shape = {cnt_size};
+  std::vector<std::size_t> cnt_shape = {cnt_size};
 
   // Create array of zeros
   xt::xarray<double> cnt {cnt_shape, 0.0};

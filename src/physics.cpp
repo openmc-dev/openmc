@@ -204,7 +204,7 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 #endif
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt_ / keff * weight * p.neutron_xs(i_nuclide).nu_fission /
+  double nu_t = p.wgt() / keff * weight * p.neutron_xs(i_nuclide).nu_fission /
                 p.neutron_xs(i_nuclide).total;
 
   // Sample the number of neutrons produced
@@ -1169,34 +1169,6 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
     // set the delayed group for the particle born from fission
     site->delayed_group = group;
 
-    int n_sample = 0;
-    while (true) {
-      // sample from energy/angle distribution -- note that mu has already been
-      // sampled above and doesn't need to be resampled
-      rx.products_[group].sample(E_in, site->E, mu, seed);
-
-      // resample if energy is greater than maximum neutron energy
-#ifdef __CUDA_ARCH__
-      if (site->E < gpu::energy_max_neutron)
-        break;
-#else
-      constexpr int neutron = static_cast<int>(ParticleType::neutron);
-      if (site->E < data::energy_max[neutron]) break;
-#endif
-
-        // check for large number of resamples
-      ++n_sample;
-      if (n_sample == MAX_SAMPLE) {
-        // particle_write_restart(p)
-#ifndef __CUDA_ARCH__
-        fatal_error("Resampled energy distribution maximum number of times "
-          "for nuclide " + nuc->name_);
-#else
-        __trap();
-#endif
-      }
-    }
-
   } else {
     // ====================================================================
     // PROMPT NEUTRON SAMPLED
@@ -1229,7 +1201,6 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
 #else
       __trap();
 #endif
-      }
     }
   }
 

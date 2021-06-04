@@ -598,12 +598,7 @@ void initialize_history(Particle& p, int64_t index_source)
       p.cell_born() = p.coord(p.n_coord() - 1).cell;
   }
 
-  // Make sure particle starts on the right random number stream
-  if (p.type() == ParticleType::neutron) {
-    p.stream() = STREAM_TRACKING;
-  } else {
-    p.stream() = STREAM_PHOTON;
-  }
+  p.stream() = STREAM_TRACKING;
 
   // Force calculation of cross-sections by setting last energy to zero
   p.invalidate_neutron_xs();
@@ -873,7 +868,7 @@ void init_gpu_constant_memory()
   cudaMemcpyToSymbol(gpu::keff, &simulation::keff, sizeof(double));
 
   auto first_source = simulation::source_bank.data();
-  cudaMemcpyToSymbol(gpu::source_bank, &first_source, sizeof(ParticleBank*));
+  cudaMemcpyToSymbol(gpu::source_bank, &first_source, sizeof(SourceSite*));
 
   int64_t local_work_index = simulation::work_index[mpi::rank];
   cudaMemcpyToSymbol(gpu::local_work_index, &local_work_index, sizeof(int64_t));

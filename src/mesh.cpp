@@ -54,13 +54,13 @@ const bool LIBMESH_ENABLED = false;
 namespace model {
 
 std::unordered_map<int32_t, int32_t> mesh_map;
-vector<unique_ptr<Mesh>> meshes;
+std::vector<std::unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
 #ifdef LIBMESH
 namespace settings {
-unique_ptr<libMesh::LibMeshInit> libmesh_init;
+std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
 const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
 }
 #endif
@@ -190,10 +190,9 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
 
 }
 
-void
-UnstructuredMesh::surface_bins_crossed(Position r0,
-                                       Position r1,
-                                       vector<int>& bins) const {
+void UnstructuredMesh::surface_bins_crossed(
+  Position r0, Position r1, const Direction& u, vector<int>& bins) const
+{
   fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
 
@@ -289,7 +288,7 @@ xt::xtensor<double, 1> StructuredMesh::count_sites(
 {
   // Determine shape of array for counts
   std::size_t m = this->n_bins();
-  vector<std::size_t> shape = {m};
+  std::vector<std::size_t> shape = {m};
 
   // Create array of zeros
   xt::xarray<double> cnt {shape, 0.0};
@@ -581,16 +580,11 @@ bool StructuredMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
   return min_dist < INFTY;
 }
 
-void StructuredMesh::bins_crossed(const Particle& p, vector<int>& bins,
-  vector<double>& lengths) const
+void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
+  vector<int>& bins, vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position last_r {p.r_last()};
-  Position r {p.r()};
-  Direction u {p.u()};
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
@@ -798,15 +792,10 @@ double RegularMesh::negative_grid_boundary(int* ijk, int i) const
 }
 
 void RegularMesh::surface_bins_crossed(
-  const Particle& p, vector<int>& bins) const
+  Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
   // ========================================================================
   // Determine if the track intersects the tally mesh.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position r0 {p.r_last_current()};
-  Position r1 {p.r()};
-  Direction u {p.u()};
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;
@@ -1000,7 +989,7 @@ xt::xtensor<double, 1> RegularMesh::count_sites(
 {
   // Determine shape of array for counts
   std::size_t m = this->n_bins();
-  vector<std::size_t> shape = {m};
+  std::vector<std::size_t> shape = {m};
 
   // Create array of zeros
   xt::xarray<double> cnt {shape, 0.0};
@@ -1106,7 +1095,7 @@ int RectilinearMesh::set_grid()
 }
 
 void RectilinearMesh::surface_bins_crossed(
-  const Particle& p, vector<int>& bins) const
+  Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
   // Determine indices for starting and ending location.
   int ijk0[3], ijk1[3];
@@ -1372,9 +1361,9 @@ openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
 
   for (int i = 0; i < n; ++i) {
     if (std::strcmp(type, "regular") == 0) {
-      model::meshes.push_back(make_unique<RegularMesh>());
+      model::meshes.push_back(std::make_unique<RegularMesh>());
     } else if (std::strcmp(type, "rectilinear") == 0) {
-      model::meshes.push_back(make_unique<RectilinearMesh>());
+      model::meshes.push_back(std::make_unique<RectilinearMesh>());
     } else {
       throw std::runtime_error{"Unknown mesh type: " + std::string(type)};
     }
@@ -2381,16 +2370,16 @@ void read_meshes(pugi::xml_node root)
 
     // Read mesh and add to vector
     if (mesh_type == "regular") {
-      model::meshes.push_back(make_unique<RegularMesh>(node));
+      model::meshes.push_back(std::make_unique<RegularMesh>(node));
     } else if (mesh_type == "rectilinear") {
-      model::meshes.push_back(make_unique<RectilinearMesh>(node));
+      model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
 #ifdef DAGMC
     } else if (mesh_type == "unstructured" && mesh_lib == "moab") {
-      model::meshes.push_back(make_unique<MOABMesh>(node));
+      model::meshes.push_back(std::make_unique<MOABMesh>(node));
 #endif
 #ifdef LIBMESH
     } else if (mesh_type == "unstructured" && mesh_lib == "libmesh") {
-      model::meshes.push_back(make_unique<LibMesh>(node));
+      model::meshes.push_back(std::make_unique<LibMesh>(node));
 #endif
     } else if (mesh_type == "unstructured") {
       fatal_error("Unstructured mesh support is not enabled or the mesh library is invalid.");

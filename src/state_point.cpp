@@ -354,7 +354,7 @@ void load_state_point()
 
   // Read revision number for state point file and make sure it matches with
   // current version
-  array<int, 2> array;
+  std::array<int, 2> array;
   read_attribute(file_id, "version", array);
   if (array != VERSION_STATEPOINT) {
     fatal_error("State point version does not match current version in OpenMC.");

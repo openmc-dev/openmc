@@ -4,6 +4,8 @@
 #ifndef OPENMC_SOURCE_H
 #define OPENMC_SOURCE_H
 
+#include <string>
+
 #include "pugixml.hpp"
 
 #include "openmc/distribution_multi.h"

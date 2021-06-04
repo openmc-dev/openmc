@@ -778,7 +778,7 @@ void draw_mesh_lines(Plot const& pl, ImageData& data)
 void create_voxel(Plot const& pl)
 {
   // compute voxel widths in each direction
-  array<double, 3> vox;
+  std::array<double, 3> vox;
   vox[0] = pl.width_[0]/(double)pl.pixels_[0];
   vox[1] = pl.width_[1]/(double)pl.pixels_[1];
   vox[2] = pl.width_[2]/(double)pl.pixels_[2];
@@ -803,7 +803,7 @@ void create_voxel(Plot const& pl)
 
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
-  array<int, 3> pixels;
+  std::array<int, 3> pixels;
   std::copy(pl.pixels_.begin(), pl.pixels_.end(), pixels.begin());
   write_attribute(file_id, "num_voxels", pixels);
   write_attribute(file_id, "voxel_width", vox);

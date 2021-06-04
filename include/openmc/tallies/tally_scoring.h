@@ -29,7 +29,7 @@ public:
   //
   //! \param end if true, the returned iterator indicates the end of a loop.
   FilterBinIter(
-    const Tally& tally, bool end, vector<FilterMatch>* particle_filter_matches);
+    const Tally& tally, bool end, FilterMatch* particle_filter_matches);
 
   bool operator==(const FilterBinIter& other) const
   {return index_ == other.index_;}
@@ -42,7 +42,7 @@ public:
   int index_ {1};
   double weight_ {1.};
 
-  vector<FilterMatch>& filter_matches_;
+  FilterMatch* filter_matches_;
 
 private:
   void compute_index_weight();

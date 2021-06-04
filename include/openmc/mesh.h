@@ -47,14 +47,14 @@ class Mesh;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> mesh_map;
-extern vector<unique_ptr<Mesh>> meshes;
+extern std::vector<std::unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
 #ifdef LIBMESH
 namespace settings {
 // used when creating new libMesh::Mesh instances
-extern unique_ptr<libMesh::LibMeshInit> libmesh_init;
+extern std::unique_ptr<libMesh::LibMeshInit> libmesh_init;
 extern const libMesh::Parallel::Communicator* libmesh_comm;
 }
 #endif
@@ -76,8 +76,8 @@ public:
   //! \param[in] u Particle direction
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  virtual void bins_crossed(
-    const Particle& p, vector<int>& bins, vector<double>& lengths) const = 0;
+  virtual void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const = 0;
 
   //! Determine which surface bins were crossed by a particle
   //
@@ -86,7 +86,7 @@ public:
   //! \param[in] u Particle direction
   //! \param[out] bins Surface bins that were crossed
   virtual void surface_bins_crossed(
-    const Particle& p, vector<int>& bins) const = 0;
+    Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -141,8 +141,8 @@ public:
 
   int n_surface_bins() const override;
 
-  void bins_crossed(const Particle& p, vector<int>& bins,
-    vector<double>& lengths) const override;
+  void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -224,8 +224,8 @@ public:
 
   // Overriden methods
 
-  void surface_bins_crossed(const Particle& p, vector<int>& bins)
-  const override;
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   int get_index_in_direction(double r, int i) const override;
 
@@ -263,8 +263,8 @@ public:
 
   // Overriden methods
 
-  void surface_bins_crossed(const Particle& p, vector<int>& bins)
-  const override;
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   int get_index_in_direction(double r, int i) const override;
 
@@ -326,9 +326,8 @@ public:
 
   std::string bin_label(int bin) const override;
 
-  void surface_bins_crossed(Position r0,
-                            Position r1,
-                            vector<int>& bins) const;
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   void to_hdf5(hid_t group) const override;
 
@@ -483,8 +482,8 @@ private:
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
   moab::EntityHandle tetset_; //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
-  unique_ptr<moab::Interface> mbi_;         //!< MOAB instance
-  unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
+  std::unique_ptr<moab::Interface> mbi_;         //!< MOAB instance
+  std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
   vector<moab::Matrix3> baryc_data_;        //!< Barycentric data for tetrahedra
   vector<std::string> tag_names_; //!< Names of score tags added to the mesh
 };
@@ -544,10 +543,10 @@ private:
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
-  unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
-  vector<unique_ptr<libMesh::PointLocatorBase>>
+  std::unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
+  vector<std::unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
-  unique_ptr<libMesh::EquationSystems>
+  std::unique_ptr<libMesh::EquationSystems>
     equation_systems_;         //!< pointer to the equation systems of the mesh
   std::string eq_system_name_; //!< name of the equation system holding OpenMC results
   std::unordered_map<std::string, unsigned int> variable_map_; //!< mapping of variable names (tally scores) to libMesh variable numbers

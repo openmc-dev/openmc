@@ -602,7 +602,7 @@ CSGCell::to_hdf5(hid_t cell_group) const
     }
     if (!rotation_.empty()) {
       if (rotation_.size() == 12) {
-        array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
+        std::array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
         write_dataset(group, "rotation", rot);
       } else {
         write_dataset(group, "rotation", rotation_);

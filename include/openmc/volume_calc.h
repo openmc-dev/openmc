@@ -23,7 +23,7 @@ class VolumeCalculation {
 public:
   // Aliases, types
   struct Result {
-    array<double, 2> volume;    //!< Mean/standard deviation of volume
+    std::array<double, 2> volume; //!< Mean/standard deviation of volume
     vector<int> nuclides;       //!< Index of nuclides
     vector<double> atoms;       //!< Number of atoms for each nuclide
     vector<double> uncertainty; //!< Uncertainty on number of atoms

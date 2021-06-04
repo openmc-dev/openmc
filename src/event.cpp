@@ -205,7 +205,7 @@ void process_collision_events()
   auto fission_bank_start = simulation::fission_bank.data();
   unsigned fission_bank_capacity = simulation::fission_bank.capacity();
   cudaMemcpyToSymbol(
-    gpu::fission_bank_start, &fission_bank_start, sizeof(ParticleBank*));
+    gpu::fission_bank_start, &fission_bank_start, sizeof(SourceSite*));
   cudaMemcpyToSymbol(
     gpu::fission_bank_capacity, &fission_bank_capacity, sizeof(unsigned));
   gpu::fission_bank_index = simulation::fission_bank.size();

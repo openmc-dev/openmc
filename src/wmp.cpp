@@ -91,8 +91,9 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   double invE = 1.0 / E;
 
   // Locate window containing energy
-  int i_window = std::min(window_info_.size() - 1,
-    static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
+  int i_window = std::min(
+    window_info_.size() - 1, static_cast<decltype(window_info_)::size_type>(
+                               (sqrtE - std::sqrt(E_min_)) * inv_spacing_));
   const auto& window {window_info_[i_window]};
 
   // Initialize the ouptut cross sections
@@ -217,7 +218,7 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
 void check_wmp_version(hid_t file)
 {
   if (attribute_exists(file, "version")) {
-    array<int, 2> version;
+    std::array<int, 2> version;
     read_attribute(file, "version", version);
     if (version[0] != WMP_VERSION[0]) {
       fatal_error(fmt::format(

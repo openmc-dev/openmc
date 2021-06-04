@@ -5,13 +5,13 @@
 //! \brief Settings for OpenMC
 
 #include <cstdint>
-#include <string>
 #include <unordered_set>
 
 #include "pugixml.hpp"
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/string.h"
 #include "openmc/vector.h"
 
 namespace openmc {

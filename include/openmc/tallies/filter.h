@@ -119,7 +119,7 @@ private:
 namespace model {
   extern "C" int32_t n_filters;
   extern std::unordered_map<int, int> filter_map;
-  extern vector<unique_ptr<Filter>> tally_filters;
+  extern vector<std::unique_ptr<Filter>> tally_filters;
 }
 
 //==============================================================================

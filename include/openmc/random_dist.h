@@ -14,7 +14,7 @@ namespace openmc {
 //! \return Sampled variate
 //==============================================================================
 
-double uniform_distribution(double a, double b, uint64_t* seed);
+HD double uniform_distribution(double a, double b, uint64_t* seed);
 
 //==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct
@@ -29,7 +29,7 @@ double uniform_distribution(double a, double b, uint64_t* seed);
 //! \return The sampled outgoing energy
 //==============================================================================
 
-extern "C" double maxwell_spectrum(double T, uint64_t* seed);
+extern "C" HD double maxwell_spectrum(double T, uint64_t* seed);
 
 //==============================================================================
 //! Samples an energy from a Watt energy-dependent fission distribution.
@@ -45,7 +45,7 @@ extern "C" double maxwell_spectrum(double T, uint64_t* seed);
 //! \return The sampled outgoing energy
 //==============================================================================
 
-extern "C" double watt_spectrum(double a, double b, uint64_t* seed);
+extern "C" HD double watt_spectrum(double a, double b, uint64_t* seed);
 
 //==============================================================================
 //! Samples an energy from the Gaussian energy-dependent fission distribution.
@@ -62,7 +62,8 @@ extern "C" double watt_spectrum(double a, double b, uint64_t* seed);
 //! \result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double normal_variate(double mean, double std_dev, uint64_t* seed);
+extern "C" HD double normal_variate(
+  double mean, double std_dev, uint64_t* seed);
 
 //==============================================================================
 //! Samples an energy from the Muir (Gaussian) energy-dependent distribution.
@@ -78,7 +79,8 @@ extern "C" double normal_variate(double mean, double std_dev, uint64_t* seed);
 //! \result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed);
+extern "C" HD double muir_spectrum(
+  double e0, double m_rat, double kt, uint64_t* seed);
 
 } // namespace openmc
 

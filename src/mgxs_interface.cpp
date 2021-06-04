@@ -75,7 +75,7 @@ void MgxsInterface::init()
 
   // Read revision number for the MGXS Library file and make sure it matches
   // with the current version
-  array<int, 2> array;
+  std::array<int, 2> array;
   read_attribute(file_id, "version", array);
   if (array != VERSION_MGXS_LIBRARY) {
     fatal_error("MGXS Library file version does not match current version "

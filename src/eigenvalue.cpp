@@ -374,7 +374,7 @@ int openmc_get_keff(double* k_combined)
   // Copy estimates of k-effective and its variance (not variance of the mean)
   const auto& gt = simulation::global_tallies;
 
-  array<double, 3> kv {};
+  std::array<double, 3> kv {};
   xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});
   kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
   kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
@@ -429,7 +429,7 @@ int openmc_get_keff(double* k_combined)
 
     // Initialize variables
     double g = 0.0;
-    array<double, 3> S {};
+    std::array<double, 3> S {};
 
     for (int l = 0; l < 3; ++l) {
       // Permutations of estimates
@@ -603,7 +603,7 @@ void write_eigenvalue_hdf5(hid_t group)
   write_dataset(group, "k_col_abs", simulation::k_col_abs);
   write_dataset(group, "k_col_tra", simulation::k_col_tra);
   write_dataset(group, "k_abs_tra", simulation::k_abs_tra);
-  array<double, 2> k_combined;
+  std::array<double, 2> k_combined;
   openmc_get_keff(k_combined.data());
   write_dataset(group, "k_combined", k_combined);
 }

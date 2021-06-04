@@ -141,7 +141,8 @@ public:
   //! where the internal size of the array needs to be manually updated.
   //
   //! \param size The new size of the container
-  void resize(int64_t size) {
+  void resize(int64_t size)
+  {
     size_ = size;
     sync_size_host_to_device();
   }

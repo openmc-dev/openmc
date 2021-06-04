@@ -1621,13 +1621,16 @@ void MOABMesh::initialize() {
 void
 MOABMesh::create_interface()
 {
-  // create MOAB instance
-  mbi_ = make_unique<moab::Core>();
+  if(mbi_ == nullptr){
+    // create MOAB instance
+    mbi_ = std::make_shared<moab::Core>();
 
-  // load unstructured mesh file
-  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to load the unstructured mesh file: " + filename_);
+    // load unstructured mesh file
+    moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
+    if (rval != moab::MB_SUCCESS) {
+      fatal_error("Failed to load the unstructured mesh file: " + filename_);
+    }
+
   }
 }
 

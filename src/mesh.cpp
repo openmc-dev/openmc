@@ -192,6 +192,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
 void
 UnstructuredMesh::surface_bins_crossed(Position r0,
                                        Position r1,
+                                       const Direction& u,
                                        vector<int>& bins) const {
   fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
@@ -1813,14 +1814,6 @@ double MOABMesh::tet_volume(moab::EntityHandle tet) const
   return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-void MOABMesh::surface_bins_crossed(
-  Position r0, Position r1, const Direction& u, vector<int>& bins) const
-{
-
-  // TODO: Implement triangle crossings here
-  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
-}
-
 int MOABMesh::get_bin(Position r) const
 {
   moab::EntityHandle tet = get_tet(r);
@@ -2081,7 +2074,8 @@ void MOABMesh::remove_scores()
 }
 
 void MOABMesh::set_score_data(const std::string& score,
-  const vector<double>& values, const vector<double>& std_dev)
+                              const vector<double>& values,
+                              const vector<double>& std_dev)
 {
   auto score_tags = this->get_score_tags(score);
 
@@ -2196,13 +2190,6 @@ std::string LibMesh::library() const { return "libmesh"; }
 int LibMesh::n_bins() const
 {
   return m_->n_elem();
-}
-
-void LibMesh::surface_bins_crossed(
-  Position r0, Position r1, const Direction& u, vector<int>& bins) const
-{
-  // TODO: Implement triangle crossings here
-  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
 
 int

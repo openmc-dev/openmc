@@ -12,6 +12,7 @@ from collections import OrderedDict
 import os
 import xml.etree.ElementTree as ET
 from warnings import warn
+from pathlib import Path
 
 import numpy as np
 from uncertainties import ufloat
@@ -609,6 +610,14 @@ class Operator(TransportOperator):
         nuclides = list(self.number.nuclides)
         for mat in materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
+
+        # Grab the cross sections tag from the existing file
+        mfile = Path("materials.xml")
+        if mfile.exists():
+            tree = ET.parse(str(mfile))
+            xs = tree.find('cross_sections')
+            if xs is not None:
+                materials.cross_sections = xs.text
 
         materials.export_to_xml()
 

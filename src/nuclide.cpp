@@ -843,9 +843,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
   // and sab_elastic cross sections and correct the total and elastic cross
   // sections.
 
-  if (i_sab >= 0) {
-      this->calculate_sab_xs(i_sab, sab_frac, p);
-  }
+  if (i_sab >= 0) this->calculate_sab_xs(i_sab, sab_frac, p);
 
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
@@ -853,7 +851,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     int n = device_urr_data_[micro.index_temp].n_energy_;
     if ((p.E_ > device_urr_data_[micro.index_temp].device_energy_[0]) &&
         (p.E_ < device_urr_data_[micro.index_temp].device_energy_[n-1])) {
-        this->calculate_urr_xs(micro.index_temp, p);
+      this->calculate_urr_xs(micro.index_temp, p);
     }
   }
 

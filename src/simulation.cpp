@@ -770,14 +770,6 @@ void transport_event_based()
         simulation::advance_particle_queue.size(),
         simulation::surface_crossing_queue.size(),
         simulation::collision_queue.size()});
-      /*
-      printf("Max event is %ld\n", max);
-       printf("fuel xs size = %ld\n", simulation::calculate_fuel_xs_queue.size());
-       printf("nonfuel xs size = %ld\n", simulation::calculate_nonfuel_xs_queue.size());
-       printf("advance size = %ld\n", simulation::advance_particle_queue.size());
-       printf("surf crossing size = %ld\n", simulation::surface_crossing_queue.size());
-       printf("collision size = %ld\n", simulation::collision_queue.size());
-       */
 
       // Execute event with the longest queue
       if (max == 0) {
@@ -797,11 +789,6 @@ void transport_event_based()
 
     // Execute death event for all particles
     process_death_events(n_particles);
-
-    /*
-    memcpy(simulation::particles.data(),simulation::device_particles, n_particles * sizeof(Particle));
-    std::cout << "Copying " << a << " MB of data to host..." << std::endl;
-    */
 
     // Adjust remaining work and source offset variables
     remaining_work -= n_particles;

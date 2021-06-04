@@ -412,6 +412,9 @@ private:
 
   // Methods
 
+  //! Create the MOAB interface pointer
+  void create_interface();
+
   //! Find all intersections with faces of the mesh.
   //
   //! \param[in] start Staring location

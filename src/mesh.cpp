@@ -1583,13 +1583,12 @@ MOABMesh::MOABMesh(const std::string& filename) {
 }
 
 void MOABMesh::initialize() {
-  // create MOAB instance
-  mbi_ = make_unique<moab::Core>();
-  // load unstructured mesh file
-  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to load the unstructured mesh file: " + filename_);
-  }
+
+  // Create the MOAB interface and load data from file
+  create_interface();
+
+  // Initialise MOAB error code
+  moab::ErrorCode rval = moab::MB_SUCCESS;
 
   // set member range of tetrahedral entities
   rval = mbi_->get_entities_by_dimension(0, n_dimension_, ehs_);
@@ -1617,6 +1616,19 @@ void MOABMesh::initialize() {
   // build acceleration data structures
   compute_barycentric_data(ehs_);
   build_kdtree(ehs_);
+}
+
+void
+MOABMesh::create_interface()
+{
+  // create MOAB instance
+  mbi_ = make_unique<moab::Core>();
+
+  // load unstructured mesh file
+  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to load the unstructured mesh file: " + filename_);
+  }
 }
 
 void

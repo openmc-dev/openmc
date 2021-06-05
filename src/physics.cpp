@@ -597,8 +597,8 @@ HD Reaction& sample_fission(int i_nuclide, Particle& p)
   // Get grid index and interpolatoin factor and sample fission cdf
   int i_temp = p.neutron_xs(i_nuclide).index_temp;
   int i_grid = p.neutron_xs(i_nuclide).index_grid;
-  double f = p.neutron_xs(i_nuclide).interp_factor;
-  double cutoff = prn(p.current_seed()) * p.neutron_xs(i_nuclide).fission;
+  xsfloat f = p.neutron_xs(i_nuclide).interp_factor;
+  xsfloat cutoff = prn(p.current_seed()) * p.neutron_xs(i_nuclide).fission;
   double prob = 0.0;
 
   // Loop through each partial fission reaction type
@@ -727,7 +727,7 @@ HD void scatter(Particle& p, int i_nuclide)
   const auto& micro {p.neutron_xs(i_nuclide)};
   const int& i_temp = micro.index_temp;
   const int& i_grid = micro.index_grid;
-  double f = micro.interp_factor;
+  const auto& f = micro.interp_factor;
 
   // For tallying purposes, this routine might be called directly. In that
   // case, we need to sample a reaction via the cutoff variable
@@ -756,7 +756,7 @@ HD void scatter(Particle& p, int i_nuclide)
     // NON-S(A,B) ELASTIC SCATTERING
 
     // Determine temperature
-    double kT = nuc->multipole_ ? p.sqrtkT() * p.sqrtkT() : nuc->kTs_[i_temp];
+    xsfloat kT = nuc->multipole_ ? p.sqrtkT() * p.sqrtkT() : nuc->kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
     elastic_scatter(i_nuclide, *nuc->reactions_[0], kT, p);
@@ -829,7 +829,7 @@ HD void scatter(Particle& p, int i_nuclide)
 }
 
 HD void elastic_scatter(
-  int i_nuclide, const Reaction& rx, double kT, Particle& p)
+  int i_nuclide, const Reaction& rx, xsfloat kT, Particle& p)
 {
 #ifdef __CUDA_ARCH__
   using gpu::nuclides;
@@ -839,7 +839,7 @@ HD void elastic_scatter(
   // get pointer to nuclide
   const auto& nuc {nuclides[i_nuclide]};
 
-  double vel = std::sqrt(p.E());
+  xsfloat vel = std::sqrt(p.E());
   double awr = nuc->awr_;
 
   // Neutron velocity in LAB
@@ -1213,7 +1213,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 {
   // copy energy of neutron
-  double E_in = p.E();
+  xsfloat E_in = p.E();
 
   // sample outgoing energy and scattering cosine
   xsfloat E;
@@ -1223,7 +1223,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   // if scattering system is in center-of-mass, transfer cosine of scattering
   // angle and outgoing energy from CM to LAB
   if (rx.scatter_in_cm_) {
-    double E_cm = E;
+    xsfloat E_cm = E;
 
     // determine outgoing energy in lab
     double A = nuc.awr_;
@@ -1247,7 +1247,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
 
   // evaluate yield
-  double yield = (*rx.products_[0].yield_)(E_in);
+  xsfloat yield = (*rx.products_[0].yield_)(E_in);
   if (std::floor(yield) == yield) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {

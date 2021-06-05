@@ -61,7 +61,7 @@ HD void scatter(Particle& p, int i_nuclide);
 
 //! Treats the elastic scattering of a neutron with a target.
 HD void elastic_scatter(
-  int i_nuclide, const Reaction& rx, double kT, Particle& p);
+  int i_nuclide, const Reaction& rx, xsfloat kT, Particle& p);
 
 void sab_scatter(int i_nuclide, int i_sab, Particle& p);
 

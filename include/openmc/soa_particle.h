@@ -56,12 +56,12 @@ extern vector<int> cell_instance;
 extern vector<LocalCoord> coord;
 extern vector<int> n_coord_last;
 extern vector<int> cell_last;
-extern vector<double> E;
-extern vector<double> E_last;
+extern vector<xsfloat> E;
+extern vector<xsfloat> E_last;
 extern vector<int> g;
 extern vector<int> g_last;
 extern vector<double> wgt;
-extern vector<double> mu;
+extern vector<xsfloat> mu;
 extern vector<char> alive; // std::vector<bool> can't return references
 extern vector<Position> r_last_current;
 extern vector<Position> r_last;
@@ -82,8 +82,8 @@ extern vector<int> cell_born;
 extern vector<int> material;
 extern vector<int> material_last;
 extern vector<BoundaryInfo> boundary;
-extern vector<double> sqrtkT;
-extern vector<double> sqrtkT_last;
+extern vector<xsfloat> sqrtkT;
+extern vector<xsfloat> sqrtkT_last;
 extern vector<int> n_collision;
 extern vector<char> write_track;
 extern vector<uint64_t> seeds; // N_STREAMS pitch
@@ -119,12 +119,12 @@ extern __constant__ int* cell_instance;
 extern __constant__ LocalCoord* coord;
 extern __constant__ int* n_coord_last;
 extern __constant__ int* cell_last;
-extern __constant__ double* E;
-extern __constant__ double* E_last;
+extern __constant__ xsfloat* E;
+extern __constant__ xsfloat* E_last;
 extern __constant__ int* g;
 extern __constant__ int* g_last;
 extern __constant__ double* wgt;
-extern __constant__ double* mu;
+extern __constant__ xsfloat* mu;
 extern __constant__ char* alive; // vector<bool* can't return references
 extern __constant__ Position* r_last_current;
 extern __constant__ Position* r_last;
@@ -145,8 +145,8 @@ extern __constant__ int* cell_born;
 extern __constant__ int* material;
 extern __constant__ int* material_last;
 extern __constant__ BoundaryInfo* boundary;
-extern __constant__ double* sqrtkT;
-extern __constant__ double* sqrtkT_last;
+extern __constant__ xsfloat* sqrtkT;
+extern __constant__ xsfloat* sqrtkT_last;
 extern __constant__ int* n_collision;
 extern __constant__ char* write_track;
 extern __constant__ uint64_t* seeds; // N_STREAMS pitch
@@ -349,7 +349,7 @@ public:
 #endif
   }
 
-  HD double& E()
+  HD xsfloat& E()
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::E[p];
@@ -357,7 +357,7 @@ public:
     return soa::E[p];
 #endif
   }
-  HD const double& E() const
+  HD const xsfloat& E() const
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::E[p];
@@ -365,7 +365,7 @@ public:
     return soa::E[p];
 #endif
   }
-  HD double& E_last()
+  HD xsfloat& E_last()
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::E_last[p];
@@ -373,7 +373,7 @@ public:
     return soa::E_last[p];
 #endif
   }
-  HD const double& E_last() const
+  HD const xsfloat& E_last() const
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::E_last[p];
@@ -422,7 +422,7 @@ public:
     return soa::wgt[p];
 #endif
   }
-  HD double& mu()
+  HD xsfloat& mu()
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::mu[p];
@@ -430,7 +430,7 @@ public:
     return soa::mu[p];
 #endif
   }
-  HD const double& mu() const
+  HD const xsfloat& mu() const
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::mu[p];
@@ -692,7 +692,7 @@ public:
 #endif
   }
 
-  HD double& sqrtkT()
+  HD xsfloat& sqrtkT()
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::sqrtkT[p];
@@ -700,7 +700,7 @@ public:
     return soa::sqrtkT[p];
 #endif
   }
-  HD const double& sqrtkT() const
+  HD const xsfloat& sqrtkT() const
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::sqrtkT[p];
@@ -708,7 +708,7 @@ public:
     return soa::sqrtkT[p];
 #endif
   }
-  HD double& sqrtkT_last()
+  HD xsfloat& sqrtkT_last()
   {
 #ifdef __CUDA_ARCH__
     return soa::gpu::sqrtkT_last[p];

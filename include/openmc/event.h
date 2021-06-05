@@ -33,7 +33,7 @@ namespace openmc {
 struct EventQueueItem{
   unsigned idx;        //!< particle index in event-based particle buffer
   int material;        //!< material that particle is in
-  double E;            //!< particle energy
+  xsfloat E;           //!< particle energy
 
   // Constructors
   EventQueueItem() = default;

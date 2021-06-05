@@ -141,7 +141,7 @@ private:
   //
   //! \param[in] T Temperature in [K]
   //! \return Temperature index and interpolation factor
-  std::pair<gsl::index, double> find_temperature(double T) const;
+  std::pair<gsl::index, xsfloat> find_temperature(xsfloat T) const;
 };
 
 //==============================================================================

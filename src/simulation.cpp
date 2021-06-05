@@ -270,7 +270,7 @@ double keff_std;
 double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
-double log_spacing;
+xsfloat log_spacing;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
@@ -857,11 +857,11 @@ void init_gpu_constant_memory()
   cudaMemcpyToSymbol(gpu::number_nuclides, &num_nuclides, sizeof(unsigned));
 
   cudaMemcpyToSymbol(
-    gpu::energy_min_neutron, &data::energy_min[neutron], sizeof(double));
+    gpu::energy_min_neutron, &data::energy_min[neutron], sizeof(xsfloat));
   cudaMemcpyToSymbol(
-    gpu::energy_max_neutron, &data::energy_max[neutron], sizeof(double));
+    gpu::energy_max_neutron, &data::energy_max[neutron], sizeof(xsfloat));
   cudaMemcpyToSymbol(
-    gpu::log_spacing, &simulation::log_spacing, sizeof(double));
+    gpu::log_spacing, &simulation::log_spacing, sizeof(xsfloat));
   cudaMemcpyToSymbol(
     gpu::need_depletion_rx, &simulation::need_depletion_rx, sizeof(bool));
 

@@ -1179,7 +1179,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
 
   // sample from prompt neutron energy distribution
   int n_sample = 0;
-  double mu;
+  xsfloat mu;
   while (true) {
     rx.products_[site->delayed_group].sample(E_in, site->E, mu, seed);
 

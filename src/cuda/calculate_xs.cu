@@ -9,9 +9,9 @@ namespace gpu {
 __constant__ unique_ptr<Material>* materials;
 __constant__ unique_ptr<Nuclide>* nuclides;
 __constant__ Particle* particles;
-__constant__ double energy_min_neutron;
-__constant__ double energy_max_neutron;
-__constant__ double log_spacing;
+__constant__ xsfloat energy_min_neutron;
+__constant__ xsfloat energy_max_neutron;
+__constant__ xsfloat log_spacing;
 __constant__ unsigned number_nuclides;
 __constant__ bool need_depletion_rx;
 
@@ -66,8 +66,8 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
 
       // Find the appropriate temperature index. why would someone use
       // nearest?
-      double kT = p.sqrtkT() * p.sqrtkT();
-      double f;
+      xsfloat kT = p.sqrtkT() * p.sqrtkT();
+      xsfloat f;
 
       constexpr int i_temp = 0;
 

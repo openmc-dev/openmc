@@ -39,7 +39,7 @@ public:
   //! \param[in] flux Flux in each energy group (not normalized per eV)
   //! \param[in] grid Nuclide energy grid
   //! \return Reaction rate
-  double collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
+  double collapse_rate(gsl::index i_temp, gsl::span<const xsfloat> energy,
     gsl::span<const double> flux, const nuclide_grid_type& grid) const;
 
   //! Cross section at a single temperature

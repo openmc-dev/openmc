@@ -1191,7 +1191,7 @@ void split_particle(Particle& p)
   if (weight > params.upper_weight) {
     double n_split = weight/params.upper_weight;  
     n_split = std::min(std::ceil(n_split), double(params.max_split));
-    std::cout << n_split << " " << params.upper_weight << " " << weight << " " << p.secondary_bank().size() << " " << p.r() << " " << p.E() << std::endl;
+    //std::cout << n_split << " " << params.upper_weight << " " << weight << " " << p.secondary_bank().size() << " " << p.r() << " " << p.E() << std::endl;
     
     // possibility of some round off 
     for (int l = 0; l < int(n_split) - 1; l++)  { 

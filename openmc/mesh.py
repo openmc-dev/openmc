@@ -471,6 +471,8 @@ class RectilinearMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    dimension : Iterable of int
+        The number of mesh cells in each direction.
     n_dimension : int
         Number of mesh dimensions (always 3 for a RectilinearMesh).
     x_grid : Iterable of float
@@ -491,6 +493,12 @@ class RectilinearMesh(MeshBase):
         self._x_grid = None
         self._y_grid = None
         self._z_grid = None
+
+    @property
+    def dimension(self):
+        return (len(self.x_grid) - 1,
+                len(self.y_grid) - 1,
+                len(self.z_grid) - 1)
 
     @property
     def n_dimension(self):
@@ -605,6 +613,8 @@ class UnstructuredMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    size : int
+        Number of elements in the unstructured mesh
 
     Attributes
     ----------
@@ -614,6 +624,11 @@ class UnstructuredMesh(MeshBase):
         Name of the mesh
     filename : str
         Name of the file containing the unstructured mesh
+    library : str
+        Mesh library used for the unstructured mesh tally
+    output : bool
+        Indicates whether or not automatic tally output should
+        be generated for this mesh
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     total_volume : float
@@ -622,12 +637,13 @@ class UnstructuredMesh(MeshBase):
         An iterable of element centroid coordinates, e.g. [(0.0, 0.0, 0.0),
         (1.0, 1.0, 1.0), ...]
     """
-
-    def __init__(self, filename, mesh_id=None, name=''):
+    def __init__(self, filename, library, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
         self._centroids = None
+        self.library = library
+        self._output = True
 
     @property
     def filename(self):
@@ -637,6 +653,33 @@ class UnstructuredMesh(MeshBase):
     def filename(self, filename):
         cv.check_type('Unstructured Mesh filename', filename, str)
         self._filename = filename
+
+    @property
+    def library(self):
+        return self._library
+
+    @library.setter
+    def library(self, lib):
+        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
+        self._library = lib
+
+    @property
+    def size(self):
+        return self._size
+
+    @size.setter
+    def size(self, size):
+        cv.check_type("Unstructured mesh size", size, Integral)
+        self._size = size
+
+    @property
+    def output(self):
+        return self._output
+
+    @output.setter
+    def output(self, val):
+        cv.check_type("Unstructured mesh output value", val, bool)
+        self._output = val
 
     @property
     def volumes(self):
@@ -670,7 +713,9 @@ class UnstructuredMesh(MeshBase):
 
     def __repr__(self):
         string = super().__repr__()
-        return string + '{: <16}=\t{}\n'.format('\tFilename', self.filename)
+        string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
+        string += '{: <16}=\t{}\n'.format('\tMesh Library', self.mesh_lib)
+        return string
 
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Map data to the unstructured mesh element centroids
@@ -761,12 +806,14 @@ class UnstructuredMesh(MeshBase):
     def from_hdf5(cls, group):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
         filename = group['filename'][()].decode()
+        library = group['library'][()].decode()
 
-        mesh = cls(filename, mesh_id=mesh_id)
+        mesh = cls(filename, library, mesh_id=mesh_id)
         vol_data = group['volumes'][()]
         centroids = group['centroids'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
+        mesh.size = mesh.volumes.size
 
         return mesh
 
@@ -783,7 +830,7 @@ class UnstructuredMesh(MeshBase):
         element = ET.Element("mesh")
         element.set("id", str(self._id))
         element.set("type", "unstructured")
-
+        element.set("library", self._library)
         subelement = ET.SubElement(element, "filename")
         subelement.text = self.filename
 
@@ -805,7 +852,6 @@ class UnstructuredMesh(MeshBase):
         """
         mesh_id = int(get_text(elem, 'id'))
         filename = get_text(elem, 'filename')
+        library = get_text(elem, 'library')
 
-        mesh = cls(filename, mesh_id)
-
-        return mesh
+        return cls(filename, library, mesh_id)

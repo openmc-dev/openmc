@@ -29,11 +29,10 @@ namespace openmc {
 // Mgxs base-class methods
 //==============================================================================
 
-void
-Mgxs::init(const std::string& in_name, double in_awr,
-     const std::vector<double>& in_kTs, bool in_fissionable,
-     AngleDistributionType in_scatter_format, bool in_is_isotropic,
-     const std::vector<double>& in_polar, const std::vector<double>& in_azimuthal)
+void Mgxs::init(const std::string& in_name, double in_awr,
+  const vector<double>& in_kTs, bool in_fissionable,
+  AngleDistributionType in_scatter_format, bool in_is_isotropic,
+  const vector<double>& in_polar, const vector<double>& in_azimuthal)
 {
   // Set the metadata
   name = in_name;
@@ -56,14 +55,13 @@ Mgxs::init(const std::string& in_name, double in_awr,
   int n_threads = 1;
 #endif
   cache.resize(n_threads);
-  // std::vector.resize() will value-initialize the members of cache[:]
+  // vector.resize() will value-initialize the members of cache[:]
 }
 
 //==============================================================================
 
-void
-Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
-     std::vector<int>& temps_to_read, int& order_dim)
+void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
+  vector<int>& temps_to_read, int& order_dim)
 {
   // get name
   char char_name[MAX_WORD_LEN];
@@ -88,7 +86,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
     dset_names[i] = new char[151];
   }
   get_datasets(kT_group, dset_names);
-  std::vector<size_t> shape = {num_temps};
+  vector<size_t> shape = {num_temps};
   xt::xarray<double> available_temps(shape);
   for (int i = 0; i < num_temps; i++) {
     read_double(kT_group, dset_names[i], &available_temps[i], true);
@@ -160,7 +158,7 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
 
   // Get the library's temperatures
   int n_temperature = temps_to_read.size();
-  std::vector<double> in_kTs(n_temperature);
+  vector<double> in_kTs(n_temperature);
   for (int i = 0; i < n_temperature; i++) {
     std::string temp_str(std::to_string(temps_to_read[i]) + "K");
 
@@ -254,12 +252,12 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
   }
 
   // Set the angular bins to use equally-spaced bins
-  std::vector<double> in_polar(in_n_pol);
+  vector<double> in_polar(in_n_pol);
   double dangle = PI / in_n_pol;
   for (int p = 0; p < in_n_pol; p++) {
     in_polar[p]  = (p + 0.5) * dangle;
   }
-  std::vector<double> in_azimuthal(in_n_azi);
+  vector<double> in_azimuthal(in_n_azi);
   dangle = 2. * PI / in_n_azi;
   for (int a = 0; a < in_n_azi; a++) {
     in_azimuthal[a] = (a + 0.5) * dangle - PI;
@@ -273,14 +271,13 @@ Mgxs::metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
 
 //==============================================================================
 
-Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature,
-    int num_group, int num_delay) :
-  num_groups(num_group),
-  num_delayed_groups(num_delay)
+Mgxs::Mgxs(
+  hid_t xs_id, const vector<double>& temperature, int num_group, int num_delay)
+  : num_groups(num_group), num_delayed_groups(num_delay)
 {
   // Call generic data gathering routine (will populate the metadata)
   int order_data;
-  std::vector<int> temps_to_read;
+  vector<int> temps_to_read;
   metadata_from_hdf5(xs_id, temperature, temps_to_read, order_data);
 
   // Set number of energy and delayed groups
@@ -309,11 +306,10 @@ Mgxs::Mgxs(hid_t xs_id, const std::vector<double>& temperature,
 
 //==============================================================================
 
-Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
-     const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
-     int num_group, int num_delay) :
-  num_groups(num_group),
-  num_delayed_groups(num_delay)
+Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
+  const vector<Mgxs*>& micros, const vector<double>& atom_densities,
+  int num_group, int num_delay)
+  : num_groups(num_group), num_delayed_groups(num_delay)
 {
   // Get the minimum data needed to initialize:
   // Dont need awr, but lets just initialize it anyways
@@ -328,8 +324,8 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
   // to be true later
   AngleDistributionType in_scatter_format = micros[0]->scatter_format;
   bool in_is_isotropic = micros[0]->is_isotropic;
-  std::vector<double> in_polar = micros[0]->polar;
-  std::vector<double> in_azimuthal = micros[0]->azimuthal;
+  vector<double> in_polar = micros[0]->polar;
+  vector<double> in_azimuthal = micros[0]->azimuthal;
 
   init(in_name, in_awr, mat_kTs, in_fissionable, in_scatter_format,
        in_is_isotropic, in_polar, in_azimuthal);
@@ -344,8 +340,8 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
 
     // Create the list of temperature indices and interpolation factors for
     // each microscopic data at the material temperature
-    std::vector<int> micro_t(micros.size(), 0);
-    std::vector<double> micro_t_interp(micros.size(), 0.);
+    vector<int> micro_t(micros.size(), 0);
+    vector<double> micro_t_interp(micros.size(), 0.);
     for (int m = 0; m < micros.size(); m++) {
       switch(settings::temperature_method) {
       case TemperatureMethod::NEAREST:
@@ -383,9 +379,9 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
     // a different nuclide. Mathematically this just means the temperature
     // interpolant is included in the number density.
     // These interpolants are contained within interpolant.
-    std::vector<double> interpolant;     // the interpolant for the Mgxs
-    std::vector<int> temp_indices;       // the temperature index for each Mgxs
-    std::vector<Mgxs*> mgxs_to_combine;  // The Mgxs to combine
+    vector<double> interpolant;    // the interpolant for the Mgxs
+    vector<int> temp_indices;      // the temperature index for each Mgxs
+    vector<Mgxs*> mgxs_to_combine; // The Mgxs to combine
     // Now go through and build the above vectors so that we can use them to
     // combine the data. We will step through each microscopic data and
     // add in its lower and upper temperature points
@@ -419,12 +415,11 @@ Mgxs::Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
 
 //==============================================================================
 
-void
-Mgxs::combine(const std::vector<Mgxs*>& micros, const std::vector<double>& scalars,
-              const std::vector<int>& micro_ts, int this_t)
+void Mgxs::combine(const vector<Mgxs*>& micros, const vector<double>& scalars,
+  const vector<int>& micro_ts, int this_t)
 {
   // Build the vector of pointers to the xs objects within micros
-  std::vector<XsData*> those_xs(micros.size());
+  vector<XsData*> those_xs(micros.size());
   for (int i = 0; i < micros.size(); i++) {
     those_xs[i] = &(micros[i]->xs[micro_ts[i]]);
   }
@@ -627,13 +622,13 @@ Mgxs::calculate_xs(Particle& p)
 #else
   int tid = 0;
 #endif
-  set_temperature_index(p.sqrtkT_);
+  set_temperature_index(p.sqrtkT());
   set_angle_index(p.u_local());
   XsData* xs_t = &xs[cache[tid].t];
-  p.macro_xs_.total = xs_t->total(cache[tid].a, p.g_);
-  p.macro_xs_.absorption = xs_t->absorption(cache[tid].a, p.g_);
-  p.macro_xs_.nu_fission =
-    fissionable ? xs_t->nu_fission(cache[tid].a, p.g_) : 0.;
+  p.macro_xs().total = xs_t->total(cache[tid].a, p.g());
+  p.macro_xs().absorption = xs_t->absorption(cache[tid].a, p.g());
+  p.macro_xs().nu_fission =
+    fissionable ? xs_t->nu_fission(cache[tid].a, p.g()) : 0.;
 }
 
 //==============================================================================

@@ -28,20 +28,36 @@ MeshFilter::from_xml(pugi::xml_node node)
     fatal_error(fmt::format(
       "Could not find mesh {} specified on tally filter.", id));
   }
+
+  if (check_for_node(node, "translation")) {
+    set_translation(get_node_array<double>(node, "translation"));
+  }
+
 }
 
 void
 MeshFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
+
+  Position last_r = p.r_last();
+  Position r = p.r();
+  Position u = p.u();
+
+  // apply translation if present
+  if (translated_) {
+    last_r -= translation();
+    r -= translation();
+  }
+
   if (estimator != TallyEstimator::TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(p.r());
+    auto bin = model::meshes[mesh_]->get_bin(r);
     if (bin >= 0) {
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
   } else {
-    model::meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
+    model::meshes[mesh_]->bins_crossed(last_r, r, u, match.bins_, match.weights_);
   }
 }
 
@@ -50,13 +66,17 @@ MeshFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
+  if (translated_) {
+    write_dataset(filter_group, "translation", translation_);
+  }
 }
 
 std::string
 MeshFilter::text_label(int bin) const
 {
   auto& mesh = *model::meshes.at(mesh_);
-  return mesh.bin_label(bin);
+  std::string label = mesh.bin_label(bin);
+  return label;
 }
 
 void
@@ -64,6 +84,17 @@ MeshFilter::set_mesh(int32_t mesh)
 {
   mesh_ = mesh;
   n_bins_ = model::meshes[mesh_]->n_bins();
+}
+
+void MeshFilter::set_translation(const Position& translation)
+{
+  translated_ = true;
+  translation_ = translation;
+}
+
+void MeshFilter::set_translation(const double translation[3])
+{
+  this->set_translation({translation[0], translation[1], translation[2]});
 }
 
 //==============================================================================
@@ -120,6 +151,49 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
 
   // Update the filter.
   filt->set_mesh(index_mesh);
+  return 0;
+}
+
+extern "C" int
+openmc_mesh_filter_get_translation(int32_t index, double translation[3])
+{
+  // Make sure this is a valid index to an allocated filter
+  if (int err = verify_filter(index)) return err;
+
+  // Check the filter type
+  const auto& filter = model::tally_filters[index];
+  if (filter->type() != "mesh" && filter->type() != "meshsurface") {
+    set_errmsg("Tried to get a translation from a non-mesh-based filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  // Get translation from the mesh filter and set value
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+  const auto& t = mesh_filter->translation();
+  for (int i = 0; i < 3; i++) { translation[i] = t[i]; }
+
+  return 0;
+}
+
+extern "C" int
+openmc_mesh_filter_set_translation(int32_t index, double translation[3])
+{
+  // Make sure this is a valid index to an allocated filter
+  if (int err = verify_filter(index)) return err;
+
+  const auto& filter = model::tally_filters[index];
+  // Check the filter type
+  if (filter->type() != "mesh" && filter->type() != "meshsurface") {
+    set_errmsg("Tried to set mesh on a non-mesh-based filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  // Get a pointer to the filter and downcast
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+
+  // Set the translation
+  mesh_filter->set_translation(translation);
+
   return 0;
 }
 

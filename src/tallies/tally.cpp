@@ -1,11 +1,12 @@
 #include "openmc/tallies/tally.h"
 
+#include "openmc/array.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
-#include "openmc/message_passing.h"
 #include "openmc/mesh.h"
+#include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
@@ -18,6 +19,7 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_cellfrom.h"
+#include "openmc/tallies/filter_collision.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_legendre.h"
@@ -34,7 +36,6 @@
 #include "xtensor/xview.hpp"
 
 #include <algorithm> // for max
-#include <array>
 #include <cstddef> // for size_t
 #include <string>
 
@@ -46,13 +47,13 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> tally_map;
-  std::vector<std::unique_ptr<Tally>> tallies;
-  std::vector<int> active_tallies;
-  std::vector<int> active_analog_tallies;
-  std::vector<int> active_tracklength_tallies;
-  std::vector<int> active_collision_tallies;
-  std::vector<int> active_meshsurf_tallies;
-  std::vector<int> active_surface_tallies;
+  vector<unique_ptr<Tally>> tallies;
+  vector<int> active_tallies;
+  vector<int> active_analog_tallies;
+  vector<int> active_tracklength_tallies;
+  vector<int> active_collision_tallies;
+  vector<int> active_meshsurf_tallies;
+  vector<int> active_surface_tallies;
 }
 
 namespace simulation {
@@ -102,13 +103,13 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Determine number of filters
-  std::vector<int> filter_ids;
+  vector<int> filter_ids;
   if (check_for_node(node, "filters")) {
     filter_ids = get_node_array<int>(node, "filters");
   }
 
   // Allocate and store filter user ids
-  std::vector<Filter*> filters;
+  vector<Filter*> filters;
   for (int filter_id : filter_ids) {
     // Determine if filter ID is valid
     auto it = model::filter_map.find(filter_id);
@@ -195,7 +196,7 @@ Tally::Tally(pugi::xml_node node)
       const auto& f = model::tally_filters[particle_filter_index].get();
       auto pf = dynamic_cast<ParticleFilter*>(f);
       for (auto p : pf->particles()) {
-        if (p != Particle::Type::neutron) {
+        if (p != ParticleType::neutron) {
           warning(fmt::format("Particle filter other than NEUTRON used with "
             "photon transport turned off. All tallies for particle type {}"
             " will have no scores", static_cast<int>(p)));
@@ -282,6 +283,21 @@ Tally::Tally(pugi::xml_node node)
         "Invalid estimator '{}' on tally {}", est, id_)};
     }
   }
+
+#ifdef LIBMESH
+  // ensure a tracklength tally isn't used with a libMesh filter
+  for (auto i : this->filters_) {
+    auto df = dynamic_cast<MeshFilter*>(model::tally_filters[i].get());
+    if (df) {
+      auto lm = dynamic_cast<LibMesh*>(model::meshes[df->mesh()].get());
+      if (lm && estimator_ == TallyEstimator::TRACKLENGTH) {
+        fatal_error("A tracklength estimator cannot be used with "
+                    "an unstructured LibMesh tally.");
+      }
+    }
+  }
+#endif
+
 }
 
 Tally::~Tally()
@@ -292,7 +308,7 @@ Tally::~Tally()
 Tally*
 Tally::create(int32_t id)
 {
-  model::tallies.push_back(std::make_unique<Tally>(id));
+  model::tallies.push_back(make_unique<Tally>(id));
   return model::tallies.back().get();
 }
 
@@ -372,8 +388,7 @@ Tally::set_scores(pugi::xml_node node)
   set_scores(scores);
 }
 
-void
-Tally::set_scores(const std::vector<std::string>& scores)
+void Tally::set_scores(const vector<std::string>& scores)
 {
   // Reset state and prepare for the new scores.
   scores_.clear();
@@ -525,8 +540,7 @@ Tally::set_nuclides(pugi::xml_node node)
   }
 }
 
-void
-Tally::set_nuclides(const std::vector<std::string>& nuclides)
+void Tally::set_nuclides(const vector<std::string>& nuclides)
 {
   nuclides_.clear();
 
@@ -579,7 +593,7 @@ Tally::init_triggers(pugi::xml_node node)
     }
 
     // Read the trigger scores.
-    std::vector<std::string> trigger_scores;
+    vector<std::string> trigger_scores;
     if (check_for_node(trigger_node, "scores")) {
       trigger_scores = get_node_array<std::string>(trigger_node, "scores");
     } else {
@@ -662,6 +676,17 @@ Tally::score_name(int score_idx) const {
   return reaction_name(scores_[score_idx]);
 }
 
+std::string
+Tally::nuclide_name(int nuclide_idx) const {
+  if (nuclide_idx < 0 || nuclide_idx >= nuclides_.size()) {
+    fatal_error("Index in nuclides array is out of bounds");
+  }
+
+  int nuclide = nuclides_.at(nuclide_idx);
+  if (nuclide == -1) { return "total"; }
+  return data::nuclides.at(nuclide)->name_;
+}
+
 //==============================================================================
 // Non-member functions
 //==============================================================================
@@ -712,7 +737,7 @@ void read_tallies_xml()
   }
 
   for (auto node_tal : root.children("tally")) {
-    model::tallies.push_back(std::make_unique<Tally>(node_tal));
+    model::tallies.push_back(make_unique<Tally>(node_tal));
   }
 }
 
@@ -891,7 +916,7 @@ openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end)
   if (index_start) *index_start = model::tallies.size();
   if (index_end) *index_end = model::tallies.size() + n - 1;
   for (int i = 0; i < n; ++i) {
-    model::tallies.push_back(std::make_unique<Tally>(-1));
+    model::tallies.push_back(make_unique<Tally>(-1));
   }
   return 0;
 }
@@ -1081,7 +1106,7 @@ openmc_tally_set_scores(int32_t index, int n, const char** scores)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  std::vector<std::string> scores_str(scores, scores+n);
+  vector<std::string> scores_str(scores, scores + n);
   try {
     model::tallies[index]->set_scores(scores_str);
   } catch (const std::invalid_argument& ex) {
@@ -1116,8 +1141,8 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  std::vector<std::string> words(nuclides, nuclides+n);
-  std::vector<int> nucs;
+  vector<std::string> words(nuclides, nuclides + n);
+  vector<int> nucs;
   for (auto word : words){
     if (word == "total") {
       nucs.push_back(-1);
@@ -1161,7 +1186,7 @@ openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices)
   // Set the filters.
   try {
     // Convert indices to filter pointers
-    std::vector<Filter*> filters;
+    vector<Filter*> filters;
     for (gsl::index i = 0; i < n; ++i) {
       int32_t i_filt = indices[i];
       filters.push_back(model::tally_filters.at(i_filt).get());

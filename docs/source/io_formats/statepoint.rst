@@ -162,5 +162,5 @@ All values are given in seconds and are measured on the master process.
              source sites between processes for load balancing.
            - **accumulating tallies** (*double*) -- Time spent communicating
              tally results and evaluating their statistics.
-          - **writing statepoints** (*double*) -- Time spent writing statepoint
-            files
+           - **writing statepoints** (*double*) -- Time spent writing statepoint
+             files

@@ -2,18 +2,18 @@
 #define OPENMC_TALLIES_TALLY_H
 
 #include "openmc/constants.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/trigger.h"
+#include "openmc/vector.h"
 
 #include <gsl/gsl>
 #include "pugixml.hpp"
 #include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
 
-#include <memory> // for unique_ptr
-#include <unordered_map>
 #include <string>
-#include <vector>
+#include <unordered_map>
 
 namespace openmc {
 
@@ -41,13 +41,13 @@ public:
 
   void set_scores(pugi::xml_node node);
 
-  void set_scores(const std::vector<std::string>& scores);
+  void set_scores(const vector<std::string>& scores);
 
   void set_nuclides(pugi::xml_node node);
 
-  void set_nuclides(const std::vector<std::string>& nuclides);
+  void set_nuclides(const vector<std::string>& nuclides);
 
-  const std::vector<int32_t>& filters() const {return filters_;}
+  const vector<int32_t>& filters() const { return filters_; }
 
   int32_t filters(int i) const {return filters_[i];}
 
@@ -75,6 +75,9 @@ public:
   //! A string representing the i-th score on this tally
   std::string score_name(int score_idx) const;
 
+  //! A string representing the i-th nuclide on this tally
+  std::string nuclide_name(int nuclide_idx) const;
+
   //----------------------------------------------------------------------------
   // Major public data members.
 
@@ -93,10 +96,10 @@ public:
   //! Number of realizations
   int n_realizations_ {0};
 
-  std::vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
+  vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
 
   //! Index of each nuclide to be tallied.  -1 indicates total material.
-  std::vector<int> nuclides_ {-1};
+  vector<int> nuclides_ {-1};
 
   //! True if this tally has a bin for every nuclide in the problem
   bool all_nuclides_ {false};
@@ -119,7 +122,7 @@ public:
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
 
-  std::vector<Trigger> triggers_;
+  vector<Trigger> triggers_;
 
   int deriv_ {C_NONE}; //!< Index of a TallyDerivative object for diff tallies.
 
@@ -127,10 +130,10 @@ private:
   //----------------------------------------------------------------------------
   // Private data.
 
-  std::vector<int32_t> filters_; //!< Filter indices in global filters array
+  vector<int32_t> filters_; //!< Filter indices in global filters array
 
   //! Index strides assigned to each filter to support 1D indexing.
-  std::vector<int32_t> strides_;
+  vector<int32_t> strides_;
 
   int32_t n_filter_bins_ {0};
 
@@ -143,13 +146,13 @@ private:
 
 namespace model {
   extern std::unordered_map<int, int> tally_map;
-  extern std::vector<std::unique_ptr<Tally>> tallies;
-  extern std::vector<int> active_tallies;
-  extern std::vector<int> active_analog_tallies;
-  extern std::vector<int> active_tracklength_tallies;
-  extern std::vector<int> active_collision_tallies;
-  extern std::vector<int> active_meshsurf_tallies;
-  extern std::vector<int> active_surface_tallies;
+  extern vector<unique_ptr<Tally>> tallies;
+  extern vector<int> active_tallies;
+  extern vector<int> active_analog_tallies;
+  extern vector<int> active_tracklength_tallies;
+  extern vector<int> active_collision_tallies;
+  extern vector<int> active_meshsurf_tallies;
+  extern vector<int> active_surface_tallies;
 }
 
 namespace simulation {

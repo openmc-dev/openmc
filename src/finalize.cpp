@@ -137,9 +137,13 @@ int openmc_finalize()
   // Deallocate arrays
   free_memory();
 
+#ifdef LIBMESH
+  settings::libmesh_init.reset();
+#endif
+
   // Free all MPI types
 #ifdef OPENMC_MPI
-  if (mpi::bank != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::bank);
+  if (mpi::source_site != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::source_site);
 #endif
 
   return 0;

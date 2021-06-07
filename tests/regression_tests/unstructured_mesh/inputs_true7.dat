@@ -70,8 +70,8 @@
     <lower_left>-10.0 -10.0 -10.0</lower_left>
     <upper_right>10.0 10.0 10.0</upper_right>
   </mesh>
-  <mesh id="16" type="unstructured">
-    <filename>test_mesh_tets.h5m</filename>
+  <mesh id="16" library="moab" type="unstructured">
+    <filename>test_mesh_tets.exo</filename>
   </mesh>
   <filter id="15" type="mesh">
     <bins>15</bins>

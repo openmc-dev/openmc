@@ -37,7 +37,7 @@ XsData::XsData(bool fissionable, AngleDistributionType scatter_format, int n_pol
     fatal_error("Invalid scatter_format!");
   }
   // allocate all [temperature][angle][in group] quantities
-  std::vector<size_t> shape {n_ang, n_g_};
+  vector<size_t> shape {n_ang, n_g_};
   total = xt::zeros<double>(shape);
   absorption = xt::zeros<double>(shape);
   inverse_velocity = xt::zeros<double>(shape);
@@ -509,9 +509,8 @@ XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang, AngleDistributionType 
 
 //==============================================================================
 
-void
-XsData::combine(const std::vector<XsData*>& those_xs,
-                const std::vector<double>& scalars)
+void XsData::combine(
+  const vector<XsData*>& those_xs, const vector<double>& scalars)
 {
   // Combine the non-scattering data
   for (size_t i = 0; i < those_xs.size(); i++) {
@@ -551,7 +550,7 @@ XsData::combine(const std::vector<XsData*>& those_xs,
   // Allow the ScattData object to combine itself
   for (size_t a = 0; a < total.shape()[0]; a++) {
     // Build vector of the scattering objects to incorporate
-    std::vector<ScattData*> those_scatts(those_xs.size());
+    vector<ScattData*> those_scatts(those_xs.size());
     for (size_t i = 0; i < those_xs.size(); i++) {
       those_scatts[i] = those_xs[i]->scatter[a].get();
     }

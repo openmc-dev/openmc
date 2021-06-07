@@ -7,6 +7,7 @@
 #include "openmc/dagmc.h"
 #endif
 #include "openmc/error.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
@@ -17,6 +18,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/timer.h"
 #include "openmc/thermal.h"
 #include "openmc/xml_interface.h"
 #include "openmc/wmp.h"
@@ -35,8 +37,7 @@ namespace openmc {
 namespace data {
 
 std::map<LibraryKey, std::size_t> library_map;
-std::vector<Library> libraries;
-
+vector<Library> libraries;
 }
 
 //==============================================================================
@@ -180,16 +181,15 @@ void read_cross_sections_xml()
   }
 }
 
-void
-read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
-  const std::vector<std::vector<double>>& thermal_temps)
+void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
+  const vector<vector<double>>& thermal_temps)
 {
   std::unordered_set<std::string> already_read;
 
   // Construct a vector of nuclide names because we haven't loaded nuclide data
   // yet, but we need to know the name of the i-th nuclide
-  std::vector<std::string> nuclide_names(data::nuclide_map.size());
-  std::vector<std::string> thermal_names(data::thermal_scatt_map.size());
+  vector<std::string> nuclide_names(data::nuclide_map.size());
+  vector<std::string> thermal_names(data::thermal_scatt_map.size());
   for (const auto& kv : data::nuclide_map) {
     nuclide_names[kv.second] = kv.first;
   }
@@ -236,8 +236,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 
         // Read thermal scattering data from HDF5
         hid_t group = open_group(file_id, name.c_str());
-        data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(
-          group, thermal_temps[i_table]));
+        data::thermal_scatt.push_back(
+          make_unique<ThermalScattering>(group, thermal_temps[i_table]));
         close_group(group);
         file_close(file_id);
 
@@ -320,6 +320,27 @@ void read_ce_cross_sections_xml()
   // Make sure file was not empty
   if (data::libraries.empty()) {
     fatal_error("No cross section libraries present in cross_sections.xml file.");
+  }
+}
+
+void finalize_cross_sections(){
+  if (settings::run_mode != RunMode::PLOTTING) {
+    simulation::time_read_xs.start();
+    if (settings::run_CE) {
+      // Determine desired temperatures for each nuclide and S(a,b) table
+      double_2dvec nuc_temps(data::nuclide_map.size());
+      double_2dvec thermal_temps(data::thermal_scatt_map.size());
+      get_temperatures(nuc_temps, thermal_temps);
+
+      // Read continuous-energy cross sections from HDF5
+      read_ce_cross_sections(nuc_temps, thermal_temps);
+    } else {
+      // Create material macroscopic data for MGXS
+      set_mg_interface_nuclides_and_temps();
+      data::mg.init();
+      mark_fissionable_mgxs_materials();
+    }
+    simulation::time_read_xs.stop();
   }
 }
 

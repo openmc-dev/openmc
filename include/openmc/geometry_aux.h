@@ -6,8 +6,9 @@
 
 #include <cstdint>
 #include <string>
-#include <vector>
 #include <unordered_map>
+
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -41,19 +42,14 @@ void assign_temperatures();
 //!   table
 //==============================================================================
 
-void get_temperatures(std::vector<std::vector<double>>& nuc_temps,
-  std::vector<std::vector<double>>& thermal_temps);
+void get_temperatures(
+  vector<vector<double>>& nuc_temps, vector<vector<double>>& thermal_temps);
 
 //==============================================================================
 //! \brief Perform final setup for geometry
-//!
-//! \param[out] nuc_temps  Vector of temperatures for each nuclide
-//! \param[out] thermal_temps Vector of tempratures for each thermal scattering
-//!   table
 //==============================================================================
 
-void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
-  std::vector<std::vector<double>>& thermal_temps);
+void finalize_geometry();
 
 //==============================================================================
 //! Figure out which Universe is the root universe.

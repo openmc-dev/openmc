@@ -49,8 +49,8 @@ void
 CellFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                          FilterMatch& match) const
 {
-  for (int i = 0; i < p.n_coord_; i++) {
-    auto search = map_.find(p.coord_[i].cell);
+  for (int i = 0; i < p.n_coord(); i++) {
+    auto search = map_.find(p.coord(i).cell);
     if (search != map_.end()) {
       match.bins_.push_back(search->second);
       match.weights_.push_back(1.0);
@@ -62,7 +62,7 @@ void
 CellFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  std::vector<int32_t> cell_ids;
+  vector<int32_t> cell_ids;
   for (auto c : cells_) cell_ids.push_back(model::cells[c]->id_);
   write_dataset(filter_group, "bins", cell_ids);
 }

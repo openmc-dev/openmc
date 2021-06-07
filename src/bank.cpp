@@ -1,8 +1,9 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/error.h"
-#include "openmc/simulation.h"
 #include "openmc/message_passing.h"
+#include "openmc/simulation.h"
+#include "openmc/vector.h"
 
 #include <cstdint>
 
@@ -15,20 +16,20 @@ namespace openmc {
 
 namespace simulation {
 
-std::vector<Particle::Bank> source_bank;
+vector<SourceSite> source_bank;
 
-SharedArray<Particle::Bank> surf_source_bank;
+SharedArray<SourceSite> surf_source_bank;
 
 // The fission bank is allocated as a SharedArray, rather than a vector, as it will
 // be shared by all threads in the simulation. It will be allocated to a fixed
 // maximum capacity in the init_fission_bank() function. Then, Elements will be
 // added to it by using SharedArray's special thread_safe_append() function.
-SharedArray<Particle::Bank> fission_bank;
+SharedArray<SourceSite> fission_bank;
 
 // Each entry in this vector corresponds to the number of progeny produced
 // this generation for the particle located at that index. This vector is
 // used to efficiently sort the fission bank after each iteration.
-std::vector<int64_t> progeny_per_particle;
+vector<int64_t> progeny_per_particle;
 
 } // namespace simulation
 
@@ -79,8 +80,8 @@ void sort_fission_bank()
   // We need a scratch vector to make permutation of the fission bank into
   // sorted order easy. Under normal usage conditions, the fission bank is
   // over provisioned, so we can use that as scratch space.
-  Particle::Bank* sorted_bank;
-  std::vector<Particle::Bank> sorted_bank_holder;
+  SourceSite* sorted_bank;
+  vector<SourceSite> sorted_bank_holder;
 
   // If there is not enough space, allocate a temporary vector and point to it
   if (simulation::fission_bank.size() > simulation::fission_bank.capacity() / 2) {

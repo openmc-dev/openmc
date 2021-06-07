@@ -22,7 +22,8 @@ double cfloat_endf(const char* buffer, int n)
   // limit n to 11 characters
   n = n > 11 ? 11 : n;
 
-  for (int i = 0; i < n; ++i) {
+  int i;
+  for (i = 0; i < n; ++i) {
     char c = buffer[i];
 
     // Skip whitespace characters

@@ -1,20 +1,20 @@
 #ifndef OPENMC_SURFACE_H
 #define OPENMC_SURFACE_H
 
-#include <memory>  // for unique_ptr
 #include <limits>  // For numeric_limits
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
 
+#include "dagmc.h"
 #include "openmc/boundary_condition.h"
 #include "openmc/constants.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
-#include "dagmc.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -26,11 +26,11 @@ class Surface;
 
 namespace model {
   extern std::unordered_map<int, int> surface_map;
-  extern std::vector<std::unique_ptr<Surface>> surfaces;
+  extern vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================
-//! Coordinates for an axis-aligned cube that bounds a geometric object.
+//! Coordinates for an axis-aligned cuboid bounding a geometric object.
 //==============================================================================
 
 struct BoundingBox
@@ -137,7 +137,7 @@ public:
   virtual void to_hdf5(hid_t group_id) const = 0;
 
   //! Get the BoundingBox for this surface.
-  virtual BoundingBox bounding_box(bool pos_side) const { return {}; }
+  virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
 };
 
 class CSGSurface : public Surface

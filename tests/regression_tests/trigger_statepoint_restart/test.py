@@ -25,22 +25,21 @@ def model():
     # Settings
     settings = openmc.Settings()
     settings.run_mode = 'eigenvalue'
-    settings.batches = 10
-    settings.inactive = 5
-    settings.particles = 200
-    # Choose a sufficiently low threshold to trigger after more than 10 batches.
-    # 0.004 seems to take 13 batches.
-    settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.004}
+    settings.batches = 15
+    settings.inactive = 10
+    settings.particles = 400
+    # Choose a sufficiently low threshold to enable use of trigger
+    settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.003}
     settings.trigger_max_batches = 1000
     settings.trigger_batch_interval = 1
     settings.trigger_active = True
     settings.verbosity = 1 # to test that this works even with no output
- 
+
     # Tallies
     t = openmc.Tally()
     t.scores = ['flux']
     tallies = openmc.Tallies([t])
- 
+
     # Put it all together
     model = openmc.model.Model(materials=materials,
                                geometry=geometry,
@@ -92,7 +91,7 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             with openmc.StatePoint(spfile) as sp:
                  sp_batchno_1 = sp.current_batch
                  k_combined_1 = sp.k_combined
-            assert sp_batchno_1 > 10
+            assert sp_batchno_1 > 5
             print('Last batch no = %d' % sp_batchno_1)
             self._write_inputs(self._get_inputs())
             self._compare_inputs()
@@ -110,7 +109,7 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             with openmc.StatePoint(spfile) as sp:
                  sp_batchno_2 = sp.current_batch
                  k_combined_2 = sp.k_combined
-            assert sp_batchno_2 > 10
+            assert sp_batchno_2 > 5
             assert sp_batchno_1 == sp_batchno_2, \
                 'Different final batch number after restart'
             # need str() here as uncertainties.ufloat instances are always different

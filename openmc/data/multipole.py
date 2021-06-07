@@ -995,7 +995,7 @@ class WindowedMultipole(EqualityMixin):
 
         out.windows = group['windows'][()]
 
-        out.broaden_poly = group['broaden_poly'][...].astype(np.bool)
+        out.broaden_poly = group['broaden_poly'][...].astype(bool)
         if out.broaden_poly.shape[0] != out.windows.shape[0]:
             raise ValueError(err.format('broaden_poly', 'windows'))
 
@@ -1017,6 +1017,8 @@ class WindowedMultipole(EqualityMixin):
     @classmethod
     def from_endf(cls, endf_file, log=False, vf_options=None, wmp_options=None):
         """Generate windowed multipole neutron data from an ENDF evaluation.
+
+        .. versionadded:: 0.12.1
 
         Parameters
         ----------

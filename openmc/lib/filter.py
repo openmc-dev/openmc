@@ -11,15 +11,15 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
-from .mesh import RegularMesh
+from .mesh import _get_mesh
 
 
 __all__ = [
     'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
-    'CellInstanceFilter', 'DistribcellFilter', 'DelayedGroupFilter', 'EnergyFilter',
-    'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter', 'MaterialFilter',
-    'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter', 'PolarFilter',
-    'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
+    'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter', 
+    'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter', 
+    'MaterialFilter', 'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter', 
+    'PolarFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
     'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
 
@@ -84,6 +84,12 @@ _dll.openmc_meshsurface_filter_get_mesh.errcheck = _error_handler
 _dll.openmc_meshsurface_filter_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_meshsurface_filter_set_mesh.restype = c_int
 _dll.openmc_meshsurface_filter_set_mesh.errcheck = _error_handler
+_dll.openmc_mesh_filter_get_translation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_mesh_filter_get_translation.restype = c_int
+_dll.openmc_mesh_filter_get_translation.errcheck = _error_handler
+_dll.openmc_mesh_filter_set_translation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_mesh_filter_set_translation.restype = c_int
+_dll.openmc_mesh_filter_set_translation.errcheck = _error_handler
 _dll.openmc_new_filter.argtypes = [c_char_p, POINTER(c_int32)]
 _dll.openmc_new_filter.restype = c_int
 _dll.openmc_new_filter.errcheck = _error_handler
@@ -174,6 +180,10 @@ class EnergyFilter(Filter):
 
         _dll.openmc_energy_filter_set_bins(
             self._index, len(energies), energies_p)
+
+
+class CollisionFilter(Filter):
+    filter_type = 'collision'
 
 
 class EnergyoutFilter(EnergyFilter):
@@ -315,11 +325,21 @@ class MeshFilter(Filter):
     def mesh(self):
         index_mesh = c_int32()
         _dll.openmc_mesh_filter_get_mesh(self._index, index_mesh)
-        return RegularMesh(index=index_mesh.value)
+        return _get_mesh(index_mesh.value)
 
     @mesh.setter
     def mesh(self, mesh):
         _dll.openmc_mesh_filter_set_mesh(self._index, mesh._index)
+
+    @property
+    def translation(self):
+        translation = (c_double*3)()
+        _dll.openmc_mesh_filter_get_translation(self._index, translation)
+        return tuple(translation)
+
+    @translation.setter
+    def translation(self, translation):
+        _dll.openmc_mesh_filter_set_translation(self._index, (c_double*3)(*translation))
 
 
 class MeshSurfaceFilter(Filter):
@@ -334,11 +354,21 @@ class MeshSurfaceFilter(Filter):
     def mesh(self):
         index_mesh = c_int32()
         _dll.openmc_meshsurface_filter_get_mesh(self._index, index_mesh)
-        return RegularMesh(index=index_mesh.value)
+        return _get_mesh(index_mesh.value)
 
     @mesh.setter
     def mesh(self, mesh):
         _dll.openmc_meshsurface_filter_set_mesh(self._index, mesh._index)
+
+    @property
+    def translation(self):
+        translation = (c_double*3)()
+        _dll.openmc_mesh_filter_get_translation(self._index, translation)
+        return tuple(translation)
+
+    @translation.setter
+    def translation(self, translation):
+        _dll.openmc_mesh_filter_set_translation(self._index, (c_double*3)(*translation))
 
 
 class MuFilter(Filter):

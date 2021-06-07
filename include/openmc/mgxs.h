@@ -5,15 +5,14 @@
 #define OPENMC_MGXS_H
 
 #include <string>
-#include <vector>
 
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 #include "openmc/xsdata.h"
-
 
 namespace openmc {
 
@@ -42,13 +41,13 @@ class Mgxs {
     AngleDistributionType scatter_format; // flag for if this is legendre, histogram, or tabular
     int num_groups;     // number of energy groups
     int num_delayed_groups; // number of delayed neutron groups
-    std::vector<XsData> xs; // Cross section data
+    vector<XsData> xs;      // Cross section data
     // MGXS Incoming Flux Angular grid information
     bool is_isotropic; // used to skip search for angle indices if isotropic
     int n_pol;
     int n_azi;
-    std::vector<double> polar;
-    std::vector<double> azimuthal;
+    vector<double> polar;
+    vector<double> azimuthal;
 
     //! \brief Initializes the Mgxs object metadata
     //!
@@ -62,10 +61,10 @@ class Mgxs {
     //!   the incoming particle.
     //! @param in_polar Polar angle grid.
     //! @param in_azimuthal Azimuthal angle grid.
-    void
-    init(const std::string& in_name, double in_awr, const std::vector<double>& in_kTs,
-         bool in_fissionable, AngleDistributionType in_scatter_format, bool in_is_isotropic,
-         const std::vector<double>& in_polar, const std::vector<double>& in_azimuthal);
+    void init(const std::string& in_name, double in_awr,
+      const vector<double>& in_kTs, bool in_fissionable,
+      AngleDistributionType in_scatter_format, bool in_is_isotropic,
+      const vector<double>& in_polar, const vector<double>& in_azimuthal);
 
     //! \brief Initializes the Mgxs object metadata from the HDF5 file
     //!
@@ -74,9 +73,8 @@ class Mgxs {
     //! @param temps_to_read Resultant list of temperatures in the library
     //!   to read which correspond to the requested temperatures.
     //! @param order_dim Resultant dimensionality of the scattering order.
-    void
-    metadata_from_hdf5(hid_t xs_id, const std::vector<double>& temperature,
-         std::vector<int>& temps_to_read, int& order_dim);
+    void metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
+      vector<int>& temps_to_read, int& order_dim);
 
     //! \brief Performs the actual act of combining the microscopic data for a
     //!   single temperature.
@@ -86,9 +84,8 @@ class Mgxs {
     //! @param micro_ts The temperature index of the microscopic objects that
     //!   corresponds to the temperature of interest.
     //! @param this_t The temperature index of the macroscopic object.
-    void
-    combine(const std::vector<Mgxs*>& micros, const std::vector<double>& scalars,
-         const std::vector<int>& micro_ts, int this_t);
+    void combine(const vector<Mgxs*>& micros, const vector<double>& scalars,
+      const vector<int>& micro_ts, int this_t);
 
     //! \brief Checks to see if this and that are able to be combined
     //!
@@ -103,7 +100,7 @@ class Mgxs {
     std::string name;   // name of dataset, e.g., UO2
     double awr;         // atomic weight ratio
     bool fissionable;   // Is this fissionable
-    std::vector<CacheData> cache; // index and data cache
+    vector<CacheData> cache; // index and data cache
 
     Mgxs() = default;
 
@@ -113,8 +110,8 @@ class Mgxs {
     //! @param temperature Temperatures to read.
     //! @param num_group number of energy groups
     //! @param num_delay number of delayed groups
-    Mgxs(hid_t xs_id, const std::vector<double>& temperature,
-        int num_group, int num_delay);
+    Mgxs(hid_t xs_id, const vector<double>& temperature, int num_group,
+      int num_delay);
 
     //! \brief Constructor that initializes and populates all data to build a
     //!   macroscopic cross section from microscopic cross sections.
@@ -125,9 +122,9 @@ class Mgxs {
     //! @param atom_densities Atom densities of those microscopic quantities.
     //! @param num_group number of energy groups
     //! @param num_delay number of delayed groups
-    Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
-         const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
-         int num_group, int num_delay);
+    Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
+      const vector<Mgxs*>& micros, const vector<double>& atom_densities,
+      int num_group, int num_delay);
 
     //! \brief Provides a cross section value given certain parameters
     //!
@@ -187,7 +184,7 @@ class Mgxs {
     set_angle_index(Direction u);
 
     //! \brief Provide const access to list of XsData held by this
-    const std::vector<XsData>& get_xsdata() const { return xs; }
+    const vector<XsData>& get_xsdata() const { return xs; }
 };
 
 } // namespace openmc

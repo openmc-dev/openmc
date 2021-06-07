@@ -580,7 +580,7 @@ class Sum(EqualityMixin):
 
 
 class Regions1D(EqualityMixin):
-    """Piecewise composition of multiple functions.
+    r"""Piecewise composition of multiple functions.
 
     This class allows you to create a callable object which is composed
     of multiple other callable objects, each applying to a specific interval

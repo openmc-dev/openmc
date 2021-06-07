@@ -298,6 +298,10 @@ def write_source_file(source_particles, filename, **kwargs):
     **kwargs
         Keyword arguments to pass to :class:`h5py.File`
 
+    See Also
+    --------
+    openmc.SourceParticle
+
     """
     # Create compound datatype for source particles
     pos_dtype = np.dtype([('x', '<f8'), ('y', '<f8'), ('z', '<f8')])

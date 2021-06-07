@@ -2,9 +2,9 @@
 #define OPENMC_TALLIES_DERIVATIVE_H
 
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 #include <unordered_map>
-#include <vector>
 
 #include "pugixml.hpp"
 
@@ -71,7 +71,7 @@ namespace openmc {
 
 namespace model {
 extern std::unordered_map<int, int> tally_deriv_map;
-extern std::vector<TallyDerivative> tally_derivs;
+extern vector<TallyDerivative> tally_derivs;
 } // namespace model
 
 } // namespace openmc

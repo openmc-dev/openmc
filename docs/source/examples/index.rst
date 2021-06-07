@@ -19,6 +19,7 @@ General Usage
     post-processing
     pandas-dataframes
     tally-arithmetic
+    capi
     expansion-filters
     search
     nuclear-data

@@ -36,7 +36,7 @@ RUN apt-get update -y && \
 RUN pip3 install --upgrade pip
 
 # Clone and install NJOY2016
-RUN git clone https://github.com/njoy/NJOY2016 /opt/NJOY2016 && \
+RUN git clone https://github.com/njoy/NJOY2016.git /opt/NJOY2016 && \
     cd /opt/NJOY2016 && \
     mkdir build && cd build && \
     cmake -Dstatic=on .. && make 2>/dev/null && make install
@@ -65,7 +65,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install Embree
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone https://github.com/embree/embree ; \
+    then git clone --single-branch --branch v3.12.2 https://github.com/embree/embree.git ; \
     cd embree ; \
     mkdir build ; \
     cd build ; \
@@ -81,7 +81,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     mkdir MOAB ; \
     cd MOAB ; \
     mkdir build ; \
-    git clone  --single-branch --branch develop https://bitbucket.org/fathomteam/moab/ ; \
+    git clone  --single-branch --branch 5.2.1 https://bitbucket.org/fathomteam/moab.git ; \
     cd build ; \
     cmake ../moab -DENABLE_HDF5=ON \
                   -DENABLE_NETCDF=ON \
@@ -102,13 +102,13 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install Double-Down
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone https://github.com/pshriwise/double-down ; \
+    then git clone --single-branch --branch main https://github.com/pshriwise/double-down.git ; \
     cd double-down ; \
     mkdir build ; \
     cd build ; \
     cmake .. -DCMAKE_INSTALL_PREFIX=.. \
              -DMOAB_DIR=/usr/local \
-             -DEMBREE_DIR=/embree/lib/cmake/embree-3.12.1 ; \
+             -DEMBREE_DIR=/embree ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
     fi
@@ -117,16 +117,16 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 RUN if [ "$include_dagmc" = "true" ] ; \
     then mkdir DAGMC ; \
     cd DAGMC ; \
-    git clone -b develop https://github.com/svalinn/dagmc ; \
+    git clone --single-branch --branch 3.2.0 https://github.com/svalinn/DAGMC.git ; \
     mkdir build ; \
     cd build ; \
-    cmake ../dagmc -DBUILD_TALLY=ON \
-                   -DCMAKE_INSTALL_PREFIX=/dagmc/ \
+    cmake ../DAGMC -DBUILD_TALLY=ON \
+                   -DCMAKE_INSTALL_PREFIX=/DAGMC/ \
                    -DMOAB_DIR=/usr/local \
                    -DBUILD_STATIC_LIBS=OFF \
                    -DBUILD_STATIC_EXE=OFF ; \
     make -j"$compile_cores" install ; \
-    rm -rf /DAGMC/dagmc /DAGMC/build ; \
+    rm -rf /DAGMC/DAGMC /DAGMC/build ; \
     fi
 
 # Clone and install OpenMC with DAGMC

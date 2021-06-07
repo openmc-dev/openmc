@@ -338,7 +338,11 @@ attributes/sub-elements:
   :z_grid:
     The mesh divisions along the z-axis. (For rectilinear mesh only.)
 
-  :mesh_file:
+  :library:
+    The mesh library used to represent an unstructured mesh. This can be either
+    "moab" or "libmesh". (For unstructured mesh only.)
+
+  :filename:
     The name of the mesh file to be loaded at runtime. (For unstructured mesh
     only.)
 

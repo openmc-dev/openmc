@@ -4,12 +4,11 @@
 #ifndef OPENMC_ENDF_H
 #define OPENMC_ENDF_H
 
-#include <memory>
-#include <vector>
-
 #include "hdf5.h"
 
 #include "openmc/constants.h"
+#include "openmc/memory.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -59,7 +58,7 @@ public:
   //! \return Polynomial evaluated at x
   double operator()(double x) const override;
 private:
-  std::vector<double> coef_; //!< Polynomial coefficients
+  vector<double> coef_; //!< Polynomial coefficients
 };
 
 //==============================================================================
@@ -80,15 +79,16 @@ public:
   double operator()(double x) const override;
 
   // Accessors
-  const std::vector<double>& x() const { return x_; }
-  const std::vector<double>& y() const { return y_; }
+  const vector<double>& x() const { return x_; }
+  const vector<double>& y() const { return y_; }
+
 private:
   std::size_t n_regions_ {0}; //!< number of interpolation regions
-  std::vector<int> nbt_; //!< values separating interpolation regions
-  std::vector<Interpolation> int_; //!< interpolation schemes
+  vector<int> nbt_;           //!< values separating interpolation regions
+  vector<Interpolation> int_; //!< interpolation schemes
   std::size_t n_pairs_; //!< number of (x,y) pairs
-  std::vector<double> x_; //!< values of abscissa
-  std::vector<double> y_; //!< values of ordinate
+  vector<double> x_;    //!< values of abscissa
+  vector<double> y_;    //!< values of ordinate
 };
 
 //==============================================================================
@@ -101,11 +101,12 @@ public:
 
   double operator()(double E) const override;
 
-  const std::vector<double>& bragg_edges() const { return bragg_edges_; }
-  const std::vector<double>& factors() const { return factors_; }
+  const vector<double>& bragg_edges() const { return bragg_edges_; }
+  const vector<double>& factors() const { return factors_; }
+
 private:
-  std::vector<double> bragg_edges_; //!< Bragg edges in [eV]
-  std::vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
+  vector<double> bragg_edges_; //!< Bragg edges in [eV]
+  vector<double> factors_;     //!< Partial sums of structure factors [eV-b]
 };
 
 //==============================================================================
@@ -126,7 +127,7 @@ private:
 //! \param[in] group HDF5 group containing dataset
 //! \param[in] name Name of dataset
 //! \return Unique pointer to 1D function
-std::unique_ptr<Function1D> read_function(hid_t group, const char* name);
+unique_ptr<Function1D> read_function(hid_t group, const char* name);
 
 } // namespace openmc
 

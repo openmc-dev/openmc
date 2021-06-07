@@ -13,6 +13,7 @@
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
+#include "openmc/particle.h"
 #include "openmc/physics_common.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
@@ -25,14 +26,14 @@ void
 collision_mg(Particle& p)
 {
   // Add to the collision counter for the particle
-  p.n_collision_++;
+  p.n_collision()++;
 
   // Sample the reaction type
   sample_reaction(p);
 
   // Display information about collision
-  if ((settings::verbosity >= 10) || p.trace_) {
-    write_message(fmt::format("    Energy Group = {}", p.g_), 1);
+  if ((settings::verbosity >= 10) || p.trace()) {
+    write_message(fmt::format("    Energy Group = {}", p.g()), 1);
   }
 }
 
@@ -44,7 +45,7 @@ sample_reaction(Particle& p)
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
 
-  if (model::materials[p.material_]->fissionable_) {
+  if (model::materials[p.material()]->fissionable_) {
     if (settings::run_mode == RunMode::EIGENVALUE  ||
        (settings::run_mode == RunMode::FIXED_SOURCE &&
         settings::create_fission_neutrons)) {
@@ -54,12 +55,13 @@ sample_reaction(Particle& p)
 
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs.
-  if (p.macro_xs_.absorption > 0.) {
+  if (p.macro_xs().absorption > 0.) {
     absorption(p);
   } else {
-    p.wgt_absorb_ = 0.;
+    p.wgt_absorb() = 0.;
   }
-  if (!p.alive_) return;
+  if (!p.alive())
+    return;
 
   // Sample a scattering event to determine the energy of the exiting neutron
   scatter(p);
@@ -67,24 +69,25 @@ sample_reaction(Particle& p)
   // Play Russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
     russian_roulette(p);
-    if (!p.alive_) return;
+    if (!p.alive())
+      return;
   }
 }
 
 void
 scatter(Particle& p)
 {
-  data::mg.macro_xs_[p.material_].sample_scatter(p.g_last_, p.g_, p.mu_,
-                                                  p.wgt_, p.current_seed());
+  data::mg.macro_xs_[p.material()].sample_scatter(
+    p.g_last(), p.g(), p.mu(), p.wgt(), p.current_seed());
 
   // Rotate the angle
-  p.u() = rotate_angle(p.u(), p.mu_, nullptr, p.current_seed());
+  p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
 
   // Update energy value for downstream compatability (in tallying)
-  p.E_ = data::mg.energy_bin_avg_[p.g_];
+  p.E() = data::mg.energy_bin_avg_[p.g()];
 
   // Set event component
-  p.event_ = TallyEvent::SCATTER;
+  p.event() = TallyEvent::SCATTER;
 }
 
 void
@@ -95,8 +98,8 @@ create_fission_sites(Particle& p)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt_ / simulation::keff * weight *
-       p.macro_xs_.nu_fission / p.macro_xs_.total;
+  double nu_t = p.wgt() / simulation::keff * weight * p.macro_xs().nu_fission /
+                p.macro_xs().total;
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
@@ -113,9 +116,9 @@ create_fission_sites(Particle& p)
   double nu_d[MAX_DELAYED_GROUPS] = {0.};
 
   // Clear out particle's nu fission bank
-  p.nu_bank_.clear();
+  p.nu_bank().clear();
 
-  p.fission_ = true;
+  p.fission() = true;
   int skipped = 0;
 
   // Determine whether to place fission sites into the shared fission bank
@@ -124,12 +127,12 @@ create_fission_sites(Particle& p)
 
   for (int i = 0; i < nu; ++i) {
     // Initialize fission site object with particle data
-    Particle::Bank site;
+    SourceSite site;
     site.r = p.r();
-    site.particle = Particle::Type::neutron;
+    site.particle = ParticleType::neutron;
     site.wgt = 1. / weight;
-    site.parent_id = p.id_;
-    site.progeny_id = p.n_progeny_++;
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny()++;
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
@@ -144,8 +147,8 @@ create_fission_sites(Particle& p)
     // Sample secondary energy distribution for the fission reaction
     int dg;
     int gout;
-    data::mg.macro_xs_[p.material_].sample_fission_energy(p.g_, dg, gout,
-      p.current_seed());
+    data::mg.macro_xs_[p.material()].sample_fission_energy(
+      p.g(), dg, gout, p.current_seed());
 
     // Store the energy and delayed groups on the fission bank
     site.E = gout;
@@ -164,31 +167,29 @@ create_fission_sites(Particle& p)
         break;
       }
     } else {
-      p.secondary_bank_.push_back(site);
+      p.secondary_bank().push_back(site);
     }
 
     // Set the delayed group on the particle as well
-    p.delayed_group_ = dg + 1;
+    p.delayed_group() = dg + 1;
 
     // Increment the number of neutrons born delayed
-    if (p.delayed_group_ > 0) {
+    if (p.delayed_group() > 0) {
       nu_d[dg]++;
     }
 
     // Write fission particles to nuBank
-    if (use_fission_bank) {
-      p.nu_bank_.emplace_back();
-      Particle::NuBank* nu_bank_entry = &p.nu_bank_.back();
-      nu_bank_entry->wgt              = site.wgt;
-      nu_bank_entry->E                = site.E;
-      nu_bank_entry->delayed_group    = site.delayed_group;
-    }
+    p.nu_bank().emplace_back();
+    NuBank* nu_bank_entry = &p.nu_bank().back();
+    nu_bank_entry->wgt              = site.wgt;
+    nu_bank_entry->E                = site.E;
+    nu_bank_entry->delayed_group    = site.delayed_group;
   }
 
   // If shared fission bank was full, and no fissions could be added,
   // set the particle fission flag to false.
   if (nu == skipped) {
-    p.fission_ = false;
+    p.fission() = false;
     return;
   }
 
@@ -197,10 +198,10 @@ create_fission_sites(Particle& p)
   nu -= skipped;
 
   // Store the total weight banked for analog fission tallies
-  p.n_bank_ = nu;
-  p.wgt_bank_ = nu / weight;
+  p.n_bank() = nu;
+  p.wgt_bank() = nu / weight;
   for (size_t d = 0; d < MAX_DELAYED_GROUPS; d++) {
-    p.n_delayed_bank_[d] = nu_d[d];
+    p.n_delayed_bank(d) = nu_d[d];
   }
 }
 
@@ -209,23 +210,22 @@ absorption(Particle& p)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p.wgt_absorb_ = p.wgt_ * p.macro_xs_.absorption / p.macro_xs_.total;
+    p.wgt_absorb() = p.wgt() * p.macro_xs().absorption / p.macro_xs().total;
 
     // Adjust weight of particle by the probability of absorption
-    p.wgt_ -= p.wgt_absorb_;
-    p.wgt_last_ = p.wgt_;
+    p.wgt() -= p.wgt_absorb();
+    p.wgt_last() = p.wgt();
 
     // Score implicit absorpion estimate of keff
-    p.keff_tally_absorption_ += p.wgt_absorb_ * p.macro_xs_.nu_fission /
-        p.macro_xs_.absorption;
+    p.keff_tally_absorption() +=
+      p.wgt_absorb() * p.macro_xs().nu_fission / p.macro_xs().absorption;
   } else {
-    if (p.macro_xs_.absorption > prn(p.current_seed()) * p.macro_xs_.total) {
-      p.keff_tally_absorption_ += p.wgt_ * p.macro_xs_.nu_fission /
-           p.macro_xs_.absorption;
-      p.alive_ = false;
-      p.event_ = TallyEvent::ABSORB;
+    if (p.macro_xs().absorption > prn(p.current_seed()) * p.macro_xs().total) {
+      p.keff_tally_absorption() +=
+        p.wgt() * p.macro_xs().nu_fission / p.macro_xs().absorption;
+      p.alive() = false;
+      p.event() = TallyEvent::ABSORB;
     }
-
   }
 }
 

@@ -1,6 +1,5 @@
 #include "openmc/hdf5_interface.h"
 
-#include <array>
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -16,6 +15,7 @@
 #include "openmc/message_passing.h"
 #endif
 
+#include "openmc/array.h"
 
 namespace openmc {
 
@@ -56,16 +56,15 @@ get_shape(hid_t obj_id, hsize_t* dims)
   H5Sclose(dspace);
 }
 
-
-std::vector<hsize_t> attribute_shape(hid_t obj_id, const char* name)
+vector<hsize_t> attribute_shape(hid_t obj_id, const char* name)
 {
   hid_t attr = H5Aopen(obj_id, name, H5P_DEFAULT);
-  std::vector<hsize_t> shape = object_shape(attr);
+  vector<hsize_t> shape = object_shape(attr);
   H5Aclose(attr);
   return shape;
 }
 
-std::vector<hsize_t> object_shape(hid_t obj_id)
+vector<hsize_t> object_shape(hid_t obj_id)
 {
   // Get number of dimensions
   auto type = H5Iget_type(obj_id);
@@ -81,7 +80,7 @@ std::vector<hsize_t> object_shape(hid_t obj_id)
   int n = H5Sget_simple_extent_ndims(dspace);
 
   // Get shape of array
-  std::vector<hsize_t> shape(n);
+  vector<hsize_t> shape(n);
   H5Sget_simple_extent_dims(dspace, shape.data(), nullptr);
 
   // Free resources and return
@@ -337,8 +336,7 @@ get_groups(hid_t group_id, char* name[])
   }
 }
 
-std::vector<std::string>
-member_names(hid_t group_id, H5O_type_t type)
+vector<std::string> member_names(hid_t group_id, H5O_type_t type)
 {
   // Determine number of links in the group
   H5G_info_t info;
@@ -347,7 +345,7 @@ member_names(hid_t group_id, H5O_type_t type)
   // Iterate over links to get names
   H5O_info_t oinfo;
   size_t size;
-  std::vector<std::string> names;
+  vector<std::string> names;
   for (hsize_t i = 0; i < info.nlinks; ++i) {
     // Determine type of object (and skip non-group)
     H5Oget_info_by_idx(group_id, ".", H5_INDEX_NAME, H5_ITER_INC, i, &oinfo,
@@ -368,14 +366,12 @@ member_names(hid_t group_id, H5O_type_t type)
   return names;
 }
 
-std::vector<std::string>
-group_names(hid_t group_id)
+vector<std::string> group_names(hid_t group_id)
 {
   return member_names(group_id, H5O_TYPE_GROUP);
 }
 
-std::vector<std::string>
-dataset_names(hid_t group_id)
+vector<std::string> dataset_names(hid_t group_id)
 {
   return member_names(group_id, H5O_TYPE_DATASET);
 }
@@ -492,13 +488,13 @@ template<>
 void read_dataset(hid_t dset, xt::xarray<std::complex<double>>& arr, bool indep)
 {
   // Get shape of dataset
-  std::vector<hsize_t> shape = object_shape(dset);
+  vector<hsize_t> shape = object_shape(dset);
 
   // Allocate new array to read data into
   std::size_t size = 1;
   for (const auto x : shape)
     size *= x;
-  std::vector<std::complex<double>> buffer(size);
+  vector<std::complex<double>> buffer(size);
 
   // Read data from attribute
   read_complex(dset, nullptr, buffer.data(), indep);

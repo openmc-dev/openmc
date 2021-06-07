@@ -50,10 +50,10 @@ void
 SurfaceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                             FilterMatch& match) const
 {
-  auto search = map_.find(std::abs(p.surface_)-1);
+  auto search = map_.find(std::abs(p.surface()) - 1);
   if (search != map_.end()) {
     match.bins_.push_back(search->second);
-    if (p.surface_ < 0) {
+    if (p.surface() < 0) {
       match.weights_.push_back(-1.0);
     } else {
       match.weights_.push_back(1.0);
@@ -65,7 +65,7 @@ void
 SurfaceFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  std::vector<int32_t> surface_ids;
+  vector<int32_t> surface_ids;
   for (auto c : surfaces_) surface_ids.push_back(model::surfaces[c]->id_);
   write_dataset(filter_group, "bins", surface_ids);
 }

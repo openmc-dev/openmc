@@ -19,7 +19,7 @@ namespace openmc {
 // Reaction implementation
 //==============================================================================
 
-Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
+Reaction::Reaction(hid_t group, const vector<int>& temperatures)
 {
   read_attribute(group, "Q_value", q_value_);
   read_attribute(group, "mt", mt_);
@@ -63,30 +63,11 @@ Reaction::Reaction(hid_t group, const std::vector<int>& temperatures)
       close_group(pgroup);
     }
   }
-
-  // <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<
-  // Before the secondary distribution refactor, when the angle/energy
-  // distribution was uncorrelated, no angle was actually sampled. With
-  // the refactor, an angle is always sampled for an uncorrelated
-  // distribution even when no angle distribution exists in the ACE file
-  // (isotropic is assumed). To preserve the RNG stream, we explicitly
-  // mark fission reactions so that we avoid the angle sampling.
-  if (is_fission(mt_)) {
-    for (auto& p : products_) {
-      if (p.particle_ == Particle::Type::neutron) {
-        for (auto& d : p.distribution_) {
-          auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-          if (d_) d_->fission() = true;
-        }
-      }
-    }
-  }
-  // <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<
 }
 
-double
-Reaction::collapse_rate(gsl::index i_temp, gsl::span<const double> energy,
-  gsl::span<const double> flux, const std::vector<double>& grid) const
+double Reaction::collapse_rate(gsl::index i_temp,
+  gsl::span<const double> energy, gsl::span<const double> flux,
+  const vector<double>& grid) const
 {
   // Find index corresponding to first energy
   const auto& xs = xs_[i_temp].value;

@@ -1,7 +1,7 @@
 import sys
 
 from collections.abc import Mapping, Iterable
-from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
+from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_bool
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -43,7 +43,7 @@ _dll.openmc_cell_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_cell_set_id.restype = c_int
 _dll.openmc_cell_set_id.errcheck = _error_handler
 _dll.openmc_cell_set_temperature.argtypes = [
-    c_int32, c_double, POINTER(c_int32)]
+    c_int32, c_double, POINTER(c_int32), c_bool]
 _dll.openmc_cell_set_temperature.restype = c_int
 _dll.openmc_cell_set_temperature.errcheck = _error_handler
 _dll.openmc_get_cell_index.argtypes = [c_int32, POINTER(c_int32)]
@@ -66,6 +66,11 @@ class Cell(_FortranObjectWithID):
 
     Parameters
     ----------
+    uid : int or None
+         Unique ID of the cell
+    new : bool
+         When `index` is None, this argument controls whether a new object is
+         created or a view to an existing object is returned.
     index : int
          Index in the `cells` array.
 
@@ -171,7 +176,7 @@ class Cell(_FortranObjectWithID):
         _dll.openmc_cell_get_temperature(self._index, instance, T)
         return T.value
 
-    def set_temperature(self, T, instance=None):
+    def set_temperature(self, T, instance=None, set_contained=False):
         """Set the temperature of a cell
 
         Parameters
@@ -180,13 +185,16 @@ class Cell(_FortranObjectWithID):
             Temperature in K
         instance : int or None
             Which instance of the cell
+        set_contained: bool
+            If cell is not filled by a material, whether to set the temperature of
+            all filled cells
 
         """
 
         if instance is not None:
             instance = c_int32(instance)
 
-        _dll.openmc_cell_set_temperature(self._index, T, instance)
+        _dll.openmc_cell_set_temperature(self._index, T, instance, set_contained)
 
     @property
     def bounding_box(self):

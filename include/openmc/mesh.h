@@ -231,7 +231,7 @@ public:
   RegularMesh() = default;
   RegularMesh(pugi::xml_node node);
 
-  // Overriden methods
+  // Overridden methods
   void
   surface_bins_crossed(Position r0,
                        Position r1,
@@ -272,7 +272,7 @@ public:
   RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
 
-  // Overriden methods
+  // Overridden methods
   void
   surface_bins_crossed(Position r0,
                        Position r1,
@@ -303,6 +303,17 @@ public:
   UnstructuredMesh() {};
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(const std::string& filename);
+
+  // Overridden Methods
+  void
+  surface_bins_crossed(Position r0,
+                       Position r1,
+                       const Direction& u,
+                       vector<int>& bins) const override;
+
+  void to_hdf5(hid_t group) const override;
+
+  std::string bin_label(int bin) const override;
 
   // Methods
 
@@ -337,14 +348,6 @@ public:
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;
 
-  std::string bin_label(int bin) const override;
-
-  void surface_bins_crossed(Position r0,
-                            Position r1,
-                            vector<int>& bins) const;
-
-  void to_hdf5(hid_t group) const override;
-
   // Data members
   bool output_ {true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
@@ -364,38 +367,40 @@ public:
   MOABMesh(pugi::xml_node);
   MOABMesh(const std::string& filename);
 
-  void bins_crossed(Position r0,
-                    Position r1,
-                    const Direction& u,
-                    vector<int>& bins,
-                    vector<double>& lengths) const override;
+  // Overridden Methods
 
-  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins) const override;
+  void
+  bins_crossed(Position r0,
+               Position r1,
+               const Direction& u,
+               vector<int>& bins,
+               vector<double>& lengths) const override;
 
-  int get_bin(Position r) const;
+  int get_bin(Position r) const override;
 
   int n_bins() const override;
 
   int n_surface_bins() const override;
 
-  std::pair<vector<double>, vector<double>> plot(
-    Position plot_ll, Position plot_ur) const override;
+  std::pair<vector<double>, vector<double>>
+  plot(Position plot_ll,
+       Position plot_ur) const override;
 
   std::string library() const override;
 
   //! Add a score to the mesh instance
   void add_score(const std::string& score) override;
 
-  //! Remove a score from the mesh instance
+  //! Remove all scores from the mesh instance
   void remove_scores() override;
 
   //! Set data for a score
-  void set_score_data(const std::string& score, const vector<double>& values,
-    const vector<double>& std_dev) override;
+  void set_score_data(const std::string& score,
+                      const vector<double>& values,
+                      const vector<double>& std_dev) override;
 
   //! Write the mesh with any current tally data
-  void write(const std::string& base_filename) const;
+  void write(const std::string& base_filename) const override;
 
   Position centroid(int bin) const override;
 
@@ -404,6 +409,8 @@ public:
 private:
 
   void initialize() override;
+
+  // Methods
 
   //! Find all intersections with faces of the mesh.
   //
@@ -512,15 +519,12 @@ public:
   LibMesh(pugi::xml_node node);
   LibMesh(const std::string& filename);
 
-  // Methods
+  // Overridden Methods
   void bins_crossed(Position r0,
                     Position r1,
                     const Direction& u,
                     vector<int>& bins,
                     vector<double>& lengths) const override;
-
-  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins) const override;
 
   int get_bin(Position r) const override;
 
@@ -528,15 +532,19 @@ public:
 
   int n_surface_bins() const override;
 
-  std::pair<vector<double>, vector<double>> plot(
-    Position plot_ll, Position plot_ur) const override;
+  std::pair<vector<double>, vector<double>>
+  plot(Position plot_ll,
+       Position plot_ur) const override;
+
+  std::string library() const override;
 
   void add_score(const std::string& var_name) override;
 
   void remove_scores() override;
 
-  void set_score_data(const std::string& var_name, const vector<double>& values,
-    const vector<double>& std_dev) override;
+  void set_score_data(const std::string& var_name,
+                      const vector<double>& values,
+                      const vector<double>& std_dev) override;
 
   void write(const std::string& base_filename) const override;
 
@@ -544,11 +552,11 @@ public:
 
   double volume(int bin) const override;
 
-  std::string library() const override;
-
 private:
 
   void initialize() override;
+
+  // Methods
 
   //! Translate a bin value to an element reference
   const libMesh::Elem& get_element_from_bin(int bin) const;
@@ -567,6 +575,7 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type first_element_id_; //!< id of the first element in the mesh
 };
+
 #endif
 
 //==============================================================================

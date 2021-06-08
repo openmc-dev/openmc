@@ -1,6 +1,8 @@
 #include "openmc/capi.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
+#include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/tally.h"
 #include <iostream>
 #include "moab/Core.hpp"
 
@@ -40,8 +42,8 @@ int main(int argc, char * argv[]){
      fatal_error("Incorrect number of MOAB shared pointers");
   }
 
-  // Set mesh ID (-1 signifies auto-assign)
-  model::meshes.back()->set_id(-1);
+  // Auto-assign mesh ID
+  model::meshes.back()->set_id(C_NONE);
   int mesh_id = model::meshes.back()->id_;
 
   // Check we now have 2 meshes and id was correctly set
@@ -50,7 +52,36 @@ int main(int argc, char * argv[]){
    else if(mesh_id!=2)
      fatal_error("Mesh ID is incorrect");
 
-  // Add a new mesh filter tally
+  // Add a new mesh filter with auto-assigned ID
+  Filter* filter_ptr = Filter::create("mesh",C_NONE);
+
+  // Upcast pointer type
+  MeshFilter* mesh_filter = dynamic_cast<MeshFilter*>(filter_ptr);
+
+  if(mesh_filter == nullptr){
+    fatal_error("Failed to create mesh filter");
+  }
+
+  // Pass in the index of our mesh to the filter
+  int32_t mesh_idx = model::meshes.size() -1;
+  mesh_filter->set_mesh(mesh_idx);
+
+  // Create a tally with auto-assigned ID
+  model::tallies.push_back(make_unique<Tally>(C_NONE));
+
+  // Set tally name - matches that in test.py
+  model::tallies.back()->name_ = "external mesh tally";
+
+  // Set tally filter to our mesh filter
+  std::vector<Filter*> filters(1,filter_ptr);
+  model::tallies.back()->set_filters(filters);
+
+  // Set tally estimator
+  model::tallies.back()->estimator_ = TallyEstimator::TRACKLENGTH;
+
+  // Set tally score
+  std::vector<std::string> score_names(1,"flux");
+  model::tallies.back()->set_scores(score_names);
 
   // Run OpenMC
   openmc_err = openmc_run();

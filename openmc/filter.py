@@ -993,6 +993,8 @@ class MeshSurfaceFilter(MeshFilter):
 class CollisionFilter(Filter):
     """Bins tally events based on the number of collisions.
 
+    .. versionadded:: 0.12.2
+
     Parameters
     ----------
     bins : Iterable of int

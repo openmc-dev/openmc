@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/cell.h"
+#include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
@@ -26,6 +27,9 @@ void enforce_assumptions()
   // Assertions made when initializing particles
   assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
   assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
+  
+  assert(model::active_tracklength_tallies.empty() && "Tracklength tallies not yet supported.");
+  assert(model::active_tallies.empty() && "Tallies not yet supported.");
 }
 
 void move_settings_to_device()
@@ -49,6 +53,8 @@ void move_settings_to_device()
   #pragma omp target update to(settings::weight_survive)
   settings::energy_cutoff[0]; // Lazy extern template expansion workaround
   #pragma omp target update to(settings::energy_cutoff)
+  #pragma omp target update to(settings::n_log_bins)
+  #pragma omp target update to(settings::check_overlaps)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)
@@ -60,6 +66,11 @@ void move_settings_to_device()
   #pragma omp target update to(simulation::current_batch)
   #pragma omp target update to(simulation::current_gen)
   #pragma omp target update to(simulation::total_weight)
+  #pragma omp target update to(simulation::need_depletion_rx)
+  #pragma omp target update to(simulation::log_spacing)
+
+  // geometry.h
+  #pragma omp target update to(model::root_universe)
 }
 
 void move_read_only_data_to_device()
@@ -108,13 +119,15 @@ void move_read_only_data_to_device()
   }
 
   // Nuclear data /////////////////////////////////////////////////////
+  data::energy_min[0]; // Lazy extern template expansion workaround
   data::energy_max[0]; // Lazy extern template expansion workaround
+  #pragma omp target update to(data::energy_min)
   #pragma omp target update to(data::energy_max)
   #pragma omp target update to(data::nuclides_size)
-  #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
+
+  // Flatten nuclides before copying
   for (int i = 0; i < data::nuclides_size; ++i) {
     auto& nuc = data::nuclides[i];
-    std::cout << "Moving " << nuc.name_ << " data to device..." << std::endl;
 
     // URR data flattening
     for (auto& u : nuc.urr_data_) {
@@ -123,7 +136,12 @@ void move_read_only_data_to_device()
 
     // Pointwise XS data flattening
     nuc.flatten_xs_data();
+  }
 
+  #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
+  for (int i = 0; i < data::nuclides_size; ++i) {
+    auto& nuc = data::nuclides[i];
+    std::cout << "Moving " << nuc.name_ << " data to device..." << std::endl;
     nuc.copy_to_device();
   }
 
@@ -136,6 +154,7 @@ void move_read_only_data_to_device()
   // Materials /////////////////////////////////////////////////////////
 
   std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
+  #pragma omp target update to(model::materials_size)
   #pragma omp target enter data map(to: model::materials[:model::materials_size])
   for (int i = 0; i < model::materials_size; i++) {
     model::materials[i].copy_to_device();

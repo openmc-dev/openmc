@@ -24,7 +24,9 @@ namespace settings {
 
 // Boolean flags
 extern bool assume_separate;          //!< assume tallies are spatially separate?
+#pragma omp declare target
 extern bool check_overlaps;           //!< check overlaps in geometry?
+#pragma omp end declare target
 extern bool confidence_intervals;     //!< use confidence intervals for results?
 #pragma omp declare target
 extern bool create_fission_neutrons;  //!< create fission neutrons (fixed source)?
@@ -91,7 +93,9 @@ extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each
 #pragma omp end declare target
 extern int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;                //!< Maximum Legendre order for multigroup data
+#pragma omp declare target
 extern int n_log_bins;               //!< number of bins for logarithmic energy grid
+#pragma omp end declare target
 extern int n_batches;                //!< number of (inactive+active) batches
 extern int n_max_batches;            //!< Maximum number of batches
 #pragma omp declare target

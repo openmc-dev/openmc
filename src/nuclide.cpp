@@ -630,12 +630,15 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
   // Check to see if there is multipole data present at this energy
   bool use_mp = false;
+  /*
   if (multipole_) {
     use_mp = (p.E_ >= multipole_->E_min_ && p.E_ <= multipole_->E_max_);
   }
+  */
 
   // Evaluate multipole or interpolate
   if (use_mp) {
+    /*
     // Call multipole kernel
     double sig_s, sig_a, sig_f;
     std::tie(sig_s, sig_a, sig_f) = multipole_->evaluate(p.E_, p.sqrtkT_);
@@ -671,6 +674,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.index_grid = -1;
     micro.interp_factor = 0.0;
 
+    */
   } else {
     // Find the appropriate temperature index.
     double kT = p.sqrtkT_*p.sqrtkT_;
@@ -713,7 +717,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     // Offset xs
     int xs_offset = flat_temp_offsets_[i_temp] * 5;
     double* xs = &flat_xs_[xs_offset];
-
+    
     // Determine # of gridpoints for this temperature
     int num_gridpoints;
     if (i_temp < kTs_.size() - 1) {
@@ -791,6 +795,8 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
     // Depletion-related reactions
     if (simulation::need_depletion_rx) {
+      printf("Depletion-related reactions not yet implemented!\n");
+      /*
       // Initialize all reaction cross sections to zero
       for (double& xs_i : micro.reaction) {
         xs_i = 0.0;
@@ -822,7 +828,8 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
           }
         }
       }
-    }
+      */
+    } // end depletion RX conditional
   }
 
   // Initialize sab treatment to false
@@ -863,7 +870,7 @@ void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
   int i_temp;
   double elastic;
   double inelastic;
-  data::thermal_scatt[i_sab].calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic, p.current_seed());
+  data::device_thermal_scatt[i_sab].calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic, p.current_seed());
 
   // Store the S(a,b) cross sections.
   micro.thermal = sab_frac * (elastic + inelastic);
@@ -967,15 +974,11 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
     }
   }
 
-  ///////////////////////////////////////////////////////////
-  // TODO: Offload everything below to device
-  ///////////////////////////////////////////////////////////
-
   // Determine the treatment of inelastic scattering
   double inelastic = 0.;
   if (urr.inelastic_flag_ != C_NONE) {
     // Determine inelastic scattering cross section
-    auto rx = reactions_[urr_inelastic_].obj();
+    auto rx = device_reactions_[urr_inelastic_].obj();
     inelastic = rx.xs(micro);
   }
 

@@ -125,13 +125,27 @@ public:
 
   //! Return the number of elements in the container
   int64_t size() {return size_;}
+  
+  void sync_size_host_to_device()
+  {
+    #pragma omp target update to(this[:1])
+  }
+  
+  void sync_size_device_to_host()
+  {
+    #pragma omp target update from(this[:1])
+  }
 
   //! Resize the container to contain a specified number of elements. This is
   //! useful in cases where the container is written to in a non-thread safe manner,
   //! where the internal size of the array needs to be manually updated.
   //
   //! \param size The new size of the container
-  void resize(int64_t size) {size_ = size;}
+  void resize(int64_t size)
+  {
+    size_ = size;
+    sync_size_host_to_device();
+  }
 
   //! Return the number of elements that the container has currently allocated
   //! space for.
@@ -143,13 +157,14 @@ public:
 
   void allocate_on_device()
   {
-    #pragma omp target enter data map(alloc: data_[:capacity_], size_)
+    #pragma omp target update to(this[:1])
+    #pragma omp target enter data map(alloc: data_[:capacity_])
   }
 
   void copy_host_to_device()
   {
     #pragma omp target update to(this[:1])
-    #pragma omp target update to(data_[:capacity_], size_)
+    #pragma omp target update to(data_[:capacity_])
   }
   
   void copy_device_to_host()

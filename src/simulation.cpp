@@ -790,11 +790,6 @@ void transport_event_based()
     // Execute death event for all particles
     process_death_events(n_particles);
 
-    /*
-    memcpy(simulation::particles.data(),simulation::device_particles, n_particles * sizeof(Particle));
-    std::cout << "Copying " << a << " MB of data to host..." << std::endl;
-    */
-
     // Adjust remaining work and source offset variables
     remaining_work -= n_particles;
     source_offset += n_particles;

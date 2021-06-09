@@ -58,7 +58,9 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
+  #pragma omp declare target
   void calculate_xs(Particle& p) const;
+  #pragma omp end declare target
 
   //! Assign thermal scattering tables to specific nuclides within the material
   //! so the code knows when to apply bound thermal scattering data
@@ -186,7 +188,9 @@ private:
   //! Normalize density
   void normalize_density();
 
+  #pragma omp declare target
   void calculate_neutron_xs(Particle& p) const;
+  #pragma omp end declare target
   void calculate_photon_xs(Particle& p) const;
 
   //----------------------------------------------------------------------------

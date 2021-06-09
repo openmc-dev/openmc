@@ -170,19 +170,23 @@ Particle::event_calculate_xs()
   // beginning of the history and again for any secondary particles
   if (coord_[n_coord_ - 1].cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
-      this->mark_as_lost("Could not find the cell containing particle "
-        + std::to_string(id_));
+      //this->mark_as_lost("Could not find the cell containing particle "
+      //  + std::to_string(id_));
+      printf("Could not find the cell containing particle %d\n", id_);
       return;
     }
 
     // Set birth cell attribute
     if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
   }
-
+  
   // Write particle track.
-  if (write_track_) write_particle_track(*this);
+  //if (write_track_) write_particle_track(*this);
 
-  if (settings::check_overlaps) check_cell_overlap(*this);
+  if (settings::check_overlaps) {
+    printf("Check cell overlap not yet supported on device.\n");
+    //check_cell_overlap(*this);
+  }
 
   // Calculate microscopic and macroscopic cross sections
   if (material_ != MATERIAL_VOID) {
@@ -194,6 +198,8 @@ Particle::event_calculate_xs()
         model::materials[material_].calculate_xs(*this);
       }
     } else {
+      printf("multigroup mode not yet supported on device.\n");
+      /*
       // Get the MG data; unlike the CE case above, we have to re-calculate
       // cross sections for every collision since the cross sections may
       // be angle-dependent
@@ -201,6 +207,7 @@ Particle::event_calculate_xs()
 
       // Update the particle's group while we know we are multi-group
       g_last_ = g_;
+      */
     }
   } else {
     macro_xs_.total      = 0.0;
@@ -254,9 +261,11 @@ void
 Particle::event_advance_tally()
 {
   // Score track-length tallies
+  /*
   if (!model::active_tracklength_tallies.empty()) {
     score_tracklength_tally(*this, advance_distance_);
   }
+  */
 
   // Score track-length estimate of k-eff
   if (settings::run_mode == RunMode::EIGENVALUE &&
@@ -265,9 +274,11 @@ Particle::event_advance_tally()
   }
 
   // Score flux derivative accumulators for differential tallies.
+  /*
   if (!model::active_tallies.empty()) {
     score_track_derivative(*this, advance_distance_);
   }
+  */
 }
 
 void
@@ -687,17 +698,8 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
 
   // Figure out what cell particle is in now
   n_coord_ = 1;
-  bool did_find_cell;
-  #pragma omp target update to(this[:1])
-  #pragma omp target update to(model::device_cells[:model::cells.size()])
-  #pragma omp target map(from: did_find_cell)
-  {
-    did_find_cell = neighbor_list_find_cell(*this);
-  }
-  #pragma omp target update from(this[:1])
-  #pragma omp target update from(model::device_cells[:model::cells.size()])
 
-  if (!did_find_cell) {
+  if (!neighbor_list_find_cell(*this)) {
     this->mark_as_lost("Couldn't find particle after hitting periodic "
       "boundary on surface " + std::to_string(surf.id_) + ". The normal vector "
       "of one periodic surface may need to be reversed.");

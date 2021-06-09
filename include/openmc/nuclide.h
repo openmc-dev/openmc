@@ -43,23 +43,23 @@ public:
   //! Initialize logarithmic grid for energy searches
   void init_grid();
 
+  #pragma omp declare target
   void calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p);
 
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 
   // Methods
-  #pragma omp declare target
   double nu(double E, EmissionMode mode, int group=0) const;
   void calculate_elastic_xs(Particle& p) const;
 
   //! Determines the microscopic 0K elastic cross section at a trial relative
   //! energy used in resonance scattering
   double elastic_xs_0K(double E) const;
-  #pragma omp end declare target
 
   //! \brief Determines cross sections in the unresolved resonance range
   //! from probability tables.
   void calculate_urr_xs(int i_temp, Particle& p) const;
+  #pragma omp end declare target
 
   //! \brief Calculate reaction rate based on group-wise flux distribution
   //
@@ -146,11 +146,13 @@ private:
   //! \return Temperature index and interpolation factor
   std::pair<gsl::index, double> find_temperature(double T) const;
 
+  #pragma omp declare target
   static int XS_TOTAL;
   static int XS_ABSORPTION;
   static int XS_FISSION;
   static int XS_NU_FISSION;
   static int XS_PHOTON_PROD;
+  #pragma omp end declare target
 };
 
 //==============================================================================
@@ -170,8 +172,8 @@ namespace data {
 
 // Minimum/maximum transport energy for each particle type. Order corresponds to
 // that of the ParticleType enum
-extern std::array<double, 2> energy_min;
 #pragma omp declare target
+extern std::array<double, 2> energy_min;
 extern std::array<double, 2> energy_max;
 #pragma omp end declare target
 

@@ -99,8 +99,8 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
         i_grid = i_low + lower_bound_index_linear(
                            &grid.energy[i_low], &grid.energy[i_high], E);
       }
-      const auto& xs_left {nuclide.xs_[i_temp][i_grid]};
-      const auto& xs_right {nuclide.xs_[i_temp][i_grid + 1]};
+      const auto xs_left {nuclide.xs_[i_temp][i_grid]};
+      const auto xs_right {nuclide.xs_[i_temp][i_grid + 1]};
       // check for rare case where two energy points are the same
       if (grid.energy[i_grid] == grid.energy[i_grid + 1])
         ++i_grid;

@@ -1191,8 +1191,7 @@ void split_particle(Particle& p)
   if (weight > params.upper_weight) {
     double n_split = weight/params.upper_weight;  
     n_split = std::min(std::ceil(n_split), double(params.max_split));
-    //std::cout << n_split << " " << params.upper_weight << " " << weight << " " << p.secondary_bank().size() << " " << p.r() << " " << p.E() << std::endl;
-    
+        
     // possibility of some round off 
     for (int l = 0; l < int(n_split) - 1; l++)  { 
       p.create_secondary(weight/n_split, p.u(), p.E(), p.type()); 
@@ -1204,20 +1203,15 @@ void split_particle(Particle& p)
     // if the particle weight is below the window  
     // roulette until the weight is high enough
   } else if (weight <= params.lower_weight) {  
-    double n_split = weight/params.survival_weight;
-    if (n_split < 1.0/params.max_split) {
-      n_split = 1.0/params.max_split;
-      params.survival_weight = weight/n_split;
-    }
-   
+    double n_split = std::max(1./params.max_split, weight/params.survival_weight);
+
     if (prn(p.current_seed()) <= n_split)  {
-      p.wgt() = params.survival_weight;
-      p.wgt_last() = p.wgt();
+      p.wgt() /= n_split;
     } else {       
       p.alive() = false;
-      p.wgt() = 0.0;
-      p.wgt_last() = p.wgt();
+      p.wgt() = 0.0;    
     }
+    p.wgt_last() = p.wgt();
   // else particle is in the window
   }
 }

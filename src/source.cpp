@@ -214,18 +214,11 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     }
   }
   
-  // source weight biasing in energy
-  if (settings::weightwindow_on && settings::ww_settings->user_defined_biasing)  { 
-    settings::ww_settings->weight_biasing(site, seed); 
-  } else {
-    // origin code
-    while (true) {
-      // Sample energy spectrum
-      site.E = energy_->sample(seed);
-
-      // Resample if energy falls outside minimum or maximum particle energy
-      if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
-    }
+  while (true) {
+    // Sample energy spectrum
+    site.E = energy_->sample(seed);
+     // Resample if energy falls outside minimum or maximum particle energy
+    if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
   } 
   
   // Set delayed group

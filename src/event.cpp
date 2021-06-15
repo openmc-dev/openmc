@@ -73,6 +73,8 @@ void dispatch_xs_event(int64_t buffer_idx)
 void process_init_events(int64_t n_particles, int64_t source_offset)
 {
   simulation::time_event_init.start();
+  
+  double total_weight = 0.0;
 
   #ifdef USE_DEVICE
   #pragma omp target teams distribute parallel for
@@ -83,16 +85,26 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
     initialize_history(simulation::device_particles[i], source_offset + i + 1);
     dispatch_xs_event(i);
   }
+
+  // The loop below can in theory be combined with the one above,
+  // but is present here as a compiler bug workaround
+  #ifdef USE_DEVICE
+  // This pragma results in illegal memory errors at runtime
+  //#pragma omp target teams distribute parallel for reduction(+:total_weight)
+  // This pragma works but only runs one thread per block
+  #pragma omp target reduction(+:total_weight)
+  #else
+  #pragma omp parallel for schedule(runtime) reduction(+:total_weight)
+  #endif
+  for (int64_t i = 0; i < n_particles; i++) {
+    total_weight += simulation::device_particles[i].wgt_;
+  }
+
+  // Write total weight to global variable
+  simulation::total_weight = total_weight;
   
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
-
-  // Transfer total weight from device -> host if the kernel was run on device.
-  // Note: the pre-kernel transfer host -> device happens in initialize_batch() at the
-  // point the variable is reset to 0.
-  #ifdef USE_DEVICE
-  #pragma omp target update from(simulation::total_weight)
-  #endif
 
   simulation::time_event_init.stop();
 }
@@ -233,25 +245,31 @@ void process_death_events(int64_t n_particles)
 {
   simulation::time_event_death.start();
 
+  // Local keff tally accumulators
+  // (workaround for compilers that don't like reductions w/global variables)
+  double absorption = 0.0;
+  double collision = 0.0;
+  double tracklength = 0.0;
+  double leakage = 0.0;
+
   #ifdef USE_DEVICE
-  #pragma omp target teams distribute parallel for
+  #pragma omp target teams distribute parallel for reduction(+:absorption, collision, tracklength, leakage)
   #else
-  #pragma omp parallel for schedule(runtime)
+  #pragma omp parallel for schedule(runtime) reduction(+:absorption, collision, tracklength, leakage)
   #endif
   for (int64_t i = 0; i < n_particles; i++) {
     Particle& p = simulation::device_particles[i];
+    p.accumulate_keff_tallies_local(absorption, collision, tracklength, leakage);
     p.event_death();
   }
 
-  #ifdef USE_DEVICE
+  // Write local reduction results to global values
+  global_tally_absorption  = absorption;
+  global_tally_collision   = collision;
+  global_tally_tracklength = tracklength;
+  global_tally_leakage     = leakage;
 
-  // Move global tallies back to host if executed on device.
-  // NOTE: the pre-kernel host->device transfer happens in
-  // finalize_generation()
-  #pragma omp target update from(global_tally_collision)
-  #pragma omp target update from(global_tally_absorption)
-  #pragma omp target update from(global_tally_tracklength)
-  #pragma omp target update from(global_tally_leakage)
+  #ifdef USE_DEVICE
 
   // Move particle progeny count array back to host
   #pragma omp target update from(simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])

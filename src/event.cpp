@@ -91,7 +91,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   #ifdef USE_DEVICE
   // This pragma results in illegal memory errors at runtime
   //#pragma omp target teams distribute parallel for reduction(+:total_weight)
-  // This pragma works but only runs one thread per block
+  // This pragma works but runs in serial on device
   #pragma omp target reduction(+:total_weight)
   #else
   #pragma omp parallel for schedule(runtime) reduction(+:total_weight)

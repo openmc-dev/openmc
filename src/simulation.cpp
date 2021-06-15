@@ -543,10 +543,6 @@ double initialize_history(Particle& p, int64_t index_source)
   }
   */
 
-  // Add paricle's starting weight to count for normalizing tallies later
-  //#pragma omp atomic
-  //simulation::total_weight += p.wgt_;
-
   initialize_history_partial(p);
 
   return p.wgt_;

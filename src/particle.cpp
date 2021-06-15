@@ -430,7 +430,7 @@ Particle::event_revive_from_secondary()
 void
 Particle::accumulate_keff_tallies_global()
 {
-  // Accumulated
+  // Contribute tally reduction variables to global accumulators
   #pragma omp atomic
   global_tally_absorption += keff_tally_absorption_;
   #pragma omp atomic
@@ -450,7 +450,7 @@ Particle::accumulate_keff_tallies_global()
 void
 Particle::accumulate_keff_tallies_local(double& absorption, double& collision, double& tracklength, double& leakage)
 {
-  // Accumulated
+  // Contribute tally reduction variables to local accumulators
   absorption += keff_tally_absorption_;
   collision += keff_tally_collision_;
   tracklength += keff_tally_tracklength_;

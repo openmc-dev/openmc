@@ -479,7 +479,7 @@ void finalize_generation()
   }
 }
 
-void initialize_history(Particle& p, int64_t index_source)
+double initialize_history(Particle& p, int64_t index_source)
 {
   // set defaults
   if (settings::run_mode == RunMode::EIGENVALUE) {
@@ -543,11 +543,9 @@ void initialize_history(Particle& p, int64_t index_source)
   }
   */
 
-  // Add paricle's starting weight to count for normalizing tallies later
-  #pragma omp atomic
-  simulation::total_weight += p.wgt_;
-
   initialize_history_partial(p);
+
+  return p.wgt_;
 }
 
 void initialize_history_partial(Particle& p)
@@ -726,17 +724,20 @@ void transport_history_based_single_particle(Particle& p)
     if (!p.alive_)
       break;
   }
+  p.accumulate_keff_tallies_global();
   p.event_death();
 }
 
 void transport_history_based()
 {
-  #pragma omp parallel for schedule(runtime)
+  double total_weight = 0.0;
+  #pragma omp parallel for schedule(runtime) reduction(+:total_weight)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
-    initialize_history(p, i_work);
+    total_weight += initialize_history(p, i_work);
     transport_history_based_single_particle(p);
   }
+  simulation::total_weight = total_weight;
 }
 
 void transport_event_based()

@@ -428,6 +428,42 @@ Particle::event_revive_from_secondary()
 }
 
 void
+Particle::accumulate_keff_tallies_global()
+{
+  // Contribute tally reduction variables to global accumulators
+  #pragma omp atomic
+  global_tally_absorption += keff_tally_absorption_;
+  #pragma omp atomic
+  global_tally_collision += keff_tally_collision_;
+  #pragma omp atomic
+  global_tally_tracklength += keff_tally_tracklength_;
+  #pragma omp atomic
+  global_tally_leakage += keff_tally_leakage_;
+  
+  // Reset particle tallies once accumulated
+  keff_tally_absorption_  = 0.0;
+  keff_tally_collision_   = 0.0;
+  keff_tally_tracklength_ = 0.0;
+  keff_tally_leakage_     = 0.0;
+}
+
+void
+Particle::accumulate_keff_tallies_local(double& absorption, double& collision, double& tracklength, double& leakage)
+{
+  // Contribute tally reduction variables to local accumulators
+  absorption += keff_tally_absorption_;
+  collision += keff_tally_collision_;
+  tracklength += keff_tally_tracklength_;
+  leakage += keff_tally_leakage_;
+  
+  // Reset particle tallies once accumulated
+  keff_tally_absorption_  = 0.0;
+  keff_tally_collision_   = 0.0;
+  keff_tally_tracklength_ = 0.0;
+  keff_tally_leakage_     = 0.0;
+}
+
+void
 Particle::event_death()
 {
   #ifdef DAGMC
@@ -441,22 +477,6 @@ Particle::event_death()
     finalize_particle_track(*this);
   }
   */
-
-  // Contribute tally reduction variables to global accumulator
-  #pragma omp atomic
-  global_tally_absorption += keff_tally_absorption_;
-  #pragma omp atomic
-  global_tally_collision += keff_tally_collision_;
-  #pragma omp atomic
-  global_tally_tracklength += keff_tally_tracklength_;
-  #pragma omp atomic
-  global_tally_leakage += keff_tally_leakage_;
-
-  // Reset particle tallies once accumulated
-  keff_tally_absorption_  = 0.0;
-  keff_tally_collision_   = 0.0;
-  keff_tally_tracklength_ = 0.0;
-  keff_tally_leakage_     = 0.0;
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.

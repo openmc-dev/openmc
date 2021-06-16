@@ -262,6 +262,8 @@ public:
   void event_cross_surface();
   void event_revive_from_secondary();
   void event_death();
+  void accumulate_keff_tallies_global();
+  void accumulate_keff_tallies_local(double& absorption, double& collision, double& tracklength, double& leakage);
   #pragma omp end declare target
 
   //! Cross a surface and handle boundary conditions

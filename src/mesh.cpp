@@ -1584,13 +1584,13 @@ MOABMesh::MOABMesh(const std::string& filename) {
 MOABMesh::MOABMesh(std::shared_ptr<moab::Interface> external_mbi) {
   mbi_ = external_mbi;
   filename_ = "unknown (external file)";
-  initialize();
+  this->initialize();
 }
 
 void MOABMesh::initialize() {
 
   // Create the MOAB interface and load data from file
-  create_interface();
+  this->create_interface();
 
   // Initialise MOAB error code
   moab::ErrorCode rval = moab::MB_SUCCESS;

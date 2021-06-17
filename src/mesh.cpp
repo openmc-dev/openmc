@@ -1630,7 +1630,7 @@ void
 MOABMesh::create_interface()
 {
   // Do not create a MOAB instance if one is already in memory
-  if(mbi_ == nullptr){
+  if (!mbi_) {
     // create MOAB instance
     mbi_ = std::make_shared<moab::Core>();
 

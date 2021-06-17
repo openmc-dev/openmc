@@ -58,7 +58,7 @@ int main(int argc, char * argv[]){
   // Upcast pointer type
   MeshFilter* mesh_filter = dynamic_cast<MeshFilter*>(filter_ptr);
 
-  if(mesh_filter == nullptr){
+  if (!mesh_filter) {
     fatal_error("Failed to create mesh filter");
   }
 

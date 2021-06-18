@@ -23,6 +23,7 @@ TETS_PER_VOXEL = 12
 
 # Test that an external moab instance can be passed in through the C API
 
+
 @pytest.fixture
 def cpp_driver(request):
     """Compile the external source"""
@@ -36,7 +37,8 @@ def cpp_driver(request):
             add_executable(main main.cpp)
             find_package(OpenMC REQUIRED HINTS {})
             target_link_libraries(main OpenMC::libopenmc)
-            set_target_properties(main PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+            set_target_properties(main PROPERTIES CXX_STANDARD
+            14 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
             set(CMAKE_CXX_FLAGS "-pedantic-errors")
             add_compile_definitions(DAGMC=1)
             """.format(openmc_dir)))
@@ -83,7 +85,7 @@ class ExternalMoabTest(PyAPITestHarness):
     def _get_results(self):
         pass
 
-    def _write_results(self,results_string):
+    def _write_results(self, results_string):
         pass
 
     def _overwrite_results(self):
@@ -92,7 +94,8 @@ class ExternalMoabTest(PyAPITestHarness):
     def _test_output_created(self):
         pass
 
-    # Directly compare results of unstructured  mesh with internal and external moab
+    # Directly compare results of unstructured  mesh with internal and
+    # external moab
     def _compare_results(self):
 
         with openmc.StatePoint(self._sp_name) as sp:
@@ -139,7 +142,7 @@ class ExternalMoabTest(PyAPITestHarness):
 
 def test_external_mesh(cpp_driver):
 
-    ### Materials ###
+    # Materials
     materials = openmc.Materials()
 
     fuel_mat = openmc.Material(name="fuel")
@@ -160,7 +163,7 @@ def test_external_mesh(cpp_driver):
 
     materials.export_to_xml()
 
-    ### Geometry ###
+    # Geometry
     fuel_min_x = openmc.XPlane(-5.0, name="minimum x")
     fuel_max_x = openmc.XPlane(5.0, name="maximum x")
 
@@ -189,9 +192,9 @@ def test_external_mesh(cpp_driver):
     clad_cell.region = (-fuel_min_x | +fuel_max_x |
                         -fuel_min_y | +fuel_max_y |
                         -fuel_min_z | +fuel_max_z) & \
-                        (+clad_min_x & -clad_max_x &
-                         +clad_min_y & -clad_max_y &
-                         +clad_min_z & -clad_max_z)
+        (+clad_min_x & -clad_max_x &
+         +clad_min_y & -clad_max_y &
+         +clad_min_z & -clad_max_z)
     clad_cell.fill = zirc_mat
 
     bounds = (10, 10, 10)
@@ -221,15 +224,13 @@ def test_external_mesh(cpp_driver):
     water_cell.region = (-clad_min_x | +clad_max_x |
                          -clad_min_y | +clad_max_y |
                          -clad_min_z | +clad_max_z) & \
-                         (+water_min_x & -water_max_x &
-                          +water_min_y & -water_max_y &
-                          +water_min_z & -water_max_z)
+        (+water_min_x & -water_max_x &
+         +water_min_y & -water_max_y &
+         +water_min_z & -water_max_z)
     water_cell.fill = water_mat
 
     # create a containing universe
     geometry = openmc.Geometry([fuel_cell, clad_cell, water_cell])
-
-    ### Tallies ###
 
     # Meshes
     mesh_filename = "test_mesh_tets.h5m"
@@ -240,7 +241,7 @@ def test_external_mesh(cpp_driver):
     # Create filters
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
-    # Create tallies
+    # Tallies
     tallies = openmc.Tallies()
     uscd_tally = openmc.Tally(name="unstructured mesh tally")
     uscd_tally.filters = [uscd_filter]
@@ -248,7 +249,7 @@ def test_external_mesh(cpp_driver):
     uscd_tally.estimator = 'tracklength'
     tallies.append(uscd_tally)
 
-    ### Settings ###
+    # Settings
     settings = openmc.Settings()
     settings.run_mode = 'fixed source'
     settings.particles = 100

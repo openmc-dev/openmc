@@ -1639,7 +1639,6 @@ MOABMesh::create_interface()
     if (rval != moab::MB_SUCCESS) {
       fatal_error("Failed to load the unstructured mesh file: " + filename_);
     }
-
   }
 }
 

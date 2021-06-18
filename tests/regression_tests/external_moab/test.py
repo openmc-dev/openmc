@@ -64,8 +64,8 @@ def cpp_driver(request):
         shutil.rmtree('build')
         os.remove('CMakeLists.txt')
 
-class ExternalMoabTest(PyAPITestHarness):
 
+class ExternalMoabTest(PyAPITestHarness):
     def __init__(self, executable, statepoint_name, model):
         super().__init__(statepoint_name, model)
         self.executable = executable
@@ -79,7 +79,6 @@ class ExternalMoabTest(PyAPITestHarness):
         else:
             openmc.run(openmc_exec=self.executable,
                        event_based=config['event'])
-
 
     # Override some methods to do nothing
     def _get_results(self):
@@ -100,8 +99,8 @@ class ExternalMoabTest(PyAPITestHarness):
         with openmc.StatePoint(self._sp_name) as sp:
             # loop over the tallies and get data
 
-            ext_data=[]
-            unstr_data=[]
+            ext_data = []
+            unstr_data = []
 
             for tally in sp.tallies.values():
 
@@ -111,17 +110,17 @@ class ExternalMoabTest(PyAPITestHarness):
 
                     if isinstance(flt.mesh, openmc.UnstructuredMesh):
 
-                        if(tally.name == "external mesh tally"):
+                        if tally.name == "external mesh tally":
                             ext_data = tally.get_reshaped_data(value='mean')
 
-                        elif (tally.name == "unstructured mesh tally"):
+                        elif tally.name == "unstructured mesh tally":
                             unstr_data = tally.get_reshaped_data(value='mean')
 
             # we expect these results to be the same to within at 8
             # decimal places
             decimals = 8
             np.testing.assert_array_almost_equal(unstr_data,
-                                                 ext_data,decimals)
+                                                 ext_data, decimals)
 
     @staticmethod
     def get_mesh_tally_data(tally):
@@ -130,7 +129,6 @@ class ExternalMoabTest(PyAPITestHarness):
         data.shape = (data.size, 1)
         std_dev.shape = (std_dev.size, 1)
         return np.sum(data, axis=1), np.sum(std_dev, axis=1)
-
 
     def _cleanup(self):
         super()._cleanup()
@@ -238,7 +236,7 @@ def test_external_mesh(cpp_driver):
     mesh_filename = "test_mesh_tets.h5m"
 
     # Create a normal unstructured mesh to compare to
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename,'moab')
+    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, 'moab')
 
     # Create filters
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)

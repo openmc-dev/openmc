@@ -255,11 +255,7 @@ def test_external_mesh(cpp_driver):
     settings.batches = 10
 
     # Source setup
-    r = openmc.stats.Uniform(a=0.0, b=0.0)
-    theta = openmc.stats.Discrete(x=[0.0], p=[1.0])
-    phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
-
-    space = openmc.stats.SphericalIndependent(r, theta, phi)
+    space = openmc.stats.Point()
     angle = openmc.stats.Monodirectional((-1.0, 0.0, 0.0))
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy, angle=angle)

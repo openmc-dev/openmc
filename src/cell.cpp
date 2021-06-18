@@ -1105,8 +1105,10 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
         return device_partitions_[middle+1];
         */
         //ncells = partitions_lengths_[middle+1];
-        ncells = partitions_[middle+1].size();
-        return const_cast<int32_t *>(partitions_[middle+1].data());
+        //ncells = partitions_[middle+1].size();
+        ncells = device_partitions_lengths_[middle+1];
+        //return const_cast<int32_t *>(partitions_[middle+1].data());
+        return device_partitions_ + device_partitions_offsets_[middle+1];
       }
 
     } else {
@@ -1121,8 +1123,10 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
         //return partitions_[middle];
         //ncells = device_partitions_lengths_[middle];
         //return device_partitions_[middle];
-        ncells = partitions_[middle].size();
-        return const_cast<int32_t *> (partitions_[middle].data());
+        //ncells = partitions_[middle].size();
+        ncells = device_partitions_lengths_[middle];
+        //return const_cast<int32_t *> (partitions_[middle].data());
+        return device_partitions_ + device_partitions_offsets_[middle];
         //return partitions_[middle].data();
       }
     }

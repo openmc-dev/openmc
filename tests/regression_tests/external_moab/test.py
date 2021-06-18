@@ -2,19 +2,18 @@ from pathlib import Path
 import os
 import shutil
 import subprocess
+from subprocess import CalledProcessError
 import textwrap
 import glob
 from itertools import product
+
 import openmc
 import openmc.lib
 import numpy as np
-
 import pytest
 
 from tests.regression_tests import config
 from tests.testing_harness import PyAPITestHarness
-
-from subprocess import CalledProcessError
 
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),

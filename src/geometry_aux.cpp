@@ -159,7 +159,8 @@ partition_universes()
         if (model::surfaces[i_surf].type_ == Surface::SurfaceType::SurfaceZPlane) {
           ++n_zplanes;
           if (n_zplanes > 5) {
-            univ.partitioner_ = std::make_unique<UniversePartitioner>(univ);
+            //univ.partitioner_ = std::make_unique<UniversePartitioner>(univ);
+            univ.partitioner_ = new UniversePartitioner(univ);
             break;
           }
         }
@@ -249,7 +250,7 @@ void finalize_geometry()
   // Perform some final operations to set up the geometry
   adjust_indices();
   count_cell_instances(model::root_universe);
-  //partition_universes();
+  partition_universes();
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();

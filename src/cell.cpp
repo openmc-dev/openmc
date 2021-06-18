@@ -225,6 +225,13 @@ BoundingBox Universe::bounding_box() const {
   return bbox;
 }
 
+Universe::~Universe()
+{
+  if (partitioner_) {
+    delete partitioner_;
+  }
+}
+
 void Universe::allocate_and_copy_to_device()
 {
   int host_id = omp_get_initial_device();
@@ -237,8 +244,9 @@ void Universe::allocate_and_copy_to_device()
 
   if(partitioner_ != NULL) 
   {
-    printf("Universe Partitioners not yet supported for offloading. Exiting...\n");
-    exit(1);
+    //printf("Universe Partitioners not yet supported for offloading. Exiting...\n");
+    //exit(1);
+
     /*
     // Allocate space on device for partitioner
     sz = sizeof(UniversePartitioner);
@@ -1094,7 +1102,7 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
   int right = surfs_.size() - 1;
   while (true) {
     // Check the sense of the coordinates for the current surface.
-    const auto& surf = model::surfaces[surfs_[middle]];
+    const auto& surf = model::device_surfaces[surfs_[middle]];
     //const auto& surf = model::device_surfaces[surfs_[middle]];
     //const auto& surf = model::device_surfaces[device_surfs_[middle]];
     if (surf.sense(r, u)) {

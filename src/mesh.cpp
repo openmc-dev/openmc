@@ -1630,15 +1630,15 @@ void
 MOABMesh::create_interface()
 {
   // Do not create a MOAB instance if one is already in memory
-  if (!mbi_) {
-    // create MOAB instance
-    mbi_ = std::make_shared<moab::Core>();
+  if (mbi_) return;
 
-    // load unstructured mesh file
-    moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
-    if (rval != moab::MB_SUCCESS) {
-      fatal_error("Failed to load the unstructured mesh file: " + filename_);
-    }
+  // create MOAB instance
+  mbi_ = std::make_shared<moab::Core>();
+
+  // load unstructured mesh file
+  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to load the unstructured mesh file: " + filename_);
   }
 }
 

@@ -48,14 +48,8 @@
   <particles>100</particles>
   <batches>10</batches>
   <source strength="1.0">
-    <space origin="0.0 0.0 0.0" type="spherical">
-      <r parameters="0.0 0.0" type="uniform" />
-      <theta type="discrete">
-        <parameters>0.0 1.0</parameters>
-      </theta>
-      <phi type="discrete">
-        <parameters>0.0 1.0</parameters>
-      </phi>
+    <space type="point">
+      <parameters>0.0 0.0 0.0</parameters>
     </space>
     <angle reference_uvw="-1.0 0.0 0.0" type="monodirectional" />
     <energy type="discrete">

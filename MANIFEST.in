@@ -21,8 +21,8 @@ recursive-include docs *.tex
 recursive-include docs *.txt
 recursive-include docs Makefile
 recursive-include examples *.h5
-recursive-include examples *.ipynb
 recursive-include examples *.png
+recursive-include examples *.cpp
 recursive-include examples *.py
 recursive-include examples *.xml
 recursive-include include *.h

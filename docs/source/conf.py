@@ -44,7 +44,6 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinxcontrib.katex',
     'sphinx_numfig',
-    'nbsphinx'
 ]
 if not on_rtd:
     extensions.append('sphinxcontrib.rsvgconverter')

@@ -253,8 +253,8 @@ public:
 protected:
   #pragma omp declare target
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
-  #pragma omp end declare target
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+  #pragma omp end declare target
   BoundingBox bounding_box_simple() const;
   static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
 

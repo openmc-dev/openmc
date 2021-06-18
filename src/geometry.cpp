@@ -539,6 +539,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
       level_lat_trans = lattice_distance.second;
 
       if (d_lat < 0) {
+        printf("lost particle id %ld\n", p.id_);
         p.mark_as_lost_short();
         //p->mark_as_lost(fmt::format(
         //  "Particle {} had a negative distance to a lattice boundary", p->id_));

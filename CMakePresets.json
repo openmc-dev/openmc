@@ -33,6 +33,17 @@
                 "CMAKE_CXX_COMPILER": "clang++",
                 "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
             }
+         },
+        {
+            "name": "llvm_p100",
+            "displayName": "LLVM Clang P100",
+            "binaryDir": "${sourceDir}/build/llvm_p100",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_60 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
+            }
          }
     ]
 }

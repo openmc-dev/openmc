@@ -7,7 +7,7 @@
 #include <mutex>
 #include <assert.h>
 
-#define NEIGHBOR_SIZE 11 // limited by triso regression test
+#define NEIGHBOR_SIZE 13 // limited by SMR
 
 namespace openmc{
 

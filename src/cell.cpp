@@ -382,6 +382,11 @@ void Cell::copy_to_device()
   #pragma omp target enter data map(to: device_rpn_[:rpn_.size()])
   device_offset_  = offset_.data()    ;
   #pragma omp target enter data map(to: device_offset_[:offset_.size()])
+
+  // Ensure RPN size for cell is below threshold for complex geometry stack
+  if (rpn_.size() > RPN_SIZE) {
+    fatal_error("RPN cell definition is too large for static complex CSG evaluation stack. Increase size of RPN_SIZE macro.");
+  }
 }
 
 //==============================================================================
@@ -599,9 +604,7 @@ Cell::contains(Position r, Direction u, int32_t on_surface) const
   if (simple_) {
     return contains_simple(r, u, on_surface);
   } else {
-    printf("ERROR - Complex CSG cell geometry not yet supported on device!\n");
-    return false;
-    //return contains_complex(r, u, on_surface);
+    return contains_complex(r, u, on_surface);
   }
 }
 
@@ -850,10 +853,16 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
-  std::vector<bool> stack(rpn_.size());
+  bool stack[RPN_SIZE];
+  if (rpn_.size() > RPN_SIZE) {
+    printf("Error - complex CSG static array is too small for cell - increase RPN_SIZE.\n");
+  }
+
   int i_stack = -1;
 
-  for (int32_t token : rpn_) {
+  //for (int32_t token : rpn_) {
+  for (int i = 0; i < rpn_.size(); i++) {
+    int32_t token = device_rpn_[i];
     // If the token is a binary operator (intersection/union), apply it to
     // the last two items on the stack. If the token is a unary operator
     // (complement), apply it to the last item on the stack.
@@ -877,8 +886,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        //bool sense = model::surfaces[abs(token)-1].sense(r, u);
-        bool sense = model::surfaces[std::abs(token)-1].sense(r, u);
+        bool sense = model::device_surfaces[std::abs(token)-1].sense(r, u);
         stack[i_stack] = (sense == (token > 0));
       }
     }

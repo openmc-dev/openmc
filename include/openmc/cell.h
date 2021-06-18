@@ -374,6 +374,8 @@ public:
   int32_t* get_cells(Position r, Direction u, int& ncells) const;
   #pragma omp end declare target
 
+  void allocate_and_copy_to_device();
+
 //private:
   //! A sorted vector of indices to surfaces that partition the universe
   std::vector<int32_t> surfs_;

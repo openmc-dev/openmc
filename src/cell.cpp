@@ -228,8 +228,45 @@ BoundingBox Universe::bounding_box() const {
 Universe::~Universe()
 {
   if (partitioner_) {
+    delete[] partitioner_->device_partitions_;
+    delete[] partitioner_->device_partitions_offsets_;
+    delete[] partitioner_->device_partitions_lengths_;
     delete partitioner_;
   }
+}
+
+void UniversePartitioner::allocate_and_copy_to_device()
+{
+  // Allocate space for partitioner 1D offset/length arrays and populate
+  device_partitions_offsets_ = new int32_t[partitions_.size()];
+  device_partitions_lengths_ = new int32_t[partitions_.size()];
+  device_partitions_offsets_[0] = 0;
+  device_partitions_lengths_[0] = partitions_[0].size();
+
+  int total_len = partitions_[0].size();
+
+  for (int i = 1; i < partitions_.size(); i++) {
+    int len = partitions_[i].size();
+    device_partitions_lengths_[i] = len;
+    device_partitions_offsets_[i] = device_partitions_offsets_[i-1] + len;
+    total_len += len;
+  }
+
+  // Allocate space for 1D partitioner array
+  device_partitions_ = new int32_t[total_len];
+
+  // Fill 1D partitioner array
+  int idx = 0;
+  for (int i = 0; i < partitions_.size(); i++) {
+    for (int j = 0; j < partitions_[i].size(); j++) {
+      device_partitions_[idx++] = partitions_[i][j];
+    }
+  }
+
+  // Map 1D partitioner array and offsets etc.
+  #pragma omp target enter data map(to: device_partitions_[:total_len])
+  #pragma omp target enter data map(to: device_partitions_lengths_[:partitions_.size()])
+  #pragma omp target enter data map(to: device_partitions_offsets_[:partitions_.size()])
 }
 
 void Universe::allocate_and_copy_to_device()
@@ -246,64 +283,12 @@ void Universe::allocate_and_copy_to_device()
   {
     //printf("Universe Partitioners not yet supported for offloading. Exiting...\n");
     //exit(1);
-
-    /*
-    // Allocate space on device for partitioner
-    sz = sizeof(UniversePartitioner);
-    //device_partitioner_ = (UniversePartitioner *) omp_target_alloc(sz, device_id);
-    device_partitioner_ = (UniversePartitioner *) device_alloc(sz, device_id);
-
-    // Fill in the partioner info on the host
-    UniversePartitioner up = *partitioner_;
-
-    // Copy over surfs vector (simple 1D)
-    sz = up.surfs_.size() * sizeof(int32_t);
-    //up.device_surfs_ = (int32_t *) omp_target_alloc(sz, device_id);
-    //omp_target_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, 0, 0, device_id, host_id);
-    up.device_surfs_ = (int32_t *) device_alloc(sz, device_id);
-    device_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, device_id, host_id);
-
-    up.device_surfs_ = partitioner_->surfs_.data();
-    #pragma omp target enter data map(to: up.device_surfs_
     
-    // Copy over partions_ 2D vector
-
-    // Step 1: Allocate space to store pointer array
-    sz = up.partitions_.size() * sizeof(int32_t *);
-    //up.device_partitions_ = (int32_t **) omp_target_alloc(sz, device_id);
-    up.device_partitions_ = (int32_t **) device_alloc(sz, device_id);
-
-    // Allocate host side place to store pointers to each row
-    int32_t ** pmap = (int32_t **) malloc(sz);
-    int32_t * lengths = (int32_t *) malloc( up.partitions_.size() * sizeof(int32_t));
-
-    // Allocate and copy each row on device
-    for( int i = 0; i < up.partitions_.size(); i++ )
-    {
-      lengths[i] = up.partitions_[i].size();
-      sz = up.partitions_[i].size() * sizeof(int32_t);
-      pmap[i] = (int32_t *) device_alloc(sz, device_id);
-      device_memcpy(pmap[i], up.partitions_[i].data(), sz, device_id, host_id);
-    }
-
-    // Copy over array of pointers
-    sz = up.partitions_.size() * sizeof(int32_t *);
-    device_memcpy(up.device_partitions_, pmap, sz, device_id, host_id);
-
-    // Allocate and copy over lengths array
-    sz = up.partitions_.size() * sizeof(int32_t);
-    up.device_partitions_lengths_ = (int32_t *) device_alloc(sz, device_id);
-    device_memcpy(up.device_partitions_lengths_, lengths, sz, device_id, host_id);
-
-    // free pointer map
-    free(pmap);
-
-
-    // Copy over full partitioner
-    sz = sizeof(UniversePartitioner);
-    //omp_target_memcpy(device_partitioner_, &up, sz, 0, 0, device_id, host_id);
-    device_memcpy(device_partitioner_, &up, sz, device_id, host_id);
-    */
+    // Map Partitioner object
+    #pragma omp target enter data map(to: partitioner_[:1])
+  
+    // Deep copy
+    partitioner_->allocate_and_copy_to_device();
   }
 
 }

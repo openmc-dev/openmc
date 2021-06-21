@@ -71,6 +71,8 @@ class Solver:
         Whether to use delayed groups in representing chi-delayed.
     chi_delayed_by_mesh : bool
         Whether to use a mesh in representing chi-delayed.
+    use_agd : bool
+        Whether to use artificial grid diffusion.
     use_pcmfd : bool
         Whether to use p-CMFD.
     num_delayed_groups : int
@@ -80,9 +82,15 @@ class Solver:
     use_pregenerated_sps : bool
         Whether to use pregenerated statepoint files.
     core_volume : float
-        The core volume used to normalize the initial power.
+        The core volume in [cm^3] used to normalize the initial power.
     log_file_name : str
         Log file name (excluding directory prefix).
+    outer_tolerance : float
+        Tolerance on the residual when converging outer time steps.
+    method : string
+        Approximation made for time derivatives in the transient
+        scheme. ADIABATIC allows the use of instantaneous eigenstates
+        to approximate the transient.
     min_outer_iters : int
         Minimum number of outer iterations to take.
 
@@ -402,7 +410,7 @@ class Solver:
     @method.setter
     def method(self, method):
         # The omega method solves equations (2.29) and (2.30) in Shaner's thesis.
-        # The adiabatic method sets the frequencies = 0 which simply those same
+        # The adiabatic method sets the frequencies = 0 which simplifies those same
         # equations to the instantaneous eigenstate. 
         cv.check_value('method', method, ['ADIABATIC', 'OMEGA'])
         self._method = method

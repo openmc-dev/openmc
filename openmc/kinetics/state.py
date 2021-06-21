@@ -67,6 +67,10 @@ class State(ABC):
         The core volume used to normalize the initial power.
     log_file : str
         Log file name (including directory prefix).
+    method : string
+        Approximation made for time derivatives in the transient
+        scheme. ADIABATIC allows the use of instantaneous eigenstates
+        to approximate the transient.
 
     """
 

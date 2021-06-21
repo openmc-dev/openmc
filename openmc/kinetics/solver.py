@@ -258,7 +258,7 @@ class Solver:
         cv.check_type('amplitude mesh', mesh, openmc.RegularMesh)
         self._amplitude_mesh = mesh
         unity_mesh = openmc.RegularMesh()
-        unity_mesh.dimension = [1,1,1]
+        unity_mesh.dimension = (1, 1, 1)
         unity_mesh.lower_left  = mesh.lower_left
         if mesh.width is not None:
             unity_mesh.width = [i*j for i,j in zip(mesh.dimension, mesh.width)]

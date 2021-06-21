@@ -65,7 +65,8 @@ class Solver:
         The initial core power (in W).
     k_crit : float
         The initial eigenvalue.
-    run_kwargs : dictionary of keyword arguments passed to openmc.run.
+    run_kwargs : dict
+        Keyword arguments passed to :func:`openmc.run`.
     chi_delayed_by_delayed_group : bool
         Whether to use delayed groups in representing chi-delayed.
     chi_delayed_by_mesh : bool

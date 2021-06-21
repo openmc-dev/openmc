@@ -62,7 +62,7 @@ class Solver:
         EnergyGroups used in all tallies except the diffusion coefficients
         (see fine_groups).
     initial_power : float
-        The initial core power (in W).
+        The initial core power in [W].
     k_crit : float
         The initial eigenvalue.
     run_kwargs : dict

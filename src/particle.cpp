@@ -560,7 +560,6 @@ Particle::cross_surface()
   // Remove lower coordinate levels and assignment of surface
   surface_ = 0;
   n_coord_ = 1;
-  printf("performing exhaustive search\n");
   bool found = exhaustive_find_cell(*this);
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {

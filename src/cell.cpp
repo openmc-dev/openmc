@@ -240,15 +240,13 @@ void UniversePartitioner::allocate_and_copy_to_device()
   // Allocate space for partitioner 1D offset/length arrays and populate
   device_partitions_offsets_ = new int32_t[partitions_.size()];
   device_partitions_lengths_ = new int32_t[partitions_.size()];
-  device_partitions_offsets_[0] = 0;
-  device_partitions_lengths_[0] = partitions_[0].size();
 
-  int total_len = partitions_[0].size();
+  int total_len = 0;
 
-  for (int i = 1; i < partitions_.size(); i++) {
+  for (int i = 0; i < partitions_.size(); i++) {
     int len = partitions_[i].size();
     device_partitions_lengths_[i] = len;
-    device_partitions_offsets_[i] = device_partitions_offsets_[i-1] + len;
+    device_partitions_offsets_[i] = total_len;
     total_len += len;
   }
 

@@ -14,7 +14,7 @@ from scipy.sparse.linalg import spsolve
 import openmc
 import openmc.checkvalue as cv
 import openmc.kinetics
-from openmc.kinetics.clock import TIME_POINTS
+from openmc.kinetics.clock import TimePoints
 import openmc.mgxs
 
 
@@ -611,10 +611,10 @@ class Solver:
         state._compute_initial_precursor_concentration()
 
         # Copy data to all other states
-        for time_point in TIME_POINTS:
-            if time_point != 'START':
-                self._create_state(time_point)
-                self._copy_states('START', time_point)
+        for time_point in TimePoints:
+            if time_point.name != 'START':
+                self._create_state(time_point.name)
+                self._copy_states('START', time_point.name)
 
         # Create hdf5 log file
         self._create_log_file()

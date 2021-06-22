@@ -1,11 +1,14 @@
+from enum import Enum
 import numpy as np
 
-TIME_POINTS = ['START',
-               'PREVIOUS_OUTER',
-               'FORWARD_OUTER',
-               'PREVIOUS_INNER',
-               'FORWARD_INNER',
-               'END']
+
+class TimePoints(Enum):
+    START = 'start time'
+    PREVIOUS_OUTER = 'previous outer time'
+    FORWARD_OUTER = 'next outer time'
+    PREVIOUS_INNER = 'previous inner time'
+    FORWARD_INNER = 'next inner time'
+    END = 'end time'
 
 
 class Clock:
@@ -47,8 +50,8 @@ class Clock:
         string += '{0: <24}{1}{2}\n'.format('\tdt inner', '=\t', self.dt_inner)
         string += '{0: <24}{1}{2}\n'.format('\tt outer', '=\t', self.t_outer)
 
-        for t in TIME_POINTS:
-            string += '{0: <24}{1}{2}\n'.format('\tTime ' + t, '=\t', self.times[t])
+        for t in TimePoints:
+            string += '{0: <24}{1}{2}\n'.format('\tTime ' + t.name, '=\t', self.times[t])
 
         return string
 
@@ -82,8 +85,9 @@ class Clock:
         
         # Create a dictionary of clock times
         self._times = {}
-        for t in TIME_POINTS:
-            self._times[t] = t_outer[0]
+        for t in TimePoints:
+            self._times[t.name] = t_outer[0]
+            print(t.name)
 
         # Reset the end time
         self._times['END'] = t_outer[-1]

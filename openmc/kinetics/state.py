@@ -1,4 +1,3 @@
-from abc import ABC
 from collections import OrderedDict
 import copy
 import sys
@@ -12,7 +11,7 @@ import openmc.kinetics
 import openmc.mgxs
 
 
-class State(ABC):
+class State():
     """State to store all the variables that describe a specific state of the system.
 
     Attributes

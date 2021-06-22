@@ -124,7 +124,6 @@ class Solver:
         self._use_pregenerated_sps = False
         self._core_volume = 1.
         self._log_file_name = 'log_file.h5'
-        self._inner_tolerance = 1.e-6
         self._outer_tolerance = 1.e-6
         self._method = 'ADIABATIC'
         self._use_agd = False
@@ -238,10 +237,6 @@ class Solver:
     @property
     def log_file_name(self):
         return self._log_file_name
-
-    @property
-    def inner_tolerance(self):
-        return self._inner_tolerance
 
     @property
     def outer_tolerance(self):
@@ -396,11 +391,6 @@ class Solver:
     def log_file_name(self, name):
         cv.check_type('log file name', name, str)
         self._log_file_name = name
-
-    @inner_tolerance.setter
-    def inner_tolerance(self, tolerance):
-        cv.check_type('inner tolerance', tolerance, float)
-        self._inner_tolerance = tolerance
 
     @outer_tolerance.setter
     def outer_tolerance(self, tolerance):

@@ -152,9 +152,19 @@ extern "C" int openmc_properties_export(const char* filename)
   auto geom_group = create_group(file, "geometry");
   write_attribute(geom_group, "n_cells", model::cells.size());
   auto cells_group = create_group(geom_group, "cells");
-  for (const auto& c : model::cells) c->export_properties_hdf5(cells_group);
+  for (const auto& c : model::cells) {
+    c->export_properties_hdf5(cells_group);
+  }
   close_group(cells_group);
   close_group(geom_group);
+
+  // Write material properties
+  hid_t materials_group = create_group(file, "materials");
+  write_attribute(materials_group, "n_materials", model::materials.size());
+  for (const auto& mat : model::materials) {
+    mat->export_properties_hdf5(materials_group);
+  }
+  close_group(materials_group);
 
   // Terminate access to the file.
   file_close(file);
@@ -177,9 +187,18 @@ extern "C" int openmc_properties_import(const char* filename)
   // Read cell properties
   auto geom_group = open_group(file, "geometry");
   auto cells_group = open_group(geom_group, "cells");
-  for (const auto& c : model::cells) c->import_properties_hdf5(cells_group);
+  for (const auto& c : model::cells) {
+    c->import_properties_hdf5(cells_group);
+  }
   close_group(cells_group);
   close_group(geom_group);
+
+  // Read material properties
+  auto materials_group = open_group(file, "materials");
+  for (const auto& mat : model::materials) {
+    mat->import_properties_hdf5(materials_group);
+  }
+  close_group(materials_group);
 
   // Terminate access to the file.
   file_close(file);

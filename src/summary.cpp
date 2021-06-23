@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 
+#include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
@@ -135,6 +136,10 @@ void write_materials(hid_t file)
   }
   close_group(materials_group);
 }
+
+//==============================================================================
+// C API
+//==============================================================================
 
 extern "C" int openmc_properties_export(const char* filename)
 {

@@ -153,6 +153,14 @@ public:
   //! \return Map with cell indexes as keys and instances as values
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells() const;
 
+  //! Export physical properties to HDF5
+  //! \param[in] group  HDF5 group to read from
+  void export_properties_hdf5(hid_t group) const;
+
+  //! Import physical properties from HDF5
+  //! \param[in] group  HDF5 group to write to
+  void import_properties_hdf5(hid_t group);
+
 protected:
   void get_contained_cells_inner(
     std::unordered_map<int32_t, vector<int32_t>>& contained_cells,

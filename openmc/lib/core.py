@@ -62,7 +62,13 @@ _dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
 _dll.openmc_next_batch.errcheck = _error_handler
 _dll.openmc_plot_geometry.restype = c_int
-_dll.openmc_plot_geometry.restype = _error_handler
+_dll.openmc_plot_geometry.errcheck = _error_handler
+_dll.openmc_properties_export.argtypes = [c_char_p]
+_dll.openmc_properties_export.restype = c_int
+_dll.openmc_properties_export.errcheck = _error_handler
+_dll.openmc_properties_import.argtypes = [c_char_p]
+_dll.openmc_properties_import.restype = c_int
+_dll.openmc_properties_import.errcheck = _error_handler
 _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
 _dll.openmc_reset.restype = c_int
@@ -305,6 +311,32 @@ def next_batch():
 def plot_geometry():
     """Plot geometry"""
     _dll.openmc_plot_geometry()
+
+
+def properties_export(filename=None):
+    """Export physical properties.
+
+    Parameters
+    ----------
+    filename : str or None
+        Filename to export properties to (defaults to "properties.h5")
+
+    """
+    if filename is not None:
+        filename = c_char_p(filename.encode())
+    _dll.openmc_properties_export(filename)
+
+
+def properties_import(filename):
+    """Import physical properties.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to import properties from
+
+    """
+    _dll.openmc_properties_import(filename.encode())
 
 
 def reset():

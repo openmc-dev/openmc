@@ -1,6 +1,9 @@
 #include "openmc/summary.h"
 
+#include <fmt/core.h>
+
 #include "openmc/cell.h"
+#include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
@@ -131,6 +134,56 @@ void write_materials(hid_t file)
     mat->to_hdf5(materials_group);
   }
   close_group(materials_group);
+}
+
+extern "C" int openmc_properties_export(const char* filename)
+{
+  // Set a default filename if none was passed
+  std::string name = filename ? filename : "properties.h5";
+
+  // Display output message
+  auto msg = fmt::format("Exporting properties to {}...", name);
+  write_message(msg, 5);
+
+  // Create a new file using default properties.
+  hid_t file = file_open(name, 'w');
+
+  // Write cell properties
+  auto geom_group = create_group(file, "geometry");
+  write_attribute(geom_group, "n_cells", model::cells.size());
+  auto cells_group = create_group(geom_group, "cells");
+  for (const auto& c : model::cells) c->export_properties_hdf5(cells_group);
+  close_group(cells_group);
+  close_group(geom_group);
+
+  // Terminate access to the file.
+  file_close(file);
+  return 0;
+}
+
+extern "C" int openmc_properties_import(const char* filename)
+{
+  // Display output message
+  auto msg = fmt::format("Importing properties from {}...", filename);
+  write_message(msg, 5);
+
+  // Create a new file using default properties.
+  if (!file_exists(filename)) {
+    set_errmsg(fmt::format("File '{}' does not exist.", filename));
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  hid_t file = file_open(filename, 'r');
+
+  // Read cell properties
+  auto geom_group = open_group(file, "geometry");
+  auto cells_group = open_group(geom_group, "cells");
+  for (const auto& c : model::cells) c->import_properties_hdf5(cells_group);
+  close_group(cells_group);
+  close_group(geom_group);
+
+  // Terminate access to the file.
+  file_close(file);
+  return 0;
 }
 
 } // namespace openmc

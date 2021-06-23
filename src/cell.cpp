@@ -282,6 +282,38 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained)
   }
 }
 
+void Cell::export_properties_hdf5(hid_t group) const
+{
+  // Create a group for this cell.
+  auto cell_group = create_group(group, fmt::format("cell {}", id_));
+
+  // Write temperature in [K] for one or more cell instances
+  vector<double> temps;
+  for (auto sqrtkT_val : sqrtkT_)
+    temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
+  write_dataset(cell_group, "temperature", temps);
+
+  close_group(cell_group);
+}
+
+void Cell::import_properties_hdf5(hid_t group)
+{
+  auto cell_group = open_group(group, fmt::format("cell {}", id_));
+
+  // Read temperatures from file
+  vector<double> temps;
+  read_dataset(cell_group, "temperature", temps);
+
+  // Modify temperatures for the cell
+  sqrtkT_.resize(0);
+  sqrtkT_.reserve(temps.size());
+  for (auto T : temps) {
+    sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
+  }
+
+  close_group(cell_group);
+}
+
 //==============================================================================
 // CSGCell implementation
 //==============================================================================
@@ -1276,6 +1308,17 @@ openmc_cell_set_id(int32_t index, int32_t id)
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
+}
+
+extern "C" int
+openmc_cell_get_num_instances(int32_t index, int32_t* num_instances)
+{
+  if (index < 0 || index >= model::cells.size()) {
+    set_errmsg("Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *num_instances = model::cells[index]->n_instances_;
+  return 0;
 }
 
 //! Extend the cells array by n elements

@@ -148,6 +148,17 @@ extern "C" int openmc_properties_export(const char* filename)
   // Create a new file using default properties.
   hid_t file = file_open(name, 'w');
 
+  // Write metadata
+  write_attribute(file, "filetype", "properties");
+  write_attribute(file, "version", VERSION_STATEPOINT);
+  write_attribute(file, "openmc_version", VERSION);
+#ifdef GIT_SHA1
+  write_attribute(file, "git_sha1", GIT_SHA1);
+#endif
+  write_attribute(file, "date_and_time", time_stamp());
+  write_attribute(file, "path", settings::path_input);
+
+
   // Write cell properties
   auto geom_group = create_group(file, "geometry");
   write_attribute(geom_group, "n_cells", model::cells.size());
@@ -183,6 +194,14 @@ extern "C" int openmc_properties_import(const char* filename)
     return OPENMC_E_INVALID_ARGUMENT;
   }
   hid_t file = file_open(filename, 'r');
+
+  // Ensure the filetype is correct
+  std::string filetype;
+  read_attribute(file, "filetype", filetype);
+  if (filetype != "properties") {
+    set_errmsg(fmt::format("File '{}' is not a properties file.", filename));
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
 
   // Read cell properties
   auto geom_group = open_group(file, "geometry");

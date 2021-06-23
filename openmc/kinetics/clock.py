@@ -87,7 +87,6 @@ class Clock:
         self._times = {}
         for t in TimePoints:
             self._times[t.name] = t_outer[0]
-            print(t.name)
 
         # Reset the end time
         self._times['END'] = t_outer[-1]

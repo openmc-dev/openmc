@@ -75,7 +75,7 @@ class State():
 
     def __init__(self, states):
 
-        # Initialize Solver class attributes
+        # Initialize State class attributes
         self._amplitude_mesh = None
         self._shape_mesh = None
         self._unity_mesh = None
@@ -609,7 +609,7 @@ class OuterState(State):
     def __init__(self, states):
         super().__init__(states)
 
-        # Initialize Solver class attributes
+        # Initialize OuterState class attributes
         self._mgxs_lib = None
         self._chi_delayed_by_delayed_group = False
         self._chi_delayed_by_mesh = False
@@ -1279,7 +1279,7 @@ class InnerState(State):
     def __init__(self, states):
         super().__init__(states)
 
-        # Initialize Solver class attributes
+        # Initialize InnerState class attributes
         self.fwd_state = states['FORWARD_OUTER']
         self.pre_state = states['PREVIOUS_OUTER']
 

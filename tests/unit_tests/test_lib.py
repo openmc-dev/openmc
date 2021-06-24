@@ -116,6 +116,7 @@ def test_cell(lib_init):
     cell.name = "Not fuel"
     assert cell.name == "Not fuel"
 
+
 def test_cell_temperature(lib_init):
     cell = openmc.lib.cells[1]
     cell.set_temperature(100.0, 0)
@@ -558,9 +559,9 @@ def test_load_nuclide(lib_init):
 
 
 def test_id_map(lib_init):
-    expected_ids = np.array([[(3, 3), (2, 2), (3, 3)],
-                             [(2, 2), (1, 1), (2, 2)],
-                             [(3, 3), (2, 2), (3, 3)]], dtype='int32')
+    expected_ids = np.array([[(3, 0, 3), (2, 0, 2), (3, 0, 3)],
+                             [(2, 0, 2), (1, 0, 1), (2, 0, 2)],
+                             [(3, 0, 3), (2, 0, 2), (3, 0, 3)]], dtype='int32')
 
     # create a plot object
     s = openmc.lib.plot._PlotBase()

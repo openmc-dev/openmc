@@ -126,6 +126,24 @@ def current_batch():
     return c_int.in_dll(_dll, 'current_batch').value
 
 
+def export_properties(filename=None):
+    """Export physical properties.
+
+    Parameters
+    ----------
+    filename : str or None
+        Filename to export properties to (defaults to "properties.h5")
+
+    See Also
+    --------
+    openmc.lib.import_properties
+
+    """
+    if filename is not None:
+        filename = c_char_p(filename.encode())
+    _dll.openmc_properties_export(filename)
+
+
 def finalize():
     """Finalize simulation and free memory"""
     _dll.openmc_finalize()
@@ -182,6 +200,22 @@ def find_material(xyz):
 def hard_reset():
     """Reset tallies, timers, and pseudo-random number generator state."""
     _dll.openmc_hard_reset()
+
+
+def import_properties(filename):
+    """Import physical properties.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to import properties from
+
+    See Also
+    --------
+    openmc.lib.export_properties
+
+    """
+    _dll.openmc_properties_import(filename.encode())
 
 
 def init(args=None, intracomm=None):
@@ -311,32 +345,6 @@ def next_batch():
 def plot_geometry():
     """Plot geometry"""
     _dll.openmc_plot_geometry()
-
-
-def properties_export(filename=None):
-    """Export physical properties.
-
-    Parameters
-    ----------
-    filename : str or None
-        Filename to export properties to (defaults to "properties.h5")
-
-    """
-    if filename is not None:
-        filename = c_char_p(filename.encode())
-    _dll.openmc_properties_export(filename)
-
-
-def properties_import(filename):
-    """Import physical properties.
-
-    Parameters
-    ----------
-    filename : str
-        Filename to import properties from
-
-    """
-    _dll.openmc_properties_import(filename.encode())
 
 
 def reset():

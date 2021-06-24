@@ -36,7 +36,7 @@ constexpr int32_t NOT_FOUND {-2};
 constexpr int32_t OVERLAP {-3};
 
 IdData::IdData(size_t h_res, size_t v_res)
-  : data_({v_res, h_res, 2}, NOT_FOUND)
+  : data_({v_res, h_res, 3}, NOT_FOUND)
 { }
 
 void
@@ -44,18 +44,20 @@ IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
   // set cell data
   if (p.n_coord() <= level) {
     data_(y, x, 0) = NOT_FOUND;
+    data_(y, x, 1) = NOT_FOUND;
   } else {
     data_(y, x, 0) = model::cells.at(p.coord(level).cell)->id_;
+    data_(y, x, 1) = p.cell_instance();
   }
 
   // set material data
   Cell* c = model::cells.at(p.coord(p.n_coord() - 1).cell).get();
   if (p.material() == MATERIAL_VOID) {
-    data_(y, x, 1) = MATERIAL_VOID;
+    data_(y, x, 2) = MATERIAL_VOID;
     return;
   } else if (c->type_ == Fill::MATERIAL) {
     Material* m = model::materials.at(p.material()).get();
-    data_(y, x, 1) = m->id_;
+    data_(y, x, 2) = m->id_;
   }
 }
 

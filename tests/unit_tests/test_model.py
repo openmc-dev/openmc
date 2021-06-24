@@ -7,6 +7,7 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     """Test importing properties on the Model class """
 
     # Create PWR pin cell model and write XML files
+    openmc.reset_auto_ids()
     model = openmc.examples.pwr_pin_cell()
     model.export_to_xml()
 

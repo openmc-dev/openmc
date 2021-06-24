@@ -208,8 +208,16 @@ extern "C" int openmc_properties_import(const char* filename)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  // Read cell properties
+  // Make sure number of cells matches
   auto geom_group = open_group(file, "geometry");
+  int32_t n;
+  read_attribute(geom_group, "n_cells", n);
+  if (n != openmc::model::cells.size()) {
+    set_errmsg(fmt::format("Number of cells in {} doesn't match current model.", filename));
+    return OPENMC_E_GEOMETRY;
+  }
+
+  // Read cell properties
   auto cells_group = open_group(geom_group, "cells");
   for (const auto& c : model::cells) {
     c->import_properties_hdf5(cells_group);
@@ -217,8 +225,15 @@ extern "C" int openmc_properties_import(const char* filename)
   close_group(cells_group);
   close_group(geom_group);
 
-  // Read material properties
+  // Make sure number of cells matches
   auto materials_group = open_group(file, "materials");
+  read_attribute(materials_group, "n_materials", n);
+  if (n != openmc::model::materials.size()) {
+    set_errmsg(fmt::format("Number of materials in {} doesn't match current model.", filename));
+    return OPENMC_E_GEOMETRY;
+  }
+
+  // Read material properties
   for (const auto& mat : model::materials) {
     mat->import_properties_hdf5(materials_group);
   }

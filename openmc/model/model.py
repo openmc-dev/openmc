@@ -126,6 +126,31 @@ class Model:
             for plot in plots:
                 self._plots.append(plot)
 
+    @classmethod
+    def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
+                 settings='settings.xml'):
+        """Create model from existing XML files
+
+        Parameters
+        ----------
+        geometry : str
+            Path to geometry.xml file
+        materials : str
+            Path to materials.xml file
+        settings : str
+            Path to settings.xml file
+
+        Returns
+        -------
+        openmc.model.Model
+            Model created from XML files
+
+        """
+        materials = openmc.Materials.from_xml(materials)
+        geometry = openmc.Geometry.from_xml(geometry, materials)
+        settings = openmc.Settings.from_xml(settings)
+        return cls(geometry, materials, settings)
+
     def deplete(self, timesteps, chain_file=None, method='cecm',
                 fission_q=None, **kwargs):
         """Deplete model using specified timesteps/power

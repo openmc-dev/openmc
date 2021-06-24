@@ -115,6 +115,7 @@ def test_cell(lib_init):
     assert cell.name == "Fuel"
     cell.name = "Not fuel"
     assert cell.name == "Not fuel"
+    assert cell.num_instances == 1
 
 
 def test_cell_temperature(lib_init):
@@ -125,12 +126,34 @@ def test_cell_temperature(lib_init):
     assert cell.get_temperature() == pytest.approx(200.0)
 
 
+def test_properties_temperature(lib_init):
+    # Cell temperature should be 200 from above test
+    cell = openmc.lib.cells[1]
+    assert cell.get_temperature() == pytest.approx(200.0)
+
+    # Export properties and change temperature
+    openmc.lib.export_properties('properties.h5')
+    cell.set_temperature(300.0)
+    assert cell.get_temperature() == pytest.approx(300.0)
+
+    # Import properties and check that temperature is restored
+    openmc.lib.import_properties('properties.h5')
+    assert cell.get_temperature() == pytest.approx(200.0)
+
+
 def test_new_cell(lib_init):
     with pytest.raises(exc.AllocationError):
         openmc.lib.Cell(1)
     new_cell = openmc.lib.Cell()
     new_cell_with_id = openmc.lib.Cell(10)
     assert len(openmc.lib.cells) == 5
+
+
+def test_properties_fail_cell(lib_init):
+    # The number of cells was changed in the previous test, so the properties
+    # file is no longer valid
+    with pytest.raises(exc.GeometryError, match="Number of cells"):
+        openmc.lib.import_properties("properties.h5")
 
 
 def test_material_mapping(lib_init):
@@ -168,6 +191,21 @@ def test_material(lib_init):
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
 
+
+def test_properties_density(lib_init):
+    m = openmc.lib.materials[1]
+    orig_density = m.density
+
+    # Export properties and change density
+    openmc.lib.export_properties('properties.h5')
+    m.set_density(orig_density*2, 'g/cm3')
+    assert m.density == pytest.approx(orig_density*2)
+
+    # Import properties and check that density was restored
+    openmc.lib.import_properties('properties.h5')
+    assert m.density == pytest.approx(orig_density)
+
+
 def test_material_add_nuclide(lib_init):
     m = openmc.lib.materials[3]
     m.add_nuclide('Xe135', 1e-12)
@@ -181,6 +219,13 @@ def test_new_material(lib_init):
     new_mat = openmc.lib.Material()
     new_mat_with_id = openmc.lib.Material(10)
     assert len(openmc.lib.materials) == 5
+
+
+def test_properties_fail_material(lib_init):
+    # The number of materials was changed in the previous test, so the properties
+    # file is no longer valid
+    with pytest.raises(exc.GeometryError, match="Number of materials"):
+        openmc.lib.import_properties("properties.h5")
 
 
 def test_nuclide_mapping(lib_init):
@@ -575,6 +620,7 @@ def test_id_map(lib_init):
 
     ids = openmc.lib.plot.id_map(s)
     assert np.array_equal(expected_ids, ids)
+
 
 def test_property_map(lib_init):
     expected_properties = np.array(

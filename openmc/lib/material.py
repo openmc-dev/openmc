@@ -87,6 +87,8 @@ class Material(_FortranObjectWithID):
         ID of the material
     nuclides : list of str
         List of nuclides in the material
+    density : float
+        Density of the material in [g/cm^3]
     densities : numpy.ndarray
         Array of densities in atom/b-cm
     name : str

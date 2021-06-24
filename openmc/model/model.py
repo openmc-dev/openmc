@@ -13,11 +13,11 @@ class Model:
 
     This class can be used to store instances of :class:`openmc.Geometry`,
     :class:`openmc.Materials`, :class:`openmc.Settings`,
-    :class:`openmc.Tallies`, :class:`openmc.Plots`, and :class:`openmc.CMFD`,
-    thus making a complete model. The :meth:`Model.export_to_xml` method will
-    export XML files for all attributes that have been set. If the
-    :meth:`Model.materials` attribute is not set, it will attempt to create a
-    ``materials.xml`` file based on all materials appearing in the geometry.
+    :class:`openmc.Tallies`, and :class:`openmc.Plots`, thus making a complete
+    model. The :meth:`Model.export_to_xml` method will export XML files for all
+    attributes that have been set. If the :attr:`Model.materials` attribute is
+    not set, it will attempt to create a ``materials.xml`` file based on all
+    materials appearing in the geometry.
 
     Parameters
     ----------

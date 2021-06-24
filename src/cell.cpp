@@ -805,13 +805,9 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
   bool stack[RPN_SIZE];
-  if (rpn_.size() > RPN_SIZE) {
-    printf("Error - complex CSG static array is too small for cell - increase RPN_SIZE.\n");
-  }
 
   int i_stack = -1;
 
-  //for (int32_t token : rpn_) {
   for (int i = 0; i < rpn_.size(); i++) {
     int32_t token = device_rpn_[i];
     // If the token is a binary operator (intersection/union), apply it to

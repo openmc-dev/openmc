@@ -204,6 +204,7 @@ extern "C" int openmc_properties_import(const char* filename)
   std::string filetype;
   read_attribute(file, "filetype", filetype);
   if (filetype != "properties") {
+    file_close(file);
     set_errmsg(fmt::format("File '{}' is not a properties file.", filename));
     return OPENMC_E_INVALID_ARGUMENT;
   }
@@ -213,6 +214,8 @@ extern "C" int openmc_properties_import(const char* filename)
   int32_t n;
   read_attribute(geom_group, "n_cells", n);
   if (n != openmc::model::cells.size()) {
+    close_group(geom_group);
+    file_close(file);
     set_errmsg(fmt::format("Number of cells in {} doesn't match current model.", filename));
     return OPENMC_E_GEOMETRY;
   }
@@ -229,6 +232,8 @@ extern "C" int openmc_properties_import(const char* filename)
   auto materials_group = open_group(file, "materials");
   read_attribute(materials_group, "n_materials", n);
   if (n != openmc::model::materials.size()) {
+    close_group(materials_group);
+    file_close(file);
     set_errmsg(fmt::format("Number of materials in {} doesn't match current model.", filename));
     return OPENMC_E_GEOMETRY;
   }

@@ -2,6 +2,8 @@ from collections.abc import Iterable
 from pathlib import Path
 import time
 
+import h5py
+
 import openmc
 from openmc.checkvalue import check_type, check_value
 
@@ -196,6 +198,38 @@ class Model:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
+
+    def import_properties(self, filename):
+        """Import physical properties
+
+        Parameters
+        ----------
+        filename : str
+            Path to properties HDF5 file
+
+        See Also
+        --------
+        openmc.lib.export_properties
+
+        """
+        cells = self.geometry.get_all_cells()
+        materials = self.geometry.get_all_materials()
+
+        with h5py.File(filename, 'r') as fh:
+            # Update temperatures for cells filled with materials
+            cells_group = fh['geometry/cells']
+            for name, group in cells_group.items():
+                cell_id = int(name.split()[1])
+                cell = cells[cell_id]
+                if cell.fill_type in ('material', 'distribmat'):
+                    cell.temperature = group['temperature'][()]
+
+            # Update material densities
+            mats_group = fh['materials']
+            for name, group in mats_group.items():
+                mat_id = int(name.split()[1])
+                atom_density = group.attrs['atom_density']
+                materials[mat_id].set_density('atom/b-cm', atom_density)
 
     def run(self, **kwargs):
         """Creates the XML files, runs OpenMC, and returns the path to the last

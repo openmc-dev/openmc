@@ -121,7 +121,7 @@ public:
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  virtual void to_hdf5(hid_t group_id) const;
+  void to_hdf5(hid_t group_id) const;
 
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 

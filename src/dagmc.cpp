@@ -150,11 +150,9 @@ DAGUniverse::initialize() {
     moab::EntityHandle vol_handle = dagmc_instance_->entity_by_index(3, i + 1);
 
     // set cell ids using global IDs
-    auto c = std::make_unique<DAGCell>();
-    c->dag_index_ = i + 1;
-    c->id_ = adjust_geometry_ids_ ? next_cell_id++ : dagmc_instance_->id_by_index(3, c->dag_index_);
-    c->dagmc_ptr_ = dagmc_instance_;
-    c->universe_ = id_;
+    auto c = std::make_unique<DAGCell>(dagmc_instance_, i + 1);
+    c->id_ = adjust_geometry_ids_ ? next_cell_id++ : dagmc_instance_->id_by_index(3, c->dag_index());
+    c->universe_ = this->id_;
     c->fill_ = C_NONE; // no fill, single universe
 
    auto in_map = model::cell_map.find(c->id_);
@@ -244,10 +242,8 @@ DAGUniverse::initialize() {
     moab::EntityHandle surf_handle = dagmc_instance_->entity_by_index(2, i+1);
 
     // set cell ids using global IDs
-    auto s = std::make_unique<DAGSurface>();
-    s->dag_index_ = i+1; // DAGMC indices start at 1
+    auto s = std::make_unique<DAGSurface>(dagmc_instance_, i+1);
     s->id_ = adjust_geometry_ids_ ? next_surf_id++ : dagmc_instance_->id_by_index(2, i+1);
-    s->dagmc_ptr_ = dagmc_instance_;
 
     // set BCs
     std::string bc_value = DMD.get_surface_property("boundary", surf_handle);
@@ -493,7 +489,8 @@ DAGUniverse::read_uwuw_materials() {
 // DAGMC Cell implementation
 //==============================================================================
 
-DAGCell::DAGCell() : Cell{} {
+DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
+  : Cell{}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx) {
   geom_type_ = GeometryType::DAG;
   simple_ = true;
 };
@@ -569,7 +566,9 @@ DAGCell::bounding_box() const
 // DAGSurface implementation
 //==============================================================================
 
-DAGSurface::DAGSurface() : Surface{} {
+DAGSurface::DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
+: Surface{}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
+{
   geom_type_ = GeometryType::DAG;
 } // empty constructor
 
@@ -635,14 +634,14 @@ void read_dagmc_universes(pugi::xml_node node) {
 int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed)
 {
   moab::EntityHandle surf =
-    surf_xed->dagmc_ptr_->entity_by_index(2, surf_xed->dag_index_);
+    surf_xed->dagmc_ptr()->entity_by_index(2, surf_xed->dag_index());
   moab::EntityHandle vol =
-    cur_cell->dagmc_ptr_->entity_by_index(3, cur_cell->dag_index_);
+    cur_cell->dagmc_ptr()->entity_by_index(3, cur_cell->dag_index());
 
   moab::EntityHandle new_vol;
-  cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
+  cur_cell->dagmc_ptr()->next_vol(surf, vol, new_vol);
 
-  return cur_cell->dagmc_ptr_->index_by_handle(new_vol) + dag_univ->cell_idx_offset_;
+  return cur_cell->dagmc_ptr()->index_by_handle(new_vol) + dag_univ->cell_idx_offset_;
 }
 
 

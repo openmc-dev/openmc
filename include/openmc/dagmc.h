@@ -21,7 +21,7 @@ namespace openmc {
 
 class DAGSurface : public Surface {
 public:
-  DAGSurface();
+  DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx);
 
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
@@ -30,13 +30,18 @@ public:
 
   inline void to_hdf5_inner(hid_t group_id) const override {};
 
+  // Accessor methods
+  const std::shared_ptr<moab::DagMC>& dagmc_ptr() const { return dagmc_ptr_; }
+  int32_t dag_index() const { return dag_index_; }
+
+private:
   std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
-  int32_t dag_index_;      //!< DagMC index of surface
+  int32_t dag_index_; //!< DagMC index of surface
 };
 
 class DAGCell : public Cell {
 public:
-  DAGCell();
+  DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx);
 
   bool contains(Position r, Direction u, int32_t on_surface) const override;
 
@@ -47,8 +52,13 @@ public:
 
   void to_hdf5_inner(hid_t group_id) const override;
 
+  // Accessor methods
+  const std::shared_ptr<moab::DagMC>& dagmc_ptr() const { return dagmc_ptr_; }
+  int32_t dag_index() const { return dag_index_; }
+
+private:
   std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
-  int32_t dag_index_;      //!< DagMC index of cell
+  int32_t dag_index_; //!< DagMC index of cell
 };
 
 class DAGUniverse : public Universe {
@@ -100,11 +110,13 @@ public:
   bool find_cell(Particle &p) const override;
 
   // Data Members
-  std::string filename_; //!< Name of the DAGMC file used to create this universe
   std::shared_ptr<moab::DagMC> dagmc_instance_; //!< DAGMC Instance for this universe
-  std::shared_ptr<UWUW> uwuw_; //!< Pointer to the UWUW instance for this universe
   int32_t cell_idx_offset_; //!< An offset to the start of the cells in this universe in OpenMC's cell vector
   int32_t surf_idx_offset_; //!< An offset to the start of the surfaces in this universe in OpenMC's surface vector
+
+private:
+  std::string filename_; //!< Name of the DAGMC file used to create this universe
+  std::shared_ptr<UWUW> uwuw_; //!< Pointer to the UWUW instance for this universe
   bool adjust_geometry_ids_; //!< Indicates whether or not to automatically generate new cell and surface IDs for the universe
   bool adjust_material_ids_; //!< Indicates whether or not to automatically generate new material IDs for the universe
 };

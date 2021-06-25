@@ -28,7 +28,7 @@ def model():
 
     # geometry
     dag_univ = openmc.DAGMCUniverse("dagmc.h5m")
-    model.geometry = openmc.Geometry(root=dag_univ)
+    model.geometry = openmc.Geometry(dag_univ)
 
     # tally
     tally = openmc.Tally()

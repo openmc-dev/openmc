@@ -55,7 +55,7 @@ class DAGMCUniverseTest(PyAPITestHarness):
 
         bounding_cell = openmc.Cell(fill=pincell_univ, region=box)
 
-        model.geometry = openmc.Geometry(root=[bounding_cell])
+        model.geometry = openmc.Geometry([bounding_cell])
 
         # settings
         model.settings.particles = 100

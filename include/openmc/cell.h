@@ -231,7 +231,7 @@ public:
   std::pair<double, int32_t>
   distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
 
-  void to_hdf5_inner(hid_t group_id) const;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   BoundingBox bounding_box() const;
 

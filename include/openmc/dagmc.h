@@ -19,15 +19,14 @@ class UWUW;
 
 namespace openmc {
 
-class DAGSurface : public Surface
-{
+class DAGSurface : public Surface {
 public:
   DAGSurface();
 
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  Direction reflect(Position r, Direction u, Particle* p) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  Direction reflect(Position r, Direction u, Particle* p) const override;
 
   inline void to_hdf5_inner(hid_t group_id) const override {};
 
@@ -39,14 +38,14 @@ class DAGCell : public Cell {
 public:
   DAGCell();
 
-  bool contains(Position r, Direction u, int32_t on_surface) const;
+  bool contains(Position r, Direction u, int32_t on_surface) const override;
 
   std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
+  distance(Position r, Direction u, int32_t on_surface, Particle* p) const override;
 
-  BoundingBox bounding_box() const;
+  BoundingBox bounding_box() const override;
 
-  void to_hdf5_inner(hid_t group_id) const;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
   int32_t dag_index_;      //!< DagMC index of cell
@@ -98,7 +97,7 @@ public:
   //! \return A string of the ID ranges for entities of dimension \p dim
   std::string dagmc_ids_for_dim(int dim) const;
 
-  virtual bool find_cell(Particle &p) const override;
+  bool find_cell(Particle &p) const override;
 
   // Data Members
   std::string filename_; //!< Name of the DAGMC file used to create this universe

@@ -677,10 +677,9 @@ class DAGMCUniverse(UniverseBase):
         self.auto_mat_ids = auto_mat_ids
 
     def __repr__(self):
-        fmt_str = '{: <16}=\t{}\n'
         string = super().__repr__()
-        string += fmt_str.format('\tGeom', 'DAGMC')
-        string += fmt_str.format('\tFile', self.filename)
+        string += '{: <16}=\t{}\n'.format('\tGeom', 'DAGMC')
+        string += '{: <16}=\t{}\n'.format('\tFile', self.filename)
         return string
 
     @property

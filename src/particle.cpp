@@ -386,7 +386,6 @@ Particle::cross_surface()
   if (surf->geom_type_ != GeometryType::DAG) history().reset();
   #endif
 
-
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
     surf->bc_->handle_particle(*this, *surf);

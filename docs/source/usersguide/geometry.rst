@@ -443,7 +443,7 @@ entirely by a DAGMC geometry will contain only the DAGMC universe. Using a
 :class:`openmc.DAGMCUniverse` looks like the following::
 
    dag_univ = openmc.DAGMCUniverse(filename='dagmc.h5m')
-   geometry = openmc.Geometry(root=dag_univ)
+   geometry = openmc.Geometry(dag_univ)
    geometry.export_to_xml()
 
 The resulting ``geometry.xml`` file will be:
@@ -475,7 +475,7 @@ Cell, Surface, and Material IDs
 -------------------------------
 
 By default, DAGMC applies cell and surface IDs defined by the CAD engine that
-the model originated in. If these IDs overlap with ID's in the CSG ID space,
+the model originated in. If these IDs overlap with IDs in the CSG ID space,
 this will result in an error. However, the ``auto_ids`` property of a DAGMC
 universe can be set to set DAGMC cell and surface IDs by appending to the
 existing CSG cell ID space in the OpenMC model.
@@ -485,7 +485,7 @@ assignments are based on natively defined OpenMC materials, no further work is
 required. If DAGMC materials are assigned using the `University of Wisconsin
 Unified Workflow`_ (UWUW), however, material IDs in the UWUW material library
 may overlap with those used in the CSG geometry. In this case, overlaps in the
-UWUW and OpenMC material ID space will cause an error. To automatically resolved
+UWUW and OpenMC material ID space will cause an error. To automatically resolve
 these ID overlaps, ``auto_ids`` can be set to ``True`` to append the UWUW
 material IDs to the OpenMC material ID space.
 

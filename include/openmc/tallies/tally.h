@@ -53,6 +53,9 @@ public:
 
   void set_filters(gsl::span<Filter*> filters);
 
+  //! Given already-set filters, set the stride lengths
+  void set_strides();
+
   int32_t strides(int i) const {return strides_[i];}
 
   int32_t n_filter_bins() const {return n_filter_bins_;}

@@ -366,9 +366,18 @@ Tally::set_filters(gsl::span<Filter*> filters)
     }
   }
 
+  // Set the strides.
+  set_strides();
+
+}
+
+void
+Tally::set_strides()
+{
   // Set the strides.  Filters are traversed in reverse so that the last filter
   // has the shortest stride in memory and the first filter has the longest
   // stride.
+  auto n = filters_.size();
   strides_.resize(n, 0);
   int stride = 1;
   for (int i = n-1; i >= 0; --i) {

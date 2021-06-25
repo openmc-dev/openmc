@@ -160,7 +160,6 @@ StructuredMesh::bin_label(int bin) const {
 //==============================================================================
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
-  n_dimension_ = 3;
 
   // check the mesh type
   if (check_for_node(node, "type")) {
@@ -1582,14 +1581,22 @@ MOABMesh::MOABMesh(const std::string& filename) {
   initialize();
 }
 
+MOABMesh::MOABMesh(std::shared_ptr<moab::Interface> external_mbi) {
+  mbi_ = external_mbi;
+  filename_ = "unknown (external file)";
+  this->initialize();
+}
+
 void MOABMesh::initialize() {
-  // create MOAB instance
-  mbi_ = make_unique<moab::Core>();
-  // load unstructured mesh file
-  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to load the unstructured mesh file: " + filename_);
-  }
+
+  // Create the MOAB interface and load data from file
+  this->create_interface();
+
+  // Initialise MOAB error code
+  moab::ErrorCode rval = moab::MB_SUCCESS;
+
+  // Set the dimension
+  n_dimension_ = 3;
 
   // set member range of tetrahedral entities
   rval = mbi_->get_entities_by_dimension(0, n_dimension_, ehs_);
@@ -1617,6 +1624,22 @@ void MOABMesh::initialize() {
   // build acceleration data structures
   compute_barycentric_data(ehs_);
   build_kdtree(ehs_);
+}
+
+void
+MOABMesh::create_interface()
+{
+  // Do not create a MOAB instance if one is already in memory
+  if (mbi_) return;
+
+  // create MOAB instance
+  mbi_ = std::make_shared<moab::Core>();
+
+  // load unstructured mesh file
+  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to load the unstructured mesh file: " + filename_);
+  }
 }
 
 void

@@ -366,6 +366,7 @@ public:
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
   MOABMesh(const std::string& filename);
+  MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
 
   // Overridden Methods
 
@@ -411,6 +412,9 @@ private:
   void initialize() override;
 
   // Methods
+
+  //! Create the MOAB interface pointer
+  void create_interface();
 
   //! Find all intersections with faces of the mesh.
   //
@@ -503,7 +507,7 @@ private:
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
   moab::EntityHandle tetset_; //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
-  unique_ptr<moab::Interface> mbi_;         //!< MOAB instance
+  std::shared_ptr<moab::Interface> mbi_;    //!< MOAB instance
   unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
   vector<moab::Matrix3> baryc_data_;        //!< Barycentric data for tetrahedra
   vector<std::string> tag_names_; //!< Names of score tags added to the mesh

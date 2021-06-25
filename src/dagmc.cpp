@@ -245,7 +245,7 @@ DAGUniverse::initialize() {
 
     // set cell ids using global IDs
     auto s = std::make_unique<DAGSurface>();
-    s->dag_index_ = i+1;
+    s->dag_index_ = i+1; // DAGMC indices start at 1
     s->id_ = adjust_geometry_ids_ ? next_surf_id++ : dagmc_instance_->id_by_index(2, i+1);
     s->dagmc_ptr_ = dagmc_instance_;
 

@@ -35,6 +35,10 @@ class UniverseBase(ABC, IDManagerMixin):
         self._volume = None
         self._atoms = {}
 
+        # Keys   - Cell IDs
+        # Values - Cells
+        self._cells = OrderedDict()
+
     def __repr__(self):
         string = 'Universe\n'
         string += '{: <16}=\t{}\n'.format('\tID', self._id)
@@ -101,7 +105,6 @@ class UniverseBase(ABC, IDManagerMixin):
 
         """
 
-    @abstractmethod
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
         """Create a copy of this universe with a new unique ID, and clones
         all cells within this universe.
@@ -124,6 +127,24 @@ class UniverseBase(ABC, IDManagerMixin):
             The clone of this universe
 
         """
+        if memo is None:
+            memo = {}
+
+        # If no memoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.id = None
+
+            # Clone all cells for the universe clone
+            clone._cells = OrderedDict()
+            for cell in self._cells.values():
+                clone.add_cell(cell.clone(clone_materials, clone_regions,
+                     memo))
+
+            # Memoize the clone
+            memo[self] = clone
+
+        return memo[self]
 
 
 class Universe(UniverseBase):
@@ -160,10 +181,6 @@ class Universe(UniverseBase):
 
     def __init__(self, universe_id=None, name='', cells=None):
         super().__init__(universe_id, name)
-
-        # Keys   - Cell IDs
-        # Values - Cells
-        self._cells = OrderedDict()
 
         if cells is not None:
             self.add_cells(cells)
@@ -546,26 +563,6 @@ class Universe(UniverseBase):
 
         return universes
 
-    def clone(self, clone_materials=True, clone_regions=True, memo=None):
-        if memo is None:
-            memo = {}
-
-        # If no nemoize'd clone exists, instantiate one
-        if self not in memo:
-            clone = deepcopy(self)
-            clone.id = None
-
-            # Clone all cells for the universe clone
-            clone._cells = OrderedDict()
-            for cell in self._cells.values():
-                clone.add_cell(cell.clone(clone_materials, clone_regions,
-                     memo))
-
-            # Memoize the clone
-            memo[self] = clone
-
-        return memo[self]
-
     def create_xml_subelement(self, xml_element, memo=None):
         # Iterate over all Cells
         for cell in self._cells.values():
@@ -708,9 +705,6 @@ class DAGMCUniverse(UniverseBase):
     def auto_mat_ids(self, val):
         cv.check_type('DAGMC automatic material ids', val, bool)
         self._auto_mat_ids = val
-
-    def clone(self, clone_materials=True, clone_regions=True, memo=None):
-        pass
 
     def get_all_cells(self, memo=None):
         return OrderedDict()

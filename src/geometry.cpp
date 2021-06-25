@@ -146,14 +146,11 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         //ncells = model::universes[i_universe].cells_.size();
         ncells = model::device_universes[i_universe].cells_.size();
       } else {
-        printf("Error - universe partitioner not yet supported on device!\n");
-        //cells= univ.partitioner_->get_cells(p.r_local(), p.u_local(), ncells);
+        cells = univ.partitioner_->get_cells(p.r_local(), p.u_local(), ncells);
       }
-      //printf("ncells = %d\n", ncells);
 
       for (int i = 0; i < ncells; i++) {
         i_cell = cells[i];
-        //printf("i_cell = %d\n", i_cell);
         //i_cell = model::device_cells[i];
 
         // Make sure the search cell is in the same universe.

@@ -225,79 +225,30 @@ BoundingBox Universe::bounding_box() const {
   return bbox;
 }
 
+Universe::~Universe()
+{
+  if (partitioner_) {
+    delete[] partitioner_->device_partitions_;
+    delete[] partitioner_->device_partitions_offsets_;
+    delete[] partitioner_->device_partitions_lengths_;
+    delete partitioner_;
+  }
+}
+
+
 void Universe::allocate_and_copy_to_device()
 {
-  int host_id = omp_get_initial_device();
-  int device_id = omp_get_default_device();
-  size_t sz;
-
-  printf("Deep copying %d cell IDs in a universe...\n", cells_.size());
   device_cells_ = cells_.data();
   #pragma omp target enter data map(to: device_cells_[:cells_.size()])
 
   if(partitioner_ != NULL) 
   {
-    printf("Universe Partitioners not yet supported for offloading. Exiting...\n");
-    exit(1);
-    /*
-    // Allocate space on device for partitioner
-    sz = sizeof(UniversePartitioner);
-    //device_partitioner_ = (UniversePartitioner *) omp_target_alloc(sz, device_id);
-    device_partitioner_ = (UniversePartitioner *) device_alloc(sz, device_id);
-
-    // Fill in the partioner info on the host
-    UniversePartitioner up = *partitioner_;
-
-    // Copy over surfs vector (simple 1D)
-    sz = up.surfs_.size() * sizeof(int32_t);
-    //up.device_surfs_ = (int32_t *) omp_target_alloc(sz, device_id);
-    //omp_target_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, 0, 0, device_id, host_id);
-    up.device_surfs_ = (int32_t *) device_alloc(sz, device_id);
-    device_memcpy(up.device_surfs_, partitioner_->surfs_.data(), sz, device_id, host_id);
-
-    up.device_surfs_ = partitioner_->surfs_.data();
-    #pragma omp target enter data map(to: up.device_surfs_
-    
-    // Copy over partions_ 2D vector
-
-    // Step 1: Allocate space to store pointer array
-    sz = up.partitions_.size() * sizeof(int32_t *);
-    //up.device_partitions_ = (int32_t **) omp_target_alloc(sz, device_id);
-    up.device_partitions_ = (int32_t **) device_alloc(sz, device_id);
-
-    // Allocate host side place to store pointers to each row
-    int32_t ** pmap = (int32_t **) malloc(sz);
-    int32_t * lengths = (int32_t *) malloc( up.partitions_.size() * sizeof(int32_t));
-
-    // Allocate and copy each row on device
-    for( int i = 0; i < up.partitions_.size(); i++ )
-    {
-      lengths[i] = up.partitions_[i].size();
-      sz = up.partitions_[i].size() * sizeof(int32_t);
-      pmap[i] = (int32_t *) device_alloc(sz, device_id);
-      device_memcpy(pmap[i], up.partitions_[i].data(), sz, device_id, host_id);
-    }
-
-    // Copy over array of pointers
-    sz = up.partitions_.size() * sizeof(int32_t *);
-    device_memcpy(up.device_partitions_, pmap, sz, device_id, host_id);
-
-    // Allocate and copy over lengths array
-    sz = up.partitions_.size() * sizeof(int32_t);
-    up.device_partitions_lengths_ = (int32_t *) device_alloc(sz, device_id);
-    device_memcpy(up.device_partitions_lengths_, lengths, sz, device_id, host_id);
-
-    // free pointer map
-    free(pmap);
-
-
-    // Copy over full partitioner
-    sz = sizeof(UniversePartitioner);
-    //omp_target_memcpy(device_partitioner_, &up, sz, 0, 0, device_id, host_id);
-    device_memcpy(device_partitioner_, &up, sz, device_id, host_id);
-    */
+    // Map partitioner object
+    #pragma omp target enter data map(to: partitioner_[:1])
+  
+    // Deep copy
+    partitioner_->allocate_and_copy_to_device();
   }
-
 }
 
 //==============================================================================
@@ -382,6 +333,11 @@ void Cell::copy_to_device()
   #pragma omp target enter data map(to: device_rpn_[:rpn_.size()])
   device_offset_  = offset_.data()    ;
   #pragma omp target enter data map(to: device_offset_[:offset_.size()])
+
+  // Ensure RPN size for cell is below threshold for complex geometry stack
+  if (rpn_.size() > RPN_SIZE) {
+    fatal_error("RPN cell definition is too large for static complex CSG evaluation stack. Increase size of RPN_SIZE macro.");
+  }
 }
 
 //==============================================================================
@@ -599,9 +555,7 @@ Cell::contains(Position r, Direction u, int32_t on_surface) const
   if (simple_) {
     return contains_simple(r, u, on_surface);
   } else {
-    printf("ERROR - Complex CSG cell geometry not yet supported on device!\n");
-    return false;
-    //return contains_complex(r, u, on_surface);
+    return contains_complex(r, u, on_surface);
   }
 }
 
@@ -850,10 +804,12 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
-  std::vector<bool> stack(rpn_.size());
+  bool stack[RPN_SIZE];
+
   int i_stack = -1;
 
-  for (int32_t token : rpn_) {
+  for (int i = 0; i < rpn_.size(); i++) {
+    int32_t token = device_rpn_[i];
     // If the token is a binary operator (intersection/union), apply it to
     // the last two items on the stack. If the token is a unary operator
     // (complement), apply it to the last item on the stack.
@@ -877,8 +833,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        //bool sense = model::surfaces[abs(token)-1].sense(r, u);
-        bool sense = model::surfaces[std::abs(token)-1].sense(r, u);
+        bool sense = model::device_surfaces[std::abs(token)-1].sense(r, u);
         stack[i_stack] = (sense == (token > 0));
       }
     }
@@ -1075,8 +1030,6 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   }
 }
 
-//const std::vector<int32_t>&
-//UniversePartitioner::get_cells(Position r, Direction u) const
 int32_t*
 UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
 {
@@ -1086,9 +1039,7 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
   int right = surfs_.size() - 1;
   while (true) {
     // Check the sense of the coordinates for the current surface.
-    const auto& surf = model::surfaces[surfs_[middle]];
-    //const auto& surf = model::device_surfaces[surfs_[middle]];
-    //const auto& surf = model::device_surfaces[device_surfs_[middle]];
+    const auto& surf = model::device_surfaces[device_surfs_[middle]];
     if (surf.sense(r, u)) {
       // The coordinates lie in the positive halfspace.  Recurse if there are
       // more surfaces to check.  Otherwise, return the cells on the positive
@@ -1098,14 +1049,8 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
         left = middle + 1;
         middle = right_leaf;
       } else {
-        //return partitions_[middle+1];
-        /*
         ncells = device_partitions_lengths_[middle+1];
-        return device_partitions_[middle+1];
-        */
-        //ncells = partitions_lengths_[middle+1];
-        ncells = partitions_[middle+1].size();
-        return const_cast<int32_t *>(partitions_[middle+1].data());
+        return device_partitions_ + device_partitions_offsets_[middle+1];
       }
 
     } else {
@@ -1117,15 +1062,47 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
         right = middle-1;
         middle = left_leaf;
       } else {
-        //return partitions_[middle];
-        //ncells = device_partitions_lengths_[middle];
-        //return device_partitions_[middle];
-        ncells = partitions_[middle].size();
-        return const_cast<int32_t *> (partitions_[middle].data());
-        //return partitions_[middle].data();
+        ncells = device_partitions_lengths_[middle];
+        return device_partitions_ + device_partitions_offsets_[middle];
       }
     }
   }
+}
+
+void UniversePartitioner::allocate_and_copy_to_device()
+{
+  // Allocate space for partitioner 1D offset/length arrays and populate
+  device_partitions_offsets_ = new int32_t[partitions_.size()];
+  device_partitions_lengths_ = new int32_t[partitions_.size()];
+
+  int total_len = 0;
+
+  for (int i = 0; i < partitions_.size(); i++) {
+    int len = partitions_[i].size();
+    device_partitions_lengths_[i] = len;
+    device_partitions_offsets_[i] = total_len;
+    total_len += len;
+  }
+
+  // Allocate space for 1D partitioner array
+  device_partitions_ = new int32_t[total_len];
+
+  // Fill 1D partitioner array
+  int idx = 0;
+  for (int i = 0; i < partitions_.size(); i++) {
+    for (int j = 0; j < partitions_[i].size(); j++) {
+      device_partitions_[idx++] = partitions_[i][j];
+    }
+  }
+
+  // Map 1D partitioner array and offsets etc.
+  #pragma omp target enter data map(to: device_partitions_[:total_len])
+  #pragma omp target enter data map(to: device_partitions_lengths_[:partitions_.size()])
+  #pragma omp target enter data map(to: device_partitions_offsets_[:partitions_.size()])
+
+  // Now for surfaces
+  device_surfs_ = surfs_.data();
+  #pragma omp target enter data map(to: device_surfs_[:surfs_.size()])
 }
 
 //==============================================================================

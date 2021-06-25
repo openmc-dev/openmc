@@ -159,7 +159,7 @@ partition_universes()
         if (model::surfaces[i_surf].type_ == Surface::SurfaceType::SurfaceZPlane) {
           ++n_zplanes;
           if (n_zplanes > 5) {
-            univ.partitioner_ = std::make_unique<UniversePartitioner>(univ);
+            univ.partitioner_ = new UniversePartitioner(univ);
             break;
           }
         }

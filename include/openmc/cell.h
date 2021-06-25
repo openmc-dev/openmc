@@ -93,6 +93,8 @@ public:
   std::vector<int32_t> cells_;  //!< Cells within this universe
   int32_t* device_cells_;  //!< Cells within this universe
 
+  ~Universe();
+
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
@@ -101,8 +103,7 @@ public:
 
   BoundingBox bounding_box() const;
 
-  std::unique_ptr<UniversePartitioner> partitioner_;
-  UniversePartitioner* device_partitioner_{NULL};
+  UniversePartitioner* partitioner_{NULL};
 };
 
 //==============================================================================
@@ -253,8 +254,8 @@ public:
 protected:
   #pragma omp declare target
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
-  #pragma omp end declare target
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+  #pragma omp end declare target
   BoundingBox bounding_box_simple() const;
   static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
 
@@ -367,9 +368,11 @@ public:
   explicit UniversePartitioner(const Universe& univ);
 
   //! Return the list of cells that could contain the given coordinates.
-  //const std::vector<int32_t>& get_cells(Position r, Direction u) const;
-  //int32_t* get_cells(Position r, Direction u, int& ncells) const;
+  #pragma omp declare target
   int32_t* get_cells(Position r, Direction u, int& ncells) const;
+  #pragma omp end declare target
+
+  void allocate_and_copy_to_device();
 
 //private:
   //! A sorted vector of indices to surfaces that partition the universe
@@ -384,7 +387,8 @@ public:
   //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
   //! between `surfs_[i-1]` and `surfs_[i]`.
   std::vector<std::vector<int32_t>> partitions_;
-  int32_t** device_partitions_{NULL};
+  int32_t* device_partitions_{NULL};
+  int32_t* device_partitions_offsets_{NULL};
   int32_t* device_partitions_lengths_{NULL};
 };
 

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-  <dagmc auto_geom_ids="true" filename="dagmc.h5m" id="9" name="" />
+  <dagmc_universe auto_geom_ids="true" filename="dagmc.h5m" id="9" name="" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>

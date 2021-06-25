@@ -720,7 +720,7 @@ class DAGMCUniverse(UniverseBase):
             memo.add(self)
 
         # Set xml element values
-        dagmc_element = ET.Element('dagmc')
+        dagmc_element = ET.Element('dagmc_universe')
         dagmc_element.set('id', str(self.id))
         dagmc_element.set('name', self.name)
         if self.auto_geom_ids:

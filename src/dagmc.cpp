@@ -625,7 +625,7 @@ DAGSurface::reflect(Position r, Direction u, Particle* p) const
 //==============================================================================
 
 void read_dagmc_universes(pugi::xml_node node) {
-  for (pugi::xml_node dag_node : node.children("dagmc")) {
+  for (pugi::xml_node dag_node : node.children("dagmc_universe")) {
     model::universes.push_back(std::make_unique<DAGUniverse>(dag_node));
     model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
   }

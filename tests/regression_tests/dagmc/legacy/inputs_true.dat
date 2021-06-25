@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-  <dagmc filename="dagmc.h5m" id="1" name="" />
+  <dagmc_universe filename="dagmc.h5m" id="1" name="" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>

@@ -45,6 +45,23 @@ with the :envvar:`OPENMC_CROSS_SECTIONS` environment variable. It is recommended
 to add a line in your ``.profile`` or ``.bash_profile`` setting the
 :envvar:`OPENMC_CROSS_SECTIONS` environment variable.
 
+RuntimeError: Failed to open HDF5 file with mode 'w': summary.h5
+****************************************************************
+
+This often occurs when working with the Python API and executing multiple OpenMC
+runs in a script. If an :class:`openmc.StatePoint` is open in the Python interpreter,
+the file handle of the statpoint file as well as the linked `summary.h5` file will
+be unavailable for writing, causing this error to appear. To avoid the situation,
+it is recommended that data be extracted from statepoint files in a context manager:
+
+.. code-block:: python
+
+    with openmc.StatePoint('statepoint.10.h5') as sp:
+        k_eff = sp.k_combined
+
+or that the :meth:`StatePoint.close` method is called before executing a subsequent
+OpenMC run.
+
 Geometry Debugging
 ******************
 

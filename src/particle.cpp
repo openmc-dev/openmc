@@ -383,7 +383,7 @@ Particle::cross_surface()
 
   // if we're crossing a CSG surface, make sure the DAG history is reset
   #ifdef DAGMC
-  if (surf->geom_type_ != GeometryType::DAG) history().reset();
+  if (surf->geom_type_ == GeometryType::CSG) history().reset();
   #endif
 
   // Handle any applicable boundary conditions.

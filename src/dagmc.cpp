@@ -85,7 +85,7 @@ DAGUniverse::DAGUniverse(const std::string& filename,
 
 void
 DAGUniverse::initialize() {
-  type_ = GeometryType::DAG;
+  geom_type() = GeometryType::DAG;
 
   // determine the next cell id
   int32_t next_cell_id = 0;
@@ -229,10 +229,7 @@ DAGUniverse::initialize() {
     model::overlap_check_count.resize(model::cells.size(), 0);
   }
 
-  if (!graveyard) {
-    warning("No graveyard volume found in the DagMC model. "
-            "This may result in lost particles and rapid simulation failure.");
-  }
+  has_graveyard_ = graveyard;
 
   // --- Surfaces ---
 
@@ -631,6 +628,19 @@ void read_dagmc_universes(pugi::xml_node node) {
   }
 }
 
+void check_dagmc_root_univ() {
+  const auto& ru = model::universes[model::root_universe];
+  if (ru->geom_type() == GeometryType::DAG) {
+    // if the root universe contains DAGMC geometry, warn the user
+    // if it does not contain a graveyard volume
+    auto dag_univ = dynamic_cast<DAGUniverse*>(ru.get());
+    if (dag_univ && !dag_univ->has_graveyard()) {
+          warning("No graveyard volume found in the DagMC model. "
+            "This may result in lost particles and rapid simulation failure.");
+    }
+  }
+}
+
 int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed)
 {
   moab::EntityHandle surf =
@@ -645,5 +655,15 @@ int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed
 }
 
 
-}
-#endif
+} // namespace openmc
+
+#else
+
+namespace openmc {
+
+void read_dagmc_universes(pugi::xml_node node) {};
+void check_dagmc_root_univ() {};
+
+} // namespace openmc
+
+#endif // DAGMC

@@ -3,9 +3,6 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
-#ifdef DAGMC
-#include "openmc/dagmc.h"
-#endif
 #include "openmc/error.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/file_utils.h"

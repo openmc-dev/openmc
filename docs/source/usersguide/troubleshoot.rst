@@ -50,8 +50,8 @@ RuntimeError: Failed to open HDF5 file with mode 'w': summary.h5
 
 This often occurs when working with the Python API and executing multiple OpenMC
 runs in a script. If an :class:`openmc.StatePoint` is open in the Python interpreter,
-the file handle of the statpoint file as well as the linked `summary.h5` file will
-be unavailable for writing, causing this error to appear. To avoid the situation,
+the file handle of the statepoint file as well as the linked `summary.h5` file will
+be unavailable for writing, causing this error to appear. To avoid this situation,
 it is recommended that data be extracted from statepoint files in a context manager:
 
 .. code-block:: python

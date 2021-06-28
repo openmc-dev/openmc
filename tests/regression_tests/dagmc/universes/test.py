@@ -1,3 +1,5 @@
+import numpy as np
+
 import openmc
 import openmc.lib
 
@@ -44,16 +46,23 @@ class DAGMCUniverseTest(PyAPITestHarness):
         # create the DAGMC universe
         pincell_univ = openmc.DAGMCUniverse(filename='dagmc.h5m', auto_geom_ids=True)
 
-        left = openmc.XPlane(x0=-24.0, name='left', boundary_type='reflective')
-        right = openmc.XPlane(x0=24.0, name='right', boundary_type='reflective')
-        front = openmc.YPlane(y0=-24.0, name='front', boundary_type='reflective')
-        back = openmc.YPlane(y0=24.0, name='back', boundary_type='reflective')
-        bottom = openmc.ZPlane(z0=-20.0, name='bottom', boundary_type='vacuum')
-        top = openmc.ZPlane(z0=20.0, name='top', boundary_type='vacuum')
+        # create a 2 x 2 lattice using the DAGMC pincell
+        pitch = np.asarray((24.0, 24.0))
+        lattice = openmc.RectLattice()
+        lattice.pitch = pitch
+        lattice.universes = [[pincell_univ] * 2] * 2
+        lattice.lower_left = -pitch
 
-        box = +left & -right & +front & -back & +bottom & -top
+        left = openmc.XPlane(x0=-pitch[0], name='left', boundary_type='reflective')
+        right = openmc.XPlane(x0=pitch[0], name='right', boundary_type='reflective')
+        front = openmc.YPlane(y0=-pitch[1], name='front', boundary_type='reflective')
+        back = openmc.YPlane(y0=pitch[1], name='back', boundary_type='reflective')
+        # clip the DAGMC geometry at +/- 10 cm w/ CSG planes
+        bottom = openmc.ZPlane(z0=-10.0, name='bottom', boundary_type='reflective')
+        top = openmc.ZPlane(z0=10.0, name='top', boundary_type='reflective')
 
-        bounding_cell = openmc.Cell(fill=pincell_univ, region=box)
+        bounding_region = +left & -right & +front & -back & +bottom & -top
+        bounding_cell = openmc.Cell(fill=lattice, region=bounding_region)
 
         model.geometry = openmc.Geometry([bounding_cell])
 

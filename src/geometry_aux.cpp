@@ -80,9 +80,11 @@ void read_geometry_xml()
      fatal_error("No boundary conditions were applied to any surfaces!");
   }
 
-
   // Allocate universes, universe cell arrays, and assign base universe
   model::root_universe = find_root_universe();
+
+  // if the root universe is DAGMC geometry, make sure the model is well-formed
+  check_dagmc_root_univ();
 }
 
 //==============================================================================

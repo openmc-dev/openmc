@@ -5,6 +5,20 @@ namespace openmc {
 extern "C" const bool DAGMC_ENABLED;
 }
 
+// always include the XML interface header
+#include "openmc/xml_interface.h"
+
+//==============================================================================
+// Functions that are always defined
+//==============================================================================
+
+namespace openmc {
+
+void read_dagmc_universes(pugi::xml_node node);
+void check_dagmc_root_univ();
+
+}
+
 #ifdef DAGMC
 
 #include "DagMC.hpp"
@@ -13,7 +27,6 @@ extern "C" const bool DAGMC_ENABLED;
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
-#include "openmc/xml_interface.h"
 
 class UWUW;
 
@@ -114,18 +127,21 @@ public:
   int32_t cell_idx_offset_; //!< An offset to the start of the cells in this universe in OpenMC's cell vector
   int32_t surf_idx_offset_; //!< An offset to the start of the surfaces in this universe in OpenMC's surface vector
 
+  // Accessors
+  bool has_graveyard() const { return has_graveyard_; }
+
 private:
   std::string filename_; //!< Name of the DAGMC file used to create this universe
   std::shared_ptr<UWUW> uwuw_; //!< Pointer to the UWUW instance for this universe
   bool adjust_geometry_ids_; //!< Indicates whether or not to automatically generate new cell and surface IDs for the universe
   bool adjust_material_ids_; //!< Indicates whether or not to automatically generate new material IDs for the universe
+  bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard" volume
 };
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-void read_dagmc_universes(pugi::xml_node node);
 int32_t next_cell(DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed);
 
 } // namespace openmc

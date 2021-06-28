@@ -74,8 +74,13 @@ public:
 
   BoundingBox bounding_box() const;
 
-  GeometryType type_ = GeometryType::CSG;
+  const GeometryType& geom_type() const { return geom_type_; }
+  GeometryType& geom_type() { return geom_type_; }
+
   unique_ptr<UniversePartitioner> partitioner_;
+
+private:
+  GeometryType geom_type_ = GeometryType::CSG;
 };
 
 //==============================================================================

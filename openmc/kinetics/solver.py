@@ -543,29 +543,14 @@ class Solver:
 
         if time_point in ('START', 'END', 'FORWARD_OUTER', 'PREVIOUS_OUTER'):
             state = openmc.kinetics.OuterState(self.states)
-            state.chi_delayed_by_delayed_group = self.chi_delayed_by_delayed_group
-            state.chi_delayed_by_mesh = self.chi_delayed_by_mesh
             if time_point in ('FORWARD_OUTER', 'PREVIOUS_OUTER'):
                 state.method = self.method
         else:
             state = openmc.kinetics.InnerState(self.states)
             state.method = self.method
 
-        state.shape_mesh = self.shape_mesh
-        state.amplitude_mesh = self.amplitude_mesh
-        state.unity_mesh = self.unity_mesh
-        state.tally_mesh = self.tally_mesh
-        state.energy_groups = self.energy_groups
-        state.fine_groups = self.fine_groups
-        state.one_group = self.one_group
-        state.num_delayed_groups = self.num_delayed_groups
-        state.use_agd = self.use_agd
-        state.use_pcmfd = self.use_pcmfd
+        state.solver = self
         state.time_point = time_point
-        state.clock = self.clock
-        state.k_crit = self.k_crit
-        state.core_volume = self.core_volume
-        state.log_file = self.log_file
 
         if self.tally_groups is not None:
             state.tally_groups = self.tally_groups
@@ -604,9 +589,6 @@ class Solver:
         norm_factor        = self.initial_power / state.core_power_density
         state.shape       *= norm_factor
 
-        # Normalize the initial flux
-        state.k_crit = self.k_crit
-
         # Compute the initial precursor concentration
         state._compute_initial_precursor_concentration()
 
@@ -618,7 +600,6 @@ class Solver:
 
         # Create hdf5 log file
         self._create_log_file()
-        #self.states['PREVIOUS_INNER'].dump_to_log_file
         self.states['START'].dump_to_log_file
 
         # Reset the source to be the last source bank written to file

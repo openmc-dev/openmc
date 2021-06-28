@@ -76,29 +76,11 @@ class State():
     def __init__(self, states):
 
         # Initialize State class attributes
-        self._amplitude_mesh = None
-        self._shape_mesh = None
-        self._unity_mesh = None
-        self._tally_mesh = None
-
-        self._one_group = None
-        self._energy_groups = None
-        self._fine_groups = None
-        self._tally_groups = None
-        self._num_delayed_groups = 6
-
+        self.solver = None
         self._precursors = None
         self._adjoint_flux = None
         self._amplitude = None
-        self._k_crit = 1.0
-
         self._time_point = None
-        self._clock = None
-        self._core_volume = 1.
-
-        self._log_file = None
-        self._use_agd = False
-        self._use_pcmfd = False
         self.states = states
 
     @property
@@ -107,31 +89,31 @@ class State():
 
     @property
     def amplitude_mesh(self):
-        return self._amplitude_mesh
+        return self.solver.amplitude_mesh
 
     @property
     def shape_mesh(self):
-        return self._shape_mesh
+        return self.solver.shape_mesh
 
     @property
     def unity_mesh(self):
-        return self._unity_mesh
+        return self.solver.unity_mesh
 
     @property
     def tally_mesh(self):
-        return self._tally_mesh
+        return self.solver.tally_mesh
 
     @property
     def one_group(self):
-        return self._one_group
+        return self.solver.one_group
 
     @property
     def energy_groups(self):
-        return self._energy_groups
+        return self.solver.energy_groups
 
     @property
     def fine_groups(self):
-        return self._fine_groups
+        return self.solver.fine_groups
 
     @property
     def tally_groups(self):
@@ -158,11 +140,11 @@ class State():
 
     @property
     def k_crit(self):
-        return self._k_crit
+        return self.solver.k_crit
 
     @property
     def num_delayed_groups(self):
-        return self._num_delayed_groups
+        return self.solver.num_delayed_groups
 
     @property
     def time_point(self):
@@ -170,47 +152,19 @@ class State():
 
     @property
     def clock(self):
-        return self._clock
+        return self.solver.clock
 
     @property
     def core_volume(self):
-        return self._core_volume
+        return self.solver.core_volume
 
     @property
     def log_file(self):
-        return self._log_file
+        return self.solver.log_file
 
     @states.setter
     def states(self, states):
         self._states = states
-
-    @shape_mesh.setter
-    def shape_mesh(self, mesh):
-        self._shape_mesh = mesh
-
-    @amplitude_mesh.setter
-    def amplitude_mesh(self, mesh):
-        self._amplitude_mesh = mesh
-
-    @unity_mesh.setter
-    def unity_mesh(self, mesh):
-        self._unity_mesh = mesh
-
-    @tally_mesh.setter
-    def tally_mesh(self, mesh):
-        self._tally_mesh = mesh
-
-    @one_group.setter
-    def one_group(self, one_group):
-        self._one_group = one_group
-
-    @energy_groups.setter
-    def energy_groups(self, energy_groups):
-        self._energy_groups = energy_groups
-
-    @fine_groups.setter
-    def fine_groups(self, fine_groups):
-        self._fine_groups = fine_groups
 
     @tally_groups.setter
     def tally_groups(self, tally_groups):
@@ -235,29 +189,9 @@ class State():
         self._precursors = copy.deepcopy(precursors)
         self._precursors.shape = (self.shape_nxyz, self.nd)
 
-    @k_crit.setter
-    def k_crit(self, k_crit):
-        self._k_crit = k_crit
-
-    @num_delayed_groups.setter
-    def num_delayed_groups(self, num_delayed_groups):
-        self._num_delayed_groups = num_delayed_groups
-
     @time_point.setter
     def time_point(self, time_point):
         self._time_point = time_point
-
-    @clock.setter
-    def clock(self, clock):
-        self._clock = clock
-
-    @core_volume.setter
-    def core_volume(self, core_volume):
-        self._core_volume = core_volume
-
-    @log_file.setter
-    def log_file(self, log_file):
-        self._log_file = log_file
 
     @property
     def shape_dimension(self):
@@ -611,8 +545,6 @@ class OuterState(State):
 
         # Initialize OuterState class attributes
         self._mgxs_lib = None
-        self._chi_delayed_by_delayed_group = False
-        self._chi_delayed_by_mesh = False
         self._method = 'ADIABATIC'
         self._mgxs_loaded = False
         self._shape = None
@@ -628,19 +560,19 @@ class OuterState(State):
 
     @property
     def chi_delayed_by_delayed_group(self):
-        return self._chi_delayed_by_delayed_group
+        return self.solver.chi_delayed_by_delayed_group
 
     @property
     def chi_delayed_by_mesh(self):
-        return self._chi_delayed_by_mesh
+        return self.solver.chi_delayed_by_mesh
 
     @property
     def use_agd(self):
-        return self._use_agd
+        return self.solver.use_agd
 
     @property
     def use_pcmfd(self):
-        return self._use_pcmfd
+        return self.solver.use_pcmfd
 
     @property
     def mgxs_loaded(self):
@@ -853,7 +785,7 @@ class OuterState(State):
     def dump_to_log_file(self):
 
         time_point = str(self.clock.times[self.time_point])
-        with h5py.File(self._log_file, 'a') as f:
+        with h5py.File(self.solver.log_file, 'a') as f:
             if time_point not in f['OUTER_STEPS'].keys():
                 f['OUTER_STEPS'].require_group(time_point)
 
@@ -1554,7 +1486,7 @@ class InnerState(State):
     def dump_to_log_file(self):
 
         time_point = str(self.clock.times[self.time_point])
-        with h5py.File(self._log_file, 'a') as f:
+        with h5py.File(self.solver.log_file, 'a') as f:
             if time_point not in f['INNER_STEPS'].keys():
                 f['INNER_STEPS'].require_group(time_point)
 

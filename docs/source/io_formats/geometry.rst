@@ -370,3 +370,44 @@ Here is an example of a properly defined 2d hexagonal lattice:
                   202
         </universes>
     </hex_lattice>
+
+
+.. _dagmc_element:
+
+----------------------------
+``<dagmc_universe>`` Element
+----------------------------
+
+Each ``<dagmc_universe>`` element can have the following attributes or sub-elements:
+
+  :id:
+    A unique integer used to identify the universe.
+
+    *Default*: ""
+
+  :name:
+    An optional string name to identify the surface in summary output
+    files. This string is limited to 52 characters for formatting purposes.
+
+    *Default*: ""
+
+  :auto_geom_ids:
+    Boolean value indicating whether the existing geometry IDs will be used or appended
+    to the existing ID space of natively defined OpenMC geometry entities.
+
+    *Default*: false
+
+  :auto_mat_ids:
+    Boolean value indicating whether the existing material IDs will be used or appended
+    to the existing ID space of natively defined OpenMC materials.
+
+    *Default*: false
+
+  :filename:
+    A required string indicating the file to be loaded representing the DAGMC universe.
+
+    *Default*: None
+
+
+
+

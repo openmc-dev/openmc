@@ -24,8 +24,6 @@ The current version of the summary file format is 6.0.
              - **n_universes** (*int*) -- Number of unique universes in the
                problem.
              - **n_lattices** (*int*) -- Number of lattices in the problem.
-             - **dagmc** (*int*) -- Indicates that a DAGMC geometry was used
-               if present.
 
 **/geometry/cells/cell <uid>/**
 
@@ -49,6 +47,8 @@ The current version of the summary file format is 6.0.
            - **lattice** (*int*) -- Unique ID of the lattice which fills the
              cell. Only present if fill_type is set to 'lattice'.
            - **region** (*char[]*) -- Region specification for the cell.
+           - **geom_type** (*char[]*) -- Type of geometry used to create the cell.
+             Either 'csg' or 'dagmc'.
 
 **/geometry/surfaces/surface <uid>/**
 
@@ -62,12 +62,18 @@ The current version of the summary file format is 6.0.
            - **boundary_condition** (*char[]*) -- Boundary condition applied to
              the surface. Can be 'transmission', 'vacuum', 'reflective', or
              'periodic'.
+           - **geom_type** (*char[]*) -- Type of geometry used to create the cell.
+             Either 'csg' or 'dagmc'.
+
 
 **/geometry/universes/universe <uid>/**
 
 :Datasets:
            - **cells** (*int[]*) -- Array of unique IDs of cells that appear in
              the universe.
+           - **geom_type** (*char[]*) -- Type of geometry used to create the cell.
+             Either 'csg' or 'dagmc'.
+
 
 **/geometry/lattices/lattice <uid>/**
 

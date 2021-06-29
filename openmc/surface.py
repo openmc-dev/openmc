@@ -454,8 +454,8 @@ class Surface(IDManagerMixin, ABC):
         """
 
         # If this is a DAGMC surface, do nothing for now
-        geom_type = group['geom_type'][()].decode()
-        if geom_type == 'dagmc':
+        geom_type = group.get('geom_type')
+        if geom_type and geom_type[()].decode() == 'dagmc':
             return
 
         surface_id = int(group.name.split('/')[-1].lstrip('surface '))

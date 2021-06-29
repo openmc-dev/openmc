@@ -198,6 +198,11 @@ class Geometry:
             if c.fill_type in ('universe', 'lattice'):
                 child_of[c.fill].append(c)
 
+        # Add any DAGMC universes
+        for elem in root.findall('dagmc_universe'):
+            dag_univ = openmc.DAGMCUniverse.from_xml(elem)
+            universes[dag_univ.id] = dag_univ
+
         # Determine which universe is the root by finding one which is not a
         # child of any other object
         for u in universes.values():

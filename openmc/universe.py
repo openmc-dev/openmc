@@ -10,6 +10,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+from ._xml import get_text
 from .mixin import IDManagerMixin
 from .plots import _SVG_COLORS
 
@@ -729,3 +730,19 @@ class DAGMCUniverse(UniverseBase):
             dagmc_element.set('auto_mat_ids', 'true')
         dagmc_element.set('filename', self.filename)
         xml_element.append(dagmc_element)
+
+    @classmethod
+    def from_xml(cls, elem):
+        id = int(get_text(elem, 'id'))
+        fname = get_text(elem, 'filename')
+
+        out = cls(fname, universe_id=id)
+
+        name = get_text(elem, 'name')
+        if name is not None:
+            out.name = name
+
+        out.auto_geom_ids = bool(elem.get('auto_geom_ids'))
+        out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
+
+        return out

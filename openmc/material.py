@@ -521,6 +521,19 @@ class Material(IDManagerMixin):
             if element is None:
                 msg = 'Element name "{}" not recognised'.format(el)
                 raise ValueError(msg)
+        else:
+            if element[0].islower():
+                msg = 'Element name "{}" should start with an uppercase ' \
+                      'letter'.format(element)
+                raise ValueError(msg)
+            if len(element) == 2 and element[1].isupper():
+                msg = 'Element name "{}" should end with a lowercase ' \
+                      'letter'.format(element)
+                raise ValueError(msg)
+            # skips the first entry of ATOMIC_SYMBOL which is n for neutron
+            if element not in list(openmc.data.ATOMIC_SYMBOL.values())[1:]:
+                msg = 'Element name "{}" not recognised'.format(element)
+                raise ValueError(msg)
 
         if self._macroscopic is not None:
             msg = 'Unable to add an Element to Material ID="{}" as a ' \

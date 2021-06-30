@@ -160,7 +160,6 @@ StructuredMesh::bin_label(int bin) const {
 //==============================================================================
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
-  n_dimension_ = 3;
 
   // check the mesh type
   if (check_for_node(node, "type")) {
@@ -192,6 +191,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
 void
 UnstructuredMesh::surface_bins_crossed(Position r0,
                                        Position r1,
+                                       const Direction& u,
                                        vector<int>& bins) const {
   fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
@@ -1581,14 +1581,22 @@ MOABMesh::MOABMesh(const std::string& filename) {
   initialize();
 }
 
+MOABMesh::MOABMesh(std::shared_ptr<moab::Interface> external_mbi) {
+  mbi_ = external_mbi;
+  filename_ = "unknown (external file)";
+  this->initialize();
+}
+
 void MOABMesh::initialize() {
-  // create MOAB instance
-  mbi_ = make_unique<moab::Core>();
-  // load unstructured mesh file
-  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to load the unstructured mesh file: " + filename_);
-  }
+
+  // Create the MOAB interface and load data from file
+  this->create_interface();
+
+  // Initialise MOAB error code
+  moab::ErrorCode rval = moab::MB_SUCCESS;
+
+  // Set the dimension
+  n_dimension_ = 3;
 
   // set member range of tetrahedral entities
   rval = mbi_->get_entities_by_dimension(0, n_dimension_, ehs_);
@@ -1616,6 +1624,22 @@ void MOABMesh::initialize() {
   // build acceleration data structures
   compute_barycentric_data(ehs_);
   build_kdtree(ehs_);
+}
+
+void
+MOABMesh::create_interface()
+{
+  // Do not create a MOAB instance if one is already in memory
+  if (mbi_) return;
+
+  // create MOAB instance
+  mbi_ = std::make_shared<moab::Core>();
+
+  // load unstructured mesh file
+  moab::ErrorCode rval = mbi_->load_file(filename_.c_str());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to load the unstructured mesh file: " + filename_);
+  }
 }
 
 void
@@ -1811,14 +1835,6 @@ double MOABMesh::tet_volume(moab::EntityHandle tet) const
   }
 
   return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
-}
-
-void MOABMesh::surface_bins_crossed(
-  Position r0, Position r1, const Direction& u, vector<int>& bins) const
-{
-
-  // TODO: Implement triangle crossings here
-  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
 
 int MOABMesh::get_bin(Position r) const
@@ -2081,7 +2097,8 @@ void MOABMesh::remove_scores()
 }
 
 void MOABMesh::set_score_data(const std::string& score,
-  const vector<double>& values, const vector<double>& std_dev)
+                              const vector<double>& values,
+                              const vector<double>& std_dev)
 {
   auto score_tags = this->get_score_tags(score);
 
@@ -2196,13 +2213,6 @@ std::string LibMesh::library() const { return "libmesh"; }
 int LibMesh::n_bins() const
 {
   return m_->n_elem();
-}
-
-void LibMesh::surface_bins_crossed(
-  Position r0, Position r1, const Direction& u, vector<int>& bins) const
-{
-  // TODO: Implement triangle crossings here
-  throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
 
 int

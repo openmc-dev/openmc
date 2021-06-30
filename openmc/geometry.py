@@ -159,6 +159,11 @@ class Geometry:
         for s1, s2 in periodic.items():
             surfaces[s1].periodic_surface = surfaces[s2]
 
+        # Add any DAGMC universes
+        for elem in root.findall('dagmc_universe'):
+            dag_univ = openmc.DAGMCUniverse.from_xml(elem)
+            universes[dag_univ.id] = dag_univ
+
         # Dictionary that maps each universe to a list of cells/lattices that
         # contain it (needed to determine which universe is the root)
         child_of = defaultdict(list)
@@ -197,11 +202,6 @@ class Geometry:
             c = openmc.Cell.from_xml_element(elem, surfaces, mats, get_universe)
             if c.fill_type in ('universe', 'lattice'):
                 child_of[c.fill].append(c)
-
-        # Add any DAGMC universes
-        for elem in root.findall('dagmc_universe'):
-            dag_univ = openmc.DAGMCUniverse.from_xml(elem)
-            universes[dag_univ.id] = dag_univ
 
         # Determine which universe is the root by finding one which is not a
         # child of any other object

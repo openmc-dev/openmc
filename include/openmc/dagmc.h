@@ -122,6 +122,8 @@ public:
 
   bool find_cell(Particle &p) const override;
 
+  void to_hdf5(hid_t universes_group) const override;
+
   // Data Members
   std::shared_ptr<moab::DagMC> dagmc_instance_; //!< DAGMC Instance for this universe
   int32_t cell_idx_offset_; //!< An offset to the start of the cells in this universe in OpenMC's cell vector

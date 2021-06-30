@@ -432,6 +432,7 @@ class Surface(IDManagerMixin, ABC):
         kwargs = {}
         kwargs['surface_id'] = int(elem.get('id'))
         kwargs['boundary_type'] = elem.get('boundary', 'transmission')
+        kwargs['name'] = elem.get('name')
         coeffs = [float(x) for x in elem.get('coeffs').split()]
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
 

@@ -354,6 +354,22 @@ DAGUniverse::find_cell(Particle &p) const {
   return found;
 }
 
+void
+DAGUniverse::to_hdf5(hid_t universes_group) const {
+  // Create a group for this universe.
+  auto group = create_group(universes_group, fmt::format("universe {}", id_));
+
+  // Write the geometry representation type.
+  write_string(group, "geom_type", "dagmc", false);
+
+  // Write other properties of the DAGMC Universe
+  write_string(group, "filename", filename_, false);
+  write_attribute(group, "auto_geom_ids", static_cast<int>(adjust_geometry_ids_));
+  write_attribute(group, "auto_mat_ids", static_cast<int>(adjust_material_ids_));
+
+  close_group(group);
+}
+
 bool
 DAGUniverse::uses_uwuw() const
 {
@@ -546,6 +562,7 @@ DAGCell::contains(Position r, Direction u, int32_t on_surface) const
 void
 DAGCell::to_hdf5_inner(hid_t group_id) const {
   write_string(group_id, "geom_type", "dagmc", false);
+
 }
 
 BoundingBox

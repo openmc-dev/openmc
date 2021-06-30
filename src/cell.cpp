@@ -194,14 +194,7 @@ Universe::to_hdf5(hid_t universes_group) const
   auto group = create_group(universes_group, fmt::format("universe {}", id_));
 
   // Write the geometry representation type.
-  switch(geom_type_) {
-    case GeometryType::CSG :
-      write_string(group, "geom_type", "csg", false);
-      break;
-    case GeometryType::DAG :
-      write_string(group, "geom_type", "dagmc", false);
-      break;
-  }
+  write_string(group, "geom_type", "csg", false);
 
   // Write the contained cells.
   if (cells_.size() > 0) {

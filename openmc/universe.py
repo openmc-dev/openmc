@@ -732,7 +732,46 @@ class DAGMCUniverse(UniverseBase):
         xml_element.append(dagmc_element)
 
     @classmethod
+    def from_hdf5(cls, group):
+        """Create DAGMC universe from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+
+        Returns
+        -------
+        openmc.DAGMCUniverse
+            DAGMCUniverse instance
+
+        """
+        id = int(group.name.split('/')[-1].lstrip('universe '))
+        fname = group['filename'][()].decode()
+        name = group['name'][()].decode() if 'name' in group else None
+
+        out = cls(fname, universe_id=id, name=name)
+
+        out.auto_geom_ids = bool(group.attrs['auto_geom_ids'])
+        out.auto_mat_ids = bool(group.attrs['auto_mat_ids'])
+
+        return out
+
+    @classmethod
     def from_xml(cls, elem):
+        """Generate DAGMC universe from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            `<dagmc_universe>` element
+
+        Returns
+        -------
+        openmc.DAGMCUniverse
+            DAGMCUniverse instance
+
+        """
         id = int(get_text(elem, 'id'))
         fname = get_text(elem, 'filename')
 

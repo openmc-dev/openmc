@@ -73,6 +73,15 @@ The current version of the summary file format is 6.0.
              the universe.
            - **geom_type** (*char[]*) -- Type of geometry used to create the cell.
              Either 'csg' or 'dagmc'.
+           - **filename** (*char[]*) -- Name of the DAGMC file representing this universe.
+             Only present for DAGMC Universes.
+:Attributes:
+           - **auto_geom_ids** (*int*) -- ``1`` if geometry IDs of the DAGMC
+             model will be appended to the ID space of the natively defined
+             CSG geometry, ``0`` if the existing DAGMC IDs will be used.
+           - **auto_mat_ids** (*int*) -- ``1`` if UWUW material IDs of the DAGMC
+             model will be appended to the ID space of the natively defined
+             OpenMC materials, ``0`` if the existing UWUW IDs will be used.
 
 
 **/geometry/lattices/lattice <uid>/**
@@ -125,8 +134,8 @@ The current version of the summary file format is 6.0.
 :Attributes: - **volume** (*double[]*) -- Volume of this material [cm^3]. Only
                present if ``volume`` supplied
              - **temperature** (*double[]*) -- Temperature of this material [K].
-               Only present in ``temperature`` supplied
-             - **depletable** (*int[]*) -- ``1`` if the material can be depleted,
+               Only present if ``temperature`` is supplied
+             - **depletable** (*int*) -- ``1`` if the material can be depleted,
                ``0`` otherwise. Always present
 
 **/nuclides/**

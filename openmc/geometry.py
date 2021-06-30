@@ -161,7 +161,7 @@ class Geometry:
 
         # Add any DAGMC universes
         for elem in root.findall('dagmc_universe'):
-            dag_univ = openmc.DAGMCUniverse.from_xml(elem)
+            dag_univ = openmc.DAGMCUniverse.from_xml_element(elem)
             universes[dag_univ.id] = dag_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that

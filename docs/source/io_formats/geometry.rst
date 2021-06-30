@@ -383,13 +383,13 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
   :id:
     A unique integer used to identify the universe.
 
-    *Default*: ""
+    *Default*: None
 
   :name:
     An optional string name to identify the surface in summary output
     files. This string is limited to 52 characters for formatting purposes.
 
-    *Default*: ""
+    *Default*: None
 
   :auto_geom_ids:
     Boolean value indicating whether the existing geometry IDs will be used or appended
@@ -407,7 +407,3 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
     A required string indicating the file to be loaded representing the DAGMC universe.
 
     *Default*: None
-
-
-
-

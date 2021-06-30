@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
   <cell fill="10" id="13" region="9 -10 11 -12 13 -14" universe="11" />
-  <dagmc_universe auto_geom_ids="true" filename="dagmc.h5m" id="9" name="" />
+  <dagmc_universe auto_geom_ids="true" filename="dagmc.h5m" id="9" />
   <lattice id="10">
     <pitch>24.0 24.0</pitch>
     <dimension>2 2</dimension>

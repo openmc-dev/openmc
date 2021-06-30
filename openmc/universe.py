@@ -723,7 +723,7 @@ class DAGMCUniverse(UniverseBase):
         # Set xml element values
         dagmc_element = ET.Element('dagmc_universe')
         dagmc_element.set('id', str(self.id))
-        dagmc_element.set('name', self.name)
+
         if self.auto_geom_ids:
             dagmc_element.set('auto_geom_ids', 'true')
         if self.auto_mat_ids:
@@ -758,7 +758,7 @@ class DAGMCUniverse(UniverseBase):
         return out
 
     @classmethod
-    def from_xml(cls, elem):
+    def from_xml_element(cls, elem):
         """Generate DAGMC universe from XML element
 
         Parameters

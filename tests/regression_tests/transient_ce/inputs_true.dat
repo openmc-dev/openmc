@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1 8 -9" universe="1" />
+  <cell id="2" material="2" region="1 -2 8 -9" universe="1" />
+  <cell id="3" material="3" region="2 -3 8 -9" universe="1" />
+  <cell id="4" material="4" region="3 4 -5 6 -7 8 -9" universe="1" />
+  <cell id="5" material="4" region="-8 10 4 -5 6 -7" universe="1" />
+  <cell id="6" material="4" region="9 -11 4 -5 6 -7" universe="1" />
+  <surface coeffs="0.0 0.0 0.39218" id="1" name="Fuel OR" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.40005" id="2" name="Clad IR" type="z-cylinder" />
+  <surface coeffs="0.0 0.0 0.4572" id="3" name="Clad OR" type="z-cylinder" />
+  <surface boundary="reflective" coeffs="-0.62992" id="4" name="minimum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="0.62992" id="5" name="maximum x" type="x-plane" />
+  <surface boundary="reflective" coeffs="-0.62992" id="6" name="minimum y" type="y-plane" />
+  <surface boundary="reflective" coeffs="0.62992" id="7" name="maximum y" type="y-plane" />
+  <surface coeffs="-182.88" id="8" type="z-plane" />
+  <surface coeffs="182.88" id="9" type="z-plane" />
+  <surface boundary="vacuum" coeffs="-200" id="10" type="z-plane" />
+  <surface boundary="vacuum" coeffs="200" id="11" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1" name="UO2 fuel at 2.4% wt enrichment">
+    <density units="g/cm3" value="10.29769" />
+    <nuclide ao="0.00021719193856604058" name="U234" />
+    <nuclide ao="0.024299453778913967" name="U235" />
+    <nuclide ao="0.975372051112795" name="U238" />
+    <nuclide ao="0.0001113031697250248" name="U236" />
+    <nuclide ao="1.999242" name="O16" />
+    <nuclide ao="0.000758" name="O17" />
+  </material>
+  <material id="2" name="Helium for gap">
+    <density units="g/cm3" value="0.001598" />
+    <nuclide ao="4.8088e-10" name="He3" />
+    <nuclide ao="0.00024043951912" name="He4" />
+  </material>
+  <material id="3" name="Zircaloy 4">
+    <density units="g/cm3" value="6.55" />
+    <nuclide name="Sn112" wo="0.0001280150011885156" />
+    <nuclide name="Sn114" wo="8.865813236022722e-05" />
+    <nuclide name="Sn115" wo="4.607357438391996e-05" />
+    <nuclide name="Sn116" wo="0.001987443043627223" />
+    <nuclide name="Sn117" wo="0.0010588319166827192" />
+    <nuclide name="Sn118" wo="0.0033677060749010084" />
+    <nuclide name="Sn119" wo="0.001204557209296121" />
+    <nuclide name="Sn120" wo="0.004607003655772829" />
+    <nuclide name="Sn122" wo="0.0006656367398249325" />
+    <nuclide name="Sn124" wo="0.0008460746519625024" />
+    <nuclide name="Fe54" wo="9.315171073560117e-05" />
+    <nuclide name="Fe56" wo="0.0015163752247343758" />
+    <nuclide name="Fe57" wo="3.564608218682946e-05" />
+    <nuclide name="Fe58" wo="4.826982343193628e-06" />
+    <nuclide name="Cr50" wo="4.173686536432398e-05" />
+    <nuclide name="Cr52" wo="0.0008369936235260468" />
+    <nuclide name="Cr53" wo="9.673586887095358e-05" />
+    <nuclide name="Cr54" wo="2.4533642238675768e-05" />
+    <nuclide name="Zr90" wo="0.4986186065354624" />
+    <nuclide name="Zr91" wo="0.10994725679002436" />
+    <nuclide name="Zr92" wo="0.1699042107139048" />
+    <nuclide name="Zr94" wo="0.1759321745494071" />
+    <nuclide name="Zr96" wo="0.028947751411201494" />
+  </material>
+  <material id="4" name="Moderator">
+    <density units="g/cm3" value="0.740582" />
+    <nuclide ao="5.50996e-06" name="B10" />
+    <nuclide ao="2.229004e-05" name="B11" />
+    <nuclide ao="0.06698956542000001" name="H1" />
+    <nuclide ao="1.043458e-05" name="H2" />
+    <nuclide ao="0.0334873035" name="O16" />
+    <nuclide ao="1.2696500000000001e-05" name="O17" />
+    <sab name="c_H_in_H2O" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>100</batches>
+  <inactive>10</inactive>
+  <source strength="1.0">
+    <space type="fission">
+      <parameters>-0.62992 -0.62992 -182.88 0.62992 0.62992 182.88</parameters>
+    </space>
+  </source>
+  <output>
+    <tallies>false</tallies>
+  </output>
+  <source_point>
+    <batches>100</batches>
+    <separate>true</separate>
+    <write>true</write>
+  </source_point>
+</settings>

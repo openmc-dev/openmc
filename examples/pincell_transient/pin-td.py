@@ -105,7 +105,6 @@ solver.geometry                     = geometry
 solver.settings                     = settings_file
 solver.materials                    = materials_file
 solver.transient                    = transient
-solver.inner_tolerance              = np.inf
 solver.outer_tolerance              = np.inf
 solver.method                       = 'ADIABATIC'
 solver.multi_group                  = False

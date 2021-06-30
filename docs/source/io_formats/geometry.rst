@@ -19,7 +19,7 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :name:
     An optional string name to identify the surface in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 
@@ -122,7 +122,6 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
   :name:
     An optional string name to identify the cell in summary output files.
-    This string is limmited to 52 characters for formatting purposes.
 
     *Default*: ""
 
@@ -235,7 +234,7 @@ the following attributes or sub-elements:
 
   :name:
     An optional string name to identify the lattice in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 
@@ -301,7 +300,7 @@ the following attributes or sub-elements:
 
   :name:
     An optional string name to identify the hex_lattice in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 
@@ -387,7 +386,7 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
   :name:
     An optional string name to identify the surface in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: None
 

@@ -366,9 +366,18 @@ Tally::set_filters(gsl::span<Filter*> filters)
     }
   }
 
+  // Set the strides.
+  set_strides();
+
+}
+
+void
+Tally::set_strides()
+{
   // Set the strides.  Filters are traversed in reverse so that the last filter
   // has the shortest stride in memory and the first filter has the longest
   // stride.
+  auto n = filters_.size();
   strides_.resize(n, 0);
   int stride = 1;
   for (int i = n-1; i >= 0; --i) {
@@ -507,8 +516,11 @@ void Tally::set_scores(const vector<std::string>& scores)
   if (type_ == TallyType::SURFACE || type_ == TallyType::MESH_SURFACE) {
     if (scores_.size() != 1)
       fatal_error("Cannot tally other scores in the same tally as surface "
-        "currents");
+        "currents.");
   }
+  if ((surface_present || meshsurface_present) && scores_[0] != SCORE_CURRENT)
+    fatal_error("Cannot tally score other than 'current' when using a surface "
+      "or mesh-surface filter.");
 }
 
 void

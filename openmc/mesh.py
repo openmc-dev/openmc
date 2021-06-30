@@ -605,6 +605,9 @@ class UnstructuredMesh(MeshBase):
 
     .. versionadded:: 0.12
 
+    .. versionchanged:: 0.12.2
+        Support for libMesh unstructured meshes was added.
+
     Parameters
     ----------
     filename : str

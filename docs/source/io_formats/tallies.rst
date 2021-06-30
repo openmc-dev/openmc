@@ -31,7 +31,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :name:
     An optional string name to identify the tally in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 

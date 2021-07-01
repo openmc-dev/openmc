@@ -1,3 +1,4 @@
+from difflib import unified_diff
 import filecmp
 import glob
 import h5py
@@ -8,7 +9,7 @@ import openmc
 import openmc.kinetics as kinetics
 import openmc.mgxs
 
-from tests.testing_harness import TestHarness
+from tests.testing_harness import TestHarness, colorize
 
 
 class TransientTestHarness(TestHarness):
@@ -119,22 +120,16 @@ def test_transient():
     The transient consists of a prescribed water density drop.
 
     """
+    model = openmc.model.Model()
 
-    uo2 = openmc.Material(name='UO2 fuel at 2.4% wt enrichment')
+    uo2 = openmc.Material(name='UO2')
     uo2.set_density('g/cm3', 10.29769)
     uo2.add_element('U', 1., enrichment=2.4)
     uo2.add_element('O', 2.)
 
-    helium = openmc.Material(name='Helium for gap')
-    helium.set_density('g/cm3', 0.001598)
-    helium.add_element('He', 2.4044e-4)
-
-    zircaloy = openmc.Material(name='Zircaloy 4')
+    zircaloy = openmc.Material(name='Zircaloy')
     zircaloy.set_density('g/cm3', 6.55)
-    zircaloy.add_element('Sn', 0.014  , 'wo')
-    zircaloy.add_element('Fe', 0.00165, 'wo')
-    zircaloy.add_element('Cr', 0.001  , 'wo')
-    zircaloy.add_element('Zr', 0.98335, 'wo')
+    zircaloy.add_nuclide('Zr90', 1.0)
 
     borated_water = openmc.Material(name='Moderator')
     borated_water.set_density('g/cm3', 0.740582) 
@@ -143,39 +138,29 @@ def test_transient():
     borated_water.add_element('O',   3.3500E-2, 'ao')
     borated_water.add_s_alpha_beta('c_H_in_H2O')
 
-    materials = openmc.Materials([uo2, helium, zircaloy, borated_water])
+    model.materials.extend([uo2, zircaloy, borated_water])
 
-    fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
-    clad_ir = openmc.ZCylinder(r=0.40005, name='Clad IR')
-    clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
+    fuel_or = openmc.ZCylinder(r=0.39218)
+    clad_or = openmc.ZCylinder(r=0.45720)
 
-    pitch = 1.25984
+    pitch = 1.26
     box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
-    bottom = openmc.ZPlane(z0=-182.88)
-    top = openmc.ZPlane(z0= 182.88)
-    reflect_bot = openmc.ZPlane(z0=-200, boundary_type='vacuum')
-    reflect_top = openmc.ZPlane(z0= 200, boundary_type='vacuum')
+    bottom = openmc.ZPlane(z0=-10, boundary_type='vacuum')
+    top = openmc.ZPlane(z0= 10, boundary_type='vacuum')
 
     fuel = openmc.Cell(fill=uo2, region=-fuel_or & +bottom & -top)
-    gap  = openmc.Cell(fill=helium, region=+fuel_or & -clad_ir & +bottom & -top)
-    clad = openmc.Cell(fill=zircaloy, region=+clad_ir & -clad_or & +bottom & -top)
+    clad = openmc.Cell(fill=zircaloy, region=+fuel_or & -clad_or & +bottom & -top)
     water = openmc.Cell(fill=borated_water, region=+clad_or & box & +bottom & -top)
-    bottom_reflector = openmc.Cell(fill=borated_water, region=-bottom & +reflect_bot & box)
-    top_reflector = openmc.Cell(fill=borated_water, region=+top & -reflect_top & box)
 
-    geometry = openmc.Geometry([fuel, gap, clad, water, bottom_reflector, top_reflector])
-
-    model = openmc.model.Model()
-    model.geometry = geometry
-    model.materials = materials
+    model.geometry = openmc.Geometry([fuel, clad, water])
     
     model.settings.batches = 100
     model.settings.inactive = 10
     model.settings.particles = 100
     model.settings.output = {'tallies': False}
 
-    lower_left = [-0.62992, -0.62992, -182.88]
-    upper_right = [0.62992, 0.62992, 182.88]
+    lower_left = [-0.63, -0.63, -10]
+    upper_right = [0.63, 0.63, 10]
     uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
     model.settings.source = openmc.source.Source(space=uniform_dist)
 
@@ -186,15 +171,15 @@ def test_transient():
     model.settings.sourcepoint = sourcepoint
 
     full_pin_cell_mesh = openmc.RegularMesh()
-    full_pin_cell_mesh.dimension = [1,1,30]
-    full_pin_cell_mesh.lower_left = [-0.62992,-0.62992,-182.88]
-    full_pin_cell_mesh.width =[0.62992*2,0.62992*2,12.192]
+    full_pin_cell_mesh.dimension = [1,1,20]
+    full_pin_cell_mesh.lower_left = [-0.63,-0.63,-10]
+    full_pin_cell_mesh.width =[0.63*2,0.63*2,1.0]
 
     energy_groups = openmc.mgxs.EnergyGroups()
-    energy_groups.group_edges = [0., 0.13, 0.63, 4.1, 55.6, 9.2e3, 1.36e6, 1.0e7]
+    energy_groups.group_edges = [0, 0.625, 20.e6]
 
     one_group = openmc.mgxs.EnergyGroups()
-    one_group.group_edges = [energy_groups.group_edges[0], energy_groups.group_edges[-1]]
+    one_group.group_edges = [0, 20.e6]
 
     t_outer = np.arange(0., 1.0, 5.e-1)
     clock = openmc.kinetics.Clock(dt_inner=1.e-2, t_outer=t_outer)
@@ -239,7 +224,7 @@ def test_transient():
     solver.outer_tolerance = np.inf
     solver.multi_group     = False
     solver.clock           = clock
-    solver.run_kwargs      = {'threads':8, 'mpi_args':None}
+    solver.run_kwargs      = {'threads':None, 'mpi_args':None}
     solver.min_outer_iters = 1
 
     # Initialize and run solver object

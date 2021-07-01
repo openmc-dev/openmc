@@ -183,8 +183,8 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
 
-  // Counter for the number of fission sites successfully stored to a fission bank
-  // or secondary bank
+  // Counter for the number of fission sites successfully stored to the shared
+  // fission bank or the secondary particle bank
   int n_sites_stored;
 
   for (n_sites_stored = 0; n_sites_stored < nu; n_sites_stored++) {

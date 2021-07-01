@@ -107,8 +107,7 @@ create_fission_sites(Particle& p)
     nu++;
   }
 
-  // Begin banking the source neutrons
-  // First, if our bank is full then don't continue
+  // If no neutrons were produced then don't continue
   if (nu == 0) return;
 
   // Initialize the counter of delayed neutrons encountered for each delayed
@@ -119,13 +118,16 @@ create_fission_sites(Particle& p)
   p.nu_bank().clear();
 
   p.fission() = true;
-  int skipped = 0;
 
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
 
-  for (int i = 0; i < nu; ++i) {
+  // Counter for the number of fission sites successfully stored to the shared
+  // fission bank or the secondary particle bank
+  int n_sites_stored;
+
+  for (n_sites_stored = 0; n_sites_stored < nu; n_sites_stored++) {
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
@@ -162,8 +164,14 @@ create_fission_sites(Particle& p)
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
       if (idx == -1) {
         warning("The shared fission bank is full. Additional fission sites created "
-            "in this generation will not be banked.");
-        skipped++;
+            "in this generation will not be banked. Results may be non-deteministic.");
+
+        // Decrement number of particle progeny as storage was unsuccessful. This
+        // step is needed so that the sum of all progeny is equal to the size
+        // of the shared fission bank.
+        p.n_progeny()--;
+
+        // Break out of loop as no more sites can be added to fission bank
         break;
       }
     } else {
@@ -188,14 +196,14 @@ create_fission_sites(Particle& p)
 
   // If shared fission bank was full, and no fissions could be added,
   // set the particle fission flag to false.
-  if (nu == skipped) {
+  if (n_sites_stored == 0) {
     p.fission() = false;
     return;
   }
 
-  // If shared fission bank was full, but some fissions could be added,
-  // reduce nu accordingly
-  nu -= skipped;
+  // Set nu to the number of fission sites successfully stored. If the fission
+  // bank was not found to be full then these values are already equivalent.
+  nu = n_sites_stored;
 
   // Store the total weight banked for analog fission tallies
   p.n_bank() = nu;

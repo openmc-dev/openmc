@@ -41,6 +41,17 @@ inline bool coincident(double d1, double d2) {
 bool check_cell_overlap(Particle& p, bool error=true);
 
 //==============================================================================
+//! Get the cell instance for a particle at the specified universe level
+//!
+//! \param p A particle for which to compute the instance using
+//!   it's vector of LocalCoord.
+//! \param level The level (zero indexed) of the geometry where the instance should be computed.
+//! \return The instance of the cell at the specified level.
+//==============================================================================
+
+int cell_instance_at_level(const Particle& p, int level);
+
+//==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.
 //!
 //! \param p A particle to be located.  This function will populate the

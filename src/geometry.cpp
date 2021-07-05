@@ -65,6 +65,30 @@ bool check_cell_overlap(Particle& p, bool error)
 
 //==============================================================================
 
+int cell_instance_at_level(const Particle& p, int level) {
+  if (level > p.n_coord()) {
+    fatal_error(fmt::format("Cell instance at level {} requested, but only {} levels exist in the model.", level, p.n_coord()));
+  }
+  // determine the cell instance
+  Cell& c {*model::cells[p.coord(level).cell]};
+  int instance = 0;
+  for (int i = 0; i < level; i++) {
+    const auto& c_i {*model::cells[p.coord(i).cell]};
+    if (c_i.type_ == Fill::UNIVERSE) {
+      instance += c_i.offset_[c.distribcell_index_];
+    } else if (c_i.type_ == Fill::LATTICE) {
+      auto& lat {*model::lattices[p.coord(i + 1).lattice]};
+      const auto& i_xyz {p.coord(i + 1).lattice_i};
+      if (lat.are_valid_indices(i_xyz)) {
+        instance += lat.offset(c.distribcell_index_, i_xyz);
+      }
+    }
+  }
+  return instance;
+}
+
+//==============================================================================
+
 bool
 find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 {
@@ -130,22 +154,9 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       // Found a material cell which means this is the lowest coord level.
 
       // Find the distribcell instance number.
-      int offset = 0;
       if (c.distribcell_index_ >= 0) {
-        for (int i = 0; i < p.n_coord(); i++) {
-          const auto& c_i {*model::cells[p.coord(i).cell]};
-          if (c_i.type_ == Fill::UNIVERSE) {
-            offset += c_i.offset_[c.distribcell_index_];
-          } else if (c_i.type_ == Fill::LATTICE) {
-            auto& lat {*model::lattices[p.coord(i + 1).lattice]};
-            const auto& i_xyz {p.coord(i + 1).lattice_i};
-            if (lat.are_valid_indices(i_xyz)) {
-              offset += lat.offset(c.distribcell_index_, i_xyz);
-            }
-          }
-        }
+        p.cell_instance() = cell_instance_at_level(p, p.n_coord() - 1);
       }
-      p.cell_instance() = offset;
 
       // Set the material and temperature.
       p.material_last() = p.material();

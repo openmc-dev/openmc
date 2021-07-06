@@ -172,8 +172,8 @@ def test_transient():
 
     full_pin_cell_mesh = openmc.RegularMesh()
     full_pin_cell_mesh.dimension = [1,1,20]
-    full_pin_cell_mesh.lower_left = [-0.63,-0.63,-10]
-    full_pin_cell_mesh.width =[0.63*2,0.63*2,1.0]
+    full_pin_cell_mesh.lower_left = lower_left
+    full_pin_cell_mesh.upper_right = upper_right
 
     energy_groups = openmc.mgxs.EnergyGroups()
     energy_groups.group_edges = [0, 0.625, 20.e6]
@@ -222,10 +222,17 @@ def test_transient():
     solver.materials       = model.materials
     solver.transient       = transient
     solver.outer_tolerance = np.inf
+    solver.initial_power   = 1.0
+    solver.method          = 'ADIABATIC'
     solver.multi_group     = False
     solver.clock           = clock
     solver.run_kwargs      = {'threads':None, 'mpi_args':None}
     solver.min_outer_iters = 1
+    use_pcmfd              = True
+    use_agd                = True
+    solver.chi_delayed_by_delayed_group = True
+    solver.chi_delayed_by_mesh          = False
+    solver.log_file_name   = 'log_file.h5'
 
     # Initialize and run solver object
     harness = TransientTestHarness(solver, 'log_file.h5', model=model)

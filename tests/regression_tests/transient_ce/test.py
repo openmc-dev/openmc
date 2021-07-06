@@ -223,6 +223,7 @@ def test_transient():
     solver.transient       = transient
     solver.outer_tolerance = np.inf
     solver.initial_power   = 1.0
+    solver.core_volume     = 1.0
     solver.method          = 'ADIABATIC'
     solver.multi_group     = False
     solver.clock           = clock
@@ -230,8 +231,9 @@ def test_transient():
     solver.min_outer_iters = 1
     use_pcmfd              = True
     use_agd                = True
+    use_pregenerated_sps   = False
     solver.chi_delayed_by_delayed_group = True
-    solver.chi_delayed_by_mesh          = False
+    solver.chi_delayed_by_mesh          = True
     solver.log_file_name   = 'log_file.h5'
 
     # Initialize and run solver object

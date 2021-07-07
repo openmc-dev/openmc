@@ -29,8 +29,7 @@ namespace data {
 }
 
 MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
-                             const std::vector<std::string> xs_to_read,
-                             const std::vector<std::vector<double>> xs_temps)
+  const vector<std::string> xs_to_read, const vector<vector<double>> xs_temps)
 {
   read_header(path_cross_sections);
   set_nuclides_and_temperatures(xs_to_read, xs_temps);
@@ -38,8 +37,7 @@ MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
 }
 
 void MgxsInterface::set_nuclides_and_temperatures(
-    std::vector<std::string> xs_to_read,
-    std::vector<std::vector<double>> xs_temps)
+  vector<std::string> xs_to_read, vector<vector<double>> xs_temps)
 {
   // Check to remove all duplicates
   xs_to_read_ = xs_to_read;
@@ -76,7 +74,7 @@ void MgxsInterface::init()
 
   // Read revision number for the MGXS Library file and make sure it matches
   // with the current version
-  std::array<int, 2> array;
+  array<int, 2> array;
   read_attribute(file_id, "version", array);
   if (array != VERSION_MGXS_LIBRARY) {
     fatal_error("MGXS Library file version does not match current version "
@@ -95,9 +93,8 @@ void MgxsInterface::init()
 
 //==============================================================================
 
-void
-MgxsInterface::add_mgxs(hid_t file_id, const std::string& name,
-  const std::vector<double>& temperature)
+void MgxsInterface::add_mgxs(
+  hid_t file_id, const std::string& name, const vector<double>& temperature)
 {
   write_message(5, "Loading {} data...", name);
 
@@ -129,12 +126,12 @@ void MgxsInterface::create_macro_xs()
     if (kTs[i].size() > 0) {
       // Convert atom_densities to a vector
       auto& mat {model::materials[i]};
-      std::vector<double> atom_densities(mat->atom_density_.begin(),
-        mat->atom_density_.end());
+      vector<double> atom_densities(
+        mat->atom_density_.begin(), mat->atom_density_.end());
 
       // Build array of pointers to nuclides's Mgxs objects needed for this
       // material
-      std::vector<Mgxs*> mgxs_ptr;
+      vector<Mgxs*> mgxs_ptr;
       for (int i_nuclide : mat->nuclide_) {
         mgxs_ptr.push_back(&nuclides_[i_nuclide]);
       }
@@ -150,9 +147,9 @@ void MgxsInterface::create_macro_xs()
 
 //==============================================================================
 
-std::vector<std::vector<double>> MgxsInterface::get_mat_kTs()
+vector<vector<double>> MgxsInterface::get_mat_kTs()
 {
-  std::vector<std::vector<double>> kTs(model::materials.size());
+  vector<vector<double>> kTs(model::materials.size());
 
   for (const auto& cell : model::cells) {
     // Skip non-material cells
@@ -230,7 +227,7 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
 void put_mgxs_header_data_to_globals()
 {
   // Get the minimum and maximum energies
-  int neutron = static_cast<int>(Particle::Type::neutron);
+  int neutron = static_cast<int>(ParticleType::neutron);
   data::energy_min[neutron] = data::mg.energy_bins_.back();
   data::energy_max[neutron] = data::mg.energy_bins_.front();
 
@@ -248,12 +245,12 @@ void put_mgxs_header_data_to_globals()
 void set_mg_interface_nuclides_and_temps()
 {
   // Get temperatures from global data
-  std::vector<std::vector<double>> nuc_temps(data::nuclide_map.size());
-  std::vector<std::vector<double>> dummy;
+  vector<vector<double>> nuc_temps(data::nuclide_map.size());
+  vector<vector<double>> dummy;
   get_temperatures(nuc_temps, dummy);
 
   // Build vector of nuclide names which are to be read
-  std::vector<std::string> nuclide_names(data::nuclide_map.size());
+  vector<std::string> nuclide_names(data::nuclide_map.size());
   for (const auto& kv : data::nuclide_map) {
     nuclide_names[kv.second] = kv.first;
   }

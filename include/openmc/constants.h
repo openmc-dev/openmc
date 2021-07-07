@@ -4,18 +4,18 @@
 #ifndef OPENMC_CONSTANTS_H
 #define OPENMC_CONSTANTS_H
 
-#include <array>
 #include <cmath>
 #include <limits>
-#include <vector>
 
+#include "openmc/array.h"
+#include "openmc/vector.h"
 #include "openmc/version.h"
 
 namespace openmc {
 
-using double_2dvec = std::vector<std::vector<double>>;
-using double_3dvec = std::vector<std::vector<std::vector<double>>>;
-using double_4dvec = std::vector<std::vector<std::vector<std::vector<double>>>>;
+using double_2dvec = vector<vector<double>>;
+using double_3dvec = vector<vector<vector<double>>>;
+using double_4dvec = vector<vector<vector<vector<double>>>>;
 
 // ============================================================================
 // VERSIONING NUMBERS
@@ -24,13 +24,13 @@ using double_4dvec = std::vector<std::vector<std::vector<std::vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr std::array<int, 2> VERSION_STATEPOINT {17, 0};
-constexpr std::array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
-constexpr std::array<int, 2> VERSION_TRACK {2, 0};
-constexpr std::array<int, 2> VERSION_SUMMARY {6, 0};
-constexpr std::array<int, 2> VERSION_VOLUME {1, 0};
-constexpr std::array<int, 2> VERSION_VOXEL {2, 0};
-constexpr std::array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
+constexpr array<int, 2> VERSION_STATEPOINT {17, 0};
+constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
+constexpr array<int, 2> VERSION_TRACK {2, 0};
+constexpr array<int, 2> VERSION_SUMMARY {6, 0};
+constexpr array<int, 2> VERSION_VOLUME {1, 0};
+constexpr array<int, 2> VERSION_VOXEL {2, 0};
+constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -69,36 +69,31 @@ constexpr double EXTSRC_REJECT_FRACTION {0.05};
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 
-// Values here are from the Committee on Data for Science and Technology
-// (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
-
-// TODO: cmath::M_PI has 3 more digits precision than the Fortran constant we
-// use so for now we will reuse the Fortran constant until we are OK with
-// modifying test results
-constexpr double PI {3.1415926535898};
+// TODO: replace with <numbers> when we go for C++20
+constexpr double PI {3.141592653589793238462643383279502884L};
 const double SQRT_PI {std::sqrt(PI)};
 constexpr double INFTY {std::numeric_limits<double>::max()};
 
+// Values here are from the Committee on Data for Science and Technology
+// (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
+
 // Physical constants
-constexpr double MASS_NEUTRON     {1.00866491588}; // mass of a neutron in amu
-constexpr double MASS_NEUTRON_EV  {939.5654133e6}; // mass of a neutron in eV/c^2
-constexpr double MASS_PROTON      {1.007276466879}; // mass of a proton in amu
-constexpr double MASS_ELECTRON_EV {0.5109989461e6}; // electron mass energy equivalent in eV/c^2
-constexpr double FINE_STRUCTURE   {137.035999139}; // inverse fine structure constant
-constexpr double PLANCK_C         {1.2398419739062977e4}; // Planck's constant times c in eV-Angstroms
-constexpr double AMU              {1.660539040e-27}; // 1 amu in kg
+constexpr double MASS_NEUTRON     {1.00866491595}; // mass of a neutron in amu
+constexpr double MASS_NEUTRON_EV  {939.56542052e6}; // mass of a neutron in eV/c^2
+constexpr double MASS_PROTON      {1.007276466621}; // mass of a proton in amu
+constexpr double MASS_ELECTRON_EV {0.51099895000e6}; // electron mass energy equivalent in eV/c^2
+constexpr double FINE_STRUCTURE   {137.035999084}; // inverse fine structure constant
+constexpr double PLANCK_C         {1.2398419839593942e4}; // Planck's constant times c in eV-Angstroms
+constexpr double AMU              {1.66053906660e-27}; // 1 amu in kg
 constexpr double C_LIGHT          {2.99792458e8}; // speed of light in m/s
-constexpr double N_AVOGADRO       {0.6022140857}; // Avogadro's number in 10^24/mol
-constexpr double K_BOLTZMANN      {8.6173303e-5}; // Boltzmann constant in eV/K
+constexpr double N_AVOGADRO       {0.602214076}; // Avogadro's number in 10^24/mol
+constexpr double K_BOLTZMANN      {8.617333262e-5}; // Boltzmann constant in eV/K
 
 // Electron subshell labels
-constexpr std::array<const char*, 39> SUBSHELLS =  {
-  "K", "L1", "L2", "L3", "M1", "M2", "M3", "M4", "M5",
-  "N1", "N2", "N3", "N4", "N5", "N6", "N7", "O1", "O2",
-  "O3", "O4", "O5", "O6", "O7", "O8", "O9", "P1", "P2",
-  "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11",
-  "Q1", "Q2", "Q3"
-};
+constexpr array<const char*, 39> SUBSHELLS = {"K", "L1", "L2", "L3", "M1", "M2",
+  "M3", "M4", "M5", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "O1", "O2", "O3",
+  "O4", "O5", "O6", "O7", "O8", "O9", "P1", "P2", "P3", "P4", "P5", "P6", "P7",
+  "P8", "P9", "P10", "P11", "Q1", "Q2", "Q3"};
 
 // Void material and nuclide
 // TODO: refactor and remove
@@ -110,8 +105,8 @@ constexpr int NUCLIDE_NONE  {-1};
 
 // Temperature treatment method
 enum class TemperatureMethod {
- NEAREST,
- INTERPOLATION
+  NEAREST,
+  INTERPOLATION
 };
 
 // Reaction types
@@ -243,7 +238,7 @@ enum ReactionType {
   HEATING_LOCAL = 901
 };
 
-constexpr std::array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
+constexpr array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
 
 enum class URRTableParam {
   CUM_PROB,

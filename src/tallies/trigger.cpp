@@ -87,6 +87,8 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
             case TriggerMetric::relative_error:
               uncertainty = rel_err;
               break;
+            case TriggerMetric::not_active:
+              UNREACHABLE();
           }
 
           // Compute the uncertainty / threshold ratio.

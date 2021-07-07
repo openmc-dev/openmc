@@ -76,10 +76,11 @@ absorption cross section (this includes fission), and :math:`\sigma_f` is the
 total fission cross section. If this condition is met, then the neutron is
 killed and we proceed to simulate the next neutron from the source bank.
 
-No secondary particles from disappearance reactions such as photons or
-alpha-particles are produced or tracked. To truly capture the affects of gamma
-heating in a problem, it would be necessary to explicitly track photons
-originating from :math:`(n,\gamma)` and other reactions.
+Note that photons arising from :math:`(n,\gamma)` and other neutron reactions
+are not produced in a microscopically correct manner. Instead, photons are
+sampled probabilistically at each neutron collision, regardless of what reaction
+actually takes place. This is described in more detail in
+:ref:`photon_production`.
 
 ------------------
 Elastic Scattering
@@ -1694,7 +1695,7 @@ another.
 
 .. _SIGMA1 method: https://doi.org/10.13182/NSE76-1
 
-.. _scaled interpolation: http://www.ans.org/pubs/journals/nse/a_26575
+.. _scaled interpolation: https://doi.org/10.13182/NSE73-A26575
 
 .. _probability table method: https://doi.org/10.13182/NSE72-3
 
@@ -1702,23 +1703,23 @@ another.
 
 .. _Foderaro: http://hdl.handle.net/1721.1/1716
 
-.. _OECD: http://www.oecd-nea.org/tools/abstract/detail/NEA-1792
+.. _OECD: https://www.oecd-nea.org/tools/abstract/detail/NEA-1792
 
 .. _NJOY: https://www.njoy21.io/NJOY2016/
 
-.. _PREPRO: http://www-nds.iaea.org/ndspub/endf/prepro/
+.. _PREPRO: https://www-nds.iaea.org/ndspub/endf/prepro/
 
 .. _endf102: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
 
-.. _Monte Carlo Sampler: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721.pdf
+.. _Monte Carlo Sampler: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-09721-MS
 
-.. _LA-UR-14-27694: http://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-14-27694
+.. _LA-UR-14-27694: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-14-27694
 
-.. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf
+.. _MC21: https://www.osti.gov/biblio/903083
 
 .. _Romano: https://doi.org/10.1016/j.cpc.2014.11.001
 
-.. _Sutton and Brown: http://www.osti.gov/bridge/product.biblio.jsp?osti_id=307911
+.. _Sutton and Brown: https://www.osti.gov/biblio/307911
 
 .. _lectures: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-05-4983.pdf
 

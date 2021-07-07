@@ -1,7 +1,6 @@
 #include "openmc/endf.h"
 
 #include <algorithm> // for copy
-#include <array>
 #include <cmath>     // for log, exp
 #include <iterator>  // for back_inserter
 #include <stdexcept> // for runtime_error
@@ -9,6 +8,7 @@
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
 
+#include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/search.h"
@@ -77,21 +77,20 @@ bool is_inelastic_scatter(int mt)
   }
 }
 
-std::unique_ptr<Function1D>
-read_function(hid_t group, const char* name)
+unique_ptr<Function1D> read_function(hid_t group, const char* name)
 {
   hid_t dset = open_dataset(group, name);
   std::string func_type;
   read_attribute(dset, "type", func_type);
-  std::unique_ptr<Function1D> func;
+  unique_ptr<Function1D> func;
   if (func_type == "Tabulated1D") {
-    func = std::make_unique<Tabulated1D>(dset);
+    func = make_unique<Tabulated1D>(dset);
   } else if (func_type == "Polynomial") {
-    func = std::make_unique<Polynomial>(dset);
+    func = make_unique<Polynomial>(dset);
   } else if (func_type == "CoherentElastic") {
-    func = std::make_unique<CoherentElasticXS>(dset);
+    func = make_unique<CoherentElasticXS>(dset);
   } else if (func_type == "IncoherentElastic") {
-    func = std::make_unique<IncoherentElasticXS>(dset);
+    func = make_unique<IncoherentElasticXS>(dset);
   } else {
     throw std::runtime_error{"Unknown function type " + func_type +
       " for dataset " + object_name(dset)};
@@ -133,7 +132,7 @@ Tabulated1D::Tabulated1D(hid_t dset)
   // Change 1-indexing to 0-indexing
   for (auto& b : nbt_) --b;
 
-  std::vector<int> int_temp;
+  vector<int> int_temp;
   read_attribute(dset, "interpolation", int_temp);
 
   // Convert vector of ints into Interpolation
@@ -245,7 +244,7 @@ double CoherentElasticXS::operator()(double E) const
 
 IncoherentElasticXS::IncoherentElasticXS(hid_t dset)
 {
-  std::array<double, 2> tmp;
+  array<double, 2> tmp;
   read_dataset(dset, nullptr, tmp);
   bound_xs_ = tmp[0];
   debye_waller_ = tmp[1];

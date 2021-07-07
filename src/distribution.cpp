@@ -9,6 +9,7 @@
 
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/xml_interface.h"
 

@@ -1,10 +1,13 @@
 #include "openmc/photon.h"
 
+#include "openmc/array.h"
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
+#include "openmc/distribution_multi.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -13,7 +16,6 @@
 #include "xtensor/xoperation.hpp"
 #include "xtensor/xview.hpp"
 
-#include <array>
 #include <cmath>
 #include <tuple> // for tie
 
@@ -28,7 +30,7 @@ namespace data {
 xt::xtensor<double, 1> compton_profile_pz;
 
 std::unordered_map<std::string, int> element_map;
-std::vector<std::unique_ptr<PhotonInteraction>> elements;
+vector<unique_ptr<PhotonInteraction>> elements;
 
 } // namespace data
 
@@ -110,7 +112,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
   // Read subshell photoionization cross section and atomic relaxation data
   rgroup = open_group(group, "subshells");
-  std::vector<std::string> designators;
+  vector<std::string> designators;
   read_attribute(rgroup, "designators", designators);
   auto n_shell = designators.size();
   if (n_shell == 0) {
@@ -231,7 +233,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     close_group(rgroup);
 
     // Truncate the bremsstrahlung data at the cutoff energy
-    int photon = static_cast<int>(Particle::Type::photon);
+    int photon = static_cast<int>(ParticleType::photon);
     const auto& E {electron_energy};
     double cutoff = settings::energy_cutoff[photon];
     if (cutoff > E(0)) {
@@ -454,7 +456,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   // Perform binary search on the element energy grid in order to determine
   // which points to interpolate between
   int n_grid = energy_.size();
-  double log_E = std::log(p.E_);
+  double log_E = std::log(p.E());
   int i_grid;
   if (log_E <= energy_[0]) {
     i_grid = 0;
@@ -472,7 +474,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   // calculate interpolation factor
   double f = (log_E - energy_(i_grid)) / (energy_(i_grid+1) - energy_(i_grid));
 
-  auto& xs {p.photon_xs_[index_]};
+  auto& xs {p.photon_xs(index_)};
   xs.index_grid = i_grid;
   xs.interp_factor = f;
 
@@ -506,7 +508,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
 
   // Calculate microscopic total cross section
   xs.total = xs.coherent + xs.incoherent + xs.photoelectric + xs.pair_production;
-  xs.last_E = p.E_;
+  xs.last_E = p.E();
 }
 
 double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* seed) const
@@ -648,13 +650,13 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   // p(mu) = C/(1 - beta*mu)^2 using the inverse transform method.
   double beta = std::sqrt(*E_electron*(*E_electron + 2.0*MASS_ELECTRON_EV))
     / (*E_electron + MASS_ELECTRON_EV)  ;
-  double rn = 2.0*prn(seed) - 1.0;
+  double rn = uniform_distribution(-1., 1., seed);
   *mu_electron = (rn + beta)/(rn*beta + 1.0);
 
   // Sample the scattering angle of the positron
   beta = std::sqrt(*E_positron*(*E_positron + 2.0*MASS_ELECTRON_EV))
     / (*E_positron + MASS_ELECTRON_EV);
-  rn = 2.0*prn(seed) - 1.0;
+  rn = uniform_distribution(-1., 1., seed);
   *mu_positron = (rn + beta)/(rn*beta + 1.0);
 }
 
@@ -662,14 +664,9 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
 {
   // If no transitions, assume fluorescent photon from captured free electron
   if (shell.n_transitions == 0) {
-    double mu = 2.0*prn(p.current_seed()) - 1.0;
-    double phi = 2.0*PI*prn(p.current_seed());
-    Direction u;
-    u.x = mu;
-    u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-    u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+    Direction u = isotropic_direction(p.current_seed());
     double E = shell.binding_energy;
-    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt(), u, E, ParticleType::photon);
     return;
   }
 
@@ -687,12 +684,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
   int secondary = shell.transition_subshells(i_transition, 1);
 
   // Sample angle isotropically
-  double mu = 2.0*prn(p.current_seed()) - 1.0;
-  double phi = 2.0*PI*prn(p.current_seed());
-  Direction u;
-  u.x = mu;
-  u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-  u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
+  Direction u = isotropic_direction(p.current_seed());
 
   // Get the transition energy
   double E = shell.transition_energy(i_transition);
@@ -701,7 +693,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Non-radiative transition -- Auger/Coster-Kronig effect
 
     // Create auger electron
-    p.create_secondary(p.wgt_, u, E, Particle::Type::electron);
+    p.create_secondary(p.wgt(), u, E, ParticleType::electron);
 
     // Fill hole left by emitted auger electron
     int i_hole = shell_map_.at(secondary);
@@ -711,7 +703,7 @@ void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particl
     // Radiative transition -- get X-ray energy
 
     // Create fluorescent photon
-    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
+    p.create_secondary(p.wgt(), u, E, ParticleType::photon);
   }
 
   // Fill hole created by electron transitioning to the photoelectron hole
@@ -735,7 +727,7 @@ std::pair<double, double> klein_nishina(double alpha, uint64_t* seed)
     while (true) {
       if (prn(seed) < t) {
         // Left branch of flow chart
-        double r = 2.0*prn(seed);
+        double r = uniform_distribution(0.0, 2.0, seed);
         x = 1.0 + alpha*r;
         if (prn(seed) < 4.0/x*(1.0 - 1.0/x)) {
           mu = 1 - r;

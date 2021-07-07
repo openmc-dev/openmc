@@ -159,7 +159,7 @@ def test_atoms_material_cell(uo2, water):
     tuples = c.atoms.items()
     for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
         assert nuc == t[0]
-        assert atom_num == t[1]
+        assert atom_num == pytest.approx(t[1])
 
     # Change volume and check if OK
     c.volume = 3.0

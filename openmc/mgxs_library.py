@@ -2060,7 +2060,7 @@ class XSdata:
                 Np = self.num_polar
                 Na = self.num_azimuthal
 
-            g_out_bounds = np.zeros((Np, Na, G, 2), dtype=np.int)
+            g_out_bounds = np.zeros((Np, Na, G, 2), dtype=int)
             for p in range(Np):
                 for a in range(Na):
                     for g_in in range(G):

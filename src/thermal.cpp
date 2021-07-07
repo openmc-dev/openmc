@@ -28,14 +28,15 @@ namespace openmc {
 
 namespace data {
 std::unordered_map<std::string, int> thermal_scatt_map;
-std::vector<std::unique_ptr<ThermalScattering>> thermal_scatt;
+vector<unique_ptr<ThermalScattering>> thermal_scatt;
 }
 
 //==============================================================================
 // ThermalScattering implementation
 //==============================================================================
 
-ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& temperature)
+ThermalScattering::ThermalScattering(
+  hid_t group, const vector<double>& temperature)
 {
   // Get name of table from group
   name_ = object_name(group);
@@ -65,7 +66,7 @@ ThermalScattering::ThermalScattering(hid_t group, const std::vector<double>& tem
   // Determine actual temperatures to read -- start by checking whether a
   // temperature range was given, in which case all temperatures in the range
   // are loaded irrespective of what temperatures actually appear in the model
-  std::vector<int> temps_to_read;
+  vector<int> temps_to_read;
   if (settings::temperature_range[1] > 0.0) {
     for (const auto& T : temps_available) {
       if (settings::temperature_range[0] <= T &&
@@ -203,15 +204,14 @@ ThermalData::ThermalData(hid_t group)
     read_attribute(dgroup, "type", temp);
     if (temp == "coherent_elastic") {
       auto xs = dynamic_cast<CoherentElasticXS*>(elastic_.xs.get());
-      elastic_.distribution = std::make_unique<CoherentElasticAE>(*xs);
+      elastic_.distribution = make_unique<CoherentElasticAE>(*xs);
     } else {
       if (temp == "incoherent_elastic") {
-        elastic_.distribution = std::make_unique<IncoherentElasticAE>(dgroup);
+        elastic_.distribution = make_unique<IncoherentElasticAE>(dgroup);
       } else if (temp == "incoherent_elastic_discrete") {
         auto xs = dynamic_cast<Tabulated1D*>(elastic_.xs.get());
-        elastic_.distribution = std::make_unique<IncoherentElasticAEDiscrete>(
-          dgroup, xs->x()
-        );
+        elastic_.distribution =
+          make_unique<IncoherentElasticAEDiscrete>(dgroup, xs->x());
       }
     }
 
@@ -231,12 +231,11 @@ ThermalData::ThermalData(hid_t group)
     std::string temp;
     read_attribute(dgroup, "type", temp);
     if (temp == "incoherent_inelastic") {
-      inelastic_.distribution = std::make_unique<IncoherentInelasticAE>(dgroup);
+      inelastic_.distribution = make_unique<IncoherentInelasticAE>(dgroup);
     } else if (temp == "incoherent_inelastic_discrete") {
       auto xs = dynamic_cast<Tabulated1D*>(inelastic_.xs.get());
-      inelastic_.distribution = std::make_unique<IncoherentInelasticAEDiscrete>(
-        dgroup, xs->x()
-      );
+      inelastic_.distribution =
+        make_unique<IncoherentInelasticAEDiscrete>(dgroup, xs->x());
     }
 
     close_group(inelastic_group);

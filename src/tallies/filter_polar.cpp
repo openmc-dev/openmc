@@ -53,7 +53,8 @@ void
 PolarFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
-  double z = (estimator == TallyEstimator::TRACKLENGTH) ? p.u().z : p.u_last_.z;
+  double z =
+    (estimator == TallyEstimator::TRACKLENGTH) ? p.u().z : p.u_last().z;
   double theta = std::acos(z);
 
   if (theta >= bins_.front() && theta <= bins_.back()) {

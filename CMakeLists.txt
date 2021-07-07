@@ -3,8 +3,8 @@ project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 12)
-set(OPENMC_VERSION_RELEASE 1)
+set(OPENMC_VERSION_MINOR 13)
+set(OPENMC_VERSION_RELEASE 0)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -25,12 +25,13 @@ endif()
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"   ON)
-option(profile  "Compile with profiling flags"                   OFF)
-option(debug    "Compile with debug flags"                       OFF)
-option(optimize "Turn on all compiler optimization flags"        OFF)
-option(coverage "Compile with coverage analysis flags"           OFF)
-option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
+option(openmp   "Enable shared-memory parallelism with OpenMP"         ON)
+option(profile  "Compile with profiling flags"                         OFF)
+option(debug    "Compile with debug flags"                             OFF)
+option(optimize "Turn on all compiler optimization flags"              OFF)
+option(coverage "Compile with coverage analysis flags"                 OFF)
+option(dagmc    "Enable support for DAGMC (CAD) geometry"              OFF)
+option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -47,6 +48,10 @@ endif()
 #===============================================================================
 if(dagmc)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
+    message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
+    Please update DAGMC to version 3.2.0 or greater.")
+  endif()
 endif()
 
 #===============================================================================
@@ -54,17 +59,24 @@ endif()
 #===============================================================================
 
 # If not found, we just pull appropriate versions from github and build them.
-find_package(fmt QUIET)
+find_package(fmt QUIET NO_SYSTEM_ENVIRONMENT_PATH)
 if(fmt_FOUND)
   message(STATUS "Found fmt: ${fmt_DIR} (version ${fmt_VERSION})")
 else()
   message(STATUS "Did not find fmt, will use submodule instead")
 endif()
-find_package(pugixml QUIET)
+find_package(pugixml QUIET NO_SYSTEM_ENVIRONMENT_PATH)
 if(pugixml_FOUND)
   message(STATUS "Found pugixml: ${pugixml_DIR}")
 else()
   message(STATUS "Did not find pugixml, will use submodule instead")
+endif()
+
+#===============================================================================
+# libMesh Unstructured Mesh Support
+#===============================================================================
+if(libmesh)
+  find_package(LIBMESH REQUIRED)
 endif()
 
 #===============================================================================
@@ -87,7 +99,9 @@ endif()
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 if(HDF5_IS_PARALLEL)
   if(NOT MPI_ENABLED)
-    message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
+    message(FATAL_ERROR "Parallel HDF5 was detected, but the detected compiler,\
+     ${CMAKE_CXX_COMPILER}, does not support MPI. An MPI-capable compiler must \
+     be used with parallel HDF5.")
   endif()
   message(STATUS "Using parallel HDF5")
 endif()
@@ -171,6 +185,7 @@ endif()
 
 if (NOT pugixml_FOUND)
   add_subdirectory(vendor/pugixml)
+  set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
 endif()
 
 #===============================================================================
@@ -284,6 +299,7 @@ list(APPEND libopenmc_SOURCES
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/particle_data.cpp
   src/particle_restart.cpp
   src/photon.cpp
   src/physics.cpp
@@ -292,6 +308,7 @@ list(APPEND libopenmc_SOURCES
   src/plot.cpp
   src/position.cpp
   src/progress_bar.cpp
+  src/random_dist.cpp
   src/random_lcg.cpp
   src/reaction.cpp
   src/reaction_product.cpp
@@ -319,6 +336,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_distribcell.cpp
   src/tallies/filter_energyfunc.cpp
   src/tallies/filter_energy.cpp
+  src/tallies/filter_collision.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
   src/tallies/filter_mesh.cpp
@@ -357,8 +375,7 @@ endif()
 
 # Avoid vs error lnk1149 :output filename matches input filename
 if(NOT MSVC)
-set_target_properties(libopenmc PROPERTIES
-  OUTPUT_NAME openmc)
+  set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 endif()
 
 target_include_directories(libopenmc
@@ -403,6 +420,11 @@ if(dagmc)
   target_link_libraries(libopenmc dagmc-shared uwuw-shared)
 endif()
 
+if(libmesh)
+  target_compile_definitions(libopenmc PRIVATE LIBMESH)
+  target_link_libraries(libopenmc PkgConfig::LIBMESH)
+endif()
+
 #===============================================================================
 # openmc executable
 #===============================================================================
@@ -414,7 +436,7 @@ target_link_libraries(openmc libopenmc)
 # Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
 # be done is using the cxx_std_14 compiler feature.
 set_target_properties(
-    openmc libopenmc faddeeva pugixml
+    openmc libopenmc faddeeva
     PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
 
 #===============================================================================

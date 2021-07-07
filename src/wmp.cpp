@@ -105,7 +105,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   if (sqrtkT > 0.0 && window.broaden_poly) {
     // Broaden the curvefit.
     double dopp = sqrt_awr_ / sqrtkT;
-    std::array<double, MAX_POLY_COEFFICIENTS> broadened_polynomials;
+    array<double, MAX_POLY_COEFFICIENTS> broadened_polynomials;
     broaden_wmp_polynomials(E, dopp, fit_order_ + 1, broadened_polynomials.data());
     for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
       sig_s += curvefit_(i_window, i_poly, FIT_S) * broadened_polynomials[i_poly];
@@ -216,7 +216,7 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
 void check_wmp_version(hid_t file)
 {
   if (attribute_exists(file, "version")) {
-    std::array<int, 2> version;
+    array<int, 2> version;
     read_attribute(file, "version", version);
     if (version[0] != WMP_VERSION[0]) {
       fatal_error(fmt::format(
@@ -252,7 +252,7 @@ void read_multipole_data(int i_nuclide)
 
   // Read nuclide data from HDF5
   hid_t group = open_group(file, nuc->name_.c_str());
-  nuc->multipole_ = std::make_unique<WindowedMultipole>(group);
+  nuc->multipole_ = make_unique<WindowedMultipole>(group);
   close_group(group);
   file_close(file);
 }

@@ -4,7 +4,6 @@
 #include <cstdlib> // for getenv
 #include <cstring>
 #include <string>
-#include <vector>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -18,6 +17,7 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
@@ -31,6 +31,11 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
+#include "openmc/vector.h"
+
+#ifdef LIBMESH
+#include "libmesh/libmesh.h"
+#endif
 
 
 int openmc_init(int argc, char* argv[], const void* intracomm)
@@ -53,6 +58,34 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // Parse command-line arguments
   int err = parse_command_line(argc, argv);
   if (err) return err;
+
+#ifdef LIBMESH
+
+#ifdef _OPENMP
+  int n_threads = omp_get_max_threads();
+#else
+  int n_threads = 1;
+#endif
+
+// initialize libMesh if it hasn't been initialized already
+// (if initialized externally, the libmesh_init object needs to be provided also)
+if (!settings::libmesh_init && !libMesh::initialized()) {
+#ifdef OPENMC_MPI
+  // pass command line args, empty MPI communicator, and number of threads.
+  // Because libMesh was not initialized, we assume that OpenMC is the primary
+  // application and that its main MPI comm should be used.
+  settings::libmesh_init =
+    make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
+#else
+  // pass command line args, empty MPI communicator, and number of threads
+  settings::libmesh_init =
+    make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
+#endif
+
+  settings::libmesh_comm = &(settings::libmesh_init->comm());
+}
+
+#endif
 
   // Start total and initialization timer
   simulation::time_total.start();
@@ -101,7 +134,7 @@ void initialize_mpi(MPI_Comm intracomm)
   mpi::master = (mpi::rank == 0);
 
   // Create bank datatype
-  Particle::Bank b;
+  SourceSite b;
   MPI_Aint disp[9];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
@@ -118,8 +151,8 @@ void initialize_mpi(MPI_Comm intracomm)
 
   int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
-  MPI_Type_create_struct(9, blocks, disp, types, &mpi::bank);
-  MPI_Type_commit(&mpi::bank);
+  MPI_Type_create_struct(9, blocks, disp, types, &mpi::source_site);
+  MPI_Type_commit(&mpi::source_site);
 }
 #endif // OPENMC_MPI
 

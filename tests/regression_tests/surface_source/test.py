@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import h5py
 import numpy as np
@@ -100,6 +101,12 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
             self._compare_results()
         finally:
             self._cleanup()
+
+    def _overwrite_results(self):
+        """Overwrite the results_true with the results_test."""
+        shutil.copyfile('results_test.dat', 'results_true.dat')
+        if os.path.exists('surface_source.h5'):
+            shutil.copyfile('surface_source.h5', 'surface_source_true.h5')
 
     def _cleanup(self):
         """Delete statepoints, tally, and test files."""

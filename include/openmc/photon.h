@@ -2,17 +2,17 @@
 #define OPENMC_PHOTON_H
 
 #include "openmc/endf.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 #include <gsl/gsl>
 #include <hdf5.h>
 #include "xtensor/xtensor.hpp"
 
-#include <memory> // for unique_ptr
 #include <string>
 #include <unordered_map>
 #include <utility> // for pair
-#include <vector>
 
 namespace openmc {
 
@@ -81,7 +81,7 @@ public:
   // Photoionization and atomic relaxation data
   std::unordered_map<int, int> shell_map_; //!< Given a shell designator, e.g. 3, this
                                            //!< dictionary gives an index in shells_
-  std::vector<ElectronSubshell> shells_;
+  vector<ElectronSubshell> shells_;
 
   // Compton profile data
   xt::xtensor<double, 2> profile_pdf_;
@@ -121,7 +121,7 @@ extern xt::xtensor<double, 1> compton_profile_pz; //! Compton profile momentum g
 
 //! Photon interaction data for each element
 extern std::unordered_map<std::string, int> element_map;
-extern std::vector<std::unique_ptr<PhotonInteraction>> elements;
+extern vector<unique_ptr<PhotonInteraction>> elements;
 
 } // namespace data
 

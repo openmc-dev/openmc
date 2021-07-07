@@ -215,7 +215,7 @@ Documentation
 -------------
 
 Classes, structs, and functions are to be annotated for the `Doxygen
-<http://www.doxygen.nl/>`_ documentation generation tool. Use the ``\`` form of
+<https://www.doxygen.nl/>`_ documentation generation tool. Use the ``\`` form of
 Doxygen commands, e.g., ``\brief`` instead of ``@brief``.
 
 ------

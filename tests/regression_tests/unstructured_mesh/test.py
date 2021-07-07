@@ -9,10 +9,6 @@ import numpy as np
 import pytest
 from tests.testing_harness import PyAPITestHarness
 
-pytestmark = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
-    reason="Mesh library is not enabled.")
-
 TETS_PER_VOXEL = 12
 
 
@@ -62,17 +58,20 @@ class UnstructuredMeshTest(PyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
         output = glob.glob('tally*.vtk')
+        output += glob.glob('tally*.e')
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
 
 
-param_values = (['collision', 'tracklength'], # estimators
+param_values = (['libmesh', 'moab'], # mesh libraries
+                ['collision', 'tracklength'], # estimators
                 [True, False], # geometry outside of the mesh
                 [(333, 90, 77), None]) # location of holes in the mesh
 test_cases = []
-for i, (estimator, ext_geom, holes) in enumerate(product(*param_values)):
-    test_cases.append({'estimator' : estimator,
+for i, (lib, estimator, ext_geom, holes) in enumerate(product(*param_values)):
+    test_cases.append({'library' : lib,
+                       'estimator' : estimator,
                        'external_geom' : ext_geom,
                        'holes' : holes,
                        'inputs_true' : 'inputs_true{}.dat'.format(i)})
@@ -80,6 +79,20 @@ for i, (estimator, ext_geom, holes) in enumerate(product(*param_values)):
 
 @pytest.mark.parametrize("test_opts", test_cases)
 def test_unstructured_mesh(test_opts):
+
+    openmc.reset_auto_ids()
+
+    # skip the test if the library is not enabled
+    if test_opts['library'] == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip("DAGMC (and MOAB) mesh not enbaled in this build.")
+
+    if test_opts['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip("LibMesh is not enabled in this build.")
+
+    # skip the tracklength test for libmesh
+    if test_opts['library'] == 'libmesh' and \
+       test_opts['estimator'] == 'tracklength':
+       pytest.skip("Tracklength tallies are not supported using libmesh.")
 
     ### Materials ###
     materials = openmc.Materials()
@@ -176,7 +189,7 @@ def test_unstructured_mesh(test_opts):
 
     ### Tallies ###
 
-    # create meshes
+    # create meshes and mesh filters
     regular_mesh = openmc.RegularMesh()
     regular_mesh.dimension = (10, 10, 10)
     regular_mesh.lower_left = (-10.0, -10.0, -10.0)
@@ -185,12 +198,11 @@ def test_unstructured_mesh(test_opts):
     regular_mesh_filter = openmc.MeshFilter(mesh=regular_mesh)
 
     if test_opts['holes']:
-        mesh_filename = "test_mesh_tets_w_holes.h5m"
+        mesh_filename = "test_mesh_tets_w_holes.e"
     else:
-        mesh_filename = "test_mesh_tets.h5m"
+        mesh_filename = "test_mesh_tets.e"
 
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename)
-    uscd_mesh.mesh_lib = 'moab'
+    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_opts['library'])
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies
@@ -211,7 +223,7 @@ def test_unstructured_mesh(test_opts):
     ### Settings ###
     settings = openmc.Settings()
     settings.run_mode = 'fixed source'
-    settings.particles = 100
+    settings.particles = 1000
     settings.batches = 10
 
     # source setup
@@ -220,9 +232,8 @@ def test_unstructured_mesh(test_opts):
     phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
 
     space = openmc.stats.SphericalIndependent(r, theta, phi)
-    angle = openmc.stats.Monodirectional((-1.0, 0.0, 0.0))
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
-    source = openmc.Source(space=space, energy=energy, angle=angle)
+    source = openmc.Source(space=space, energy=energy)
     settings.source = source
 
     model = openmc.model.Model(geometry=geometry,

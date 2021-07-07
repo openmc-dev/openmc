@@ -5,13 +5,13 @@
 #include "openmc/position.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/vector.h"
 
 #include <fmt/core.h>
 #include "xtensor/xtensor.hpp"
 
 #include <cstddef> // for size_t
 #include <string>
-#include <vector>
 
 namespace openmc {
 
@@ -25,35 +25,35 @@ namespace openmc {
 
 void add_particle_track(Particle& p)
 {
-  p.tracks_.emplace_back();
+  p.tracks().emplace_back();
 }
 
 void write_particle_track(Particle& p)
 {
-  p.tracks_.back().push_back(p.r());
+  p.tracks().back().push_back(p.r());
 }
 
 void finalize_particle_track(Particle& p)
 {
-  std::string filename = fmt::format("{}track_{}_{}_{}.h5",
-    settings::path_output, simulation::current_batch, simulation::current_gen,
-    p.id_);
+  std::string filename =
+    fmt::format("{}track_{}_{}_{}.h5", settings::path_output,
+      simulation::current_batch, simulation::current_gen, p.id());
 
   // Determine number of coordinates for each particle
-  std::vector<int> n_coords;
-  for (auto& coords : p.tracks_) {
+  vector<int> n_coords;
+  for (auto& coords : p.tracks()) {
     n_coords.push_back(coords.size());
   }
 
-  #pragma omp critical (FinalizeParticleTrack)
+#pragma omp critical (FinalizeParticleTrack)
   {
     hid_t file_id = file_open(filename, 'w');
     write_attribute(file_id, "filetype", "track");
     write_attribute(file_id, "version", VERSION_TRACK);
-    write_attribute(file_id, "n_particles", p.tracks_.size());
+    write_attribute(file_id, "n_particles", p.tracks().size());
     write_attribute(file_id, "n_coords", n_coords);
-    for (auto i = 1; i <= p.tracks_.size(); ++i) {
-      const auto& t {p.tracks_[i-1]};
+    for (auto i = 1; i <= p.tracks().size(); ++i) {
+      const auto& t {p.tracks()[i - 1]};
       size_t n = t.size();
       xt::xtensor<double, 2> data({n,3});
       for (int j = 0; j < n; ++j) {
@@ -68,7 +68,7 @@ void finalize_particle_track(Particle& p)
   }
 
   // Clear particle tracks
-  p.tracks_.clear();
+  p.tracks().clear();
 }
 
 } // namespace openmc

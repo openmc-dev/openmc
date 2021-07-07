@@ -1,6 +1,5 @@
 #include "openmc/surface.h"
 
-#include <array>
 #include <cmath>
 #include <utility>
 #include <set>
@@ -8,15 +7,16 @@
 #include <fmt/core.h>
 #include <gsl/gsl>
 
+#include "openmc/array.h"
 #include "openmc/container_util.h"
-#include "openmc/error.h"
 #include "openmc/dagmc.h"
+#include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/math_functions.h"
+#include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
-#include "openmc/random_lcg.h"
-#include "openmc/math_functions.h"
 
 namespace openmc {
 
@@ -26,7 +26,7 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> surface_map;
-  std::vector<std::unique_ptr<Surface>> surfaces;
+  vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================
@@ -264,15 +264,15 @@ Direction DAGSurface::normal(Position r) const
 Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
 {
   Expects(p);
-  p->history_.reset_to_last_intersection();
+  p->history().reset_to_last_intersection();
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history_);
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history());
   MB_CHK_ERR_CONT(rval);
-  p->last_dir_ = u.reflect(dir);
-  return p->last_dir_;
+  p->last_dir() = u.reflect(dir);
+  return p->last_dir();
 }
 
 void DAGSurface::to_hdf5(hid_t group_id) const {}
@@ -322,7 +322,7 @@ Direction SurfaceXPlane::normal(Position r) const
 void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-plane", false);
-  std::array<double, 1> coeffs {{x0_}};
+  array<double, 1> coeffs {{x0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -364,7 +364,7 @@ Direction SurfaceYPlane::normal(Position r) const
 void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-plane", false);
-  std::array<double, 1> coeffs {{y0_}};
+  array<double, 1> coeffs {{y0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -406,7 +406,7 @@ Direction SurfaceZPlane::normal(Position r) const
 void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-plane", false);
-  std::array<double, 1> coeffs {{z0_}};
+  array<double, 1> coeffs {{z0_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -459,7 +459,7 @@ SurfacePlane::normal(Position r) const
 void SurfacePlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "plane", false);
-  std::array<double, 4> coeffs {{A_, B_, C_, D_}};
+  array<double, 4> coeffs {{A_, B_, C_, D_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -474,8 +474,8 @@ template<int i1, int i2> double
 axis_aligned_cylinder_evaluate(Position r, double offset1,
                                double offset2, double radius)
 {
-  const double r1 = r[i1] - offset1;
-  const double r2 = r[i2] - offset2;
+  const double r1 = r.get<i1>() - offset1;
+  const double r2 = r.get<i2>() - offset2;
   return r1*r1 + r2*r2 - radius*radius;
 }
 
@@ -486,12 +486,12 @@ template<int i1, int i2, int i3> double
 axis_aligned_cylinder_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double radius)
 {
-  const double a = 1.0 - u[i1]*u[i1];  // u^2 + v^2
+  const double a = 1.0 - u.get<i1>() * u.get<i1>(); // u^2 + v^2
   if (a == 0.0) return INFTY;
 
-  const double r2 = r[i2] - offset1;
-  const double r3 = r[i3] - offset2;
-  const double k = r2 * u[i2] + r3 * u[i3];
+  const double r2 = r.get<i2>() - offset1;
+  const double r3 = r.get<i3>() - offset2;
+  const double k = r2 * u.get<i2>() + r3 * u.get<i3>();
   const double c = r2*r2 + r3*r3 - radius*radius;
   const double quad = k*k - a*c;
 
@@ -532,9 +532,9 @@ template<int i1, int i2, int i3> Direction
 axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
 {
   Direction u;
-  u[i2] = 2.0 * (r[i2] - offset1);
-  u[i3] = 2.0 * (r[i3] - offset2);
-  u[i1] = 0.0;
+  u.get<i2>() = 2.0 * (r.get<i2>() - offset1);
+  u.get<i3>() = 2.0 * (r.get<i3>() - offset2);
+  u.get<i1>() = 0.0;
   return u;
 }
 
@@ -567,7 +567,7 @@ Direction SurfaceXCylinder::normal(Position r) const
 void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cylinder", false);
-  std::array<double, 3> coeffs {{y0_, z0_, radius_}};
+  array<double, 3> coeffs {{y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -607,7 +607,7 @@ Direction SurfaceYCylinder::normal(Position r) const
 void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cylinder", false);
-  std::array<double, 3> coeffs {{x0_, z0_, radius_}};
+  array<double, 3> coeffs {{x0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -648,7 +648,7 @@ Direction SurfaceZCylinder::normal(Position r) const
 void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cylinder", false);
-  std::array<double, 3> coeffs {{x0_, y0_, radius_}};
+  array<double, 3> coeffs {{x0_, y0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -725,7 +725,7 @@ Direction SurfaceSphere::normal(Position r) const
 void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "sphere", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
+  array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -750,9 +750,9 @@ template<int i1, int i2, int i3> double
 axis_aligned_cone_evaluate(Position r, double offset1,
                            double offset2, double offset3, double radius_sq)
 {
-  const double r1 = r[i1] - offset1;
-  const double r2 = r[i2] - offset2;
-  const double r3 = r[i3] - offset3;
+  const double r1 = r.get<i1>() - offset1;
+  const double r2 = r.get<i2>() - offset2;
+  const double r3 = r.get<i3>() - offset3;
   return r2*r2 + r3*r3 - radius_sq*r1*r1;
 }
 
@@ -764,12 +764,13 @@ axis_aligned_cone_distance(Position r, Direction u,
      bool coincident, double offset1, double offset2, double offset3,
      double radius_sq)
 {
-  const double r1 = r[i1] - offset1;
-  const double r2 = r[i2] - offset2;
-  const double r3 = r[i3] - offset3;
-  const double a = u[i2]*u[i2] + u[i3]*u[i3]
-                   - radius_sq*u[i1]*u[i1];
-  const double k = r2*u[i2] + r3*u[i3] - radius_sq*r1*u[i1];
+  const double r1 = r.get<i1>() - offset1;
+  const double r2 = r.get<i2>() - offset2;
+  const double r3 = r.get<i3>() - offset3;
+  const double a = u.get<i2>() * u.get<i2>() + u.get<i3>() * u.get<i3>() -
+                   radius_sq * u.get<i1>() * u.get<i1>();
+  const double k =
+    r2 * u.get<i2>() + r3 * u.get<i3>() - radius_sq * r1 * u.get<i1>();
   const double c = r2*r2 + r3*r3 - radius_sq*r1*r1;
   double quad = k*k - a*c;
 
@@ -818,9 +819,9 @@ axis_aligned_cone_normal(Position r, double offset1, double offset2,
                          double offset3, double radius_sq)
 {
   Direction u;
-  u[i1] = -2.0 * radius_sq * (r[i1] - offset1);
-  u[i2] = 2.0 * (r[i2] - offset2);
-  u[i3] = 2.0 * (r[i3] - offset3);
+  u.get<i1>() = -2.0 * radius_sq * (r.get<i1>() - offset1);
+  u.get<i2>() = 2.0 * (r.get<i2>() - offset2);
+  u.get<i3>() = 2.0 * (r.get<i3>() - offset3);
   return u;
 }
 
@@ -853,7 +854,7 @@ Direction SurfaceXCone::normal(Position r) const
 void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cone", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -886,7 +887,7 @@ Direction SurfaceYCone::normal(Position r) const
 void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cone", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -919,7 +920,7 @@ Direction SurfaceZCone::normal(Position r) const
 void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cone", false);
-  std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
+  array<double, 4> coeffs {{x0_, y0_, z0_, radius_sq_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -970,13 +971,25 @@ SurfaceQuadric::distance(Position r, Direction ang, bool coincident) const
   } else if (coincident || std::abs(c) < FP_COINCIDENT) {
     // Particle is on the surface, thus one distance is positive/negative and
     // the other is zero. The sign of k determines which distance is zero and
-    // which is not.
-    if (k >= 0.0) {
+    // which is not. Additionally, if a is zero, it means the particle is on
+    // a plane-like surface.
+    if (a == 0.0) {
+      d = INFTY; // see the below explanation
+    } else if (k >= 0.0) {
       d = (-k - sqrt(quad)) / a;
     } else {
       d = (-k + sqrt(quad)) / a;
     }
 
+  } else if (a == 0.0) {
+    // Given the orientation of the particle, the quadric looks like a plane in
+    // this case, and thus we have only one solution despite potentially having
+    // quad > 0.0. While the term under the square root may be real, in one
+    // case of the +/- of the quadratic formula, 0/0 results, and in another, a
+    // finite value over 0 results. Applying L'Hopital's to the 0/0 case gives
+    // the below. Alternatively this can be found by simply putting a=0 in the
+    // equation ax^2 + bx + c = 0.
+    d = -0.5 * c / k;
   } else {
     // Calculate both solutions to the quadratic.
     quad = sqrt(quad);
@@ -1012,7 +1025,7 @@ SurfaceQuadric::normal(Position r) const
 void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "quadric", false);
-  std::array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};
+  array<double, 10> coeffs {{A_, B_, C_, D_, E_, F_, G_, H_, J_, K_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -1041,40 +1054,40 @@ void read_surfaces(pugi::xml_node node)
       // Allocate and initialize the new surface
 
       if (surf_type == "x-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceXPlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceXPlane>(surf_node));
 
       } else if (surf_type == "y-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceYPlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceYPlane>(surf_node));
 
       } else if (surf_type == "z-plane") {
-        model::surfaces.push_back(std::make_unique<SurfaceZPlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceZPlane>(surf_node));
 
       } else if (surf_type == "plane") {
-        model::surfaces.push_back(std::make_unique<SurfacePlane>(surf_node));
+        model::surfaces.push_back(make_unique<SurfacePlane>(surf_node));
 
       } else if (surf_type == "x-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCylinder>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceXCylinder>(surf_node));
 
       } else if (surf_type == "y-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCylinder>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceYCylinder>(surf_node));
 
       } else if (surf_type == "z-cylinder") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCylinder>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceZCylinder>(surf_node));
 
       } else if (surf_type == "sphere") {
-        model::surfaces.push_back(std::make_unique<SurfaceSphere>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceSphere>(surf_node));
 
       } else if (surf_type == "x-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceXCone>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceXCone>(surf_node));
 
       } else if (surf_type == "y-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceYCone>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceYCone>(surf_node));
 
       } else if (surf_type == "z-cone") {
-        model::surfaces.push_back(std::make_unique<SurfaceZCone>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceZCone>(surf_node));
 
       } else if (surf_type == "quadric") {
-        model::surfaces.push_back(std::make_unique<SurfaceQuadric>(surf_node));
+        model::surfaces.push_back(make_unique<SurfaceQuadric>(surf_node));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));
@@ -1155,6 +1168,8 @@ void read_surfaces(pugi::xml_node node)
     // Compute the dot product of the surface normals
     Direction norm1 = surf1.normal({0, 0, 0});
     Direction norm2 = surf2.normal({0, 0, 0});
+    norm1 /= norm1.norm();
+    norm2 /= norm2.norm();
     double dot_prod = norm1.dot(norm2);
 
     // If the dot product is 1 (to within floating point precision) then the

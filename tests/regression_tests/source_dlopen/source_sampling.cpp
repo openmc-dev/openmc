@@ -1,17 +1,17 @@
 #include <iostream>
 #include <memory>
 
+#include "openmc/particle_data.h"
 #include "openmc/random_lcg.h"
 #include "openmc/source.h"
-#include "openmc/particle.h"
 
 class CustomSource : public openmc::Source
 {
-  openmc::Particle::Bank sample(uint64_t *seed) const
+  openmc::SourceSite sample(uint64_t* seed) const
   {
-    openmc::Particle::Bank particle;
+    openmc::SourceSite particle;
     // wgt
-    particle.particle = openmc::Particle::Type::neutron;
+    particle.particle = openmc::ParticleType::neutron;
     particle.wgt = 1.0;
     // position
 

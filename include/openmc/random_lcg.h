@@ -10,13 +10,11 @@ namespace openmc {
 // Module constants.
 //==============================================================================
 
-constexpr int N_STREAMS         {6};
+constexpr int N_STREAMS         {4};
 constexpr int STREAM_TRACKING   {0};
-constexpr int STREAM_TALLIES    {1};
-constexpr int STREAM_SOURCE     {2};
-constexpr int STREAM_URR_PTABLE {3};
-constexpr int STREAM_VOLUME     {4};
-constexpr int STREAM_PHOTON     {5};
+constexpr int STREAM_SOURCE     {1};
+constexpr int STREAM_URR_PTABLE {2};
+constexpr int STREAM_VOLUME     {3};
 constexpr int64_t DEFAULT_SEED  {1};
 
 //==============================================================================

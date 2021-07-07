@@ -14,7 +14,7 @@ functions/classes in the OpenMC Python API.
 Prerequisites
 -------------
 
-- The test suite relies on the third-party `pytest <https://pytest.org>`_
+- The test suite relies on the third-party `pytest <https://docs.pytest.org>`_
   package. To run either or both the regression and unit test suites, it is
   assumed that you have OpenMC fully installed, i.e., the :ref:`scripts_openmc`
   executable is available on your :envvar:`PATH` and the :mod:`openmc` Python
@@ -46,7 +46,7 @@ To execute the test suite, go to the ``tests/`` directory and run::
     pytest
 
 If you want to collect information about source line coverage in the Python API,
-you must have the `pytest-cov <https://pypi.python.org/pypi/pytest-cov>`_ plugin
+you must have the `pytest-cov <https://pypi.org/project/pytest-cov>`_ plugin
 installed and run::
 
     pytest --cov=../openmc --cov-report=html

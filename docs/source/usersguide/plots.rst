@@ -97,7 +97,7 @@ derivatives: ``sudo apt install imagemagick``).  Images are then converted like:
 
     convert myplot.ppm myplot.png
 
-Alternatively, if you're working within a `Jupyter <http://jupyter.org/>`_
+Alternatively, if you're working within a `Jupyter <https://jupyter.org/>`_
 Notebook or QtConsole, you can use the :func:`openmc.plot_inline` to run OpenMC
 in plotting mode and display the resulting plot within the notebook.
 
@@ -122,7 +122,7 @@ should be three items long, e.g.::
 
 The voxel plot data is written to an :ref:`HDF5 file <io_voxel>`. The voxel file
 can subsequently be converted into a standard mesh format that can be viewed in
-`ParaView <http://www.paraview.org/>`_, `VisIt
+`ParaView <https://www.paraview.org/>`_, `VisIt
 <https://wci.llnl.gov/simulation/computer-codes/visit>`_, etc. This typically
 will compress the size of the file significantly. The provided
 :ref:`scripts_voxel` script can convert the HDF5 voxel file to VTK formats. Once

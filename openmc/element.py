@@ -2,6 +2,7 @@ from collections import OrderedDict
 import os
 import re
 from xml.etree import ElementTree as ET
+from typing import Optional
 
 import openmc.checkvalue as cv
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass, \
@@ -26,7 +27,7 @@ class Element(str):
 
     """
 
-    def __new__(cls, name):
+    def __new__(cls, name: str):
         cv.check_type('element name', name, str)
         cv.check_length('element name', name, 1, 2)
         return super().__new__(cls, name)
@@ -35,9 +36,15 @@ class Element(str):
     def name(self):
         return self
 
-    def expand(self, percent, percent_type, enrichment=None,
-               enrichment_target=None, enrichment_type=None,
-               cross_sections=None):
+    def expand(
+        self,
+        percent: float,
+        percent_type: str,
+        enrichment: Optional[float] = None,
+        enrichment_target: Optional[str] = None,
+        enrichment_type: Optional[str] = None,
+        cross_sections: Optional[str] = None
+    ) -> list:
         """Expand natural element into its naturally-occurring isotopes.
 
         An optional cross_sections argument or the :envvar:`OPENMC_CROSS_SECTIONS`
@@ -49,26 +56,23 @@ class Element(str):
 
         Parameters
         ----------
-        percent : float
-            Atom or weight percent
+        percent : Atom or weight percent
         percent_type : {'ao', 'wo'}
             'ao' for atom percent and 'wo' for weight percent
-        enrichment : float, optional
-            Enrichment of an enrichment_taget nuclide in percent (ao or wo).
-            If enrichment_taget is not supplied then it is enrichment for U235
-            in weight percent. For example, input 4.95 for 4.95 weight percent
-            enriched U. Default is None (natural composition).
-        enrichment_target: str, optional
-            Single nuclide name to enrich from a natural composition (e.g., 'O16')
+        enrichment : Enrichment of an enrichment_taget nuclide in percent (ao
+            or wo). If enrichment_taget is not supplied then it is enrichment
+            for U235 in weight percent. For example, input 4.95 for 4.95 weight
+            percent enriched U. Default is None (natural composition).
+        enrichment_target: Single nuclide name to enrich from a natural
+            composition (e.g., 'O16')
 
             .. versionadded:: 0.12
-        enrichment_type: {'ao', 'wo'}, optional
+        enrichment_type: {'ao', 'wo'}
             'ao' for enrichment as atom percent and 'wo' for weight percent.
             Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
 
             .. versionadded:: 0.12
-        cross_sections : str, optional
-            Location of cross_sections.xml file. Default is None.
+        cross_sections : Location of cross_sections.xml file. Default is None.
 
         Returns
         -------

@@ -1,4 +1,6 @@
 from numbers import Integral
+from collections.abc import Iterable
+from typing import Optional
 
 import numpy as np
 
@@ -87,7 +89,7 @@ def pwr_pin_cell():
     return model
 
 
-def pwr_core():
+def pwr_core() -> openmc.model.Model():
     """Create a PWR full-core model.
 
     This model is the OECD/NEA Monte Carlo Performance benchmark which is a
@@ -97,8 +99,7 @@ def pwr_core():
 
     Returns
     -------
-    model : openmc.model.Model
-        Full-core PWR model
+    model : Full-core PWR model
 
     """
     model = openmc.model.Model()
@@ -428,7 +429,7 @@ def pwr_core():
     return model
 
 
-def pwr_assembly():
+def pwr_assembly() -> openmc.model.Model:
     """Create a PWR assembly model.
 
     This model is a reflected 17x17 fuel assembly from the the `BEAVRS
@@ -438,8 +439,7 @@ def pwr_assembly():
 
     Returns
     -------
-    model : openmc.model.Model
-        A PWR assembly model
+    model : A PWR assembly model
 
     """
 
@@ -540,25 +540,26 @@ def pwr_assembly():
     return model
 
 
-def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
+def slab_mg(
+    num_regions: int = 1,
+    mat_names: Optional[Iterable[str]] = None,
+    mgxslib_name: Optional[str] = '2g.h5'
+) -> openmc.model.Model:
     """Create a 1D slab model.
 
     Parameters
     ----------
-    num_regions : int, optional
-        Number of regions in the problem, each with a unique MGXS dataset.
-        Defaults to 1.
+    num_regions : Number of regions in the problem, each with a unique MGXS
+        dataset. Defaults to 1.
 
-    mat_names : Iterable of str, optional
-        List of the material names to use; defaults to ['mat_1', 'mat_2',...].
+    mat_names : List of the material names to use; defaults to ['mat_1',
+        'mat_2',...].
 
-    mgxslib_name : str, optional
-        MGXS Library file to use; defaults to '2g.h5'.
+    mgxslib_name : MGXS Library file to use; defaults to '2g.h5'.
 
     Returns
     -------
-    model : openmc.model.Model
-        One-group, 1D slab model
+    model : One-group, 1D slab model
 
     """
 

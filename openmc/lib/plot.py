@@ -228,7 +228,7 @@ def id_map(plot):
     Returns
     -------
     id_map : numpy.ndarray
-        A NumPy array with shape (vertical pixels, horizontal pixels, 2) of
+        A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
         OpenMC property ids with dtype int32
 
     """

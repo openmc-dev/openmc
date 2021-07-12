@@ -304,11 +304,18 @@ void Cell::import_properties_hdf5(hid_t group)
   vector<double> temps;
   read_dataset(cell_group, "temperature", temps);
 
+  // Ensure number of temperatures makes sense
+  auto n_temps = temps.size();
+  if (n_temps > 1 && n_temps != n_instances_) {
+    throw std::runtime_error(fmt::format(
+      "Number of temperatures for cell {} doesn't match number of instances", id_));
+  }
+
   // Modify temperatures for the cell
-  sqrtkT_.resize(0);
-  sqrtkT_.reserve(temps.size());
-  for (auto T : temps) {
-    sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
+  sqrtkT_.clear();
+  sqrtkT_.resize(temps.size());
+  for (gsl::index i = 0; i < temps.size(); ++i) {
+    this->set_temperature(temps[i], i);
   }
 
   close_group(cell_group);

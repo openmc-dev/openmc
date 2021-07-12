@@ -241,16 +241,29 @@ class Model:
         materials = self.geometry.get_all_materials()
 
         with h5py.File(filename, 'r') as fh:
-            # Update temperatures for cells filled with materials
             cells_group = fh['geometry/cells']
+
+            # Make sure number of cells matches
+            n_cells = fh['geometry'].attrs['n_cells']
+            if n_cells != len(cells):
+                raise ValueError("Number of cells in properties file doesn't "
+                                 "match current model.")
+
+            # Update temperatures for cells filled with materials
             for name, group in cells_group.items():
                 cell_id = int(name.split()[1])
                 cell = cells[cell_id]
                 if cell.fill_type in ('material', 'distribmat'):
                     cell.temperature = group['temperature'][()]
 
-            # Update material densities
+            # Make sure number of materials matches
             mats_group = fh['materials']
+            n_cells = mats_group.attrs['n_materials']
+            if n_cells != len(materials):
+                raise ValueError("Number of materials in properties file doesn't "
+                                 "match current model.")
+
+            # Update material densities
             for name, group in mats_group.items():
                 mat_id = int(name.split()[1])
                 atom_density = group.attrs['atom_density']

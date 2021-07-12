@@ -163,7 +163,6 @@ extern "C" int openmc_properties_export(const char* filename)
   write_attribute(file, "date_and_time", time_stamp());
   write_attribute(file, "path", settings::path_input);
 
-
   // Write cell properties
   auto geom_group = create_group(file, "geometry");
   write_attribute(geom_group, "n_cells", model::cells.size());

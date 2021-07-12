@@ -221,8 +221,13 @@ extern "C" int openmc_properties_import(const char* filename)
 
   // Read cell properties
   auto cells_group = open_group(geom_group, "cells");
-  for (const auto& c : model::cells) {
-    c->import_properties_hdf5(cells_group);
+  try {
+    for (const auto& c : model::cells) {
+      c->import_properties_hdf5(cells_group);
+    }
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
   }
   close_group(cells_group);
   close_group(geom_group);

@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from ctypes import ArgumentError
 import os
 
 import numpy as np
@@ -186,7 +187,7 @@ def test_material(lib_init):
     assert sum(m.densities) == pytest.approx(rho)
 
     m.set_density(0.1, 'g/cm3')
-    assert m.density == pytest.approx(0.1)
+    assert m.get_density('g/cm3') == pytest.approx(0.1)
     assert m.name == "Hot borated water"
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
@@ -194,16 +195,20 @@ def test_material(lib_init):
 
 def test_properties_density(lib_init):
     m = openmc.lib.materials[1]
-    orig_density = m.density
+    orig_density = m.get_density('atom/b-cm')
+    orig_density_gpcc = m.get_density('g/cm3')
 
     # Export properties and change density
     openmc.lib.export_properties('properties.h5')
-    m.set_density(orig_density*2, 'g/cm3')
-    assert m.density == pytest.approx(orig_density*2)
+    m.set_density(orig_density_gpcc*2, 'g/cm3')
+    assert m.get_density() == pytest.approx(orig_density*2)
 
     # Import properties and check that density was restored
     openmc.lib.import_properties('properties.h5')
-    assert m.density == pytest.approx(orig_density)
+    assert m.get_density() == pytest.approx(orig_density)
+
+    with pytest.raises(ValueError):
+        m.get_density('🥏')
 
 
 def test_material_add_nuclide(lib_init):

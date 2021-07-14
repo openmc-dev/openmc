@@ -233,10 +233,7 @@ class Material(_FortranObjectWithID):
             return self.densities.sum()
         elif units == 'g/cm3':
             density = c_double()
-            try:
-                _dll.openmc_material_get_density(self._index, density)
-            except OpenMCError:
-                return None
+            _dll.openmc_material_get_density(self._index, density)
             return density.value
         else:
             raise ValueError("Units must be 'atom/b-cm' or 'g/cm3'")

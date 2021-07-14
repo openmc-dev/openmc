@@ -116,3 +116,6 @@ CMakeSettings.json
 
 # Visual Studio Code configuration files
 .vscode/
+
+# Python pickle files
+*.pkl

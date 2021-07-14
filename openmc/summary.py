@@ -123,7 +123,9 @@ class Summary:
     def _read_surfaces(self):
         for group in self._f['geometry/surfaces'].values():
             surface = openmc.Surface.from_hdf5(group)
-            self._fast_surfaces[surface.id] = surface
+            # surface may be None for DAGMC surfaces
+            if surface:
+                self._fast_surfaces[surface.id] = surface
 
     def _read_cells(self):
 
@@ -176,7 +178,11 @@ class Summary:
 
     def _read_universes(self):
         for group in self._f['geometry/universes'].values():
-            universe = openmc.Universe.from_hdf5(group, self._fast_cells)
+            geom_type = group.get('geom_type')
+            if geom_type and geom_type[()].decode() == 'dagmc':
+                universe = openmc.DAGMCUniverse.from_hdf5(group)
+            else:
+                universe = openmc.Universe.from_hdf5(group, self._fast_cells)
             self._fast_universes[universe.id] = universe
 
     def _read_lattices(self):

@@ -10,7 +10,6 @@
 #include <gsl/gsl>
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include "dagmc.h"
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
@@ -63,16 +62,25 @@ namespace model {
 class Universe
 {
 public:
+
   int32_t id_;                  //!< Unique ID
   vector<int32_t> cells_;       //!< Cells within this universe
 
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  void to_hdf5(hid_t group_id) const;
+  virtual void to_hdf5(hid_t group_id) const;
+
+  virtual bool find_cell(Particle &p) const;
 
   BoundingBox bounding_box() const;
 
+  const GeometryType& geom_type() const { return geom_type_; }
+  GeometryType& geom_type() { return geom_type_; }
+
   unique_ptr<UniversePartitioner> partitioner_;
+
+private:
+  GeometryType geom_type_ = GeometryType::CSG;
 };
 
 //==============================================================================
@@ -118,7 +126,17 @@ public:
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  virtual void to_hdf5(hid_t group_id) const = 0;
+  void to_hdf5(hid_t group_id) const;
+
+  virtual void to_hdf5_inner(hid_t group_id) const = 0;
+
+  //! Export physical properties to HDF5
+  //! \param[in] group  HDF5 group to read from
+  void export_properties_hdf5(hid_t group) const;
+
+  //! Import physical properties from HDF5
+  //! \param[in] group  HDF5 group to write to
+  void import_properties_hdf5(hid_t group);
 
   //! Get the BoundingBox for this cell.
   virtual BoundingBox bounding_box() const = 0;
@@ -153,14 +171,6 @@ public:
   //! \return Map with cell indexes as keys and instances as values
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells() const;
 
-  //! Export physical properties to HDF5
-  //! \param[in] group  HDF5 group to read from
-  void export_properties_hdf5(hid_t group) const;
-
-  //! Import physical properties from HDF5
-  //! \param[in] group  HDF5 group to write to
-  void import_properties_hdf5(hid_t group);
-
 protected:
   void get_contained_cells_inner(
     std::unordered_map<int32_t, vector<int32_t>>& contained_cells,
@@ -172,10 +182,11 @@ public:
 
   int32_t id_;                //!< Unique ID
   std::string name_;          //!< User-defined name
-  Fill type_;                  //!< Material, universe, or lattice
+  Fill type_;                 //!< Material, universe, or lattice
   int32_t universe_;          //!< Universe # this cell is in
   int32_t fill_;              //!< Universe # filling this cell
   int32_t n_instances_{0};    //!< Number of instances of this cell
+  GeometryType geom_type_;    //!< Geometric representation type (CSG, DAGMC)
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_{C_NONE};
@@ -233,7 +244,7 @@ public:
   std::pair<double, int32_t>
   distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
 
-  void to_hdf5(hid_t group_id) const;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   BoundingBox bounding_box() const;
 
@@ -261,28 +272,6 @@ protected:
   static vector<int32_t>::iterator find_left_parenthesis(
     vector<int32_t>::iterator start, const vector<int32_t>& rpn);
 };
-
-//==============================================================================
-
-#ifdef DAGMC
-class DAGCell : public Cell
-{
-public:
-  DAGCell();
-
-  bool contains(Position r, Direction u, int32_t on_surface) const;
-
-  std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
-
-  BoundingBox bounding_box() const;
-
-  void to_hdf5(hid_t group_id) const;
-
-  moab::DagMC* dagmc_ptr_; //!< Pointer to DagMC instance
-  int32_t dag_index_;      //!< DagMC index of cell
-};
-#endif
 
 //==============================================================================
 //! Speeds up geometry searches by grouping cells in a search tree.
@@ -350,8 +339,9 @@ struct CellInstanceHash {
 
 void read_cells(pugi::xml_node node);
 
+
 #ifdef DAGMC
-int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed);
+class DAGUniverse;
 #endif
 
 } // namespace openmc

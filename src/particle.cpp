@@ -9,6 +9,7 @@
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
+#include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
@@ -285,6 +286,10 @@ Particle::event_collide()
 
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) score_collision_derivative(*this);
+
+  #ifdef DAGMC
+  history().reset();
+  #endif
 }
 
 void
@@ -318,9 +323,8 @@ void
 Particle::event_death()
 {
   #ifdef DAGMC
-  if (settings::dagmc)
-    history().reset();
-#endif
+  history().reset();
+  #endif
 
   // Finish particle track output.
   if (write_track()) {
@@ -377,6 +381,11 @@ Particle::cross_surface()
     int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
   }
 
+  // if we're crossing a CSG surface, make sure the DAG history is reset
+  #ifdef DAGMC
+  if (surf->geom_type_ == GeometryType::CSG) history().reset();
+  #endif
+
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
     surf->bc_->handle_particle(*this, *surf);
@@ -387,17 +396,18 @@ Particle::cross_surface()
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
 #ifdef DAGMC
-  if (settings::dagmc) {
-    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last(0)].get());
-    // TODO: off-by-one
-    auto surfp =
-      dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface()) - 1].get());
-    int32_t i_cell = next_cell(cellp, surfp) - 1;
+  // in DAGMC, we know what the next cell should be
+  if (surf->geom_type_ == GeometryType::DAG) {
+    auto surfp = dynamic_cast<DAGSurface*>(surf);
+    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last(n_coord() - 1)].get());
+    auto univp = static_cast<DAGUniverse*>(model::universes[coord(n_coord() - 1).universe].get());
+    // determine the next cell for this crossing
+    int32_t i_cell = next_cell(univp, cellp, surfp) - 1;
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();
     // set new cell value
-    coord(0).cell = i_cell;
+    coord(n_coord() - 1).cell = i_cell;
     cell_instance() = 0;
     material() = model::cells[i_cell]->material_[0];
     sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
@@ -503,13 +513,11 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // boundary, it is necessary to redetermine the particle's coordinates in
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
-  if (!settings::dagmc) {
-    n_coord() = 1;
-    if (!neighbor_list_find_cell(*this)) {
-      mark_as_lost("Couldn't find particle after reflecting from surface " +
-                   std::to_string(surf.id_) + ".");
-      return;
-    }
+  n_coord() = 1;
+  if (surf.geom_type_ != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
+    this->mark_as_lost("Couldn't find particle after reflecting from surface "
+                        + std::to_string(surf.id_) + ".");
+    return;
   }
 
   // Set previous coordinate going slightly past surface crossing

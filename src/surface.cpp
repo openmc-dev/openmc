@@ -9,7 +9,6 @@
 
 #include "openmc/array.h"
 #include "openmc/container_util.h"
-#include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
@@ -198,21 +197,21 @@ Surface::diffuse_reflect(Position r, Direction u, uint64_t* seed) const
   return u/u.norm();
 }
 
-CSGSurface::CSGSurface() : Surface{} {};
-CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
-
 void
-CSGSurface::to_hdf5(hid_t group_id) const
+Surface::to_hdf5(hid_t group_id) const
 {
-  std::string group_name {"surface "};
-  group_name += std::to_string(id_);
+  hid_t surf_group = create_group(group_id, fmt::format("surface {}", id_));
 
-  hid_t surf_group = create_group(group_id, group_name);
+  if (geom_type_ == GeometryType::DAG) {
+    write_string(surf_group, "geom_type", "dagmc", false);
+  } else if (geom_type_ == GeometryType::CSG) {
+    write_string(surf_group, "geom_type", "csg", false);
 
-  if (bc_) {
-    write_string(surf_group, "boundary_type", bc_->type(), false);
-  } else {
-    write_string(surf_group, "boundary_type", "transmission", false);
+    if (bc_) {
+      write_string(surf_group, "boundary_type", bc_->type(), false);
+    } else {
+      write_string(surf_group, "boundary_type", "transmission", false);
+    }
   }
 
   if (!name_.empty()) {
@@ -224,60 +223,12 @@ CSGSurface::to_hdf5(hid_t group_id) const
   close_group(surf_group);
 }
 
-//==============================================================================
-// DAGSurface implementation
-//==============================================================================
-#ifdef DAGMC
-DAGSurface::DAGSurface() : Surface{} {} // empty constructor
-
-double DAGSurface::evaluate(Position r) const
-{
-  return 0.0;
-}
-
-double
-DAGSurface::distance(Position r, Direction u, bool coincident) const
-{
-  moab::ErrorCode rval;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
-  moab::EntityHandle hit_surf;
-  double dist;
-  double pnt[3] = {r.x, r.y, r.z};
-  double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(surf, pnt, dir, hit_surf, dist, NULL, 0, 0);
-  MB_CHK_ERR_CONT(rval);
-  if (dist < 0.0) dist = INFTY;
-  return dist;
-}
-
-Direction DAGSurface::normal(Position r) const
-{
-  moab::ErrorCode rval;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
-  double pnt[3] = {r.x, r.y, r.z};
-  double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir);
-  MB_CHK_ERR_CONT(rval);
-  return dir;
-}
-
-Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
-{
-  Expects(p);
-  p->history().reset_to_last_intersection();
-  moab::ErrorCode rval;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
-  double pnt[3] = {r.x, r.y, r.z};
-  double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history());
-  MB_CHK_ERR_CONT(rval);
-  p->last_dir() = u.reflect(dir);
-  return p->last_dir();
-}
-
-void DAGSurface::to_hdf5(hid_t group_id) const {}
-
-#endif
+CSGSurface::CSGSurface() : Surface{} {
+  geom_type_ = GeometryType::CSG;
+};
+CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {
+  geom_type_ = GeometryType::CSG;
+};
 
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.
@@ -1036,9 +987,6 @@ void read_surfaces(pugi::xml_node node)
   // Count the number of surfaces
   int n_surfaces = 0;
   for (pugi::xml_node surf_node : node.children("surface")) {n_surfaces++;}
-  if (n_surfaces == 0) {
-    fatal_error("No surfaces found in geometry.xml!");
-  }
 
   // Loop over XML surface elements and populate the array.  Keep track of
   // periodic surfaces.
@@ -1182,19 +1130,6 @@ void read_surfaces(pugi::xml_node node)
       surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
       surf2.bc_ = surf1.bc_;
     }
-  }
-
-  // Check to make sure a boundary condition was applied to at least one
-  // surface
-  bool boundary_exists = false;
-  for (const auto& surf : model::surfaces) {
-    if (surf->bc_) {
-      boundary_exists = true;
-      break;
-    }
-  }
-  if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
-    fatal_error("No boundary conditions were applied to any surfaces!");
   }
 }
 

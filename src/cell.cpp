@@ -22,7 +22,6 @@
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
-#include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -194,6 +193,9 @@ Universe::to_hdf5(hid_t universes_group) const
   // Create a group for this universe.
   auto group = create_group(universes_group, fmt::format("universe {}", id_));
 
+  // Write the geometry representation type.
+  write_string(group, "geom_type", "csg", false);
+
   // Write the contained cells.
   if (cells_.size() > 0) {
     vector<int32_t> cell_ids;
@@ -202,6 +204,31 @@ Universe::to_hdf5(hid_t universes_group) const
   }
 
   close_group(group);
+}
+
+bool
+Universe::find_cell(Particle& p) const {
+  const auto& cells {
+    !partitioner_
+    ? cells_
+    : partitioner_->get_cells(p.r_local(), p.u_local())
+  };
+
+  for (auto it = cells.begin(); it != cells.end(); it++) {
+    int32_t i_cell = *it;
+    int32_t i_univ = p.coord(p.n_coord()-1).universe;
+    if (model::cells[i_cell]->universe_ != i_univ) continue;
+
+    // Check if this cell contains the particle;
+    Position r {p.r_local()};
+    Direction u {p.u_local()};
+    auto surf = p.surface();
+    if (model::cells[i_cell]->contains(r, u, surf)) {
+      p.coord(p.n_coord()-1).cell = i_cell;
+      return true;
+    }
+  }
+  return false;
 }
 
 BoundingBox Universe::bounding_box() const {
@@ -321,14 +348,79 @@ void Cell::import_properties_hdf5(hid_t group)
   close_group(cell_group);
 }
 
+
+void
+Cell::to_hdf5(hid_t cell_group) const {
+
+  // Create a group for this cell.
+  auto group = create_group(cell_group, fmt::format("cell {}", id_));
+
+  if (!name_.empty()) {
+    write_string(group, "name", name_, false);
+  }
+
+  write_dataset(group, "universe", model::universes[universe_]->id_);
+
+  to_hdf5_inner(group);
+
+  // Write fill information.
+  if (type_ == Fill::MATERIAL) {
+    write_dataset(group, "fill_type", "material");
+    std::vector<int32_t> mat_ids;
+    for (auto i_mat : material_) {
+      if (i_mat != MATERIAL_VOID) {
+        mat_ids.push_back(model::materials[i_mat]->id_);
+      } else {
+        mat_ids.push_back(MATERIAL_VOID);
+      }
+    }
+    if (mat_ids.size() == 1) {
+      write_dataset(group, "material", mat_ids[0]);
+    } else {
+      write_dataset(group, "material", mat_ids);
+    }
+
+    std::vector<double> temps;
+    for (auto sqrtkT_val : sqrtkT_)
+      temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
+    write_dataset(group, "temperature", temps);
+
+  } else if (type_ == Fill::UNIVERSE) {
+    write_dataset(group, "fill_type", "universe");
+    write_dataset(group, "fill", model::universes[fill_]->id_);
+    if (translation_ != Position(0, 0, 0)) {
+      write_dataset(group, "translation", translation_);
+    }
+    if (!rotation_.empty()) {
+      if (rotation_.size() == 12) {
+        std::array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
+        write_dataset(group, "rotation", rot);
+      } else {
+        write_dataset(group, "rotation", rotation_);
+      }
+    }
+
+  } else if (type_ == Fill::LATTICE) {
+    write_dataset(group, "fill_type", "lattice");
+    write_dataset(group, "lattice", model::lattices[fill_]->id_);
+  }
+
+  close_group(group);
+}
+
 //==============================================================================
 // CSGCell implementation
 //==============================================================================
 
-CSGCell::CSGCell() {} // empty constructor
+// default constructor
+CSGCell::CSGCell() {
+  geom_type_ = GeometryType::CSG;
+}
 
 CSGCell::CSGCell(pugi::xml_node cell_node)
 {
+  geom_type_ = GeometryType::CSG;
+
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));
   } else {
@@ -565,16 +657,10 @@ CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
 //==============================================================================
 
 void
-CSGCell::to_hdf5(hid_t cell_group) const
+CSGCell::to_hdf5_inner(hid_t group_id) const
 {
-  // Create a group for this cell.
-  auto group = create_group(cell_group, fmt::format("cell {}", id_));
 
-  if (!name_.empty()) {
-    write_string(group, "name", name_, false);
-  }
-
-  write_dataset(group, "universe", model::universes[universe_]->id_);
+  write_string(group_id, "geom_type", "csg", false);
 
   // Write the region specification.
   if (!region_.empty()) {
@@ -595,52 +681,9 @@ CSGCell::to_hdf5(hid_t cell_group) const
         region_spec << " " << ((token > 0) ? surf_id : -surf_id);
       }
     }
-    write_string(group, "region", region_spec.str(), false);
+    write_string(group_id, "region", region_spec.str(), false);
   }
 
-  // Write fill information.
-  if (type_ == Fill::MATERIAL) {
-    write_dataset(group, "fill_type", "material");
-    vector<int32_t> mat_ids;
-    for (auto i_mat : material_) {
-      if (i_mat != MATERIAL_VOID) {
-        mat_ids.push_back(model::materials[i_mat]->id_);
-      } else {
-        mat_ids.push_back(MATERIAL_VOID);
-      }
-    }
-    if (mat_ids.size() == 1) {
-      write_dataset(group, "material", mat_ids[0]);
-    } else {
-      write_dataset(group, "material", mat_ids);
-    }
-
-    vector<double> temps;
-    for (auto sqrtkT_val : sqrtkT_)
-      temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
-    write_dataset(group, "temperature", temps);
-
-  } else if (type_ == Fill::UNIVERSE) {
-    write_dataset(group, "fill_type", "universe");
-    write_dataset(group, "fill", model::universes[fill_]->id_);
-    if (translation_ != Position(0, 0, 0)) {
-      write_dataset(group, "translation", translation_);
-    }
-    if (!rotation_.empty()) {
-      if (rotation_.size() == 12) {
-        array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
-        write_dataset(group, "rotation", rot);
-      } else {
-        write_dataset(group, "rotation", rotation_);
-      }
-    }
-
-  } else if (type_ == Fill::LATTICE) {
-    write_dataset(group, "fill_type", "lattice");
-    write_dataset(group, "lattice", model::lattices[fill_]->id_);
-  }
-
-  close_group(group);
 }
 
 BoundingBox CSGCell::bounding_box_simple() const {
@@ -816,70 +859,6 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 }
 
 //==============================================================================
-// DAGMC Cell implementation
-//==============================================================================
-#ifdef DAGMC
-DAGCell::DAGCell() : Cell{} { simple_ = true; };
-
-std::pair<double, int32_t>
-DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
-{
-  Expects(p);
-  // if we've changed direction or we're not on a surface,
-  // reset the history and update last direction
-  if (u != p->last_dir() || on_surface == 0) {
-    p->history().reset();
-    p->last_dir() = u;
-  }
-
-  moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
-  moab::EntityHandle hit_surf;
-  double dist;
-  double pnt[3] = {r.x, r.y, r.z};
-  double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history());
-  MB_CHK_ERR_CONT(rval);
-  int surf_idx;
-  if (hit_surf != 0) {
-    surf_idx = dagmc_ptr_->index_by_handle(hit_surf);
-  } else {
-    // indicate that particle is lost
-    surf_idx = -1;
-    dist = INFINITY;
-  }
-
-  return {dist, surf_idx};
-}
-
-bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
-{
-  moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
-
-  int result = 0;
-  double pnt[3] = {r.x, r.y, r.z};
-  double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
-  MB_CHK_ERR_CONT(rval);
-  return result;
-}
-
-void DAGCell::to_hdf5(hid_t group_id) const { return; }
-
-BoundingBox DAGCell::bounding_box() const
-{
-  moab::ErrorCode rval;
-  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
-  double min[3], max[3];
-  rval = dagmc_ptr_->getobb(vol, min, max);
-  MB_CHK_ERR_CONT(rval);
-  return {min[0], max[0], min[1], max[1], min[2], max[2]};
-}
-
-#endif
-
-//==============================================================================
 // UniversePartitioner implementation
 //==============================================================================
 
@@ -1031,9 +1010,6 @@ void read_cells(pugi::xml_node node)
   // Count the number of cells.
   int n_cells = 0;
   for (pugi::xml_node cell_node: node.children("cell")) {n_cells++;}
-  if (n_cells == 0) {
-    fatal_error("No cells found in geometry.xml!");
-  }
 
   // Loop over XML cell elements and populate the array.
   model::cells.reserve(n_cells);
@@ -1051,6 +1027,8 @@ void read_cells(pugi::xml_node node)
       fatal_error(fmt::format("Two or more cells use the same unique ID: {}", id));
     }
   }
+
+  read_dagmc_universes(node);
 
   // Populate the Universe vector and map.
   for (int i = 0; i < model::cells.size(); i++) {
@@ -1070,6 +1048,10 @@ void read_cells(pugi::xml_node node)
   // Allocate the cell overlap count if necessary.
   if (settings::check_overlaps) {
     model::overlap_check_count.resize(model::cells.size(), 0);
+  }
+
+  if (model::cells.size() == 0) {
+    fatal_error("No cells were found in the geometry.xml file");
   }
 }
 
@@ -1339,21 +1321,6 @@ openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end)
   }
   return 0;
 }
-
-#ifdef DAGMC
-int32_t next_cell(DAGCell* cur_cell, DAGSurface* surf_xed)
-{
-  moab::EntityHandle surf =
-    surf_xed->dagmc_ptr_->entity_by_index(2, surf_xed->dag_index_);
-  moab::EntityHandle vol =
-    cur_cell->dagmc_ptr_->entity_by_index(3, cur_cell->dag_index_);
-
-  moab::EntityHandle new_vol;
-  cur_cell->dagmc_ptr_->next_vol(surf, vol, new_vol);
-
-  return cur_cell->dagmc_ptr_->index_by_handle(new_vol);
-}
-#endif
 
 extern "C" int cells_size() { return model::cells.size(); }
 

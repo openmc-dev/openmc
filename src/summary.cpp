@@ -93,14 +93,6 @@ void write_geometry(hid_t file)
 {
   auto geom_group = create_group(file, "geometry");
 
-#ifdef DAGMC
-  if (settings::dagmc) {
-    write_attribute(geom_group, "dagmc", 1);
-    close_group(geom_group);
-    return;
-  }
-#endif
-
   write_attribute(geom_group, "n_cells", model::cells.size());
   write_attribute(geom_group, "n_surfaces", model::surfaces.size());
   write_attribute(geom_group, "n_universes", model::universes.size());

@@ -488,7 +488,7 @@ class RectLattice(Lattice):
 
     @Lattice.universes.setter
     def universes(self, universes):
-        cv.check_iterable_type('lattice universes', universes, openmc.Universe,
+        cv.check_iterable_type('lattice universes', universes, openmc.UniverseBase,
                                min_depth=2, max_depth=3)
         self._universes = np.asarray(universes)
 

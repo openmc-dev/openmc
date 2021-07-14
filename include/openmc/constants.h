@@ -380,6 +380,15 @@ enum class RunMode {
 // For non-accelerated regions on coarse mesh overlay
 constexpr int CMFD_NOACCEL {-1};
 
+//==============================================================================
+// Geometry Constants
+
+enum class GeometryType {
+  CSG,
+  DAG
+};
+
+
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

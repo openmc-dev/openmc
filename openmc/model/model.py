@@ -206,8 +206,7 @@ class Model:
             d.mkdir(parents=True)
 
         self.settings.export_to_xml(d)
-        if not self.settings.dagmc:
-            self.geometry.export_to_xml(d)
+        self.geometry.export_to_xml(d)
 
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build

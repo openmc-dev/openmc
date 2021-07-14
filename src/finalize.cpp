@@ -51,9 +51,6 @@ void free_memory()
   if (settings::event_based) {
     free_event_queues();
   }
-#ifdef DAGMC
-  free_memory_dagmc();
-#endif
 }
 
 }
@@ -74,7 +71,6 @@ int openmc_finalize()
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::electron_treatment = ElectronTreatment::LED;
-  settings::dagmc = false;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
   settings::entropy_on = false;

@@ -96,6 +96,10 @@ void sort_fission_bank()
     const auto& site = simulation::fission_bank[i];
     int64_t offset = site.parent_id - 1 - simulation::work_index[mpi::rank];
     int64_t idx = simulation::progeny_per_particle[offset] + site.progeny_id;
+    if (idx >= simulation::fission_bank.size()) {
+      fatal_error("Mismatch detected between sum of all particle progeny and "
+          "shared fission bank size.");
+    }
     sorted_bank[idx] = site;
   }
 

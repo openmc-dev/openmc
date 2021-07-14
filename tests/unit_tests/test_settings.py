@@ -54,7 +54,6 @@ def test_export_to_xml(run_in_tmpdir):
     s.log_grid_bins = 2000
     s.photon_transport = False
     s.electron_treatment = 'led'
-    s.dagmc = False
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -111,4 +110,3 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'
-    assert not s.dagmc

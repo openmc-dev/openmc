@@ -8,7 +8,6 @@
 #include "hdf5.h"
 #include "pugixml.hpp"
 
-#include "dagmc.h"
 #include "openmc/boundary_condition.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
@@ -30,7 +29,7 @@ namespace model {
 } // namespace model
 
 //==============================================================================
-//! Coordinates for an axis-aligned cuboid bounding a geometric object.
+//! Coordinates for an axis-aligned cuboid that bounds a geometric object.
 //==============================================================================
 
 struct BoundingBox
@@ -88,6 +87,7 @@ public:
   int id_; //!< Unique ID
   std::string name_; //!< User-defined name
   std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
+  GeometryType geom_type_;    //!< Geometry type indicator (CSG or DAGMC)
   bool surf_source_ {false};     //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);
@@ -134,10 +134,13 @@ public:
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  virtual void to_hdf5(hid_t group_id) const = 0;
+  void to_hdf5(hid_t group_id) const;
 
   //! Get the BoundingBox for this surface.
   virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
+
+protected:
+  virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 class CSGSurface : public Surface
@@ -146,32 +149,9 @@ public:
   explicit CSGSurface(pugi::xml_node surf_node);
   CSGSurface();
 
-  void to_hdf5(hid_t group_id) const;
-
 protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
-
-//==============================================================================
-//! A `Surface` representing a DAGMC-based surface in DAGMC.
-//==============================================================================
-#ifdef DAGMC
-class DAGSurface : public Surface
-{
-public:
-  DAGSurface();
-
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  Direction reflect(Position r, Direction u, Particle* p) const;
-
-  void to_hdf5(hid_t group_id) const;
-
-  moab::DagMC* dagmc_ptr_; //!< Pointer to DagMC instance
-  int32_t dag_index_;      //!< DagMC index of surface
-};
-#endif
 
 //==============================================================================
 //! A plane perpendicular to the x-axis.

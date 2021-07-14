@@ -1,18 +1,154 @@
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
 from copy import copy, deepcopy
 from numbers import Real
 import random
+from xml.etree import ElementTree as ET
 
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+from ._xml import get_text
 from .mixin import IDManagerMixin
 from .plots import _SVG_COLORS
 
 
-class Universe(IDManagerMixin):
+class UniverseBase(ABC, IDManagerMixin):
+    """A collection of cells that can be repeated.
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier of the universe
+    name : str
+        Name of the universe
+    """
+
+    next_id = 1
+    used_ids = set()
+
+    def __init__(self, universe_id=None, name=''):
+        # Initialize Universe class attributes
+        self.id = universe_id
+        self.name = name
+        self._volume = None
+        self._atoms = {}
+
+        # Keys   - Cell IDs
+        # Values - Cells
+        self._cells = OrderedDict()
+
+    def __repr__(self):
+        string = 'Universe\n'
+        string += '{: <16}=\t{}\n'.format('\tID', self._id)
+        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        return string
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def volume(self):
+        return self._volume
+
+    @name.setter
+    def name(self, name):
+        if name is not None:
+            cv.check_type('universe name', name, str)
+            self._name = name
+        else:
+            self._name = ''
+
+    @volume.setter
+    def volume(self, volume):
+        if volume is not None:
+            cv.check_type('universe volume', volume, Real)
+        self._volume = volume
+
+    def add_volume_information(self, volume_calc):
+        """Add volume information to a universe.
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        if volume_calc.domain_type == 'universe':
+            if self.id in volume_calc.volumes:
+                self._volume = volume_calc.volumes[self.id].n
+                self._atoms = volume_calc.atoms[self.id]
+            else:
+                raise ValueError('No volume information found for this universe.')
+        else:
+            raise ValueError('No volume information found for this universe.')
+
+    @abstractmethod
+    def create_xml_subelement(self, xml_element, memo=None):
+        """Add the universe xml representation to an incoming xml element
+
+        Parameters
+        ----------
+        xml_element : xml.etree.ElementTree.Element
+            XML element to be added to
+
+        memo : set or None
+            A set of object id's representing geometry entities already
+            written to the xml_element. This parameter is used internally
+            and should not be specified by users.
+
+        Returns
+        -------
+        None
+
+        """
+
+    def clone(self, clone_materials=True, clone_regions=True, memo=None):
+        """Create a copy of this universe with a new unique ID, and clones
+        all cells within this universe.
+
+        Parameters
+        ----------
+        clone_materials : bool
+            Whether to create separates copies of the materials filling cells
+            contained in this universe.
+        clone_regions : bool
+            Whether to create separates copies of the regions bounding cells
+            contained in this universe.
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Universe
+            The clone of this universe
+
+        """
+        if memo is None:
+            memo = {}
+
+        # If no memoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.id = None
+
+            # Clone all cells for the universe clone
+            clone._cells = OrderedDict()
+            for cell in self._cells.values():
+                clone.add_cell(cell.clone(clone_materials, clone_regions,
+                     memo))
+
+            # Memoize the clone
+            memo[self] = clone
+
+        return memo[self]
+
+
+class Universe(UniverseBase):
     """A collection of cells that can be repeated.
 
     Parameters
@@ -44,41 +180,21 @@ class Universe(IDManagerMixin):
 
     """
 
-    next_id = 1
-    used_ids = set()
-
     def __init__(self, universe_id=None, name='', cells=None):
-        # Initialize Cell class attributes
-        self.id = universe_id
-        self.name = name
-        self._volume = None
-        self._atoms = {}
-
-        # Keys   - Cell IDs
-        # Values - Cells
-        self._cells = OrderedDict()
+        super().__init__(universe_id, name)
 
         if cells is not None:
             self.add_cells(cells)
 
     def __repr__(self):
-        string = 'Universe\n'
-        string += '{: <16}=\t{}\n'.format('\tID', self._id)
-        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string = super().__repr__()
+        string += '{: <16}=\t{}\n'.format('\tGeom', 'CSG')
         string += '{: <16}=\t{}\n'.format('\tCells', list(self._cells.keys()))
         return string
 
     @property
-    def name(self):
-        return self._name
-
-    @property
     def cells(self):
         return self._cells
-
-    @property
-    def volume(self):
-        return self._volume
 
     @property
     def bounding_box(self):
@@ -89,20 +205,6 @@ class Universe(IDManagerMixin):
         else:
             # Infinite bounding box
             return openmc.Intersection([]).bounding_box
-
-    @name.setter
-    def name(self, name):
-        if name is not None:
-            cv.check_type('universe name', name, str)
-            self._name = name
-        else:
-            self._name = ''
-
-    @volume.setter
-    def volume(self, volume):
-        if volume is not None:
-            cv.check_type('universe volume', volume, Real)
-        self._volume = volume
 
     @classmethod
     def from_hdf5(cls, group, cells):
@@ -132,24 +234,6 @@ class Universe(IDManagerMixin):
             universe.add_cell(cells[cell_id])
 
         return universe
-
-    def add_volume_information(self, volume_calc):
-        """Add volume information to a universe.
-
-        Parameters
-        ----------
-        volume_calc : openmc.VolumeCalculation
-            Results from a stochastic volume calculation
-
-        """
-        if volume_calc.domain_type == 'universe':
-            if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id].n
-                self._atoms = volume_calc.atoms[self.id]
-            else:
-                raise ValueError('No volume information found for this universe.')
-        else:
-            raise ValueError('No volume information found for this universe.')
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point
@@ -480,66 +564,7 @@ class Universe(IDManagerMixin):
 
         return universes
 
-    def clone(self, clone_materials=True, clone_regions=True, memo=None):
-        """Create a copy of this universe with a new unique ID, and clones
-        all cells within this universe.
-
-        Parameters
-        ----------
-        clone_materials : bool
-            Whether to create separates copies of the materials filling cells
-            contained in this universe.
-        clone_regions : bool
-            Whether to create separates copies of the regions bounding cells
-            contained in this universe.
-        memo : dict or None
-            A nested dictionary of previously cloned objects. This parameter
-            is used internally and should not be specified by the user.
-
-        Returns
-        -------
-        clone : openmc.Universe
-            The clone of this universe
-
-        """
-
-        if memo is None:
-            memo = {}
-
-        # If no nemoize'd clone exists, instantiate one
-        if self not in memo:
-            clone = deepcopy(self)
-            clone.id = None
-
-            # Clone all cells for the universe clone
-            clone._cells = OrderedDict()
-            for cell in self._cells.values():
-                clone.add_cell(cell.clone(clone_materials, clone_regions,
-                     memo))
-
-            # Memoize the clone
-            memo[self] = clone
-
-        return memo[self]
-
     def create_xml_subelement(self, xml_element, memo=None):
-        """Add the universe xml representation to an incoming xml element
-
-        Parameters
-        ----------
-        xml_element : xml.etree.ElementTree.Element
-            XML element to be added to
-
-        memo : set or None
-            A set of object id's representing geometry entities already
-            written to the xml_element. This parameter is used internally
-            and should not be specified by users.
-
-        Returns
-        -------
-        None
-
-        """
         # Iterate over all Cells
         for cell in self._cells.values():
 
@@ -600,3 +625,163 @@ class Universe(IDManagerMixin):
             cell._num_instances += 1
             if not instances_only:
                 cell._paths.append(cell_path)
+
+
+class DAGMCUniverse(UniverseBase):
+    """A reference to a DAGMC file to be used in the model.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the DAGMC file used to represent this universe.
+    universe_id : int, optional
+        Unique identifier of the universe. If not specified, an identifier will
+        automatically be assigned.
+    name : str, optional
+        Name of the universe. If not specified, the name is the empty string.
+    auto_geom_ids : bool
+        Set IDs automatically on initialization (True) or report overlaps
+        in ID space between CSG and DAGMC (False)
+    auto_mat_ids : bool
+        Set IDs automatically on initialization (True)  or report overlaps
+        in ID space between OpenMC and UWUW materials (False)
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier of the universe
+    name : str
+        Name of the universe
+    filename : str
+        Path to the DAGMC file used to represent this universe.
+    auto_geom_ids : bool
+        Set IDs automatically on initialization (True) or report overlaps
+        in ID space between CSG and DAGMC (False)
+    auto_mat_ids : bool
+        Set IDs automatically on initialization (True)  or report overlaps
+        in ID space between OpenMC and UWUW materials (False)
+    """
+
+    def __init__(self,
+                 filename,
+                 universe_id=None,
+                 name='',
+                 auto_geom_ids=False,
+                 auto_mat_ids=False):
+        super().__init__(universe_id, name)
+        # Initialize class attributes
+        self.filename = filename
+        self.auto_geom_ids = auto_geom_ids
+        self.auto_mat_ids = auto_mat_ids
+
+    def __repr__(self):
+        string = super().__repr__()
+        string += '{: <16}=\t{}\n'.format('\tGeom', 'DAGMC')
+        string += '{: <16}=\t{}\n'.format('\tFile', self.filename)
+        return string
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @filename.setter
+    def filename(self, val):
+        cv.check_type('DAGMC filename', val, str)
+        self._filename = val
+
+    @property
+    def auto_geom_ids(self):
+        return self._auto_geom_ids
+
+    @auto_geom_ids.setter
+    def auto_geom_ids(self, val):
+        cv.check_type('DAGMC automatic geometry ids', val, bool)
+        self._auto_geom_ids = val
+
+    @property
+    def auto_mat_ids(self):
+        return self._auto_mat_ids
+
+    @auto_mat_ids.setter
+    def auto_mat_ids(self, val):
+        cv.check_type('DAGMC automatic material ids', val, bool)
+        self._auto_mat_ids = val
+
+    def get_all_cells(self, memo=None):
+        return OrderedDict()
+
+    def get_all_materials(self, memo=None):
+        return OrderedDict()
+
+    def create_xml_subelement(self, xml_element, memo=None):
+        if memo and self in memo:
+            return
+
+        if memo is not None:
+            memo.add(self)
+
+        # Set xml element values
+        dagmc_element = ET.Element('dagmc_universe')
+        dagmc_element.set('id', str(self.id))
+
+        if self.auto_geom_ids:
+            dagmc_element.set('auto_geom_ids', 'true')
+        if self.auto_mat_ids:
+            dagmc_element.set('auto_mat_ids', 'true')
+        dagmc_element.set('filename', self.filename)
+        xml_element.append(dagmc_element)
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Create DAGMC universe from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+
+        Returns
+        -------
+        openmc.DAGMCUniverse
+            DAGMCUniverse instance
+
+        """
+        id = int(group.name.split('/')[-1].lstrip('universe '))
+        fname = group['filename'][()].decode()
+        name = group['name'][()].decode() if 'name' in group else None
+
+        out = cls(fname, universe_id=id, name=name)
+
+        out.auto_geom_ids = bool(group.attrs['auto_geom_ids'])
+        out.auto_mat_ids = bool(group.attrs['auto_mat_ids'])
+
+        return out
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate DAGMC universe from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            `<dagmc_universe>` element
+
+        Returns
+        -------
+        openmc.DAGMCUniverse
+            DAGMCUniverse instance
+
+        """
+        id = int(get_text(elem, 'id'))
+        fname = get_text(elem, 'filename')
+
+        out = cls(fname, universe_id=id)
+
+        name = get_text(elem, 'name')
+        if name is not None:
+            out.name = name
+
+        out.auto_geom_ids = bool(elem.get('auto_geom_ids'))
+        out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
+
+        return out

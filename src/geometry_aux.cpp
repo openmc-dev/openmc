@@ -42,13 +42,6 @@ void update_universe_cell_count(int32_t a, int32_t b) {
 
 void read_geometry_xml()
 {
-#ifdef DAGMC
-  if (settings::dagmc) {
-    read_geometry_dagmc();
-    return;
-  }
-#endif
-
   // Display output message
   write_message("Reading geometry XML file...", 5);
 
@@ -73,8 +66,25 @@ void read_geometry_xml()
   read_cells(root);
   read_lattices(root);
 
+  // Check to make sure a boundary condition was applied to at least one
+  // surface
+  bool boundary_exists = false;
+  for (const auto& surf : model::surfaces) {
+    if (surf->bc_) {
+      boundary_exists = true;
+      break;
+    }
+  }
+
+  if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
+     fatal_error("No boundary conditions were applied to any surfaces!");
+  }
+
   // Allocate universes, universe cell arrays, and assign base universe
   model::root_universe = find_root_universe();
+
+  // if the root universe is DAGMC geometry, make sure the model is well-formed
+  check_dagmc_root_univ();
 }
 
 //==============================================================================

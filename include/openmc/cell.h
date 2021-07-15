@@ -130,6 +130,14 @@ public:
 
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 
+  //! Export physical properties to HDF5
+  //! \param[in] group  HDF5 group to read from
+  void export_properties_hdf5(hid_t group) const;
+
+  //! Import physical properties from HDF5
+  //! \param[in] group  HDF5 group to write to
+  void import_properties_hdf5(hid_t group);
+
   //! Get the BoundingBox for this cell.
   virtual BoundingBox bounding_box() const = 0;
 

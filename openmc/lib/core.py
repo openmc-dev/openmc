@@ -62,7 +62,13 @@ _dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
 _dll.openmc_next_batch.errcheck = _error_handler
 _dll.openmc_plot_geometry.restype = c_int
-_dll.openmc_plot_geometry.restype = _error_handler
+_dll.openmc_plot_geometry.errcheck = _error_handler
+_dll.openmc_properties_export.argtypes = [c_char_p]
+_dll.openmc_properties_export.restype = c_int
+_dll.openmc_properties_export.errcheck = _error_handler
+_dll.openmc_properties_import.argtypes = [c_char_p]
+_dll.openmc_properties_import.restype = c_int
+_dll.openmc_properties_import.errcheck = _error_handler
 _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
 _dll.openmc_reset.restype = c_int
@@ -118,6 +124,24 @@ def current_batch():
 
     """
     return c_int.in_dll(_dll, 'current_batch').value
+
+
+def export_properties(filename=None):
+    """Export physical properties.
+
+    Parameters
+    ----------
+    filename : str or None
+        Filename to export properties to (defaults to "properties.h5")
+
+    See Also
+    --------
+    openmc.lib.import_properties
+
+    """
+    if filename is not None:
+        filename = c_char_p(filename.encode())
+    _dll.openmc_properties_export(filename)
 
 
 def finalize():
@@ -176,6 +200,22 @@ def find_material(xyz):
 def hard_reset():
     """Reset tallies, timers, and pseudo-random number generator state."""
     _dll.openmc_hard_reset()
+
+
+def import_properties(filename):
+    """Import physical properties.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to import properties from
+
+    See Also
+    --------
+    openmc.lib.export_properties
+
+    """
+    _dll.openmc_properties_import(filename.encode())
 
 
 def init(args=None, intracomm=None):

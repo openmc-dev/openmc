@@ -114,6 +114,7 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+std::unordered_set<int32_t> distribcells;
 
 } // namespace settings
 

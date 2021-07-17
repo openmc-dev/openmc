@@ -7,6 +7,7 @@
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/error.h"
+#include "openmc/geometry.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -53,7 +54,7 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
     Expects(x.index_cell >= 0);
     Expects(x.index_cell < model::cells.size());
     const auto& c {model::cells[x.index_cell]};
-    if (c->type_ != Fill::MATERIAL) {
+    if (c->type_ != Fill::MATERIAL && geom_level_ < 0) {
       throw std::invalid_argument{fmt::format(
         "Cell {} is not filled with a material. Only material cells can be "
         "used in a cell instance filter.", c->id_)};
@@ -66,11 +67,29 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
 }
 
 void
+CellInstanceFilter::set_geom_level(int32_t level) {
+  Expects(level >= 0);
+  geom_level_ = level;
+}
+
+void
 CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
                          FilterMatch& match) const
 {
   gsl::index index_cell = p.coord(p.n_coord() - 1).cell;
   gsl::index instance = p.cell_instance();
+
+  if (geom_level_ >= 0) {
+    // if the particle has fewer levels than the cell we're looking for,
+    // return no bins
+    if (p.coord(geom_level_).cell == C_NONE) return;
+
+    // otherwise use the cell at the requested level
+    // and compute the cell instance for this particle's position
+    index_cell = p.coord(geom_level_).cell;
+    instance = cell_instance_at_level(p, geom_level_);
+  }
+
   auto search = map_.find({index_cell, instance});
   if (search != map_.end()) {
     int index_bin = search->second;

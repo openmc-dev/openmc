@@ -340,7 +340,7 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
           id_)};
     }
 
-    auto contained_cells = this->get_contained_cells();
+    auto contained_cells = this->get_contained_cells(instance);
     for (const auto& entry : contained_cells) {
       auto& cell = model::cells[entry.first];
       Expects(cell->type_ == Fill::MATERIAL);
@@ -1220,10 +1220,183 @@ extern "C" int openmc_cell_set_name(int32_t index, const char* name)
   return 0;
 }
 
-std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells() const
+void
+Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const
+{
+  // clear out the list of parent cells
+  parent_cells.clear();
+  // start with this cell's universe
+  int32_t visited_univ = -1;
+  int32_t prev_univ_idx = -1;
+  int32_t univ_idx = this->universe_;
+  int32_t search_instance = -1;
+
+  std::set<ParentCell> visited_cells;
+
+  while (true) {
+    const auto& univ = model::universes[univ_idx];
+    prev_univ_idx = univ_idx;
+    for (const auto& cell : model::cells) {
+      // if this is in our current set of visited cells, move on
+      if (visited_cells.count({model::cell_map[cell->id_], -1})) continue;
+
+      if (cell->type_ == Fill::UNIVERSE) {
+        if(cell->fill_ == univ_idx) {
+          parent_cells.push_back({model::cell_map[cell->id_], -1});
+          univ_idx = cell->universe_;
+        }
+      } else if (cell->type_ == Fill::LATTICE) {
+        const auto& lattice = model::lattices[cell->fill_];
+        const auto& lattice_univs = lattice->universes_;
+        auto lat_it = lattice_univs.begin();
+        while (true) {
+          // find the next lattice cell with this universe
+          lat_it = std::find(lat_it, lattice_univs.end(), univ_idx);
+          if (lat_it >= lattice_univs.end()) break;
+
+          int lattice_idx = lat_it - lattice_univs.begin();
+
+          lat_it++;
+
+          if (visited_cells.count({model::cell_map[cell->id_], lattice_idx})) continue;
+
+          parent_cells.push_back({model::cell_map[cell->id_], 0});
+          univ_idx = cell->universe_;
+        }
+      }
+      // if we've updated the universe, break
+      if (prev_univ_idx != univ_idx) break;
+    }
+    // if we're at the top of the geometry and the instance matches, we're done
+    if (univ_idx == model::root_universe && this->compute_instance(parent_cells) == instance) return;
+
+    // if we don't find a suitable update, adjust the stack and continue
+    if (univ_idx == model::root_universe || univ_idx == prev_univ_idx) {
+
+      // if there was no match on this cell's universe, report an error
+      if (univ_idx == this->universe_) {
+        std::cout << fmt::format("Could not find the parent cells for cell {}, instance {}.", this->id_, instance) << std::endl;
+        return;
+      }
+
+      // remove previous cells from visited so we don't skip them later for a new
+      // path through the geometry hierarchy
+      if (visited_univ != -1 && univ_idx != model::root_universe) {
+        const auto& univ = model::universes[visited_univ];
+        for (auto cell_indx : univ->cells_) {
+          for (auto p_cell = visited_cells.begin(); p_cell != visited_cells.end(); p_cell++) {
+            if (p_cell->cell_index == cell_indx) visited_cells.erase(p_cell++);
+            if (p_cell == visited_cells.end()) break;
+          }
+        }
+      }
+
+      visited_cells.insert(parent_cells.back());
+      visited_univ = model::cells[parent_cells.back().cell_index]->universe_;
+      parent_cells.pop_back();
+
+      if (parent_cells.empty()) univ_idx = this->universe_;
+      else univ_idx = model::cells[parent_cells.back().cell_index]->universe_;
+    }
+
+  } // end while
+
+  std::reverse(parent_cells.begin(), parent_cells.end());
+
+  // while (univ_idx != model::root_universe) {
+  //   // find the cell (or lattice) that contains this universe
+  //   int32_t old_idx = univ_idx;
+  //   for (const auto& cell : model::cells) {
+
+  //     if (cell->type_ == Fill::UNIVERSE) {
+  //       // if this cell is filled with the universe we're looking for,
+  //       // add it to the parent cells and update the universe index
+  //       if (cell->fill_ == univ_idx) {
+  //         parent_cells.push_back({model::cell_map[cell->id_], -1});
+  //         univ_idx = cell->universe_;
+  //         break;
+  //       }
+  //     } else if (cell->type_ == Fill::LATTICE) {
+  //       // if any of the lattice cells contain the universe we're looking
+  //       // for, add it to the set of parent cells
+  //       const auto& lattice = model::lattices[cell->fill_];
+  //       for(auto lit = lattice->begin(); lit != lattice->end(); ++lit) {
+  //         if (lattice->universes_[lit.indx_] == univ_idx) {
+  //           parent_cells.push_back({model::cell_map[cell->id_], lit.indx_});
+  //           univ_idx = cell->universe_;
+  //           break;
+  //         }
+  //       }
+  //     }
+  //   }
+  //   if (old_idx == univ_idx) {
+  //     fatal_error(fmt::format("Failed to find a cell filled with universe {}", openmc::model::universes[univ_idx]->id_));
+  //   }
+  // }
+
+  // // reverse the set of parent cells so the order goes highest to
+  // // lowest level in the geometry
+  // std::reverse(parent_cells.begin(), parent_cells.end());
+
+  // // check the instance for this set of parent cells and
+  // // return the current parent cells if it matches
+  // if (this->compute_instance(parent_cells) == instance) return;
+
+  // // TO-DO: Check the cell instance here and repeat process if needed
+  // for (auto it = parent_cells.begin(); it != parent_cells.end() - 1; it++) {
+  //   // check for another cell containing this universe
+  //   auto& cell = model::cells[it->cell_index];
+  //   auto& univ = model::universes[cell->universe_];
+
+  //   // get the child cell's universe to look for
+  //   int32_t fill_idx = model::cells[(it+1)->cell_index]->fill_;
+  //   Fill fill_type = model::cells[(it+1)->cell_index]->type_;
+
+  //   for (auto& cell_indx : univ->cells_) {
+  //     auto& univ_cell = model::cells[cell_indx];
+  //     // if we get a matching cell fill, try this out instead
+  //     if (univ_cell->fill_ != fill_idx || univ_cell->type_ != fill_type) continue;
+
+  //     if (univ_cell->type_ == Fill::UNIVERSE) {
+  //       *it = {cell_indx, -1};
+  //       if (this->compute_instance(parent_cells) == instance) return;
+  //     } else if (univ_cell->type_ == Fill::LATTICE) {
+  //       const auto& lattice = model::lattices[univ_cell->fill_];
+  //       int lat_univ = lattice->universes_[it->lattice_index];
+  //       for (auto lit = lattice->begin(); lit != lattice->end(); ++lit) {
+  //         if (lat_univ == lattice->universes_[lit.indx_]) {
+  //           *it = {cell_indx, lit.indx_};
+  //           if (this->compute_instance(parent_cells) == instance) return;
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+
+  // fatal_error(fmt::format("Could not compute the parent cells of cell {} (instance {})", id_, instance));
+}
+
+int32_t Cell::compute_instance(const vector<ParentCell>& parent_cells) const {
+  int32_t instance = 0;
+  for (const auto& parent_cell : parent_cells) {
+    auto& cell = model::cells[parent_cell.cell_index];
+    if (cell->type_ == Fill::UNIVERSE) {
+      instance += cell->offset_[this->distribcell_index_];
+    } else if (cell->type_ == Fill::LATTICE) {
+      auto& lattice = model::lattices[cell->fill_];
+      instance += lattice->offset(this->distribcell_index_, parent_cell.lattice_index);
+    }
+  }
+  return instance;
+}
+
+std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(int32_t instance) const
 {
   std::unordered_map<int32_t, vector<int32_t>> contained_cells;
   vector<ParentCell> parent_cells;
+
+  // find the pathway through the geometry to this cell
+  this->find_parent_cells(parent_cells, instance);
 
   // if this cell is filled w/ a material, it contains no other cells
   if (type_ != Fill::MATERIAL) {
@@ -1242,9 +1415,10 @@ void Cell::get_contained_cells_inner(
   // filled by material, determine instance based on parent cells
   if (type_ == Fill::MATERIAL) {
     int instance = 0;
+    // std::cout << "Cell " << id_ << " offset: " << this->distribcell_index_ << std::endl;
     if (this->distribcell_index_ >= 0) {
       for (auto& parent_cell : parent_cells) {
-        auto& cell = openmc::model::cells[parent_cell.cell_index];
+        auto& cell = model::cells[parent_cell.cell_index];
         if (cell->type_ == Fill::UNIVERSE) {
           instance += cell->offset_[distribcell_index_];
         } else if (cell->type_ == Fill::LATTICE) {

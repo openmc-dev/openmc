@@ -165,9 +165,15 @@ public:
   //! \param[in] name Cell name
   void set_name(const std::string& name) { name_ = name; };
 
+  //! Determine the path to this cell instance in the geometry hierarchy
+  void find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const;
+
+  //! Compute the cell's instance given a set of parent cells
+  int32_t compute_instance(const vector<ParentCell>& parent_cells) const;
+
   //! Get all cell instances contained by this cell
   //! \return Map with cell indexes as keys and instances as values
-  std::unordered_map<int32_t, vector<int32_t>> get_contained_cells() const;
+  std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(int32_t instance=0) const;
 
 protected:
   void get_contained_cells_inner(
@@ -303,8 +309,21 @@ private:
 //==============================================================================
 
 struct ParentCell {
+  bool operator ==(const ParentCell& other) const
+  { return cell_index == other.cell_index && lattice_index == other.lattice_index; }
+
+  bool operator <(const ParentCell& other) const
+  { return cell_index < other.cell_index || (cell_index == other.cell_index && lattice_index < other.lattice_index); }
+
   gsl::index cell_index;
   gsl::index lattice_index;
+};
+
+struct ParentCellHash {
+  std::size_t operator()(const ParentCell& p) const
+  {
+    return 4096*p.cell_index + p.lattice_index;
+  }
 };
 
 //==============================================================================

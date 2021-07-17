@@ -315,8 +315,10 @@ prepare_distribcell()
 {
   write_message("Preparing distributed cell instances...", 5);
 
+  // start with any cells manually specified via the C++ API
+  std::unordered_set<int32_t> distribcells = settings::distribcells;
+
   // Find all cells listed in a DistribcellFilter or CellInstanceFilter
-  std::unordered_set<int32_t> distribcells;
   for (auto& filt : model::tally_filters) {
     auto* distrib_filt = dynamic_cast<DistribcellFilter*>(filt.get());
     auto* cell_inst_filt = dynamic_cast<CellInstanceFilter*>(filt.get());

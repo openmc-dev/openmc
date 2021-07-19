@@ -146,10 +146,6 @@ class DataLibrary(EqualityMixin):
             raise ValueError("Either path or OPENMC_CROSS_SECTIONS "
                              "environmental variable must be set")
 
-        # Convert to string to support pathlib
-        # TODO: Remove when support is Python 3.6+ only
-        path = str(path)
-
         tree = ET.parse(path)
         root = tree.getroot()
         if root.find('directory') is not None:

@@ -2,7 +2,6 @@ from math import isnan
 import os
 from pathlib import Path
 
-from uncertainties import ufloat
 import numpy as np
 import openmc.data
 from openmc.data import K_BOLTZMANN
@@ -18,7 +17,7 @@ def make_fake_cross_section():
     temperature so as to make the true k-effective go linear with temperature.
     """
 
-    def isotropic_angle():
+    def isotropic_angle(E_min, E_max):
         return openmc.data.AngleDistribution(
             [E_min, E_max],
             [Uniform(-1., 1.), Uniform(-1., 1.)]
@@ -40,13 +39,13 @@ def make_fake_cross_section():
     E_min, E_max = 1e-5, 20.0e6
     energy = np.logspace(np.log10(E_min), np.log10(E_max))
     for T in temperatures:
-        u235_fake.energy[f'{T}K'] = energy
+        u235_fake.energy['{}K'.format(T)] = energy
 
     # Create elastic scattering
     elastic = openmc.data.Reaction(2)
     for T in temperatures:
-        elastic.xs[f'{T}K'] = cross_section(1.0)
-    elastic_dist = openmc.data.UncorrelatedAngleEnergy(isotropic_angle())
+        elastic.xs['{}K'.format(T)] = cross_section(1.0)
+    elastic_dist = openmc.data.UncorrelatedAngleEnergy(isotropic_angle(E_min, E_max))
     product = openmc.data.Product()
     product.distribution.append(elastic_dist)
     elastic.products.append(product)
@@ -58,11 +57,11 @@ def make_fake_cross_section():
     fission.Q_value = 193.0e6
     fission_xs = (2., 4., 2.)
     for T, xs in zip(temperatures, fission_xs):
-        fission.xs[f'{T}K'] = cross_section(xs)
+        fission.xs['{}K'.format(T)] = cross_section(xs)
     a = openmc.data.Tabulated1D([E_min, E_max], [0.988e6, 0.988e6])
     b = openmc.data.Tabulated1D([E_min, E_max], [2.249e-6, 2.249e-6])
     fission_dist = openmc.data.UncorrelatedAngleEnergy(
-        isotropic_angle(),
+        isotropic_angle(E_min, E_max),
         openmc.data.WattEnergy(a, b, -E_max)
     )
     product = openmc.data.Product()
@@ -76,7 +75,7 @@ def make_fake_cross_section():
     capture.q_value = 6.5e6
     capture_xs = (2., 0., 2.)
     for T, xs in zip(temperatures, capture_xs):
-        capture.xs[f'{T}K'] = cross_section(xs)
+        capture.xs['{}K'.format(T)] = cross_section(xs)
     u235_fake.reactions[102] = capture
 
     # Export HDF5 file

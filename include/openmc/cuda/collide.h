@@ -24,8 +24,18 @@ __global__ void __launch_bounds__(BLOCK_SIZE) process_collision_events_device(
   if (tid < queue_size) {
     p.event_collide();
 
+    if (!p.alive()) {
+      // NOTE there may be some differences with how we define CELL_BORN
+      // here compared to CPU OpenMC.
+      p.event_revive_from_secondary();
+      if (!exhaustive_find_cell(p))
+        __trap();
+      p.invalidate_neutron_xs();
+    }
+
+    // TODO: we should not increment this in revive_from_secondary!
     // Replace with revival from secondaries eventually
-    p.n_event()++;
+    // p.n_event()++;
 
     // These are used as booleans here, but are converted to indices shortly.
     nonfuel = p.alive() && (p.material() == MATERIAL_VOID ||

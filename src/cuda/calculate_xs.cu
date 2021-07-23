@@ -68,20 +68,34 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
       // nearest?
       xsfloat kT = p.sqrtkT() * p.sqrtkT();
       xsfloat f;
+      int i_temp;
 
-      constexpr int i_temp = 0;
+      switch (gpu::temperature_method) {
+      case TemperatureMethod::NEAREST: {
+        double max_diff = INFTY;
+        for (int t = 0; t < nuclide.kTs_.size(); ++t) {
+          double diff = std::abs(nuclide.kTs_[t] - kT);
+          if (diff < max_diff) {
+            i_temp = t;
+            max_diff = diff;
+          }
+        }
+      } break;
 
-      // // Find temperatures that bound the actual temperature
-      // for (i_temp = 0; i_temp < nuclide.kTs_.size() - 1; ++i_temp) {
-      //   if (nuclide.kTs_[i_temp] <= kT && kT < nuclide.kTs_[i_temp + 1])
-      //     break;
-      // }
+      case TemperatureMethod::INTERPOLATION:
+        // Find temperatures that bound the actual temperature
+        for (i_temp = 0; i_temp < nuclide.kTs_.size() - 1; ++i_temp) {
+          if (nuclide.kTs_[i_temp] <= kT && kT < nuclide.kTs_[i_temp + 1])
+            break;
+        }
 
-      // // Randomly sample between temperature i and i+1
-      // f = (kT - nuclide.kTs_[i_temp]) /
-      //     (nuclide.kTs_[i_temp + 1] - nuclide.kTs_[i_temp]);
-      // if (f > prn(p->seeds_))
-      //   ++i_temp;
+        // Randomly sample between temperature i and i+1
+        f = (kT - nuclide.kTs_[i_temp]) /
+            (nuclide.kTs_[i_temp + 1] - nuclide.kTs_[i_temp]);
+        if (f > prn(p.current_seed()))
+          ++i_temp;
+        break;
+      }
 
       const auto& grid {nuclide.grid_[i_temp]};
       int i_grid;

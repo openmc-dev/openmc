@@ -129,6 +129,7 @@ __constant__ double res_scat_energy_max;
 __constant__ RunMode run_mode;
 __constant__ int64_t n_particles;
 __constant__ int32_t gen_per_batch;
+__constant__ TemperatureMethod temperature_method;
 
 unsigned thread_block_size {BLOCKSIZE};
 } // namespace gpu
@@ -795,26 +796,17 @@ void read_settings_xml()
   if (check_for_node(root, "temperature_default")) {
     temperature_default = std::stod(get_node_value(root, "temperature_default"));
   }
-#ifdef __CUDACC__
-  // Nearest temperature mode is turned off on the GPU to reduce
-  // needing to have a bra.uni instruction in the xs lookup kernel.
-  // Not sure if this is detrimental to performance at the moment.
-  temperature_method = TemperatureMethod::INTERPOLATION;
-#endif
   if (check_for_node(root, "temperature_method")) {
     auto temp = get_node_value(root, "temperature_method", true, true);
     if (temp == "nearest") {
       temperature_method = TemperatureMethod::NEAREST;
-#ifdef __CUDACC__
-      warning("Ignoring choice of nearest temperature mode and using "
-              "interpolation for GPU.");
-#endif
     } else if (temp == "interpolation") {
       temperature_method = TemperatureMethod::INTERPOLATION;
     } else {
       fatal_error("Unknown temperature method: " + temp);
     }
   }
+
   if (check_for_node(root, "temperature_tolerance")) {
     temperature_tolerance = std::stod(get_node_value(root, "temperature_tolerance"));
   }
@@ -917,6 +909,8 @@ void copy_settings_to_gpu()
   cudaMemcpyToSymbol(gpu::n_particles, &settings::n_particles, sizeof(int64_t));
   cudaMemcpyToSymbol(
     gpu::gen_per_batch, &settings::gen_per_batch, sizeof(int32_t));
+  cudaMemcpyToSymbol(gpu::temperature_method, &settings::temperature_method,
+    sizeof(TemperatureMethod));
 }
 #endif
 

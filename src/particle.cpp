@@ -322,9 +322,13 @@ Particle::event_revive_from_secondary()
   // If particle has too many events, display warning and kill it
   ++n_event();
   if (n_event() == MAX_EVENTS) {
+#ifdef __CUDA_ARCH__
+    __trap();
+#else
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
     alive() = false;
+#endif
   }
 
   // Check for secondary particles if this particle is dead
@@ -338,8 +342,10 @@ Particle::event_revive_from_secondary()
     n_event() = 0;
 
     // Enter new particle in particle track file
+#ifndef __CUDA_ARCH__
     if (write_track())
       add_particle_track(*this);
+#endif
   }
 }
 

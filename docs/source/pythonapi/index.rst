@@ -6,11 +6,11 @@ Python API
 
 OpenMC includes a rich Python API that enables programmatic pre- and
 post-processing. The easiest way to begin using the API is to take a look at the
-:ref:`examples`. This assumes that you are already familiar with Python and
-common third-party packages such as `NumPy <https://numpy.org/>`_. If you have
-never used Python before, the prospect of learning a new code *and* a
-programming language might sound daunting. However, you should keep in mind that
-there are many substantial benefits to using the Python API, including:
+examples_. This assumes that you are already familiar with Python and common
+third-party packages such as `NumPy <https://numpy.org/>`_. If you have never
+used Python before, the prospect of learning a new code *and* a programming
+language might sound daunting. However, you should keep in mind that there are
+many substantial benefits to using the Python API, including:
 
 - The ability to define dimensions using variables.
 - Availability of standard-library modules for working with files.
@@ -50,3 +50,5 @@ or class.
    data
    capi
    openmoc
+
+.. _examples: https://github.com/openmc-dev/openmc/wiki/Example-Jupyter-Notebooks

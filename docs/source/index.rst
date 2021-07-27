@@ -36,7 +36,7 @@ Forum <https://openmc.discourse.group/>`_.
     :maxdepth: 1
 
     quickinstall
-    examples/index
+    Examples <https://github.com/openmc-dev/openmc/wiki/Example-Jupyter-Notebooks>
     releasenotes/index
     methods/index
     usersguide/index

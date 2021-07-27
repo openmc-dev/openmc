@@ -1299,6 +1299,34 @@ openmc_cell_set_id(int32_t index, int32_t id)
   }
 }
 
+//! Return the translation vector of a cell
+extern "C" int openmc_cell_get_translation(int32_t index, double xyz[])
+{
+  if (index >= 0 && index < model::cells.size()) {
+    auto& cell = openmc::model::cells[index];
+    xyz[0] = cell->translation_.x;
+    xyz[1] = cell->translation_.y;
+    xyz[2] = cell->translation_.z;
+    return 0;
+  } else {
+    set_errmsg("Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+//! Set the translation vector of a cell
+extern "C" int openmc_cell_set_translation(int32_t index, const double xyz[])
+{
+  if (index >= 0 && index < model::cells.size()) {
+    model::cells[index]->translation_ = Position(xyz);
+    return 0;
+  } else {
+    set_errmsg("Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+//! Get the number of instances of the requested cell
 extern "C" int
 openmc_cell_get_num_instances(int32_t index, int32_t* num_instances)
 {

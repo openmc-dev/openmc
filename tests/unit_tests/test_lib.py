@@ -141,6 +141,12 @@ def test_properties_temperature(lib_init):
     openmc.lib.import_properties('properties.h5')
     assert cell.get_temperature() == pytest.approx(200.0)
 
+def test_cell_translation(lib_init):
+    cell = openmc.lib.cells[1]
+    assert cell.get_translation() == pytest.approx([0., 0., 0.])
+    cell.set_translation(np.array([1., 0., -1.]))
+    assert cell.get_translation() == pytest.approx([1., 0., -1.])
+
 
 def test_new_cell(lib_init):
     with pytest.raises(exc.AllocationError):

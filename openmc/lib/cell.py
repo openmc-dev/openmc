@@ -35,6 +35,9 @@ _dll.openmc_cell_get_temperature.errcheck = _error_handler
 _dll.openmc_cell_get_name.argtypes = [c_int32, POINTER(c_char_p)]
 _dll.openmc_cell_get_name.restype = c_int
 _dll.openmc_cell_get_name.errcheck = _error_handler
+_dll.openmc_cell_get_translation.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_cell_get_translation.restype = c_int
+_dll.openmc_cell_get_translation.errcheck = _error_handler
 _dll.openmc_cell_set_name.argtypes = [c_int32, c_char_p]
 _dll.openmc_cell_set_name.restype = c_int
 _dll.openmc_cell_set_name.errcheck = _error_handler
@@ -49,6 +52,9 @@ _dll.openmc_cell_set_temperature.argtypes = [
     c_int32, c_double, POINTER(c_int32), c_bool]
 _dll.openmc_cell_set_temperature.restype = c_int
 _dll.openmc_cell_set_temperature.errcheck = _error_handler
+_dll.openmc_cell_set_translation.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_cell_set_translation.restype = c_int
+_dll.openmc_cell_set_translation.errcheck = _error_handler
 _dll.openmc_get_cell_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_cell_index.restype = c_int
 _dll.openmc_get_cell_index.errcheck = _error_handler
@@ -212,6 +218,29 @@ class Cell(_FortranObjectWithID):
             instance = c_int32(instance)
 
         _dll.openmc_cell_set_temperature(self._index, T, instance, set_contained)
+
+    def get_translation(self):
+        """Get the translation vector of a cell
+
+        """
+
+        translation = np.zeros(3)
+        _dll.openmc_cell_get_translation(
+            self._index, translation.ctypes.data_as(POINTER(c_double)))
+        return translation
+
+    def set_translation(self, translation):
+        """Set the translation vector of a cell
+
+        Parameters
+        ----------
+        translation : numpy.ndarray
+            3-D translation vector
+
+        """
+
+        _dll.openmc_cell_set_translation(
+            self._index, translation.ctypes.data_as(POINTER(c_double)))
 
     @property
     def bounding_box(self):

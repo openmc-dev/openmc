@@ -248,6 +248,48 @@ BoundingBox Universe::bounding_box() const {
 // Cell implementation
 //==============================================================================
 
+void
+Cell::set_rotation(const vector<double>& rot) {
+  if (fill_ == C_NONE) {
+    fatal_error(fmt::format("Cannot apply a rotation to cell {}"
+                            " because it is not filled with another universe",
+      id_));
+  }
+
+  if (rot.size() != 3 && rot.size() != 9) {
+    fatal_error(fmt::format("Non-3D rotation vector applied to cell {}", id_));
+  }
+
+  // Compute and store the rotation matrix.
+  rotation_.clear();
+  rotation_.reserve(rot.size() == 9 ? 9 : 12);
+  if (rot.size() == 3) {
+    double phi = -rot[0] * PI / 180.0;
+    double theta = -rot[1] * PI / 180.0;
+    double psi = -rot[2] * PI / 180.0;
+    rotation_.push_back(std::cos(theta) * std::cos(psi));
+    rotation_.push_back(-std::cos(phi) * std::sin(psi) +
+                        std::sin(phi) * std::sin(theta) * std::cos(psi));
+    rotation_.push_back(std::sin(phi) * std::sin(psi) +
+                        std::cos(phi) * std::sin(theta) * std::cos(psi));
+    rotation_.push_back(std::cos(theta) * std::sin(psi));
+    rotation_.push_back(std::cos(phi) * std::cos(psi) +
+                        std::sin(phi) * std::sin(theta) * std::sin(psi));
+    rotation_.push_back(-std::sin(phi) * std::cos(psi) +
+                        std::cos(phi) * std::sin(theta) * std::sin(psi));
+    rotation_.push_back(-std::sin(theta));
+    rotation_.push_back(std::sin(phi) * std::cos(theta));
+    rotation_.push_back(std::cos(phi) * std::cos(theta));
+
+    // When user specifies angles, write them at end of vector
+    rotation_.push_back(rot[0]);
+    rotation_.push_back(rot[1]);
+    rotation_.push_back(rot[2]);
+  } else {
+    std::copy(rot.begin(), rot.end(), std::back_inserter(rotation_));
+  }
+}
+
 double
 Cell::temperature(int32_t instance) const
 {
@@ -572,44 +614,8 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // Read the rotation transform.
   if (check_for_node(cell_node, "rotation")) {
-    if (fill_ == C_NONE) {
-      fatal_error(fmt::format("Cannot apply a rotation to cell {}"
-        " because it is not filled with another universe", id_));
-    }
-
     auto rot {get_node_array<double>(cell_node, "rotation")};
-    if (rot.size() != 3 && rot.size() != 9) {
-      fatal_error(fmt::format(
-        "Non-3D rotation vector applied to cell {}", id_));
-    }
-
-    // Compute and store the rotation matrix.
-    rotation_.reserve(rot.size() == 9 ? 9 : 12);
-    if (rot.size() == 3) {
-      double phi = -rot[0] * PI / 180.0;
-      double theta = -rot[1] * PI / 180.0;
-      double psi = -rot[2] * PI / 180.0;
-      rotation_.push_back(std::cos(theta) * std::cos(psi));
-      rotation_.push_back(-std::cos(phi) * std::sin(psi)
-                          + std::sin(phi) * std::sin(theta) * std::cos(psi));
-      rotation_.push_back(std::sin(phi) * std::sin(psi)
-                          + std::cos(phi) * std::sin(theta) * std::cos(psi));
-      rotation_.push_back(std::cos(theta) * std::sin(psi));
-      rotation_.push_back(std::cos(phi) * std::cos(psi)
-                          + std::sin(phi) * std::sin(theta) * std::sin(psi));
-      rotation_.push_back(-std::sin(phi) * std::cos(psi)
-                          + std::cos(phi) * std::sin(theta) * std::sin(psi));
-      rotation_.push_back(-std::sin(theta));
-      rotation_.push_back(std::sin(phi) * std::cos(theta));
-      rotation_.push_back(std::cos(phi) * std::cos(theta));
-
-      // When user specifies angles, write them at end of vector
-      rotation_.push_back(rot[0]);
-      rotation_.push_back(rot[1]);
-      rotation_.push_back(rot[2]);
-    } else {
-      std::copy(rot.begin(), rot.end(), std::back_inserter(rotation_));
-    }
+    set_rotation(rot);
   }
 }
 
@@ -1325,6 +1331,40 @@ extern "C" int openmc_cell_set_translation(int32_t index, const double xyz[])
       return OPENMC_E_GEOMETRY;
     }
     model::cells[index]->translation_ = Position(xyz);
+    return 0;
+  } else {
+    set_errmsg("Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+//! Return the rotation matrix of a cell
+extern "C" int openmc_cell_get_rotation(int32_t index, double rot[], size_t* n)
+{
+  if (index >= 0 && index < model::cells.size()) {
+    auto& cell = openmc::model::cells[index];
+    *n = cell->rotation_.size();
+    std::memcpy(rot, cell->rotation_.data(), *n * sizeof(cell->rotation_[0]));
+    return 0;
+  } else {
+    set_errmsg("Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
+//! Set the flattened rotation matrix of a cell
+extern "C" int openmc_cell_set_rotation(int32_t index, const double rot[],
+    const size_t rot_len)
+{
+  if (index >= 0 && index < model::cells.size()) {
+    if (model::cells[index]->fill_ == C_NONE) {
+      set_errmsg(fmt::format("Cannot apply a rotation to cell {}"
+                             " because it is not filled with another universe",
+        index));
+      return OPENMC_E_GEOMETRY;
+    }
+    std::vector<double> vec_rot(rot, rot + rot_len);
+    model::cells[index]->set_rotation(vec_rot);
     return 0;
   } else {
     set_errmsg("Index in cells array is out of bounds.");

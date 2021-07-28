@@ -727,3 +727,18 @@ def test_cell_translation(pincell_model_w_univ, mpi_intracomm):
     # This time we *can* set it
     cell.set_translation(np.array([1., 0., -1.]))
     assert cell.get_translation() == pytest.approx([1., 0., -1.])
+
+
+def test_cell_rotation(pincell_model_w_univ):
+    # Cell 1 is filled with a material so we cannot rotate it, but we can get
+    # its rotation matrix (which will be the identity matrix)
+    cell = openmc.lib.cells[1]
+    assert cell.get_rotation() is None
+    with pytest.raises(exc.GeometryError, match='not filled with'):
+        cell.set_rotation(np.array([180., 0., 0.]))
+
+    # Now repeat with Cell 2 and we will be allowed to do it
+    cell = openmc.lib.cells[2]
+    assert cell.get_rotation() is None
+    cell.set_rotation(np.array([180., 0., 0.]))
+    assert cell.get_rotation() == pytest.approx([180., 0., 0.])

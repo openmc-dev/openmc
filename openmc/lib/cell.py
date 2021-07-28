@@ -1,7 +1,7 @@
 import sys
 
 from collections.abc import Mapping, Iterable
-from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_bool
+from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_bool, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -38,6 +38,10 @@ _dll.openmc_cell_get_name.errcheck = _error_handler
 _dll.openmc_cell_get_translation.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_cell_get_translation.restype = c_int
 _dll.openmc_cell_get_translation.errcheck = _error_handler
+_dll.openmc_cell_get_rotation.argtypes = [c_int32, POINTER(c_double),
+    POINTER(c_size_t)]
+_dll.openmc_cell_get_rotation.restype = c_int
+_dll.openmc_cell_get_rotation.errcheck = _error_handler
 _dll.openmc_cell_set_name.argtypes = [c_int32, c_char_p]
 _dll.openmc_cell_set_name.restype = c_int
 _dll.openmc_cell_set_name.errcheck = _error_handler
@@ -55,6 +59,10 @@ _dll.openmc_cell_set_temperature.errcheck = _error_handler
 _dll.openmc_cell_set_translation.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_cell_set_translation.restype = c_int
 _dll.openmc_cell_set_translation.errcheck = _error_handler
+_dll.openmc_cell_set_rotation.argtypes = [
+    c_int32, POINTER(c_double), c_size_t]
+_dll.openmc_cell_set_rotation.restype = c_int
+_dll.openmc_cell_set_rotation.errcheck = _error_handler
 _dll.openmc_get_cell_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_cell_index.restype = c_int
 _dll.openmc_get_cell_index.errcheck = _error_handler
@@ -241,6 +249,44 @@ class Cell(_FortranObjectWithID):
 
         _dll.openmc_cell_set_translation(
             self._index, translation.ctypes.data_as(POINTER(c_double)))
+
+    def get_rotation(self):
+        """Get the rotation matrix of a cell
+
+        """
+
+        rotation = np.zeros(12)
+        rot_size = c_size_t()
+
+        _dll.openmc_cell_get_rotation(
+            self._index, rotation.ctypes.data_as(POINTER(c_double)), rot_size)
+        rot_size = rot_size.value
+
+        if rot_size == 0:
+            return None
+        elif rot_size == 9:
+            return rotation[:n]
+        elif rot_size == 12:
+            return rotation[9:]
+        else:
+            raise ValueError(
+                'Invalid size of rotation matrix: {}'.format(rot_size))
+
+    def set_rotation(self, rotation):
+        """Set the rotation matrix of a cell
+
+        Parameters
+        ----------
+        rotation : numpy.ndarray
+            The rotation angles (if length is 3) or the 3x3 rotation matrix
+
+        """
+
+        flat_rotation = rotation.flatten()
+
+        _dll.openmc_cell_set_rotation(
+            self._index, flat_rotation.ctypes.data_as(POINTER(c_double)),
+            c_size_t(len(flat_rotation)))
 
     @property
     def bounding_box(self):

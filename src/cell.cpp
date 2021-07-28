@@ -1318,6 +1318,12 @@ extern "C" int openmc_cell_get_translation(int32_t index, double xyz[])
 extern "C" int openmc_cell_set_translation(int32_t index, const double xyz[])
 {
   if (index >= 0 && index < model::cells.size()) {
+    if (model::cells[index]->fill_ == C_NONE) {
+      set_errmsg(fmt::format("Cannot apply a translation to cell {}"
+                             " because it is not filled with another universe",
+                             index));
+      return OPENMC_E_GEOMETRY;
+    }
     model::cells[index]->translation_ = Position(xyz);
     return 0;
   } else {

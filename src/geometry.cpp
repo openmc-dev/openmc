@@ -66,11 +66,16 @@ bool check_cell_overlap(Particle& p, bool error)
 //==============================================================================
 
 int cell_instance_at_level(const Particle& p, int level) {
+  // throw error if the requested level is too deep for the geometry
   if (level > p.n_coord()) {
     fatal_error(fmt::format("Cell instance at level {} requested, but only {} levels exist in the model.", level, p.n_coord()));
   }
+
   // determine the cell instance
   Cell& c {*model::cells[p.coord(level).cell]};
+
+  if (c.distribcell_index_ == C_NONE) return C_NONE;
+
   int instance = 0;
   for (int i = 0; i < level; i++) {
     const auto& c_i {*model::cells[p.coord(i).cell]};

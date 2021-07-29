@@ -15,6 +15,7 @@ extern "C" {
   int openmc_cell_get_id(int32_t index, int32_t* id);
   int openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T);
   int openmc_cell_get_name(int32_t index, const char** name);
+  int openmc_cell_get_num_instances(int32_t index, int32_t* num_instances);
   int openmc_cell_set_name(int32_t index, const char* name);
   int openmc_cell_set_fill(int32_t index, int type, int32_t n, const int32_t* indices);
   int openmc_cell_set_id(int32_t index, int32_t id);
@@ -144,13 +145,13 @@ extern "C" {
   //! \param[in] meshtyally_id id of CMFD Mesh Tally
   //! \param[in] cmfd_indices indices storing spatial and energy dimensions of CMFD problem
   //! \param[in] norm CMFD normalization factor
-  extern "C" void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indices,
-                                               const double norm);
+  void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indices,
+                                    const double norm);
 
   //! Sets the mesh and energy grid for CMFD reweight
   //! \param[in] feedback whether or not to run CMFD feedback
   //! \param[in] cmfd_src computed CMFD source
-  extern "C" void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src);
+  void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src);
 
   //! Sets the fixed variables that are used for CMFD linear solver
   //! \param[in] indptr CSR format index pointer array of loss matrix
@@ -161,10 +162,10 @@ extern "C" {
   //! \param[in] spectral spectral radius of CMFD matrices and tolerances
   //! \param[in] map coremap for problem, storing accelerated regions
   //! \param[in] use_all_threads whether to use all threads when running CMFD solver
-  extern "C" void openmc_initialize_linsolver(const int* indptr, int len_indptr,
-                                              const int* indices, int n_elements,
-                                              int dim, double spectral,
-                                              const int* map, bool use_all_threads);
+  void openmc_initialize_linsolver(const int* indptr, int len_indptr,
+                                   const int* indices, int n_elements,
+                                   int dim, double spectral,
+                                   const int* map, bool use_all_threads);
 
   //! Runs a Gauss Seidel linear solver to solve CMFD matrix equations
   //! linear solver
@@ -173,8 +174,18 @@ extern "C" {
   //! \param[out] x unknown vector
   //! \param[in] tol tolerance on final error
   //! \return number of inner iterations required to reach convergence
-  extern "C" int openmc_run_linsolver(const double* A_data, const double* b,
+  int openmc_run_linsolver(const double* A_data, const double* b,
                                       double* x, double tol);
+
+  //! Export physical properties for model
+  //! \param[in] filename Filename to write to
+  //! \return Error code
+  int openmc_properties_export(const char* filename);
+
+  //! Import physical properties for model
+  //! \param[in] filename Filename to read from
+  // \return Error code
+  int openmc_properties_import(const char* filename);
 
   // Error codes
   extern int OPENMC_E_UNASSIGNED;

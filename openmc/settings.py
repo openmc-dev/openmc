@@ -44,8 +44,6 @@ class Settings:
         weight assigned to particles that are not killed after Russian
         roulette. Value of energy should be a float indicating energy in eV
         below which particle type will be killed.
-    dagmc : bool
-        Indicate that a CAD-based DAGMC geometry will be used.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -269,8 +267,6 @@ class Settings:
         self._material_cell_offsets = None
         self._log_grid_bins = None
 
-        self._dagmc = False
-
         self._event_based = None
         self._max_particles_in_flight = None
 
@@ -433,10 +429,6 @@ class Settings:
     @property
     def log_grid_bins(self):
         return self._log_grid_bins
-
-    @property
-    def dagmc(self):
-        return self._dagmc
 
     @property
     def event_based(self):
@@ -632,11 +624,6 @@ class Settings:
     def photon_transport(self, photon_transport):
         cv.check_type('photon transport', photon_transport, bool)
         self._photon_transport = photon_transport
-
-    @dagmc.setter
-    def dagmc(self, dagmc):
-        cv.check_type('dagmc geometry', dagmc, bool)
-        self._dagmc = dagmc
 
     @ptables.setter
     def ptables(self, ptables):
@@ -1125,11 +1112,6 @@ class Settings:
             elem = ET.SubElement(root, "log_grid_bins")
             elem.text = str(self._log_grid_bins)
 
-    def _create_dagmc_subelement(self, root):
-        if self._dagmc:
-            elem = ET.SubElement(root, "dagmc")
-            elem.text = str(self._dagmc).lower()
-
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -1407,11 +1389,6 @@ class Settings:
         if text is not None:
             self.log_grid_bins = int(text)
 
-    def _dagmc_from_xml_element(self, root):
-        text = get_text(root, 'dagmc')
-        if text is not None:
-            self.dagmc = text in ('true', '1')
-
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1465,7 +1442,6 @@ class Settings:
         self._create_max_particles_in_flight_subelement(root_element)
         self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
-        self._create_dagmc_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
@@ -1539,7 +1515,6 @@ class Settings:
         settings._max_particles_in_flight_from_xml_element(root)
         settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
-        settings._dagmc_from_xml_element(root)
 
         # TODO: Get volume calculations
 

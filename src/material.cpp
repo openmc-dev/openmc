@@ -14,7 +14,6 @@
 #include "openmc/capi.h"
 #include "openmc/cross_sections.h"
 #include "openmc/container_util.h"
-#include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
@@ -1053,6 +1052,23 @@ void Material::to_hdf5(hid_t group) const
   close_group(material_group);
 }
 
+void Material::export_properties_hdf5(hid_t group) const
+{
+  hid_t material_group = create_group(group, "material " + std::to_string(id_));
+  write_attribute(material_group, "atom_density", density_);
+  write_attribute(material_group, "mass_density", density_gpcc_);
+  close_group(material_group);
+}
+
+void Material::import_properties_hdf5(hid_t group)
+{
+  hid_t material_group = open_group(group, "material " + std::to_string(id_));
+  double density;
+  read_attribute(material_group, "atom_density", density);
+  this->set_density(density, "atom/b-cm");
+  close_group(material_group);
+}
+
 void Material::add_nuclide(const std::string& name, double density)
 {
   // Check if nuclide is already in material
@@ -1223,24 +1239,14 @@ void read_materials_xml()
 
   pugi::xml_document doc;
 
-  bool using_dagmc_mats = false;
-#ifdef DAGMC
-  if (settings::dagmc) {
-    using_dagmc_mats = read_uwuw_materials(doc);
+  // Check if materials.xml exists
+  std::string filename = settings::path_input + "materials.xml";
+  if (!file_exists(filename)) {
+    fatal_error("Material XML file '" + filename + "' does not exist!");
   }
-#endif
 
-
-  if (!using_dagmc_mats) {
-    // Check if materials.xml exists
-    std::string filename = settings::path_input + "materials.xml";
-    if (!file_exists(filename)) {
-      fatal_error("Material XML file '" + filename + "' does not exist!");
-    }
-
-    // Parse materials.xml file and get root element
-    doc.load_file(filename.c_str());
-  }
+  // Parse materials.xml file and get root element
+  doc.load_file(filename.c_str());
 
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();

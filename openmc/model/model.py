@@ -2,6 +2,8 @@ from collections.abc import Iterable
 from pathlib import Path
 import time
 
+import h5py
+
 import openmc
 from openmc.checkvalue import check_type, check_value
 
@@ -11,11 +13,11 @@ class Model:
 
     This class can be used to store instances of :class:`openmc.Geometry`,
     :class:`openmc.Materials`, :class:`openmc.Settings`,
-    :class:`openmc.Tallies`, :class:`openmc.Plots`, and :class:`openmc.CMFD`,
-    thus making a complete model. The :meth:`Model.export_to_xml` method will
-    export XML files for all attributes that have been set. If the
-    :meth:`Model.materials` attribute is not set, it will attempt to create a
-    ``materials.xml`` file based on all materials appearing in the geometry.
+    :class:`openmc.Tallies`, and :class:`openmc.Plots`, thus making a complete
+    model. The :meth:`Model.export_to_xml` method will export XML files for all
+    attributes that have been set. If the :attr:`Model.materials` attribute is
+    not set, it will attempt to create a ``materials.xml`` file based on all
+    materials appearing in the geometry.
 
     Parameters
     ----------
@@ -124,6 +126,31 @@ class Model:
             for plot in plots:
                 self._plots.append(plot)
 
+    @classmethod
+    def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
+                 settings='settings.xml'):
+        """Create model from existing XML files
+
+        Parameters
+        ----------
+        geometry : str
+            Path to geometry.xml file
+        materials : str
+            Path to materials.xml file
+        settings : str
+            Path to settings.xml file
+
+        Returns
+        -------
+        openmc.model.Model
+            Model created from XML files
+
+        """
+        materials = openmc.Materials.from_xml(materials)
+        geometry = openmc.Geometry.from_xml(geometry, materials)
+        settings = openmc.Settings.from_xml(settings)
+        return cls(geometry, materials, settings)
+
     def deplete(self, timesteps, chain_file=None, method='cecm',
                 fission_q=None, **kwargs):
         """Deplete model using specified timesteps/power
@@ -179,8 +206,7 @@ class Model:
             d.mkdir(parents=True)
 
         self.settings.export_to_xml(d)
-        if not self.settings.dagmc:
-            self.geometry.export_to_xml(d)
+        self.geometry.export_to_xml(d)
 
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build
@@ -196,6 +222,51 @@ class Model:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
+
+    def import_properties(self, filename):
+        """Import physical properties
+
+        Parameters
+        ----------
+        filename : str
+            Path to properties HDF5 file
+
+        See Also
+        --------
+        openmc.lib.export_properties
+
+        """
+        cells = self.geometry.get_all_cells()
+        materials = self.geometry.get_all_materials()
+
+        with h5py.File(filename, 'r') as fh:
+            cells_group = fh['geometry/cells']
+
+            # Make sure number of cells matches
+            n_cells = fh['geometry'].attrs['n_cells']
+            if n_cells != len(cells):
+                raise ValueError("Number of cells in properties file doesn't "
+                                 "match current model.")
+
+            # Update temperatures for cells filled with materials
+            for name, group in cells_group.items():
+                cell_id = int(name.split()[1])
+                cell = cells[cell_id]
+                if cell.fill_type in ('material', 'distribmat'):
+                    cell.temperature = group['temperature'][()]
+
+            # Make sure number of materials matches
+            mats_group = fh['materials']
+            n_cells = mats_group.attrs['n_materials']
+            if n_cells != len(materials):
+                raise ValueError("Number of materials in properties file doesn't "
+                                 "match current model.")
+
+            # Update material densities
+            for name, group in mats_group.items():
+                mat_id = int(name.split()[1])
+                atom_density = group.attrs['atom_density']
+                materials[mat_id].set_density('atom/b-cm', atom_density)
 
     def run(self, **kwargs):
         """Creates the XML files, runs OpenMC, and returns the path to the last

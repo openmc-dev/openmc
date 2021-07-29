@@ -27,7 +27,7 @@ class Cell(IDManagerMixin):
         automatically be assigned.
     name : str, optional
         Name of the cell. If not specified, the name is the empty string.
-    fill : openmc.Material or openmc.Universe or openmc.Lattice or None or iterable of openmc.Material, optional
+    fill : openmc.Material or openmc.UniverseBase or openmc.Lattice or None or iterable of openmc.Material, optional
         Indicates what the region of space is filled with
     region : openmc.Region, optional
         Region of space that is assigned to the cell.
@@ -38,7 +38,7 @@ class Cell(IDManagerMixin):
         Unique identifier for the cell
     name : str
         Name of the cell
-    fill : openmc.Material or openmc.Universe or openmc.Lattice or None or iterable of openmc.Material
+    fill : openmc.Material or openmc.UniverseBase or openmc.Lattice or None or iterable of openmc.Material
         Indicates what the region of space is filled with. If None, the cell is
         treated as a void. An iterable of materials is used to fill repeated
         instances of a cell with different materials.
@@ -156,7 +156,7 @@ class Cell(IDManagerMixin):
     def fill_type(self):
         if isinstance(self.fill, openmc.Material):
             return 'material'
-        elif isinstance(self.fill, openmc.Universe):
+        elif isinstance(self.fill, openmc.UniverseBase):
             return 'universe'
         elif isinstance(self.fill, openmc.Lattice):
             return 'lattice'
@@ -278,11 +278,10 @@ class Cell(IDManagerMixin):
                         cv.check_type('cell.fill[i]', f, openmc.Material)
 
             elif not isinstance(fill, (openmc.Material, openmc.Lattice,
-                                       openmc.Universe)):
+                                       openmc.UniverseBase)):
                 msg = ('Unable to set Cell ID="{0}" to use a non-Material or '
                        'Universe fill "{1}"'.format(self._id, fill))
                 raise ValueError(msg)
-
         self._fill = fill
 
         # Info about atom content can now be invalid

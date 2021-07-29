@@ -31,6 +31,7 @@ constexpr array<int, 2> VERSION_SUMMARY {6, 0};
 constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
+constexpr array<int, 2> VERSION_PROPERTIES {1, 0};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -378,6 +379,15 @@ enum class RunMode {
 
 // For non-accelerated regions on coarse mesh overlay
 constexpr int CMFD_NOACCEL {-1};
+
+//==============================================================================
+// Geometry Constants
+
+enum class GeometryType {
+  CSG,
+  DAG
+};
+
 
 } // namespace openmc
 

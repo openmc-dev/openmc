@@ -637,16 +637,20 @@ unsuccessful, then a search is done over every cell in the base universe.
 Building Neighbor Lists
 -----------------------
 
-After the geometry has been loaded and stored in memory from an input file,
-OpenMC builds a list for each surface containing any cells that are bounded by
-that surface in order to speed up processing of surface crossings. The algorithm
-to build these lists is as follows. First, we loop over all cells in the
-geometry and count up how many times each surface appears in a specification as
-bounding a negative half-space and bounding a positive half-space. Two arrays
-are then allocated for each surface, one that lists each cell that contains the
-negative half-space of the surface and one that lists each cell that contains
-the positive half-space of the surface. Another loop is performed over all cells
-and the neighbor lists are populated for each surface.
+Neighbor lists are data structures that are used to accelerate geometry searches
+when a particle crosses a boundary. Namely, they are used to constrain the
+number of cells that must be searched in order to determine which cell a
+particle is crossing into. Earlier versions of OpenMC relied on "surface-based"
+neighbor lists, where the cells that are adjacent to each surface are stored in
+lists, one for each side of a surface. As of version 0.11, OpenMC switched to
+using "cell-based" neighbor lists. For each cell, a list of the adjacent cells
+is stored and then used to limit future searches. Unlike surface-based neighbor
+lists, cell-based neighbor lists cannot be computed prior to transport. Thus,
+cell-based neighbor lists in OpenMC grow dynamically as particles are
+transported through the geometry and cross surfaces. Special care must be taken
+to ensure that these dynamic neighbor lists are populated in a threadsafe
+manner. Full details of the implementation in OpenMC can be found in a paper by
+`Harper et al <https://doi.org/10.1080/00295639.2020.1719765>`_.
 
 .. _reflection:
 

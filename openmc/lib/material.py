@@ -175,15 +175,6 @@ class Material(_FortranObjectWithID):
         return nuclides
 
     @property
-    def density(self):
-      density = c_double()
-      try:
-          _dll.openmc_material_get_density(self._index, density)
-      except OpenMCError:
-          return None
-      return density.value
-
-    @property
     def densities(self):
         return self._get_densities()[1]
 
@@ -223,6 +214,29 @@ class Material(_FortranObjectWithID):
 
         """
         _dll.openmc_material_add_nuclide(self._index, name.encode(), density)
+
+    def get_density(self, units='atom/b-cm'):
+        """Get density of a material.
+
+        Parameters
+        ----------
+        units : {'atom/b-cm', 'g/cm3'}
+            Units for density
+
+        Returns
+        -------
+        float
+            Density in requested units
+
+        """
+        if units == 'atom/b-cm':
+            return self.densities.sum()
+        elif units == 'g/cm3':
+            density = c_double()
+            _dll.openmc_material_get_density(self._index, density)
+            return density.value
+        else:
+            raise ValueError("Units must be 'atom/b-cm' or 'g/cm3'")
 
     def set_density(self, density, units='atom/b-cm'):
         """Set density of a material.

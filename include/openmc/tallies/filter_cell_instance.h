@@ -59,7 +59,7 @@ private:
   std::unordered_map<CellInstance, gsl::index, CellInstanceHash> map_;
 
   //! Level in the geometry to check for the cell instance
-  int32_t geom_level_ {-1};
+  int32_t geom_level_ {C_NONE};
 };
 
 } // namespace openmc

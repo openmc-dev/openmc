@@ -319,8 +319,12 @@ prepare_distribcell()
   std::unordered_set<int32_t> distribcells;
   for (auto& filt : model::tally_filters) {
     auto* distrib_filt = dynamic_cast<DistribcellFilter*>(filt.get());
+    auto* cell_inst_filt = dynamic_cast<CellInstanceFilter*>(filt.get());
     if (distrib_filt) {
       distribcells.insert(distrib_filt->cell());
+    }
+    if (cell_inst_filt) {
+      for (const auto& c_inst : cell_inst_filt->cell_instances()) distribcells.insert(c_inst.index_cell);
     }
   }
 

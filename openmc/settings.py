@@ -485,13 +485,13 @@ class Settings:
     @keff_trigger.setter
     def keff_trigger(self, keff_trigger):
         if not isinstance(keff_trigger, dict):
-            msg = 'Unable to set a trigger on keff from "{0}" which ' \
-                  'is not a Python dictionary'.format(keff_trigger)
+            msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
+                  'which is not a Python dictionary'
             raise ValueError(msg)
 
         elif 'type' not in keff_trigger:
-            msg = 'Unable to set a trigger on keff from "{0}" which ' \
-                  'does not have a "type" key'.format(keff_trigger)
+            msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
+                  'which does not have a "type" key'
             raise ValueError(msg)
 
         elif keff_trigger['type'] not in ['variance', 'std_dev', 'rel_err']:
@@ -500,8 +500,8 @@ class Settings:
             raise ValueError(msg)
 
         elif 'threshold' not in keff_trigger:
-            msg = 'Unable to set a trigger on keff from "{0}" which ' \
-                  'does not have a "threshold" key'.format(keff_trigger)
+            msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
+                  'which does not have a "threshold" key'
             raise ValueError(msg)
 
         elif not isinstance(keff_trigger['threshold'], Real):
@@ -537,7 +537,7 @@ class Settings:
         for key, value in output.items():
             cv.check_value('output key', key, ('summary', 'tallies', 'path'))
             if key in ('summary', 'tallies'):
-                cv.check_type("output['{}']".format(key), value, bool)
+                cv.check_type(f"output['{key}']", value, bool)
             else:
                 cv.check_type("output['path']", value, str)
         self._output = output
@@ -564,8 +564,8 @@ class Settings:
             elif key == 'overwrite':
                 cv.check_type('sourcepoint overwrite', value, bool)
             else:
-                raise ValueError("Unknown key '{}' encountered when setting "
-                                 "sourcepoint options.".format(key))
+                raise ValueError(f"Unknown key '{key}' encountered when "
+                                 "setting sourcepoint options.")
         self._sourcepoint = sourcepoint
 
     @statepoint.setter
@@ -577,8 +577,8 @@ class Settings:
                 for batch in value:
                     cv.check_greater_than('statepoint batch', batch, 0)
             else:
-                raise ValueError("Unknown key '{}' encountered when setting "
-                                 "statepoint options.".format(key))
+                raise ValueError(f"Unknown key '{key}' encountered when "
+                                 "setting statepoint options.")
         self._statepoint = statepoint
 
     @surf_source_read.setter
@@ -644,8 +644,8 @@ class Settings:
     @cutoff.setter
     def cutoff(self, cutoff):
         if not isinstance(cutoff, Mapping):
-            msg = 'Unable to set cutoff from "{0}" which is not a '\
-                  ' Python dictionary'.format(cutoff)
+            msg = f'Unable to set cutoff from "{cutoff}" which is not a '\
+                  'Python dictionary'
             raise ValueError(msg)
         for key in cutoff:
             if key == 'weight':
@@ -660,8 +660,8 @@ class Settings:
                 cv.check_type('energy cutoff', cutoff[key], Real)
                 cv.check_greater_than('energy cutoff', cutoff[key], 0.0)
             else:
-                msg = 'Unable to set cutoff to "{0}" which is unsupported by '\
-                      'OpenMC'.format(key)
+                msg = f'Unable to set cutoff to "{key}" which is unsupported ' \
+                      'by OpenMC'
 
         self._cutoff = cutoff
 
@@ -742,8 +742,8 @@ class Settings:
     def track(self, track):
         cv.check_type('track', track, Iterable, Integral)
         if len(track) % 3 != 0:
-            msg = 'Unable to set the track to "{0}" since its length is ' \
-                  'not a multiple of 3'.format(track)
+            msg = f'Unable to set the track to "{track}" since its length is ' \
+                  'not a multiple of 3'
             raise ValueError(msg)
         for t in zip(track[::3], track[1::3], track[2::3]):
             cv.check_greater_than('track batch', t[0], 0)
@@ -995,7 +995,7 @@ class Settings:
                     self.entropy_mesh.dimension = (n,)*d
 
             # See if a <mesh> element already exists -- if not, add it
-            path = "./mesh[@id='{}']".format(self.entropy_mesh.id)
+            path = f"./mesh[@id='{self.entropy_mesh.id}']"
             if root.find(path) is None:
                 root.append(self.entropy_mesh.to_xml_element())
 
@@ -1033,8 +1033,7 @@ class Settings:
     def _create_temperature_subelements(self, root):
         if self.temperature:
             for key, value in sorted(self.temperature.items()):
-                element = ET.SubElement(root,
-                                        "temperature_{}".format(key))
+                element = ET.SubElement(root, f"temperature_{key}")
                 if isinstance(value, bool):
                     element.text = str(value).lower()
                 elif key == 'range':
@@ -1055,7 +1054,7 @@ class Settings:
     def _create_ufs_mesh_subelement(self, root):
         if self.ufs_mesh is not None:
             # See if a <mesh> element already exists -- if not, add it
-            path = "./mesh[@id='{}']".format(self.ufs_mesh.id)
+            path = f"./mesh[@id='{self.ufs_mesh.id}']"
             if root.find(path) is None:
                 root.append(self.ufs_mesh.to_xml_element())
 
@@ -1274,7 +1273,7 @@ class Settings:
     def _entropy_mesh_from_xml_element(self, root):
         text = get_text(root, 'entropy_mesh')
         if text is not None:
-            path = "./mesh[@id='{}']".format(int(text))
+            path = f"./mesh[@id='{int(text)}']"
             elem = root.find(path)
             if elem is not None:
                 self.entropy_mesh = RegularMesh.from_xml_element(elem)
@@ -1339,7 +1338,7 @@ class Settings:
     def _ufs_mesh_from_xml_element(self, root):
         text = get_text(root, 'ufs_mesh')
         if text is not None:
-            path = "./mesh[@id='{}']".format(int(text))
+            path = f"./mesh[@id='{int(text)}']"
             elem = root.find(path)
             if elem is not None:
                 self.ufs_mesh = RegularMesh.from_xml_element(elem)

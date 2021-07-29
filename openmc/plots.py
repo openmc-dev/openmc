@@ -379,7 +379,7 @@ class Plot(IDManagerMixin):
 
     @show_overlaps.setter
     def show_overlaps(self, show_overlaps):
-        cv.check_type('Show overlaps flag for Plot ID="{}"'.format(self.id),
+        cv.check_type(f'Show overlaps flag for Plot ID="{self.id}"',
                       show_overlaps, bool)
         self._show_overlaps = show_overlaps
 
@@ -398,8 +398,8 @@ class Plot(IDManagerMixin):
     def meshlines(self, meshlines):
         cv.check_type('plot meshlines', meshlines, dict)
         if 'type' not in meshlines:
-            msg = 'Unable to set the meshlines to "{}" which ' \
-                  'does not have a "type" key'.format(meshlines)
+            msg = f'Unable to set the meshlines to "{meshlines}" which ' \
+                  'does not have a "type" key'
             raise ValueError(msg)
 
         elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
@@ -427,7 +427,7 @@ class Plot(IDManagerMixin):
         cv.check_type(err_string, color, Iterable)
         if isinstance(color, str):
             if color.lower() not in _SVG_COLORS:
-                raise ValueError("'{}' is not a valid color.".format(color))
+                raise ValueError(f"'{color}' is not a valid color.")
         else:
             cv.check_length(err_string, color, 3)
             for rgb in color:
@@ -494,8 +494,8 @@ class Plot(IDManagerMixin):
         upper_right = upper_right[np.array(pick_index)]
 
         if np.any(np.isinf((lower_left, upper_right))):
-            raise ValueError('The geometry does not appear to be bounded '
-                             'in the {} plane.'.format(basis))
+            raise ValueError(f'The geometry does not appear to be bounded '
+                             'in the {basis} plane.')
 
         plot = cls()
         plot.origin = np.insert((lower_left + upper_right)/2,
@@ -568,7 +568,7 @@ class Plot(IDManagerMixin):
         # Get a background (R,G,B) tuple to apply in alpha compositing
         if isinstance(background, str):
             if background.lower() not in _SVG_COLORS:
-                raise ValueError("'{}' is not a valid color.".format(background))
+                raise ValueError(f"'{background}' is not a valid color.")
             background = _SVG_COLORS[background.lower()]
 
         # Generate a color scheme
@@ -706,9 +706,9 @@ class Plot(IDManagerMixin):
 
         # Convert to .png
         if self.filename is not None:
-            ppm_file = '{}.ppm'.format(self.filename)
+            ppm_file = f'{self.filename}.ppm'
         else:
-            ppm_file = 'plot_{}.ppm'.format(self.id)
+            ppm_file = f'plot_{self.id}.ppm'
         png_file = ppm_file.replace('.ppm', '.png')
         subprocess.check_call([convert_exec, ppm_file, png_file])
 

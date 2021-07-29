@@ -85,7 +85,7 @@ class LegendreFilter(ExpansionFilter):
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = ['P{}'.format(i) for i in range(order + 1)]
+        self.bins = [f'P{i}' for i in range(order + 1)]
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -164,7 +164,7 @@ class SpatialLegendreFilter(ExpansionFilter):
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = ['P{}'.format(i) for i in range(order + 1)]
+        self.bins = [f'P{i}' for i in range(order + 1)]
 
     @property
     def axis(self):
@@ -275,7 +275,7 @@ class SphericalHarmonicsFilter(ExpansionFilter):
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = ['Y{},{}'.format(n, m)
+        self.bins = [f'Y{n},{m}'
                      for n in range(order + 1)
                      for m in range(-n, n + 1)]
 
@@ -401,7 +401,7 @@ class ZernikeFilter(ExpansionFilter):
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = ['Z{},{}'.format(n, m)
+        self.bins = [f'Z{n},{m}'
                      for n in range(order + 1)
                      for m in range(-n, n + 1, 2)]
 
@@ -522,4 +522,4 @@ class ZernikeRadialFilter(ZernikeFilter):
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = ['Z{},0'.format(n) for n in range(0, order+1, 2)]
+        self.bins = [f'Z{n},0' for n in range(0, order+1, 2)]

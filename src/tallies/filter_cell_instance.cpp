@@ -56,8 +56,8 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
     const auto& c {model::cells[x.index_cell]};
     if (c->type_ != Fill::MATERIAL && geom_level_ < 0) {
       throw std::invalid_argument{fmt::format(
-        "Cell {} is not filled with a material. Only material cells can be "
-        "used in a cell instance filter.", c->id_)};
+        "Cell {} is not filled with a material. A geometry level must be specified to"
+        "use cells filled with a universe or lattice.", c->id_)};
     }
     cell_instances_.push_back(x);
     map_[x] = cell_instances_.size() - 1;
@@ -82,7 +82,7 @@ CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   if (geom_level_ >= 0) {
     // if the particle has fewer levels than the cell we're looking for,
     // return no bins
-    if (p.coord(geom_level_).cell == C_NONE) return;
+    if (p.n_coord() - 1 < geom_level_ || p.coord(geom_level_).cell == C_NONE) return;
 
     // otherwise use the cell at the requested level
     // and compute the cell instance for this particle's position

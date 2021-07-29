@@ -57,17 +57,20 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
   for (auto& x : instances) {
     Expects(x.index_cell >= 0);
     Expects(x.index_cell < model::cells.size());
-    const auto& c {model::cells[x.index_cell]};
-    if (c->type_ != Fill::MATERIAL && geom_level_ < 0) {
-      throw std::invalid_argument{fmt::format(
-        "Cell {} is not filled with a material. A geometry level must be specified to"
-        "use cells filled with a universe or lattice.", c->id_)};
-    }
     cell_instances_.push_back(x);
+    cells_.insert(x.index_cell);
     map_[x] = cell_instances_.size() - 1;
   }
 
   n_bins_ = cell_instances_.size();
+
+  material_cells_only_ = true;
+  for (const auto& cell_inst : cell_instances_) {
+    const auto& c = *model::cells[cell_inst.index_cell];
+    if (c.type_ == Fill::MATERIAL) continue;
+    material_cells_only_ = false;
+    break;
+  }
 }
 
 void
@@ -83,22 +86,29 @@ CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   gsl::index index_cell = p.coord(p.n_coord() - 1).cell;
   gsl::index instance = p.cell_instance();
 
-  if (geom_level_ >= 0) {
-    // if the particle has fewer levels than the cell we're looking for,
-    // return no bins
-    if (p.n_coord() - 1 < geom_level_ || p.coord(geom_level_).cell == C_NONE) return;
-
-    // otherwise use the cell at the requested level
-    // and compute the cell instance for this particle's position
-    index_cell = p.coord(geom_level_).cell;
-    instance = cell_instance_at_level(p, geom_level_);
+  if (cells_.count(index_cell) > 0) {
+    auto search = map_.find({index_cell, instance});
+    if (search != map_.end()) {
+      int index_bin = search->second;
+      match.bins_.push_back(index_bin);
+      match.weights_.push_back(1.0);
+    }
   }
 
-  auto search = map_.find({index_cell, instance});
-  if (search != map_.end()) {
-    int index_bin = search->second;
-    match.bins_.push_back(index_bin);
-    match.weights_.push_back(1.0);
+  if (!material_cells_only_) {
+    for (int i = 0; i < p.n_coord() - 1; i++) {
+      gsl::index index_cell = p.coord(i).cell;
+      // if this cell isn't used on the filter, move on
+      if (cells_.count(index_cell) == 0) continue;
+
+      // if this cell is used in the filter, check the instance as well
+      gsl::index instance = cell_instance_at_level(p, i);
+      auto search = map_.find({index_cell, instance});
+      if (search != map_.end()) {
+        match.bins_.push_back(search->second);
+        match.bins_.push_back(1.0);
+      }
+    }
   }
 }
 

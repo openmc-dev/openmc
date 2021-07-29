@@ -106,7 +106,7 @@ class Lattice(IDManagerMixin, ABC):
         elif lattice_type == 'hexagonal':
             return openmc.HexLattice.from_hdf5(group, universes)
         else:
-            raise ValueError('Unkown lattice type: {}'.format(lattice_type))
+            raise ValueError(f'Unkown lattice type: {lattice_type}')
 
     def get_unique_universes(self):
         """Determine all unique universes in the lattice
@@ -416,7 +416,7 @@ class RectLattice(Lattice):
 
         # Lattice nested Universe IDs
         for i, universe in enumerate(np.ravel(self._universes)):
-            string += '{} '.format(universe._id)
+            string += f'{universe._id} '
 
             # Add a newline character every time we reach end of row of cells
             if (i + 1) % self.shape[0] == 0:
@@ -865,7 +865,7 @@ class RectLattice(Lattice):
         # Export the Lattice outer Universe (if specified)
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
-            outer.text = '{0}'.format(self._outer._id)
+            outer.text = f'{self._outer._id}'
             self._outer.create_xml_subelement(xml_element, memo)
 
         # Export Lattice cell dimensions
@@ -887,7 +887,7 @@ class RectLattice(Lattice):
                         universe = self._universes[z][y][x]
 
                         # Append Universe ID to the Lattice XML subelement
-                        universe_ids += '{0} '.format(universe._id)
+                        universe_ids += f'{universe._id} '
 
                         # Create XML subelement for this Universe
                         universe.create_xml_subelement(xml_element, memo)
@@ -905,7 +905,7 @@ class RectLattice(Lattice):
                     universe = self._universes[y][x]
 
                     # Append Universe ID to Lattice XML subelement
-                    universe_ids += '{0} '.format(universe._id)
+                    universe_ids += f'{universe._id} '
 
                     # Create XML subelement for this Universe
                     universe.create_xml_subelement(xml_element, memo)
@@ -1432,7 +1432,7 @@ class HexLattice(Lattice):
         # Export the Lattice outer Universe (if specified)
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
-            outer.text = '{0}'.format(self._outer._id)
+            outer.text = f'{self._outer._id}'
             self._outer.create_xml_subelement(xml_element, memo)
 
         lattice_subelement.set("n_rings", str(self._num_rings))

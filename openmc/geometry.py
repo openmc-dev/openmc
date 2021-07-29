@@ -424,7 +424,7 @@ class Geometry:
 
         domains = []
 
-        func = getattr(self, 'get_all_{}s'.format(domain_type))
+        func = getattr(self, f'get_all_{domain_type}s')
         for domain in func().values():
             domain_name = domain.name if case_sensitive else domain.name.lower()
             if domain_name == name:

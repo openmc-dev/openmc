@@ -38,6 +38,10 @@ CellInstanceFilter::from_xml(pugi::xml_node node)
     instances.push_back({index, instance});
   }
 
+  if (check_for_node(node, "geometry_level")) {
+    this->set_geom_level(std::stoi(get_node_value(node, "geometry_level")));
+  }
+
   this->set_cell_instances(instances);
 }
 

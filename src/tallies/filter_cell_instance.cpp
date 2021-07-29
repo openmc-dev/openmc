@@ -38,10 +38,6 @@ CellInstanceFilter::from_xml(pugi::xml_node node)
     instances.push_back({index, instance});
   }
 
-  if (check_for_node(node, "geometry_level")) {
-    this->set_geom_level(std::stoi(get_node_value(node, "geometry_level")));
-  }
-
   this->set_cell_instances(instances);
 }
 
@@ -51,6 +47,7 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
   // Clear existing cells
   cell_instances_.clear();
   cell_instances_.reserve(instances.size());
+  cells_.clear();
   map_.clear();
 
   // Update cells and mapping
@@ -71,12 +68,6 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
     material_cells_only_ = false;
     break;
   }
-}
-
-void
-CellInstanceFilter::set_geom_level(int32_t level) {
-  Expects(level >= 0);
-  geom_level_ = level;
 }
 
 void

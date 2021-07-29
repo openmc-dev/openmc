@@ -53,7 +53,7 @@ def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=F
                               name, value, ', '.join([t.__name__ for t in
                                                       expected_iter_type]))
                 else:
-                    msg = ('Unable to set "{name}" to "{value}" since each '
+                    msg = (f'Unable to set "{name}" to "{value}" since each '
                           'item must be of type "{expected_iter_type.__name__}"')
                 raise TypeError(msg)
 

@@ -655,7 +655,7 @@ class StatePoint:
             return
 
         if not isinstance(summary, openmc.Summary):
-            msg = 'Unable to link statepoint with "{summary}" which is not a' \
+            msg = f'Unable to link statepoint with "{summary}" which is not a' \
                   'Summary object'
             raise ValueError(msg)
 

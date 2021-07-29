@@ -352,7 +352,7 @@ class Tally(IDManagerMixin):
         visited_nuclides = set()
         for nuc in nuclides:
             if nuc in visited_nuclides:
-                msg = ('Unable to add a duplicate nuclide "{nuc}" to Tally ID='
+                msg = (f'Unable to add a duplicate nuclide "{nuc}" to Tally ID='
                        '"{self.id}" since duplicate nuclides are not supported '
                        'in the OpenMC Python API')
                 raise ValueError(msg)
@@ -684,7 +684,7 @@ class Tally(IDManagerMixin):
         """
 
         if not self.can_merge(other):
-            msg = 'Unable to merge tally ID="{other.id}" with "{self.id}"'
+            msg = f'Unable to merge tally ID="{other.id}" with "{self.id}"'
             raise ValueError(msg)
 
         # Create deep copy of tally to return as merged tally
@@ -921,7 +921,7 @@ class Tally(IDManagerMixin):
                     return test_filter
 
         # If we did not find the Filter, throw an Exception
-        msg = 'Unable to find filter type "{filter_type}" in Tally ' \
+        msg = f'Unable to find filter type "{filter_type}" in Tally ' \
               'ID="{self.id}"'
         raise ValueError(msg)
 

@@ -327,8 +327,7 @@ class Universe(UniverseBase):
             for obj, color in colors.items():
                 if isinstance(color, str):
                     if color.lower() not in _SVG_COLORS:
-                        raise ValueError("'{}' is not a valid color."
-                                         .format(color))
+                        raise ValueError(f"'{color}' is not a valid color.")
                     colors[obj] = [x/255 for x in
                                    _SVG_COLORS[color.lower()]] + [1.0]
                 elif len(color) == 3:
@@ -402,8 +401,8 @@ class Universe(UniverseBase):
         """
 
         if not isinstance(cell, openmc.Cell):
-            msg = 'Unable to add a Cell to Universe ID="{0}" since "{1}" is not ' \
-                  'a Cell'.format(self._id, cell)
+            msg = f'Unable to add a Cell to Universe ID="{self._id}" since ' \
+                  '"{cell}" is not a Cell'
             raise TypeError(msg)
 
         cell_id = cell.id
@@ -422,8 +421,8 @@ class Universe(UniverseBase):
         """
 
         if not isinstance(cells, Iterable):
-            msg = 'Unable to add Cells to Universe ID="{0}" since "{1}" is not ' \
-                  'iterable'.format(self._id, cells)
+            msg = f'Unable to add Cells to Universe ID="{self._id}" since ' \
+                  '"{cells}" is not iterable'
             raise TypeError(msg)
 
         for cell in cells:
@@ -440,8 +439,8 @@ class Universe(UniverseBase):
         """
 
         if not isinstance(cell, openmc.Cell):
-            msg = 'Unable to remove a Cell from Universe ID="{0}" since "{1}" is ' \
-                  'not a Cell'.format(self._id, cell)
+            msg = f'Unable to remove a Cell from Universe ID="{self._id}" ' \
+                  'since "{cell}" is not a Cell'
             raise TypeError(msg)
 
         # If the Cell is in the Universe's list of Cells, delete it
@@ -492,10 +491,10 @@ class Universe(UniverseBase):
                 nuclides[name] = (nuclide, density)
         else:
             raise RuntimeError(
-                'Volume information is needed to calculate microscopic cross '
-                'sections for universe {}. This can be done by running a '
-                'stochastic volume calculation via the '
-                'openmc.VolumeCalculation object'.format(self.id))
+                f'Volume information is needed to calculate microscopic cross '
+                'sections for universe {self.id}. This can be done by running '
+                'a stochastic volume calculation via the '
+                'openmc.VolumeCalculation object')
 
         return nuclides
 
@@ -586,10 +585,10 @@ class Universe(UniverseBase):
         """Count the number of instances for each cell in the universe, and
         record the count in the :attr:`Cell.num_instances` properties."""
 
-        univ_path = path + 'u{}'.format(self.id)
+        univ_path = path + f'u{self.id}'
 
         for cell in self.cells.values():
-            cell_path = '{}->c{}'.format(univ_path, cell.id)
+            cell_path = f'{univ_path}->c{cell.id}'
             fill = cell._fill
             fill_type = cell.fill_type
 
@@ -619,7 +618,7 @@ class Universe(UniverseBase):
                 if mat is not None:
                     mat._num_instances += 1
                     if not instances_only:
-                        mat._paths.append('{}->m{}'.format(cell_path, mat.id))
+                        mat._paths.append(f'{cell_path}->m{mat.id}')
 
             # Append current path
             cell._num_instances += 1

@@ -1111,7 +1111,7 @@ class RealFilter(Filter):
         for pair0, pair1 in zip(bins[:-1], bins[1:]):
             # Successive pairs should be ordered
             if pair1[1] < pair0[1]:
-                raise ValueError('Values {pair1[1]} and {pair0[1]} appear to '
+                raise ValueError(f'Values {pair1[1]} and {pair0[1]} appear to '
                                  'be out of order')
 
     def can_merge(self, other):
@@ -1414,7 +1414,7 @@ class DistribcellFilter(Filter):
 
         # Make sure there is only 1 bin.
         if not len(bins) == 1:
-            msg =(f'Unable to add bins "{bins}" to a DistribcellFilter since '
+            msg = (f'Unable to add bins "{bins}" to a DistribcellFilter since '
                   'only a single distribcell can be used per tally')
             raise ValueError(msg)
 

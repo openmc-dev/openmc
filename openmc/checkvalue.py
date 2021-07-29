@@ -28,7 +28,7 @@ def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=F
 
     if not isinstance(value, expected_type):
         if isinstance(expected_type, Iterable):
-            msg = f'Unable to set "{}" to "{}" which is not one of the ' \
+            msg = 'Unable to set "{}" to "{}" which is not one of the ' \
                   'following types: "{}"'.format(name, value, ', '.join(
                       [t.__name__ for t in expected_type]))
         else:

@@ -550,6 +550,8 @@ class CellInstanceFilter(Filter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
+    geometry_level : Integral
+        Geometry level of the specified cell (used to compute instances in the simulation)
 
     See Also
     --------
@@ -559,6 +561,7 @@ class CellInstanceFilter(Filter):
     def __init__(self, bins, filter_id=None):
         self.bins = bins
         self.id = filter_id
+        self._geom_level = None
 
     @Filter.bins.setter
     def bins(self, bins):
@@ -569,6 +572,15 @@ class CellInstanceFilter(Filter):
             pairs[i, 0] = cell if isinstance(cell, Integral) else cell.id
             pairs[i, 1] = instance
         self._bins = pairs
+
+    @property
+    def geometry_level(self):
+        return self._geometry_level
+
+    @geometry_level.setter
+    def geometry_level(self, val):
+        cv.check_type('geometry level', val, Integral)
+        self._geometry_level = val
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -618,7 +630,8 @@ class CellInstanceFilter(Filter):
         element = ET.Element('filter')
         element.set('id', str(self.id))
         element.set('type', self.short_name.lower())
-
+        if self.geometry_level:
+            element.set('geometry_level', self.geometry_level)
         subelement = ET.SubElement(element, 'bins')
         subelement.text = ' '.join(str(i) for i in self.bins.ravel())
         return element

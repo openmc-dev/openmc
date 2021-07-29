@@ -543,8 +543,6 @@ class AggregateFilter:
 
     def __init__(self, aggregate_filter, bins=None, aggregate_op=None):
 
-        self._type = '{}({})'.format(aggregate_op,
-                                     aggregate_filter.short_name.lower())
         self._type = f'{aggregate_op}({aggregate_filter.short_name.lower()})'
         self._bins = None
 

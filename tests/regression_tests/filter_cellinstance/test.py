@@ -1,10 +1,10 @@
+from numpy.testing import assert_array_almost_equal
 import openmc
 import openmc.model
 import pytest
 
-from numpy.testing import assert_array_almost_equal
-
 from tests.testing_harness import PyAPITestHarness
+
 
 class CellInstanceFilterTest(PyAPITestHarness):
 
@@ -41,7 +41,7 @@ def model():
     cyl1 = openmc.ZCylinder(r=0.7)
     c1 = openmc.Cell(fill=m1, region=-cyl1)
     c2 = openmc.Cell(fill=m2, region=+cyl1)
-    # intermediate universe
+    # intermediate universe containing only cell 2
     u1 = openmc.Universe(cells=[c2])
     c3 = openmc.Cell(fill=u1)
     u2 = openmc.Universe(cells=[c1, c3])

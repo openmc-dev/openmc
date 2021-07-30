@@ -86,19 +86,19 @@ CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
     }
   }
 
-  if (!material_cells_only_) {
-    for (int i = 0; i < p.n_coord() - 1; i++) {
-      gsl::index index_cell = p.coord(i).cell;
-      // if this cell isn't used on the filter, move on
-      if (cells_.count(index_cell) == 0) continue;
+  if (material_cells_only_) return;
 
-      // if this cell is used in the filter, check the instance as well
-      gsl::index instance = cell_instance_at_level(p, i);
-      auto search = map_.find({index_cell, instance});
-      if (search != map_.end()) {
-        match.bins_.push_back(search->second);
-        match.weights_.push_back(1.0);
-      }
+  for (int i = 0; i < p.n_coord() - 1; i++) {
+    gsl::index index_cell = p.coord(i).cell;
+    // if this cell isn't used on the filter, move on
+    if (cells_.count(index_cell) == 0) continue;
+
+    // if this cell is used in the filter, check the instance as well
+    gsl::index instance = cell_instance_at_level(p, i);
+    auto search = map_.find({index_cell, instance});
+    if (search != map_.end()) {
+      match.bins_.push_back(search->second);
+      match.weights_.push_back(1.0);
     }
   }
 }

@@ -22,7 +22,10 @@ def model():
     cyl1 = openmc.ZCylinder(r=0.7)
     c1 = openmc.Cell(fill=m1, region=-cyl1)
     c2 = openmc.Cell(fill=m2, region=+cyl1)
-    u1 = openmc.Universe(cells=[c1, c2])
+    # intermediate universe
+    ui = openmc.Universe(cells=[c2])
+    ci = openmc.Cell(fill=ui)
+    u1 = openmc.Universe(cells=[c1, ci])
 
     cyl2 = openmc.ZCylinder(r=0.5)
     c3 = openmc.Cell(fill=m1, region=-cyl2)
@@ -50,7 +53,8 @@ def model():
     model.settings.source = openmc.Source(space=openmc.stats.Point())
 
     instances = ([(c3, i) for i in range(c3.num_instances)] +
-                 [(c2, i) for i in range(c2.num_instances)])
+                 [(c2, i) for i in range(c2.num_instances)] +
+                 [(ci, i) for i in range(ci.num_instances)])
     f1 = openmc.CellInstanceFilter(instances)
     f2 = openmc.CellInstanceFilter(instances[::-1])
     t1 = openmc.Tally()

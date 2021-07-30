@@ -74,6 +74,7 @@ int cell_instance_at_level(const Particle& p, int level) {
   // determine the cell instance
   Cell& c {*model::cells[p.coord(level).cell]};
 
+  // quick exit if this cell doesn't have distribcell instances
   if (c.distribcell_index_ == C_NONE) return C_NONE;
 
   int instance = 0;

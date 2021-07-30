@@ -46,8 +46,6 @@ public:
 
   void set_cell_instances(gsl::span<CellInstance> instances);
 
-  void set_geom_level(int32_t level);
-
 private:
   //----------------------------------------------------------------------------
   // Data members
@@ -60,9 +58,6 @@ private:
 
   //! A map from cell/instance indices to filter bin indices.
   std::unordered_map<CellInstance, gsl::index, CellInstanceHash> map_;
-
-  //! Level in the geometry to check for the cell instance
-  int32_t geom_level_ {C_NONE};
 
   //! Indicates if filter uses only material-filled cells
   bool material_cells_only_;

@@ -68,8 +68,6 @@ class MGXSTestHarness(PyAPITestHarness):
         return outstr
 
 
-@pytest.mark.xfail(sys.version_info < (3, 6),
-                   reason="Pandas 1.0 API changed and requires Python 3.6+")
 def test_mgxs_library_distribcell():
     model = pwr_assembly()
     harness = MGXSTestHarness('statepoint.10.h5', model)

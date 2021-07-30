@@ -1309,7 +1309,7 @@ openmc_cell_set_id(int32_t index, int32_t id)
 extern "C" int openmc_cell_get_translation(int32_t index, double xyz[])
 {
   if (index >= 0 && index < model::cells.size()) {
-    auto& cell = openmc::model::cells[index];
+    auto& cell = model::cells[index];
     xyz[0] = cell->translation_.x;
     xyz[1] = cell->translation_.y;
     xyz[2] = cell->translation_.z;
@@ -1342,7 +1342,7 @@ extern "C" int openmc_cell_set_translation(int32_t index, const double xyz[])
 extern "C" int openmc_cell_get_rotation(int32_t index, double rot[], size_t* n)
 {
   if (index >= 0 && index < model::cells.size()) {
-    auto& cell = openmc::model::cells[index];
+    auto& cell = model::cells[index];
     *n = cell->rotation_.size();
     std::memcpy(rot, cell->rotation_.data(), *n * sizeof(cell->rotation_[0]));
     return 0;
@@ -1354,7 +1354,7 @@ extern "C" int openmc_cell_get_rotation(int32_t index, double rot[], size_t* n)
 
 //! Set the flattened rotation matrix of a cell
 extern "C" int openmc_cell_set_rotation(int32_t index, const double rot[],
-    const size_t rot_len)
+    size_t rot_len)
 {
   if (index >= 0 && index < model::cells.size()) {
     if (model::cells[index]->fill_ == C_NONE) {

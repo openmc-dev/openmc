@@ -97,7 +97,7 @@ CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
       auto search = map_.find({index_cell, instance});
       if (search != map_.end()) {
         match.bins_.push_back(search->second);
-        match.bins_.push_back(1.0);
+        match.weights_.push_back(1.0);
       }
     }
   }

@@ -103,6 +103,13 @@ class Cell(_FortranObjectWithID):
         Number of unique cell instances
     bounding_box : 2-tuple of numpy.ndarray
         Lower-left and upper-right coordinates of bounding box
+    translation : Iterable of float
+        3-D coordinates of the translation vector
+    rotation : Iterable of float
+        The rotation matrix or angles of the universe filling the cell. This
+        can either be a fully specified 3 x 3 rotation matrix or an Iterable
+        of length 3 with the angles in degrees about the x, y, and z axes,
+        respectively.
 
     """
     __instances = WeakValueDictionary()
@@ -227,62 +234,43 @@ class Cell(_FortranObjectWithID):
 
         _dll.openmc_cell_set_temperature(self._index, T, instance, set_contained)
 
-    def get_translation(self):
-        """Get the translation vector of a cell
-
-        """
-
+    @property
+    def translation(self):
         translation = np.zeros(3)
         _dll.openmc_cell_get_translation(
             self._index, translation.ctypes.data_as(POINTER(c_double)))
         return translation
 
-    def set_translation(self, translation):
-        """Set the translation vector of a cell
-
-        Parameters
-        ----------
-        translation : numpy.ndarray
-            3-D translation vector
-
-        """
-
+    @translation.setter
+    def translation(self, translation_vec):
+        vector = np.asarray(translation_vec, dtype=float)
         _dll.openmc_cell_set_translation(
-            self._index, translation.ctypes.data_as(POINTER(c_double)))
+            self._index, vector.ctypes.data_as(POINTER(c_double)))
 
-    def get_rotation(self):
-        """Get the rotation matrix of a cell
-
-        """
-
-        rotation = np.zeros(12)
+    @property
+    def rotation(self):
+        rotation_data = np.zeros(12)
         rot_size = c_size_t()
 
         _dll.openmc_cell_get_rotation(
-            self._index, rotation.ctypes.data_as(POINTER(c_double)), rot_size)
+            self._index, rotation_data.ctypes.data_as(POINTER(c_double)),
+            rot_size)
         rot_size = rot_size.value
 
-        if rot_size == 0:
-            return None
-        elif rot_size == 9:
-            return rotation[:n]
-        elif rot_size == 12:
-            return rotation[9:]
+        if rot_size == 9:
+            return rotation_data[:rot_size].shape(3, 3)
+        elif rot_size in (0, 12):
+            # If size is 0, rotation_data[9:] will be zeros. This indicates no
+            # rotation and is the most straightforward way to always return
+            # an iterable of floats
+            return rotation_data[9:]
         else:
             raise ValueError(
                 'Invalid size of rotation matrix: {}'.format(rot_size))
 
-    def set_rotation(self, rotation):
-        """Set the rotation matrix of a cell
-
-        Parameters
-        ----------
-        rotation : numpy.ndarray
-            The rotation angles (if length is 3) or the 3x3 rotation matrix
-
-        """
-
-        flat_rotation = rotation.flatten()
+    @rotation.setter
+    def rotation(self, rotation_data):
+        flat_rotation = np.asarray(rotation_data, dtype=float).flatten()
 
         _dll.openmc_cell_set_rotation(
             self._index, flat_rotation.ctypes.data_as(POINTER(c_double)),

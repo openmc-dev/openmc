@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="1" material="1" region="-1" universe="2" />
   <cell id="2" material="2" region="1" universe="1" />
   <cell fill="1" id="3" universe="2" />
   <cell id="4" material="1" region="-2" universe="3" />

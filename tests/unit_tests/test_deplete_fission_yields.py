@@ -43,12 +43,11 @@ def materials(tmpdir_factory):
         with lib.run_in_memory():
             yield [lib.Material(), lib.Material()]
     finally:
-        # Convert to strings as os.remove in py 3.5 doesn't support Paths
         for file_path in ("settings.xml", "geometry.xml", "materials.xml",
                           "summary.h5"):
-            os.remove(str(tmpdir / file_path))
+            os.remove(tmpdir / file_path)
         orig.chdir()
-        os.rmdir(str(tmpdir))
+        os.rmdir(tmpdir)
 
 
 def proxy_tally_data(tally, fill=None):

@@ -193,8 +193,8 @@ def get_openmoc_surface(openmc_surface):
         openmoc_surface = openmoc.ZCylinder(x0, y0, R, surface_id, name)
 
     else:
-        msg = (f'Unable to create an OpenMOC Surface from an OpenMC Surface of '
-               'type "{type(openmc_surface)}" since it is not a compatible '
+        msg = ('Unable to create an OpenMOC Surface from an OpenMC Surface of '
+               f'type "{type(openmc_surface)}" since it is not a compatible '
                'Surface type in OpenMOC')
         raise ValueError(msg)
 

@@ -402,7 +402,7 @@ class Universe(UniverseBase):
 
         if not isinstance(cell, openmc.Cell):
             msg = f'Unable to add a Cell to Universe ID="{self._id}" since ' \
-                  '"{cell}" is not a Cell'
+                  f'"{cell}" is not a Cell'
             raise TypeError(msg)
 
         cell_id = cell.id
@@ -422,7 +422,7 @@ class Universe(UniverseBase):
 
         if not isinstance(cells, Iterable):
             msg = f'Unable to add Cells to Universe ID="{self._id}" since ' \
-                  '"{cells}" is not iterable'
+                  f'"{cells}" is not iterable'
             raise TypeError(msg)
 
         for cell in cells:
@@ -440,7 +440,7 @@ class Universe(UniverseBase):
 
         if not isinstance(cell, openmc.Cell):
             msg = f'Unable to remove a Cell from Universe ID="{self._id}" ' \
-                  'since "{cell}" is not a Cell'
+                  f'since "{cell}" is not a Cell'
             raise TypeError(msg)
 
         # If the Cell is in the Universe's list of Cells, delete it
@@ -491,8 +491,8 @@ class Universe(UniverseBase):
                 nuclides[name] = (nuclide, density)
         else:
             raise RuntimeError(
-                f'Volume information is needed to calculate microscopic cross '
-                'sections for universe {self.id}. This can be done by running '
+                'Volume information is needed to calculate microscopic cross '
+                f'sections for universe {self.id}. This can be done by running '
                 'a stochastic volume calculation via the '
                 'openmc.VolumeCalculation object')
 

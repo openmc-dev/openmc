@@ -252,7 +252,7 @@ class CMFDMesh:
     def _display_mesh_warning(self, mesh_type, variable_label):
         if self._mesh_type != mesh_type:
             warn_msg = (f'Setting {variable_label} if mesh type is not set to '
-                        '{mesh_type} will have no effect')
+                        f'{mesh_type} will have no effect')
             warnings.warn(warn_msg, RuntimeWarning)
 
 

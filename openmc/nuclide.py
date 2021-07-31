@@ -26,8 +26,8 @@ class Nuclide(str):
             if name.endswith('m'):
                 name = name[:-1] + '_m1'
 
-            msg = (f'OpenMC nuclides follow the GND naming convention. '
-                   'Nuclide "{orig_name}" is being renamed as "{name}".')
+            msg = ('OpenMC nuclides follow the GND naming convention. '
+                   f'Nuclide "{orig_name}" is being renamed as "{name}".')
             warnings.warn(msg)
 
         return super().__new__(cls, name)

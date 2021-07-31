@@ -101,10 +101,10 @@ class VolumeCalculation:
                         continue
                     if (np.any(np.asarray(lower_left) > ll) or
                         np.any(np.asarray(upper_right) < ur)):
-                        warnings.warn(
-                            f"Specified bounding box is smaller than computed "
-                            "bounding box for cell {c.id}. Volume calculation "
-                            "may be incorrect!")
+                        msg = ('Specified bounding box is smaller than '
+                               f'computed bounding box for cell {c.id}. Volume '
+                               'calculation may be incorrect!')
+                        warnings.warn(msg)
 
             self.lower_left = lower_left
             self.upper_right = upper_right

@@ -280,7 +280,7 @@ class Cell(IDManagerMixin):
             elif not isinstance(fill, (openmc.Material, openmc.Lattice,
                                        openmc.UniverseBase)):
                 msg = (f'Unable to set Cell ID="{self._id}" to use a '
-                       'non-Material or Universe fill "{fill}"')
+                       f'non-Material or Universe fill "{fill}"')
                 raise ValueError(msg)
         self._fill = fill
 
@@ -408,8 +408,8 @@ class Cell(IDManagerMixin):
                     nuclides[name] = (nuclide, density)
             else:
                 raise RuntimeError(
-                    f'Volume information is needed to calculate microscopic '
-                    'cross sections for cell {self.id}. This can be done by '
+                    'Volume information is needed to calculate microscopic '
+                    f'cross sections for cell {self.id}. This can be done by '
                     'running a stochastic volume calculation via the '
                     'openmc.VolumeCalculation object')
 

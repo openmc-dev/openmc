@@ -203,8 +203,8 @@ class Element(str):
 
             # Check that the element is Uranium
             if self.name != 'U':
-                msg = (f'Enrichment procedure for Uranium was requested, '
-                       'but the isotope is {self} not U')
+                msg = ('Enrichment procedure for Uranium was requested, '
+                       f'but the isotope is {self} not U')
                 raise ValueError(msg)
 
             # Check that enrichment_type is not 'ao'

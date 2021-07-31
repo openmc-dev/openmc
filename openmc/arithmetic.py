@@ -659,8 +659,8 @@ class AggregateFilter:
         """
 
         if filter_bin not in self.bins:
-            msg = f'Unable to get the bin index for AggregateFilter since ' \
-                  '"{filter_bin}" is not one of the bins'
+            msg = ('Unable to get the bin index for AggregateFilter since '
+                   f'"{filter_bin}" is not one of the bins')
             raise ValueError(msg)
         else:
             return self.bins.index(filter_bin)

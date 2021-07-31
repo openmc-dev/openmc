@@ -494,8 +494,8 @@ class Plot(IDManagerMixin):
         upper_right = upper_right[np.array(pick_index)]
 
         if np.any(np.isinf((lower_left, upper_right))):
-            raise ValueError(f'The geometry does not appear to be bounded '
-                             'in the {basis} plane.')
+            raise ValueError('The geometry does not appear to be bounded '
+                             f'in the {basis} plane.')
 
         plot = cls()
         plot.origin = np.insert((lower_left + upper_right)/2,

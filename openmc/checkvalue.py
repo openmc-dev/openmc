@@ -33,14 +33,14 @@ def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=F
                       [t.__name__ for t in expected_type]))
         else:
             msg = (f'Unable to set "{name}" to "{value}" which is not of type "'
-                   '{expected_type.__name__}"')
+                   f'{expected_type.__name__}"')
         raise TypeError(msg)
 
     if expected_iter_type:
         if isinstance(value, np.ndarray):
             if not issubclass(value.dtype.type, expected_iter_type):
                 msg = (f'Unable to set "{name}" to "{value}" since each item '
-                       'must be of type "{expected_iter_type.__name__}"')
+                       f'must be of type "{expected_iter_type.__name__}"')
                 raise TypeError(msg)
             else:
                 return
@@ -54,7 +54,7 @@ def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=F
                                                       expected_iter_type]))
                 else:
                     msg = (f'Unable to set "{name}" to "{value}" since each '
-                          'item must be of type "{expected_iter_type.__name__}"')
+                           f'item must be of type "{expected_iter_type.__name__}"')
                 raise TypeError(msg)
 
 
@@ -105,7 +105,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
             # Is this deep enough?
             if len(tree) < min_depth:
                 msg = (f'Error setting "{name}": The item at {ind_str} does not '
-                       'meet the minimum depth of {min_depth}')
+                       f'meet the minimum depth of {min_depth}')
                 raise TypeError(msg)
 
             # This item is okay.  Move on to the next item.
@@ -122,15 +122,15 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
                 # But first, have we exceeded the max depth?
                 if len(tree) > max_depth:
                     msg = (f'Error setting {name}: Found an iterable at '
-                           '{ind_str}, items in that iterable exceed the '
-                           'maximum depth of {max_depth}')
+                           f'{ind_str}, items in that iterable exceed the '
+                           f'maximum depth of {max_depth}')
                     raise TypeError(msg)
 
             else:
                 # This item is completely unexpected.
                 msg = (f'Error setting {name}: Items must be of type '
-                       '"{expected_type.__name__}", but item at {ind_str} is '
-                       'of type "{type(current_item).__name__}"')
+                       f'"{expected_type.__name__}", but item at {ind_str} is '
+                       f'of type "{type(current_item).__name__}"')
                 raise TypeError(msg)
 
 
@@ -154,15 +154,15 @@ def check_length(name, value, length_min, length_max=None):
     if length_max is None:
         if len(value) < length_min:
             msg = (f'Unable to set "{name}" to "{value}" since it must be at '
-                   'least of length "{length_min}"')
+                   f'least of length "{length_min}"')
             raise ValueError(msg)
     elif not length_min <= len(value) <= length_max:
         if length_min == length_max:
             msg = (f'Unable to set "{name}" to "{value}" since it must be of '
-                  'length "{length_min}"')
+                  f'length "{length_min}"')
         else:
             msg = (f'Unable to set "{name}" to "{value}" since it must have '
-                   'length between "{length_min}" and "{length_max}"')
+                   f'length between "{length_min}" and "{length_max}"')
         raise ValueError(msg)
 
 
@@ -182,7 +182,7 @@ def check_value(name, value, accepted_values):
 
     if value not in accepted_values:
         msg = (f'Unable to set "{name}" to "{value}" since it is not in '
-               '"{accepted_values}"')
+               f'"{accepted_values}"')
         raise ValueError(msg)
 
 
@@ -205,12 +205,12 @@ def check_less_than(name, value, maximum, equality=False):
     if equality:
         if value > maximum:
             msg = (f'Unable to set "{name}" to "{value}" since it is greater '
-                   'than "{maximum}"')
+                   f'than "{maximum}"')
             raise ValueError(msg)
     else:
         if value >= maximum:
             msg = (f'Unable to set "{name}" to "{value}" since it is greater '
-                   'than or equal to "{maximum}"')
+                   f'than or equal to "{maximum}"')
             raise ValueError(msg)
 
 
@@ -233,12 +233,12 @@ def check_greater_than(name, value, minimum, equality=False):
     if equality:
         if value < minimum:
             msg = (f'Unable to set "{name}" to "{value}" since it is less than '
-                   '"{minimum}"')
+                   f'"{minimum}"')
             raise ValueError(msg)
     else:
         if value <= minimum:
             msg = (f'Unable to set "{name}" to "{value}" since it is less than '
-                   'or equal to "{minimum}"')
+                   f'or equal to "{minimum}"')
             raise ValueError(msg)
 
 

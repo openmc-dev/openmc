@@ -325,8 +325,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         """
 
         if filter_bin not in self.bins:
-            msg = (f'Unable to get the bin index for Filter since '
-                   '"{filter_bin}" is not one of the bins')
+            msg = ('Unable to get the bin index for Filter since '
+                   f'"{filter_bin}" is not one of the bins')
             raise ValueError(msg)
 
         if isinstance(self.bins, np.ndarray):
@@ -1271,8 +1271,8 @@ class EnergyFilter(RealFilter):
         if min_delta < 1E-3:
             return deltas.argmin()
         else:
-            msg = (f'Unable to get the bin index for Filter since '
-                   '"{filter_bin}" is not one of the bins')
+            msg = ('Unable to get the bin index for Filter since '
+                   f'"{filter_bin}" is not one of the bins')
             raise ValueError(msg)
 
     def check_bins(self, bins):

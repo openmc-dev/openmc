@@ -77,6 +77,7 @@ int cell_instance_at_level(const Particle& p, int level) {
   // quick exit if this cell doesn't have distribcell instances
   if (c.distribcell_index_ == C_NONE) return C_NONE;
 
+  // compute the cell's instance
   int instance = 0;
   for (int i = 0; i < level; i++) {
     const auto& c_i {*model::cells[p.coord(i).cell]};
@@ -159,6 +160,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     if (c.type_ == Fill::MATERIAL) {
       // Found a material cell which means this is the lowest coord level.
 
+      p.cell_instance() = 0;
       // Find the distribcell instance number.
       if (c.distribcell_index_ >= 0) {
         p.cell_instance() = cell_instance_at_level(p, p.n_coord() - 1);

@@ -865,7 +865,7 @@ class RectLattice(Lattice):
         # Export the Lattice outer Universe (if specified)
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
-            outer.text = f'{self._outer._id}'
+            outer.text = str(self._outer._id)
             self._outer.create_xml_subelement(xml_element, memo)
 
         # Export Lattice cell dimensions
@@ -1432,7 +1432,7 @@ class HexLattice(Lattice):
         # Export the Lattice outer Universe (if specified)
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
-            outer.text = f'{self._outer._id}'
+            outer.text = str(self._outer._id)
             self._outer.create_xml_subelement(xml_element, memo)
 
         lattice_subelement.set("n_rings", str(self._num_rings))

@@ -8,6 +8,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
@@ -135,6 +136,9 @@ void write_materials(hid_t file)
 
 extern "C" int openmc_properties_export(const char* filename)
 {
+  // Only write from master process
+  if (!mpi::master) return 0;
+
   // Set a default filename if none was passed
   std::string name = filename ? filename : "properties.h5";
 

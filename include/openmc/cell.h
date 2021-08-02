@@ -159,6 +159,10 @@ public:
   //!   temperatures.
   void set_temperature(double T, int32_t instance = -1, bool set_contained = false);
 
+  //! Set the rotation matrix of a cell instance
+  //! \param[in] rot The rotation matrix of length 3 or 9
+  void set_rotation(const vector<double>& rot);
+
   //! Get the name of a cell
   //! \return Cell name
   const std::string& name() const { return name_; };

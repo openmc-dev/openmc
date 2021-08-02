@@ -99,6 +99,21 @@ def lib_run(lib_simulation_init):
     openmc.lib.run()
 
 
+@pytest.fixture(scope='module')
+def pincell_model_w_univ():
+    """Set up a model to test with and delete files when done"""
+    openmc.reset_auto_ids()
+    pincell = openmc.examples.pwr_pin_cell()
+    clad_univ = openmc.Universe(cells=[openmc.Cell(fill=pincell.materials[1])])
+    pincell.geometry.root_universe.cells[2].fill = clad_univ
+    pincell.settings.verbosity = 1
+
+    # Write XML files in tmpdir
+    with cdtemp():
+        pincell.export_to_xml()
+        yield
+
+
 def test_cell_mapping(lib_init):
     cells = openmc.lib.cells
     assert isinstance(cells, Mapping)
@@ -693,3 +708,37 @@ def test_trigger_set_n_batches(uo2_trigger_model, mpi_intracomm):
     # Ensure statepoint was created only at batch 20 when calling set_batches
     assert not os.path.exists('statepoint.12.h5')
     assert os.path.exists('statepoint.20.h5')
+
+
+def test_cell_translation(pincell_model_w_univ, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
+    # Cell 1 is filled with a material so it has a translation, but we can't
+    # set it.
+    cell = openmc.lib.cells[1]
+    assert cell.translation == pytest.approx([0., 0., 0.])
+    with pytest.raises(exc.GeometryError, match='not filled with'):
+        cell.translation = (1., 0., -1.)
+
+    # Cell 2 was given a universe, so we can assign it a translation vector
+    cell = openmc.lib.cells[2]
+    assert cell.translation == pytest.approx([0., 0., 0.])
+    # This time we *can* set it
+    cell.translation = (1., 0., -1.)
+    assert cell.translation == pytest.approx([1., 0., -1.])
+
+
+def test_cell_rotation(pincell_model_w_univ):
+    # Cell 1 is filled with a material so we cannot rotate it, but we can get
+    # its rotation matrix (which will be the identity matrix)
+    cell = openmc.lib.cells[1]
+    assert cell.rotation == pytest.approx([0., 0., 0.])
+    with pytest.raises(exc.GeometryError, match='not filled with'):
+        cell.rotation = (180., 0., 0.)
+
+    # Now repeat with Cell 2 and we will be allowed to do it
+    cell = openmc.lib.cells[2]
+    assert cell.rotation == pytest.approx([0., 0., 0.])
+    cell.rotation = (180., 0., 0.)
+    assert cell.rotation == pytest.approx([180., 0., 0.])

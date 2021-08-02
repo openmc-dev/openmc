@@ -1,7 +1,7 @@
 import sys
 
 from collections.abc import Mapping, Iterable
-from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_bool
+from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_bool, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -35,6 +35,13 @@ _dll.openmc_cell_get_temperature.errcheck = _error_handler
 _dll.openmc_cell_get_name.argtypes = [c_int32, POINTER(c_char_p)]
 _dll.openmc_cell_get_name.restype = c_int
 _dll.openmc_cell_get_name.errcheck = _error_handler
+_dll.openmc_cell_get_translation.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_cell_get_translation.restype = c_int
+_dll.openmc_cell_get_translation.errcheck = _error_handler
+_dll.openmc_cell_get_rotation.argtypes = [c_int32, POINTER(c_double),
+    POINTER(c_size_t)]
+_dll.openmc_cell_get_rotation.restype = c_int
+_dll.openmc_cell_get_rotation.errcheck = _error_handler
 _dll.openmc_cell_set_name.argtypes = [c_int32, c_char_p]
 _dll.openmc_cell_set_name.restype = c_int
 _dll.openmc_cell_set_name.errcheck = _error_handler
@@ -49,6 +56,13 @@ _dll.openmc_cell_set_temperature.argtypes = [
     c_int32, c_double, POINTER(c_int32), c_bool]
 _dll.openmc_cell_set_temperature.restype = c_int
 _dll.openmc_cell_set_temperature.errcheck = _error_handler
+_dll.openmc_cell_set_translation.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_cell_set_translation.restype = c_int
+_dll.openmc_cell_set_translation.errcheck = _error_handler
+_dll.openmc_cell_set_rotation.argtypes = [
+    c_int32, POINTER(c_double), c_size_t]
+_dll.openmc_cell_set_rotation.restype = c_int
+_dll.openmc_cell_set_rotation.errcheck = _error_handler
 _dll.openmc_get_cell_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_cell_index.restype = c_int
 _dll.openmc_get_cell_index.errcheck = _error_handler
@@ -89,6 +103,13 @@ class Cell(_FortranObjectWithID):
         Number of unique cell instances
     bounding_box : 2-tuple of numpy.ndarray
         Lower-left and upper-right coordinates of bounding box
+    translation : Iterable of float
+        3-D coordinates of the translation vector
+    rotation : Iterable of float
+        The rotation matrix or angles of the universe filling the cell. This
+        can either be a fully specified 3 x 3 rotation matrix or an Iterable
+        of length 3 with the angles in degrees about the x, y, and z axes,
+        respectively.
 
     """
     __instances = WeakValueDictionary()
@@ -212,6 +233,48 @@ class Cell(_FortranObjectWithID):
             instance = c_int32(instance)
 
         _dll.openmc_cell_set_temperature(self._index, T, instance, set_contained)
+
+    @property
+    def translation(self):
+        translation = np.zeros(3)
+        _dll.openmc_cell_get_translation(
+            self._index, translation.ctypes.data_as(POINTER(c_double)))
+        return translation
+
+    @translation.setter
+    def translation(self, translation_vec):
+        vector = np.asarray(translation_vec, dtype=float)
+        _dll.openmc_cell_set_translation(
+            self._index, vector.ctypes.data_as(POINTER(c_double)))
+
+    @property
+    def rotation(self):
+        rotation_data = np.zeros(12)
+        rot_size = c_size_t()
+
+        _dll.openmc_cell_get_rotation(
+            self._index, rotation_data.ctypes.data_as(POINTER(c_double)),
+            rot_size)
+        rot_size = rot_size.value
+
+        if rot_size == 9:
+            return rotation_data[:rot_size].shape(3, 3)
+        elif rot_size in (0, 12):
+            # If size is 0, rotation_data[9:] will be zeros. This indicates no
+            # rotation and is the most straightforward way to always return
+            # an iterable of floats
+            return rotation_data[9:]
+        else:
+            raise ValueError(
+                'Invalid size of rotation matrix: {}'.format(rot_size))
+
+    @rotation.setter
+    def rotation(self, rotation_data):
+        flat_rotation = np.asarray(rotation_data, dtype=float).flatten()
+
+        _dll.openmc_cell_set_rotation(
+            self._index, flat_rotation.ctypes.data_as(POINTER(c_double)),
+            c_size_t(len(flat_rotation)))
 
     @property
     def bounding_box(self):

@@ -44,7 +44,7 @@ bool check_cell_overlap(Particle& p, bool error=true);
 //! Get the cell instance for a particle at the specified universe level
 //!
 //! \param p A particle for which to compute the instance using
-//!   it's vector of LocalCoord.
+//!   its coordinates
 //! \param level The level (zero indexed) of the geometry where the instance should be computed.
 //! \return The instance of the cell at the specified level.
 //==============================================================================

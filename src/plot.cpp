@@ -47,7 +47,7 @@ IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
     data_(y, x, 1) = NOT_FOUND;
   } else {
     data_(y, x, 0) = model::cells.at(p.coord(level).cell)->id_;
-    data_(y, x, 1) = p.cell_instance();
+    data_(y, x, 1) = level == p.n_coord() - 1 ?  p.cell_instance() : cell_instance_at_level(p, level);
   }
 
   // set material data

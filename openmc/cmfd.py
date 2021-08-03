@@ -251,8 +251,8 @@ class CMFDMesh:
 
     def _display_mesh_warning(self, mesh_type, variable_label):
         if self._mesh_type != mesh_type:
-            warn_msg = 'Setting {} if mesh type is not set to {} ' \
-                       'will have no effect'.format(variable_label, mesh_type)
+            warn_msg = (f'Setting {variable_label} if mesh type is not set to '
+                        f'{mesh_type} will have no effect')
             warnings.warn(warn_msg, RuntimeWarning)
 
 
@@ -906,7 +906,7 @@ class CMFDRun:
         if filename is None:
             batch_str_len = len(str(openmc.lib.settings.get_batches()))
             batch_str = str(openmc.lib.current_batch()).zfill(batch_str_len)
-            filename = 'statepoint.{}.h5'.format(batch_str)
+            filename = f'statepoint.{batch_str}.h5'
 
         # Call C API statepoint_write to save source distribution with CMFD
         # feedback

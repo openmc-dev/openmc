@@ -47,8 +47,7 @@ class MeshBase(IDManagerMixin, ABC):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('name for mesh ID="{0}"'.format(self._id),
-                          name, str)
+            cv.check_type(f'name for mesh ID="{self._id}"', name, str)
             self._name = name
         else:
             self._name = ''

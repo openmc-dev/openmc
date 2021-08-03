@@ -98,9 +98,9 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
     if plots is not None:
         for p in plots:
             if p.filename is not None:
-                ppm_file = '{}.ppm'.format(p.filename)
+                ppm_file = f'{p.filename}.ppm'
             else:
-                ppm_file = 'plot_{}.ppm'.format(p.id)
+                ppm_file = f'plot_{p.id}.ppm'
             png_file = ppm_file.replace('.ppm', '.png')
             subprocess.check_call([convert_exec, ppm_file, png_file])
             images.append(Image(png_file))

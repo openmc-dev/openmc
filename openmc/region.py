@@ -132,8 +132,8 @@ class Region(ABC):
             else:
                 # Check for invalid characters
                 if expression[i] not in '-+0123456789':
-                    raise SyntaxError("Invalid character '{}' in expression"
-                                      .format(expression[i]))
+                    raise SyntaxError(f"Invalid character '{expression[i]}' in "
+                                      "expression")
 
                 # If we haven't yet reached the start of a word, start one
                 if i_start < 0:

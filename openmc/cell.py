@@ -233,7 +233,7 @@ class Cell(IDManagerMixin):
                         self._atoms[key] = atom
 
             else:
-                msg = 'Unrecognized fill_type: {}'.format(self.fill_type)
+                msg = f'Unrecognized fill_type: {self.fill_type}'
                 raise ValueError(msg)
 
         return self._atoms
@@ -279,8 +279,8 @@ class Cell(IDManagerMixin):
 
             elif not isinstance(fill, (openmc.Material, openmc.Lattice,
                                        openmc.UniverseBase)):
-                msg = ('Unable to set Cell ID="{0}" to use a non-Material or '
-                       'Universe fill "{1}"'.format(self._id, fill))
+                msg = (f'Unable to set Cell ID="{self._id}" to use a '
+                       f'non-Material or Universe fill "{fill}"')
                 raise ValueError(msg)
         self._fill = fill
 
@@ -408,10 +408,10 @@ class Cell(IDManagerMixin):
                     nuclides[name] = (nuclide, density)
             else:
                 raise RuntimeError(
-                    'Volume information is needed to calculate microscopic cross '
-                    'sections for cell {}. This can be done by running a '
-                    'stochastic volume calculation via the '
-                    'openmc.VolumeCalculation object'.format(self.id))
+                    'Volume information is needed to calculate microscopic '
+                    f'cross sections for cell {self.id}. This can be done by '
+                    'running a stochastic volume calculation via the '
+                    'openmc.VolumeCalculation object')
 
         return nuclides
 

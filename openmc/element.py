@@ -162,10 +162,9 @@ class Element(str):
                 abundances[self + '0'] = 1.0
 
             elif len(mutual_nuclides) == 0:
-                msg = ('Unable to expand element {} because the cross '
+                msg = (f'Unable to expand element {self} because the cross '
                        'section library provided does not contain any of '
-                       'the natural isotopes for that element.'
-                       .format(self))
+                       'the natural isotopes for that element.')
                 raise ValueError(msg)
 
             # If some naturally occurring isotopes are in the library, add them.
@@ -205,7 +204,7 @@ class Element(str):
             # Check that the element is Uranium
             if self.name != 'U':
                 msg = ('Enrichment procedure for Uranium was requested, '
-                       'but the isotope is {} not U'.format(self))
+                       f'but the isotope is {self} not U')
                 raise ValueError(msg)
 
             # Check that enrichment_type is not 'ao'
@@ -243,9 +242,8 @@ class Element(str):
 
             # Check if it is two-isotope mixture
             if len(abundances) != 2:
-                msg = ('Element {} does not consist of two naturally-occurring '
-                       'isotopes. Please enter isotopic abundances manually.'
-                       .format(self))
+                msg = (f'Element {self} does not consist of two naturally-occurring '
+                       'isotopes. Please enter isotopic abundances manually.')
                 raise ValueError(msg)
 
             # Check if the target nuclide is present in the mixture

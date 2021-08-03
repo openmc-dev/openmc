@@ -53,8 +53,14 @@ private:
   //! The indices of the cells binned by this filter.
   vector<CellInstance> cell_instances_;
 
+  //! The set of cells used in this filter
+  std::unordered_set<int32_t> cells_;
+
   //! A map from cell/instance indices to filter bin indices.
   std::unordered_map<CellInstance, gsl::index, CellInstanceHash> map_;
+
+  //! Indicates if filter uses only material-filled cells
+  bool material_cells_only_;
 };
 
 } // namespace openmc

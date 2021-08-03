@@ -7,6 +7,7 @@
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/error.h"
+#include "openmc/geometry.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -46,23 +47,27 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
   // Clear existing cells
   cell_instances_.clear();
   cell_instances_.reserve(instances.size());
+  cells_.clear();
   map_.clear();
 
   // Update cells and mapping
   for (auto& x : instances) {
     Expects(x.index_cell >= 0);
     Expects(x.index_cell < model::cells.size());
-    const auto& c {model::cells[x.index_cell]};
-    if (c->type_ != Fill::MATERIAL) {
-      throw std::invalid_argument{fmt::format(
-        "Cell {} is not filled with a material. Only material cells can be "
-        "used in a cell instance filter.", c->id_)};
-    }
     cell_instances_.push_back(x);
+    cells_.insert(x.index_cell);
     map_[x] = cell_instances_.size() - 1;
   }
 
   n_bins_ = cell_instances_.size();
+
+  material_cells_only_ = true;
+  for (const auto& cell_inst : cell_instances_) {
+    const auto& c = *model::cells[cell_inst.index_cell];
+    if (c.type_ == Fill::MATERIAL) continue;
+    material_cells_only_ = false;
+    break;
+  }
 }
 
 void
@@ -71,11 +76,30 @@ CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 {
   gsl::index index_cell = p.coord(p.n_coord() - 1).cell;
   gsl::index instance = p.cell_instance();
-  auto search = map_.find({index_cell, instance});
-  if (search != map_.end()) {
-    int index_bin = search->second;
-    match.bins_.push_back(index_bin);
-    match.weights_.push_back(1.0);
+
+  if (cells_.count(index_cell) > 0) {
+    auto search = map_.find({index_cell, instance});
+    if (search != map_.end()) {
+      int index_bin = search->second;
+      match.bins_.push_back(index_bin);
+      match.weights_.push_back(1.0);
+    }
+  }
+
+  if (material_cells_only_) return;
+
+  for (int i = 0; i < p.n_coord() - 1; i++) {
+    gsl::index index_cell = p.coord(i).cell;
+    // if this cell isn't used on the filter, move on
+    if (cells_.count(index_cell) == 0) continue;
+
+    // if this cell is used in the filter, check the instance as well
+    gsl::index instance = cell_instance_at_level(p, i);
+    auto search = map_.find({index_cell, instance});
+    if (search != map_.end()) {
+      match.bins_.push_back(search->second);
+      match.weights_.push_back(1.0);
+    }
   }
 }
 

@@ -52,7 +52,7 @@ class SurfaceCoefficient:
     def __set__(self, instance, value):
         if isinstance(self.value, Real):
             raise AttributeError('This coefficient is read-only')
-        check_type('{} coefficient'.format(self.value), value, Real)
+        check_type(f'{self.value} coefficient', value, Real)
         instance._coefficients[self.value] = value
 
 

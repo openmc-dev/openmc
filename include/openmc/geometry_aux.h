@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "openmc/vector.h"
 
@@ -63,9 +64,12 @@ int32_t find_root_universe();
 
 //==============================================================================
 //! Populate all data structures needed for distribcells.
+//! \param user_distribcells A set of cell indices to create distribcell data
+//!   structures for regardless of whether or not they are part of a tally
+//!   filter.
 //==============================================================================
 
-void prepare_distribcell();
+void prepare_distribcell(const std::unordered_set<int32_t>* user_distribcells = nullptr);
 
 //==============================================================================
 //! Recursively search through the geometry and count cell instances.

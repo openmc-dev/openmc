@@ -89,7 +89,7 @@ unsigned max_particles_in_flight {100000};
 unsigned event_queue_refill_interval {100};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
-array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
+__managed__ array<double, 4> energy_cutoff;
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -517,6 +517,13 @@ void read_settings_xml()
     if (check_for_node(node_cutoff, "weight_avg")) {
       weight_survive = std::stod(get_node_value(node_cutoff, "weight_avg"));
     }
+
+    // Defaults (cannot initialize in declaration since it's a managed variable)
+    energy_cutoff[0] = 0.0;
+    energy_cutoff[1] = 1000.0;
+    energy_cutoff[0] = 0.0;
+    energy_cutoff[0] = 0.0;
+
     if (check_for_node(node_cutoff, "energy_neutron")) {
       energy_cutoff[0] = std::stod(get_node_value(node_cutoff, "energy_neutron"));
     } else if (check_for_node(node_cutoff, "energy")) {

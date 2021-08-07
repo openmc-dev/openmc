@@ -46,7 +46,7 @@ void collision(Particle& p)
 #ifdef __CUDA_ARCH__
   ++(p.n_collision());
   sample_neutron_reaction(p);
-  if (p.E() < gpu::energy_min_neutron) {
+  if (p.E() < settings::energy_cutoff[0]) {
     p.alive() = false;
     p.wgt() = 0.0;
   }

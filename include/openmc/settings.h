@@ -78,7 +78,7 @@ extern unsigned
                                //!< refill of event queues with source sites
 
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons
-extern array<double, 4>
+__managed__ extern array<double, 4>
   energy_cutoff; //!< Energy cutoff in [eV] for each particle type
 extern int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;                //!< Maximum Legendre order for multigroup data

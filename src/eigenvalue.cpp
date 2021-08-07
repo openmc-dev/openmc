@@ -324,6 +324,9 @@ void calculate_average_keff()
     // For inactive generations, use current generation k as estimate for next
     // generation
     simulation::keff = simulation::k_generation[i];
+#ifdef __CUDACC__
+    cudaMemcpyToSymbol(gpu::keff, &simulation::keff, sizeof(double));
+#endif
   } else {
     // Sample mean of keff
     simulation::k_sum[0] += simulation::k_generation[i];

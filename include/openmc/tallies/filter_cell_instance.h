@@ -44,6 +44,8 @@ public:
 
   const vector<CellInstance>& cell_instances() const { return cell_instances_; }
 
+  const std::unordered_set<int32_t>& cells() const { return cells_; }
+
   void set_cell_instances(gsl::span<CellInstance> instances);
 
 private:

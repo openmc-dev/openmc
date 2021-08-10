@@ -2,6 +2,7 @@
 
 #include <algorithm>  // for std::max
 #include <sstream>
+#include <unordered_set>
 
 #include <fmt/core.h>
 #include <pugixml.hpp>
@@ -310,14 +311,16 @@ find_root_universe()
 //==============================================================================
 
 void
-prepare_distribcell(const std::unordered_set<int32_t>* user_distribcells)
+prepare_distribcell(const std::vector<int32_t>* user_distribcells)
 {
   write_message("Preparing distributed cell instances...", 5);
 
   std::unordered_set<int32_t> distribcells;
 
   // start with any cells manually specified via the C++ API
-  if (user_distribcells) distribcells = *user_distribcells;
+  if (user_distribcells) {
+    distribcells.insert(user_distribcells->begin(), user_distribcells->end());
+  }
 
   // Find all cells listed in a DistribcellFilter or CellInstanceFilter
   for (auto& filt : model::tally_filters) {

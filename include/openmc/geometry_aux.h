@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
+#include <vector>
 
 #include "openmc/vector.h"
 
@@ -69,7 +69,7 @@ int32_t find_root_universe();
 //!   filter.
 //==============================================================================
 
-void prepare_distribcell(const std::unordered_set<int32_t>* user_distribcells = nullptr);
+void prepare_distribcell(const std::vector<int32_t>* user_distribcells = nullptr);
 
 //==============================================================================
 //! Recursively search through the geometry and count cell instances.

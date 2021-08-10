@@ -311,12 +311,18 @@ find_root_universe()
 //==============================================================================
 
 void
-prepare_distribcell()
+prepare_distribcell(const std::vector<int32_t>* user_distribcells)
 {
   write_message("Preparing distributed cell instances...", 5);
 
-  // Find all cells listed in a DistribcellFilter or CellInstanceFilter
   std::unordered_set<int32_t> distribcells;
+
+  // start with any cells manually specified via the C++ API
+  if (user_distribcells) {
+    distribcells.insert(user_distribcells->begin(), user_distribcells->end());
+  }
+
+  // Find all cells listed in a DistribcellFilter or CellInstanceFilter
   for (auto& filt : model::tally_filters) {
     auto* distrib_filt = dynamic_cast<DistribcellFilter*>(filt.get());
     auto* cell_inst_filt = dynamic_cast<CellInstanceFilter*>(filt.get());
@@ -324,7 +330,8 @@ prepare_distribcell()
       distribcells.insert(distrib_filt->cell());
     }
     if (cell_inst_filt) {
-      for (const auto& c_inst : cell_inst_filt->cell_instances()) distribcells.insert(c_inst.index_cell);
+      const auto& filter_cells = cell_inst_filt->cells();
+      distribcells.insert(filter_cells.begin(), filter_cells.end());
     }
   }
 

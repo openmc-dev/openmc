@@ -186,27 +186,16 @@ def test_transient():
 
     transient = {}
     for material in model.materials:
-        MatChange = {material.name: {},}
-        transient.update(MatChange)
+        transient[material.name] = {}
         for t in t_outer:
-            time_dict = {
-            t: {
-                'density' : {},
-                'temperature' : {},
-                }
+            transient[material.name][t] = {
+                'density': material.density,
+                'temperature': material.temperature
             }
-            transient[material.name].update(time_dict)
 
     for material in model.materials:
-        if material.name == 'Moderator':
-            transient[material.name][0]['density'] = material.density
+        if material.name == 'Water':
             transient[material.name][0.5]['density'] = material.density*0.9
-            for t in t_outer:
-                transient[material.name][t]['temperature'] = material.temperature
-        else: 
-            for t in t_outer:
-                transient[material.name][t]['density'] = material.density
-                transient[material.name][t]['temperature'] = material.temperature
 
     # Initialize solver object 
     solver = openmc.kinetics.Solver()

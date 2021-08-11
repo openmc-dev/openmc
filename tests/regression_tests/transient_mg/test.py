@@ -259,20 +259,13 @@ def test_transient():
         transient[material.name] = {}
         for t in t_outer:
             transient[material.name][t] = {
-                'density': {},
-                'temperature': {}
+                'density': material.density,
+                'temperature': material.temperature
             }
 
     for material in model.materials:
         if material.name == 'Water':
-            transient[material.name][0]['density'] = material.density
             transient[material.name][0.5]['density'] = material.density*0.9
-            for t in t_outer:
-                transient[material.name][t]['temperature'] = material.temperature
-        else: 
-            for t in t_outer:
-                transient[material.name][t]['density'] = material.density
-                transient[material.name][t]['temperature'] = material.temperature
 
     # Initialize solver object 
     solver = openmc.kinetics.Solver()
@@ -292,7 +285,7 @@ def test_transient():
     solver.mgxs_lib        = mg_cross_sections_file
     solver.multi_group     = True
     solver.clock           = clock
-    solver.run_kwargs      = {'threads': None, 'mpi_args': None}
+    solver.run_kwargs      = {'threads': 2, 'mpi_args': None}
     solver.min_outer_iters = 1
 
     harness = TransientTestHarness(solver, 'log_file.h5', model=model)

@@ -146,7 +146,7 @@ def test_transient():
     pitch = 1.26
     box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
     bottom = openmc.ZPlane(z0=-10, boundary_type='vacuum')
-    top = openmc.ZPlane(z0= 10, boundary_type='vacuum')
+    top = openmc.ZPlane(z0=10, boundary_type='vacuum')
 
     fuel = openmc.Cell(fill=uo2, region=-fuel_or & +bottom & -top)
     clad = openmc.Cell(fill=zircaloy, region=+fuel_or & -clad_or & +bottom & -top)

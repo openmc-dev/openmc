@@ -296,7 +296,7 @@ def test_transient():
     solver.mgxs_lib        = mg_cross_sections_file
     solver.multi_group     = True
     solver.clock           = clock
-    solver.run_kwargs      = {'threads':None, 'mpi_args':None}
+    solver.run_kwargs      = {'threads': None, 'mpi_args': None}
     solver.min_outer_iters = 1
 
     harness = TransientTestHarness(solver, 'log_file.h5', model=model)

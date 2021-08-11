@@ -3,8 +3,8 @@
 
 #include <cstdint>
 
-#include "openmc/tallies/filter.h"
 #include "openmc/position.h"
+#include "openmc/tallies/filter.h"
 
 namespace openmc {
 
@@ -14,8 +14,7 @@ namespace openmc {
 //! correspond to the fraction of the track length that lies in that bin.
 //==============================================================================
 
-class MeshFilter : public Filter
-{
+class MeshFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -25,12 +24,12 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "mesh";}
+  std::string type() const override { return "mesh"; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 
@@ -39,7 +38,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  virtual int32_t mesh() const {return mesh_;}
+  virtual int32_t mesh() const { return mesh_; }
 
   virtual void set_mesh(int32_t mesh);
 
@@ -47,10 +46,9 @@ public:
 
   virtual void set_translation(const double translation[3]);
 
-  virtual const Position& translation() const {return translation_;}
+  virtual const Position& translation() const { return translation_; }
 
-  virtual bool translated() const {return translated_;}
-
+  virtual bool translated() const { return translated_; }
 
 protected:
   //----------------------------------------------------------------------------

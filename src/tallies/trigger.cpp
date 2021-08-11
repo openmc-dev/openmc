@@ -20,15 +20,15 @@ namespace openmc {
 //==============================================================================
 
 namespace settings {
-  KTrigger keff_trigger;
+KTrigger keff_trigger;
 }
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-std::pair<double, double>
-get_tally_uncertainty(int i_tally, int score_index, int filter_index)
+std::pair<double, double> get_tally_uncertainty(
+  int i_tally, int score_index, int filter_index)
 {
   const auto& tally {model::tallies[i_tally]};
 
@@ -37,7 +37,7 @@ get_tally_uncertainty(int i_tally, int score_index, int filter_index)
 
   int n = tally->n_realizations_;
   auto mean = sum / n;
-  double std_dev = std::sqrt((sum_sq/n - mean*mean) / (n-1));
+  double std_dev = std::sqrt((sum_sq / n - mean * mean) / (n - 1));
   double rel_err = (mean != 0.) ? std_dev / std::abs(mean) : 0.;
 
   return {std_dev, rel_err};
@@ -50,19 +50,20 @@ get_tally_uncertainty(int i_tally, int score_index, int filter_index)
 //! param[out] tally_id The ID number of the most limiting tally
 //! param[out] score The most limiting tally score bin
 
-void
-check_tally_triggers(double& ratio, int& tally_id, int& score)
+void check_tally_triggers(double& ratio, int& tally_id, int& score)
 {
   ratio = 0.;
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
     const Tally& t {*model::tallies[i_tally]};
 
     // Ignore tallies with less than two realizations.
-    if (t.n_realizations_ < 2) continue;
+    if (t.n_realizations_ < 2)
+      continue;
 
     for (const auto& trigger : t.triggers_) {
       // Skip trigger if it is not active
-      if (trigger.metric == TriggerMetric::not_active) continue;
+      if (trigger.metric == TriggerMetric::not_active)
+        continue;
 
       const auto& results = t.results_;
       for (auto filter_index = 0; filter_index < results.shape()[0];
@@ -70,25 +71,25 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
         for (auto score_index = 0; score_index < results.shape()[1];
              ++score_index) {
           // Compute the tally uncertainty metrics.
-          auto uncert_pair = get_tally_uncertainty(i_tally, score_index,
-            filter_index);
+          auto uncert_pair =
+            get_tally_uncertainty(i_tally, score_index, filter_index);
           double std_dev = uncert_pair.first;
           double rel_err = uncert_pair.second;
 
           // Pick out the relevant uncertainty metric for this trigger.
           double uncertainty;
           switch (trigger.metric) {
-            case TriggerMetric::variance:
-              uncertainty = std_dev * std_dev;
-              break;
-            case TriggerMetric::standard_deviation:
-              uncertainty = std_dev;
-              break;
-            case TriggerMetric::relative_error:
-              uncertainty = rel_err;
-              break;
-            case TriggerMetric::not_active:
-              UNREACHABLE();
+          case TriggerMetric::variance:
+            uncertainty = std_dev * std_dev;
+            break;
+          case TriggerMetric::standard_deviation:
+            uncertainty = std_dev;
+            break;
+          case TriggerMetric::relative_error:
+            uncertainty = rel_err;
+            break;
+          case TriggerMetric::not_active:
+            UNREACHABLE();
           }
 
           // Compute the uncertainty / threshold ratio.
@@ -111,10 +112,10 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
 
 //! Compute the uncertainty/threshold ratio for the eigenvalue trigger.
 
-double
-check_keff_trigger()
+double check_keff_trigger()
 {
-  if (settings::run_mode != RunMode::EIGENVALUE) return 0.0;
+  if (settings::run_mode != RunMode::EIGENVALUE)
+    return 0.0;
 
   double k_combined[2];
   openmc_get_keff(k_combined);
@@ -144,8 +145,7 @@ check_keff_trigger()
 
 //! See if tally and eigenvalue uncertainties are under trigger thresholds.
 
-void
-check_triggers()
+void check_triggers()
 {
   // Make some aliases.
   const auto current_batch {simulation::current_batch};
@@ -153,9 +153,12 @@ check_triggers()
   const auto interval {settings::trigger_batch_interval};
 
   // See if the current batch is one for which the triggers must be checked.
-  if (!settings::trigger_on) return;
-  if (current_batch < n_batches) return;
-  if (((current_batch - n_batches) % interval) != 0) return;
+  if (!settings::trigger_on)
+    return;
+  if (current_batch < n_batches)
+    return;
+  if (((current_batch - n_batches) % interval) != 0)
+    return;
 
   // Check the eigenvalue and tally triggers.
   double keff_ratio = check_keff_trigger();
@@ -175,7 +178,8 @@ check_triggers()
   std::string msg;
   if (keff_ratio >= tally_ratio) {
     msg = fmt::format("Triggers unsatisfied, max unc./thresh. is {} for "
-      "eigenvalue", keff_ratio);
+                      "eigenvalue",
+      keff_ratio);
   } else {
     msg = fmt::format(
       "Triggers unsatisfied, max unc./thresh. is {} for {} in tally {}",
@@ -189,11 +193,11 @@ check_triggers()
     // the number of batches.
     auto max_ratio = std::max(keff_ratio, tally_ratio);
     auto n_active = current_batch - settings::n_inactive;
-    auto n_pred_batches = static_cast<int>(n_active * max_ratio * max_ratio)
-      + settings::n_inactive + 1;
+    auto n_pred_batches = static_cast<int>(n_active * max_ratio * max_ratio) +
+                          settings::n_inactive + 1;
 
-    std::string msg = fmt::format("The estimated number of batches is {}",
-      n_pred_batches);
+    std::string msg =
+      fmt::format("The estimated number of batches is {}", n_pred_batches);
     if (n_pred_batches > settings::n_max_batches) {
       msg.append(" --- greater than max batches");
       warning(msg);

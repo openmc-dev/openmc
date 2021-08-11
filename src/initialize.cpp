@@ -37,7 +37,6 @@
 #include "libmesh/libmesh.h"
 #endif
 
-
 int openmc_init(int argc, char* argv[], const void* intracomm)
 {
   using namespace openmc;
@@ -46,7 +45,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // Check if intracomm was passed
   MPI_Comm comm;
   if (intracomm) {
-    comm = *static_cast<const MPI_Comm *>(intracomm);
+    comm = *static_cast<const MPI_Comm*>(intracomm);
   } else {
     comm = MPI_COMM_WORLD;
   }
@@ -57,7 +56,8 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
   // Parse command-line arguments
   int err = parse_command_line(argc, argv);
-  if (err) return err;
+  if (err)
+    return err;
 
 #ifdef LIBMESH
 
@@ -67,23 +67,24 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   int n_threads = 1;
 #endif
 
-// initialize libMesh if it hasn't been initialized already
-// (if initialized externally, the libmesh_init object needs to be provided also)
-if (!settings::libmesh_init && !libMesh::initialized()) {
+  // initialize libMesh if it hasn't been initialized already
+  // (if initialized externally, the libmesh_init object needs to be provided
+  // also)
+  if (!settings::libmesh_init && !libMesh::initialized()) {
 #ifdef OPENMC_MPI
-  // pass command line args, empty MPI communicator, and number of threads.
-  // Because libMesh was not initialized, we assume that OpenMC is the primary
-  // application and that its main MPI comm should be used.
-  settings::libmesh_init =
-    make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
+    // pass command line args, empty MPI communicator, and number of threads.
+    // Because libMesh was not initialized, we assume that OpenMC is the primary
+    // application and that its main MPI comm should be used.
+    settings::libmesh_init =
+      make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
 #else
-  // pass command line args, empty MPI communicator, and number of threads
-  settings::libmesh_init =
-    make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
+    // pass command line args, empty MPI communicator, and number of threads
+    settings::libmesh_init =
+      make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
 #endif
 
-  settings::libmesh_comm = &(settings::libmesh_init->comm());
-}
+    settings::libmesh_comm = &(settings::libmesh_init->comm());
+  }
 
 #endif
 
@@ -107,7 +108,8 @@ if (!settings::libmesh_init && !libMesh::initialized()) {
   read_input_xml();
 
   // Check for particle restart run
-  if (settings::particle_restart_run) settings::run_mode = RunMode::PARTICLE;
+  if (settings::particle_restart_run)
+    settings::run_mode = RunMode::PARTICLE;
 
   // Stop initialization timer
   simulation::time_initialize.stop();
@@ -126,7 +128,8 @@ void initialize_mpi(MPI_Comm intracomm)
   // Initialize MPI
   int flag;
   MPI_Initialized(&flag);
-  if (!flag) MPI_Init(nullptr, nullptr);
+  if (!flag)
+    MPI_Init(nullptr, nullptr);
 
   // Determine number of processes and rank for each
   MPI_Comm_size(intracomm, &mpi::n_procs);
@@ -150,18 +153,17 @@ void initialize_mpi(MPI_Comm intracomm)
   }
 
   int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1};
-  MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
+  MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT,
+    MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
   MPI_Type_create_struct(9, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 }
 #endif // OPENMC_MPI
 
-
-int
-parse_command_line(int argc, char* argv[])
+int parse_command_line(int argc, char* argv[])
 {
   int last_flag = 0;
-  for (int i=1; i < argc; ++i) {
+  for (int i = 1; i < argc; ++i) {
     std::string arg {argv[i]};
     if (arg[0] == '-') {
       if (arg == "-p" || arg == "--plot") {
@@ -192,7 +194,8 @@ parse_command_line(int argc, char* argv[])
           settings::path_particle_restart = argv[i];
           settings::particle_restart_run = true;
         } else {
-          auto msg = fmt::format("Unrecognized file after restart flag: {}.", filetype);
+          auto msg =
+            fmt::format("Unrecognized file after restart flag: {}.", filetype);
           strcpy(openmc_err_msg, msg.c_str());
           return OPENMC_E_INVALID_ARGUMENT;
         }
@@ -200,20 +203,21 @@ parse_command_line(int argc, char* argv[])
         // If its a restart run check for additional source file
         if (settings::restart_run && i + 1 < argc) {
           // Check if it has extension we can read
-          if (ends_with(argv[i+1], ".h5")) {
+          if (ends_with(argv[i + 1], ".h5")) {
 
             // Check file type is a source file
-            file_id = file_open(argv[i+1], 'r', true);
+            file_id = file_open(argv[i + 1], 'r', true);
             read_attribute(file_id, "filetype", filetype);
             file_close(file_id);
             if (filetype != "source") {
-              std::string msg {"Second file after restart flag must be a source file"};
+              std::string msg {
+                "Second file after restart flag must be a source file"};
               strcpy(openmc_err_msg, msg.c_str());
               return OPENMC_E_INVALID_ARGUMENT;
             }
 
             // It is a source file
-            settings::path_sourcepoint = argv[i+1];
+            settings::path_sourcepoint = argv[i + 1];
             i += 1;
 
           } else {
@@ -227,7 +231,7 @@ parse_command_line(int argc, char* argv[])
         }
 
       } else if (arg == "-g" || arg == "--geometry-debug") {
-      settings::check_overlaps = true;
+        settings::check_overlaps = true;
       } else if (arg == "-c" || arg == "--volume") {
         settings::run_mode = RunMode::VOLUME;
       } else if (arg == "-s" || arg == "--threads") {
@@ -304,18 +308,19 @@ void read_input_xml()
   if (settings::run_mode == RunMode::PLOTTING) {
     // Read plots.xml if it exists
     read_plots_xml();
-    if (mpi::master && settings::verbosity >= 5) print_plot();
+    if (mpi::master && settings::verbosity >= 5)
+      print_plot();
 
   } else {
     // Write summary information
-    if (mpi::master && settings::output_summary) write_summary();
+    if (mpi::master && settings::output_summary)
+      write_summary();
 
     // Warn if overlap checking is on
     if (mpi::master && settings::check_overlaps) {
       warning("Cell overlap checking is ON.");
     }
   }
-
 }
 
 } // namespace openmc

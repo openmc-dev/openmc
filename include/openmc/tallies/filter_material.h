@@ -15,8 +15,7 @@ namespace openmc {
 //! Specifies which material tally events reside in.
 //==============================================================================
 
-class MaterialFilter : public Filter
-{
+class MaterialFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -26,12 +25,12 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "material";}
+  std::string type() const override { return "material"; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 

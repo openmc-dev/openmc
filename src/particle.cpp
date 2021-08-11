@@ -22,9 +22,9 @@
 #include "openmc/physics_mg.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/surface.h"
-#include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
@@ -83,8 +83,7 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
 }
 
-void
-Particle::event_calculate_xs()
+void Particle::event_calculate_xs()
 {
   // Set the random number stream
   stream() = STREAM_TRACKING;
@@ -119,7 +118,8 @@ Particle::event_calculate_xs()
   if (write_track())
     write_particle_track(*this);
 
-  if (settings::check_overlaps) check_cell_overlap(*this);
+  if (settings::check_overlaps)
+    check_cell_overlap(*this);
 
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
@@ -147,8 +147,7 @@ Particle::event_calculate_xs()
   }
 }
 
-void
-Particle::event_advance()
+void Particle::event_advance()
 {
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
@@ -187,8 +186,7 @@ Particle::event_advance()
   }
 }
 
-void
-Particle::event_cross_surface()
+void Particle::event_cross_surface()
 {
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface_index;
@@ -217,8 +215,7 @@ Particle::event_cross_surface()
   }
 }
 
-void
-Particle::event_collide()
+void Particle::event_collide()
 {
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE &&
@@ -245,7 +242,8 @@ Particle::event_collide()
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
-  if (!model::active_collision_tallies.empty()) score_collision_tally(*this);
+  if (!model::active_collision_tallies.empty())
+    score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {
     if (settings::run_CE) {
       score_analog_tally_ce(*this);
@@ -285,15 +283,15 @@ Particle::event_collide()
   }
 
   // Score flux derivative accumulators for differential tallies.
-  if (!model::active_tallies.empty()) score_collision_derivative(*this);
+  if (!model::active_tallies.empty())
+    score_collision_derivative(*this);
 
-  #ifdef DAGMC
+#ifdef DAGMC
   history().reset();
-  #endif
+#endif
 }
 
-void
-Particle::event_revive_from_secondary()
+void Particle::event_revive_from_secondary()
 {
   // If particle has too many events, display warning and kill it
   ++n_event();
@@ -319,12 +317,11 @@ Particle::event_revive_from_secondary()
   }
 }
 
-void
-Particle::event_death()
+void Particle::event_death()
 {
-  #ifdef DAGMC
+#ifdef DAGMC
   history().reset();
-  #endif
+#endif
 
   // Finish particle track output.
   if (write_track()) {
@@ -332,8 +329,8 @@ Particle::event_death()
     finalize_particle_track(*this);
   }
 
-  // Contribute tally reduction variables to global accumulator
-  #pragma omp atomic
+// Contribute tally reduction variables to global accumulator
+#pragma omp atomic
   global_tally_absorption += keff_tally_absorption();
 #pragma omp atomic
   global_tally_collision += keff_tally_collision();
@@ -356,9 +353,7 @@ Particle::event_death()
   }
 }
 
-
-void
-Particle::cross_surface()
+void Particle::cross_surface()
 {
   int i_surface = std::abs(surface());
   // TODO: off-by-one
@@ -381,10 +376,11 @@ Particle::cross_surface()
     int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
   }
 
-  // if we're crossing a CSG surface, make sure the DAG history is reset
-  #ifdef DAGMC
-  if (surf->geom_type_ == GeometryType::CSG) history().reset();
-  #endif
+// if we're crossing a CSG surface, make sure the DAG history is reset
+#ifdef DAGMC
+  if (surf->geom_type_ == GeometryType::CSG)
+    history().reset();
+#endif
 
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
@@ -399,8 +395,10 @@ Particle::cross_surface()
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type_ == GeometryType::DAG) {
     auto surfp = dynamic_cast<DAGSurface*>(surf);
-    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last(n_coord() - 1)].get());
-    auto univp = static_cast<DAGUniverse*>(model::universes[coord(n_coord() - 1).universe].get());
+    auto cellp =
+      dynamic_cast<DAGCell*>(model::cells[cell_last(n_coord() - 1)].get());
+    auto univp = static_cast<DAGUniverse*>(
+      model::universes[coord(n_coord() - 1).universe].get());
     // determine the next cell for this crossing
     int32_t i_cell = next_cell(univp, cellp, surfp) - 1;
     // save material and temp
@@ -447,8 +445,7 @@ Particle::cross_surface()
   }
 }
 
-void
-Particle::cross_vacuum_bc(const Surface& surf)
+void Particle::cross_vacuum_bc(const Surface& surf)
 {
   // Kill the particle
   alive() = false;
@@ -474,8 +471,7 @@ Particle::cross_vacuum_bc(const Surface& surf)
   }
 }
 
-void
-Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
+void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 {
   // Do not handle reflective boundary conditions on lower universes
   if (n_coord() != 1) {
@@ -515,8 +511,8 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
   if (surf.geom_type_ != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
-    this->mark_as_lost("Couldn't find particle after reflecting from surface "
-                        + std::to_string(surf.id_) + ".");
+    this->mark_as_lost("Couldn't find particle after reflecting from surface " +
+                       std::to_string(surf.id_) + ".");
     return;
   }
 
@@ -529,9 +525,8 @@ Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   }
 }
 
-void
-Particle::cross_periodic_bc(const Surface& surf, Position new_r,
-                            Direction new_u, int new_surface)
+void Particle::cross_periodic_bc(
+  const Surface& surf, Position new_r, Direction new_u, int new_surface)
 {
   // Do not handle periodic boundary conditions on lower universes
   if (n_coord() != 1) {
@@ -580,8 +575,7 @@ Particle::cross_periodic_bc(const Surface& surf, Position new_r,
   }
 }
 
-void
-Particle::mark_as_lost(const char* message)
+void Particle::mark_as_lost(const char* message)
 {
   // Print warning and write lost particle file
   warning(message);
@@ -594,27 +588,27 @@ Particle::mark_as_lost(const char* message)
 
   // Count the total number of simulated particles (on this processor)
   auto n = simulation::current_batch * settings::gen_per_batch *
-    simulation::work_per_rank;
+           simulation::work_per_rank;
 
   // Abort the simulation if the maximum number of lost particles has been
   // reached
   if (simulation::n_lost_particles >= settings::max_lost_particles &&
-      simulation::n_lost_particles >= settings::rel_max_lost_particles*n) {
+      simulation::n_lost_particles >= settings::rel_max_lost_particles * n) {
     fatal_error("Maximum number of lost particles has been reached.");
   }
 }
 
-void
-Particle::write_restart() const
+void Particle::write_restart() const
 {
   // Dont write another restart file if in particle restart mode
-  if (settings::run_mode == RunMode::PARTICLE) return;
+  if (settings::run_mode == RunMode::PARTICLE)
+    return;
 
   // Set up file name
   auto filename = fmt::format("{}particle_{}_{}.h5", settings::path_output,
     simulation::current_batch, id());
 
-#pragma omp critical (WriteParticleRestart)
+#pragma omp critical(WriteParticleRestart)
   {
     // Create file
     hid_t file_id = file_open(filename, 'w');
@@ -633,32 +627,33 @@ Particle::write_restart() const
     write_dataset(file_id, "current_generation", simulation::current_gen);
     write_dataset(file_id, "n_particles", settings::n_particles);
     switch (settings::run_mode) {
-      case RunMode::FIXED_SOURCE:
-        write_dataset(file_id, "run_mode", "fixed source");
-        break;
-      case RunMode::EIGENVALUE:
-        write_dataset(file_id, "run_mode", "eigenvalue");
-        break;
-      case RunMode::PARTICLE:
-        write_dataset(file_id, "run_mode", "particle restart");
-        break;
-      default:
-        break;
+    case RunMode::FIXED_SOURCE:
+      write_dataset(file_id, "run_mode", "fixed source");
+      break;
+    case RunMode::EIGENVALUE:
+      write_dataset(file_id, "run_mode", "eigenvalue");
+      break;
+    case RunMode::PARTICLE:
+      write_dataset(file_id, "run_mode", "particle restart");
+      break;
+    default:
+      break;
     }
     write_dataset(file_id, "id", id());
     write_dataset(file_id, "type", static_cast<int>(type()));
 
     int64_t i = current_work();
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      //take source data from primary bank for eigenvalue simulation
-      write_dataset(file_id, "weight", simulation::source_bank[i-1].wgt);
-      write_dataset(file_id, "energy", simulation::source_bank[i-1].E);
-      write_dataset(file_id, "xyz", simulation::source_bank[i-1].r);
-      write_dataset(file_id, "uvw", simulation::source_bank[i-1].u);
+      // take source data from primary bank for eigenvalue simulation
+      write_dataset(file_id, "weight", simulation::source_bank[i - 1].wgt);
+      write_dataset(file_id, "energy", simulation::source_bank[i - 1].E);
+      write_dataset(file_id, "xyz", simulation::source_bank[i - 1].r);
+      write_dataset(file_id, "uvw", simulation::source_bank[i - 1].u);
     } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
       // re-sample using rng random number seed used to generate source particle
-      int64_t id = (simulation::total_gen + overall_generation() - 1)*settings::n_particles +
-        simulation::work_index[mpi::rank] + i;
+      int64_t id = (simulation::total_gen + overall_generation() - 1) *
+                     settings::n_particles +
+                   simulation::work_index[mpi::rank] + i;
       uint64_t seed = init_seed(id, STREAM_SOURCE);
       // re-sample source site
       auto site = sample_external_source(&seed);
@@ -699,7 +694,7 @@ ParticleType str_to_particle_type(std::string str)
   } else if (str == "positron") {
     return ParticleType::positron;
   } else {
-    throw std::invalid_argument{fmt::format("Invalid particle name: {}", str)};
+    throw std::invalid_argument {fmt::format("Invalid particle name: {}", str)};
   }
 }
 

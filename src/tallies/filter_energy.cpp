@@ -3,7 +3,7 @@
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
-#include "openmc/constants.h"  // For F90_NONE
+#include "openmc/constants.h" // For F90_NONE
 #include "openmc/mgxs_interface.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -15,15 +15,13 @@ namespace openmc {
 // EnergyFilter implementation
 //==============================================================================
 
-void
-EnergyFilter::from_xml(pugi::xml_node node)
+void EnergyFilter::from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
   this->set_bins(bins);
 }
 
-void
-EnergyFilter::set_bins(gsl::span<const double> bins)
+void EnergyFilter::set_bins(gsl::span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -31,8 +29,9 @@ EnergyFilter::set_bins(gsl::span<const double> bins)
 
   // Copy bins, ensuring they are valid
   for (gsl::index i = 0; i < bins.size(); ++i) {
-    if (i > 0 && bins[i] <= bins[i-1]) {
-      throw std::runtime_error{"Energy bins must be monotonically increasing."};
+    if (i > 0 && bins[i] <= bins[i - 1]) {
+      throw std::runtime_error {
+        "Energy bins must be monotonically increasing."};
     }
     bins_.push_back(bins[i]);
   }
@@ -57,9 +56,8 @@ EnergyFilter::set_bins(gsl::span<const double> bins)
   }
 }
 
-void
-EnergyFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-const
+void EnergyFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   if (p.g() != F90_NONE && matches_transport_groups_) {
     if (estimator == TallyEstimator::TRACKLENGTH) {
@@ -82,26 +80,23 @@ const
   }
 }
 
-void
-EnergyFilter::to_statepoint(hid_t filter_group) const
+void EnergyFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", bins_);
 }
 
-std::string
-EnergyFilter::text_label(int bin) const
+std::string EnergyFilter::text_label(int bin) const
 {
-  return fmt::format("Incoming Energy [{}, {})", bins_[bin], bins_[bin+1]);
+  return fmt::format("Incoming Energy [{}, {})", bins_[bin], bins_[bin + 1]);
 }
 
 //==============================================================================
 // EnergyoutFilter implementation
 //==============================================================================
 
-void
-EnergyoutFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
-                              FilterMatch& match) const
+void EnergyoutFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   if (p.g() != F90_NONE && matches_transport_groups_) {
     match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
@@ -116,21 +111,22 @@ EnergyoutFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   }
 }
 
-std::string
-EnergyoutFilter::text_label(int bin) const
+std::string EnergyoutFilter::text_label(int bin) const
 {
-  return fmt::format("Outgoing Energy [{}, {})", bins_.at(bin), bins_.at(bin+1));
+  return fmt::format(
+    "Outgoing Energy [{}, {})", bins_.at(bin), bins_.at(bin + 1));
 }
 
 //==============================================================================
 // C-API functions
 //==============================================================================
 
-extern"C" int
-openmc_energy_filter_get_bins(int32_t index, const double** energies, size_t* n)
+extern "C" int openmc_energy_filter_get_bins(
+  int32_t index, const double** energies, size_t* n)
 {
   // Make sure this is a valid index to an allocated filter.
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   // Get a pointer to the filter and downcast.
   const auto& filt_base = model::tally_filters[index].get();
@@ -148,11 +144,12 @@ openmc_energy_filter_get_bins(int32_t index, const double** energies, size_t* n)
   return 0;
 }
 
-extern "C" int
-openmc_energy_filter_set_bins(int32_t index, size_t n, const double* energies)
+extern "C" int openmc_energy_filter_set_bins(
+  int32_t index, size_t n, const double* energies)
 {
   // Make sure this is a valid index to an allocated filter.
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   // Get a pointer to the filter and downcast.
   const auto& filt_base = model::tally_filters[index].get();
@@ -169,4 +166,4 @@ openmc_energy_filter_set_bins(int32_t index, size_t n, const double* energies)
   return 0;
 }
 
-}// namespace openmc
+} // namespace openmc

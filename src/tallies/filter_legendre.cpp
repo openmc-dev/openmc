@@ -7,25 +7,22 @@
 
 namespace openmc {
 
-void
-LegendreFilter::from_xml(pugi::xml_node node)
+void LegendreFilter::from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
 }
 
-void
-LegendreFilter::set_order(int order)
+void LegendreFilter::set_order(int order)
 {
   if (order < 0) {
-    throw std::invalid_argument{"Legendre order must be non-negative."};
+    throw std::invalid_argument {"Legendre order must be non-negative."};
   }
   order_ = order;
   n_bins_ = order_ + 1;
 }
 
-void
-LegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
-                             FilterMatch& match) const
+void LegendreFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   vector<double> wgt(n_bins_);
   calc_pn_c(order_, p.mu(), wgt.data());
@@ -35,15 +32,13 @@ LegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   }
 }
 
-void
-LegendreFilter::to_statepoint(hid_t filter_group) const
+void LegendreFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "order", order_);
 }
 
-std::string
-LegendreFilter::text_label(int bin) const
+std::string LegendreFilter::text_label(int bin) const
 {
   return "Legendre expansion, P" + std::to_string(bin);
 }
@@ -52,11 +47,11 @@ LegendreFilter::text_label(int bin) const
 // C-API functions
 //==============================================================================
 
-extern "C" int
-openmc_legendre_filter_get_order(int32_t index, int* order)
+extern "C" int openmc_legendre_filter_get_order(int32_t index, int* order)
 {
   // Make sure this is a valid index to an allocated filter.
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   // Get a pointer to the filter and downcast.
   const auto& filt_base = model::tally_filters[index].get();
@@ -73,11 +68,11 @@ openmc_legendre_filter_get_order(int32_t index, int* order)
   return 0;
 }
 
-extern "C" int
-openmc_legendre_filter_set_order(int32_t index, int order)
+extern "C" int openmc_legendre_filter_set_order(int32_t index, int order)
 {
   // Make sure this is a valid index to an allocated filter.
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   // Get a pointer to the filter and downcast.
   const auto& filt_base = model::tally_filters[index].get();

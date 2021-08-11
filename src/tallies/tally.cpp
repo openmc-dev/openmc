@@ -30,13 +30,13 @@
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/xml_interface.h"
 
-#include <fmt/core.h>
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
+#include <fmt/core.h>
 
 #include <algorithm> // for max
-#include <cstddef> // for size_t
+#include <cstddef>   // for size_t
 #include <string>
 
 namespace openmc {
@@ -46,20 +46,20 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::unordered_map<int, int> tally_map;
-  vector<unique_ptr<Tally>> tallies;
-  vector<int> active_tallies;
-  vector<int> active_analog_tallies;
-  vector<int> active_tracklength_tallies;
-  vector<int> active_collision_tallies;
-  vector<int> active_meshsurf_tallies;
-  vector<int> active_surface_tallies;
-}
+std::unordered_map<int, int> tally_map;
+vector<unique_ptr<Tally>> tallies;
+vector<int> active_tallies;
+vector<int> active_analog_tallies;
+vector<int> active_tracklength_tallies;
+vector<int> active_collision_tallies;
+vector<int> active_meshsurf_tallies;
+vector<int> active_surface_tallies;
+} // namespace model
 
 namespace simulation {
-  xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
-  int32_t n_realizations {0};
-}
+xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+int32_t n_realizations {0};
+} // namespace simulation
 
 double global_tally_absorption;
 double global_tally_collision;
@@ -83,19 +83,21 @@ Tally::Tally(pugi::xml_node node)
 
   // Copy and set tally id
   if (!check_for_node(node, "id")) {
-    throw std::runtime_error{"Must specify id for tally in tally XML file."};
+    throw std::runtime_error {"Must specify id for tally in tally XML file."};
   }
   int32_t id = std::stoi(get_node_value(node, "id"));
   this->set_id(id);
 
-  if (check_for_node(node, "name")) name_ = get_node_value(node, "name");
+  if (check_for_node(node, "name"))
+    name_ = get_node_value(node, "name");
 
   // =======================================================================
   // READ DATA FOR FILTERS
 
   // Check if user is using old XML format and throw an error if so
   if (check_for_node(node, "filter")) {
-    throw std::runtime_error{"Tally filters must be specified independently of "
+    throw std::runtime_error {
+      "Tally filters must be specified independently of "
       "tallies in a <filter> element. The <tally> element itself should "
       "have a list of filters that apply, e.g., <filters>1 2</filters> "
       "where 1 and 2 are the IDs of filters specified outside of "
@@ -114,7 +116,7 @@ Tally::Tally(pugi::xml_node node)
     // Determine if filter ID is valid
     auto it = model::filter_map.find(filter_id);
     if (it == model::filter_map.end()) {
-      throw std::runtime_error{fmt::format(
+      throw std::runtime_error {fmt::format(
         "Could not find filter {} specified on tally {}", filter_id, id_)};
     }
 
@@ -133,7 +135,8 @@ Tally::Tally(pugi::xml_node node)
     const auto& f = model::tally_filters[i_filter].get();
 
     auto pf = dynamic_cast<ParticleFilter*>(f);
-    if (pf) particle_filter_index = i_filter;
+    if (pf)
+      particle_filter_index = i_filter;
 
     // Change the tally estimator if a filter demands it
     std::string filt_type = f->type();
@@ -144,8 +147,8 @@ Tally::Tally(pugi::xml_node node)
       if (sf->cosine() == SphericalHarmonicsCosine::scatter) {
         estimator_ = TallyEstimator::ANALOG;
       }
-    } else if (filt_type == "spatiallegendre" || filt_type == "zernike"
-      || filt_type == "zernikeradial") {
+    } else if (filt_type == "spatiallegendre" || filt_type == "zernike" ||
+               filt_type == "zernikeradial") {
       estimator_ = TallyEstimator::COLLISION;
     }
   }
@@ -171,7 +174,7 @@ Tally::Tally(pugi::xml_node node)
         switch (score) {
         case SCORE_INVERSE_VELOCITY:
           fatal_error("Particle filter must be used with photon "
-            "transport on and inverse velocity score");
+                      "transport on and inverse velocity score");
           break;
         case SCORE_FLUX:
         case SCORE_TOTAL:
@@ -186,7 +189,8 @@ Tally::Tally(pugi::xml_node node)
         case SCORE_PROMPT_NU_FISSION:
         case SCORE_DECAY_RATE:
           warning("Particle filter is not used with photon transport"
-            " on and " + reaction_name(score) + " score.");
+                  " on and " +
+                  reaction_name(score) + " score.");
           break;
         }
       }
@@ -197,9 +201,11 @@ Tally::Tally(pugi::xml_node node)
       auto pf = dynamic_cast<ParticleFilter*>(f);
       for (auto p : pf->particles()) {
         if (p != ParticleType::neutron) {
-          warning(fmt::format("Particle filter other than NEUTRON used with "
+          warning(fmt::format(
+            "Particle filter other than NEUTRON used with "
             "photon transport turned off. All tallies for particle type {}"
-            " will have no scores", static_cast<int>(p)));
+            " will have no scores",
+            static_cast<int>(p)));
         }
       }
     }
@@ -225,14 +231,16 @@ Tally::Tally(pugi::xml_node node)
     }
 
     const auto& deriv = model::tally_derivs[deriv_];
-    if (deriv.variable == DerivativeVariable::NUCLIDE_DENSITY
-      || deriv.variable == DerivativeVariable::TEMPERATURE) {
+    if (deriv.variable == DerivativeVariable::NUCLIDE_DENSITY ||
+        deriv.variable == DerivativeVariable::TEMPERATURE) {
       for (int i_nuc : nuclides_) {
         if (has_energyout && i_nuc == -1) {
-          fatal_error(fmt::format("Error on tally {}: Cannot use a "
+          fatal_error(fmt::format(
+            "Error on tally {}: Cannot use a "
             "'nuclide_density' or 'temperature' derivative on a tally with an "
             "outgoing energy filter and 'total' nuclide rate. Instead, tally "
-            "each nuclide in the material individually.", id_));
+            "each nuclide in the material individually.",
+            id_));
           // Note that diff tallies with these characteristics would work
           // correctly if no tally events occur in the perturbed material
           // (e.g. pertrubing moderator but only tallying fuel), but this
@@ -255,13 +263,15 @@ Tally::Tally(pugi::xml_node node)
     std::string est = get_node_value(node, "estimator");
     if (est == "analog") {
       estimator_ = TallyEstimator::ANALOG;
-    } else if (est == "tracklength" || est == "track-length"
-      || est == "pathlength" || est == "path-length") {
+    } else if (est == "tracklength" || est == "track-length" ||
+               est == "pathlength" || est == "path-length") {
       // If the estimator was set to an analog estimator, this means the
       // tally needs post-collision information
-      if (estimator_ == TallyEstimator::ANALOG || estimator_ == TallyEstimator::COLLISION) {
-        throw std::runtime_error{fmt::format("Cannot use track-length "
-          "estimator for tally {}", id_)};
+      if (estimator_ == TallyEstimator::ANALOG ||
+          estimator_ == TallyEstimator::COLLISION) {
+        throw std::runtime_error {fmt::format("Cannot use track-length "
+                                              "estimator for tally {}",
+          id_)};
       }
 
       // Set estimator to track-length estimator
@@ -271,16 +281,17 @@ Tally::Tally(pugi::xml_node node)
       // If the estimator was set to an analog estimator, this means the
       // tally needs post-collision information
       if (estimator_ == TallyEstimator::ANALOG) {
-        throw std::runtime_error{fmt::format("Cannot use collision estimator "
-          "for tally ", id_)};
+        throw std::runtime_error {fmt::format("Cannot use collision estimator "
+                                              "for tally ",
+          id_)};
       }
 
       // Set estimator to collision estimator
       estimator_ = TallyEstimator::COLLISION;
 
     } else {
-      throw std::runtime_error{fmt::format(
-        "Invalid estimator '{}' on tally {}", est, id_)};
+      throw std::runtime_error {
+        fmt::format("Invalid estimator '{}' on tally {}", est, id_)};
     }
   }
 
@@ -297,7 +308,6 @@ Tally::Tally(pugi::xml_node node)
     }
   }
 #endif
-
 }
 
 Tally::~Tally()
@@ -305,15 +315,13 @@ Tally::~Tally()
   model::tally_map.erase(id_);
 }
 
-Tally*
-Tally::create(int32_t id)
+Tally* Tally::create(int32_t id)
 {
   model::tallies.push_back(make_unique<Tally>(id));
   return model::tallies.back().get();
 }
 
-void
-Tally::set_id(int32_t id)
+void Tally::set_id(int32_t id)
 {
   Expects(id >= 0 || id == C_NONE);
 
@@ -325,7 +333,8 @@ Tally::set_id(int32_t id)
 
   // Make sure no other tally has the same ID
   if (model::tally_map.find(id) != model::tally_map.end()) {
-    throw std::runtime_error{fmt::format("Two tallies have the same ID: {}", id)};
+    throw std::runtime_error {
+      fmt::format("Two tallies have the same ID: {}", id)};
   }
 
   // If no ID specified, auto-assign next ID in sequence
@@ -342,8 +351,7 @@ Tally::set_id(int32_t id)
   model::tally_map[id] = index_;
 }
 
-void
-Tally::set_filters(gsl::span<Filter*> filters)
+void Tally::set_filters(gsl::span<Filter*> filters)
 {
   // Clear old data.
   filters_.clear();
@@ -368,11 +376,9 @@ Tally::set_filters(gsl::span<Filter*> filters)
 
   // Set the strides.
   set_strides();
-
 }
 
-void
-Tally::set_strides()
+void Tally::set_strides()
 {
   // Set the strides.  Filters are traversed in reverse so that the last filter
   // has the shortest stride in memory and the first filter has the longest
@@ -380,15 +386,14 @@ Tally::set_strides()
   auto n = filters_.size();
   strides_.resize(n, 0);
   int stride = 1;
-  for (int i = n-1; i >= 0; --i) {
+  for (int i = n - 1; i >= 0; --i) {
     strides_[i] = stride;
     stride *= model::tally_filters[filters_[i]]->n_bins();
   }
   n_filter_bins_ = stride;
 }
 
-void
-Tally::set_scores(pugi::xml_node node)
+void Tally::set_scores(pugi::xml_node node)
 {
   if (!check_for_node(node, "scores"))
     fatal_error(fmt::format("No scores specified on tally {}", id_));
@@ -449,8 +454,9 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_ABSORPTION:
     case SCORE_FISSION:
       if (energyout_present)
-        fatal_error("Cannot tally " + score_str + " reaction rate with an "
-          "outgoing energy filter");
+        fatal_error("Cannot tally " + score_str +
+                    " reaction rate with an "
+                    "outgoing energy filter");
       break;
 
     case SCORE_SCATTER:
@@ -477,7 +483,7 @@ void Tally::set_scores(const vector<std::string>& scores)
       if (surface_present || cell_present || cellfrom_present) {
         if (meshsurface_present)
           fatal_error("Cannot tally mesh surface currents in the same tally as "
-            "normal surface currents");
+                      "normal surface currents");
         type_ = TallyType::SURFACE;
       } else if (meshsurface_present) {
         type_ = TallyType::MESH_SURFACE;
@@ -487,7 +493,8 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case HEATING:
-      if (settings::photon_transport) estimator_ = TallyEstimator::COLLISION;
+      if (settings::photon_transport)
+        estimator_ = TallyEstimator::COLLISION;
       break;
     }
 
@@ -498,9 +505,9 @@ void Tally::set_scores(const vector<std::string>& scores)
   for (auto it1 = scores_.begin(); it1 != scores_.end(); ++it1) {
     for (auto it2 = it1 + 1; it2 != scores_.end(); ++it2) {
       if (*it1 == *it2)
-        fatal_error(fmt::format(
-          "Duplicate score of type \"{}\" found in tally {}",
-          reaction_name(*it1), id_));
+        fatal_error(
+          fmt::format("Duplicate score of type \"{}\" found in tally {}",
+            reaction_name(*it1), id_));
     }
   }
 
@@ -508,23 +515,23 @@ void Tally::set_scores(const vector<std::string>& scores)
   if (!settings::run_CE) {
     for (auto sc : scores_)
       if (sc > 0)
-        fatal_error("Cannot tally " + reaction_name(sc) + " reaction rate "
-          "in multi-group mode");
+        fatal_error("Cannot tally " + reaction_name(sc) +
+                    " reaction rate "
+                    "in multi-group mode");
   }
 
   // Make sure current scores are not mixed in with volumetric scores.
   if (type_ == TallyType::SURFACE || type_ == TallyType::MESH_SURFACE) {
     if (scores_.size() != 1)
       fatal_error("Cannot tally other scores in the same tally as surface "
-        "currents.");
+                  "currents.");
   }
   if ((surface_present || meshsurface_present) && scores_[0] != SCORE_CURRENT)
     fatal_error("Cannot tally score other than 'current' when using a surface "
-      "or mesh-surface filter.");
+                "or mesh-surface filter.");
 }
 
-void
-Tally::set_nuclides(pugi::xml_node node)
+void Tally::set_nuclides(pugi::xml_node node)
 {
   nuclides_.clear();
 
@@ -563,16 +570,16 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       auto search = data::nuclide_map.find(nuc);
       if (search == data::nuclide_map.end())
         fatal_error(fmt::format("Could not find the nuclide {} specified in "
-          "tally {} in any material", nuc, id_));
+                                "tally {} in any material",
+          nuc, id_));
       nuclides_.push_back(search->second);
     }
   }
 }
 
-void
-Tally::init_triggers(pugi::xml_node node)
+void Tally::init_triggers(pugi::xml_node node)
 {
-  for (auto trigger_node: node.children("trigger")) {
+  for (auto trigger_node : node.children("trigger")) {
     // Read the trigger type.
     TriggerMetric metric;
     if (check_for_node(trigger_node, "type")) {
@@ -584,8 +591,8 @@ Tally::init_triggers(pugi::xml_node node)
       } else if (type_str == "rel_err") {
         metric = TriggerMetric::relative_error;
       } else {
-        fatal_error(fmt::format("Unknown trigger type \"{}\" in tally {}",
-          type_str, id_));
+        fatal_error(fmt::format(
+          "Unknown trigger type \"{}\" in tally {}", type_str, id_));
       }
     } else {
       fatal_error(fmt::format(
@@ -622,11 +629,14 @@ Tally::init_triggers(pugi::xml_node node)
       } else {
         int i_score = 0;
         for (; i_score < this->scores_.size(); ++i_score) {
-          if (reaction_name(this->scores_[i_score]) == score_str) break;
+          if (reaction_name(this->scores_[i_score]) == score_str)
+            break;
         }
         if (i_score == this->scores_.size()) {
-          fatal_error(fmt::format("Could not find the score \"{}\" in tally "
-            "{} but it was listed in a trigger on that tally", score_str, id_));
+          fatal_error(
+            fmt::format("Could not find the score \"{}\" in tally "
+                        "{} but it was listed in a trigger on that tally",
+              score_str, id_));
         }
         triggers_.push_back({metric, threshold, i_score});
       }
@@ -665,37 +675,40 @@ void Tally::accumulate()
     }
 
     // Account for number of source particles in normalization
-    double norm = total_source / (settings::n_particles * settings::gen_per_batch);
+    double norm =
+      total_source / (settings::n_particles * settings::gen_per_batch);
 
-    // Accumulate each result
-    #pragma omp parallel for
+// Accumulate each result
+#pragma omp parallel for
     for (int i = 0; i < results_.shape()[0]; ++i) {
       for (int j = 0; j < results_.shape()[1]; ++j) {
         double val = results_(i, j, TallyResult::VALUE) * norm;
         results_(i, j, TallyResult::VALUE) = 0.0;
         results_(i, j, TallyResult::SUM) += val;
-        results_(i, j, TallyResult::SUM_SQ) += val*val;
+        results_(i, j, TallyResult::SUM_SQ) += val * val;
       }
     }
   }
 }
 
-std::string
-Tally::score_name(int score_idx) const {
+std::string Tally::score_name(int score_idx) const
+{
   if (score_idx < 0 || score_idx >= scores_.size()) {
     fatal_error("Index in scores array is out of bounds.");
   }
   return reaction_name(scores_[score_idx]);
 }
 
-std::string
-Tally::nuclide_name(int nuclide_idx) const {
+std::string Tally::nuclide_name(int nuclide_idx) const
+{
   if (nuclide_idx < 0 || nuclide_idx >= nuclides_.size()) {
     fatal_error("Index in nuclides array is out of bounds");
   }
 
   int nuclide = nuclides_.at(nuclide_idx);
-  if (nuclide == -1) { return "total"; }
+  if (nuclide == -1) {
+    return "total";
+  }
   return data::nuclides.at(nuclide)->name_;
 }
 
@@ -707,7 +720,8 @@ void read_tallies_xml()
 {
   // Check if tallies.xml exists. If not, just return since it is optional
   std::string filename = settings::path_input + "tallies.xml";
-  if (!file_exists(filename)) return;
+  if (!file_exists(filename))
+    return;
 
   write_message("Reading tallies XML file...", 5);
 
@@ -725,7 +739,8 @@ void read_tallies_xml()
   read_meshes(root);
 
   // We only need the mesh info for plotting
-  if (settings::run_mode == RunMode::PLOTTING) return;
+  if (settings::run_mode == RunMode::PLOTTING)
+    return;
 
   // Read data for tally derivatives
   read_tally_derivatives(root);
@@ -743,7 +758,8 @@ void read_tallies_xml()
 
   // Check for user tallies
   int n = 0;
-  for (auto node : root.children("tally")) ++n;
+  for (auto node : root.children("tally"))
+    ++n;
   if (n == 0 && mpi::master) {
     warning("No tallies present in tallies.xml file.");
   }
@@ -763,7 +779,8 @@ void reduce_tally_results()
       auto& tally {model::tallies[i_tally]};
 
       // Get view of accumulated tally values
-      auto values_view = xt::view(tally->results_, xt::all(), xt::all(), static_cast<int>(TallyResult::VALUE));
+      auto values_view = xt::view(tally->results_, xt::all(), xt::all(),
+        static_cast<int>(TallyResult::VALUE));
 
       // Make copy of tally values in contiguous array
       xt::xtensor<double, 2> values = values_view;
@@ -787,7 +804,8 @@ void reduce_tally_results()
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
-  auto gt_values_view = xt::view(gt, xt::all(), static_cast<int>(TallyResult::VALUE));
+  auto gt_values_view =
+    xt::view(gt, xt::all(), static_cast<int>(TallyResult::VALUE));
 
   // Make copy of values in contiguous array
   xt::xtensor<double, 1> gt_values = gt_values_view;
@@ -809,16 +827,17 @@ void reduce_tally_results()
   double weight_reduced;
   MPI_Reduce(&simulation::total_weight, &weight_reduced, 1, MPI_DOUBLE, MPI_SUM,
     0, mpi::intracomm);
-  if (mpi::master) simulation::total_weight = weight_reduced;
+  if (mpi::master)
+    simulation::total_weight = weight_reduced;
 }
 #endif
 
-void
-accumulate_tallies()
+void accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (mpi::n_procs > 1) reduce_tally_results();
+  if (mpi::n_procs > 1)
+    reduce_tally_results();
 #endif
 
   // Increase number of realizations (only used for global tallies)
@@ -831,9 +850,12 @@ accumulate_tallies()
     if (settings::run_mode == RunMode::EIGENVALUE) {
       if (simulation::current_batch > settings::n_inactive) {
         // Accumulate products of different estimators of k
-        double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) / simulation::total_weight;
-        double k_abs = gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) / simulation::total_weight;
-        double k_tra = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) / simulation::total_weight;
+        double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /
+                       simulation::total_weight;
+        double k_abs = gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
+                       simulation::total_weight;
+        double k_tra = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
+                       simulation::total_weight;
         simulation::k_col_abs += k_col * k_abs;
         simulation::k_col_tra += k_col * k_tra;
         simulation::k_abs_tra += k_abs * k_tra;
@@ -842,10 +864,10 @@ accumulate_tallies()
 
     // Accumulate results for global tallies
     for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
-      double val = gt(i, TallyResult::VALUE)/simulation::total_weight;
+      double val = gt(i, TallyResult::VALUE) / simulation::total_weight;
       gt(i, TallyResult::VALUE) = 0.0;
       gt(i, TallyResult::SUM) += val;
-      gt(i, TallyResult::SUM_SQ) += val*val;
+      gt(i, TallyResult::SUM_SQ) += val * val;
     }
   }
 
@@ -856,8 +878,7 @@ accumulate_tallies()
   }
 }
 
-void
-setup_active_tallies()
+void setup_active_tallies()
 {
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
@@ -875,14 +896,14 @@ setup_active_tallies()
 
       case TallyType::VOLUME:
         switch (tally.estimator_) {
-          case TallyEstimator::ANALOG:
-            model::active_analog_tallies.push_back(i);
-            break;
-          case TallyEstimator::TRACKLENGTH:
-            model::active_tracklength_tallies.push_back(i);
-            break;
-          case TallyEstimator::COLLISION:
-            model::active_collision_tallies.push_back(i);
+        case TallyEstimator::ANALOG:
+          model::active_analog_tallies.push_back(i);
+          break;
+        case TallyEstimator::TRACKLENGTH:
+          model::active_tracklength_tallies.push_back(i);
+          break;
+        case TallyEstimator::COLLISION:
+          model::active_collision_tallies.push_back(i);
         }
         break;
 
@@ -897,8 +918,7 @@ setup_active_tallies()
   }
 }
 
-void
-free_memory_tally()
+void free_memory_tally()
 {
   model::tally_derivs.clear();
   model::tally_deriv_map.clear();
@@ -922,19 +942,20 @@ free_memory_tally()
 // C-API functions
 //==============================================================================
 
-extern "C" int
-openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end)
+extern "C" int openmc_extend_tallies(
+  int32_t n, int32_t* index_start, int32_t* index_end)
 {
-  if (index_start) *index_start = model::tallies.size();
-  if (index_end) *index_end = model::tallies.size() + n - 1;
+  if (index_start)
+    *index_start = model::tallies.size();
+  if (index_end)
+    *index_end = model::tallies.size() + n - 1;
   for (int i = 0; i < n; ++i) {
     model::tallies.push_back(make_unique<Tally>(-1));
   }
   return 0;
 }
 
-extern "C" int
-openmc_get_tally_index(int32_t id, int32_t* index)
+extern "C" int openmc_get_tally_index(int32_t id, int32_t* index)
 {
   auto it = model::tally_map.find(id);
   if (it == model::tally_map.end()) {
@@ -946,8 +967,7 @@ openmc_get_tally_index(int32_t id, int32_t* index)
   return 0;
 }
 
-extern "C" void
-openmc_get_tally_next_id(int32_t* id)
+extern "C" void openmc_get_tally_next_id(int32_t* id)
 {
   int32_t largest_tally_id = 0;
   for (const auto& t : model::tallies) {
@@ -956,8 +976,7 @@ openmc_get_tally_next_id(int32_t* id)
   *id = largest_tally_id + 1;
 }
 
-extern "C" int
-openmc_tally_get_estimator(int32_t index, int* estimator)
+extern "C" int openmc_tally_get_estimator(int32_t index, int* estimator)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -968,8 +987,7 @@ openmc_tally_get_estimator(int32_t index, int* estimator)
   return 0;
 }
 
-extern "C" int
-openmc_tally_set_estimator(int32_t index, const char* estimator)
+extern "C" int openmc_tally_set_estimator(int32_t index, const char* estimator)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -992,8 +1010,7 @@ openmc_tally_set_estimator(int32_t index, const char* estimator)
   return 0;
 }
 
-extern "C" int
-openmc_tally_get_id(int32_t index, int32_t* id)
+extern "C" int openmc_tally_get_id(int32_t index, int32_t* id)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1004,8 +1021,7 @@ openmc_tally_get_id(int32_t index, int32_t* id)
   return 0;
 }
 
-extern "C" int
-openmc_tally_set_id(int32_t index, int32_t id)
+extern "C" int openmc_tally_set_id(int32_t index, int32_t id)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1016,8 +1032,7 @@ openmc_tally_set_id(int32_t index, int32_t id)
   return 0;
 }
 
-extern "C" int
-openmc_tally_get_type(int32_t index, int32_t* type)
+extern "C" int openmc_tally_get_type(int32_t index, int32_t* type)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1028,8 +1043,7 @@ openmc_tally_get_type(int32_t index, int32_t* type)
   return 0;
 }
 
-extern "C" int
-openmc_tally_set_type(int32_t index, const char* type)
+extern "C" int openmc_tally_set_type(int32_t index, const char* type)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1049,8 +1063,7 @@ openmc_tally_set_type(int32_t index, const char* type)
   return 0;
 }
 
-extern "C" int
-openmc_tally_get_active(int32_t index, bool* active)
+extern "C" int openmc_tally_get_active(int32_t index, bool* active)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1061,8 +1074,7 @@ openmc_tally_get_active(int32_t index, bool* active)
   return 0;
 }
 
-extern "C" int
-openmc_tally_set_active(int32_t index, bool active)
+extern "C" int openmc_tally_set_active(int32_t index, bool active)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1073,8 +1085,7 @@ openmc_tally_set_active(int32_t index, bool active)
   return 0;
 }
 
-extern "C" int
-openmc_tally_get_writable(int32_t index, bool* writable)
+extern "C" int openmc_tally_get_writable(int32_t index, bool* writable)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1085,8 +1096,7 @@ openmc_tally_get_writable(int32_t index, bool* writable)
   return 0;
 }
 
-extern "C" int
-openmc_tally_set_writable(int32_t index, bool writable)
+extern "C" int openmc_tally_set_writable(int32_t index, bool writable)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1097,8 +1107,7 @@ openmc_tally_set_writable(int32_t index, bool writable)
   return 0;
 }
 
-extern "C" int
-openmc_tally_get_scores(int32_t index, int** scores, int* n)
+extern "C" int openmc_tally_get_scores(int32_t index, int** scores, int* n)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1110,8 +1119,8 @@ openmc_tally_get_scores(int32_t index, int** scores, int* n)
   return 0;
 }
 
-extern "C" int
-openmc_tally_set_scores(int32_t index, int n, const char** scores)
+extern "C" int openmc_tally_set_scores(
+  int32_t index, int n, const char** scores)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1129,8 +1138,7 @@ openmc_tally_set_scores(int32_t index, int n, const char** scores)
   return 0;
 }
 
-extern "C" int
-openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n)
+extern "C" int openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n)
 {
   // Make sure the index fits in the array bounds.
   if (index < 0 || index >= model::tallies.size()) {
@@ -1144,8 +1152,8 @@ openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n)
   return 0;
 }
 
-extern "C" int
-openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
+extern "C" int openmc_tally_set_nuclides(
+  int32_t index, int n, const char** nuclides)
 {
   // Make sure the index fits in the array bounds.
   if (index < 0 || index >= model::tallies.size()) {
@@ -1155,13 +1163,13 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
 
   vector<std::string> words(nuclides, nuclides + n);
   vector<int> nucs;
-  for (auto word : words){
+  for (auto word : words) {
     if (word == "total") {
       nucs.push_back(-1);
     } else {
       auto search = data::nuclide_map.find(word);
       if (search == data::nuclide_map.end()) {
-        set_errmsg("Nuclide \"" + word  + "\" has not been loaded yet");
+        set_errmsg("Nuclide \"" + word + "\" has not been loaded yet");
         return OPENMC_E_DATA;
       }
       nucs.push_back(search->second);
@@ -1173,8 +1181,8 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
   return 0;
 }
 
-extern "C" int
-openmc_tally_get_filters(int32_t index, const int32_t** indices, size_t* n)
+extern "C" int openmc_tally_get_filters(
+  int32_t index, const int32_t** indices, size_t* n)
 {
   if (index < 0 || index >= model::tallies.size()) {
     set_errmsg("Index in tallies array is out of bounds.");
@@ -1186,8 +1194,8 @@ openmc_tally_get_filters(int32_t index, const int32_t** indices, size_t* n)
   return 0;
 }
 
-extern "C" int
-openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices)
+extern "C" int openmc_tally_set_filters(
+  int32_t index, size_t n, const int32_t* indices)
 {
   // Make sure the index fits in the array bounds.
   if (index < 0 || index >= model::tallies.size()) {
@@ -1213,8 +1221,7 @@ openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices)
 }
 
 //! Reset tally results and number of realizations
-extern "C" int
-openmc_tally_reset(int32_t index)
+extern "C" int openmc_tally_reset(int32_t index)
 {
   // Make sure the index fits in the array bounds.
   if (index < 0 || index >= model::tallies.size()) {
@@ -1226,8 +1233,7 @@ openmc_tally_reset(int32_t index)
   return 0;
 }
 
-extern "C" int
-openmc_tally_get_n_realizations(int32_t index, int32_t* n)
+extern "C" int openmc_tally_get_n_realizations(int32_t index, int32_t* n)
 {
   // Make sure the index fits in the array bounds.
   if (index < 0 || index >= model::tallies.size()) {
@@ -1241,8 +1247,8 @@ openmc_tally_get_n_realizations(int32_t index, int32_t* n)
 
 //! \brief Returns a pointer to a tally results array along with its shape. This
 //! allows a user to obtain in-memory tally results from Python directly.
-extern "C" int
-openmc_tally_results(int32_t index, double** results, size_t* shape)
+extern "C" int openmc_tally_results(
+  int32_t index, double** results, size_t* shape)
 {
   // Make sure the index fits in the array bounds.
   if (index < 0 || index >= model::tallies.size()) {
@@ -1265,13 +1271,15 @@ openmc_tally_results(int32_t index, double** results, size_t* shape)
   return 0;
 }
 
-extern "C" int
-openmc_global_tallies(double** ptr)
+extern "C" int openmc_global_tallies(double** ptr)
 {
   *ptr = simulation::global_tallies.data();
   return 0;
 }
 
-extern "C" size_t tallies_size() { return model::tallies.size(); }
+extern "C" size_t tallies_size()
+{
+  return model::tallies.size();
+}
 
 } // namespace openmc

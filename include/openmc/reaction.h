@@ -6,8 +6,8 @@
 
 #include <string>
 
-#include <gsl/gsl>
 #include "hdf5.h"
+#include <gsl/gsl>
 
 #include "openmc/reaction_product.h"
 #include "openmc/vector.h"
@@ -43,10 +43,10 @@ public:
     vector<double> value;
   };
 
-  int mt_;             //!< ENDF MT value
-  double q_value_;     //!< Reaction Q value in [eV]
-  bool scatter_in_cm_; //!< scattering system in center-of-mass?
-  bool redundant_;     //!< redundant reaction?
+  int mt_;                           //!< ENDF MT value
+  double q_value_;                   //!< Reaction Q value in [eV]
+  bool scatter_in_cm_;               //!< scattering system in center-of-mass?
+  bool redundant_;                   //!< redundant reaction?
   vector<TemperatureXS> xs_;         //!< Cross section at each temperature
   vector<ReactionProduct> products_; //!< Reaction products
 };

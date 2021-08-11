@@ -20,8 +20,7 @@ public:
   //!   to directly modify anything about the particle, but it will do so
   //!   indirectly by calling the particle's appropriate cross_*_bc function.
   //! \param surf The specific surface on the boundary the particle struck.
-  virtual void
-  handle_particle(Particle& p, const Surface& surf) const = 0;
+  virtual void handle_particle(Particle& p, const Surface& surf) const = 0;
 
   //! Return a string classification of this BC.
   virtual std::string type() const = 0;
@@ -33,10 +32,9 @@ public:
 
 class VacuumBC : public BoundaryCondition {
 public:
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
+  void handle_particle(Particle& p, const Surface& surf) const override;
 
-  std::string type() const override {return "vacuum";}
+  std::string type() const override { return "vacuum"; }
 };
 
 //==============================================================================
@@ -45,10 +43,9 @@ public:
 
 class ReflectiveBC : public BoundaryCondition {
 public:
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
+  void handle_particle(Particle& p, const Surface& surf) const override;
 
-  std::string type() const override {return "reflective";}
+  std::string type() const override { return "reflective"; }
 };
 
 //==============================================================================
@@ -57,10 +54,9 @@ public:
 
 class WhiteBC : public BoundaryCondition {
 public:
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
+  void handle_particle(Particle& p, const Surface& surf) const override;
 
-  std::string type() const override {return "white";}
+  std::string type() const override { return "white"; }
 };
 
 //==============================================================================
@@ -69,11 +65,9 @@ public:
 
 class PeriodicBC : public BoundaryCondition {
 public:
-  PeriodicBC(int i_surf, int j_surf)
-    : i_surf_(i_surf), j_surf_(j_surf)
-  {};
+  PeriodicBC(int i_surf, int j_surf) : i_surf_(i_surf), j_surf_(j_surf) {};
 
-  std::string type() const override {return "periodic";}
+  std::string type() const override { return "periodic"; }
 
 protected:
   int i_surf_;
@@ -88,8 +82,7 @@ class TranslationalPeriodicBC : public PeriodicBC {
 public:
   TranslationalPeriodicBC(int i_surf, int j_surf);
 
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
+  void handle_particle(Particle& p, const Surface& surf) const override;
 
 protected:
   //! Vector along which incident particles will be moved
@@ -106,8 +99,7 @@ class RotationalPeriodicBC : public PeriodicBC {
 public:
   RotationalPeriodicBC(int i_surf, int j_surf);
 
-  void
-  handle_particle(Particle& p, const Surface& surf) const override;
+  void handle_particle(Particle& p, const Surface& surf) const override;
 
 protected:
   //! Angle about the axis by which particle coordinates will be rotated

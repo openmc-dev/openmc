@@ -39,8 +39,8 @@ class WindowedMultipole {
 public:
   // Types
   struct WindowInfo {
-    int index_start; // Index of starting pole
-    int index_end; // Index of ending pole
+    int index_start;   // Index of starting pole
+    int index_end;     // Index of ending pole
     bool broaden_poly; // Whether to broaden polynomial curvefit
   };
 
@@ -54,7 +54,8 @@ public:
   //!
   //! \param E Incident neutron energy in [eV]
   //! \param sqrtkT Square root of temperature times Boltzmann constant
-  //! \return Tuple of elastic scattering, absorption, and fission cross sections in [b]
+  //! \return Tuple of elastic scattering, absorption, and fission cross
+  //! sections in [b]
   std::tuple<double, double, double> evaluate(double E, double sqrtkT) const;
 
   //! \brief Evaluates the windowed multipole equations for the derivative of
@@ -65,18 +66,20 @@ public:
   //! \param sqrtkT Square root of temperature times Boltzmann constant
   //! \return Tuple of derivatives of elastic scattering, absorption, and
   //!         fission cross sections in [b/K]
-  std::tuple<double, double, double> evaluate_deriv(double E, double sqrtkT) const;
+  std::tuple<double, double, double> evaluate_deriv(
+    double E, double sqrtkT) const;
 
   // Data members
-  std::string name_; //!< Name of nuclide
-  double E_min_; //!< Minimum energy in [eV]
-  double E_max_; //!< Maximum energy in [eV]
-  double sqrt_awr_; //!< Square root of atomic weight ratio
-  double inv_spacing_; //!< 1 / spacing in sqrt(E) space
-  int fit_order_; //!< Order of the fit
-  bool fissionable_; //!< Is the nuclide fissionable?
-  vector<WindowInfo> window_info_;  // Information about a window
-  xt::xtensor<double, 3> curvefit_; // Curve fit coefficients (window, poly order, reaction)
+  std::string name_;               //!< Name of nuclide
+  double E_min_;                   //!< Minimum energy in [eV]
+  double E_max_;                   //!< Maximum energy in [eV]
+  double sqrt_awr_;                //!< Square root of atomic weight ratio
+  double inv_spacing_;             //!< 1 / spacing in sqrt(E) space
+  int fit_order_;                  //!< Order of the fit
+  bool fissionable_;               //!< Is the nuclide fissionable?
+  vector<WindowInfo> window_info_; // Information about a window
+  xt::xtensor<double, 3>
+    curvefit_; // Curve fit coefficients (window, poly order, reaction)
   xt::xtensor<std::complex<double>, 2> data_; //!< Poles and residues
 
   // Constant data
@@ -99,7 +102,6 @@ void check_wmp_version(hid_t file);
 //! \param[in] i_nuclide  Index in global nuclides array
 void read_multipole_data(int i_nuclide);
 
-
 //==============================================================================
 //! Doppler broadens the windowed multipole curvefit.
 //!
@@ -111,7 +113,8 @@ void read_multipole_data(int i_nuclide);
 //! \param factors The output leading coefficient
 //==============================================================================
 
-extern "C" void broaden_wmp_polynomials(double E, double dopp, int n, double factors[]);
+extern "C" void broaden_wmp_polynomials(
+  double E, double dopp, int n, double factors[]);
 
 } // namespace openmc
 

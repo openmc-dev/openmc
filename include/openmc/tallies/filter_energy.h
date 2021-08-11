@@ -12,8 +12,7 @@ namespace openmc {
 //! Bins the incident neutron energy.
 //==============================================================================
 
-class EnergyFilter : public Filter
-{
+class EnergyFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -23,12 +22,12 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "energy";}
+  std::string type() const override { return "energy"; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 
@@ -59,16 +58,15 @@ protected:
 //! tallies manually iterate over the filter bins.
 //==============================================================================
 
-class EnergyoutFilter : public EnergyFilter
-{
+class EnergyoutFilter : public EnergyFilter {
 public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "energyout";}
+  std::string type() const override { return "energyout"; }
 
-  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   std::string text_label(int bin) const override;
 };

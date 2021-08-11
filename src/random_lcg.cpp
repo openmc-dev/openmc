@@ -2,26 +2,25 @@
 
 #include <cmath>
 
-
 namespace openmc {
 
 // Starting seed
 int64_t master_seed {1};
 
 // LCG parameters
-constexpr uint64_t prn_mult   {6364136223846793005ULL};  // multiplication
-constexpr uint64_t prn_add    {1442695040888963407ULL};  // additive factor, c
-constexpr uint64_t prn_stride {152917LL};                // stride between particles
+constexpr uint64_t prn_mult {6364136223846793005ULL}; // multiplication
+constexpr uint64_t prn_add {1442695040888963407ULL};  // additive factor, c
+constexpr uint64_t prn_stride {152917LL}; // stride between particles
 
 //==============================================================================
 // PRN
 //==============================================================================
 
-// 64 bit implementation of the PCG-RXS-M-XS 64-bit state / 64-bit output geneator
-// Adapted from: https://github.com/imneme/pcg-c
+// 64 bit implementation of the PCG-RXS-M-XS 64-bit state / 64-bit output
+// geneator Adapted from: https://github.com/imneme/pcg-c
 // @techreport{oneill:pcg2014,
-//    title = "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation",
-//    author = "Melissa E. O'Neill",
+//    title = "PCG: A Family of Simple Fast Space-Efficient Statistically Good
+//    Algorithms for Random Number Generation", author = "Melissa E. O'Neill",
 //    institution = "Harvey Mudd College",
 //    address = "Claremont, CA",
 //    number = "HMC-CS-2014-0905",
@@ -35,7 +34,8 @@ double prn(uint64_t* seed)
   *seed = (prn_mult * (*seed) + prn_add);
 
   // Permute the output
-  uint64_t word = ((*seed >> ((*seed >> 59u) + 5u)) ^ *seed) * 12605985483714917081ull;
+  uint64_t word =
+    ((*seed >> ((*seed >> 59u) + 5u)) ^ *seed) * 12605985483714917081ull;
   uint64_t result = (word >> 43u) ^ word;
 
   // Convert output from unsigned integer to double
@@ -58,7 +58,8 @@ double future_prn(int64_t n, uint64_t seed)
 
 uint64_t init_seed(int64_t id, int offset)
 {
-  return future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + offset);
+  return future_seed(
+    static_cast<uint64_t>(id) * prn_stride, master_seed + offset);
 }
 
 //==============================================================================
@@ -68,7 +69,8 @@ uint64_t init_seed(int64_t id, int offset)
 void init_particle_seeds(int64_t id, uint64_t* seeds)
 {
   for (int i = 0; i < N_STREAMS; i++) {
-    seeds[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + i);
+    seeds[i] =
+      future_seed(static_cast<uint64_t>(id) * prn_stride, master_seed + i);
   }
 }
 
@@ -94,8 +96,8 @@ uint64_t future_seed(uint64_t n, uint64_t seed)
   // and C which can then be used to find x_N = G*x_0 + C mod 2^M.
 
   // Initialize constants
-  uint64_t g     {prn_mult};
-  uint64_t c     {prn_add};
+  uint64_t g {prn_mult};
+  uint64_t c {prn_add};
   uint64_t g_new {1};
   uint64_t c_new {0};
 
@@ -120,7 +122,10 @@ uint64_t future_seed(uint64_t n, uint64_t seed)
 //                               API FUNCTIONS
 //==============================================================================
 
-extern "C" int64_t openmc_get_seed() {return master_seed;}
+extern "C" int64_t openmc_get_seed()
+{
+  return master_seed;
+}
 
 extern "C" void openmc_set_seed(int64_t new_seed)
 {

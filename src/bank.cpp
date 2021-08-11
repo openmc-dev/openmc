@@ -7,7 +7,6 @@
 
 #include <cstdint>
 
-
 namespace openmc {
 
 //==============================================================================
@@ -20,10 +19,11 @@ vector<SourceSite> source_bank;
 
 SharedArray<SourceSite> surf_source_bank;
 
-// The fission bank is allocated as a SharedArray, rather than a vector, as it will
-// be shared by all threads in the simulation. It will be allocated to a fixed
-// maximum capacity in the init_fission_bank() function. Then, Elements will be
-// added to it by using SharedArray's special thread_safe_append() function.
+// The fission bank is allocated as a SharedArray, rather than a vector, as it
+// will be shared by all threads in the simulation. It will be allocated to a
+// fixed maximum capacity in the init_fission_bank() function. Then, Elements
+// will be added to it by using SharedArray's special thread_safe_append()
+// function.
 SharedArray<SourceSite> fission_bank;
 
 // Each entry in this vector corresponds to the number of progeny produced
@@ -69,7 +69,7 @@ void sort_fission_bank()
   int64_t tmp = simulation::progeny_per_particle[0];
   simulation::progeny_per_particle[0] = 0;
   for (int64_t i = 1; i < simulation::progeny_per_particle.size(); i++) {
-    int64_t value = simulation::progeny_per_particle[i-1] + tmp;
+    int64_t value = simulation::progeny_per_particle[i - 1] + tmp;
     tmp = simulation::progeny_per_particle[i];
     simulation::progeny_per_particle[i] = value;
   }
@@ -84,7 +84,8 @@ void sort_fission_bank()
   vector<SourceSite> sorted_bank_holder;
 
   // If there is not enough space, allocate a temporary vector and point to it
-  if (simulation::fission_bank.size() > simulation::fission_bank.capacity() / 2) {
+  if (simulation::fission_bank.size() >
+      simulation::fission_bank.capacity() / 2) {
     sorted_bank_holder.resize(simulation::fission_bank.size());
     sorted_bank = sorted_bank_holder.data();
   } else { // otherwise, point sorted_bank to unused portion of the fission bank
@@ -98,14 +99,14 @@ void sort_fission_bank()
     int64_t idx = simulation::progeny_per_particle[offset] + site.progeny_id;
     if (idx >= simulation::fission_bank.size()) {
       fatal_error("Mismatch detected between sum of all particle progeny and "
-          "shared fission bank size.");
+                  "shared fission bank size.");
     }
     sorted_bank[idx] = site;
   }
 
   // Copy sorted bank into the fission bank
   std::copy(sorted_bank, sorted_bank + simulation::fission_bank.size(),
-      simulation::fission_bank.data());
+    simulation::fission_bank.data());
 }
 
 //==============================================================================
@@ -141,7 +142,7 @@ extern "C" int openmc_fission_bank(void** ptr, int64_t* n)
     return OPENMC_E_ALLOCATE;
   } else {
     *ptr = simulation::fission_bank.data();
-    *n =   simulation::fission_bank.size();
+    *n = simulation::fission_bank.size();
     return 0;
   }
 }

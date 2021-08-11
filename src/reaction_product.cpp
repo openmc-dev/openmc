@@ -44,7 +44,8 @@ ReactionProduct::ReactionProduct(hid_t group)
       read_attribute(group, "decay_rate", decay_rate_);
     } else if (particle_ == ParticleType::neutron) {
       warning(fmt::format("Decay rate doesn't exist for delayed neutron "
-        "emission ({}).", object_name(group)));
+                          "emission ({}).",
+        object_name(group)));
     }
   }
 
@@ -82,8 +83,8 @@ ReactionProduct::ReactionProduct(hid_t group)
   }
 }
 
-void ReactionProduct::sample(double E_in, double& E_out, double& mu,
-  uint64_t* seed) const
+void ReactionProduct::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
   auto n = applicability_.size();
   if (n > 1) {
@@ -105,4 +106,4 @@ void ReactionProduct::sample(double E_in, double& E_out, double& mu,
   }
 }
 
-}
+} // namespace openmc

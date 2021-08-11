@@ -10,8 +10,7 @@
 
 namespace openmc {
 
-void
-DistribcellFilter::from_xml(pugi::xml_node node)
+void DistribcellFilter::from_xml(pugi::xml_node node)
 {
   auto cells = get_node_array<int32_t>(node, "bins");
   if (cells.size() != 1) {
@@ -21,15 +20,14 @@ DistribcellFilter::from_xml(pugi::xml_node node)
   // Find index in global cells vector corresponding to cell ID
   auto search = model::cell_map.find(cells[0]);
   if (search == model::cell_map.end()) {
-    throw std::runtime_error{fmt::format(
-      "Could not find cell {} specified on tally filter.", cell_)};
+    throw std::runtime_error {
+      fmt::format("Could not find cell {} specified on tally filter.", cell_)};
   }
 
   this->set_cell(search->second);
 }
 
-void
-DistribcellFilter::set_cell(int32_t cell)
+void DistribcellFilter::set_cell(int32_t cell)
 {
   Expects(cell >= 0);
   Expects(cell < model::cells.size());
@@ -37,9 +35,8 @@ DistribcellFilter::set_cell(int32_t cell)
   n_bins_ = model::cells[cell]->n_instances_;
 }
 
-void
-DistribcellFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
-                                FilterMatch& match) const
+void DistribcellFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   int offset = 0;
   auto distribcell_index = model::cells[cell_]->distribcell_index_;
@@ -62,15 +59,13 @@ DistribcellFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   }
 }
 
-void
-DistribcellFilter::to_statepoint(hid_t filter_group) const
+void DistribcellFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", model::cells[cell_]->id_);
 }
 
-std::string
-DistribcellFilter::text_label(int bin) const
+std::string DistribcellFilter::text_label(int bin) const
 {
   auto map = model::cells[cell_]->distribcell_index_;
   auto path = distribcell_path(cell_, map, bin);

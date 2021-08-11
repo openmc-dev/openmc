@@ -4,9 +4,8 @@
 
 namespace openmc {
 
-void
-CellFromFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
-                             FilterMatch& match) const
+void CellFromFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   for (int i = 0; i < p.n_coord_last(); i++) {
     auto search = map_.find(p.cell_last(i));
@@ -17,8 +16,7 @@ CellFromFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   }
 }
 
-std::string
-CellFromFilter::text_label(int bin) const
+std::string CellFromFilter::text_label(int bin) const
 {
   return "Cell from " + std::to_string(model::cells[cells_[bin]]->id_);
 }

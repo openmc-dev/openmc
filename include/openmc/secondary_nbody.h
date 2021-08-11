@@ -25,13 +25,14 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
 private:
-  int n_bodies_; //!< Number of particles distributed
+  int n_bodies_;      //!< Number of particles distributed
   double mass_ratio_; //!< Total mass of particles [neutron mass]
-  double A_; //!< Atomic weight ratio
-  double Q_; //!< Reaction Q-value [eV]
+  double A_;          //!< Atomic weight ratio
+  double Q_;          //!< Reaction Q-value [eV]
 };
 
 } // namespace openmc

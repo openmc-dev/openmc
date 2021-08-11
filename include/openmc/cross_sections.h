@@ -3,8 +3,8 @@
 
 #include "pugixml.hpp"
 
-#include <string>
 #include <map>
+#include <string>
 
 #include "openmc/vector.h"
 
@@ -18,22 +18,24 @@ class Library {
 public:
   // Types, enums
   enum class Type {
-    neutron = 1, photon = 3, thermal = 2, multigroup = 4, wmp = 5
+    neutron = 1,
+    photon = 3,
+    thermal = 2,
+    multigroup = 4,
+    wmp = 5
   };
 
   // Constructors
-  Library() { };
+  Library() {};
   Library(pugi::xml_node node, const std::string& directory);
 
   // Comparison operator (for using in map)
-  bool operator<(const Library& other) {
-    return path_ < other.path_;
-  }
+  bool operator<(const Library& other) { return path_ < other.path_; }
 
   // Data members
-  Type type_; //!< Type of data library
+  Type type_;                     //!< Type of data library
   vector<std::string> materials_; //!< Materials contained in library
-  std::string path_; //!< File path to library
+  std::string path_;              //!< File path to library
 };
 
 using LibraryKey = std::pair<Library::Type, std::string>;
@@ -60,11 +62,11 @@ extern vector<Library> libraries;
 //! libraries
 void read_cross_sections_xml();
 
-
 //! Load nuclide and thermal scattering data from HDF5 files
 //
 //! \param[in] nuc_temps Temperatures for each nuclide in [K]
-//! \param[in] thermal_temps Temperatures for each thermal scattering table in [K]
+//! \param[in] thermal_temps Temperatures for each thermal scattering table in
+//! [K]
 void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
   const vector<vector<double>>& thermal_temps);
 

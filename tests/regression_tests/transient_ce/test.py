@@ -133,7 +133,7 @@ def test_transient():
 
     borated_water = openmc.Material(name='Moderator')
     borated_water.set_density('g/cm3', 0.740582) 
-    borated_water.add_element('B',   2.7800E-5, 'ao')
+    borated_water.add_element('B', 2.7800E-5, 'ao')
     borated_water.add_element('H', 2*3.3500E-2, 'ao')
     borated_water.add_element('O',   3.3500E-2, 'ao')
     borated_water.add_s_alpha_beta('c_H_in_H2O')

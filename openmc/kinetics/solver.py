@@ -87,7 +87,7 @@ class Solver:
         Log file name (excluding directory prefix).
     outer_tolerance : float
         Tolerance on the residual when converging outer time steps.
-    method : string
+    method : {'adiabatic'}
         Approximation made for time derivatives in the transient
         scheme. 'adiabatic' allows the use of instantaneous eigenstates
         to approximate the transient.

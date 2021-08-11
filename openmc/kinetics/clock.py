@@ -18,7 +18,7 @@ class Clock:
     ----------
     dt_inner : float
         Time step size for inner point kinetics calculations.
-    t_outer : numpy array
+    t_outer : iterable of float
         Time steps for outer Monte Carlo calculations.
 
     Attributes

@@ -33,7 +33,7 @@ class Clock:
         Counter that tracks how many outer steps have been taken.
     times : dict
         Relative time points corresponding to outer time steps.
-    t_outer : numpy array
+    t_outer : numpy.ndarray
         Time steps for outer Monte Carlo calculations.
 
     """

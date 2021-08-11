@@ -224,7 +224,7 @@ def test_transient():
     solver.outer_tolerance = np.inf
     solver.initial_power   = 1.0
     solver.core_volume     = 1.0
-    solver.method          = 'ADIABATIC'
+    solver.method          = 'adiabatic'
     solver.multi_group     = False
     solver.clock           = clock
     solver.run_kwargs      = {'threads': None, 'mpi_args': None}

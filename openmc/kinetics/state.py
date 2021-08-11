@@ -534,7 +534,7 @@ class OuterState(State):
         Whether to use p-CMFD.
     mgxs_loaded : bool
         Whether mgxs are loaded.
-    method : str
+    method : {'adiabatic'}
         The approximation to the time-derivatives in the Monte Carlo simulation.
         'adiabatic' approximates the time-derivatives as 0.
 

@@ -256,8 +256,7 @@ def test_transient():
 
     transient = {}
     for material in model.materials:
-        MatChange = {material.name: {},}
-        transient.update(MatChange)
+        transient[material.name] = {}
         for t in t_outer:
             time_dict = {
             t: {

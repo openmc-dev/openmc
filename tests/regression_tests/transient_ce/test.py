@@ -227,7 +227,7 @@ def test_transient():
     solver.method          = 'ADIABATIC'
     solver.multi_group     = False
     solver.clock           = clock
-    solver.run_kwargs      = {'threads':None, 'mpi_args':None}
+    solver.run_kwargs      = {'threads': None, 'mpi_args': None}
     solver.min_outer_iters = 1
     use_pcmfd              = True
     use_agd                = True

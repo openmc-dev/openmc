@@ -68,7 +68,7 @@ class State():
         Log file name (including directory prefix).
     method : string
         Approximation made for time derivatives in the transient
-        scheme. ADIABATIC allows the use of instantaneous eigenstates
+        scheme. 'adiabatic' allows the use of instantaneous eigenstates
         to approximate the transient.
 
     """
@@ -536,7 +536,7 @@ class OuterState(State):
         Whether mgxs are loaded.
     method : str
         The approximation to the time-derivatives in the Monte Carlo simulation.
-        'ADIABATIC' approximates the time-derivatives as 0.
+        'adiabatic' approximates the time-derivatives as 0.
 
     """
 
@@ -545,7 +545,7 @@ class OuterState(State):
 
         # Initialize OuterState class attributes
         self._mgxs_lib = None
-        self._method = 'ADIABATIC'
+        self._method = 'adiabatic'
         self._mgxs_loaded = False
         self._shape = None
 

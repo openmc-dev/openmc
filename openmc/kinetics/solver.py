@@ -89,7 +89,7 @@ class Solver:
         Tolerance on the residual when converging outer time steps.
     method : string
         Approximation made for time derivatives in the transient
-        scheme. ADIABATIC allows the use of instantaneous eigenstates
+        scheme. 'adiabatic' allows the use of instantaneous eigenstates
         to approximate the transient.
     min_outer_iters : int
         Minimum number of outer iterations to take.
@@ -125,7 +125,7 @@ class Solver:
         self._core_volume = 1.
         self._log_file_name = 'log_file.h5'
         self._outer_tolerance = 1.e-6
-        self._method = 'ADIABATIC'
+        self._method = 'adiabatic'
         self._use_agd = False
         self._use_pcmfd = False
         self._min_outer_iters = 2
@@ -402,7 +402,7 @@ class Solver:
         # The omega method solves equations (2.29) and (2.30) in Shaner's thesis.
         # The adiabatic method sets the frequencies = 0 which simplifies those same
         # equations to the instantaneous eigenstate. 
-        cv.check_value('method', method, ['ADIABATIC', 'OMEGA'])
+        cv.check_value('method', method, ['adiabatic', 'omega'])
         self._method = method
 
     @min_outer_iters.setter
@@ -487,7 +487,7 @@ class Solver:
             total = self.states['START'].absorption + self.states['START'].outscatter
             f.create_dataset('total', data=total)
 
-    def _run_openmc(self, time_point, method='ADIABATIC'):
+    def _run_openmc(self, time_point, method='adiabatic'):
         """Run a simulation at a given time point.
 
         Parameters
@@ -496,7 +496,7 @@ class Solver:
             Refers to the present time step of the simulation.
         method : str
             The approximation to the time-derivatives in the Monte Carlo simulation.
-            'ADIABATIC' approximates the time-derivatives as 0.
+            'adiabatic' approximates the time-derivatives as 0.
 
         """
 
@@ -804,7 +804,7 @@ class Solver:
             Refers to the present time step of the simulation.
         method : str
             The approximation to the time-derivatives in the Monte Carlo simulation.
-            'ADIABATIC' approximates the time-derivatives as 0.
+            'adiabatic' approximates the time-derivatives as 0.
 
         """
 

@@ -123,8 +123,7 @@ for path in ace_libraries:
                 continue
 
             # Re-export
-            data.export_to_hdf5(converted[name] + '_1', 'w', libver=args.libver)
-            os.rename(converted[name] + '_1', converted[name])
+            data.export_to_hdf5(converted[name], 'w', libver=args.libver)
 
 # Write cross_sections.xml
 library.export_to_xml(args.destination / 'cross_sections.xml')

@@ -23,7 +23,7 @@
 #include "xtensor/xview.hpp"
 
 #include <algorithm> // for copy
-#include <cmath> // for pow, sqrt
+#include <cmath>     // for pow, sqrt
 #include <unordered_set>
 
 namespace openmc {
@@ -52,7 +52,8 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
     domain_type_ = TallyDomain::UNIVERSE;
   } else {
     fatal_error(std::string("Unrecognized domain type for stochastic "
-      "volume calculation: " + domain_type));
+                            "volume calculation: " +
+                            domain_type));
   }
 
   // Read domain IDs, bounding corodinates and number of samples
@@ -67,7 +68,8 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
     threshold_ = std::stod(get_node_value(threshold_node, "threshold"));
     if (threshold_ <= 0.0) {
       fatal_error(fmt::format("Invalid error threshold {} provided for a "
-        "volume calculation.", threshold_));
+                              "volume calculation.",
+        threshold_));
     }
 
     std::string tmp = get_node_value(threshold_node, "type");
@@ -75,23 +77,21 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
       trigger_type_ = TriggerMetric::variance;
     } else if (tmp == "std_dev") {
       trigger_type_ = TriggerMetric::standard_deviation;
-    } else if ( tmp == "rel_err") {
+    } else if (tmp == "rel_err") {
       trigger_type_ = TriggerMetric::relative_error;
     } else {
       fatal_error(fmt::format(
         "Invalid volume calculation trigger type '{}' provided.", tmp));
     }
-
   }
 
   // Ensure there are no duplicates by copying elements to a set and then
   // comparing the length with the original vector
   std::unordered_set<int> unique_ids(domain_ids_.cbegin(), domain_ids_.cend());
   if (unique_ids.size() != domain_ids_.size()) {
-    throw std::runtime_error{"Domain IDs for a volume calculation "
-      "must be unique."};
+    throw std::runtime_error {"Domain IDs for a volume calculation "
+                              "must be unique."};
   }
-
 }
 
 vector<VolumeCalculation::Result> VolumeCalculation::execute() const
@@ -109,31 +109,32 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
   size_t remainder = n_samples_ % mpi::n_procs;
   size_t i_start, i_end;
   if (mpi::rank < remainder) {
-    i_start = (min_samples + 1)*mpi::rank;
+    i_start = (min_samples + 1) * mpi::rank;
     i_end = i_start + min_samples + 1;
   } else {
-    i_start = (min_samples + 1)*remainder + (mpi::rank - remainder)*min_samples;
+    i_start =
+      (min_samples + 1) * remainder + (mpi::rank - remainder) * min_samples;
     i_end = i_start + min_samples;
   }
 
   while (true) {
 
-    #pragma omp parallel
+#pragma omp parallel
     {
       // Variables that are private to each thread
       vector<vector<int>> indices(n);
       vector<vector<int>> hits(n);
       Particle p;
 
-      // Sample locations and count hits
-      #pragma omp for
+// Sample locations and count hits
+#pragma omp for
       for (size_t i = i_start; i < i_end; i++) {
         int64_t id = iterations * n_samples_ + i;
         uint64_t seed = init_seed(id, STREAM_VOLUME);
 
         p.n_coord() = 1;
         Position xi {prn(&seed), prn(&seed), prn(&seed)};
-        p.r() = lower_left_ + xi*(upper_right_ - lower_left_);
+        p.r() = lower_left_ + xi * (upper_right_ - lower_left_);
         p.u() = {0.5, 0.5, 0.5};
 
         // If this location is not in the geometry at all, move on to next block
@@ -153,7 +154,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           }
         } else if (domain_type_ == TallyDomain::CELL) {
           for (int level = 0; level < p.n_coord(); ++level) {
-            for (int i_domain=0; i_domain < n; i_domain++) {
+            for (int i_domain = 0; i_domain < n; i_domain++) {
               if (model::cells[p.coord(level).cell]->id_ ==
                   domain_ids_[i_domain]) {
                 this->check_hit(
@@ -175,23 +176,23 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         }
       }
 
-      // At this point, each thread has its own pair of index/hits lists and we now
-      // need to reduce them. OpenMP is not nearly smart enough to do this on its own,
-      // so we have to manually reduce them
+      // At this point, each thread has its own pair of index/hits lists and we
+      // now need to reduce them. OpenMP is not nearly smart enough to do this
+      // on its own, so we have to manually reduce them
 
-  #ifdef _OPENMP
+#ifdef _OPENMP
       int n_threads = omp_get_num_threads();
-  #else
+#else
       int n_threads = 1;
-  #endif
+#endif
 
-      #pragma omp for ordered schedule(static)
+#pragma omp for ordered schedule(static)
       for (int i = 0; i < n_threads; ++i) {
-        #pragma omp ordered
+#pragma omp ordered
         for (int i_domain = 0; i_domain < n; ++i_domain) {
           for (int j = 0; j < indices[i_domain].size(); ++j) {
-            // Check if this material has been added to the master list and if so,
-            // accumulate the number of hits
+            // Check if this material has been added to the master list and if
+            // so, accumulate the number of hits
             bool already_added = false;
             for (int k = 0; k < master_indices[i_domain].size(); k++) {
               if (indices[i_domain][j] == master_indices[i_domain][k]) {
@@ -201,8 +202,9 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
               }
             }
             if (!already_added) {
-              // If we made it here, the material hasn't yet been added to the master
-              // list, so add entries to the master indices and master hits lists
+              // If we made it here, the material hasn't yet been added to the
+              // master list, so add entries to the master indices and master
+              // hits lists
               master_indices[i_domain].push_back(indices[i_domain][j]);
               master_hits[i_domain].push_back(hits[i_domain][j]);
             }
@@ -215,7 +217,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 
     // Determine volume of bounding box
     Position d {upper_right_ - lower_left_};
-    double volume_sample = d.x*d.y*d.z;
+    double volume_sample = d.x * d.y * d.z;
 
     // bump iteration counter and get total number
     // of samples at this point
@@ -233,7 +235,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       auto& result {results[i_domain]};
 
       // Create 2D array to store atoms/uncertainty for each nuclide. Later this
-      // is compressed into vectors storing only those nuclides that are non-zero
+      // is compressed into vectors storing only those nuclides that are
+      // non-zero
       auto n_nuc = data::nuclides.size();
       xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
 
@@ -241,21 +244,23 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       if (mpi::master) {
         for (int j = 1; j < mpi::n_procs; j++) {
           int q;
-          MPI_Recv(&q, 1, MPI_INTEGER, j, 2*j, mpi::intracomm, MPI_STATUS_IGNORE);
+          MPI_Recv(
+            &q, 1, MPI_INTEGER, j, 2 * j, mpi::intracomm, MPI_STATUS_IGNORE);
           vector<int> buffer(2 * q);
-          MPI_Recv(buffer.data(), 2*q, MPI_INTEGER, j, 2*j + 1, mpi::intracomm, MPI_STATUS_IGNORE);
+          MPI_Recv(buffer.data(), 2 * q, MPI_INTEGER, j, 2 * j + 1,
+            mpi::intracomm, MPI_STATUS_IGNORE);
           for (int k = 0; k < q; ++k) {
             bool already_added = false;
             for (int m = 0; m < master_indices[i_domain].size(); ++m) {
-              if (buffer[2*k] == master_indices[i_domain][m]) {
-                master_hits[i_domain][m] += buffer[2*k + 1];
+              if (buffer[2 * k] == master_indices[i_domain][m]) {
+                master_hits[i_domain][m] += buffer[2 * k + 1];
                 already_added = true;
                 break;
               }
             }
             if (!already_added) {
-              master_indices[i_domain].push_back(buffer[2*k]);
-              master_hits[i_domain].push_back(buffer[2*k + 1]);
+              master_indices[i_domain].push_back(buffer[2 * k]);
+              master_hits[i_domain].push_back(buffer[2 * k + 1]);
             }
           }
         }
@@ -263,12 +268,13 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         int q = master_indices[i_domain].size();
         vector<int> buffer(2 * q);
         for (int k = 0; k < q; ++k) {
-          buffer[2*k] = master_indices[i_domain][k];
-          buffer[2*k + 1] = master_hits[i_domain][k];
+          buffer[2 * k] = master_indices[i_domain][k];
+          buffer[2 * k + 1] = master_hits[i_domain][k];
         }
 
-        MPI_Send(&q, 1, MPI_INTEGER, 0, 2*mpi::rank, mpi::intracomm);
-        MPI_Send(buffer.data(), 2*q, MPI_INTEGER, 0, 2*mpi::rank + 1, mpi::intracomm);
+        MPI_Send(&q, 1, MPI_INTEGER, 0, 2 * mpi::rank, mpi::intracomm);
+        MPI_Send(buffer.data(), 2 * q, MPI_INTEGER, 0, 2 * mpi::rank + 1,
+          mpi::intracomm);
       }
 #endif
 
@@ -276,11 +282,13 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         int total_hits = 0;
         for (int j = 0; j < master_indices[i_domain].size(); ++j) {
           total_hits += master_hits[i_domain][j];
-          double f = static_cast<double>(master_hits[i_domain][j]) / total_samples;
-          double var_f = f*(1.0 - f) / total_samples;
+          double f =
+            static_cast<double>(master_hits[i_domain][j]) / total_samples;
+          double var_f = f * (1.0 - f) / total_samples;
 
           int i_material = master_indices[i_domain][j];
-          if (i_material == MATERIAL_VOID) continue;
+          if (i_material == MATERIAL_VOID)
+            continue;
 
           const auto& mat = model::materials[i_material];
           for (int k = 0; k < mat->nuclide_.size(); ++k) {
@@ -292,29 +300,34 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         }
 
         // Determine volume
-        result.volume[0] = static_cast<double>(total_hits) / total_samples * volume_sample;
-        result.volume[1] = std::sqrt(result.volume[0]
-          * (volume_sample - result.volume[0]) / total_samples);
+        result.volume[0] =
+          static_cast<double>(total_hits) / total_samples * volume_sample;
+        result.volume[1] =
+          std::sqrt(result.volume[0] * (volume_sample - result.volume[0]) /
+                    total_samples);
         result.iterations = iterations;
 
         // update threshold value if needed
         if (trigger_type_ != TriggerMetric::not_active) {
           double val = 0.0;
           switch (trigger_type_) {
-            case TriggerMetric::standard_deviation:
-              val = result.volume[1];
-              break;
-            case TriggerMetric::relative_error:
-              val = result.volume[0] == 0.0 ? INFTY : result.volume[1] / result.volume[0];
-              break;
-            case TriggerMetric::variance:
-              val = result.volume[1] * result.volume[1];
-              break;
-            default:
-              break;
+          case TriggerMetric::standard_deviation:
+            val = result.volume[1];
+            break;
+          case TriggerMetric::relative_error:
+            val = result.volume[0] == 0.0 ? INFTY
+                                          : result.volume[1] / result.volume[0];
+            break;
+          case TriggerMetric::variance:
+            val = result.volume[1] * result.volume[1];
+            break;
+          default:
+            break;
           }
           // update max if entry is valid
-          if (val > 0.0) { trigger_val = std::max(trigger_val, val); }
+          if (val > 0.0) {
+            trigger_val = std::max(trigger_val, val);
+          }
         }
 
         for (int j = 0; j < n_nuc; ++j) {
@@ -334,7 +347,9 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     } // end domain loop
 
     // if no trigger is applied, we're done
-    if (trigger_type_ == TriggerMetric::not_active) { return results; }
+    if (trigger_type_ == TriggerMetric::not_active) {
+      return results;
+    }
 
 #ifdef OPENMC_MPI
     // update maximum error value on all processes
@@ -342,13 +357,20 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 #endif
 
     // return results of the calculation
-    if (trigger_val < threshold_) { return results; }
+    if (trigger_val < threshold_) {
+      return results;
+    }
 
 #ifdef OPENMC_MPI
-    // if iterating in an MPI run, need to zero indices and hits so they aren't counted twice
+    // if iterating in an MPI run, need to zero indices and hits so they aren't
+    // counted twice
     if (!mpi::master) {
-      for (auto& v : master_indices) { std::fill(v.begin(), v.end(), 0); }
-      for (auto& v : master_hits) { std::fill(v.begin(), v.end(), 0); }
+      for (auto& v : master_indices) {
+        std::fill(v.begin(), v.end(), 0);
+      }
+      for (auto& v : master_hits) {
+        std::fill(v.begin(), v.end(), 0);
+      }
     }
 #endif
 
@@ -381,18 +403,18 @@ void VolumeCalculation::to_hdf5(
     write_attribute(file_id, "iterations", results[0].iterations);
     write_attribute(file_id, "threshold", threshold_);
     std::string trigger_str;
-    switch(trigger_type_) {
-      case TriggerMetric::variance:
-        trigger_str = "variance";
-        break;
-      case TriggerMetric::standard_deviation:
-        trigger_str = "std_dev";
-        break;
-      case TriggerMetric::relative_error:
-        trigger_str = "rel_err";
-        break;
-      default:
-        break;
+    switch (trigger_type_) {
+    case TriggerMetric::variance:
+      trigger_str = "variance";
+      break;
+    case TriggerMetric::standard_deviation:
+      trigger_str = "std_dev";
+      break;
+    case TriggerMetric::relative_error:
+      trigger_str = "rel_err";
+      break;
+    default:
+      break;
     }
     write_attribute(file_id, "trigger_type", trigger_str);
   } else {
@@ -401,17 +423,15 @@ void VolumeCalculation::to_hdf5(
 
   if (domain_type_ == TallyDomain::CELL) {
     write_attribute(file_id, "domain_type", "cell");
-  }
-  else if (domain_type_ == TallyDomain::MATERIAL) {
+  } else if (domain_type_ == TallyDomain::MATERIAL) {
     write_attribute(file_id, "domain_type", "material");
-  }
-  else if (domain_type_ == TallyDomain::UNIVERSE) {
+  } else if (domain_type_ == TallyDomain::UNIVERSE) {
     write_attribute(file_id, "domain_type", "universe");
   }
 
-  for (int i = 0; i < domain_ids_.size(); ++i)
-  {
-    hid_t group_id = create_group(file_id, fmt::format("domain_{}", domain_ids_[i]));
+  for (int i = 0; i < domain_ids_.size(); ++i) {
+    hid_t group_id =
+      create_group(file_id, fmt::format("domain_{}", domain_ids_[i]));
 
     // Write volume for domain
     const auto& result {results[i]};
@@ -473,7 +493,8 @@ void free_memory_volume()
 // that the user has specified and writes results to HDF5 files
 //==============================================================================
 
-int openmc_calculate_volumes() {
+int openmc_calculate_volumes()
+{
   using namespace openmc;
 
   if (mpi::master) {
@@ -483,7 +504,7 @@ int openmc_calculate_volumes() {
   time_volume.start();
 
   for (int i = 0; i < model::volume_calcs.size(); ++i) {
-    write_message(4, "Running volume calculation {}", i+1);
+    write_message(4, "Running volume calculation {}", i + 1);
 
     // Run volume calculation
     const auto& vol_calc {model::volume_calcs[i]};
@@ -493,7 +514,8 @@ int openmc_calculate_volumes() {
       std::string domain_type;
       if (vol_calc.domain_type_ == VolumeCalculation::TallyDomain::CELL) {
         domain_type = "  Cell ";
-      } else if (vol_calc.domain_type_ == VolumeCalculation::TallyDomain::MATERIAL) {
+      } else if (vol_calc.domain_type_ ==
+                 VolumeCalculation::TallyDomain::MATERIAL) {
         domain_type = "  Material ";
       } else {
         domain_type = "  Universe ";
@@ -506,11 +528,10 @@ int openmc_calculate_volumes() {
       }
 
       // Write volumes to HDF5 file
-      std::string filename = fmt::format("{}volume_{}.h5",
-        settings::path_output, i + 1);
+      std::string filename =
+        fmt::format("{}volume_{}.h5", settings::path_output, i + 1);
       vol_calc.to_hdf5(filename, results);
     }
-
   }
 
   // Show elapsed time

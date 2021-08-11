@@ -11,16 +11,15 @@ namespace openmc {
 //! Specifies which geometric cells particles exit when crossing a surface.
 //==============================================================================
 
-class CellFromFilter : public CellFilter
-{
+class CellFromFilter : public CellFilter {
 public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "cellfrom";}
+  std::string type() const override { return "cellfrom"; }
 
-  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   std::string text_label(int bin) const override;
 };

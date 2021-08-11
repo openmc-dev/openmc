@@ -1,15 +1,13 @@
 #ifndef OPENMC_TALLIES_FILTERMATCH_H
 #define OPENMC_TALLIES_FILTERMATCH_H
 
-
 namespace openmc {
 
 //==============================================================================
 //! Stores bins and weights for filtered tally events.
 //==============================================================================
 
-class FilterMatch
-{
+class FilterMatch {
 public:
   vector<int> bins_;
   vector<double> weights_;

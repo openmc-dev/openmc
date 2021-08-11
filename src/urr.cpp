@@ -28,4 +28,4 @@ UrrData::UrrData(hid_t group_id)
   read_dataset(group_id, "table", prob_);
 }
 
-}
+} // namespace openmc

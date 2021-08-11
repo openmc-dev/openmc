@@ -207,18 +207,18 @@ private:
   // Cross section caches
   vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
   vector<ElementMicroXS> photon_xs_;  //!< Microscopic photon cross sections
-  MacroXS macro_xs_;                      //!< Macroscopic cross sections
+  MacroXS macro_xs_;                  //!< Macroscopic cross sections
 
   int64_t id_;                                //!< Unique ID
   ParticleType type_ {ParticleType::neutron}; //!< Particle type (n, p, e, etc.)
 
-  int n_coord_ {1};               //!< number of current coordinate levels
-  int cell_instance_;             //!< offset for distributed properties
-  vector<LocalCoord> coord_;      //!< coordinates for all levels
+  int n_coord_ {1};          //!< number of current coordinate levels
+  int cell_instance_;        //!< offset for distributed properties
+  vector<LocalCoord> coord_; //!< coordinates for all levels
 
   // Particle coordinates before crossing a surface
-  int n_coord_last_ {1};       //!< number of current coordinates
-  vector<int> cell_last_;      //!< coordinates for all levels
+  int n_coord_last_ {1};  //!< number of current coordinates
+  vector<int> cell_last_; //!< coordinates for all levels
 
   // Energy data
   double E_;      //!< post-collision energy in eV

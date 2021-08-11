@@ -67,10 +67,10 @@ public:
 
 private:
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
-  double strength_ {1.0}; //!< Source strength
-  UPtrSpace space_; //!< Spatial distribution
-  UPtrAngle angle_; //!< Angular distribution
-  UPtrDist energy_; //!< Energy distribution
+  double strength_ {1.0};                         //!< Source strength
+  UPtrSpace space_;                               //!< Spatial distribution
+  UPtrAngle angle_;                               //!< Angular distribution
+  UPtrDist energy_;                               //!< Energy distribution
 };
 
 //==============================================================================
@@ -106,6 +106,7 @@ public:
   }
 
   double strength() const override { return custom_source_->strength(); }
+
 private:
   void* shared_library_; //!< library from dlopen
   unique_ptr<Source> custom_source_;

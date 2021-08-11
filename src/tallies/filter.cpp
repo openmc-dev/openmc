@@ -1,25 +1,24 @@
 #include "openmc/tallies/filter.h"
 
 #include <algorithm> // for max
-#include <cstring> // for strcpy
+#include <cstring>   // for strcpy
 #include <string>
 
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
-#include "openmc/constants.h"  // for MAX_LINE_LEN;
+#include "openmc/constants.h" // for MAX_LINE_LEN;
 #include "openmc/error.h"
-#include "openmc/xml_interface.h"
 #include "openmc/tallies/filter_azimuthal.h"
 #include "openmc/tallies/filter_cell.h"
+#include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_cellborn.h"
 #include "openmc/tallies/filter_cellfrom.h"
-#include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_collision.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_distribcell.h"
-#include "openmc/tallies/filter_energyfunc.h"
 #include "openmc/tallies/filter_energy.h"
+#include "openmc/tallies/filter_energyfunc.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_material.h"
 #include "openmc/tallies/filter_mesh.h"
@@ -32,6 +31,7 @@
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_universe.h"
 #include "openmc/tallies/filter_zernike.h"
+#include "openmc/xml_interface.h"
 
 // explicit template instantiation definition
 template class openmc::vector<openmc::FilterMatch>;
@@ -43,9 +43,9 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::unordered_map<int, int> filter_map;
-  vector<unique_ptr<Filter>> tally_filters;
-}
+std::unordered_map<int, int> filter_map;
+vector<unique_ptr<Filter>> tally_filters;
+} // namespace model
 
 //==============================================================================
 // Non-member functions
@@ -71,9 +71,10 @@ Filter::~Filter()
 }
 
 template<typename T>
-T* Filter::create(int32_t id) {
+T* Filter::create(int32_t id)
+{
   static_assert(std::is_base_of<Filter, T>::value,
-                "Type specified is not derived from openmc::Filter");
+    "Type specified is not derived from openmc::Filter");
   // Create filter and add to filters vector
   auto filter = make_unique<T>();
   auto ptr_out = filter.get();
@@ -157,7 +158,7 @@ Filter* Filter::create(const std::string& type, int32_t id)
   } else if (type == "zernikeradial") {
     return Filter::create<ZernikeRadialFilter>(id);
   } else {
-    throw std::runtime_error{fmt::format("Unknown filter type: {}", type)};
+    throw std::runtime_error {fmt::format("Unknown filter type: {}", type)};
   }
   return nullptr;
 }
@@ -174,7 +175,8 @@ void Filter::set_id(int32_t id)
 
   // Make sure no other filter has same ID
   if (model::filter_map.find(id) != model::filter_map.end()) {
-    throw std::runtime_error{"Two filters have the same ID: " + std::to_string(id)};
+    throw std::runtime_error {
+      "Two filters have the same ID: " + std::to_string(id)};
   }
 
   // If no ID specified, auto-assign next ID in sequence
@@ -204,35 +206,34 @@ int verify_filter(int32_t index)
   return 0;
 }
 
-extern "C" int
-openmc_filter_get_id(int32_t index, int32_t* id)
+extern "C" int openmc_filter_get_id(int32_t index, int32_t* id)
 {
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   *id = model::tally_filters[index]->id();
   return 0;
 }
 
-extern "C" int
-openmc_filter_set_id(int32_t index, int32_t id)
+extern "C" int openmc_filter_set_id(int32_t index, int32_t id)
 {
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   model::tally_filters[index]->set_id(id);
   return 0;
 }
 
-extern "C" int
-openmc_filter_get_type(int32_t index, char* type)
+extern "C" int openmc_filter_get_type(int32_t index, char* type)
 {
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   std::strcpy(type, model::tally_filters[index]->type().c_str());
   return 0;
 }
 
-extern "C" int
-openmc_get_filter_index(int32_t id, int32_t* index)
+extern "C" int openmc_get_filter_index(int32_t id, int32_t* index)
 {
   auto it = model::filter_map.find(id);
   if (it == model::filter_map.end()) {
@@ -244,8 +245,7 @@ openmc_get_filter_index(int32_t id, int32_t* index)
   return 0;
 }
 
-extern "C" void
-openmc_get_filter_next_id(int32_t* id)
+extern "C" void openmc_get_filter_next_id(int32_t* id)
 {
   int32_t largest_filter_id = 0;
   for (const auto& t : model::tally_filters) {
@@ -254,8 +254,7 @@ openmc_get_filter_next_id(int32_t* id)
   *id = largest_filter_id + 1;
 }
 
-extern "C" int
-openmc_new_filter(const char* type, int32_t* index)
+extern "C" int openmc_new_filter(const char* type, int32_t* index)
 {
   *index = model::tally_filters.size();
   Filter::create(type);

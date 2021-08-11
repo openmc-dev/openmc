@@ -5,18 +5,16 @@
 
 class ProgressBar {
 
-public:  
+public:
   // Constructor
   ProgressBar();
 
   void set_value(double val);
-  
+
 private:
   std::string bar;
-  char bar_old[72] = "???% |                                                                |";
-  
+  char bar_old[72] =
+    "???% |                                                                |";
 };
 
-
 #endif // OPENMC_PROGRESSBAR_H
-  

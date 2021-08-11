@@ -6,8 +6,7 @@
 
 namespace openmc {
 
-void
-ParticleFilter::from_xml(pugi::xml_node node)
+void ParticleFilter::from_xml(pugi::xml_node node)
 {
   auto particles = get_node_array<std::string>(node, "bins");
 
@@ -32,9 +31,8 @@ void ParticleFilter::set_particles(gsl::span<ParticleType> particles)
   n_bins_ = particles_.size();
 }
 
-void
-ParticleFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
-                             FilterMatch& match) const
+void ParticleFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   for (auto i = 0; i < particles_.size(); i++) {
     if (particles_[i] == p.type()) {
@@ -44,8 +42,7 @@ ParticleFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   }
 }
 
-void
-ParticleFilter::to_statepoint(hid_t filter_group) const
+void ParticleFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   vector<std::string> particles;
@@ -55,8 +52,7 @@ ParticleFilter::to_statepoint(hid_t filter_group) const
   write_dataset(filter_group, "bins", particles);
 }
 
-std::string
-ParticleFilter::text_label(int bin) const
+std::string ParticleFilter::text_label(int bin) const
 {
   const auto& p = particles_.at(bin);
   return fmt::format("Particle: {}", particle_type_to_str(p));

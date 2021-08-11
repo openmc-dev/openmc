@@ -17,8 +17,7 @@ CellInstanceFilter::CellInstanceFilter(gsl::span<CellInstance> instances)
   this->set_cell_instances(instances);
 }
 
-void
-CellInstanceFilter::from_xml(pugi::xml_node node)
+void CellInstanceFilter::from_xml(pugi::xml_node node)
 {
   // Get cell IDs/instances
   auto cells = get_node_array<int32_t>(node, "bins");
@@ -27,11 +26,11 @@ CellInstanceFilter::from_xml(pugi::xml_node node)
   // Convert into vector of CellInstance
   vector<CellInstance> instances;
   for (gsl::index i = 0; i < cells.size() / 2; ++i) {
-    int32_t cell_id = cells[2*i];
-    gsl::index instance = cells[2*i + 1];
+    int32_t cell_id = cells[2 * i];
+    gsl::index instance = cells[2 * i + 1];
     auto search = model::cell_map.find(cell_id);
     if (search == model::cell_map.end()) {
-      throw std::runtime_error{fmt::format(
+      throw std::runtime_error {fmt::format(
         "Could not find cell {} specified on tally filter.", cell_id)};
     }
     gsl::index index = search->second;
@@ -41,8 +40,7 @@ CellInstanceFilter::from_xml(pugi::xml_node node)
   this->set_cell_instances(instances);
 }
 
-void
-CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
+void CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
 {
   // Clear existing cells
   cell_instances_.clear();
@@ -64,15 +62,15 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
   material_cells_only_ = true;
   for (const auto& cell_inst : cell_instances_) {
     const auto& c = *model::cells[cell_inst.index_cell];
-    if (c.type_ == Fill::MATERIAL) continue;
+    if (c.type_ == Fill::MATERIAL)
+      continue;
     material_cells_only_ = false;
     break;
   }
 }
 
-void
-CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
-                         FilterMatch& match) const
+void CellInstanceFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   gsl::index index_cell = p.coord(p.n_coord() - 1).cell;
   gsl::index instance = p.cell_instance();
@@ -86,12 +84,14 @@ CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
     }
   }
 
-  if (material_cells_only_) return;
+  if (material_cells_only_)
+    return;
 
   for (int i = 0; i < p.n_coord() - 1; i++) {
     gsl::index index_cell = p.coord(i).cell;
     // if this cell isn't used on the filter, move on
-    if (cells_.count(index_cell) == 0) continue;
+    if (cells_.count(index_cell) == 0)
+      continue;
 
     // if this cell is used in the filter, check the instance as well
     gsl::index instance = cell_instance_at_level(p, i);
@@ -103,8 +103,7 @@ CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   }
 }
 
-void
-CellInstanceFilter::to_statepoint(hid_t filter_group) const
+void CellInstanceFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   size_t n = cell_instances_.size();
@@ -117,13 +116,12 @@ CellInstanceFilter::to_statepoint(hid_t filter_group) const
   write_dataset(filter_group, "bins", data);
 }
 
-std::string
-CellInstanceFilter::text_label(int bin) const
+std::string CellInstanceFilter::text_label(int bin) const
 {
   const auto& x = cell_instances_[bin];
   auto cell_id = model::cells[x.index_cell]->id_;
-  return "Cell " + std::to_string(cell_id) + ", Instance "
-    + std::to_string(x.instance);
+  return "Cell " + std::to_string(cell_id) + ", Instance " +
+         std::to_string(x.instance);
 }
 
 } // namespace openmc

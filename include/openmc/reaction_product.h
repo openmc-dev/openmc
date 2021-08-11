@@ -52,6 +52,6 @@ public:
   vector<Secondary> distribution_;    //!< Secondary angle-energy distribution
 };
 
-} // namespace opemc
+} // namespace openmc
 
 #endif // OPENMC_REACTION_PRODUCT_H

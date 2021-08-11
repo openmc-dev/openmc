@@ -1,7 +1,7 @@
 #ifndef OPENMC_SURFACE_H
 #define OPENMC_SURFACE_H
 
-#include <limits>  // For numeric_limits
+#include <limits> // For numeric_limits
 #include <string>
 #include <unordered_map>
 
@@ -24,16 +24,15 @@ namespace openmc {
 class Surface;
 
 namespace model {
-  extern std::unordered_map<int, int> surface_map;
-  extern vector<unique_ptr<Surface>> surfaces;
+extern std::unordered_map<int, int> surface_map;
+extern vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================
 //! Coordinates for an axis-aligned cuboid that bounds a geometric object.
 //==============================================================================
 
-struct BoundingBox
-{
+struct BoundingBox {
   double xmin = -INFTY;
   double xmax = INFTY;
   double ymin = -INFTY;
@@ -41,19 +40,21 @@ struct BoundingBox
   double zmin = -INFTY;
   double zmax = INFTY;
 
-
-  inline BoundingBox operator &(const BoundingBox& other) {
+  inline BoundingBox operator&(const BoundingBox& other)
+  {
     BoundingBox result = *this;
     return result &= other;
   }
 
-  inline BoundingBox operator |(const BoundingBox& other) {
+  inline BoundingBox operator|(const BoundingBox& other)
+  {
     BoundingBox result = *this;
     return result |= other;
   }
 
   // intersect operator
-  inline BoundingBox& operator &=(const BoundingBox& other) {
+  inline BoundingBox& operator&=(const BoundingBox& other)
+  {
     xmin = std::max(xmin, other.xmin);
     xmax = std::min(xmax, other.xmax);
     ymin = std::max(ymin, other.ymin);
@@ -64,7 +65,8 @@ struct BoundingBox
   }
 
   // union operator
-  inline BoundingBox& operator |=(const BoundingBox& other) {
+  inline BoundingBox& operator|=(const BoundingBox& other)
+  {
     xmin = std::min(xmin, other.xmin);
     xmax = std::max(xmax, other.xmax);
     ymin = std::min(ymin, other.ymin);
@@ -73,22 +75,19 @@ struct BoundingBox
     zmax = std::max(zmax, other.zmax);
     return *this;
   }
-
 };
 
 //==============================================================================
 //! A geometry primitive used to define regions of 3D space.
 //==============================================================================
 
-class Surface
-{
+class Surface {
 public:
-
-  int id_; //!< Unique ID
-  std::string name_; //!< User-defined name
+  int id_;                                          //!< Unique ID
+  std::string name_;                                //!< User-defined name
   std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
-  GeometryType geom_type_;    //!< Geometry type indicator (CSG or DAGMC)
-  bool surf_source_ {false};     //!< Activate source banking for the surface?
+  GeometryType geom_type_;   //!< Geometry type indicator (CSG or DAGMC)
+  bool surf_source_ {false}; //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();
@@ -110,8 +109,8 @@ public:
   //! \return Outgoing direction of the ray
   virtual Direction reflect(Position r, Direction u, Particle* p) const;
 
-  virtual Direction diffuse_reflect(Position r, Direction u,
-    uint64_t* seed) const;
+  virtual Direction diffuse_reflect(
+    Position r, Direction u, uint64_t* seed) const;
 
   //! Evaluate the equation describing the surface.
   //!
@@ -143,8 +142,7 @@ protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
-class CSGSurface : public Surface
-{
+class CSGSurface : public Surface {
 public:
   explicit CSGSurface(pugi::xml_node surf_node);
   CSGSurface();
@@ -159,8 +157,7 @@ protected:
 //! The plane is described by the equation \f$x - x_0 = 0\f$
 //==============================================================================
 
-class SurfaceXPlane : public CSGSurface
-{
+class SurfaceXPlane : public CSGSurface {
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -178,8 +175,7 @@ public:
 //! The plane is described by the equation \f$y - y_0 = 0\f$
 //==============================================================================
 
-class SurfaceYPlane : public CSGSurface
-{
+class SurfaceYPlane : public CSGSurface {
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -197,8 +193,7 @@ public:
 //! The plane is described by the equation \f$z - z_0 = 0\f$
 //==============================================================================
 
-class SurfaceZPlane : public CSGSurface
-{
+class SurfaceZPlane : public CSGSurface {
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -216,8 +211,7 @@ public:
 //! The plane is described by the equation \f$A x + B y + C z - D = 0\f$
 //==============================================================================
 
-class SurfacePlane : public CSGSurface
-{
+class SurfacePlane : public CSGSurface {
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -235,8 +229,7 @@ public:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCylinder : public CSGSurface
-{
+class SurfaceXCylinder : public CSGSurface {
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -255,8 +248,7 @@ public:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCylinder : public CSGSurface
-{
+class SurfaceYCylinder : public CSGSurface {
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -275,8 +267,7 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCylinder : public CSGSurface
-{
+class SurfaceZCylinder : public CSGSurface {
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -295,8 +286,7 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceSphere : public CSGSurface
-{
+class SurfaceSphere : public CSGSurface {
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -315,8 +305,7 @@ public:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 (x - x_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCone : public CSGSurface
-{
+class SurfaceXCone : public CSGSurface {
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -334,8 +323,7 @@ public:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 (y - y_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCone : public CSGSurface
-{
+class SurfaceYCone : public CSGSurface {
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -353,8 +341,7 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 (z - z_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCone : public CSGSurface
-{
+class SurfaceZCone : public CSGSurface {
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -368,11 +355,11 @@ public:
 //==============================================================================
 //! A general surface described by a quadratic equation.
 //
-//! \f$A x^2 + B y^2 + C z^2 + D x y + E y z + F x z + G x + H y + J z + K = 0\f$
+//! \f$A x^2 + B y^2 + C z^2 + D x y + E y z + F x z + G x + H y + J z + K =
+//! 0\f$
 //==============================================================================
 
-class SurfaceQuadric : public CSGSurface
-{
+class SurfaceQuadric : public CSGSurface {
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
   double evaluate(Position r) const;

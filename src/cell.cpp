@@ -31,11 +31,11 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::unordered_map<int32_t, int32_t> cell_map;
-  vector<unique_ptr<Cell>> cells;
+std::unordered_map<int32_t, int32_t> cell_map;
+vector<unique_ptr<Cell>> cells;
 
-  std::unordered_map<int32_t, int32_t> universe_map;
-  vector<unique_ptr<Universe>> universes;
+std::unordered_map<int32_t, int32_t> universe_map;
+vector<unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================
@@ -54,7 +54,7 @@ vector<int32_t> tokenize(const std::string region_spec)
   }
 
   // Parse all halfspaces and operators except for intersection (whitespace).
-  for (int i = 0; i < region_spec.size(); ) {
+  for (int i = 0; i < region_spec.size();) {
     if (region_spec[i] == '(') {
       tokens.push_back(OP_LEFT_PAREN);
       i++;
@@ -71,34 +71,37 @@ vector<int32_t> tokenize(const std::string region_spec)
       tokens.push_back(OP_COMPLEMENT);
       i++;
 
-    } else if (region_spec[i] == '-' || region_spec[i] == '+'
-               || std::isdigit(region_spec[i])) {
+    } else if (region_spec[i] == '-' || region_spec[i] == '+' ||
+               std::isdigit(region_spec[i])) {
       // This is the start of a halfspace specification.  Iterate j until we
       // find the end, then push-back everything between i and j.
       int j = i + 1;
-      while (j < region_spec.size() && std::isdigit(region_spec[j])) {j++;}
-      tokens.push_back(std::stoi(region_spec.substr(i, j-i)));
+      while (j < region_spec.size() && std::isdigit(region_spec[j])) {
+        j++;
+      }
+      tokens.push_back(std::stoi(region_spec.substr(i, j - i)));
       i = j;
 
     } else if (std::isspace(region_spec[i])) {
       i++;
 
     } else {
-      auto err_msg = fmt::format(
-        "Region specification contains invalid character, \"{}\"", region_spec[i]);
+      auto err_msg =
+        fmt::format("Region specification contains invalid character, \"{}\"",
+          region_spec[i]);
       fatal_error(err_msg);
     }
   }
 
   // Add in intersection operators where a missing operator is needed.
   int i = 0;
-  while (i < tokens.size()-1) {
+  while (i < tokens.size() - 1) {
     bool left_compat {(tokens[i] < OP_UNION) || (tokens[i] == OP_RIGHT_PAREN)};
-    bool right_compat {(tokens[i+1] < OP_UNION)
-                       || (tokens[i+1] == OP_LEFT_PAREN)
-                       || (tokens[i+1] == OP_COMPLEMENT)};
+    bool right_compat {(tokens[i + 1] < OP_UNION) ||
+                       (tokens[i + 1] == OP_LEFT_PAREN) ||
+                       (tokens[i + 1] == OP_COMPLEMENT)};
     if (left_compat && right_compat) {
-      tokens.insert(tokens.begin()+i+1, OP_INTERSECTION);
+      tokens.insert(tokens.begin() + i + 1, OP_INTERSECTION);
     }
     i++;
   }
@@ -126,9 +129,8 @@ vector<int32_t> generate_rpn(int32_t cell_id, vector<int32_t> infix)
       while (stack.size() > 0) {
         int32_t op = stack.back();
 
-        if (op < OP_RIGHT_PAREN &&
-             ((token == OP_COMPLEMENT && token < op) ||
-             (token != OP_COMPLEMENT && token <= op))) {
+        if (op < OP_RIGHT_PAREN && ((token == OP_COMPLEMENT && token < op) ||
+                                     (token != OP_COMPLEMENT && token <= op))) {
           // While there is an operator, op, on top of the stack, if the token
           // is left-associative and its precedence is less than or equal to
           // that of op or if the token is right-associative and its precedence
@@ -156,7 +158,8 @@ vector<int32_t> generate_rpn(int32_t cell_id, vector<int32_t> infix)
         // means there are mismatched parentheses.
         if (it == stack.rend()) {
           fatal_error(fmt::format(
-            "Mismatched parentheses in region specification for cell {}", cell_id));
+            "Mismatched parentheses in region specification for cell {}",
+            cell_id));
         }
         rpn.push_back(stack.back());
         stack.pop_back();
@@ -187,8 +190,7 @@ vector<int32_t> generate_rpn(int32_t cell_id, vector<int32_t> infix)
 // Universe implementation
 //==============================================================================
 
-void
-Universe::to_hdf5(hid_t universes_group) const
+void Universe::to_hdf5(hid_t universes_group) const
 {
   // Create a group for this universe.
   auto group = create_group(universes_group, fmt::format("universe {}", id_));
@@ -199,39 +201,39 @@ Universe::to_hdf5(hid_t universes_group) const
   // Write the contained cells.
   if (cells_.size() > 0) {
     vector<int32_t> cell_ids;
-    for (auto i_cell : cells_) cell_ids.push_back(model::cells[i_cell]->id_);
+    for (auto i_cell : cells_)
+      cell_ids.push_back(model::cells[i_cell]->id_);
     write_dataset(group, "cells", cell_ids);
   }
 
   close_group(group);
 }
 
-bool
-Universe::find_cell(Particle& p) const {
+bool Universe::find_cell(Particle& p) const
+{
   const auto& cells {
-    !partitioner_
-    ? cells_
-    : partitioner_->get_cells(p.r_local(), p.u_local())
-  };
+    !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
 
   for (auto it = cells.begin(); it != cells.end(); it++) {
     int32_t i_cell = *it;
-    int32_t i_univ = p.coord(p.n_coord()-1).universe;
-    if (model::cells[i_cell]->universe_ != i_univ) continue;
+    int32_t i_univ = p.coord(p.n_coord() - 1).universe;
+    if (model::cells[i_cell]->universe_ != i_univ)
+      continue;
 
     // Check if this cell contains the particle;
     Position r {p.r_local()};
     Direction u {p.u_local()};
     auto surf = p.surface();
     if (model::cells[i_cell]->contains(r, u, surf)) {
-      p.coord(p.n_coord()-1).cell = i_cell;
+      p.coord(p.n_coord() - 1).cell = i_cell;
       return true;
     }
   }
   return false;
 }
 
-BoundingBox Universe::bounding_box() const {
+BoundingBox Universe::bounding_box() const
+{
   BoundingBox bbox = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};
   if (cells_.size() == 0) {
     return {};
@@ -248,8 +250,8 @@ BoundingBox Universe::bounding_box() const {
 // Cell implementation
 //==============================================================================
 
-void
-Cell::set_rotation(const vector<double>& rot) {
+void Cell::set_rotation(const vector<double>& rot)
+{
   if (fill_ == C_NONE) {
     fatal_error(fmt::format("Cannot apply a rotation to cell {}"
                             " because it is not filled with another universe",
@@ -290,40 +292,37 @@ Cell::set_rotation(const vector<double>& rot) {
   }
 }
 
-double
-Cell::temperature(int32_t instance) const
+double Cell::temperature(int32_t instance) const
 {
   if (sqrtkT_.size() < 1) {
-    throw std::runtime_error{"Cell temperature has not yet been set."};
+    throw std::runtime_error {"Cell temperature has not yet been set."};
   }
 
   if (instance >= 0) {
-    double sqrtkT = sqrtkT_.size() == 1 ?
-      sqrtkT_.at(0) :
-      sqrtkT_.at(instance);
+    double sqrtkT = sqrtkT_.size() == 1 ? sqrtkT_.at(0) : sqrtkT_.at(instance);
     return sqrtkT * sqrtkT / K_BOLTZMANN;
   } else {
     return sqrtkT_[0] * sqrtkT_[0] / K_BOLTZMANN;
   }
 }
 
-void
-Cell::set_temperature(double T, int32_t instance, bool set_contained)
+void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
     if (T < data::temperature_min) {
-      throw std::runtime_error{"Temperature is below minimum temperature at "
-        "which data is available."};
+      throw std::runtime_error {"Temperature is below minimum temperature at "
+                                "which data is available."};
     } else if (T > data::temperature_max) {
-      throw std::runtime_error{"Temperature is above maximum temperature at "
-        "which data is available."};
+      throw std::runtime_error {"Temperature is above maximum temperature at "
+                                "which data is available."};
     }
   }
 
   if (type_ == Fill::MATERIAL) {
     if (instance >= 0) {
       // If temperature vector is not big enough, resize it first
-      if (sqrtkT_.size() != n_instances_) sqrtkT_.resize(n_instances_, sqrtkT_[0]);
+      if (sqrtkT_.size() != n_instances_)
+        sqrtkT_.resize(n_instances_, sqrtkT_[0]);
 
       // Set temperature for the corresponding instance
       sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
@@ -335,15 +334,17 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained)
     }
   } else {
     if (!set_contained) {
-      throw std::runtime_error{fmt::format("Attempted to set the temperature of cell {} "
-                                           "which is not filled by a material.", id_)};
+      throw std::runtime_error {
+        fmt::format("Attempted to set the temperature of cell {} "
+                    "which is not filled by a material.",
+          id_)};
     }
 
     auto contained_cells = this->get_contained_cells();
     for (const auto& entry : contained_cells) {
       auto& cell = model::cells[entry.first];
       Expects(cell->type_ == Fill::MATERIAL);
-      auto& instances =  entry.second;
+      auto& instances = entry.second;
       for (auto instance : instances) {
         cell->set_temperature(T, instance);
       }
@@ -377,7 +378,8 @@ void Cell::import_properties_hdf5(hid_t group)
   auto n_temps = temps.size();
   if (n_temps > 1 && n_temps != n_instances_) {
     throw std::runtime_error(fmt::format(
-      "Number of temperatures for cell {} doesn't match number of instances", id_));
+      "Number of temperatures for cell {} doesn't match number of instances",
+      id_));
   }
 
   // Modify temperatures for the cell
@@ -390,9 +392,8 @@ void Cell::import_properties_hdf5(hid_t group)
   close_group(cell_group);
 }
 
-
-void
-Cell::to_hdf5(hid_t cell_group) const {
+void Cell::to_hdf5(hid_t cell_group) const
+{
 
   // Create a group for this cell.
   auto group = create_group(cell_group, fmt::format("cell {}", id_));
@@ -455,7 +456,8 @@ Cell::to_hdf5(hid_t cell_group) const {
 //==============================================================================
 
 // default constructor
-CSGCell::CSGCell() {
+CSGCell::CSGCell()
+{
   geom_type_ = GeometryType::CSG;
 }
 
@@ -483,19 +485,21 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   bool fill_present = check_for_node(cell_node, "fill");
   bool material_present = check_for_node(cell_node, "material");
   if (!(fill_present || material_present)) {
-    fatal_error(fmt::format(
-      "Neither material nor fill was specified for cell {}", id_));
+    fatal_error(
+      fmt::format("Neither material nor fill was specified for cell {}", id_));
   }
   if (fill_present && material_present) {
     fatal_error(fmt::format("Cell {} has both a material and a fill specified; "
-      "only one can be specified per cell", id_));
+                            "only one can be specified per cell",
+      id_));
   }
 
   if (fill_present) {
     fill_ = std::stoi(get_node_value(cell_node, "fill"));
     if (fill_ == universe_) {
       fatal_error(fmt::format("Cell {} is filled with the same universe that"
-        "it is contained in.", id_));
+                              "it is contained in.",
+        id_));
     }
   } else {
     fill_ = C_NONE;
@@ -517,8 +521,8 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
         }
       }
     } else {
-      fatal_error(fmt::format("An empty material element was specified for cell {}",
-        id_));
+      fatal_error(fmt::format(
+        "An empty material element was specified for cell {}", id_));
     }
   }
 
@@ -531,7 +535,8 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     if (material_.size() == 0) {
       fatal_error(fmt::format(
         "Cell {} was specified with a temperature but no material. Temperature"
-        "specification is only valid for cells filled with a material.", id_));
+        "specification is only valid for cells filled with a material.",
+        id_));
     }
 
     // Make sure all temperatures are non-negative.
@@ -563,8 +568,9 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     if (r < OP_UNION) {
       const auto& it {model::surface_map.find(abs(r))};
       if (it == model::surface_map.end()) {
-        throw std::runtime_error{"Invalid surface ID " + std::to_string(abs(r))
-          + " specified in region for cell " + std::to_string(id_) + "."};
+        throw std::runtime_error {
+          "Invalid surface ID " + std::to_string(abs(r)) +
+          " specified in region for cell " + std::to_string(id_) + "."};
       }
       r = (r > 0) ? it->second + 1 : -(it->second + 1);
     }
@@ -601,13 +607,14 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   if (check_for_node(cell_node, "translation")) {
     if (fill_ == C_NONE) {
       fatal_error(fmt::format("Cannot apply a translation to cell {}"
-        " because it is not filled with another universe", id_));
+                              " because it is not filled with another universe",
+        id_));
     }
 
     auto xyz {get_node_array<double>(cell_node, "translation")};
     if (xyz.size() != 3) {
-      fatal_error(fmt::format(
-        "Non-3D translation vector applied to cell {}", id_));
+      fatal_error(
+        fmt::format("Non-3D translation vector applied to cell {}", id_));
     }
     translation_ = xyz;
   }
@@ -621,8 +628,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
 //==============================================================================
 
-bool
-CSGCell::contains(Position r, Direction u, int32_t on_surface) const
+bool CSGCell::contains(Position r, Direction u, int32_t on_surface) const
 {
   if (simple_) {
     return contains_simple(r, u, on_surface);
@@ -633,24 +639,25 @@ CSGCell::contains(Position r, Direction u, int32_t on_surface) const
 
 //==============================================================================
 
-std::pair<double, int32_t>
-CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
+std::pair<double, int32_t> CSGCell::distance(
+  Position r, Direction u, int32_t on_surface, Particle* p) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
   for (int32_t token : rpn_) {
     // Ignore this token if it corresponds to an operator rather than a region.
-    if (token >= OP_UNION) continue;
+    if (token >= OP_UNION)
+      continue;
 
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token)-1]->distance(r, u, coincident)};
+    double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
-      if (min_dist - d >= FP_PRECISION*min_dist) {
+      if (min_dist - d >= FP_PRECISION * min_dist) {
         min_dist = d;
         i_surf = -token;
       }
@@ -662,8 +669,7 @@ CSGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
 
 //==============================================================================
 
-void
-CSGCell::to_hdf5_inner(hid_t group_id) const
+void CSGCell::to_hdf5_inner(hid_t group_id) const
 {
 
   write_string(group_id, "geom_type", "csg", false);
@@ -683,19 +689,19 @@ CSGCell::to_hdf5_inner(hid_t group_id) const
         region_spec << " |";
       } else {
         // Note the off-by-one indexing
-        auto surf_id = model::surfaces[abs(token)-1]->id_;
+        auto surf_id = model::surfaces[abs(token) - 1]->id_;
         region_spec << " " << ((token > 0) ? surf_id : -surf_id);
       }
     }
     write_string(group_id, "region", region_spec.str(), false);
   }
-
 }
 
-BoundingBox CSGCell::bounding_box_simple() const {
+BoundingBox CSGCell::bounding_box_simple() const
+{
   BoundingBox bbox;
   for (int32_t token : rpn_) {
-    bbox &= model::surfaces[abs(token)-1]->bounding_box(token > 0);
+    bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
   }
   return bbox;
 }
@@ -704,9 +710,13 @@ void CSGCell::apply_demorgan(
   vector<int32_t>::iterator start, vector<int32_t>::iterator stop)
 {
   while (start < stop) {
-    if (*start < OP_UNION) { *start *= -1; }
-    else if (*start == OP_UNION) { *start = OP_INTERSECTION; }
-    else if (*start == OP_INTERSECTION) { *start = OP_UNION; }
+    if (*start < OP_UNION) {
+      *start *= -1;
+    } else if (*start == OP_UNION) {
+      *start = OP_INTERSECTION;
+    } else if (*start == OP_INTERSECTION) {
+      *start = OP_UNION;
+    }
     start++;
   }
 }
@@ -725,7 +735,7 @@ vector<int32_t>::iterator CSGCell::find_left_parenthesis(
     // decrement parenthesis level if there are two adjacent surfaces
     if (one < OP_UNION && two < OP_UNION) {
       parenthesis_level--;
-    // increment if there are two adjacent operators
+      // increment if there are two adjacent operators
     } else if (one >= OP_UNION && two >= OP_UNION) {
       parenthesis_level++;
     }
@@ -787,14 +797,14 @@ BoundingBox CSGCell::bounding_box_complex(vector<int32_t> rpn)
   return stack.front();
 }
 
-BoundingBox CSGCell::bounding_box() const {
+BoundingBox CSGCell::bounding_box() const
+{
   return simple_ ? bounding_box_simple() : bounding_box_complex(rpn_);
 }
 
 //==============================================================================
 
-bool
-CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
+bool CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
   for (int32_t token : rpn_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
@@ -806,8 +816,10 @@ CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
       return false;
     } else {
       // Note the off-by-one indexing
-      bool sense = model::surfaces[abs(token)-1]->sense(r, u);
-      if (sense != (token > 0)) {return false;}
+      bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
+      if (sense != (token > 0)) {
+        return false;
+      }
     }
   }
   return true;
@@ -815,8 +827,8 @@ CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 
 //==============================================================================
 
-bool
-CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
+bool CSGCell::contains_complex(
+  Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
@@ -828,11 +840,11 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
     // the last two items on the stack. If the token is a unary operator
     // (complement), apply it to the last item on the stack.
     if (token == OP_UNION) {
-      stack[i_stack-1] = stack[i_stack-1] || stack[i_stack];
-      i_stack --;
+      stack[i_stack - 1] = stack[i_stack - 1] || stack[i_stack];
+      i_stack--;
     } else if (token == OP_INTERSECTION) {
-      stack[i_stack-1] = stack[i_stack-1] && stack[i_stack];
-      i_stack --;
+      stack[i_stack - 1] = stack[i_stack - 1] && stack[i_stack];
+      i_stack--;
     } else if (token == OP_COMPLEMENT) {
       stack[i_stack] = !stack[i_stack];
     } else {
@@ -840,14 +852,14 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
       // respect to the surface and see if the token matches the sense. If the
       // particle's surface attribute is set and matches the token, that
       // overrides the determination based on sense().
-      i_stack ++;
+      i_stack++;
       if (token == on_surface) {
         stack[i_stack] = true;
       } else if (-token == on_surface) {
         stack[i_stack] = false;
       } else {
         // Note the off-by-one indexing
-        bool sense = model::surfaces[abs(token)-1]->sense(r, u);
+        bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
         stack[i_stack] = (sense == (token > 0));
       }
     }
@@ -908,7 +920,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     // It is difficult to determine the bounds of a complex cell, so add complex
     // cells to all partitions.
     if (!model::cells[i_cell]->simple_) {
-      for (auto& p : partitions_) p.push_back(i_cell);
+      for (auto& p : partitions_)
+        p.push_back(i_cell);
       continue;
     }
 
@@ -933,7 +946,8 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
 
     // If there are no bounding z-planes, add this cell to all partitions.
     if (lower_token == 0) {
-      for (auto& p : partitions_) p.push_back(i_cell);
+      for (auto& p : partitions_)
+        p.push_back(i_cell);
       continue;
     }
 
@@ -989,7 +1003,7 @@ const vector<int32_t>& UniversePartitioner::get_cells(
         left = middle + 1;
         middle = right_leaf;
       } else {
-        return partitions_[middle+1];
+        return partitions_[middle + 1];
       }
 
     } else {
@@ -998,7 +1012,7 @@ const vector<int32_t>& UniversePartitioner::get_cells(
       // side of this surface.
       int left_leaf = left + (middle - left) / 2;
       if (left_leaf != middle) {
-        right = middle-1;
+        right = middle - 1;
         middle = left_leaf;
       } else {
         return partitions_[middle];
@@ -1015,7 +1029,9 @@ void read_cells(pugi::xml_node node)
 {
   // Count the number of cells.
   int n_cells = 0;
-  for (pugi::xml_node cell_node: node.children("cell")) {n_cells++;}
+  for (pugi::xml_node cell_node : node.children("cell")) {
+    n_cells++;
+  }
 
   // Loop over XML cell elements and populate the array.
   model::cells.reserve(n_cells);
@@ -1030,7 +1046,8 @@ void read_cells(pugi::xml_node node)
     if (search == model::cell_map.end()) {
       model::cell_map[id] = i;
     } else {
-      fatal_error(fmt::format("Two or more cells use the same unique ID: {}", id));
+      fatal_error(
+        fmt::format("Two or more cells use the same unique ID: {}", id));
     }
   }
 
@@ -1065,8 +1082,8 @@ void read_cells(pugi::xml_node node)
 // C-API functions
 //==============================================================================
 
-extern "C" int
-openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
+extern "C" int openmc_cell_get_fill(
+  int32_t index, int* type, int32_t** indices, int32_t* n)
 {
   if (index >= 0 && index < model::cells.size()) {
     Cell& c {*model::cells[index]};
@@ -1085,9 +1102,8 @@ openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
   return 0;
 }
 
-extern "C" int
-openmc_cell_set_fill(int32_t index, int type, int32_t n,
-                     const int32_t* indices)
+extern "C" int openmc_cell_set_fill(
+  int32_t index, int type, int32_t n, const int32_t* indices)
 {
   Fill filltype = static_cast<Fill>(type);
   if (index >= 0 && index < model::cells.size()) {
@@ -1119,8 +1135,8 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
   return 0;
 }
 
-extern "C" int
-openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance, bool set_contained)
+extern "C" int openmc_cell_set_temperature(
+  int32_t index, double T, const int32_t* instance, bool set_contained)
 {
   if (index < 0 || index >= model::cells.size()) {
     strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
@@ -1137,8 +1153,8 @@ openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance, bo
   return 0;
 }
 
-extern "C" int
-openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
+extern "C" int openmc_cell_get_temperature(
+  int32_t index, const int32_t* instance, double* T)
 {
   if (index < 0 || index >= model::cells.size()) {
     strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
@@ -1156,8 +1172,9 @@ openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
 }
 
 //! Get the bounding box of a cell
-extern "C" int
-openmc_cell_bounding_box(const int32_t index, double* llc, double* urc) {
+extern "C" int openmc_cell_bounding_box(
+  const int32_t index, double* llc, double* urc)
+{
 
   BoundingBox bbox;
 
@@ -1178,8 +1195,8 @@ openmc_cell_bounding_box(const int32_t index, double* llc, double* urc) {
 }
 
 //! Get the name of a cell
-extern "C" int
-openmc_cell_get_name(int32_t index, const char** name) {
+extern "C" int openmc_cell_get_name(int32_t index, const char** name)
+{
   if (index < 0 || index >= model::cells.size()) {
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1191,8 +1208,8 @@ openmc_cell_get_name(int32_t index, const char** name) {
 }
 
 //! Set the name of a cell
-extern "C" int
-openmc_cell_set_name(int32_t index, const char* name) {
+extern "C" int openmc_cell_set_name(int32_t index, const char* name)
+{
   if (index < 0 || index >= model::cells.size()) {
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1232,24 +1249,25 @@ void Cell::get_contained_cells_inner(
           instance += cell->offset_[distribcell_index_];
         } else if (cell->type_ == Fill::LATTICE) {
           auto& lattice = model::lattices[cell->fill_];
-          instance += lattice->offset(this->distribcell_index_, parent_cell.lattice_index);
+          instance += lattice->offset(
+            this->distribcell_index_, parent_cell.lattice_index);
         }
       }
     }
     // add entry to contained cells
     contained_cells[model::cell_map[id_]].push_back(instance);
-  // filled with universe, add the containing cell to the parent cells
-  // and recurse
+    // filled with universe, add the containing cell to the parent cells
+    // and recurse
   } else if (type_ == Fill::UNIVERSE) {
     parent_cells.push_back({model::cell_map[id_], -1});
     auto& univ = model::universes[fill_];
-    for(auto cell_index : univ->cells_) {
+    for (auto cell_index : univ->cells_) {
       auto& cell = model::cells[cell_index];
       cell->get_contained_cells_inner(contained_cells, parent_cells);
     }
     parent_cells.pop_back();
-  // filled with a lattice, visit each universe in the lattice
-  // with a recursive call to collect the cell instances
+    // filled with a lattice, visit each universe in the lattice
+    // with a recursive call to collect the cell instances
   } else if (type_ == Fill::LATTICE) {
     auto& lattice = model::lattices[fill_];
     for (auto i = lattice->begin(); i != lattice->end(); ++i) {
@@ -1265,8 +1283,7 @@ void Cell::get_contained_cells_inner(
 }
 
 //! Return the index in the cells array of a cell with a given ID
-extern "C" int
-openmc_get_cell_index(int32_t id, int32_t* index)
+extern "C" int openmc_get_cell_index(int32_t id, int32_t* index)
 {
   auto it = model::cell_map.find(id);
   if (it != model::cell_map.end()) {
@@ -1279,8 +1296,7 @@ openmc_get_cell_index(int32_t id, int32_t* index)
 }
 
 //! Return the ID of a cell
-extern "C" int
-openmc_cell_get_id(int32_t index, int32_t* id)
+extern "C" int openmc_cell_get_id(int32_t index, int32_t* id)
 {
   if (index >= 0 && index < model::cells.size()) {
     *id = model::cells[index]->id_;
@@ -1292,8 +1308,7 @@ openmc_cell_get_id(int32_t index, int32_t* id)
 }
 
 //! Set the ID of a cell
-extern "C" int
-openmc_cell_set_id(int32_t index, int32_t id)
+extern "C" int openmc_cell_set_id(int32_t index, int32_t id)
 {
   if (index >= 0 && index < model::cells.size()) {
     model::cells[index]->id_ = id;
@@ -1327,7 +1342,7 @@ extern "C" int openmc_cell_set_translation(int32_t index, const double xyz[])
     if (model::cells[index]->fill_ == C_NONE) {
       set_errmsg(fmt::format("Cannot apply a translation to cell {}"
                              " because it is not filled with another universe",
-                             index));
+        index));
       return OPENMC_E_GEOMETRY;
     }
     model::cells[index]->translation_ = Position(xyz);
@@ -1353,8 +1368,8 @@ extern "C" int openmc_cell_get_rotation(int32_t index, double rot[], size_t* n)
 }
 
 //! Set the flattened rotation matrix of a cell
-extern "C" int openmc_cell_set_rotation(int32_t index, const double rot[],
-    size_t rot_len)
+extern "C" int openmc_cell_set_rotation(
+  int32_t index, const double rot[], size_t rot_len)
 {
   if (index >= 0 && index < model::cells.size()) {
     if (model::cells[index]->fill_ == C_NONE) {
@@ -1373,8 +1388,8 @@ extern "C" int openmc_cell_set_rotation(int32_t index, const double rot[],
 }
 
 //! Get the number of instances of the requested cell
-extern "C" int
-openmc_cell_get_num_instances(int32_t index, int32_t* num_instances)
+extern "C" int openmc_cell_get_num_instances(
+  int32_t index, int32_t* num_instances)
 {
   if (index < 0 || index >= model::cells.size()) {
     set_errmsg("Index in cells array is out of bounds.");
@@ -1385,17 +1400,22 @@ openmc_cell_get_num_instances(int32_t index, int32_t* num_instances)
 }
 
 //! Extend the cells array by n elements
-extern "C" int
-openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end)
+extern "C" int openmc_extend_cells(
+  int32_t n, int32_t* index_start, int32_t* index_end)
 {
-  if (index_start) *index_start = model::cells.size();
-  if (index_end) *index_end = model::cells.size() + n - 1;
+  if (index_start)
+    *index_start = model::cells.size();
+  if (index_end)
+    *index_end = model::cells.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
     model::cells.push_back(make_unique<CSGCell>());
   }
   return 0;
 }
 
-extern "C" int cells_size() { return model::cells.size(); }
+extern "C" int cells_size()
+{
+  return model::cells.size();
+}
 
 } // namespace openmc

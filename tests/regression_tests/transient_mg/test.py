@@ -258,13 +258,10 @@ def test_transient():
     for material in model.materials:
         transient[material.name] = {}
         for t in t_outer:
-            time_dict = {
-            t: {
-                'density' : {},
-                'temperature' : {},
-                }
+            transient[material.name][t] = {
+                'density': {},
+                'temperature': {}
             }
-            transient[material.name].update(time_dict)
 
     for material in model.materials:
         if material.name == 'Water':

@@ -171,7 +171,7 @@ def test_transient():
     model.settings.sourcepoint = sourcepoint
 
     full_pin_cell_mesh = openmc.RegularMesh()
-    full_pin_cell_mesh.dimension = [1,1,20]
+    full_pin_cell_mesh.dimension = [1, 1, 20]
     full_pin_cell_mesh.lower_left = lower_left
     full_pin_cell_mesh.upper_right = upper_right
 

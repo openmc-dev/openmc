@@ -9,13 +9,14 @@ import openmc
 import openmc.kinetics as kinetics
 import openmc.mgxs
 
-from tests.testing_harness import TestHarness, colorize
+from tests.testing_harness import PyAPITestHarness, colorize
 
 
-class TransientTestHarness(TestHarness):
+class TransientTestHarness(PyAPITestHarness):
     """Specialized TestHarness for running OpenMC transient tests."""
 
-    def __init__(self, solver, log_name, model=None, inputs_true=None):
+    def __init__(self, solver, log_name, model=None, inputs_true=None, statepoint_name=None):
+        super().__init__(statepoint_name)
         self.solver = solver
         self._log_name = log_name
 
@@ -27,53 +28,6 @@ class TransientTestHarness(TestHarness):
 
         self.inputs_true = "inputs_true.dat" if not inputs_true else inputs_true
 
-    def execute_test(self):
-        """Don't call _run_openmc as OpenMC will be called through solver.py for
-        transient tests.
-
-        """
-        try:
-            self._build_inputs()
-            inputs = self._get_inputs()
-            self._write_inputs(inputs)
-            self._compare_inputs()
-            self._run_transient()
-            self._test_output_created()
-            results = self._get_results()
-            self._write_results(results)
-            self._compare_results()
-        finally:
-            self._cleanup()
-
-    def _build_inputs(self):
-        """Write input XML files."""
-        self._model.export_to_xml()
-
-    def _get_inputs(self):
-        """Return a hash digest of the input XML files."""
-        xmls = ['geometry.xml', 'materials.xml', 'settings.xml',
-                'tallies.xml', 'plots.xml']
-        return ''.join([open(fname).read() for fname in xmls
-                        if os.path.exists(fname)])
-
-    def _write_inputs(self, input_digest):
-        """Write the digest of the input XMLs to an ASCII file."""
-        with open('inputs_test.dat', 'w') as fh:
-            fh.write(input_digest)
-
-    def _compare_inputs(self):
-        """Make sure the current inputs agree with the _true standard."""
-        compare = filecmp.cmp('inputs_test.dat', self.inputs_true)
-        if not compare:
-            expected = open(self.inputs_true, 'r').readlines()
-            actual = open('inputs_test.dat', 'r').readlines()
-            diff = unified_diff(expected, actual, self.inputs_true,
-                                'inputs_test.dat')
-            print('Input differences:')
-            print(''.join(colorize(diff)))
-            os.rename('inputs_test.dat', 'inputs_error.dat')
-        assert compare, 'Input files are broken.'
-
     def _cleanup(self):
         """Delete XMLs, statepoints, tally, and test files."""
         super()._cleanup()
@@ -84,7 +38,7 @@ class TransientTestHarness(TestHarness):
             if os.path.exists(f):
                 os.remove(f)
 
-    def _run_transient(self):
+    def _run_openmc(self):
         self.solver.solve()
 
     def _test_output_created(self):
@@ -92,8 +46,7 @@ class TransientTestHarness(TestHarness):
         logfile = glob.glob(self._log_name)
         assert len(logfile) == 1, 'Either multiple or no log files' \
             ' exist.'
-        assert logfile[0].endswith('h5'), \
-            'Log file is not a HDF5 file.'
+        assert logfile[0].endswith('h5'), 'Log file is not a HDF5 file.'
 
     def _get_results(self, hash_output=False):
         """Digest info in the log file and return as a string."""

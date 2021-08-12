@@ -72,35 +72,15 @@ clock = openmc.kinetics.Clock(dt_inner=1.e-2, t_outer=t_outer)
 
 # Prescribe the transient as a dictionary of densities and temperatures 
 transient = {}
-
-# Create entries for each material 
 for material in materials_file:
-    MatChange = {
-        material.name: {},
+    transient[material.name] = {}
+    for t in t_outer:
+        transient[material.name][t] = {
+            'density': material.density,
+            'temperature': material.temperature
         }
-
-    transient.update(MatChange)
-    for t in t_outer:
-        time_dict = {
-            t: {
-                'density' : {},
-                'temperature' : {},
-                }
-            }
-        transient[material.name].update(time_dict)
-
-# Fill the entries with the desired values
-for material in materials_file:
-    for t in t_outer:
-        transient[material.name][t]['density'] = material.density
-        transient[material.name][t]['temperature'] = material.temperature
-
-for bank in range(1,2):
-    name = 'Moderator Bank {}'.format(bank)
-    transient[name][0]['density'] = materials[name].density
-    transient[name][0.5]['density'] = materials[name].density*0.9
-    for t in t_outer:
-        transient[name][t]['temperature'] = materials[name].temperature
+    if material.name == 'Moderator Bank 1':
+        transient[material.name][0.5]['density'] = material.density*0.9
 
 # Instantiate a kinetics solver object
 solver = openmc.kinetics.Solver(directory='C5G7_TD_MG')
@@ -118,10 +98,10 @@ solver.materials                    = materials_file
 solver.transient                    = transient
 solver.outer_tolerance              = np.inf
 solver.mgxs_lib                     = mgxs_lib_file
-solver.method                       = 'ADIABATIC'
+solver.method                       = 'adiabatic'
 solver.multi_group                  = True
 solver.clock                        = clock
-solver.run_kwargs                   = {'threads':1, 'mpi_args':None}
+solver.run_kwargs                   = {'threads': 1, 'mpi_args': None}
 solver.core_volume                  = 42.84 * 42.84 * 128.52
 solver.min_outer_iters              = 1
 solver.use_pcmfd                    = False

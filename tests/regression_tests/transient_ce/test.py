@@ -192,8 +192,6 @@ def test_transient():
                 'density': material.density,
                 'temperature': material.temperature
             }
-
-    for material in model.materials:
         if material.name == 'Water':
             transient[material.name][0.5]['density'] = material.density*0.9
 

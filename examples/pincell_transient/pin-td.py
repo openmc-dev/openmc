@@ -63,33 +63,15 @@ clock = openmc.kinetics.Clock(dt_inner=1.e-2, t_outer=t_outer)
 
 # Prescribe the transient as a dictionary of densities and temperatures 
 transient = {}
-
-# Create entries for each material 
 for material in materials_file:
-    MatChange = {
-            material.name: {},
-            }
-    transient.update(MatChange)
+    transient[material.name] = {}
     for t in t_outer:
-        time_dict = {
-                t: {
-                    'density' : {},
-                    'temperature' : {},
-                    }
-                }
-        transient[material.name].update(time_dict)
-
-# Fill the entries with the desired values
-for material in materials_file:
+        transient[material.name][t] = {
+            'density': material.density,
+            'temperature': material.temperature
+        }
     if material.name == 'Moderator':
-        transient[material.name][0]['density'] = material.density
         transient[material.name][0.5]['density'] = material.density*0.9
-        for t in t_outer:
-            transient[material.name][t]['temperature'] = material.temperature
-    else:
-        for t in t_outer:
-            transient[material.name][t]['density'] = material.density
-            transient[material.name][t]['temperature'] = material.temperature
 
 # Instantiate a kinetics solver object
 solver = openmc.kinetics.Solver(directory='PIN_TD')
@@ -106,7 +88,7 @@ solver.settings                     = settings_file
 solver.materials                    = materials_file
 solver.transient                    = transient
 solver.outer_tolerance              = np.inf
-solver.method                       = 'ADIABATIC'
+solver.method                       = 'adiabatic'
 solver.multi_group                  = False
 solver.clock                        = clock
 solver.run_kwargs                   = {'threads':1, 'mpi_args':None}

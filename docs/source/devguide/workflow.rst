@@ -69,8 +69,9 @@ features and bug fixes. The general steps for contributing are as follows:
 
 3. Run ``tools/dev/install-commit-hooks.sh`` to install a post-commit hook that
    runs clang-format on C++ files to apply :ref:`automatic code formatting
-   <styleguide_formatting>`. In addition, you may want to configure your text
-   editor to automatically run clang-format when saving C++ files.
+   <styleguide_formatting>` (requires that clang-format already be installed).
+   In addition, you may want to configure your text editor to automatically run
+   clang-format when saving C++ files.
 
 3. Make your changes on the new branch that you intend to have included in
    *develop*. If you have made other changes that should not be merged back,

@@ -22,7 +22,8 @@ To ensure consistent styling with little effort, this project uses `clang-format
 ``.clang-format`` file that can be used to automatically apply a consistent
 format. The easiest way to use clang-format is to run
 ``tools/dev/install-commit-hooks.sh`` to install a post-commit hook that gets
-executed each time a commit is made. In addition, you may want to configure your
+executed each time a commit is made. Note that this script requires that you
+already have clang-format installed. In addition, you may want to configure your
 editor/IDE to automatically runs clang-format using the ``.clang-format`` file
 whenever a file is saved. For example, `Visual Studio Code
 <https://code.visualstudio.com/docs/cpp/cpp-ide#_code-formatting>`_ includes

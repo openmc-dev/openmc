@@ -9,6 +9,7 @@ import openmc
 import openmc.kinetics as kinetics
 import openmc.mgxs
 
+from tests.regression_tests import config
 from tests.testing_harness import PyAPITestHarness, colorize
 
 
@@ -174,7 +175,12 @@ def test_transient():
     solver.chi_delayed_by_delayed_group = True
     solver.chi_delayed_by_mesh          = True
     solver.log_file_name   = 'log_file.h5'
-    solver.run_kwargs      = {'threads': None, 'mpi_args': None}
+
+    if config['mpi']:
+        mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+    else:
+        mpi_args = None
+    solver.run_kwargs = {'threads': None, 'mpi_args': mpi_args}
     
     # Initialize and run solver object
     harness = TransientTestHarness(solver, 'log_file.h5', model=model)

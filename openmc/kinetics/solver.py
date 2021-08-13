@@ -338,7 +338,7 @@ class Solver:
 
     @initial_power.setter
     def initial_power(self, initial_power):
-        cv.check_type('k critical', k_crit, float)
+        cv.check_type('initial power', initial_power, float)
         self._initial_power = initial_power
 
     @k_crit.setter
@@ -348,7 +348,7 @@ class Solver:
 
     @run_kwargs.setter
     def run_kwargs(self, run_kwargs):
-        cv.check_type('run_kwards', run_kwargs, dict)
+        cv.check_type('run_kwargs', run_kwargs, dict)
         self._run_kwargs = run_kwargs
 
     @chi_delayed_by_delayed_group.setter
@@ -378,7 +378,7 @@ class Solver:
 
     @states.setter
     def states(self, states):
-        cv.check_type('run_kwards', run_kwargs, dict)
+        cv.check_type('states', states, dict)
         self._states = states
 
     @use_pregenerated_sps.setter

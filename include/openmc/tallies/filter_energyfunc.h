@@ -11,29 +11,24 @@ namespace openmc {
 //! described by a piecewise linear-linear interpolation.
 //==============================================================================
 
-class EnergyFunctionFilter : public Filter
-{
+class EnergyFunctionFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
 
-  EnergyFunctionFilter()
-    : Filter {}
-  {
-    n_bins_ = 1;
-  }
+  EnergyFunctionFilter() : Filter {} { n_bins_ = 1; }
 
   ~EnergyFunctionFilter() = default;
 
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "energyfunction";}
+  std::string type() const override { return "energyfunction"; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 

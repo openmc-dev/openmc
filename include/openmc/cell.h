@@ -7,9 +7,9 @@
 #include <string>
 #include <unordered_map>
 
-#include <gsl/gsl>
 #include "hdf5.h"
 #include "pugixml.hpp"
+#include <gsl/gsl>
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
@@ -24,18 +24,14 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-enum class Fill {
-  MATERIAL,
-  UNIVERSE,
-  LATTICE
-};
+enum class Fill { MATERIAL, UNIVERSE, LATTICE };
 
 // TODO: Convert to enum
-constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};
-constexpr int32_t OP_RIGHT_PAREN  {std::numeric_limits<int32_t>::max() - 1};
-constexpr int32_t OP_COMPLEMENT   {std::numeric_limits<int32_t>::max() - 2};
+constexpr int32_t OP_LEFT_PAREN {std::numeric_limits<int32_t>::max()};
+constexpr int32_t OP_RIGHT_PAREN {std::numeric_limits<int32_t>::max() - 1};
+constexpr int32_t OP_COMPLEMENT {std::numeric_limits<int32_t>::max() - 2};
 constexpr int32_t OP_INTERSECTION {std::numeric_limits<int32_t>::max() - 3};
-constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
+constexpr int32_t OP_UNION {std::numeric_limits<int32_t>::max() - 4};
 
 //==============================================================================
 // Global variables
@@ -48,29 +44,27 @@ class Universe;
 class UniversePartitioner;
 
 namespace model {
-  extern std::unordered_map<int32_t, int32_t> cell_map;
-  extern vector<unique_ptr<Cell>> cells;
+extern std::unordered_map<int32_t, int32_t> cell_map;
+extern vector<unique_ptr<Cell>> cells;
 
-  extern std::unordered_map<int32_t, int32_t> universe_map;
-  extern vector<unique_ptr<Universe>> universes;
+extern std::unordered_map<int32_t, int32_t> universe_map;
+extern vector<unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================
 //! A geometry primitive that fills all space and contains cells.
 //==============================================================================
 
-class Universe
-{
+class Universe {
 public:
-
-  int32_t id_;                  //!< Unique ID
-  vector<int32_t> cells_;       //!< Cells within this universe
+  int32_t id_;            //!< Unique ID
+  vector<int32_t> cells_; //!< Cells within this universe
 
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
   virtual void to_hdf5(hid_t group_id) const;
 
-  virtual bool find_cell(Particle &p) const;
+  virtual bool find_cell(Particle& p) const;
 
   BoundingBox bounding_box() const;
 
@@ -117,12 +111,11 @@ public:
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  virtual bool
-  contains(Position r, Direction u, int32_t on_surface) const = 0;
+  virtual bool contains(Position r, Direction u, int32_t on_surface) const = 0;
 
   //! Find the oncoming boundary of this cell.
-  virtual std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
+  virtual std::pair<double, int32_t> distance(
+    Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -157,7 +150,8 @@ public:
   //! \param[in] set_contained If this cell is not filled with a material,
   //!   collect all contained cells with material fills and set their
   //!   temperatures.
-  void set_temperature(double T, int32_t instance = -1, bool set_contained = false);
+  void set_temperature(
+    double T, int32_t instance = -1, bool set_contained = false);
 
   //! Set the rotation matrix of a cell instance
   //! \param[in] rot The rotation matrix of length 3 or 9
@@ -184,16 +178,16 @@ public:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t id_;                //!< Unique ID
-  std::string name_;          //!< User-defined name
-  Fill type_;                 //!< Material, universe, or lattice
-  int32_t universe_;          //!< Universe # this cell is in
-  int32_t fill_;              //!< Universe # filling this cell
-  int32_t n_instances_{0};    //!< Number of instances of this cell
-  GeometryType geom_type_;    //!< Geometric representation type (CSG, DAGMC)
+  int32_t id_;              //!< Unique ID
+  std::string name_;        //!< User-defined name
+  Fill type_;               //!< Material, universe, or lattice
+  int32_t universe_;        //!< Universe # this cell is in
+  int32_t fill_;            //!< Universe # filling this cell
+  int32_t n_instances_ {0}; //!< Number of instances of this cell
+  GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
 
   //! \brief Index corresponding to this cell in distribcell arrays
-  int distribcell_index_{C_NONE};
+  int distribcell_index_ {C_NONE};
 
   //! \brief Material(s) within this cell.
   //!
@@ -210,7 +204,7 @@ public:
   vector<std::int32_t> region_;
   //! Reverse Polish notation for region expression
   vector<std::int32_t> rpn_;
-  bool simple_;  //!< Does the region contain only intersections?
+  bool simple_; //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;
@@ -229,24 +223,22 @@ public:
 };
 
 struct CellInstanceItem {
-  int32_t index {-1};        //! Index into global cells array
-  int     lattice_indx{-1};  //! Flat index value of the lattice cell
+  int32_t index {-1};    //! Index into global cells array
+  int lattice_indx {-1}; //! Flat index value of the lattice cell
 };
 
 //==============================================================================
 
-class CSGCell : public Cell
-{
+class CSGCell : public Cell {
 public:
   CSGCell();
 
   explicit CSGCell(pugi::xml_node cell_node);
 
-  bool
-  contains(Position r, Direction u, int32_t on_surface) const;
+  bool contains(Position r, Direction u, int32_t on_surface) const;
 
-  std::pair<double, int32_t>
-  distance(Position r, Direction u, int32_t on_surface, Particle* p) const;
+  std::pair<double, int32_t> distance(
+    Position r, Direction u, int32_t on_surface, Particle* p) const;
 
   void to_hdf5_inner(hid_t group_id) const override;
 
@@ -285,8 +277,7 @@ protected:
 //! and spheres.
 //==============================================================================
 
-class UniversePartitioner
-{
+class UniversePartitioner {
 public:
   explicit UniversePartitioner(const Universe& univ);
 
@@ -307,7 +298,6 @@ private:
   vector<vector<int32_t>> partitions_;
 };
 
-
 //==============================================================================
 //! Define a containing (parent) cell
 //==============================================================================
@@ -324,7 +314,9 @@ struct ParentCell {
 struct CellInstance {
   //! Check for equality
   bool operator==(const CellInstance& other) const
-  { return index_cell == other.index_cell && instance == other.instance; }
+  {
+    return index_cell == other.index_cell && instance == other.instance;
+  }
 
   gsl::index index_cell;
   gsl::index instance;
@@ -333,7 +325,7 @@ struct CellInstance {
 struct CellInstanceHash {
   std::size_t operator()(const CellInstance& k) const
   {
-    return 4096*k.index_cell + k.instance;
+    return 4096 * k.index_cell + k.instance;
   }
 };
 
@@ -342,7 +334,6 @@ struct CellInstanceHash {
 //==============================================================================
 
 void read_cells(pugi::xml_node node);
-
 
 #ifdef DAGMC
 class DAGUniverse;

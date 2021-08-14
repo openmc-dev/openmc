@@ -20,11 +20,9 @@ namespace openmc {
 // Module constants
 //==============================================================================
 
-constexpr int32_t NO_OUTER_UNIVERSE{-1};
+constexpr int32_t NO_OUTER_UNIVERSE {-1};
 
-enum class LatticeType {
-  rect, hex
-};
+enum class LatticeType { rect, hex };
 
 //==============================================================================
 // Global variables
@@ -33,8 +31,8 @@ enum class LatticeType {
 class Lattice;
 
 namespace model {
-  extern std::unordered_map<int32_t, int32_t> lattice_map;
-  extern vector<unique_ptr<Lattice>> lattices;
+extern std::unordered_map<int32_t, int32_t> lattice_map;
+extern vector<unique_ptr<Lattice>> lattices;
 } // namespace model
 
 //==============================================================================
@@ -45,15 +43,14 @@ namespace model {
 class LatticeIter;
 class ReverseLatticeIter;
 
-class Lattice
-{
+class Lattice {
 public:
-  int32_t id_;                         //!< Universe ID number
-  std::string name_;                   //!< User-defined name
+  int32_t id_;       //!< Universe ID number
+  std::string name_; //!< User-defined name
   LatticeType type_;
-  vector<int32_t> universes_;          //!< Universes filling each lattice tile
-  int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
-  vector<int32_t> offsets_;            //!< Distribcell offset table
+  vector<int32_t> universes_;         //!< Universes filling each lattice tile
+  int32_t outer_ {NO_OUTER_UNIVERSE}; //!< Universe tiled outside the lattice
+  vector<int32_t> offsets_;           //!< Distribcell offset table
 
   explicit Lattice(pugi::xml_node lat_node);
 
@@ -72,7 +69,9 @@ public:
 
   //! Allocate offset table for distribcell.
   void allocate_offset_table(int n_maps)
-  {offsets_.resize(n_maps * universes_.size(), C_NONE);}
+  {
+    offsets_.resize(n_maps * universes_.size(), C_NONE);
+  }
 
   //! Populate the distribcell offset tables.
   int32_t fill_offset_table(int32_t offset, int32_t target_univ_id, int map,
@@ -112,7 +111,9 @@ public:
   //! \return true if the given index fit within the lattice bounds.  False
   //!   otherwise.
   virtual bool is_valid_index(int indx) const
-  {return (indx >= 0) && (indx < universes_.size());}
+  {
+    return (indx >= 0) && (indx < universes_.size());
+  }
 
   //! \brief Get the distribcell offset for a lattice tile.
   //! \param The map index for the target cell.
@@ -138,7 +139,7 @@ public:
   void to_hdf5(hid_t group_id) const;
 
 protected:
-  bool is_3d_;  //!< Has divisions along the z-axis?
+  bool is_3d_; //!< Has divisions along the z-axis?
 
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
@@ -147,26 +148,24 @@ protected:
 //! An iterator over lattice universes.
 //==============================================================================
 
-class LatticeIter
-{
+class LatticeIter {
 public:
-  int indx_;  //!< An index to a Lattice universes or offsets array.
+  int indx_; //!< An index to a Lattice universes or offsets array.
 
-  LatticeIter(Lattice &lat, int indx)
-    : indx_(indx), lat_(lat)
-  {}
+  LatticeIter(Lattice& lat, int indx) : indx_(indx), lat_(lat) {}
 
-  bool operator==(const LatticeIter &rhs) {return (indx_ == rhs.indx_);}
+  bool operator==(const LatticeIter& rhs) { return (indx_ == rhs.indx_); }
 
-  bool operator!=(const LatticeIter &rhs) {return !(*this == rhs);}
+  bool operator!=(const LatticeIter& rhs) { return !(*this == rhs); }
 
-  int32_t& operator*() {return lat_.universes_[indx_];}
+  int32_t& operator*() { return lat_.universes_[indx_]; }
 
   LatticeIter& operator++()
   {
     while (indx_ < lat_.universes_.size()) {
       ++indx_;
-      if (lat_.is_valid_index(indx_)) return *this;
+      if (lat_.is_valid_index(indx_))
+        return *this;
     }
     indx_ = lat_.universes_.size();
     return *this;
@@ -180,18 +179,16 @@ protected:
 //! A reverse iterator over lattice universes.
 //==============================================================================
 
-class ReverseLatticeIter : public LatticeIter
-{
+class ReverseLatticeIter : public LatticeIter {
 public:
-  ReverseLatticeIter(Lattice &lat, int indx)
-    : LatticeIter {lat, indx}
-  {}
+  ReverseLatticeIter(Lattice& lat, int indx) : LatticeIter {lat, indx} {}
 
   ReverseLatticeIter& operator++()
   {
     while (indx_ > -1) {
       --indx_;
-      if (lat_.is_valid_index(indx_)) return *this;
+      if (lat_.is_valid_index(indx_))
+        return *this;
     }
     indx_ = -1;
     return *this;
@@ -200,8 +197,7 @@ public:
 
 //==============================================================================
 
-class RectLattice : public Lattice
-{
+class RectLattice : public Lattice {
 public:
   explicit RectLattice(pugi::xml_node lat_node);
 
@@ -225,15 +221,14 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
 private:
-  array<int, 3> n_cells_;         //!< Number of cells along each axis
-  Position lower_left_;           //!< Global lower-left corner of the lattice
-  Position pitch_;                //!< Lattice tile width along each axis
+  array<int, 3> n_cells_; //!< Number of cells along each axis
+  Position lower_left_;   //!< Global lower-left corner of the lattice
+  Position pitch_;        //!< Lattice tile width along each axis
 };
 
 //==============================================================================
 
-class HexLattice : public Lattice
-{
+class HexLattice : public Lattice {
 public:
   explicit HexLattice(pugi::xml_node lat_node);
 
@@ -264,8 +259,8 @@ public:
 
 private:
   enum class Orientation {
-      y, //!< Flat side of lattice parallel to y-axis
-      x  //!< Flat side of lattice parallel to x-axis
+    y, //!< Flat side of lattice parallel to y-axis
+    x  //!< Flat side of lattice parallel to x-axis
   };
 
   //! Fill universes_ vector for 'y' orientation
@@ -274,11 +269,11 @@ private:
   //! Fill universes_ vector for 'x' orientation
   void fill_lattice_x(const vector<std::string>& univ_words);
 
-  int n_rings_;                   //!< Number of radial tile positions
-  int n_axial_;                   //!< Number of axial tile positions
-  Orientation orientation_;       //!< Orientation of lattice
-  Position center_;               //!< Global center of lattice
-  array<double, 2> pitch_;        //!< Lattice tile width and height
+  int n_rings_;             //!< Number of radial tile positions
+  int n_axial_;             //!< Number of axial tile positions
+  Orientation orientation_; //!< Orientation of lattice
+  Position center_;         //!< Global center of lattice
+  array<double, 2> pitch_;  //!< Lattice tile width and height
 };
 
 //==============================================================================

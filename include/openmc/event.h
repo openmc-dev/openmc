@@ -7,7 +7,6 @@
 #include "openmc/particle.h"
 #include "openmc/shared_array.h"
 
-
 namespace openmc {
 
 //==============================================================================
@@ -17,17 +16,17 @@ namespace openmc {
 // In the event-based model, instead of moving or sorting the particles
 // themselves based on which event they need, a queue is used to store the
 // index (and other useful info) for each event type.
-// The EventQueueItem struct holds the relevant information about a particle needed
-// for sorting the queue. For very high particle counts, a sorted queue has the
-// potential to result in greatly improved cache efficiency. However, sorting
-// will introduce some overhead due to the sorting process itself, and may not
-// result in any benefits if not enough particles are present for them to achieve
-// consistent locality improvements. 
-struct EventQueueItem{
-  int64_t idx;         //!< particle index in event-based particle buffer
-  ParticleType type;   //!< particle type
-  int64_t material;    //!< material that particle is in
-  double E;            //!< particle energy
+// The EventQueueItem struct holds the relevant information about a particle
+// needed for sorting the queue. For very high particle counts, a sorted queue
+// has the potential to result in greatly improved cache efficiency. However,
+// sorting will introduce some overhead due to the sorting process itself, and
+// may not result in any benefits if not enough particles are present for them
+// to achieve consistent locality improvements.
+struct EventQueueItem {
+  int64_t idx;       //!< particle index in event-based particle buffer
+  ParticleType type; //!< particle type
+  int64_t material;  //!< material that particle is in
+  double E;          //!< particle energy
 
   // Constructors
   EventQueueItem() = default;
@@ -35,16 +34,18 @@ struct EventQueueItem{
     : idx(buffer_idx), type(p.type()), material(p.material()), E(p.E())
   {}
 
-  // Compare by particle type, then by material type (4.5% fuel/7.0% fuel/cladding/etc),
-  // then by energy.
-  // TODO: Currently in OpenMC, the material ID corresponds not only to a general
-  // type, but also specific isotopic densities. Ideally we would
-  // like to be able to just sort by general material type, regardless of densities.
-  // A more general material type ID may be added in the future, in which case we
-  // can update the material field of this struct to contain the more general id.
+  // Compare by particle type, then by material type (4.5% fuel/7.0%
+  // fuel/cladding/etc), then by energy.
+  // TODO: Currently in OpenMC, the material ID corresponds not only to a
+  // general type, but also specific isotopic densities. Ideally we would like
+  // to be able to just sort by general material type, regardless of densities.
+  // A more general material type ID may be added in the future, in which case
+  // we can update the material field of this struct to contain the more general
+  // id.
   bool operator<(const EventQueueItem& rhs) const
   {
-    return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
+    return std::tie(type, material, E) <
+           std::tie(rhs.type, rhs.material, rhs.E);
   }
 };
 

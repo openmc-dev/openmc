@@ -6,8 +6,7 @@ namespace openmc {
 // Position implementation
 //==============================================================================
 
-Position&
-Position::operator+=(Position other)
+Position& Position::operator+=(Position other)
 {
   x += other.x;
   y += other.y;
@@ -15,8 +14,7 @@ Position::operator+=(Position other)
   return *this;
 }
 
-Position&
-Position::operator+=(double v)
+Position& Position::operator+=(double v)
 {
   x += v;
   y += v;
@@ -24,8 +22,7 @@ Position::operator+=(double v)
   return *this;
 }
 
-Position&
-Position::operator-=(Position other)
+Position& Position::operator-=(Position other)
 {
   x -= other.x;
   y -= other.y;
@@ -33,8 +30,7 @@ Position::operator-=(Position other)
   return *this;
 }
 
-Position&
-Position::operator-=(double v)
+Position& Position::operator-=(double v)
 {
   x -= v;
   y -= v;
@@ -42,8 +38,7 @@ Position::operator-=(double v)
   return *this;
 }
 
-Position&
-Position::operator*=(Position other)
+Position& Position::operator*=(Position other)
 {
   x *= other.x;
   y *= other.y;
@@ -51,8 +46,7 @@ Position::operator*=(Position other)
   return *this;
 }
 
-Position&
-Position::operator*=(double v)
+Position& Position::operator*=(double v)
 {
   x *= v;
   y *= v;
@@ -60,8 +54,7 @@ Position::operator*=(double v)
   return *this;
 }
 
-Position&
-Position::operator/=(Position other)
+Position& Position::operator/=(Position other)
 {
   x /= other.x;
   y /= other.y;
@@ -69,8 +62,7 @@ Position::operator/=(Position other)
   return *this;
 }
 
-Position&
-Position::operator/=(double v)
+Position& Position::operator/=(double v)
 {
   x /= v;
   y /= v;
@@ -78,23 +70,19 @@ Position::operator/=(double v)
   return *this;
 }
 
-Position
-Position::operator-() const
+Position Position::operator-() const
 {
   return {-x, -y, -z};
 }
 
 Position Position::rotate(const vector<double>& rotation) const
 {
-  return {
-    x*rotation[0] + y*rotation[1] + z*rotation[2],
-    x*rotation[3] + y*rotation[4] + z*rotation[5],
-    x*rotation[6] + y*rotation[7] + z*rotation[8]
-  };
+  return {x * rotation[0] + y * rotation[1] + z * rotation[2],
+    x * rotation[3] + y * rotation[4] + z * rotation[5],
+    x * rotation[6] + y * rotation[7] + z * rotation[8]};
 }
 
-std::ostream&
-operator<<(std::ostream& os, Position r)
+std::ostream& operator<<(std::ostream& os, Position r)
 {
   os << "(" << r.x << ", " << r.y << ", " << r.z << ")";
   return os;

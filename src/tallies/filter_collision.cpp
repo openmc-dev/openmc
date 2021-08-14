@@ -43,7 +43,7 @@ void CollisionFilter::get_all_bins(
 
   // Bin the collision number. Must fit exactly the desired collision number.
   auto search = map_.find(n);
-  if (search != map_.end()){
+  if (search != map_.end()) {
     match.bins_.push_back(search->second);
     match.weights_.push_back(1.0);
   }

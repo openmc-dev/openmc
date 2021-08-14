@@ -7,10 +7,10 @@
 #include "openmc/tallies/trigger.h"
 #include "openmc/vector.h"
 
-#include <gsl/gsl>
 #include "pugixml.hpp"
 #include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
+#include <gsl/gsl>
 
 #include <string>
 #include <unordered_map>
@@ -49,18 +49,18 @@ public:
 
   const vector<int32_t>& filters() const { return filters_; }
 
-  int32_t filters(int i) const {return filters_[i];}
+  int32_t filters(int i) const { return filters_[i]; }
 
   void set_filters(gsl::span<Filter*> filters);
 
   //! Given already-set filters, set the stride lengths
   void set_strides();
 
-  int32_t strides(int i) const {return strides_[i];}
+  int32_t strides(int i) const { return strides_[i]; }
 
-  int32_t n_filter_bins() const {return n_filter_bins_;}
+  int32_t n_filter_bins() const { return n_filter_bins_; }
 
-  bool writable() const { return writable_;}
+  bool writable() const { return writable_; }
 
   //----------------------------------------------------------------------------
   // Other methods.
@@ -148,23 +148,24 @@ private:
 //==============================================================================
 
 namespace model {
-  extern std::unordered_map<int, int> tally_map;
-  extern vector<unique_ptr<Tally>> tallies;
-  extern vector<int> active_tallies;
-  extern vector<int> active_analog_tallies;
-  extern vector<int> active_tracklength_tallies;
-  extern vector<int> active_collision_tallies;
-  extern vector<int> active_meshsurf_tallies;
-  extern vector<int> active_surface_tallies;
-}
+extern std::unordered_map<int, int> tally_map;
+extern vector<unique_ptr<Tally>> tallies;
+extern vector<int> active_tallies;
+extern vector<int> active_analog_tallies;
+extern vector<int> active_tracklength_tallies;
+extern vector<int> active_collision_tallies;
+extern vector<int> active_meshsurf_tallies;
+extern vector<int> active_surface_tallies;
+} // namespace model
 
 namespace simulation {
-  //! Global tallies (such as k-effective estimators)
-  extern xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+//! Global tallies (such as k-effective estimators)
+extern xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>>
+  global_tallies;
 
-  //! Number of realizations for global tallies
-  extern "C" int32_t n_realizations;
-}
+//! Number of realizations for global tallies
+extern "C" int32_t n_realizations;
+} // namespace simulation
 
 extern double global_tally_absorption;
 extern double global_tally_collision;
@@ -187,8 +188,9 @@ void setup_active_tallies();
 
 // Alias for the type returned by xt::adapt(...). N is the dimension of the
 // multidimensional array
-template <std::size_t N>
-using adaptor_type = xt::xtensor_adaptor<xt::xbuffer_adaptor<double*&, xt::no_ownership>, N>;
+template<std::size_t N>
+using adaptor_type =
+  xt::xtensor_adaptor<xt::xbuffer_adaptor<double*&, xt::no_ownership>, N>;
 
 #ifdef OPENMC_MPI
 //! Collect all tally results onto master process

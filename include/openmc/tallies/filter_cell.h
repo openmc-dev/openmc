@@ -15,8 +15,7 @@ namespace openmc {
 //! Specifies which geometric cells tally events reside in.
 //==============================================================================
 
-class CellFilter : public Filter
-{
+class CellFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -26,12 +25,12 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "cell";}
+  std::string type() const override { return "cell"; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 

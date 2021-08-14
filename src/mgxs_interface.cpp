@@ -6,8 +6,8 @@
 #include <fmt/format.h>
 
 #include "openmc/cell.h"
-#include "openmc/cross_sections.h"
 #include "openmc/container_util.h"
+#include "openmc/cross_sections.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry_aux.h"
@@ -17,7 +17,6 @@
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
 
-
 namespace openmc {
 
 //==============================================================================
@@ -25,7 +24,7 @@ namespace openmc {
 //==============================================================================
 
 namespace data {
-  MgxsInterface mg;
+MgxsInterface mg;
 }
 
 MgxsInterface::MgxsInterface(const std::string& path_cross_sections,
@@ -57,7 +56,8 @@ void MgxsInterface::init()
   // Check if MGXS Library exists
   if (!file_exists(cross_sections_path_)) {
     // Could not find MGXS Library file
-    fatal_error(fmt::format("Cross sections HDF5 file '{}' does not exist!", cross_sections_path_));
+    fatal_error(fmt::format(
+      "Cross sections HDF5 file '{}' does not exist!", cross_sections_path_));
   }
 
   write_message("Loading cross section data...", 5);
@@ -78,12 +78,12 @@ void MgxsInterface::init()
   read_attribute(file_id, "version", array);
   if (array != VERSION_MGXS_LIBRARY) {
     fatal_error("MGXS Library file version does not match current version "
-      "supported by OpenMC.");
+                "supported by OpenMC.");
   }
 
   // ==========================================================================
   // READ ALL MGXS CROSS SECTION TABLES
-  for (unsigned i_nuc=0; i_nuc<xs_to_read_.size(); ++i_nuc)
+  for (unsigned i_nuc = 0; i_nuc < xs_to_read_.size(); ++i_nuc)
     add_mgxs(file_id, xs_to_read_[i_nuc], xs_temps_to_read_[i_nuc]);
 
   file_close(file_id);
@@ -103,11 +103,12 @@ void MgxsInterface::add_mgxs(
   if (object_exists(file_id, name.c_str())) {
     xs_grp = open_group(file_id, name.c_str());
   } else {
-    fatal_error(fmt::format("Data for {} does not exist in provided MGXS Library", name));
+    fatal_error(
+      fmt::format("Data for {} does not exist in provided MGXS Library", name));
   }
 
-  nuclides_.emplace_back(xs_grp, temperature, num_energy_groups_,
-      num_delayed_groups_);
+  nuclides_.emplace_back(
+    xs_grp, temperature, num_energy_groups_, num_delayed_groups_);
   close_group(xs_grp);
 }
 
@@ -137,7 +138,7 @@ void MgxsInterface::create_macro_xs()
       }
 
       macro_xs_.emplace_back(mat->name_, kTs[i], mgxs_ptr, atom_densities,
-          num_energy_groups_, num_delayed_groups_);
+        num_energy_groups_, num_delayed_groups_);
     } else {
       // Preserve the ordering of materials by including a blank entry
       macro_xs_.emplace_back();
@@ -153,16 +154,18 @@ vector<vector<double>> MgxsInterface::get_mat_kTs()
 
   for (const auto& cell : model::cells) {
     // Skip non-material cells
-    if (cell->fill_ != C_NONE) continue;
+    if (cell->fill_ != C_NONE)
+      continue;
 
     for (int j = 0; j < cell->material_.size(); ++j) {
       // Skip void materials
       int i_material = cell->material_[j];
-      if (i_material == MATERIAL_VOID) continue;
+      if (i_material == MATERIAL_VOID)
+        continue;
 
       // Get temperature of cell (rounding to nearest integer)
-      double sqrtkT = cell->sqrtkT_.size() == 1 ?
-        cell->sqrtkT_[j] : cell->sqrtkT_[0];
+      double sqrtkT =
+        cell->sqrtkT_.size() == 1 ? cell->sqrtkT_[j] : cell->sqrtkT_[0];
       double kT = sqrtkT * sqrtkT;
 
       // Add temperature if it hasn't already been added
@@ -184,7 +187,8 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
   // Check if MGXS Library exists
   if (!file_exists(cross_sections_path_)) {
     // Could not find MGXS Library file
-    fatal_error(fmt::format("Cross section HDF5 file '{}' does not exist", cross_sections_path_));
+    fatal_error(fmt::format(
+      "Cross section HDF5 file '{}' does not exist", cross_sections_path_));
   }
   write_message("Reading cross sections HDF5 file...", 5);
 
@@ -209,15 +213,14 @@ void MgxsInterface::read_header(const std::string& path_cross_sections)
 
   // Create average energies
   for (int i = 0; i < energy_bins_.size() - 1; ++i) {
-    energy_bin_avg_.push_back(0.5*
-    (energy_bins_[i] + energy_bins_[i+1]));
+    energy_bin_avg_.push_back(0.5 * (energy_bins_[i] + energy_bins_[i + 1]));
   }
 
   // Add entries into libraries for MG data
   xs_names_ = group_names(file_id);
   if (xs_names_.empty()) {
     fatal_error("At least one MGXS data set must be present in mgxs "
-      "library file!");
+                "library file!");
   }
 
   // Close MGXS HDF5 file

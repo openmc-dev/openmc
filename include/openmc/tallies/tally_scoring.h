@@ -18,10 +18,8 @@ namespace openmc {
 //! bins that are valid for the current tally event.
 //==============================================================================
 
-class FilterBinIter
-{
+class FilterBinIter {
 public:
-
   //! Construct an iterator over bins that match a given particle's state.
   FilterBinIter(const Tally& tally, Particle& p);
 
@@ -32,10 +30,14 @@ public:
     const Tally& tally, bool end, vector<FilterMatch>* particle_filter_matches);
 
   bool operator==(const FilterBinIter& other) const
-  {return index_ == other.index_;}
+  {
+    return index_ == other.index_;
+  }
 
   bool operator!=(const FilterBinIter& other) const
-  {return !(*this == other);}
+  {
+    return !(*this == other);
+  }
 
   FilterBinIter& operator++();
 

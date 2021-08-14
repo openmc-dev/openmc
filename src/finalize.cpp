@@ -20,9 +20,9 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/surface.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
-#include "openmc/tallies/tally.h"
 #include "openmc/volume_calc.h"
 
 #include "xtensor/xview.hpp"
@@ -53,7 +53,7 @@ void free_memory()
   }
 }
 
-}
+} // namespace openmc
 
 using namespace openmc;
 
@@ -139,7 +139,8 @@ int openmc_finalize()
 
   // Free all MPI types
 #ifdef OPENMC_MPI
-  if (mpi::source_site != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::source_site);
+  if (mpi::source_site != MPI_DATATYPE_NULL)
+    MPI_Type_free(&mpi::source_site);
 #endif
 
   return 0;

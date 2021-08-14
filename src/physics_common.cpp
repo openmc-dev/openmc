@@ -1,7 +1,7 @@
 #include "openmc/physics_common.h"
 
-#include "openmc/settings.h"
 #include "openmc/random_lcg.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -23,4 +23,4 @@ void russian_roulette(Particle& p)
   }
 }
 
-} //namespace openmc
+} // namespace openmc

@@ -22,10 +22,10 @@
 #include "openmc/timer.h"
 
 #include <algorithm> // for min
-#include <cmath> // for sqrt, abs, pow
-#include <iterator> // for back_inserter
+#include <cmath>     // for sqrt, abs, pow
+#include <iterator>  // for back_inserter
+#include <limits>    //for infinity
 #include <string>
-#include <limits> //for infinity
 
 namespace openmc {
 
@@ -51,7 +51,9 @@ void calculate_generation_keff()
   const auto& gt = simulation::global_tallies;
 
   // Get keff for this generation by subtracting off the starting value
-  simulation::keff_generation = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) - simulation::keff_generation;
+  simulation::keff_generation =
+    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
+    simulation::keff_generation;
 
   double keff_reduced;
 #ifdef OPENMC_MPI
@@ -89,16 +91,17 @@ void synchronize_bank()
   // While we would expect the value of start on rank 0 to be 0, the MPI
   // standard says that the receive buffer on rank 0 is undefined and not
   // significant
-  if (mpi::rank == 0) start = 0;
+  if (mpi::rank == 0)
+    start = 0;
 
   int64_t finish = start + simulation::fission_bank.size();
   int64_t total = finish;
   MPI_Bcast(&total, 1, MPI_INT64_T, mpi::n_procs - 1, mpi::intracomm);
 
 #else
-  int64_t start  = 0;
+  int64_t start = 0;
   int64_t finish = simulation::fission_bank.size();
-  int64_t total  = finish;
+  int64_t total = finish;
 #endif
 
   // If there are not that many particles per generation, it's possible that no
@@ -107,7 +110,8 @@ void synchronize_bank()
   // runs enough particles to avoid this in the first place.
 
   if (simulation::fission_bank.size() == 0) {
-    fatal_error("No fission sites banked on MPI rank " + std::to_string(mpi::rank));
+    fatal_error(
+      "No fission sites banked on MPI rank " + std::to_string(mpi::rank));
   }
 
   // Make sure all processors start at the same point for random sampling. Then
@@ -139,7 +143,7 @@ void synchronize_bank()
   int64_t index_temp = 0;
   vector<SourceSite> temp_sites(3 * simulation::work_per_rank);
 
-  for (int64_t i = 0; i < simulation::fission_bank.size(); i++ ) {
+  for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
     const auto& site = simulation::fission_bank[i];
 
     // If there are less than n_particles particles banked, automatically add
@@ -174,8 +178,8 @@ void synchronize_bank()
 
   // Allocate space for bank_position if this hasn't been done yet
   int64_t bank_position[mpi::n_procs];
-  MPI_Allgather(&start, 1, MPI_INT64_T, bank_position, 1,
-    MPI_INT64_T, mpi::intracomm);
+  MPI_Allgather(
+    &start, 1, MPI_INT64_T, bank_position, 1, MPI_INT64_T, mpi::intracomm);
 #else
   start = 0;
   finish = index_temp;
@@ -219,19 +223,21 @@ void synchronize_bank()
   if (start < settings::n_particles) {
     // Determine the index of the processor which has the first part of the
     // source_bank for the local processor
-    int neighbor = upper_bound_index(simulation::work_index.begin(),
-      simulation::work_index.end(), start);
+    int neighbor = upper_bound_index(
+      simulation::work_index.begin(), simulation::work_index.end(), start);
 
     while (start < finish) {
       // Determine the number of sites to send
-      int64_t n = std::min(simulation::work_index[neighbor + 1], finish) - start;
+      int64_t n =
+        std::min(simulation::work_index[neighbor + 1], finish) - start;
 
       // Initiate an asynchronous send of source sites to the neighboring
       // process
       if (neighbor != mpi::rank) {
         requests.emplace_back();
-        MPI_Isend(&temp_sites[index_local], static_cast<int>(n), mpi::source_site,
-          neighbor, mpi::rank, mpi::intracomm, &requests.back());
+        MPI_Isend(&temp_sites[index_local], static_cast<int>(n),
+          mpi::source_site, neighbor, mpi::rank, mpi::intracomm,
+          &requests.back());
       }
 
       // Increment all indices
@@ -242,7 +248,8 @@ void synchronize_bank()
       // Check for sites out of bounds -- this only happens in the rare
       // circumstance that a processor close to the end has so many sites that
       // it would exceed the bank on the last processor
-      if (neighbor > mpi::n_procs - 1) break;
+      if (neighbor > mpi::n_procs - 1)
+        break;
     }
   }
 
@@ -259,7 +266,8 @@ void synchronize_bank()
   if (start >= bank_position[mpi::n_procs - 1]) {
     neighbor = mpi::n_procs - 1;
   } else {
-    neighbor = upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
+    neighbor =
+      upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
   }
 
   while (start < simulation::work_index[mpi::rank + 1]) {
@@ -268,7 +276,9 @@ void synchronize_bank()
     if (neighbor == mpi::n_procs - 1) {
       n = simulation::work_index[mpi::rank + 1] - start;
     } else {
-      n = std::min(bank_position[neighbor + 1], simulation::work_index[mpi::rank + 1]) - start;
+      n = std::min(bank_position[neighbor + 1],
+            simulation::work_index[mpi::rank + 1]) -
+          start;
     }
 
     if (neighbor != mpi::rank) {
@@ -276,8 +286,8 @@ void synchronize_bank()
       // asynchronous receive for the source sites
 
       requests.emplace_back();
-      MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n), mpi::source_site,
-            neighbor, neighbor, mpi::intracomm, &requests.back());
+      MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n),
+        mpi::source_site, neighbor, neighbor, mpi::intracomm, &requests.back());
 
     } else {
       // If the source sites are on this procesor, we can simply copy them
@@ -316,7 +326,8 @@ void calculate_average_keff()
   int i = overall_generation() - 1;
   int n;
   if (simulation::current_batch > settings::n_inactive) {
-    n = settings::gen_per_batch*simulation::n_realizations + simulation::current_gen;
+    n = settings::gen_per_batch * simulation::n_realizations +
+        simulation::current_gen;
   } else {
     n = 0;
   }
@@ -338,14 +349,16 @@ void calculate_average_keff()
       if (settings::confidence_intervals) {
         // Calculate t-value for confidence intervals
         double alpha = 1.0 - CONFIDENCE_LEVEL;
-        t_value = t_percentile(1.0 - alpha/2.0, n - 1);
+        t_value = t_percentile(1.0 - alpha / 2.0, n - 1);
       } else {
         t_value = 1.0;
       }
 
       // Standard deviation of the sample mean of k
-      simulation::keff_std = t_value * std::sqrt((simulation::k_sum[1]/n -
-        std::pow(simulation::keff, 2)) / (n - 1));
+      simulation::keff_std =
+        t_value *
+        std::sqrt(
+          (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
     }
   }
 }
@@ -360,7 +373,7 @@ int openmc_get_keff(double* k_combined)
   if (simulation::n_realizations <= 3) {
     k_combined[0] = simulation::keff;
     k_combined[1] = simulation::keff_std;
-    if (simulation::n_realizations <=1) {
+    if (simulation::n_realizations <= 1) {
       k_combined[1] = std::numeric_limits<double>::infinity();
     }
     return 0;
@@ -377,9 +390,15 @@ int openmc_get_keff(double* k_combined)
   kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
   kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
   kv[2] = gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n;
-  cov(0, 0) = (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n*kv[0]*kv[0]) / (n - 1);
-  cov(1, 1) = (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n*kv[1]*kv[1]) / (n - 1);
-  cov(2, 2) = (gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM_SQ) - n*kv[2]*kv[2]) / (n - 1);
+  cov(0, 0) =
+    (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n * kv[0] * kv[0]) /
+    (n - 1);
+  cov(1, 1) =
+    (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n * kv[1] * kv[1]) /
+    (n - 1);
+  cov(2, 2) =
+    (gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM_SQ) - n * kv[2] * kv[2]) /
+    (n - 1);
 
   // Calculate covariances based on sums with Bessel's correction
   cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);
@@ -455,7 +474,7 @@ int openmc_get_keff(double* k_combined)
 
       // Calculate weighting
       double f = cov(j, j) * (cov(k, k) - cov(i, k)) - cov(k, k) * cov(i, j) +
-        cov(j, k) * (cov(i, j) + cov(i, k) - cov(j, k));
+                 cov(j, k) * (cov(i, j) + cov(i, k) - cov(j, k));
 
       // Add to S sums for variance of combined estimate
       S[0] += f * cov(0, l);
@@ -471,15 +490,15 @@ int openmc_get_keff(double* k_combined)
     for (auto& S_i : S) {
       S_i *= (n - 1);
     }
-    S[0] *= (n - 1)*(n - 1);
+    S[0] *= (n - 1) * (n - 1);
 
     // Calculate combined estimate of k-effective
     k_combined[0] /= g;
 
     // Calculate standard deviation of combined estimate
-    g *= (n - 1)*(n - 1);
-    k_combined[1] = std::sqrt(S[0] / (g*n*(n - 3)) *
-      (1 + n*((S[1] - 2*S[2]) / g)));
+    g *= (n - 1) * (n - 1);
+    k_combined[1] =
+      std::sqrt(S[0] / (g * n * (n - 3)) * (1 + n * ((S[1] - 2 * S[2]) / g)));
 
   } else {
     // Use only two estimators
@@ -489,16 +508,15 @@ int openmc_get_keff(double* k_combined)
 
     // Store the commonly used term
     double f = kv[i] - kv[j];
-    double g = cov(i, i) + cov(j, j) - 2.0*cov(i, j);
+    double g = cov(i, i) + cov(j, j) - 2.0 * cov(i, j);
 
     // Calculate combined estimate of k-effective
     k_combined[0] = kv[i] - (cov(i, i) - cov(i, j)) / g * f;
 
     // Calculate standard deviation of combined estimate
-    k_combined[1] = (cov(i, i)*cov(j, j) - cov(i, j)*cov(i, j)) *
-          (g + n*f*f) / (n*(n - 2)*g*g);
+    k_combined[1] = (cov(i, i) * cov(j, j) - cov(i, j) * cov(i, j)) *
+                    (g + n * f * f) / (n * (n - 2) * g * g);
     k_combined[1] = std::sqrt(k_combined[1]);
-
   }
   return 0;
 }
@@ -507,13 +525,14 @@ void shannon_entropy()
 {
   // Get source weight in each mesh bin
   bool sites_outside;
-  xt::xtensor<double, 1> p = simulation::entropy_mesh->count_sites(
-    simulation::fission_bank.data(), simulation::fission_bank.size(),
-    &sites_outside);
+  xt::xtensor<double, 1> p =
+    simulation::entropy_mesh->count_sites(simulation::fission_bank.data(),
+      simulation::fission_bank.size(), &sites_outside);
 
   // display warning message if there were sites outside entropy box
   if (sites_outside) {
-    if (mpi::master) warning("Fission source site(s) outside of entropy box.");
+    if (mpi::master)
+      warning("Fission source site(s) outside of entropy box.");
   }
 
   if (mpi::master) {
@@ -524,7 +543,7 @@ void shannon_entropy()
     double H = 0.0;
     for (auto p_i : p) {
       if (p_i > 0.0) {
-        H -= p_i * std::log(p_i)/std::log(2.0);
+        H -= p_i * std::log(p_i) / std::log(2.0);
       }
     }
 
@@ -547,8 +566,9 @@ void ufs_count_sites()
   } else {
     // count number of source sites in each ufs mesh cell
     bool sites_outside;
-    simulation::source_frac = simulation::ufs_mesh->count_sites(
-      simulation::source_bank.data(), simulation::source_bank.size(), &sites_outside);
+    simulation::source_frac =
+      simulation::ufs_mesh->count_sites(simulation::source_bank.data(),
+        simulation::source_bank.size(), &sites_outside);
 
     // Check for sites outside of the mesh
     if (mpi::master && sites_outside) {
@@ -558,7 +578,8 @@ void ufs_count_sites()
 #ifdef OPENMC_MPI
     // Send source fraction to all processors
     int n_bins = xt::prod(simulation::ufs_mesh->shape_)();
-    MPI_Bcast(simulation::source_frac.data(), n_bins, MPI_DOUBLE, 0, mpi::intracomm);
+    MPI_Bcast(
+      simulation::source_frac.data(), n_bins, MPI_DOUBLE, 0, mpi::intracomm);
 #endif
 
     // Normalize to total weight to get fraction of source in each cell
@@ -583,8 +604,8 @@ double ufs_get_weight(const Particle& p)
   }
 
   if (simulation::source_frac(mesh_bin) != 0.0) {
-    return simulation::ufs_mesh->volume_frac_
-      / simulation::source_frac(mesh_bin);
+    return simulation::ufs_mesh->volume_frac_ /
+           simulation::source_frac(mesh_bin);
   } else {
     return 1.0;
   }
@@ -609,7 +630,7 @@ void write_eigenvalue_hdf5(hid_t group)
 void read_eigenvalue_hdf5(hid_t group)
 {
   read_dataset(group, "generations_per_batch", settings::gen_per_batch);
-  int n = simulation::restart_batch*settings::gen_per_batch;
+  int n = simulation::restart_batch * settings::gen_per_batch;
   simulation::k_generation.resize(n);
   read_dataset(group, "k_generation", simulation::k_generation);
   if (settings::entropy_on) {

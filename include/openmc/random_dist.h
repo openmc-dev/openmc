@@ -78,7 +78,8 @@ extern "C" double normal_variate(double mean, double std_dev, uint64_t* seed);
 //! \result The sampled outgoing energy
 //==============================================================================
 
-extern "C" double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed);
+extern "C" double muir_spectrum(
+  double e0, double m_rat, double kt, uint64_t* seed);
 
 } // namespace openmc
 

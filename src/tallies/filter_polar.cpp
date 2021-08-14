@@ -9,8 +9,7 @@
 
 namespace openmc {
 
-void
-PolarFilter::from_xml(pugi::xml_node node)
+void PolarFilter::from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
 
@@ -19,20 +18,21 @@ PolarFilter::from_xml(pugi::xml_node node)
     // [0,pi] evenly with the input being the number of bins
 
     int n_angle = bins[0];
-    if (n_angle <= 1) throw std::runtime_error{
-      "Number of bins for polar filter must be greater than 1."};
+    if (n_angle <= 1)
+      throw std::runtime_error {
+        "Number of bins for polar filter must be greater than 1."};
 
     double d_angle = PI / n_angle;
     bins.resize(n_angle + 1);
-    for (int i = 0; i < n_angle; i++) bins[i] = i * d_angle;
+    for (int i = 0; i < n_angle; i++)
+      bins[i] = i * d_angle;
     bins[n_angle] = PI;
   }
 
   this->set_bins(bins);
 }
 
-void
-PolarFilter::set_bins(gsl::span<double> bins)
+void PolarFilter::set_bins(gsl::span<double> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -40,8 +40,8 @@ PolarFilter::set_bins(gsl::span<double> bins)
 
   // Copy bins, ensuring they are valid
   for (gsl::index i = 0; i < bins.size(); ++i) {
-    if (i > 0 && bins[i] <= bins[i-1]) {
-      throw std::runtime_error{"Polar bins must be monotonically increasing."};
+    if (i > 0 && bins[i] <= bins[i - 1]) {
+      throw std::runtime_error {"Polar bins must be monotonically increasing."};
     }
     bins_.push_back(bins[i]);
   }
@@ -49,9 +49,8 @@ PolarFilter::set_bins(gsl::span<double> bins)
   n_bins_ = bins_.size() - 1;
 }
 
-void
-PolarFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-const
+void PolarFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   double z =
     (estimator == TallyEstimator::TRACKLENGTH) ? p.u().z : p.u_last().z;
@@ -64,17 +63,15 @@ const
   }
 }
 
-void
-PolarFilter::to_statepoint(hid_t filter_group) const
+void PolarFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", bins_);
 }
 
-std::string
-PolarFilter::text_label(int bin) const
+std::string PolarFilter::text_label(int bin) const
 {
-  return fmt::format("Polar Angle [{}, {})", bins_[bin], bins_[bin+1]);
+  return fmt::format("Polar Angle [{}, {})", bins_[bin], bins_[bin + 1]);
 }
 
 } // namespace openmc

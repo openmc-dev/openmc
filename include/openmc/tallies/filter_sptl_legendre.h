@@ -7,16 +7,13 @@
 
 namespace openmc {
 
-enum class LegendreAxis {
-  x, y, z
-};
+enum class LegendreAxis { x, y, z };
 
 //==============================================================================
 //! Gives Legendre moments of the particle's normalized position along an axis
 //==============================================================================
 
-class SpatialLegendreFilter : public Filter
-{
+class SpatialLegendreFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -26,12 +23,12 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "spatiallegendre";}
+  std::string type() const override { return "spatiallegendre"; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 

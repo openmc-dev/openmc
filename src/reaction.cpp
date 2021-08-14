@@ -7,8 +7,8 @@
 #include <fmt/core.h>
 
 #include "openmc/constants.h"
-#include "openmc/hdf5_interface.h"
 #include "openmc/endf.h"
+#include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/secondary_uncorrelated.h"
@@ -80,7 +80,8 @@ double Reaction::collapse_rate(gsl::index i_temp,
     i_low = i_threshold;
     while (energy[j_start + 1] < grid[i_low]) {
       ++j_start;
-      if (j_start + 1 == energy.size()) return 0.0;
+      if (j_start + 1 == energy.size())
+        return 0.0;
     }
   }
 
@@ -93,14 +94,16 @@ double Reaction::collapse_rate(gsl::index i_temp,
 
     // Determine energy grid index corresponding to group high
     int i_high = i_low;
-    while (grid[i_high + 1] < E_group_high && i_high + 1 < grid.size() - 1) ++i_high;
+    while (grid[i_high + 1] < E_group_high && i_high + 1 < grid.size() - 1)
+      ++i_high;
 
     // Loop over energy grid points within [E_group_low, E_group_high]
     for (; i_low <= i_high; ++i_low) {
       // Determine bounding grid energies and cross sections
       double E_l = grid[i_low];
       double E_r = grid[i_low + 1];
-      if (E_l == E_r) continue;
+      if (E_l == E_r)
+        continue;
 
       double xs_l = xs[i_low - i_threshold];
       double xs_r = xs[i_low + 1 - i_threshold];
@@ -111,9 +114,9 @@ double Reaction::collapse_rate(gsl::index i_temp,
 
       // Determine average cross section across segment
       double m = (xs_r - xs_l) / (E_r - E_l);
-      double xs_low = xs_l + m*(E_low - E_l);
-      double xs_high = xs_l + m*(E_high - E_l);
-      double xs_avg = 0.5*(xs_low + xs_high);
+      double xs_low = xs_l + m * (E_low - E_l);
+      double xs_high = xs_l + m * (E_high - E_l);
+      double xs_avg = 0.5 * (xs_low + xs_high);
 
       // Add contribution from segment
       double dE = (E_high - E_low);
@@ -123,7 +126,8 @@ double Reaction::collapse_rate(gsl::index i_temp,
     i_low = i_high;
 
     // Check for end of energy grid
-    if (i_low + 1 == grid.size()) break;
+    if (i_low + 1 == grid.size())
+      break;
   }
 
   return xs_flux_sum;
@@ -290,8 +294,8 @@ void initialize_maps()
 
   // Create photoelectric subshells
   for (int mt = 534; mt <= 572; ++mt) {
-    REACTION_NAME_MAP[mt] = fmt::format("photoelectric, {} subshell",
-      SUBSHELLS[mt - 534]);
+    REACTION_NAME_MAP[mt] =
+      fmt::format("photoelectric, {} subshell", SUBSHELLS[mt - 534]);
   }
 
   // Invert name map to create type map
@@ -303,7 +307,8 @@ void initialize_maps()
 std::string reaction_name(int mt)
 {
   // Initialize remainder of name map and all of type map
-  if (REACTION_TYPE_MAP.empty()) initialize_maps();
+  if (REACTION_TYPE_MAP.empty())
+    initialize_maps();
 
   // Get reaction name from map
   auto it = REACTION_NAME_MAP.find(mt);
@@ -317,11 +322,13 @@ std::string reaction_name(int mt)
 int reaction_type(std::string name)
 {
   // Initialize remainder of name map and all of type map
-  if (REACTION_TYPE_MAP.empty()) initialize_maps();
+  if (REACTION_TYPE_MAP.empty())
+    initialize_maps();
 
   // (n,total) exists in REACTION_TYPE_MAP for MT=1, but we need this to return
   // the special SCORE_TOTAL score
-  if (name == "(n,total)") return SCORE_TOTAL;
+  if (name == "(n,total)")
+    return SCORE_TOTAL;
 
   // Check if type map has an entry for this reaction name
   auto it = REACTION_TYPE_MAP.find(name);
@@ -356,12 +363,18 @@ int reaction_type(std::string name)
   try {
     MT = std::stoi(name);
   } catch (const std::invalid_argument& ex) {
-    throw std::invalid_argument("Invalid tally score \"" + name + "\". See the docs "
-      "for details: https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
+    throw std::invalid_argument(
+      "Invalid tally score \"" + name +
+      "\". See the docs "
+      "for details: "
+      "https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
   }
   if (MT < 1)
-    throw std::invalid_argument("Invalid tally score \"" + name + "\". See the docs "
-      "for details: https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
+    throw std::invalid_argument(
+      "Invalid tally score \"" + name +
+      "\". See the docs "
+      "for details: "
+      "https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
   return MT;
 }
 

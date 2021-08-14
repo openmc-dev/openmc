@@ -20,10 +20,10 @@ namespace openmc {
 // call the thread_safe_append() function concurrently and store data to the
 // object at the index returned from thread_safe_append() safely, but no other
 // operations are protected.
-template <typename T> 
-class SharedArray { 
+template<typename T>
+class SharedArray {
 
-public: 
+public:
   //==========================================================================
   // Constructors
 
@@ -45,7 +45,7 @@ public:
 
   //! Return a reference to the element at specified location i. No bounds
   //! checking is performed.
-  T& operator[](int64_t i) {return data_[i];}
+  T& operator[](int64_t i) { return data_[i]; }
   const T& operator[](int64_t i) const { return data_[i]; }
 
   //! Allocate space in the container for the specified number of elements.
@@ -58,7 +58,7 @@ public:
     capacity_ = capacity;
   }
 
-  //! Increase the size of the container by one and append value to the 
+  //! Increase the size of the container by one and append value to the
   //! array. Returns an index to the element of the array written to. Also
   //! tests to enforce that the append operation does not read off the end
   //! of the array. In the event that this does happen, set the size to be
@@ -72,12 +72,12 @@ public:
   {
     // Atomically capture the index we want to write to
     int64_t idx;
-    #pragma omp atomic capture seq_cst
+#pragma omp atomic capture seq_cst
     idx = size_++;
 
     // Check that we haven't written off the end of the array
     if (idx >= capacity_) {
-      #pragma omp atomic write seq_cst
+#pragma omp atomic write seq_cst
       size_ = capacity_;
       return -1;
     }
@@ -98,32 +98,31 @@ public:
   }
 
   //! Return the number of elements in the container
-  int64_t size() {return size_;}
+  int64_t size() { return size_; }
 
   //! Resize the container to contain a specified number of elements. This is
-  //! useful in cases where the container is written to in a non-thread safe manner,
-  //! where the internal size of the array needs to be manually updated.
+  //! useful in cases where the container is written to in a non-thread safe
+  //! manner, where the internal size of the array needs to be manually updated.
   //
   //! \param size The new size of the container
-  void resize(int64_t size) {size_ = size;}
+  void resize(int64_t size) { size_ = size; }
 
   //! Return the number of elements that the container has currently allocated
   //! space for.
-  int64_t capacity() {return capacity_;}
+  int64_t capacity() { return capacity_; }
 
   //! Return pointer to the underlying array serving as element storage.
-  T* data() {return data_.get();}
-  const T* data() const {return data_.get();}
+  T* data() { return data_.get(); }
+  const T* data() const { return data_.get(); }
 
-private: 
+private:
   //==========================================================================
   // Data members
 
   unique_ptr<T[]> data_; //!< An RAII handle to the elements
-  int64_t size_ {0}; //!< The current number of elements 
+  int64_t size_ {0};     //!< The current number of elements
   int64_t capacity_ {0}; //!< The total space allocated for elements
-
-}; 
+};
 
 } // namespace openmc
 

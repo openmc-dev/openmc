@@ -8,15 +8,14 @@
 
 namespace openmc {
 
-void
-MaterialFilter::from_xml(pugi::xml_node node)
+void MaterialFilter::from_xml(pugi::xml_node node)
 {
   // Get material IDs and convert to indices in the global materials vector
   auto mats = get_node_array<int32_t>(node, "bins");
   for (auto& m : mats) {
     auto search = model::material_map.find(m);
     if (search == model::material_map.end()) {
-      throw std::runtime_error{fmt::format(
+      throw std::runtime_error {fmt::format(
         "Could not find material {} specified on tally filter.", m)};
     }
     m = search->second;
@@ -25,8 +24,7 @@ MaterialFilter::from_xml(pugi::xml_node node)
   this->set_materials(mats);
 }
 
-void
-MaterialFilter::set_materials(gsl::span<const int32_t> materials)
+void MaterialFilter::set_materials(gsl::span<const int32_t> materials)
 {
   // Clear existing materials
   materials_.clear();
@@ -44,9 +42,8 @@ MaterialFilter::set_materials(gsl::span<const int32_t> materials)
   n_bins_ = materials_.size();
 }
 
-void
-MaterialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
-                             FilterMatch& match) const
+void MaterialFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   auto search = map_.find(p.material());
   if (search != map_.end()) {
@@ -55,17 +52,16 @@ MaterialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   }
 }
 
-void
-MaterialFilter::to_statepoint(hid_t filter_group) const
+void MaterialFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   vector<int32_t> material_ids;
-  for (auto c : materials_) material_ids.push_back(model::materials[c]->id_);
+  for (auto c : materials_)
+    material_ids.push_back(model::materials[c]->id_);
   write_dataset(filter_group, "bins", material_ids);
 }
 
-std::string
-MaterialFilter::text_label(int bin) const
+std::string MaterialFilter::text_label(int bin) const
 {
   return fmt::format("Material {}", model::materials[materials_[bin]]->id_);
 }
@@ -74,11 +70,12 @@ MaterialFilter::text_label(int bin) const
 // C-API functions
 //==============================================================================
 
-extern "C" int
-openmc_material_filter_get_bins(int32_t index, const int32_t** bins, size_t* n)
+extern "C" int openmc_material_filter_get_bins(
+  int32_t index, const int32_t** bins, size_t* n)
 {
   // Make sure this is a valid index to an allocated filter.
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   // Get a pointer to the filter and downcast.
   const auto& filt_base = model::tally_filters[index].get();
@@ -96,11 +93,12 @@ openmc_material_filter_get_bins(int32_t index, const int32_t** bins, size_t* n)
   return 0;
 }
 
-extern "C" int
-openmc_material_filter_set_bins(int32_t index, size_t n, const int32_t* bins)
+extern "C" int openmc_material_filter_set_bins(
+  int32_t index, size_t n, const int32_t* bins)
 {
   // Make sure this is a valid index to an allocated filter.
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   // Get a pointer to the filter and downcast.
   const auto& filt_base = model::tally_filters[index].get();

@@ -16,7 +16,6 @@ namespace openmc {
 
 class MgxsInterface {
 public:
-
   MgxsInterface() = default;
 
   // Construct from path to cross sections file, as well as a list
@@ -49,10 +48,10 @@ public:
 
   int num_energy_groups_;
   int num_delayed_groups_;
-  vector<std::string> xs_names_;                 // available names in HDF5 file
-  vector<std::string> xs_to_read_;               // XS which appear in materials
-  vector<vector<double>> xs_temps_to_read_;      // temperatures used
-  std::string cross_sections_path_; // path to MGXS h5 file
+  vector<std::string> xs_names_;            // available names in HDF5 file
+  vector<std::string> xs_to_read_;          // XS which appear in materials
+  vector<vector<double>> xs_temps_to_read_; // temperatures used
+  std::string cross_sections_path_;         // path to MGXS h5 file
   vector<Mgxs> nuclides_;
   vector<Mgxs> macro_xs_;
   vector<double> energy_bins_;
@@ -62,7 +61,7 @@ public:
 };
 
 namespace data {
-  extern MgxsInterface mg;
+extern MgxsInterface mg;
 }
 
 // Puts available XS in MGXS file to globals so that when

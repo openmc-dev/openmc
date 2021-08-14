@@ -61,7 +61,7 @@ void dispatch_xs_event(int64_t buffer_idx)
 void process_init_events(int64_t n_particles, int64_t source_offset)
 {
   simulation::time_event_init.start();
-  #pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
     initialize_history(simulation::particles[i], source_offset + i + 1);
     dispatch_xs_event(i);
@@ -79,11 +79,13 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // to C++17, std::sort is a serial only operation, which in this case
   // makes it too slow to be practical for most test problems.
   //
-  // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
+  // std::sort(std::execution::par_unseq, queue.data(), queue.data() +
+  // queue.size());
 
-  int64_t offset = simulation::advance_particle_queue.size();;
+  int64_t offset = simulation::advance_particle_queue.size();
+  ;
 
-  #pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
     Particle* p = &simulation::particles[queue[i].idx];
     p->event_calculate_xs();
@@ -105,7 +107,7 @@ void process_advance_particle_events()
 {
   simulation::time_event_advance_particle.start();
 
-  #pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
@@ -126,7 +128,7 @@ void process_surface_crossing_events()
 {
   simulation::time_event_surface_crossing.start();
 
-  #pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
@@ -145,7 +147,7 @@ void process_collision_events()
 {
   simulation::time_event_collision.start();
 
-  #pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
@@ -163,7 +165,7 @@ void process_collision_events()
 void process_death_events(int64_t n_particles)
 {
   simulation::time_event_death.start();
-  #pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < n_particles; i++) {
     Particle& p = simulation::particles[i];
     p.event_death();

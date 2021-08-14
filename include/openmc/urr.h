@@ -14,7 +14,7 @@ namespace openmc {
 //! UrrData contains probability tables for the unresolved resonance range.
 //==============================================================================
 
-class UrrData{
+class UrrData {
 public:
   Interpolation interp_;          //!< interpolation type
   int inelastic_flag_;            //!< inelastic competition flag

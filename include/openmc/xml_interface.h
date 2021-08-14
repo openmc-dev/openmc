@@ -6,21 +6,20 @@
 #include <string>
 
 #include "pugixml.hpp"
-#include "xtensor/xarray.hpp"
 #include "xtensor/xadapt.hpp"
+#include "xtensor/xarray.hpp"
 
 #include "openmc/vector.h"
 
 namespace openmc {
 
-inline bool
-check_for_node(pugi::xml_node node, const char *name)
+inline bool check_for_node(pugi::xml_node node, const char* name)
 {
   return node.attribute(name) || node.child(name);
 }
 
 std::string get_node_value(pugi::xml_node node, const char* name,
-                           bool lowercase=false, bool strip=false);
+  bool lowercase = false, bool strip = false);
 
 bool get_node_value_bool(pugi::xml_node node, const char* name);
 
@@ -41,9 +40,9 @@ vector<T> get_node_array(
   return values;
 }
 
-template <typename T>
-xt::xarray<T> get_node_xarray(pugi::xml_node node, const char* name,
-                              bool lowercase=false)
+template<typename T>
+xt::xarray<T> get_node_xarray(
+  pugi::xml_node node, const char* name, bool lowercase = false)
 {
   vector<T> v = get_node_array<T>(node, name, lowercase);
   vector<std::size_t> shape = {v.size()};

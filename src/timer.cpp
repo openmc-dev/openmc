@@ -33,7 +33,7 @@ Timer time_event_death;
 // Timer implementation
 //==============================================================================
 
-void Timer::start ()
+void Timer::start()
 {
   running_ = true;
   start_ = clock::now();

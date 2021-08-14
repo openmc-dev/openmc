@@ -21,8 +21,7 @@ namespace openmc {
 //! Modifies tally score events.
 //==============================================================================
 
-class Filter
-{
+class Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors, factory functions
@@ -67,12 +66,11 @@ public:
   //! \param[in] estimator Tally estimator being used
   //! \param[out] match will contain the matching bins and corresponding
   //!   weights; note that there may be zero matching bins
-  virtual void
-  get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const = 0;
+  virtual void get_all_bins(
+    const Particle& p, TallyEstimator estimator, FilterMatch& match) const = 0;
 
   //! Writes data describing this filter to an HDF5 statepoint group.
-  virtual void
-  to_statepoint(hid_t filter_group) const
+  virtual void to_statepoint(hid_t filter_group) const
   {
     write_dataset(filter_group, "type", type());
     write_dataset(filter_group, "n_bins", n_bins_);
@@ -107,6 +105,7 @@ public:
 
 protected:
   int n_bins_;
+
 private:
   int32_t id_ {C_NONE};
   gsl::index index_;
@@ -117,10 +116,10 @@ private:
 //==============================================================================
 
 namespace model {
-  extern "C" int32_t n_filters;
-  extern std::unordered_map<int, int> filter_map;
-  extern vector<unique_ptr<Filter>> tally_filters;
-}
+extern "C" int32_t n_filters;
+extern std::unordered_map<int, int> filter_map;
+extern vector<unique_ptr<Filter>> tally_filters;
+} // namespace model
 
 //==============================================================================
 // Non-member functions

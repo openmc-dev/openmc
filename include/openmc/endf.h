@@ -57,6 +57,7 @@ public:
   //! \param[in] x independent variable
   //! \return Polynomial evaluated at x
   double operator()(double x) const override;
+
 private:
   vector<double> coef_; //!< Polynomial coefficients
 };
@@ -86,9 +87,9 @@ private:
   std::size_t n_regions_ {0}; //!< number of interpolation regions
   vector<int> nbt_;           //!< values separating interpolation regions
   vector<Interpolation> int_; //!< interpolation schemes
-  std::size_t n_pairs_; //!< number of (x,y) pairs
-  vector<double> x_;    //!< values of abscissa
-  vector<double> y_;    //!< values of ordinate
+  std::size_t n_pairs_;       //!< number of (x,y) pairs
+  vector<double> x_;          //!< values of abscissa
+  vector<double> y_;          //!< values of ordinate
 };
 
 //==============================================================================
@@ -118,9 +119,11 @@ public:
   explicit IncoherentElasticXS(hid_t dset);
 
   double operator()(double E) const override;
+
 private:
   double bound_xs_; //!< Characteristic bound xs in [b]
-  double debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]
+  double
+    debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]
 };
 
 //! Read 1D function from HDF5 dataset

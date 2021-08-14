@@ -20,7 +20,7 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at x=0
     double x[] {0.0};
     double p[] {1.0};
-    x_ = UPtrDist{new Discrete{x, p, 1}};
+    x_ = UPtrDist {new Discrete {x, p, 1}};
   }
 
   // Read distribution for y coordinate
@@ -31,7 +31,7 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at y=0
     double x[] {0.0};
     double p[] {1.0};
-    y_ = UPtrDist{new Discrete{x, p, 1}};
+    y_ = UPtrDist {new Discrete {x, p, 1}};
   }
 
   // Read distribution for z coordinate
@@ -42,7 +42,7 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
     // If no distribution was specified, default to a single point at z=0
     double x[] {0.0};
     double p[] {1.0};
-    z_ = UPtrDist{new Discrete{x, p, 1}};
+    z_ = UPtrDist {new Discrete {x, p, 1}};
   }
 }
 
@@ -96,21 +96,21 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
     if (origin.size() == 3) {
       origin_ = origin;
     } else {
-      fatal_error("Origin for cylindrical source distribution must be length 3");
+      fatal_error(
+        "Origin for cylindrical source distribution must be length 3");
     }
   } else {
     // If no coordinates were specified, default to (0, 0, 0)
     origin_ = {0.0, 0.0, 0.0};
   }
-
 }
 
 Position CylindricalIndependent::sample(uint64_t* seed) const
 {
   double r = r_->sample(seed);
   double phi = phi_->sample(seed);
-  double x = r*cos(phi) + origin_.x;
-  double y =  r*sin(phi) + origin_.y;
+  double x = r * cos(phi) + origin_.x;
+  double y = r * sin(phi) + origin_.y;
   double z = z_->sample(seed) + origin_.z;
   return {x, y, z};
 }
@@ -166,7 +166,6 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
     // If no coordinates were specified, default to (0, 0, 0)
     origin_ = {0.0, 0.0, 0.0};
   }
-
 }
 
 Position SphericalIndependent::sample(uint64_t* seed) const
@@ -174,9 +173,9 @@ Position SphericalIndependent::sample(uint64_t* seed) const
   double r = r_->sample(seed);
   double theta = theta_->sample(seed);
   double phi = phi_->sample(seed);
-  double x = r*sin(theta)*cos(phi) + origin_.x;
-  double y =  r*sin(theta)*sin(phi) + origin_.y;
-  double z = r*cos(theta) + origin_.z;
+  double x = r * sin(theta) * cos(phi) + origin_.x;
+  double y = r * sin(theta) * sin(phi) + origin_.y;
+  double z = r * cos(theta) + origin_.z;
   return {x, y, z};
 }
 
@@ -185,7 +184,7 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 //==============================================================================
 
 SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
-  : only_fissionable_{fission}
+  : only_fissionable_ {fission}
 {
   // Read lower-right/upper-left coordinates
   auto params = get_node_array<double>(node, "parameters");
@@ -193,14 +192,14 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
     openmc::fatal_error("Box/fission spatial source must have six "
                         "parameters specified.");
 
-  lower_left_ = Position{params[0], params[1], params[2]};
-  upper_right_ = Position{params[3], params[4], params[5]};
+  lower_left_ = Position {params[0], params[1], params[2]};
+  upper_right_ = Position {params[3], params[4], params[5]};
 }
 
 Position SpatialBox::sample(uint64_t* seed) const
 {
   Position xi {prn(seed), prn(seed), prn(seed)};
-  return lower_left_ + xi*(upper_right_ - lower_left_);
+  return lower_left_ + xi * (upper_right_ - lower_left_);
 }
 
 //==============================================================================
@@ -216,7 +215,7 @@ SpatialPoint::SpatialPoint(pugi::xml_node node)
                         "parameters specified.");
 
   // Set position
-  r_ = Position{params.data()};
+  r_ = Position {params.data()};
 }
 
 Position SpatialPoint::sample(uint64_t* seed) const

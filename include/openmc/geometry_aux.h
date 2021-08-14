@@ -14,8 +14,9 @@
 namespace openmc {
 
 namespace model {
-  extern std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>> universe_cell_counts;
-  extern std::unordered_map<int32_t, int32_t> universe_level_counts;
+extern std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>>
+  universe_cell_counts;
+extern std::unordered_map<int32_t, int32_t> universe_level_counts;
 } // namespace model
 
 void read_geometry_xml();
@@ -69,7 +70,8 @@ int32_t find_root_universe();
 //!   filter.
 //==============================================================================
 
-void prepare_distribcell(const std::vector<int32_t>* user_distribcells = nullptr);
+void prepare_distribcell(
+  const std::vector<int32_t>* user_distribcells = nullptr);
 
 //==============================================================================
 //! Recursively search through the geometry and count cell instances.
@@ -106,8 +108,8 @@ int count_universe_instances(int32_t search_univ, int32_t target_univ_id,
 //!   desired instance of the target cell.
 //==============================================================================
 
-std::string
-distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset);
+std::string distribcell_path(
+  int32_t target_cell, int32_t map, int32_t target_offset);
 
 //==============================================================================
 //! Determine the maximum number of nested coordinate levels in the geometry.

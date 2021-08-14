@@ -1,12 +1,12 @@
 #include "openmc/output.h"
 
-#include <algorithm>  // for transform, max
-#include <cstring>  // for strlen
-#include <ctime> // for time, localtime
-#include <iomanip>  // for setw, setprecision, put_time
-#include <ios> // for fixed, scientific, left
-#include <iostream>
+#include <algorithm> // for transform, max
+#include <cstring>   // for strlen
+#include <ctime>     // for time, localtime
 #include <fstream>
+#include <iomanip> // for setw, setprecision, put_time
+#include <ios>     // for fixed, scientific, left
+#include <iostream>
 #include <sstream>
 #include <unordered_map>
 #include <utility> // for pair
@@ -46,38 +46,37 @@ namespace openmc {
 
 void title()
 {
-  fmt::print(
-    "                                %%%%%%%%%%%%%%%\n"
-    "                           %%%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                                    %%%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                                     %%%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                 ###############      %%%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                ##################     %%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                ###################     %%%%%%%%%%%%%%%%%%%%%%%\n"
-    "                ####################     %%%%%%%%%%%%%%%%%%%%%%\n"
-    "                #####################     %%%%%%%%%%%%%%%%%%%%%\n"
-    "                ######################     %%%%%%%%%%%%%%%%%%%%\n"
-    "                #######################     %%%%%%%%%%%%%%%%%%\n"
-    "                 #######################     %%%%%%%%%%%%%%%%%\n"
-    "                 ######################     %%%%%%%%%%%%%%%%%\n"
-    "                  ####################     %%%%%%%%%%%%%%%%%\n"
-    "                    #################     %%%%%%%%%%%%%%%%%\n"
-    "                     ###############     %%%%%%%%%%%%%%%%\n"
-    "                       ############     %%%%%%%%%%%%%%%\n"
-    "                          ########     %%%%%%%%%%%%%%\n"
-    "                                      %%%%%%%%%%%\n\n");
+  fmt::print("                                %%%%%%%%%%%%%%%\n"
+             "                           %%%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                                    %%%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                                     %%%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                 ###############      %%%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                ##################     %%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                ###################     %%%%%%%%%%%%%%%%%%%%%%%\n"
+             "                ####################     %%%%%%%%%%%%%%%%%%%%%%\n"
+             "                #####################     %%%%%%%%%%%%%%%%%%%%%\n"
+             "                ######################     %%%%%%%%%%%%%%%%%%%%\n"
+             "                #######################     %%%%%%%%%%%%%%%%%%\n"
+             "                 #######################     %%%%%%%%%%%%%%%%%\n"
+             "                 ######################     %%%%%%%%%%%%%%%%%\n"
+             "                  ####################     %%%%%%%%%%%%%%%%%\n"
+             "                    #################     %%%%%%%%%%%%%%%%%\n"
+             "                     ###############     %%%%%%%%%%%%%%%%\n"
+             "                       ############     %%%%%%%%%%%%%%%\n"
+             "                          ########     %%%%%%%%%%%%%%\n"
+             "                                      %%%%%%%%%%%\n\n");
 
   // Write version information
   fmt::print(
     "                   | The OpenMC Monte Carlo Code\n"
     "         Copyright | 2011-2021 MIT and OpenMC contributors\n"
     "           License | https://docs.openmc.org/en/latest/license.html\n"
-    "           Version | {}.{}.{}{}\n", VERSION_MAJOR, VERSION_MINOR,
-    VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
+    "           Version | {}.{}.{}{}\n",
+    VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
 #ifdef GIT_SHA1
   fmt::print("          Git SHA1 | {}\n", GIT_SHA1);
 #endif
@@ -99,12 +98,13 @@ void title()
 
 //==============================================================================
 
-std::string
-header(const char* msg) {
+std::string header(const char* msg)
+{
   // Determine how many times to repeat the '=' character.
   int n_prefix = (63 - strlen(msg)) / 2;
   int n_suffix = n_prefix;
-  if ((strlen(msg) % 2) == 0) ++n_suffix;
+  if ((strlen(msg) % 2) == 0)
+    ++n_suffix;
 
   // Convert to uppercase.
   std::string upper(msg);
@@ -113,17 +113,22 @@ header(const char* msg) {
   // Add ===>  <=== markers.
   std::stringstream out;
   out << ' ';
-  for (int i = 0; i < n_prefix; i++) out << '=';
+  for (int i = 0; i < n_prefix; i++)
+    out << '=';
   out << ">     " << upper << "     <";
-  for (int i = 0; i < n_suffix; i++) out << '=';
+  for (int i = 0; i < n_suffix; i++)
+    out << '=';
 
   return out.str();
 }
 
-std::string header(const std::string& msg) {return header(msg.c_str());}
+std::string header(const std::string& msg)
+{
+  return header(msg.c_str());
+}
 
-void
-header(const char* msg, int level) {
+void header(const char* msg, int level)
+{
   auto out = header(msg);
 
   // Print header based on verbosity level.
@@ -136,7 +141,7 @@ header(const char* msg, int level) {
 std::string time_stamp()
 {
   std::stringstream ts;
-  std::time_t t = std::time(nullptr);   // get time now
+  std::time_t t = std::time(nullptr); // get time now
   ts << std::put_time(std::localtime(&t), "%Y-%m-%d %H:%M:%S");
   return ts.str();
 }
@@ -209,7 +214,8 @@ void print_particle(Particle& p)
 void print_plot()
 {
   header("PLOTTING SUMMARY", 5);
-  if (settings::verbosity < 5) return;
+  if (settings::verbosity < 5)
+    return;
 
   for (auto pl : model::plots) {
     // Plot id
@@ -227,13 +233,14 @@ void print_plot()
     }
 
     // Plot parameters
-    fmt::print("Origin: {} {} {}\n", pl.origin_[0], pl.origin_[1], pl.origin_[2]);
+    fmt::print(
+      "Origin: {} {} {}\n", pl.origin_[0], pl.origin_[1], pl.origin_[2]);
 
     if (PlotType::slice == pl.type_) {
       fmt::print("Width: {:4} {:4}\n", pl.width_[0], pl.width_[1]);
     } else if (PlotType::voxel == pl.type_) {
-      fmt::print("Width: {:4} {:4} {:4}\n", pl.width_[0], pl.width_[1],
-        pl.width_[2]);
+      fmt::print(
+        "Width: {:4} {:4} {:4}\n", pl.width_[0], pl.width_[1], pl.width_[2]);
     }
 
     if (PlotColorBy::cells == pl.color_by_) {
@@ -243,7 +250,7 @@ void print_plot()
     }
 
     if (PlotType::slice == pl.type_) {
-      switch(pl.basis_) {
+      switch (pl.basis_) {
       case PlotBasis::xy:
         fmt::print("Basis: XY\n");
         break;
@@ -256,7 +263,8 @@ void print_plot()
       }
       fmt::print("Pixels: {} {}\n", pl.pixels_[0], pl.pixels_[1]);
     } else if (PlotType::voxel == pl.type_) {
-      fmt::print("Voxels: {} {} {}\n", pl.pixels_[0], pl.pixels_[1], pl.pixels_[2]);
+      fmt::print(
+        "Voxels: {} {} {}\n", pl.pixels_[0], pl.pixels_[1], pl.pixels_[2]);
     }
 
     fmt::print("\n");
@@ -265,10 +273,9 @@ void print_plot()
 
 //==============================================================================
 
-void
-print_overlap_check()
+void print_overlap_check()
 {
-  #ifdef OPENMC_MPI
+#ifdef OPENMC_MPI
   vector<int64_t> temp(model::overlap_check_count);
   MPI_Reduce(temp.data(), model::overlap_check_count.data(),
     model::overlap_check_count.size(), MPI_INT64_T, MPI_SUM, 0, mpi::intracomm);
@@ -280,7 +287,8 @@ print_overlap_check()
 
     vector<int32_t> sparse_cell_ids;
     for (int i = 0; i < model::cells.size(); i++) {
-      fmt::print(" {:8} {:17}\n", model::cells[i]->id_, model::overlap_check_count[i]);
+      fmt::print(
+        " {:8} {:17}\n", model::cells[i]->id_, model::overlap_check_count[i]);
       if (model::overlap_check_count[i] < 10) {
         sparse_cell_ids.push_back(model::cells[i]->id_);
       }
@@ -328,8 +336,8 @@ void print_version()
     fmt::print("Git SHA1: {}\n", GIT_SHA1);
 #endif
     fmt::print("Copyright (c) 2011-2021 Massachusetts Institute of "
-      "Technology and OpenMC contributors\nMIT/X license at "
-      "<https://docs.openmc.org/en/latest/license.html>\n");
+               "Technology and OpenMC contributors\nMIT/X license at "
+               "<https://docs.openmc.org/en/latest/license.html>\n");
   }
 }
 
@@ -338,13 +346,11 @@ void print_version()
 void print_columns()
 {
   if (settings::entropy_on) {
-    fmt::print(
-      "  Bat./Gen.      k       Entropy         Average k \n"
-      "  =========   ========   ========   ====================\n");
+    fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
+               "  =========   ========   ========   ====================\n");
   } else {
-    fmt::print(
-      "  Bat./Gen.      k            Average k\n"
-      "  =========   ========   ====================\n");
+    fmt::print("  Bat./Gen.      k            Average k\n"
+               "  =========   ========   ====================\n");
   }
 }
 
@@ -354,12 +360,14 @@ void print_generation()
 {
   // Determine overall generation index and number of active generations
   int idx = overall_generation() - 1;
-  int n = simulation::current_batch > settings::n_inactive ?
-    settings::gen_per_batch*simulation::n_realizations + simulation::current_gen : 0;
+  int n = simulation::current_batch > settings::n_inactive
+            ? settings::gen_per_batch * simulation::n_realizations +
+                simulation::current_gen
+            : 0;
 
   // write out batch/generation and generation k-effective
   auto batch_and_gen = std::to_string(simulation::current_batch) + "/" +
-    std::to_string(simulation::current_gen);
+                       std::to_string(simulation::current_gen);
   fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[idx]);
 
   // write out entropy info
@@ -375,11 +383,11 @@ void print_generation()
 
 //==============================================================================
 
-void show_time(const char* label, double secs, int indent_level=0)
+void show_time(const char* label, double secs, int indent_level = 0)
 {
-  int width = 33 - indent_level*2;
-  fmt::print("{0:{1}} {2:<{3}} = {4:>10.4e} seconds\n",
-    "", 2*indent_level, label, width, secs);
+  int width = 33 - indent_level * 2;
+  fmt::print("{0:{1}} {2:<{3}} = {4:>10.4e} seconds\n", "", 2 * indent_level,
+    label, width, secs);
 }
 
 void show_rate(const char* label, double particles_per_sec)
@@ -393,13 +401,14 @@ void print_runtime()
 
   // display header block
   header("Timing Statistics", 6);
-  if (settings::verbosity < 6) return;
+  if (settings::verbosity < 6)
+    return;
 
   // display time elapsed for various sections
   show_time("Total time for initialization", time_initialize.elapsed());
   show_time("Reading cross sections", time_read_xs.elapsed(), 1);
-  show_time("Total time in simulation", time_inactive.elapsed() +
-    time_active.elapsed());
+  show_time("Total time in simulation",
+    time_inactive.elapsed() + time_active.elapsed());
   show_time("Time in transport only", time_transport.elapsed(), 1);
   if (settings::event_based) {
     show_time("Particle initialization", time_event_init.elapsed(), 2);
@@ -429,28 +438,34 @@ void print_runtime()
   double speed_active;
   if (settings::restart_run) {
     if (simulation::restart_batch < settings::n_inactive) {
-      speed_inactive = (settings::n_particles * (settings::n_inactive
-        - simulation::restart_batch) * settings::gen_per_batch)
-        / time_inactive.elapsed();
-      speed_active = (settings::n_particles * n_active
-        * settings::gen_per_batch) / time_active.elapsed();
+      speed_inactive = (settings::n_particles *
+                         (settings::n_inactive - simulation::restart_batch) *
+                         settings::gen_per_batch) /
+                       time_inactive.elapsed();
+      speed_active =
+        (settings::n_particles * n_active * settings::gen_per_batch) /
+        time_active.elapsed();
     } else {
-      speed_active = (settings::n_particles * (settings::n_batches
-        - simulation::restart_batch) * settings::gen_per_batch)
-        / time_active.elapsed();
+      speed_active = (settings::n_particles *
+                       (settings::n_batches - simulation::restart_batch) *
+                       settings::gen_per_batch) /
+                     time_active.elapsed();
     }
   } else {
     if (settings::n_inactive > 0) {
-      speed_inactive = (settings::n_particles * settings::n_inactive
-        * settings::gen_per_batch) / time_inactive.elapsed();
+      speed_inactive = (settings::n_particles * settings::n_inactive *
+                         settings::gen_per_batch) /
+                       time_inactive.elapsed();
     }
-    speed_active = (settings::n_particles * n_active * settings::gen_per_batch)
-      / time_active.elapsed();
+    speed_active =
+      (settings::n_particles * n_active * settings::gen_per_batch) /
+      time_active.elapsed();
   }
 
   // display calculation rate
-  if (!(settings::restart_run && (simulation::restart_batch >= settings::n_inactive))
-      && settings::n_inactive > 0) {
+  if (!(settings::restart_run &&
+        (simulation::restart_batch >= settings::n_inactive)) &&
+      settings::n_inactive > 0) {
     show_rate("Calculation Rate (inactive)", speed_inactive);
   }
   show_rate("Calculation Rate (active)", speed_active);
@@ -458,12 +473,14 @@ void print_runtime()
 
 //==============================================================================
 
-std::pair<double, double>
-mean_stdev(const double* x, int n)
+std::pair<double, double> mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;
-  double stdev = n > 1 ? std::sqrt(std::max(0.0, (
-    x[static_cast<int>(TallyResult::SUM_SQ)]/n - mean*mean)/(n - 1))) : 0.0;
+  double stdev =
+    n > 1 ? std::sqrt(std::max(0.0,
+              (x[static_cast<int>(TallyResult::SUM_SQ)] / n - mean * mean) /
+                (n - 1)))
+          : 0.0;
   return {mean, stdev};
 }
 
@@ -473,15 +490,16 @@ void print_results()
 {
   // display header block for results
   header("Results", 4);
-  if (settings::verbosity < 4) return;
+  if (settings::verbosity < 4)
+    return;
 
   // Calculate t-value for confidence intervals
   int n = simulation::n_realizations;
   double alpha, t_n1, t_n3;
   if (settings::confidence_intervals) {
     alpha = 1.0 - CONFIDENCE_LEVEL;
-    t_n1 = t_percentile(1.0 - alpha/2.0, n - 1);
-    t_n3 = t_percentile(1.0 - alpha/2.0, n - 3);
+    t_n1 = t_percentile(1.0 - alpha / 2.0, n - 1);
+    t_n3 = t_percentile(1.0 - alpha / 2.0, n - 3);
   } else {
     t_n1 = 1.0;
     t_n3 = 1.0;
@@ -493,14 +511,14 @@ void print_results()
   if (n > 1) {
     if (settings::run_mode == RunMode::EIGENVALUE) {
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
-      fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n",
-        mean, t_n1 * stdev);
+      fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
+        t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
-      fmt::print(" k-effective (Track-length)  = {:.5f} +/- {:.5f}\n",
-        mean, t_n1 * stdev);
+      fmt::print(" k-effective (Track-length)  = {:.5f} +/- {:.5f}\n", mean,
+        t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_ABSORPTION, 0), n);
-      fmt::print(" k-effective (Absorption)    = {:.5f} +/- {:.5f}\n",
-        mean, t_n1 * stdev);
+      fmt::print(" k-effective (Absorption)    = {:.5f} +/- {:.5f}\n", mean,
+        t_n1 * stdev);
       if (n > 3) {
         double k_combined[2];
         openmc_get_keff(k_combined);
@@ -509,11 +527,12 @@ void print_results()
       }
     }
     std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::LEAKAGE, 0), n);
-    fmt::print(" Leakage Fraction            = {:.5f} +/- {:.5f}\n",
-      mean, t_n1 * stdev);
+    fmt::print(
+      " Leakage Fraction            = {:.5f} +/- {:.5f}\n", mean, t_n1 * stdev);
   } else {
-    if (mpi::master) warning("Could not compute uncertainties -- only one "
-      "active batch simulated!");
+    if (mpi::master)
+      warning("Could not compute uncertainties -- only one "
+              "active batch simulated!");
 
     if (settings::run_mode == RunMode::EIGENVALUE) {
       fmt::print(" k-effective (Collision)    = {:.5f}\n",
@@ -532,30 +551,30 @@ void print_results()
 //==============================================================================
 
 const std::unordered_map<int, const char*> score_names = {
-  {SCORE_FLUX,               "Flux"},
-  {SCORE_TOTAL,              "Total Reaction Rate"},
-  {SCORE_SCATTER,            "Scattering Rate"},
-  {SCORE_NU_SCATTER,         "Scattering Production Rate"},
-  {SCORE_ABSORPTION,         "Absorption Rate"},
-  {SCORE_FISSION,            "Fission Rate"},
-  {SCORE_NU_FISSION,         "Nu-Fission Rate"},
-  {SCORE_KAPPA_FISSION,      "Kappa-Fission Rate"},
-  {SCORE_EVENTS,             "Events"},
-  {SCORE_DECAY_RATE,         "Decay Rate"},
+  {SCORE_FLUX, "Flux"},
+  {SCORE_TOTAL, "Total Reaction Rate"},
+  {SCORE_SCATTER, "Scattering Rate"},
+  {SCORE_NU_SCATTER, "Scattering Production Rate"},
+  {SCORE_ABSORPTION, "Absorption Rate"},
+  {SCORE_FISSION, "Fission Rate"},
+  {SCORE_NU_FISSION, "Nu-Fission Rate"},
+  {SCORE_KAPPA_FISSION, "Kappa-Fission Rate"},
+  {SCORE_EVENTS, "Events"},
+  {SCORE_DECAY_RATE, "Decay Rate"},
   {SCORE_DELAYED_NU_FISSION, "Delayed-Nu-Fission Rate"},
-  {SCORE_PROMPT_NU_FISSION,  "Prompt-Nu-Fission Rate"},
-  {SCORE_INVERSE_VELOCITY,   "Flux-Weighted Inverse Velocity"},
-  {SCORE_FISS_Q_PROMPT,      "Prompt fission power"},
-  {SCORE_FISS_Q_RECOV,       "Recoverable fission power"},
-  {SCORE_CURRENT,            "Current"},
+  {SCORE_PROMPT_NU_FISSION, "Prompt-Nu-Fission Rate"},
+  {SCORE_INVERSE_VELOCITY, "Flux-Weighted Inverse Velocity"},
+  {SCORE_FISS_Q_PROMPT, "Prompt fission power"},
+  {SCORE_FISS_Q_RECOV, "Recoverable fission power"},
+  {SCORE_CURRENT, "Current"},
 };
 
 //! Create an ASCII output file showing all tally results.
 
-void
-write_tallies()
+void write_tallies()
 {
-  if (model::tallies.empty()) return;
+  if (model::tallies.empty())
+    return;
 
   // Open the tallies.out file.
   std::ofstream tallies_out;
@@ -567,7 +586,8 @@ write_tallies()
 
     // Write header block.
     std::string tally_header("TALLY " + std::to_string(tally.id_));
-    if (!tally.name_.empty()) tally_header += ": " + tally.name_;
+    if (!tally.name_.empty())
+      tally_header += ": " + tally.name_;
     fmt::print(tallies_out, "{}\n\n", header(tally_header));
 
     if (!tally.writable_) {
@@ -579,7 +599,7 @@ write_tallies()
     double t_value = 1;
     if (settings::confidence_intervals) {
       auto alpha = 1 - CONFIDENCE_LEVEL;
-      t_value = t_percentile(1 - alpha*0.5, tally.n_realizations_ - 1);
+      t_value = t_percentile(1 - alpha * 0.5, tally.n_realizations_ - 1);
     }
 
     // Write derivative information.
@@ -591,7 +611,8 @@ write_tallies()
           deriv.diff_material);
         break;
       case DerivativeVariable::NUCLIDE_DENSITY:
-        fmt::print(tallies_out, " Nuclide density derivative Material {} Nuclide {}\n",
+        fmt::print(tallies_out,
+          " Nuclide density derivative Material {} Nuclide {}\n",
           deriv.diff_material, data::nuclides[deriv.diff_nuclide]->name_);
         break;
       case DerivativeVariable::TEMPERATURE:
@@ -600,7 +621,8 @@ write_tallies()
         break;
       default:
         fatal_error(fmt::format("Differential tally dependent variable for "
-          "tally {} not defined in output.cpp", tally.id_));
+                                "tally {} not defined in output.cpp",
+          tally.id_));
       }
     }
 
@@ -648,13 +670,14 @@ write_tallies()
         // Write the score, mean, and uncertainty.
         indent += 2;
         for (auto score : tally.scores_) {
-          std::string score_name = score > 0 ? reaction_name(score)
-            : score_names.at(score);
+          std::string score_name =
+            score > 0 ? reaction_name(score) : score_names.at(score);
           double mean, stdev;
-          std::tie(mean, stdev) = mean_stdev(
-            &tally.results_(filter_index, score_index, 0), tally.n_realizations_);
-          fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n",
-            "", indent + 1, score_name, mean, t_value * stdev);
+          std::tie(mean, stdev) =
+            mean_stdev(&tally.results_(filter_index, score_index, 0),
+              tally.n_realizations_);
+          fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n", "",
+            indent + 1, score_name, mean, t_value * stdev);
           score_index += 1;
         }
         indent -= 2;

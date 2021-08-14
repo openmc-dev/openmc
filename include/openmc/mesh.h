@@ -16,10 +16,10 @@
 #include "openmc/vector.h"
 
 #ifdef DAGMC
-#include "moab/Core.hpp"
 #include "moab/AdaptiveKDTree.hpp"
-#include "moab/Matrix3.hpp"
+#include "moab/Core.hpp"
 #include "moab/GeomUtil.hpp"
+#include "moab/Matrix3.hpp"
 #endif
 
 #ifdef LIBMESH
@@ -56,11 +56,10 @@ namespace settings {
 // used when creating new libMesh::Mesh instances
 extern unique_ptr<libMesh::LibMeshInit> libmesh_init;
 extern const libMesh::Parallel::Communicator* libmesh_comm;
-}
+} // namespace settings
 #endif
 
-class Mesh
-{
+class Mesh {
 public:
   // Constructors and destructor
   Mesh() = default;
@@ -76,11 +75,8 @@ public:
   //! \param[in] u Particle direction
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  virtual void bins_crossed(Position r0,
-                            Position r1,
-                            const Direction& u,
-                            vector<int>& bins,
-                            vector<double>& lengths) const = 0;
+  virtual void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const = 0;
 
   //! Determine which surface bins were crossed by a particle
   //
@@ -88,11 +84,8 @@ public:
   //! \param[in] r1 Current position of the particle
   //! \param[in] u Particle direction
   //! \param[out] bins Surface bins that were crossed
-  virtual void
-  surface_bins_crossed(Position r0,
-                       Position r1,
-                       const Direction& u,
-                       vector<int>& bins) const = 0;
+  virtual void surface_bins_crossed(
+    Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -107,7 +100,7 @@ public:
   virtual int n_surface_bins() const = 0;
 
   //! Set the mesh ID
-  void set_id(int32_t id=-1);
+  void set_id(int32_t id = -1);
 
   //! Write mesh data to an HDF5 group
   //
@@ -131,7 +124,7 @@ public:
   virtual std::string bin_label(int bin) const = 0;
 
   // Data members
-  int id_ {-1};  //!< User-specified ID
+  int id_ {-1};     //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
 };
 
@@ -147,11 +140,8 @@ public:
 
   int n_surface_bins() const override;
 
-  void bins_crossed(Position r0,
-                    Position r1,
-                    const Direction& u,
-                    vector<int>& bins,
-                    vector<double>& lengths) const override;
+  void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -210,7 +200,7 @@ public:
   std::string bin_label(int bin) const override;
 
   // Data members
-  xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
+  xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
 
@@ -224,19 +214,15 @@ protected:
 //! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
 //==============================================================================
 
-class RegularMesh : public StructuredMesh
-{
+class RegularMesh : public StructuredMesh {
 public:
   // Constructors
   RegularMesh() = default;
   RegularMesh(pugi::xml_node node);
 
   // Overridden methods
-  void
-  surface_bins_crossed(Position r0,
-                       Position r1,
-                       const Direction& u,
-                       vector<int>& bins) const override;
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   int get_index_in_direction(double r, int i) const override;
 
@@ -260,24 +246,19 @@ public:
     const SourceSite* bank, int64_t length, bool* outside) const;
 
   // Data members
-  double volume_frac_; //!< Volume fraction of each mesh element
+  double volume_frac_;           //!< Volume fraction of each mesh element
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
 };
 
-
-class RectilinearMesh : public StructuredMesh
-{
+class RectilinearMesh : public StructuredMesh {
 public:
   // Constructors
   RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
 
   // Overridden methods
-  void
-  surface_bins_crossed(Position r0,
-                       Position r1,
-                       const Direction& u,
-                       vector<int>& bins) const override;
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   int get_index_in_direction(double r, int i) const override;
 
@@ -305,11 +286,8 @@ public:
   UnstructuredMesh(const std::string& filename);
 
   // Overridden Methods
-  void
-  surface_bins_crossed(Position r0,
-                       Position r1,
-                       const Direction& u,
-                       vector<int>& bins) const override;
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
 
   void to_hdf5(hid_t group) const override;
 
@@ -349,7 +327,8 @@ public:
   virtual std::string library() const = 0;
 
   // Data members
-  bool output_ {true}; //!< Write tallies onto the unstructured mesh at the end of a run
+  bool output_ {
+    true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
 
 private:
@@ -370,12 +349,8 @@ public:
 
   // Overridden Methods
 
-  void
-  bins_crossed(Position r0,
-               Position r1,
-               const Direction& u,
-               vector<int>& bins,
-               vector<double>& lengths) const override;
+  void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override;
 
   int get_bin(Position r) const override;
 
@@ -383,9 +358,8 @@ public:
 
   int n_surface_bins() const override;
 
-  std::pair<vector<double>, vector<double>>
-  plot(Position plot_ll,
-       Position plot_ur) const override;
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
 
   std::string library() const override;
 
@@ -396,9 +370,8 @@ public:
   void remove_scores() override;
 
   //! Set data for a score
-  void set_score_data(const std::string& score,
-                      const vector<double>& values,
-                      const vector<double>& std_dev) override;
+  void set_score_data(const std::string& score, const vector<double>& values,
+    const vector<double>& std_dev) override;
 
   //! Write the mesh with any current tally data
   void write(const std::string& base_filename) const override;
@@ -408,7 +381,6 @@ public:
   double volume(int bin) const override;
 
 private:
-
   void initialize() override;
 
   // Methods
@@ -438,8 +410,9 @@ private:
   moab::EntityHandle get_tet(const Position& r) const;
 
   //! Return the containing tet given a position
-  moab::EntityHandle get_tet(const moab::CartVect& r) const {
-      return get_tet(Position(r[0], r[1], r[2]));
+  moab::EntityHandle get_tet(const moab::CartVect& r) const
+  {
+    return get_tet(Position(r[0], r[1], r[2]));
   };
 
   //! Check for point containment within a tet; uses
@@ -448,8 +421,7 @@ private:
   //! \param[in] r Position to check
   //! \param[in] MOAB terahedron to check
   //! \return True if r is inside, False if r is outside
-  bool point_in_tet(const moab::CartVect& r,
-                    moab::EntityHandle tet) const;
+  bool point_in_tet(const moab::CartVect& r, moab::EntityHandle tet) const;
 
   //! Compute barycentric coordinate data for all tetrahedra
   //! in the mesh.
@@ -500,12 +472,11 @@ private:
   //
   //! \param[in] score Name of the score
   //! \return The MOAB value and error tag handles, respectively
-  std::pair<moab::Tag, moab::Tag>
-  get_score_tags(std::string score) const;
+  std::pair<moab::Tag, moab::Tag> get_score_tags(std::string score) const;
 
   // Data members
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
-  moab::EntityHandle tetset_; //!< EntitySet containing all tetrahedra
+  moab::EntityHandle tetset_;      //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
   std::shared_ptr<moab::Interface> mbi_;    //!< MOAB instance
   unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
@@ -524,11 +495,8 @@ public:
   LibMesh(const std::string& filename);
 
   // Overridden Methods
-  void bins_crossed(Position r0,
-                    Position r1,
-                    const Direction& u,
-                    vector<int>& bins,
-                    vector<double>& lengths) const override;
+  void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override;
 
   int get_bin(Position r) const override;
 
@@ -536,9 +504,8 @@ public:
 
   int n_surface_bins() const override;
 
-  std::pair<vector<double>, vector<double>>
-  plot(Position plot_ll,
-       Position plot_ur) const override;
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
 
   std::string library() const override;
 
@@ -546,9 +513,8 @@ public:
 
   void remove_scores() override;
 
-  void set_score_data(const std::string& var_name,
-                      const vector<double>& values,
-                      const vector<double>& std_dev) override;
+  void set_score_data(const std::string& var_name, const vector<double>& values,
+    const vector<double>& std_dev) override;
 
   void write(const std::string& base_filename) const override;
 
@@ -557,7 +523,6 @@ public:
   double volume(int bin) const override;
 
 private:
-
   void initialize() override;
 
   // Methods
@@ -573,11 +538,15 @@ private:
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>
-    equation_systems_;         //!< pointer to the equation systems of the mesh
-  std::string eq_system_name_; //!< name of the equation system holding OpenMC results
-  std::unordered_map<std::string, unsigned int> variable_map_; //!< mapping of variable names (tally scores) to libMesh variable numbers
+    equation_systems_; //!< pointer to the equation systems of the mesh
+  std::string
+    eq_system_name_; //!< name of the equation system holding OpenMC results
+  std::unordered_map<std::string, unsigned int>
+    variable_map_; //!< mapping of variable names (tally scores) to libMesh
+                   //!< variable numbers
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
-  libMesh::dof_id_type first_element_id_; //!< id of the first element in the mesh
+  libMesh::dof_id_type
+    first_element_id_; //!< id of the first element in the mesh
 };
 
 #endif

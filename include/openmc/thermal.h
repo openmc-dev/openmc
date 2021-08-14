@@ -25,7 +25,7 @@ class ThermalScattering;
 namespace data {
 extern std::unordered_map<std::string, int> thermal_scatt_map;
 extern vector<unique_ptr<ThermalScattering>> thermal_scatt;
-}
+} // namespace data
 
 //==============================================================================
 //! Secondary angle-energy data for thermal neutron scattering at a single
@@ -50,12 +50,13 @@ public:
   //! \param[out] E_out Outgoing neutron energy in [eV]
   //! \param[out] mu Outgoing scattering angle cosine
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(const NuclideMicroXS& micro_xs, double E_in,
-              double* E_out, double* mu, uint64_t* seed);
+  void sample(const NuclideMicroXS& micro_xs, double E_in, double* E_out,
+    double* mu, uint64_t* seed);
+
 private:
   struct Reaction {
     // Default constructor
-    Reaction() { }
+    Reaction() {}
 
     // Data members
     unique_ptr<Function1D> xs; //!< Cross section
@@ -83,13 +84,13 @@ public:
   //! Determine inelastic/elastic cross section at given energy
   //!
   //! \param[in] E incoming energy in [eV]
-  //! \param[in] sqrtkT square-root of temperature multipled by Boltzmann's constant
-  //! \param[out] i_temp corresponding temperature index
-  //! \param[out] elastic Thermal elastic scattering cross section
-  //! \param[out] inelastic Thermal inelastic scattering cross section
-  //! \param[inout] seed Pseudorandom seed pointer
+  //! \param[in] sqrtkT square-root of temperature multipled by Boltzmann's
+  //! constant \param[out] i_temp corresponding temperature index \param[out]
+  //! elastic Thermal elastic scattering cross section \param[out] inelastic
+  //! Thermal inelastic scattering cross section \param[inout] seed Pseudorandom
+  //! seed pointer
   void calculate_xs(double E, double sqrtkT, int* i_temp, double* elastic,
-                    double* inelastic, uint64_t* seed) const;
+    double* inelastic, uint64_t* seed) const;
 
   //! Determine whether table applies to a particular nuclide
   //!
@@ -98,13 +99,13 @@ public:
   bool has_nuclide(const char* name) const;
 
   // Sample an outgoing energy and angle
-  void sample(const NuclideMicroXS& micro_xs, double E_in,
-              double* E_out, double* mu);
+  void sample(
+    const NuclideMicroXS& micro_xs, double E_in, double* E_out, double* mu);
 
-  std::string name_; //!< name of table, e.g. "c_H_in_H2O"
-  double awr_;       //!< weight of nucleus in neutron masses
-  double energy_max_; //!< maximum energy for thermal scattering in [eV]
-  vector<double> kTs_;           //!< temperatures in [eV] (k*T)
+  std::string name_;   //!< name of table, e.g. "c_H_in_H2O"
+  double awr_;         //!< weight of nucleus in neutron masses
+  double energy_max_;  //!< maximum energy for thermal scattering in [eV]
+  vector<double> kTs_; //!< temperatures in [eV] (k*T)
   vector<std::string> nuclides_; //!< Valid nuclides
 
   //! cross sections and distributions at each temperature

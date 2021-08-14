@@ -10,7 +10,6 @@
 
 #include "openmc/position.h"
 
-
 namespace openmc {
 
 //==============================================================================
@@ -130,11 +129,11 @@ extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
 //! \param seed A pointer to the pseudorandom seed
 //==============================================================================
 
-extern "C" void rotate_angle_c(double uvw[3], double mu, const double* phi,
-  uint64_t* seed);
+extern "C" void rotate_angle_c(
+  double uvw[3], double mu, const double* phi, uint64_t* seed);
 
-Direction rotate_angle(Direction u, double mu, const double* phi,
-  uint64_t* seed);
+Direction rotate_angle(
+  Direction u, double mu, const double* phi, uint64_t* seed);
 
 //==============================================================================
 //! Constructs a natural cubic spline.
@@ -167,8 +166,8 @@ void spline(int n, const double x[], const double y[], double z[]);
 //! \return      Interpolated value
 //==============================================================================
 
-double spline_interpolate(int n, const double x[], const double y[],
-  const double z[], double xint);
+double spline_interpolate(
+  int n, const double x[], const double y[], const double z[], double xint);
 
 //==============================================================================
 //! Evaluate the definite integral of the interpolating cubic spline between

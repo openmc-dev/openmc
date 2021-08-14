@@ -9,8 +9,8 @@
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
-#include <string>
 #include <gsl/gsl>
+#include <string>
 
 namespace openmc {
 
@@ -28,14 +28,15 @@ public:
     vector<double> atoms;       //!< Number of atoms for each nuclide
     vector<double> uncertainty; //!< Uncertainty on number of atoms
     int iterations; //!< Number of iterations needed to obtain the results
-  }; // Results for a single domain
+  };                // Results for a single domain
 
   // Constructors
   VolumeCalculation(pugi::xml_node node);
 
   // Methods
 
-  //! \brief Stochastically determine the volume of a set of domains along with the
+  //! \brief Stochastically determine the volume of a set of domains along with
+  //! the
   //!   average number densities of nuclides within the domain
   //
   //! \return Vector of results for each user-specified domain
@@ -49,20 +50,17 @@ public:
     const std::string& filename, const vector<Result>& results) const;
 
   // Tally filter and map types
-  enum class TallyDomain {
-    UNIVERSE,
-    MATERIAL,
-    CELL
-  };
+  enum class TallyDomain { UNIVERSE, MATERIAL, CELL };
 
   // Data members
   TallyDomain domain_type_; //!< Type of domain (cell, material, etc.)
-  size_t n_samples_; //!< Number of samples to use
+  size_t n_samples_;        //!< Number of samples to use
   double threshold_ {-1.0}; //!< Error threshold for domain volumes
-  TriggerMetric trigger_type_ {TriggerMetric::not_active}; //!< Trigger metric for the volume calculation
-  Position lower_left_; //!< Lower-left position of bounding box
-  Position upper_right_; //!< Upper-right position of bounding box
-  vector<int> domain_ids_; //!< IDs of domains to find volumes of
+  TriggerMetric trigger_type_ {
+    TriggerMetric::not_active}; //!< Trigger metric for the volume calculation
+  Position lower_left_;         //!< Lower-left position of bounding box
+  Position upper_right_;        //!< Upper-right position of bounding box
+  vector<int> domain_ids_;      //!< IDs of domains to find volumes of
 
 private:
   //! \brief Check whether a material has already been hit for a given domain.

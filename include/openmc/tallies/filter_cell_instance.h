@@ -28,12 +28,12 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "cellinstance";}
+  std::string type() const override { return "cellinstance"; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 

@@ -1,6 +1,6 @@
 #include "openmc/secondary_uncorrelated.h"
 
-#include <string>  // for string
+#include <string> // for string
 
 #include <fmt/core.h>
 
@@ -19,7 +19,7 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
   // Check if angle group is present & read
   if (object_exists(group, "angle")) {
     hid_t angle_group = open_group(group, "angle");
-    angle_ = AngleDistribution{angle_group};
+    angle_ = AngleDistribution {angle_group};
     close_group(angle_group);
   }
 
@@ -31,28 +31,27 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
     read_attribute(energy_group, "type", type);
     using UPtrEDist = unique_ptr<EnergyDistribution>;
     if (type == "discrete_photon") {
-      energy_ = UPtrEDist{new DiscretePhoton{energy_group}};
+      energy_ = UPtrEDist {new DiscretePhoton {energy_group}};
     } else if (type == "level") {
-      energy_ = UPtrEDist{new LevelInelastic{energy_group}};
+      energy_ = UPtrEDist {new LevelInelastic {energy_group}};
     } else if (type == "continuous") {
-      energy_ = UPtrEDist{new ContinuousTabular{energy_group}};
+      energy_ = UPtrEDist {new ContinuousTabular {energy_group}};
     } else if (type == "maxwell") {
-      energy_ = UPtrEDist{new MaxwellEnergy{energy_group}};
+      energy_ = UPtrEDist {new MaxwellEnergy {energy_group}};
     } else if (type == "evaporation") {
-      energy_ = UPtrEDist{new Evaporation{energy_group}};
+      energy_ = UPtrEDist {new Evaporation {energy_group}};
     } else if (type == "watt") {
-      energy_ = UPtrEDist{new WattEnergy{energy_group}};
+      energy_ = UPtrEDist {new WattEnergy {energy_group}};
     } else {
-      warning(fmt::format("Energy distribution type '{}' not implemented.", type));
+      warning(
+        fmt::format("Energy distribution type '{}' not implemented.", type));
     }
     close_group(energy_group);
   }
-
 }
 
-void
-UncorrelatedAngleEnergy::sample(double E_in, double& E_out, double& mu,
-  uint64_t* seed) const
+void UncorrelatedAngleEnergy::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
   // Sample cosine of scattering angle
   if (!angle_.empty()) {

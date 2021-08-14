@@ -30,7 +30,6 @@ class Surface;
 
 class Particle : public ParticleData {
 public:
-
   //==========================================================================
   // Constructors
 
@@ -86,18 +85,22 @@ public:
   //! \param new_u The direction of the particle after translation/rotation.
   //! \param new_surface The signed index of the surface that the particle will
   //!   reside on after translation/rotation.
-  void cross_periodic_bc(const Surface& surf, Position new_r, Direction new_u,
-                         int new_surface);
+  void cross_periodic_bc(
+    const Surface& surf, Position new_r, Direction new_u, int new_surface);
 
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display
   void mark_as_lost(const char* message);
 
   void mark_as_lost(const std::string& message)
-  {mark_as_lost(message.c_str());}
+  {
+    mark_as_lost(message.c_str());
+  }
 
   void mark_as_lost(const std::stringstream& message)
-  {mark_as_lost(message.str());}
+  {
+    mark_as_lost(message.str());
+  }
 
   //! create a particle restart HDF5 file
   void write_restart() const;

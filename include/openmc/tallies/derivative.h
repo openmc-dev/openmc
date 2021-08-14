@@ -15,18 +15,14 @@
 namespace openmc {
 
 // Different independent variables
-enum class DerivativeVariable {
-  DENSITY,
-  NUCLIDE_DENSITY,
-  TEMPERATURE
-};
+enum class DerivativeVariable { DENSITY, NUCLIDE_DENSITY, TEMPERATURE };
 
 struct TallyDerivative {
 
-  DerivativeVariable variable;  //!< Independent variable (like temperature)
-  int id;  //!< User-defined identifier
-  int diff_material;  //!< Material this derivative is applied to
-  int diff_nuclide;  //!< Nuclide this material is applied to
+  DerivativeVariable variable; //!< Independent variable (like temperature)
+  int id;                      //!< User-defined identifier
+  int diff_material;           //!< Material this derivative is applied to
+  int diff_nuclide;            //!< Nuclide this material is applied to
 
   TallyDerivative() {}
   explicit TallyDerivative(pugi::xml_node node);
@@ -41,8 +37,7 @@ void read_tally_derivatives(pugi::xml_node node);
 
 //! Scale the given score by its logarithmic derivative
 
-void
-apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
+void apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
   double atom_density, int score_bin, double& score);
 
 //! Adjust diff tally flux derivatives for a particle scattering event.

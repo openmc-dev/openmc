@@ -1,8 +1,8 @@
 #include "openmc/scattdata.h"
 
 #include <algorithm>
-#include <numeric>
 #include <cmath>
+#include <numeric>
 
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xview.hpp"
@@ -19,10 +19,9 @@ namespace openmc {
 // ScattData base-class methods
 //==============================================================================
 
-void
-ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
-     const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_energy,
-     const double_2dvec& in_mult)
+void ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
+  const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_energy,
+  const double_2dvec& in_mult)
 {
   size_t groups = in_energy.size();
 
@@ -48,8 +47,9 @@ ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
 
     if (num_converted > 0) {
       // Raise a warning to the user if we did have to do the conversion
-      std::string msg = std::to_string(num_converted) +
-           "entries in the Multiplicity Matrix were changed from 0 to 1";
+      std::string msg =
+        std::to_string(num_converted) +
+        "entries in the Multiplicity Matrix were changed from 0 to 1";
       warning(msg);
     }
 
@@ -57,7 +57,8 @@ ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
     double norm = std::accumulate(energy[gin].begin(), energy[gin].end(), 0.);
 
     if (norm != 0.) {
-      for (auto& n : energy[gin]) n /= norm;
+      for (auto& n : energy[gin])
+        n /= norm;
     }
 
     // Initialize the distribution data
@@ -75,7 +76,7 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
   xt::xtensor<int, 1>& in_gmin, xt::xtensor<int, 1>& in_gmax,
   double_2dvec& sparse_mult, double_3dvec& sparse_scatter)
 {
-  size_t groups = those_scatts[0] -> energy.size();
+  size_t groups = those_scatts[0]->energy.size();
 
   // Now allocate and zero our storage spaces
   xt::xtensor<double, 3> this_nuscatt_matrix({groups, groups, order_dim}, 0.);
@@ -97,10 +98,9 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
     for (int gin = 0; gin < groups; gin++) {
       for (int go = 0; go < groups; go++) {
         this_nuscatt_P0(gin, go) +=
-             scalars[i] * that->get_xs(MgxsType::NU_SCATTER, gin, &go, nullptr);
+          scalars[i] * that->get_xs(MgxsType::NU_SCATTER, gin, &go, nullptr);
         this_scatt_P0(gin, go) +=
-             scalars[i] *
-             that->get_xs(MgxsType::SCATTER, gin, &go, nullptr);
+          scalars[i] * that->get_xs(MgxsType::SCATTER, gin, &go, nullptr);
       }
     }
   }
@@ -122,7 +122,8 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
           break;
         }
       }
-      if (non_zero) break;
+      if (non_zero)
+        break;
     }
     int gmax_;
     for (gmax_ = groups - 1; gmax_ >= 0; gmax_--) {
@@ -133,7 +134,8 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
           break;
         }
       }
-      if (non_zero) break;
+      if (non_zero)
+        break;
     }
 
     // treat the case of all values being 0
@@ -161,11 +163,9 @@ void ScattData::base_combine(size_t max_order, size_t order_dim,
   }
 }
 
-
 //==============================================================================
 
-void
-ScattData::sample_energy(int gin, int& gout, int& i_gout, uint64_t* seed)
+void ScattData::sample_energy(int gin, int& gout, int& i_gout, uint64_t* seed)
 {
   // Sample the outgoing group
   double xi = prn(seed);
@@ -173,15 +173,16 @@ ScattData::sample_energy(int gin, int& gout, int& i_gout, uint64_t* seed)
   i_gout = 0;
   for (gout = gmin[gin]; gout < gmax[gin]; ++gout) {
     prob += energy[gin][i_gout];
-    if (xi < prob) break;
+    if (xi < prob)
+      break;
     ++i_gout;
   }
 }
 
 //==============================================================================
 
-double
-ScattData::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu)
+double ScattData::get_xs(
+  MgxsType xstype, int gin, const int* gout, const double* mu)
 {
   // Set the outgoing group offset index as needed
   int i_gout = 0;
@@ -195,16 +196,17 @@ ScattData::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu)
   }
 
   double val = scattxs[gin];
-  switch(xstype) {
+  switch (xstype) {
   case MgxsType::NU_SCATTER:
-    if (gout != nullptr) val *= energy[gin][i_gout];
+    if (gout != nullptr)
+      val *= energy[gin][i_gout];
     break;
   case MgxsType::SCATTER:
     if (gout != nullptr) {
       val *= energy[gin][i_gout] / mult[gin][i_gout];
     } else {
-      val /= std::inner_product(mult[gin].begin(), mult[gin].end(),
-                                energy[gin].begin(), 0.0);
+      val /= std::inner_product(
+        mult[gin].begin(), mult[gin].end(), energy[gin].begin(), 0.0);
     }
     break;
   case MgxsType::NU_SCATTER_FMU:
@@ -235,10 +237,9 @@ ScattData::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu)
 // ScattDataLegendre methods
 //==============================================================================
 
-void
-ScattDataLegendre::init(const xt::xtensor<int, 1>& in_gmin,
-     const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
-     const double_3dvec& coeffs)
+void ScattDataLegendre::init(const xt::xtensor<int, 1>& in_gmin,
+  const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+  const double_3dvec& coeffs)
 {
   size_t groups = coeffs.size();
   size_t order = coeffs[0][0].size();
@@ -268,7 +269,8 @@ ScattDataLegendre::init(const xt::xtensor<int, 1>& in_gmin,
       double norm = matrix[gin][i_gout][0];
       in_energy[gin][i_gout] = norm;
       if (norm != 0.) {
-        for (auto& n : matrix[gin][i_gout]) n /= norm;
+        for (auto& n : matrix[gin][i_gout])
+          n /= norm;
       }
     }
   }
@@ -284,7 +286,8 @@ ScattDataLegendre::init(const xt::xtensor<int, 1>& in_gmin,
       dist[gin][i_gout] = matrix[gin][i_gout];
     }
     max_val[gin].resize(num_groups);
-    for (auto& n : max_val[gin]) n = 0.;
+    for (auto& n : max_val[gin])
+      n = 0.;
   }
 
   // Now update the maximum value
@@ -293,8 +296,7 @@ ScattDataLegendre::init(const xt::xtensor<int, 1>& in_gmin,
 
 //==============================================================================
 
-void
-ScattDataLegendre::update_max_val()
+void ScattDataLegendre::update_max_val()
 {
   size_t groups = max_val.size();
   // Step through the polynomial with fixed number of points to identify the
@@ -315,11 +317,12 @@ ScattDataLegendre::update_max_val()
         }
 
         // Calculate probability
-        double f = evaluate_legendre(dist[gin][i_gout].size() - 1,
-                                     dist[gin][i_gout].data(), mu);
+        double f = evaluate_legendre(
+          dist[gin][i_gout].size() - 1, dist[gin][i_gout].data(), mu);
 
         // if this is a new maximum, store it
-        if (f > max_val[gin][i_gout]) max_val[gin][i_gout] = f;
+        if (f > max_val[gin][i_gout])
+          max_val[gin][i_gout] = f;
       } // end imu loop
 
       // Since we may not have caught the true max, add 10% margin
@@ -330,25 +333,23 @@ ScattDataLegendre::update_max_val()
 
 //==============================================================================
 
-double
-ScattDataLegendre::calc_f(int gin, int gout, double mu)
+double ScattDataLegendre::calc_f(int gin, int gout, double mu)
 {
   double f;
   if ((gout < gmin[gin]) || (gout > gmax[gin])) {
     f = 0.;
   } else {
     int i_gout = gout - gmin[gin];
-    f = evaluate_legendre(dist[gin][i_gout].size() - 1,
-                          dist[gin][i_gout].data(), mu);
+    f = evaluate_legendre(
+      dist[gin][i_gout].size() - 1, dist[gin][i_gout].data(), mu);
   }
   return f;
 }
 
 //==============================================================================
 
-void
-ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt,
-                          uint64_t* seed)
+void ScattDataLegendre::sample(
+  int gin, int& gout, double& mu, double& wgt, uint64_t* seed)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
@@ -363,7 +364,8 @@ ScattDataLegendre::sample(int gin, int& gout, double& mu, double& wgt,
     double f = calc_f(gin, gout, mu);
     if (f > 0.) {
       double u = prn(seed) * M;
-      if (u <= f) break;
+      if (u <= f)
+        break;
     }
   }
   if (samples == MAX_SAMPLE) {
@@ -388,10 +390,11 @@ void ScattDataLegendre::combine(
       fatal_error("Cannot combine the ScattData objects!");
     }
     size_t that_order = that->get_order();
-    if (that_order > max_order) max_order = that_order;
+    if (that_order > max_order)
+      max_order = that_order;
   }
 
-  size_t groups = those_scatts[0] -> energy.size();
+  size_t groups = those_scatts[0]->energy.size();
 
   xt::xtensor<int, 1> in_gmin({groups}, 0);
   xt::xtensor<int, 1> in_gmax({groups}, 0);
@@ -403,7 +406,7 @@ void ScattDataLegendre::combine(
   // matrices
   size_t order_dim = max_order + 1;
   ScattData::base_combine(max_order, order_dim, those_scatts, scalars, in_gmin,
-                          in_gmax, sparse_mult, sparse_scatter);
+    in_gmax, sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
   init(in_gmin, in_gmax, sparse_mult, sparse_scatter);
@@ -411,8 +414,7 @@ void ScattDataLegendre::combine(
 
 //==============================================================================
 
-xt::xtensor<double, 3>
-ScattDataLegendre::get_matrix(size_t max_order)
+xt::xtensor<double, 3> ScattDataLegendre::get_matrix(size_t max_order)
 {
   // Get the sizes and initialize the data to 0
   size_t groups = energy.size();
@@ -423,8 +425,8 @@ ScattDataLegendre::get_matrix(size_t max_order)
     for (int i_gout = 0; i_gout < energy[gin].size(); i_gout++) {
       int gout = i_gout + gmin[gin];
       for (int l = 0; l < order_dim; l++) {
-        matrix(gin, gout, l) = scattxs[gin] * energy[gin][i_gout] *
-             dist[gin][i_gout][l];
+        matrix(gin, gout, l) =
+          scattxs[gin] * energy[gin][i_gout] * dist[gin][i_gout][l];
       }
     }
   }
@@ -435,10 +437,9 @@ ScattDataLegendre::get_matrix(size_t max_order)
 // ScattDataHistogram methods
 //==============================================================================
 
-void
-ScattDataHistogram::init(const xt::xtensor<int, 1>& in_gmin,
-     const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
-     const double_3dvec& coeffs)
+void ScattDataHistogram::init(const xt::xtensor<int, 1>& in_gmin,
+  const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+  const double_3dvec& coeffs)
 {
   size_t groups = coeffs.size();
   size_t order = coeffs[0][0].size();
@@ -451,8 +452,8 @@ ScattDataHistogram::init(const xt::xtensor<int, 1>& in_gmin,
   scattxs = xt::zeros<double>({groups});
   for (int gin = 0; gin < groups; gin++) {
     for (int i_gout = 0; i_gout < matrix[gin].size(); i_gout++) {
-      scattxs[gin] += std::accumulate(matrix[gin][i_gout].begin(),
-                                      matrix[gin][i_gout].end(), 0.);
+      scattxs[gin] += std::accumulate(
+        matrix[gin][i_gout].begin(), matrix[gin][i_gout].end(), 0.);
     }
   }
 
@@ -463,11 +464,12 @@ ScattDataHistogram::init(const xt::xtensor<int, 1>& in_gmin,
     int num_groups = in_gmax[gin] - in_gmin[gin] + 1;
     in_energy[gin].resize(num_groups);
     for (int i_gout = 0; i_gout < num_groups; i_gout++) {
-      double norm = std::accumulate(matrix[gin][i_gout].begin(),
-                                    matrix[gin][i_gout].end(), 0.);
+      double norm = std::accumulate(
+        matrix[gin][i_gout].begin(), matrix[gin][i_gout].end(), 0.);
       in_energy[gin][i_gout] = norm;
       if (norm != 0.) {
-        for (auto& n : matrix[gin][i_gout]) n /= norm;
+        for (auto& n : matrix[gin][i_gout])
+          n /= norm;
       }
     }
   }
@@ -492,8 +494,8 @@ ScattDataHistogram::init(const xt::xtensor<int, 1>& in_gmin,
       // Integrate the histogram
       dist[gin][i_gout][0] = dmu * matrix[gin][i_gout][0];
       for (int imu = 1; imu < order; imu++) {
-        dist[gin][i_gout][imu] = dmu * matrix[gin][i_gout][imu] +
-             dist[gin][i_gout][imu - 1];
+        dist[gin][i_gout][imu] =
+          dmu * matrix[gin][i_gout][imu] + dist[gin][i_gout][imu - 1];
       }
 
       // Now re-normalize for integral to unity
@@ -510,8 +512,7 @@ ScattDataHistogram::init(const xt::xtensor<int, 1>& in_gmin,
 
 //==============================================================================
 
-double
-ScattDataHistogram::calc_f(int gin, int gout, double mu)
+double ScattDataHistogram::calc_f(int gin, int gout, double mu)
 {
   double f;
   if ((gout < gmin[gin]) || (gout > gmax[gin])) {
@@ -534,9 +535,8 @@ ScattDataHistogram::calc_f(int gin, int gout, double mu)
 
 //==============================================================================
 
-void
-ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt,
-                           uint64_t* seed)
+void ScattDataHistogram::sample(
+  int gin, int& gout, double& mu, double& wgt, uint64_t* seed)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
@@ -549,9 +549,9 @@ ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt,
   if (xi < dist[gin][i_gout][0]) {
     imu = 0;
   } else {
-    imu = std::upper_bound(dist[gin][i_gout].begin(),
-                           dist[gin][i_gout].end(), xi) -
-         dist[gin][i_gout].begin();
+    imu =
+      std::upper_bound(dist[gin][i_gout].begin(), dist[gin][i_gout].end(), xi) -
+      dist[gin][i_gout].begin();
   }
 
   // Randomly select mu within the imu bin
@@ -569,8 +569,7 @@ ScattDataHistogram::sample(int gin, int& gout, double& mu, double& wgt,
 
 //==============================================================================
 
-xt::xtensor<double, 3>
-ScattDataHistogram::get_matrix(size_t max_order)
+xt::xtensor<double, 3> ScattDataHistogram::get_matrix(size_t max_order)
 {
   // Get the sizes and initialize the data to 0
   size_t groups = energy.size();
@@ -582,8 +581,8 @@ ScattDataHistogram::get_matrix(size_t max_order)
     for (int i_gout = 0; i_gout < energy[gin].size(); i_gout++) {
       int gout = i_gout + gmin[gin];
       for (int l = 0; l < order_dim; l++) {
-        matrix(gin, gout, l) = scattxs[gin] * energy[gin][i_gout] *
-             fmu[gin][i_gout][l];
+        matrix(gin, gout, l) =
+          scattxs[gin] * energy[gin][i_gout] * fmu[gin][i_gout][l];
       }
     }
   }
@@ -599,7 +598,8 @@ void ScattDataHistogram::combine(
   size_t max_order = those_scatts[0]->get_order();
   for (int i = 0; i < those_scatts.size(); i++) {
     // Lets also make sure these items are combineable
-    ScattDataHistogram* that = dynamic_cast<ScattDataHistogram*>(those_scatts[i]);
+    ScattDataHistogram* that =
+      dynamic_cast<ScattDataHistogram*>(those_scatts[i]);
     if (!that) {
       fatal_error("Cannot combine the ScattData objects!");
     }
@@ -608,7 +608,7 @@ void ScattDataHistogram::combine(
     }
   }
 
-  size_t groups = those_scatts[0] -> energy.size();
+  size_t groups = those_scatts[0]->energy.size();
 
   xt::xtensor<int, 1> in_gmin({groups}, 0);
   xt::xtensor<int, 1> in_gmax({groups}, 0);
@@ -620,7 +620,7 @@ void ScattDataHistogram::combine(
   // matrices
   size_t order_dim = max_order;
   ScattData::base_combine(max_order, order_dim, those_scatts, scalars, in_gmin,
-                          in_gmax, sparse_mult, sparse_scatter);
+    in_gmax, sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
   init(in_gmin, in_gmax, sparse_mult, sparse_scatter);
@@ -630,10 +630,9 @@ void ScattDataHistogram::combine(
 // ScattDataTabular methods
 //==============================================================================
 
-void
-ScattDataTabular::init(const xt::xtensor<int, 1>& in_gmin,
-     const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
-     const double_3dvec& coeffs)
+void ScattDataTabular::init(const xt::xtensor<int, 1>& in_gmin,
+  const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
+  const double_3dvec& coeffs)
 {
   size_t groups = coeffs.size();
   size_t order = coeffs[0][0].size();
@@ -651,8 +650,8 @@ ScattDataTabular::init(const xt::xtensor<int, 1>& in_gmin,
   for (int gin = 0; gin < groups; gin++) {
     for (int i_gout = 0; i_gout < matrix[gin].size(); i_gout++) {
       for (int imu = 1; imu < order; imu++) {
-        scattxs[gin] += 0.5 * dmu * (matrix[gin][i_gout][imu - 1] +
-                                     matrix[gin][i_gout][imu]);
+        scattxs[gin] +=
+          0.5 * dmu * (matrix[gin][i_gout][imu - 1] + matrix[gin][i_gout][imu]);
       }
     }
   }
@@ -665,8 +664,8 @@ ScattDataTabular::init(const xt::xtensor<int, 1>& in_gmin,
     for (int i_gout = 0; i_gout < num_groups; i_gout++) {
       double norm = 0.;
       for (int imu = 1; imu < order; imu++) {
-        norm += 0.5 * dmu * (matrix[gin][i_gout][imu - 1] +
-                             matrix[gin][i_gout][imu]);
+        norm +=
+          0.5 * dmu * (matrix[gin][i_gout][imu - 1] + matrix[gin][i_gout][imu]);
       }
       in_energy[gin][i_gout] = norm;
     }
@@ -687,15 +686,15 @@ ScattDataTabular::init(const xt::xtensor<int, 1>& in_gmin,
 
       // Ensure positivity
       for (auto& val : fmu[gin][i_gout]) {
-        if (val < 0.) val = 0.;
+        if (val < 0.)
+          val = 0.;
       }
 
       // Now re-normalize for numerical integration issues and to take care of
       // the above negative fix-up.  Also accrue the CDF
       double norm = 0.;
       for (int imu = 1; imu < order; imu++) {
-        norm += 0.5 * dmu * (fmu[gin][i_gout][imu - 1] +
-                             fmu[gin][i_gout][imu]);
+        norm += 0.5 * dmu * (fmu[gin][i_gout][imu - 1] + fmu[gin][i_gout][imu]);
         // incorporate to the CDF
         dist[gin][i_gout][imu] = norm;
       }
@@ -713,8 +712,7 @@ ScattDataTabular::init(const xt::xtensor<int, 1>& in_gmin,
 
 //==============================================================================
 
-double
-ScattDataTabular::calc_f(int gin, int gout, double mu)
+double ScattDataTabular::calc_f(int gin, int gout, double mu)
 {
   double f;
   if ((gout < gmin[gin]) || (gout > gmax[gin])) {
@@ -738,9 +736,8 @@ ScattDataTabular::calc_f(int gin, int gout, double mu)
 
 //==============================================================================
 
-void
-ScattDataTabular::sample(int gin, int& gout, double& mu, double& wgt,
-                         uint64_t* seed)
+void ScattDataTabular::sample(
+  int gin, int& gout, double& mu, double& wgt, uint64_t* seed)
 {
   // Sample the outgoing energy using the base-class method
   int i_gout;
@@ -754,7 +751,8 @@ ScattDataTabular::sample(int gin, int& gout, double& mu, double& wgt,
   int k;
   for (k = 0; k < NP - 1; k++) {
     double c_k1 = dist[gin][i_gout][k + 1];
-    if (xi < c_k1) break;
+    if (xi < c_k1)
+      break;
     c_k = c_k1;
   }
 
@@ -763,16 +761,17 @@ ScattDataTabular::sample(int gin, int& gout, double& mu, double& wgt,
 
   // Find the pdf values we want
   double p0 = fmu[gin][i_gout][k];
-  double mu0 = this -> mu[k];
+  double mu0 = this->mu[k];
   double p1 = fmu[gin][i_gout][k + 1];
-  double mu1 = this -> mu[k + 1];
+  double mu1 = this->mu[k + 1];
 
   if (p0 == p1) {
     mu = mu0 + (xi - c_k) / p0;
   } else {
     double frac = (p1 - p0) / (mu1 - mu0);
-    mu = mu0 + (std::sqrt(std::max(0., p0 * p0 + 2. * frac * (xi - c_k)))
-                - p0) / frac;
+    mu =
+      mu0 +
+      (std::sqrt(std::max(0., p0 * p0 + 2. * frac * (xi - c_k))) - p0) / frac;
   }
 
   if (mu < -1.) {
@@ -787,8 +786,7 @@ ScattDataTabular::sample(int gin, int& gout, double& mu, double& wgt,
 
 //==============================================================================
 
-xt::xtensor<double, 3>
-ScattDataTabular::get_matrix(size_t max_order)
+xt::xtensor<double, 3> ScattDataTabular::get_matrix(size_t max_order)
 {
   // Get the sizes and initialize the data to 0
   size_t groups = energy.size();
@@ -800,8 +798,8 @@ ScattDataTabular::get_matrix(size_t max_order)
     for (int i_gout = 0; i_gout < energy[gin].size(); i_gout++) {
       int gout = i_gout + gmin[gin];
       for (int l = 0; l < order_dim; l++) {
-        matrix(gin, gout, l) = scattxs[gin] * energy[gin][i_gout] *
-             fmu[gin][i_gout][l];
+        matrix(gin, gout, l) =
+          scattxs[gin] * energy[gin][i_gout] * fmu[gin][i_gout][l];
       }
     }
   }
@@ -826,7 +824,7 @@ void ScattDataTabular::combine(
     }
   }
 
-  size_t groups = those_scatts[0] -> energy.size();
+  size_t groups = those_scatts[0]->energy.size();
 
   xt::xtensor<int, 1> in_gmin({groups}, 0);
   xt::xtensor<int, 1> in_gmax({groups}, 0);
@@ -838,7 +836,7 @@ void ScattDataTabular::combine(
   // matrices
   size_t order_dim = max_order;
   ScattData::base_combine(max_order, order_dim, those_scatts, scalars, in_gmin,
-                          in_gmax, sparse_mult, sparse_scatter);
+    in_gmax, sparse_mult, sparse_scatter);
 
   // Got everything we need, store it.
   init(in_gmin, in_gmax, sparse_mult, sparse_scatter);
@@ -848,8 +846,7 @@ void ScattDataTabular::combine(
 // module-level methods
 //==============================================================================
 
-void
-convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab)
+void convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab)
 {
   // See if the user wants us to figure out how many points to use
   int n_mu = settings::legendre_to_tabular_points;
@@ -880,13 +877,14 @@ convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab)
       tab.fmu[gin][i_gout].resize(n_mu);
       for (int imu = 0; imu < n_mu; imu++) {
         tab.fmu[gin][i_gout][imu] =
-             evaluate_legendre(leg.dist[gin][i_gout].size() - 1,
-                               leg.dist[gin][i_gout].data(), tab.mu[imu]);
+          evaluate_legendre(leg.dist[gin][i_gout].size() - 1,
+            leg.dist[gin][i_gout].data(), tab.mu[imu]);
       }
 
       // Ensure positivity
       for (auto& val : tab.fmu[gin][i_gout]) {
-        if (val < 0.) val = 0.;
+        if (val < 0.)
+          val = 0.;
       }
 
       // Now re-normalize for numerical integration issues and to take care of
@@ -894,8 +892,8 @@ convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab)
       double norm = 0.;
       tab.dist[gin][i_gout][0] = 0.;
       for (int imu = 1; imu < n_mu; imu++) {
-        norm += 0.5 * tab.dmu * (tab.fmu[gin][i_gout][imu - 1] +
-                                 tab.fmu[gin][i_gout][imu]);
+        norm += 0.5 * tab.dmu *
+                (tab.fmu[gin][i_gout][imu - 1] + tab.fmu[gin][i_gout][imu]);
         // incorporate to the CDF
         tab.dist[gin][i_gout][imu] = norm;
       }

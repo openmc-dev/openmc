@@ -11,8 +11,7 @@
 
 namespace openmc {
 
-void
-AzimuthalFilter::from_xml(pugi::xml_node node)
+void AzimuthalFilter::from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
 
@@ -21,12 +20,14 @@ AzimuthalFilter::from_xml(pugi::xml_node node)
     // [-pi,pi) evenly with the input being the number of bins
 
     int n_angle = bins[0];
-    if (n_angle <= 1) throw std::runtime_error{
-      "Number of bins for azimuthal filter must be greater than 1."};
+    if (n_angle <= 1)
+      throw std::runtime_error {
+        "Number of bins for azimuthal filter must be greater than 1."};
 
     double d_angle = 2.0 * PI / n_angle;
     bins.resize(n_angle + 1);
-    for (int i = 0; i < n_angle; i++) bins[i] = -PI + i * d_angle;
+    for (int i = 0; i < n_angle; i++)
+      bins[i] = -PI + i * d_angle;
     bins[n_angle] = PI;
   }
 
@@ -41,8 +42,9 @@ void AzimuthalFilter::set_bins(gsl::span<double> bins)
 
   // Copy bins, ensuring they are valid
   for (gsl::index i = 0; i < bins.size(); ++i) {
-    if (i > 0 && bins[i] <= bins[i-1]) {
-      throw std::runtime_error{"Azimuthal bins must be monotonically increasing."};
+    if (i > 0 && bins[i] <= bins[i - 1]) {
+      throw std::runtime_error {
+        "Azimuthal bins must be monotonically increasing."};
     }
     bins_.push_back(bins[i]);
   }
@@ -50,9 +52,8 @@ void AzimuthalFilter::set_bins(gsl::span<double> bins)
   n_bins_ = bins_.size() - 1;
 }
 
-void
-AzimuthalFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
-                              FilterMatch& match) const
+void AzimuthalFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   Direction u = (estimator == TallyEstimator::TRACKLENGTH) ? p.u() : p.u_last();
   double phi = std::atan2(u.y, u.x);
@@ -64,17 +65,16 @@ AzimuthalFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   }
 }
 
-void
-AzimuthalFilter::to_statepoint(hid_t filter_group) const
+void AzimuthalFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", bins_);
 }
 
-std::string
-AzimuthalFilter::text_label(int bin) const
+std::string AzimuthalFilter::text_label(int bin) const
 {
-  return fmt::format("Azimuthal Angle [{}, {})", bins_.at(bin), bins_.at(bin+1));
+  return fmt::format(
+    "Azimuthal Angle [{}, {})", bins_.at(bin), bins_.at(bin + 1));
 }
 
 } // namespace openmc

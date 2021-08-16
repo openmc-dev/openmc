@@ -1260,44 +1260,26 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
 
           if (visited_cells.count({model::cell_map[cell->id_], lattice_idx})) continue;
 
-          parent_cells.push_back({model::cell_map[cell->id_], 0});
+          parent_cells.push_back({model::cell_map[cell->id_], lattice_idx});
           univ_idx = cell->universe_;
         }
       }
       // if we've updated the universe, break
       if (prev_univ_idx != univ_idx) break;
     }
+
     // if we're at the top of the geometry and the instance matches, we're done
-    if (univ_idx == model::root_universe && this->compute_instance(parent_cells) == instance) return;
+    if (univ_idx == model::root_universe && this->compute_instance(parent_cells) == instance) break;
+
+    // if there was no match on this cell's universe, report an error
+    if (univ_idx == this->universe_) {
+      std::cout << fmt::format("Could not find the parent cells for cell {}, instance {}.", this->id_, instance) << std::endl;
+      return;
+    }
 
     // if we don't find a suitable update, adjust the stack and continue
     if (univ_idx == model::root_universe || univ_idx == prev_univ_idx) {
-
-      // if there was no match on this cell's universe, report an error
-      if (univ_idx == this->universe_) {
-        std::cout << fmt::format("Could not find the parent cells for cell {}, instance {}.", this->id_, instance) << std::endl;
-        return;
-      }
-
-      // remove previous cells from visited so we don't skip them later for a new
-      // path through the geometry hierarchy
-      if (visited_univ != -1 && univ_idx != model::root_universe) {
-        const auto& univ = model::universes[visited_univ];
-        for (auto cell_indx : univ->cells_) {
-          for (auto p_cell = visited_cells.begin(); p_cell != visited_cells.end(); p_cell++) {
-            if (p_cell->cell_index == cell_indx) visited_cells.erase(p_cell++);
-            if (p_cell == visited_cells.end()) break;
-          }
-        }
-      }
-
-      visited_cells.insert(parent_cells.back());
-      visited_univ = model::cells[parent_cells.back().cell_index]->universe_;
-      parent_cells.pop_back();
-
-      if (parent_cells.empty()) univ_idx = this->universe_;
-      else univ_idx = model::cells[parent_cells.back().cell_index]->universe_;
-    }
+     }
 
   } // end while
 

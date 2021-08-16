@@ -5,7 +5,6 @@
 #include <cctype>
 #include <cmath>
 #include <iterator>
-#include <set>
 #include <sstream>
 #include <string>
 
@@ -1223,26 +1222,21 @@ extern "C" int openmc_cell_set_name(int32_t index, const char* name)
 void
 Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const
 {
-  // clear out the list of parent cells
-  parent_cells.clear();
+  ParentCellStack stack;
   // start with this cell's universe
-  int32_t visited_univ = -1;
-  int32_t prev_univ_idx = -1;
+  int32_t prev_univ_idx = C_NONE;
   int32_t univ_idx = this->universe_;
-  int32_t search_instance = -1;
-
-  std::set<ParentCell> visited_cells;
 
   while (true) {
     const auto& univ = model::universes[univ_idx];
     prev_univ_idx = univ_idx;
     for (const auto& cell : model::cells) {
       // if this is in our current set of visited cells, move on
-      if (visited_cells.count({model::cell_map[cell->id_], -1})) continue;
+      if (stack.visited(univ_idx, {model::cell_map[cell->id_], C_NONE})) continue;
 
       if (cell->type_ == Fill::UNIVERSE) {
         if(cell->fill_ == univ_idx) {
-          parent_cells.push_back({model::cell_map[cell->id_], -1});
+          stack.push_back(univ_idx, {model::cell_map[cell->id_], C_NONE});
           univ_idx = cell->universe_;
         }
       } else if (cell->type_ == Fill::LATTICE) {
@@ -1258,9 +1252,9 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
 
           lat_it++;
 
-          if (visited_cells.count({model::cell_map[cell->id_], lattice_idx})) continue;
+          if (stack.visited(univ_idx, {model::cell_map[cell->id_], lattice_idx})) continue;
 
-          parent_cells.push_back({model::cell_map[cell->id_], lattice_idx});
+          stack.push_back(univ_idx, {model::cell_map[cell->id_], lattice_idx});
           univ_idx = cell->universe_;
         }
       }
@@ -1279,10 +1273,13 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
 
     // if we don't find a suitable update, adjust the stack and continue
     if (univ_idx == model::root_universe || univ_idx == prev_univ_idx) {
-     }
+      stack.pop_back();
+      univ_idx = stack.empty() ? this->universe_ : stack.current_univ();
+    }
 
   } // end while
 
+  parent_cells = stack.parent_cells();
   std::reverse(parent_cells.begin(), parent_cells.end());
 }
 

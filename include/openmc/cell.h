@@ -6,6 +6,7 @@
 #include <limits>
 #include <string>
 #include <unordered_map>
+#include <set>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
@@ -317,6 +318,33 @@ struct ParentCell {
 
   gsl::index cell_index;
   gsl::index lattice_index;
+};
+
+struct ParentCellStack {
+
+  void push_back(int32_t search_universe, const ParentCell& pc) {
+    parent_cells_.push_back(pc);
+    // add parent cell to the set of cells we've visited for this search universe
+    visited_cells_[search_universe].insert(pc);
+  }
+
+  void pop_back() {
+    visited_cells_[this->current_univ()].clear();
+    parent_cells_.pop_back();
+  }
+
+  bool visited(int32_t univ_idx, const ParentCell& parent_cell) {
+    return visited_cells_[univ_idx].count(parent_cell) != 0;
+  }
+
+  int32_t current_univ() const { return model::cells[parent_cells_.back().cell_index]->universe_; }
+
+  bool empty() const { return parent_cells_.empty(); }
+
+  std::vector<ParentCell> parent_cells() { return parent_cells_; }
+
+  std::vector<ParentCell> parent_cells_;
+  std::unordered_map<int32_t, std::set<ParentCell>> visited_cells_;
 };
 
 struct ParentCellHash {

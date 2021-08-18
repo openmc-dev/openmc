@@ -166,10 +166,6 @@ public:
   //! \param[in] name Cell name
   void set_name(const std::string& name) { name_ = name; };
 
-  //! Determine the path to this cell instance in the geometry hierarchy
-  vector<ParentCell>
-  find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const;
-
   //! Compute the cell's instance given a set of parent cells
   int32_t compute_instance(const vector<ParentCell>& parent_cells) const;
 
@@ -178,6 +174,11 @@ public:
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(int32_t instance=0) const;
 
 protected:
+  //! Determine the path to this cell instance in the geometry hierarchy
+  vector<ParentCell>
+  find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const;
+
+  //! Inner function for retrieving contained cells
   void get_contained_cells_inner(
     std::unordered_map<int32_t, vector<int32_t>>& contained_cells,
     vector<ParentCell>& parent_cells) const;
@@ -358,11 +359,11 @@ struct ParentCellStack {
   int32_t compute_instance(int32_t distribcell_index) const;
 
   // Accessors
-  std::vector<ParentCell>& parent_cells() { return parent_cells_; }
-  const std::vector<ParentCell>& parent_cells() const { return parent_cells_; }
+  vector<ParentCell>& parent_cells() { return parent_cells_; }
+  const vector<ParentCell>& parent_cells() const { return parent_cells_; }
 
   // Data Members
-  std::vector<ParentCell> parent_cells_;
+  vector<ParentCell> parent_cells_;
   std::unordered_map<int32_t, std::set<ParentCell>> visited_cells_;
 };
 

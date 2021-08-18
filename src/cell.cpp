@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cmath>
 #include <iterator>
+#include <set>
 #include <sstream>
 #include <string>
 

@@ -6,7 +6,7 @@
 #include <limits>
 #include <string>
 #include <unordered_map>
-#include <set>
+#include <unordered_set>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
@@ -166,12 +166,10 @@ public:
   //! \param[in] name Cell name
   void set_name(const std::string& name) { name_ = name; };
 
-  //! Compute the cell's instance given a set of parent cells
-  int32_t compute_instance(const vector<ParentCell>& parent_cells) const;
-
   //! Get all cell instances contained by this cell
   //! \return Map with cell indexes as keys and instances as values
-  std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(int32_t instance=0) const;
+  std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(
+    int32_t instance = 0) const;
 
 protected:
   //! Determine the path to this cell instance in the geometry hierarchy
@@ -312,10 +310,10 @@ private:
 //==============================================================================
 
 struct ParentCell {
-  bool operator ==(const ParentCell& other) const
+  bool operator==(const ParentCell& other) const
   { return cell_index == other.cell_index && lattice_index == other.lattice_index; }
 
-  bool operator <(const ParentCell& other) const
+  bool operator<(const ParentCell& other) const
   { return cell_index < other.cell_index || (cell_index == other.cell_index && lattice_index < other.lattice_index); }
 
   gsl::index cell_index;
@@ -364,7 +362,8 @@ struct ParentCellStack {
 
   // Data Members
   vector<ParentCell> parent_cells_;
-  std::unordered_map<int32_t, std::set<ParentCell>> visited_cells_;
+  std::unordered_map<int32_t, std::unordered_set<ParentCell, ParentCellHash>>
+    visited_cells_;
 };
 
 //==============================================================================

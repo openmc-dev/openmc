@@ -321,26 +321,41 @@ struct ParentCell {
   gsl::index lattice_index;
 };
 
+struct ParentCellHash {
+  std::size_t operator()(const ParentCell& p) const
+  {
+    return 4096*p.cell_index + p.lattice_index;
+  }
+};
+
 struct ParentCellStack {
 
+  //! push method that adds to the parent_cells visited cells for this search universe
   void push(int32_t search_universe, const ParentCell& pc) {
     parent_cells_.push_back(pc);
     // add parent cell to the set of cells we've visited for this search universe
     visited_cells_[search_universe].insert(pc);
   }
 
+  //! removes the last parent_cell and clears the visited cells for the popped cell's universe
   void pop() {
     visited_cells_[this->current_univ()].clear();
     parent_cells_.pop_back();
   }
 
-  bool visited(int32_t univ_idx, const ParentCell& parent_cell) {
-    return visited_cells_[univ_idx].count(parent_cell) != 0;
+  //! checks whether or not the parent cell has been visited already for this search universe
+  bool visited(int32_t search_universe, const ParentCell& parent_cell) {
+    return visited_cells_[search_universe].count(parent_cell) != 0;
   }
 
+  //! return the next universe to search for a parent cell
   int32_t current_univ() const { return model::cells[parent_cells_.back().cell_index]->universe_; }
 
+  //! indicates whether nor not parent cells are present on the stack
   bool empty() const { return parent_cells_.empty(); }
+
+  //! compute an instance for the provided distribcell index
+  int32_t compute_instance(int32_t distribcell_index) const;
 
   // Accessors
   std::vector<ParentCell>& parent_cells() { return parent_cells_; }
@@ -349,13 +364,6 @@ struct ParentCellStack {
   // Data Members
   std::vector<ParentCell> parent_cells_;
   std::unordered_map<int32_t, std::set<ParentCell>> visited_cells_;
-};
-
-struct ParentCellHash {
-  std::size_t operator()(const ParentCell& p) const
-  {
-    return 4096*p.cell_index + p.lattice_index;
-  }
 };
 
 //==============================================================================

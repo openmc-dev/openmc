@@ -167,7 +167,8 @@ public:
   void set_name(const std::string& name) { name_ = name; };
 
   //! Determine the path to this cell instance in the geometry hierarchy
-  void find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const;
+  vector<ParentCell>
+  find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const;
 
   //! Compute the cell's instance given a set of parent cells
   int32_t compute_instance(const vector<ParentCell>& parent_cells) const;
@@ -322,13 +323,13 @@ struct ParentCell {
 
 struct ParentCellStack {
 
-  void push_back(int32_t search_universe, const ParentCell& pc) {
+  void push(int32_t search_universe, const ParentCell& pc) {
     parent_cells_.push_back(pc);
     // add parent cell to the set of cells we've visited for this search universe
     visited_cells_[search_universe].insert(pc);
   }
 
-  void pop_back() {
+  void pop() {
     visited_cells_[this->current_univ()].clear();
     parent_cells_.pop_back();
   }
@@ -341,8 +342,11 @@ struct ParentCellStack {
 
   bool empty() const { return parent_cells_.empty(); }
 
-  std::vector<ParentCell> parent_cells() { return parent_cells_; }
+  // Accessors
+  std::vector<ParentCell>& parent_cells() { return parent_cells_; }
+  const std::vector<ParentCell>& parent_cells() const { return parent_cells_; }
 
+  // Data Members
   std::vector<ParentCell> parent_cells_;
   std::unordered_map<int32_t, std::set<ParentCell>> visited_cells_;
 };

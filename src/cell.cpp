@@ -1219,7 +1219,7 @@ extern "C" int openmc_cell_set_name(int32_t index, const char* name)
   return 0;
 }
 
-void
+vector<ParentCell>
 Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const
 {
   ParentCellStack stack;
@@ -1233,10 +1233,12 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
     for (const auto& cell : model::cells) {
       // if this is in our current set of visited cells, move on
       if (stack.visited(univ_idx, {model::cell_map[cell->id_], C_NONE})) continue;
+      // if this is a material-filled cell, move on
+      if (cell->type_ == Fill::MATERIAL) continue;
 
       if (cell->type_ == Fill::UNIVERSE) {
         if(cell->fill_ == univ_idx) {
-          stack.push_back(univ_idx, {model::cell_map[cell->id_], C_NONE});
+          stack.push(univ_idx, {model::cell_map[cell->id_], C_NONE});
           univ_idx = cell->universe_;
         }
       } else if (cell->type_ == Fill::LATTICE) {
@@ -1254,8 +1256,9 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
 
           if (stack.visited(univ_idx, {model::cell_map[cell->id_], lattice_idx})) continue;
 
-          stack.push_back(univ_idx, {model::cell_map[cell->id_], lattice_idx});
+          stack.push(univ_idx, {model::cell_map[cell->id_], lattice_idx});
           univ_idx = cell->universe_;
+          break;
         }
       }
       // if we've updated the universe, break
@@ -1263,24 +1266,24 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
     }
 
     // if we're at the top of the geometry and the instance matches, we're done
-    if (univ_idx == model::root_universe && this->compute_instance(parent_cells) == instance) break;
+    if (univ_idx == model::root_universe && this->compute_instance(stack.parent_cells()) == instance) break;
 
-    // if there was no match on this cell's universe, report an error
+    // if there was no match on the current cell's universe, report an error
     if (univ_idx == this->universe_) {
-      std::cout << fmt::format("Could not find the parent cells for cell {}, instance {}.", this->id_, instance) << std::endl;
-      return;
+      fatal_error(fmt::format("Could not find the parent cells for cell {}, instance {}.", this->id_, instance));
     }
 
     // if we don't find a suitable update, adjust the stack and continue
     if (univ_idx == model::root_universe || univ_idx == prev_univ_idx) {
-      stack.pop_back();
+      stack.pop();
       univ_idx = stack.empty() ? this->universe_ : stack.current_univ();
     }
 
   } // end while
 
-  parent_cells = stack.parent_cells();
-  std::reverse(parent_cells.begin(), parent_cells.end());
+  // reverse the stack so the highest cell comes first
+  std::reverse(stack.parent_cells().begin(), stack.parent_cells().end());
+  return stack.parent_cells();
 }
 
 int32_t Cell::compute_instance(const vector<ParentCell>& parent_cells) const {
@@ -1300,10 +1303,12 @@ int32_t Cell::compute_instance(const vector<ParentCell>& parent_cells) const {
 std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(int32_t instance) const
 {
   std::unordered_map<int32_t, vector<int32_t>> contained_cells;
-  vector<ParentCell> parent_cells;
+
+  // if this is a material-filled cell it has no contained cells
+  if (this->type_ == Fill::MATERIAL) return contained_cells;
 
   // find the pathway through the geometry to this cell
-  this->find_parent_cells(parent_cells, instance);
+  vector<ParentCell> parent_cells = this->find_parent_cells(parent_cells, instance);
 
   // if this cell is filled w/ a material, it contains no other cells
   if (type_ != Fill::MATERIAL) {
@@ -1322,7 +1327,6 @@ void Cell::get_contained_cells_inner(
   // filled by material, determine instance based on parent cells
   if (type_ == Fill::MATERIAL) {
     int instance = 0;
-    // std::cout << "Cell " << id_ << " offset: " << this->distribcell_index_ << std::endl;
     if (this->distribcell_index_ >= 0) {
       for (auto& parent_cell : parent_cells) {
         auto& cell = model::cells[parent_cell.cell_index];

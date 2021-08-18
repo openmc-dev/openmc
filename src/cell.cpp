@@ -1224,26 +1224,33 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
 {
   ParentCellStack stack;
   // start with this cell's universe
-  int32_t prev_univ_idx = C_NONE;
+  int32_t prev_univ_idx;
   int32_t univ_idx = this->universe_;
 
   while (true) {
     const auto& univ = model::universes[univ_idx];
     prev_univ_idx = univ_idx;
+
+    // search for a cell that is filled w/ this universe
     for (const auto& cell : model::cells) {
-      // if this is in our current set of visited cells, move on
-      if (stack.visited(univ_idx, {model::cell_map[cell->id_], C_NONE})) continue;
       // if this is a material-filled cell, move on
       if (cell->type_ == Fill::MATERIAL) continue;
 
       if (cell->type_ == Fill::UNIVERSE) {
+        // if this is in the set of cells previously visited for this universe, move on
+        if (stack.visited(univ_idx, {model::cell_map[cell->id_], C_NONE})) continue;
+
+        // if this cell contains the universe we're searching for, add it to the stack
         if(cell->fill_ == univ_idx) {
           stack.push(univ_idx, {model::cell_map[cell->id_], C_NONE});
           univ_idx = cell->universe_;
         }
       } else if (cell->type_ == Fill::LATTICE) {
+        // retrieve the lattice and lattice universes
         const auto& lattice = model::lattices[cell->fill_];
         const auto& lattice_univs = lattice->universes_;
+
+        // start search for universe
         auto lat_it = lattice_univs.begin();
         while (true) {
           // find the next lattice cell with this universe
@@ -1252,10 +1259,11 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
 
           int lattice_idx = lat_it - lattice_univs.begin();
 
+          // move iterator forward one to avoid finding the same entry
           lat_it++;
-
           if (stack.visited(univ_idx, {model::cell_map[cell->id_], lattice_idx})) continue;
 
+          // add this cell and lattice index to the stack and exit loop
           stack.push(univ_idx, {model::cell_map[cell->id_], lattice_idx});
           univ_idx = cell->universe_;
           break;
@@ -1263,12 +1271,12 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
       }
       // if we've updated the universe, break
       if (prev_univ_idx != univ_idx) break;
-    }
+    } // end cell loop search for universe
 
     // if we're at the top of the geometry and the instance matches, we're done
     if (univ_idx == model::root_universe && stack.compute_instance(this->distribcell_index_) == instance) break;
 
-    // if there was no match on the current cell's universe, report an error
+    // if there is no match on the original cell's universe, report an error
     if (univ_idx == this->universe_) {
       fatal_error(fmt::format("Could not find the parent cells for cell {}, instance {}.", this->id_, instance));
     }

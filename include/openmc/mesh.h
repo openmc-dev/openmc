@@ -492,7 +492,7 @@ class LibMesh : public UnstructuredMesh {
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
-  LibMesh(const std::string& filename);
+  LibMesh(const std::string& filename, const double length_multiplier = 1.0);
 
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,
@@ -533,6 +533,9 @@ private:
   //! Translate an element pointer to a bin index
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
+  //! Set the length multiplier to apply to each point in the mesh
+  void set_length_multiplier(const double length_multiplier);
+
   // Data members
   unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
   vector<unique_ptr<libMesh::PointLocatorBase>>
@@ -547,6 +550,8 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
+  double length_multiplier_ {1.0}; //!< Constant multiplication factor to apply to mesh coordinates
+  bool specified_length_multiplier_ {false};
 };
 
 #endif

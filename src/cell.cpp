@@ -1266,7 +1266,7 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
     }
 
     // if we're at the top of the geometry and the instance matches, we're done
-    if (univ_idx == model::root_universe && this->compute_instance(stack.parent_cells()) == instance) break;
+    if (univ_idx == model::root_universe && stack.compute_instance(this->distribcell_index_) == instance) break;
 
     // if there was no match on the current cell's universe, report an error
     if (univ_idx == this->universe_) {
@@ -1286,15 +1286,17 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
   return stack.parent_cells();
 }
 
-int32_t Cell::compute_instance(const vector<ParentCell>& parent_cells) const {
+int32_t
+ParentCellStack::compute_instance(int32_t distribcell_index) const
+{
   int32_t instance = 0;
-  for (const auto& parent_cell : parent_cells) {
+  for (const auto& parent_cell : this->parent_cells_) {
     auto& cell = model::cells[parent_cell.cell_index];
     if (cell->type_ == Fill::UNIVERSE) {
-      instance += cell->offset_[this->distribcell_index_];
+      instance += cell->offset_[distribcell_index];
     } else if (cell->type_ == Fill::LATTICE) {
       auto& lattice = model::lattices[cell->fill_];
-      instance += lattice->offset(this->distribcell_index_, parent_cell.lattice_index);
+      instance += lattice->offset(distribcell_index, parent_cell.lattice_index);
     }
   }
   return instance;

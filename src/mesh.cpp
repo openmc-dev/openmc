@@ -35,6 +35,7 @@
 #ifdef LIBMESH
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
+#include "libmesh/mesh_modification.h"
 #endif
 
 namespace openmc {
@@ -2141,13 +2142,30 @@ void MOABMesh::write(const std::string& base_filename) const
 
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
+  // check if a length unit multiplier was specified
+  if (check_for_node(node, "length_multiplier")) {
+    length_multiplier_ = std::stod(get_node_value(node, "length_multiplier"));
+    specified_length_multiplier_ = true;
+  }
+
   initialize();
 }
 
-LibMesh::LibMesh(const std::string& filename)
+LibMesh::LibMesh(const std::string& filename, const double length_multiplier)
 {
   filename_ = filename;
+
+  if (length_multiplier != 1.0) {
+    set_length_multiplier(length_multiplier);
+  }
+
   initialize();
+}
+
+void LibMesh::set_length_multiplier(const double length_multiplier)
+{
+  length_multiplier_ = length_multiplier;
+  specified_length_multiplier_ = true;
 }
 
 void LibMesh::initialize()
@@ -2162,6 +2180,11 @@ void LibMesh::initialize()
 
   m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
   m_->read(filename_);
+
+  if (specified_length_multiplier_) {
+    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
+  }
+
   m_->prepare_for_use();
 
   // ensure that the loaded mesh is 3 dimensional

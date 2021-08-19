@@ -492,7 +492,7 @@ class LibMesh : public UnstructuredMesh {
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
-  LibMesh(const std::string& filename, const double length_multiplier = 1.0);
+  LibMesh(const std::string& filename, double length_multiplier = 1.0);
 
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,

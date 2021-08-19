@@ -2151,7 +2151,7 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
-LibMesh::LibMesh(const std::string& filename, const double length_multiplier)
+LibMesh::LibMesh(const std::string& filename, double length_multiplier)
 {
   filename_ = filename;
 
@@ -2162,7 +2162,7 @@ LibMesh::LibMesh(const std::string& filename, const double length_multiplier)
   initialize();
 }
 
-void LibMesh::set_length_multiplier(const double length_multiplier)
+void LibMesh::set_length_multiplier(double length_multiplier)
 {
   length_multiplier_ = length_multiplier;
   specified_length_multiplier_ = true;

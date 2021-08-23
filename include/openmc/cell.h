@@ -197,7 +197,7 @@ public:
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
 
-  //! \brief Material(s) within this cel
+  //! \brief Material(s) within this cell.
   //!
   //! May be multiple materials for distribcell.
   vector<int32_t> material_;

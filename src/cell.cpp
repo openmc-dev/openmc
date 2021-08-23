@@ -1316,8 +1316,7 @@ struct ParentCellStack {
     visited_cells_;
 };
 
-vector<ParentCell>
-Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const
+vector<ParentCell> Cell::find_parent_cells(int32_t instance) const
 {
   ParentCellStack stack;
   // start with this cell's universe
@@ -1399,7 +1398,7 @@ std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(int32_t i
   if (this->type_ == Fill::MATERIAL) return contained_cells;
 
   // find the pathway through the geometry to this cell
-  vector<ParentCell> parent_cells = this->find_parent_cells(parent_cells, instance);
+  vector<ParentCell> parent_cells = this->find_parent_cells(instance);
 
   // if this cell is filled w/ a material, it contains no other cells
   if (type_ != Fill::MATERIAL) {

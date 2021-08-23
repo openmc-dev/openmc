@@ -1256,7 +1256,7 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
         while (true) {
           // find the next lattice cell with this universe
           lat_it = std::find(lat_it, lattice_univs.end(), univ_idx);
-          if (lat_it >= lattice_univs.end()) break;
+          if (lat_it == lattice_univs.end()) break;
 
           int lattice_idx = lat_it - lattice_univs.begin();
 

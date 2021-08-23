@@ -167,7 +167,9 @@ public:
   void set_name(const std::string& name) { name_ = name; };
 
   //! Get all cell instances contained by this cell
-  //! \return Map with cell indexes as keys and instances as values
+  //! \param[in] instance Instance of the cell for which to get contained cells
+  //! (default instance is zero) \return Map with cell indexes as keys and
+  //! instances as values
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(
     int32_t instance = 0) const;
 
@@ -196,7 +198,7 @@ public:
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
 
-  //! \brief Material(s) within this cell.
+  //! \brief Material(s) within this cel
   //!
   //! May be multiple materials for distribcell.
   vector<int32_t> material_;
@@ -309,6 +311,7 @@ private:
 //! Define a containing (parent) cell
 //==============================================================================
 
+//! Used to locate a universe fill in the geometry
 struct ParentCell {
   bool operator==(const ParentCell& other) const
   { return cell_index == other.cell_index && lattice_index == other.lattice_index; }
@@ -320,6 +323,7 @@ struct ParentCell {
   gsl::index lattice_index;
 };
 
+//! Structure used to insert ParentCell into hashed STL data structures
 struct ParentCellHash {
   std::size_t operator()(const ParentCell& p) const
   {
@@ -327,6 +331,8 @@ struct ParentCellHash {
   }
 };
 
+//! Used to manage a traversal stack when locating parent cells of a cell
+//! instance in the model
 struct ParentCellStack {
 
   //! push method that adds to the parent_cells visited cells for this search universe
@@ -370,6 +376,7 @@ struct ParentCellStack {
 //! Define an instance of a particular cell
 //==============================================================================
 
+//!  Stores information used to identify a unique cell in the model
 struct CellInstance {
   //! Check for equality
   bool operator==(const CellInstance& other) const
@@ -381,6 +388,8 @@ struct CellInstance {
   gsl::index instance;
 };
 
+//! Structure necessary for inserting CellInstance into hashed STL data
+//! structures
 struct CellInstanceHash {
   std::size_t operator()(const CellInstance& k) const
   {

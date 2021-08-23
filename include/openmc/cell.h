@@ -175,8 +175,7 @@ public:
 
 protected:
   //! Determine the path to this cell instance in the geometry hierarchy
-  vector<ParentCell>
-  find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const;
+  vector<ParentCell> find_parent_cells(int32_t instance) const;
 
   //! Inner function for retrieving contained cells
   void get_contained_cells_inner(

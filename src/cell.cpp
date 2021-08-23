@@ -1220,6 +1220,102 @@ extern "C" int openmc_cell_set_name(int32_t index, const char* name)
   return 0;
 }
 
+//==============================================================================
+//! Define a containing (parent) cell
+//==============================================================================
+
+//! Used to locate a universe fill in the geometry
+struct ParentCell {
+  bool operator==(const ParentCell& other) const
+  {
+    return cell_index == other.cell_index &&
+           lattice_index == other.lattice_index;
+  }
+
+  bool operator<(const ParentCell& other) const
+  {
+    return cell_index < other.cell_index ||
+           (cell_index == other.cell_index &&
+             lattice_index < other.lattice_index);
+  }
+
+  gsl::index cell_index;
+  gsl::index lattice_index;
+};
+
+//! Structure used to insert ParentCell into hashed STL data structures
+struct ParentCellHash {
+  std::size_t operator()(const ParentCell& p) const
+  {
+    return 4096 * p.cell_index + p.lattice_index;
+  }
+};
+
+//! Used to manage a traversal stack when locating parent cells of a cell
+//! instance in the model
+struct ParentCellStack {
+
+  //! push method that adds to the parent_cells visited cells for this search
+  //! universe
+  void push(int32_t search_universe, const ParentCell& pc)
+  {
+    parent_cells_.push_back(pc);
+    // add parent cell to the set of cells we've visited for this search
+    // universe
+    visited_cells_[search_universe].insert(pc);
+  }
+
+  //! removes the last parent_cell and clears the visited cells for the popped
+  //! cell's universe
+  void pop()
+  {
+    visited_cells_[this->current_univ()].clear();
+    parent_cells_.pop_back();
+  }
+
+  //! checks whether or not the parent cell has been visited already for this
+  //! search universe
+  bool visited(int32_t search_universe, const ParentCell& parent_cell)
+  {
+    return visited_cells_[search_universe].count(parent_cell) != 0;
+  }
+
+  //! return the next universe to search for a parent cell
+  int32_t current_univ() const
+  {
+    return model::cells[parent_cells_.back().cell_index]->universe_;
+  }
+
+  //! indicates whether nor not parent cells are present on the stack
+  bool empty() const { return parent_cells_.empty(); }
+
+  //! compute an instance for the provided distribcell index
+  int32_t compute_instance(int32_t distribcell_index) const
+  {
+    int32_t instance = 0;
+    for (const auto& parent_cell : this->parent_cells_) {
+      auto& cell = model::cells[parent_cell.cell_index];
+      if (cell->type_ == Fill::UNIVERSE) {
+        instance += cell->offset_[distribcell_index];
+      } else if (cell->type_ == Fill::LATTICE) {
+        auto& lattice = model::lattices[cell->fill_];
+        instance +=
+          lattice->offset(distribcell_index, parent_cell.lattice_index);
+      }
+    }
+    return instance;
+  }
+
+  // Accessors
+  vector<ParentCell>& parent_cells() { return parent_cells_; }
+  const vector<ParentCell>& parent_cells() const { return parent_cells_; }
+
+  // Data Members
+  vector<ParentCell> parent_cells_;
+  std::unordered_map<int32_t, std::unordered_set<ParentCell, ParentCellHash>>
+    visited_cells_;
+};
+
 vector<ParentCell>
 Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) const
 {
@@ -1293,22 +1389,6 @@ Cell::find_parent_cells(vector<ParentCell>& parent_cells, int32_t instance) cons
   // reverse the stack so the highest cell comes first
   std::reverse(stack.parent_cells().begin(), stack.parent_cells().end());
   return stack.parent_cells();
-}
-
-int32_t
-ParentCellStack::compute_instance(int32_t distribcell_index) const
-{
-  int32_t instance = 0;
-  for (const auto& parent_cell : this->parent_cells_) {
-    auto& cell = model::cells[parent_cell.cell_index];
-    if (cell->type_ == Fill::UNIVERSE) {
-      instance += cell->offset_[distribcell_index];
-    } else if (cell->type_ == Fill::LATTICE) {
-      auto& lattice = model::lattices[cell->fill_];
-      instance += lattice->offset(distribcell_index, parent_cell.lattice_index);
-    }
-  }
-  return instance;
 }
 
 std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(int32_t instance) const

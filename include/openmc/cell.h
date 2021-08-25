@@ -168,7 +168,8 @@ public:
 
   //! Get all cell instances contained by this cell
   //! \param[in] instance Instance of the cell for which to get contained cells
-  //! (default instance is zero) \return Map with cell indexes as keys and
+  //! (default instance is zero)
+  //! \return Map with cell indexes as keys and
   //! instances as values
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(
     int32_t instance = 0) const;

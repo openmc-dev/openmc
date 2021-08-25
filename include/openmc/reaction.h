@@ -7,7 +7,7 @@
 #include <string>
 
 #include "hdf5.h"
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/reaction_product.h"
 #include "openmc/vector.h"

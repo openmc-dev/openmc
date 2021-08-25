@@ -6,7 +6,7 @@
 #include <unordered_map>
 
 #include "pugixml.hpp"
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"

@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <utility> // for pair
 
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 
 #include "openmc/array.h"

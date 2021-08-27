@@ -57,8 +57,11 @@ def get_decay_modes(value):
         List of successive decays, e.g. ('beta-', 'neutron')
 
     """
-    return [_DECAY_MODES[int(x)][0] for x in
-            str(value).strip('0').replace('.', '')]
+    if int(value) == 10:
+        return ['unknown']
+    else:
+        return [_DECAY_MODES[int(x)][0] for x in
+                str(value).strip('0').replace('.', '')]
 
 
 class FissionProductYields(EqualityMixin):

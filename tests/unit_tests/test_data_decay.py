@@ -31,6 +31,18 @@ def u235_yields():
     return openmc.data.FissionProductYields.from_endf(filename)
 
 
+def test_get_decay_modes():
+    assert openmc.data.get_decay_modes(1.0) == ['beta-']
+    assert openmc.data.get_decay_modes(6.0) == ['sf']
+    assert openmc.data.get_decay_modes(10.0) == ['unknown']
+
+    assert openmc.data.get_decay_modes(1.5) == ['beta-', 'n']
+    assert openmc.data.get_decay_modes(1.4) == ['beta-', 'alpha']
+    assert openmc.data.get_decay_modes(1.55) == ['beta-', 'n', 'n']
+    assert openmc.data.get_decay_modes(1.555) == ['beta-', 'n', 'n', 'n']
+    assert openmc.data.get_decay_modes(2.4) == ['ec/beta+', 'alpha']
+
+
 def test_nb90_halflife(nb90):
     ufloat_close(nb90.half_life, ufloat(52560.0, 180.0))
     ufloat_close(nb90.decay_constant, log(2.)/nb90.half_life)

@@ -10,7 +10,7 @@
 #include "pugixml.hpp"
 #include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include <string>
 #include <unordered_map>

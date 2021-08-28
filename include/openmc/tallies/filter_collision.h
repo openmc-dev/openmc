@@ -1,7 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_COLLISIONS_H
 #define OPENMC_TALLIES_FILTER_COLLISIONS_H
 
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 #include <unordered_map>
 
 #include "openmc/tallies/filter.h"

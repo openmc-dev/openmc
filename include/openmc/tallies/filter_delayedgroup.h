@@ -1,7 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_DELAYEDGROUP_H
 #define OPENMC_TALLIES_FILTER_DELAYEDGROUP_H
 
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"

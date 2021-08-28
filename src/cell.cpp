@@ -10,7 +10,7 @@
 #include <string>
 
 #include <fmt/core.h>
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"

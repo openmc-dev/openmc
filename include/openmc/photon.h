@@ -7,7 +7,7 @@
 #include "openmc/vector.h"
 
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 
 #include <string>

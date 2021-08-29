@@ -382,7 +382,7 @@ If you are doing depletion analysis, you may have to set
 
 .. code-block:: python
 
-    openmc.pool.USE_MULTIPROCESSING = False
+    openmc.deplete.pool.USE_MULTIPROCESSING = False
 
 in your python file before making any calls to the integrator depending on whether
 or not your MPI is compatible with forking (e.g., see the `OpenMPI FAQ entry about

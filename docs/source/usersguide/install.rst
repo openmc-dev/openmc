@@ -387,6 +387,17 @@ i.e.
 
     CXX=mpicxx cmake /path/to/openmc
 
+If you are doing depletion analysis, you may have to set
+
+.. code-block:: python
+
+    openmc.deplete.pool.USE_MULTIPROCESSING = False
+
+in your python file before making any calls to the integrator depending on whether
+or not your MPI is compatible with forking (e.g., see the `OpenMPI FAQ entry about
+forking <https://www.open-mpi.org/faq/?category=tuning#fork-warning>`_). If it is
+not compatible, and this in not set, random hangs and crashes can result.
+
 Selecting HDF5 Installation
 +++++++++++++++++++++++++++
 

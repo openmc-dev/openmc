@@ -149,7 +149,7 @@ acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
 {nendf} {nthermal_acer_in} 0 {nace} {ndir}
 2 0 1 .{ext}/
 '{library}: {zsymam_thermal} processed by NJOY'/
-{mat} {temperature} '{data.name}' /
+{mat} {temperature} '{data.name}' {nza} /
 {zaids} /
 222 64 {mt_elastic} {elastic_type} {data.nmix} {energy_max} {iwt}/
 """
@@ -500,7 +500,8 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
                     "https://openmc.discourse.group.")
         data = _THERMAL_DATA[proper_name]
 
-    zaids = ' '.join(str(zaid) for zaid in data.zaids[:3])
+    zaids = ' '.join(str(zaid) for zaid in data.zaids)
+    nza = len(data.zaids)
 
     # Determine name of library
     library = '{}-{}.{}'.format(*ev_thermal.info['library'])

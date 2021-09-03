@@ -20,6 +20,13 @@ namespace openmc {
 //! Photon interaction data for a single element
 //==============================================================================
 
+struct Transition {
+  int primary_subshell;
+  int secondary_subshell;
+  double energy;
+  double probability;
+};
+
 class ElectronSubshell {
 public:
   // Constructors
@@ -30,12 +37,7 @@ public:
   double n_electrons;
   double binding_energy;
   xt::xtensor<double, 1> cross_section;
-
-  // Transition data
-  int n_transitions;
-  xt::xtensor<int, 2> transition_subshells;
-  xt::xtensor<double, 1> transition_energy;
-  xt::xtensor<double, 1> transition_probability;
+  std::vector<Transition> transitions;
 };
 
 class PhotonInteraction {
@@ -79,8 +81,6 @@ public:
   Tabulated1D coherent_anomalous_imag_;
 
   // Photoionization and atomic relaxation data
-  std::unordered_map<int, int> shell_map_; //!< Given a shell designator, e.g. 3, this
-                                           //!< dictionary gives an index in shells_
   std::vector<ElectronSubshell> shells_;
 
   // Compton profile data

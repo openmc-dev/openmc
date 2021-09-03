@@ -666,58 +666,71 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   *mu_positron = (rn + beta)/(rn*beta + 1.0);
 }
 
-void PhotonInteraction::atomic_relaxation(const ElectronSubshell& shell, Particle& p) const
+void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
-  // If no transitions, assume fluorescent photon from captured free electron
-  if (shell.transitions.size() == 0) {
-    double mu = 2.0*prn(p.current_seed()) - 1.0;
-    double phi = 2.0*PI*prn(p.current_seed());
+  // Stack for unprocessed holes left by transitioning electrons
+  std::array<int, MAX_STACK_SIZE> holes;
+  int n_holes = 0;
+  holes[n_holes++] = i_shell;
+
+  while (n_holes > 0)
+  {
+    // Pop the next hole off the stack
+    const auto& shell {shells_[holes[--n_holes]]};
+
+    // If no transitions, assume fluorescent photon from captured free electron
+    if (shell.transitions.size() == 0) {
+      double mu = 2.0 * prn(p.current_seed()) - 1.0;
+      double phi = 2.0 * PI * prn(p.current_seed());
+      Direction u;
+      u.x = mu;
+      u.y = std::sqrt(1.0 - mu * mu) * std::cos(phi);
+      u.z = std::sqrt(1.0 - mu * mu) * std::sin(phi);
+      double E = shell.binding_energy;
+      p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
+      continue;
+    }
+
+    // Sample transition
+    double rn = prn(p.current_seed());
+    double c = 0.0;
+    int i_transition;
+    for (i_transition = 0; i_transition < shell.transitions.size();
+         ++i_transition) {
+      c += shell.transitions[i_transition].probability;
+      if (rn < c)
+        break;
+    }
+    const auto& transition = shell.transitions[i_transition];
+
+    // Sample angle isotropically
+    double mu = 2.0 * prn(p.current_seed()) - 1.0;
+    double phi = 2.0 * PI * prn(p.current_seed());
     Direction u;
     u.x = mu;
-    u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-    u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
-    double E = shell.binding_energy;
-    p.create_secondary(p.wgt_, u, E, Particle::Type::photon);
-    return;
+    u.y = std::sqrt(1.0 - mu * mu) * std::cos(phi);
+    u.z = std::sqrt(1.0 - mu * mu) * std::sin(phi);
+
+    if (transition.secondary_subshell != -1) {
+      // Non-radiative transition -- Auger/Coster-Kronig effect
+
+      // Create auger electron
+      p.create_secondary(
+        p.wgt_, u, transition.energy, Particle::Type::electron);
+
+      // Push the hole left by emitted auger electron onto the stack
+      holes[n_holes++] = transition.secondary_subshell;
+    } else {
+      // Radiative transition -- get X-ray energy
+
+      // Create fluorescent photon
+      p.create_secondary(p.wgt_, u, transition.energy, Particle::Type::photon);
+    }
+
+    // Push the hole created by electron transitioning to the photoelectron hole
+    // onto the stack
+    holes[n_holes++] = transition.primary_subshell;
   }
-
-  // Sample transition
-  double rn = prn(p.current_seed());
-  double c = 0.0;
-  int i_transition;
-  for (i_transition = 0; i_transition < shell.transitions.size(); ++i_transition) {
-    c += shell.transitions[i_transition].probability;
-    if (rn < c) break;
-  }
-  const auto& transition = shell.transitions[i_transition];
-
-  // Sample angle isotropically
-  double mu = 2.0*prn(p.current_seed()) - 1.0;
-  double phi = 2.0*PI*prn(p.current_seed());
-  Direction u;
-  u.x = mu;
-  u.y = std::sqrt(1.0 - mu*mu)*std::cos(phi);
-  u.z = std::sqrt(1.0 - mu*mu)*std::sin(phi);
-
-  if (transition.secondary_subshell != -1) {
-    // Non-radiative transition -- Auger/Coster-Kronig effect
-
-    // Create auger electron
-    p.create_secondary(p.wgt_, u, transition.energy, Particle::Type::electron);
-
-    // Fill hole left by emitted auger electron
-    const auto& hole = shells_[transition.secondary_subshell];
-    this->atomic_relaxation(hole, p);
-  } else {
-    // Radiative transition -- get X-ray energy
-
-    // Create fluorescent photon
-    p.create_secondary(p.wgt_, u, transition.energy, Particle::Type::photon);
-  }
-
-  // Fill hole created by electron transitioning to the photoelectron hole
-  const auto& hole = shells_[transition.primary_subshell];
-  this->atomic_relaxation(hole, p);
 }
 
 //==============================================================================

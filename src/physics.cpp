@@ -332,8 +332,7 @@ void sample_photon_reaction(Particle& p)
     // Allow electrons to fill orbital and produce auger electrons
     // and fluorescent photons
     if (i_shell >= 0) {
-      const auto& shell = element.shells_[i_shell];
-      element.atomic_relaxation(shell, p);
+      element.atomic_relaxation(i_shell, p);
     }
 
     phi += PI;
@@ -347,7 +346,9 @@ void sample_photon_reaction(Particle& p)
   // Photoelectric effect
   double prob_after = prob + micro.photoelectric;
   if (prob_after > cutoff) {
-    for (const auto& shell : element.shells_) {
+    for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
+      const auto& shell {element.shells_[i_shell]};
+
       // Get grid index and interpolation factor
       int i_grid = micro.index_grid;
       double f = micro.interp_factor;
@@ -390,7 +391,7 @@ void sample_photon_reaction(Particle& p)
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
-        element.atomic_relaxation(shell, p);
+        element.atomic_relaxation(i_shell, p);
         p.event_ = TallyEvent::ABSORB;
         p.event_mt_ = 533 + shell.index_subshell;
         p.alive_ = false;

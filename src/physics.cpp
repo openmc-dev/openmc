@@ -281,7 +281,7 @@ void sample_photon_reaction(Particle& p)
   // Sample element within material
   int i_element = sample_element(p);
   const auto& micro {p.photon_xs_[i_element]};
-  const auto& element {*data::elements[i_element]};
+  const auto& element {data::elements[i_element]};
 
   // Calculate photon energy over electron rest mass equivalent
   double alpha = p.E_/MASS_ELECTRON_EV;
@@ -314,7 +314,7 @@ void sample_photon_reaction(Particle& p)
     if (i_shell == -1) {
       e_b = 0.0;
     } else {
-      e_b = element.binding_energy_[i_shell];
+      e_b = element.device_binding_energy_[i_shell];
     }
 
     // Create Compton electron
@@ -347,7 +347,7 @@ void sample_photon_reaction(Particle& p)
   double prob_after = prob + micro.photoelectric;
   if (prob_after > cutoff) {
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
-      const auto& shell {element.shells_[i_shell]};
+      const auto& shell {element.device_shells_[i_shell]};
 
       // Get grid index and interpolation factor
       int i_grid = micro.index_grid;
@@ -358,9 +358,9 @@ void sample_photon_reaction(Particle& p)
       if (i_grid < i_start) continue;
 
       // Evaluation subshell photoionization cross section
-      double xs = std::exp(shell.cross_section(i_grid - i_start) +
-        f*(shell.cross_section(i_grid + 1 - i_start) -
-        shell.cross_section(i_grid - i_start)));
+      double xs = std::exp(shell.cross_section[i_grid - i_start] +
+        f*(shell.cross_section[i_grid + 1 - i_start] -
+        shell.cross_section[i_grid - i_start]));
 
       prob += xs;
       if (prob > cutoff) {

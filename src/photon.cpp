@@ -13,6 +13,7 @@
 #include "xtensor/xoperation.hpp"
 #include "xtensor/xview.hpp"
 
+#include <algorithm> // for copy
 #include <array>
 #include <cmath>
 #include <tuple> // for tie
@@ -25,10 +26,13 @@ namespace openmc {
 
 namespace data {
 
-xt::xtensor<double, 1> compton_profile_pz;
+double* compton_profile_pz;
+size_t compton_profile_pz_size {0};
 
 std::unordered_map<std::string, int> element_map;
-std::vector<std::unique_ptr<PhotonInteraction>> elements;
+PhotonInteraction* elements;
+size_t elements_size;
+size_t elements_capacity;
 
 } // namespace data
 
@@ -39,7 +43,7 @@ std::vector<std::unique_ptr<PhotonInteraction>> elements;
 PhotonInteraction::PhotonInteraction(hid_t group)
 {
   // Set index of element in global vector
-  index_ = data::elements.size();
+  index_ = data::elements_size;
 
   // Get name of nuclide from group, removing leading '/'
   name_ = object_name(group).substr(1);
@@ -119,6 +123,10 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
   shells_.resize(n_shell);
 
+  // Size of the backend storage for atomic relaxation data
+  int n_cross_section = 0;
+  int n_transitions = 0;
+
   // Create mapping from designator to index
   std::unordered_map<int, int> shell_map;
   for (int i = 0; i < n_shell; ++i) {
@@ -133,7 +141,25 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       }
       ++j;
     }
+    shell_map[0] = -1;
+
+    // Read the size of cross sections and transitions
+    hid_t tgroup = open_group(rgroup, designator.c_str());
+    dset = open_dataset(tgroup, "xs");
+    n_cross_section += object_shape(dset)[0];
+    close_dataset(dset);
+
+    if (object_exists(tgroup, "transitions")) {
+      dset = open_dataset(tgroup, "transitions");
+      n_transitions += object_shape(dset)[0];
+      close_dataset(dset);
+    }
+    close_group(tgroup);
   }
+
+  // Reserve subshell cross section and transition storage
+  cross_section_.reserve(n_cross_section);
+  transitions_.reserve(n_transitions);
 
   for (int i = 0; i < n_shell; ++i) {
     const auto& designator {designators[i]};
@@ -150,10 +176,13 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     dset = open_dataset(tgroup, "xs");
     read_attribute(dset, "threshold_idx", shell.threshold);
     close_dataset(dset);
-    read_dataset(tgroup, "xs", shell.cross_section);
+    xt::xtensor<double, 1> xs;
+    read_dataset(tgroup, "xs", xs);
 
-    auto& xs = shell.cross_section;
     xs = xt::where(xs > 0.0, xt::log(xs), -500.0);
+    shell.cross_section =
+      {cross_section_.data() + cross_section_.size(), xs.size()};
+    cross_section_.insert(cross_section_.end(), xs.cbegin(), xs.cend());
 
     if (object_exists(tgroup, "transitions")) {
       // Determine dimensions of transitions
@@ -161,7 +190,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       auto dims = object_shape(dset);
       close_dataset(dset);
 
-      int n_transition = dims[0];
+      auto n_transition = dims[0];
       if (n_transition > 0) {
         xt::xtensor<double, 2> matrix;
         read_dataset(tgroup, "transitions", matrix);
@@ -169,16 +198,17 @@ PhotonInteraction::PhotonInteraction(hid_t group)
         // Transition probability normalization
         double norm = xt::sum(xt::col(matrix, 3))();
 
-        shell.transitions.resize(n_transition);
+        auto start = transitions_.size();
+        transitions_.resize(start + n_transition);
         for (int j = 0; j < n_transition; ++j)
         {
-            auto& transition = shell.transitions[j];
+            auto& transition = transitions_[start + j];
             transition.primary_subshell = shell_map.at(matrix(j, 0));
-            transition.secondary_subshell =
-              matrix(j, 1) == 0 ? -1 : shell_map.at(matrix(j, 1));
+            transition.secondary_subshell = shell_map.at(matrix(j, 1));
             transition.energy = matrix(j, 2);
             transition.probability = matrix(j, 3) / norm;
         }
+        shell.transitions = {transitions_.data() + start, n_transition};
       }
     }
     close_group(tgroup);
@@ -197,19 +227,23 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   read_dataset(rgroup, "J", profile_pdf_);
 
   // Get Compton profile momentum grid
-  if (data::compton_profile_pz.size() == 0) {
-    read_dataset(rgroup, "pz", data::compton_profile_pz);
+  if (data::compton_profile_pz_size == 0) {
+    xt::xtensor<double, 1> pz;
+    read_dataset(rgroup, "pz", pz);
+    data::compton_profile_pz_size = pz.size();
+    data::compton_profile_pz = new double[pz.size()];
+    std::copy(pz.cbegin(), pz.cend(), data::compton_profile_pz);
   }
   close_group(rgroup);
 
   // Create Compton profile CDF
-  auto n_profile = data::compton_profile_pz.size();
-  profile_cdf_ = xt::empty<double>({n_shell, n_profile});
+  n_profile_ = data::compton_profile_pz_size;
+  profile_cdf_ = xt::empty<double>({n_shell, n_profile_});
   for (int i = 0; i < n_shell; ++i) {
     double c = 0.0;
     profile_cdf_(i,0) = 0.0;
-    for (int j = 0; j < n_profile - 1; ++j) {
-      c += 0.5*(data::compton_profile_pz(j+1) - data::compton_profile_pz(j)) *
+    for (int j = 0; j < n_profile_ - 1; ++j) {
+      c += 0.5*(data::compton_profile_pz[j+1] - data::compton_profile_pz[j]) *
         (profile_pdf_(i,j) + profile_pdf_(i,j+1));
       profile_cdf_(i,j+1) = c;
     }
@@ -324,7 +358,7 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
     double x = MASS_ELECTRON_EV/PLANCK_C*alpha*std::sqrt(0.5*(1.0 - *mu));
 
     // Calculate S(x, Z) and S(x_max, Z)
-    double form_factor_x = incoherent_form_factor_(x);
+    double form_factor_x = this->incoherent_form_factor()(x);
     if (form_factor_xmax == 0.0) {
       form_factor_xmax = incoherent_form_factor_(MASS_ELECTRON_EV/PLANCK_C*alpha);
     }
@@ -346,20 +380,20 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
 void PhotonInteraction::compton_doppler(double alpha, double mu,
   double* E_out, int* i_shell, uint64_t* seed) const
 {
-  auto n = data::compton_profile_pz.size();
+  auto n = data::compton_profile_pz_size;
 
   int shell; // index for shell
   while (true) {
     // Sample electron shell
     double rn = prn(seed);
     double c = 0.0;
-    for (shell = 0; shell < electron_pdf_.size(); ++shell) {
-      c += electron_pdf_(shell);
+    for (shell = 0; shell < shells_.size(); ++shell) {
+      c += device_electron_pdf_[shell];
       if (rn < c) break;
     }
 
     // Determine binding energy of shell
-    double E_b = binding_energy_(shell);
+    double E_b = device_binding_energy_[shell];
 
     // Determine p_z,max
     double E = alpha*MASS_ELECTRON_EV;
@@ -377,16 +411,16 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
 
     // Determine profile cdf value corresponding to p_z,max
     double c_max;
-    if (pz_max > data::compton_profile_pz(n - 1)) {
-      c_max = profile_cdf_(shell, n - 1);
+    if (pz_max > data::compton_profile_pz[n - 1]) {
+      c_max = this->profile_cdf(shell, n - 1);
     } else {
-      int i = lower_bound_index(data::compton_profile_pz.cbegin(),
-        data::compton_profile_pz.cend(), pz_max);
-      double pz_l = data::compton_profile_pz(i);
-      double pz_r = data::compton_profile_pz(i + 1);
-      double p_l = profile_pdf_(shell, i);
-      double p_r = profile_pdf_(shell, i + 1);
-      double c_l = profile_cdf_(shell, i);
+      int i = lower_bound_index(data::compton_profile_pz,
+        data::compton_profile_pz + data::compton_profile_pz_size, pz_max);
+      double pz_l = data::compton_profile_pz[i];
+      double pz_r = data::compton_profile_pz[i + 1];
+      double p_l = this->profile_pdf(shell, i);
+      double p_r = this->profile_pdf(shell, i + 1);
+      double c_l = this->profile_cdf(shell, i);
       if (pz_l == pz_r) {
         c_max = c_l;
       } else if (p_l == p_r) {
@@ -401,13 +435,13 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
     c = prn(seed)*c_max;
 
     // Determine pz corresponding to sampled cdf value
-    auto cdf_shell = xt::view(profile_cdf_, shell, xt::all());
-    int i = lower_bound_index(cdf_shell.cbegin(), cdf_shell.cend(), c);
-    double pz_l = data::compton_profile_pz(i);
-    double pz_r = data::compton_profile_pz(i + 1);
-    double p_l = profile_pdf_(shell, i);
-    double p_r = profile_pdf_(shell, i + 1);
-    double c_l = profile_cdf_(shell, i);
+    auto cdf_shell = device_profile_cdf_ + shell * n_profile_;
+    int i = lower_bound_index(cdf_shell, cdf_shell + shells_.size(), c);
+    double pz_l = data::compton_profile_pz[i];
+    double pz_r = data::compton_profile_pz[i + 1];
+    double p_l = this->profile_pdf(shell, i);
+    double p_r = this->profile_pdf(shell, i + 1);
+    double c_l = this->profile_cdf(shell, i);
     double pz;
     if (pz_l == pz_r) {
       pz = pz_l;
@@ -464,33 +498,35 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   int n_grid = energy_.size();
   double log_E = std::log(p.E_);
   int i_grid;
-  if (log_E <= energy_[0]) {
+  if (log_E <= device_energy_[0]) {
     i_grid = 0;
-  } else if (log_E > energy_(n_grid - 1)) {
+  } else if (log_E > device_energy_[n_grid - 1]) {
     i_grid = n_grid - 2;
   } else {
     // We use upper_bound_index here because sometimes photons are created with
     // energies that exactly match a grid point
-    i_grid = upper_bound_index(energy_.cbegin(), energy_.cend(), log_E);
+    i_grid =
+      upper_bound_index(device_energy_, device_energy_ + energy_.size(), log_E);
   }
 
   // check for case where two energy points are the same
-  if (energy_(i_grid) == energy_(i_grid+1)) ++i_grid;
+  if (device_energy_[i_grid] == device_energy_[i_grid+1]) ++i_grid;
 
   // calculate interpolation factor
-  double f = (log_E - energy_(i_grid)) / (energy_(i_grid+1) - energy_(i_grid));
+  double f = (log_E - device_energy_[i_grid]) /
+             (device_energy_[i_grid + 1] - device_energy_[i_grid]);
 
   auto& xs {p.photon_xs_[index_]};
   xs.index_grid = i_grid;
   xs.interp_factor = f;
 
   // Calculate microscopic coherent cross section
-  xs.coherent = std::exp(coherent_(i_grid) +
-    f*(coherent_(i_grid+1) - coherent_(i_grid)));
+  xs.coherent = std::exp(device_coherent_[i_grid] +
+    f*(device_coherent_[i_grid+1] - device_coherent_[i_grid]));
 
   // Calculate microscopic incoherent cross section
-  xs.incoherent = std::exp(incoherent_(i_grid) +
-    f*(incoherent_(i_grid+1) - incoherent_(i_grid)));
+  xs.incoherent = std::exp(device_incoherent_[i_grid] +
+    f*(device_incoherent_[i_grid+1] - device_incoherent_[i_grid]));
 
   // Calculate microscopic photoelectric cross section
   xs.photoelectric = 0.0;
@@ -501,16 +537,16 @@ void PhotonInteraction::calculate_xs(Particle& p) const
 
     // Evaluation subshell photoionization cross section
     xs.photoelectric +=
-      std::exp(shell.cross_section(i_grid-i_start) +
-      f*(shell.cross_section(i_grid+1-i_start) -
-      shell.cross_section(i_grid-i_start)));
+      std::exp(shell.cross_section[i_grid-i_start] +
+      f*(shell.cross_section[i_grid+1-i_start] -
+      shell.cross_section[i_grid-i_start]));
   }
 
   // Calculate microscopic pair production cross section
   xs.pair_production = std::exp(
-    pair_production_total_(i_grid) + f*(
-    pair_production_total_(i_grid+1) -
-    pair_production_total_(i_grid)));
+    device_pair_production_total_[i_grid] + f*(
+    device_pair_production_total_[i_grid+1] -
+    device_pair_production_total_[i_grid]));
 
   // Calculate microscopic total cross section
   xs.total = xs.coherent + xs.incoherent + xs.photoelectric + xs.pair_production;
@@ -525,14 +561,15 @@ double PhotonInteraction::rayleigh_scatter(double alpha, uint64_t* seed) const
     double x2_max = std::pow(MASS_ELECTRON_EV/PLANCK_C*alpha, 2);
 
     // Determine F(x^2_max, Z)
-    double F_max = coherent_int_form_factor_(x2_max);
+    auto form_factor = this->coherent_int_form_factor();
+    double F_max = form_factor(x2_max);
 
     // Sample cumulative distribution
     double F = prn(seed)*F_max;
 
     // Determine x^2 corresponding to F
-    const auto& x {coherent_int_form_factor_.x()};
-    const auto& y {coherent_int_form_factor_.y()};
+    const auto& x {form_factor.x()};
+    const auto& y {form_factor.y()};
     int i = lower_bound_index(y.cbegin(), y.cend(), F);
     double r = (F - y[i]) / (y[i+1] - y[i]);
     double x2 = x[i] + r*(x[i+1] - x[i]);
@@ -676,7 +713,7 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
   while (n_holes > 0)
   {
     // Pop the next hole off the stack
-    const auto& shell {shells_[holes[--n_holes]]};
+    const auto& shell {device_shells_[holes[--n_holes]]};
 
     // If no transitions, assume fluorescent photon from captured free electron
     if (shell.transitions.size() == 0) {
@@ -731,6 +768,109 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
     // onto the stack
     holes[n_holes++] = transition.primary_subshell;
   }
+}
+
+void PhotonInteraction::copy_to_device()
+{
+  // Microscopic cross sections
+  device_energy_ = energy_.data();
+  device_coherent_ = coherent_.data();
+  device_incoherent_ = incoherent_.data();
+  device_pair_production_total_ = pair_production_total_.data();
+  #pragma omp target enter data map(to: device_energy_[:energy_.size()])
+  #pragma omp target enter data map(to: device_coherent_[:coherent_.size()])
+  #pragma omp target enter data map(to: device_incoherent_[:incoherent_.size()])
+  #pragma omp target enter data map(to: device_pair_production_total_[:pair_production_total_.size()])
+
+  // Form factors
+  size_t offset = 8 + buffer_nbytes(incoherent_form_factor_);
+  buffer_.reserve(offset + buffer_nbytes(coherent_int_form_factor_));
+  buffer_.add(offset); // offset for coherent
+  incoherent_form_factor_.serialize(buffer_);
+  coherent_int_form_factor_.serialize(buffer_);
+  buffer_.copy_to_device();
+
+  // Atomic relaxation data
+  device_shells_ = shells_.data();
+  device_cross_section_ = cross_section_.data();
+  device_transitions_ = transitions_.data();
+  #pragma omp target enter data map(to: device_shells_[:shells_.size()])
+  #pragma omp target enter data map(to: device_cross_section_[:cross_section_.size()])
+  #pragma omp target enter data map(to: device_transitions_[:transitions_.size()])
+
+  // Set the device pointers for cross sections and transitions
+  #pragma omp target
+  {
+    int xs_offset = 0;
+    int tr_offset = 0;
+    for (int i = 0; i < shells_.size(); ++i) {
+      auto& shell = device_shells_[i];
+
+      // Set photoionization cross sections pointers
+      auto xs_size = shell.cross_section.size();
+      shell.cross_section = {device_cross_section_ + xs_offset, xs_size};
+      xs_offset += xs_size;
+
+      // Set transition pointers
+      auto tr_size = shell.transitions.size();
+      shell.transitions = {device_transitions_ + tr_offset, tr_size};
+      tr_offset += tr_size;
+    }
+  }
+
+  // Compton profile data
+  device_profile_pdf_ = profile_pdf_.data();
+  device_profile_cdf_ = profile_cdf_.data();
+  device_binding_energy_ = binding_energy_.data();
+  device_electron_pdf_ = electron_pdf_.data();
+  #pragma omp target enter data map(to: device_profile_pdf_[:profile_pdf_.size()])
+  #pragma omp target enter data map(to: device_profile_cdf_[:profile_cdf_.size()])
+  #pragma omp target enter data map(to: device_binding_energy_[:binding_energy_.size()])
+  #pragma omp target enter data map(to: device_electron_pdf_[:electron_pdf_.size()])
+}
+
+void PhotonInteraction::release_from_device()
+{
+  // Microscopic cross sections
+  #pragma omp target exit data map(release: device_energy_[:energy_.size()])
+  #pragma omp target exit data map(release: device_coherent_[:coherent_.size()])
+  #pragma omp target exit data map(release: device_incoherent_[:incoherent_.size()])
+  #pragma omp target exit data map(release: device_pair_production_total_[:pair_production_total_.size()])
+
+  // Form factors
+  buffer_.release_device();
+
+  // Atomic relaxation data
+  #pragma omp target exit data map(release: device_shells_[:shells_.size()])
+  #pragma omp target exit data map(release: device_cross_section_[:cross_section_.size()])
+  #pragma omp target exit data map(release: device_transitions_[:transitions_.size()])
+
+  // Compton profile data
+  #pragma omp target exit data map(release: device_profile_pdf_[:profile_pdf_.size()])
+  #pragma omp target exit data map(release: device_profile_cdf_[:profile_cdf_.size()])
+  #pragma omp target exit data map(release: device_binding_energy_[:binding_energy_.size()])
+  #pragma omp target exit data map(release: device_electron_pdf_[:electron_pdf_.size()])
+}
+
+Tabulated1DFlat PhotonInteraction::incoherent_form_factor() const
+{
+  return Tabulated1DFlat(buffer_.data_ + 16);
+}
+
+Tabulated1DFlat PhotonInteraction::coherent_int_form_factor() const
+{
+  auto offset = *reinterpret_cast<const size_t*>(buffer_.data_);
+  return Tabulated1DFlat(buffer_.data_ + offset);
+}
+
+double PhotonInteraction::profile_pdf(gsl::index i, gsl::index j) const
+{
+  return *(device_profile_pdf_ + i * n_profile_ + j);
+}
+
+double PhotonInteraction::profile_cdf(gsl::index i, gsl::index j) const
+{
+  return *(device_profile_cdf_ + i * n_profile_ + j);
 }
 
 //==============================================================================
@@ -794,8 +934,14 @@ std::pair<double, double> klein_nishina(double alpha, uint64_t* seed)
 
 void free_memory_photon()
 {
-  data::elements.clear();
-  data::compton_profile_pz.resize({0});
+  for (int i = 0; i < data::elements_size; ++i) {
+    data::elements[i].~PhotonInteraction();
+  }
+  free(data::elements);
+  data::elements_capacity = 0;
+  data::elements_size = 0;
+  free(data::compton_profile_pz);
+  data::compton_profile_pz_size = 0;
   data::ttb_e_grid.resize({0});
   data::ttb_k_grid.resize({0});
 }

@@ -1198,7 +1198,7 @@ nuclides_size()
 extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 {
   if (data::nuclide_map.find(name) == data::nuclide_map.end() ||
-      data::nuclide_map.at(name) >= data::elements.size()) {
+      data::nuclide_map.at(name) >= data::elements_size) {
     LibraryKey key {Library::Type::neutron, name};
     const auto& it = data::library_map.find(key);
     if (it == data::library_map.end()) {
@@ -1233,7 +1233,7 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
     if (settings::photon_transport) {
       auto element = to_element(name);
       if (data::element_map.find(element) == data::element_map.end() ||
-          data::element_map.at(element) >= data::elements.size()) {
+          data::element_map.at(element) >= data::elements_size) {
         // Read photon interaction data from HDF5 photon library
         LibraryKey key {Library::Type::photon, element};
         const auto& it = data::library_map.find(key);
@@ -1252,7 +1252,8 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 
         // Read element data from HDF5
         hid_t group = open_group(file_id, element.c_str());
-        data::elements.push_back(std::make_unique<PhotonInteraction>(group));
+        new(data::elements + data::elements_size) PhotonInteraction(group);
+        ++data::elements_size;
 
         close_group(group);
         file_close(file_id);

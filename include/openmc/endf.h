@@ -121,11 +121,11 @@ public:
   double operator()(double x) const;
   #pragma omp end declare target
 
+  gsl::span<const double> x() const;
+  gsl::span<const double> y() const;
 private:
   gsl::span<const int> nbt() const;
   Interpolation interp(gsl::index i) const;
-  gsl::span<const double> x() const;
-  gsl::span<const double> y() const;
 
   const uint8_t* data_;
   size_t n_regions_;

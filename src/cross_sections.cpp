@@ -192,6 +192,12 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
   data::nuclides = static_cast<Nuclide*>(malloc(data::nuclides_capacity * sizeof(Nuclide)));
   data::thermal_scatt.reserve(data::thermal_scatt_map.size());
 
+  // Set the size of the elements array
+  data::elements_capacity = data::element_map.size();
+  data::elements_size = 0;
+  data::elements = static_cast<PhotonInteraction*>(
+    malloc(data::elements_capacity * sizeof(PhotonInteraction)));
+
   std::unordered_set<std::string> already_read;
 
   // Construct a vector of nuclide names because we haven't loaded nuclide data

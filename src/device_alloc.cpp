@@ -7,6 +7,7 @@
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
+#include "openmc/photon.h"
 #include "openmc/simulation.h"
 #include "openmc/thermal.h"
 
@@ -151,6 +152,19 @@ void move_read_only_data_to_device()
     ts.copy_to_device();
   }
 
+  // Photon data /////////////////////////////////////////////////////
+
+  #pragma omp target update to(data::compton_profile_pz_size)
+  #pragma omp target enter data map(to: data::compton_profile_pz[:data::compton_profile_pz_size])
+
+  #pragma omp target update to(data::elements_size)
+  #pragma omp target enter data map(to: data::elements[:data::elements_size])
+  for (int i = 0; i < data::elements_size; ++i) {
+    auto& elm = data::elements[i];
+    std::cout << "Moving " << elm.name_ << " data to device..." << std::endl;
+    elm.copy_to_device();
+  }
+
   // Materials /////////////////////////////////////////////////////////
 
   std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
@@ -183,6 +197,10 @@ void release_data_from_device()
   std::cout << "Releasing data from device..." << std::endl;
   for (int i = 0; i < data::nuclides_size; ++i) {
     data::nuclides[i].release_from_device();
+  }
+
+  for (int i = 0; i < data::elements_size; ++i) {
+    data::elements[i].release_from_device();
   }
 }
 

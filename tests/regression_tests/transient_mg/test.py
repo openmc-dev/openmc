@@ -180,11 +180,11 @@ def test_transient():
     uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
     model.settings.source = openmc.source.Source(space=uniform_dist)
 
-    sourcepoint = dict()
-    sourcepoint['batches'] = [model.settings.batches]
-    sourcepoint['separate'] = True
-    sourcepoint['write'] = True
-    model.settings.sourcepoint = sourcepoint
+    model.settings.sourcepoint = {
+        'batches': [model.settings.batches],
+        'separate': True,
+        'write': True
+    }
 
     full_pin_cell_mesh = openmc.RegularMesh()
     full_pin_cell_mesh.dimension = [1,1,20]

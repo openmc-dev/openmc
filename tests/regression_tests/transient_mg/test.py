@@ -19,17 +19,9 @@ class TransientTestHarness(PyAPITestHarness):
     """Specialized TestHarness for running OpenMC transient tests."""
 
     def __init__(self, solver, log_name, model=None, inputs_true=None, statepoint_name=None):
-        super().__init__(statepoint_name)
+        super().__init__(statepoint_name, model, inputs_true)
         self.solver = solver
         self._log_name = log_name
-
-        if model is None:
-            self._model = pwr_core()
-        else:
-            self._model = model
-        self._model.plots = []
-
-        self.inputs_true = "inputs_true.dat" if not inputs_true else inputs_true
 
     def _cleanup(self):
         """Delete XMLs, statepoints, tally, and test files."""

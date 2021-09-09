@@ -110,7 +110,6 @@ solver.condense_dif_coef            = True
 solver.chi_delayed_by_delayed_group = True
 solver.chi_delayed_by_mesh          = False
 solver.use_pregenerated_sps         = False
-solver.job_file                     = 'job_broadwell.pbs'
 solver.log_file_name                = 'log_file.h5'
 
 # Solve transient problem

@@ -227,9 +227,11 @@ private:
   int g_last_;    //!< pre-collision energy group (MG only)
 
   // Other physical data
-  double wgt_ {1.0};  //!< particle weight
-  double mu_;         //!< angle of scatter
-  bool alive_ {true}; //!< is particle alive?
+  double wgt_ {1.0};       //!< particle weight
+  double mu_;              //!< angle of scatter
+  double time_ {0.0};      //!< time in [s]
+  double time_last_ {0.0}; //!< previous time in [s]
+  bool alive_ {true};      //!< is particle alive?
 
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or
@@ -349,6 +351,10 @@ public:
   double& wgt() { return wgt_; }
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
+  double& time() { return time_; }
+  const double& time() const { return time_; }
+  double& time_last() { return time_last_; }
+  const double& time_last() const { return time_last_; }
   bool& alive() { return alive_; }
 
   Position& r_last_current() { return r_last_current_; }

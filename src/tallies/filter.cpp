@@ -29,6 +29,7 @@
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_sptl_legendre.h"
 #include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_time.h"
 #include "openmc/tallies/filter_universe.h"
 #include "openmc/tallies/filter_zernike.h"
 #include "openmc/xml_interface.h"
@@ -151,6 +152,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<SpatialLegendreFilter>(id);
   } else if (type == "sphericalharmonics") {
     return Filter::create<SphericalHarmonicsFilter>(id);
+  } else if (type == "time") {
+    return Filter::create<TimeFilter>(id);
   } else if (type == "universe") {
     return Filter::create<UniverseFilter>(id);
   } else if (type == "zernike") {

@@ -1,25 +1,28 @@
 import numpy as np
+import os
 import openmc
 import openmc.mgxs
 import openmc.kinetics as kinetics
 
-from geometry_pin import geometry
+from geometry_2d_mg import materials, surfaces, universes, cells, lattices, geometry, mgxs_lib_file
+from mgxs_lib import mgxs_data
 materials_file = openmc.Materials(geometry.get_all_materials().values())
+os.environ['OPENMC_MG_CROSS_SECTIONS'] = 'mgxs.h5'
 
 ###############################################################################
 # Define problem settings
 
 settings_file = openmc.Settings()
-settings_file.batches = 200
-settings_file.inactive = 100
+settings_file.batches = 100
+settings_file.inactive = 40
 settings_file.particles = 1000
 settings_file.output = {'tallies': False}
 settings_file.seed = 1
+settings_file.energy_mode = 'multi-group'
 
 # Create an initial uniform spatial source distribution over fissionable zones
-lower_left = [-0.62992, -0.62992, -182.88]
-upper_right = [0.62992, 0.62992, 182.88]
-uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
+source_bounds  = [-32.13, -10.71, -64.26, 10.71,  32.13,  64.26]
+uniform_dist = openmc.stats.Box(source_bounds[:3], source_bounds[3:], only_fissionable=True)
 settings_file.source = openmc.source.Source(space=uniform_dist)
 
 sourcepoint = dict()
@@ -31,9 +34,9 @@ settings_file.sourcepoint = sourcepoint
 # For source convergence checks, add a mesh that can be used to calculate the
 # Shannon entropy
 entropy_mesh = openmc.RegularMesh()
-entropy_mesh.lower_left = lower_left
-entropy_mesh.upper_right = upper_right
-entropy_mesh.dimension = [1,1,30]
+entropy_mesh.lower_left  = source_bounds[:3]
+entropy_mesh.upper_right = source_bounds[3:]
+entropy_mesh.dimension = [4,4,1]
 settings_file.entropy_mesh = entropy_mesh
 
 ###############################################################################
@@ -41,9 +44,15 @@ settings_file.entropy_mesh = entropy_mesh
 
 # Create pin cell mesh
 full_pin_cell_mesh = openmc.RegularMesh()
-full_pin_cell_mesh.dimension = [1,1,30]
-full_pin_cell_mesh.lower_left = [-0.62992,-0.62992,-182.88]
-full_pin_cell_mesh.width =[0.62992*2,0.62992*2,12.192]
+full_pin_cell_mesh.dimension = [51,51,1]
+full_pin_cell_mesh.lower_left  = [-32.13, -32.13, -64.26]
+full_pin_cell_mesh.width = [1.26,  1.26,  128.52]
+
+# Create assembly mesh
+full_assembly_mesh = openmc.RegularMesh()
+full_assembly_mesh.dimension = [3,3,1]
+full_assembly_mesh.lower_left  = [-32.13, -32.13, -64.26]
+full_assembly_mesh.width = [ 21.42,  21.42,  128.52]
 
 # Instantiate an EnergyGroups object for the diffuion coefficients
 fine_groups = openmc.mgxs.EnergyGroups()
@@ -70,7 +79,7 @@ for material in materials_file:
             'density': material.density,
             'temperature': material.temperature
         }
-    if material.name == 'Moderator':
+    if material.name == 'Moderator Bank 1':
         transient[material.name][0.5]['density'] = material.density*0.9
 
 for cell in geometry.get_all_cells().values():
@@ -81,9 +90,9 @@ for cell in geometry.get_all_cells().values():
 		}
 
 # Instantiate a kinetics solver object
-solver = openmc.kinetics.Solver(directory='PIN_TD')
+solver = openmc.kinetics.Solver(directory='C5G7_TD_MG')
 solver.num_delayed_groups           = 6
-solver.amplitude_mesh               = full_pin_cell_mesh
+solver.amplitude_mesh               = full_assembly_mesh
 solver.shape_mesh                   = full_pin_cell_mesh
 solver.tally_mesh                   = full_pin_cell_mesh
 solver.one_group                    = one_group
@@ -95,11 +104,12 @@ solver.settings                     = settings_file
 solver.materials                    = materials_file
 solver.transient                    = transient
 solver.outer_tolerance              = np.inf
+solver.mgxs_lib                     = mgxs_lib_file
 solver.method                       = 'adiabatic'
-solver.multi_group                  = False
+solver.multi_group                  = True
 solver.clock                        = clock
 solver.run_kwargs                   = {'threads': 1, 'mpi_args': None}
-solver.core_volume                  = np.pi*0.39218**2*365.76
+solver.core_volume                  = 42.84 * 42.84 * 128.52
 solver.min_outer_iters              = 1
 solver.use_pcmfd                    = False
 solver.use_agd                      = False
@@ -109,4 +119,5 @@ solver.chi_delayed_by_mesh          = False
 solver.use_pregenerated_sps         = False
 solver.log_file_name                = 'log_file.h5'
 
+# Solve transient problem
 solver.solve()

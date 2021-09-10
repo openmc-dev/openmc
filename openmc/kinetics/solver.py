@@ -826,10 +826,10 @@ class Solver:
 
         # Create the xml files
         self.geometry.time = self.clock.times[time_point]
+        time = round(self.geometry.time,4)
 
         materials_list = []
         for material in self.materials:
-            time = round(self.geometry.time,4)
             if settings.energy_mode == 'multi-group':
                 material.set_density('macro',self.transient[material.name][time]['density'])
             else:
@@ -837,6 +837,13 @@ class Solver:
             material.temperature = self.transient[material.name][time]['temperature']
             materials_list.append(material)
         self.materials = openmc.Materials(materials_list)
+
+        cells_list = []
+        for cell in self.geometry.get_all_cells().values():
+            if self.transient[cell.name][time]['translation']:
+                cell.translation = self.transient[cell.name][time]['translation']
+            cells_list.append(cell)
+        self.geometry = openmc.Geometry(cells_list)
         
         self.geometry.export_to_xml(self.directory / 'geometry.xml')
         self.materials.export_to_xml(self.directory / 'materials.xml')

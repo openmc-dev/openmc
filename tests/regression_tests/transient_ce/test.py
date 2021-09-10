@@ -141,6 +141,11 @@ def test_transient():
         if material.name == 'Water':
             transient[material.name][0.5]['density'] = material.density*0.9
 
+    for cell in model.geometry.get_all_cells().values():
+        transient[cell.name] = {}
+        for t in t_outer:
+            transient[cell.name][t] = {'translation': None}
+
     # Initialize solver object 
     solver = openmc.kinetics.Solver()
     solver.amplitude_mesh  = full_pin_cell_mesh

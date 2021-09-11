@@ -331,6 +331,15 @@ public:
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
 
+protected:
+  //! Set the length multiplier to apply to each point in the mesh
+  void set_length_multiplier(const double length_multiplier);
+
+  // Data members
+  double length_multiplier_ {
+    1.0}; //!< Constant multiplication factor to apply to mesh coordinates
+  bool specified_length_multiplier_ {false};
+
 private:
   //! Setup method for the mesh. Builds data structures,
   //! sets up element mapping, creates bounding boxes, etc.
@@ -344,7 +353,7 @@ public:
   // Constructors
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
-  MOABMesh(const std::string& filename);
+  MOABMesh(const std::string& filename, double length_multiplier = 1.0);
   MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
 
   // Overridden Methods
@@ -533,9 +542,6 @@ private:
   //! Translate an element pointer to a bin index
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
-  //! Set the length multiplier to apply to each point in the mesh
-  void set_length_multiplier(const double length_multiplier);
-
   // Data members
   unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
   vector<unique_ptr<libMesh::PointLocatorBase>>
@@ -550,8 +556,6 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
-  double length_multiplier_ {1.0}; //!< Constant multiplication factor to apply to mesh coordinates
-  bool specified_length_multiplier_ {false};
 };
 
 #endif

@@ -140,8 +140,27 @@ void sample_neutron_reaction(Particle& p)
 
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
-  scatter(p, i_nuclide);
 
+#ifdef NCRYSTAL
+  if (model::materials[p.material_]->m_NCrystal_mat_ != nullptr && p.E() < settings::ncrystal_max_energy){
+
+    NcrystalRNG_Wrapper rng(p.current_seed()); // Initialize RNG
+    //create a cache pointer for multi thread physics
+    NCrystal::CachePtr dummyCache;//fixme: avoid recreating here (triggers malloc)
+    auto nc_energy = NCrystal::NeutronEnergy{p.E()};
+    auto outcome = model::materials[p.material_]->m_NCrystal_mat_->sampleScatter( dummyCache, rng , nc_energy, {p.u().x, p.u().y, p.u().z});
+    p.E_last() = p.E();
+    p.E() = outcome.ekin.get();
+    Direction u_old {p.u()};
+    p.u() = Direction(outcome.direction[0], outcome.direction[1], outcome.direction[2]);
+    p.mu_ = u_old.dot(p.u());
+    p.event_mt_ = ELASTIC;//fixme: define a new label for NCrystal?
+  } else {
+    scatter(p, i_nuclide);
+  }
+#else
+  scatter(p, i_nuclide);
+#endif
   // Advance URR seed stream 'N' times after energy changes
   if (p.E() != p.E_last()) {
     p.stream() = STREAM_URR_PTABLE;

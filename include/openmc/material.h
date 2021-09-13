@@ -15,6 +15,10 @@
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
+#ifdef NCRYSTAL
+#include "NCrystal/NCrystal.hh"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -157,6 +161,10 @@ public:
   std::string name_;                    //!< Name of material
   vector<int> nuclide_;                 //!< Indices in nuclides vector
   vector<int> element_;                 //!< Indices in elements vector
+#ifdef NCRYSTAL
+  std::string cfg_; //!< NCrystal configuration string
+  std::shared_ptr<const NCrystal::ProcImpl::Process> m_NCrystal_mat_;
+#endif
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_;                      //!< Total atom density in [atom/b-cm]
   double density_gpcc_;                 //!< Total atom density in [g/cm^3]

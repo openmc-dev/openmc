@@ -60,6 +60,14 @@ Material::Material(pugi::xml_node node)
     name_ = get_node_value(node, "name");
   }
 
+#ifdef NCRYSTAL
+  if (check_for_node(node, "cfg")) {
+    cfg_ = get_node_value(node, "cfg");
+    write_message(5, "NCrystal config string: >>{}<< ", cfg_);
+    m_NCrystal_mat_  = NCrystal::FactImpl::createScatter(cfg_);
+  }
+#endif
+
   if (check_for_node(node, "depletable")) {
     depletable_ = get_node_value_bool(node, "depletable");
   }
@@ -792,6 +800,17 @@ void Material::calculate_neutron_xs(Particle& p) const
   // Initialize position in i_sab_nuclides
   int j = 0;
 
+#ifdef NCRYSTAL
+  double ncrystal_xs = -1;
+
+  if (m_NCrystal_mat_ != nullptr && p.E() < settings::ncrystal_max_energy){
+    // Calculate scattering XS per atom with NCrystal, only once per material
+    NCrystal::CachePtr dummyCache;
+    auto nc_energy = NCrystal::NeutronEnergy{p.E()};
+    ncrystal_xs = m_NCrystal_mat_->crossSection( dummyCache, nc_energy,  {p.u().x, p.u().y, p.u().z}).get();
+  }
+#endif
+
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
     // ======================================================================
@@ -830,10 +849,25 @@ void Material::calculate_neutron_xs(Particle& p) const
     int i_nuclide = nuclide_[i];
 
     // Calculate microscopic cross section for this nuclide
-    const auto& micro {p.neutron_xs(i_nuclide)};
+#ifndef NCRYSTAL
+    const
+#endif
+    auto& micro {p.neutron_xs(i_nuclide)};
     if (p.E() != micro.last_E || p.sqrtkT() != micro.last_sqrtkT ||
         i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
       data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);
+#ifdef NCRYSTAL
+      if (ncrystal_xs >= 0.0){
+        if ( micro.thermal > 0 || micro.thermal_elastic > 0) {
+            fatal_error("S(a,b) treatment and NCrystal are not compatible.");
+         }
+         data::nuclides[i_nuclide]->calculate_elastic_xs(p);
+         // remove free atom cross section
+         // and replace it by scattering cross section per atom from NCrystal
+         micro.total = micro.total - micro.elastic + ncrystal_xs;
+         micro.elastic = ncrystal_xs;
+      }
+#endif
     }
 
     // ======================================================================

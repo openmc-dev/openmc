@@ -118,6 +118,7 @@ class Material(IDManagerMixin):
         self._volume = None
         self._atoms = {}
         self._isotropic = []
+        self._NCrystal_cfg = None
 
         # A list of tuples (nuclide, percent, percent type)
         self._nuclides = []
@@ -139,6 +140,8 @@ class Material(IDManagerMixin):
         string += f' [{self._density_units}]\n'
 
         string += '{: <16}\n'.format('\tS(a,b) Tables')
+
+        string += '{: <16}=\t{}\n'.format('\tNCrystal conf', self._NCrystal_cfg)
 
         for sab in self._sab:
             string += '{: <16}=\t{}\n'.format('\tS(a,b)', sab)
@@ -331,6 +334,48 @@ class Material(IDManagerMixin):
 
         return material
 
+    @classmethod
+    def from_NCrystal(cls, cfg):
+        """Create material from NCrystal configuration string
+        Density is set from the NCrystal value,
+        and material temperature from the configuration string.
+      
+        Parameters
+        ----------
+        cfg : str
+            NCrystal configuration string
+
+        Returns
+        -------
+        openmc.Material
+            Material instance
+
+        """
+
+        try:
+            import NCrystal
+        except ImportError:
+            raise SystemExit("ERROR: NCrystal Python module is required.")
+
+        NC_mat = NCrystal.createInfo(cfg)
+        NC_comp = NC_mat.getComposition()
+
+        # Create the Material
+        material = cls()
+
+        for frac, atom in NC_comp:
+            if (atom.A() == 0):
+                material.add_element(atom.displayLabel(), frac, 'ao')
+            else:
+                material.add_nuclide(atom.displayLabel(), frac, 'ao')
+
+        material._NCrystal_cfg = cfg
+        material._density_units = "g/cm3"
+        material._density = NC_mat.getDensity()
+        material.temperature = NC_mat.getTemperature()
+
+        return material
+
     def add_volume_information(self, volume_calc):
         """Add volume information to a material.
 
@@ -404,6 +449,9 @@ class Material(IDManagerMixin):
             msg = 'Unable to add a Nuclide to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
+
+        if self._NCrystal_cfg is not None:
+            raise ValueError("Cannot add nuclides to NCrystal material")
 
         # If nuclide name doesn't look valid, give a warning
         try:
@@ -608,6 +656,9 @@ class Material(IDManagerMixin):
         if not element.isalpha():
             raise ValueError("Element name should be given by the "
                              "element's symbol or name, e.g., 'Zr', 'zirconium'")
+
+        if self._NCrystal_cfg is not None:
+            raise ValueError("Cannot add elements to NCrystal material")
 
         # Allow for element identifier to be given as a symbol or name
         if len(element) > 2:
@@ -1134,6 +1185,14 @@ class Material(IDManagerMixin):
 
         if self._volume:
             element.set("volume", str(self._volume))
+
+        if self._NCrystal_cfg:
+            if self._sab:
+                raise ValueError("NCrystal materials are not compatible with S(a,b).")
+            if self._macroscopic is not None:
+                raise ValueError("NCrystal materials are not compatible macroscopic cross sections.")
+
+            element.set("cfg", str(self._NCrystal_cfg))
 
         # Create temperature XML subelement
         if self.temperature is not None:

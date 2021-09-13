@@ -120,6 +120,9 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
+#ifdef NCRYSTAL
+extern double ncrystal_max_energy; // Energy in eV to switch between NCrystal and ENDF
+#endif
 } // namespace settings
 
 //==============================================================================

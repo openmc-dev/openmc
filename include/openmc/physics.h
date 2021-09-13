@@ -8,6 +8,10 @@
 #include "openmc/reaction.h"
 #include "openmc/vector.h"
 
+#ifdef NCRYSTAL
+#include "NCrystal/NCRNG.hh"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -100,6 +104,29 @@ void sample_secondary_photons(Particle& p, int i_nuclide);
 // bound.
 //! \param[in] p, particle to be split or rouletted with the weight window.
 void split_particle(Particle& p);
+
+#ifdef NCRYSTAL
+//==============================================================================
+// NCrystal wrapper class for the OpenMC random number generator
+//==============================================================================
+
+class NcrystalRNG_Wrapper : public NCrystal::RNGStream {
+    uint64_t* openmc_seed_;
+public:
+    constexpr NcrystalRNG_Wrapper(uint64_t* s) noexcept : openmc_seed_(s) {}
+  //Can be cheaply created on the stack just before being used in calls to
+  //ProcImpl::Scatter objects, like:
+  //
+  //  RNG_Wrapper rng(seed);
+  //
+protected:
+  //double actualGenerate() override { return prn(openmc_seed_); }
+  double actualGenerate() override {
+      return std::max<double>( std::numeric_limits<double>::min(), prn(openmc_seed_) );
+  }
+
+};
+#endif
 
 } // namespace openmc
 

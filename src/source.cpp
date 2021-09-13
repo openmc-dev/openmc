@@ -147,9 +147,6 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 {
   SourceSite site;
 
-  // Set weight to one by default
-  site.wgt = 1.0;
-
   // Repeat sampling source location until a good site has been found
   bool found = false;
   int n_reject = 0;
@@ -226,11 +223,6 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     if (site.E < data::energy_max[p] && site.E > data::energy_min[p])
       break;
   }
-
-  // Set delayed group
-  site.delayed_group = 0;
-  // Set surface ID
-  site.surf_id = 0;
 
   return site;
 }

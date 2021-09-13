@@ -77,6 +77,7 @@ void Particle::create_secondary(
   bank.r = r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
+  bank.time = time();
 
   n_bank_second() += 1;
 }
@@ -111,6 +112,8 @@ void Particle::from_source(const SourceSite* src)
     E() = data::mg.energy_bin_avg_[g()];
   }
   E_last() = E();
+  time() = src->time;
+  time_last() = src->time;
 }
 
 void Particle::event_calculate_xs()
@@ -399,6 +402,7 @@ void Particle::cross_surface()
     site.r = r();
     site.u = u();
     site.E = E();
+    site.time = time();
     site.wgt = wgt();
     site.delayed_group = delayed_group();
     site.surf_id = surf->id_;

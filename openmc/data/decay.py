@@ -58,6 +58,8 @@ def get_decay_modes(value):
 
     """
     if int(value) == 10:
+        # The logic below would treat 10.0 as [1, 0] rather than [10] as it
+        # should, so we handle this case separately
         return ['unknown']
     else:
         return [_DECAY_MODES[int(x)][0] for x in

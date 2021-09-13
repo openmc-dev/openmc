@@ -44,9 +44,10 @@ struct SourceSite {
   Position r;
   Direction u;
   double E;
-  double wgt;
-  int delayed_group;
-  int surf_id;
+  double time {0.0};
+  double wgt {1.0};
+  int delayed_group {0};
+  int surf_id {0};
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;

@@ -47,6 +47,8 @@ extern const RegularMesh* ufs_mesh;
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;
 
+extern std::vector<double> bins_pht;
+extern int cell_pht;
 } // namespace simulation
 
 //==============================================================================

@@ -7,6 +7,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -18,6 +19,7 @@ namespace openmc {
 void EnergyFilter::from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
+  simulation::bins_pht = bins; //! store them as a global variable for the pht
   this->set_bins(bins);
 }
 

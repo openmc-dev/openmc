@@ -20,6 +20,7 @@
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
@@ -276,6 +277,9 @@ const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
 vector<int64_t> work_index;
+
+std::vector<double> bins_pht;
+int cell_pht;
 
 } // namespace simulation
 
@@ -686,8 +690,15 @@ void transport_history_based_single_particle(Particle& p)
       p.event_collide();
     }
     p.event_revive_from_secondary();
-    if (!p.alive())
+    if (!p.alive()) {
+      for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
+        const auto& tally {*model::tallies[i_tally]};
+        if (tally.scores_[0] == 1001) {
+          score_pht_tally(p);
+        }
+      }
       break;
+    }
   }
   p.event_death();
 }

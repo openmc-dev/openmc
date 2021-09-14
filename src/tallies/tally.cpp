@@ -30,6 +30,10 @@
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/xml_interface.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
@@ -248,6 +252,42 @@ Tally::Tally(pugi::xml_node node)
         }
       }
     }
+  }
+
+  // Currently the pulse-height tally is only working in a selected type of
+  // settings Here these settings are checked again
+  bool exists = std::find(std::begin(scores_), std::end(scores_), 1001) !=
+                std::end(scores_);
+  if (exists == 1) {
+    std::cout << "PULSE HEIGHT TALLY SIMULATION, VERSION 1.0, 15.09.2021"
+              << std::endl;
+  }
+  if (exists == 1 && scores_.size() > 1) {
+    std::cout << "Error: The Pulse-Height Tally can currently not be used in "
+                 "combination with other tallys."
+              << std::endl;
+    exit(0);
+  }
+  if (exists == 1 && settings::photon_transport == 0) {
+    std::cout
+      << "Error: The Pulse-Height Tally works only with photon transport True."
+      << std::endl;
+    exit(0);
+  }
+#ifdef _OPENMP
+  int threads = omp_get_max_threads();
+#endif
+  if (exists == 1 && threads != 1) {
+    std::cout << "Error: The Pulse-Height Tally works currently only in a "
+                 "single thread simulation."
+              << std::endl;
+    exit(0);
+  }
+  if (exists == 1 && settings::n_batches != 1) {
+    std::cout << "Error: The Pulse-Height Tally is currently just validated "
+                 "for single batch simulations."
+              << std::endl;
+    exit(0);
   }
 
   // If settings.xml trigger is turned on, create tally triggers

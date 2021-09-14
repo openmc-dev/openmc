@@ -1,5 +1,6 @@
 #include "openmc/particle_data.h"
 
+#include "openmc/cell.h"
 #include "openmc/geometry.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
@@ -51,6 +52,9 @@ ParticleData::ParticleData()
   // Create microscopic cross section caches
   neutron_xs_.resize(data::nuclides.size());
   photon_xs_.resize(data::elements.size());
+
+  // pht_storage_.resize(model::cells.size(), 0.0);
+  pht_storage_.resize(model::cells.size(), 0.0);
 }
 
 } // namespace openmc

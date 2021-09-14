@@ -280,6 +280,8 @@ private:
   // Secondary particle bank
   vector<SourceSite> secondary_bank_;
 
+  std::vector<double> pht_storage_; // array for the pulse-height tally
+
   int64_t current_work_; // current work index
 
   vector<double> flux_derivs_; // for derivatives for this particle
@@ -401,6 +403,7 @@ public:
   SourceSite& secondary_bank(int i) { return secondary_bank_[i]; }
   decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
   int64_t& current_work() { return current_work_; }
+  std::vector<double>& pht_storage() { return pht_storage_; }
   const int64_t& current_work() const { return current_work_; }
   double& flux_derivs(int i) { return flux_derivs_[i]; }
   const double& flux_derivs(int i) const { return flux_derivs_[i]; }

@@ -116,6 +116,8 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
+extern std::vector<double> bins_pht; //! Used for the pulse-height tally
+extern int cell_pht;                 //! Used for the pulse-height tally
 } // namespace settings
 
 //==============================================================================

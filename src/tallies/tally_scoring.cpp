@@ -17,6 +17,7 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
+#include "openmc/xml_interface.h"
 
 #include <string>
 
@@ -2466,6 +2467,32 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
     // tallies specified
     if (settings::assume_separate)
       break;
+  }
+
+  // Reset all the filter matches for the next tally event.
+  for (auto& match : p.filter_matches())
+    match.bins_present_ = false;
+}
+
+void score_pht_tally(Particle& p)
+{
+  for (auto i_tally : model::active_tracklength_tallies) {
+    auto& tally {*model::tallies[i_tally]};
+
+    auto filter_iter = FilterBinIter(tally, p);
+    auto score_index = 0;
+
+    double score = p.pht_storage()[simulation::cell_pht];
+
+    for (int i = 0; i < simulation::bins_pht.size() - 1; ++i) {
+      if (simulation::bins_pht[i] <= score &&
+          score < simulation::bins_pht[i + 1]) {
+        int filter_index = i;
+#pragma omp atomic
+        tally.results_(filter_index, score_index, TallyResult::VALUE) += 1;
+        break;
+      }
+    }
   }
 
   // Reset all the filter matches for the next tally event.

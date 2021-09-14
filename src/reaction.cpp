@@ -271,6 +271,7 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {N_AC, "(n,ac)"},
   {N_2NC, "(n,2nc)"},
   {HEATING_LOCAL, "heating-local"},
+  {PHT, "pht"},
 };
 
 std::unordered_map<std::string, int> REACTION_TYPE_MAP;

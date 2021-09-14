@@ -61,6 +61,16 @@ public:
   void event_revive_from_secondary();
   void event_death();
 
+  //! needed for determining the value of the pulse-height tally
+  //
+  //! sums up the energy a photon looses after in a cell
+  void energy_delivert_in_cell();
+  //! adds the last energy of the particle if it dies.
+  void killed_particle_energy_delivert();
+  //! removes the energy from created secondary particles to avoid
+  //! double counting
+  void remove_energy_of_secondary();
+
   //! Cross a surface and handle boundary conditions
   void cross_surface();
 

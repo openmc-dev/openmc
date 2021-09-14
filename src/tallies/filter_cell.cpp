@@ -5,6 +5,7 @@
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/error.h"
+#include "openmc/simulation.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {

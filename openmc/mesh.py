@@ -879,5 +879,6 @@ class UnstructuredMesh(MeshBase):
         mesh_id = int(get_text(elem, 'id'))
         filename = get_text(elem, 'filename')
         library = get_text(elem, 'library')
+        length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
-        return cls(filename, library, mesh_id)
+        return cls(filename, library, mesh_id, '', length_multiplier)

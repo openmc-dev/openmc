@@ -784,7 +784,7 @@ class UnstructuredMesh(MeshBase):
 
         for centroid in self.centroids:
             # create a point for each centroid
-            point_id = points.InsertNextPoint(centroid)
+            point_id = points.InsertNextPoint(centroid * self.length_multiplier)
             # create a cell of type "Vertex" for each point
             cell_id = vertices.InsertNextCell(cell_dim, (point_id,))
 

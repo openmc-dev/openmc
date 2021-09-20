@@ -215,6 +215,7 @@ class RegularMesh(MeshBase):
         mesh.lower_left = group['lower_left'][()]
         mesh.upper_right = group['upper_right'][()]
         mesh.width = group['width'][()]
+        mesh.length_multiplier = group['length_multiplier'][()] if 'length_multiplier' in group else 1.0
 
         return mesh
 

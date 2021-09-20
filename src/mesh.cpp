@@ -225,13 +225,19 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 
   write_dataset(mesh_group, "volumes", tet_vols);
   write_dataset(mesh_group, "centroids", centroids);
+
+  if (specified_length_multiplier_)
+    write_dataset(mesh_group, "length_multiplier", length_multiplier_);
+
   close_group(mesh_group);
 }
 
 void UnstructuredMesh::set_length_multiplier(double length_multiplier)
 {
   length_multiplier_ = length_multiplier;
-  specified_length_multiplier_ = true;
+
+  if (length_multiplier_ != 1.0)
+    specified_length_multiplier_ = true;
 }
 
 void StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
@@ -1601,11 +1607,7 @@ MOABMesh::MOABMesh(pugi::xml_node node) : UnstructuredMesh(node)
 MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
 {
   filename_ = filename;
-
-  if (length_multiplier != 1.0) {
-    set_length_multiplier(length_multiplier);
-  }
-
+  set_length_multiplier(length_multiplier);
   initialize();
 }
 
@@ -2193,11 +2195,7 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 LibMesh::LibMesh(const std::string& filename, double length_multiplier)
 {
   filename_ = filename;
-
-  if (length_multiplier != 1.0) {
-    set_length_multiplier(length_multiplier);
-  }
-
+  set_length_multiplier(length_multiplier);
   initialize();
 }
 

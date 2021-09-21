@@ -81,6 +81,31 @@ private:
 };
 
 //==============================================================================
+//! Rational distribution over the interval [a,b] with exponent n
+//==============================================================================
+
+class Rational : public Distribution {
+public:
+  explicit Rational(pugi::xml_node node);
+  Rational(double a, double b, double n) : a_{a}, b_{b}, n_{n}, an_{std::pow(a, n+1)}, bn_{std::pow(b, n+1)} {};
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  double sample(uint64_t* seed) const;
+
+  double a() const { return a_; }
+  double b() const { return b_; }
+  double n() const { return n_; }
+private:
+  double a_; //!< Lower bound of distribution
+  double b_; //!< Upper bound of distribution
+  double n_; //!< Exponent of distribution
+  double an_; //!< Lower bound of distribution
+  double bn_; //!< Upper bound of distribution
+};
+
+//==============================================================================
 //! Maxwellian distribution of form c*sqrt(E)*exp(-E/theta)
 //==============================================================================
 

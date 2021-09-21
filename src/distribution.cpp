@@ -288,6 +288,42 @@ double Equiprobable::sample(uint64_t* seed) const
 }
 
 //==============================================================================
+// Mixture implementation
+//==============================================================================
+
+Mixture::Mixture(pugi::xml_node node)
+{
+  // Read and initialize tabular distribution
+  //auto params = get_node_array<double>(node, "parameters");
+
+  double cumsum = 0.0;
+  for (pugi::xml_node pair = node.child("pair"); pair; pair = pair.next_sibling("pair")) {
+    if (!pair.attribute("probability")) openmc::fatal_error("Mixture pair element does not have probability.");
+    if (!pair.child("dist")) openmc::fatal_error("Mixture pair element does not have a distribution.");
+    double p = std::stod(pair.attribute("probability").value());
+    p_.push_back(p);
+    cumsum += p;
+    c_.push_back(cumsum);
+    d_.push_back(distribution_from_xml(pair.child("dist")));
+  }
+  std::transform(c_.begin(), c_.end(), c_.begin(), [cumsum](double c){ return c/cumsum;});
+}
+
+double Mixture::sample(uint64_t* seed) const {
+	//
+  // Sample value of CDF
+  double c = prn(seed);
+
+  // Find first CDF bin which is above the sampled value and sample corresponding sub-distribution
+  for (size_t i = 0; i < c_.size(); i++) {
+    if (c<=c_[i]) return d_[i]->sample(seed);
+  }
+
+  // This should not happen. Catch it
+  openmc::fatal_error("Bad Sampling in Mixture Distribution.");
+}
+
+//==============================================================================
 // Helper function
 //==============================================================================
 
@@ -315,6 +351,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist {new Discrete(node)};
   } else if (type == "tabular") {
     dist = UPtrDist {new Tabular(node)};
+  } else if (type == "mixture") {
+    dist = UPtrDist{new Mixture(node)};
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }

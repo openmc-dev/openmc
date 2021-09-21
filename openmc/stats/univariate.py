@@ -42,6 +42,8 @@ class Univariate(EqualityMixin, ABC):
             return Discrete.from_xml_element(elem)
         elif distribution == 'uniform':
             return Uniform.from_xml_element(elem)
+        elif distribution == 'rational':
+            return Rational.from_xml_element(elem)
         elif distribution == 'maxwell':
             return Maxwell.from_xml_element(elem)
         elif distribution == 'watt':
@@ -236,6 +238,101 @@ class Uniform(Univariate):
         Returns
         -------
         openmc.stats.Uniform
+            Uniform distribution generated from XML element
+
+        """
+        params = get_text(elem, 'parameters').split()
+        return cls(*map(float, params))
+
+class Rational(Univariate):
+    """Distribution with power law probability over a finite interval [a,b]
+
+    Parameters
+    ----------
+    a : float, optional
+        Lower bound of the sampling interval. Defaults to zero.
+    b : float, optional
+        Upper bound of the sampling interval. Defaults to unity.
+    n : float, optional
+        power law exponent. Defaults to zero -> Uniform distribution
+
+    Attributes
+    ----------
+    a : float
+        Lower bound of the sampling interval
+    b : float
+        Upper bound of the sampling interval
+    n : float
+        Power law exponent
+
+    """
+
+    def __init__(self, a=0.0, b=1.0, n=0):
+        self.a = a
+        self.b = b
+        self.n = n
+
+    def __len__(self):
+        return 3
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def b(self):
+        return self._b
+
+    @property
+    def n(self):
+        return self._n
+
+    @a.setter
+    def a(self, a):
+        cv.check_type('Uniform a', a, Real)
+        self._a = a
+
+    @b.setter
+    def b(self, b):
+        cv.check_type('Uniform b', b, Real)
+        self._b = b
+
+    @n.setter
+    def n(self, n):
+        cv.check_type('Uniform n', n, Real)
+        self._n = n
+
+    def to_xml_element(self, element_name):
+        """Return XML representation of the rational distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing uniform distribution data
+
+        """
+        element = ET.Element(element_name)
+        element.set("type", "rational")
+        element.set("parameters", '{} {} {}'.format(self.a, self.b, self.n))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate rational distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.Rational
             Uniform distribution generated from XML element
 
         """

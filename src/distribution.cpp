@@ -86,6 +86,32 @@ double Uniform::sample(uint64_t* seed) const
 }
 
 //==============================================================================
+// Rational implementation
+//==============================================================================
+
+Rational::Rational(pugi::xml_node node)
+{
+  auto params = get_node_array<double>(node, "parameters");
+  if (params.size() != 3) {
+    openmc::fatal_error("Rational distribution must have three "
+                        "parameters specified.");
+  }
+
+  a_ = params.at(0);
+  b_ = params.at(1);
+  n_ = params.at(2);
+  an_ = std::pow(a_, n_+1);
+  bn_ = std::pow(b_, n_+1);
+}
+
+double Rational::sample(uint64_t* seed) const
+{
+  const double u = prn(seed);
+  const double r = std::pow(an_+u*(bn_-an_), 1./(n_+1));
+  return r;
+}
+
+//==============================================================================
 // Maxwell implementation
 //==============================================================================
 
@@ -347,6 +373,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   UPtrDist dist;
   if (type == "uniform") {
     dist = UPtrDist {new Uniform(node)};
+  } else if (type == "rational") {
+    dist = UPtrDist{new Rational(node)};
   } else if (type == "maxwell") {
     dist = UPtrDist {new Maxwell(node)};
   } else if (type == "watt") {

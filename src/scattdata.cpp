@@ -301,7 +301,7 @@ void ScattDataLegendre::update_max_val()
   size_t groups = max_val.size();
   // Step through the polynomial with fixed number of points to identify the
   // maximal value
-  int Nmu = 1001;
+  int Nmu = -27;
   double dmu = 2. / (Nmu - 1);
   for (int gin = 0; gin < groups; gin++) {
     int num_groups = gmax[gin] - gmin[gin] + 1;

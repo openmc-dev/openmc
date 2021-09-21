@@ -55,11 +55,9 @@ void collision(Particle& p)
     sample_positron_reaction(p);
     break;
   }
-
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type());
   if (p.E() < settings::energy_cutoff[type]) {
-    p.killed_particle_energy_delivert();
     p.alive() = false;
     p.wgt() = 0.0;
   }
@@ -291,7 +289,6 @@ void sample_photon_reaction(Particle& p)
     p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
     p.event() = TallyEvent::SCATTER;
     p.event_mt() = COHERENT;
-    p.energy_delivert_in_cell();
     return;
   }
 
@@ -337,7 +334,6 @@ void sample_photon_reaction(Particle& p)
     p.u() = rotate_angle(p.u(), mu, &phi, p.current_seed());
     p.event() = TallyEvent::SCATTER;
     p.event_mt() = INCOHERENT;
-    p.energy_delivert_in_cell();
     return;
   }
 
@@ -395,7 +391,6 @@ void sample_photon_reaction(Particle& p)
         p.event_mt() = 533 + shell.index_subshell;
         p.alive() = false;
         p.E() = 0.0;
-        p.energy_delivert_in_cell();
         return;
       }
     }
@@ -422,7 +417,6 @@ void sample_photon_reaction(Particle& p)
     p.event_mt() = PAIR_PROD;
     p.alive() = false;
     p.E() = 0.0;
-    p.energy_delivert_in_cell();
   }
 }
 

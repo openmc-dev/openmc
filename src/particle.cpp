@@ -254,6 +254,11 @@ void Particle::event_collide()
     }
   }
 
+  // TODO: The assumption behind the modelling of the pulse-height tally is that
+  // particles lose energy only in collisions, for a more comprehensive modeling
+  // of charged particles this has to be changed. 
+  if (type() == ParticleType::photon){energy_delivered_in_cell();} // score the pht only for photons
+  
   // Reset banked weight during collision
   n_bank() = 0;
   n_bank_second() = 0;
@@ -283,7 +288,6 @@ void Particle::event_collide()
       coord(j + 1).u = coord(j).u;
     }
   }
-
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty())
     score_collision_derivative(*this);
@@ -356,17 +360,18 @@ void Particle::event_death()
     int64_t offset = id() - 1 - simulation::work_index[mpi::rank];
     simulation::progeny_per_particle[offset] = n_progeny();
   }
+killed_particle_energy_delivered();
 }
 
-void Particle::energy_delivert_in_cell()
+void Particle::energy_delivered_in_cell()
 {
-  // Update pht_storage array
+  // Adds the energy the particle loses during the collision.
   pht_storage()[coord(0).cell] += E_last() - E();
 }
 
-void Particle::killed_particle_energy_delivert()
+void Particle::killed_particle_energy_delivered()
 {
-  // Add the energy of the killed particles to the pht_storage array
+  // Adds the energy of killed particles.
   pht_storage()[coord(0).cell] += E();
 }
 
@@ -387,7 +392,7 @@ void Particle::remove_energy_of_secondary()
   }
 
   // settings::energy_cutoff[1] is the cutoff energy of photons
-  // remove the energy of created secondary particles from the pht_storage array
+  // Remove the energy of created secondary particles from the pht_storage array
   if (type() == ParticleType::photon && E() > settings::energy_cutoff[1])
     pht_storage()[cell_born()] -= E();
 }

@@ -53,7 +53,6 @@ ParticleData::ParticleData()
   neutron_xs_.resize(data::nuclides.size());
   photon_xs_.resize(data::elements.size());
 
-  // pht_storage_.resize(model::cells.size(), 0.0);
   pht_storage_.resize(model::cells.size(), 0.0);
 }
 

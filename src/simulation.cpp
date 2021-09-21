@@ -693,7 +693,7 @@ void transport_history_based_single_particle(Particle& p)
     if (!p.alive()) {
       for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
         const auto& tally {*model::tallies[i_tally]};
-        if (tally.scores_[0] == 1001) {
+        if (tally.scores_[0] == -27) {
           score_pht_tally(p);
         }
       }

@@ -812,7 +812,28 @@ class Mixture(Univariate):
         self._distribution = distribution
 
     def to_xml_element(self, element_name):
-        raise NotImplementedError
+        """Return XML representation of the mixture distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing mixture distribution data
+
+        """
+        element = ET.Element(element_name)
+        element.set("type", "mixture")
+
+        for p,d in zip(self.probability, self.distribution):
+          data = ET.SubElement(element, "pair")
+          data.set("probability", str(p))
+          data.append(d.to_xml_element("dist"))
+
+        return element
 
     @classmethod
     def from_xml_element(cls, elem):

@@ -64,9 +64,9 @@ public:
   //! needed for determining the value of the pulse-height tally
   //
   //! sums up the energy a photon looses after in a cell
-  void energy_delivert_in_cell();
+  void energy_delivered_in_cell();
   //! adds the last energy of the particle if it dies.
-  void killed_particle_energy_delivert();
+  void killed_particle_energy_delivered();
   //! removes the energy from created secondary particles to avoid
   //! double counting
   void remove_energy_of_secondary();

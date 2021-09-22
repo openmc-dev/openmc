@@ -238,7 +238,7 @@ enum ReactionType {
   N_2N0 = 875,
   N_2NC = 891,
   HEATING_LOCAL = 901,
-  PHT = 1001
+  PHT = -27
 };
 
 constexpr array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};

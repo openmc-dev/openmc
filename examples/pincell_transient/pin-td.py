@@ -22,11 +22,11 @@ upper_right = [0.62992, 0.62992, 182.88]
 uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
 settings_file.source = openmc.source.Source(space=uniform_dist)
 
-sourcepoint = dict()
-sourcepoint['batches'] = [settings_file.batches]
-sourcepoint['separate'] = True
-sourcepoint['write'] = True
-settings_file.sourcepoint = sourcepoint
+settings_file.sourcepoint = {
+    'batches': [settings_file.batches],
+    'separate': True,
+    'write': True
+}
 
 # For source convergence checks, add a mesh that can be used to calculate the
 # Shannon entropy

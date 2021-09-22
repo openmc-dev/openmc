@@ -822,7 +822,7 @@ class Solver:
 
         # Create the xml files
         self.geometry.time = self.clock.times[time_point]
-        time = round(self.geometry.time,4)
+        time = round(self.geometry.time, 4)
 
         materials_list = []
         for material in self.materials:

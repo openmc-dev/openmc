@@ -1,6 +1,5 @@
 from collections import OrderedDict
 import copy
-import sys
 
 import h5py
 import numpy as np

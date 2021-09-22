@@ -154,6 +154,7 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {SCORE_INVERSE_VELOCITY, "inverse-velocity"},
   {SCORE_FISS_Q_PROMPT, "fission-q-prompt"},
   {SCORE_FISS_Q_RECOV, "fission-q-recoverable"},
+  {SCORE_PULSE_HEIGHT, "pulse-height"},
   // Normal ENDF-based reactions
   {TOTAL_XS, "(n,total)"},
   {ELASTIC, "(n,elastic)"},
@@ -271,7 +272,6 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {N_AC, "(n,ac)"},
   {N_2NC, "(n,2nc)"},
   {HEATING_LOCAL, "heating-local"},
-  {PHT, "pht"},
 };
 
 std::unordered_map<std::string, int> REACTION_TYPE_MAP;

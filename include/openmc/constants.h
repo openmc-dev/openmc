@@ -237,8 +237,7 @@ enum ReactionType {
   N_AC = 849,
   N_2N0 = 875,
   N_2NC = 891,
-  HEATING_LOCAL = 901,
-  PHT = -27
+  HEATING_LOCAL = 901
 };
 
 constexpr array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
@@ -328,7 +327,8 @@ enum TallyScore {
   SCORE_INVERSE_VELOCITY = -13,   // flux-weighted inverse velocity
   SCORE_FISS_Q_PROMPT = -14,      // prompt fission Q-value
   SCORE_FISS_Q_RECOV = -15,       // recoverable fission Q-value
-  SCORE_DECAY_RATE = -16          // delayed neutron precursor decay rate
+  SCORE_DECAY_RATE = -16,         // delayed neutron precursor decay rate
+  SCORE_PULSE_HEIGHT = -17        // pulse-height of photons in a cell
 };
 
 // Global tally parameters

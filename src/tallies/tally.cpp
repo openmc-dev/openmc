@@ -256,19 +256,13 @@ Tally::Tally(pugi::xml_node node)
 
   // Currently the pulse-height tally is only working in a selected type of
   // settings Here these settings are checked again
-  bool exists = std::find(std::begin(scores_), std::end(scores_), ReactionType::PHT) !=
-                std::end(scores_);
+  bool exists = std::find(std::begin(scores_), std::end(scores_),
+                  TallyScore::SCORE_PULSE_HEIGHT) != std::end(scores_);
   if (exists && scores_.size() > 1) {
     fatal_error("Error: The Pulse-Height Tally can currently not be used in combination with other tallys.");
   }
   if (exists && !settings::photon_transport) {
       fatal_error("Error: The Pulse-Height Tally works only with photon transport True.");
-  }
-#ifdef _OPENMP
-  int threads = omp_get_max_threads();
-#endif
-  if (exists&& threads != 1) {
-    fatal_error("Error: The Pulse-Height Tally works currently only in a single thread simulation.");
   }
   if (exists && settings::n_batches != 1) {
     fatal_error("Error: The Pulse-Height Tally is currently just validated for single batch simulations.");

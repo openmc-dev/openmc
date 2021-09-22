@@ -7,13 +7,13 @@ import openmc
 surfaces = {}
 
 # Instantiate ZCylinder surfaces
-surfaces['Fuel OR']            = openmc.ZCylinder(x0=0, y0=0, r=0.4095, name='Fuel OR')
-surfaces['Fuel Inner Clad IR'] = openmc.ZCylinder(x0=0, y0=0, r=0.4180, name='Fuel Inner Clad IR')
-surfaces['Fuel Inner Clad OR'] = openmc.ZCylinder(x0=0, y0=0, r=0.4750, name='Fuel Inner Clad OR')
-surfaces['Fuel Outer Clad IR'] = openmc.ZCylinder(x0=0, y0=0, r=0.4800, name='Fuel Outer Clad IR')
-surfaces['Fuel Outer Clad OR'] = openmc.ZCylinder(x0=0, y0=0, r=0.5400, name='Fuel Outer Clad OR')
-surfaces['Guide Tube IR']      = openmc.ZCylinder(x0=0, y0=0, r=0.3400, name='Guide Tube IR')
-surfaces['Guide Tube OR']      = openmc.ZCylinder(x0=0, y0=0, r=0.5400, name='Guide Tube IR')
+surfaces['Fuel OR']            = openmc.ZCylinder(r=0.4095, name='Fuel OR')
+surfaces['Fuel Inner Clad IR'] = openmc.ZCylinder(r=0.4180, name='Fuel Inner Clad IR')
+surfaces['Fuel Inner Clad OR'] = openmc.ZCylinder(r=0.4750, name='Fuel Inner Clad OR')
+surfaces['Fuel Outer Clad IR'] = openmc.ZCylinder(r=0.4800, name='Fuel Outer Clad IR')
+surfaces['Fuel Outer Clad OR'] = openmc.ZCylinder(r=0.5400, name='Fuel Outer Clad OR')
+surfaces['Guide Tube IR']      = openmc.ZCylinder(r=0.3400, name='Guide Tube IR')
+surfaces['Guide Tube OR']      = openmc.ZCylinder(r=0.5400, name='Guide Tube IR')
 
 # Instantiate the axial surfaces
 surfaces['Axial Midplane']        = openmc.ZPlane(z0=0.0   , name='Axial Midplane')

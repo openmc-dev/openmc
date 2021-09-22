@@ -264,12 +264,6 @@ Tally::Tally(pugi::xml_node node)
   if (exists && !settings::photon_transport) {
       fatal_error("Error: The Pulse-Height Tally works only with photon transport True.");
   }
-#ifdef _OPENMP
-  int threads = omp_get_max_threads();
-#endif
-  if (exists&& threads != 1) {
-    fatal_error("Error: The Pulse-Height Tally works currently only in a single thread simulation.");
-  }
   if (exists && settings::n_batches != 1) {
     fatal_error("Error: The Pulse-Height Tally is currently just validated for single batch simulations.");
   }

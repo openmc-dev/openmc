@@ -18,9 +18,54 @@ namespace data {
 
 xt::xtensor<double, 1> ttb_e_grid;
 xt::xtensor<double, 1> ttb_k_grid;
-std::vector<Bremsstrahlung> ttb;
+
+double* device_ttb_e_grid;
+size_t ttb_e_grid_size {0};
 
 } // namespace data
+
+//==============================================================================
+// Bremsstrahlung implementation
+//==============================================================================
+
+void BremsstrahlungData::copy_to_device()
+{
+  device_pdf_ = pdf_.data();
+  device_cdf_ = cdf_.data();
+  device_yield_ = yield_.data();
+  #pragma omp target enter data map(to: device_pdf_[:pdf_.size()])
+  #pragma omp target enter data map(to: device_cdf_[:cdf_.size()])
+  #pragma omp target enter data map(to: device_yield_[:yield_.size()])
+}
+
+void BremsstrahlungData::release_from_device()
+{
+  #pragma omp target exit data map(release: device_pdf_[:pdf_.size()])
+  #pragma omp target exit data map(release: device_cdf_[:cdf_.size()])
+  #pragma omp target exit data map(release: device_yield_[:yield_.size()])
+}
+
+double BremsstrahlungData::pdf(gsl::index i, gsl::index j) const
+{
+  return *(device_pdf_ + i * data::ttb_e_grid_size + j);
+}
+
+double BremsstrahlungData::cdf(gsl::index i, gsl::index j) const
+{
+  return *(device_cdf_ + i * data::ttb_e_grid_size + j);
+}
+
+void Bremsstrahlung::copy_to_device()
+{
+  electron.copy_to_device();
+  positron.copy_to_device();
+}
+
+void Bremsstrahlung::release_from_device()
+{
+  electron.release_from_device();
+  positron.release_from_device();
+}
 
 //==============================================================================
 // Non-member functions
@@ -42,18 +87,18 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   }
 
   double e = std::log(p.E_);
-  auto n_e = data::ttb_e_grid.size();
+  auto n_e = data::ttb_e_grid_size;
 
   // Find the lower bounding index of the incident electron energy
-  size_t j = lower_bound_index(data::ttb_e_grid.cbegin(),
-    data::ttb_e_grid.cend(), e);
+  size_t j = lower_bound_index(data::device_ttb_e_grid,
+    data::device_ttb_e_grid + data::ttb_e_grid_size, e);
   if (j == n_e - 1) --j;
 
   // Get the interpolation bounds
-  double e_l = data::ttb_e_grid(j);
-  double e_r = data::ttb_e_grid(j+1);
-  double y_l = mat->yield(j);
-  double y_r = mat->yield(j+1);
+  double e_l = data::device_ttb_e_grid[j];
+  double e_r = data::device_ttb_e_grid[j+1];
+  double y_l = mat->device_yield_[j];
+  double y_r = mat->device_yield_[j+1];
 
   // Calculate the interpolation weight w_j+1 of the bremsstrahlung energy PDF
   // interpolated in log energy, which can be interpreted as the probability
@@ -95,11 +140,12 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
     // Generate a random number r and determine the index i for which
     // cdf(i) <= r*cdf,max <= cdf(i+1)
     double c = prn(p.current_seed())*c_max;
-    int i_w = lower_bound_index(&mat->cdf(i_e, 0), &mat->cdf(i_e, 0) + i_e, c);
+    auto start = mat->device_cdf_ + i_e * data::ttb_e_grid_size;
+    int i_w = lower_bound_index(start, start + i_e, c);
 
     // Sample the photon energy
-    double w_l = data::ttb_e_grid(i_w);
-    double w_r = data::ttb_e_grid(i_w + 1);
+    double w_l = data::device_ttb_e_grid[i_w];
+    double w_r = data::device_ttb_e_grid[i_w + 1];
     double p_l = mat->pdf(i_e, i_w);
     double p_r = mat->pdf(i_e, i_w + 1);
     double c_l = mat->cdf(i_e, i_w);

@@ -1,6 +1,7 @@
 #include "openmc/device_alloc.h"
 
 #include "openmc/bank.h"
+#include "openmc/bremsstrahlung.h"
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
@@ -165,6 +166,9 @@ void move_read_only_data_to_device()
     std::cout << "Moving " << elm.name_ << " data to device..." << std::endl;
     elm.copy_to_device();
   }
+  data::device_ttb_e_grid = data::ttb_e_grid.data();
+  #pragma omp target update to(data::ttb_e_grid_size)
+  #pragma omp target enter data map(to: data::device_ttb_e_grid[:data::ttb_e_grid.size()])
 
   // Materials /////////////////////////////////////////////////////////
 

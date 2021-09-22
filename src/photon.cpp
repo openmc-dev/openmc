@@ -944,6 +944,7 @@ void free_memory_photon()
   data::compton_profile_pz_size = 0;
   data::ttb_e_grid.resize({0});
   data::ttb_k_grid.resize({0});
+  data::ttb_e_grid_size = 0;
 }
 
 } // namespace openmc

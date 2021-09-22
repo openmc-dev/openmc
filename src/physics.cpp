@@ -43,7 +43,6 @@ void collision(Particle& p)
   case Particle::Type::neutron:
     sample_neutron_reaction(p);
     break;
-  /*
   case Particle::Type::photon:
     sample_photon_reaction(p);
     break;
@@ -53,7 +52,6 @@ void collision(Particle& p)
   case Particle::Type::positron:
     sample_positron_reaction(p);
     break;
-  */
   }
 
   // Kill particle if energy falls below cutoff
@@ -431,7 +429,7 @@ void sample_electron_reaction(Particle& p)
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
     double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    //thick_target_bremsstrahlung(p, &E_lost);
   }
 
   p.E_ = 0.0;
@@ -445,7 +443,7 @@ void sample_positron_reaction(Particle& p)
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
     double E_lost;
-    thick_target_bremsstrahlung(p, &E_lost);
+    //thick_target_bremsstrahlung(p, &E_lost);
   }
 
   // Sample angle isotropically
@@ -521,8 +519,9 @@ int sample_element(Particle& p)
   }
 
   // If we made it here, no element was sampled
-  p.write_restart();
-  fatal_error("Did not sample any element during collision.");
+  //p.write_restart();
+  //fatal_error("Did not sample any element during collision.");
+  printf("Did not sample any element during collision.\n");
 }
 
 ReactionFlat sample_fission(int i_nuclide, Particle& p)

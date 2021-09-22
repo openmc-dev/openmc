@@ -48,6 +48,7 @@ public:
   ~PhotonInteraction();
 
   // Methods
+  #pragma omp declare target
   void calculate_xs(Particle& p) const;
 
   void compton_scatter(double alpha, bool doppler, double* alpha_out,
@@ -59,6 +60,7 @@ public:
     double* mu_electron, double* mu_positron, uint64_t* seed) const;
 
   void atomic_relaxation(int i_shell, Particle& p) const;
+  #pragma omp end declare target
 
   void copy_to_device();
   void release_from_device();

@@ -360,7 +360,7 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
     // Calculate S(x, Z) and S(x_max, Z)
     double form_factor_x = this->incoherent_form_factor()(x);
     if (form_factor_xmax == 0.0) {
-      form_factor_xmax = incoherent_form_factor_(MASS_ELECTRON_EV/PLANCK_C*alpha);
+      form_factor_xmax = this->incoherent_form_factor()(MASS_ELECTRON_EV/PLANCK_C*alpha);
     }
 
     // Perform rejection on form factor

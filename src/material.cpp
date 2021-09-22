@@ -761,8 +761,7 @@ void Material::calculate_xs(Particle& p) const
   if (p.type_ == Particle::Type::neutron) {
     this->calculate_neutron_xs(p);
   } else if (p.type_ == Particle::Type::photon) {
-    printf("Photon XS lookups not yet supported on device.\n");
-    //this->calculate_photon_xs(p);
+    this->calculate_photon_xs(p);
   }
 }
 

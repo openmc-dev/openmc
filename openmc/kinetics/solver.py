@@ -1,6 +1,5 @@
 from collections import OrderedDict
 import copy
-import os
 import pathlib
 from shutil import copyfile, move
 import subprocess

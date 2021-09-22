@@ -2,9 +2,6 @@ from collections import OrderedDict
 import copy
 import pathlib
 from shutil import copyfile, move
-import subprocess
-import sys
-import time
 
 import h5py
 import numpy as np

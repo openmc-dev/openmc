@@ -243,13 +243,17 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const;
 
-  // d and p property
-  const vector<UPtrDist>& d() const { return d_; }
-  const vector<double>& p() const { return p_; }
 private:
-  vector<UPtrDist> d_;    //!< Pointer to sub-distributions
-  vector<double> p_;      //!< tabulated probability density
-  vector<double> c_;      //!< cumulative distribution
+  struct Pair {
+    double cummulative_probability_ {0.0};
+    UPtrDist distribution_;
+    // bool operator<(const Pair& o) const {
+    //  return cummulative_probability_ < o.cummulative_probability_;
+    //}
+    bool operator<(double p) const { return cummulative_probability_ < p; }
+  };
+
+  vector<Pair> distribution_; //!< sub-distributions + cummulative probabilities
 };
 
 

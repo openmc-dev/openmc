@@ -83,16 +83,16 @@ for mat in mats:
         universes[univ_name].add_cell(cells['Guide Tube Base Bank {}'.format(bank)])
         universes[univ_name].add_cell(cells['Guide Tube Moderator Bank {}'.format(bank)])
 
-        cells['{} {} Bank {}'.format(mat, 'Core', bank)].region           = -surfaces['Fuel Outer Clad OR'] & +surfaces['Axial Midplane']
-        cells['{} {} Bank {}'.format(mat, 'Core Moderator', bank)].region = +surfaces['Fuel Outer Clad OR'] & +surfaces['Axial Midplane']
+        cells[f'{mat} Core Bank {bank}'].region           = -surfaces['Fuel Outer Clad OR'] & +surfaces['Axial Midplane']
+        cells[f'{mat} Core Moderator Bank {bank}'].region = +surfaces['Fuel Outer Clad OR'] & +surfaces['Axial Midplane']
 
-        cells['{} {} Bank {}'.format(mat, 'Core', bank)].fill           = materials[mat]
-        cells['{} {} Bank {}'.format(mat, 'Core Moderator', bank)].fill = materials['Moderator Bank {}'.format(bank)]
+        cells[f'{mat} Core Bank {bank}'].fill           = materials[mat]
+        cells[f'{mat} Core Moderator Bank {bank}'].fill = materials[f'Moderator Bank {bank}']
 
-        cells['{} {} Bank {}'.format(mat, 'Base', bank)].fill = universes['{} {} Bank {}'.format(mat, 'Core', bank)]
-        univ_name = '{} {} Bank {}'.format(mat, 'Base', bank)
+        cells[f'{mat} Base Bank {bank}'].fill = universes[f'{mat} Core Bank {bank}']
+        univ_name = f'{mat} Base Bank {bank}'
         universes[univ_name] = openmc.Universe(name=univ_name)
-        universes[univ_name].add_cell(cells['{} {} Bank {}'.format(mat, 'Base', bank)])
+        universes[univ_name].add_cell(cells[f'{mat} Base Bank {bank}'])
 
 rings = ['Reflector', 'Reflector Moderator']
 mats = ['Control Rod']

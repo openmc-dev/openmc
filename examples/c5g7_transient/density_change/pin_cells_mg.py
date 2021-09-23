@@ -48,10 +48,10 @@ for mat in mats:
             name = '{} {} Bank {}'.format(mat, ring, bank)
             cells[name] = openmc.Cell(name=name)
 
-        cells['{} {} Bank {}'.format(mat, 'Base', bank)].region      = -surfaces['Fuel Outer Clad OR'] & -surfaces['Axial Midplane']
-        cells['{} {} Bank {}'.format(mat, 'Moderator', bank)].region = +surfaces['Fuel Outer Clad OR'] & -surfaces['Axial Midplane']
-        cells['{} {} Bank {}'.format(mat, 'Base', bank)].fill      = materials[mat]
-        cells['{} {} Bank {}'.format(mat, 'Moderator', bank)].fill = materials['Moderator Bank {}'.format(bank)]
+        cells[f'{mat} Base Bank {bank}'].region      = -surfaces['Fuel Outer Clad OR'] & -surfaces['Axial Midplane']
+        cells[f'{mat} Moderator Bank {bank}'].region = +surfaces['Fuel Outer Clad OR'] & -surfaces['Axial Midplane']
+        cells[f'{mat} Base Bank {bank}'].fill      = materials[mat]
+        cells[f'{mat} Moderator Bank {bank}'].fill = materials['Moderator Bank {}'.format(bank)]
 
 mats = ['Fission Chamber']
 for mat in mats:

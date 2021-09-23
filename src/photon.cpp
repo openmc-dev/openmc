@@ -854,7 +854,7 @@ void PhotonInteraction::release_from_device()
 
 Tabulated1DFlat PhotonInteraction::incoherent_form_factor() const
 {
-  return Tabulated1DFlat(buffer_.data_ + 16);
+  return Tabulated1DFlat(buffer_.data_ + 8);
 }
 
 Tabulated1DFlat PhotonInteraction::coherent_int_form_factor() const

@@ -429,7 +429,7 @@ void sample_electron_reaction(Particle& p)
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
     double E_lost;
-    //thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(p, &E_lost);
   }
 
   p.E_ = 0.0;
@@ -443,7 +443,7 @@ void sample_positron_reaction(Particle& p)
 
   if (settings::electron_treatment == ElectronTreatment::TTB) {
     double E_lost;
-    //thick_target_bremsstrahlung(p, &E_lost);
+    thick_target_bremsstrahlung(p, &E_lost);
   }
 
   // Sample angle isotropically

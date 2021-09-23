@@ -61,7 +61,9 @@ extern size_t ttb_e_grid_size;
 // Non-member functions
 //==============================================================================
 
+#pragma omp declare target
 void thick_target_bremsstrahlung(Particle& p, double* E_lost);
+#pragma omp end declare target
 
 } // namespace openmc
 

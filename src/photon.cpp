@@ -387,7 +387,7 @@ void PhotonInteraction::compton_doppler(double alpha, double mu,
     // Sample electron shell
     double rn = prn(seed);
     double c = 0.0;
-    for (shell = 0; shell < shells_.size(); ++shell) {
+    for (shell = 0; shell < electron_pdf_.size(); ++shell) {
       c += device_electron_pdf_[shell];
       if (rn < c) break;
     }
@@ -530,7 +530,9 @@ void PhotonInteraction::calculate_xs(Particle& p) const
 
   // Calculate microscopic photoelectric cross section
   xs.photoelectric = 0.0;
-  for (const auto& shell : shells_) {
+  for (int i = 0; i < shells_.size(); ++i) {
+    const auto& shell = device_shells_[i];
+
     // Check threshold of reaction
     int i_start = shell.threshold;
     if (i_grid < i_start) continue;
@@ -706,7 +708,7 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
 void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
   // Stack for unprocessed holes left by transitioning electrons
-  std::array<int, MAX_STACK_SIZE> holes;
+  int holes[MAX_STACK_SIZE];
   int n_holes = 0;
   holes[n_holes++] = i_shell;
 

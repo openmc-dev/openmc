@@ -848,7 +848,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine microscopic cross sections for this nuclide
-    int i_element = element_[i];
+    int i_element = device_element_[i];
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {p.photon_xs_[i_element]};
@@ -860,7 +860,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // ADD TO MACROSCOPIC CROSS SECTION
 
     // Copy atom density of nuclide in material
-    double atom_density = atom_density_(i);
+    double atom_density = device_atom_density_[i];
 
     // Add contributions to material macroscopic cross sections
     p.macro_xs_.total += atom_density * micro.total;

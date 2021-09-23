@@ -502,8 +502,8 @@ int sample_element(Particle& p)
   double prob = 0.0;
   for (int i = 0; i < mat.element_.size(); ++i) {
     // Find atom density
-    int i_element = mat.element_[i];
-    double atom_density = mat.atom_density_[i];
+    int i_element = mat.device_element_[i];
+    double atom_density = mat.device_atom_density_[i];
 
     // Determine microscopic cross section
     double sigma = atom_density * p.photon_xs_[i_element].total;
@@ -512,7 +512,7 @@ int sample_element(Particle& p)
     prob += sigma;
     if (prob > cutoff) {
       // Save which nuclide particle had collision with for tally purpose
-      p.event_nuclide_ = mat.nuclide_[i];
+      p.event_nuclide_ = mat.device_nuclide_[i];
 
       return i_element;
     }

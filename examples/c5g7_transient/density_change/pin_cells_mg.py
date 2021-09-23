@@ -21,10 +21,10 @@ for mat in ['UO2']:
             cells[name] = openmc.Cell(name=name)
             universes[univ_name].add_cell(cells[name])
 
-        cells['{} {} Bank {}'.format(mat, 'Base', bank)].region       = -surfaces['Fuel Outer Clad OR']
-        cells['{} {} Bank {}'.format(mat, 'Moderator', bank)].region  = +surfaces['Fuel Outer Clad OR']
-        cells['{} {} Bank {}'.format(mat, 'Base', bank)].fill       = materials[mat]
-        cells['{} {} Bank {}'.format(mat, 'Moderator', bank)].fill  = materials['Moderator Bank {}'.format(bank)]
+        cells[f'{mat} Base Bank {bank}'].region       = -surfaces['Fuel Outer Clad OR']
+        cells[f'{mat} Moderator Bank {bank}'].region  = +surfaces['Fuel Outer Clad OR']
+        cells[f'{mat} Base Bank {bank}'].fill       = materials[mat]
+        cells[f'{mat} Moderator Bank {bank}'].fill  = materials[f'Moderator Bank {bank}']
 
 
 for mat in ['MOX 4.3%', 'MOX 7.0%', 'MOX 8.7%']:

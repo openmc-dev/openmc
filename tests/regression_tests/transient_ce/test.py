@@ -1,5 +1,3 @@
-from difflib import unified_diff
-import filecmp
 import glob
 import h5py
 import numpy as np

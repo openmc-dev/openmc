@@ -244,16 +244,11 @@ public:
   double sample(uint64_t* seed) const;
 
 private:
-  struct Pair {
-    double cummulative_probability_ {0.0};
-    UPtrDist distribution_;
-    // bool operator<(const Pair& o) const {
-    //  return cummulative_probability_ < o.cummulative_probability_;
-    //}
-    bool operator<(double p) const { return cummulative_probability_ < p; }
-  };
+  // Storrage for probability + distribution
+  using DistPair = std::pair<double, UPtrDist>;
 
-  vector<Pair> distribution_; //!< sub-distributions + cummulative probabilities
+  vector<DistPair>
+    distribution_; //!< sub-distributions + cummulative probabilities
 };
 
 

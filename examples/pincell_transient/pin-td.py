@@ -9,21 +9,21 @@ materials_file = openmc.Materials(geometry.get_all_materials().values())
 ###############################################################################
 # Define problem settings
 
-settings_file = openmc.Settings()
-settings_file.batches = 200
-settings_file.inactive = 100
-settings_file.particles = 1000
-settings_file.output = {'tallies': False}
-settings_file.seed = 1
+settings = openmc.Settings()
+settings.batches = 200
+settings.inactive = 100
+settings.particles = 1000
+settings.output = {'tallies': False}
+settings.seed = 1
 
 # Create an initial uniform spatial source distribution over fissionable zones
 lower_left = [-0.62992, -0.62992, -182.88]
 upper_right = [0.62992, 0.62992, 182.88]
 uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
-settings_file.source = openmc.source.Source(space=uniform_dist)
+settings.source = openmc.source.Source(space=uniform_dist)
 
-settings_file.sourcepoint = {
-    'batches': [settings_file.batches],
+settings.sourcepoint = {
+    'batches': [settings.batches],
     'separate': True,
     'write': True
 }
@@ -34,7 +34,7 @@ entropy_mesh = openmc.RegularMesh()
 entropy_mesh.lower_left = lower_left
 entropy_mesh.upper_right = upper_right
 entropy_mesh.dimension = [1,1,30]
-settings_file.entropy_mesh = entropy_mesh
+settings.entropy_mesh = entropy_mesh
 
 ###############################################################################
 # Define transient problem parameters
@@ -91,7 +91,7 @@ solver.energy_groups                = energy_groups
 solver.fine_groups                  = fine_groups
 solver.tally_groups                 = energy_groups
 solver.geometry                     = geometry
-solver.settings                     = settings_file
+solver.settings                     = settings
 solver.materials                    = materials_file
 solver.transient                    = transient
 solver.outer_tolerance              = np.inf

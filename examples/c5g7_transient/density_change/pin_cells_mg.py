@@ -104,10 +104,10 @@ for mat in mats:
         cells[name] = openmc.Cell(name=name)
         universes[univ_name].add_cell(cells[name])
 
-    cells['{} {}'.format(mat, 'Reflector')].region           = -surfaces['Fuel Outer Clad OR']
-    cells['{} {}'.format(mat, 'Reflector Moderator')].region = +surfaces['Fuel Outer Clad OR']
-    cells['{} {}'.format(mat, 'Reflector')].fill           = materials[mat]
-    cells['{} {}'.format(mat, 'Reflector Moderator')].fill = materials['Moderator']
+    cells[f'{mat} Reflector'].region           = -surfaces['Fuel Outer Clad OR']
+    cells[f'{mat} Reflector Moderator'].region = +surfaces['Fuel Outer Clad OR']
+    cells[f'{mat} Reflector'].fill           = materials[mat]
+    cells[f'{mat} Reflector Moderator'].fill = materials['Moderator']
 
 cells['Moderator'] = openmc.Cell(name='Moderator0')
 cells['Moderator'].fill = materials['Moderator']

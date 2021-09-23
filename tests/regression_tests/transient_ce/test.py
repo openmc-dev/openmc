@@ -10,7 +10,7 @@ import openmc.kinetics as kinetics
 import openmc.mgxs
 
 from tests.regression_tests import config
-from tests.testing_harness import PyAPITestHarness, colorize
+from tests.testing_harness import PyAPITestHarness
 
 
 class TransientTestHarness(PyAPITestHarness):

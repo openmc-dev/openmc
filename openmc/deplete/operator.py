@@ -536,7 +536,8 @@ class Operator(TransportOperator):
 
         # Initialize OpenMC library
         comm.barrier()
-        openmc.lib.init(intracomm=comm)
+        if not openmc.lib.LIB_INIT:
+            openmc.lib.init(intracomm=comm)
 
         # Generate tallies in memory
         materials = [openmc.lib.materials[int(i)]

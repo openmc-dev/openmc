@@ -366,13 +366,13 @@ killed_particle_energy_delivered();
 void Particle::energy_delivered_in_cell()
 {
   // Adds the energy the particle loses during the collision.
-  pht_storage()[coord(0).cell] += E_last() - E();
+  pht_storage()[coord(n_coord() - 1).cell] += E_last() - E();
 }
 
 void Particle::killed_particle_energy_delivered()
 {
   // Adds the energy of killed particles.
-  pht_storage()[coord(0).cell] += E();
+  pht_storage()[coord(n_coord() - 1).cell] += E();
 }
 
 void Particle::remove_energy_of_secondary()

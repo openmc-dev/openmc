@@ -308,12 +308,12 @@ Mixture::Mixture(pugi::xml_node node)
 
     // Save cummulative probybility and distrubution
     distribution_.push_back(
-      {cumsum, distribution_from_xml(pair.child("dist"))});
+      std::make_pair(cumsum, distribution_from_xml(pair.child("dist"))));
   }
 
   // Normalize cummulative probabilities to 1
   for (auto& pair : distribution_) {
-    pair.cummulative_probability_ /= cumsum;
+    pair.first /= cumsum;
   }
 }
 
@@ -323,8 +323,8 @@ double Mixture::sample(uint64_t* seed) const
   const double p = prn(seed);
 
   // find matching distribution
-  const auto it =
-    std::lower_bound(distribution_.cbegin(), distribution_.cend(), p);
+  const auto it = std::lower_bound(distribution_.cbegin(), distribution_.cend(),
+    p, [](const DistPair& pair, double p) { return pair.first < p; });
 
   // This should not happen. Catch it
   // TODO: Remove this check, when the code is trusted to always operate
@@ -333,7 +333,7 @@ double Mixture::sample(uint64_t* seed) const
   }
 
   // Sample the choosen distribution
-  return it->distribution_->sample(seed);
+  return it->second->sample(seed);
 }
 
 //==============================================================================

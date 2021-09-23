@@ -109,6 +109,7 @@ def global_bounding_box():
 
     return llc, urc
 
+
 def calculate_volumes():
     """Run stochastic volume calculation"""
     _dll.openmc_calculate_volumes()
@@ -147,6 +148,7 @@ def export_properties(filename=None):
 def finalize():
     """Finalize simulation and free memory"""
     _dll.openmc_finalize()
+    openmc.lib.LIB_INIT = False
 
 
 def find_cell(xyz):
@@ -253,6 +255,7 @@ def init(args=None, intracomm=None):
             intracomm = c_void_p(address)
 
     _dll.openmc_init(argc, argv, intracomm)
+    openmc.lib.LIB_INIT = True
 
 
 def is_statepoint_batch():

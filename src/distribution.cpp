@@ -297,30 +297,43 @@ Mixture::Mixture(pugi::xml_node node)
   //auto params = get_node_array<double>(node, "parameters");
 
   double cumsum = 0.0;
-  for (pugi::xml_node pair = node.child("pair"); pair; pair = pair.next_sibling("pair")) {
+  for (pugi::xml_node pair = node.child("pair"); pair;
+       pair = pair.next_sibling("pair")) {
+    // Check that required data exists
     if (!pair.attribute("probability")) openmc::fatal_error("Mixture pair element does not have probability.");
     if (!pair.child("dist")) openmc::fatal_error("Mixture pair element does not have a distribution.");
-    double p = std::stod(pair.attribute("probability").value());
-    p_.push_back(p);
-    cumsum += p;
-    c_.push_back(cumsum);
-    d_.push_back(distribution_from_xml(pair.child("dist")));
+
+    // cummulative sum of probybilities
+    cumsum += std::stod(pair.attribute("probability").value());
+
+    // Save cummulative probybility and distrubution
+    distribution_.push_back(
+      {cumsum, distribution_from_xml(pair.child("dist"))});
   }
-  std::transform(c_.begin(), c_.end(), c_.begin(), [cumsum](double c){ return c/cumsum;});
+
+  // Normalize cummulative probabilities to 1
+  for (auto& pair : distribution_) {
+    pair.cummulative_probability_ /= cumsum;
+  }
 }
 
-double Mixture::sample(uint64_t* seed) const {
-	//
+double Mixture::sample(uint64_t* seed) const
+{
   // Sample value of CDF
-  double c = prn(seed);
+  const double p = prn(seed);
 
-  // Find first CDF bin which is above the sampled value and sample corresponding sub-distribution
-  for (size_t i = 0; i < c_.size(); i++) {
-    if (c<=c_[i]) return d_[i]->sample(seed);
-  }
+  // find matching distribution
+  const auto it =
+    std::lower_bound(distribution_.cbegin(), distribution_.cend(), p);
 
   // This should not happen. Catch it
-  openmc::fatal_error("Bad Sampling in Mixture Distribution.");
+  // TODO: Remove this check, when the code is trusted to always operate
+  if (it == distribution_.cend()) {
+    fatal_error("Bad Sampling in Mixture Distribution.");
+  }
+
+  // Sample the choosen distribution
+  return it->distribution_->sample(seed);
 }
 
 //==============================================================================

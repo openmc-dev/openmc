@@ -837,4 +837,24 @@ class Mixture(Univariate):
 
     @classmethod
     def from_xml_element(cls, elem):
-        raise NotImplementedError
+        """Generate mixture distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.Mixture
+            Mixture distribution generated from XML element
+
+        """
+        P = []
+        D = []
+        for pair in elem:
+            if pair.tag == "pair":
+              P.append( float(get_text(pair, 'probability')) )
+              D.append( Univariate.from_xml_element(pair.find("dist")) )
+
+        return cls(P,D)

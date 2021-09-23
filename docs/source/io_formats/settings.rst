@@ -619,16 +619,17 @@ variable and whose sub-elements/attributes are as follows:
 
 :type:
   The type of the distribution. Valid options are "uniform", "discrete",
-  "tabular", "maxwell", and "watt". The "uniform" option produces variates
-  sampled from a uniform distribution over a finite interval. The "discrete"
-  option produces random variates that can assume a finite number of values
-  (i.e., a distribution characterized by a probability mass function). The
-  "tabular" option produces random variates sampled from a tabulated
+  "tabular", "maxwell", "watt", and "mixture". The "uniform" option producess
+  variates sampled from a uniform distribution over a finite interval. The 
+  "discrete" option produces random variates that can assume a finite number 
+  of values (i.e., a distribution characterized by a probability mass function). 
+  The "tabular" option produces random variates sampled from a tabulated
   distribution where the density function is either a histogram or
   linearly-interpolated between tabulated points. The "watt" option produces
   random variates is sampled from a Watt fission spectrum (only used for
   energies). The "maxwell" option produce variates sampled from a Maxwell
-  fission spectrum (only used for energies).
+  fission spectrum (only used for energies). The "mixture" option produces samples
+  from univariate sub-distributions with given probabilities.
 
   *Default*: None
 
@@ -648,6 +649,11 @@ variable and whose sub-elements/attributes are as follows:
   For a "maxwell" distribution, ``parameters`` should be given as one real
   number :math:`a` that parameterizes the distribution :math:`p(x) dx = c x
   e^{-x/a} dx`.
+
+  For a "mixture" distribution, ``parameters`` provide the :math:'(p,d)' pairs
+  connecting the probabilites :math:'p' with the different sub-distributions 
+  :math:'d'. All probabilities :math:'p' are given first followed by the corresponding
+  distributions :math:'d'.
 
   .. note:: The above format should be used even when using the multi-group
             :ref:`energy_mode`.

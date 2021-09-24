@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+import os
 from pathlib import Path
 import time
 import warnings
@@ -90,13 +91,13 @@ class Model:
 
         self.chain_file = chain_file
         self.fission_q = fission_q
-        self.depletion_operator = None
 
-        if self.materials is None:
+        if materials is None:
             mats = self.geometry.get_all_materials().values()
         else:
             mats = self.materials
         self._materials_by_id = {mat.id: mat for mat in mats}
+        self._materials_by_name = {mat.name: mat for mat in mats}
         cells = self.geometry.get_all_cells()
         self._cells_by_id = {cell.id: cell for cell in cells.values()}
         self._cells_by_name = {cell.name: cell for cell in cells.values()}
@@ -128,10 +129,6 @@ class Model:
     @property
     def fission_q(self):
         return self._fission_q
-
-    @property
-    def depletion_operator(self):
-        return self._depletion_operator
 
     @property
     def C_init(self):
@@ -181,20 +178,14 @@ class Model:
     def chain_file(self, chain_file):
         check_type('chain_file', chain_file, (type(None), str, Path))
         if isinstance(chain_file, str):
-            self._chain_file = Path(chain_file)
+            self._chain_file = Path(chain_file).resolve()
         else:
-            self._chain_file = chain_file
+            self._chain_file = chain_file.resolve()
 
     @fission_q.setter
     def fission_q(self, fission_q):
         check_type('fission_q', fission_q, (type(None), dict))
         self._fission_q = fission_q
-
-    @depletion_operator.setter
-    def depletion_operator(self, depletion_operator):
-        check_type('depletion_operator', depletion_operator,
-                   (type(None), dep.Operator))
-        self._depletion_operator = depletion_operator
 
     @classmethod
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
@@ -221,28 +212,11 @@ class Model:
         settings = openmc.Settings.from_xml(settings)
         return cls(geometry, materials, settings)
 
-    def init_C_api(self, use_depletion_operator=False):
-        """Initializes the model in memory via the C-API
+    def init_C_api(self):
+        """Initializes the model in memory via the C-API"""
 
-        Parameters
-        ----------
-        directory : str
-            Directory to write XML files to. If it doesn't exist already, it
-            will be created.
-        use_depletion_operator : bool, optional
-            If True, the model will be loaded using the depletion operator
-            including all isotopes necessary from fission. This parameter will
-            use the :attr:`Model.chain_file` and :attr:`Model.fission_q`
-            attributes.
-        """
+        self.clear_C_api()
 
-        if use_depletion_operator:
-            # Create OpenMC transport operator
-            self.depletion_operator = \
-                dep.Operator(self.geometry, self.settings,
-                             str(self.chain_file), fission_q=self.fission_q)
-        else:
-            openmc.lib.hard_reset()
         if dep.comm.rank == 0:
             self.export_to_xml()
         dep.comm.barrier()
@@ -253,7 +227,8 @@ class Model:
         openmc.lib.finalize()
 
     def deplete(self, timesteps, chain_file=None, method='cecm',
-                fission_q=None, final_step=True, **kwargs):
+                fission_q=None, final_step=True, directory='.',
+                **kwargs):
         """Deplete model using specified timesteps/power
 
         Parameters
@@ -265,57 +240,63 @@ class Model:
             Path to the depletion chain XML file.  Defaults to the chain
             found under the ``depletion_chain`` in the
             :envvar:`OPENMC_CROSS_SECTIONS` environment variable if it exists.
-        method : str
-             Integration method used for depletion (e.g., 'cecm', 'predictor')
+        method : str, optional
+             Integration method used for depletion (e.g., 'cecm', 'predictor').
+             Defaults to 'cecm'.
         fission_q : dict, optional
             Dictionary of nuclides and their fission Q values [eV].
             If not given, values will be pulled from the ``chain_file``.
+            Defaults to pulling from the ``chain_file``.
         final_step : bool, optional
             Indicate whether or not a transport solve should be run at the end
-            of the last timestep.
-
-            .. versionadded:: 0.12.3
+            of the last timestep. Defaults to running this transport solve.
+        directory : str, optional
+            Directory to write XML files to. If it doesn't exist already, it
+            will be created. Defaults to the current working directory
         **kwargs
             Keyword arguments passed to integration function (e.g.,
             :func:`openmc.deplete.integrator.cecm`)
 
         """
 
-        if self.C_init and self.depletion_operator is not None:
-            # Then the user has properly initialized the information and we can
-            # just carry forward
-            pass
-        elif self.C_init and self.depletion_operator is None:
-            # Then the user has initialzed the C-API but without the depletion
-            # isotopes loaded. We would have to reset and reload data, but
-            # doing so could lose user information. Therefore let us just
-            # provide an error and quit.
-            msg = "Model.deplete(...) cannot be called after " \
-                "Model.init_C_api(...) if the use_depletion_operator " \
-                "argument to Model.init_C_api(...) is False."
-            raise SetupError(msg)
+        # To keep Model.deplete(...) API compatibility, we will allow the
+        # chain_file and fission_q params to be set if provided while we set
+        # the depletion operator
+        if chain_file is not None:
+            this_chain_file = Path(chain_file).resolve()
+            warnings.warn("The chain_file argument of Model.deplete(...) "
+                          "has been deprecated and may be removed in a "
+                          "future version. The Model.chain_file should be"
+                          "used instead.", DeprecationWarning)
         else:
-            # To get here, the C-API is not initialized. So we can do that now
-            # To keep Model.deplete(...) API compatibility, we will allow the
-            # chain_file and fission_q params to be set since we havent loaded
-            # the API anyways
-            if chain_file is not None:
-                self.chain_file = chain_file
-                warnings.warn("The chain_file argument of Model.deplete(...) "
-                              "has been deprecated and may be removed in a "
-                              "future version. The Model.chain_file should be"
-                              "used instead.", DeprecationWarning)
-            if fission_q is not None:
-                warnings.warn("The fission_q argument of Model.deplete(...) "
-                              "has been deprecated and may be removed in a "
-                              "future version. The Model.fission_q should be"
-                              "used instead.", DeprecationWarning)
-                self.fission_q = fission_q
-            self.init_C_api(use_depletion_operator=True)
+            this_chain_file = self.chain_file
+        if fission_q is not None:
+            warnings.warn("The fission_q argument of Model.deplete(...) "
+                          "has been deprecated and may be removed in a "
+                          "future version. The Model.fission_q should be"
+                          "used instead.", DeprecationWarning)
+            this_fission_q = fission_q
+        else:
+            this_fission_q = fission_q
+
+        # Create directory if required
+        d = Path(directory)
+        if not d.is_dir():
+            d.mkdir(parents=True)
+        start_dir = Path.cwd()
+        os.chdir(d)
+
+        depletion_operator = \
+            dep.Operator(self.geometry, self.settings,
+                         str(this_chain_file.absolute()),
+                         fission_q=this_fission_q)
+        # Tell depletion_operator.finalize NOT to clear C-API memory when it is
+        # done
+        depletion_operator.cleanup_when_done = False
 
         # Set up the integrator
         integrator_class = dep.integrators.integrator_factory(method)
-        integrator = integrator_class(self.depletion_operator,
+        integrator = integrator_class(depletion_operator,
                                       timesteps, **kwargs)
 
         # Now perform the depletion
@@ -324,7 +305,7 @@ class Model:
         # If we did not perform a transport calculation on the final step, then
         # make the code update the C-API material inventory
         if not final_step:
-            self.depletion_operator._update_materials()
+            depletion_operator._update_materials()
 
         # Now make the python Materials match the C-API material data
         for mat_id, mat in self._materials_by_id.items():
@@ -339,6 +320,8 @@ class Model:
                     mat.add_nuclide(nuc, density)
                     atom_density += density
                 mat.set_density('atom/b-cm', atom_density)
+
+        os.chdir(start_dir)
 
     def export_to_xml(self, directory='.'):
         """Export model to XML files.
@@ -376,6 +359,9 @@ class Model:
     def import_properties(self, filename):
         """Import physical properties
 
+        .. versionchanged:: 0.12.3
+            This method now updates values as loaded in memory with the C-API
+
         Parameters
         ----------
         filename : str
@@ -404,6 +390,9 @@ class Model:
                 cell = cells[cell_id]
                 if cell.fill_type in ('material', 'distribmat'):
                     cell.temperature = group['temperature'][()]
+                    if self.C_init:
+                        C_cell = openmc.lib.cells[cell_id]
+                        C_cell.set_temperature(group['temperature'][()])
 
             # Make sure number of materials matches
             mats_group = fh['materials']
@@ -417,6 +406,9 @@ class Model:
                 mat_id = int(name.split()[1])
                 atom_density = group.attrs['atom_density']
                 materials[mat_id].set_density('atom/b-cm', atom_density)
+                if self.C_init:
+                    C_mat = openmc.lib.materials[mat_id]
+                    C_mat.set_density(atom_density, 'atom/b-cm')
 
     def run(self, **kwargs):
         """Runs OpenMC. If the C-API has been initialized, then the C-API is
@@ -469,54 +461,92 @@ class Model:
                 last_statepoint = sp
         return last_statepoint
 
-    def _move_cell(self, cell_names_or_ids, vector, attrib_name):
-        # Method to do the same work whether it is a rotation or translation
-        check_type('cell_names_or_ids', cell_names_or_ids, Iterable,
-                   (np.int, int, str))
-        check_type('vector', vector, Iterable, (np.float, float))
-        check_length('vector', vector, 3)
-        check_value('attrib_name', attrib_name, ('rotation', 'translation'))
+    def _change_py_C_attribs(self, names_or_ids, value, obj_type, attrib_name,
+                             density_units='atom/b-cm'):
+        # Method to do the same work whether it is a cell or material and
+        # a temperature or volume
+        check_type('names_or_ids', names_or_ids, Iterable, (np.int, int, str))
+        check_type('obj_type', obj_type, str)
+        obj_type = obj_type.lower()
+        check_value('obj_type', obj_type, ('material', 'cell'))
+        check_value('attrib_name', attrib_name,
+                    ('temperature', 'volume', 'density', 'rotation',
+                     'translation'))
+        # The C-API only allows setting density units of atom/b-cm and g/cm3
+        check_value('density_units', density_units, ('atom/b-cm', 'g/cm3'))
+        # The C-API has no way to set cell volume so lets raise an exception
+        if obj_type == 'cell' and attrib_name == 'volume':
+            raise NotImplementedError(
+                'Setting a Cell volume is not yet supported!')
+        # And some items just dont make sense
+        if obj_type == 'cell' and attrib_name == 'density':
+            raise ValueError('Cannot set a Cell density!')
+        if obj_type == 'material' and attrib_name in ('rotation',
+                                                      'translation'):
+            raise ValueError('Cannot set a material rotation/translation!')
 
-        # Get the list of cell ids to use y converting from names and accepting
+        # Set the
+        if obj_type == 'cell':
+            by_name = self._cells_by_name
+            by_id = self._cells_by_id
+            C_by_id = openmc.lib.cells
+        else:
+            by_name = self._materials_by_name
+            by_id = self._materials_by_id
+            C_by_id = openmc.lib.materials
+
+        # Get the list of ids to use if converting from names and accepting
         # only values that have actual ids
-        cell_ids = [None] * len(cell_names_or_ids)
-        for c, cell_name_or_id in enumerate(cell_names_or_ids):
-            if isinstance(cell_name_or_id, (int, np.int)):
-                if cell_name_or_id in self._cells_by_id:
-                    cell_ids[c] = int(cell_name_or_id)
-                msg = 'Cell ID {} is not present in the model!'.format(
-                    cell_name_or_id)
+        ids = [None] * len(names_or_ids)
+        for i, name_or_id in enumerate(names_or_ids):
+            if isinstance(name_or_id, (int, np.int)):
+                if name_or_id in by_id:
+                    ids[i] = int(name_or_id)
+                msg = '{} ID {} is not present in the model!'.format(
+                    obj_type.capitalize(), name_or_id)
                 raise InvalidIDError(msg)
-            elif isinstance(cell_name_or_id, str):
-                if cell_name_or_id in self._cells_by_name:
-                    cell_ids[c] = self._cells_by_name[cell_name_or_id]
+            elif isinstance(name_or_id, str):
+                if name_or_id in by_name:
+                    ids[i] = by_name[name_or_id].id
                 else:
-                    msg = 'Cell {} is not present in the model!'.format(
-                        cell_name_or_id)
+                    msg = '{} {} is not present in the model!'.format(
+                        obj_type.capitalize(), name_or_id)
                     raise InvalidIDError(msg)
 
-        # Now perform the motion
-        for cell_id in cell_ids:
-            cell = self._cells_by_id[cell_id]
+        # Now perform the change to both python and C-API
+        for id_ in ids:
+            obj = by_id[id_]
             if attrib_name == 'rotation':
-                cell.rotation = vector
+                obj.rotation = value
             elif attrib_name == 'translation':
-                cell.translation = vector
+                obj.translation = value
+            elif attrib_name == 'volume':
+                obj.volume = value
+            elif attrib_name == 'temperature':
+                obj.temperature = value
+            elif attrib_name == 'density':
+                obj.set_density(value, density_units)
             # Next lets keep what is in C-API memory up to date as well
             if self.C_init:
-                C_cell = openmc.lib.cells[cell_id]
+                C_obj = C_by_id[id_]
                 if attrib_name == 'rotation':
-                    C_cell.rotation = vector
+                    C_obj.rotation = value
                 elif attrib_name == 'translation':
-                    C_cell.translation = vector
+                    C_obj.translation = value
+                elif attrib_name == 'volume':
+                    C_obj.set_volume = value
+                elif attrib_name == 'temperature':
+                    C_obj.set_temperature = value
+                elif attrib_name == 'density':
+                    C_obj.set_density(value, density_units)
 
-    def rotate_cells(self, cell_names_or_ids, vector):
+    def rotate_cells(self, names_or_ids, vector):
         """Rotate the identified cell(s) by the specified rotation vector.
         The rotation is only applied to cells filled with a universe.
 
         Parameters
         ----------
-        cell_names_or_ids : Iterable of str or int
+        names_or_ids : Iterable of str or int
             The cell names (if str) or id (if int) that are to be translated
             or rotated. This parameter can include a mix of names and ids.
         vector : Iterable of float
@@ -525,15 +555,15 @@ class Model:
 
         """
 
-        self._move_cell(cell_names_or_ids, vector, 'rotation')
+        self._change_py_C_attribs(names_or_ids, vector, 'cell', 'rotation')
 
-    def translate_cells(self, cell_names_or_ids, vector):
+    def translate_cells(self, names_or_ids, vector):
         """Translate the identified cell(s) by the specified translation vector.
         The translation is only applied to cells filled with a universe.
 
         Parameters
         ----------
-        cell_names_or_ids : Iterable of str or int
+        names_or_ids : Iterable of str or int
             The cell names (if str) or id (if int) that are to be translated
             or rotated. This parameter can include a mix of names and ids.
         vector : Iterable of float
@@ -542,4 +572,54 @@ class Model:
 
         """
 
-        self._move_cell(cell_names_or_ids, vector, 'translation')
+        self._change_py_C_attribs(names_or_ids, vector, 'cell', 'translation')
+
+    def update_densities(self, names_or_ids, density, density_units):
+        """Update the density of a given set of materials to a new value
+
+        Parameters
+        ----------
+        names_or_ids : Iterable of str or int
+            The material names (if str) or id (if int) that are to be updated.
+            This parameter can include a mix of names and ids.
+        density : float
+            The density to apply in the units specified by `density_units`
+        density_units : {'atom/b-cm', 'g/cm3'}
+            Units for `density`
+
+        """
+
+        self._change_py_C_attribs(names_or_ids, density, 'material', 'density',
+                                  density_units)
+
+    def update_cell_temperatures(self, names_or_ids, temperature):
+        """Update the temperature of a set of cells to the given value
+
+        Parameters
+        ----------
+        names_or_ids : Iterable of str or int
+            The cell names (if str) or id (if int) that are to be updated.
+            This parameter can include a mix of names and ids.
+        temperature : float
+            The temperature to apply in units of Kelvin
+
+        """
+
+        self._change_py_C_attribs(names_or_ids, temperature, 'cell',
+                                  'temperature')
+
+    def update_material_temperatures(self, names_or_ids, temperature):
+        """Update the temperature of a set of materials to the given value
+
+        Parameters
+        ----------
+        names_or_ids : Iterable of str or int
+            The material names (if str) or id (if int) that are to be updated.
+            This parameter can include a mix of names and ids.
+        temperature : float
+            The temperature to apply in units of Kelvin
+
+        """
+
+        self._change_py_C_attribs(names_or_ids, temperature, 'material',
+                                  'temperature')

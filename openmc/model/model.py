@@ -179,8 +179,10 @@ class Model:
         check_type('chain_file', chain_file, (type(None), str, Path))
         if isinstance(chain_file, str):
             self._chain_file = Path(chain_file).resolve()
-        else:
+        elif isinstance(chain_file, Path):
             self._chain_file = chain_file.resolve()
+        else:
+            self._chain_file = None
 
     @fission_q.setter
     def fission_q(self, fission_q):

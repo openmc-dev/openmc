@@ -215,7 +215,8 @@ class RegularMesh(MeshBase):
         mesh.lower_left = group['lower_left'][()]
         mesh.upper_right = group['upper_right'][()]
         mesh.width = group['width'][()]
-        mesh.length_multiplier = group['length_multiplier'][()] if 'length_multiplier' in group else 1.0
+    if 'length_multiplier' in group:
+        mesh.length_multiplier = group['length_multiplier'][()] 
 
         return mesh
 
@@ -647,7 +648,8 @@ class UnstructuredMesh(MeshBase):
         An iterable of element centroid coordinates, e.g. [(0.0, 0.0, 0.0),
         (1.0, 1.0, 1.0), ...]
     """
-    def __init__(self, filename, library, mesh_id=None, name='', length_multiplier=1.0):
+    def __init__(self, filename, library, mesh_id=None, name='',
+                        length_multiplier=1.0):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
@@ -729,7 +731,9 @@ class UnstructuredMesh(MeshBase):
 
     @length_multiplier.setter
     def length_multiplier(self, length_multiplier):
-        cv.check_type("Unstructured mesh length multiplier", length_multiplier, Real)
+        cv.check_type("Unstructured mesh length multiplier", 
+                                length_multiplier, 
+                                Real)
         self._length_multiplier = length_multiplier
 
         if (self._length_multiplier != 1.0):

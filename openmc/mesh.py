@@ -215,8 +215,6 @@ class RegularMesh(MeshBase):
         mesh.lower_left = group['lower_left'][()]
         mesh.upper_right = group['upper_right'][()]
         mesh.width = group['width'][()]
-    if 'length_multiplier' in group:
-        mesh.length_multiplier = group['length_multiplier'][()] 
 
         return mesh
 
@@ -613,14 +611,12 @@ class UnstructuredMesh(MeshBase):
     ----------
     filename : str
         Location of the unstructured mesh file
-    length_multiplier: float
-        Constant multiplier to apply to mesh coordinates
     mesh_id : int
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    size : int
-        Number of elements in the unstructured mesh
+    length_multiplier: float
+        Constant multiplier to apply to mesh coordinates
 
     Attributes
     ----------
@@ -732,7 +728,7 @@ class UnstructuredMesh(MeshBase):
     @length_multiplier.setter
     def length_multiplier(self, length_multiplier):
         cv.check_type("Unstructured mesh length multiplier", 
-                                length_multiplier, 
+                                length_multiplier,
                                 Real)
         self._length_multiplier = length_multiplier
 
@@ -842,6 +838,9 @@ class UnstructuredMesh(MeshBase):
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
         mesh.size = mesh.volumes.size
+
+        if 'length_multiplier' in group:
+            mesh.length_multiplier = group['length_multiplier'][()]
 
         return mesh
 

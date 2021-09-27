@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 import os
 from pathlib import Path
+from numbers import Integral
 import time
 import warnings
 
@@ -216,15 +217,62 @@ class Model:
         settings = openmc.Settings.from_xml(settings)
         return cls(geometry, materials, settings)
 
-    def init_C_api(self):
-        """Initializes the model in memory via the C-API"""
+    def init_C_api(self, threads=None, geometry_debug=False, restart_file=None,
+                   tracks=False, output=True, event_based=False):
+        """Initializes the model in memory via the C-API
+
+        Parameters
+        ----------
+        threads : int, optional
+            Number of OpenMP threads. If OpenMC is compiled with OpenMP threading
+            enabled, the default is implementation-dependent but is usually equal to
+            the number of hardware threads available (or a value set by the
+            :envvar:`OMP_NUM_THREADS` environment variable).
+        geometry_debug : bool, optional
+            Turn on geometry debugging during simulation. Defaults to False.
+        restart_file : str, optional
+            Path to restart file to use
+        tracks : bool, optional
+            Write tracks for all particles. Defaults to False.
+        output : bool
+            Capture OpenMC output from standard out
+        event_based : bool, optional
+            Turns on event-based parallelism, instead of default history-based
+        """
+
+        # TODO: right now the only way to set most of the above parameters via
+        # the C-API are at initialization time despite use-cases existing to
+        # set them for individual runs. For now this functionality is exposed
+        # where it exists (here in init), but in the future the functionality
+        # should be exposed so that it can be accessed via model.run(...)
+
+        # TODO: the output flag is not yet implemented for the openmc.lib.init
+        # command. This will be the subject of future work.
+
+        args = []
+
+        if isinstance(threads, Integral) and threads > 0:
+            args += ['-s', str(threads)]
+
+        if geometry_debug:
+            args.append('-g')
+
+        if event_based:
+            args.append('-e')
+
+        if isinstance(restart_file, str):
+            args += ['-r', restart_file]
+
+        if tracks:
+            args.append('-t')
 
         self.clear_C_api()
 
         if dep.comm.rank == 0:
             self.export_to_xml()
         dep.comm.barrier()
-        openmc.lib.init(intracomm=dep.comm)
+        # TODO: Implement the output flag somewhere on the C++ side
+        openmc.lib.init(args=args, intracomm=dep.comm)
 
     def clear_C_api(self):
         """Finalize simulation and free memory allocated for the C-API"""
@@ -429,10 +477,31 @@ class Model:
 
         Parameters
         ----------
-        **kwargs
-            Keyword arguments passed to :func:`openmc.run`. Note that these are
-            ignored if running via the C-API. Instead the parameters should be
-            set via the Settings object.
+        particles : int, optional
+            Number of particles to simulate per generation.
+        threads : int, optional
+            Number of OpenMP threads. If OpenMC is compiled with OpenMP
+            threading enabled, the default is implementation-dependent but is
+            usually equal to the number of hardware threads available (or a
+            value set by the :envvar:`OMP_NUM_THREADS` environment variable).
+        geometry_debug : bool, optional
+            Turn on geometry debugging during simulation. Defaults to False.
+        restart_file : str, optional
+            Path to restart file to use
+        tracks : bool, optional
+            Write tracks for all particles. Defaults to False.
+        output : bool
+            Capture OpenMC output from standard out
+        cwd : str, optional
+            Path to working directory to run in. Defaults to the current
+            working directory.
+        openmc_exec : str, optional
+            Path to OpenMC executable. Defaults to 'openmc'.
+        mpi_args : list of str, optional
+            MPI execute command and any additional MPI arguments to pass,
+            e.g. ['mpiexec', '-n', '8'].
+        event_based : bool, optional
+            Turns on event-based parallelism, instead of default history-based
 
         Returns
         -------
@@ -448,8 +517,45 @@ class Model:
         last_statepoint = None
 
         if self.C_init:
+            # Handle the openmc.run kwargs
+            # First dont allow ones that must be set via init
+            via_args = ['threads', 'geometry_debug', 'restart_file', 'tracks',
+                        'cwd']
+            provided_args = [k for k in kwargs.keys()]
+            if any([key in via_args for key in provided_args]):
+                msg = "Argument {} must be set via Model.c_init(...)"
+                raise ValueError(msg)
+
+            if 'particles' in kwargs:
+                init_particles = openmc.lib.settings.particles
+                if isinstance(kwargs['particles'], Integral) and \
+                    kwargs['particles'] > 0:
+                    openmc.lib.settings.particles = kwargs['particles']
+
+            # Now lets handle the ones we can handle
+            if 'output' in kwargs:
+                init_verbosity = openmc.lib.settings.verbosity
+                if not kwargs['output']:
+                    openmc.lib.settings.verbosity = 1
+
+            # Event-based can be set at init-time or on a case-basis. Handle
+            # the case-basis here.
+            if 'event_based' in kwargs:
+                # TODO: However, the event based flag isnt exposed in the C-API
+                # yet. Support for actual handling will be added in future work
+                msg = "Setting event-based mode directly via the C-API is " \
+                    "not yet implemented"
+                raise NotImplementedError(msg)
+
             # Then run using the C-API
             openmc.lib.run()
+
+            # Reset changes for the openmc.run kwargs handling
+            if 'particles' in kwargs:
+                openmc.lib.settings.particles = init_particles
+            if 'output' in kwargs:
+                openmc.lib.settings.verbosity = init_verbosity
+
         else:
             # Then run via the command line
             self.export_to_xml()

@@ -147,6 +147,8 @@ def test_init_clear_C_api(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     if mpi_intracomm is not None:
         openmc.deplete.comm = orig_comm
 
+    # TODO: in above test, tests are necessary for all the arguments of init
+
 
 def test_import_properties(run_in_tmpdir, mpi_intracomm):
     """Test importing properties on the Model class """
@@ -196,17 +198,22 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     if mpi_intracomm is not None:
         orig_comm = openmc.deplete.comm
         openmc.deplete.comm = mpi_intracomm
-    test_model.settings.verbosity = 1
     test_model.init_C_api()
-    sp_path = test_model.run()
+    sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
         C_keff = sp.k_combined
         C_flux = sp.get_tally(id=1).get_values()[0, 0, 0]
-    test_model.clear_C_api()
 
     # and lets compare results
     assert (C_keff - cli_keff) < 1e-15
-    assert (C_flux - cli_flux) < 1e-15
+    assert (C_flux - cli_flux) < 1e-13
+
+    # Now we should make sure the event-based flag gives us our not implemented
+    # error
+    with pytest.raises(NotImplementedError):
+        test_model.run(output=False, event_based=True)
+
+    test_model.clear_C_api()
 
     # And before done, reset the deplete communicator
     if mpi_intracomm is not None:

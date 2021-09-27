@@ -208,10 +208,18 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert (C_keff - cli_keff) < 1e-15
     assert (C_flux - cli_flux) < 1e-13
 
-    # Now we should make sure the event-based flag gives us our not implemented
-    # error
-    with pytest.raises(NotImplementedError):
-        test_model.run(output=False, event_based=True)
+    # Now we should make sure that the flags for items which should be handled
+    # by init are properly set
+    with pytest.raises(ValueError):
+        test_model.run(threads=1)
+    with pytest.raises(ValueError):
+        test_model.run(geometry_debug=True)
+    with pytest.raises(ValueError):
+        test_model.run(restart_file='1.h5')
+    with pytest.raises(ValueError):
+        test_model.run(tracks=True)
+    with pytest.raises(ValueError):
+        test_model.run(cwd='hi')
 
     test_model.clear_C_api()
 

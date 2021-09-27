@@ -462,10 +462,12 @@ class Model:
                     C_mat = openmc.lib.materials[mat_id]
                     C_mat.set_density(atom_density, 'atom/b-cm')
 
-    def run(self, **kwargs):
+    def run(self, particles=None, threads=None, geometry_debug=False,
+            restart_file=None, tracks=False, output=True, cwd='.',
+            openmc_exec='openmc', mpi_args=None, event_based=False):
         """Runs OpenMC. If the C-API has been initialized, then the C-API is
         used, otherwise, this method creates the XML files and runs OpenMC via
-        a system cal. In both cases this method returns the path to the last
+        a system call. In both cases this method returns the path to the last
         statepoint file generated.
 
         .. versionchanged:: 0.12
@@ -490,7 +492,7 @@ class Model:
             Path to restart file to use
         tracks : bool, optional
             Write tracks for all particles. Defaults to False.
-        output : bool
+        output : bool, optional
             Capture OpenMC output from standard out
         cwd : str, optional
             Path to working directory to run in. Defaults to the current
@@ -519,47 +521,44 @@ class Model:
         if self.C_init:
             # Handle the openmc.run kwargs
             # First dont allow ones that must be set via init
-            via_args = ['threads', 'geometry_debug', 'restart_file', 'tracks',
-                        'cwd']
-            provided_args = [k for k in kwargs.keys()]
-            if any([key in via_args for key in provided_args]):
-                msg = "Argument {} must be set via Model.c_init(...)"
-                raise ValueError(msg)
+            for arg_name, arg, default in zip(
+                ['threads', 'geometry_debug', 'restart_file', 'tracks', 'cwd'],
+                [threads, geometry_debug, restart_file, tracks, cwd],
+                [None, False, None, False, '.']):
+                if arg != default:
+                    msg = "{} must be set via Model.c_init(...)".format(
+                        arg_name)
+                    raise ValueError(msg)
 
-            if 'particles' in kwargs:
+            if particles is not None:
                 init_particles = openmc.lib.settings.particles
-                if isinstance(kwargs['particles'], Integral) and \
-                    kwargs['particles'] > 0:
-                    openmc.lib.settings.particles = kwargs['particles']
+                if isinstance(particles, Integral) and particles > 0:
+                    openmc.lib.settings.particles = particles
 
             # Now lets handle the ones we can handle
-            if 'output' in kwargs:
+            if not output:
                 init_verbosity = openmc.lib.settings.verbosity
-                if not kwargs['output']:
+                if not output:
                     openmc.lib.settings.verbosity = 1
 
             # Event-based can be set at init-time or on a case-basis. Handle
             # the case-basis here.
-            if 'event_based' in kwargs:
-                # TODO: However, the event based flag isnt exposed in the C-API
-                # yet. Support for actual handling will be added in future work
-                msg = "Setting event-based mode directly via the C-API is " \
-                    "not yet implemented"
-                raise NotImplementedError(msg)
+            # TODO This will be dealt with in a future change to the C-API
 
             # Then run using the C-API
             openmc.lib.run()
 
             # Reset changes for the openmc.run kwargs handling
-            if 'particles' in kwargs:
+            if particles is not None:
                 openmc.lib.settings.particles = init_particles
-            if 'output' in kwargs:
+            if output is not None:
                 openmc.lib.settings.verbosity = init_verbosity
 
         else:
             # Then run via the command line
             self.export_to_xml()
-            openmc.run(**kwargs)
+            openmc.run(particles, threads, geometry_debug, restart_file,
+                       tracks, output, cwd, openmc_exec, mpi_args, event_based)
 
         # Get output directory and return the last statepoint written this run
         if self.settings.output and 'path' in self.settings.output:

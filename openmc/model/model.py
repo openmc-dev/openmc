@@ -193,6 +193,8 @@ class Model:
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
                  settings='settings.xml'):
         """Create model from existing XML files
+        When initializing this way, the user must manually load plots, tallies,
+        the chain_file and fission_q attributes.
 
         Parameters
         ----------
@@ -428,7 +430,9 @@ class Model:
         Parameters
         ----------
         **kwargs
-            Keyword arguments passed to :func:`openmc.run`
+            Keyword arguments passed to :func:`openmc.run`. Note that these are
+            ignored if running via the C-API. Instead the parameters should be
+            set via the Settings object.
 
         Returns
         -------

@@ -4,6 +4,7 @@ from pathlib import Path
 from numbers import Integral
 import time
 import warnings
+import subprocess
 
 import h5py
 import numpy as np
@@ -450,8 +451,8 @@ class Model:
             mats_group = fh['materials']
             n_cells = mats_group.attrs['n_materials']
             if n_cells != len(materials):
-                raise ValueError("Number of materials in properties file doesn't "
-                                 "match current model.")
+                raise ValueError("Number of materials in properties file "
+                                 "doesn't match current model.")
 
             # Update material densities
             for name, group in mats_group.items():
@@ -518,65 +519,208 @@ class Model:
         tstart = time.time()
         last_statepoint = None
 
-        if self.C_init:
-            # Handle the openmc.run kwargs
-            # First dont allow ones that must be set via init
-            for arg_name, arg, default in zip(
-                ['threads', 'geometry_debug', 'restart_file', 'tracks', 'cwd'],
-                [threads, geometry_debug, restart_file, tracks, cwd],
-                [None, False, None, False, '.']):
-                if arg != default:
-                    msg = "{} must be set via Model.c_init(...)".format(
-                        arg_name)
+        # Operate in the provided working directory
+        with openmc.change_directory(Path(cwd)):
+            if self.C_init:
+                # Handle the run options as applicable
+                # First dont allow ones that must be set via init
+                for arg_name, arg, default in zip(
+                    ['threads', 'geometry_debug', 'restart_file', 'tracks'],
+                    [threads, geometry_debug, restart_file, tracks],
+                    [None, False, None, False]):
+                    if arg != default:
+                        msg = "{} must be set via Model.c_init(...)".format(
+                            arg_name)
+                        raise ValueError(msg)
+
+                if particles is not None:
+                    init_particles = openmc.lib.settings.particles
+                    if isinstance(particles, Integral) and particles > 0:
+                        openmc.lib.settings.particles = particles
+
+                # If we dont want output, make the verbosity quiet
+                if not output:
+                    init_verbosity = openmc.lib.settings.verbosity
+                    if not output:
+                        openmc.lib.settings.verbosity = 1
+
+                # Event-based can be set at init-time or on a case-basis.
+                # Handle the argument here.
+                # TODO This will be dealt with in a future change to the C-API
+
+                # Then run using the C-API
+                openmc.lib.run()
+
+                # Reset changes for the openmc.run kwargs handling
+                if particles is not None:
+                    openmc.lib.settings.particles = init_particles
+                if not output:
+                    # Then re-set the initial verbosity
+                    openmc.lib.settings.verbosity = init_verbosity
+
+            else:
+                # Then run via the command line
+                self.export_to_xml()
+                openmc.run(particles, threads, geometry_debug, restart_file,
+                           tracks, output, Path('.'), openmc_exec, mpi_args,
+                           event_based)
+
+            # Get output directory and return the last statepoint written
+            if self.settings.output and 'path' in self.settings.output:
+                output_dir = Path(self.settings.output['path'])
+            else:
+                output_dir = Path.cwd()
+            for sp in output_dir.glob('statepoint.*.h5'):
+                mtime = sp.stat().st_mtime
+                if mtime >= tstart:  # >= allows for poor clock resolution
+                    tstart = mtime
+                    last_statepoint = sp
+        return last_statepoint
+
+    def calculate_volume(self, threads=None, output=True, cwd='.',
+                         openmc_exec='openmc', mpi_args=None,
+                         apply_volumes=True):
+        """Runs an OpenMC stochastic volume calculation and, if requested,
+        applies volumes to the model
+
+        Parameters
+        ----------
+        threads : int, optional
+            Number of OpenMP threads. If OpenMC is compiled with OpenMP
+            threading enabled, the default is implementation-dependent but is
+            usually equal to the number of hardware threads available (or a
+            value set by the :envvar:`OMP_NUM_THREADS` environment variable).
+            This currenty only applies to the case when not using the C-API.
+        output : bool, optional
+            Capture OpenMC output from standard out
+        openmc_exec : str, optional
+            Path to OpenMC executable. Defaults to 'openmc'.
+            This only applies to the case when not using the C-API.
+        mpi_args : list of str, optional
+            MPI execute command and any additional MPI arguments to pass,
+            e.g. ['mpiexec', '-n', '8'].
+            This only applies to the case when not using the C-API.
+        cwd : str, optional
+            Path to working directory to run in. Defaults to the current
+            working directory.
+        apply_volumes : bool, optional
+            Whether apply the volume calculation results from this calculation
+            to the model. Defaults to applying the volumes.
+        """
+
+        if len(self.settings.volume_calculation) == 0:
+            # Then there is no volume calculation specified
+            raise ValueError("The Settings.volume_calculation attribute must"
+                             " be specified before executing this method!")
+
+        with openmc.change_directory(Path(cwd)):
+            if self.C_init:
+                if threads is not None:
+                    msg = "Threads must be set via Model.c_init(...)"
+                    raise ValueError(msg)
+                if mpi_args is not None:
+                    msg = "The MPI environment must be set otherwise such as" \
+                        "with the call to mpi4py"
                     raise ValueError(msg)
 
-            if particles is not None:
-                init_particles = openmc.lib.settings.particles
-                if isinstance(particles, Integral) and particles > 0:
-                    openmc.lib.settings.particles = particles
-
-            # Now lets handle the ones we can handle
-            if not output:
-                init_verbosity = openmc.lib.settings.verbosity
+                # Apply the output settings
                 if not output:
-                    openmc.lib.settings.verbosity = 1
+                    init_verbosity = openmc.lib.settings.verbosity
+                    if not output:
+                        openmc.lib.settings.verbosity = 1
 
-            # Event-based can be set at init-time or on a case-basis. Handle
-            # the case-basis here.
-            # TODO This will be dealt with in a future change to the C-API
+                # Compute the volumes
+                openmc.lib.calculate_volumes()
 
-            # Then run using the C-API
-            openmc.lib.run()
+                # Reset the output verbosity
+                if not output:
+                    openmc.lib.settings.verbosity = init_verbosity
+            else:
+                openmc.calculate_volumes(threads=threads, output=output,
+                                         openmc_exec=openmc_exec,
+                                         mpi_args=mpi_args)
 
-            # Reset changes for the openmc.run kwargs handling
-            if particles is not None:
-                openmc.lib.settings.particles = init_particles
-            if output is not None:
-                openmc.lib.settings.verbosity = init_verbosity
+            # Now we apply the volumes
+            if apply_volumes:
+                # Load the results
+                f_names = \
+                    ["volume_{}.h5".format(i + 1)
+                     for i in range(len(self.settings.volume_calculations))]
+                vol_calcs = [openmc.VolumeCalculation.load_results(f_name)
+                             for f_name in f_names]
+                # And now we can add them to the model
+                for vol_calc in vol_calcs:
+                    # First add them to the Python side
+                    self.geometry.add_volume_information(vol_calc)
 
-        else:
-            # Then run via the command line
-            self.export_to_xml()
-            openmc.run(particles, threads, geometry_debug, restart_file,
-                       tracks, output, cwd, openmc_exec, mpi_args, event_based)
+                    # And now repeat for the C-API
+                    if vol_calc.domain == 'material':
+                        # Then we can do this in the C-API
+                        for domain_id in vol_calc.domains:
+                            self.update_material_volumes(
+                                [domain_id], vol_calc.volumes[domain_id])
 
-        # Get output directory and return the last statepoint written this run
-        if self.settings.output and 'path' in self.settings.output:
-            output_dir = Path(self.settings.output['path'])
-        else:
-            output_dir = Path.cwd()
-        for sp in output_dir.glob('statepoint.*.h5'):
-            mtime = sp.stat().st_mtime
-            if mtime >= tstart:  # >= allows for poor clock resolution
-                tstart = mtime
-                last_statepoint = sp
-        return last_statepoint
+    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
+                      convert=True, convert_exec='convert'):
+        """Creates plot images as specified by the Model.plots attribute
+
+        If convert is True, this function requires that a program is installed
+        to convert PPM files to PNG files. Typically, that would be
+        `ImageMagick <https://www.imagemagick.org>`_ which includes a
+        `convert` command.
+
+        Parameters
+        ----------
+        output : bool, optional
+            Capture OpenMC output from standard out
+        cwd : str, optional
+            Path to working directory to run in. Defaults to the current
+            working directory.
+        openmc_exec : str, optional
+            Path to OpenMC executable. Defaults to 'openmc'.
+            This only applies to the case when not using the C-API.
+        convert : bool, optional
+            Whether or not to attempt to convert from PPM to PNG
+        convert_exec : str, optional
+            Command that can convert PPM files into PNG files
+        """
+
+        if len(self.plots) == 0:
+            # Then there is no volume calculation specified
+            raise ValueError("The Model.plots attribute must be specified "
+                             "before executing this method!")
+
+        with openmc.change_directory(Path(cwd)):
+            if self.C_init:
+                # Apply the output settings
+                if not output:
+                    init_verbosity = openmc.lib.settings.verbosity
+                    if not output:
+                        openmc.lib.settings.verbosity = 1
+
+                # Compute the volumes
+                openmc.lib.plot_geometry()
+
+                # Reset the output verbosity
+                if not output:
+                    openmc.lib.settings.verbosity = init_verbosity
+            else:
+                openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
+
+            if convert:
+                for p in self.plots:
+                    if p.filename is not None:
+                        ppm_file = f'{p.filename}.ppm'
+                    else:
+                        ppm_file = f'plot_{p.id}.ppm'
+                    png_file = ppm_file.replace('.ppm', '.png')
+                    subprocess.check_call([convert_exec, ppm_file, png_file])
 
     def _change_py_C_attribs(self, names_or_ids, value, obj_type, attrib_name,
                              density_units='atom/b-cm'):
         # Method to do the same work whether it is a cell or material and
         # a temperature or volume
-        check_type('names_or_ids', names_or_ids, Iterable, (np.int, int, str))
+        check_type('names_or_ids', names_or_ids, Iterable, (Integral, str))
         check_type('obj_type', obj_type, str)
         obj_type = obj_type.lower()
         check_value('obj_type', obj_type, ('material', 'cell'))
@@ -588,7 +732,11 @@ class Model:
         # The C-API has no way to set cell volume so lets raise an exception
         if obj_type == 'cell' and attrib_name == 'volume':
             raise NotImplementedError(
-                'Setting a Cell volume is not yet supported!')
+                'Setting a Cell volume is not supported!')
+        # Same with setting temperatures, TODO: update C-API for this
+        if obj_type == 'material' and attrib_name == 'temperature':
+            raise NotImplementedError(
+                'Setting a Material temperature is not yet supported!')
         # And some items just dont make sense
         if obj_type == 'cell' and attrib_name == 'density':
             raise ValueError('Cannot set a Cell density!')
@@ -610,12 +758,13 @@ class Model:
         # only values that have actual ids
         ids = [None] * len(names_or_ids)
         for i, name_or_id in enumerate(names_or_ids):
-            if isinstance(name_or_id, (int, np.int)):
+            if isinstance(name_or_id, Integral):
                 if name_or_id in by_id:
                     ids[i] = int(name_or_id)
-                msg = '{} ID {} is not present in the model!'.format(
-                    obj_type.capitalize(), name_or_id)
-                raise InvalidIDError(msg)
+                else:
+                    msg = '{} ID {} is not present in the model!'.format(
+                        obj_type.capitalize(), name_or_id)
+                    raise InvalidIDError(msg)
             elif isinstance(name_or_id, str):
                 if name_or_id in by_name:
                     ids[i] = by_name[name_or_id].id
@@ -636,7 +785,7 @@ class Model:
             elif attrib_name == 'temperature':
                 obj.temperature = value
             elif attrib_name == 'density':
-                obj.set_density(value, density_units)
+                obj.set_density(density_units, value)
             # Next lets keep what is in C-API memory up to date as well
             if self.C_init:
                 C_obj = C_by_id[id_]
@@ -645,9 +794,9 @@ class Model:
                 elif attrib_name == 'translation':
                     C_obj.translation = value
                 elif attrib_name == 'volume':
-                    C_obj.set_volume = value
+                    C_obj.volume = value
                 elif attrib_name == 'temperature':
-                    C_obj.set_temperature = value
+                    C_obj.set_temperature(value)
                 elif attrib_name == 'density':
                     C_obj.set_density(value, density_units)
 
@@ -685,7 +834,7 @@ class Model:
 
         self._change_py_C_attribs(names_or_ids, vector, 'cell', 'translation')
 
-    def update_densities(self, names_or_ids, density, density_units):
+    def update_densities(self, names_or_ids, density, density_units='atom/b-cm'):
         """Update the density of a given set of materials to a new value
 
         Parameters
@@ -695,8 +844,8 @@ class Model:
             This parameter can include a mix of names and ids.
         density : float
             The density to apply in the units specified by `density_units`
-        density_units : {'atom/b-cm', 'g/cm3'}
-            Units for `density`
+        density_units : {'atom/b-cm', 'g/cm3'}, optional
+            Units for `density`. Defaults to 'atom/b-cm'
 
         """
 
@@ -734,3 +883,18 @@ class Model:
 
         self._change_py_C_attribs(names_or_ids, temperature, 'material',
                                   'temperature')
+
+    def update_material_volumes(self, names_or_ids, volume):
+        """Update the volume of a set of materials to the given value
+
+        Parameters
+        ----------
+        names_or_ids : Iterable of str or int
+            The material names (if str) or id (if int) that are to be updated.
+            This parameter can include a mix of names and ids.
+        volume : float
+            The volume to apply in units of cm^3
+
+        """
+
+        self._change_py_C_attribs(names_or_ids, volume, 'material', 'volume')

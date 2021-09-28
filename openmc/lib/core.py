@@ -215,7 +215,7 @@ def import_properties(filename):
     See Also
     --------
     openmc.lib.export_properties
-
+mat
     """
     _dll.openmc_properties_import(filename.encode())
 

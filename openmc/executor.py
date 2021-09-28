@@ -1,8 +1,23 @@
 from collections.abc import Iterable
 from numbers import Integral
 import subprocess
+from contextlib import contextmanager
+from pathlib import Path
+import os
 
 import openmc
+
+
+@contextmanager
+def change_directory(working_dir):
+    """A context manager for executing in a provided working directory"""
+    start_dir = Path().absolute()
+    try:
+        Path.mkdir(working_dir, exist_ok=True)
+        os.chdir(working_dir)
+        yield
+    finally:
+        os.chdir(start_dir)
 
 
 def _run(args, output, cwd):

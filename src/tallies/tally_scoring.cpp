@@ -2485,7 +2485,8 @@ void score_pht_tally(Particle& p)
     auto score = p.pht_storage()[simulation::cell_pht];
     // the -1 in the next line is for the index shift
     auto scoring_it = std::upper_bound(simulation::bins_pht.begin(), simulation::bins_pht.end(), score) - simulation::bins_pht.begin() - 1;    
-        
+
+#pragma omp atomic    
     tally.results_(scoring_it, score_index, TallyResult::VALUE) += 1;
 
   }

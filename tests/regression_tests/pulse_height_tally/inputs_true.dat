@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" name="detector" region="-1 2 -3" universe="1" />
+  <cell id="2" material="2" name="surrounding" region="~(-1 2 -3) -4" universe="1" />
+  <cell fill="1" id="3" name="root cell" region="-4" universe="2" />
+  <surface coeffs="0 0 2.54" id="1" name="cylinder" type="z-cylinder" />
+  <surface coeffs="0" id="2" name="bottom" type="z-plane" />
+  <surface coeffs="5" id="3" name="top" type="z-plane" />
+  <surface boundary="vacuum" coeffs="0 0 0 10" id="4" name="outer sphere" type="sphere" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="1" name="sodium iodide detector material">
+    <density units="g/cc" value="3.67" />
+    <nuclide ao="1.0" name="Na23" />
+    <nuclide ao="1.0" name="I127" />
+  </material>
+  <material id="2" name="air">
+    <density units="g/cc" value="0.001225" />
+    <nuclide ao="3.985348" name="N14" />
+    <nuclide ao="0.014652" name="N15" />
+    <nuclide ao="1" name="O16" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>1000</particles>
+  <batches>1</batches>
+  <inactive>0</inactive>
+  <source particle="photon" strength="1.0">
+    <space type="point">
+      <parameters>0.0 0.0 -1.0</parameters>
+    </space>
+    <angle reference_uvw="0.0 0.0 1.0" type="monodirectional" />
+    <energy type="discrete">
+      <parameters>662000.0 1.0</parameters>
+    </energy>
+  </source>
+  <photon_transport>true</photon_transport>
+  <seed>1</seed>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="cell">
+    <bins>1</bins>
+  </filter>
+  <filter id="2" type="energy">
+    <bins>0.0 20000.0 40000.0 60000.0 80000.0 100000.0 120000.0 140000.0 160000.0 180000.0 200000.0 220000.0 240000.0 260000.0 280000.0 300000.0 320000.0 340000.0 360000.0 380000.0 400000.0 420000.0 440000.0 460000.0 480000.0 500000.0 520000.0 540000.0 560000.0 580000.0 600000.0 620000.0 640000.0 660000.0 680000.0 700000.0 720000.0 740000.0 760000.0 780000.0 800000.0 820000.0 840000.0 860000.0 880000.0 900000.0 920000.0 940000.0 960000.0 980000.0 1000000.0</bins>
+  </filter>
+  <tally id="1" name="pulse-height tally">
+    <filters>1 2</filters>
+    <scores>pulse-height</scores>
+  </tally>
+</tallies>

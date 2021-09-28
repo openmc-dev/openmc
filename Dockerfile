@@ -129,6 +129,18 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     rm -rf /DAGMC/DAGMC /DAGMC/build ; \
     fi
 
+# Clone and install libmesh
+RUN mkdir libmesh ; \
+    cd libmesh ; \
+    git clone --single-branch --recurse-submodules --branch v1.6.0 https://github.com/libMesh/libmesh.git ; \
+    # cd libmesh ; \
+    # git submodule update --init --recursive ; \
+    mkdir build ; \
+    cd build ; \
+    ../libmesh/configure --prefix=/opt/LIBMESH --enable-exodus --disable-netcdf-4 --disable-eigen --disable-lapack --disable-mpi ; \
+    make -j"$compile_cores" ; \
+    make -j"$compile_cores" install
+
 # Clone and install OpenMC with DAGMC
 RUN if [ "$include_dagmc" = "true" ] ; \
     then git clone --recurse-submodules https://github.com/openmc-dev/openmc.git /opt/openmc ; \
@@ -137,6 +149,8 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     cd build ; \
     cmake -Doptimize=on \
           -Ddagmc=ON \
+          -Dlibmesh=ON \
+          -DCMAKE_PREFIX_PATH=/opt/libmesh/ \
           -DDAGMC_DIR=/DAGMC/ \
           -DHDF5_PREFER_PARALLEL=on ..  ; \
     make -j"$compile_cores" ; \

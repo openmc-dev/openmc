@@ -3,6 +3,7 @@
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
 #include "openmc/random_lcg.h"
@@ -215,6 +216,15 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
   close_group(rgroup);
 
+  // Check the maximum size of the stack in atomic relaxation
+  auto max_stack_size = this->calc_max_stack_size();
+  if (max_stack_size > MAX_STACK_SIZE_ && mpi::master) {
+    warning("The subshell vacancy stack in atomic relaxation can grow up to " +
+            std::to_string(max_stack_size) +
+            ", but the stack size limit is set to " +
+            std::to_string(MAX_STACK_SIZE_) + ".");
+  }
+
   // Determine number of electron shells
   rgroup = open_group(group, "compton_profiles");
 
@@ -342,6 +352,54 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 PhotonInteraction::~PhotonInteraction()
 {
   data::element_map.erase(name_);
+}
+
+int PhotonInteraction::calc_max_stack_size() const
+{
+  // Table to store solutions to sub-problems
+  std::unordered_map<int, int> visited;
+
+  // Find the maximum possible size of the stack used to store holes created
+  // during atomic relaxation, checking over every subshell the initial hole
+  // could be in
+  int max_size = 0;
+  for (int i_shell = 0; i_shell < shells_.size(); ++i_shell) {
+    max_size = std::max(max_size, this->calc_helper(visited, i_shell));
+  }
+  return max_size;
+}
+
+int PhotonInteraction::calc_helper(
+  std::unordered_map<int, int>& visited, int i_shell) const
+{
+  // No transitions for this subshell, so this is the only shell in the stack
+  const auto& shell {shells_[i_shell]};
+  if (shell.transitions.size() == 0) {
+    return 1;
+  }
+
+  // Check the table to see if the maximum stack size has already been
+  // calculated for this shell
+  auto it = visited.find(i_shell);
+  if (it != visited.end()) {
+    return it->second;
+  }
+
+  int max_size = 0;
+  for (const auto& transition : shell.transitions) {
+    // If this is a non-radiative transition two vacancies are created and
+    // the stack grows by one; if this is a radiative transition only one
+    // vacancy is created and the stack size stays the same
+    int size = 0;
+    if (transition.secondary_subshell != -1) {
+      size = this->calc_helper(visited, transition.secondary_subshell) + 1;
+    }
+    size =
+      std::max(size, this->calc_helper(visited, transition.primary_subshell));
+    max_size = std::max(max_size, size);
+  }
+  visited[i_shell] = max_size;
+  return max_size;
 }
 
 void PhotonInteraction::compton_scatter(double alpha, bool doppler,
@@ -708,7 +766,7 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
 void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
   // Stack for unprocessed holes left by transitioning electrons
-  int holes[MAX_STACK_SIZE];
+  int holes[MAX_STACK_SIZE_];
   int n_holes = 0;
   holes[n_holes++] = i_shell;
 

@@ -123,14 +123,15 @@ public:
   xt::xtensor<double, 2> dcs_;
 
   // Constant data
-  static constexpr int MAX_STACK_SIZE =
-    19; //!< Theoretical worst case size of the unprocessed subshell stack,
-        //!< equal to the number of shells with transition data
-        //!< TODO: in practice could probably be bounded at closer to 5-10
+  static constexpr int MAX_STACK_SIZE_ =
+    7; //!< maximum possible size of atomic relaxation stack
 
 private:
   void compton_doppler(double alpha, double mu, double* E_out, int* i_shell,
                        uint64_t* seed) const;
+
+  int calc_max_stack_size() const;
+  int calc_helper(std::unordered_map<int, int>& visited, int i_shell) const;
 
   // Backend storage
   std::vector<double> cross_section_;

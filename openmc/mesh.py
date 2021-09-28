@@ -719,7 +719,8 @@ class UnstructuredMesh(MeshBase):
         string += '{: <16}=\t{}\n'.format('\tMesh Library', self.mesh_lib)
         return string
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True,
+        scaling_factor=None):
         """Map data to the unstructured mesh element centroids
            to create a VTK point-cloud dataset.
 
@@ -733,6 +734,9 @@ class UnstructuredMesh(MeshBase):
         volume_normalization : bool
             Whether or not to normalize the data by the
             volume of the mesh elements
+        scaling_factor : float
+            An optional scaling factor to multiply the
+            data by
         """
 
         import vtk
@@ -784,6 +788,9 @@ class UnstructuredMesh(MeshBase):
 
             if volume_normalization:
                 dataset /= self.volumes.flatten()
+
+            if scaling_factor:
+                dataset *= scaling_factor
 
             array = vtk.vtkDoubleArray()
             array.SetName(label)

@@ -323,10 +323,7 @@ double Mixture::sample(uint64_t* seed) const
     p, [](const DistPair& pair, double p) { return pair.first < p; });
 
   // This should not happen. Catch it
-  // TODO: Remove this check, when the code is trusted to always operate
-  if (it == distribution_.cend()) {
-    fatal_error("Bad Sampling in Mixture Distribution.");
-  }
+  Ensures(it != distribution_.cend());
 
   // Sample the choosen distribution
   return it->second->sample(seed);

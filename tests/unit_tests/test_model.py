@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 from pathlib import Path
+from shutil import which
 import openmc
 import openmc.lib
 
@@ -226,7 +227,7 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         C_flux = sp.get_tally(id=1).get_values()[0, 0, 0]
 
     # and lets compare results
-    assert abs(C_keff - cli_keff) < 1e-15
+    assert abs(C_keff - cli_keff) < 1e-13
     assert abs(C_flux - cli_flux) < 1e-13
 
     # Now we should make sure that the flags for items which should be handled
@@ -239,6 +240,51 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         test_model.run(restart_file='1.h5')
     with pytest.raises(ValueError):
         test_model.run(tracks=True)
+
+    test_model.clear_C_api()
+
+    # And before done, reset the deplete communicator
+    if mpi_intracomm is not None:
+        openmc.deplete.comm = orig_comm
+
+
+def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+    mats, geom, settings, tals, plots, _, _, _ = pin_model_attributes
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+
+    if mpi_intracomm is not None:
+        # Set the depletion module to use the test intracomm as the depletion
+        # module's intracomm is the one that init uses. We will not perturb
+        # system state outside of this test by re-setting the
+        # openmc.deplete.comm to what it was before when we exist
+        orig_comm = openmc.deplete.comm
+        openmc.deplete.comm = mpi_intracomm
+
+    # This test cannot check the correctness of the plot, but it can
+    # check that a plot was made and that the expected ppm and png files are
+    # there
+
+    # We will only test convert if it is on the system, so as not to add an
+    # extra dependency just for tests
+    convert = which('convert') is not None
+    if convert:
+        exts = ['ppm', 'png']
+    else:
+        exts = ['ppm']
+
+    # We will run the test twice, the first time without C-API, the second with
+    for i in range(2):
+        if i == 1:
+            test_model.init_C_api()
+        test_model.plot_geometry(output=True, convert=convert)
+
+        # Now look for the files, expect to find test.ppm, plot_2.ppm, and if
+        # convert is True, test.png, plot_2.png
+        for fname in ['test.', 'plot_2.']:
+            for ext in exts:
+                test_file = Path('./{}{}'.format(fname, ext))
+                assert test_file.exists()
+                test_file.unlink()
 
     test_model.clear_C_api()
 
@@ -314,7 +360,6 @@ def test_py_C_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     # Now lets do the cell temperature updates.
     # Check initial conditions
-
     assert test_model._cells_by_id == \
         {2: geom.root_universe.cells[2], 3: geom.root_universe.cells[3],
          4: geom.root_universe.cells[4],

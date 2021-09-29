@@ -63,12 +63,18 @@ def pin_model_attributes():
     tal.scores = ['flux']
     tals.append(tal)
 
-    plot = openmc.Plot()
-    plot.origin = (0., 0., 0.)
-    plot.width = (pitch, pitch)
-    plot.pixels = (300, 300)
-    plot.color_by = 'material'
-    plots = openmc.Plots((plot,))
+    plot1 = openmc.Plot()
+    plot1.origin = (0., 0., 0.)
+    plot1.width = (pitch, pitch)
+    plot1.pixels = (300, 300)
+    plot1.color_by = 'material'
+    plot1.filename = 'test'
+    plot2 = openmc.Plot()
+    plot2.origin = (0., 0., 0.)
+    plot2.width = (pitch, pitch)
+    plot2.pixels = (300, 300)
+    plot2.color_by = 'cell'
+    plots = openmc.Plots((plot1, plot2))
 
     chain = './chain_simple.xml'
     fission_q = {'U235': 200e6}

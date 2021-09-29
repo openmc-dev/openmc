@@ -1,23 +1,79 @@
 from collections.abc import Iterable
 from numbers import Integral
 import subprocess
-from contextlib import contextmanager
-from pathlib import Path
-import os
 
 import openmc
 
 
-@contextmanager
-def change_directory(working_dir):
-    """A context manager for executing in a provided working directory"""
-    start_dir = Path().absolute()
-    try:
-        Path.mkdir(working_dir, exist_ok=True)
-        os.chdir(working_dir)
-        yield
-    finally:
-        os.chdir(start_dir)
+def process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
+                          plot=False, restart_file=None, threads=None,
+                          tracks=False, event_based=False,
+                          openmc_exec='openmc', mpi_args=None):
+    """Run an OpenMC simulation.
+
+    Parameters
+    ----------
+    volume : bool, optional
+        Run in stochastic volume calculation mode. Defaults to False.
+    geometry_debug : bool, optional
+        Turn on geometry debugging during simulation. Defaults to False.
+    particles : int, optional
+        Number of particles to simulate per generation.
+    plot : bool, optional
+        Run in plotting mode. Defaults to False.
+    restart_file : str, optional
+        Path to restart file to use
+    threads : int, optional
+        Number of OpenMP threads. If OpenMC is compiled with OpenMP threading
+        enabled, the default is implementation-dependent but is usually equal
+        to the number of hardware threads available (or a value set by the
+        :envvar:`OMP_NUM_THREADS` environment variable).
+    tracks : bool, optional
+        Write tracks for all particles. Defaults to False.
+    event_based : bool, optional
+        Turns on event-based parallelism, instead of default history-based
+    openmc_exec : str, optional
+        Path to OpenMC executable. Defaults to 'openmc'.
+    mpi_args : list of str, optional
+        MPI execute command and any additional MPI arguments to pass,
+        e.g. ['mpiexec', '-n', '8'].
+
+    .. versionadded:: 0.13.0
+
+    Returns
+    -------
+    args : Iterable of str
+        The runtime flags converted to CLI arguments of the OpenMC executable
+
+    """
+
+    args = [openmc_exec]
+
+    if volume:
+        args += ['--volume']
+
+    if isinstance(particles, Integral) and particles > 0:
+        args += ['-n', str(particles)]
+
+    if isinstance(threads, Integral) and threads > 0:
+        args += ['-s', str(threads)]
+
+    if geometry_debug:
+        args.append('-g')
+
+    if event_based:
+        args.append('-e')
+
+    if isinstance(restart_file, str):
+        args += ['-r', restart_file]
+
+    if tracks:
+        args.append('-t')
+
+    if mpi_args is not None:
+        args = mpi_args + args
+
+    return args
 
 
 def _run(args, output, cwd):
@@ -141,8 +197,8 @@ def calculate_volumes(threads=None, output=True, cwd='.',
     ----------
     threads : int, optional
         Number of OpenMP threads. If OpenMC is compiled with OpenMP threading
-        enabled, the default is implementation-dependent but is usually equal to
-        the number of hardware threads available (or a value set by the
+        enabled, the default is implementation-dependent but is usually equal
+        to the number of hardware threads available (or a value set by the
         :envvar:`OMP_NUM_THREADS` environment variable).
     output : bool, optional
         Capture OpenMC output from standard out
@@ -165,12 +221,9 @@ def calculate_volumes(threads=None, output=True, cwd='.',
     openmc.VolumeCalculation
 
     """
-    args = [openmc_exec, '--volume']
 
-    if isinstance(threads, Integral) and threads > 0:
-        args += ['-s', str(threads)]
-    if mpi_args is not None:
-        args = mpi_args + args
+    args = process_CLI_arguments(volume=True, threads=threads,
+                                 openmc_exec=openmc_exec, mpi_args=mpi_args)
 
     _run(args, output, cwd)
 
@@ -186,8 +239,8 @@ def run(particles=None, threads=None, geometry_debug=False,
         Number of particles to simulate per generation.
     threads : int, optional
         Number of OpenMP threads. If OpenMC is compiled with OpenMP threading
-        enabled, the default is implementation-dependent but is usually equal to
-        the number of hardware threads available (or a value set by the
+        enabled, the default is implementation-dependent but is usually equal
+        to the number of hardware threads available (or a value set by the
         :envvar:`OMP_NUM_THREADS` environment variable).
     geometry_debug : bool, optional
         Turn on geometry debugging during simulation. Defaults to False.
@@ -216,27 +269,10 @@ def run(particles=None, threads=None, geometry_debug=False,
         If the `openmc` executable returns a non-zero status
 
     """
-    args = [openmc_exec]
 
-    if isinstance(particles, Integral) and particles > 0:
-        args += ['-n', str(particles)]
-
-    if isinstance(threads, Integral) and threads > 0:
-        args += ['-s', str(threads)]
-
-    if geometry_debug:
-        args.append('-g')
-
-    if event_based:
-        args.append('-e')
-
-    if isinstance(restart_file, str):
-        args += ['-r', restart_file]
-
-    if tracks:
-        args.append('-t')
-
-    if mpi_args is not None:
-        args = mpi_args + args
+    args = process_CLI_arguments(
+        volume=False, geometry_debug=geometry_debug, particles=particles,
+        restart_file=restart_file, threads=threads, tracks=tracks,
+        event_based=event_based, openmc_exec=openmc_exec, mpi_args=mpi_args)
 
     _run(args, output, cwd)

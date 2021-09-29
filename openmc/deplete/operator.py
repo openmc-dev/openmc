@@ -202,7 +202,7 @@ class Operator(TransportOperator):
         self.settings = settings
         self.geometry = geometry
         self.diff_burnable_mats = diff_burnable_mats
-        self.cleanup_when_done = True
+        self._cleanup_when_done = True
 
         # Reduce the chain before we create more materials
         if reduce_chain:
@@ -537,7 +537,7 @@ class Operator(TransportOperator):
 
         # Initialize OpenMC library
         comm.barrier()
-        if not openmc.lib.LIB_INIT:
+        if not openmc.lib.is_initialized:
             openmc.lib.init(intracomm=comm)
 
         # Generate tallies in memory
@@ -556,7 +556,7 @@ class Operator(TransportOperator):
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""
-        if self.cleanup_when_done:
+        if self._cleanup_when_done:
             openmc.lib.finalize()
 
     def _update_materials(self):

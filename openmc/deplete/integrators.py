@@ -583,40 +583,12 @@ class SILEQIIntegrator(SIIntegrator):
         return proc_time, [eos_conc, inter_conc], [res_bar]
 
 
-def integrator_factory(method):
-    """This method is a factor for the integrator sub-classes
-
-    Params
-    ------
-    method : str
-        The type of integrator method to use. Valid values are: 'cecm',
-        'predictor', 'cf4', 'epc_rk4', 'si_celi', 'si_leqi', 'celi', and 'leqi'
-
-    Returns
-    -------
-    integrator : Integrator
-        The type of integrator
-
-    """
-
-    if method == 'cecm':
-        integrator = CECMIntegrator
-    elif method == 'predictor':
-        integrator = PredictorIntegrator
-    elif method == 'cf4':
-        integrator = CF4Integrator
-    elif method == 'epc_rk4':
-        integrator = EPCRK4Integrator
-    elif method == 'si_celi':
-        integrator = SICELIIntegrator
-    elif method == 'si_leqi':
-        integrator = SILEQIIntegrator
-    elif method == 'celi':
-        integrator = CELIIntegrator
-    elif method == 'leqi':
-        integrator = LEQIIntegrator
-    else:
-        msg = "Invalid integrator method: {}!".format(method)
-        raise ValueError(msg)
-
-    return integrator
+integrator_by_name = {
+    'cecm': CECMIntegrator,
+    'predictor': PredictorIntegrator,
+    'cf4': CF4Integrator,
+    'epc_rk4': EPCRK4Integrator,
+    'si_celi': SICELIIntegrator,
+    'si_leqi': SILEQIIntegrator,
+    'celi': CELIIntegrator,
+    'leqi': LEQIIntegrator}

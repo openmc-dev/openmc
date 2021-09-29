@@ -4,10 +4,11 @@ from pathlib import Path
 from shutil import which
 import openmc
 import openmc.lib
+from openmc.deplete.dummy_comm import DummyCommunicator
 
 
-def test_init(run_in_tmpdir, pin_model_attributes):
-    mats, geom, settings, tals, plots, chain, fission_q, _ = \
+def test_init(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+    mats, geom, settings, tals, plots, _, _ = \
         pin_model_attributes
 
     openmc.reset_auto_ids()
@@ -22,29 +23,25 @@ def test_init(run_in_tmpdir, pin_model_attributes):
         assert test_model.settings.__dict__[ref_k] == ref_v
     assert len(test_model.tallies) == 0
     assert len(test_model.plots) == 0
-    assert test_model.chain_file is None
-    assert test_model.fission_q is None
     assert test_model._materials_by_id == {}
     assert test_model._materials_by_name == {}
     assert test_model._cells_by_id == {}
     assert test_model._cells_by_name == {}
-    assert test_model.C_init is False
+    assert test_model.is_initialized is False
+    assert isinstance(test_model.intracomm, DummyCommunicator)
 
     # Now check proper init of an actual model. Assume no interference between
     # parameters and so we can apply them all at once instead of testing one
     # parameter initialization at a time
-    test_model = openmc.Model(geom, mats, settings, tals, plots, chain,
-                              fission_q)
+    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
     assert test_model.geometry is geom
     assert test_model.materials is mats
     assert test_model.settings is settings
     assert test_model.tallies is tals
     assert test_model.plots is plots
-    assert test_model.chain_file == Path(chain).resolve()
-    assert test_model.fission_q is fission_q
     assert test_model._materials_by_id == {1: mats[0], 2: mats[1], 3: mats[2]}
-    assert test_model._materials_by_name == {'UO2': mats[0], 'Zirc': mats[1],
-                                             'Borated water': mats[2]}
+    assert test_model._materials_by_name == {
+        'UO2': [mats[0]], 'Zirc': [mats[1]], 'Borated water': [mats[2]]}
     # The last cell is the one that contains the infinite fuel
     assert test_model._cells_by_id == \
         {2: geom.root_universe.cells[2], 3: geom.root_universe.cells[3],
@@ -53,13 +50,21 @@ def test_init(run_in_tmpdir, pin_model_attributes):
     # No cell name for 2 and 3, so we expect a blank name to be assigned to
     # cell 3 due to overwriting
     assert test_model._cells_by_name == {
-        'fuel': geom.root_universe.cells[2], '': geom.root_universe.cells[4],
-        'inf fuel': geom.root_universe.cells[2].fill.cells[1]}
-    assert test_model.C_init is False
+        'fuel': [geom.root_universe.cells[2]],
+        '': [geom.root_universe.cells[3], geom.root_universe.cells[4]],
+        'inf fuel': [geom.root_universe.cells[2].fill.cells[1]]}
+    assert test_model.is_initialized is False
+    if mpi_intracomm is None:
+        assert isinstance(test_model.intracomm, DummyCommunicator)
+    else:
+        assert test_model.intracomm == mpi_intracomm
 
     # Finally test the parameter type checking by passing bad types and
     # obtaining the right exception types
-    def_params = [geom, mats, settings, tals, plots, chain, fission_q]
+    if mpi_intracomm is not None:
+        def_params = [geom, mats, settings, tals, plots, mpi_intracomm]
+    else:
+        def_params = [geom, mats, settings, tals, plots]
     for i in range(len(def_params)):
         args = def_params.copy()
         # Try an integer, as that is a bad type for all arguments
@@ -69,7 +74,7 @@ def test_init(run_in_tmpdir, pin_model_attributes):
 
 
 def test_from_xml(run_in_tmpdir, pin_model_attributes):
-    mats, geom, settings, tals, plots, _, _, _ = pin_model_attributes
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
 
     # This test will write the individual files to xml and then init that way
     # and run the same sort of test as in test_init
@@ -99,14 +104,12 @@ def test_from_xml(run_in_tmpdir, pin_model_attributes):
         assert test_model.settings.__dict__[ref_k] == settings.__dict__[ref_k]
     assert len(test_model.tallies) == 0
     assert len(test_model.plots) == 0
-    assert test_model.chain_file is None
-    assert test_model.fission_q is None
     assert test_model._materials_by_id == \
         {1: test_model.materials[0], 2: test_model.materials[1],
          3: test_model.materials[2]}
     assert test_model._materials_by_name == {
-        'UO2': test_model.materials[0], 'Zirc': test_model.materials[1],
-        'Borated water': test_model.materials[2]}
+        'UO2': [test_model.materials[0]], 'Zirc': [test_model.materials[1]],
+        'Borated water': [test_model.materials[2]]}
     assert test_model._cells_by_id == {
         2: test_model.geometry.root_universe.cells[2],
         3: test_model.geometry.root_universe.cells[3],
@@ -115,28 +118,23 @@ def test_from_xml(run_in_tmpdir, pin_model_attributes):
     # No cell name for 2 and 3, so we expect a blank name to be assigned to
     # cell 3 due to overwriting
     assert test_model._cells_by_name == {
-        'fuel': test_model.geometry.root_universe.cells[2],
-        '': test_model.geometry.root_universe.cells[4],
-        'inf fuel': test_model.geometry.root_universe.cells[2].fill.cells[1]}
-    assert test_model.C_init is False
+        'fuel': [test_model.geometry.root_universe.cells[2]],
+        '': [test_model.geometry.root_universe.cells[3],
+             test_model.geometry.root_universe.cells[4]],
+        'inf fuel': [test_model.geometry.root_universe.cells[2].fill.cells[1]]}
+    assert test_model.is_initialized is False
+    assert isinstance(test_model.intracomm, DummyCommunicator)
 
 
-def test_init_clear_C_api(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+def test_init_finalize_lib(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # We are going to init and then make sure data is loaded
-    mats, geom, settings, tals, plots, _, _, _ = pin_model_attributes
-    test_model = openmc.Model(geom, mats, settings, tals, plots)
-    # Set the depletion module to use the test intracomm as the depletion mods
-    # intracomm is the one that init uses. We will not perturb system state
-    # outside of this test by re-setting the openmc.deplete.comm to what it was
-    # before when we exist
-    if mpi_intracomm is not None:
-        orig_comm = openmc.deplete.comm
-        openmc.deplete.comm = mpi_intracomm
-    test_model.init_C_api()
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
+    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+    test_model.init_lib()
 
     # First check that the API is advertised as initialized
-    assert openmc.lib.LIB_INIT is True
-    assert test_model.C_init is True
+    assert openmc.lib.is_initialized is True
+    assert test_model.is_initialized is True
     # Now make sure it actually is initialized by making a call to the lib
     c_mat = openmc.lib.find_material((0.6, 0., 0.))
     # This should be Borated water
@@ -144,19 +142,13 @@ def test_init_clear_C_api(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert c_mat.id == 3
 
     # Ok, now lets test that we can clear the data and check that it is cleared
-    test_model.clear_C_api()
+    test_model.finalize_lib()
 
     # First check that the API is advertised as initialized
-    assert openmc.lib.LIB_INIT is False
-    assert test_model.C_init is False
+    assert openmc.lib.is_initialized is False
+    assert test_model.is_initialized is False
     # Note we cant actually test that a sys call fails because we should get a
     # seg fault
-
-    # And before done, reset the deplete communicator
-    if mpi_intracomm is not None:
-        openmc.deplete.comm = orig_comm
-
-    # TODO: in above test, tests are necessary for all the arguments of init
 
 
 def test_import_properties(run_in_tmpdir, mpi_intracomm):
@@ -165,7 +157,7 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     # Create PWR pin cell model and write XML files
     openmc.reset_auto_ids()
     model = openmc.examples.pwr_pin_cell()
-    model.init_C_api()
+    model.init_lib()
 
     # Change fuel temperature and density and export properties
     cell = openmc.lib.cells[1]
@@ -185,7 +177,7 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     assert openmc.lib.cells[1].get_temperature() == 600.
     assert openmc.lib.materials[1].get_density('g/cm3') == pytest.approx(5.0)
 
-    # Clear the C-API
+    # Clear the C API
     openmc.lib.finalize()
 
     # Verify the attributes survived by exporting to XML and re-creating
@@ -203,24 +195,17 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
 
 
 def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
-    mats, geom, settings, tals, plots, _, _, _ = pin_model_attributes
-    test_model = openmc.Model(geom, mats, settings, tals, plots)
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
+    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
 
     # This case will run by getting the k-eff and tallies for command-line and
-    # C-API execution modes and ensuring they give the same result.
+    # C API execution modes and ensuring they give the same result.
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
         cli_keff = sp.k_combined
         cli_flux = sp.get_tally(id=1).get_values()[0, 0, 0]
 
-    if mpi_intracomm is not None:
-        # Set the depletion module to use the test intracomm as the depletion
-        # module's intracomm is the one that init uses. We will not perturb
-        # system state outside of this test by re-setting the
-        # openmc.deplete.comm to what it was before when we exist
-        orig_comm = openmc.deplete.comm
-        openmc.deplete.comm = mpi_intracomm
-    test_model.init_C_api()
+    test_model.init_lib()
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
         C_keff = sp.k_combined
@@ -241,24 +226,12 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     with pytest.raises(ValueError):
         test_model.run(tracks=True)
 
-    test_model.clear_C_api()
-
-    # And before done, reset the deplete communicator
-    if mpi_intracomm is not None:
-        openmc.deplete.comm = orig_comm
+    test_model.finalize_lib()
 
 
 def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
-    mats, geom, settings, tals, plots, _, _, _ = pin_model_attributes
-    test_model = openmc.Model(geom, mats, settings, tals, plots)
-
-    if mpi_intracomm is not None:
-        # Set the depletion module to use the test intracomm as the depletion
-        # module's intracomm is the one that init uses. We will not perturb
-        # system state outside of this test by re-setting the
-        # openmc.deplete.comm to what it was before when we exist
-        orig_comm = openmc.deplete.comm
-        openmc.deplete.comm = mpi_intracomm
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
+    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
 
     # This test cannot check the correctness of the plot, but it can
     # check that a plot was made and that the expected ppm and png files are
@@ -272,10 +245,10 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     else:
         exts = ['ppm']
 
-    # We will run the test twice, the first time without C-API, the second with
+    # We will run the test twice, the first time without C API, the second with
     for i in range(2):
         if i == 1:
-            test_model.init_C_api()
+            test_model.init_lib()
         test_model.plot_geometry(output=True, convert=convert)
 
         # Now look for the files, expect to find test.ppm, plot_2.ppm, and if
@@ -286,25 +259,14 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
                 assert test_file.exists()
                 test_file.unlink()
 
-    test_model.clear_C_api()
-
-    # And before done, reset the deplete communicator
-    if mpi_intracomm is not None:
-        openmc.deplete.comm = orig_comm
+    test_model.finalize_lib()
 
 
 def test_py_C_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
-    mats, geom, settings, tals, plots, _, _, _ = pin_model_attributes
-    test_model = openmc.Model(geom, mats, settings, tals, plots)
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
+    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
 
-    if mpi_intracomm is not None:
-        # Set the depletion module to use the test intracomm as the depletion
-        # module's intracomm is the one that init uses. We will not perturb
-        # system state outside of this test by re-setting the
-        # openmc.deplete.comm to what it was before when we exist
-        orig_comm = openmc.deplete.comm
-        openmc.deplete.comm = mpi_intracomm
-    test_model.init_C_api()
+    test_model.init_lib()
 
     # Now we can call rotate_cells, translate_cells, update_densities,
     # update_cell_temperatures, and update_material_temperatures and make sure
@@ -376,7 +338,7 @@ def test_py_C_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # Check initial conditions
     with pytest.raises(NotImplementedError):
         test_model.update_material_temperatures(['UO2'], 600.)
-    # TODO: When C-API material.set_temperature is implemented, uncomment below
+    # TODO: When C API material.set_temperature is implemented, uncomment below
     # assert abs(openmc.lib.materials[1].temperature - 293.6) < 1e-13
     # # The temperature on the material will be None because its just the
     # # default assert test_model.materials[0].temperature is None
@@ -395,8 +357,4 @@ def test_py_C_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert abs(openmc.lib.materials[1].volume - 2.) < 1e-13
     assert abs(test_model.materials[0].volume - 2.) < 1e-13
 
-    test_model.clear_C_api()
-
-    # And before done, reset the deplete communicator
-    if mpi_intracomm is not None:
-        openmc.deplete.comm = orig_comm
+    test_model.finalize_lib()

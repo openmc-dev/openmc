@@ -60,4 +60,5 @@ from .settings import settings
 from .math import *
 from .plot import *
 
-LIB_INIT = False
+# Flag to denote whether or not openmc.lib.init has been called
+is_initialized = False

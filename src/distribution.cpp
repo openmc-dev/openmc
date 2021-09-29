@@ -296,8 +296,8 @@ Mixture::Mixture(pugi::xml_node node)
   double cumsum = 0.0;
   for (pugi::xml_node pair : node.children("pair")) {
     // Check that required data exists
-    if (!pair.attribute("probability")) openmc::fatal_error("Mixture pair element does not have probability.");
-    if (!pair.child("dist")) openmc::fatal_error("Mixture pair element does not have a distribution.");
+    if (!pair.attribute("probability")) fatal_error("Mixture pair element does not have probability.");
+    if (!pair.child("dist")) fatal_error("Mixture pair element does not have a distribution.");
 
     // cummulative sum of probybilities
     cumsum += std::stod(pair.attribute("probability").value());

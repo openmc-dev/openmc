@@ -148,7 +148,7 @@ def export_properties(filename=None):
 def finalize():
     """Finalize simulation and free memory"""
     _dll.openmc_finalize()
-    openmc.lib.LIB_INIT = False
+    openmc.lib.is_initialized = False
 
 
 def find_cell(xyz):
@@ -215,7 +215,7 @@ def import_properties(filename):
     See Also
     --------
     openmc.lib.export_properties
-mat
+
     """
     _dll.openmc_properties_import(filename.encode())
 
@@ -255,7 +255,7 @@ def init(args=None, intracomm=None):
             intracomm = c_void_p(address)
 
     _dll.openmc_init(argc, argv, intracomm)
-    openmc.lib.LIB_INIT = True
+    openmc.lib.is_initialized = True
 
 
 def is_statepoint_batch():

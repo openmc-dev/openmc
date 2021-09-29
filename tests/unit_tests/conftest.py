@@ -129,9 +129,9 @@ def pin_model_attributes():
   </nuclide>
 </depletion_chain>
 """
+    operator_kwargs = {'chain_file': chain, 'fission_q': fission_q}
 
-    return (mats, geom, settings, tals, plots, chain, fission_q,
-            chain_file_xml)
+    return (mats, geom, settings, tals, plots, operator_kwargs, chain_file_xml)
 
 @pytest.fixture(scope='module')
 def mpi_intracomm():

@@ -850,11 +850,10 @@ class Mixture(Univariate):
             Mixture distribution generated from XML element
 
         """
-        P = []
-        D = []
-        for pair in elem:
-            if pair.tag == "pair":
-              P.append( float(get_text(pair, 'probability')) )
-              D.append( Univariate.from_xml_element(pair.find("dist")) )
+        probability = []
+        distribution = []
+        for pair in elem.findall('pair'):
+            probability.append(float(get_text(pair, 'probability')))
+            distribution.append(Univariate.from_xml_element(pair.find("dist")))
 
-        return cls(P,D)
+        return cls(probability, distribution)

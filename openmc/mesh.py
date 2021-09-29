@@ -615,8 +615,8 @@ class UnstructuredMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    size : int
-        Number of elements in the unstructured mesh
+    length_multiplier: float
+        Constant multiplier to apply to mesh coordinates
 
     Attributes
     ----------
@@ -626,11 +626,16 @@ class UnstructuredMesh(MeshBase):
         Name of the mesh
     filename : str
         Name of the file containing the unstructured mesh
+    length_multiplier: float
+        Multiplicative factor to apply to mesh coordinates
     library : str
         Mesh library used for the unstructured mesh tally
     output : bool
         Indicates whether or not automatic tally output should
         be generated for this mesh
+    specified_length_multiplier: bool
+        Indicates whether a non-unity length multiplier has been
+        applied to this mesh
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     total_volume : float
@@ -639,13 +644,16 @@ class UnstructuredMesh(MeshBase):
         An iterable of element centroid coordinates, e.g. [(0.0, 0.0, 0.0),
         (1.0, 1.0, 1.0), ...]
     """
-    def __init__(self, filename, library, mesh_id=None, name=''):
+    def __init__(self, filename, library, mesh_id=None, name='',
+                        length_multiplier=1.0):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
         self._centroids = None
         self.library = library
         self._output = True
+        self._specified_length_multiplier = False
+        self.length_multiplier = length_multiplier
 
     @property
     def filename(self):
@@ -713,6 +721,20 @@ class UnstructuredMesh(MeshBase):
                       Iterable, Real)
         self._centroids = centroids
 
+    @property
+    def length_multiplier(self):
+        return self._length_multiplier
+
+    @length_multiplier.setter
+    def length_multiplier(self, length_multiplier):
+        cv.check_type("Unstructured mesh length multiplier", 
+                                length_multiplier,
+                                Real)
+        self._length_multiplier = length_multiplier
+
+        if (self._length_multiplier != 1.0):
+          self._specified_length_multiplier = True
+
     def __repr__(self):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
@@ -763,7 +785,7 @@ class UnstructuredMesh(MeshBase):
 
         for centroid in self.centroids:
             # create a point for each centroid
-            point_id = points.InsertNextPoint(centroid)
+            point_id = points.InsertNextPoint(centroid * self.length_multiplier)
             # create a cell of type "Vertex" for each point
             cell_id = vertices.InsertNextCell(cell_dim, (point_id,))
 
@@ -817,6 +839,9 @@ class UnstructuredMesh(MeshBase):
         mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
         mesh.size = mesh.volumes.size
 
+        if 'length_multiplier' in group:
+            mesh.length_multiplier = group['length_multiplier'][()]
+
         return mesh
 
     def to_xml_element(self):
@@ -835,6 +860,9 @@ class UnstructuredMesh(MeshBase):
         element.set("library", self._library)
         subelement = ET.SubElement(element, "filename")
         subelement.text = self.filename
+
+        if (self._specified_length_multiplier):
+          element.set("length_multiplier", str(self.length_multiplier))
 
         return element
 
@@ -855,5 +883,6 @@ class UnstructuredMesh(MeshBase):
         mesh_id = int(get_text(elem, 'id'))
         filename = get_text(elem, 'filename')
         library = get_text(elem, 'library')
+        length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
-        return cls(filename, library, mesh_id)
+        return cls(filename, library, mesh_id, '', length_multiplier)

@@ -325,7 +325,7 @@ double Mixture::sample(uint64_t* seed) const
   // This should not happen. Catch it
   Ensures(it != distribution_.cend());
 
-  // Sample the choosen distribution
+  // Sample the chosen distribution
   return it->second->sample(seed);
 }
 

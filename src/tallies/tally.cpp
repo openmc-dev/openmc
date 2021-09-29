@@ -264,9 +264,6 @@ Tally::Tally(pugi::xml_node node)
   if (exists && !settings::photon_transport) {
       fatal_error("Error: The Pulse-Height Tally works only with photon transport True.");
   }
-  if (exists && settings::n_batches != 1) {
-    fatal_error("Error: The Pulse-Height Tally is currently just validated for single batch simulations.");
-  }
 
   // If settings.xml trigger is turned on, create tally triggers
   if (settings::trigger_on) {

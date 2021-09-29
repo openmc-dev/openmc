@@ -55,7 +55,7 @@ class SourceTestHarness(PyAPITestHarness):
         energy1 = openmc.stats.Maxwell(1.2895e6)
         energy2 = openmc.stats.Watt(0.988e6, 2.249e-6)
         energy3 = openmc.stats.Tabular(E, p, interpolation='histogram')
-        energy4 = openmc.stats.Mixture([1,2,3], [energy1, energy2, energy3])
+        energy4 = openmc.stats.Mixture([1, 2, 3], [energy1, energy2, energy3])
 
         source1 = openmc.Source(spatial1, angle1, energy1, strength=0.5)
         source2 = openmc.Source(spatial2, angle2, energy2, strength=0.3)

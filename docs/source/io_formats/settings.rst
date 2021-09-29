@@ -650,18 +650,23 @@ variable and whose sub-elements/attributes are as follows:
   number :math:`a` that parameterizes the distribution :math:`p(x) dx = c x
   e^{-x/a} dx`.
 
-  For a "mixture" distribution, ``parameters`` provide the :math:'(p,d)' pairs
-  connecting the probabilites :math:'p' with the different sub-distributions 
-  :math:'d'. All probabilities :math:'p' are given first followed by the corresponding
-  distributions :math:'d'.
-
   .. note:: The above format should be used even when using the multi-group
             :ref:`energy_mode`.
+
 :interpolation:
   For a "tabular" distribution, ``interpolation`` can be set to "histogram" or
   "linear-linear" thereby specifying how tabular points are to be interpolated.
 
   *Default*: histogram
+
+:pair:
+  For a "mixture" distribution, this element provides a distribution and its corresponding probability.a
+
+  :probability:
+    An attribute or ``pair`` that provides the probability of a univatiate distribution within a "mixture" distribution. 
+      
+  :dist:
+    This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
 
 -------------------------
 ``<state_point>`` Element

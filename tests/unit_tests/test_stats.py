@@ -101,8 +101,12 @@ def test_mixture():
     assert mix.distribution == [d1, d2]
     assert len(mix) == 4
 
-    with pytest.raises(NotImplementedError):
-        mix.to_xml_element('distribution')
+    elem = mix.to_xml_element('distribution')
+
+    d = openmc.stats.Mixture.from_xml_element(elem)
+    assert d.probability == p
+    assert d.distribution == [d1, d2]
+    assert len(d) == 4
 
 
 def test_polar_azimuthal():

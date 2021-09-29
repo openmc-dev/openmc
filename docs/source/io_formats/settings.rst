@@ -619,7 +619,7 @@ variable and whose sub-elements/attributes are as follows:
 
 :type:
   The type of the distribution. Valid options are "uniform", "discrete",
-  "tabular", "maxwell", "watt", and "mixture". The "uniform" option producess
+  "tabular", "maxwell", "watt", and "mixture". The "uniform" option produces
   variates sampled from a uniform distribution over a finite interval. The 
   "discrete" option produces random variates that can assume a finite number 
   of values (i.e., a distribution characterized by a probability mass function). 

@@ -272,7 +272,7 @@ class Model:
         if dep.comm.rank == 0:
             self.export_to_xml()
         dep.comm.barrier()
-        # TODO: Implement the output flag somewhere on the C++ side
+
         openmc.lib.init(args=args, intracomm=dep.comm)
 
     def clear_C_api(self):
@@ -636,6 +636,7 @@ class Model:
                 if not output:
                     openmc.lib.settings.verbosity = init_verbosity
             else:
+                self.export_to_xml()
                 openmc.calculate_volumes(threads=threads, output=output,
                                          openmc_exec=openmc_exec,
                                          mpi_args=mpi_args)
@@ -691,21 +692,28 @@ class Model:
                              "before executing this method!")
 
         with openmc.change_directory(Path(cwd)):
-            if self.C_init:
-                # Apply the output settings
-                if not output:
-                    init_verbosity = openmc.lib.settings.verbosity
-                    if not output:
-                        openmc.lib.settings.verbosity = 1
+            # TODO: openmc_init doesnt read plots.xml unless it is in plot mode
+            # so the following will not work. Commented out for now and
+            # replacing with non-C-API code
+            self.export_to_xml()
+            openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
 
-                # Compute the volumes
-                openmc.lib.plot_geometry()
+            # if self.C_init:
+            #     # Apply the output settings
+            #     if not output:
+            #         init_verbosity = openmc.lib.settings.verbosity
+            #         if not output:
+            #             openmc.lib.settings.verbosity = 1
 
-                # Reset the output verbosity
-                if not output:
-                    openmc.lib.settings.verbosity = init_verbosity
-            else:
-                openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
+            #     # Compute the volumes
+            #     openmc.lib.plot_geometry()
+
+            #     # Reset the output verbosity
+            #     if not output:
+            #         openmc.lib.settings.verbosity = init_verbosity
+            # else:
+            #     self.export_to_xml()
+            #     openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
 
             if convert:
                 for p in self.plots:

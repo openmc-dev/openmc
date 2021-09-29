@@ -293,9 +293,6 @@ double Equiprobable::sample(uint64_t* seed) const
 
 Mixture::Mixture(pugi::xml_node node)
 {
-  // Read and initialize tabular distribution
-  //auto params = get_node_array<double>(node, "parameters");
-
   double cumsum = 0.0;
   for (pugi::xml_node pair = node.child("pair"); pair;
        pair = pair.next_sibling("pair")) {

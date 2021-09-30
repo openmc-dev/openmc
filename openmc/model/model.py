@@ -52,8 +52,6 @@ class Model:
         Tallies information
     plots : openmc.Plots, optional
         Plot information
-    intracomm : mpi4py.MPI.Intracomm or None, optional
-        MPI intracommunicator
 
     Attributes
     ----------
@@ -67,8 +65,10 @@ class Model:
         Tallies information
     plots : openmc.Plots
         Plot information
-    intracomm : mpi4py.MPI.Intracomm or None
-        MPI intracommunicator
+    intracomm : mpi4py.MPI.Intracomm or openmc.DummyCommunicator
+        MPI intracommunicator; this defaults to the mpi4py world communicator
+        from if present, or a DummyCommunicator otherwise. If an alternative
+        communicator is desired, this parameter should be modified accordingly.
 
     """
 
@@ -91,7 +91,7 @@ class Model:
         if plots is not None:
             self.plots = plots
 
-        self.intracomm = intracomm
+        self.intracomm = openmc.comm
 
         # Store dictionaries to the materials and cells by ID and names
         if materials is None:
@@ -191,12 +191,8 @@ class Model:
 
     @intracomm.setter
     def intracomm(self, intracomm):
-        if intracomm is None:
-            self._intracomm = openmc.comm
-        else:
-            check_type('intracomm', intracomm,
-                       (openmc.MPI.Comm, openmc.DummyCommunicator))
-            self._intracomm = intracomm
+        check_type('intracomm', intracomm, type(openmc.comm))
+        self._intracomm = intracomm
 
     @classmethod
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
@@ -272,7 +268,7 @@ class Model:
 
         if isinstance(self.intracomm, openmc.DummyCommunicator):
             # openmc.lib.init does not accept DummyCommunicator, and importing
-            # the DummyCommunicator class is overkill. Filter it here
+            # the DummyCommunicator class there is overkill. Filter it here
             intracomm = None
         else:
             intracomm = self.intracomm
@@ -288,7 +284,8 @@ class Model:
         openmc.lib.finalize()
 
     def deplete(self, timesteps, method='cecm', final_step=True,
-                operator_kwargs=None, directory='.', **integrator_kwargs):
+                operator_kwargs=None, directory='.', output=True,
+                **integrator_kwargs):
         """Deplete model using specified timesteps/power
 
         .. versionchanged:: 0.13.0
@@ -310,6 +307,8 @@ class Model:
         directory : str, optional
             Directory to write XML files to. If it doesn't exist already, it
             will be created. Defaults to the current working directory
+        output : bool
+            Capture OpenMC output from standard out
         integrator_kwargs : dict
             Remaining keyword arguments passed to the depletion Integrator
             initializer (e.g., :func:`openmc.deplete.integrator.cecm`).
@@ -332,8 +331,9 @@ class Model:
         started_initialized = self.is_initialized
 
         with _change_directory(Path(directory)):
-            depletion_operator = \
-                dep.Operator(self.geometry, self.settings, **op_kwargs)
+            with openmc.lib.quiet_dll(output):
+                depletion_operator = \
+                    dep.Operator(self.geometry, self.settings, **op_kwargs)
 
             # Tell depletion_operator.finalize NOT to clear C API memory when
             # it is done
@@ -347,8 +347,8 @@ class Model:
                                           **integrator_kwargs)
 
             # Now perform the depletion
-            # TODO: add output parameter to integrate
-            integrator.integrate(final_step)
+            with openmc.lib.quiet_dll(output):
+                integrator.integrate(final_step)
 
             # Now make the python Materials match the C API material data
             for mat_id, mat in self._materials_by_id.items():

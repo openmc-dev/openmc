@@ -114,11 +114,8 @@ def global_bounding_box():
 def calculate_volumes(output=True):
     """Run stochastic volume calculation"""
 
-    if output:
+    with quiet_dll(output):
         _dll.openmc_calculate_volumes()
-    else:
-        with quiet_dll():
-            _dll.openmc_calculate_volumes()
 
 
 def current_batch():
@@ -152,11 +149,9 @@ def export_properties(filename=None, output=True):
     """
     if filename is not None:
         filename = c_char_p(filename.encode())
-    if output:
+
+    with quiet_dll(output):
         _dll.openmc_properties_export(filename)
-    else:
-        with quiet_dll():
-            _dll.openmc_properties_export(filename)
 
 
 def finalize():
@@ -272,11 +267,8 @@ def init(args=None, intracomm=None, output=True):
             address = MPI._addressof(intracomm)
             intracomm = c_void_p(address)
 
-    if output:
+    with quiet_dll(output):
         _dll.openmc_init(argc, argv, intracomm)
-    else:
-        with quiet_dll():
-            _dll.openmc_init(argc, argv, intracomm)
     openmc.lib.is_initialized = True
 
 
@@ -378,11 +370,8 @@ def plot_geometry(output=True):
         Whether or not to show output. Defaults to showing output
     """
 
-    if output:
+    with quiet_dll(output):
         _dll.openmc_plot_geometry()
-    else:
-        with quiet_dll():
-            _dll.openmc_plot_geometry()
 
 
 def reset():
@@ -406,11 +395,8 @@ def run(output=True):
         Whether or not to show output. Defaults to showing output
     """
 
-    if output:
+    with quiet_dll(output):
         _dll.openmc_run()
-    else:
-        with quiet_dll():
-            _dll.openmc_run()
 
 
 def simulation_init():
@@ -529,27 +515,40 @@ class _FortranObjectWithID(_FortranObject):
 
 
 @contextmanager
-def quiet_dll():
-    """This context manager allows us to suppress standard output from DLLs"""
-    sys.stdout.flush()
-    # Save the initial file descriptor states
-    initial_stdout = sys.stdout
-    initial_stdout_fno = os.dup(sys.stdout.fileno())
-    # Get a garbage descriptor so we can throw away output
-    devnull = os.open(os.devnull, os.O_WRONLY)
+def quiet_dll(output=True):
+    """This context manager allows us to suppress standard output from DLLs
 
-    # Get the current stdout stream and make a duplicate of it
-    new_stdout = os.dup(1)
-    # Copy the garbage output to the stdout stream
-    os.dup2(devnull, 1)
-    os.close(devnull)
-    # Now point stdout to the re-defined stdout
-    sys.stdout = os.fdopen(new_stdout, 'w')
+    Parameters
+    ----------
+    output : bool
+        Denotes whether the output should be displayed (True) or not (False)
 
-    try:
+    .. versionadded:: 0.13.0
+
+    """
+
+    if output:
         yield
-    finally:
-        # Now we just clean up after ourselves and reset the streams
-        sys.stdout = initial_stdout
+    else:
         sys.stdout.flush()
-        os.dup2(initial_stdout_fno, 1)
+        # Save the initial file descriptor states
+        initial_stdout = sys.stdout
+        initial_stdout_fno = os.dup(sys.stdout.fileno())
+        # Get a garbage descriptor so we can throw away output
+        devnull = os.open(os.devnull, os.O_WRONLY)
+
+        # Get the current stdout stream and make a duplicate of it
+        new_stdout = os.dup(1)
+        # Copy the garbage output to the stdout stream
+        os.dup2(devnull, 1)
+        os.close(devnull)
+        # Now point stdout to the re-defined stdout
+        sys.stdout = os.fdopen(new_stdout, 'w')
+
+        try:
+            yield
+        finally:
+            # Now we just clean up after ourselves and reset the streams
+            sys.stdout = initial_stdout
+            sys.stdout.flush()
+            os.dup2(initial_stdout_fno, 1)

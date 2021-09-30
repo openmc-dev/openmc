@@ -1,4 +1,5 @@
 import sys
+from unittest.mock import Mock
 
 
 class DummyCommunicator:
@@ -31,3 +32,10 @@ class DummyCommunicator:
 
     def Abort(self, exit_code_or_msg):
         sys.exit(exit_code_or_msg)
+
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+except ImportError:
+    MPI = Mock()
+    comm = DummyCommunicator()

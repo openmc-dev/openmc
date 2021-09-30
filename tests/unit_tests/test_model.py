@@ -1,10 +1,110 @@
+from math import pi
 import numpy as np
 import pytest
 from pathlib import Path
 from shutil import which
 import openmc
 import openmc.lib
-from openmc.deplete.dummy_comm import DummyCommunicator
+from openmc.mpi import DummyCommunicator
+
+
+@pytest.fixture(scope='function')
+def pin_model_attributes():
+    uo2 = openmc.Material(material_id=1, name='UO2')
+    uo2.set_density('g/cm3', 10.29769)
+    uo2.add_element('U', 1., enrichment=2.4)
+    uo2.add_element('O', 2.)
+    uo2.depletable = True
+
+    zirc = openmc.Material(material_id=2, name='Zirc')
+    zirc.set_density('g/cm3', 6.55)
+    zirc.add_element('Zr', 1.)
+    zirc.depletable = False
+
+    borated_water = openmc.Material(material_id=3, name='Borated water')
+    borated_water.set_density('g/cm3', 0.740582)
+    borated_water.add_element('B', 4.0e-5)
+    borated_water.add_element('H', 5.0e-2)
+    borated_water.add_element('O', 2.4e-2)
+    borated_water.add_s_alpha_beta('c_H_in_H2O')
+    borated_water.depletable = False
+
+    mats = openmc.Materials([uo2, zirc, borated_water])
+
+    pitch = 1.25984
+    fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
+    clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
+    box = openmc.model.rectangular_prism(pitch, pitch,
+                                         boundary_type='reflective')
+
+    # Define cells
+    fuel_inf_cell = openmc.Cell(cell_id=1, name='inf fuel', fill=uo2)
+    fuel_inf_univ = openmc.Universe(universe_id=1, cells=[fuel_inf_cell])
+    fuel = openmc.Cell(cell_id=2, name='fuel',
+                       fill=fuel_inf_univ, region=-fuel_or)
+    clad = openmc.Cell(cell_id=3, fill=zirc, region=+fuel_or & -clad_or)
+    water = openmc.Cell(cell_id=4, fill=borated_water, region=+clad_or & box)
+
+    # Define overall geometry
+    geom = openmc.Geometry([fuel, clad, water])
+    uo2.volume = pi * fuel_or.r**2
+
+    settings = openmc.Settings()
+    settings.batches = 100
+    settings.inactive = 10
+    settings.particles = 1000
+
+    # Create a uniform spatial source distribution over fissionable zones
+    bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
+    uniform_dist = openmc.stats.Box(
+        bounds[:3], bounds[3:], only_fissionable=True)
+    settings.source = openmc.source.Source(space=uniform_dist)
+
+    entropy_mesh = openmc.RegularMesh()
+    entropy_mesh.lower_left = [-0.39218, -0.39218, -1.e50]
+    entropy_mesh.upper_right = [0.39218, 0.39218, 1.e50]
+    entropy_mesh.dimension = [10, 10, 1]
+    settings.entropy_mesh = entropy_mesh
+
+    tals = openmc.Tallies()
+    tal = openmc.Tally(tally_id=1, name='test')
+    tal.filters = [openmc.MaterialFilter(bins=[uo2])]
+    tal.scores = ['flux', 'fission']
+    tals.append(tal)
+
+    plot1 = openmc.Plot(plot_id=1)
+    plot1.origin = (0., 0., 0.)
+    plot1.width = (pitch, pitch)
+    plot1.pixels = (300, 300)
+    plot1.color_by = 'material'
+    plot1.filename = 'test'
+    plot2 = openmc.Plot(plot_id=2)
+    plot2.origin = (0., 0., 0.)
+    plot2.width = (pitch, pitch)
+    plot2.pixels = (300, 300)
+    plot2.color_by = 'cell'
+    plots = openmc.Plots((plot1, plot2))
+
+    chain = './test_chain.xml'
+
+    chain_file_xml = """<?xml version="1.0"?>
+<depletion_chain>
+  <nuclide name="Xe136" decay_modes="0" reactions="0" />
+  <nuclide name="U235" decay_modes="0" reactions="1">
+    <reaction type="fission" Q="200000000."/>
+    <neutron_fission_yields>
+      <energies>2.53000e-02</energies>
+      <fission_yields energy="2.53000e-02">
+        <products>Xe136</products>
+        <data>1.0</data>
+      </fission_yields>
+    </neutron_fission_yields>
+  </nuclide>
+</depletion_chain>
+"""
+    operator_kwargs = {'chain_file': chain}
+
+    return (mats, geom, settings, tals, plots, operator_kwargs, chain_file_xml)
 
 
 def test_init(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
@@ -130,7 +230,7 @@ def test_init_finalize_lib(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # We are going to init and then make sure data is loaded
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
     test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
-    test_model.init_lib()
+    test_model.init_lib(output=False)
 
     # First check that the API is advertised as initialized
     assert openmc.lib.is_initialized is True
@@ -157,13 +257,13 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     # Create PWR pin cell model and write XML files
     openmc.reset_auto_ids()
     model = openmc.examples.pwr_pin_cell()
-    model.init_lib()
+    model.init_lib(output=False)
 
     # Change fuel temperature and density and export properties
     cell = openmc.lib.cells[1]
     cell.set_temperature(600.0)
     cell.fill.set_density(5.0, 'g/cm3')
-    openmc.lib.export_properties()
+    openmc.lib.export_properties(output=False)
 
     # Import properties to existing model
     model.import_properties("properties.h5")
@@ -203,17 +303,20 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
         cli_keff = sp.k_combined
-        cli_flux = sp.get_tally(id=1).get_values()[0, 0, 0]
+        cli_flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
+        cli_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 
-    test_model.init_lib()
+    test_model.init_lib(output=False)
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
-        C_keff = sp.k_combined
-        C_flux = sp.get_tally(id=1).get_values()[0, 0, 0]
+        lib_keff = sp.k_combined
+        lib_flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
+        lib_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 
     # and lets compare results
-    assert abs(C_keff - cli_keff) < 1e-13
-    assert abs(C_flux - cli_flux) < 1e-13
+    assert abs(lib_keff - cli_keff) < 1e-13
+    assert abs(lib_flux - cli_flux) < 1e-13
+    assert abs(lib_fiss - cli_fiss) < 1e-13
 
     # Now we should make sure that the flags for items which should be handled
     # by init are properly set
@@ -248,8 +351,8 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # We will run the test twice, the first time without C API, the second with
     for i in range(2):
         if i == 1:
-            test_model.init_lib()
-        test_model.plot_geometry(output=True, convert=convert)
+            test_model.init_lib(output=False)
+        test_model.plot_geometry(output=False, convert=convert)
 
         # Now look for the files, expect to find test.ppm, plot_2.ppm, and if
         # convert is True, test.png, plot_2.png
@@ -262,11 +365,11 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     test_model.finalize_lib()
 
 
-def test_py_C_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
     test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
 
-    test_model.init_lib()
+    test_model.init_lib(output=False)
 
     # Now we can call rotate_cells, translate_cells, update_densities,
     # update_cell_temperatures, and update_material_temperatures and make sure
@@ -358,3 +461,106 @@ def test_py_C_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert abs(test_model.materials[0].volume - 2.) < 1e-13
 
     test_model.finalize_lib()
+
+
+# def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+#     mats, geom, settings, tals, plots, op_kwargs, chain_file_xml = \
+#         pin_model_attributes
+#     with open('test_chain.xml', 'w') as f:
+#         f.write(chain_file_xml)
+#     test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+
+#     initial_mat = mats[0].clone()
+#     initial_u = initial_mat.get_nuclide_atom_densities()['U235'][1]
+
+#     # Note that the chain file includes only U-235 fission to a stable Xe136 w/
+#     # a yield of 100%. Thus all the U235 we lose becomes Xe136
+
+#     # In this test we first run without pre-initializing the shared library
+#     # data and then compare. Then we repeat with the C API already initialized
+#     # and make sure we get the same answer
+#     test_model.deplete([1e6], 'predictor', final_step=False,
+#                        operator_kwargs=op_kwargs,
+#                        power=1.)
+#     # Get the new Xe136 and U235 atom densities
+#     after_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
+#     after_u = mats[0].get_nuclide_atom_densities()['U235'][1]
+#     assert abs((after_xe + after_u) - initial_u) < 1e-15
+#     assert test_model.is_initialized is False
+
+#     # Reset the initial material densities
+#     mats[0].nuclides.clear()
+#     densities = initial_mat.get_nuclide_atom_densities()
+#     tot_density = 0.
+#     for nuc, density in densities.values():
+#         mats[0].add_nuclide(nuc, density)
+#         tot_density += density
+#     mats[0].set_density('atom/b-cm', tot_density)
+
+#     # Now we can re-run with the pre-initialized API
+#     test_model.init_lib(output=False)
+#     test_model.deplete([1e6], 'predictor', final_step=False,
+#                        operator_kwargs=op_kwargs,
+#                        power=1.)
+#     # Get the new Xe136 and U235 atom densities
+#     after_lib_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
+#     after_lib_u = mats[0].get_nuclide_atom_densities()['U235'][1]
+#     assert abs((after_lib_xe + after_lib_u) - initial_u) < 1e-15
+#     assert test_model.is_initialized is True
+
+#     # And end by comparing to the previous case
+#     assert abs(after_xe - after_lib_xe) < 1e-15
+#     assert abs(after_u - after_lib_u) < 1e-15
+
+#     test_model.finalize_lib()
+
+
+def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
+
+    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+
+    # With no vol calcs, it should fail
+    with pytest.raises(ValueError):
+        test_model.calculate_volumes(output=False)
+
+    # Add a cell and mat volume calc
+    material_vol_calc = openmc.VolumeCalculation(
+        [mats[2]], samples=1000, lower_left=(-.63, -.63, -100.),
+        upper_right=(.63, .63, 100.))
+    cell_vol_calc = openmc.VolumeCalculation(
+        [geom.root_universe.cells[3]], samples=1000,
+        lower_left=(-.63, -.63, -100.), upper_right=(.63, .63, 100.))
+    test_model.settings.volume_calculations = \
+        [material_vol_calc, cell_vol_calc]
+
+    # Now lets compute the volumes and check to see if it was applied
+    # First lets do without using the C-API
+    # Make sure the volumes are unassigned first
+    assert mats[2].volume is None
+    assert geom.root_universe.cells[3].volume is None
+    test_model.calculate_volumes(output=False, apply_volumes=True)
+
+    # Now let's test that we have volumes assigned; we arent checking the
+    # value, just that the value was changed
+    assert mats[2].volume > 0.
+    assert geom.root_universe.cells[3].volume > 0.
+
+    # Now reset the values
+    mats[2].volume = None
+    geom.root_universe.cells[3].volume = None
+
+    # And do again with an initialized library
+    for file in ['volume_1.h5', 'volume_2.h5']:
+        file = Path(file)
+        file.unlink()
+    test_model.init_lib(output=False)
+    test_model.calculate_volumes(output=False, apply_volumes=True)
+    assert mats[2].volume > 0.
+    assert geom.root_universe.cells[3].volume > 0.
+    assert openmc.lib.materials[3].volume == mats[2].volume
+
+    test_model.finalize_lib()
+
+
+

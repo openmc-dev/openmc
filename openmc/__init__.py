@@ -30,8 +30,10 @@ from openmc.plotter import *
 from openmc.search import *
 from openmc.polynomial import *
 from . import examples
+from openmc.mpi import DummyCommunicator, MPI, comm
 
 # Import a few names from the model module
 from openmc.model import rectangular_prism, hexagonal_prism, Model
+
 
 __version__ = '0.13.0-dev'

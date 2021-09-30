@@ -1,6 +1,9 @@
 # To build with OpenMC
 # docker build -t openmc .
 
+# To build with the develop branch of OpenMC
+# docker build -t openmc --build-arg openmc_branch=develop.
+
 # To build with OpenMC and DAGMC enabled
 # docker build -t openmc_dagmc --build-arg include_dagmc=true .
 
@@ -8,6 +11,9 @@
 # docker build -t openmc_dagmc --build-arg compile_cores=8 .
 
 FROM ubuntu:latest
+
+# By default this Dockerfile builds the main branch of OpenMC
+ARG openmc_branch=main
 
 # By default this Dockerfile builds OpenMC without dagmc
 ARG include_dagmc=false
@@ -29,7 +35,7 @@ RUN apt-get update -y && \
     apt-get install -y \
         python3-pip python-is-python3 wget git gfortran g++ cmake \
         mpich libmpich-dev libhdf5-serial-dev libhdf5-mpich-dev \
-        imagemagick && \
+        imagemagick m4 && \
     apt-get autoremove
 
 # Update system-provided pip
@@ -41,14 +47,25 @@ RUN git clone https://github.com/njoy/NJOY2016.git /opt/NJOY2016 && \
     mkdir build && cd build && \
     cmake -Dstatic=on .. && make 2>/dev/null && make install
 
+# Clone and install libmesh
+RUN mkdir libmesh ; \
+    cd libmesh ; \
+    git clone --single-branch --shallow-submodules --recurse-submodules --branch v1.6.0 --depth 1 https://github.com/libMesh/libmesh.git ; \
+    mkdir build ; \
+    cd build ; \
+    ../libmesh/configure --prefix=/opt/libmesh --enable-exodus --disable-netcdf-4 --disable-eigen --disable-lapack --disable-mpi ; \
+    make -j"$compile_cores" ; \
+    make -j"$compile_cores" install
+
 # Clone and install OpenMC without DAGMC
 RUN if [ "$include_dagmc" = "false" ] ; \
-    then git clone --recurse-submodules https://github.com/openmc-dev/openmc.git /opt/openmc ; \
+    then git clone --shallow-submodules --recurse-submodules --branch "$openmc_branch" --depth=1 https://github.com/openmc-dev/openmc.git /opt/openmc ; \
     cd /opt/openmc ; \
     mkdir -p build ; \
     cd build ; \
     cmake -Doptimize=on \
-          -DHDF5_PREFER_PARALLEL=on .. ; \
+          -DHDF5_PREFER_PARALLEL=on .. \
+          -DCMAKE_PREFIX_PATH=/opt/libmesh/ ; \
     make -j"$compile_cores" ; \
     make -j"$compile_cores" install ; \
     cd ..  ; \
@@ -65,7 +82,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install Embree
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone --single-branch --branch v3.12.2 https://github.com/embree/embree.git ; \
+    then git clone --single-branch --branch v3.12.2 --depth 1 https://github.com/embree/embree.git ; \
     cd embree ; \
     mkdir build ; \
     cd build ; \
@@ -81,7 +98,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     mkdir MOAB ; \
     cd MOAB ; \
     mkdir build ; \
-    git clone  --single-branch --branch 5.2.1 https://bitbucket.org/fathomteam/moab.git ; \
+    git clone  --single-branch --branch 5.2.1 --depth 1 https://bitbucket.org/fathomteam/moab.git ; \
     cd build ; \
     cmake ../moab -DENABLE_HDF5=ON \
                   -DENABLE_NETCDF=ON \
@@ -102,7 +119,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 
 # Clone and install Double-Down
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone --single-branch --branch main https://github.com/pshriwise/double-down.git ; \
+    then git clone --single-branch --branch main --depth 1 https://github.com/pshriwise/double-down.git ; \
     cd double-down ; \
     mkdir build ; \
     cd build ; \
@@ -117,7 +134,7 @@ RUN if [ "$include_dagmc" = "true" ] ; \
 RUN if [ "$include_dagmc" = "true" ] ; \
     then mkdir DAGMC ; \
     cd DAGMC ; \
-    git clone --single-branch --branch 3.2.0 https://github.com/svalinn/DAGMC.git ; \
+    git clone --single-branch --branch 3.2.0 --depth 1 https://github.com/svalinn/DAGMC.git ; \
     mkdir build ; \
     cd build ; \
     cmake ../DAGMC -DBUILD_TALLY=ON \
@@ -129,21 +146,9 @@ RUN if [ "$include_dagmc" = "true" ] ; \
     rm -rf /DAGMC/DAGMC /DAGMC/build ; \
     fi
 
-# Clone and install libmesh
-RUN mkdir libmesh ; \
-    cd libmesh ; \
-    git clone --single-branch --recurse-submodules --branch v1.6.0 https://github.com/libMesh/libmesh.git ; \
-    # cd libmesh ; \
-    # git submodule update --init --recursive ; \
-    mkdir build ; \
-    cd build ; \
-    ../libmesh/configure --prefix=/opt/LIBMESH --enable-exodus --disable-netcdf-4 --disable-eigen --disable-lapack --disable-mpi ; \
-    make -j"$compile_cores" ; \
-    make -j"$compile_cores" install
-
 # Clone and install OpenMC with DAGMC
 RUN if [ "$include_dagmc" = "true" ] ; \
-    then git clone --recurse-submodules https://github.com/openmc-dev/openmc.git /opt/openmc ; \
+    then git clone --shallow-submodules --recurse-submodules --branch "$openmc_branch" --depth=1 https://github.com/openmc-dev/openmc.git /opt/openmc ; \
     cd /opt/openmc ; \
     mkdir build ; \
     cd build ; \

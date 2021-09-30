@@ -191,17 +191,11 @@ class Model:
 
     @intracomm.setter
     def intracomm(self, intracomm):
-        try:
-            from mpi4py import MPI
-            mpi_avail = True
-        except ImportError:
-            mpi_avail = False
-        if intracomm is None or not mpi_avail:
-            # TODO: move dummy_comm from openmc.deplete to openmc
-            from openmc.deplete.dummy_comm import DummyCommunicator
-            self._intracomm = DummyCommunicator()
+        if intracomm is None:
+            self._intracomm = openmc.comm
         else:
-            check_type('intracomm', intracomm, MPI.Comm)
+            check_type('intracomm', intracomm,
+                       (openmc.MPI.Comm, openmc.DummyCommunicator))
             self._intracomm = intracomm
 
     @classmethod
@@ -263,25 +257,12 @@ class Model:
         # where it exists (here in init), but in the future the functionality
         # should be exposed so that it can be accessed via model.run(...)
 
-        # TODO: the output flag is not yet implemented for the openmc.lib.init
-        # command. This will be the subject of future work.
-
-        args = []
-
-        if isinstance(threads, Integral) and threads > 0:
-            args += ['-s', str(threads)]
-
-        if geometry_debug:
-            args.append('-g')
-
-        if event_based:
-            args.append('-e')
-
-        if isinstance(restart_file, str):
-            args += ['-r', restart_file]
-
-        if tracks:
-            args.append('-t')
+        args = openmc.process_CLI_arguments(
+            volume=False, geometry_debug=geometry_debug,
+            restart_file=restart_file, threads=threads, tracks=tracks,
+            event_based=event_based)
+        # Args adds the openmc_exec command in the first entry; remove it
+        args = args[1:]
 
         self.finalize_lib()
 
@@ -289,7 +270,13 @@ class Model:
             self.export_to_xml()
         self.intracomm.barrier()
 
-        openmc.lib.init(args=args, intracomm=self.intracomm)
+        if isinstance(self.intracomm, openmc.DummyCommunicator):
+            # openmc.lib.init does not accept DummyCommunicator, and importing
+            # the DummyCommunicator class is overkill. Filter it here
+            intracomm = None
+        else:
+            intracomm = self.intracomm
+        openmc.lib.init(args=args, intracomm=intracomm, output=output)
 
     def finalize_lib(self):
         """Finalize simulation and free memory allocated for the C API
@@ -301,7 +288,7 @@ class Model:
         openmc.lib.finalize()
 
     def deplete(self, timesteps, method='cecm', final_step=True,
-                operator_kwargs=None, integrator_kwargs=None, directory='.'):
+                operator_kwargs=None, directory='.', **integrator_kwargs):
         """Deplete model using specified timesteps/power
 
         .. versionchanged:: 0.13.0
@@ -320,25 +307,34 @@ class Model:
         operator_kwargs : dict
             Keyword arguments passed to the depletion Operator initializer
             (e.g., :func:`openmc.deplete.Operator`)
-        integrator_kwargs : dict
-            Keyword arguments passed to the depletion Operator initializer
-            (e.g., :func:`openmc.deplete.integrator.cecm`)
         directory : str, optional
             Directory to write XML files to. If it doesn't exist already, it
             will be created. Defaults to the current working directory
-        **kwargs
-            Keyword arguments passed to integration function (e.g.,
-            :func:`openmc.deplete.integrator.cecm`)
+        integrator_kwargs : dict
+            Remaining keyword arguments passed to the depletion Integrator
+            initializer (e.g., :func:`openmc.deplete.integrator.cecm`).
 
         """
+
+        if operator_kwargs is None:
+            op_kwargs = {}
+        elif isinstance(operator_kwargs, dict):
+            op_kwargs = operator_kwargs
+        else:
+            msg = "operator_kwargs must be a dict or None"
+            raise ValueError(msg)
 
         # Import openmc.deplete here so the Model can be used even if the
         # shared library is unavailable.
         import openmc.deplete as dep
 
+        # Store whether or not the library was initialized when we started
+        started_initialized = self.is_initialized
+
         with _change_directory(Path(directory)):
             depletion_operator = \
-                dep.Operator(self.geometry, self.settings, **operator_kwargs)
+                dep.Operator(self.geometry, self.settings, **op_kwargs)
+
             # Tell depletion_operator.finalize NOT to clear C API memory when
             # it is done
             depletion_operator.cleanup_when_done = False
@@ -351,12 +347,8 @@ class Model:
                                           **integrator_kwargs)
 
             # Now perform the depletion
+            # TODO: add output parameter to integrate
             integrator.integrate(final_step)
-
-            # If we did not perform a transport calculation on the final step,
-            # then make the code update the C API material inventory
-            if not final_step:
-                depletion_operator._update_materials()
 
             # Now make the python Materials match the C API material data
             for mat_id, mat in self._materials_by_id.items():
@@ -369,6 +361,11 @@ class Model:
                     for nuc, density in zip(nuclides, densities):
                         mat.add_nuclide(nuc, density)
                     mat.set_density('atom/b-cm', sum(densities))
+
+            # If we didnt start intialized, we should cleanup after ourselves
+            if not started_initialized:
+                depletion_operator.cleanup_when_done = True
+                depletion_operator.finalize()
 
     def export_to_xml(self, directory='.'):
         """Export model to XML files.
@@ -531,25 +528,16 @@ class Model:
                     if isinstance(particles, Integral) and particles > 0:
                         openmc.lib.settings.particles = particles
 
-                # If we dont want output, make the verbosity quiet
-                if not output:
-                    init_verbosity = openmc.lib.settings.verbosity
-                    if not output:
-                        openmc.lib.settings.verbosity = 1
-
                 # Event-based can be set at init-time or on a case-basis.
                 # Handle the argument here.
                 # TODO This will be dealt with in a future change to the C API
 
                 # Then run using the C API
-                openmc.lib.run()
+                openmc.lib.run(output)
 
                 # Reset changes for the openmc.run kwargs handling
                 if particles is not None:
                     openmc.lib.settings.particles = init_particles
-                if not output:
-                    # Then re-set the initial verbosity
-                    openmc.lib.settings.verbosity = init_verbosity
 
             else:
                 # Then run via the command line
@@ -603,7 +591,7 @@ class Model:
             to the model. Defaults to applying the volumes.
         """
 
-        if len(self.settings.volume_calculation) == 0:
+        if len(self.settings.volume_calculations) == 0:
             # Then there is no volume calculation specified
             raise ValueError("The Settings.volume_calculation attribute must"
                              " be specified before executing this method!")
@@ -618,18 +606,9 @@ class Model:
                         "with the call to mpi4py"
                     raise ValueError(msg)
 
-                # Apply the output settings
-                if not output:
-                    init_verbosity = openmc.lib.settings.verbosity
-                    if not output:
-                        openmc.lib.settings.verbosity = 1
-
                 # Compute the volumes
-                openmc.lib.calculate_volumes()
+                openmc.lib.calculate_volumes(output)
 
-                # Reset the output verbosity
-                if not output:
-                    openmc.lib.settings.verbosity = init_verbosity
             else:
                 self.export_to_xml()
                 openmc.calculate_volumes(threads=threads, output=output,
@@ -638,23 +617,19 @@ class Model:
 
             # Now we apply the volumes
             if apply_volumes:
-                # Load the results
-                f_names = \
-                    [f"volume_{i + 1}.h5"
-                     for i in range(len(self.settings.volume_calculations))]
-                vol_calcs = [openmc.VolumeCalculation.load_results(f_name)
-                             for f_name in f_names]
-                # And now we can add them to the model
-                for vol_calc in vol_calcs:
+                # Load the results and add them to the model
+                for i, vol_calc in enumerate(self.settings.volume_calculations):
+                    f_name = f"volume_{i + 1}.h5"
+                    vol_calc.load_results(f_name)
                     # First add them to the Python side
                     self.geometry.add_volume_information(vol_calc)
 
                     # And now repeat for the C API
-                    if vol_calc.domain == 'material':
+                    if self.is_initialized and vol_calc.domain_type == 'material':
                         # Then we can do this in the C API
-                        for domain_id in vol_calc.domains:
-                            self.update_material_volumes(
-                                [domain_id], vol_calc.volumes[domain_id])
+                        for domain_id in vol_calc.ids:
+                            openmc.lib.materials[domain_id].volume = \
+                                vol_calc.volumes[domain_id].n
 
     def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
                       convert=True, convert_exec='convert'):
@@ -689,25 +664,15 @@ class Model:
                              "before executing this method!")
 
         with _change_directory(Path(cwd)):
-            # TODO: openmis_initialized doesnt read plots.xml unless it is in plot mode
-            # so the following will not work. Commented out for now and
-            # replacing with non-C API code
+            # TODO: openmc.is_initialized doesnt read plots.xml unless it is
+            # in plot mode so the following will not work. Commented out for
+            # now and replacing with non-C API code
             self.export_to_xml()
             openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
 
             # if self.is_initialized:
-            #     # Apply the output settings
-            #     if not output:
-            #         init_verbosity = openmc.lib.settings.verbosity
-            #         if not output:
-            #             openmc.lib.settings.verbosity = 1
-
             #     # Compute the volumes
-            #     openmc.lib.plot_geometry()
-
-            #     # Reset the output verbosity
-            #     if not output:
-            #         openmc.lib.settings.verbosity = init_verbosity
+            #     openmc.lib.plot_geometry(output)
             # else:
             #     self.export_to_xml()
             #     openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
@@ -721,8 +686,8 @@ class Model:
                     png_file = ppm_file.replace('.ppm', '.png')
                     subprocess.check_call([convert_exec, ppm_file, png_file])
 
-    def _change_py_C_attribs(self, names_or_ids, value, obj_type, attrib_name,
-                             density_units='atom/b-cm'):
+    def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
+                               attrib_name, density_units='atom/b-cm'):
         # Method to do the same work whether it is a cell or material and
         # a temperature or volume
         check_type('names_or_ids', names_or_ids, Iterable, (Integral, str))
@@ -819,7 +784,7 @@ class Model:
 
         """
 
-        self._change_py_C_attribs(names_or_ids, vector, 'cell', 'rotation')
+        self._change_py_lib_attribs(names_or_ids, vector, 'cell', 'rotation')
 
     def translate_cells(self, names_or_ids, vector):
         """Translate the identified cell(s) by the specified translation vector.
@@ -841,7 +806,7 @@ class Model:
 
         """
 
-        self._change_py_C_attribs(names_or_ids, vector, 'cell', 'translation')
+        self._change_py_lib_attribs(names_or_ids, vector, 'cell', 'translation')
 
     def update_densities(self, names_or_ids, density, density_units='atom/b-cm'):
         """Update the density of a given set of materials to a new value
@@ -863,7 +828,7 @@ class Model:
 
         """
 
-        self._change_py_C_attribs(names_or_ids, density, 'material', 'density',
+        self._change_py_lib_attribs(names_or_ids, density, 'material', 'density',
                                   density_units)
 
     def update_cell_temperatures(self, names_or_ids, temperature):
@@ -884,7 +849,7 @@ class Model:
 
         """
 
-        self._change_py_C_attribs(names_or_ids, temperature, 'cell',
+        self._change_py_lib_attribs(names_or_ids, temperature, 'cell',
                                   'temperature')
 
     def update_material_temperatures(self, names_or_ids, temperature):
@@ -905,7 +870,7 @@ class Model:
 
         """
 
-        self._change_py_C_attribs(names_or_ids, temperature, 'material',
+        self._change_py_lib_attribs(names_or_ids, temperature, 'material',
                                   'temperature')
 
     def update_material_volumes(self, names_or_ids, volume):
@@ -926,4 +891,4 @@ class Model:
 
         """
 
-        self._change_py_C_attribs(names_or_ids, volume, 'material', 'volume')
+        self._change_py_lib_attribs(names_or_ids, volume, 'material', 'volume')

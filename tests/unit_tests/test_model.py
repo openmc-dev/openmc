@@ -463,56 +463,56 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     test_model.finalize_lib()
 
 
-# def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
-#     mats, geom, settings, tals, plots, op_kwargs, chain_file_xml = \
-#         pin_model_attributes
-#     with open('test_chain.xml', 'w') as f:
-#         f.write(chain_file_xml)
-#     test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+    mats, geom, settings, tals, plots, op_kwargs, chain_file_xml = \
+        pin_model_attributes
+    with open('test_chain.xml', 'w') as f:
+        f.write(chain_file_xml)
+    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
 
-#     initial_mat = mats[0].clone()
-#     initial_u = initial_mat.get_nuclide_atom_densities()['U235'][1]
+    initial_mat = mats[0].clone()
+    initial_u = initial_mat.get_nuclide_atom_densities()['U235'][1]
 
-#     # Note that the chain file includes only U-235 fission to a stable Xe136 w/
-#     # a yield of 100%. Thus all the U235 we lose becomes Xe136
+    # Note that the chain file includes only U-235 fission to a stable Xe136 w/
+    # a yield of 100%. Thus all the U235 we lose becomes Xe136
 
-#     # In this test we first run without pre-initializing the shared library
-#     # data and then compare. Then we repeat with the C API already initialized
-#     # and make sure we get the same answer
-#     test_model.deplete([1e6], 'predictor', final_step=False,
-#                        operator_kwargs=op_kwargs,
-#                        power=1.)
-#     # Get the new Xe136 and U235 atom densities
-#     after_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
-#     after_u = mats[0].get_nuclide_atom_densities()['U235'][1]
-#     assert abs((after_xe + after_u) - initial_u) < 1e-15
-#     assert test_model.is_initialized is False
+    # In this test we first run without pre-initializing the shared library
+    # data and then compare. Then we repeat with the C API already initialized
+    # and make sure we get the same answer
+    test_model.deplete([1e6], 'predictor', final_step=False,
+                       operator_kwargs=op_kwargs,
+                       power=1.)
+    # Get the new Xe136 and U235 atom densities
+    after_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
+    after_u = mats[0].get_nuclide_atom_densities()['U235'][1]
+    assert abs((after_xe + after_u) - initial_u) < 1e-15
+    assert test_model.is_initialized is False
 
-#     # Reset the initial material densities
-#     mats[0].nuclides.clear()
-#     densities = initial_mat.get_nuclide_atom_densities()
-#     tot_density = 0.
-#     for nuc, density in densities.values():
-#         mats[0].add_nuclide(nuc, density)
-#         tot_density += density
-#     mats[0].set_density('atom/b-cm', tot_density)
+    # Reset the initial material densities
+    mats[0].nuclides.clear()
+    densities = initial_mat.get_nuclide_atom_densities()
+    tot_density = 0.
+    for nuc, density in densities.values():
+        mats[0].add_nuclide(nuc, density)
+        tot_density += density
+    mats[0].set_density('atom/b-cm', tot_density)
 
-#     # Now we can re-run with the pre-initialized API
-#     test_model.init_lib(output=False)
-#     test_model.deplete([1e6], 'predictor', final_step=False,
-#                        operator_kwargs=op_kwargs,
-#                        power=1.)
-#     # Get the new Xe136 and U235 atom densities
-#     after_lib_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
-#     after_lib_u = mats[0].get_nuclide_atom_densities()['U235'][1]
-#     assert abs((after_lib_xe + after_lib_u) - initial_u) < 1e-15
-#     assert test_model.is_initialized is True
+    # Now we can re-run with the pre-initialized API
+    test_model.init_lib(output=False)
+    test_model.deplete([1e6], 'predictor', final_step=False,
+                       operator_kwargs=op_kwargs,
+                       power=1.)
+    # Get the new Xe136 and U235 atom densities
+    after_lib_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
+    after_lib_u = mats[0].get_nuclide_atom_densities()['U235'][1]
+    assert abs((after_lib_xe + after_lib_u) - initial_u) < 1e-15
+    assert test_model.is_initialized is True
 
-#     # And end by comparing to the previous case
-#     assert abs(after_xe - after_lib_xe) < 1e-15
-#     assert abs(after_u - after_lib_u) < 1e-15
+    # And end by comparing to the previous case
+    assert abs(after_xe - after_lib_xe) < 1e-15
+    assert abs(after_u - after_lib_u) < 1e-15
 
-#     test_model.finalize_lib()
+    test_model.finalize_lib()
 
 
 def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):

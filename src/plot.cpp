@@ -119,9 +119,11 @@ extern "C" int openmc_plot_geometry()
 
 void read_plots_xml()
 {
-  // Check if plots.xml exists
+  // Check if plots.xml exists; this is only necessary when the plot runmode is
+  // initiated. Otherwise, we want to read plots.xml because it may be called
+  // later via the API. In that case, its ok for a plots.xml to not exist
   std::string filename = settings::path_input + "plots.xml";
-  if (!file_exists(filename)) {
+  if (!file_exists(filename) && settings::run_mode == RunMode::PLOTTING) {
     fatal_error(fmt::format("Plots XML file '{}' does not exist!", filename));
   }
 
@@ -136,6 +138,12 @@ void read_plots_xml()
     model::plots.emplace_back(node);
     model::plot_map[model::plots.back().id_] = model::plots.size() - 1;
   }
+}
+
+void free_memory_plot()
+{
+  model::plots.clear();
+  model::plot_map.clear();
 }
 
 //==============================================================================

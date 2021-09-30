@@ -664,18 +664,12 @@ class Model:
                              "before executing this method!")
 
         with _change_directory(Path(cwd)):
-            # TODO: openmc.is_initialized doesnt read plots.xml unless it is
-            # in plot mode so the following will not work. Commented out for
-            # now and replacing with non-C API code
-            self.export_to_xml()
-            openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
-
-            # if self.is_initialized:
-            #     # Compute the volumes
-            #     openmc.lib.plot_geometry(output)
-            # else:
-            #     self.export_to_xml()
-            #     openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
+            if self.is_initialized:
+                # Compute the volumes
+                openmc.lib.plot_geometry(output)
+            else:
+                self.export_to_xml()
+                openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
 
             if convert:
                 for p in self.plots:

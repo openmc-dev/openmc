@@ -15,6 +15,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
+#include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -45,6 +46,7 @@ void free_memory()
   free_memory_mesh();
   free_memory_tally();
   free_memory_bank();
+  free_memory_plot();
   if (mpi::master) {
     free_memory_cmfd();
   }
@@ -128,6 +130,7 @@ int openmc_finalize()
   data::temperature_min = 0.0;
   data::temperature_max = INFTY;
   model::root_universe = -1;
+  model::plotter_seed = 1;
   openmc::openmc_set_seed(DEFAULT_SEED);
 
   // Deallocate arrays

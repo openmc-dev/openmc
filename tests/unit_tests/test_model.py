@@ -481,7 +481,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # and make sure we get the same answer
     test_model.deplete([1e6], 'predictor', final_step=False,
                        operator_kwargs=op_kwargs,
-                       power=1.)
+                       power=1., output=False)
     # Get the new Xe136 and U235 atom densities
     after_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
     after_u = mats[0].get_nuclide_atom_densities()['U235'][1]
@@ -501,7 +501,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     test_model.init_lib(output=False)
     test_model.deplete([1e6], 'predictor', final_step=False,
                        operator_kwargs=op_kwargs,
-                       power=1.)
+                       power=1., output=False)
     # Get the new Xe136 and U235 atom densities
     after_lib_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
     after_lib_u = mats[0].get_nuclide_atom_densities()['U235'][1]

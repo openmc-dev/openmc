@@ -73,7 +73,7 @@ class Model:
     """
 
     def __init__(self, geometry=None, materials=None, settings=None,
-                 tallies=None, plots=None, intracomm=None):
+                 tallies=None, plots=None):
         self.geometry = openmc.Geometry()
         self.materials = openmc.Materials()
         self.settings = openmc.Settings()
@@ -145,8 +145,6 @@ class Model:
 
     @property
     def is_initialized(self):
-        # TODO: Replace openmc.lib.is_initialized with a direct ctypes access
-        # to simulation::initialized
         return openmc.lib.is_initialized
 
     @geometry.setter
@@ -222,7 +220,7 @@ class Model:
         return cls(geometry, materials, settings)
 
     def init_lib(self, threads=None, geometry_debug=False, restart_file=None,
-                 tracks=False, output=True, event_based=False):
+                 tracks=False, output=True, event_based=None):
         """Initializes the model in memory via the C API
 
         .. versionadded:: 0.13.0
@@ -243,8 +241,9 @@ class Model:
             Write tracks for all particles. Defaults to False.
         output : bool
             Capture OpenMC output from standard out
-        event_based : bool, optional
-            Turns on event-based parallelism, instead of default history-based
+        event_based : None or bool, optional
+            Turns on event-based parallelism if True. If None, the value in
+            the Settings will be used.
         """
 
         # TODO: right now the only way to set most of the above parameters via
@@ -456,7 +455,7 @@ class Model:
 
     def run(self, particles=None, threads=None, geometry_debug=False,
             restart_file=None, tracks=False, output=True, cwd='.',
-            openmc_exec='openmc', mpi_args=None, event_based=False):
+            openmc_exec='openmc', mpi_args=None, event_based=None):
         """Runs OpenMC. If the C API has been initialized, then the C API is
         used, otherwise, this method creates the XML files and runs OpenMC via
         a system call. In both cases this method returns the path to the last
@@ -494,8 +493,9 @@ class Model:
         mpi_args : list of str, optional
             MPI execute command and any additional MPI arguments to pass,
             e.g. ['mpiexec', '-n', '8'].
-        event_based : bool, optional
-            Turns on event-based parallelism, instead of default history-based
+        event_based : None or bool, optional
+            Turns on event-based parallelism if True. If None, the value in
+            the Settings will be used.
 
         Returns
         -------
@@ -523,21 +523,21 @@ class Model:
                         msg = f"{arg_name} must be set via Model.is_initialized(...)"
                         raise ValueError(msg)
 
+                init_particles = openmc.lib.settings.particles
                 if particles is not None:
-                    init_particles = openmc.lib.settings.particles
                     if isinstance(particles, Integral) and particles > 0:
                         openmc.lib.settings.particles = particles
 
-                # Event-based can be set at init-time or on a case-basis.
-                # Handle the argument here.
-                # TODO This will be dealt with in a future change to the C API
+                init_event_based = openmc.lib.settings.event_based
+                if event_based is not None:
+                    openmc.lib.settings.event_based = event_based
 
                 # Then run using the C API
                 openmc.lib.run(output)
 
                 # Reset changes for the openmc.run kwargs handling
-                if particles is not None:
-                    openmc.lib.settings.particles = init_particles
+                openmc.lib.settings.particles = init_particles
+                openmc.lib.settings.event_based = init_event_based
 
             else:
                 # Then run via the command line
@@ -697,10 +697,7 @@ class Model:
         if obj_type == 'cell' and attrib_name == 'volume':
             raise NotImplementedError(
                 'Setting a Cell volume is not supported!')
-        # Same with setting temperatures, TODO: update C API for this
-        if obj_type == 'material' and attrib_name == 'temperature':
-            raise NotImplementedError(
-                'Setting a Material temperature is not yet supported!')
+
         # And some items just dont make sense
         if obj_type == 'cell' and attrib_name == 'density':
             raise ValueError('Cannot set a Cell density!')
@@ -751,10 +748,10 @@ class Model:
             # Next lets keep what is in C API memory up to date as well
             if self.is_initialized:
                 lib_obj = obj_by_id[id_]
-                if attrib_name == 'temperature':
-                    lib_obj.set_temperature(value)
-                elif attrib_name == 'density':
+                if attrib_name == 'density':
                     lib_obj.set_density(value, density_units)
+                elif attrib_name == 'temperature' and obj_type == 'cell':
+                    lib_obj.set_temperature(value)
                 else:
                     setattr(lib_obj, attrib_name, value)
 
@@ -800,7 +797,8 @@ class Model:
 
         """
 
-        self._change_py_lib_attribs(names_or_ids, vector, 'cell', 'translation')
+        self._change_py_lib_attribs(names_or_ids, vector, 'cell',
+                                    'translation')
 
     def update_densities(self, names_or_ids, density, density_units='atom/b-cm'):
         """Update the density of a given set of materials to a new value
@@ -822,8 +820,8 @@ class Model:
 
         """
 
-        self._change_py_lib_attribs(names_or_ids, density, 'material', 'density',
-                                  density_units)
+        self._change_py_lib_attribs(names_or_ids, density, 'material',
+                                    'density', density_units)
 
     def update_cell_temperatures(self, names_or_ids, temperature):
         """Update the temperature of a set of cells to the given value
@@ -844,7 +842,7 @@ class Model:
         """
 
         self._change_py_lib_attribs(names_or_ids, temperature, 'cell',
-                                  'temperature')
+                                    'temperature')
 
     def update_material_temperatures(self, names_or_ids, temperature):
         """Update the temperature of a set of materials to the given value
@@ -865,7 +863,7 @@ class Model:
         """
 
         self._change_py_lib_attribs(names_or_ids, temperature, 'material',
-                                  'temperature')
+                                   'temperature')
 
     def update_material_volumes(self, names_or_ids, volume):
         """Update the volume of a set of materials to the given value

@@ -7,8 +7,8 @@ import openmc
 
 def process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
                           plot=False, restart_file=None, threads=None,
-                          tracks=False, event_based=False,
-                          openmc_exec='openmc', mpi_args=None):
+                          tracks=False, event_based=None, openmc_exec='openmc',
+                          mpi_args=None):
     """Run an OpenMC simulation.
 
     Parameters
@@ -30,8 +30,9 @@ def process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         :envvar:`OMP_NUM_THREADS` environment variable).
     tracks : bool, optional
         Write tracks for all particles. Defaults to False.
-    event_based : bool, optional
-        Turns on event-based parallelism, instead of default history-based
+    event_based : None or bool, optional
+        Turns on event-based parallelism if True. If None, the value in
+        the Settings will be used.
     openmc_exec : str, optional
         Path to OpenMC executable. Defaults to 'openmc'.
     mpi_args : list of str, optional
@@ -61,14 +62,18 @@ def process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
     if geometry_debug:
         args.append('-g')
 
-    if event_based:
-        args.append('-e')
+    if event_based is not None:
+        if event_based:
+            args.append('-e')
 
     if isinstance(restart_file, str):
         args += ['-r', restart_file]
 
     if tracks:
         args.append('-t')
+
+    if plot:
+        args.append('-p')
 
     if mpi_args is not None:
         args = mpi_args + args

@@ -57,6 +57,9 @@ _dll.openmc_material_get_name.errcheck = _error_handler
 _dll.openmc_material_set_name.argtypes = [c_int32, c_char_p]
 _dll.openmc_material_set_name.restype = c_int
 _dll.openmc_material_set_name.errcheck = _error_handler
+_dll.openmc_material_set_temperature.argtypes = [c_int32, c_double]
+_dll.openmc_material_set_temperature.restype = c_int
+_dll.openmc_material_set_temperature.errcheck = _error_handler
 _dll.openmc_material_set_volume.argtypes = [c_int32, c_double]
 _dll.openmc_material_set_volume.restype = c_int
 _dll.openmc_material_set_volume.errcheck = _error_handler
@@ -164,6 +167,10 @@ class Material(_FortranObjectWithID):
         except OpenMCError:
             return None
         return volume.value
+
+    @temperature.setter
+    def temperature(self, temperature):
+        _dll.openmc_material_set_temperature(self._index, temperature)
 
     @volume.setter
     def volume(self, volume):

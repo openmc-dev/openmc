@@ -61,4 +61,6 @@ from .math import *
 from .plot import *
 
 # Flag to denote whether or not openmc.lib.init has been called
+# TODO: Establish and use a flag in the C++ code to represent the status of the
+# openmc_init and openmc_finalize methods
 is_initialized = False

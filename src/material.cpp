@@ -1480,6 +1480,18 @@ extern "C" int openmc_material_set_name(int32_t index, const char* name)
   return 0;
 }
 
+extern "C" int openmc_material_set_temperature(int32_t index, double temperature)
+{
+  if (index >= 0 && index < model::materials.size()) {
+    auto& m {model::materials[index]};
+    m->temperature_ = temperature;
+    return 0;
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+}
+
 extern "C" int openmc_material_set_volume(int32_t index, double volume)
 {
   if (index >= 0 && index < model::materials.size()) {

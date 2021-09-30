@@ -5,7 +5,6 @@ from pathlib import Path
 from shutil import which
 import openmc
 import openmc.lib
-from openmc.mpi import DummyCommunicator
 
 
 @pytest.fixture(scope='function')
@@ -128,12 +127,14 @@ def test_init(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert test_model._cells_by_id == {}
     assert test_model._cells_by_name == {}
     assert test_model.is_initialized is False
-    assert isinstance(test_model.intracomm, DummyCommunicator)
+    assert hasattr(test_model.intracomm, 'rank')
 
     # Now check proper init of an actual model. Assume no interference between
     # parameters and so we can apply them all at once instead of testing one
     # parameter initialization at a time
-    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+    if mpi_intracomm is not None:
+        test_model.intracomm = mpi_intracomm
     assert test_model.geometry is geom
     assert test_model.materials is mats
     assert test_model.settings is settings
@@ -154,17 +155,10 @@ def test_init(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         '': [geom.root_universe.cells[3], geom.root_universe.cells[4]],
         'inf fuel': [geom.root_universe.cells[2].fill.cells[1]]}
     assert test_model.is_initialized is False
-    if mpi_intracomm is None:
-        assert isinstance(test_model.intracomm, DummyCommunicator)
-    else:
-        assert test_model.intracomm == mpi_intracomm
 
     # Finally test the parameter type checking by passing bad types and
     # obtaining the right exception types
-    if mpi_intracomm is not None:
-        def_params = [geom, mats, settings, tals, plots, mpi_intracomm]
-    else:
-        def_params = [geom, mats, settings, tals, plots]
+    def_params = [geom, mats, settings, tals, plots]
     for i in range(len(def_params)):
         args = def_params.copy()
         # Try an integer, as that is a bad type for all arguments
@@ -223,13 +217,14 @@ def test_from_xml(run_in_tmpdir, pin_model_attributes):
              test_model.geometry.root_universe.cells[4]],
         'inf fuel': [test_model.geometry.root_universe.cells[2].fill.cells[1]]}
     assert test_model.is_initialized is False
-    assert isinstance(test_model.intracomm, DummyCommunicator)
 
 
 def test_init_finalize_lib(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # We are going to init and then make sure data is loaded
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
-    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+    if mpi_intracomm is not None:
+        test_model.intracomm = mpi_intracomm
     test_model.init_lib(output=False)
 
     # First check that the API is advertised as initialized
@@ -257,6 +252,8 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     # Create PWR pin cell model and write XML files
     openmc.reset_auto_ids()
     model = openmc.examples.pwr_pin_cell()
+    if mpi_intracomm is not None:
+        model.intracomm = mpi_intracomm
     model.init_lib(output=False)
 
     # Change fuel temperature and density and export properties
@@ -296,7 +293,9 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
 
 def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
-    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+    if mpi_intracomm is not None:
+        test_model.intracomm = mpi_intracomm
 
     # This case will run by getting the k-eff and tallies for command-line and
     # C API execution modes and ensuring they give the same result.
@@ -334,7 +333,9 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
 def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
-    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+    if mpi_intracomm is not None:
+        test_model.intracomm = mpi_intracomm
 
     # This test cannot check the correctness of the plot, but it can
     # check that a plot was made and that the expected ppm and png files are
@@ -367,7 +368,9 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
 def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
-    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+    if mpi_intracomm is not None:
+        test_model.intracomm = mpi_intracomm
 
     test_model.init_lib(output=False)
 
@@ -439,19 +442,13 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     # Now lets do the material temperature updates.
     # Check initial conditions
-    with pytest.raises(NotImplementedError):
-        test_model.update_material_temperatures(['UO2'], 600.)
-    # TODO: When C API material.set_temperature is implemented, uncomment below
-    # assert abs(openmc.lib.materials[1].temperature - 293.6) < 1e-13
-    # # The temperature on the material will be None because its just the
-    # # default assert test_model.materials[0].temperature is None
-    # # Change the temperature
-    # test_model.update_material_temperatures(['UO2'], 600.)
-    # assert abs(openmc.lib.materials[1].temperature - 600.) < 1e-13
-    # assert abs(test_model.materials[0].temperature - 600.) < 1e-13
+    assert abs(openmc.lib.materials[1].temperature - 293.6) < 1e-13
+    # Change the temperature
+    test_model.update_material_temperatures(['UO2'], 600.)
+    assert abs(openmc.lib.materials[1].temperature - 600.) < 1e-13
+    assert abs(test_model.materials[0].temperature - 600.) < 1e-13
 
     # And finally material volume
-    # import pdb; pdb.set_trace()
     assert abs(openmc.lib.materials[1].volume - 0.4831931368640985) < 1e-13
     # The temperature on the material will be None because its just the default
     assert abs(test_model.materials[0].volume - 0.4831931368640985) < 1e-13
@@ -468,7 +465,9 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         pin_model_attributes
     with open('test_chain.xml', 'w') as f:
         f.write(chain_file_xml)
-    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+    if mpi_intracomm is not None:
+        test_model.intracomm = mpi_intracomm
 
     initial_mat = mats[0].clone()
     initial_u = initial_mat.get_nuclide_atom_densities()['U235'][1]
@@ -518,7 +517,9 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
 
-    test_model = openmc.Model(geom, mats, settings, tals, plots, mpi_intracomm)
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+    if mpi_intracomm is not None:
+        test_model.intracomm = mpi_intracomm
 
     # With no vol calcs, it should fail
     with pytest.raises(ValueError):

@@ -207,6 +207,11 @@ def test_material(lib_init):
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
 
+    assert m.temperature == 293.6
+    m.temperature = 400.
+    assert m.temperature == 400.
+    m.temperature == 293.6
+
 
 def test_properties_density(lib_init):
     m = openmc.lib.materials[1]
@@ -263,6 +268,7 @@ def test_settings(lib_init):
     assert settings.generations_per_batch == 1
     assert settings.particles == 100
     assert settings.seed == 1
+    assert settings.event_based is False
     settings.seed = 11
 
 

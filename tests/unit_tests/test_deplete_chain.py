@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-from openmc import comm
+from openmc.mpi import comm
 from openmc.deplete import Chain, reaction_rates, nuclide, cram, pool
 import pytest
 

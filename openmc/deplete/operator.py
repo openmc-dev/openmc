@@ -20,7 +20,7 @@ from uncertainties import ufloat
 import openmc
 from openmc.checkvalue import check_value
 import openmc.lib
-from openmc import comm
+from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates

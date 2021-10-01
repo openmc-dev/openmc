@@ -14,7 +14,7 @@ import numpy as np
 from uncertainties import ufloat
 import pytest
 
-from openmc import comm
+from openmc.mpi import comm
 from openmc.deplete import (
     ReactionRates, Results, ResultsList, OperatorResult, PredictorIntegrator,
     CECMIntegrator, CF4Integrator, CELIIntegrator, EPCRK4Integrator,

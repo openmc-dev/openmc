@@ -7,6 +7,8 @@
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
 
+#include <gsl/gsl-lite.hpp>
+
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"

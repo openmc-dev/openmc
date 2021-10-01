@@ -660,10 +660,10 @@ variable and whose sub-elements/attributes are as follows:
   *Default*: histogram
 
 :pair:
-  For a "mixture" distribution, this element provides a distribution and its corresponding probability.a
+  For a "mixture" distribution, this element provides a distribution and its corresponding probability.
 
   :probability:
-    An attribute or ``pair`` that provides the probability of a univatiate distribution within a "mixture" distribution. 
+    An attribute or ``pair`` that provides the probability of a univariate distribution within a "mixture" distribution. 
       
   :dist:
     This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.

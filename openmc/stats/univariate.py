@@ -828,7 +828,7 @@ class Mixture(Univariate):
         element = ET.Element(element_name)
         element.set("type", "mixture")
 
-        for p,d in zip(self.probability, self.distribution):
+        for p, d in zip(self.probability, self.distribution):
           data = ET.SubElement(element, "pair")
           data.set("probability", str(p))
           data.append(d.to_xml_element("dist"))

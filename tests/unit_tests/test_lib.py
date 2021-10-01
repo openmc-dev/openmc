@@ -207,11 +207,6 @@ def test_material(lib_init):
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
 
-    assert m.temperature == 293.6
-    m.temperature = 400.
-    assert m.temperature == 400.
-    m.temperature == 293.6
-
 
 def test_properties_density(lib_init):
     m = openmc.lib.materials[1]

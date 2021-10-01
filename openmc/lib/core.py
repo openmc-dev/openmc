@@ -134,6 +134,7 @@ def export_properties(filename=None, output=True):
     """Export physical properties.
 
     .. versionchanged:: 0.13.0
+        The *output* argument was added.
 
     Parameters
     ----------
@@ -233,6 +234,7 @@ def init(args=None, intracomm=None, output=True):
     """Initialize OpenMC
 
     .. versionchanged:: 0.13.0
+        The *output* argument was added.
 
     Parameters
     ----------
@@ -363,7 +365,7 @@ def plot_geometry(output=True):
     """Plot geometry
 
     .. versionchanged:: 0.13.0
-       The *output* argument was added.
+        The *output* argument was added.
 
     Parameters
     ----------
@@ -389,7 +391,7 @@ def run(output=True):
     """Run simulation
 
     .. versionchanged:: 0.13.0
-       The *output* argument was added.
+        The *output* argument was added.
 
     Parameters
     ----------
@@ -528,6 +530,9 @@ def quiet_dll(output=True):
     .. versionadded:: 0.13.0
 
     """
+
+    # This contextmanager is modified from that provided here:
+    # https://stackoverflow.com/a/14797594
 
     if output:
         yield

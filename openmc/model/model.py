@@ -109,15 +109,13 @@ class Model:
         self._cells_by_name = {}
         for cell in cells.values():
             if cell.name not in self._cells_by_name:
-                self._cells_by_name[cell.name] = [cell]
-            else:
-                self._cells_by_name[cell.name].append(cell)
+                self._cells_by_name[cell.name] = set()
+            self._cells_by_name[cell.name].add(cell)
         self._materials_by_name = {}
         for mat in mats:
             if mat.name not in self._materials_by_name:
-                self._materials_by_name[mat.name] = [mat]
-            else:
-                self._materials_by_name[mat.name].append(mat)
+                self._materials_by_name[mat.name] = set()
+            self._materials_by_name[mat.name].add(mat)
 
     @property
     def geometry(self):
@@ -196,8 +194,7 @@ class Model:
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
                  settings='settings.xml'):
         """Create model from existing XML files
-        When initializing this way, the user must manually load plots, tallies,
-        the chain_file and fission_q attributes.
+        When initializing this way, the user must manually load plots and tallies.
 
         Parameters
         ----------
@@ -288,6 +285,8 @@ class Model:
         """Deplete model using specified timesteps/power
 
         .. versionchanged:: 0.13.0
+           The *final_step*, *operator_kwargs*, *directory*, and *output*
+           arguments were added.
 
         Parameters
         ----------
@@ -319,8 +318,7 @@ class Model:
         elif isinstance(operator_kwargs, dict):
             op_kwargs = operator_kwargs
         else:
-            msg = "operator_kwargs must be a dict or None"
-            raise ValueError(msg)
+            raise ValueError("operator_kwargs must be a dict or None")
 
         # Import openmc.deplete here so the Model can be used even if the
         # shared library is unavailable.

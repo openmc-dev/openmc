@@ -363,6 +363,7 @@ def plot_geometry(output=True):
     """Plot geometry
 
     .. versionchanged:: 0.13.0
+       The *output* argument was added.
 
     Parameters
     ----------
@@ -388,6 +389,7 @@ def run(output=True):
     """Run simulation
 
     .. versionchanged:: 0.13.0
+       The *output* argument was added.
 
     Parameters
     ----------

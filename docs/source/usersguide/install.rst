@@ -219,6 +219,15 @@ Prerequisites
 .. admonition:: Optional
    :class: note
 
+    * libpng_ official reference PNG library
+
+      OpenMC's built-in plotting capabilities use the libpng library to produce
+      compressed PNG files. In the absence of this library, OpenMC will fallback
+      to writing PPM files, which are uncompressed and only supported by select
+      image viewers. libpng can be installed on Ddebian derivates with::
+
+          sudo apt install libpng-dev
+
     * An MPI implementation for distributed-memory parallel runs
 
       To compile with support for parallel runs on a distributed-memory

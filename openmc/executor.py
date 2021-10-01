@@ -3,6 +3,7 @@ from numbers import Integral
 import subprocess
 
 import openmc
+from .plots import _get_plot_image
 
 
 def _run(args, output, cwd):
@@ -62,10 +63,6 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
 def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
     """Display plots inline in a Jupyter notebook.
 
-    This function requires that you have a program installed to convert PPM
-    files to PNG files. Typically, that would be `ImageMagick
-    <https://www.imagemagick.org>`_ which includes a `convert` command.
-
     Parameters
     ----------
     plots : Iterable of openmc.Plot
@@ -75,7 +72,8 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
     cwd : str, optional
         Path to working directory to run in
     convert_exec : str, optional
-        Command that can convert PPM files into PNG files
+        Command that can convert PPM files into PNG files. Only used if your
+        OpenMC installation was not compiled against libpng.
 
     Raises
     ------
@@ -83,7 +81,7 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
         If the `openmc` executable returns a non-zero status
 
     """
-    from IPython.display import Image, display
+    from IPython.display import display
 
     if not isinstance(plots, Iterable):
         plots = [plots]
@@ -94,16 +92,8 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
     # Run OpenMC in geometry plotting mode
     plot_geometry(False, openmc_exec, cwd)
 
-    images = []
     if plots is not None:
-        for p in plots:
-            if p.filename is not None:
-                ppm_file = f'{p.filename}.ppm'
-            else:
-                ppm_file = f'plot_{p.id}.ppm'
-            png_file = ppm_file.replace('.ppm', '.png')
-            subprocess.check_call([convert_exec, ppm_file, png_file])
-            images.append(Image(png_file))
+        images = [_get_plot_image(p, convert_exec) for p in plots]
         display(*images)
 
 

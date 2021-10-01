@@ -358,7 +358,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   } else if (type == "tabular") {
     dist = UPtrDist {new Tabular(node)};
   } else if (type == "mixture") {
-    dist = UPtrDist{new Mixture(node)};
+    dist = UPtrDist {new Mixture(node)};
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }

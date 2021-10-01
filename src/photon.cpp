@@ -120,35 +120,39 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       "Photoatomic data for " + name_ + " does not have subshell data."};
   }
 
+  shells_.resize(n_shell);
+
+  // Create mapping from designator to index
+  std::unordered_map<int, int> shell_map;
   for (int i = 0; i < n_shell; ++i) {
     const auto& designator {designators[i]};
 
-    // TODO: Move to ElectronSubshell constructor
-
-    // Add empty shell
-    shells_.emplace_back();
-
-    // Create mapping from designator to index
     int j = 1;
     for (const auto& subshell : SUBSHELLS) {
       if (designator == subshell) {
-        shell_map_[j] = i;
+        shell_map[j] = i;
         shells_[i].index_subshell = j;
         break;
       }
       ++j;
     }
+  }
+  shell_map[0] = -1;
+
+  for (int i = 0; i < n_shell; ++i) {
+    const auto& designator {designators[i]};
+    auto& shell {shells_[i]};
+
+    // TODO: Move to ElectronSubshell constructor
 
     // Read binding energy and number of electrons
-    auto& shell {shells_.back()};
     hid_t tgroup = open_group(rgroup, designator.c_str());
     read_attribute(tgroup, "binding_energy", shell.binding_energy);
     read_attribute(tgroup, "num_electrons", shell.n_electrons);
 
     // Read subshell cross section
     dset = open_dataset(tgroup, "xs");
-    read_attribute(dset, "threshold_idx", j);
-    shell.threshold = j;
+    read_attribute(dset, "threshold_idx", shell.threshold);
     close_dataset(dset);
     read_dataset(tgroup, "xs", shell.cross_section);
 
@@ -162,19 +166,22 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       close_dataset(dset);
 
       int n_transition = dims[0];
-      shell.n_transitions = n_transition;
       if (n_transition > 0) {
         xt::xtensor<double, 2> matrix;
         read_dataset(tgroup, "transitions", matrix);
 
-        shell.transition_subshells =
-          xt::view(matrix, xt::all(), xt::range(0, 2));
-        shell.transition_energy = xt::view(matrix, xt::all(), 2);
-        shell.transition_probability = xt::view(matrix, xt::all(), 3);
-        shell.transition_probability /= xt::sum(shell.transition_probability)();
+        // Transition probability normalization
+        double norm = xt::sum(xt::col(matrix, 3))();
+
+        shell.transitions.resize(n_transition);
+        for (int j = 0; j < n_transition; ++j) {
+          auto& transition = shell.transitions[j];
+          transition.primary_subshell = shell_map.at(matrix(j, 0));
+          transition.secondary_subshell = shell_map.at(matrix(j, 1));
+          transition.energy = matrix(j, 2);
+          transition.probability = matrix(j, 3) / norm;
+        }
       }
-    } else {
-      shell.n_transitions = 0;
     }
     close_group(tgroup);
   }
@@ -681,7 +688,7 @@ void PhotonInteraction::atomic_relaxation(
   const ElectronSubshell& shell, Particle& p) const
 {
   // If no transitions, assume fluorescent photon from captured free electron
-  if (shell.n_transitions == 0) {
+  if (shell.transitions.empty()) {
     Direction u = isotropic_direction(p.current_seed());
     double E = shell.binding_energy;
     p.create_secondary(p.wgt(), u, E, ParticleType::photon);
@@ -689,45 +696,36 @@ void PhotonInteraction::atomic_relaxation(
   }
 
   // Sample transition
-  double rn = prn(p.current_seed());
-  double c = 0.0;
-  int i_transition;
-  for (i_transition = 0; i_transition < shell.n_transitions; ++i_transition) {
-    c += shell.transition_probability(i_transition);
-    if (rn < c)
+  double c = -prn(p.current_seed());
+  int i_trans;
+  for (i_trans = 0; i_trans < shell.transitions.size(); ++i_trans) {
+    c += shell.transitions[i_trans].probability;
+    if (c > 0)
       break;
   }
-
-  // Get primary and secondary subshell designators
-  int primary = shell.transition_subshells(i_transition, 0);
-  int secondary = shell.transition_subshells(i_transition, 1);
+  const auto& transition = shell.transitions[i_trans];
 
   // Sample angle isotropically
   Direction u = isotropic_direction(p.current_seed());
 
-  // Get the transition energy
-  double E = shell.transition_energy(i_transition);
-
-  if (secondary != 0) {
+  if (transition.secondary_subshell != -1) {
     // Non-radiative transition -- Auger/Coster-Kronig effect
 
     // Create auger electron
-    p.create_secondary(p.wgt(), u, E, ParticleType::electron);
+    p.create_secondary(p.wgt(), u, transition.energy, ParticleType::electron);
 
     // Fill hole left by emitted auger electron
-    int i_hole = shell_map_.at(secondary);
-    const auto& hole = shells_[i_hole];
+    const auto& hole = shells_[transition.secondary_subshell];
     this->atomic_relaxation(hole, p);
   } else {
     // Radiative transition -- get X-ray energy
 
     // Create fluorescent photon
-    p.create_secondary(p.wgt(), u, E, ParticleType::photon);
+    p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon);
   }
 
   // Fill hole created by electron transitioning to the photoelectron hole
-  int i_hole = shell_map_.at(primary);
-  const auto& hole = shells_[i_hole];
+  const auto& hole = shells_[transition.primary_subshell];
   this->atomic_relaxation(hole, p);
 }
 

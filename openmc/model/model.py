@@ -11,6 +11,8 @@ from contextlib import contextmanager
 import h5py
 
 import openmc
+from openmc.dummy_comm import DummyCommunicator
+from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value
 from openmc.exceptions import InvalidIDError
 
@@ -39,6 +41,8 @@ class Model:
     materials appearing in the geometry.
 
     .. versionchanged:: 0.13.0
+        The model information can now be loaded in to OpenMC directly via
+        openmc.lib
 
     Parameters
     ----------
@@ -65,10 +69,6 @@ class Model:
         Tallies information
     plots : openmc.Plots
         Plot information
-    intracomm : mpi4py.MPI.Intracomm or openmc.DummyCommunicator
-        MPI intracommunicator; this defaults to the mpi4py world communicator
-        from if present, or a DummyCommunicator otherwise. If an alternative
-        communicator is desired, this parameter should be modified accordingly.
 
     """
 
@@ -90,8 +90,6 @@ class Model:
             self.tallies = tallies
         if plots is not None:
             self.plots = plots
-
-        self.intracomm = openmc.comm
 
         # Store dictionaries to the materials and cells by ID and names
         if materials is None:
@@ -138,10 +136,6 @@ class Model:
         return self._plots
 
     @property
-    def intracomm(self):
-        return self._intracomm
-
-    @property
     def is_initialized(self):
         return openmc.lib.is_initialized
 
@@ -185,16 +179,12 @@ class Model:
             for plot in plots:
                 self._plots.append(plot)
 
-    @intracomm.setter
-    def intracomm(self, intracomm):
-        check_type('intracomm', intracomm, type(openmc.comm))
-        self._intracomm = intracomm
-
     @classmethod
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
                  settings='settings.xml'):
         """Create model from existing XML files
-        When initializing this way, the user must manually load plots and tallies.
+        When initializing this way, the user must manually load plots and
+        tallies.
 
         Parameters
         ----------
@@ -217,7 +207,7 @@ class Model:
         return cls(geometry, materials, settings)
 
     def init_lib(self, threads=None, geometry_debug=False, restart_file=None,
-                 tracks=False, output=True, event_based=None):
+                 tracks=False, output=True, event_based=None, intracomm=None):
         """Initializes the model in memory via the C API
 
         .. versionadded:: 0.13.0
@@ -241,6 +231,8 @@ class Model:
         event_based : None or bool, optional
             Turns on event-based parallelism if True. If None, the value in
             the Settings will be used.
+        intracomm : DummyCommnicator, mpi4py.MPI.Intracomm or None, optional
+            MPI intracommunicator
         """
 
         # TODO: right now the only way to set most of the above parameters via
@@ -249,7 +241,7 @@ class Model:
         # where it exists (here in init), but in the future the functionality
         # should be exposed so that it can be accessed via model.run(...)
 
-        args = openmc.process_CLI_arguments(
+        args = _process_CLI_arguments(
             volume=False, geometry_debug=geometry_debug,
             restart_file=restart_file, threads=threads, tracks=tracks,
             event_based=event_based)
@@ -258,17 +250,18 @@ class Model:
 
         self.finalize_lib()
 
-        if self.intracomm.rank == 0:
-            self.export_to_xml()
-        self.intracomm.barrier()
-
-        if isinstance(self.intracomm, openmc.DummyCommunicator):
-            # openmc.lib.init does not accept DummyCommunicator, and importing
-            # the DummyCommunicator class there is overkill. Filter it here
-            intracomm = None
+        # The Model object needs to be aware of the communicator so it can
+        # use it in certain cases, therefore lets store the communicator
+        if intracomm is not None:
+            self._intracomm = intracomm
         else:
-            intracomm = self.intracomm
-        openmc.lib.init(args=args, intracomm=intracomm, output=output)
+            self._intracomm = DummyCommunicator()
+
+        if self._intracomm.rank == 0:
+            self.export_to_xml()
+        self._intracomm.barrier()
+
+        openmc.lib.init(args=args, intracomm=self._intracomm, output=output)
 
     def finalize_lib(self):
         """Finalize simulation and free memory allocated for the C API
@@ -285,8 +278,8 @@ class Model:
         """Deplete model using specified timesteps/power
 
         .. versionchanged:: 0.13.0
-           The *final_step*, *operator_kwargs*, *directory*, and *output*
-           arguments were added.
+            The *final_step*, *operator_kwargs*, *directory*, and *output*
+            arguments were added.
 
         Parameters
         ----------
@@ -691,10 +684,14 @@ class Model:
                      'translation'))
         # The C API only allows setting density units of atom/b-cm and g/cm3
         check_value('density_units', density_units, ('atom/b-cm', 'g/cm3'))
-        # The C API has no way to set cell volume so lets raise an exception
+        # The C API has no way to set cell volume or material temperature
+        # so lets raise exceptions as needed
         if obj_type == 'cell' and attrib_name == 'volume':
             raise NotImplementedError(
                 'Setting a Cell volume is not supported!')
+        if obj_type == 'material' and attrib_name == 'temperature':
+            raise NotImplementedError(
+                'Setting a material temperature is not supported!')
 
         # And some items just dont make sense
         if obj_type == 'cell' and attrib_name == 'density':
@@ -748,7 +745,7 @@ class Model:
                 lib_obj = obj_by_id[id_]
                 if attrib_name == 'density':
                     lib_obj.set_density(value, density_units)
-                elif attrib_name == 'temperature' and obj_type == 'cell':
+                elif attrib_name == 'temperature':
                     lib_obj.set_temperature(value)
                 else:
                     setattr(lib_obj, attrib_name, value)
@@ -841,27 +838,6 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, temperature, 'cell',
                                     'temperature')
-
-    def update_material_temperatures(self, names_or_ids, temperature):
-        """Update the temperature of a set of materials to the given value
-
-        .. note:: If applying this change to a name that is not unique, then
-        the change will be applied to all objects of that name.
-
-        .. versionadded:: 0.13.0
-
-        Parameters
-        ----------
-        names_or_ids : Iterable of str or int
-            The material names (if str) or id (if int) that are to be updated.
-            This parameter can include a mix of names and ids.
-        temperature : float
-            The temperature to apply in units of Kelvin
-
-        """
-
-        self._change_py_lib_attribs(names_or_ids, temperature, 'material',
-                                   'temperature')
 
     def update_material_volumes(self, names_or_ids, volume):
         """Update the volume of a set of materials to the given value

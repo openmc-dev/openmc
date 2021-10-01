@@ -5,11 +5,12 @@ import subprocess
 import openmc
 
 
-def process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
-                          plot=False, restart_file=None, threads=None,
-                          tracks=False, event_based=None, openmc_exec='openmc',
-                          mpi_args=None):
-    """Run an OpenMC simulation.
+def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
+                           plot=False, restart_file=None, threads=None,
+                           tracks=False, event_based=None,
+                           openmc_exec='openmc', mpi_args=None):
+    """Converts user-readable flags in to command-line arguments to be run with
+    the OpenMC executable via subprocess.
 
     Parameters
     ----------
@@ -227,8 +228,8 @@ def calculate_volumes(threads=None, output=True, cwd='.',
 
     """
 
-    args = process_CLI_arguments(volume=True, threads=threads,
-                                 openmc_exec=openmc_exec, mpi_args=mpi_args)
+    args = _process_CLI_arguments(volume=True, threads=threads,
+                                  openmc_exec=openmc_exec, mpi_args=mpi_args)
 
     _run(args, output, cwd)
 
@@ -275,7 +276,7 @@ def run(particles=None, threads=None, geometry_debug=False,
 
     """
 
-    args = process_CLI_arguments(
+    args = _process_CLI_arguments(
         volume=False, geometry_debug=geometry_debug, particles=particles,
         restart_file=restart_file, threads=threads, tracks=tracks,
         event_based=event_based, openmc_exec=openmc_exec, mpi_args=mpi_args)

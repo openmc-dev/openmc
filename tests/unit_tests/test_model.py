@@ -127,14 +127,11 @@ def test_init(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert test_model._cells_by_id == {}
     assert test_model._cells_by_name == {}
     assert test_model.is_initialized is False
-    assert hasattr(test_model.intracomm, 'rank')
 
     # Now check proper init of an actual model. Assume no interference between
     # parameters and so we can apply them all at once instead of testing one
     # parameter initialization at a time
     test_model = openmc.Model(geom, mats, settings, tals, plots)
-    if mpi_intracomm is not None:
-        test_model.intracomm = mpi_intracomm
     assert test_model.geometry is geom
     assert test_model.materials is mats
     assert test_model.settings is settings
@@ -142,7 +139,7 @@ def test_init(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert test_model.plots is plots
     assert test_model._materials_by_id == {1: mats[0], 2: mats[1], 3: mats[2]}
     assert test_model._materials_by_name == {
-        'UO2': [mats[0]], 'Zirc': [mats[1]], 'Borated water': [mats[2]]}
+        'UO2': {mats[0]}, 'Zirc': {mats[1]}, 'Borated water': {mats[2]}}
     # The last cell is the one that contains the infinite fuel
     assert test_model._cells_by_id == \
         {2: geom.root_universe.cells[2], 3: geom.root_universe.cells[3],
@@ -151,9 +148,9 @@ def test_init(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # No cell name for 2 and 3, so we expect a blank name to be assigned to
     # cell 3 due to overwriting
     assert test_model._cells_by_name == {
-        'fuel': [geom.root_universe.cells[2]],
-        '': [geom.root_universe.cells[3], geom.root_universe.cells[4]],
-        'inf fuel': [geom.root_universe.cells[2].fill.cells[1]]}
+        'fuel': {geom.root_universe.cells[2]},
+        '': {geom.root_universe.cells[3], geom.root_universe.cells[4]},
+        'inf fuel': {geom.root_universe.cells[2].fill.cells[1]}}
     assert test_model.is_initialized is False
 
     # Finally test the parameter type checking by passing bad types and
@@ -202,8 +199,8 @@ def test_from_xml(run_in_tmpdir, pin_model_attributes):
         {1: test_model.materials[0], 2: test_model.materials[1],
          3: test_model.materials[2]}
     assert test_model._materials_by_name == {
-        'UO2': [test_model.materials[0]], 'Zirc': [test_model.materials[1]],
-        'Borated water': [test_model.materials[2]]}
+        'UO2': {test_model.materials[0]}, 'Zirc': {test_model.materials[1]},
+        'Borated water': {test_model.materials[2]}}
     assert test_model._cells_by_id == {
         2: test_model.geometry.root_universe.cells[2],
         3: test_model.geometry.root_universe.cells[3],
@@ -212,10 +209,10 @@ def test_from_xml(run_in_tmpdir, pin_model_attributes):
     # No cell name for 2 and 3, so we expect a blank name to be assigned to
     # cell 3 due to overwriting
     assert test_model._cells_by_name == {
-        'fuel': [test_model.geometry.root_universe.cells[2]],
-        '': [test_model.geometry.root_universe.cells[3],
-             test_model.geometry.root_universe.cells[4]],
-        'inf fuel': [test_model.geometry.root_universe.cells[2].fill.cells[1]]}
+        'fuel': {test_model.geometry.root_universe.cells[2]},
+        '': {test_model.geometry.root_universe.cells[3],
+             test_model.geometry.root_universe.cells[4]},
+        'inf fuel': {test_model.geometry.root_universe.cells[2].fill.cells[1]}}
     assert test_model.is_initialized is False
 
 
@@ -223,9 +220,7 @@ def test_init_finalize_lib(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # We are going to init and then make sure data is loaded
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
     test_model = openmc.Model(geom, mats, settings, tals, plots)
-    if mpi_intracomm is not None:
-        test_model.intracomm = mpi_intracomm
-    test_model.init_lib(output=False)
+    test_model.init_lib(output=False, intracomm=mpi_intracomm)
 
     # First check that the API is advertised as initialized
     assert openmc.lib.is_initialized is True
@@ -252,9 +247,7 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     # Create PWR pin cell model and write XML files
     openmc.reset_auto_ids()
     model = openmc.examples.pwr_pin_cell()
-    if mpi_intracomm is not None:
-        model.intracomm = mpi_intracomm
-    model.init_lib(output=False)
+    model.init_lib(output=False, intracomm=mpi_intracomm)
 
     # Change fuel temperature and density and export properties
     cell = openmc.lib.cells[1]
@@ -294,8 +287,6 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
 def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
     test_model = openmc.Model(geom, mats, settings, tals, plots)
-    if mpi_intracomm is not None:
-        test_model.intracomm = mpi_intracomm
 
     # This case will run by getting the k-eff and tallies for command-line and
     # C API execution modes and ensuring they give the same result.
@@ -305,7 +296,7 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         cli_flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
         cli_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 
-    test_model.init_lib(output=False)
+    test_model.init_lib(output=False, intracomm=mpi_intracomm)
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
         lib_keff = sp.k_combined
@@ -334,8 +325,6 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
     test_model = openmc.Model(geom, mats, settings, tals, plots)
-    if mpi_intracomm is not None:
-        test_model.intracomm = mpi_intracomm
 
     # This test cannot check the correctness of the plot, but it can
     # check that a plot was made and that the expected ppm and png files are
@@ -352,7 +341,7 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # We will run the test twice, the first time without C API, the second with
     for i in range(2):
         if i == 1:
-            test_model.init_lib(output=False)
+            test_model.init_lib(output=False, intracomm=mpi_intracomm)
         test_model.plot_geometry(output=False, convert=convert)
 
         # Now look for the files, expect to find test.ppm, plot_2.ppm, and if
@@ -369,14 +358,11 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
     test_model = openmc.Model(geom, mats, settings, tals, plots)
-    if mpi_intracomm is not None:
-        test_model.intracomm = mpi_intracomm
 
-    test_model.init_lib(output=False)
+    test_model.init_lib(output=False, intracomm=mpi_intracomm)
 
     # Now we can call rotate_cells, translate_cells, update_densities,
-    # update_cell_temperatures, and update_material_temperatures and make sure
-    # the changes have taken hold.
+    # and update_cell_temperatures and make sure the changes have taken hold.
     # For each we will first try bad inputs to make sure we get the right
     # errors and then we do a good one which calls the material by name and
     # then id to make sure it worked
@@ -440,14 +426,6 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert abs(test_model.geometry.root_universe.cells[3].temperature -
                600.) < 1e-13
 
-    # Now lets do the material temperature updates.
-    # Check initial conditions
-    assert abs(openmc.lib.materials[1].temperature - 293.6) < 1e-13
-    # Change the temperature
-    test_model.update_material_temperatures(['UO2'], 600.)
-    assert abs(openmc.lib.materials[1].temperature - 600.) < 1e-13
-    assert abs(test_model.materials[0].temperature - 600.) < 1e-13
-
     # And finally material volume
     assert abs(openmc.lib.materials[1].volume - 0.4831931368640985) < 1e-13
     # The temperature on the material will be None because its just the default
@@ -466,8 +444,6 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     with open('test_chain.xml', 'w') as f:
         f.write(chain_file_xml)
     test_model = openmc.Model(geom, mats, settings, tals, plots)
-    if mpi_intracomm is not None:
-        test_model.intracomm = mpi_intracomm
 
     initial_mat = mats[0].clone()
     initial_u = initial_mat.get_nuclide_atom_densities()['U235'][1]
@@ -497,7 +473,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats[0].set_density('atom/b-cm', tot_density)
 
     # Now we can re-run with the pre-initialized API
-    test_model.init_lib(output=False)
+    test_model.init_lib(output=False, intracomm=mpi_intracomm)
     test_model.deplete([1e6], 'predictor', final_step=False,
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
@@ -518,8 +494,6 @@ def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
 
     test_model = openmc.Model(geom, mats, settings, tals, plots)
-    if mpi_intracomm is not None:
-        test_model.intracomm = mpi_intracomm
 
     # With no vol calcs, it should fail
     with pytest.raises(ValueError):
@@ -555,13 +529,10 @@ def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     for file in ['volume_1.h5', 'volume_2.h5']:
         file = Path(file)
         file.unlink()
-    test_model.init_lib(output=False)
+    test_model.init_lib(output=False, intracomm=mpi_intracomm)
     test_model.calculate_volumes(output=False, apply_volumes=True)
     assert mats[2].volume > 0.
     assert geom.root_universe.cells[3].volume > 0.
     assert openmc.lib.materials[3].volume == mats[2].volume
 
     test_model.finalize_lib()
-
-
-

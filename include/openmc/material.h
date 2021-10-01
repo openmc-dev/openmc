@@ -158,10 +158,6 @@ public:
   double density_;                      //!< Total atom density in [atom/b-cm]
   double density_gpcc_;                 //!< Total atom density in [g/cm^3]
   double volume_ {-1.0};                //!< Volume in [cm^3]
-
-  double temperature_ {-1};             //!< Default temperature for material
-                                        //!< A negative indicates no default
-                                        //!< temperature was specified.
   bool fissionable_ {
     false};                 //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
@@ -199,6 +195,10 @@ private:
   // Private data members
   gsl::index index_;
 
+  //! \brief Default temperature for cells containing this material.
+  //!
+  //! A negative value indicates no default temperature was specified.
+  double temperature_ {-1};
 };
 
 //==============================================================================

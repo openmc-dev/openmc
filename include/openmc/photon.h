@@ -57,7 +57,7 @@ public:
   void pair_production(double alpha, double* E_electron, double* E_positron,
     double* mu_electron, double* mu_positron, uint64_t* seed) const;
 
-  void atomic_relaxation(const ElectronSubshell& shell, Particle& p) const;
+  void atomic_relaxation(int i_shell, Particle& p) const;
 
   // Data members
   std::string name_; //!< Name of element, e.g. "Zr"
@@ -98,6 +98,9 @@ public:
   // Bremsstrahlung scaled DCS
   xt::xtensor<double, 2> dcs_;
 
+  // Constant data
+  static constexpr int MAX_STACK_SIZE =
+    7; //!< maximum possible size of atomic relaxation stack
 private:
   void compton_doppler(
     double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const;

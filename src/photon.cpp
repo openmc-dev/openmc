@@ -684,49 +684,60 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   *mu_positron = (rn + beta) / (rn * beta + 1.0);
 }
 
-void PhotonInteraction::atomic_relaxation(
-  const ElectronSubshell& shell, Particle& p) const
+void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
-  // If no transitions, assume fluorescent photon from captured free electron
-  if (shell.transitions.empty()) {
+  // Stack for unprocessed holes left by transitioning electrons
+  int n_holes = 0;
+  array<int, MAX_STACK_SIZE> holes;
+
+  // Push the initial hole onto the stack
+  holes[n_holes++] = i_shell;
+
+  while (n_holes > 0) {
+    // Pop the next hole off the stack
+    int i_hole = holes[--n_holes];
+    const auto& shell {shells_[i_hole]};
+
+    // If no transitions, assume fluorescent photon from captured free electron
+    if (shell.transitions.empty()) {
+      Direction u = isotropic_direction(p.current_seed());
+      double E = shell.binding_energy;
+      p.create_secondary(p.wgt(), u, E, ParticleType::photon);
+      continue;
+    }
+
+    // Sample transition
+    double c = -prn(p.current_seed());
+    int i_trans;
+    for (i_trans = 0; i_trans < shell.transitions.size(); ++i_trans) {
+      c += shell.transitions[i_trans].probability;
+      if (c > 0)
+        break;
+    }
+    const auto& transition = shell.transitions[i_trans];
+
+    // Sample angle isotropically
     Direction u = isotropic_direction(p.current_seed());
-    double E = shell.binding_energy;
-    p.create_secondary(p.wgt(), u, E, ParticleType::photon);
-    return;
+
+    // Push the hole created by the electron transitioning to the photoelectron
+    // hole onto the stack
+    holes[n_holes++] = transition.primary_subshell;
+
+    if (transition.secondary_subshell != -1) {
+      // Non-radiative transition -- Auger/Coster-Kronig effect
+
+      // Push the hole left by emitted auger electron onto the stack
+      holes[n_holes++] = transition.secondary_subshell;
+
+      // Create auger electron
+      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::electron);
+    } else {
+      // Radiative transition -- get X-ray energy
+
+      // Create fluorescent photon
+      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon);
+    }
   }
-
-  // Sample transition
-  double c = -prn(p.current_seed());
-  int i_trans;
-  for (i_trans = 0; i_trans < shell.transitions.size(); ++i_trans) {
-    c += shell.transitions[i_trans].probability;
-    if (c > 0)
-      break;
-  }
-  const auto& transition = shell.transitions[i_trans];
-
-  // Sample angle isotropically
-  Direction u = isotropic_direction(p.current_seed());
-
-  if (transition.secondary_subshell != -1) {
-    // Non-radiative transition -- Auger/Coster-Kronig effect
-
-    // Create auger electron
-    p.create_secondary(p.wgt(), u, transition.energy, ParticleType::electron);
-
-    // Fill hole left by emitted auger electron
-    const auto& hole = shells_[transition.secondary_subshell];
-    this->atomic_relaxation(hole, p);
-  } else {
-    // Radiative transition -- get X-ray energy
-
-    // Create fluorescent photon
-    p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon);
-  }
-
-  // Fill hole created by electron transitioning to the photoelectron hole
-  const auto& hole = shells_[transition.primary_subshell];
-  this->atomic_relaxation(hole, p);
 }
 
 //==============================================================================

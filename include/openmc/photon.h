@@ -104,6 +104,9 @@ public:
 private:
   void compton_doppler(
     double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const;
+
+  int calc_max_stack_size() const;
+  int calc_helper(std::unordered_map<int, int>& visited, int i_shell) const;
 };
 
 //==============================================================================

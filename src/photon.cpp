@@ -216,13 +216,12 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
   close_group(rgroup);
 
-  // Check the maximum size of the stack in atomic relaxation
-  auto max_stack_size = this->calc_max_stack_size();
-  if (max_stack_size > MAX_STACK_SIZE_ && mpi::master) {
+  // Check the maximum size of the atomic relaxation stack
+  auto max_size = this->calc_max_stack_size();
+  if (max_size > MAX_STACK_SIZE && mpi::master) {
     warning("The subshell vacancy stack in atomic relaxation can grow up to " +
-            std::to_string(max_stack_size) +
-            ", but the stack size limit is set to " +
-            std::to_string(MAX_STACK_SIZE_) + ".");
+            std::to_string(max_size) + ", but the stack size limit is set to " +
+            std::to_string(MAX_STACK_SIZE) + ".");
   }
 
   // Determine number of electron shells
@@ -766,7 +765,7 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
 void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
   // Stack for unprocessed holes left by transitioning electrons
-  int holes[MAX_STACK_SIZE_];
+  int holes[MAX_STACK_SIZE];
   int n_holes = 0;
   holes[n_holes++] = i_shell;
 
@@ -789,16 +788,14 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
     }
 
     // Sample transition
-    double rn = prn(p.current_seed());
-    double c = 0.0;
-    int i_transition;
-    for (i_transition = 0; i_transition < shell.transitions.size();
-         ++i_transition) {
-      c += shell.transitions[i_transition].probability;
-      if (rn < c)
+    double c = -prn(p.current_seed());
+    int i_trans;
+    for (i_trans = 0; i_trans < shell.transitions.size(); ++i_trans) {
+      c += shell.transitions[i_trans].probability;
+      if (c > 0)
         break;
     }
-    const auto& transition = shell.transitions[i_transition];
+    const auto& transition = shell.transitions[i_trans];
 
     // Sample angle isotropically
     double mu = 2.0 * prn(p.current_seed()) - 1.0;
@@ -808,25 +805,24 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
     u.y = std::sqrt(1.0 - mu * mu) * std::cos(phi);
     u.z = std::sqrt(1.0 - mu * mu) * std::sin(phi);
 
+    // Push the hole created by the electron transitioning to the photoelectron
+    // hole onto the stack
+    holes[n_holes++] = transition.primary_subshell;
+
     if (transition.secondary_subshell != -1) {
       // Non-radiative transition -- Auger/Coster-Kronig effect
 
-      // Create auger electron
-      p.create_secondary(
-        p.wgt_, u, transition.energy, Particle::Type::electron);
-
       // Push the hole left by emitted auger electron onto the stack
       holes[n_holes++] = transition.secondary_subshell;
+
+      // Create auger electron
+      p.create_secondary(p.wgt_, u, transition.energy, Particle::Type::electron);
     } else {
       // Radiative transition -- get X-ray energy
 
       // Create fluorescent photon
       p.create_secondary(p.wgt_, u, transition.energy, Particle::Type::photon);
     }
-
-    // Push the hole created by electron transitioning to the photoelectron hole
-    // onto the stack
-    holes[n_holes++] = transition.primary_subshell;
   }
 }
 

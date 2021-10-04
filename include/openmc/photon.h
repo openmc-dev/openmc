@@ -123,7 +123,7 @@ public:
   xt::xtensor<double, 2> dcs_;
 
   // Constant data
-  static constexpr int MAX_STACK_SIZE_ =
+  static constexpr int MAX_STACK_SIZE =
     7; //!< maximum possible size of atomic relaxation stack
 
 private:

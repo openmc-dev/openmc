@@ -15,6 +15,7 @@ Univariate Probability Distributions
    openmc.stats.Univariate
    openmc.stats.Discrete
    openmc.stats.Uniform
+   openmc.stats.Rational
    openmc.stats.Maxwell
    openmc.stats.Watt
    openmc.stats.Tabular

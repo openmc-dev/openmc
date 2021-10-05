@@ -52,7 +52,7 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
     args = [openmc_exec]
 
     if volume:
-        args += ['--volume']
+        args.append('--volume')
 
     if isinstance(particles, Integral) and particles > 0:
         args += ['-n', str(particles)]

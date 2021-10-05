@@ -1,8 +1,10 @@
 from math import pi
-import numpy as np
-import pytest
 from pathlib import Path
 from shutil import which
+
+import numpy as np
+import pytest
+
 import openmc
 import openmc.lib
 
@@ -304,9 +306,9 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         lib_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 
     # and lets compare results
-    assert abs(lib_keff - cli_keff) < 1e-13
-    assert abs(lib_flux - cli_flux) < 1e-13
-    assert abs(lib_fiss - cli_fiss) < 1e-13
+    assert lib_keff.n == pytest.approx(cli_keff.n, abs=1e-13)
+    assert lib_flux == pytest.approx(cli_flux, abs=1e-13)
+    assert lib_fiss == pytest.approx(cli_fiss, abs=1e-13)
 
     # Now we should make sure that the flags for items which should be handled
     # by init are properly set
@@ -348,7 +350,7 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         # convert is True, test.png, plot_2.png
         for fname in ['test.', 'plot_2.']:
             for ext in exts:
-                test_file = Path('./{}{}'.format(fname, ext))
+                test_file = Path(f'./{fname}{ext}')
                 assert test_file.exists()
                 test_file.unlink()
 
@@ -398,19 +400,20 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     # Now lets do the density updates.
     # Check initial conditions
-    assert abs(openmc.lib.materials[1].get_density(
-        'atom/b-cm') - 0.06891296988603757) < 1e-13
+    assert openmc.lib.materials[1].get_density('atom/b-cm') == \
+        pytest.approx(0.06891296988603757, abs=1e-13)
     mat_a_dens = np.sum(
         [v[1] for v in test_model.materials[0].
             get_nuclide_atom_densities().values()])
-    assert abs(mat_a_dens - 0.06891296988603757) < 1e-8
+    assert mat_a_dens == pytest.approx(0.06891296988603757, abs=1e-8)
     # Change the density
     test_model.update_densities(['UO2'], 2.)
-    assert abs(openmc.lib.materials[1].get_density('atom/b-cm') - 2.) < 1e-13
+    assert openmc.lib.materials[1].get_density('atom/b-cm') == \
+        pytest.approx(2., abs=1e-13)
     mat_a_dens = np.sum(
         [v[1] for v in test_model.materials[0].
             get_nuclide_atom_densities().values()])
-    assert abs(mat_a_dens - 2.) < 1e-8
+    assert mat_a_dens == pytest.approx(2., abs=1e-8)
 
     # Now lets do the cell temperature updates.
     # Check initial conditions
@@ -418,22 +421,26 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         {2: geom.root_universe.cells[2], 3: geom.root_universe.cells[3],
          4: geom.root_universe.cells[4],
          1: geom.root_universe.cells[2].fill.cells[1]}
-    assert abs(openmc.lib.cells[3].get_temperature() - 293.6) < 1e-13
+    assert openmc.lib.cells[3].get_temperature() == \
+        pytest.approx(293.6, abs=1e-13)
     assert test_model.geometry.root_universe.cells[3].temperature is None
     # Change the temperature
     test_model.update_cell_temperatures([3], 600.)
-    assert abs(openmc.lib.cells[3].get_temperature() - 600.) < 1e-13
-    assert abs(test_model.geometry.root_universe.cells[3].temperature -
-               600.) < 1e-13
+    assert openmc.lib.cells[3].get_temperature() == \
+        pytest.approx(600., abs=1e-13)
+    assert test_model.geometry.root_universe.cells[3].temperature == \
+        pytest.approx(600., abs=1e-13)
 
     # And finally material volume
-    assert abs(openmc.lib.materials[1].volume - 0.4831931368640985) < 1e-13
+    assert openmc.lib.materials[1].volume == \
+        pytest.approx(0.4831931368640985, abs=1e-13)
     # The temperature on the material will be None because its just the default
-    assert abs(test_model.materials[0].volume - 0.4831931368640985) < 1e-13
+    assert test_model.materials[0].volume == \
+        pytest.approx(0.4831931368640985, abs=1e-13)
     # Change the temperature
     test_model.update_material_volumes(['UO2'], 2.)
-    assert abs(openmc.lib.materials[1].volume - 2.) < 1e-13
-    assert abs(test_model.materials[0].volume - 2.) < 1e-13
+    assert openmc.lib.materials[1].volume == pytest.approx(2., abs=1e-13)
+    assert test_model.materials[0].volume == pytest.approx(2., abs=1e-13)
 
     test_model.finalize_lib()
 
@@ -460,7 +467,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # Get the new Xe136 and U235 atom densities
     after_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
     after_u = mats[0].get_nuclide_atom_densities()['U235'][1]
-    assert abs((after_xe + after_u) - initial_u) < 1e-15
+    assert after_xe + after_u == pytest.approx(initial_u, abs=1e-15)
     assert test_model.is_initialized is False
 
     # Reset the initial material densities
@@ -480,12 +487,12 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # Get the new Xe136 and U235 atom densities
     after_lib_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
     after_lib_u = mats[0].get_nuclide_atom_densities()['U235'][1]
-    assert abs((after_lib_xe + after_lib_u) - initial_u) < 1e-15
+    assert after_lib_xe + after_lib_u == pytest.approx(initial_u, abs=1e-15)
     assert test_model.is_initialized is True
 
     # And end by comparing to the previous case
-    assert abs(after_xe - after_lib_xe) < 1e-15
-    assert abs(after_u - after_lib_u) < 1e-15
+    assert after_xe == pytest.approx(after_lib_xe, abs=1e-15)
+    assert after_u == pytest.approx(after_lib_u, abs=1e-15)
 
     test_model.finalize_lib()
 

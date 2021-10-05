@@ -22,7 +22,7 @@ from uncertainties import ufloat
 from openmc.data import DataLibrary
 from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
-from . import comm
+from openmc.mpi import comm
 from .results import Results
 from .chain import Chain
 from .results_list import ResultsList

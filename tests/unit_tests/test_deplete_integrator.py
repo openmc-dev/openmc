@@ -14,11 +14,11 @@ import numpy as np
 from uncertainties import ufloat
 import pytest
 
+from openmc.mpi import comm
 from openmc.deplete import (
-    ReactionRates, Results, ResultsList, comm, OperatorResult,
-    PredictorIntegrator, CECMIntegrator, CF4Integrator, CELIIntegrator,
-    EPCRK4Integrator, LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator,
-    cram)
+    ReactionRates, Results, ResultsList, OperatorResult, PredictorIntegrator,
+    CECMIntegrator, CF4Integrator, CELIIntegrator, EPCRK4Integrator,
+    LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator, cram)
 
 from tests import dummy_operator
 

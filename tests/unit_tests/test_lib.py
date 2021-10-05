@@ -263,6 +263,7 @@ def test_settings(lib_init):
     assert settings.generations_per_batch == 1
     assert settings.particles == 100
     assert settings.seed == 1
+    assert settings.event_based is False
     settings.seed = 11
 
 
@@ -713,7 +714,6 @@ def test_trigger_set_n_batches(uo2_trigger_model, mpi_intracomm):
 def test_cell_translation(pincell_model_w_univ, mpi_intracomm):
     openmc.lib.finalize()
     openmc.lib.init(intracomm=mpi_intracomm)
-    openmc.lib.simulation_init()
     # Cell 1 is filled with a material so it has a translation, but we can't
     # set it.
     cell = openmc.lib.cells[1]
@@ -727,9 +727,12 @@ def test_cell_translation(pincell_model_w_univ, mpi_intracomm):
     # This time we *can* set it
     cell.translation = (1., 0., -1.)
     assert cell.translation == pytest.approx([1., 0., -1.])
+    openmc.lib.finalize()
 
 
-def test_cell_rotation(pincell_model_w_univ):
+def test_cell_rotation(pincell_model_w_univ, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
     # Cell 1 is filled with a material so we cannot rotate it, but we can get
     # its rotation matrix (which will be the identity matrix)
     cell = openmc.lib.cells[1]
@@ -742,3 +745,4 @@ def test_cell_rotation(pincell_model_w_univ):
     assert cell.rotation == pytest.approx([0., 0., 0.])
     cell.rotation = (180., 0., 0.)
     assert cell.rotation == pytest.approx([180., 0., 0.])
+    openmc.lib.finalize()

@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
                     c_char, POINTER, Structure, c_void_p, create_string_buffer)
 import sys
+import os
 
 import numpy as np
 from numpy.ctypeslib import as_array
@@ -109,9 +110,22 @@ def global_bounding_box():
 
     return llc, urc
 
-def calculate_volumes():
-    """Run stochastic volume calculation"""
-    _dll.openmc_calculate_volumes()
+
+def calculate_volumes(output=True):
+    """Run stochastic volume calculation
+
+    .. versionchanged:: 0.13.0
+        The *output* argument was added.
+
+    Parameters
+    ----------
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+
+    """
+
+    with quiet_dll(output):
+        _dll.openmc_calculate_volumes()
 
 
 def current_batch():
@@ -126,13 +140,18 @@ def current_batch():
     return c_int.in_dll(_dll, 'current_batch').value
 
 
-def export_properties(filename=None):
+def export_properties(filename=None, output=True):
     """Export physical properties.
+
+    .. versionchanged:: 0.13.0
+        The *output* argument was added.
 
     Parameters
     ----------
     filename : str or None
         Filename to export properties to (defaults to "properties.h5")
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
 
     See Also
     --------
@@ -141,12 +160,15 @@ def export_properties(filename=None):
     """
     if filename is not None:
         filename = c_char_p(filename.encode())
-    _dll.openmc_properties_export(filename)
+
+    with quiet_dll(output):
+        _dll.openmc_properties_export(filename)
 
 
 def finalize():
     """Finalize simulation and free memory"""
     _dll.openmc_finalize()
+    openmc.lib.is_initialized = False
 
 
 def find_cell(xyz):
@@ -218,15 +240,20 @@ def import_properties(filename):
     _dll.openmc_properties_import(filename.encode())
 
 
-def init(args=None, intracomm=None):
+def init(args=None, intracomm=None, output=True):
     """Initialize OpenMC
+
+    .. versionchanged:: 0.13.0
+        The *output* argument was added.
 
     Parameters
     ----------
-    args : list of str
+    args : list of str, optional
         Command-line arguments
-    intracomm : mpi4py.MPI.Intracomm or None
+    intracomm : mpi4py.MPI.Intracomm or None, optional
         MPI intracommunicator
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
 
     """
     if args is not None:
@@ -252,7 +279,9 @@ def init(args=None, intracomm=None):
             address = MPI._addressof(intracomm)
             intracomm = c_void_p(address)
 
-    _dll.openmc_init(argc, argv, intracomm)
+    with quiet_dll(output):
+        _dll.openmc_init(argc, argv, intracomm)
+    openmc.lib.is_initialized = True
 
 
 def is_statepoint_batch():
@@ -342,9 +371,20 @@ def next_batch():
     return status.value
 
 
-def plot_geometry():
-    """Plot geometry"""
-    _dll.openmc_plot_geometry()
+def plot_geometry(output=True):
+    """Plot geometry
+
+    .. versionchanged:: 0.13.0
+        The *output* argument was added.
+
+    Parameters
+    ----------
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+    """
+
+    with quiet_dll(output):
+        _dll.openmc_plot_geometry()
 
 
 def reset():
@@ -357,9 +397,20 @@ def reset_timers():
     _dll.openmc_reset_timers()
 
 
-def run():
-    """Run simulation"""
-    _dll.openmc_run()
+def run(output=True):
+    """Run simulation
+
+    .. versionchanged:: 0.13.0
+        The *output* argument was added.
+
+    Parameters
+    ----------
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+    """
+
+    with quiet_dll(output):
+        _dll.openmc_run()
 
 
 def simulation_init():
@@ -475,3 +526,46 @@ class _FortranObjectWithID(_FortranObject):
         # assigned. If the array index of the object is out of bounds, an
         # OutOfBoundsError will be raised here by virtue of referencing self.id
         self.id
+
+
+@contextmanager
+def quiet_dll(output=True):
+    """This context manager allows us to suppress standard output from DLLs
+
+    Parameters
+    ----------
+    output : bool
+        Denotes whether the output should be displayed (True) or not (False)
+
+    .. versionadded:: 0.13.0
+
+    """
+
+    # This contextmanager is modified from that provided here:
+    # https://stackoverflow.com/a/14797594
+
+    if output:
+        yield
+    else:
+        sys.stdout.flush()
+        # Save the initial file descriptor states
+        initial_stdout = sys.stdout
+        initial_stdout_fno = os.dup(sys.stdout.fileno())
+        # Get a garbage descriptor so we can throw away output
+        devnull = os.open(os.devnull, os.O_WRONLY)
+
+        # Get the current stdout stream and make a duplicate of it
+        new_stdout = os.dup(1)
+        # Copy the garbage output to the stdout stream
+        os.dup2(devnull, 1)
+        os.close(devnull)
+        # Now point stdout to the re-defined stdout
+        sys.stdout = os.fdopen(new_stdout, 'w')
+
+        try:
+            yield
+        finally:
+            # Now we just clean up after ourselves and reset the streams
+            sys.stdout = initial_stdout
+            sys.stdout.flush()
+            os.dup2(initial_stdout_fno, 1)

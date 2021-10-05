@@ -9,7 +9,7 @@ import copy
 import h5py
 import numpy as np
 
-from . import comm, MPI
+from openmc.mpi import comm, MPI
 from .reaction_rates import ReactionRates
 
 VERSION_RESULTS = (1, 1)

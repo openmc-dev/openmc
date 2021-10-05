@@ -42,6 +42,16 @@ def test_uniform():
     assert t.p == [1/(b-a), 1/(b-a)]
     assert t.interpolation == 'histogram'
 
+def test_rational():
+    a, b, n = 10.0, 20.0, 2.0
+    d = openmc.stats.Rational(a, b, n)
+    elem = d.to_xml_element('distribution')
+
+    d = openmc.stats.Rational.from_xml_element(elem)
+    assert d.a == a
+    assert d.b == b
+    assert d.n == n
+    assert len(d) == 3
 
 def test_maxwell():
     theta = 1.2895e6

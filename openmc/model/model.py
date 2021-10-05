@@ -20,7 +20,7 @@ from openmc.exceptions import InvalidIDError
 @contextmanager
 def _change_directory(working_dir):
     """A context manager for executing in a provided working directory"""
-    start_dir = Path().cwd()
+    start_dir = Path.cwd()
     Path.mkdir(working_dir, exist_ok=True)
     os.chdir(working_dir)
     try:
@@ -231,7 +231,7 @@ class Model:
         event_based : None or bool, optional
             Turns on event-based parallelism if True. If None, the value in
             the Settings will be used.
-        intracomm : DummyCommnicator, mpi4py.MPI.Intracomm or None, optional
+        intracomm : mpi4py.MPI.Intracomm or None, optional
             MPI intracommunicator
         """
 
@@ -261,7 +261,10 @@ class Model:
             self.export_to_xml()
         self._intracomm.barrier()
 
-        openmc.lib.init(args=args, intracomm=self._intracomm, output=output)
+        # We cannot pass DummyCommunicator to openmc.lib.init so pass instead
+        # the user-provided intracomm which will either be None or an mpi4py
+        # communicator
+        openmc.lib.init(args=args, intracomm=intracomm, output=output)
 
     def finalize_lib(self):
         """Finalize simulation and free memory allocated for the C API
@@ -610,8 +613,7 @@ class Model:
             if apply_volumes:
                 # Load the results and add them to the model
                 for i, vol_calc in enumerate(self.settings.volume_calculations):
-                    f_name = f"volume_{i + 1}.h5"
-                    vol_calc.load_results(f_name)
+                    vol_calc.load_results(f"volume_{i + 1}.h5")
                     # First add them to the Python side
                     self.geometry.add_volume_information(vol_calc)
 

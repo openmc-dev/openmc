@@ -112,7 +112,17 @@ def global_bounding_box():
 
 
 def calculate_volumes(output=True):
-    """Run stochastic volume calculation"""
+    """Run stochastic volume calculation
+
+    .. versionchanged:: 0.13.0
+        The *output* argument was added.
+
+    Parameters
+    ----------
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+
+    """
 
     with quiet_dll(output):
         _dll.openmc_calculate_volumes()
@@ -140,7 +150,7 @@ def export_properties(filename=None, output=True):
     ----------
     filename : str or None
         Filename to export properties to (defaults to "properties.h5")
-    output: bool, optional
+    output : bool, optional
         Whether or not to show output. Defaults to showing output
 
     See Also
@@ -242,7 +252,7 @@ def init(args=None, intracomm=None, output=True):
         Command-line arguments
     intracomm : mpi4py.MPI.Intracomm or None, optional
         MPI intracommunicator
-    output: bool, optional
+    output : bool, optional
         Whether or not to show output. Defaults to showing output
 
     """
@@ -369,7 +379,7 @@ def plot_geometry(output=True):
 
     Parameters
     ----------
-    output: bool, optional
+    output : bool, optional
         Whether or not to show output. Defaults to showing output
     """
 
@@ -395,7 +405,7 @@ def run(output=True):
 
     Parameters
     ----------
-    output: bool, optional
+    output : bool, optional
         Whether or not to show output. Defaults to showing output
     """
 

@@ -8,6 +8,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/random_lcg.h"
@@ -237,7 +238,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // Create 2D array to store atoms/uncertainty for each nuclide. Later this
       // is compressed into vectors storing only those nuclides that are
       // non-zero
-      auto n_nuc = data::nuclides.size();
+      auto n_nuc = settings::run_CE ? data::nuclides.size()
+                                    : data::mg.nuclides_.size();
       xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
 
 #ifdef OPENMC_MPI
@@ -442,7 +444,8 @@ void VolumeCalculation::to_hdf5(
 
     vector<std::string> nucnames;
     for (int i_nuc : result.nuclides) {
-      nucnames.push_back(data::nuclides[i_nuc]->name_);
+      nucnames.push_back(settings::run_CE ? data::nuclides[i_nuc]->name_
+                                          : data::mg.nuclides_[i_nuc].name);
     }
 
     // Create array of total # of atoms with uncertainty for each nuclide

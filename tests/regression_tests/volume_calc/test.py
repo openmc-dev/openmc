@@ -100,6 +100,8 @@ class VolumeTest(PyAPITestHarness):
             for iso in ['H1', 'O16', 'B10', 'Mo99', 'U235']:
                 mat = openmc.XSdata(iso, groups)
                 mat.order = 0
+                mat.atomic_weight_ratio = \
+                    openmc.data.atomic_mass(iso) / openmc.data.NEUTRON_MASS
                 mat.set_scatter_matrix(scatter)
                 if iso == 'U235':
                     mat.set_nu_fission(np.multiply(nu, fiss))

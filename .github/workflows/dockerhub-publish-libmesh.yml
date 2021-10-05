@@ -28,7 +28,7 @@ jobs:
           push: true
           tags: openmc/openmc:latest-libmesh
           build-args: |
-            include_libmesh=true
+            build_libmesh=on
             compile_cores=2
       -
         name: Image digest

@@ -100,8 +100,9 @@ Rational::Rational(pugi::xml_node node)
   const double a = params.at(0);
   const double b = params.at(1);
   const double n = params.at(2);
+
   offset_ = std::pow(a, n+1);
-  span_ = std::pow(a, n+1) - offset_;
+  span_ = std::pow(b, n + 1) - offset_;
   ninv_ = 1/(n+1);
 }
 

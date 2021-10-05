@@ -20,7 +20,7 @@ from uncertainties import ufloat
 import openmc
 from openmc.checkvalue import check_value
 import openmc.lib
-from . import comm
+from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
@@ -176,6 +176,9 @@ class Operator(TransportOperator):
         results are to be used.
     diff_burnable_mats : bool
         Whether to differentiate burnable materials with multiple instances
+    cleanup_when_done : bool
+        Whether to finalize and clear the shared library memory when the
+        depletion operation is complete. Defaults to clearing the library.
     """
     _fission_helpers = {
         "average": AveragedFissionYieldHelper,
@@ -202,6 +205,7 @@ class Operator(TransportOperator):
         self.settings = settings
         self.geometry = geometry
         self.diff_burnable_mats = diff_burnable_mats
+        self.cleanup_when_done = True
 
         # Reduce the chain before we create more materials
         if reduce_chain:
@@ -317,6 +321,10 @@ class Operator(TransportOperator):
         # Reset results in OpenMC
         openmc.lib.reset()
 
+        # Update the number densities regardless of the source rate
+        self.number.set_density(vec)
+        self._update_materials()
+
         # If the source rate is zero, return zero reaction rates without running
         # a transport solve
         if source_rate == 0.0:
@@ -327,11 +335,7 @@ class Operator(TransportOperator):
         # Prevent OpenMC from complaining about re-creating tallies
         openmc.reset_auto_ids()
 
-        # Update status
-        self.number.set_density(vec)
-
-        # Update material compositions and tally nuclides
-        self._update_materials()
+        # Update tally nuclides data in preparation for transport solve
         nuclides = self._get_tally_nuclides()
         self._rate_helper.nuclides = nuclides
         self._normalization_helper.nuclides = nuclides
@@ -536,7 +540,8 @@ class Operator(TransportOperator):
 
         # Initialize OpenMC library
         comm.barrier()
-        openmc.lib.init(intracomm=comm)
+        if not openmc.lib.is_initialized:
+            openmc.lib.init(intracomm=comm)
 
         # Generate tallies in memory
         materials = [openmc.lib.materials[int(i)]
@@ -554,7 +559,8 @@ class Operator(TransportOperator):
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""
-        openmc.lib.finalize()
+        if self.cleanup_when_done:
+            openmc.lib.finalize()
 
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""

@@ -581,3 +581,14 @@ class SILEQIIntegrator(SIIntegrator):
             proc_time += time1 + time2
 
         return proc_time, [eos_conc, inter_conc], [res_bar]
+
+
+integrator_by_name = {
+    'cecm': CECMIntegrator,
+    'predictor': PredictorIntegrator,
+    'cf4': CF4Integrator,
+    'epc_rk4': EPCRK4Integrator,
+    'si_celi': SICELIIntegrator,
+    'si_leqi': SILEQIIntegrator,
+    'celi': CELIIntegrator,
+    'leqi': LEQIIntegrator}

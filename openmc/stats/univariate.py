@@ -254,7 +254,7 @@ class Rational(Univariate):
     b : float, optional
         Upper bound of the sampling interval. Defaults to unity.
     n : float, optional
-        power law exponent. Defaults to zero -> Uniform distribution
+        power law exponent. Defaults to zero, which is eqivalent to an uniform distribution
 
     Attributes
     ----------

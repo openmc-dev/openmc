@@ -87,22 +87,20 @@ private:
 class Rational : public Distribution {
 public:
   explicit Rational(pugi::xml_node node);
-  Rational(double a, double b, double n) : a_{a}, b_{b}, n_{n}, an_{std::pow(a, n+1)}, bn_{std::pow(b, n+1)} {};
+  Rational(double a, double b, double n) : offset_{std::pow(a, n+1)}, span_{std::pow(b, n+1) - offset_}, ninv_{1/(n+1)} {};
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const;
 
-  double a() const { return a_; }
-  double b() const { return b_; }
-  double n() const { return n_; }
+  double a() const { return std::pow(offset_, ninv_); }
+  double b() const { return std::pow(offset_+span_, ninv_); }
+  double n() const { return 1/ninv_-1; }
 private:
-  double a_; //!< Lower bound of distribution
-  double b_; //!< Upper bound of distribution
-  double n_; //!< Exponent of distribution
-  double an_; //!< Lower bound of distribution
-  double bn_; //!< Upper bound of distribution
+  double offset_; //!< Lower bound of distribution
+  double span_; //!< Upper bound of distribution
+  double ninv_; //!< inverse Exponent of distribution
 };
 
 //==============================================================================

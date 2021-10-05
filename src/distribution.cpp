@@ -72,8 +72,8 @@ Uniform::Uniform(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
   if (params.size() != 2) {
-    openmc::fatal_error("Uniform distribution must have two "
-                        "parameters specified.");
+    fatal_error("Uniform distribution must have two "
+                "parameters specified.");
   }
 
   a_ = params.at(0);
@@ -93,22 +93,21 @@ Rational::Rational(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
   if (params.size() != 3) {
-    openmc::fatal_error("Rational distribution must have three "
-                        "parameters specified.");
+    fatal_error("Rational distribution must have three "
+                "parameters specified.");
   }
 
-  a_ = params.at(0);
-  b_ = params.at(1);
-  n_ = params.at(2);
-  an_ = std::pow(a_, n_+1);
-  bn_ = std::pow(b_, n_+1);
+  const double a = params.at(0);
+  const double b = params.at(1);
+  const double n = params.at(2);
+  offset_ = std::pow(a, n+1);
+  span_ = std::pow(a, n+1) - offset_;
+  ninv_ = 1/(n+1);
 }
 
 double Rational::sample(uint64_t* seed) const
 {
-  const double u = prn(seed);
-  const double r = std::pow(an_+u*(bn_-an_), 1./(n_+1));
-  return r;
+  return std::pow(offset_ + prn(seed) * span_, ninv_);
 }
 
 //==============================================================================

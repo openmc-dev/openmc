@@ -31,7 +31,7 @@ jobs:
           push: true
           tags: openmc/openmc:${{ env.RELEASE_VERSION }}-dagmc
           build-args: |
-            include_dagmc=true
+            build_dagmc=on
             compile_cores=2
       -
         name: Image digest

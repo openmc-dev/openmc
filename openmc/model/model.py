@@ -624,14 +624,8 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
-    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
-                      convert=True, convert_exec='convert'):
+    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc'):
         """Creates plot images as specified by the Model.plots attribute
-
-        If convert is True, this function requires that a program is installed
-        to convert PPM files to PNG files. Typically, that would be
-        `ImageMagick <https://www.imagemagick.org>`_ which includes a
-        `convert` command.
 
         .. versionadded:: 0.13.0
 
@@ -645,10 +639,7 @@ class Model:
         openmc_exec : str, optional
             Path to OpenMC executable. Defaults to 'openmc'.
             This only applies to the case when not using the C API.
-        convert : bool, optional
-            Whether or not to attempt to convert from PPM to PNG
-        convert_exec : str, optional
-            Command that can convert PPM files into PNG files
+
         """
 
         if len(self.plots) == 0:
@@ -663,15 +654,6 @@ class Model:
             else:
                 self.export_to_xml()
                 openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
-
-            if convert:
-                for p in self.plots:
-                    if p.filename is not None:
-                        ppm_file = f'{p.filename}.ppm'
-                    else:
-                        ppm_file = f'plot_{p.id}.ppm'
-                    png_file = ppm_file.replace('.ppm', '.png')
-                    subprocess.check_call([convert_exec, ppm_file, png_file])
 
     def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
                                attrib_name, density_units='atom/b-cm'):

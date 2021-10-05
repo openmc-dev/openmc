@@ -123,6 +123,7 @@ __constant__ extern RunMode run_mode;
 __constant__ extern int64_t n_particles;
 __constant__ extern int32_t gen_per_batch;
 __constant__ extern TemperatureMethod temperature_method;
+__constant__ extern bool urr_ptables_on;
 
 #define BLOCKSIZE 256     // Going to make this run-time selectable eventually
 #define BLOCKSIZE_S "256" // for error message

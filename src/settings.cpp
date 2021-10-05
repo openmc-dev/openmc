@@ -130,6 +130,7 @@ __constant__ RunMode run_mode;
 __constant__ int64_t n_particles;
 __constant__ int32_t gen_per_batch;
 __constant__ TemperatureMethod temperature_method;
+__constant__ bool urr_ptables_on;
 
 unsigned thread_block_size {BLOCKSIZE};
 } // namespace gpu
@@ -918,6 +919,8 @@ void copy_settings_to_gpu()
     gpu::gen_per_batch, &settings::gen_per_batch, sizeof(int32_t));
   cudaMemcpyToSymbol(gpu::temperature_method, &settings::temperature_method,
     sizeof(TemperatureMethod));
+  cudaMemcpyToSymbol(
+    gpu::urr_ptables_on, &settings::urr_ptables_on, sizeof(bool));
 }
 #endif
 

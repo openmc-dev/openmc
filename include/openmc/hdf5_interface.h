@@ -17,6 +17,7 @@
 #include "openmc/error.h"
 #include "openmc/position.h"
 #include "openmc/string.h"
+#include "openmc/tensor.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -370,6 +371,31 @@ void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr,
 
   // Copy into xtensor
   arr = xarr;
+}
+
+template<typename T, std::size_t N>
+void read_dataset(
+  hid_t obj_id, const char* name, tensor<T, N>& arr, bool indep = false)
+{
+  hid_t dset = open_dataset(obj_id, name);
+
+  // Get shape of dataset
+  auto hsize_t_shape = object_shape(dset);
+  close_dataset(dset);
+
+  // cast from hsize_t to int
+  if (hsize_t_shape.size() != N)
+    fatal_error(
+      "Attempt to read openmc::tensor with rank not matching HDF5 data.");
+  std::vector<int> shape(hsize_t_shape.size());
+  for (int i = 0; i < shape.size(); i++) {
+    shape[i] = static_cast<int>(hsize_t_shape[i]);
+  }
+  arr.resize(shape.data());
+
+  // Read data from attribute
+  read_dataset_lowlevel(
+    dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, tensor.data());
 }
 
 // overload for Position

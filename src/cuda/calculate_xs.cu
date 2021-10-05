@@ -152,6 +152,112 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
       micro->sab_frac = 0.0;
       micro->last_E = E;
       micro->last_sqrtkT = p.sqrtkT();
+
+      // Calculate URR cross sections if needed
+      if (gpu::urr_ptables_on && nuclide.urr_present_) {
+        int n = nuclide.urr_data_[i_temp].n_energy_;
+        if ((p.E() > urr_data_[i_temp].energy_(0)) &&
+            (p.E() < urr_data_[i_temp].energy_(n - 1))) {
+          micro->use_ptable = true;
+          // TODO check storing by value
+          const auto& urr = urr_data_[i_temp];
+
+          // TODO check storing p.E() by value
+          int i_energy = 0;
+          while (p.E() >= urr.energy_(i_energy + 1)) {
+            ++i_energy;
+          };
+
+          p.stream() = STREAM_URR_PTABLE;
+          double r =
+            future_prn(static_cast<int64_t>(index_), *p.current_seed());
+          p.stream() = STREAM_TRACKING;
+
+          int i_low = 0;
+          while (urr.prob_(i_energy, URRTableParam::CUM_PROB, i_low) <= r) {
+            ++i_low;
+          };
+
+          int i_up = 0;
+          while (urr.prob_(i_energy + 1, URRTableParam::CUM_PROB, i_up) <= r) {
+            ++i_up;
+          };
+
+          // Determine elastic, fission, and capture cross sections from the
+          // probability table
+          xsfloat elastic = 0.;
+          xsfloat fission = 0.;
+          xsfloat capture = 0.;
+          xsfloat f;
+          if (urr.interp_ == Interpolation::lin_lin) {
+            // Determine the interpolation factor on the table
+            f = (p.E() - urr.energy_(i_energy)) /
+                (urr.energy_(i_energy + 1) - urr.energy_(i_energy));
+
+            elastic =
+              (1. - f) * urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) +
+              f * urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up);
+            fission =
+              (1. - f) * urr.prob_(i_energy, URRTableParam::FISSION, i_low) +
+              f * urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up);
+            capture =
+              (1. - f) * urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) +
+              f * urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up);
+          } else if (urr.interp_ == Interpolation::log_log) {
+            // Determine interpolation factor on the table
+            f = std::log(p.E() / urr.energy_(i_energy)) /
+                std::log(urr.energy_(i_energy + 1) / urr.energy_(i_energy));
+
+            // Calculate the elastic cross section/factor
+            if ((urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) > 0.) &&
+                (urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up) > 0.)) {
+              elastic = std::exp((1. - f) * std::log(urr.prob_(i_energy,
+                                              URRTableParam::ELASTIC, i_low)) +
+                                 f * std::log(urr.prob_(i_energy + 1,
+                                       URRTableParam::ELASTIC, i_up)));
+            } else {
+              elastic = 0.;
+            }
+
+            // Calculate the fission cross section/factor
+            if ((urr.prob_(i_energy, URRTableParam::FISSION, i_low) > 0.) &&
+                (urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up) > 0.)) {
+              fission = std::exp((1. - f) * std::log(urr.prob_(i_energy,
+                                              URRTableParam::FISSION, i_low)) +
+                                 f * std::log(urr.prob_(i_energy + 1,
+                                       URRTableParam::FISSION, i_up)));
+            } else {
+              fission = 0.;
+            }
+
+            // Calculate the capture cross section/factor
+            if ((urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) > 0.) &&
+                (urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up) > 0.)) {
+              capture = std::exp((1. - f) * std::log(urr.prob_(i_energy,
+                                              URRTableParam::N_GAMMA, i_low)) +
+                                 f * std::log(urr.prob_(i_energy + 1,
+                                       URRTableParam::N_GAMMA, i_up)));
+            } else {
+              capture = 0.;
+            }
+          }
+
+          // Determine the treatment of inelastic scattering
+          xsfloat inelastic = 0.;
+          if (urr.inelastic_flag_ != C_NONE) {
+            // get interpolation factor
+            f = micro.interp_factor;
+
+            // Determine inelastic scattering cross section
+            Reaction* rx = reactions_[urr_inelastic_].get();
+            int xs_index = micro.index_grid - rx->xs_[i_temp].threshold;
+            if (xs_index >= 0) {
+              inelastic = (1. - f) * rx->xs_[i_temp].value[xs_index] +
+                          f * rx->xs_[i_temp].value[xs_index + 1];
+            }
+          }
+        }
+      }
     }
 
     double const& atom_density = m.atom_density_[i];

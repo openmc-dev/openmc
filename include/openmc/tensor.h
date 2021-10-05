@@ -41,13 +41,50 @@ struct describes_tensor_shape<Vector,
     typename std::enable_if<
       std::is_integral<typename Vector::value_type>::value>::type>>
   : std::true_type {};
+
+// This creates a tuple of pre-specified length of a single type repeated N
+// times
+using size_type = unsigned int;
+template<typename Base, typename Seq>
+struct expander;
+template<typename Base, std::size_t... Is>
+struct expander<Base, std::index_sequence<Is...>> {
+  template<typename E, std::size_t>
+  using elem = E;
+  using type = std::tuple<elem<Base, Is>...>;
+};
+
+// bracket_indx is a functor that recursively generates functors at compile time
+// in order to compute the tensor index without any loops for arbitrary tensor
+// rank
+template<int Idx, int Rank>
+struct bracket_indx {
+  using tuple_type =
+    typename expander<size_type, std::make_index_sequence<Rank>>::type;
+  HOSTDEVICE static size_type calc(
+    size_type coeff, tuple_type indices, size_type* size)
+  {
+    return coeff * std::get<Idx>(indices) +
+           bracket_indx<Idx - 1, Rank>::calc(coeff * size[Idx], indices, size);
+  }
+};
+template<int Rank>
+struct bracket_indx<0, Rank> { // Specialize on base case to not recurse
+  using tuple_type =
+    typename expander<size_type, std::make_index_sequence<Rank>>::type;
+  HOSTDEVICE static size_type calc(
+    size_type coeff, tuple_type indices, size_type* size)
+  {
+    return coeff * std::get<0>(indices);
+  }
+};
 } // namespace impl
 
 template<typename T, int Rank, typename Alloc = std::allocator<T>>
 class tensor {
 public:
   using value_type = T;
-  using size_type = unsigned int;
+  using size_type = impl::size_type;
   using difference_type = int;
   using reference = T&;
   using const_reference = T const&;
@@ -103,10 +140,10 @@ public:
     begin_ = alloc_.allocate(copy_from.num_elements());
     for (int i = 0; i < Rank; ++i)
       size_[i] = copy_from.size(i);
-    capacity_ = size_;
+    capacity_ = total_size(size_);
     alloc_ = copy_from.alloc_;
-    for (size_type i = 0; i < size_; ++i)
-      new (begin_ + i) T(copy_from[i]);
+    for (size_type i = 0; i < capacity_; ++i)
+      new (begin_ + i) T(copy_from.begin_[i]);
   }
 
   HOST tensor& operator=(tensor&& move_from)
@@ -210,6 +247,11 @@ public:
   HOSTDEVICE pointer data() const { return begin_; }
   HOSTDEVICE pointer data() { return begin_; }
   HOSTDEVICE size_type size(int i) const { return size_[i]; }
+  template<int Idx>
+  HOSTDEVICE size_type size() const
+  {
+    return size_[Idx];
+  }
   HOSTDEVICE size_type capacity() const { return capacity_; }
   HOSTDEVICE iterator begin() { return begin_; }
   HOSTDEVICE iterator end() { return begin_ + num_elements(); }
@@ -253,38 +295,22 @@ public:
   //     sizeof(value_type) * size_, cudaMemcpyDeviceToHost);
   // }
 
-  template<typename First, typename... Args>
-  HOSTDEVICE T& operator()(First first, Args... args)
+  template<typename... Args>
+  HOSTDEVICE T& operator()(Args... args)
   {
-    return begin_[bracket_indx(first, args...)];
+    constexpr size_type one = 1;
+    return begin_[impl::bracket_indx<Rank - 1, Rank>::calc(
+      one, std::forward_as_tuple(std::forward<Args>(args)...), size_)];
   }
-  template<typename First, typename... Args>
-  HOSTDEVICE T& operator()(First first, Args... args) const
+  template<typename... Args>
+  HOSTDEVICE T& operator()(Args... args) const
   {
-    return begin_[bracket_indx(first, args...)];
+    constexpr size_type one = 1;
+    return begin_[impl::bracket_indx<Rank - 1, Rank>::calc(
+      one, std::forward_as_tuple(std::forward<Args>(args)...), size_)];
   }
 
 private:
-  template<typename First>
-  HOSTDEVICE size_type bracket_indx(First first)
-  {
-    return first;
-  }
-  template<typename First, typename... Args>
-  HOSTDEVICE size_type bracket_indx(First first, Args... args)
-  {
-    return first * size_[Rank - sizeof...(args)] + bracket_indx(args...);
-  }
-  template<typename First>
-  HOSTDEVICE size_type bracket_indx(First first) const
-  {
-    return first;
-  }
-  template<typename First, typename... Args>
-  HOSTDEVICE size_type bracket_indx(First first, Args... args) const
-  {
-    return first * size_[Rank - sizeof...(args)] + bracket_indx(args...);
-  }
 
   HOSTDEVICE size_type total_size(size_type* values)
   {

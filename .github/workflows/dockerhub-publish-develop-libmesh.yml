@@ -28,7 +28,7 @@ jobs:
           push: true
           tags: openmc/openmc:develop-dagmc
           build-args: |
-            include_dagmc=true
+            include_libmesh=true
             compile_cores=2
             openmc_branch=develop
       -

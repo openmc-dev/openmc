@@ -172,7 +172,6 @@ class Material(_FortranObjectWithID):
     @property
     def nuclides(self):
         return self._get_densities()[0]
-        return nuclides
 
     @property
     def densities(self):

@@ -34,4 +34,5 @@ from . import examples
 # Import a few names from the model module
 from openmc.model import rectangular_prism, hexagonal_prism, Model
 
+
 __version__ = '0.13.0-dev'

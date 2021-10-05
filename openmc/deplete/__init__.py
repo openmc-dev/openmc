@@ -4,17 +4,6 @@ openmc.deplete
 
 A depletion front-end tool.
 """
-import sys
-from unittest.mock import Mock
-
-from .dummy_comm import DummyCommunicator
-
-try:
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-except ImportError:
-    MPI = Mock()
-    comm = DummyCommunicator()
 
 from .nuclide import *
 from .chain import *

@@ -30,9 +30,7 @@ namespace model {
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
 extern vector<Plot> plots;                    //!< Plot instance container
 
-extern uint64_t
-  plotter_prn_seeds[N_STREAMS]; // Random number seeds used for plotter
-extern int plotter_stream;      // Stream index used by the plotter
+extern uint64_t plotter_seed;      // Stream index used by the plotter
 
 } // namespace model
 
@@ -273,6 +271,9 @@ void voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace);
 
 //! Read plot specifications from a plots.xml file
 void read_plots_xml();
+
+//! Clear memory
+void free_memory_plot();
 
 //! Create a ppm image for a plot object
 //! \param[in] plot object

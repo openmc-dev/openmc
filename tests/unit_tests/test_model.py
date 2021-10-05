@@ -332,27 +332,17 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # check that a plot was made and that the expected ppm and png files are
     # there
 
-    # We will only test convert if it is on the system, so as not to add an
-    # extra dependency just for tests
-    convert = which('convert') is not None
-    if convert:
-        exts = ['ppm', 'png']
-    else:
-        exts = ['ppm']
-
     # We will run the test twice, the first time without C API, the second with
     for i in range(2):
         if i == 1:
             test_model.init_lib(output=False, intracomm=mpi_intracomm)
-        test_model.plot_geometry(output=False, convert=convert)
+        test_model.plot_geometry(output=False)
 
-        # Now look for the files, expect to find test.ppm, plot_2.ppm, and if
-        # convert is True, test.png, plot_2.png
-        for fname in ['test.', 'plot_2.']:
-            for ext in exts:
-                test_file = Path(f'./{fname}{ext}')
-                assert test_file.exists()
-                test_file.unlink()
+        # Now look for the files
+        for fname in ('test.png', 'plot_2.png'):
+            test_file = Path(fname)
+            assert test_file.exists()
+            test_file.unlink()
 
     test_model.finalize_lib()
 

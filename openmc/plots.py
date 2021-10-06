@@ -701,9 +701,9 @@ class Plot(IDManagerMixin):
                          convert_exec='convert'):
         """Render plot as an image
 
-        This method runs OpenMC in plotting mode to produce a .png file. If PNG
-        supported is not enabled, try converting the fallback .ppm file to .png
-        using ImageMagick's convert command.
+        This method runs OpenMC in plotting mode to produce a .png file. If your
+        installation of OpenMC was not compiled against libpng, try converting
+        the fallback .ppm file to .png using ImageMagick's convert command.
 
         Parameters
         ----------

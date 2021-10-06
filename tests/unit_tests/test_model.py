@@ -329,8 +329,7 @@ def test_plots(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     test_model = openmc.Model(geom, mats, settings, tals, plots)
 
     # This test cannot check the correctness of the plot, but it can
-    # check that a plot was made and that the expected ppm and png files are
-    # there
+    # check that a plot was made and that the expected png files are there
 
     # We will run the test twice, the first time without C API, the second with
     for i in range(2):

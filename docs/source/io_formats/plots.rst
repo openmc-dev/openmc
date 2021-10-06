@@ -10,9 +10,9 @@ of the plots.xml is simply ``<plots>`` and any number output plots can be
 defined with ``<plot>`` sub-elements.  Two plot types are currently implemented
 in openMC:
 
-* ``slice``  2D pixel plot along one of the major axes. Produces a PPM image
+* ``slice``  2D pixel plot along one of the major axes. Produces a PNG image
   file.
-* ``voxel``  3D voxel data dump. Produces a binary file containing voxel xyz
+* ``voxel``  3D voxel data dump. Produces an HDF5 file containing voxel xyz
   position and cell or material id.
 
 
@@ -68,20 +68,14 @@ sub-elements:
   :type:
     Keyword for type of plot to be produced. Currently only "slice" and "voxel"
     plots are implemented. The "slice" plot type creates 2D pixel maps saved in
-    the PPM file format. PPM files can be displayed in most viewers (e.g. the
-    default Gnome viewer, IrfanView, etc.).  The "voxel" plot type produces a
-    binary datafile containing voxel grid positioning and the cell or material
-    (specified by the ``color`` tag) at the center of each voxel. These
-    datafiles can be processed into VTK files using the :ref:`scripts_voxel`
-    script provided with OpenMC, and subsequently viewed with a 3D viewer such
-    as VISIT or Paraview. See the :ref:`io_voxel` for information about the
-    datafile structure.
+    the PNG file format. The "voxel" plot type produces a binary datafile
+    containing voxel grid positioning and the cell or material (specified by the
+    ``color`` tag) at the center of each voxel. Voxel plot files can be
+    processed into VTK files using the :ref:`scripts_voxel` script provided with
+    OpenMC and subsequently viewed with a 3D viewer such as VISIT or Paraview.
+    See the :ref:`io_voxel` for information about the datafile structure.
 
-    .. note:: Since the PPM format is saved without any kind of compression,
-              the resulting file sizes can be quite large.  Saving the image in
-              the PNG format can often times reduce the file size by orders of
-              magnitude without any loss of image quality. Likewise,
-              high-resolution voxel files produced by OpenMC can be quite large,
+    .. note:: High-resolution voxel files produced by OpenMC can be quite large,
               but the equivalent VTK files will be significantly smaller.
 
     *Default*: "slice"
@@ -93,11 +87,6 @@ attribute or sub-element:
     Specifies the number of pixels or voxels to be used along each of the basis
     directions for "slice" and "voxel" plots, respectively. Should be two or
     three integers separated by spaces.
-
-    .. warning:: The ``pixels`` input determines the output file size.  For the
-                 PPM format, 10 million pixels will result in a file just under
-                 30 MB in size. A 10 million voxel binary file will be around
-                 40 MB.
 
     .. warning:: If the aspect ratio defined in ``pixels`` does not match the
                  aspect ratio defined in ``width`` the plot may appear stretched

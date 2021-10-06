@@ -64,6 +64,7 @@ scripts/*.tar.*
 scripts/G4EMLOW*/
 
 # Images
+*.png
 *.ppm
 *.voxel
 *.vti

@@ -166,28 +166,15 @@ _SVG_COLORS = {
 }
 
 
-def _get_plot_image(plot, convert_exec):
+def _get_plot_image(plot):
     from IPython.display import Image
 
-    # Check for .png first
+    # Make sure .png file was created
     stem = plot.filename if plot.filename is not None else f'plot_{plot.id}'
     png_file = f'{stem}.png'
-    if Path(png_file).exists():
-        return Image(png_file)
+    if not Path(png_file).exists():
+        raise FileNotFoundError(f"Could not find .png image for plot {plot.id}")
 
-    # If .png doesn't exist, try finding .ppm
-    ppm_file = f'{stem}.ppm'
-    if not Path(ppm_file).exists():
-        raise FileNotFoundError(f"Could not find image for plot {plot.id}")
-
-    # Check that 'convert' command exists
-    if shutil.which(convert_exec) is None:
-        raise RuntimeError(
-            f"ImageMagick is needed to convert {ppm_file} to .png format. Please "
-            "install ImageMagick and try again.")
-
-    # Convert .ppm to .png and return image
-    subprocess.check_call([convert_exec, ppm_file, png_file])
     return Image(png_file)
 
 
@@ -697,13 +684,14 @@ class Plot(IDManagerMixin):
 
         return element
 
-    def to_ipython_image(self, openmc_exec='openmc', cwd='.',
-                         convert_exec='convert'):
+    def to_ipython_image(self, openmc_exec='openmc', cwd='.'):
         """Render plot as an image
 
-        This method runs OpenMC in plotting mode to produce a .png file. If your
-        installation of OpenMC was not compiled against libpng, try converting
-        the fallback .ppm file to .png using ImageMagick's convert command.
+        This method runs OpenMC in plotting mode to produce a .png file.
+
+        .. versionchanged:: 0.13.0
+            The *convert_exec* argument was removed since OpenMC now produces
+            .png images directly.
 
         Parameters
         ----------
@@ -711,9 +699,6 @@ class Plot(IDManagerMixin):
             Path to OpenMC executable
         cwd : str, optional
             Path to working directory to run in
-        convert_exec : str, optional
-            Command that can convert PPM files into PNG files. Only used if your
-            OpenMC installation was not compiled against libpng.
 
         Returns
         -------
@@ -728,7 +713,7 @@ class Plot(IDManagerMixin):
         openmc.plot_geometry(False, openmc_exec, cwd)
 
         # Return produced image
-        return _get_plot_image(self, convert_exec)
+        return _get_plot_image(self)
 
 
 class Plots(cv.CheckedList):

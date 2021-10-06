@@ -137,8 +137,13 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
     _run([openmc_exec, '-p'], output, cwd)
 
 
-def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
+def plot_inline(plots, openmc_exec='openmc', cwd='.'):
     """Display plots inline in a Jupyter notebook.
+
+    .. versionchanged:: 0.13.0
+        The *convert_exec* argument was removed since OpenMC now produces
+        .png images directly.
+
 
     Parameters
     ----------
@@ -148,9 +153,6 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
         Path to OpenMC executable
     cwd : str, optional
         Path to working directory to run in
-    convert_exec : str, optional
-        Command that can convert PPM files into PNG files. Only used if your
-        OpenMC installation was not compiled against libpng.
 
     Raises
     ------
@@ -170,7 +172,7 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
     plot_geometry(False, openmc_exec, cwd)
 
     if plots is not None:
-        images = [_get_plot_image(p, convert_exec) for p in plots]
+        images = [_get_plot_image(p) for p in plots]
         display(*images)
 
 

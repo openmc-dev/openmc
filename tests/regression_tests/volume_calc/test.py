@@ -80,7 +80,7 @@ class VolumeTest(PyAPITestHarness):
         settings.volume_calculations = vol_calcs
         settings.export_to_xml()
 
-        # Create the MGXS file is necessary
+        # Create the MGXS file if necessary
         if not self.is_ce:
             groups = openmc.mgxs.EnergyGroups(group_edges=[0., 20.e6])
             mg_xs_file = openmc.MGXSLibrary(groups)
@@ -167,7 +167,7 @@ class VolumeTest(PyAPITestHarness):
         pass
 
 
-def test_volume_calc():
-    for is_ce in [True, False]:
-        harness = VolumeTest(is_ce, '')
-        harness.main()
+@pytest.mark.parametrize('is_ce', [True, False])
+def test_volume_calc(is_ce):
+    harness = VolumeTest(is_ce, '')
+    harness.main()

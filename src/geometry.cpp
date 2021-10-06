@@ -85,7 +85,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       // TODO: The below is the correct version.
       // Note: Gives a runtime JIT compiler error (can't find the flush function or something)
       //#pragma omp atomic read seq_cst
-      
+
       // TODO: The below is the workaround
       // Note: gives a link time error
       /*
@@ -252,7 +252,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     } else if (c.type_ == Fill::UNIVERSE) {
       //========================================================================
       //! Found a lower universe, update this coord level then search the next.
-      
+
       //#pragma omp target update to(p)
       //#pragma omp target
       {
@@ -279,7 +279,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     } else if (c.type_ == Fill::LATTICE) {
       //========================================================================
       //! Found a lower lattice, update this coord level then search the next.
-      
+
       //#pragma omp target update to(p)
       //#pragma omp target
       {
@@ -326,7 +326,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
             p.id_, lat.id_));
           return false;
           */
-          printf("ERROR: particle %d is outside lattice %d but the lattice has no defined outer universe! Undefined behavior to follow...\n", p.id_, lat.id_);
+          printf("ERROR: particle %ld is outside lattice %d but the lattice has no defined outer universe! Undefined behavior to follow...\n", p.id_, lat.id_);
         }
       }
       } // END OMP TARGET
@@ -351,7 +351,7 @@ bool neighbor_list_find_cell(Particle& p)
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
   bool found;
-  //#pragma omp target update to(p, c) 
+  //#pragma omp target update to(p, c)
   //#pragma omp target map(from: found)
   {
     found = find_cell_inner(p, &c.neighbors_);
@@ -363,7 +363,7 @@ bool neighbor_list_find_cell(Particle& p)
   // The particle could not be found in the neighbor list.  Try searching all
   // cells in this universe, and update the neighbor list if we find a new
   // neighboring cell.
-  //#pragma omp target update to(p, c) 
+  //#pragma omp target update to(p, c)
   //#pragma omp target map(tofrom: found)
   {
     found = find_cell_inner(p, nullptr);
@@ -371,7 +371,7 @@ bool neighbor_list_find_cell(Particle& p)
   //#pragma omp target update from(p, c)
   if (found)
   {
-    //#pragma omp target update to(p, c) 
+    //#pragma omp target update to(p, c)
     //#pragma omp target
     {
     c.neighbors_.push_back(p.coord_[coord_lvl].cell);
@@ -394,12 +394,12 @@ bool exhaustive_find_cell(Particle& p)
     p.coord_[i].reset();
   }
   bool found;
-  //#pragma omp target update to(p) 
+  //#pragma omp target update to(p)
   //#pragma omp target map(from: found)
   {
     found = find_cell_inner(p, nullptr);
   }
-  //#pragma omp target update from(p) 
+  //#pragma omp target update from(p)
   return found;
 }
 
@@ -506,7 +506,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
     auto surface_distance = c.distance(r, u, p.surface_, &p);
     d_surf = surface_distance.first;
     level_surf_cross = surface_distance.second;
-  
+
 
     // Find the distance to the next lattice tile crossing.
     if (coord.lattice != C_NONE) {

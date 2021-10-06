@@ -66,6 +66,12 @@ public:
   //!         fission cross sections in [b/K]
   std::tuple<double, double, double> evaluate_deriv(double E, double sqrtkT) const;
 
+  void flatten_wmp_data();
+
+  double curvefit(int window, int poly_order, int reaction) const;
+
+  std::complex<double> data(int pole, int res) const;
+
   // Data members
   std::string name_; //!< Name of nuclide
   double E_min_; //!< Minimum energy in [eV]
@@ -75,8 +81,14 @@ public:
   int fit_order_; //!< Order of the fit
   bool fissionable_; //!< Is the nuclide fissionable?
   std::vector<WindowInfo> window_info_; // Information about a window
+  int n_windows_;
+  WindowInfo* device_window_info_;
   xt::xtensor<double, 3> curvefit_; // Curve fit coefficients (window, poly order, reaction)
+  int n_curvefits_;
+  double* device_curvefit_;
   xt::xtensor<std::complex<double>, 2> data_; //!< Poles and residues
+  int n_data_size_;
+  std::complex<double>* device_data_;
 
   // Constant data
   static constexpr int MAX_POLY_COEFFICIENTS =

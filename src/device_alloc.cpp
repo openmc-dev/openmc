@@ -29,7 +29,7 @@ void enforce_assumptions()
   // Assertions made when initializing particles
   assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
   assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
-  
+
   assert(model::active_tracklength_tallies.empty() && "Tracklength tallies not yet supported.");
   assert(model::active_tallies.empty() && "Tallies not yet supported.");
 }
@@ -139,6 +139,9 @@ void move_read_only_data_to_device()
 
     // Pointwise XS data flattening
     nuc.flatten_xs_data();
+
+    // Windowed multipole
+    nuc.flatten_wmp_data();
   }
 
   #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])

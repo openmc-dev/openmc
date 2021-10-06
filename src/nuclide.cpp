@@ -351,6 +351,10 @@ void Nuclide::flatten_xs_data()
   assert(idx == total_energy_gridpoints_ * 5);
 }
 
+void Nuclide::flatten_wmp_data() {
+  if (multipole_) multipole_->flatten_wmp_data();
+}
+
 Nuclide::~Nuclide()
 {
   data::nuclide_map.erase(name_);
@@ -717,7 +721,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     // Offset xs
     int xs_offset = flat_temp_offsets_[i_temp] * 5;
     double* xs = &flat_xs_[xs_offset];
-    
+
     // Determine # of gridpoints for this temperature
     int num_gridpoints;
     if (i_temp < kTs_.size() - 1) {

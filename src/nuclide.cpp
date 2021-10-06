@@ -1139,7 +1139,12 @@ void Nuclide::copy_to_device()
     }
   }
 
-  if(multipole_) multipole_->copy_to_device();
+  // Multipole
+  device_multipole_ = multipole_.get();
+  if(multipole_) {
+    #pragma omp target enter data map(to: device_multipole_[:1])
+    multipole_->copy_to_device();
+  }
 }
 
 void Nuclide::release_from_device()
@@ -1167,6 +1172,12 @@ void Nuclide::release_from_device()
     #pragma omp target exit data map(release: u.device_prob_[:u.n_total_prob_])
   }
   #pragma omp target exit data map(release: device_urr_data_[:urr_data_.size()])
+
+  // Multipole
+  if (multipole_) {
+    #pragma omp target exit data map(release: device_multipole_)
+    multipole_->release_from_device();
+  }
 }
 
 //==============================================================================

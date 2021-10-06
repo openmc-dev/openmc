@@ -108,20 +108,20 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
     std::array<double, MAX_POLY_COEFFICIENTS> broadened_polynomials;
     broaden_wmp_polynomials(E, dopp, fit_order_ + 1, broadened_polynomials.data());
     for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
-      sig_s += curvefit_(i_window, i_poly, FIT_S) * broadened_polynomials[i_poly];
-      sig_a += curvefit_(i_window, i_poly, FIT_A) * broadened_polynomials[i_poly];
+      sig_s += curvefit(i_window, i_poly, FIT_S) * broadened_polynomials[i_poly];
+      sig_a += curvefit(i_window, i_poly, FIT_A) * broadened_polynomials[i_poly];
       if (fissionable_) {
-        sig_f += curvefit_(i_window, i_poly, FIT_F) * broadened_polynomials[i_poly];
+        sig_f += curvefit(i_window, i_poly, FIT_F) * broadened_polynomials[i_poly];
       }
     }
   } else {
     // Evaluate as if it were a polynomial
     double temp = invE;
     for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
-      sig_s += curvefit_(i_window, i_poly, FIT_S) * temp;
-      sig_a += curvefit_(i_window, i_poly, FIT_A) * temp;
+      sig_s += curvefit(i_window, i_poly, FIT_S) * temp;
+      sig_a += curvefit(i_window, i_poly, FIT_A) * temp;
       if (fissionable_) {
-        sig_f += curvefit_(i_window, i_poly, FIT_F) * temp;
+        sig_f += curvefit(i_window, i_poly, FIT_F) * temp;
       }
       temp *= sqrtE;
     }
@@ -135,22 +135,22 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
       std::complex<double> psi_chi = std::complex<double>(0.0,-1.0) / (data_(i_pole, MP_EA) - sqrtE);
       std::complex<double> c_temp = psi_chi * invE;
-      sig_s += (data_(i_pole, MP_RS) * c_temp).real();
-      sig_a += (data_(i_pole, MP_RA) * c_temp).real();
+      sig_s += (data(i_pole, MP_RS) * c_temp).real();
+      sig_a += (data(i_pole, MP_RA) * c_temp).real();
       if (fissionable_) {
-        sig_f += (data_(i_pole, MP_RF) * c_temp).real();
+        sig_f += (data(i_pole, MP_RF) * c_temp).real();
       }
     }
   } else {
     // At temperature, use Faddeeva function-based form.
     double dopp = sqrt_awr_ / sqrtkT;
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
-      std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
+      std::complex<double> z = (sqrtE - data(i_pole, MP_EA)) * dopp;
       std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
-      sig_s += (data_(i_pole, MP_RS) * w_val).real();
-      sig_a += (data_(i_pole, MP_RA) * w_val).real();
+      sig_s += (data(i_pole, MP_RS) * w_val).real();
+      sig_a += (data(i_pole, MP_RA) * w_val).real();
       if (fissionable_) {
-        sig_f += (data_(i_pole, MP_RF) * w_val).real();
+        sig_f += (data(i_pole, MP_RF) * w_val).real();
       }
     }
   }
@@ -195,10 +195,10 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
   for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
     std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
     std::complex<double> w_val = -invE * SQRT_PI * 0.5 * w_derivative(z, 2);
-    sig_s += (data_(i_pole, MP_RS) * w_val).real();
-    sig_a += (data_(i_pole, MP_RA) * w_val).real();
+    sig_s += (data(i_pole, MP_RS) * w_val).real();
+    sig_a += (data(i_pole, MP_RA) * w_val).real();
     if (fissionable_) {
-      sig_f += (data_(i_pole, MP_RF) * w_val).real();
+      sig_f += (data(i_pole, MP_RF) * w_val).real();
     }
   }
   double norm = -0.5*sqrt_awr_ / std::sqrt(K_BOLTZMANN) * std::pow(T, -1.5);
@@ -224,9 +224,18 @@ WindowedMultipole::flatten_wmp_data() {
 void
 WindowedMultipole::copy_to_device()
 {
+  write_message("Mapping multipole data");
   #pragma omp target enter data map(to: device_curvefit_[:curvefit_.size()])
   #pragma omp target enter data map(to: device_data_[:data_.size()])
   #pragma omp target enter data map(to: device_window_info_[:window_info_.size()])
+}
+
+void
+WindowedMultipole::release_from_device()
+{
+  #pragma omp target exit data map(release: device_curvefit_[:curvefit_.size()])
+  #pragma omp target exit data map(release: device_data_[:data_.size()])
+  #pragma omp target exit data map(release: device_window_info_[:window_info_.size()])
 }
 
 double

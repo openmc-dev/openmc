@@ -102,6 +102,7 @@ public:
 
   // Multipole data
   std::unique_ptr<WindowedMultipole> multipole_;
+  WindowedMultipole* device_multipole_;
 
   // Fission data
   bool fissionable_ {false}; //!< Whether nuclide is fissionable

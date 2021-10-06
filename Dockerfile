@@ -122,7 +122,7 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         rm -rf ${DD_INSTALL_DIR}/build ${DD_INSTALL_DIR}/double-down ; \
         # Clone and install DAGMC
         mkdir -p $HOME/DAGMC && cd $HOME/DAGMC ; \
-        git clone --single-branch -b ${DAGMC_TAG} --depth 1 ${DAGMC_REPO} ; \
+        git clone --single-branch -b ${DAGMC_BRANCH} --depth 1 ${DAGMC_REPO} ; \
         mkdir build && cd build ; \
         cmake ../DAGMC -DBUILD_TALLY=ON \
                        -DCMAKE_INSTALL_PREFIX=${DAGMC_INSTALL_DIR} \

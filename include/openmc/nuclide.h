@@ -73,6 +73,8 @@ public:
 
   void flatten_xs_data();
 
+  void flatten_wmp_data();
+
   void copy_to_device();
   void release_from_device();
 

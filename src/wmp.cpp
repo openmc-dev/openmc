@@ -133,7 +133,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   if (sqrtkT == 0.0) {
     // If at 0K, use asymptotic form.
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
-      std::complex<double> psi_chi = -1.0i / (data_(i_pole, MP_EA) - sqrtE);
+      std::complex<double> psi_chi = std::complex<double>(0.0,-1.0) / (data_(i_pole, MP_EA) - sqrtE);
       std::complex<double> c_temp = psi_chi * invE;
       sig_s += (data_(i_pole, MP_RS) * c_temp).real();
       sig_a += (data_(i_pole, MP_RA) * c_temp).real();
@@ -207,6 +207,30 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
   sig_f *= norm;
 
   return std::make_tuple(sig_s, sig_a, sig_f);
+}
+
+void
+WindowedMultipole::flatten_wmp_data() {
+  int n_windows_ = window_info_.size();
+  device_window_info_ = window_info_.data();
+
+  int n_curvefits_ = curvefit_.shape(2);
+  device_curvefit_ = curvefit_.data();
+
+  int n_data_size_ = data_.shape(1);
+  device_data_ = data_.data();
+}
+
+double
+WindowedMultipole::curvefit(int window, int poly_order, int reaction) const
+{
+  return device_curvefit_[window * MAX_POLY_COEFFICIENTS * n_curvefits_ + poly_order * n_curvefits_ + reaction];
+}
+
+std::complex<double>
+WindowedMultipole::data(int pole, int res) const
+{
+  return device_data_[pole * n_data_size_ + res];
 }
 
 //========================================================================

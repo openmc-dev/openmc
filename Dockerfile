@@ -2,7 +2,7 @@
 # docker build -t openmc .
 
 # To build with OpenMC develop branch
-# docker build -t openmc_develop --build-arg OPENMC_BRANCH=develop .
+# docker build -t openmc_develop --build-arg openmc_branch=develop .
 
 # To build with OpenMC and DAGMC enabled
 # docker build -t openmc_dagmc --build-arg build_dagmc=on --build-arg compile_cores=4 .
@@ -21,8 +21,11 @@ ARG build_libmesh=off
 # By default one core is used to compile
 ARG compile_cores=4
 
+# Set default value of HOME to /root
+ENV HOME /root
+
 # OpenMC variables
-ARG OPENMC_BRANCH=master
+ARG openmc_branch=master
 ENV OPENMC_REPO='https://github.com/openmc-dev/openmc'
 
 # Embree variables
@@ -40,7 +43,7 @@ ENV DD_REPO='https://github.com/pshriwise/double-down'
 ENV DD_INSTALL_DIR=$HOME/Double_down
 
 # DAGMC variables
-ENV DAGMC_TAG='3.2.0'
+ENV DAGMC_BRANCH='develop'
 ENV DAGMC_REPO='https://github.com/svalinn/DAGMC'
 ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
 
@@ -50,7 +53,7 @@ ENV LIBMESH_REPO='https://github.com/libMesh/libmesh'
 ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 
 # Creates the arguments for the openmc build command using parameter expansion
-ENV OPENMC_CMAKE_ARGS="-Ddebug=on -Doptimize=on -DHDF5_PREFER_PARALLEL=on -DDAGMC_DIR=${build_dagmc:-} -DDAGMC_DIR=${DAGMC_INSTALL_DIR} -Dlibmesh=${build_libmesh:-} -DCMAKE_PREFIX_PATH=${LIBMESH_INSTALL_DIR}"
+ENV OPENMC_CMAKE_ARGS="-Ddebug=on -Doptimize=on -DHDF5_PREFER_PARALLEL=on -Ddagmc=${build_dagmc} -DDAGMC_DIR=${DAGMC_INSTALL_DIR} -Dlibmesh=${build_libmesh} -DCMAKE_PREFIX_PATH=${LIBMESH_INSTALL_DIR}"
 
 # Setup environment variables for Docker image
 ENV CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \
@@ -83,7 +86,7 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         apt-get -y install libeigen3-dev libnetcdf-dev libtbb-dev libglfw3-dev ; \
         pip install --upgrade numpy cython ; \
         # Clone and install EMBREE
-        mkdir -p $HOME/EMBREE && cd $HOME/EMBREE; \
+        mkdir -p $HOME/EMBREE && cd $HOME/EMBREE ; \
         git clone --single-branch -b ${EMBREE_TAG} --depth 1 ${EMBREE_REPO} ; \
         mkdir build && cd build; \
         cmake ../embree \
@@ -103,22 +106,22 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         make 2>/dev/null -j${compile_cores} install ; \
         cmake ../moab \
                     -DENABLE_PYMOAB=ON \
-                    -DBUILD_SHARED_LIBS=ON \
+                    -DBUILD_SHARED_LIBS=ON ; \
         make 2>/dev/null -j${compile_cores} install ; \
-        cd pymoab && bash install.sh; \
-        python setup.py install; \
+        cd pymoab && bash install.sh ; \
+        python setup.py install ; \
         rm -rf $HOME/MOAB ; \
         # Clone and install Double-Down
-        mkdir -p $HOME/Double_down && cd $HOME/Double_down; \
+        mkdir -p $HOME/Double_down && cd $HOME/Double_down ; \
         git clone --single-branch -b ${DD_BRANCH} --depth 1 ${DD_REPO} ; \
-        mkdir build && cd build; \
+        mkdir build && cd build ; \
         cmake ../double-down -DCMAKE_INSTALL_PREFIX=${DD_INSTALL_DIR} \
                              -DMOAB_DIR=/usr/local \
                              -DEMBREE_DIR=${EMBREE_INSTALL_DIR} ; \
         make 2>/dev/null -j${compile_cores} install ; \
-        rm -rf ${DD_INSTALL_DIR}/build && ${DD_INSTALL_DIR}/double-down; \
+        rm -rf ${DD_INSTALL_DIR}/build ${DD_INSTALL_DIR}/double-down ; \
         # Clone and install DAGMC
-        mkdir -p $HOME/DAGMC && cd $HOME/DAGMC; \
+        mkdir -p $HOME/DAGMC && cd $HOME/DAGMC ; \
         git clone --single-branch -b ${DAGMC_TAG} --depth 1 ${DAGMC_REPO} ; \
         mkdir build && cd build ; \
         cmake ../DAGMC -DBUILD_TALLY=ON \
@@ -127,20 +130,19 @@ RUN if [ "$build_dagmc" = "on" ]; then \
                        -DDOUBLE_DOWN=ON \
                        -DDOUBLE_DOWN_DIR=${DD_INSTALL_DIR} \
                        -DCMAKE_PREFIX_PATH=${DD_INSTALL_DIR}/lib \
-                       -DBUILD_STATIC_LIBS=OFF \
-                       -DBUILD_STATIC_EXE=OFF ; \
+                       -DBUILD_STATIC_LIBS=OFF ; \
         make 2>/dev/null -j${compile_cores} install ; \
         rm -rf ${DAGMC_INSTALL_DIR}/DAGMC ${DAGMC_INSTALL_DIR}/build ; \
-        fi
+    fi
 
 
 RUN if [ "$build_libmesh" = "on" ]; then \
         # Install addition packages required for LIBMESH
         apt-get -y install m4 libnetcdf-dev libpnetcdf-dev ; \
         # Install LIBMESH
-        mkdir -p $HOME/LIBMESH && cd $HOME/LIBMESH; \
+        mkdir -p $HOME/LIBMESH && cd $HOME/LIBMESH ; \
         git clone --shallow-submodules --recurse-submodules --single-branch -b ${LIBMESH_TAG} --depth 1 ${LIBMESH_REPO} ; \
-        mkdir build && cd build; \
+        mkdir build && cd build ; \
         ../libmesh/configure \
                     --prefix=${LIBMESH_INSTALL_DIR} CXX=mpicxx CC=mpicc FC=mpifort F77=mpif77 \
                     --enable-exodus \
@@ -150,16 +152,15 @@ RUN if [ "$build_libmesh" = "on" ]; then \
                     --disable-lapack \
                     --enable-hdf5 \
                     --with-hdf5=/usr/lib/x86_64-linux-gnu/hdf5/serial/ \
-                    --enable-mpi; \
+                    --enable-mpi ; \
         make 2>/dev/null -j${compile_cores} install ; \
         rm -rf ${LIBMESH_INSTALL_DIR}/build ${LIBMESH_INSTALL_DIR}/libmesh ; \
-        fi
+    fi
 
 # clone and install openmc
 RUN mkdir -p $HOME/OpenMC && cd $HOME/OpenMC ; \
-    git clone --shallow-submodules --recurse-submodules -b ${OPENMC_BRANCH} --depth=1 ${OPENMC_REPO} ; \
-    mkdir build ; \
-    cd $HOME/OpenMC/build ; \
+    git clone --shallow-submodules --recurse-submodules -b ${openmc_branch} --depth=1 ${OPENMC_REPO} ; \
+    mkdir build && cd $HOME/OpenMC/build ; \
     cmake ../openmc ${OPENMC_CMAKE_ARGS} ; \
     make 2>/dev/null -j${compile_cores} install ; \
     cd ../openmc && pip install -e .[test]

@@ -68,6 +68,8 @@ public:
 
   void flatten_wmp_data();
 
+  void copy_to_device();
+
   double curvefit(int window, int poly_order, int reaction) const;
 
   std::complex<double> data(int pole, int res) const;

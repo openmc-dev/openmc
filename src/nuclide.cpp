@@ -1138,6 +1138,8 @@ void Nuclide::copy_to_device()
       }
     }
   }
+
+  if(multipole_) multipole_->copy_to_device();
 }
 
 void Nuclide::release_from_device()

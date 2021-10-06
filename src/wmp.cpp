@@ -221,6 +221,14 @@ WindowedMultipole::flatten_wmp_data() {
   device_data_ = data_.data();
 }
 
+void
+WindowedMultipole::copy_to_device()
+{
+  #pragma omp target enter data map(to: device_curvefit_[:curvefit_.size()])
+  #pragma omp target enter data map(to: device_data_[:data_.size()])
+  #pragma omp target enter data map(to: device_window_info_[:window_info_.size()])
+}
+
 double
 WindowedMultipole::curvefit(int window, int poly_order, int reaction) const
 {

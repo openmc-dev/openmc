@@ -92,7 +92,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   // Locate window containing energy
   int i_window = std::min(window_info_.size() - 1,
     static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
-  const auto& window {window_info_[i_window]};
+  const auto& window {window_info(i_window)};
 
   // Initialize the ouptut cross sections
   double sig_s = 0.0;
@@ -146,7 +146,8 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
     double dopp = sqrt_awr_ / sqrtkT;
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
       std::complex<double> z = (sqrtE - data(i_pole, MP_EA)) * dopp;
-      std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
+      // std::complex<double> w_val = faddeeva(z) * dopp * invE * std::sqrt(PI);
+      std::complex<double> w_val = dopp * invE * std::sqrt(PI);
       sig_s += (data(i_pole, MP_RS) * w_val).real();
       sig_a += (data(i_pole, MP_RA) * w_val).real();
       if (fissionable_) {
@@ -194,7 +195,7 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
   double dopp = sqrt_awr_ / sqrtkT;
   for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
     std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
-    std::complex<double> w_val = -invE * SQRT_PI * 0.5 * w_derivative(z, 2);
+    std::complex<double> w_val = -invE * std::sqrt(PI) * 0.5 * w_derivative(z, 2);
     sig_s += (data(i_pole, MP_RS) * w_val).real();
     sig_a += (data(i_pole, MP_RA) * w_val).real();
     if (fissionable_) {
@@ -242,6 +243,12 @@ double
 WindowedMultipole::curvefit(int window, int poly_order, int reaction) const
 {
   return device_curvefit_[window * MAX_POLY_COEFFICIENTS * n_curvefits_ + poly_order * n_curvefits_ + reaction];
+}
+
+const WindowedMultipole::WindowInfo&
+WindowedMultipole::window_info(int i_window) const
+{
+  return device_window_info_[i_window];
 }
 
 std::complex<double>
@@ -328,7 +335,7 @@ void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
   factors[0] = erf_beta / E;
   factors[1] = 1. / sqrtE;
   factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 /
-       (beta * SQRT_PI);
+       (beta * std::sqrt(PI));
   if (n > 3) factors[3] = factors[1] * (E + 3.0 * half_inv_dopp2);
 
   // Perform recursive broadening of high order components (Eq. 16)

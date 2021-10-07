@@ -72,10 +72,13 @@ public:
 
   void release_from_device();
 
+  #pragma omp declare target
   double curvefit(int window, int poly_order, int reaction) const;
 
-  std::complex<double> data(int pole, int res) const;
+  const WindowInfo& window_info(int i_window) const;
 
+  std::complex<double> data(int pole, int res) const;
+  #pragma omp end declare target
   // Data members
   std::string name_; //!< Name of nuclide
   double E_min_; //!< Minimum energy in [eV]

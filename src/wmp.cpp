@@ -90,7 +90,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   double invE = 1.0 / E;
 
   // Locate window containing energy
-  int i_window = std::min(window_info_.size() - 1,
+  int i_window = std::min(static_cast<size_t>(n_windows_ - 1),
     static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
   const auto& window {window_info(i_window)};
 
@@ -215,7 +215,9 @@ WindowedMultipole::flatten_wmp_data() {
   int n_windows_ = window_info_.size();
   device_window_info_ = window_info_.data();
 
-  int n_curvefits_ = curvefit_.shape(2);
+  int n_order_ = curvefit_.shape(1);
+  int n_reactions_ = curvefit_.shape(2);
+
   device_curvefit_ = curvefit_.data();
 
   int n_data_size_ = data_.shape(1);
@@ -242,19 +244,21 @@ WindowedMultipole::release_from_device()
 double
 WindowedMultipole::curvefit(int window, int poly_order, int reaction) const
 {
-  return device_curvefit_[window * MAX_POLY_COEFFICIENTS * n_curvefits_ + poly_order * n_curvefits_ + reaction];
+  int idx = window * n_order_ * n_reactions_ + poly_order * n_reactions_ + reaction;
+  return device_curvefit_ ? device_curvefit_[idx] : curvefit_.data()[idx];
 }
 
 const WindowedMultipole::WindowInfo&
 WindowedMultipole::window_info(int i_window) const
 {
-  return device_window_info_[i_window];
+  return device_window_info_ ? device_window_info_[i_window] : window_info_[i_window];
 }
 
 std::complex<double>
 WindowedMultipole::data(int pole, int res) const
 {
-  return device_data_[pole * n_data_size_ + res];
+  int idx = pole * n_data_size_ + res;
+  return device_data_ ? device_data_[idx] : data_.data()[idx];
 }
 
 //========================================================================

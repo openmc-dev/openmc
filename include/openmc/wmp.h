@@ -54,7 +54,9 @@ public:
   //! \param E Incident neutron energy in [eV]
   //! \param sqrtkT Square root of temperature times Boltzmann constant
   //! \return Tuple of elastic scattering, absorption, and fission cross sections in [b]
+  #pragma omp declare target
   std::tuple<double, double, double> evaluate(double E, double sqrtkT) const;
+  #pragma omp end declare target
 
   //! \brief Evaluates the windowed multipole equations for the derivative of
   //! cross sections in the resolved resonance regions with respect to
@@ -89,13 +91,14 @@ public:
   bool fissionable_; //!< Is the nuclide fissionable?
   std::vector<WindowInfo> window_info_; // Information about a window
   int n_windows_;
-  WindowInfo* device_window_info_;
+  WindowInfo* device_window_info_{nullptr};
   xt::xtensor<double, 3> curvefit_; // Curve fit coefficients (window, poly order, reaction)
-  int n_curvefits_;
-  double* device_curvefit_;
+  int n_order_;
+  int n_reactions_;
+  double* device_curvefit_{nullptr};
   xt::xtensor<std::complex<double>, 2> data_; //!< Poles and residues
   int n_data_size_;
-  std::complex<double>* device_data_;
+  std::complex<double>* device_data_{nullptr};
 
   // Constant data
   static constexpr int MAX_POLY_COEFFICIENTS =

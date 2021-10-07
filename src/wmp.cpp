@@ -146,8 +146,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
     double dopp = sqrt_awr_ / sqrtkT;
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
       std::complex<double> z = (sqrtE - data(i_pole, MP_EA)) * dopp;
-      // std::complex<double> w_val = faddeeva(z) * dopp * invE * std::sqrt(PI);
-      std::complex<double> w_val = dopp * invE * std::sqrt(PI);
+      std::complex<double> w_val = faddeeva(z) * dopp * invE * std::sqrt(PI);
       sig_s += (data(i_pole, MP_RS) * w_val).real();
       sig_a += (data(i_pole, MP_RA) * w_val).real();
       if (fissionable_) {

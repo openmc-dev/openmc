@@ -20,7 +20,6 @@ env:
   COVERALLS_PARALLEL: true
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
 jobs:
   main:
     runs-on: ubuntu-20.04
@@ -61,10 +60,10 @@ jobs:
             python-version: 3.8
             omp: n
             mpi: y
-    name: 'Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
+    name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
       mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
       libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
-      vectfit=${{ matrix.vectfit }})'
+      vectfit=${{ matrix.vectfit }})"
 
     env:
       MPI: ${{ matrix.mpi }}
@@ -78,24 +77,23 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      -
-        name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      -
-        name: Environment Variables
+
+      - name: Environment Variables
         run: |
           echo "DAGMC_ROOT=$HOME/DAGMC"
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
           echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
 
-      -
-        name: Apt dependencies
+      - name: Apt dependencies
         shell: bash
         run: |
           sudo apt -y update
-          sudo apt install -y libmpich-dev \
+          sudo apt install -y libpng-dev \
+                              libmpich-dev \
                               libnetcdf-dev \
                               libpnetcdf-dev \
                               libhdf5-serial-dev \
@@ -105,23 +103,21 @@ jobs:
           sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
           sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
 
-      -
-        name: install
+      - name: install
         shell: bash
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
-      -
-        name: before
+
+      - name: before
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
-      -
-        name: test
+
+      - name: test
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
-      -
-        name: after_success
+      - name: after_success
         shell: bash
         run: |
           cpp-coveralls -i src -i include --exclude-pattern "/usr/*" --dump cpp_cov.json
@@ -131,8 +127,8 @@ jobs:
     needs: main
     runs-on: ubuntu-latest
     steps:
-    - name: Coveralls Finished
-      uses: coverallsapp/github-action@master
-      with:
-        github-token: ${{ secrets.github_token }}
-        parallel-finished: true
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.github_token }}
+          parallel-finished: true

@@ -40,7 +40,7 @@ def test_transfer_volumes(run_in_tmpdir):
     geometry = openmc.Geometry(root)
 
     # Transfer volumes
-    res[0].transfer_volumes(geometry)
+    res[0].transfer_volumes(openmc.Model(geometry))
 
     assert mat1.volume == 1.5
     assert mat2.volume is None

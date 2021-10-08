@@ -202,13 +202,15 @@ class Operator(TransportOperator):
                 fission_q = None
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
+        self.model = model
         self.settings = model.settings
         self.geometry = model.geometry
 
         # determine set of materials in the model
         if not model.materials:
-            model.materials = openmc.Materials(model.geometry.
-                                               get_all_materials().values())
+            model.materials = openmc.Materials(
+                model.geometry.get_all_materials().values()
+            )
         self.materials = model.materials
 
         self.diff_burnable_mats = diff_burnable_mats
@@ -239,7 +241,7 @@ class Operator(TransportOperator):
 
         if self.prev_res is not None:
             # Reload volumes into geometry
-            prev_results[-1].transfer_volumes(geometry)
+            prev_results[-1].transfer_volumes(self.model)
 
             # Store previous results in operator
             # Distribute reaction rates according to those tracked
@@ -380,7 +382,7 @@ class Operator(TransportOperator):
 
         # Extract all burnable materials which have multiple instances
         distribmats = set(
-            [mat for mat in self.geometry.get_all_materials().values()
+            [mat for mat in self.materials
              if mat.depletable and mat.num_instances > 1])
 
         for mat in distribmats:
@@ -476,7 +478,7 @@ class Operator(TransportOperator):
 
         # Else from previous depletion results
         else:
-            for mat in self.materials.values():
+            for mat in self.materials:
                 if str(mat.id) in local_mats:
                     self._set_number_from_results(mat, prev_res)
 
@@ -620,7 +622,7 @@ class Operator(TransportOperator):
 
         # Sort nuclides according to order in AtomNumber object
         nuclides = list(self.number.nuclides)
-        for mat in materials:
+        for mat in self.materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
         # Grab the cross sections tag from the existing file

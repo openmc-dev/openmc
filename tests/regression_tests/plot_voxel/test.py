@@ -25,7 +25,7 @@ class PlotVoxelTestHarness(TestHarness):
                    glob.glob('plot_4.h5'))
 
     def _test_output_created(self):
-        """Make sure *.ppm has been created."""
+        """Make sure plots have been created."""
         for fname in self._plot_names:
             assert os.path.exists(fname), 'Plot output file does not exist.'
 

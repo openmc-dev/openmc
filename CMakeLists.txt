@@ -80,6 +80,11 @@ if(libmesh)
 endif()
 
 #===============================================================================
+# libpng
+#===============================================================================
+find_package(PNG)
+
+#===============================================================================
 # HDF5 for binary output
 #===============================================================================
 
@@ -421,6 +426,11 @@ endif()
 if(libmesh)
   target_compile_definitions(libopenmc PRIVATE LIBMESH)
   target_link_libraries(libopenmc PkgConfig::LIBMESH)
+endif()
+
+if (PNG_FOUND)
+  target_compile_definitions(libopenmc PRIVATE USE_LIBPNG)
+  target_link_libraries(libopenmc PNG::PNG)
 endif()
 
 #===============================================================================

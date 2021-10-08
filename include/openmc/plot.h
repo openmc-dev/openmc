@@ -30,7 +30,7 @@ namespace model {
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
 extern vector<Plot> plots;                    //!< Plot instance container
 
-extern uint64_t plotter_seed;      // Stream index used by the plotter
+extern uint64_t plotter_seed; // Stream index used by the plotter
 
 } // namespace model
 
@@ -237,10 +237,17 @@ public:
 //! \param[out] image data associated with the plot object
 void draw_mesh_lines(Plot const& pl, ImageData& data);
 
-//! Write a ppm image to file using a plot object's image data
+//! Write a PPM image using a plot object's image data
 //! \param[in] plot object
 //! \param[out] image data associated with the plot object
 void output_ppm(Plot const& pl, const ImageData& data);
+
+#ifdef USE_LIBPNG
+//! Write a PNG image using a plot object's image data
+//! \param[in] plot object
+//! \param[out] image data associated with the plot object
+void output_png(Plot const& pl, const ImageData& data);
+#endif
 
 //! Initialize a voxel file
 //! \param[in] id of an open hdf5 file
@@ -275,9 +282,9 @@ void read_plots_xml();
 //! Clear memory
 void free_memory_plot();
 
-//! Create a ppm image for a plot object
+//! Create an image for a plot object
 //! \param[in] plot object
-void create_ppm(Plot const& pl);
+void create_image(Plot const& pl);
 
 //! Create an hdf5 voxel file for a plot object
 //! \param[in] plot object

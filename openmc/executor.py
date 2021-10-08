@@ -3,6 +3,7 @@ from numbers import Integral
 import subprocess
 
 import openmc
+from .plots import _get_plot_image
 
 
 def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
@@ -136,12 +137,13 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
     _run([openmc_exec, '-p'], output, cwd)
 
 
-def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
+def plot_inline(plots, openmc_exec='openmc', cwd='.'):
     """Display plots inline in a Jupyter notebook.
 
-    This function requires that you have a program installed to convert PPM
-    files to PNG files. Typically, that would be `ImageMagick
-    <https://www.imagemagick.org>`_ which includes a `convert` command.
+    .. versionchanged:: 0.13.0
+        The *convert_exec* argument was removed since OpenMC now produces
+        .png images directly.
+
 
     Parameters
     ----------
@@ -151,8 +153,6 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
         Path to OpenMC executable
     cwd : str, optional
         Path to working directory to run in
-    convert_exec : str, optional
-        Command that can convert PPM files into PNG files
 
     Raises
     ------
@@ -160,7 +160,7 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
         If the `openmc` executable returns a non-zero status
 
     """
-    from IPython.display import Image, display
+    from IPython.display import display
 
     if not isinstance(plots, Iterable):
         plots = [plots]
@@ -171,16 +171,8 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
     # Run OpenMC in geometry plotting mode
     plot_geometry(False, openmc_exec, cwd)
 
-    images = []
     if plots is not None:
-        for p in plots:
-            if p.filename is not None:
-                ppm_file = f'{p.filename}.ppm'
-            else:
-                ppm_file = f'plot_{p.id}.ppm'
-            png_file = ppm_file.replace('.ppm', '.png')
-            subprocess.check_call([convert_exec, ppm_file, png_file])
-            images.append(Image(png_file))
+        images = [_get_plot_image(p) for p in plots]
         display(*images)
 
 

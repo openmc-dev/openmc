@@ -67,10 +67,8 @@ class Operator(TransportOperator):
 
     Parameters
     ----------
-    geometry : openmc.Geometry
-        OpenMC geometry object
-    settings : openmc.Settings
-        OpenMC Settings object
+    model : openmc.Model
+        OpenMC model object
     chain_file : str, optional
         Path to the depletion chain XML file.  Defaults to the file
         listed under ``depletion_chain`` in
@@ -144,6 +142,8 @@ class Operator(TransportOperator):
 
     Attributes
     ----------
+    model : openmc.Model
+        OpenMC model object
     geometry : openmc.Geometry
         OpenMC geometry object
     settings : openmc.Settings
@@ -186,7 +186,7 @@ class Operator(TransportOperator):
         "cutoff": FissionYieldCutoffHelper,
     }
 
-    def __init__(self, geometry, settings, chain_file=None, prev_results=None,
+    def __init__(self, model, chain_file=None, prev_results=None,
                  diff_burnable_mats=False, normalization_mode="fission-q",
                  fission_q=None, dilute_initial=1.0e3,
                  fission_yield_mode="constant", fission_yield_opts=None,
@@ -202,15 +202,22 @@ class Operator(TransportOperator):
                 fission_q = None
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
-        self.settings = settings
-        self.geometry = geometry
+        self.settings = model.settings
+        self.geometry = model.geometry
+
+        # determine set of materials in the model
+        if not model.materials:
+            model.materials = openmc.Materials(model.geometry.
+                                               get_all_materials().values())
+        self.materials = model.materials
+
         self.diff_burnable_mats = diff_burnable_mats
         self.cleanup_when_done = True
 
         # Reduce the chain before we create more materials
         if reduce_chain:
             all_isotopes = set()
-            for material in geometry.get_all_materials().values():
+            for material in self.materials:
                 if not material.depletable:
                     continue
                 for name, _dens_percent, _dens_type in material.nuclides:
@@ -411,7 +418,7 @@ class Operator(TransportOperator):
         self.heavy_metal = 0.0
 
         # Iterate once through the geometry to get dictionaries
-        for mat in self.geometry.get_all_materials().values():
+        for mat in self.materials:
             for nuclide in mat.get_nuclides():
                 model_nuclides.add(nuclide)
             if mat.depletable:
@@ -463,13 +470,13 @@ class Operator(TransportOperator):
         # Now extract and store the number densities
         # From the geometry if no previous depletion results
         if prev_res is None:
-            for mat in self.geometry.get_all_materials().values():
+            for mat in self.materials:
                 if str(mat.id) in local_mats:
                     self._set_number_from_mat(mat)
 
         # Else from previous depletion results
         else:
-            for mat in self.geometry.get_all_materials().values():
+            for mat in self.materials.values():
                 if str(mat.id) in local_mats:
                     self._set_number_from_results(mat, prev_res)
 
@@ -609,8 +616,7 @@ class Operator(TransportOperator):
         through direct memory writing.
 
         """
-        materials = openmc.Materials(self.geometry.get_all_materials()
-                                     .values())
+        materials = openmc.Materials(self.materials)
 
         # Sort nuclides according to order in AtomNumber object
         nuclides = list(self.number.nuclides)

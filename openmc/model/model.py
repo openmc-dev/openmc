@@ -326,7 +326,7 @@ class Model:
         with _change_directory(Path(directory)):
             with openmc.lib.quiet_dll(output):
                 depletion_operator = \
-                    dep.Operator(self.geometry, self.settings, **op_kwargs)
+                    dep.Operator(self, **op_kwargs)
 
             # Tell depletion_operator.finalize NOT to clear C API memory when
             # it is done

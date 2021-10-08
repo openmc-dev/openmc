@@ -89,10 +89,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   // The loop below can in theory be combined with the one above,
   // but is present here as a compiler bug workaround
   #ifdef USE_DEVICE
-  // This pragma results in illegal memory errors at runtime
-  //#pragma omp target teams distribute parallel for reduction(+:total_weight)
-  // This pragma works but runs in serial on device
-  #pragma omp target reduction(+:total_weight)
+  #pragma omp target teams distribute parallel for reduction(+:total_weight)
   #else
   #pragma omp parallel for schedule(runtime) reduction(+:total_weight)
   #endif
@@ -124,10 +121,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   int64_t offset = simulation::advance_particle_queue.size();;
   
   #ifdef USE_DEVICE
-  // This pragma results in illegal memory errors at runtime
-  //#pragma omp target teams distribute parallel for
-  // This pragma works but only runs one thread per block
-  #pragma omp target teams distribute
+  #pragma omp target teams distribute parallel for
   #else
   #pragma omp parallel for schedule(runtime)
   #endif

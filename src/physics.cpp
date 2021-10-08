@@ -215,7 +215,7 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
             "in this generation will not be banked.");
         */
         printf("The shared fission bank is full. Additional fission sites created "
-          "in this generation will not be banked.");
+          "in this generation will not be banked.\n");
         skipped++;
         break;
       }

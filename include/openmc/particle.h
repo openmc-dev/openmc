@@ -21,7 +21,7 @@
 #endif
 
 #define NEUTRON_XS_SIZE 300 // Depleted SMR uses 296
-#define PHOTON_XS_SIZE 3 // This appears to be the min required to pass the regression tests.
+#define PHOTON_XS_SIZE 9 // Pincell example uses 9
 #define COORD_SIZE 6 // Depleted SMR uses 6
 #define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define FLUX_DERIVS_SIZE 5 // This is the min required to pass regression tests (diff_tally is limiter)

@@ -53,7 +53,7 @@ ENV LIBMESH_REPO='https://github.com/libMesh/libmesh'
 ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 
 # Creates the arguments for the openmc build command using parameter expansion
-ENV OPENMC_CMAKE_ARGS="-Ddebug=on -Doptimize=on -DHDF5_PREFER_PARALLEL=on -Ddagmc=${build_dagmc} -DDAGMC_DIR=${DAGMC_INSTALL_DIR} -Dlibmesh=${build_libmesh} -DCMAKE_PREFIX_PATH=${LIBMESH_INSTALL_DIR}"
+ENV OPENMC_CMAKE_ARGS="-Ddebug=on -Doptimize=on -DHDF5_PREFER_PARALLEL=on -Ddagmc=${build_dagmc} -DCMAKE_PREFIX_PATH=${DAGMC_INSTALL_DIR} -Dlibmesh=${build_libmesh} -DCMAKE_PREFIX_PATH=${LIBMESH_INSTALL_DIR}"
 
 # Setup environment variables for Docker image
 ENV CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \

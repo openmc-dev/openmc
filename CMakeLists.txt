@@ -80,6 +80,11 @@ if(libmesh)
 endif()
 
 #===============================================================================
+# libpng
+#===============================================================================
+find_package(PNG)
+
+#===============================================================================
 # HDF5 for binary output
 #===============================================================================
 
@@ -214,8 +219,6 @@ add_subdirectory(vendor/xtensor)
 # GSL header-only library
 #===============================================================================
 
-set(GSL_LITE_OPT_INSTALL_COMPAT_HEADER ON CACHE BOOL
-  "Install MS-GSL compatibility header <gsl/gsl>")
 add_subdirectory(vendor/gsl-lite)
 
 # Make sure contract violations throw exceptions
@@ -423,6 +426,11 @@ endif()
 if(libmesh)
   target_compile_definitions(libopenmc PRIVATE LIBMESH)
   target_link_libraries(libopenmc PkgConfig::LIBMESH)
+endif()
+
+if (PNG_FOUND)
+  target_compile_definitions(libopenmc PRIVATE USE_LIBPNG)
+  target_link_libraries(libopenmc PNG::PNG)
 endif()
 
 #===============================================================================

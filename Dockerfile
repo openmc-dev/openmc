@@ -68,8 +68,8 @@ RUN apt-get update -y && \
     apt-get install -y \
         python3-pip python-is-python3 wget git build-essential cmake \
         mpich libmpich-dev libhdf5-serial-dev libhdf5-mpich-dev \
-        imagemagick && \
-    apt-get autoremove -y
+        libpng-dev && \
+    apt-get autoremove
 
 # Update system-provided pip
 RUN pip install --upgrade pip

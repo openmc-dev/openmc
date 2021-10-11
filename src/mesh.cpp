@@ -2,7 +2,7 @@
 #include <algorithm> // for copy, equal, min, min_element
 #include <cmath>     // for ceil
 #include <cstddef>   // for size_t
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 #include <string>
 
 #ifdef OPENMC_MPI
@@ -35,6 +35,7 @@
 #ifdef LIBMESH
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
+#include "libmesh/mesh_modification.h"
 #endif
 
 namespace openmc {
@@ -171,6 +172,12 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
     }
   }
 
+  // check if a length unit multiplier was specified
+  if (check_for_node(node, "length_multiplier")) {
+    length_multiplier_ = std::stod(get_node_value(node, "length_multiplier"));
+    specified_length_multiplier_ = true;
+  }
+
   // get the filename of the unstructured mesh to load
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
@@ -218,7 +225,19 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 
   write_dataset(mesh_group, "volumes", tet_vols);
   write_dataset(mesh_group, "centroids", centroids);
+
+  if (specified_length_multiplier_)
+    write_dataset(mesh_group, "length_multiplier", length_multiplier_);
+
   close_group(mesh_group);
+}
+
+void UnstructuredMesh::set_length_multiplier(double length_multiplier)
+{
+  length_multiplier_ = length_multiplier;
+
+  if (length_multiplier_ != 1.0)
+    specified_length_multiplier_ = true;
 }
 
 void StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
@@ -1585,9 +1604,10 @@ MOABMesh::MOABMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
-MOABMesh::MOABMesh(const std::string& filename)
+MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
 {
   filename_ = filename;
+  set_length_multiplier(length_multiplier);
   initialize();
 }
 
@@ -1632,6 +1652,34 @@ void MOABMesh::initialize()
   rval = mbi_->add_entities(tetset_, ehs_);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to add tetrahedra to an entity set.");
+  }
+
+  if (specified_length_multiplier_) {
+    // get the connectivity of all tets
+    moab::Range adj;
+    rval = mbi_->get_adjacencies(ehs_, 0, true, adj, moab::Interface::UNION);
+    if (rval != moab::MB_SUCCESS) {
+      fatal_error("Failed to get adjacent vertices of tetrahedra.");
+    }
+    // scale all vertex coords by multiplier (done individually so not all
+    // coordinates are in memory twice at once)
+    for (auto vert : adj) {
+      // retrieve coords
+      std::array<double, 3> coord;
+      rval = mbi_->get_coords(&vert, 1, coord.data());
+      if (rval != moab::MB_SUCCESS) {
+        fatal_error("Could not get coordinates of vertex.");
+      }
+      // scale coords
+      for (auto& c : coord) {
+        c *= length_multiplier_;
+      }
+      // set new coords
+      rval = mbi_->set_coords(&vert, 1, coord.data());
+      if (rval != moab::MB_SUCCESS) {
+        fatal_error("Failed to set new vertex coordinates");
+      }
+    }
   }
 
   // build acceleration data structures
@@ -2144,9 +2192,10 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
-LibMesh::LibMesh(const std::string& filename)
+LibMesh::LibMesh(const std::string& filename, double length_multiplier)
 {
   filename_ = filename;
+  set_length_multiplier(length_multiplier);
   initialize();
 }
 
@@ -2162,6 +2211,11 @@ void LibMesh::initialize()
 
   m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
   m_->read(filename_);
+
+  if (specified_length_multiplier_) {
+    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
+  }
+
   m_->prepare_for_use();
 
   // ensure that the loaded mesh is 3 dimensional

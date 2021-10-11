@@ -72,26 +72,26 @@ void title()
 
   // Write version information
   fmt::print(
-    "                   | The OpenMC Monte Carlo Code\n"
-    "         Copyright | 2011-2021 MIT and OpenMC contributors\n"
-    "           License | https://docs.openmc.org/en/latest/license.html\n"
-    "           Version | {}.{}.{}{}\n",
+    "                 | The OpenMC Monte Carlo Code\n"
+    "       Copyright | 2011-2021 MIT, UChicago Argonne LLC, and contributors\n"
+    "         License | https://docs.openmc.org/en/latest/license.html\n"
+    "         Version | {}.{}.{}{}\n",
     VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
 #ifdef GIT_SHA1
-  fmt::print("          Git SHA1 | {}\n", GIT_SHA1);
+  fmt::print("        Git SHA1 | {}\n", GIT_SHA1);
 #endif
 
   // Write the date and time
-  fmt::print("         Date/Time | {}\n", time_stamp());
+  fmt::print("       Date/Time | {}\n", time_stamp());
 
 #ifdef OPENMC_MPI
   // Write number of processors
-  fmt::print("     MPI Processes | {}\n", mpi::n_procs);
+  fmt::print("   MPI Processes | {}\n", mpi::n_procs);
 #endif
 
 #ifdef _OPENMP
   // Write number of OpenMP threads
-  fmt::print("    OpenMP Threads | {}\n", omp_get_max_threads());
+  fmt::print("  OpenMP Threads | {}\n", omp_get_max_threads());
 #endif
   std::cout << std::endl;
 }
@@ -335,8 +335,8 @@ void print_version()
 #ifdef GIT_SHA1
     fmt::print("Git SHA1: {}\n", GIT_SHA1);
 #endif
-    fmt::print("Copyright (c) 2011-2021 Massachusetts Institute of "
-               "Technology and OpenMC contributors\nMIT/X license at "
+    fmt::print("Copyright (c) 2011-2021 MIT, UChicago Argonne LLC, and "
+               "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
   }
 }

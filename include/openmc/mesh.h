@@ -331,6 +331,15 @@ public:
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
 
+protected:
+  //! Set the length multiplier to apply to each point in the mesh
+  void set_length_multiplier(const double length_multiplier);
+
+  // Data members
+  double length_multiplier_ {
+    1.0}; //!< Constant multiplication factor to apply to mesh coordinates
+  bool specified_length_multiplier_ {false};
+
 private:
   //! Setup method for the mesh. Builds data structures,
   //! sets up element mapping, creates bounding boxes, etc.
@@ -344,7 +353,7 @@ public:
   // Constructors
   MOABMesh() = default;
   MOABMesh(pugi::xml_node);
-  MOABMesh(const std::string& filename);
+  MOABMesh(const std::string& filename, double length_multiplier = 1.0);
   MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
 
   // Overridden Methods
@@ -492,7 +501,7 @@ class LibMesh : public UnstructuredMesh {
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
-  LibMesh(const std::string& filename);
+  LibMesh(const std::string& filename, double length_multiplier = 1.0);
 
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,

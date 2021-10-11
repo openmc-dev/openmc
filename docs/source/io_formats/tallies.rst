@@ -318,6 +318,10 @@ attributes/sub-elements:
   :dimension:
     The number of mesh cells in each direction. (For regular mesh only.)
 
+  :length_multiplier:
+    A multiplicative factor to apply to the mesh coordinates in all directions.
+    (For unstructured mesh only.)
+
   :lower_left:
     The lower-left corner of the structured mesh. If only two coordinates are
     given, it is assumed that the mesh is an x-y mesh. (For regular mesh only.)

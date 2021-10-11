@@ -161,7 +161,7 @@ RUN if [ "$build_libmesh" = "on" ]; then \
 RUN mkdir -p $HOME/OpenMC && cd $HOME/OpenMC ; \
     git clone --shallow-submodules --recurse-submodules -b ${openmc_branch} --depth=1 ${OPENMC_REPO} ; \
     mkdir build && cd $HOME/OpenMC/build ; \
-    cmake ../openmc ${OPENMC_CMAKE_ARGS} ; \
+    cmake ../openmc "${OPENMC_CMAKE_ARGS}" ; \
     make 2>/dev/null -j${compile_cores} install ; \
     cd ../openmc && pip install -e .[test]
 

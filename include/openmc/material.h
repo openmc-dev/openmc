@@ -190,8 +190,8 @@ private:
 
   #pragma omp declare target
   void calculate_neutron_xs(Particle& p) const;
-  #pragma omp end declare target
   void calculate_photon_xs(Particle& p) const;
+  #pragma omp end declare target
 
   //----------------------------------------------------------------------------
   // Private data members

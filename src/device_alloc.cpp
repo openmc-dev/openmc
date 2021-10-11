@@ -1,12 +1,14 @@
 #include "openmc/device_alloc.h"
 
 #include "openmc/bank.h"
+#include "openmc/bremsstrahlung.h"
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
+#include "openmc/photon.h"
 #include "openmc/simulation.h"
 #include "openmc/thermal.h"
 
@@ -51,6 +53,7 @@ void move_settings_to_device()
   #pragma omp target update to(settings::res_scat_energy_max)
   #pragma omp target update to(settings::weight_cutoff)
   #pragma omp target update to(settings::weight_survive)
+  #pragma omp target update to(settings::electron_treatment)
   settings::energy_cutoff[0]; // Lazy extern template expansion workaround
   #pragma omp target update to(settings::energy_cutoff)
   #pragma omp target update to(settings::n_log_bins)
@@ -151,6 +154,22 @@ void move_read_only_data_to_device()
     ts.copy_to_device();
   }
 
+  // Photon data /////////////////////////////////////////////////////
+
+  #pragma omp target update to(data::compton_profile_pz_size)
+  #pragma omp target enter data map(to: data::compton_profile_pz[:data::compton_profile_pz_size])
+
+  #pragma omp target update to(data::elements_size)
+  #pragma omp target enter data map(to: data::elements[:data::elements_size])
+  for (int i = 0; i < data::elements_size; ++i) {
+    auto& elm = data::elements[i];
+    std::cout << "Moving " << elm.name_ << " data to device..." << std::endl;
+    elm.copy_to_device();
+  }
+  data::device_ttb_e_grid = data::ttb_e_grid.data();
+  #pragma omp target update to(data::ttb_e_grid_size)
+  #pragma omp target enter data map(to: data::device_ttb_e_grid[:data::ttb_e_grid.size()])
+
   // Materials /////////////////////////////////////////////////////////
 
   std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
@@ -183,6 +202,10 @@ void release_data_from_device()
   std::cout << "Releasing data from device..." << std::endl;
   for (int i = 0; i < data::nuclides_size; ++i) {
     data::nuclides[i].release_from_device();
+  }
+
+  for (int i = 0; i < data::elements_size; ++i) {
+    data::elements[i].release_from_device();
   }
 }
 

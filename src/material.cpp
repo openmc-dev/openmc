@@ -490,7 +490,7 @@ void Material::collision_stopping_power(double* s_col, bool positron)
   std::vector<double> e_b_sq;
 
   for (int i = 0; i < element_.size(); ++i) {
-    const auto& elm = *data::elements[element_[i]];
+    const auto& elm = data::elements[element_[i]];
     double awr = data::nuclides[nuclide_[i]].awr_;
 
     // Get atomic density of nuclide given atom/weight percent
@@ -585,9 +585,9 @@ void Material::init_bremsstrahlung()
     bool positron = (particle == 1);
 
     // Allocate arrays for TTB data
-    ttb->pdf = xt::zeros<double>({n_e, n_e});
-    ttb->cdf = xt::zeros<double>({n_e, n_e});
-    ttb->yield = xt::empty<double>({n_e});
+    ttb->pdf_ = xt::zeros<double>({n_e, n_e});
+    ttb->cdf_ = xt::zeros<double>({n_e, n_e});
+    ttb->yield_ = xt::empty<double>({n_e});
 
     // Allocate temporary arrays
     xt::xtensor<double, 1> stopping_power_collision({n_e}, 0.0);
@@ -604,7 +604,7 @@ void Material::init_bremsstrahlung()
     // Bragg's additivity rule.
     for (int i = 0; i < n; ++i) {
       // Get pointer to current element
-      const auto& elm = *data::elements[element_[i]];
+      const auto& elm = data::elements[element_[i]];
       double awr = data::nuclides[nuclide_[i]].awr_;
 
       // Get atomic density and mass density of nuclide given atom/weight percent
@@ -696,7 +696,7 @@ void Material::init_bremsstrahlung()
           c += spline_integrate(n, &data::ttb_e_grid(i), &f(i), &z(i),
             data::ttb_e_grid(j), data::ttb_e_grid(j+1));
 
-          ttb->pdf(j+1,i) = c;
+          ttb->pdf_(j+1,i) = c;
         }
 
       // Integrate the last two points using trapezoidal rule in log-log space
@@ -706,7 +706,7 @@ void Material::init_bremsstrahlung()
         double x_l = std::log(f(i));
         double x_r = std::log(f(i+1));
 
-        ttb->pdf(i+1,i) = 0.5*(e_r - e_l)*(std::exp(e_l + x_l) + std::exp(e_r + x_r));
+        ttb->pdf_(i+1,i) = 0.5*(e_r - e_l)*(std::exp(e_l + x_l) + std::exp(e_r + x_r));
       }
     }
 
@@ -714,7 +714,7 @@ void Material::init_bremsstrahlung()
     for (int j = 1; j < n_e; ++j) {
       // Set last element of PDF to small non-zero value to enable log-log
       // interpolation
-      ttb->pdf(j,j) = std::exp(-500.0);
+      ttb->pdf_(j,j) = std::exp(-500.0);
 
       // Loop over photon energies
       double c = 0.0;
@@ -723,19 +723,19 @@ void Material::init_bremsstrahlung()
         // space
         double w_l = std::log(data::ttb_e_grid(i));
         double w_r = std::log(data::ttb_e_grid(i+1));
-        double x_l = std::log(ttb->pdf(j,i));
-        double x_r = std::log(ttb->pdf(j,i+1));
+        double x_l = std::log(ttb->pdf_(j,i));
+        double x_r = std::log(ttb->pdf_(j,i+1));
 
         c += 0.5*(w_r - w_l)*(std::exp(w_l + x_l) + std::exp(w_r + x_r));
-        ttb->cdf(j,i+1) = c;
+        ttb->cdf_(j,i+1) = c;
       }
 
       // Set photon number yield
-      ttb->yield(j) = c;
+      ttb->yield_(j) = c;
     }
 
     // Use logarithm of number yield since it is log-log interpolated
-    ttb->yield = xt::where(ttb->yield > 0.0, xt::log(ttb->yield), -500.0);
+    ttb->yield_ = xt::where(ttb->yield_ > 0.0, xt::log(ttb->yield_), -500.0);
   }
 }
 
@@ -761,8 +761,7 @@ void Material::calculate_xs(Particle& p) const
   if (p.type_ == Particle::Type::neutron) {
     this->calculate_neutron_xs(p);
   } else if (p.type_ == Particle::Type::photon) {
-    printf("Photon XS lookups not yet supported on device.\n");
-    //this->calculate_photon_xs(p);
+    this->calculate_photon_xs(p);
   }
 }
 
@@ -849,19 +848,19 @@ void Material::calculate_photon_xs(Particle& p) const
     // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine microscopic cross sections for this nuclide
-    int i_element = element_[i];
+    int i_element = device_element_[i];
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {p.photon_xs_[i_element]};
     if (p.E_ != micro.last_E) {
-      data::elements[i_element]->calculate_xs(p);
+      data::elements[i_element].calculate_xs(p);
     }
 
     // ========================================================================
     // ADD TO MACROSCOPIC CROSS SECTION
 
     // Copy atom density of nuclide in material
-    double atom_density = atom_density_(i);
+    double atom_density = device_atom_density_[i];
 
     // Add contributions to material macroscopic cross sections
     p.macro_xs_.total += atom_density * micro.total;
@@ -1116,6 +1115,7 @@ void Material::copy_to_device()
   #pragma omp target enter data map(to: device_atom_density_[:atom_density_.size()])
   device_thermal_tables_ = thermal_tables_.data();
   #pragma omp target enter data map(to: device_thermal_tables_[:thermal_tables_.size()])
+  ttb_.copy_to_device();
 }
 
 void Material::release_from_device()
@@ -1126,6 +1126,7 @@ void Material::release_from_device()
   #pragma omp target exit data map(release: device_p0_[:p0_.size()])
   #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])
   #pragma omp target exit data map(release: device_thermal_tables_[:thermal_tables_.size()])
+  ttb_.release_from_device();
 }
 
 //==============================================================================

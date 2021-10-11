@@ -615,14 +615,15 @@ void initialize_data()
   }
 
   if (settings::photon_transport) {
-    for (const auto& elem : data::elements) {
-      if (elem->energy_.size() >= 1) {
+    for (int i = 0; i < data::elements_size; ++i) {
+      const auto& elem = data::elements[i];
+      if (elem.energy_.size() >= 1) {
         int photon = static_cast<int>(Particle::Type::photon);
-        int n = elem->energy_.size();
+        int n = elem.energy_.size();
         data::energy_min[photon] = std::max(data::energy_min[photon],
-          std::exp(elem->energy_(1)));
+          std::exp(elem.energy_(1)));
         data::energy_max[photon] = std::min(data::energy_max[photon],
-          std::exp(elem->energy_(n - 1)));
+          std::exp(elem.energy_(n - 1)));
       }
     }
 

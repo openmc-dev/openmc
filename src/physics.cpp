@@ -43,7 +43,6 @@ void collision(Particle& p)
   case Particle::Type::neutron:
     sample_neutron_reaction(p);
     break;
-  /*
   case Particle::Type::photon:
     sample_photon_reaction(p);
     break;
@@ -53,7 +52,6 @@ void collision(Particle& p)
   case Particle::Type::positron:
     sample_positron_reaction(p);
     break;
-  */
   }
 
   // Kill particle if energy falls below cutoff
@@ -217,7 +215,7 @@ create_fission_sites(Particle& p, int i_nuclide, const ReactionFlat& rx)
             "in this generation will not be banked.");
         */
         printf("The shared fission bank is full. Additional fission sites created "
-          "in this generation will not be banked.");
+          "in this generation will not be banked.\n");
         skipped++;
         break;
       }
@@ -281,7 +279,7 @@ void sample_photon_reaction(Particle& p)
   // Sample element within material
   int i_element = sample_element(p);
   const auto& micro {p.photon_xs_[i_element]};
-  const auto& element {*data::elements[i_element]};
+  const auto& element {data::elements[i_element]};
 
   // Calculate photon energy over electron rest mass equivalent
   double alpha = p.E_/MASS_ELECTRON_EV;
@@ -314,7 +312,7 @@ void sample_photon_reaction(Particle& p)
     if (i_shell == -1) {
       e_b = 0.0;
     } else {
-      e_b = element.binding_energy_[i_shell];
+      e_b = element.device_binding_energy_[i_shell];
     }
 
     // Create Compton electron
@@ -332,8 +330,7 @@ void sample_photon_reaction(Particle& p)
     // Allow electrons to fill orbital and produce auger electrons
     // and fluorescent photons
     if (i_shell >= 0) {
-      const auto& shell = element.shells_[i_shell];
-      element.atomic_relaxation(shell, p);
+      element.atomic_relaxation(i_shell, p);
     }
 
     phi += PI;
@@ -347,7 +344,9 @@ void sample_photon_reaction(Particle& p)
   // Photoelectric effect
   double prob_after = prob + micro.photoelectric;
   if (prob_after > cutoff) {
-    for (const auto& shell : element.shells_) {
+    for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
+      const auto& shell {element.device_shells_[i_shell]};
+
       // Get grid index and interpolation factor
       int i_grid = micro.index_grid;
       double f = micro.interp_factor;
@@ -357,9 +356,9 @@ void sample_photon_reaction(Particle& p)
       if (i_grid < i_start) continue;
 
       // Evaluation subshell photoionization cross section
-      double xs = std::exp(shell.cross_section(i_grid - i_start) +
-        f*(shell.cross_section(i_grid + 1 - i_start) -
-        shell.cross_section(i_grid - i_start)));
+      double xs = std::exp(shell.cross_section[i_grid - i_start] +
+        f*(shell.cross_section[i_grid + 1 - i_start] -
+        shell.cross_section[i_grid - i_start]));
 
       prob += xs;
       if (prob > cutoff) {
@@ -390,7 +389,7 @@ void sample_photon_reaction(Particle& p)
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
-        element.atomic_relaxation(shell, p);
+        element.atomic_relaxation(i_shell, p);
         p.event_ = TallyEvent::ABSORB;
         p.event_mt_ = 533 + shell.index_subshell;
         p.alive_ = false;
@@ -503,8 +502,8 @@ int sample_element(Particle& p)
   double prob = 0.0;
   for (int i = 0; i < mat.element_.size(); ++i) {
     // Find atom density
-    int i_element = mat.element_[i];
-    double atom_density = mat.atom_density_[i];
+    int i_element = mat.device_element_[i];
+    double atom_density = mat.device_atom_density_[i];
 
     // Determine microscopic cross section
     double sigma = atom_density * p.photon_xs_[i_element].total;
@@ -513,15 +512,16 @@ int sample_element(Particle& p)
     prob += sigma;
     if (prob > cutoff) {
       // Save which nuclide particle had collision with for tally purpose
-      p.event_nuclide_ = mat.nuclide_[i];
+      p.event_nuclide_ = mat.device_nuclide_[i];
 
       return i_element;
     }
   }
 
   // If we made it here, no element was sampled
-  p.write_restart();
-  fatal_error("Did not sample any element during collision.");
+  //p.write_restart();
+  //fatal_error("Did not sample any element during collision.");
+  printf("Did not sample any element during collision.\n");
 }
 
 ReactionFlat sample_fission(int i_nuclide, Particle& p)

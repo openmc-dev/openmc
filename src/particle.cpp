@@ -78,7 +78,7 @@ Particle::Particle()
   //std::cout << "neutron_xs size = " << data::nuclides_size << std::endl;
   assert(NEUTRON_XS_SIZE >= data::nuclides_size);
   //std::cout << "photon_xs size = " << data::elements.size() << std::endl;
-  assert(PHOTON_XS_SIZE >= data::elements.size());
+  assert(PHOTON_XS_SIZE >= data::elements_size);
   //photon_xs_.resize(data::elements.size());
 }
 

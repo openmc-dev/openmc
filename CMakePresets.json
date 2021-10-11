@@ -9,7 +9,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -gline-tables-only -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64=\"-O0\" -gline-tables-only -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
             }
         },
         {

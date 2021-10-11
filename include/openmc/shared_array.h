@@ -133,7 +133,9 @@ public:
   
   void sync_size_device_to_host()
   {
+    #ifdef USE_DEVICE
     #pragma omp target update from(this[:1])
+    #endif
   }
 
   //! Resize the container to contain a specified number of elements. This is
@@ -169,8 +171,10 @@ public:
   
   void copy_device_to_host()
   {
+    #ifdef USE_DEVICE
     #pragma omp target update from(data_[:capacity_])
     #pragma omp target update from(this[:1])
+    #endif
   }
   
   //==========================================================================

@@ -10,7 +10,7 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
@@ -244,14 +244,14 @@ public:
 
   explicit CSGCell(pugi::xml_node cell_node);
 
-  bool contains(Position r, Direction u, int32_t on_surface) const;
+  bool contains(Position r, Direction u, int32_t on_surface) const override;
 
   std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const;
+    Position r, Direction u, int32_t on_surface, Particle* p) const override;
 
   void to_hdf5_inner(hid_t group_id) const override;
 
-  BoundingBox bounding_box() const;
+  BoundingBox bounding_box() const override;
 
 protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;

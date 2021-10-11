@@ -406,3 +406,14 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
     A required string indicating the file to be loaded representing the DAGMC universe.
 
     *Default*: None
+
+
+  .. note:: A geometry.xml file containing only a DAGMC model for a file named `dagmc.h5m` (no CSG)
+            looks as follows
+
+            .. code-block:: xml
+
+              <?xml version='1.0' encoding='utf-8'?>
+              <geometry>
+                <dagmc_universe filename="dagmc.h5m" id="1" />
+              </geometry>

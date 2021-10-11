@@ -24,6 +24,14 @@ public:
   virtual double sample(uint64_t* seed) const = 0;
 };
 
+using UPtrDist = unique_ptr<Distribution>;
+
+//! Return univariate probability distribution specified in XML file
+//! \param[in] node XML node representing distribution
+//! \return Unique pointer to distribution
+UPtrDist distribution_from_xml(pugi::xml_node node);
+
+
 //==============================================================================
 //! A discrete distribution (probability mass function)
 //==============================================================================
@@ -222,12 +230,27 @@ private:
   vector<double> x_; //! Possible outcomes
 };
 
-using UPtrDist = unique_ptr<Distribution>;
+//==============================================================================
+//! Mixture distribution
+//==============================================================================
 
-//! Return univariate probability distribution specified in XML file
-//! \param[in] node XML node representing distribution
-//! \return Unique pointer to distribution
-UPtrDist distribution_from_xml(pugi::xml_node node);
+class Mixture : public Distribution {
+public:
+  explicit Mixture(pugi::xml_node node);
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  double sample(uint64_t* seed) const;
+
+private:
+  // Storrage for probability + distribution
+  using DistPair = std::pair<double, UPtrDist>;
+
+  vector<DistPair>
+    distribution_; //!< sub-distributions + cummulative probabilities
+};
+
 
 } // namespace openmc
 

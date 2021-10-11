@@ -4,7 +4,7 @@
 #include "openmc/vector.h"
 #include <string>
 
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/tallies/filter.h"
 

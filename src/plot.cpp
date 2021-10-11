@@ -1,12 +1,16 @@
 #include "openmc/plot.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <fstream>
 #include <sstream>
 
 #include "xtensor/xview.hpp"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
+#ifdef USE_LIBPNG
+#include <png.h>
+#endif
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -103,25 +107,29 @@ uint64_t plotter_seed = 1;
 
 extern "C" int openmc_plot_geometry()
 {
+
   for (auto& pl : model::plots) {
     write_message(5, "Processing plot {}: {}...", pl.id_, pl.path_plot_);
 
     if (PlotType::slice == pl.type_) {
       // create 2D image
-      create_ppm(pl);
+      create_image(pl);
     } else if (PlotType::voxel == pl.type_) {
       // create voxel file for 3D viewing
       create_voxel(pl);
     }
   }
+
   return 0;
 }
 
 void read_plots_xml()
 {
-  // Check if plots.xml exists
+  // Check if plots.xml exists; this is only necessary when the plot runmode is
+  // initiated. Otherwise, we want to read plots.xml because it may be called
+  // later via the API. In that case, its ok for a plots.xml to not exist
   std::string filename = settings::path_input + "plots.xml";
-  if (!file_exists(filename)) {
+  if (!file_exists(filename) && settings::run_mode == RunMode::PLOTTING) {
     fatal_error(fmt::format("Plots XML file '{}' does not exist!", filename));
   }
 
@@ -138,12 +146,18 @@ void read_plots_xml()
   }
 }
 
+void free_memory_plot()
+{
+  model::plots.clear();
+  model::plot_map.clear();
+}
+
 //==============================================================================
-// CREATE_PPM creates an image based on user input from a plots.xml <plot>
-// specification in the portable pixmap format (PPM)
+// CREATE_IMAGE creates an image based on user input from a plots.xml <plot>
+// specification in the PNG/PPM format
 //==============================================================================
 
-void create_ppm(Plot const& pl)
+void create_image(Plot const& pl)
 {
 
   size_t width = pl.pixels_[0];
@@ -184,8 +198,12 @@ void create_ppm(Plot const& pl)
     draw_mesh_lines(pl, data);
   }
 
-  // write ppm data to file
+// create image file
+#ifdef USE_LIBPNG
+  output_png(pl, data);
+#else
   output_ppm(pl, data);
+#endif
 }
 
 void Plot::set_id(pugi::xml_node plot_node)
@@ -238,7 +256,11 @@ void Plot::set_output_path(pugi::xml_node plot_node)
   // add appropriate file extension to name
   switch (type_) {
   case PlotType::slice:
+#ifdef USE_LIBPNG
+    filename.append(".png");
+#else
     filename.append(".ppm");
+#endif
     break;
   case PlotType::voxel:
     filename.append(".h5");
@@ -674,6 +696,60 @@ void output_ppm(Plot const& pl, const ImageData& data)
 }
 
 //==============================================================================
+// OUTPUT_PNG writes out a previously generated image to a PNG file
+//==============================================================================
+
+#ifdef USE_LIBPNG
+void output_png(Plot const& pl, const ImageData& data)
+{
+  // Open PNG file for writing
+  std::string fname = pl.path_plot_;
+  fname = strtrim(fname);
+  auto fp = std::fopen(fname.c_str(), "wb");
+
+  // Initialize write and info structures
+  auto png_ptr =
+    png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+  auto info_ptr = png_create_info_struct(png_ptr);
+
+  // Setup exception handling
+  if (setjmp(png_jmpbuf(png_ptr)))
+    fatal_error("Error during png creation");
+
+  png_init_io(png_ptr, fp);
+
+  // Write header (8 bit colour depth)
+  int width = pl.pixels_[0];
+  int height = pl.pixels_[1];
+  png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGB,
+    PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+  png_write_info(png_ptr, info_ptr);
+
+  // Allocate memory for one row (3 bytes per pixel - RGB)
+  std::vector<png_byte> row(3 * width);
+
+  // Write color for each pixel
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      RGBColor rgb = data(x, y);
+      row[3 * x] = rgb.red;
+      row[3 * x + 1] = rgb.green;
+      row[3 * x + 2] = rgb.blue;
+    }
+    png_write_row(png_ptr, row.data());
+  }
+
+  // End write
+  png_write_end(png_ptr, nullptr);
+
+  // Clean up data structures
+  std::fclose(fp);
+  png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
+  png_destroy_write_struct(&png_ptr, nullptr);
+}
+#endif
+
+//==============================================================================
 // DRAW_MESH_LINES draws mesh line boundaries on an image
 //==============================================================================
 
@@ -777,7 +853,7 @@ void draw_mesh_lines(Plot const& pl, ImageData& data)
 
 //==============================================================================
 // CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D
-// geometry visualization.  It works the same way as create_ppm by dragging a
+// geometry visualization.  It works the same way as create_image by dragging a
 // particle across the geometry for the specified number of voxels. The first 3
 // int's in the binary are the number of x, y, and z voxels.  The next 3
 // double's are the widths of the voxels in the x, y, and z directions. The

@@ -100,7 +100,7 @@ directly from the package manager:
 
 .. code-block:: sh
 
-    sudo apt install g++ cmake libhdf5-dev
+    sudo apt install g++ cmake libhdf5-dev libpng-dev
 
 After the packages have been installed, follow the instructions below for
 building and installing OpenMC from source.

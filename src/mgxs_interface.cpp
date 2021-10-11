@@ -123,10 +123,14 @@ void MgxsInterface::create_macro_xs()
   // Therefore type(nuclides[mat->nuclide_[0]]) dictates type(macroxs).
   // At the same time, we will find the scattering type, as that will dictate
   // how we allocate the scatter object within macroxs.
+
   for (int i = 0; i < model::materials.size(); ++i) {
+    // First we have to normalize the densities as it has not been called yet
+    // for MG mode
+    auto& mat {model::materials[i]};
+    mat->finalize();
     if (kTs[i].size() > 0) {
       // Convert atom_densities to a vector
-      auto& mat {model::materials[i]};
       vector<double> atom_densities(
         mat->atom_density_.begin(), mat->atom_density_.end());
 

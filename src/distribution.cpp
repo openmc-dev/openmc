@@ -101,9 +101,9 @@ Rational::Rational(pugi::xml_node node)
   const double b = params.at(1);
   const double n = params.at(2);
 
-  offset_ = std::pow(a, n+1);
+  offset_ = std::pow(a, n + 1);
   span_ = std::pow(b, n + 1) - offset_;
-  ninv_ = 1/(n+1);
+  ninv_ = 1 / (n + 1);
 }
 
 double Rational::sample(uint64_t* seed) const

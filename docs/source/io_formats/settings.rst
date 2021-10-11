@@ -641,7 +641,7 @@ variable and whose sub-elements/attributes are as follows:
   For a "rational" distribution, ``parameters`` should be given as three real
   numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
   which random variates are sampled and :math:`n` that defines the exponent of
-  the probability distribution :math:`p(x)=x^n`
+  the probability distribution :math:`p(x)=c x^n`
 
   For a "discrete" or "tabular" distribution, ``parameters`` provides the
   :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`

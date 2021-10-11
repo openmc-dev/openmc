@@ -86,14 +86,14 @@ double Uniform::sample(uint64_t* seed) const
 }
 
 //==============================================================================
-// Rational implementation
+// PowerLaw implementation
 //==============================================================================
 
-Rational::Rational(pugi::xml_node node)
+PowerLaw::PowerLaw(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
   if (params.size() != 3) {
-    fatal_error("Rational distribution must have three "
+    fatal_error("PowerLaw distribution must have three "
                 "parameters specified.");
   }
 
@@ -106,7 +106,7 @@ Rational::Rational(pugi::xml_node node)
   ninv_ = 1 / (n + 1);
 }
 
-double Rational::sample(uint64_t* seed) const
+double PowerLaw::sample(uint64_t* seed) const
 {
   return std::pow(offset_ + prn(seed) * span_, ninv_);
 }
@@ -373,8 +373,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   UPtrDist dist;
   if (type == "uniform") {
     dist = UPtrDist {new Uniform(node)};
-  } else if (type == "rational") {
-    dist = UPtrDist{new Rational(node)};
+  } else if (type == "powerlaw") {
+    dist = UPtrDist {new PowerLaw(node)};
   } else if (type == "maxwell") {
     dist = UPtrDist {new Maxwell(node)};
   } else if (type == "watt") {

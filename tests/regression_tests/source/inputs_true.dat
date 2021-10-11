@@ -101,7 +101,7 @@
   </source>
   <source strength="0.1">
     <space origin="1.0 1.0 0.0" type="spherical">
-      <r parameters="2.0 3.0 2.0" type="rational" />
+      <r parameters="2.0 3.0 2.0" type="powerlaw" />
       <theta type="discrete">
         <parameters>0.7853981633974483 1.5707963267948966 2.356194490192345 0.3 0.4 0.3</parameters>
       </theta>
@@ -124,7 +124,7 @@
   </source>
   <source strength="0.1">
     <space origin="1.0 1.0 0.0" type="cylindrical">
-      <r parameters="2.0 3.0 1.0" type="rational" />
+      <r parameters="2.0 3.0 1.0" type="powerlaw" />
       <phi parameters="0.0 6.283185307179586" type="uniform" />
       <z interpolation="linear-linear" type="tabular">
         <parameters>-2.0 0.0 2.0 0.2 0.3 0.2</parameters>

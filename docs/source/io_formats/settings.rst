@@ -638,7 +638,7 @@ variable and whose sub-elements/attributes are as follows:
   numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
   which random variates are sampled.
 
-  For a "rational" distribution, ``parameters`` should be given as three real
+  For a "power law" distribution, ``parameters`` should be given as three real
   numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
   which random variates are sampled and :math:`n` that defines the exponent of
   the probability distribution :math:`p(x)=c x^n`

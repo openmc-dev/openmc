@@ -81,15 +81,15 @@ private:
 };
 
 //==============================================================================
-//! Rational distribution over the interval [a,b] with exponent n
+//! PowerLaw distribution over the interval [a,b] with exponent n : p(x)=c x^n
 //==============================================================================
 
-class Rational : public Distribution {
+class PowerLaw : public Distribution {
 public:
-  explicit Rational(pugi::xml_node node);
-  Rational(double a, double b, double n)
+  explicit PowerLaw(pugi::xml_node node);
+  PowerLaw(double a, double b, double n)
     : offset_ {std::pow(a, n + 1)}, span_ {std::pow(b, n + 1) - offset_},
-      ninv_ {1/(n+1)} {};
+      ninv_ {1 / (n + 1)} {};
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
@@ -100,6 +100,7 @@ public:
   double b() const { return std::pow(offset_ + span_, ninv_); }
   double n() const { return 1 / ninv_ - 1; }
 private:
+  //! Store processed values in object to allow for faster sampling
   double offset_; //!< a^(n+1)
   double span_; //!< b^(n+1) - a^(n+1)
   double ninv_; //!< 1/(n+1)

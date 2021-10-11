@@ -30,8 +30,8 @@ class SourceTestHarness(PyAPITestHarness):
         y_dist = openmc.stats.Discrete([-4., -1., 3.], [0.2, 0.3, 0.5])
         z_dist = openmc.stats.Tabular([-2., 0., 2.], [0.2, 0.3, 0.2])
         r_dist = openmc.stats.Uniform(2., 3.)
-        r_dist1 = openmc.stats.Rational(2., 3., 1.)
-        r_dist2 = openmc.stats.Rational(2., 3., 2.)
+        r_dist1 = openmc.stats.PowerLaw(2., 3., 1.)
+        r_dist2 = openmc.stats.PowerLaw(2., 3., 2.)
         theta_dist = openmc.stats.Discrete([pi/4, pi/2, 3*pi/4],
                                            [0.3, 0.4, 0.3])
         phi_dist = openmc.stats.Uniform(0.0, 2*pi)

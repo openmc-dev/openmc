@@ -42,8 +42,8 @@ class Univariate(EqualityMixin, ABC):
             return Discrete.from_xml_element(elem)
         elif distribution == 'uniform':
             return Uniform.from_xml_element(elem)
-        elif distribution == 'rational':
-            return Rational.from_xml_element(elem)
+        elif distribution == 'powerlaw':
+            return PowerLaw.from_xml_element(elem)
         elif distribution == 'maxwell':
             return Maxwell.from_xml_element(elem)
         elif distribution == 'watt':
@@ -244,7 +244,7 @@ class Uniform(Univariate):
         params = get_text(elem, 'parameters').split()
         return cls(*map(float, params))
 
-class Rational(Univariate):
+class PowerLaw(Univariate):
     """Distribution with power law probability over a finite interval [a,b]
     
     The power law distribution has density function :math:`p(x) dx = c x^n dx`.
@@ -306,7 +306,7 @@ class Rational(Univariate):
         self._n = n
 
     def to_xml_element(self, element_name):
-        """Return XML representation of the rational distribution
+        """Return XML representation of the power law distribution
 
         Parameters
         ----------
@@ -320,13 +320,13 @@ class Rational(Univariate):
 
         """
         element = ET.Element(element_name)
-        element.set("type", "rational")
+        element.set("type", "powerlaw")
         element.set("parameters", f'{self.a} {self.b} {self.n}')
         return element
 
     @classmethod
     def from_xml_element(cls, elem):
-        """Generate rational distribution from an XML element
+        """Generate power law distribution from an XML element
 
         Parameters
         ----------
@@ -335,7 +335,7 @@ class Rational(Univariate):
 
         Returns
         -------
-        openmc.stats.Rational
+        openmc.stats.PowerLaw
             Distribution generated from XML element
 
         """

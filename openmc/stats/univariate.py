@@ -246,6 +246,8 @@ class Uniform(Univariate):
 
 class Rational(Univariate):
     """Distribution with power law probability over a finite interval [a,b]
+    
+    The power law distribution has density function :math:`p(x) dx = c x^n dx`.
 
     Parameters
     ----------
@@ -254,7 +256,8 @@ class Rational(Univariate):
     b : float, optional
         Upper bound of the sampling interval. Defaults to unity.
     n : float, optional
-        power law exponent. Defaults to zero, which is eqivalent to an uniform distribution
+        Power law exponent. Defaults to zero, which is equivalent to a uniform
+        distribution.
 
     Attributes
     ----------
@@ -289,17 +292,17 @@ class Rational(Univariate):
 
     @a.setter
     def a(self, a):
-        cv.check_type('Uniform a', a, Real)
+        cv.check_type('interval lower bound', a, Real)
         self._a = a
 
     @b.setter
     def b(self, b):
-        cv.check_type('Uniform b', b, Real)
+        cv.check_type('interval upper bound', b, Real)
         self._b = b
 
     @n.setter
     def n(self, n):
-        cv.check_type('Uniform n', n, Real)
+        cv.check_type('power law exponent', n, Real)
         self._n = n
 
     def to_xml_element(self, element_name):
@@ -313,12 +316,12 @@ class Rational(Univariate):
         Returns
         -------
         element : xml.etree.ElementTree.Element
-            XML element containing uniform distribution data
+            XML element containing distribution data
 
         """
         element = ET.Element(element_name)
         element.set("type", "rational")
-        element.set("parameters", '{} {} {}'.format(self.a, self.b, self.n))
+        element.set("parameters", f'{self.a} {self.b} {self.n}')
         return element
 
     @classmethod
@@ -333,7 +336,7 @@ class Rational(Univariate):
         Returns
         -------
         openmc.stats.Rational
-            Uniform distribution generated from XML element
+            Distribution generated from XML element
 
         """
         params = get_text(elem, 'parameters').split()

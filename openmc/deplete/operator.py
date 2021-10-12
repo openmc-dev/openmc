@@ -618,8 +618,6 @@ class Operator(TransportOperator):
         through direct memory writing.
 
         """
-        materials = openmc.Materials(self.materials)
-
         # Sort nuclides according to order in AtomNumber object
         nuclides = list(self.number.nuclides)
         for mat in self.materials:
@@ -631,9 +629,9 @@ class Operator(TransportOperator):
             tree = ET.parse(str(mfile))
             xs = tree.find('cross_sections')
             if xs is not None:
-                materials.cross_sections = xs.text
+                self.materials.cross_sections = xs.text
 
-        materials.export_to_xml()
+        self.materials.export_to_xml()
 
     def _get_tally_nuclides(self):
         """Determine nuclides that should be tallied for reaction rates.

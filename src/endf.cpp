@@ -102,6 +102,8 @@ unique_ptr<Function1D> read_function(hid_t group, const char* name)
     func = make_unique<CoherentElasticXS>(obj_id);
   } else if (func_type == "IncoherentElastic") {
     func = make_unique<IncoherentElasticXS>(obj_id);
+  } else if (func_type == "Sum") {
+    func = make_unique<Sum1D>(obj_id);
   } else {
     throw std::runtime_error {"Unknown function type " + func_type +
                               " for dataset " + object_name(obj_id)};

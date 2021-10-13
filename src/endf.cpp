@@ -271,4 +271,30 @@ double IncoherentElasticXS::operator()(double E) const
   return bound_xs_ / 2.0 * ((1 - std::exp(-4.0 * E * W)) / (2.0 * E * W));
 }
 
+//==============================================================================
+// Sum1D implementation
+//==============================================================================
+
+Sum1D::Sum1D(hid_t group)
+{
+  // Get number of functions
+  int n;
+  read_attribute(group, "n", n);
+
+  // Get each function
+  for (int i = 0; i < n; ++i) {
+    auto dset_name = fmt::format("func_{}", i + 1);
+    functions_.push_back(read_function(group, dset_name.c_str()));
+  }
+}
+
+double Sum1D::operator()(double x) const
+{
+  double result = 0.0;
+  for (auto& func : functions_) {
+    result += (*func)(x);
+  }
+  return result;
+}
+
 } // namespace openmc

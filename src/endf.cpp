@@ -90,23 +90,23 @@ bool is_inelastic_scatter(int mt)
 
 unique_ptr<Function1D> read_function(hid_t group, const char* name)
 {
-  hid_t dset = open_dataset(group, name);
+  hid_t obj_id = open_object(group, name);
   std::string func_type;
-  read_attribute(dset, "type", func_type);
+  read_attribute(obj_id, "type", func_type);
   unique_ptr<Function1D> func;
   if (func_type == "Tabulated1D") {
-    func = make_unique<Tabulated1D>(dset);
+    func = make_unique<Tabulated1D>(obj_id);
   } else if (func_type == "Polynomial") {
-    func = make_unique<Polynomial>(dset);
+    func = make_unique<Polynomial>(obj_id);
   } else if (func_type == "CoherentElastic") {
-    func = make_unique<CoherentElasticXS>(dset);
+    func = make_unique<CoherentElasticXS>(obj_id);
   } else if (func_type == "IncoherentElastic") {
-    func = make_unique<IncoherentElasticXS>(dset);
+    func = make_unique<IncoherentElasticXS>(obj_id);
   } else {
     throw std::runtime_error {"Unknown function type " + func_type +
-                              " for dataset " + object_name(dset)};
+                              " for dataset " + object_name(obj_id)};
   }
-  close_dataset(dset);
+  close_object(obj_id);
   return func;
 }
 

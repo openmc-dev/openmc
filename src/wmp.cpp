@@ -14,6 +14,8 @@
 
 namespace openmc {
 
+const int WindowedMultipole::MAX_POLY_COEFFICIENTS = 11;
+
 //========================================================================
 // WindowedeMultipole implementation
 //========================================================================
@@ -211,15 +213,15 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
 
 void
 WindowedMultipole::flatten_wmp_data() {
-  int n_windows_ = window_info_.size();
+  n_windows_ = window_info_.size();
   device_window_info_ = window_info_.data();
 
-  int n_order_ = curvefit_.shape(1);
-  int n_reactions_ = curvefit_.shape(2);
+  n_order_ = curvefit_.shape()[1];
+  n_reactions_ = curvefit_.shape()[2];
 
   device_curvefit_ = curvefit_.data();
 
-  int n_data_size_ = data_.shape(1);
+  n_data_size_ = data_.shape()[1];
   device_data_ = data_.data();
 }
 
@@ -243,21 +245,19 @@ WindowedMultipole::release_from_device()
 double
 WindowedMultipole::curvefit(int window, int poly_order, int reaction) const
 {
-  int idx = window * n_order_ * n_reactions_ + poly_order * n_reactions_ + reaction;
-  return device_curvefit_ ? device_curvefit_[idx] : curvefit_.data()[idx];
+  return device_curvefit_[window * n_order_ * n_reactions_ + poly_order * n_reactions_ + reaction];
 }
 
 const WindowedMultipole::WindowInfo&
 WindowedMultipole::window_info(int i_window) const
 {
-  return device_window_info_ ? device_window_info_[i_window] : window_info_[i_window];
+  return device_window_info_[i_window];
 }
 
 std::complex<double>
 WindowedMultipole::data(int pole, int res) const
 {
-  int idx = pole * n_data_size_ + res;
-  return device_data_ ? device_data_[idx] : data_.data()[idx];
+  return data_.data()[pole * n_data_size_ + res];
 }
 
 //========================================================================

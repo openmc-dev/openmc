@@ -355,6 +355,7 @@ void Nuclide::flatten_xs_data()
 }
 
 void Nuclide::flatten_wmp_data() {
+  device_multipole_ = multipole_.get();
   if (multipole_) multipole_->flatten_wmp_data();
 }
 
@@ -654,15 +655,15 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.nu_fission = fissionable_ ?
       sig_f * this->nu(p.E_, EmissionMode::total) : 0.0;
 
-    if (simulation::need_depletion_rx) {
-      // Only non-zero reaction is (n,gamma)
-      micro.reaction[0] = sig_a - sig_f;
+    // if (simulation::need_depletion_rx) {
+    //   // Only non-zero reaction is (n,gamma)
+    //   micro.reaction[0] = sig_a - sig_f;
 
-      // Set all other reaction cross sections to zero
-      for (int i = 1; i < DEPLETION_RX.size(); ++i) {
-        micro.reaction[i] = 0.0;
-      }
-    }
+    //   // Set all other reaction cross sections to zero
+    //   for (int i = 1; i < DEPLETION_RX.size(); ++i) {
+    //     micro.reaction[i] = 0.0;
+    //   }
+    // }
 
     // Ensure these values are set
     // Note, the only time either is used is in one of 4 places:
@@ -676,6 +677,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     // to use it with multipole.
     micro.index_temp = -1;
     micro.index_grid = -1;
+    micro.interp_factor = 0.0;
   } else {
     // Find the appropriate temperature index.
     double kT = p.sqrtkT_*p.sqrtkT_;
@@ -1137,7 +1139,6 @@ void Nuclide::copy_to_device()
   }
 
   // Multipole
-  device_multipole_ = multipole_.get();
   if(multipole_) {
     #pragma omp target enter data map(to: device_multipole_[:1])
     multipole_->copy_to_device();

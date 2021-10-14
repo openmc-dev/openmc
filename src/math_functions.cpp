@@ -1,6 +1,6 @@
 #include "openmc/math_functions.h"
 
-#include "Faddeeva.cc"
+#include "Faddeeva.hh"
 
 namespace openmc {
 

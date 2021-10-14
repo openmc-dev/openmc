@@ -31,27 +31,10 @@
 
 namespace Faddeeva {
 
-#ifdef NATIVE_ISNAN
-  #define my_isinf(X) isinf(X)
-#else
-  #define my_isnan(X) (X != X)
-#endif
-
-#ifdef NATIVE_ISINF
-  #define my_isnan(X) isnan(X)
-#else
-  #define my_isinf(X) ((X > FLT_MAX) || (X < -FLT_MAX))
-#endif
-
-#ifdef NATIVE_CEXP
-  #define CEXP(X) cexp(X)
-#else
-  #define CEXP(X) FADDEEVA(my_cexp)(X)
-#endif
-
 // compute w(z) = exp(-z^2) erfc(-iz) [ Faddeeva / scaled complex error func ]
-extern std::complex<double> w(std::complex<double> z, double relerr=0);
-extern std::complex<double> my_cexp(std::complex<double> z);
+#pragma omp declare target
+extern std::complex<double> w(std::complex<double> z,double relerr=0);
+#pragma omp end declare target
 extern double w_im(double x); // special-case code for Im[w(x)] of real x
 
 // Various functions that we can compute with the help of w(z)

@@ -258,33 +258,13 @@ typedef double complex cmplx;
 
 static inline cmplx cpolar(double r, double t)
 {
-  if (r == 0.0 && !my_isnan(t))
+  if (r == 0.0 && !isnan(t))
     return 0.0;
   else
     return C(r * cos(t), r * sin(t));
 }
 
 #endif // !__cplusplus, i.e. pure C (requires C99 features)
-
-cmplx FADDEEVA(my_cexp)(cmplx z) {
-  double x = creal(z);
-  double y = cimag(z);
-
-  double t1 = 1.0 + x * 0.000244140625;
-  t1 *= t1; t1 *= t1; t1 *= t1; t1 *= t1;
-  t1 *= t1; t1 *= t1; t1 *= t1; t1 *= t1;
-  t1 *= t1; t1 *= t1; t1 *= t1; t1 *= t1;
-
-
-  double t2 = cos(y);
-  double t3 = sin(y);
-  cmplx t4 = C(t2, t3);
-  cmplx t5 = C(t1, 0.);
-
-  double rl = creal(t4) * creal(t5) - cimag(t4) * cimag(t5);
-  double img = creal(t4) * cimag(t5) + creal(t5) * cimag(t4);
-  return C(rl, img);
-}
 
 /////////////////////////////////////////////////////////////////////////
 // Auxiliary routines to compute other special functions based on w(z)
@@ -371,7 +351,7 @@ cmplx FADDEEVA(erf)(cmplx z, double relerr)
       else if (fabs(mIm_z2) < 5e-3 && x > -5e-3)
         goto taylor_erfi;
     }
-    else if (my_isnan(x))
+    else if (isnan(x))
       return C(NaN, y == 0 ? 0 : NaN);
     /* don't use complex exp function, since that will produce spurious NaN
        values when multiplying w in an overflow situation. */
@@ -475,10 +455,10 @@ cmplx FADDEEVA(erfc)(cmplx z, double relerr)
     return (x >= 0 ? 0.0 : 2.0);
 
   if (x >= 0)
-    return CEXP(C(mRe_z2, mIm_z2))
+    return cexp(C(mRe_z2, mIm_z2))
       * FADDEEVA(w)(C(-y,x), relerr);
   else
-    return 2.0 - CEXP(C(mRe_z2, mIm_z2))
+    return 2.0 - cexp(C(mRe_z2, mIm_z2))
       * FADDEEVA(w)(C(y,-x), relerr);
 }
 
@@ -527,7 +507,7 @@ cmplx FADDEEVA(Dawson)(cmplx z, double relerr)
       else if (fabs(mIm_z2) < 5e-3)
         goto taylor_realaxis;
     }
-    cmplx res = CEXP(mz2) - FADDEEVA(w)(z, relerr);
+    cmplx res = cexp(mz2) - FADDEEVA(w)(z, relerr);
     return spi2 * C(-cimag(res), creal(res));
   }
   else { // y < 0
@@ -537,9 +517,9 @@ cmplx FADDEEVA(Dawson)(cmplx z, double relerr)
       else if (fabs(mIm_z2) < 5e-3)
         goto taylor_realaxis;
     }
-    else if (my_isnan(y))
+    else if (isnan(y))
       return C(x == 0 ? 0 : NaN, NaN);
-    cmplx res = FADDEEVA(w)(-z, relerr) - CEXP(mz2);
+    cmplx res = FADDEEVA(w)(-z, relerr) - cexp(mz2);
     return spi2 * C(-cimag(res), creal(res));
   }
 
@@ -693,303 +673,302 @@ static const double expa2n2[] = {
   3.34880215927873807e-304,
   0.0 // underflow (also prevents reads past array end, below)
 };
+#pragma omp declare target to(expa2n2)
 
 /////////////////////////////////////////////////////////////////////////
 
 cmplx FADDEEVA(w)(cmplx z, double relerr)
 {
-  return z;
+  if (creal(z) == 0.0)
+    return C(FADDEEVA_RE(erfcx)(cimag(z)),
+             creal(z)); // give correct sign of 0 in cimag(w)
+  else if (cimag(z) == 0)
+    return C(exp(-sqr(creal(z))),
+             FADDEEVA(w_im)(creal(z)));
 
-//   if (creal(z) == 0.0)
-//     return C(FADDEEVA_RE(erfcx)(cimag(z)),
-//              creal(z)); // give correct sign of 0 in cimag(w)
-//   else if (cimag(z) == 0)
-//     return C(exp(-sqr(creal(z))),
-//              FADDEEVA(w_im)(creal(z)));
+  double a, a2, c;
+  if (relerr <= DBL_EPSILON) {
+    relerr = DBL_EPSILON;
+    a = 0.518321480430085929872; // pi / sqrt(-log(eps*0.5))
+    c = 0.329973702884629072537; // (2/pi) * a;
+    a2 = 0.268657157075235951582; // a^2
+  }
+  else {
+    const double pi = 3.14159265358979323846264338327950288419716939937510582;
+    if (relerr > 0.1) relerr = 0.1; // not sensible to compute < 1 digit
+    a = pi / sqrt(-log(relerr*0.5));
+    c = (2/pi)*a;
+    a2 = a*a;
+  }
+  const double x = fabs(creal(z));
+  const double y = cimag(z), ya = fabs(y);
 
-//   double a, a2, c;
-//   if (relerr <= DBL_EPSILON) {
-//     relerr = DBL_EPSILON;
-//     a = 0.518321480430085929872; // pi / sqrt(-log(eps*0.5))
-//     c = 0.329973702884629072537; // (2/pi) * a;
-//     a2 = 0.268657157075235951582; // a^2
-//   }
-//   else {
-//     const double pi = 3.14159265358979323846264338327950288419716939937510582;
-//     if (relerr > 0.1) relerr = 0.1; // not sensible to compute < 1 digit
-//     a = pi / sqrt(-log(relerr*0.5));
-//     c = (2/pi)*a;
-//     a2 = a*a;
-//   }
-//   const double x = fabs(creal(z));
-//   const double y = cimag(z), ya = fabs(y);
+  cmplx ret = 0.; // return value
 
-//   cmplx ret = 0.; // return value
+  double sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, sum5 = 0;
 
-//   double sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, sum5 = 0;
+#define USE_CONTINUED_FRACTION 1 // 1 to use continued fraction for large |z|
 
-// #define USE_CONTINUED_FRACTION 1 // 1 to use continued fraction for large |z|
+#if USE_CONTINUED_FRACTION
+  if (ya > 7 || (x > 6  // continued fraction is faster
+                 /* As pointed out by M. Zaghloul, the continued
+                    fraction seems to give a large relative error in
+                    Re w(z) for |x| ~ 6 and small |y|, so use
+                    algorithm 816 in this region: */
+                 && (ya > 0.1 || (x > 8 && ya > 1e-10) || x > 28))) {
 
-// #if USE_CONTINUED_FRACTION
-//   if (ya > 7 || (x > 6  // continued fraction is faster
-//                  /* As pointed out by M. Zaghloul, the continued
-//                     fraction seems to give a large relative error in
-//                     Re w(z) for |x| ~ 6 and small |y|, so use
-//                     algorithm 816 in this region: */
-//                  && (ya > 0.1 || (x > 8 && ya > 1e-10) || x > 28))) {
+    /* Poppe & Wijers suggest using a number of terms
+           nu = 3 + 1442 / (26*rho + 77)
+       where rho = sqrt((x/x0)^2 + (y/y0)^2) where x0=6.3, y0=4.4.
+       (They only use this expansion for rho >= 1, but rho a little less
+        than 1 seems okay too.)
+       Instead, I did my own fit to a slightly different function
+       that avoids the hypotenuse calculation, using NLopt to minimize
+       the sum of the squares of the errors in nu with the constraint
+       that the estimated nu be >= minimum nu to attain machine precision.
+       I also separate the regions where nu == 2 and nu == 1. */
+    const double ispi = 0.56418958354775628694807945156; // 1 / sqrt(pi)
+    double xs = y < 0 ? -creal(z) : creal(z); // compute for -z if y < 0
+    if (x + ya > 4000) { // nu <= 2
+      if (x + ya > 1e7) { // nu == 1, w(z) = i/sqrt(pi) / z
+        // scale to avoid overflow
+        if (x > ya) {
+          double yax = ya / xs;
+          double denom = ispi / (xs + yax*ya);
+          ret = C(denom*yax, denom);
+        }
+        else if (isinf(ya))
+          return ((isnan(x) || y < 0)
+                  ? C(NaN,NaN) : C(0,0));
+        else {
+          double xya = xs / ya;
+          double denom = ispi / (xya*xs + ya);
+          ret = C(denom, denom*xya);
+        }
+      }
+      else { // nu == 2, w(z) = i/sqrt(pi) * z / (z*z - 0.5)
+        double dr = xs*xs - ya*ya - 0.5, di = 2*xs*ya;
+        double denom = ispi / (dr*dr + di*di);
+        ret = C(denom * (xs*di-ya*dr), denom * (xs*dr+ya*di));
+      }
+    }
+    else { // compute nu(z) estimate and do general continued fraction
+      const double c0=3.9, c1=11.398, c2=0.08254, c3=0.1421, c4=0.2023; // fit
+      double nu = floor(c0 + c1 / (c2*x + c3*ya + c4));
+      double wr = xs, wi = ya;
+      for (nu = 0.5 * (nu - 1); nu > 0.4; nu -= 0.5) {
+        // w <- z - nu/w:
+        double denom = nu / (wr*wr + wi*wi);
+        wr = xs - wr * denom;
+        wi = ya + wi * denom;
+      }
+      { // w(z) = i/sqrt(pi) / w:
+        double denom = ispi / (wr*wr + wi*wi);
+        ret = C(denom*wi, denom*wr);
+      }
+    }
+    if (y < 0) {
+      // use w(z) = 2.0*exp(-z*z) - w(-z),
+      // but be careful of overflow in exp(-z*z)
+      //                                = exp(-(xs*xs-ya*ya) -2*i*xs*ya)
+      return 2.0*cexp(C((ya-xs)*(xs+ya), 2*xs*y)) - ret;
+    }
+    else
+      return ret;
+  }
+#else // !USE_CONTINUED_FRACTION
+  if (x + ya > 1e7) { // w(z) = i/sqrt(pi) / z, to machine precision
+    const double ispi = 0.56418958354775628694807945156; // 1 / sqrt(pi)
+    double xs = y < 0 ? -creal(z) : creal(z); // compute for -z if y < 0
+    // scale to avoid overflow
+    if (x > ya) {
+      double yax = ya / xs;
+      double denom = ispi / (xs + yax*ya);
+      ret = C(denom*yax, denom);
+    }
+    else {
+      double xya = xs / ya;
+      double denom = ispi / (xya*xs + ya);
+      ret = C(denom, denom*xya);
+    }
+    if (y < 0) {
+      // use w(z) = 2.0*exp(-z*z) - w(-z),
+      // but be careful of overflow in exp(-z*z)
+      //                                = exp(-(xs*xs-ya*ya) -2*i*xs*ya)
+      return 2.0*cexp(C((ya-xs)*(xs+ya), 2*xs*y)) - ret;
+    }
+    else
+      return ret;
+  }
+#endif // !USE_CONTINUED_FRACTION
 
-//     /* Poppe & Wijers suggest using a number of terms
-//            nu = 3 + 1442 / (26*rho + 77)
-//        where rho = sqrt((x/x0)^2 + (y/y0)^2) where x0=6.3, y0=4.4.
-//        (They only use this expansion for rho >= 1, but rho a little less
-//         than 1 seems okay too.)
-//        Instead, I did my own fit to a slightly different function
-//        that avoids the hypotenuse calculation, using NLopt to minimize
-//        the sum of the squares of the errors in nu with the constraint
-//        that the estimated nu be >= minimum nu to attain machine precision.
-//        I also separate the regions where nu == 2 and nu == 1. */
-//     const double ispi = 0.56418958354775628694807945156; // 1 / sqrt(pi)
-//     double xs = y < 0 ? -creal(z) : creal(z); // compute for -z if y < 0
-//     if (x + ya > 4000) { // nu <= 2
-//       if (x + ya > 1e7) { // nu == 1, w(z) = i/sqrt(pi) / z
-//         // scale to avoid overflow
-//         if (x > ya) {
-//           double yax = ya / xs;
-//           double denom = ispi / (xs + yax*ya);
-//           ret = C(denom*yax, denom);
-//         }
-//         else if (my_isinf(ya))
-//           return ((my_isnan(x) || y < 0)
-//                   ? C(NaN,NaN) : C(0,0));
-//         else {
-//           double xya = xs / ya;
-//           double denom = ispi / (xya*xs + ya);
-//           ret = C(denom, denom*xya);
-//         }
-//       }
-//       else { // nu == 2, w(z) = i/sqrt(pi) * z / (z*z - 0.5)
-//         double dr = xs*xs - ya*ya - 0.5, di = 2*xs*ya;
-//         double denom = ispi / (dr*dr + di*di);
-//         ret = C(denom * (xs*di-ya*dr), denom * (xs*dr+ya*di));
-//       }
-//     }
-//     else { // compute nu(z) estimate and do general continued fraction
-//       const double c0=3.9, c1=11.398, c2=0.08254, c3=0.1421, c4=0.2023; // fit
-//       double nu = floor(c0 + c1 / (c2*x + c3*ya + c4));
-//       double wr = xs, wi = ya;
-//       for (nu = 0.5 * (nu - 1); nu > 0.4; nu -= 0.5) {
-//         // w <- z - nu/w:
-//         double denom = nu / (wr*wr + wi*wi);
-//         wr = xs - wr * denom;
-//         wi = ya + wi * denom;
-//       }
-//       { // w(z) = i/sqrt(pi) / w:
-//         double denom = ispi / (wr*wr + wi*wi);
-//         ret = C(denom*wi, denom*wr);
-//       }
-//     }
-//     if (y < 0) {
-//       // use w(z) = 2.0*exp(-z*z) - w(-z),
-//       // but be careful of overflow in exp(-z*z)
-//       //                                = exp(-(xs*xs-ya*ya) -2*i*xs*ya)
-//       return 2.0*CEXP(C((ya-xs)*(xs+ya), 2*xs*y)) - ret;
-//     }
-//     else
-//       return ret;
-//   }
-// #else // !USE_CONTINUED_FRACTION
-//   if (x + ya > 1e7) { // w(z) = i/sqrt(pi) / z, to machine precision
-//     const double ispi = 0.56418958354775628694807945156; // 1 / sqrt(pi)
-//     double xs = y < 0 ? -creal(z) : creal(z); // compute for -z if y < 0
-//     // scale to avoid overflow
-//     if (x > ya) {
-//       double yax = ya / xs;
-//       double denom = ispi / (xs + yax*ya);
-//       ret = C(denom*yax, denom);
-//     }
-//     else {
-//       double xya = xs / ya;
-//       double denom = ispi / (xya*xs + ya);
-//       ret = C(denom, denom*xya);
-//     }
-//     if (y < 0) {
-//       // use w(z) = 2.0*exp(-z*z) - w(-z),
-//       // but be careful of overflow in exp(-z*z)
-//       //                                = exp(-(xs*xs-ya*ya) -2*i*xs*ya)
-//       return 2.0*CEXP(C((ya-xs)*(xs+ya), 2*xs*y)) - ret;
-//     }
-//     else
-//       return ret;
-//   }
-// #endif // !USE_CONTINUED_FRACTION
+  /* Note: The test that seems to be suggested in the paper is x <
+     sqrt(-log(DBL_MIN)), about 26.6, since otherwise exp(-x^2)
+     underflows to zero and sum1,sum2,sum4 are zero.  However, long
+     before this occurs, the sum1,sum2,sum4 contributions are
+     negligible in double precision; I find that this happens for x >
+     about 6, for all y.  On the other hand, I find that the case
+     where we compute all of the sums is faster (at least with the
+     precomputed expa2n2 table) until about x=10.  Furthermore, if we
+     try to compute all of the sums for x > 20, I find that we
+     sometimes run into numerical problems because underflow/overflow
+     problems start to appear in the various coefficients of the sums,
+     below.  Therefore, we use x < 10 here. */
+  else if (x < 10) {
+    double prod2ax = 1, prodm2ax = 1;
+    double expx2;
 
-//   /* Note: The test that seems to be suggested in the paper is x <
-//      sqrt(-log(DBL_MIN)), about 26.6, since otherwise exp(-x^2)
-//      underflows to zero and sum1,sum2,sum4 are zero.  However, long
-//      before this occurs, the sum1,sum2,sum4 contributions are
-//      negligible in double precision; I find that this happens for x >
-//      about 6, for all y.  On the other hand, I find that the case
-//      where we compute all of the sums is faster (at least with the
-//      precomputed expa2n2 table) until about x=10.  Furthermore, if we
-//      try to compute all of the sums for x > 20, I find that we
-//      sometimes run into numerical problems because underflow/overflow
-//      problems start to appear in the various coefficients of the sums,
-//      below.  Therefore, we use x < 10 here. */
-//   else if (x < 10) {
-//     double prod2ax = 1, prodm2ax = 1;
-//     double expx2;
+    if (isnan(y))
+      return C(y,y);
 
-//     if (my_isnan(y))
-//       return C(y,y);
+    /* Somewhat ugly copy-and-paste duplication here, but I see significant
+       speedups from using the special-case code with the precomputed
+       exponential, and the x < 5e-4 special case is needed for accuracy. */
 
-//     /* Somewhat ugly copy-and-paste duplication here, but I see significant
-//        speedups from using the special-case code with the precomputed
-//        exponential, and the x < 5e-4 special case is needed for accuracy. */
+    if (relerr == DBL_EPSILON) { // use precomputed exp(-a2*(n*n)) table
+      if (x < 5e-4) { // compute sum4 and sum5 together as sum5-sum4
+        const double x2 = x*x;
+        expx2 = 1 - x2 * (1 - 0.5*x2); // exp(-x*x) via Taylor
+        // compute exp(2*a*x) and exp(-2*a*x) via Taylor, to double precision
+        const double ax2 = 1.036642960860171859744*x; // 2*a*x
+        const double exp2ax =
+          1 + ax2 * (1 + ax2 * (0.5 + 0.166666666666666666667*ax2));
+        const double expm2ax =
+          1 - ax2 * (1 - ax2 * (0.5 - 0.166666666666666666667*ax2));
+        for (int n = 1; 1; ++n) {
+          const double coef = expa2n2[n-1] * expx2 / (a2*(n*n) + y*y);
+          prod2ax *= exp2ax;
+          prodm2ax *= expm2ax;
+          sum1 += coef;
+          sum2 += coef * prodm2ax;
+          sum3 += coef * prod2ax;
 
-//     if (relerr == DBL_EPSILON) { // use precomputed exp(-a2*(n*n)) table
-//       if (x < 5e-4) { // compute sum4 and sum5 together as sum5-sum4
-//         const double x2 = x*x;
-//         expx2 = 1 - x2 * (1 - 0.5*x2); // exp(-x*x) via Taylor
-//         // compute exp(2*a*x) and exp(-2*a*x) via Taylor, to double precision
-//         const double ax2 = 1.036642960860171859744*x; // 2*a*x
-//         const double exp2ax =
-//           1 + ax2 * (1 + ax2 * (0.5 + 0.166666666666666666667*ax2));
-//         const double expm2ax =
-//           1 - ax2 * (1 - ax2 * (0.5 - 0.166666666666666666667*ax2));
-//         for (int n = 1; 1; ++n) {
-//           const double coef = expa2n2[n-1] * expx2 / (a2*(n*n) + y*y);
-//           prod2ax *= exp2ax;
-//           prodm2ax *= expm2ax;
-//           sum1 += coef;
-//           sum2 += coef * prodm2ax;
-//           sum3 += coef * prod2ax;
+          // really = sum5 - sum4
+          sum5 += coef * (2*a) * n * sinh_taylor((2*a)*n*x);
 
-//           // really = sum5 - sum4
-//           sum5 += coef * (2*a) * n * sinh_taylor((2*a)*n*x);
+          // test convergence via sum3
+          if (coef * prod2ax < relerr * sum3) break;
+        }
+      }
+      else { // x > 5e-4, compute sum4 and sum5 separately
+        expx2 = exp(-x*x);
+        const double exp2ax = exp((2*a)*x), expm2ax = 1 / exp2ax;
+        for (int n = 1; 1; ++n) {
+          const double coef = expa2n2[n-1] * expx2 / (a2*(n*n) + y*y);
+          prod2ax *= exp2ax;
+          prodm2ax *= expm2ax;
+          sum1 += coef;
+          sum2 += coef * prodm2ax;
+          sum4 += (coef * prodm2ax) * (a*n);
+          sum3 += coef * prod2ax;
+          sum5 += (coef * prod2ax) * (a*n);
+          // test convergence via sum5, since this sum has the slowest decay
+          if ((coef * prod2ax) * (a*n) < relerr * sum5) break;
+        }
+      }
+    }
+    else { // relerr != DBL_EPSILON, compute exp(-a2*(n*n)) on the fly
+      const double exp2ax = exp((2*a)*x), expm2ax = 1 / exp2ax;
+      if (x < 5e-4) { // compute sum4 and sum5 together as sum5-sum4
+        const double x2 = x*x;
+        expx2 = 1 - x2 * (1 - 0.5*x2); // exp(-x*x) via Taylor
+        for (int n = 1; 1; ++n) {
+          const double coef = exp(-a2*(n*n)) * expx2 / (a2*(n*n) + y*y);
+          prod2ax *= exp2ax;
+          prodm2ax *= expm2ax;
+          sum1 += coef;
+          sum2 += coef * prodm2ax;
+          sum3 += coef * prod2ax;
 
-//           // test convergence via sum3
-//           if (coef * prod2ax < relerr * sum3) break;
-//         }
-//       }
-//       else { // x > 5e-4, compute sum4 and sum5 separately
-//         expx2 = exp(-x*x);
-//         const double exp2ax = exp((2*a)*x), expm2ax = 1 / exp2ax;
-//         for (int n = 1; 1; ++n) {
-//           const double coef = expa2n2[n-1] * expx2 / (a2*(n*n) + y*y);
-//           prod2ax *= exp2ax;
-//           prodm2ax *= expm2ax;
-//           sum1 += coef;
-//           sum2 += coef * prodm2ax;
-//           sum4 += (coef * prodm2ax) * (a*n);
-//           sum3 += coef * prod2ax;
-//           sum5 += (coef * prod2ax) * (a*n);
-//           // test convergence via sum5, since this sum has the slowest decay
-//           if ((coef * prod2ax) * (a*n) < relerr * sum5) break;
-//         }
-//       }
-//     }
-//     else { // relerr != DBL_EPSILON, compute exp(-a2*(n*n)) on the fly
-//       const double exp2ax = exp((2*a)*x), expm2ax = 1 / exp2ax;
-//       if (x < 5e-4) { // compute sum4 and sum5 together as sum5-sum4
-//         const double x2 = x*x;
-//         expx2 = 1 - x2 * (1 - 0.5*x2); // exp(-x*x) via Taylor
-//         for (int n = 1; 1; ++n) {
-//           const double coef = exp(-a2*(n*n)) * expx2 / (a2*(n*n) + y*y);
-//           prod2ax *= exp2ax;
-//           prodm2ax *= expm2ax;
-//           sum1 += coef;
-//           sum2 += coef * prodm2ax;
-//           sum3 += coef * prod2ax;
+          // really = sum5 - sum4
+          sum5 += coef * (2*a) * n * sinh_taylor((2*a)*n*x);
 
-//           // really = sum5 - sum4
-//           sum5 += coef * (2*a) * n * sinh_taylor((2*a)*n*x);
+          // test convergence via sum3
+          if (coef * prod2ax < relerr * sum3) break;
+        }
+      }
+      else { // x > 5e-4, compute sum4 and sum5 separately
+        expx2 = exp(-x*x);
+        for (int n = 1; 1; ++n) {
+          const double coef = exp(-a2*(n*n)) * expx2 / (a2*(n*n) + y*y);
+          prod2ax *= exp2ax;
+          prodm2ax *= expm2ax;
+          sum1 += coef;
+          sum2 += coef * prodm2ax;
+          sum4 += (coef * prodm2ax) * (a*n);
+          sum3 += coef * prod2ax;
+          sum5 += (coef * prod2ax) * (a*n);
+          // test convergence via sum5, since this sum has the slowest decay
+          if ((coef * prod2ax) * (a*n) < relerr * sum5) break;
+        }
+      }
+    }
+    const double expx2erfcxy = // avoid spurious overflow for large negative y
+      y > -6 // for y < -6, erfcx(y) = 2*exp(y*y) to double precision
+      ? expx2*FADDEEVA_RE(erfcx)(y) : 2*exp(y*y-x*x);
+    if (y > 5) { // imaginary terms cancel
+      const double sinxy = sin(x*y);
+      ret = (expx2erfcxy - c*y*sum1) * cos(2*x*y)
+        + (c*x*expx2) * sinxy * sinc(x*y, sinxy);
+    }
+    else {
+      double xs = creal(z);
+      const double sinxy = sin(xs*y);
+      const double sin2xy = sin(2*xs*y), cos2xy = cos(2*xs*y);
+      const double coef1 = expx2erfcxy - c*y*sum1;
+      const double coef2 = c*xs*expx2;
+      ret = C(coef1 * cos2xy + coef2 * sinxy * sinc(xs*y, sinxy),
+              coef2 * sinc(2*xs*y, sin2xy) - coef1 * sin2xy);
+    }
+  }
+  else { // x large: only sum3 & sum5 contribute (see above note)
+    if (isnan(x))
+      return C(x,x);
+    if (isnan(y))
+      return C(y,y);
 
-//           // test convergence via sum3
-//           if (coef * prod2ax < relerr * sum3) break;
-//         }
-//       }
-//       else { // x > 5e-4, compute sum4 and sum5 separately
-//         expx2 = exp(-x*x);
-//         for (int n = 1; 1; ++n) {
-//           const double coef = exp(-a2*(n*n)) * expx2 / (a2*(n*n) + y*y);
-//           prod2ax *= exp2ax;
-//           prodm2ax *= expm2ax;
-//           sum1 += coef;
-//           sum2 += coef * prodm2ax;
-//           sum4 += (coef * prodm2ax) * (a*n);
-//           sum3 += coef * prod2ax;
-//           sum5 += (coef * prod2ax) * (a*n);
-//           // test convergence via sum5, since this sum has the slowest decay
-//           if ((coef * prod2ax) * (a*n) < relerr * sum5) break;
-//         }
-//       }
-//     }
-//     const double expx2erfcxy = // avoid spurious overflow for large negative y
-//       y > -6 // for y < -6, erfcx(y) = 2*exp(y*y) to double precision
-//       ? expx2*FADDEEVA_RE(erfcx)(y) : 2*exp(y*y-x*x);
-//     if (y > 5) { // imaginary terms cancel
-//       const double sinxy = sin(x*y);
-//       ret = (expx2erfcxy - c*y*sum1) * cos(2*x*y)
-//         + (c*x*expx2) * sinxy * sinc(x*y, sinxy);
-//     }
-//     else {
-//       double xs = creal(z);
-//       const double sinxy = sin(xs*y);
-//       const double sin2xy = sin(2*xs*y), cos2xy = cos(2*xs*y);
-//       const double coef1 = expx2erfcxy - c*y*sum1;
-//       const double coef2 = c*xs*expx2;
-//       ret = C(coef1 * cos2xy + coef2 * sinxy * sinc(xs*y, sinxy),
-//               coef2 * sinc(2*xs*y, sin2xy) - coef1 * sin2xy);
-//     }
-//   }
-//   else { // x large: only sum3 & sum5 contribute (see above note)
-//     if (my_isnan(x))
-//       return C(x,x);
-//     if (my_isnan(y))
-//       return C(y,y);
-
-// #if USE_CONTINUED_FRACTION
-//     ret = exp(-x*x); // |y| < 1e-10, so we only need exp(-x*x) term
-// #else
-//     if (y < 0) {
-//       /* erfcx(y) ~ 2*exp(y*y) + (< 1) if y < 0, so
-//          erfcx(y)*exp(-x*x) ~ 2*exp(y*y-x*x) term may not be negligible
-//          if y*y - x*x > -36 or so.  So, compute this term just in case.
-//          We also need the -exp(-x*x) term to compute Re[w] accurately
-//          in the case where y is very small. */
-//       ret = cpolar(2*exp(y*y-x*x) - exp(-x*x), -2*creal(z)*y);
-//     }
-//     else
-//       ret = exp(-x*x); // not negligible in real part if y very small
-// #endif
-//     // (round instead of ceil as in original paper; note that x/a > 1 here)
-//     double n0 = floor(x/a + 0.5); // sum in both directions, starting at n0
-//     double dx = a*n0 - x;
-//     sum3 = exp(-dx*dx) / (a2*(n0*n0) + y*y);
-//     sum5 = a*n0 * sum3;
-//     double exp1 = exp(4*a*dx), exp1dn = 1;
-//     int dn;
-//     for (dn = 1; n0 - dn > 0; ++dn) { // loop over n0-dn and n0+dn terms
-//       double np = n0 + dn, nm = n0 - dn;
-//       double tp = exp(-sqr(a*dn+dx));
-//       double tm = tp * (exp1dn *= exp1); // trick to get tm from tp
-//       tp /= (a2*(np*np) + y*y);
-//       tm /= (a2*(nm*nm) + y*y);
-//       sum3 += tp + tm;
-//       sum5 += a * (np * tp + nm * tm);
-//       if (a * (np * tp + nm * tm) < relerr * sum5) goto finish;
-//     }
-//     while (1) { // loop over n0+dn terms only (since n0-dn <= 0)
-//       double np = n0 + dn++;
-//       double tp = exp(-sqr(a*dn+dx)) / (a2*(np*np) + y*y);
-//       sum3 += tp;
-//       sum5 += a * np * tp;
-//       if (a * np * tp < relerr * sum5) goto finish;
-//     }
-//   }
-//  finish:
-//   return ret + C((0.5*c)*y*(sum2+sum3),
-//                  (0.5*c)*copysign(sum5-sum4, creal(z)));
+#if USE_CONTINUED_FRACTION
+    ret = exp(-x*x); // |y| < 1e-10, so we only need exp(-x*x) term
+#else
+    if (y < 0) {
+      /* erfcx(y) ~ 2*exp(y*y) + (< 1) if y < 0, so
+         erfcx(y)*exp(-x*x) ~ 2*exp(y*y-x*x) term may not be negligible
+         if y*y - x*x > -36 or so.  So, compute this term just in case.
+         We also need the -exp(-x*x) term to compute Re[w] accurately
+         in the case where y is very small. */
+      ret = cpolar(2*exp(y*y-x*x) - exp(-x*x), -2*creal(z)*y);
+    }
+    else
+      ret = exp(-x*x); // not negligible in real part if y very small
+#endif
+    // (round instead of ceil as in original paper; note that x/a > 1 here)
+    double n0 = floor(x/a + 0.5); // sum in both directions, starting at n0
+    double dx = a*n0 - x;
+    sum3 = exp(-dx*dx) / (a2*(n0*n0) + y*y);
+    sum5 = a*n0 * sum3;
+    double exp1 = exp(4*a*dx), exp1dn = 1;
+    int dn;
+    for (dn = 1; n0 - dn > 0; ++dn) { // loop over n0-dn and n0+dn terms
+      double np = n0 + dn, nm = n0 - dn;
+      double tp = exp(-sqr(a*dn+dx));
+      double tm = tp * (exp1dn *= exp1); // trick to get tm from tp
+      tp /= (a2*(np*np) + y*y);
+      tm /= (a2*(nm*nm) + y*y);
+      sum3 += tp + tm;
+      sum5 += a * (np * tp + nm * tm);
+      if (a * (np * tp + nm * tm) < relerr * sum5) goto finish;
+    }
+    while (1) { // loop over n0+dn terms only (since n0-dn <= 0)
+      double np = n0 + dn++;
+      double tp = exp(-sqr(a*dn+dx)) / (a2*(np*np) + y*y);
+      sum3 += tp;
+      sum5 += a * np * tp;
+      if (a * np * tp < relerr * sum5) goto finish;
+    }
+  }
+ finish:
+  return ret + C((0.5*c)*y*(sum2+sum3),
+                 (0.5*c)*copysign(sum5-sum4, creal(z)));
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -1921,10 +1900,10 @@ double FADDEEVA(w_im)(double x)
 
 // compute relative error |b-a|/|a|, handling case of NaN and Inf,
 static double relerr(double a, double b) {
-  if (my_isnan(a) || my_isnan(b) || my_isinf(a) || my_isinf(b)) {
-    if ((my_isnan(a) && !my_isnan(b)) || (!my_isnan(a) && my_isnan(b)) ||
-        (my_isinf(a) && !my_isinf(b)) || (!my_isinf(a) && my_isinf(b)) ||
-        (my_isinf(a) && my_isinf(b) && a*b < 0))
+  if (isnan(a) || isnan(b) || isinf(a) || isinf(b)) {
+    if ((isnan(a) && !isnan(b)) || (!isnan(a) && isnan(b)) ||
+        (isinf(a) && !isinf(b)) || (!isinf(a) && isinf(b)) ||
+        (isinf(a) && isinf(b) && a*b < 0))
       return Inf; // "infinite" error
     return 0; // matching infinity/nan results counted as zero error
   }

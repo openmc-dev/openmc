@@ -179,7 +179,7 @@ Particle::event_calculate_xs()
     // Set birth cell attribute
     if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
   }
-  
+
   // Write particle track.
   //if (write_track_) write_particle_track(*this);
 
@@ -439,7 +439,7 @@ Particle::accumulate_keff_tallies_global()
   global_tally_tracklength += keff_tally_tracklength_;
   #pragma omp atomic
   global_tally_leakage += keff_tally_leakage_;
-  
+
   // Reset particle tallies once accumulated
   keff_tally_absorption_  = 0.0;
   keff_tally_collision_   = 0.0;
@@ -455,7 +455,7 @@ Particle::accumulate_keff_tallies_local(double& absorption, double& collision, d
   collision += keff_tally_collision_;
   tracklength += keff_tally_tracklength_;
   leakage += keff_tally_leakage_;
-  
+
   // Reset particle tallies once accumulated
   keff_tally_absorption_  = 0.0;
   keff_tally_collision_   = 0.0;

@@ -128,13 +128,13 @@ public:
   
   void sync_size_host_to_device()
   {
-    #pragma omp target update to(this[:1])
+    #pragma omp target update to(size_)
   }
   
   void sync_size_device_to_host()
   {
     #ifdef USE_DEVICE
-    #pragma omp target update from(this[:1])
+    #pragma omp target update from(size_)
     #endif
   }
 
@@ -159,13 +159,14 @@ public:
 
   void allocate_on_device()
   {
-    #pragma omp target update to(this[:1])
+    #pragma omp target update to(size_)
+    #pragma omp target update to(capacity_)
     #pragma omp target enter data map(alloc: data_[:capacity_])
   }
 
   void copy_host_to_device()
   {
-    #pragma omp target update to(this[:1])
+    #pragma omp target update to(size_)
     #pragma omp target update to(data_[:capacity_])
   }
   
@@ -173,7 +174,7 @@ public:
   {
     #ifdef USE_DEVICE
     #pragma omp target update from(data_[:capacity_])
-    #pragma omp target update from(this[:1])
+    #pragma omp target update from(size_)
     #endif
   }
   

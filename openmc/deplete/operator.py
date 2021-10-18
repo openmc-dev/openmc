@@ -65,6 +65,10 @@ class Operator(TransportOperator):
     directly. Instead, an instance of this class is passed to an integrator
     class, such as :class:`openmc.deplete.CECMIntegrator`.
 
+    .. versionchanged:: 0.13.0
+        The geometry and settings parameters have been replaced with a
+        model parameter that takes an openmc.Model object
+
     Parameters
     ----------
     model : openmc.Model

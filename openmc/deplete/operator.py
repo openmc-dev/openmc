@@ -10,6 +10,7 @@ densities is all done in-memory instead of through the filesystem.
 import copy
 from collections import OrderedDict
 import os
+from typing import Type
 import xml.etree.ElementTree as ET
 from warnings import warn
 from pathlib import Path
@@ -196,6 +197,15 @@ class Operator(TransportOperator):
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
+        # check for old call to constructor
+        if isinstance(model, openmc.Geometry):
+            msg = "As of version 0.13.0 openmc.deplete.Operator requires an " \
+                "openmc.Model object rather than the openmc.Geometry and " \
+                "openmc.Settings parameters. Please use the geometry and " \
+                "settings objects passed here to create a model with which " \
+                "to generate the depletion Operator."
+            raise TypeError(msg)
+
         check_value('fission yield mode', fission_yield_mode,
                     self._fission_helpers.keys())
         check_value('normalization mode', normalization_mode,

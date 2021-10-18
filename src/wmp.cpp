@@ -104,12 +104,12 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   // ==========================================================================
   // Add the contribution from the curvefit polynomial.
 
-  if (sqrtkT > 0.0 && window.broaden_poly) {
+  if (sqrtkT > 0.0) {
     // Broaden the curvefit.
     double dopp = sqrt_awr_ / sqrtkT;
     std::array<double, MAX_POLY_COEFFICIENTS> broadened_polynomials;
-    broaden_wmp_polynomials(E, dopp, fit_order_ + 1, broadened_polynomials.data());
-    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
+    broaden_wmp_polynomials(E, dopp, n_order_, broadened_polynomials.data());
+    for (int i_poly = 0; i_poly < n_order_; ++i_poly) {
       sig_s += curvefit(i_window, i_poly, FIT_S) * broadened_polynomials[i_poly];
       sig_a += curvefit(i_window, i_poly, FIT_A) * broadened_polynomials[i_poly];
       if (fissionable_) {
@@ -119,7 +119,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   } else {
     // Evaluate as if it were a polynomial
     double temp = invE;
-    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
+    for (int i_poly = 0; i_poly < n_order_; ++i_poly) {
       sig_s += curvefit(i_window, i_poly, FIT_S) * temp;
       sig_a += curvefit(i_window, i_poly, FIT_A) * temp;
       if (fissionable_) {
@@ -129,13 +129,14 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
     }
   }
 
+
   // ==========================================================================
   // Add the contribution from the poles in this window.
 
   if (sqrtkT == 0.0) {
     // If at 0K, use asymptotic form.
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
-      std::complex<double> psi_chi = std::complex<double>(0.0,-1.0) / (data_(i_pole, MP_EA) - sqrtE);
+      std::complex<double> psi_chi = std::complex<double>(0.0, -1.0) / (data(i_pole, MP_EA) - sqrtE);
       std::complex<double> c_temp = psi_chi * invE;
       sig_s += (data(i_pole, MP_RS) * c_temp).real();
       sig_a += (data(i_pole, MP_RA) * c_temp).real();
@@ -228,7 +229,6 @@ WindowedMultipole::flatten_wmp_data() {
 void
 WindowedMultipole::copy_to_device()
 {
-  write_message("Mapping multipole data");
   #pragma omp target enter data map(to: device_curvefit_[:curvefit_.size()])
   #pragma omp target enter data map(to: device_data_[:data_.size()])
   #pragma omp target enter data map(to: device_window_info_[:window_info_.size()])
@@ -257,7 +257,7 @@ WindowedMultipole::window_info(int i_window) const
 std::complex<double>
 WindowedMultipole::data(int pole, int res) const
 {
-  return data_.data()[pole * n_data_size_ + res];
+  return device_data_[pole * n_data_size_ + res];
 }
 
 //========================================================================

@@ -33,17 +33,22 @@ class CoherentElasticAE(AngleEnergy):
     def __init__(self, coherent_xs):
         self.coherent_xs = coherent_xs
 
-    def to_hdf5(self, group):
+    def to_hdf5(self, group, xs_group=None):
         """Write coherent elastic distribution to an HDF5 group
 
         Parameters
         ----------
         group : h5py.Group
             HDF5 group to write to
+        xs_group : h5py.Group, optional
+            Group containing 'xs' dataset
 
         """
         group.attrs['type'] = np.string_('coherent_elastic')
-        group['coherent_xs'] = group.parent['xs']
+        if xs_group is not None:
+            group['coherent_xs'] = xs_group['xs']
+        else:
+            group['coherent_xs'] = group.parent['xs']
 
 
 class IncoherentElasticAE(AngleEnergy):
@@ -245,7 +250,7 @@ class MixedElasticAE(AngleEnergy):
         """
         group.attrs['type'] = np.string_('mixed_elastic')
         coherent_group = group.create_group('coherent')
-        self.coherent.to_hdf5(coherent_group)
+        self.coherent.to_hdf5(coherent_group, group.parent)
         incoherent_group = group.create_group('incoherent')
         self.incoherent.to_hdf5(incoherent_group)
 

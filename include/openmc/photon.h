@@ -23,10 +23,10 @@ namespace openmc {
 class ElectronSubshell {
 public:
   struct Transition {
-    int primary_subshell;
-    int secondary_subshell;
-    double energy;
-    double probability;
+    int primary_subshell;   //!< Index in shells_ of originating subshell
+    int secondary_subshell; //!< Index in shells_ of Auger electron subshell
+    double energy;          //!< Energy of transition
+    double probability;     //!< Probability of transition between subshells
   };
 
   // Constructors
@@ -105,6 +105,12 @@ private:
   void compton_doppler(
     double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const;
 
+  //! Calculate the maximum size of the vacancy stack in atomic relaxation
+  //
+  //! These helper functions use the subshell transition data to calculate the
+  //! maximum size the stack of unprocessed subshell vacancies can grow to for
+  //! the given element while simulating the cascade of photons and electrons
+  //! in atomic relaxation.
   int calc_max_stack_size() const;
   int calc_helper(std::unordered_map<int, int>& visited, int i_shell) const;
 };

@@ -18,6 +18,7 @@
 #include "xtensor/xview.hpp"
 
 #include <cmath>
+#include <fmt/core.h>
 #include <tuple> // for tie
 
 namespace openmc {
@@ -191,9 +192,10 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   // Check the maximum size of the atomic relaxation stack
   auto max_size = this->calc_max_stack_size();
   if (max_size > MAX_STACK_SIZE && mpi::master) {
-    warning("The subshell vacancy stack in atomic relaxation can grow up to " +
-            std::to_string(max_size) + ", but the stack size limit is set to " +
-            std::to_string(MAX_STACK_SIZE) + ".");
+    warning(fmt::format(
+      "The subshell vacancy stack in atomic relaxation can grow up to {}, but "
+      "the stack size limit is set to {}.",
+      max_size, MAX_STACK_SIZE));
   }
 
   // Determine number of electron shells

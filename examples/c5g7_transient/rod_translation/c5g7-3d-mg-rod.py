@@ -4,7 +4,7 @@ import openmc
 import openmc.mgxs
 import openmc.kinetics as kinetics
 
-from geometry_mg import materials, surfaces, universes, cells, lattices, geometry, mgxs_lib_file
+from geometry_3d_mg import materials, surfaces, universes, cells, lattices, geometry, mgxs_lib_file
 from mgxs_lib import mgxs_data
 materials_file = openmc.Materials(geometry.get_all_materials().values())
 os.environ['OPENMC_MG_CROSS_SECTIONS'] = 'mgxs.h5'

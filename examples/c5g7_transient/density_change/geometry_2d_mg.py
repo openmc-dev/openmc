@@ -1,5 +1,33 @@
+import os
 import openmc
+
+src = '../assemblies_mg.py'
+dst = './assemblies_mg.py'
+os.symlink(src, dst)
+
+src = '../pin_cells_mg.py'
+dst = './pin_cells_mg.py'
+os.symlink(src, dst)
+
+src = '../materials_mg.py'
+dst = './materials_mg.py'
+os.symlink(src, dst)
+
+src = '../mgxs_lib.py'
+dst = './mgxs_lib.py'
+os.symlink(src, dst)
+
+src = '../surfaces.py'
+dst = './surfaces.py'
+os.symlink(src, dst)
+
 from assemblies_mg import materials, surfaces, universes, cells, lattices, mgxs_lib_file
+
+os.unlink('./assemblies_mg.py')
+os.unlink('./pin_cells_mg.py')
+os.unlink('./materials_mg.py')
+os.unlink('./mgxs_lib.py')
+os.unlink('./surfaces.py')
 
 u1 = universes['UO2 Assembly 1']
 u4 = universes['UO2 Assembly 4']

@@ -160,7 +160,7 @@ public:
   //
   //! \param[in] group  HDF5 group
   explicit MixedElasticAE(
-    hid_t group, const CoherentElasticXS& coh_xs, const Tabulated1D& incoh_xs);
+    hid_t group, const CoherentElasticXS& coh_xs, const Function1D& incoh_xs);
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -175,7 +175,7 @@ private:
   unique_ptr<AngleEnergy> incoherent_dist_; //!< Incoherent distribution
 
   const CoherentElasticXS& coherent_xs_; //!< Ref. to coherent XS
-  const Tabulated1D& incoherent_xs_;     //!< Ref. to incoherent XS
+  const Function1D& incoherent_xs_;      //!< Polymorphic ref. to incoherent XS
 };
 
 } // namespace openmc

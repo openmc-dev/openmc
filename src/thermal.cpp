@@ -221,8 +221,7 @@ ThermalData::ThermalData(hid_t group)
       auto mixed_xs = dynamic_cast<Sum1D*>(elastic_.xs.get());
       const auto& coh_xs =
         dynamic_cast<const CoherentElasticXS*>(mixed_xs->functions(0).get());
-      const auto& incoh_xs =
-        dynamic_cast<const Tabulated1D*>(mixed_xs->functions(1).get());
+      const auto& incoh_xs = mixed_xs->functions(1).get();
 
       // Create mixed elastic distribution
       elastic_.distribution =

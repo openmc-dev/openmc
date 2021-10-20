@@ -337,7 +337,7 @@ void IncoherentInelasticAE::sample(
 //==============================================================================
 
 MixedElasticAE::MixedElasticAE(
-  hid_t group, const CoherentElasticXS& coh_xs, const Tabulated1D& incoh_xs)
+  hid_t group, const CoherentElasticXS& coh_xs, const Function1D& incoh_xs)
   : coherent_dist_(coh_xs), coherent_xs_(coh_xs), incoherent_xs_(incoh_xs)
 {
   // Read incoherent elastic distribution
@@ -347,8 +347,9 @@ MixedElasticAE::MixedElasticAE(
   if (temp == "incoherent_elastic") {
     incoherent_dist_ = make_unique<IncoherentElasticAE>(incoherent_group);
   } else if (temp == "incoherent_elastic_discrete") {
+    auto xs = dynamic_cast<const Tabulated1D*>(&incoh_xs);
     incoherent_dist_ =
-      make_unique<IncoherentElasticAEDiscrete>(incoherent_group, incoh_xs.x());
+      make_unique<IncoherentElasticAEDiscrete>(incoherent_group, xs->x());
   }
   close_group(incoherent_group);
 }

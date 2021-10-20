@@ -2,114 +2,128 @@ import openmc
 from materials_mg import materials, mgxs_lib_file
 from surfaces import surfaces
 
-###############################################################################
-#                 Exporting to OpenMC geometry.xml File
-###############################################################################
-
 cells = {}
 universes = {}
 
-rings = ['Base', 'Moderator']
+rings = ["Base", "Moderator"]
 
 # Instantiate Cells
-for mat in ['UO2']:
-    for bank in [1,4]:
-        univ_name = '{} Bank {}'.format(mat, bank)
+for mat in ["UO2"]:
+    for bank in [1, 4]:
+        univ_name = "{} Bank {}".format(mat, bank)
         universes[univ_name] = openmc.Universe(name=univ_name)
         for ring in rings:
-            name = '{} {} Bank {}'.format(mat, ring, bank)
+            name = "{} {} Bank {}".format(mat, ring, bank)
             cells[name] = openmc.Cell(name=name)
             universes[univ_name].add_cell(cells[name])
 
-        cells[f'{mat} Base Bank {bank}'].region       = -surfaces['Fuel Outer Clad OR']
-        cells[f'{mat} Moderator Bank {bank}'].region  = +surfaces['Fuel Outer Clad OR']
-        cells[f'{mat} Base Bank {bank}'].fill       = materials[mat]
-        cells[f'{mat} Moderator Bank {bank}'].fill  = materials[f'Moderator Bank {bank}']
+        cells[f"{mat} Base Bank {bank}"].region = -surfaces["Fuel Outer Clad OR"]
+        cells[f"{mat} Moderator Bank {bank}"].region = +surfaces["Fuel Outer Clad OR"]
+        cells[f"{mat} Base Bank {bank}"].fill = materials[mat]
+        cells[f"{mat} Moderator Bank {bank}"].fill = materials[f"Moderator Bank {bank}"]
 
 
-for mat in ['MOX 4.3%', 'MOX 7.0%', 'MOX 8.7%']:
-    for bank in [2,3]:
-        univ_name = '{} Bank {}'.format(mat, bank)
+for mat in ["MOX 4.3%", "MOX 7.0%", "MOX 8.7%"]:
+    for bank in [2, 3]:
+        univ_name = "{} Bank {}".format(mat, bank)
         universes[univ_name] = openmc.Universe(name=univ_name)
         for ring in rings:
-            name = '{} {} Bank {}'.format(mat, ring, bank)
+            name = "{} {} Bank {}".format(mat, ring, bank)
             cells[name] = openmc.Cell(name=name)
             universes[univ_name].add_cell(cells[name])
 
-        cells[f'{mat} Base Bank {bank}'].region       = -surfaces['Fuel Outer Clad OR']
-        cells[f'{mat} Moderator Bank {bank}'].region  = +surfaces['Fuel Outer Clad OR']
-        cells[f'{mat} Base Bank {bank}'].fill       = materials[mat]
-        cells[f'{mat} Moderator Bank {bank}'].fill  = materials['Moderator Bank {}'.format(bank)]
+        cells[f"{mat} Base Bank {bank}"].region = -surfaces["Fuel Outer Clad OR"]
+        cells[f"{mat} Moderator Bank {bank}"].region = +surfaces["Fuel Outer Clad OR"]
+        cells[f"{mat} Base Bank {bank}"].fill = materials[mat]
+        cells[f"{mat} Moderator Bank {bank}"].fill = materials[
+            "Moderator Bank {}".format(bank)
+        ]
 
-mats = ['Guide Tube']
+mats = ["Guide Tube"]
 for mat in mats:
-    for bank in range(1,5):
+    for bank in range(1, 5):
         for ring in rings:
-            name = '{} {} Bank {}'.format(mat, ring, bank)
+            name = "{} {} Bank {}".format(mat, ring, bank)
             cells[name] = openmc.Cell(name=name)
 
-        cells[f'{mat} Base Bank {bank}'].region      = -surfaces['Fuel Outer Clad OR'] & -surfaces['Axial Midplane']
-        cells[f'{mat} Moderator Bank {bank}'].region = +surfaces['Fuel Outer Clad OR'] & -surfaces['Axial Midplane']
-        cells[f'{mat} Base Bank {bank}'].fill      = materials[mat]
-        cells[f'{mat} Moderator Bank {bank}'].fill = materials['Moderator Bank {}'.format(bank)]
+        cells[f"{mat} Base Bank {bank}"].region = (
+            -surfaces["Fuel Outer Clad OR"] & -surfaces["Axial Midplane"]
+        )
+        cells[f"{mat} Moderator Bank {bank}"].region = (
+            +surfaces["Fuel Outer Clad OR"] & -surfaces["Axial Midplane"]
+        )
+        cells[f"{mat} Base Bank {bank}"].fill = materials[mat]
+        cells[f"{mat} Moderator Bank {bank}"].fill = materials[
+            "Moderator Bank {}".format(bank)
+        ]
 
-mats = ['Fission Chamber']
+mats = ["Fission Chamber"]
 for mat in mats:
-    for bank in range(0,5):
-        univ_name = '{} Bank {}'.format(mat, bank)
+    for bank in range(0, 5):
+        univ_name = "{} Bank {}".format(mat, bank)
         universes[univ_name] = openmc.Universe(name=univ_name)
         for ring in rings:
-            name = '{} {} Bank {}'.format(mat, ring, bank)
+            name = "{} {} Bank {}".format(mat, ring, bank)
             cells[name] = openmc.Cell(name=name)
             universes[univ_name].add_cell(cells[name])
 
-        cells[f'{mat} Base Bank {bank}'].region      = -surfaces['Fuel Outer Clad OR']
-        cells[f'{mat} Moderator Bank {bank}'].region = +surfaces['Fuel Outer Clad OR']
-        cells[f'{mat} Base Bank {bank}'].fill      = materials[mat]
-        cells[f'{mat} Moderator Bank {bank}'].fill = materials['Moderator Bank {}'.format(bank)]
+        cells[f"{mat} Base Bank {bank}"].region = -surfaces["Fuel Outer Clad OR"]
+        cells[f"{mat} Moderator Bank {bank}"].region = +surfaces["Fuel Outer Clad OR"]
+        cells[f"{mat} Base Bank {bank}"].fill = materials[mat]
+        cells[f"{mat} Moderator Bank {bank}"].fill = materials[
+            "Moderator Bank {}".format(bank)
+        ]
 
-rings = ['Base', 'Core', 'Core Moderator']
-mats = ['Control Rod']
+rings = ["Base", "Core", "Core Moderator"]
+mats = ["Control Rod"]
 for mat in mats:
-    for bank in range(1,5):
-        univ_name = '{} {} Bank {}'.format(mat, 'Core', bank)
+    for bank in range(1, 5):
+        univ_name = "{} {} Bank {}".format(mat, "Core", bank)
         universes[univ_name] = openmc.Universe(name=univ_name)
         for ring in rings:
-            name = '{} {} Bank {}'.format(mat, ring, bank)
+            name = "{} {} Bank {}".format(mat, ring, bank)
             cells[name] = openmc.Cell(name=name)
-            if ring != 'Base':
+            if ring != "Base":
                 universes[univ_name].add_cell(cells[name])
 
-        universes[univ_name].add_cell(cells['Guide Tube Base Bank {}'.format(bank)])
-        universes[univ_name].add_cell(cells['Guide Tube Moderator Bank {}'.format(bank)])
+        universes[univ_name].add_cell(cells["Guide Tube Base Bank {}".format(bank)])
+        universes[univ_name].add_cell(
+            cells["Guide Tube Moderator Bank {}".format(bank)]
+        )
 
-        cells[f'{mat} Core Bank {bank}'].region           = -surfaces['Fuel Outer Clad OR'] & +surfaces['Axial Midplane']
-        cells[f'{mat} Core Moderator Bank {bank}'].region = +surfaces['Fuel Outer Clad OR'] & +surfaces['Axial Midplane']
+        cells[f"{mat} Core Bank {bank}"].region = (
+            -surfaces["Fuel Outer Clad OR"] & +surfaces["Axial Midplane"]
+        )
+        cells[f"{mat} Core Moderator Bank {bank}"].region = (
+            +surfaces["Fuel Outer Clad OR"] & +surfaces["Axial Midplane"]
+        )
 
-        cells[f'{mat} Core Bank {bank}'].fill           = materials[mat]
-        cells[f'{mat} Core Moderator Bank {bank}'].fill = materials[f'Moderator Bank {bank}']
+        cells[f"{mat} Core Bank {bank}"].fill = materials[mat]
+        cells[f"{mat} Core Moderator Bank {bank}"].fill = materials[
+            f"Moderator Bank {bank}"
+        ]
 
-        cells[f'{mat} Base Bank {bank}'].fill = universes[f'{mat} Core Bank {bank}']
-        univ_name = f'{mat} Base Bank {bank}'
+        cells[f"{mat} Base Bank {bank}"].fill = universes[f"{mat} Core Bank {bank}"]
+        univ_name = f"{mat} Base Bank {bank}"
         universes[univ_name] = openmc.Universe(name=univ_name)
-        universes[univ_name].add_cell(cells[f'{mat} Base Bank {bank}'])
+        universes[univ_name].add_cell(cells[f"{mat} Base Bank {bank}"])
 
-rings = ['Reflector', 'Reflector Moderator']
-mats = ['Control Rod']
+rings = ["Reflector", "Reflector Moderator"]
+mats = ["Control Rod"]
 for mat in mats:
-    univ_name = '{} Reflector'.format(mat)
+    univ_name = "{} Reflector".format(mat)
     universes[univ_name] = openmc.Universe(name=univ_name)
     for ring in rings:
-        name = '{} {}'.format(mat, ring)
+        name = "{} {}".format(mat, ring)
         cells[name] = openmc.Cell(name=name)
         universes[univ_name].add_cell(cells[name])
 
-    cells[f'{mat} Reflector'].region           = -surfaces['Fuel Outer Clad OR']
-    cells[f'{mat} Reflector Moderator'].region = +surfaces['Fuel Outer Clad OR']
-    cells[f'{mat} Reflector'].fill           = materials[mat]
-    cells[f'{mat} Reflector Moderator'].fill = materials['Moderator']
+    cells[f"{mat} Reflector"].region = -surfaces["Fuel Outer Clad OR"]
+    cells[f"{mat} Reflector Moderator"].region = +surfaces["Fuel Outer Clad OR"]
+    cells[f"{mat} Reflector"].fill = materials[mat]
+    cells[f"{mat} Reflector Moderator"].fill = materials["Moderator"]
 
-cells['Moderator'] = openmc.Cell(name='Moderator0')
-cells['Moderator'].fill = materials['Moderator']
-universes['Moderator'] = openmc.Universe(name='Moderator')
-universes['Moderator'].add_cell(cells['Moderator'])
+cells["Moderator"] = openmc.Cell(name="Moderator0")
+cells["Moderator"].fill = materials["Moderator"]
+universes["Moderator"] = openmc.Universe(name="Moderator")
+universes["Moderator"].add_cell(cells["Moderator"])

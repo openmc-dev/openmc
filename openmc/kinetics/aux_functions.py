@@ -6,9 +6,28 @@ import numpy as np
 from numpy.lib.stride_tricks import as_strided as ast
 
 def lcm(a, b):
+    """Find the least common multiple of two numbers.
+
+    Parameters
+    ----------
+    a : int
+        First number for the least common multiple calculation.
+    b : int
+        Second number for the least common multiple calculation.
+
+    """
+
     return a * b // gcd(a, b)
 
 def block_diag(array):
+    """Provide a sparse block diagonal matrix.
+
+    Parameters
+    ----------
+    array : np.array
+        Array to be changed to block diagonal.
+
+    """
 
     ni, ng, ng = array.shape
     diags = np.zeros((ng*2-1, ni * ng))
@@ -28,6 +47,22 @@ def block_diag(array):
     return sps.diags(diags2, ndiag)
 
 def map_array(array, from_shape, to_shape, normalize=True, lcm_applied=False):
+    """Map an array from one shape to another.
+
+    Parameters
+    ----------
+    array : np.array
+        Array to be mapped.
+    from_shape : tuple
+        Starting shape.
+    to_shape : tuple
+        Final shape.
+    normalize : bool
+        Whether to normalize the array.
+    lcm_applied : bool
+        Whether the least common multiple is applied.
+
+    """
 
     array.shape = from_shape
     num_dims = len(from_shape)
@@ -69,6 +104,18 @@ def map_array(array, from_shape, to_shape, normalize=True, lcm_applied=False):
     return array
 
 def surface_integral(array, from_shape, to_shape):
+    """Perform a surface integral.
+
+    Parameters
+    ----------
+    array : np.array
+        Array to be integrated.
+    from_shape : tuple
+        Starting shape.
+    to_shape : tuple
+        Final shape.
+
+    """
 
     array.shape = from_shape
     num_dims = len(from_shape)
@@ -122,7 +169,16 @@ def surface_integral(array, from_shape, to_shape):
 def block_view(A, block):
     """Provide a block view to 3+D array. No error checking made.
     Therefore meaningful (as implemented) only for blocks strictly
-    compatible with the shape of A."""
+    compatible with the shape of A.
+
+    Parameters
+    ----------
+    A : np.array
+        Array to be viewed.
+    block : tuple
+        Block size.
+
+    """
 
     block_dim = len(block)
 
@@ -159,12 +215,36 @@ def block_view(A, block):
     return ast(A, shape=shape, strides=strides)
 
 def nan_inf_to_zero(array):
+    """Replace inf with zeros in an array.
+
+    Parameters
+    ----------
+    array : np.array
+        Array to undergo inf to zero replacement.
+
+    """
 
     array[array == -np.inf] = 0.
     array[array ==  np.inf] = 0.
     return np.nan_to_num(array)
 
 def compute_eigenvalue(A, M, flux, tolerance=1.e-6, max_eig_iterations=10000):
+    """Compute k eigenvalue using source iteration.
+
+    Parameters
+    ----------
+    A : np.array
+        Destruction matrix.
+    M : np.array
+        Production matrix.
+    flux : np.array
+        Initial guess of flux.
+    tolerance : float
+        Maximum amount of error allowed before ceasing iteration.
+    max_eig_iterations : int
+        Maximum number of iterations.
+
+    """
 
     # Ensure flux is a 1D array
     flux = flux.flatten()

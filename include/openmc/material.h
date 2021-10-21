@@ -15,6 +15,7 @@
 #include "openmc/constants.h"
 #include "openmc/bremsstrahlung.h"
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -148,8 +149,7 @@ public:
   // Data
   int32_t id_ {C_NONE}; //!< Unique ID
   std::string name_; //!< Name of material
-  std::vector<int> nuclide_; //!< Indices in nuclides vector
-  int* device_nuclide_;
+  vector<int> nuclide_; //!< Indices in nuclides vector
   std::vector<int> element_; //!< Indices in elements vector
   int* device_element_;
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]

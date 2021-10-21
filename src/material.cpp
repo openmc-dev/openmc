@@ -807,8 +807,8 @@ void Material::calculate_neutron_xs(Particle& p) const
     // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine microscopic cross sections for this nuclide
-    int i_nuclide = device_nuclide_[i];
-    
+    int i_nuclide = nuclide_[i];
+
     // Determine if we need to save the micro XS data or not
     #ifdef NO_MICRO_XS_CACHE
     bool write_cache = false;
@@ -818,10 +818,10 @@ void Material::calculate_neutron_xs(Particle& p) const
 
     // Perform microscopic XS lookup
     MicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, write_cache);
-    
+
     // Copy atom density of nuclide in material
     double atom_density = device_atom_density_[i];
-    
+
     // Accumulate this nuclide's contribution to the local macro XS variable
     macro.total      += atom_density * nuclide_micro.total;
     macro.absorption += atom_density * nuclide_micro.absorption;
@@ -1105,8 +1105,7 @@ void Material::add_nuclide(const std::string& name, double density)
 
 void Material::copy_to_device()
 {
-  device_nuclide_ = nuclide_.data();
-  #pragma omp target enter data map(to: device_nuclide_[:nuclide_.size()])
+  nuclide_.copy_to_device();
   device_element_ = element_.data();
   #pragma omp target enter data map(to: device_element_[:element_.size()])
   device_mat_nuclide_index_ = mat_nuclide_index_.data();
@@ -1122,7 +1121,7 @@ void Material::copy_to_device()
 
 void Material::release_from_device()
 {
-  #pragma omp target exit data map(release: device_nuclide_[:nuclide_.size()])
+  nuclide_.release_device();
   #pragma omp target exit data map(release: device_element_[:element_.size()])
   #pragma omp target exit data map(release: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
   #pragma omp target exit data map(release: device_p0_[:p0_.size()])

@@ -561,7 +561,7 @@ int sample_nuclide(Particle& p)
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
     // Get atom density
-    int i_nuclide = mat.device_nuclide_[i];
+    int i_nuclide = mat.nuclide_[i];
     double atom_density = mat.device_atom_density_[i];
 
     // Increment probability to compare to cutoff
@@ -599,7 +599,7 @@ int sample_element(Particle& p)
     prob += sigma;
     if (prob > cutoff) {
       // Save which nuclide particle had collision with for tally purpose
-      p.event_nuclide_ = mat.device_nuclide_[i];
+      p.event_nuclide_ = mat.nuclide_[i];
 
       return i_element;
     }

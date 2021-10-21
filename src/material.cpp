@@ -1109,8 +1109,7 @@ void Material::copy_to_device()
   element_.copy_to_device();
   device_mat_nuclide_index_ = mat_nuclide_index_.data();
   #pragma omp target enter data map(to: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
-  device_p0_ = p0_.data();
-  #pragma omp target enter data map(to: device_p0_[:p0_.size()])
+  p0_.copy_to_device();
   device_atom_density_ = atom_density_.data();
   #pragma omp target enter data map(to: device_atom_density_[:atom_density_.size()])
   device_thermal_tables_ = thermal_tables_.data();
@@ -1123,7 +1122,7 @@ void Material::release_from_device()
   nuclide_.release_device();
   element_.release_device();
   #pragma omp target exit data map(release: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
-  #pragma omp target exit data map(release: device_p0_[:p0_.size()])
+  p0_.release_device();
   #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])
   #pragma omp target exit data map(release: device_thermal_tables_[:thermal_tables_.size()])
   ttb_.release_from_device();

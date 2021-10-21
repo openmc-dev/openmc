@@ -809,9 +809,9 @@ void scatter(Particle& p, int i_nuclide)
 
   // Sample new outgoing angle for isotropic-in-lab scattering
   const auto& mat {model::materials[p.material_]};
-  if (mat.device_p0_) {
+  if (!mat.p0_.empty()) {
     int i_nuc_mat = mat.device_mat_nuclide_index_[i_nuclide];
-    if (mat.device_p0_[i_nuc_mat]) {
+    if (mat.p0_[i_nuc_mat]) {
       // Sample isotropic-in-lab outgoing direction
       double mu = 2.0*prn(p.current_seed()) - 1.0;
       double phi = 2.0*PI*prn(p.current_seed());

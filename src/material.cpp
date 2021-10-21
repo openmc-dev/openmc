@@ -850,7 +850,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine microscopic cross sections for this nuclide
-    int i_element = device_element_[i];
+    int i_element = element_[i];
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {p.photon_xs_[i_element]};
@@ -1106,8 +1106,7 @@ void Material::add_nuclide(const std::string& name, double density)
 void Material::copy_to_device()
 {
   nuclide_.copy_to_device();
-  device_element_ = element_.data();
-  #pragma omp target enter data map(to: device_element_[:element_.size()])
+  element_.copy_to_device();
   device_mat_nuclide_index_ = mat_nuclide_index_.data();
   #pragma omp target enter data map(to: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
   device_p0_ = p0_.data();
@@ -1122,7 +1121,7 @@ void Material::copy_to_device()
 void Material::release_from_device()
 {
   nuclide_.release_device();
-  #pragma omp target exit data map(release: device_element_[:element_.size()])
+  element_.release_device();
   #pragma omp target exit data map(release: device_mat_nuclide_index_[:mat_nuclide_index_.size()])
   #pragma omp target exit data map(release: device_p0_[:p0_.size()])
   #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])

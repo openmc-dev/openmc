@@ -589,7 +589,7 @@ int sample_element(Particle& p)
   double prob = 0.0;
   for (int i = 0; i < mat.element_.size(); ++i) {
     // Find atom density
-    int i_element = mat.device_element_[i];
+    int i_element = mat.element_[i];
     double atom_density = mat.device_atom_density_[i];
 
     // Determine microscopic cross section

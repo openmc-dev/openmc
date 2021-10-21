@@ -150,8 +150,7 @@ public:
   int32_t id_ {C_NONE}; //!< Unique ID
   std::string name_; //!< Name of material
   vector<int> nuclide_; //!< Indices in nuclides vector
-  std::vector<int> element_; //!< Indices in elements vector
-  int* device_element_;
+  vector<int> element_; //!< Indices in elements vector
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double* device_atom_density_;
   double density_; //!< Total atom density in [atom/b-cm]

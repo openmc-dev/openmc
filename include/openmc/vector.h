@@ -1,8 +1,9 @@
 #ifndef OPENMC_VECTOR_H
 #define OPENMC_VECTOR_H
 
-#include <algorithm> // for copy
+#include <algorithm> // for copy, fill
 #include <iterator> // for reverse_iterator
+#include <utility> // for swap
 
 namespace openmc {
 
@@ -24,10 +25,13 @@ public:
 
   // Constructors, destructors
   vector() : data_(nullptr), size_(0), capacity_(0) { }
+  vector(size_type n) : vector() { this->reserve(n); }
 
-  vector(size_type n) : vector() {
-    this->reserve(n);
-  }
+  // Copy/move constructors/assignments
+  vector(const vector& other);
+  vector(vector&& other);
+  vector& operator=(const vector& other);
+  vector& operator=(vector&& other);
 
   ~vector() {
     if (data_) {
@@ -36,12 +40,11 @@ public:
     }
   }
 
-  // Copy assignment
-  vector& operator=(const vector& other);
-
   // Element access
   reference operator[](size_type pos) { return data_[pos]; }
   const_reference operator[](size_type pos) const { return data_[pos]; }
+  reference at(size_type pos) { return data_[pos]; }
+  const_reference at(size_type pos) const { return data_[pos]; }
   reference front() { return data_[0]; }
   const_reference front() const { return data_[0]; }
   reference back() { return data_[size_ - 1]; }
@@ -66,9 +69,11 @@ public:
   // Capacity
   bool empty() const { return size_ == 0; }
   size_type size() const { return size_; }
+  size_type capacity() const { return capacity_; }
 
   // Methods
   void clear() { size_ = 0; }
+  void shrink_to_fit() { }
 
   void push_back(const T& value) {
     if (capacity_ == 0) {
@@ -84,6 +89,14 @@ public:
 
   void resize(size_type count) {
     this->reserve(count);
+    size_ = count;
+  }
+
+  void resize(size_type count, const value_type& value) {
+    this->reserve(count);
+    if (size_ < count) {
+      std::fill(end(), begin() + count, value);
+    }
     size_ = count;
   }
 
@@ -108,6 +121,12 @@ public:
     capacity_ = n;
   }
 
+  void swap(vector& other) {
+    std::swap(size_, other.size_);
+    std::swap(capacity_, other.capacity_);
+    std::swap(data_, other.data_);
+  }
+
   void copy_to_device() {
 #pragma omp target enter data map(to: data_[:size_])
   }
@@ -127,10 +146,33 @@ private:
 };
 
 template<typename T>
-vector<T>& vector<T>::operator=(const vector<T>& other)
+vector<T>::vector(const vector<T>& other)
+  : vector()
 {
   this->resize(other.size());
   std::copy(other.cbegin(), other.cend(), this->begin());
+}
+
+template<typename T>
+vector<T>::vector(vector&& other)
+  : vector()
+{
+  other.swap(*this);
+}
+
+template<typename T>
+vector<T>& vector<T>::operator=(const vector<T>& other)
+{
+  // Copy-and-swap idiom
+  vector<T> copy(other);
+  copy.swap(*this);
+  return *this;
+}
+
+template<typename T>
+vector<T>& vector<T>::operator=(vector<T>&& other)
+{
+  other.swap(*this);
   return *this;
 }
 

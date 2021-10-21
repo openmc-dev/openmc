@@ -91,6 +91,9 @@ public:
   iterator erase(const_iterator pos);
   iterator insert(const_iterator pos, const T& value);
 
+  template<class InputIt>
+  iterator insert(const_iterator pos, InputIt first, InputIt last);
+
   void resize(size_type count) {
     this->reserve(count);
     size_ = count;
@@ -225,6 +228,35 @@ typename vector<T>::iterator vector<T>::insert(vector<T>::const_iterator pos, co
 
   // Return new iterator
   return data_ + idx;
+}
+
+template<typename T>
+template<class InputIt>
+typename vector<T>::iterator vector<T>::insert(
+  vector<T>::const_iterator pos,
+  InputIt first,
+  InputIt last)
+{
+  // Get index of position
+  size_type start = std::distance(this->cbegin(), pos);
+  size_type n = std::distance(first, last);
+
+  // Add space for one more element
+  this->resize(size_ + n);
+
+  // Move elements from [pos, end) n forward
+  for (size_type i = size_ - n; i >= start; --i) {
+    data_[i + n] = data_[i];
+  }
+
+  // Insert elements
+  for (size_type i = 0; i < n; ++i) {
+    data_[start + i] = *first;
+    ++first;
+  }
+
+  // Return new iterator
+  return data_ + start;
 }
 
 } // namespace openmc

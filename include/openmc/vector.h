@@ -25,7 +25,8 @@ public:
 
   // Constructors, destructors
   vector() : data_(nullptr), size_(0), capacity_(0) { }
-  vector(size_type n) : vector() { this->reserve(n); }
+  vector(size_type n) : vector() { this->resize(n); }
+  vector(const_iterator begin, const_iterator end);
 
   // Copy/move constructors/assignments
   vector(const vector& other);
@@ -74,6 +75,7 @@ public:
   // Methods
   void clear() { size_ = 0; }
   void shrink_to_fit() { }
+  void pop_back() { this->resize(size_ - 1); }
 
   void push_back(const T& value) {
     if (capacity_ == 0) {
@@ -86,6 +88,8 @@ public:
     ++size_;
   }
 
+  iterator erase(const_iterator pos);
+  iterator insert(const_iterator pos, const T& value);
 
   void resize(size_type count) {
     this->reserve(count);
@@ -146,6 +150,13 @@ private:
 };
 
 template<typename T>
+vector<T>::vector(vector<T>::const_iterator first, vector<T>::const_iterator last)
+  : vector(last - first)
+{
+  std::copy(first, last, this->begin());
+}
+
+template<typename T>
 vector<T>::vector(const vector<T>& other)
   : vector()
 {
@@ -174,6 +185,46 @@ vector<T>& vector<T>::operator=(vector<T>&& other)
 {
   other.swap(*this);
   return *this;
+}
+
+template<typename T>
+typename vector<T>::iterator vector<T>::erase(vector<T>::const_iterator pos)
+{
+  // Get index of position
+  size_type idx = std::distance(this->cbegin(), pos);
+
+  // Move elements from [pos + 1, end) one back
+  for (size_type i = idx; i < size_ - 1; ++i) {
+    data_[i] = data_[i + 1];
+  }
+
+  // Add space for one more element
+  this->resize(size_ - 1);
+
+  // Return new iterator
+  return data_ + idx;
+}
+
+
+template<typename T>
+typename vector<T>::iterator vector<T>::insert(vector<T>::const_iterator pos, const T& value)
+{
+  // Get index of position
+  size_type idx = std::distance(this->cbegin(), pos);
+
+  // Add space for one more element
+  this->resize(size_ + 1);
+
+  // Move elements from [pos, end) one forward
+  for (size_type i = size_ - 1; i >= idx; --i) {
+    data_[i + 1] = data_[i];
+  }
+
+  // Insert given element
+  data_[idx] = value;
+
+  // Return new iterator
+  return data_ + idx;
 }
 
 } // namespace openmc

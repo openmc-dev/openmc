@@ -355,8 +355,7 @@ public:
 
 //private:
   //! A sorted vector of indices to surfaces that partition the universe
-  std::vector<int32_t> surfs_;
-  int32_t* device_surfs_{NULL};
+  vector<int32_t> surfs_;
 
   //! Vectors listing the indices of the cells that lie within each partition
   //

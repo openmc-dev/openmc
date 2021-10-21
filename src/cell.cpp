@@ -1028,7 +1028,7 @@ UniversePartitioner::get_cells(Position r, Direction u, int& ncells) const
   int right = surfs_.size() - 1;
   while (true) {
     // Check the sense of the coordinates for the current surface.
-    const auto& surf = model::device_surfaces[device_surfs_[middle]];
+    const auto& surf = model::device_surfaces[surfs_[middle]];
     if (surf.sense(r, u)) {
       // The coordinates lie in the positive halfspace.  Recurse if there are
       // more surfaces to check.  Otherwise, return the cells on the positive
@@ -1090,8 +1090,7 @@ void UniversePartitioner::allocate_and_copy_to_device()
   #pragma omp target enter data map(to: device_partitions_offsets_[:partitions_.size()])
 
   // Now for surfaces
-  device_surfs_ = surfs_.data();
-  #pragma omp target enter data map(to: device_surfs_[:surfs_.size()])
+  surfs_.copy_to_device();
 }
 
 //==============================================================================

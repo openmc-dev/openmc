@@ -208,11 +208,9 @@ public:
   vector<double> sqrtkT_;
 
   //! Definition of spatial region as Boolean expression of half-spaces
-  std::vector<std::int32_t> region_;
-  int32_t* device_region_{NULL};
+  vector<std::int32_t> region_;
   //! Reverse Polish notation for region expression
-  std::vector<std::int32_t> rpn_;
-  int32_t* device_rpn_{NULL};
+  vector<std::int32_t> rpn_;
   bool simple_;  //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
@@ -240,26 +238,26 @@ protected:
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   #pragma omp end declare target
   BoundingBox bounding_box_simple() const;
-  static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
+  static BoundingBox bounding_box_complex(vector<int32_t> rpn);
 
   //! Applies DeMorgan's laws to a section of the RPN
   //! \param start Starting point for token modification
   //! \param stop Stopping point for token modification
-  static void apply_demorgan(std::vector<int32_t>::iterator start,
-                             std::vector<int32_t>::iterator stop);
+  static void apply_demorgan(vector<int32_t>::iterator start,
+                             vector<int32_t>::iterator stop);
 
   //! Removes complement operators from the RPN
   //! \param rpn The rpn to remove complement operators from.
-  static void remove_complement_ops(std::vector<int32_t>& rpn);
+  static void remove_complement_ops(vector<int32_t>& rpn);
 
   //! Returns the beginning position of a parenthesis block (immediately before
   //! two surface tokens) in the RPN given a starting position at the end of
   //! that block (immediately after two surface tokens)
   //! \param start Starting position of the search
   //! \param rpn The rpn being searched
-  static std::vector<int32_t>::iterator
-  find_left_parenthesis(std::vector<int32_t>::iterator start,
-                        const std::vector<int32_t>& rpn);
+  static vector<int32_t>::iterator
+  find_left_parenthesis(vector<int32_t>::iterator start,
+                        const vector<int32_t>& rpn);
 };
 
 struct CellInstanceItem {

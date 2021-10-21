@@ -49,10 +49,10 @@ namespace model {
 //! operators.
 //==============================================================================
 
-std::vector<int32_t>
+vector<int32_t>
 tokenize(const std::string region_spec) {
   // Check for an empty region_spec first.
-  std::vector<int32_t> tokens;
+  vector<int32_t> tokens;
   if (region_spec.empty()) {
     return tokens;
   }
@@ -116,11 +116,11 @@ tokenize(const std::string region_spec) {
 //! This function uses the shunting-yard algorithm.
 //==============================================================================
 
-std::vector<int32_t>
-generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
+vector<int32_t>
+generate_rpn(int32_t cell_id, vector<int32_t> infix)
 {
-  std::vector<int32_t> rpn;
-  std::vector<int32_t> stack;
+  vector<int32_t> rpn;
+  vector<int32_t> stack;
 
   for (int32_t token : infix) {
     if (token < OP_UNION) {
@@ -325,10 +325,8 @@ void Cell::copy_to_device()
   device_material_ = material_.data();
   #pragma omp target enter data map(to: device_material_[:material_.size()])
   sqrtkT_.copy_to_device();
-  device_region_  = region_.data()    ;
-  #pragma omp target enter data map(to: device_region_[:region_.size()])
-  device_rpn_     = rpn_.data()       ;
-  #pragma omp target enter data map(to: device_rpn_[:rpn_.size()])
+  region_.copy_to_device();
+  rpn_.copy_to_device();
   device_offset_  = offset_.data()    ;
   #pragma omp target enter data map(to: device_offset_[:offset_.size()])
 
@@ -561,7 +559,7 @@ Cell::distance(Position r, Direction u, int32_t on_surface, Particle* p) const
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
   for (int i = 0; i < rpn_.size(); i++) {
-    int32_t token = device_rpn_[i];
+    int32_t token = rpn_[i];
     // Ignore this token if it corresponds to an operator rather than a region.
     if (token >= OP_UNION) continue;
 
@@ -677,8 +675,8 @@ BoundingBox Cell::bounding_box_simple() const {
   return bbox;
 }
 
-void Cell::apply_demorgan(std::vector<int32_t>::iterator start,
-                             std::vector<int32_t>::iterator stop)
+void Cell::apply_demorgan(vector<int32_t>::iterator start,
+                          vector<int32_t>::iterator stop)
 {
   while (start < stop) {
     if (*start < OP_UNION) { *start *= -1; }
@@ -688,9 +686,9 @@ void Cell::apply_demorgan(std::vector<int32_t>::iterator start,
   }
 }
 
-std::vector<int32_t>::iterator
-Cell::find_left_parenthesis(std::vector<int32_t>::iterator start,
-                               const std::vector<int32_t>& rpn) {
+vector<int32_t>::iterator
+Cell::find_left_parenthesis(vector<int32_t>::iterator start,
+                            const vector<int32_t>& rpn) {
   // start search at zero
   int parenthesis_level = 0;
   auto it = start;
@@ -721,12 +719,12 @@ Cell::find_left_parenthesis(std::vector<int32_t>::iterator start,
   return it;
 }
 
-void Cell::remove_complement_ops(std::vector<int32_t>& rpn) {
+void Cell::remove_complement_ops(vector<int32_t>& rpn) {
   auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
   while (it != rpn.end()) {
     // find the opening parenthesis (if any)
     auto left = find_left_parenthesis(it, rpn);
-    std::vector<int32_t> tmp(left, it+1);
+    vector<int32_t> tmp(left, it+1);
 
     // apply DeMorgan's law to any surfaces/operators between these
     // positions in the RPN
@@ -738,7 +736,7 @@ void Cell::remove_complement_ops(std::vector<int32_t>& rpn) {
   }
 }
 
-BoundingBox Cell::bounding_box_complex(std::vector<int32_t> rpn) {
+BoundingBox Cell::bounding_box_complex(vector<int32_t> rpn) {
   // remove complements by adjusting surface signs and operators
   remove_complement_ops(rpn);
 
@@ -773,7 +771,7 @@ bool
 Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
   for (int32_t i = 0; i < rpn_.size(); i++) {
-    int32_t token = device_rpn_[i];
+    int32_t token = rpn_[i];
     // Assume that no tokens are operators. Evaluate the sense of particle with
     // respect to the surface and see if the token matches the sense. If the
     // particle's surface attribute is set and matches the token, that
@@ -802,7 +800,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
   int i_stack = -1;
 
   for (int i = 0; i < rpn_.size(); i++) {
-    int32_t token = device_rpn_[i];
+    int32_t token = rpn_[i];
     // If the token is a binary operator (intersection/union), apply it to
     // the last two items on the stack. If the token is a unary operator
     // (complement), apply it to the last item on the stack.

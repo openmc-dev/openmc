@@ -2,6 +2,7 @@
 #define OPENMC_VECTOR_H
 
 #include <algorithm> // for copy
+#include <iterator> // for reverse_iterator
 
 namespace openmc {
 
@@ -18,7 +19,8 @@ public:
   using const_pointer = const T*;
   using iterator = T*;
   using const_iterator = const T*;
-
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   // Constructors, destructors
   vector() : data_(nullptr), size_(0), capacity_(0) { }
@@ -54,6 +56,12 @@ public:
   const_iterator end() const { return data_ + size_; }
   const_iterator cbegin() const { return data_; }
   const_iterator cend() const { return data_ + size_; }
+  reverse_iterator rbegin() { return reverse_iterator(end()); }
+  reverse_iterator rend() { return reverse_iterator(begin()); }
+  const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
+  const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+  const_reverse_iterator crbegin() const { return rbegin(); }
+  const_reverse_iterator crend() const { return rend(); }
 
   // Capacity
   bool empty() const { return size_ == 0; }

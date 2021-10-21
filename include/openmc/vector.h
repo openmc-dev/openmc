@@ -77,16 +77,9 @@ public:
   void shrink_to_fit() { }
   void pop_back() { this->resize(size_ - 1); }
 
-  void push_back(const T& value) {
-    if (capacity_ == 0) {
-      this->reserve(8);
-    } else if (size_ == capacity_ ) {
-      this->reserve(2*capacity_);
-    }
-
-    data_[size_] = value;
-    ++size_;
-  }
+  void push_back(const T& value);
+  template<class... Args>
+  void emplace_back(Args&&... args);
 
   iterator erase(const_iterator pos);
   iterator insert(const_iterator pos, const T& value);
@@ -188,6 +181,28 @@ vector<T>& vector<T>::operator=(vector<T>&& other)
 {
   other.swap(*this);
   return *this;
+}
+
+template<typename T>
+void vector<T>::push_back(const T& value)
+{
+  if (capacity_ == 0) {
+    this->reserve(8);
+  } else if (size_ == capacity_ ) {
+    this->reserve(2*capacity_);
+  }
+
+  data_[size_] = value;
+  ++size_;
+}
+
+template<typename T>
+template<class... Args>
+void vector<T>::emplace_back(Args&&... args)
+{
+  // TODO: better growth pattern here
+  this->reserve(size_ + 1);
+  new(data_ + size_++) T(std::forward<Args>(args)...);
 }
 
 template<typename T>

@@ -198,8 +198,7 @@ public:
   //! \brief Material(s) within this cell.
   //!
   //! May be multiple materials for distribcell.
-  std::vector<int32_t> material_;
-  int32_t* device_material_{NULL};
+  vector<int32_t> material_;
 
   //! \brief Temperature(s) within this cell.
   //!

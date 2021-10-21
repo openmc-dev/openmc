@@ -322,8 +322,7 @@ void Cell::allocate_on_device()
 
 void Cell::copy_to_device()
 {
-  device_material_ = material_.data();
-  #pragma omp target enter data map(to: device_material_[:material_.size()])
+  material_.copy_to_device();
   sqrtkT_.copy_to_device();
   region_.copy_to_device();
   rpn_.copy_to_device();

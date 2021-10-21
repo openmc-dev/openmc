@@ -164,8 +164,7 @@ public:
   // table) that indicates for each nuclide in data::nuclides the index of the
   // corresponding nuclide in the nuclide_ vector. If it is not present in the
   // material, the entry is set to -1.
-  std::vector<int> mat_nuclide_index_;
-  int* device_mat_nuclide_index_;
+  vector<int> mat_nuclide_index_;
 
   // Thermal scattering tables
   std::vector<ThermalTable> thermal_tables_;

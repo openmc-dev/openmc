@@ -228,8 +228,7 @@ public:
   double rotation_[12];
   int rotation_length_{0};
 
-  std::vector<int32_t> offset_;  //!< Distribcell offset table
-  int32_t* device_offset_{NULL};
+  vector<int32_t> offset_;  //!< Distribcell offset table
 
 protected:
   #pragma omp declare target

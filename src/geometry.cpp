@@ -214,8 +214,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
           //const auto& c_i {model::cells[p.coord_[i].cell]};
           const auto& c_i {model::device_cells[p.coord_[i].cell]};
           if (c_i.type_ == Fill::UNIVERSE) {
-            //offset += c_i.offset_[c.distribcell_index_];
-            offset += c_i.device_offset_[c.distribcell_index_];
+            offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
             //auto& lat {model::lattices[p.coord_[i + 1].lattice]};
             auto& lat {model::device_lattices[p.coord_[i + 1].lattice]};

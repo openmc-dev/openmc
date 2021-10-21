@@ -240,11 +240,9 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       }
       p.sqrtkT_last_ = p.sqrtkT_;
       if (c.sqrtkT_.size() > 1) {
-        //p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
-        p.sqrtkT_ = c.device_sqrtkT_[p.cell_instance_];
+        p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
       } else {
-        //p.sqrtkT_ = c.sqrtkT_[0];
-        p.sqrtkT_ = c.device_sqrtkT_[0];
+        p.sqrtkT_ = c.sqrtkT_[0];
       }
 
       } // End OMP target

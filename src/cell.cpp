@@ -324,8 +324,7 @@ void Cell::copy_to_device()
 {
   device_material_ = material_.data();
   #pragma omp target enter data map(to: device_material_[:material_.size()])
-  device_sqrtkT_  = sqrtkT_.data()    ;
-  #pragma omp target enter data map(to: device_sqrtkT_[:sqrtkT_.size()])
+  sqrtkT_.copy_to_device();
   device_region_  = region_.data()    ;
   #pragma omp target enter data map(to: device_region_[:region_.size()])
   device_rpn_     = rpn_.data()       ;
@@ -406,7 +405,7 @@ Cell::Cell(pugi::xml_node cell_node)
 
   // Read the temperature element which may be distributed like materials.
   if (check_for_node(cell_node, "temperature")) {
-    sqrtkT_ = get_node_array<double>(cell_node, "temperature");
+    sqrtkT_ = get_node_array_ov<double>(cell_node, "temperature");
     sqrtkT_.shrink_to_fit();
 
     // Make sure this is a material-filled cell.

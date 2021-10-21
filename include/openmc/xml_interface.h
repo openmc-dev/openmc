@@ -12,6 +12,8 @@
 #include "xtensor/xarray.hpp"
 #include "xtensor/xadapt.hpp"
 
+#include "openmc/vector.h"
+
 namespace openmc {
 
 inline bool
@@ -41,6 +43,25 @@ std::vector<T> get_node_array(pugi::xml_node node, const char* name,
 
   return values;
 }
+
+// TODO: Replace above function when use of std::vector is eliminated
+template <typename T>
+openmc::vector<T> get_node_array_ov(pugi::xml_node node, const char* name,
+                                 bool lowercase=false)
+{
+  // Get value of node attribute/child
+  std::string s {get_node_value(node, name, lowercase)};
+
+  // Read values one by one into vector
+  std::stringstream iss {s};
+  T value;
+  vector<T> values;
+  while (iss >> value)
+    values.push_back(value);
+
+  return values;
+}
+
 
 template <typename T>
 xt::xarray<T> get_node_xarray(pugi::xml_node node, const char* name,

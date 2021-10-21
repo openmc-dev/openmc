@@ -205,8 +205,7 @@ public:
   //!
   //! The stored values are actually sqrt(k_Boltzmann * T) for each temperature
   //! T. The units are sqrt(eV).
-  std::vector<double> sqrtkT_;
-  double* device_sqrtkT_{NULL};
+  vector<double> sqrtkT_;
 
   //! Definition of spatial region as Boolean expression of half-spaces
   std::vector<std::int32_t> region_;

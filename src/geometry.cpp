@@ -145,7 +145,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       int32_t* cells;
       if(!univ.partitioner_){
         //cells = model::universes[i_universe].cells_.data();
-        cells = model::device_universes[i_universe].device_cells_;
+        cells = model::device_universes[i_universe].cells_.data();
         //ncells = model::universes[i_universe].cells_.size();
         ncells = model::device_universes[i_universe].cells_.size();
       } else {

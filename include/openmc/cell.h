@@ -18,6 +18,7 @@
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
+#include "openmc/vector.h"
 
 #define RPN_SIZE 24 // complex cell
 
@@ -74,8 +75,7 @@ class Universe
 {
 public:
   int32_t id_;                  //!< Unique ID
-  std::vector<int32_t> cells_;  //!< Cells within this universe
-  int32_t* device_cells_;  //!< Cells within this universe
+  vector<int32_t> cells_;  //!< Cells within this universe
 
   ~Universe();
 

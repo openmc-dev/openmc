@@ -507,8 +507,7 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   // The target must be further down the geometry tree and contained in a fill
   // cell or lattice cell in this universe.  Find which cell contains the
   // target.
-  std::vector<std::int32_t>::const_reverse_iterator cell_it
-       {search_univ.cells_.crbegin()};
+  auto cell_it {search_univ.cells_.crbegin()};
   for (; cell_it != search_univ.cells_.crend(); ++cell_it) {
     Cell& c = model::cells[*cell_it];
 

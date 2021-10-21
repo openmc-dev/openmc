@@ -216,7 +216,7 @@ BoundingBox Universe::bounding_box() const {
   } else {
     for (const auto& cell : cells_) { // NOTE: we are using the host cells, as this one is only called by python interface
     //for (int i = 0; i < cells_.size(); i++) {
-      //const auto& cell = device_cells_[i];
+      //const auto& cell = cells_[i];
       auto& c = model::cells[cell];
       //bbox |= c->bounding_box();
       bbox |= c.bounding_box();
@@ -238,8 +238,7 @@ Universe::~Universe()
 
 void Universe::allocate_and_copy_to_device()
 {
-  device_cells_ = cells_.data();
-  #pragma omp target enter data map(to: device_cells_[:cells_.size()])
+  cells_.copy_to_device();
 
   if(partitioner_ != NULL)
   {

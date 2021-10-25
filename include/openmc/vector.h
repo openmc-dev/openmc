@@ -31,9 +31,9 @@ public:
 
   // Copy/move constructors/assignments
   vector(const vector& other);
-  vector(vector&& other);
+  vector(vector&& other) noexcept;
   vector& operator=(const vector& other);
-  vector& operator=(vector&& other);
+  vector& operator=(vector&& other) noexcept;
 
   ~vector() {
     if (data_) {
@@ -129,7 +129,7 @@ public:
 
     // Copy existing elements
     for (size_type i = 0; i < size_; ++i) {
-      ::new(data_new + i) T(data_[i]);
+      ::new(data_new + i) T(std::move(data_[i]));
     }
 
     // Remove older allocation
@@ -145,7 +145,7 @@ public:
     capacity_ = n;
   }
 
-  void swap(vector& other) {
+  void swap(vector& other) noexcept {
     std::swap(size_, other.size_);
     std::swap(capacity_, other.capacity_);
     std::swap(data_, other.data_);
@@ -194,7 +194,7 @@ vector<T>::vector(const vector<T>& other)
 }
 
 template<typename T>
-vector<T>::vector(vector&& other)
+vector<T>::vector(vector&& other) noexcept
   : vector()
 {
   other.swap(*this);
@@ -210,7 +210,7 @@ vector<T>& vector<T>::operator=(const vector<T>& other)
 }
 
 template<typename T>
-vector<T>& vector<T>::operator=(vector<T>&& other)
+vector<T>& vector<T>::operator=(vector<T>&& other) noexcept
 {
   other.swap(*this);
   return *this;

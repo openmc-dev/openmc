@@ -128,11 +128,16 @@ public:
     T* data_new = static_cast<T*>(std::malloc(n * sizeof(T)));
 
     // Copy existing elements
-    std::copy(data_, data_ + size_, data_new);
+    for (size_type i = 0; i < size_; ++i) {
+      ::new(data_new + i) T(data_[i]);
+    }
 
     // Remove older allocation
     if (data_) {
-      delete[] data_;
+      for (size_type i = 0; i < size_; ++i) {
+        data_[i].~T();
+      }
+      std::free(data_);
     }
 
     // Set data members

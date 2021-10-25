@@ -147,15 +147,24 @@ public:
   }
 
   void copy_to_device() {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wopenmp-mapping"
 #pragma omp target enter data map(to: data_[:size_])
+#pragma GCC diagnostic pop
   }
 
   void copy_from_device() {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wopenmp-mapping"
 #pragma omp target exit data map(from: data_[:size_])
+#pragma GCC diagnostic pop
   }
 
   void release_device() {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wopenmp-mapping"
 #pragma omp target exit data map(release: data_[:size_])
+#pragma GCC diagnostic pop
   }
 
 private:

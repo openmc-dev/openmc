@@ -38,7 +38,8 @@ public:
   ~vector() {
     if (data_) {
 #pragma omp target exit data map(delete: data_)
-      delete [] data_;
+      this->clear();
+      std::free(data_);
     }
   }
 
@@ -74,7 +75,12 @@ public:
   size_type capacity() const { return capacity_; }
 
   // Methods
-  void clear() { size_ = 0; }
+  void clear() {
+    for (size_type i = 0; i < size_; ++i) {
+      data_[i].~T();
+    }
+    size_ = 0;
+  }
   void shrink_to_fit() { }
   void pop_back() { this->resize(size_ - 1); }
 
@@ -93,6 +99,11 @@ public:
     if (size_ < count) {
       // Default initialize new elements
       std::fill(end(), begin() + count, T());
+    } else if (count < size_) {
+      // If new size is smaller, call destructor on erased elements
+      for (size_type i = count; i < size_; ++i) {
+        data_[i].~T();
+      }
     }
     size_ = count;
   }
@@ -101,6 +112,11 @@ public:
     this->reserve(count);
     if (size_ < count) {
       std::fill(end(), begin() + count, value);
+    } else if (count < size_) {
+      // If new size is smaller, call destructor on erased elements
+      for (size_type i = count; i < size_; ++i) {
+        data_[i].~T();
+      }
     }
     size_ = count;
   }

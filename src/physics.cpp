@@ -754,7 +754,7 @@ void scatter(Particle& p, int i_nuclide)
     // NON-S(A,B) ELASTIC SCATTERING
 
     // Determine temperature
-    double kT = nuc.multipole() ? p.sqrtkT_*p.sqrtkT_ : nuc.device_kTs_[i_temp];
+    double kT = nuc.multipole() ? p.sqrtkT_*p.sqrtkT_ : nuc.kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
     elastic_scatter(i_nuclide, nuc.device_reactions_[0].obj(), kT, p);

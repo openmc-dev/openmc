@@ -19,6 +19,7 @@
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
 #include "openmc/urr.h"
+#include "openmc/vector.h"
 #include "openmc/wmp.h"
 
 namespace openmc {
@@ -81,8 +82,7 @@ public:
   gsl::index index_; //!< Index in the nuclides array
 
   // Temperature dependent cross section data
-  std::vector<double> kTs_; //!< temperatures in eV (k*T)
-  double* device_kTs_;
+  vector<double> kTs_; //!< temperatures in eV (k*T)
   std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
   std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
 

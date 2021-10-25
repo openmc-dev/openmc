@@ -725,7 +725,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
       {
         double max_diff = INFTY;
         for (int t = 0; t < kTs_.size(); ++t) {
-          double diff = std::abs(device_kTs_[t] - kT);
+          double diff = std::abs(kTs_[t] - kT);
           if (diff < max_diff) {
             i_temp = t;
             max_diff = diff;
@@ -737,11 +737,11 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     case TemperatureMethod::INTERPOLATION:
       // Find temperatures that bound the actual temperature
       for (i_temp = 0; i_temp < kTs_.size() - 1; ++i_temp) {
-        if (device_kTs_[i_temp] <= kT && kT < device_kTs_[i_temp + 1]) break;
+        if (kTs_[i_temp] <= kT && kT < kTs_[i_temp + 1]) break;
       }
 
       // Randomly sample between temperature i and i+1
-      f = (kT - device_kTs_[i_temp]) / (device_kTs_[i_temp + 1] - device_kTs_[i_temp]);
+      f = (kT - kTs_[i_temp]) / (kTs_[i_temp + 1] - kTs_[i_temp]);
       if (f > prn(p.current_seed())) ++i_temp;
       break;
     }
@@ -1179,11 +1179,10 @@ void Nuclide::copy_to_device()
   }
 
   // Regular pointwise XS data
-  device_kTs_ = kTs_.data();
+  kTs_.copy_to_device();
   device_energy_0K_ = energy_0K_.data();
   device_elastic_0K_ = elastic_0K_.data();
   device_xs_cdf_ = xs_cdf_.data();
-  #pragma omp target enter data map(to: device_kTs_[:kTs_.size()])
   #pragma omp target enter data map(to: device_energy_0K_[:energy_0K_.size()])
   #pragma omp target enter data map(to: device_elastic_0K_[:elastic_0K_.size()])
   #pragma omp target enter data map(to: device_xs_cdf_[:xs_cdf_.size()])
@@ -1233,7 +1232,7 @@ void Nuclide::release_from_device()
   #pragma omp target exit data map(release: device_fission_rx_[:fission_rx_.size()])
 
   // Regular pointwise XS data
-  #pragma omp target exit data map(release: device_kTs_[:kTs_.size()])
+  kTs_.release_device();
   #pragma omp target exit data map(release: device_xs_cdf_[:xs_cdf_.size()])
   #pragma omp target exit data map(release: device_elastic_0K_[:elastic_0K_.size()])
   #pragma omp target exit data map(release: device_energy_0K_[:energy_0K_.size()])

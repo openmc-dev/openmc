@@ -757,7 +757,7 @@ void scatter(Particle& p, int i_nuclide)
     double kT = nuc.multipole() ? p.sqrtkT_*p.sqrtkT_ : nuc.kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
-    elastic_scatter(i_nuclide, nuc.device_reactions_[0].obj(), kT, p);
+    elastic_scatter(i_nuclide, nuc.reactions_[0].obj(), kT, p);
 
     p.event_mt_ = ELASTIC;
     sampled = true;
@@ -794,12 +794,12 @@ void scatter(Particle& p, int i_nuclide)
       */
 
       // add to cumulative probability
-      auto rx = nuc.device_reactions_[i].obj();
+      auto rx = nuc.reactions_[i].obj();
       prob += rx.xs(micro);
     }
 
     // Perform collision physics for inelastic scattering
-    auto rx = nuc.device_reactions_[i].obj();
+    auto rx = nuc.reactions_[i].obj();
     inelastic_scatter(nuc, rx, p);
     p.event_mt_ = rx.mt();
   }

@@ -124,12 +124,11 @@ public:
   int urr_inelastic_ {C_NONE};
   vector<UrrData> urr_data_;
 
-  std::vector<ReactionFlatContainer> reactions_; //!< Reactions
+  vector<ReactionFlatContainer> reactions_; //!< Reactions
   std::array<size_t, 902> reaction_index_; //!< Index of each reaction
   vector<int> index_inelastic_scatter_;
 
   ReactionFlatContainer** device_fission_rx_;
-  ReactionFlatContainer* device_reactions_;
 private:
   void create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons);
 

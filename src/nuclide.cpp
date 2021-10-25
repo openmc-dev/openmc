@@ -595,7 +595,7 @@ double Nuclide::calculate_elastic_xs(int i_temp, int i_grid, double interp_facto
 {
   double elastic = CACHE_INVALID;
   if (i_temp >= 0) {
-    auto rx = device_reactions_[0].obj();
+    auto rx = reactions_[0].obj();
     elastic = rx.xs(i_temp, i_grid, interp_factor);
   }
   return elastic;
@@ -1017,7 +1017,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
       double p_inelastic = 0.;
       if (urr.inelastic_flag_ != C_NONE) {
         // Determine inelastic scattering cross section
-        auto rx = device_reactions_[urr_inelastic_].obj();
+        auto rx = reactions_[urr_inelastic_].obj();
         p_inelastic = rx.xs(i_temp, i_grid,f);
       }
 
@@ -1164,11 +1164,10 @@ void Nuclide::copy_to_device()
 {
   // Reactions
   index_inelastic_scatter_.copy_to_device();
-  device_reactions_ = reactions_.data();
+  reactions_.copy_to_device();
   device_fission_rx_ = fission_rx_.data();
   device_total_nu_ = total_nu_.get();
 
-  #pragma omp target enter data map(to: device_reactions_[:reactions_.size()])
   if (total_nu_) {
     #pragma omp target enter data map(to: device_total_nu_[:1])
     total_nu_->copy_to_device();
@@ -1203,9 +1202,9 @@ void Nuclide::copy_to_device()
   {
     int i_fis = 0;
     for (int i = 0; i < this->reactions_.size(); ++i) {
-      auto rx = this->device_reactions_[i].obj();
+      auto rx = this->reactions_[i].obj();
       if (is_fission(rx.mt()) && !rx.redundant()) {
-        device_fission_rx_[i_fis++] = &this->device_reactions_[i];
+        device_fission_rx_[i_fis++] = &this->reactions_[i];
       }
     }
   }
@@ -1222,7 +1221,7 @@ void Nuclide::release_from_device()
   for (auto& rx : reactions_) {
     rx.release_from_device();
   }
-  #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
+  reactions_.release_device();
   index_inelastic_scatter_.release_device();
   #pragma omp target exit data map(release: device_fission_rx_[:fission_rx_.size()])
 

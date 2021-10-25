@@ -14,7 +14,16 @@ import openmc
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value
+
 from openmc.exceptions import InvalidIDError
+
+# Establish whether openmc.lib is available for downstream uses;
+# this avoids the need for extraneous try/import/except statements
+try:
+    import openmc.lib
+    _openmc_lib_present = True
+except ImportError:
+    _openmc_lib_present = False
 
 
 @contextmanager
@@ -137,7 +146,10 @@ class Model:
 
     @property
     def is_initialized(self):
-        return openmc.lib.is_initialized
+        if _openmc_lib_present:
+            return openmc.lib.is_initialized
+        else:
+            return False
 
     @geometry.setter
     def geometry(self, geometry):
@@ -512,7 +524,7 @@ class Model:
                 for arg_name, arg, default in zip(
                     ['threads', 'geometry_debug', 'restart_file', 'tracks'],
                     [threads, geometry_debug, restart_file, tracks],
-                    [None, False, None, False]):
+                        [None, False, None, False]):
                     if arg != default:
                         msg = f"{arg_name} must be set via Model.is_initialized(...)"
                         raise ValueError(msg)

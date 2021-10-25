@@ -2,6 +2,7 @@
 #define OPENMC_VECTOR_H
 
 #include <algorithm> // for copy, fill
+#include <cstdlib> // for malloc
 #include <iterator> // for reverse_iterator
 #include <utility> // for swap
 
@@ -89,6 +90,10 @@ public:
 
   void resize(size_type count) {
     this->reserve(count);
+    if (size_ < count) {
+      // Default initialize new elements
+      std::fill(end(), begin() + count, T());
+    }
     size_ = count;
   }
 
@@ -104,12 +109,10 @@ public:
     if (n <= capacity_) return;
 
     // Make new allocation
-    T* data_new = new T[n];
+    T* data_new = static_cast<T*>(std::malloc(n * sizeof(T)));
 
     // Copy existing elements
-    for (size_type i = 0; i < size_; ++i) {
-      data_new[i] = data_[i];
-    }
+    std::copy(data_, data_ + size_, data_new);
 
     // Remove older allocation
     if (data_) {

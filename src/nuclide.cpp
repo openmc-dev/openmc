@@ -654,7 +654,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   }
   #endif
 
-  double total; 
+  double total;
   double elastic = CACHE_INVALID;
   double absorption;
   double fission;
@@ -675,7 +675,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     // ======================================================================
     // MULTIPOLE LOOKUP BEGIN
     // ======================================================================
-    
+
     // Call multipole kernel
     double sig_s, sig_a, sig_f;
     std::tie(sig_s, sig_a, sig_f) = multipole()->evaluate(E, sqrtkT);
@@ -717,7 +717,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     // ======================================================================
     // POINTWISE LOOKUP BEGIN
     // ======================================================================
-   
+
     // Find the appropriate temperature index.
     double kT = sqrtkT*sqrtkT;
     switch (settings::temperature_method) {
@@ -805,7 +805,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     double fission_low          = xs[i_grid1D + XS_FISSION];
     double nu_fission_low       = xs[i_grid1D + XS_NU_FISSION];
     double photon_prod_low      = xs[i_grid1D + XS_PHOTON_PROD];
-    
+
     double total_next       = xs[i_next1D + XS_TOTAL];
     double absorption_next  = xs[i_next1D + XS_ABSORPTION];
     double fission_next     = xs[i_next1D + XS_FISSION];
@@ -823,7 +823,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     fission     = f_comp * fission_low     + f * fission_next;
     nu_fission  = f_comp * nu_fission_low  + f * nu_fission_next;
     photon_prod = f_comp * photon_prod_low + f * photon_prod_next;
-    
+
 
     /*
     // Depletion-related reactions
@@ -878,7 +878,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   // SAB BEGIN
   // ======================================================================
 
-  
+
   // If there is S(a,b) data for this nuclide, we need to set the sab_scatter
   // and sab_elastic cross sections and correct the total and elastic cross
   // sections.
@@ -914,10 +914,10 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   // ======================================================================
   // SAB END
   // ======================================================================
-  
-  
+
+
   bool use_ptable = false;
-  
+
   // ======================================================================
   // URR BEGIN
   // ======================================================================
@@ -926,14 +926,14 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
   if (settings::urr_ptables_on && urr_present_ && !use_mp) {
-    int n = device_urr_data_[i_temp].n_energy_;
-    if ((E > device_urr_data_[i_temp].device_energy_[0]) &&
-        (E < device_urr_data_[i_temp].device_energy_[n-1]))
+    int n = urr_data_[i_temp].n_energy_;
+    if ((E > urr_data_[i_temp].device_energy_[0]) &&
+        (E < urr_data_[i_temp].device_energy_[n-1]))
     {
       use_ptable = true;
 
       // Create a shorthand for the URR data
-      const auto& urr = device_urr_data_[i_temp];
+      const auto& urr = urr_data_[i_temp];
 
       // Determine the energy table
       int i_energy = 0;
@@ -1080,7 +1080,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     micro.photon_prod   = photon_prod;
     micro.index_temp_sab = index_temp_sab;
   }
-    
+
   // ======================================================================
   // Return MicroXS
   // ======================================================================
@@ -1189,8 +1189,7 @@ void Nuclide::copy_to_device()
   #pragma omp target enter data map(to: flat_xs_[:total_energy_gridpoints_*5])
 
   // URR data
-  device_urr_data_ = urr_data_.data();
-  #pragma omp target enter data map(to: device_urr_data_[:urr_data_.size()])
+  urr_data_.copy_to_device();
   for (auto& u : urr_data_) {
     #pragma omp target enter data map(to: u.device_energy_[:u.n_energy_])
     #pragma omp target enter data map(to: u.device_prob_[:u.n_total_prob_])
@@ -1243,7 +1242,7 @@ void Nuclide::release_from_device()
     #pragma omp target exit data map(release: u.device_energy_[:u.n_energy_])
     #pragma omp target exit data map(release: u.device_prob_[:u.n_total_prob_])
   }
-  #pragma omp target exit data map(release: device_urr_data_[:urr_data_.size()])
+  urr_data_.release_device();
 
   // Multipole
   if (multipole_) {

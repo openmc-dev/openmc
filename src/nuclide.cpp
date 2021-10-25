@@ -607,23 +607,23 @@ double Nuclide::elastic_xs_0K(double E) const
   // Determine index on nuclide energy grid
   int i_grid;
   size_t n = energy_0K_.size();
-  if (E < device_energy_0K_[0]) {
+  if (E < energy_0K_[0]) {
     i_grid = 0;
-  } else if (E > device_energy_0K_[n-1]) {
+  } else if (E > energy_0K_[n-1]) {
     i_grid = n - 2;
   } else {
-    i_grid = lower_bound_index(device_energy_0K_, device_energy_0K_ + n, E);
+    i_grid = lower_bound_index(energy_0K_.begin(), energy_0K_.end(), E);
   }
 
   // check for rare case where two energy points are the same
-  if (device_energy_0K_[i_grid] == device_energy_0K_[i_grid+1]) ++i_grid;
+  if (energy_0K_[i_grid] == energy_0K_[i_grid+1]) ++i_grid;
 
   // calculate interpolation factor
-  double f = (E - device_energy_0K_[i_grid]) /
-    (device_energy_0K_[i_grid + 1] - device_energy_0K_[i_grid]);
+  double f = (E - energy_0K_[i_grid]) /
+    (energy_0K_[i_grid + 1] - energy_0K_[i_grid]);
 
   // Calculate microscopic nuclide elastic cross section
-  return (1.0 - f)*device_elastic_0K_[i_grid] + f*device_elastic_0K_[i_grid + 1];
+  return (1.0 - f)*elastic_0K_[i_grid] + f*elastic_0K_[i_grid + 1];
 }
 
 MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, bool write_cache)
@@ -1180,12 +1180,9 @@ void Nuclide::copy_to_device()
 
   // Regular pointwise XS data
   kTs_.copy_to_device();
-  device_energy_0K_ = energy_0K_.data();
-  device_elastic_0K_ = elastic_0K_.data();
-  device_xs_cdf_ = xs_cdf_.data();
-  #pragma omp target enter data map(to: device_energy_0K_[:energy_0K_.size()])
-  #pragma omp target enter data map(to: device_elastic_0K_[:elastic_0K_.size()])
-  #pragma omp target enter data map(to: device_xs_cdf_[:xs_cdf_.size()])
+  energy_0K_.copy_to_device();
+  elastic_0K_.copy_to_device();
+  xs_cdf_.copy_to_device();
   #pragma omp target enter data map(to: flat_temp_offsets_[:kTs_.size()])
   #pragma omp target enter data map(to: flat_grid_energy_[:total_energy_gridpoints_])
   #pragma omp target enter data map(to: flat_grid_index_[:total_index_gridpoints_])
@@ -1233,9 +1230,9 @@ void Nuclide::release_from_device()
 
   // Regular pointwise XS data
   kTs_.release_device();
-  #pragma omp target exit data map(release: device_xs_cdf_[:xs_cdf_.size()])
-  #pragma omp target exit data map(release: device_elastic_0K_[:elastic_0K_.size()])
-  #pragma omp target exit data map(release: device_energy_0K_[:energy_0K_.size()])
+  xs_cdf_.release_device();
+  elastic_0K_.release_device();
+  energy_0K_.release_device();
   #pragma omp target exit data map(release: flat_temp_offsets_[:kTs_.size()])
   #pragma omp target exit data map(release: flat_grid_energy_[:total_energy_gridpoints_])
   #pragma omp target exit data map(release: flat_grid_index_[:total_index_gridpoints_])

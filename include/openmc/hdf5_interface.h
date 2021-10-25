@@ -19,6 +19,7 @@
 
 #include "openmc/position.h"
 #include "openmc/error.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -263,7 +264,7 @@ read_dataset(hid_t dset, const char* name, std::array<T, N>& buffer,
                         buffer.data());
 }
 
-// vector version
+// std::vector version
 template <typename T>
 void read_dataset(hid_t dset, std::vector<T>& vec, bool indep=false)
 {
@@ -280,6 +281,30 @@ void read_dataset(hid_t dset, std::vector<T>& vec, bool indep=false)
 
 template <typename T>
 void read_dataset(hid_t obj_id, const char* name, std::vector<T>& vec,
+                  bool indep=false)
+{
+  hid_t dset = open_dataset(obj_id, name);
+  read_dataset(dset, vec, indep);
+  close_dataset(dset);
+}
+
+// openmc::vector version
+template <typename T>
+void read_dataset(hid_t dset, openmc::vector<T>& vec, bool indep=false)
+{
+  // Get shape of dataset
+  std::vector<hsize_t> shape = object_shape(dset);
+
+  // Resize vector to appropriate size
+  vec.resize(shape[0]);
+
+  // Read data into vector
+  read_dataset_lowlevel(dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep,
+                        vec.data());
+}
+
+template <typename T>
+void read_dataset(hid_t obj_id, const char* name, openmc::vector<T>& vec,
                   bool indep=false)
 {
   hid_t dset = open_dataset(obj_id, name);

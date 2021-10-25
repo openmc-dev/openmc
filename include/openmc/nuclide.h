@@ -115,12 +115,9 @@ public:
 
   // Resonance scattering information
   bool resonant_ {false};
-  std::vector<double> energy_0K_;
-  std::vector<double> elastic_0K_;
-  std::vector<double> xs_cdf_;
-  double* device_energy_0K_;
-  double* device_elastic_0K_;
-  double* device_xs_cdf_;
+  vector<double> energy_0K_;
+  vector<double> elastic_0K_;
+  vector<double> xs_cdf_;
 
   // Unresolved resonance range information
   bool urr_present_ {false};

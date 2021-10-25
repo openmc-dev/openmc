@@ -1163,12 +1163,11 @@ double Nuclide::collapse_rate(int MT, double temperature, gsl::span<const double
 void Nuclide::copy_to_device()
 {
   // Reactions
-  device_index_inelastic_scatter_ = index_inelastic_scatter_.data();
+  index_inelastic_scatter_.copy_to_device();
   device_reactions_ = reactions_.data();
   device_fission_rx_ = fission_rx_.data();
   device_total_nu_ = total_nu_.get();
 
-  #pragma omp target enter data map(to: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
   #pragma omp target enter data map(to: device_reactions_[:reactions_.size()])
   if (total_nu_) {
     #pragma omp target enter data map(to: device_total_nu_[:1])
@@ -1224,7 +1223,7 @@ void Nuclide::release_from_device()
     rx.release_from_device();
   }
   #pragma omp target exit data map(release: device_reactions_[:reactions_.size()])
-  #pragma omp target exit data map(release: device_index_inelastic_scatter_[:index_inelastic_scatter_.size()])
+  index_inelastic_scatter_.release_device();
   #pragma omp target exit data map(release: device_fission_rx_[:fission_rx_.size()])
 
   // Regular pointwise XS data

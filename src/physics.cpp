@@ -782,7 +782,7 @@ void scatter(Particle& p, int i_nuclide)
     int i = 0;
 
     while (prob < cutoff) {
-      i = nuc.device_index_inelastic_scatter_[j];
+      i = nuc.index_inelastic_scatter_[j];
       ++j;
 
       /*

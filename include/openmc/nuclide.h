@@ -126,9 +126,8 @@ public:
 
   std::vector<ReactionFlatContainer> reactions_; //!< Reactions
   std::array<size_t, 902> reaction_index_; //!< Index of each reaction
-  std::vector<int> index_inelastic_scatter_;
+  vector<int> index_inelastic_scatter_;
 
-  int* device_index_inelastic_scatter_;
   ReactionFlatContainer** device_fission_rx_;
   ReactionFlatContainer* device_reactions_;
 private:

@@ -10,6 +10,9 @@
 
 
 #include "openmc/cell.h" // NOTE: This header is unnecessary logically, but if left out results in a segmentation fault at JIT compile time on some compilers.
+#ifndef DEVICE_PRINT
+#define printf(fmt, ...) (0)
+#endif
   
 /*
   switch(type_){

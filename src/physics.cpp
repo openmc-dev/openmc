@@ -26,6 +26,9 @@
 
 #include <algorithm> // for max, min, max_element
 #include <cmath> // for sqrt, exp, log, abs, copysign
+#ifndef DEVICE_PRINT
+#define printf(fmt, ...) (0)
+#endif
 
 namespace openmc {
 

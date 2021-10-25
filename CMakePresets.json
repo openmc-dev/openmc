@@ -13,6 +13,17 @@
             }
         },
         {
+            "name": "spirv_fast",
+            "displayName": "Intel Gen9",
+            "binaryDir": "${sourceDir}/build/spirv",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "icc",
+                "CMAKE_CXX_COMPILER": "icpx",
+                "CMAKE_CXX_FLAGS": "-fiopenmp -gline-tables-only -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode -fopenmp-targets=spir64=\"-O1\""
+            }
+        },
+        {
             "name": "llvm_v100",
             "displayName": "LLVM Clang V100",
             "binaryDir": "${sourceDir}/build/llvm_v100",
@@ -20,7 +31,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-target-new-runtime -fopenmp-cuda-mode -mllvm -openmp-opt-inline-device"
             }
          },
         {
@@ -31,7 +42,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode -fopenmp-target-new-runtime"
             }
          },
         {
@@ -43,6 +54,28 @@
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
                 "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_60 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
+            }
+         },
+        {
+            "name": "llvm_mi100",
+            "displayName": "LLVM Clang MI100",
+            "binaryDir": "${sourceDir}/build/llvm_mi100",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx908 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode -DDEVICE_PRINT"
+            }
+         },
+        {
+            "name": "nvhpc_v100",
+            "displayName": "NVIDIA NVHPC V100",
+            "binaryDir": "${sourceDir}/build/nvhpc_v100",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "nvc",
+                "CMAKE_CXX_COMPILER": "nvc++",
+                "CMAKE_CXX_FLAGS": "-mp=gpu -Minfo=mp -gpu=cc70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
             }
          }
     ]

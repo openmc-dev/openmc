@@ -14,6 +14,9 @@
 #include "openmc/endf_flat.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/search.h"
+#ifndef DEVICE_PRINT
+#define printf(fmt, ...) (0)
+#endif
 
 namespace openmc {
 

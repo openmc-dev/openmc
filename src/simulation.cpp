@@ -42,6 +42,9 @@
 #include <cmath>
 #include <string>
 
+#ifndef DEVICE_PRINT
+#define printf(fmt, ...) (0)
+#endif
 
 //==============================================================================
 // C API functions

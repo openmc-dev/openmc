@@ -28,6 +28,9 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
+#ifndef DEVICE_PRINT
+#define printf(fmt, ...) (0)
+#endif
 
 namespace openmc {
 

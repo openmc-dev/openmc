@@ -133,7 +133,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   // ==========================================================================
   // Add the contribution from the poles in this window.
 
-  if (sqrtkT == 0.0) {
+  if (sqrtkT == 0.0 && window.broaden_poly) {
     // If at 0K, use asymptotic form.
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
       std::complex<double> psi_chi = std::complex<double>(0.0, -1.0) / (data(i_pole, MP_EA) - sqrtE);
@@ -149,7 +149,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
     double dopp = sqrt_awr_ / sqrtkT;
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
       std::complex<double> z = (sqrtE - data(i_pole, MP_EA)) * dopp;
-      std::complex<double> w_val = faddeeva(z) * dopp * invE * std::sqrt(PI);
+      std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
       sig_s += (data(i_pole, MP_RS) * w_val).real();
       sig_a += (data(i_pole, MP_RA) * w_val).real();
       if (fissionable_) {
@@ -197,7 +197,7 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
   double dopp = sqrt_awr_ / sqrtkT;
   for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
     std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
-    std::complex<double> w_val = -invE * std::sqrt(PI) * 0.5 * w_derivative(z, 2);
+    std::complex<double> w_val = -invE * SQRT_PI * 0.5 * w_derivative(z, 2);
     sig_s += (data(i_pole, MP_RS) * w_val).real();
     sig_a += (data(i_pole, MP_RA) * w_val).real();
     if (fissionable_) {
@@ -338,7 +338,7 @@ void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
   factors[0] = erf_beta / E;
   factors[1] = 1. / sqrtE;
   factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 /
-       (beta * std::sqrt(PI));
+       (beta * SQRT_PI);
   if (n > 3) factors[3] = factors[1] * (E + 3.0 * half_inv_dopp2);
 
   // Perform recursive broadening of high order components (Eq. 16)

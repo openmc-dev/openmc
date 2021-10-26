@@ -13,6 +13,17 @@
             }
         },
         {
+            "name": "spirv_default",
+            "displayName": "Intel GPUs",
+            "binaryDir": "${sourceDir}/build/spirv",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "icc",
+                "CMAKE_CXX_COMPILER": "icpx",
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode"
+            }
+        },
+        {
             "name": "intel_cpu",
             "displayName": "Intel CPU Offloading",
             "binaryDir": "${sourceDir}/build/intel_cpu",

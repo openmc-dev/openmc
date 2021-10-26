@@ -899,7 +899,7 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 
   // Sample energy and angle
   double E_out;
-  auto& sab_data = data::device_thermal_scatt[i_sab].device_data_[i_temp];
+  auto& sab_data = data::device_thermal_scatt[i_sab].data_[i_temp];
   sab_data.sample(micro, p.E_, &E_out, &p.mu_, p.current_seed());
 
   // Set energy to outgoing, change direction of particle

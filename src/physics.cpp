@@ -346,7 +346,7 @@ void sample_photon_reaction(Particle& p)
   double prob_after = prob + micro.photoelectric;
   if (prob_after > cutoff) {
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
-      const auto& shell {element.device_shells_[i_shell]};
+      const auto& shell {element.shells_[i_shell]};
 
       // Get grid index and interpolation factor
       int i_grid = micro.index_grid;

@@ -178,6 +178,13 @@ public:
 #pragma GCC diagnostic pop
   }
 
+  void update_from_device() {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wopenmp-mapping"
+#pragma omp target update from(data_[:size_])
+#pragma GCC diagnostic pop
+  }
+
   void copy_from_device() {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wopenmp-mapping"

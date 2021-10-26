@@ -95,6 +95,9 @@ public:
   template<class InputIt>
   iterator insert(const_iterator pos, InputIt first, InputIt last);
 
+  template<class InputIt>
+  void assign(InputIt first, InputIt last);
+
   void resize(size_type count) {
     this->reserve(count);
     if (size_ < count) {
@@ -158,6 +161,20 @@ public:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wopenmp-mapping"
 #pragma omp target enter data map(to: data_[:size_])
+#pragma GCC diagnostic pop
+  }
+
+  void allocate_on_device() {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wopenmp-mapping"
+#pragma omp target enter data map(alloc: data_[:size_])
+#pragma GCC diagnostic pop
+  }
+
+  void update_to_device() {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wopenmp-mapping"
+#pragma omp target update to(data_[:size_])
 #pragma GCC diagnostic pop
   }
 
@@ -323,6 +340,24 @@ typename vector<T>::iterator vector<T>::insert(
   // Return new iterator
   return data_ + start;
 }
+
+template<typename T>
+template<class InputIt>
+void vector<T>::assign(InputIt first, InputIt last)
+{
+  // Get index of position
+  size_type n = std::distance(first, last);
+
+  // Add space for one more element
+  this->resize(n);
+
+  // Assign elements
+  for (size_type i = 0; i < n; ++i) {
+    data_[i] = *first;
+    ++first;
+  }
+}
+
 
 } // namespace openmc
 

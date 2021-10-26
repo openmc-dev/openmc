@@ -85,6 +85,7 @@ public:
   void pop_back() { this->resize(size_ - 1); }
 
   void push_back(const T& value);
+  void push_back(T&& value);
   template<class... Args>
   void emplace_back(Args&&... args);
 
@@ -228,6 +229,20 @@ void vector<T>::push_back(const T& value)
   data_[size_] = value;
   ++size_;
 }
+
+template<typename T>
+void vector<T>::push_back(T&& value)
+{
+  if (capacity_ == 0) {
+    this->reserve(8);
+  } else if (size_ == capacity_ ) {
+    this->reserve(2*capacity_);
+  }
+
+  new(data_ + size_) T(std::move(value));
+  ++size_;
+}
+
 
 template<typename T>
 template<class... Args>

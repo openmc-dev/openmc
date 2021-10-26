@@ -98,8 +98,10 @@ public:
   void resize(size_type count) {
     this->reserve(count);
     if (size_ < count) {
-      // Default initialize new elements
-      std::fill(end(), begin() + count, T());
+      // Default insert new elements
+      for (size_type i = size_; i < count; ++i) {
+        new(data_ + i) T();
+      }
     } else if (count < size_) {
       // If new size is smaller, call destructor on erased elements
       for (size_type i = count; i < size_; ++i) {

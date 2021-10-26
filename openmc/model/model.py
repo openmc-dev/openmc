@@ -1,11 +1,8 @@
 from collections.abc import Iterable
-import operator
 import os
 from pathlib import Path
 from numbers import Integral
 import time
-import warnings
-import subprocess
 from contextlib import contextmanager
 
 import h5py
@@ -16,14 +13,6 @@ from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value
 
 from openmc.exceptions import InvalidIDError
-
-# Establish whether openmc.lib is available for downstream uses;
-# this avoids the need for extraneous try/import/except statements
-try:
-    import openmc.lib
-    _openmc_lib_present = True
-except ImportError:
-    _openmc_lib_present = False
 
 
 @contextmanager
@@ -146,9 +135,10 @@ class Model:
 
     @property
     def is_initialized(self):
-        if _openmc_lib_present:
+        try:
+            import openmc.lib
             return openmc.lib.is_initialized
-        else:
+        except ImportError:
             return False
 
     @geometry.setter
@@ -524,7 +514,8 @@ class Model:
                 for arg_name, arg, default in zip(
                     ['threads', 'geometry_debug', 'restart_file', 'tracks'],
                     [threads, geometry_debug, restart_file, tracks],
-                        [None, False, None, False]):
+                    [None, False, None, False]
+                ):
                     if arg != default:
                         msg = f"{arg_name} must be set via Model.is_initialized(...)"
                         raise ValueError(msg)

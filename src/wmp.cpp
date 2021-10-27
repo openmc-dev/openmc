@@ -92,9 +92,9 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   double invE = 1.0 / E;
 
   // Locate window containing energy
-  int i_window = std::min(static_cast<size_t>(n_windows_ - 1),
+  int i_window = std::min(window_info_.size() - 1,
     static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
-  const auto& window {window_info(i_window)};
+  const auto& window {window_info_[i_window]};
 
   // Initialize the ouptut cross sections
   double sig_s = 0.0;
@@ -214,9 +214,6 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
 
 void
 WindowedMultipole::flatten_wmp_data() {
-  n_windows_ = window_info_.size();
-  device_window_info_ = window_info_.data();
-
   n_order_ = curvefit_.shape()[1];
   n_reactions_ = curvefit_.shape()[2];
 
@@ -231,7 +228,7 @@ WindowedMultipole::copy_to_device()
 {
   #pragma omp target enter data map(to: device_curvefit_[:curvefit_.size()])
   #pragma omp target enter data map(to: device_data_[:data_.size()])
-  #pragma omp target enter data map(to: device_window_info_[:window_info_.size()])
+  window_info_.copy_to_device();
 }
 
 void
@@ -239,19 +236,13 @@ WindowedMultipole::release_from_device()
 {
   #pragma omp target exit data map(release: device_curvefit_[:curvefit_.size()])
   #pragma omp target exit data map(release: device_data_[:data_.size()])
-  #pragma omp target exit data map(release: device_window_info_[:window_info_.size()])
+  window_info_.release_device();
 }
 
 double
 WindowedMultipole::curvefit(int window, int poly_order, int reaction) const
 {
   return device_curvefit_[window * n_order_ * n_reactions_ + poly_order * n_reactions_ + reaction];
-}
-
-const WindowedMultipole::WindowInfo&
-WindowedMultipole::window_info(int i_window) const
-{
-  return device_window_info_[i_window];
 }
 
 std::complex<double>

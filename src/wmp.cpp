@@ -104,7 +104,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   // ==========================================================================
   // Add the contribution from the curvefit polynomial.
 
-  if (sqrtkT > 0.0) {
+  if (sqrtkT > 0.0 && window.broaden_poly) {
     // Broaden the curvefit.
     double dopp = sqrt_awr_ / sqrtkT;
     std::array<double, MAX_POLY_COEFFICIENTS> broadened_polynomials;
@@ -133,7 +133,7 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   // ==========================================================================
   // Add the contribution from the poles in this window.
 
-  if (sqrtkT == 0.0 && window.broaden_poly) {
+  if (sqrtkT == 0.0) {
     // If at 0K, use asymptotic form.
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
       std::complex<double> psi_chi = std::complex<double>(0.0, -1.0) / (data(i_pole, MP_EA) - sqrtE);

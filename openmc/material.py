@@ -935,13 +935,8 @@ class Material(IDManagerMixin):
             xml_elements.append(self._get_nuclide_xml(nuclide))
         return xml_elements
 
-    def to_xml_element(self, cross_sections=None):
+    def to_xml_element(self):
         """Return XML representation of the material
-
-        Parameters
-        ----------
-        cross_sections : str
-            Path to an XML cross sections listing file
 
         Returns
         -------
@@ -1092,7 +1087,7 @@ class Material(IDManagerMixin):
         new_density = np.sum([dens for dens in mass_per_cc.values()])
         new_mat.set_density('g/cm3', new_density)
 
-        # If any of the involved materials is depletable, the new material is 
+        # If any of the involved materials is depletable, the new material is
         # depletable
         new_mat.depletable = any(mat.depletable for mat in materials)
 
@@ -1173,7 +1168,10 @@ class Materials(cv.CheckedList):
     ----------
     materials : Iterable of openmc.Material
         Materials to add to the collection
-    cross_sections : str
+
+    Attributes
+    ----------
+    cross_sections : str or path-like
         Indicates the path to an XML cross section listing file (usually named
         cross_sections.xml). If it is not set, the
         :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
@@ -1196,8 +1194,8 @@ class Materials(cv.CheckedList):
 
     @cross_sections.setter
     def cross_sections(self, cross_sections):
-        cv.check_type('cross sections', cross_sections, str)
-        self._cross_sections = cross_sections
+        if cross_sections is not None:
+            self._cross_sections = Path(cross_sections)
 
     def append(self, material):
         """Append material to collection
@@ -1252,9 +1250,9 @@ class Materials(cv.CheckedList):
             fh.write('<materials>\n')
 
             # Write the <cross_sections> element.
-            if self._cross_sections is not None:
+            if self.cross_sections is not None:
                 element = ET.Element('cross_sections')
-                element.text = str(self._cross_sections)
+                element.text = str(self.cross_sections)
                 clean_indentation(element, level=1)
                 element.tail = element.tail.strip(' ')
                 fh.write('  ')
@@ -1263,7 +1261,7 @@ class Materials(cv.CheckedList):
 
             # Write the <material> elements.
             for material in sorted(self, key=lambda x: x.id):
-                element = material.to_xml_element(self.cross_sections)
+                element = material.to_xml_element()
                 clean_indentation(element, level=1)
                 element.tail = element.tail.strip(' ')
                 fh.write('  ')

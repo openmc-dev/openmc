@@ -99,6 +99,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   for (int64_t i = 0; i < n_particles; i++) {
     total_weight += simulation::device_particles[i].wgt_;
   }
+  simulation::time_event_init.stop();
 
   // Write total weight to global variable
   simulation::total_weight = total_weight;
@@ -106,7 +107,6 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
 
-  simulation::time_event_init.stop();
 }
 
 void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
@@ -134,6 +134,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     p.event_calculate_xs();
     simulation::advance_particle_queue[offset + i] = queue[i];
   }
+  simulation::time_event_calculate_xs.stop();
   
   // After executing a calculate_xs event, particles will
   // always require an advance event. Therefore, we don't need to use
@@ -142,8 +143,47 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 
   queue.resize(0);
 
-  simulation::time_event_calculate_xs.stop();
 }
+
+/*
+void process_advance_particle_events_alternative()
+{
+  simulation::time_event_advance_particle.start();
+
+  int64_t q_size = simulation::advance_particle_queue.size_;
+  simulation::advance_particle_queue.size_ = 0;
+  #pragma omp target update to(simulation::advance_particle_queue.size_) nowait
+
+  int32_t surface_crossings = 0;
+  int32_t collisions = 0;
+
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for reduction(+:surface_crossings, collisions)
+  #else
+  #pragma omp parallel for schedule(runtime)
+  #endif
+  //for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
+  for (int64_t i = 0; i < q_size; i++) {
+    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
+    p.event_advance();
+    p.event_advance_tally();
+
+    if (p.collision_distance_ > p.boundary_.distance) {
+      simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
+      surface_crossings++;
+    } else {
+      simulation::collision_queue.thread_safe_append({p, buffer_idx});
+      collisions++;
+    }
+  }
+  simulation::surface_crossing_queue.size_ += surface_crossings;
+  simulation::collision_queue.size_ += collisions;
+
+  simulation::time_event_advance_particle.stop();
+
+}
+*/
 
 void process_advance_particle_events()
 {
@@ -184,8 +224,9 @@ void process_advance_particle_events()
   }
   exit(1);
   */
-
+  
   simulation::time_event_advance_particle.stop();
+
 }
 
 void process_surface_crossing_events()
@@ -205,12 +246,12 @@ void process_surface_crossing_events()
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
   }
+  simulation::time_event_surface_crossing.stop();
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
   simulation::surface_crossing_queue.resize(0);
 
-  simulation::time_event_surface_crossing.stop();
 }
 
 void process_collision_events()
@@ -230,12 +271,12 @@ void process_collision_events()
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
   }
+  simulation::time_event_collision.stop();
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
   simulation::collision_queue.resize(0);
 
-  simulation::time_event_collision.stop();
 }
 
 void process_death_events(int64_t n_particles)
@@ -259,6 +300,7 @@ void process_death_events(int64_t n_particles)
     p.accumulate_keff_tallies_local(absorption, collision, tracklength, leakage);
     p.event_death();
   }
+  simulation::time_event_death.stop();
 
   // Write local reduction results to global values
   global_tally_absorption  = absorption;
@@ -273,7 +315,6 @@ void process_death_events(int64_t n_particles)
 
   #endif
 
-  simulation::time_event_death.stop();
 }
 
 } // namespace openmc

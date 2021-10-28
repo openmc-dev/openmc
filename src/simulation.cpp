@@ -231,7 +231,8 @@ int openmc_next_batch(int* status)
     if (settings::event_based) {
       transport_event_based();
     } else {
-      transport_history_based();
+      //transport_history_based();
+      transport_history_based_device();
     }
 
     // Accumulate time for transport
@@ -713,7 +714,7 @@ void free_memory_simulation()
   simulation::entropy.clear();
 }
 
-void transport_history_based_single_particle(Particle& p)
+void transport_history_based_single_particle(Particle& p, double& absorption, double& collision, double& tracklength, double& leakage)
 {
   while (true) {
     p.event_calculate_xs();
@@ -728,12 +729,54 @@ void transport_history_based_single_particle(Particle& p)
     if (!p.alive_)
       break;
   }
-  p.accumulate_keff_tallies_global();
+  //p.accumulate_keff_tallies_global();
+  p.accumulate_keff_tallies_local(absorption, collision, tracklength, leakage);
   p.event_death();
+}
+
+void transport_history_based_device()
+{
+  /*
+  // Transfer source/fission bank to device
+  #pragma omp target update to(simulation::device_source_bank[:simulation::source_bank.size()])
+  simulation::fission_bank.copy_host_to_device();
+  #pragma omp target update to(simulation::keff)
+
+  int64_t work_amount = simulation::work_per_rank;
+  
+  double absorption = 0.0;
+  double collision = 0.0;
+  double tracklength = 0.0;
+  double leakage = 0.0;
+  double total_weight = 0.0;
+
+  #pragma omp target teams distribute parallel for reduction(+:total_weight,absorption, collision, tracklength, leakage)
+  //#pragma omp target teams distribute reduction(+:total_weight,absorption, collision, tracklength, leakage)
+  for (int64_t i_work = 1; i_work <= work_amount; i_work++) {
+    Particle p;
+    total_weight += initialize_history(p, i_work);
+    transport_history_based_single_particle(p, absorption, collision, tracklength, leakage);
+  }
+
+  simulation::total_weight = total_weight;
+  
+  // Write local reduction results to global values
+  global_tally_absorption  = absorption;
+  global_tally_collision   = collision;
+  global_tally_tracklength = tracklength;
+  global_tally_leakage     = leakage;
+  
+  // Copy back fission bank to host
+  simulation::fission_bank.copy_device_to_host();
+  
+  // Move particle progeny count array back to host
+  #pragma omp target update from(simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
+  */
 }
 
 void transport_history_based()
 {
+  /*
   double total_weight = 0.0;
   #pragma omp parallel for schedule(runtime) reduction(+:total_weight)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
@@ -742,6 +785,7 @@ void transport_history_based()
     transport_history_based_single_particle(p);
   }
   simulation::total_weight = total_weight;
+  */
 }
 
 void transport_event_based()

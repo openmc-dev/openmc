@@ -35,6 +35,17 @@
             }
         },
         {
+            "name": "llvm_cpu",
+            "displayName": "LLVM Clang CPU Offloading",
+            "binaryDir": "${sourceDir}/build/llvm_cpu",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS": "-fopenmp -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-target-new-runtime -fopenmp-cuda-mode"
+            }
+         },
+        {
             "name": "llvm_v100",
             "displayName": "LLVM Clang V100",
             "binaryDir": "${sourceDir}/build/llvm_v100",

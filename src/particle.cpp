@@ -68,7 +68,7 @@ Particle::Particle()
   // Create and clear coordinate levels
   //coord_.resize(model::n_coord_levels);
   //std::cout << "coord_ size = " << model::n_coord_levels << std::endl;
-  assert(COORD_SIZE >= model::n_coord_levels);
+  //assert(COORD_SIZE >= model::n_coord_levels);
   //cell_last_.resize(model::n_coord_levels);
   clear();
 
@@ -79,9 +79,9 @@ Particle::Particle()
   // Create microscopic cross section caches
   //neutron_xs_.resize(data::nuclides_size);
   //std::cout << "neutron_xs size = " << data::nuclides_size << std::endl;
-  assert(NEUTRON_XS_SIZE >= data::nuclides_size);
+  //assert(NEUTRON_XS_SIZE >= data::nuclides_size);
   //std::cout << "photon_xs size = " << data::elements.size() << std::endl;
-  assert(PHOTON_XS_SIZE >= data::elements_size);
+  //assert(PHOTON_XS_SIZE >= data::elements_size);
   //photon_xs_.resize(data::elements.size());
 }
 
@@ -453,7 +453,7 @@ Particle::accumulate_keff_tallies_global()
 void
 Particle::accumulate_keff_tallies_local(double& absorption, double& collision, double& tracklength, double& leakage)
 {
-  // Contribute tally reduction variables to local accumulators
+ // Contribute tally reduction variables to local accumulators
   absorption += keff_tally_absorption_;
   collision += keff_tally_collision_;
   tracklength += keff_tally_tracklength_;

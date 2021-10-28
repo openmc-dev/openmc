@@ -20,10 +20,12 @@
 #include "DagMC.hpp"
 #endif
 
-#define NEUTRON_XS_SIZE 300 // Depleted SMR uses 296
+//#define NEUTRON_XS_SIZE 300 // Depleted SMR uses 296
+#define NEUTRON_XS_SIZE 35 // Depleted SMR uses 296
 #define PHOTON_XS_SIZE 9 // Pincell example uses 9
 #define COORD_SIZE 6 // Depleted SMR uses 6
-#define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
+//#define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
+#define SECONDARY_BANK_SIZE 10 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define FLUX_DERIVS_SIZE 5 // This is the min required to pass regression tests (diff_tally is limiter)
 #define FILTER_MATCHES_SIZE 14 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
 //#define FILTER_MATCHES_SIZE 140 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
@@ -201,7 +203,9 @@ public:
   //==========================================================================
   // Constructors
 
+  #pragma omp declare target
   Particle();
+  #pragma omp end declare target
 
   //==========================================================================
   // Methods and accessors

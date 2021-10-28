@@ -54,7 +54,9 @@ public:
   //! \param E Incident neutron energy in [eV]
   //! \param sqrtkT Square root of temperature times Boltzmann constant
   //! \return Tuple of elastic scattering, absorption, and fission cross sections in [b]
+  #pragma omp declare target
   std::tuple<double, double, double> evaluate(double E, double sqrtkT) const;
+  #pragma omp end declare target
 
   //! \brief Evaluates the windowed multipole equations for the derivative of
   //! cross sections in the resolved resonance regions with respect to
@@ -66,6 +68,20 @@ public:
   //!         fission cross sections in [b/K]
   std::tuple<double, double, double> evaluate_deriv(double E, double sqrtkT) const;
 
+  void flatten_wmp_data();
+
+  void copy_to_device();
+
+  void release_from_device();
+
+  #pragma omp declare target
+  double curvefit(int window, int poly_order, int reaction) const;
+
+  const WindowInfo& window_info(int i_window) const;
+
+  std::complex<double> data(int pole, int res) const;
+  #pragma omp end declare target
+
   // Data members
   std::string name_; //!< Name of nuclide
   double E_min_; //!< Minimum energy in [eV]
@@ -75,12 +91,20 @@ public:
   int fit_order_; //!< Order of the fit
   bool fissionable_; //!< Is the nuclide fissionable?
   std::vector<WindowInfo> window_info_; // Information about a window
+  WindowInfo* device_window_info_ {nullptr};
   xt::xtensor<double, 3> curvefit_; // Curve fit coefficients (window, poly order, reaction)
+  double* device_curvefit_ {nullptr};
   xt::xtensor<std::complex<double>, 2> data_; //!< Poles and residues
+  std::complex<double>* device_data_ {nullptr};
+  int n_windows_;
+  int n_order_;
+  int n_reactions_;
+  int n_data_size_;
 
   // Constant data
-  static constexpr int MAX_POLY_COEFFICIENTS =
-    11; //!< Max order of polynomial fit plus one
+  #pragma omp declare target
+  static const int MAX_POLY_COEFFICIENTS; //!< Max order of polynomial fit plus one
+  #pragma omp end declare target
 };
 
 //========================================================================

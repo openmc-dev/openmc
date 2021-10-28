@@ -14,6 +14,8 @@
 
 namespace openmc {
 
+const int WindowedMultipole::MAX_POLY_COEFFICIENTS = 11;
+
 //========================================================================
 // WindowedeMultipole implementation
 //========================================================================
@@ -90,9 +92,9 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   double invE = 1.0 / E;
 
   // Locate window containing energy
-  int i_window = std::min(window_info_.size() - 1,
+  int i_window = std::min(static_cast<size_t>(n_windows_ - 1),
     static_cast<size_t>((sqrtE - std::sqrt(E_min_)) * inv_spacing_));
-  const auto& window {window_info_[i_window]};
+  const auto& window {window_info(i_window)};
 
   // Initialize the ouptut cross sections
   double sig_s = 0.0;
@@ -106,26 +108,27 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
     // Broaden the curvefit.
     double dopp = sqrt_awr_ / sqrtkT;
     std::array<double, MAX_POLY_COEFFICIENTS> broadened_polynomials;
-    broaden_wmp_polynomials(E, dopp, fit_order_ + 1, broadened_polynomials.data());
-    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
-      sig_s += curvefit_(i_window, i_poly, FIT_S) * broadened_polynomials[i_poly];
-      sig_a += curvefit_(i_window, i_poly, FIT_A) * broadened_polynomials[i_poly];
+    broaden_wmp_polynomials(E, dopp, n_order_, broadened_polynomials.data());
+    for (int i_poly = 0; i_poly < n_order_; ++i_poly) {
+      sig_s += curvefit(i_window, i_poly, FIT_S) * broadened_polynomials[i_poly];
+      sig_a += curvefit(i_window, i_poly, FIT_A) * broadened_polynomials[i_poly];
       if (fissionable_) {
-        sig_f += curvefit_(i_window, i_poly, FIT_F) * broadened_polynomials[i_poly];
+        sig_f += curvefit(i_window, i_poly, FIT_F) * broadened_polynomials[i_poly];
       }
     }
   } else {
     // Evaluate as if it were a polynomial
     double temp = invE;
-    for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
-      sig_s += curvefit_(i_window, i_poly, FIT_S) * temp;
-      sig_a += curvefit_(i_window, i_poly, FIT_A) * temp;
+    for (int i_poly = 0; i_poly < n_order_; ++i_poly) {
+      sig_s += curvefit(i_window, i_poly, FIT_S) * temp;
+      sig_a += curvefit(i_window, i_poly, FIT_A) * temp;
       if (fissionable_) {
-        sig_f += curvefit_(i_window, i_poly, FIT_F) * temp;
+        sig_f += curvefit(i_window, i_poly, FIT_F) * temp;
       }
       temp *= sqrtE;
     }
   }
+
 
   // ==========================================================================
   // Add the contribution from the poles in this window.
@@ -133,24 +136,24 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   if (sqrtkT == 0.0) {
     // If at 0K, use asymptotic form.
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
-      std::complex<double> psi_chi = -1.0i / (data_(i_pole, MP_EA) - sqrtE);
+      std::complex<double> psi_chi = std::complex<double>(0.0, -1.0) / (data(i_pole, MP_EA) - sqrtE);
       std::complex<double> c_temp = psi_chi * invE;
-      sig_s += (data_(i_pole, MP_RS) * c_temp).real();
-      sig_a += (data_(i_pole, MP_RA) * c_temp).real();
+      sig_s += (data(i_pole, MP_RS) * c_temp).real();
+      sig_a += (data(i_pole, MP_RA) * c_temp).real();
       if (fissionable_) {
-        sig_f += (data_(i_pole, MP_RF) * c_temp).real();
+        sig_f += (data(i_pole, MP_RF) * c_temp).real();
       }
     }
   } else {
     // At temperature, use Faddeeva function-based form.
     double dopp = sqrt_awr_ / sqrtkT;
     for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
-      std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
+      std::complex<double> z = (sqrtE - data(i_pole, MP_EA)) * dopp;
       std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
-      sig_s += (data_(i_pole, MP_RS) * w_val).real();
-      sig_a += (data_(i_pole, MP_RA) * w_val).real();
+      sig_s += (data(i_pole, MP_RS) * w_val).real();
+      sig_a += (data(i_pole, MP_RA) * w_val).real();
       if (fissionable_) {
-        sig_f += (data_(i_pole, MP_RF) * w_val).real();
+        sig_f += (data(i_pole, MP_RF) * w_val).real();
       }
     }
   }
@@ -195,10 +198,10 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
   for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
     std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
     std::complex<double> w_val = -invE * SQRT_PI * 0.5 * w_derivative(z, 2);
-    sig_s += (data_(i_pole, MP_RS) * w_val).real();
-    sig_a += (data_(i_pole, MP_RA) * w_val).real();
+    sig_s += (data(i_pole, MP_RS) * w_val).real();
+    sig_a += (data(i_pole, MP_RA) * w_val).real();
     if (fissionable_) {
-      sig_f += (data_(i_pole, MP_RF) * w_val).real();
+      sig_f += (data(i_pole, MP_RF) * w_val).real();
     }
   }
   double norm = -0.5*sqrt_awr_ / std::sqrt(K_BOLTZMANN) * std::pow(T, -1.5);
@@ -207,6 +210,54 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
   sig_f *= norm;
 
   return std::make_tuple(sig_s, sig_a, sig_f);
+}
+
+void
+WindowedMultipole::flatten_wmp_data() {
+  n_windows_ = window_info_.size();
+  device_window_info_ = window_info_.data();
+
+  n_order_ = curvefit_.shape()[1];
+  n_reactions_ = curvefit_.shape()[2];
+
+  device_curvefit_ = curvefit_.data();
+
+  n_data_size_ = data_.shape()[1];
+  device_data_ = data_.data();
+}
+
+void
+WindowedMultipole::copy_to_device()
+{
+  #pragma omp target enter data map(to: device_curvefit_[:curvefit_.size()])
+  #pragma omp target enter data map(to: device_data_[:data_.size()])
+  #pragma omp target enter data map(to: device_window_info_[:window_info_.size()])
+}
+
+void
+WindowedMultipole::release_from_device()
+{
+  #pragma omp target exit data map(release: device_curvefit_[:curvefit_.size()])
+  #pragma omp target exit data map(release: device_data_[:data_.size()])
+  #pragma omp target exit data map(release: device_window_info_[:window_info_.size()])
+}
+
+double
+WindowedMultipole::curvefit(int window, int poly_order, int reaction) const
+{
+  return device_curvefit_[window * n_order_ * n_reactions_ + poly_order * n_reactions_ + reaction];
+}
+
+const WindowedMultipole::WindowInfo&
+WindowedMultipole::window_info(int i_window) const
+{
+  return device_window_info_[i_window];
+}
+
+std::complex<double>
+WindowedMultipole::data(int pole, int res) const
+{
+  return device_data_[pole * n_data_size_ + res];
 }
 
 //========================================================================

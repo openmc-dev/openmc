@@ -73,6 +73,8 @@ public:
 
   void flatten_xs_data();
 
+  void flatten_wmp_data();
+
   void copy_to_device();
   void release_from_device();
 
@@ -100,6 +102,8 @@ public:
 
   // Multipole data
   std::unique_ptr<WindowedMultipole> multipole_;
+  WindowedMultipole* device_multipole_;
+  const WindowedMultipole* multipole() const { return device_multipole_; }
 
   // Fission data
   bool fissionable_ {false}; //!< Whether nuclide is fissionable

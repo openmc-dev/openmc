@@ -20,6 +20,7 @@
 #include "DagMC.hpp"
 #endif
 
+/*
 //#define NEUTRON_XS_SIZE 300 // Depleted SMR uses 296
 #define NEUTRON_XS_SIZE 35 // Depleted SMR uses 296
 #define PHOTON_XS_SIZE 9 // Pincell example uses 9
@@ -30,6 +31,20 @@
 #define FILTER_MATCHES_SIZE 14 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
 //#define FILTER_MATCHES_SIZE 140 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
 #define NU_BANK_SIZE 16 // infinite_cell regression test
+*/
+// Minimal for HM-SMall
+#define NEUTRON_XS_SIZE 69 // HM-Small
+//#define NEUTRON_XS_SIZE 272 // HM-Large
+//#define NEUTRON_XS_SIZE 92 // SMR
+#define PHOTON_XS_SIZE 0 // Pincell example uses 9
+#define COORD_SIZE 3 // Depleted SMR uses 6
+//#define COORD_SIZE 3 // Depleted SMR uses 6
+//#define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
+#define SECONDARY_BANK_SIZE 5 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
+#define FLUX_DERIVS_SIZE 0 // This is the min required to pass regression tests (diff_tally is limiter)
+#define FILTER_MATCHES_SIZE 0 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
+//#define FILTER_MATCHES_SIZE 140 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
+#define NU_BANK_SIZE 4 // infinite_cell regression test
 
 namespace openmc {
 

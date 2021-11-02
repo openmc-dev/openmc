@@ -35,6 +35,9 @@ public:
   vector& operator=(const vector& other);
   vector& operator=(vector&& other) noexcept;
 
+  // TODO: If you have a global variable that is of type vector<T>, its
+  // destructor gets called which then requires ~T() to be available on device.
+  // Figure out a way around this
   ~vector() {
     if (data_) {
 #pragma omp target exit data map(delete: data_)

@@ -108,6 +108,55 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
 
 }
+#ifdef NO_UPDATE
+// No Update
+void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
+{
+  simulation::time_event_calculate_xs.start();
+
+  // TODO: If using C++17, perform a parallel sort of the queue
+  // by particle type, material type, and then energy, in order to
+  // improve cache locality and reduce thread divergence on GPU. Prior
+  // to C++17, std::sort is a serial only operation, which in this case
+  // makes it too slow to be practical for most test problems.
+  //
+  // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
+
+  int64_t offset = simulation::advance_particle_queue.size();;
+
+  int64_t q_size = queue.size();
+
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for
+  #else
+  #pragma omp parallel for schedule(runtime)
+  #endif
+  for (int64_t i = 0; i < q_size; i++) {
+    int64_t buffer_idx = queue[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
+    p.event_calculate_xs();
+    simulation::advance_particle_queue[offset + i] = queue[i];
+
+    // Updating this on device inside of the kernel saves extra device syncs after launch
+    if( i == 0 )
+    {
+      simulation::advance_particle_queue.size_ = offset + queue.size_;
+      queue.size_ = 0;
+    }
+  }
+
+  // After executing a calculate_xs event, particles will
+  // always require an advance event. Therefore, we don't need to use
+  // the protected enqueuing function.
+  //simulation::advance_particle_queue.resize(offset + queue.size());
+  //queue.resize(0);
+
+  simulation::advance_particle_queue.size_ = queue.size_ + offset;
+  queue.size_ = 0;
+  //#pragma omp target update to(queue.size_, simulation::advance_particle_queue.size_)
+  simulation::time_event_calculate_xs.stop();
+}
+#else
 
 void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 {
@@ -122,9 +171,10 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
 
   int64_t offset = simulation::advance_particle_queue.size();;
-  
+
   #ifdef USE_DEVICE
-  #pragma omp target teams distribute parallel for
+  //#pragma omp target teams distribute parallel for
+  #pragma omp target teams distribute
   #else
   #pragma omp parallel for schedule(runtime)
   #endif
@@ -134,35 +184,32 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
     p.event_calculate_xs();
     simulation::advance_particle_queue[offset + i] = queue[i];
   }
-  simulation::time_event_calculate_xs.stop();
-  
+
   // After executing a calculate_xs event, particles will
   // always require an advance event. Therefore, we don't need to use
   // the protected enqueuing function.
   simulation::advance_particle_queue.resize(offset + queue.size());
-
   queue.resize(0);
 
+  simulation::time_event_calculate_xs.stop();
 }
+#endif
 
-/*
-void process_advance_particle_events_alternative()
+// No update
+#ifdef NO_UPDATE
+void process_advance_particle_events()
 {
   simulation::time_event_advance_particle.start();
 
-  int64_t q_size = simulation::advance_particle_queue.size_;
-  simulation::advance_particle_queue.size_ = 0;
-  #pragma omp target update to(simulation::advance_particle_queue.size_) nowait
+  int64_t q_size = simulation::advance_particle_queue.size();
 
-  int32_t surface_crossings = 0;
-  int32_t collisions = 0;
+  int hits[2] = {0,0};
 
   #ifdef USE_DEVICE
-  #pragma omp target teams distribute parallel for reduction(+:surface_crossings, collisions)
+  #pragma omp target teams distribute parallel for map(tofrom:hits)
   #else
   #pragma omp parallel for schedule(runtime)
   #endif
-  //for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
   for (int64_t i = 0; i < q_size; i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
@@ -171,19 +218,27 @@ void process_advance_particle_events_alternative()
 
     if (p.collision_distance_ > p.boundary_.distance) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
-      surface_crossings++;
+      #pragma omp atomic
+      hits[0]++;
     } else {
       simulation::collision_queue.thread_safe_append({p, buffer_idx});
-      collisions++;
+      #pragma omp atomic
+      hits[1]++;
     }
+    if( i == 0 )
+      simulation::advance_particle_queue.size_ = 0;
   }
-  simulation::surface_crossing_queue.size_ += surface_crossings;
-  simulation::collision_queue.size_ += collisions;
+  //simulation::surface_crossing_queue.sync_size_device_to_host();
+  //simulation::collision_queue.sync_size_device_to_host();
+  //simulation::advance_particle_queue.resize(0);
+  simulation::surface_crossing_queue.size_ += hits[0];
+  simulation::collision_queue.size_ += hits[1];
+  simulation::advance_particle_queue.size_ = 0;
 
   simulation::time_event_advance_particle.stop();
 
 }
-*/
+#else
 
 void process_advance_particle_events()
 {
@@ -210,24 +265,57 @@ void process_advance_particle_events()
   simulation::collision_queue.sync_size_device_to_host();
   simulation::advance_particle_queue.resize(0);
 
-  // DEBUGGING REGION
-  /*
-  // Let's look at particle 1
-  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
-    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
-    Particle& p = simulation::particles[buffer_idx];
-    if( p.id_ == 1 )
-    {
-      printf("host   particle %ld distance: %.4le\n", p.id_, p.advance_distance_);
-      printf("host   particle %ld material: %d\n", p.id_, p.material_);
-    }
-  }
-  exit(1);
-  */
-  
   simulation::time_event_advance_particle.stop();
-
 }
+#endif
+
+#ifdef NO_UDPATE
+// No update
+void process_surface_crossing_events()
+{
+  simulation::time_event_surface_crossing.start();
+
+  int hits[2] = {0,0};
+  int64_t q_size = simulation::surface_crossing_queue.size();
+
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for map(tofrom:hits)
+  #else
+  #pragma omp parallel for schedule(runtime)
+  #endif
+  for (int64_t i = 0; i < q_size; i++) {
+    int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
+    p.event_cross_surface();
+    p.event_revive_from_secondary();
+    if (p.alive_)
+    {
+      //dispatch_xs_event(buffer_idx);
+      if (p.material_ == MATERIAL_VOID || !model::materials[p.material_].fissionable_) {
+        simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
+        #pragma omp atomic
+        hits[0]++;
+      } else {
+        simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
+        #pragma omp atomic
+        hits[1]++;
+      }
+    }
+    if( i == 0 )
+      simulation::surface_crossing_queue.size_ = 0;
+  }
+
+  simulation::calculate_nonfuel_xs_queue.size_ += hits[0];
+  simulation::calculate_fuel_xs_queue.size_ += hits[1];
+  simulation::surface_crossing_queue.size_ = 0;
+
+  //simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
+  //simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
+  //simulation::surface_crossing_queue.resize(0);
+
+  simulation::time_event_surface_crossing.stop();
+}
+#else
 
 void process_surface_crossing_events()
 {
@@ -246,13 +334,62 @@ void process_surface_crossing_events()
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
   }
-  simulation::time_event_surface_crossing.stop();
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
   simulation::surface_crossing_queue.resize(0);
 
+  simulation::time_event_surface_crossing.stop();
 }
+#endif
+
+#ifdef NO_UPDATE
+// No Update
+void process_collision_events()
+{
+  simulation::time_event_collision.start();
+
+  int hits[2] = {0,0};
+  int64_t q_size = simulation::collision_queue.size();
+
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for map(tofrom:hits)
+  #else
+  #pragma omp parallel for schedule(runtime)
+  #endif
+  for (int64_t i = 0; i < q_size; i++) {
+    int64_t buffer_idx = simulation::collision_queue[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
+    p.event_collide();
+    p.event_revive_from_secondary();
+    if (p.alive_)
+    {
+      //dispatch_xs_event(buffer_idx);
+      if (p.material_ == MATERIAL_VOID || !model::materials[p.material_].fissionable_) {
+        simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
+        #pragma omp atomic
+        hits[0]++;
+      } else {
+        simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
+        #pragma omp atomic
+        hits[1]++;
+      }
+    }
+    if( i == 0 )
+      simulation::collision_queue.size_ = 0;
+  }
+
+  simulation::calculate_nonfuel_xs_queue.size_ += hits[0];
+  simulation::calculate_fuel_xs_queue.size_ += hits[1];
+  simulation::collision_queue.size_ = 0;
+
+  //simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
+  //simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
+  //simulation::collision_queue.resize(0);
+
+  simulation::time_event_collision.stop();
+}
+#else
 
 void process_collision_events()
 {
@@ -271,13 +408,15 @@ void process_collision_events()
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
   }
-  simulation::time_event_collision.stop();
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
   simulation::collision_queue.resize(0);
 
+  simulation::time_event_collision.stop();
 }
+#endif
+
 
 void process_death_events(int64_t n_particles)
 {

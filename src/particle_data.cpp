@@ -54,9 +54,8 @@ ParticleData::ParticleData()
   photon_xs_.resize(data::elements.size());
   
   // Allocate alpha_tally_Cd_
-  alpha_tally_Cd_.resize(simulation::alpha_I);
-  for (int i = 0; i < simulation::alpha_I; i++)
-    alpha_tally_Cd_[i].resize(simulation::alpha_J[i], 0.0);
+  vector<size_t> shape {simulation::n_fissionables, simulation::n_precursors};
+  alpha_tally_Cd_ = xt::zeros<double>(shape);
 }
 
 } // namespace openmc

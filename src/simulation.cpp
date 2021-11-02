@@ -78,80 +78,74 @@ int openmc_simulation_init()
     initialize_data();
   }
 
-  //============================================================================
-  // Preparation for alpha-eigenvalue mode
-  //   Determine alpha_min, _I, _J, _idx, _lambda, and allocate global_tally_alpha_Cd
-  //============================================================================
-
-  if (settings::alpha_mode) {
-    if (settings::run_CE) {
-      simulation::alpha_min = -INFTY;
-      simulation::alpha_I = 0;
-      simulation::alpha_idx.resize(data::nuclides.size(),-1); // -1 for non-fissionable
-      for (int i = 0; i < data::nuclides.size(); i++){
-        if (data::nuclides[i]->fissionable_) {
-          // Set index
-          simulation::alpha_idx[i] = simulation::alpha_I;
-
-          // Increment I
-          simulation::alpha_I++;
-
-          // Allocate decay constant
-          simulation::alpha_lambda.resize(simulation::alpha_I);
-
-          // Set alpha_lambda for each precursor group j of nuclide i, and update alpha_min if necessary
-          auto rx = data::nuclides[i]->fission_rx_[0];
-          for (int j = 1; j < rx->products_.size(); ++j) {
-            const auto& product = rx->products_[j];
-            if (product.particle_ != ParticleType::neutron) continue;
-            if (product.emission_mode_ == Nuclide::EmissionMode::delayed) {
-              // Set decay constant of precursor group j of nuclide i
-              simulation::alpha_lambda.back().push_back(product.decay_rate_);
-              if (simulation::alpha_min < -product.decay_rate_)
-                simulation::alpha_min = -product.decay_rate_;
-            }
-          }
-
-          // Total J in i
-          simulation::alpha_J.push_back(simulation::alpha_lambda.back().size());
-        }
+  // Number of fissionables and precursors, and fissionable index
+  // TODO: better way to do this?
+  simulation::n_fissionables = 0;
+  if (settings::run_CE) {
+    simulation::fissionable_index.resize(data::nuclides.size(),-1);
+    for (int i = 0; i < data::nuclides.size(); i++){
+      if (data::nuclides[i]->fissionable_) {
+        simulation::fissionable_index[i] = simulation::n_fissionables;
+        simulation::n_fissionables++;
+        simulation::n_precursors = data::nuclides[i]->n_precursor_;
       }
-    } else {
-      simulation::alpha_min = -INFTY;
-      simulation::alpha_I = 0;
-      simulation::alpha_idx.resize(data::mg.macro_xs_.size(),-1);
-      for (int i = 0; i < data::mg.macro_xs_.size(); i++){
-        if (data::mg.macro_xs_[i].fissionable) {
-          // Set index
-          simulation::alpha_idx[i] = simulation::alpha_I;
+    }
+  } else {
+    simulation::fissionable_index.resize(data::mg.macro_xs_.size(),-1);
+    for (int i = 0; i < data::mg.macro_xs_.size(); i++){
+      if (data::mg.macro_xs_[i].fissionable) {
+        simulation::fissionable_index[i] = simulation::n_fissionables;
+        simulation::n_fissionables++;
+      }
+    }
+    simulation::n_precursors = data::mg.num_delayed_groups_;
+  }
 
-          // Increment I
-          simulation::alpha_I++;
-
-          // Allocate decay constant
-          simulation::alpha_lambda.resize(simulation::alpha_I);
-
-          // Set alpha_lambda for each precursor group j of nuclide i, and update alpha_min if necessary
-          int J = data::mg.num_delayed_groups_;
-          for (int j = 0; j < J; ++j) {
-            // Set decay constant of precursor group j of nuclide i
-            double lam = data::mg.macro_xs_[i].get_xs(MgxsType::DECAY_RATE,0,nullptr,nullptr,&j);
-            simulation::alpha_lambda.back().push_back(lam);
-            if (simulation::alpha_min < -lam)
-              simulation::alpha_min = -lam;
+  // Precursor decay constant
+  // TODO: better way to do this?
+  vector<size_t> shape {simulation::n_fissionables, simulation::n_precursors};
+  simulation::precursor_decay = xt::zeros<double>(shape);
+  if (settings::run_CE) {
+    for (int i = 0; i < data::nuclides.size(); i++){
+      if (data::nuclides[i]->fissionable_) {
+        int  idx1 = simulation::fissionable_index[i];
+        int  idx2 = 0;
+        auto rx   = data::nuclides[i]->fission_rx_[0];
+        for (int j = 1; j < rx->products_.size(); ++j) {
+          const auto& product = rx->products_[j];
+          if (product.particle_ != ParticleType::neutron) continue;
+          if (product.emission_mode_ == Nuclide::EmissionMode::delayed) {
+            simulation::precursor_decay(idx1,idx2) = product.decay_rate_;
+            idx2++;
           }
-
-          // Total J in i
-          simulation::alpha_J.push_back(simulation::alpha_lambda.back().size());
         }
       }
     }
-    // Allocate global_tally_alpha_Cd
-    global_tally_alpha_Cd.resize(simulation::alpha_I);
-    for (int i = 0; i < simulation::alpha_I; i++)
-      global_tally_alpha_Cd[i].resize(simulation::alpha_J[i], 0.0);
+  } else {
+    for (int i = 0; i < data::mg.macro_xs_.size(); i++){
+      if (data::mg.macro_xs_[i].fissionable) {
+        int  idx = simulation::fissionable_index[i];
+        for (int j = 0; j < simulation::n_precursors; ++j) {
+          simulation::precursor_decay(idx,j) = data::mg.macro_xs_[i].
+            get_xs(MgxsType::DECAY_RATE,0,nullptr,nullptr,&j);
+        }
+      }
+    }
   }
-  // Alpha mode preparation done
+
+  // Preparation for alpha-eigenvalue mode
+  if (settings::alpha_mode) {
+    // Determine minimum alpha-eigenvalue
+    double decay_min = INFTY;
+    for (int i = 0; i < simulation::n_fissionables; i++)
+      for (int j = 0; j < simulation::n_precursors; j++)
+        if (decay_min > simulation::precursor_decay(i,j))
+          decay_min = simulation::precursor_decay(i,j);
+    simulation::alpha_min = -decay_min;
+  
+    // Allocate global_tally_alpha_Cd
+    global_tally_alpha_Cd = xt::zeros<double>(shape);
+  }
 
   // Determine how much work each process should do
   calculate_work();
@@ -364,10 +358,11 @@ vector<int64_t> work_index;
 double alpha_eff {0.0};    
 double alpha_eff_std;
 double alpha_min {-INFTY};    
-int alpha_I;
-vector<int>alpha_J;
-vector<int> alpha_idx;
-vector<vector<double>> alpha_lambda;
+
+size_t n_fissionables;
+size_t n_precursors;
+vector<int> fissionable_index;
+xt::xtensor<double, 2> precursor_decay;
 
 } // namespace simulation
 
@@ -549,9 +544,9 @@ void finalize_generation()
     if (settings::alpha_mode) {
       global_tally_alpha_Cn = 0.0;
       global_tally_alpha_Cp = 0.0;
-      for (int i = 0; i < simulation::alpha_I; i++) { 
-        for (int j = 0; j < simulation::alpha_J[i]; j++) {
-          global_tally_alpha_Cd[i][j] = 0.0;
+      for (int i = 0; i < simulation::n_fissionables; i++) { 
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          global_tally_alpha_Cd(i,j) = 0.0;
         }
       }
     }

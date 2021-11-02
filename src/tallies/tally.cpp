@@ -67,7 +67,7 @@ double global_tally_tracklength;
 double global_tally_leakage;
 double global_tally_alpha_Cn;                          
 double global_tally_alpha_Cp;                          
-vector<vector<double>> global_tally_alpha_Cd;
+xt::xtensor<double, 2> global_tally_alpha_Cd;
 
 //==============================================================================
 // Tally object implementation

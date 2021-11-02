@@ -314,7 +314,7 @@ private:
   // For alpha-eigenvalue mode
   double alpha_tally_Cn_ {0.0};
   double alpha_tally_Cp_ {0.0};
-  vector<vector<double>> alpha_tally_Cd_;
+  xt::xtensor<double, 2> alpha_tally_Cd_;
 
   bool trace_ {false}; //!< flag to show debug information
 
@@ -443,7 +443,7 @@ public:
   double& keff_tally_leakage() { return keff_tally_leakage_; }
   double& alpha_tally_Cn() { return alpha_tally_Cn_; }
   double& alpha_tally_Cp() { return alpha_tally_Cp_; }
-  double& alpha_tally_Cd(int i, int j) { return alpha_tally_Cd_[i][j]; }
+  double& alpha_tally_Cd(int i, int j) { return alpha_tally_Cd_(i,j); }
 
   bool& trace() { return trace_; }
   double& collision_distance() { return collision_distance_; }

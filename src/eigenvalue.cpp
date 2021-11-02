@@ -87,11 +87,11 @@ void calculate_generation_keff()
     global_tally_alpha_Cp = Cp_reduced;
 
     // Cd
-    for (int i = 0; i < simulation::alpha_I; i++) { 
-      for (int j = 0; j < simulation::alpha_J[i]; j++) {
-        MPI_Allreduce(&global_tally_alpha_Cd[i][j], &Cd_reduced, 1, MPI_DOUBLE,
+    for (int i = 0; i < simulation::n_fissionables; i++) { 
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        MPI_Allreduce(&global_tally_alpha_Cd(i,j), &Cd_reduced, 1, MPI_DOUBLE,
           MPI_SUM, mpi::intracomm);
-        global_tally_alpha_Cd[i][j] = Cd_reduced;
+        global_tally_alpha_Cd(i,j) = Cd_reduced;
       }
     }
 #endif
@@ -100,9 +100,9 @@ void calculate_generation_keff()
   // TODO: This should be normalized by total_weight, not by n_particles
   global_tally_alpha_Cn /= settings::n_particles;
   global_tally_alpha_Cp /= settings::n_particles;
-  for (int i = 0; i < simulation::alpha_I; i++) { 
-    for (int j = 0; j < simulation::alpha_J[i]; j++) {
-      global_tally_alpha_Cd[i][j] /= settings::n_particles;
+  for (int i = 0; i < simulation::n_fissionables; i++) { 
+    for (int j = 0; j < simulation::n_precursors; j++) {
+      global_tally_alpha_Cd(i,j) /= settings::n_particles;
     }
   }
 }
@@ -407,8 +407,8 @@ void calculate_average_keff()
     // The constants (for easy referring)
     const double Cn = global_tally_alpha_Cn;
     const double Cp = global_tally_alpha_Cp;
-    const vector<vector<double>> Cd = global_tally_alpha_Cd;
-    const vector<vector<double>> lambda = simulation::alpha_lambda;
+    const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
+    const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
     const double alpha_min = simulation::alpha_min;
 
     // Newton raphson to update alpha [Goal: find x yielding f(x) = 0]
@@ -422,21 +422,21 @@ void calculate_average_keff()
       // Evaluate f(x)
       double f = (alpha - x)*Cn + Cp - 1.0;
       // Accumulate delayed terms
-      for (int i = 0; i < simulation::alpha_I; i++) {
+      for (int i = 0; i < simulation::n_fissionables; i++) {
         // i is local
-        for (int j = 0; j < simulation::alpha_J[i]; j++) {
-          f += lambda[i][j]/(x+lambda[i][j]) * Cd[i][j];
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          f += lambda(i,j)/(x+lambda(i,j)) * Cd(i,j);
         }
       }
 
       // Evaluate f'(x) function
       double df = -Cn;
       // Accumulate delayed terms
-      for (int i = 0; i < simulation::alpha_I; i++) { 
+      for (int i = 0; i < simulation::n_fissionables; i++) { 
         // i is local
-        for (int j = 0; j < simulation::alpha_J[i]; j++) {
-          double denom = (x+lambda[i][j]); denom *= denom;
-          df -= lambda[i][j]/denom * Cd[i][j];
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          double denom = (x+lambda(i,j)); denom *= denom;
+          df -= lambda(i,j)/denom * Cd(i,j);
         }
       }
 
@@ -449,10 +449,10 @@ void calculate_average_keff()
       // Calculate errors
       error1 = std::abs((x_new - x)/x_new);
       error2 = (alpha - x_new)*Cn + Cp - 1.0;
-      for (int i = 0; i < simulation::alpha_I; i++) { 
+      for (int i = 0; i < simulation::n_fissionables; i++) { 
         // i is local
-        for (int j = 0; j < simulation::alpha_J[i]; j++) {
-          error2 += lambda[i][j]/(x_new+lambda[i][j]) * Cd[i][j];
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          error2 += lambda(i,j)/(x_new+lambda(i,j)) * Cd(i,j);
         }
       }
     

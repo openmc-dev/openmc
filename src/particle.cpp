@@ -262,8 +262,8 @@ void Particle::event_advance()
           int nuc = model::materials[material()]->nuclide_[i];
           if (data::nuclides[nuc]->fissionable_) {
             double atom_density = model::materials[material()]->atom_density_(i);
-            int idx = simulation::alpha_idx[nuc]; 
-            for (int j = 0; j < simulation::alpha_J[idx]; j++) {
+            int idx = simulation::fissionable_index[nuc]; 
+            for (int j = 0; j < simulation::n_precursors; j++) {
               alpha_tally_Cd(idx,j) += score * atom_density * neutron_xs(nuc).fission 
                 * data::nuclides[nuc]->nu(E(), Nuclide::EmissionMode::delayed,j+1);
             }
@@ -271,8 +271,8 @@ void Particle::event_advance()
         }
       } else {
         if (data::mg.macro_xs_[material()].fissionable) {
-          int idx = simulation::alpha_idx[material()]; 
-          for (int j = 0; j < simulation::alpha_J[idx]; j++) {
+          int idx = simulation::fissionable_index[material()]; 
+          for (int j = 0; j < simulation::n_precursors; j++) {
             alpha_tally_Cd(idx,j) += score * data::mg.macro_xs_[material()]
               .get_xs(MgxsType::DELAYED_NU_FISSION, g(), nullptr, nullptr, &j);
           }             
@@ -464,10 +464,10 @@ void Particle::event_death()
     #pragma omp atomic
     global_tally_alpha_Cp += alpha_tally_Cp();
     alpha_tally_Cp() = 0.0;
-    for (int i = 0; i < simulation::alpha_I; i++) { 
-      for (int j = 0; j < simulation::alpha_J[i]; j++) {
+    for (int i = 0; i < simulation::n_fissionables; i++) { 
+      for (int j = 0; j < simulation::n_precursors; j++) {
         #pragma omp atomic
-        global_tally_alpha_Cd[i][j] += alpha_tally_Cd(i,j);
+        global_tally_alpha_Cd(i,j) += alpha_tally_Cd(i,j);
         alpha_tally_Cd(i,j) = 0.0;
       }
     }

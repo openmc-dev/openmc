@@ -174,7 +174,7 @@ extern double global_tally_leakage;
 // Global quavariables for alpha (time) eigenvalue update
 extern double global_tally_alpha_Cn; // inverse-speed (neutron density)
 extern double global_tally_alpha_Cp; // prompt fission production
-extern vector<vector<double>>
+extern xt::xtensor<double, 2>
   global_tally_alpha_Cd; // delayed fission production for 
                          // each fissionable nuclide i & delayed group j
 

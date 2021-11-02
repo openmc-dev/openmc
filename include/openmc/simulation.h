@@ -54,12 +54,17 @@ extern "C" double alpha_eff_std; //!< standard deviation of average alpha
 extern "C" double alpha_min;     //!< minimum possible value of alpha
                                  //!< (negative of the smallest precursor group 
                                  //!<  decay constant)
-// Note: we allow different J for each fissionable nuclide i
-extern "C" int alpha_I;       //!< # of fissionable nuclides
-extern vector<int>alpha_J;    //!< # of precursor groups in nuclide i
-extern vector<int> alpha_idx; //!< indices for data::nuclides in 
-                              //!< global_tally_alpha_Cd 
-extern vector<vector<double>> alpha_lambda; //!< decay constant for each i & j
+
+//! Fissionables and their precursors (currently only used in alpha_mode)
+//! We assume equal number of precusor groups for all fissionables.
+//! However, decay constants of same precursor group from different 
+//! nuclides/materials can be different.
+extern size_t n_fissionables;  //!< # of fissionable nuclides/materials
+extern size_t n_precursors;    //!< # of delayed neutron precursor groups
+extern vector<int> fissionable_index; //!< indexing for fissionable nucs/mats;
+                                      //!< -1 for non-fissionable.
+extern xt::xtensor<double, 2> precursor_decay; //!< [nuclide/material][group]
+
 } // namespace simulation
 
 //==============================================================================

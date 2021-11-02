@@ -11,7 +11,6 @@ import openmc
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value
-
 from openmc.exceptions import InvalidIDError
 
 
@@ -237,6 +236,12 @@ class Model:
             MPI intracommunicator
         """
 
+        try:
+            import openmc.lib
+        except ImportError:
+            raise ImportError('openmc.lib must be available to '
+                'execute Model.init_lib(...)') from None
+
         # TODO: right now the only way to set most of the above parameters via
         # the C API are at initialization time despite use-cases existing to
         # set them for individual runs. For now this functionality is exposed
@@ -274,6 +279,12 @@ class Model:
         .. versionadded:: 0.13.0
 
         """
+
+        try:
+            import openmc.lib
+        except ImportError:
+            raise ImportError('openmc.lib must be available to '
+                              'execute Model.finalize_lib(...)') from None
 
         openmc.lib.finalize()
 
@@ -411,6 +422,12 @@ class Model:
         openmc.lib.export_properties
 
         """
+        try:
+            import openmc.lib
+        except ImportError:
+            raise ImportError('openmc.lib must be available to '
+                              'execute Model.import_properties(...)') from None
+
         cells = self.geometry.get_all_cells()
         materials = self.geometry.get_all_materials()
 
@@ -691,12 +708,13 @@ class Model:
         if obj_type == 'cell':
             by_name = self._cells_by_name
             by_id = self._cells_by_id
-            obj_by_id = openmc.lib.cells
+            if self.is_initialized:
+                obj_by_id = openmc.lib.cells
         else:
             by_name = self._materials_by_name
             by_id = self._materials_by_id
-            obj_by_id = openmc.lib.materials
-
+            if self.is_initialized:
+                obj_by_id = openmc.lib.materials
         # Get the list of ids to use if converting from names and accepting
         # only values that have actual ids
         ids = []

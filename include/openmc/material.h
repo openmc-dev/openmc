@@ -167,8 +167,7 @@ public:
   vector<int> mat_nuclide_index_;
 
   // Thermal scattering tables
-  std::vector<ThermalTable> thermal_tables_;
-  ThermalTable* device_thermal_tables_;
+  vector<ThermalTable> thermal_tables_;
 
   Bremsstrahlung ttb_;
 

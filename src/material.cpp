@@ -418,7 +418,7 @@ void Material::normalize_density()
 
 void Material::init_thermal()
 {
-  std::vector<ThermalTable> tables;
+  vector<ThermalTable> tables;
 
   std::unordered_set<int> already_checked;
   for (const auto& table : thermal_tables_) {
@@ -785,7 +785,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     // Check if this nuclide matches one of the S(a,b) tables specified.
     // This relies on thermal_tables_ being sorted by .index_nuclide
     if (check_sab) {
-      const auto& sab {device_thermal_tables_[j]};
+      const auto& sab {thermal_tables_[j]};
       if (i == sab.index_nuclide) {
         // Get index in sab_tables
         i_sab = sab.index_table;
@@ -1111,8 +1111,7 @@ void Material::copy_to_device()
   p0_.copy_to_device();
   device_atom_density_ = atom_density_.data();
   #pragma omp target enter data map(to: device_atom_density_[:atom_density_.size()])
-  device_thermal_tables_ = thermal_tables_.data();
-  #pragma omp target enter data map(to: device_thermal_tables_[:thermal_tables_.size()])
+  thermal_tables_.copy_to_device();
   ttb_.copy_to_device();
 }
 
@@ -1123,7 +1122,7 @@ void Material::release_from_device()
   mat_nuclide_index_.release_device();
   p0_.release_device();
   #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])
-  #pragma omp target exit data map(release: device_thermal_tables_[:thermal_tables_.size()])
+  thermal_tables_.release_device();
   ttb_.release_from_device();
 }
 

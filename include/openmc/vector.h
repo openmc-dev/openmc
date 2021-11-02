@@ -1,6 +1,8 @@
 #ifndef OPENMC_VECTOR_H
 #define OPENMC_VECTOR_H
 
+#include <algorithm> // for copy
+
 namespace openmc {
 
 template<typename T>
@@ -31,6 +33,9 @@ public:
       delete [] data_;
     }
   }
+
+  // Copy assignment
+  vector& operator=(const vector& other);
 
   // Element access
   reference operator[](size_type pos) { return data_[pos]; }
@@ -112,6 +117,14 @@ private:
   size_type size_;
   size_type capacity_;
 };
+
+template<typename T>
+vector<T>& vector<T>::operator=(const vector<T>& other)
+{
+  this->resize(other.size());
+  std::copy(other.cbegin(), other.cend(), this->begin());
+  return *this;
+}
 
 } // namespace openmc
 

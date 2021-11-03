@@ -776,16 +776,24 @@ void transport_history_based_device()
 
 void transport_history_based()
 {
-  /*
   double total_weight = 0.0;
-  #pragma omp parallel for schedule(runtime) reduction(+:total_weight)
+  double absorption = 0.0;
+  double collision = 0.0;
+  double tracklength = 0.0;
+  double leakage = 0.0;
+  #pragma omp parallel for reduction(+:total_weight,absorption, collision, tracklength, leakage)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     total_weight += initialize_history(p, i_work);
-    transport_history_based_single_particle(p);
+    //transport_history_based_single_particle(p);
+    transport_history_based_single_particle(p, absorption, collision, tracklength, leakage);
   }
+  // Write local reduction results to global values
+  global_tally_absorption  = absorption;
+  global_tally_collision   = collision;
+  global_tally_tracklength = tracklength;
+  global_tally_leakage     = leakage;
   simulation::total_weight = total_weight;
-  */
 }
 
 void transport_event_based()

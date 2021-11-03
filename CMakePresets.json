@@ -9,7 +9,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64=\"-O0\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode"
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64=\"-O0\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode -DNO_UPDATE"
             }
         },
         {
@@ -64,7 +64,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-target-new-runtime -fopenmp-cuda-mode -DNO_UPDATE"
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-target-new-runtime -fopenmp-cuda-mode"
             }
          },
         {

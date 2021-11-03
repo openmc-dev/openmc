@@ -94,10 +94,11 @@ void create_fission_sites(Particle& p)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_effective = (settings::alpha_mode) ? 
-                        p.macro_xs().nu_fission_alpha :
-                        p.macro_xs().nu_fission;
-  double nu_t = p.wgt() / simulation::keff * weight * nu_effective /
+  // Get the effective, time-corrected nu_fission if alpha_mode
+  double nu_fission_eff = (settings::alpha_mode) ? 
+                          p.macro_xs().nu_fission_alpha :
+                          p.macro_xs().nu_fission;
+  double nu_t = p.wgt() / simulation::keff * weight * nu_fission_eff /
                 p.macro_xs().total;
 
   // Sample the number of neutrons produced
@@ -226,18 +227,20 @@ void absorption(Particle& p)
     p.wgt_last() = p.wgt();
 
     // Score implicit absorpion estimate of keff
-    double nu_effective = (settings::alpha_mode) ? 
-                          p.macro_xs().nu_fission_alpha :
-                          p.macro_xs().nu_fission;
-    p.keff_tally_absorption() +=
-      p.wgt_absorb() * nu_effective / p.macro_xs().absorption;
-  } else {
-    if (p.macro_xs().absorption > prn(p.current_seed()) * p.macro_xs().total) {
-      double nu_effective = (settings::alpha_mode) ? 
+    // Get the effective, time-corrected nu_fission if alpha_mode
+    double nu_fission_eff = (settings::alpha_mode) ? 
                             p.macro_xs().nu_fission_alpha :
                             p.macro_xs().nu_fission;
+    p.keff_tally_absorption() +=
+      p.wgt_absorb() * nu_fission_eff / p.macro_xs().absorption;
+  } else {
+    if (p.macro_xs().absorption > prn(p.current_seed()) * p.macro_xs().total) {
+    // Get the effective, time-corrected nu_fission if alpha_mode
+      double nu_fission_eff = (settings::alpha_mode) ? 
+                              p.macro_xs().nu_fission_alpha :
+                              p.macro_xs().nu_fission;
       p.keff_tally_absorption() +=
-        p.wgt() * nu_effective / p.macro_xs().absorption;
+        p.wgt() * nu_fission_eff / p.macro_xs().absorption;
       p.alive() = false;
       p.event() = TallyEvent::ABSORB;
     }

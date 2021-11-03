@@ -186,7 +186,7 @@ void Particle::event_calculate_xs()
     macro_xs().nu_fission = 0.0;
     if (settings::alpha_mode) {
       macro_xs().nu_fission_prompt = 0.0;
-      macro_xs().nu_fission_alpha  = 0.0; // Time corrected nu_fission
+      macro_xs().nu_fission_alpha  = 0.0;
     }
   }
 }
@@ -208,18 +208,22 @@ void Particle::event_advance()
   // Select smaller of the two distances
   double distance = std::min(boundary().distance, collision_distance());
 
-  // Particle weight time correction
-  double weight_time; // Particle weight after time correction
-  double weight_avg;  // Average weight for tracklength tallies
+  // Continuous weight time-absorption
+  // We don't introduce the time-absorption XS (alpha/v) into the material;
+  // instead, we continuously reduce particle weight as it moves in the medium.
+  // Adapted from http://www.aesj.or.jp/publication/pnst002/data/826-835.pdf
+  // See also https://doi.org/10.1080/00295639.2020.1743578
+  double weight_time; // Weight at the end of track
+  double weight_avg;  // Average weight, for tracklength tallies
   if (settings::alpha_mode) {
     // Time absorption/source cross-section
     double alpha_xs   = simulation::alpha_eff / this->speed();
     double d_alpha_xs = distance * alpha_xs;
 
-    //  Weight time correction
+    // Weight time-absorption
     weight_time = wgt() * std::exp(-d_alpha_xs);
     
-    //  Average weight is temporaily assigned for track-length tally scoring
+    // Average weight is temporaily assigned for track-length tally scoring
     if (simulation::alpha_eff != 0.0) {
       weight_avg = (wgt() - weight_time) / d_alpha_xs;
     } else {
@@ -243,19 +247,22 @@ void Particle::event_advance()
   // Score track-length estimate of k-eff
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
-    double nu_effective = (settings::alpha_mode) ? 
-                          macro_xs().nu_fission_alpha :
-                          macro_xs().nu_fission;
+    // Get the effective, time-corrected nu_fission if alpha_mode
+    // See Eqs. (48) and (49) of https://doi.org/10.1080/00295639.2020.1743578
+    double nu_fission_eff = (settings::alpha_mode) ? 
+                            macro_xs().nu_fission_alpha :
+                            macro_xs().nu_fission;
     const double score = wgt() * distance;
-    keff_tally_tracklength() += score * nu_effective;
+    keff_tally_tracklength() += score * nu_fission_eff;
 
-    // Integrals for alpha-eigenvalue update
+    // Integrals for alpha-eigenvalue update (see eigenvalue.cpp)
     // TODO: currently only stack-length estimate
     if (settings::alpha_mode) {
       // Neutron density
       alpha_tally_Cn() += score * 1.0/this->speed();
       // Prompt fission neutron
       alpha_tally_Cp() += score * macro_xs().nu_fission_prompt;
+
       // Precursor-wise delayed fission neutron
       if (settings::run_CE) {
         for (int i = 0; i < model::materials[material()]->nuclide_.size(); i++) {
@@ -286,9 +293,10 @@ void Particle::event_advance()
     score_track_derivative(*this, distance);
   }
 
-  // Assign the time corrected weight since we are done with track-length tally
+  // Assign the actual weight at the end of track since we are done with 
+  // track-length tally scoring
   if (settings::alpha_mode) {
-    wgt_last() = weight_time;
+    wgt_last() = weight_time; // Also assign to the pre-collision weight
     wgt() = weight_time;
   }
 }
@@ -328,10 +336,11 @@ void Particle::event_collide()
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
 
-    double nu_effective = (settings::alpha_mode) ? 
-                          macro_xs().nu_fission_alpha :
-                          macro_xs().nu_fission;
-    keff_tally_collision() += wgt() * nu_effective / macro_xs().total;
+    // Get the effective, time-corrected nu_fission if alpha_mode
+    double nu_fission_eff = (settings::alpha_mode) ? 
+                            macro_xs().nu_fission_alpha :
+                            macro_xs().nu_fission;
+    keff_tally_collision() += wgt() * nu_fission_eff / macro_xs().total;
   }
 
   // Score surface current tallies -- this has to be done before the collision

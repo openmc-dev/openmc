@@ -55,10 +55,11 @@ extern "C" double alpha_min;     //!< minimum possible value of alpha
                                  //!< (negative of the smallest precursor group 
                                  //!<  decay constant)
 
-//! Fissionables and their precursors (currently only used in alpha_mode)
-//! We assume equal number of precusor groups for all fissionables.
-//! However, decay constants of same precursor group from different 
-//! nuclides/materials can be different.
+// Fissionables and their precursors (currently only used in alpha_mode)
+// We assume equal number of precusor groups for all fissionables.
+// However, decay constants of same precursor group from different 
+// nuclides/materials can be different. E.g, group 6 of U235 and U238 are
+// 2.853 and 3.0487, respectively.
 extern size_t n_fissionables;  //!< # of fissionable nuclides/materials
 extern size_t n_precursors;    //!< # of delayed neutron precursor groups
 extern vector<int> fissionable_index; //!< indexing for fissionable nucs/mats;

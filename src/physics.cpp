@@ -166,10 +166,11 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_effective = (settings::alpha_mode) ? 
-                        p.neutron_xs(i_nuclide).nu_fission_alpha :
-                        p.neutron_xs(i_nuclide).nu_fission;
-  double nu_t = p.wgt() / simulation::keff * weight * nu_effective /
+  // Get the effective, time-corrected nu_fission if alpha_mode
+  double nu_fission_eff = (settings::alpha_mode) ? 
+                          p.neutron_xs(i_nuclide).nu_fission_alpha :
+                          p.neutron_xs(i_nuclide).nu_fission;
+  double nu_t = p.wgt() / simulation::keff * weight * nu_fission_eff /
                 p.neutron_xs(i_nuclide).total;
 
   // Sample the number of neutrons produced
@@ -637,10 +638,11 @@ void absorption(Particle& p, int i_nuclide)
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      double nu_effective = (settings::alpha_mode) ? 
+      // Get the effective, time-corrected nu_fission if alpha_mode
+      double nu_fission_eff = (settings::alpha_mode) ? 
                             p.neutron_xs(i_nuclide).nu_fission_alpha :
                             p.neutron_xs(i_nuclide).nu_fission;
-      p.keff_tally_absorption() += p.wgt_absorb() * nu_effective /
+      p.keff_tally_absorption() += p.wgt_absorb() * nu_fission_eff /
                                    p.neutron_xs(i_nuclide).absorption;
     }
   } else {
@@ -649,10 +651,11 @@ void absorption(Particle& p, int i_nuclide)
         prn(p.current_seed()) * p.neutron_xs(i_nuclide).total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RunMode::EIGENVALUE) {
-        double nu_effective = (settings::alpha_mode) ? 
+        // Get the effective, time-corrected nu_fission if alpha_mode
+        double nu_fission_eff = (settings::alpha_mode) ? 
                               p.neutron_xs(i_nuclide).nu_fission_alpha :
                               p.neutron_xs(i_nuclide).nu_fission;
-        p.keff_tally_absorption() += p.wgt() * nu_effective /
+        p.keff_tally_absorption() += p.wgt() * nu_fission_eff /
                                      p.neutron_xs(i_nuclide).absorption;
       }
 

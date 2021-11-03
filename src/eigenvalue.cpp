@@ -403,6 +403,15 @@ void calculate_average_keff()
   // Update alpha eigenvalue
   //============================================================================
  
+  // Here we solve the non-linear equation formed by the global integral tallies
+  // Cn (neutron density), Cp (prompt fission), and Cd (delayed fission).
+  // See Eq. (49) of https://doi.org/10.1080/00295639.2020.1743578
+  // This non-linear equation has a form of the typical in-hour equation having
+  // (1 + n_precursor_groups) roots. alpha_min was set so that we aim for
+  // the right-most, fundamental root. Newton-raphson is used to reach the 
+  // desired fundamental root; but whenever in an iterate we jump over the 
+  // alpha_min, we switch to bisection algorithm.
+
   if (settings::alpha_mode) {
     // The constants (for easy referring)
     const double Cn = global_tally_alpha_Cn;
@@ -443,7 +452,7 @@ void calculate_average_keff()
       // Next solution
       double x_new = x - f/df;
       
-      // Exceed minimum?
+      // Exceed minimum? --> update with bisection instead
       if (x_new < alpha_min) { x_new = 0.5*(x + alpha_min); }
 
       // Calculate errors

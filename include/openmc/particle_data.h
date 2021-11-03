@@ -99,9 +99,14 @@ struct NuclideMicroXS {
   double thermal_elastic; //!< Bound thermal elastic scattering
   double photon_prod;     //!< microscopic photon production xs
 
-  // Cross sections for alpha-eigenvalue mode
-  double nu_fission_alpha;  //!< nu_fission with time correction
+  // Cross sections needed to calculate alpha-eigenvalue (alpha_mode only)
   double nu_fission_prompt; //!< prompt neutron production from fission
+  double nu_fission_alpha;  //!< Effective, time-corrected nu_fission
+                            //!< See Eq. (45) of [1].
+  // [1] I Variansyah, BR Betzler, WR Martin (2020) Multigroup Constant 
+  // Calculation with Static N1-Eigenvalue Monte Carlo for Time-Dependent
+  // Neutron Transport Simulations, Nuclear Science and Engineering, 194:11, 
+  // 1025-1043, DOI:10.1080/00295639.2020.1743578
 
   // Cross sections for depletion reactions (note that these are not stored in
   // macroscopic cache)
@@ -312,9 +317,10 @@ private:
   double keff_tally_tracklength_ {0.0};
   double keff_tally_leakage_ {0.0};
   // For alpha-eigenvalue mode
-  double alpha_tally_Cn_ {0.0};
-  double alpha_tally_Cp_ {0.0};
-  xt::xtensor<double, 2> alpha_tally_Cd_;
+  double alpha_tally_Cn_ {0.0}; // Neutron density (inverse-velocity)
+  double alpha_tally_Cp_ {0.0}; // Prompt fission production
+  xt::xtensor<double, 2> alpha_tally_Cd_; // Effective delayed production for
+                                          // nuclide/material i & group j
 
   bool trace_ {false}; //!< flag to show debug information
 

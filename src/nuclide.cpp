@@ -247,7 +247,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
       close_group(urr_group);
 
       // Check for negative values
-      if (xt::any(urr_data_[i].prob_ < 0.) && mpi::master) {
+      if (urr_data_[i].has_negative() && mpi::master) {
         warning("Negative value(s) found on probability table for nuclide " +
                 name_ + " at " + temp_str);
       }
@@ -775,11 +775,8 @@ void Nuclide::calculate_xs(
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
   if (settings::urr_ptables_on && urr_present_ && !use_mp) {
-    int n = urr_data_[micro.index_temp].n_energy_;
-    if ((p.E() > urr_data_[micro.index_temp].energy_(0)) &&
-        (p.E() < urr_data_[micro.index_temp].energy_(n - 1))) {
+    if (urr_data_[micro.index_temp].energy_in_bounds(p.E()))
       this->calculate_urr_xs(micro.index_temp, p);
-    }
   }
 
   micro.last_E = p.E();
@@ -825,10 +822,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   const auto& urr = urr_data_[i_temp];
 
   // Determine the energy table
-  int i_energy = 0;
-  while (p.E() >= urr.energy_(i_energy + 1)) {
-    ++i_energy;
-  };
+  int i_energy =
+    lower_bound_index(urr.energy_.begin(), urr.energy_.end(), p.E());
 
   // Sample the probability table using the cumulative distribution
 
@@ -840,15 +835,14 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   double r = future_prn(static_cast<int64_t>(index_), *p.current_seed());
   p.stream() = STREAM_TRACKING;
 
-  int i_low = 0;
-  while (urr.prob_(i_energy, URRTableParam::CUM_PROB, i_low) <= r) {
-    ++i_low;
-  };
-
-  int i_up = 0;
-  while (urr.prob_(i_energy + 1, URRTableParam::CUM_PROB, i_up) <= r) {
-    ++i_up;
-  };
+  // Warning: this assumes row-major order of cdf_values_. Also, should it
+  // really be +1?
+  int i_low = upper_bound_index(&urr.cdf_values_(i_energy, 0),
+                &urr.cdf_values_(i_energy, 0) + urr.n_cdf(), r) +
+              1;
+  int i_up = upper_bound_index(&urr.cdf_values_(i_energy + 1, 0),
+               &urr.cdf_values_(i_energy + 1, 0) + urr.n_cdf(), r) +
+             1;
 
   // Determine elastic, fission, and capture cross sections from the
   // probability table
@@ -858,49 +852,46 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   double f;
   if (urr.interp_ == Interpolation::lin_lin) {
     // Determine the interpolation factor on the table
-    f = (p.E() - urr.energy_(i_energy)) /
-        (urr.energy_(i_energy + 1) - urr.energy_(i_energy));
+    f = (p.E() - urr.energy_[i_energy]) /
+        (urr.energy_[i_energy + 1] - urr.energy_[i_energy]);
 
-    elastic = (1. - f) * urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) +
-              f * urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up);
-    fission = (1. - f) * urr.prob_(i_energy, URRTableParam::FISSION, i_low) +
-              f * urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up);
-    capture = (1. - f) * urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) +
-              f * urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up);
+    elastic = (1. - f) * urr.xs_values_(i_energy, i_low).elastic +
+              f * urr.xs_values_(i_energy + 1, i_up).elastic;
+    fission = (1. - f) * urr.xs_values_(i_energy, i_low).fission +
+              f * urr.xs_values_(i_energy + 1, i_up).fission;
+    capture = (1. - f) * urr.xs_values_(i_energy, i_low).n_gamma +
+              f * urr.xs_values_(i_energy + 1, i_up).n_gamma;
   } else if (urr.interp_ == Interpolation::log_log) {
     // Determine interpolation factor on the table
-    f = std::log(p.E() / urr.energy_(i_energy)) /
-        std::log(urr.energy_(i_energy + 1) / urr.energy_(i_energy));
+    f = std::log(p.E() / urr.energy_[i_energy]) /
+        std::log(urr.energy_[i_energy + 1] / urr.energy_[i_energy]);
 
     // Calculate the elastic cross section/factor
-    if ((urr.prob_(i_energy, URRTableParam::ELASTIC, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up) > 0.)) {
-      elastic = std::exp(
-        (1. - f) *
-          std::log(urr.prob_(i_energy, URRTableParam::ELASTIC, i_low)) +
-        f * std::log(urr.prob_(i_energy + 1, URRTableParam::ELASTIC, i_up)));
+    if ((urr.xs_values_(i_energy, i_low).elastic > 0.) &&
+        (urr.xs_values_(i_energy + 1, i_up).elastic > 0.)) {
+      elastic =
+        std::exp((1. - f) * std::log(urr.xs_values_(i_energy, i_low).elastic) +
+                 f * std::log(urr.xs_values_(i_energy + 1, i_up).elastic));
     } else {
       elastic = 0.;
     }
 
     // Calculate the fission cross section/factor
-    if ((urr.prob_(i_energy, URRTableParam::FISSION, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up) > 0.)) {
-      fission = std::exp(
-        (1. - f) *
-          std::log(urr.prob_(i_energy, URRTableParam::FISSION, i_low)) +
-        f * std::log(urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up)));
+    if ((urr.xs_values_(i_energy, i_low).fission > 0.) &&
+        (urr.xs_values_(i_energy + 1, i_up).fission > 0.)) {
+      fission =
+        std::exp((1. - f) * std::log(urr.xs_values_(i_energy, i_low).fission) +
+                 f * std::log(urr.xs_values_(i_energy + 1, i_up).fission));
     } else {
       fission = 0.;
     }
 
     // Calculate the capture cross section/factor
-    if ((urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) > 0.) &&
-        (urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up) > 0.)) {
-      capture = std::exp(
-        (1. - f) *
-          std::log(urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low)) +
-        f * std::log(urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up)));
+    if ((urr.xs_values_(i_energy, i_low).n_gamma > 0.) &&
+        (urr.xs_values_(i_energy + 1, i_up).n_gamma > 0.)) {
+      capture =
+        std::exp((1. - f) * std::log(urr.xs_values_(i_energy, i_low).n_gamma) +
+                 f * std::log(urr.xs_values_(i_energy + 1, i_up).n_gamma));
     } else {
       capture = 0.;
     }

@@ -30,7 +30,8 @@ namespace openmc {
 namespace impl {
 // Use with enable_if to check if template argument makes sense
 // as a tensor size definition. It has to be a vector-like container
-// of integral values.
+// of integral values. Would be a lot nicer-looking with C++20
+// concepts.
 template<typename Vector, typename Filler = void>
 struct describes_tensor_shape : std::false_type {};
 template<typename Vector>
@@ -43,7 +44,7 @@ struct describes_tensor_shape<Vector,
   : std::true_type {};
 
 // This creates a tuple of pre-specified length of a single type repeated N
-// times
+// times.
 using size_type = unsigned int;
 template<typename Base, typename Seq>
 struct expander;
@@ -193,7 +194,8 @@ public:
 
   // Allow division and multiplication of the array by scalars in the
   // way that you would expect. This allows drop-in replacement of xtensors
-  // to a limited extent.
+  // to a limited extent. Template expressions would make this
+  // far better, but we actually don't use those much in OpenMC.
   HOST tensor& operator*=(double multiplier)
   {
     for (unsigned i = 0; i < size_; ++i)

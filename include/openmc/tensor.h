@@ -17,6 +17,9 @@
 #include <type_traits>
 #include <utility>
 
+#include "openmc/error.h"
+#include "openmc/memory.h"
+
 #ifdef __CUDACC__
 #define HOSTDEVICE __host__ __device__
 #define HOST __host__
@@ -32,11 +35,16 @@ namespace impl {
 // as a tensor size definition. It has to be a vector-like container
 // of integral values. Would be a lot nicer-looking with C++20
 // concepts.
+
+// C++17 provides an implementation of this
+template<class...>
+using void_t = void;
+
 template<typename Vector, typename Filler = void>
 struct describes_tensor_shape : std::false_type {};
 template<typename Vector>
 struct describes_tensor_shape<Vector,
-  std::void_t<decltype(std::declval<Vector&>().size()),
+  void_t<decltype(std::declval<Vector&>().size()),
     decltype(std::declval<Vector&>().data()),
     decltype(std::declval<Vector&>()[0]),
     typename std::enable_if<
@@ -63,7 +71,7 @@ struct bracket_indx {
   using tuple_type =
     typename expander<size_type, std::make_index_sequence<Rank>>::type;
   HOSTDEVICE static size_type calc(
-    size_type coeff, tuple_type indices, size_type* size)
+    size_type coeff, tuple_type indices, const size_type* size)
   {
     return coeff * std::get<Idx>(indices) +
            bracket_indx<Idx - 1, Rank>::calc(coeff * size[Idx], indices, size);
@@ -74,14 +82,14 @@ struct bracket_indx<0, Rank> { // Specialize on base case to not recurse
   using tuple_type =
     typename expander<size_type, std::make_index_sequence<Rank>>::type;
   HOSTDEVICE static size_type calc(
-    size_type coeff, tuple_type indices, size_type* size)
+    size_type coeff, tuple_type indices, const size_type* size)
   {
     return coeff * std::get<0>(indices);
   }
 };
 } // namespace impl
 
-template<typename T, int Rank, typename Alloc = std::allocator<T>>
+template<typename T, int Rank, typename Alloc = UnifiedAllocator<T>>
 class tensor {
 public:
   using value_type = T;
@@ -220,7 +228,8 @@ public:
   {
     // Remove responsibility of the other one for the memory it held
     move_from.begin_ = nullptr;
-    move_from.size_ = 0;
+    for (int i = 0; i < Rank; ++i)
+      move_from.size_[i] = 0;
     move_from.capacity_ = 0;
   }
 
@@ -231,6 +240,23 @@ public:
       (begin_ + i)->~T();
     if (capacity_)
       alloc_.deallocate(begin_, capacity_);
+  }
+
+  // Resize off of anything vector-like defining a tensor shape
+  template<typename Vector,
+    typename = std::enable_if_t<impl::describes_tensor_shape<Vector>::value>>
+  HOST void resize(Vector const& new_size, const T& default_value = T())
+  {
+    if (new_size.size() != Rank)
+      fatal_error("Mismatch in tensor::resize and new size array");
+    size_type num_elements = total_size(&new_size[0]);
+    if (num_elements > capacity_)
+      reserve(&new_size[0]);
+    // set new things to be default_value
+    for (size_type i = 0; i < num_elements; ++i)
+      begin_[i] = default_value;
+    for (int i = 0; i < Rank; ++i)
+      size_[i] = new_size[i];
   }
 
   HOST void resize(const size_type* new_size, T const& default_value = T())
@@ -253,6 +279,13 @@ public:
   HOSTDEVICE size_type size() const
   {
     return size_[Idx];
+  }
+  HOSTDEVICE std::array<size_type, Rank> shape() const
+  {
+    std::array<size_type, Rank> result;
+    for (int i = 0; i < Rank; ++i)
+      result[i] = size_[i];
+    return result;
   }
   HOSTDEVICE size_type capacity() const { return capacity_; }
   HOSTDEVICE iterator begin() { return begin_; }
@@ -313,8 +346,7 @@ public:
   }
 
 private:
-
-  HOSTDEVICE size_type total_size(size_type* values)
+  HOSTDEVICE size_type total_size(const size_type* values)
   {
     size_type result = 1;
     for (int i = 0; i < Rank; ++i) {

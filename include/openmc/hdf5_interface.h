@@ -395,7 +395,7 @@ void read_dataset(
 
   // Read data from attribute
   read_dataset_lowlevel(
-    dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, tensor.data());
+    dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, arr.data());
 }
 
 // overload for Position

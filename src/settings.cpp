@@ -116,6 +116,7 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+int debugger_attach_delay {0};
 
 } // namespace settings
 
@@ -441,6 +442,12 @@ void read_settings_xml()
       fatal_error("Number of bins for logarithmic grid must be greater "
         "than zero.");
     }
+  }
+
+  // Delay to wait for debugger to attach
+  if (check_for_node(root, "debugger_attach_delay")) {
+    debugger_attach_delay =
+      std::stoi(get_node_value(root, "debugger_attach_delay"));
   }
 
   // Number of OpenMP threads

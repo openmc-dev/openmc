@@ -45,15 +45,29 @@
 #include <cmath>
 #include <string>
 
+#include <iostream>
+#include <unistd.h> // sleep function
 
-//==============================================================================
-// C API functions
-//==============================================================================
+void wait_for_debugger_attach()
+{
+  using namespace openmc;
+  if (settings::debugger_attach_delay) {
+    int countdown = settings::debugger_attach_delay;
+    std::cout << std::endl;
+    if (countdown > 1000)
+      fatal_error("You really want to wait that long?");
+    while (countdown != 0) {
+      std::cout << "\rWaiting for debugger to attach... " << countdown--
+                << "     " << std::flush;
+      sleep(1);
+    }
+    std::cout << std::endl;
+  }
+}
 
 // OPENMC_RUN encompasses all the main logic where iterations are performed
 // over the batches, generations, and histories in a fixed source or k-eigenvalue
 // calculation.
-
 int openmc_run()
 {
   openmc::simulation::time_total.start();
@@ -61,6 +75,7 @@ int openmc_run()
 
   int err = 0;
   int status = 0;
+  wait_for_debugger_attach();
   while (status == 0 && err == 0) {
     err = openmc_next_batch(&status);
   }
@@ -745,6 +760,10 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
+#ifdef __CUDACC__
+  fatal_error("Cannot use history mode with CUDA version at the moment.");
+#endif
+
   while (true) {
     p.event_calculate_xs();
     p.event_advance();

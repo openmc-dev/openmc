@@ -34,9 +34,8 @@ UrrData::UrrData(hid_t group_id)
   // contiguity of memory accesses.
   const auto n_energy = shape[0];
   const auto n_cdf_values = shape[2];
-  xt::xtensor<double, 2>::shape_type new_shape = {n_energy, n_cdf_values};
-  cdf_values_.resize(new_shape);
-  xs_values_.resize(new_shape);
+  cdf_values_.resize({n_energy, n_cdf_values});
+  xs_values_.resize({n_energy, n_cdf_values});
 
   // Now fill in the values. Using manual loops here since we might
   // not have fancy xtensor slicing code written for GPU tensors.

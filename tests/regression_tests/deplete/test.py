@@ -49,9 +49,11 @@ def test_full(run_in_tmpdir, problem, multiproc):
     settings.seed = 1
     settings.verbosity = 1
 
+    model = openmc.Model(geometry=geometry, settings=settings)
+
     # Create operator
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
-    op = openmc.deplete.Operator(geometry, settings, chain_file)
+    op = openmc.deplete.Operator(model, chain_file)
     op.round_number = True
 
     # Power and timesteps
@@ -170,7 +172,7 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
     diff_vs_expected = unified_diff(reference_lines, result_file_lines)
 
     # Check all lines match, printing errors along the way
-    success = True 
+    success = True
     for line in diff_vs_expected:
         success = False
         print(line.rstrip())

@@ -236,11 +236,7 @@ class Model:
             MPI intracommunicator
         """
 
-        try:
-            import openmc.lib
-        except ImportError:
-            raise ImportError('openmc.lib must be available to '
-                'execute Model.init_lib(...)') from None
+        import openmc.lib
 
         # TODO: right now the only way to set most of the above parameters via
         # the C API are at initialization time despite use-cases existing to
@@ -280,11 +276,7 @@ class Model:
 
         """
 
-        try:
-            import openmc.lib
-        except ImportError:
-            raise ImportError('openmc.lib must be available to '
-                              'execute Model.finalize_lib(...)') from None
+        import openmc.lib
 
         openmc.lib.finalize()
 
@@ -422,11 +414,7 @@ class Model:
         openmc.lib.export_properties
 
         """
-        try:
-            import openmc.lib
-        except ImportError:
-            raise ImportError('openmc.lib must be available to '
-                              'execute Model.import_properties(...)') from None
+        import openmc.lib
 
         cells = self.geometry.get_all_cells()
         materials = self.geometry.get_all_materials()

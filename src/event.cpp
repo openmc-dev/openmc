@@ -173,8 +173,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   int64_t offset = simulation::advance_particle_queue.size();;
 
   #ifdef USE_DEVICE
-  //#pragma omp target teams distribute parallel for
-  #pragma omp target teams distribute
+  #pragma omp target teams distribute parallel for
   #else
   #pragma omp parallel for schedule(runtime)
   #endif

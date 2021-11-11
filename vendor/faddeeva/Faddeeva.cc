@@ -170,8 +170,24 @@ using namespace std;
 
 typedef complex<double> cmplx;
 
+// Implementation based on:
+// z = x + iy
+// cexp(z) = e^x * (cos(y) + i * sin(y))
+cmplx manual_cexp( cmplx z )
+{
+  double re = z.real();
+  double im = z.imag();
+  double t1 = exp(re);
+  double t2 = cos(im);
+  double t3 = sin(im);
+  cmplx t4(t2, t3);
+  cmplx t5(t1, 0.0);
+  return t5 * t4;
+}
+#  define cexp(z) manual_cexp(z)
+
 // Use C-like complex syntax, since the C syntax is more restrictive
-#  define cexp(z) exp(z)
+//#  define cexp(z) exp(z)
 #  define creal(z) real(z)
 #  define cimag(z) imag(z)
 #  define cpolar(r,t) polar(r,t)

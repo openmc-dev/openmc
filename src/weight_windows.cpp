@@ -80,13 +80,13 @@ WeightWindow::WeightWindow(pugi::xml_node node) : WeightWindow()
 
   // make sure we have a particle section
   if (check_for_node(node, "particle")) {
-    std::string particle_type_str = std::string(get_node_value(node, "type"));
-
-    // get the particle type
-    openmc::ParticleType particle_type = openmc::str_to_particle_type(particle_type_str);
-
     // read the particle specific settings
     xml_node particle = node.child("particle");
+
+    // get the particle type
+    std::string particle_type_str = std::string(get_node_value(particle, "type"));
+    openmc::ParticleType particle_type = openmc::str_to_particle_type(particle_type_str);
+
     weight_params[particle_type] = read_particle_settings(particle);
     
   } else {

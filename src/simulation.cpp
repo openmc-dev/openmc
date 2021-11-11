@@ -231,8 +231,8 @@ int openmc_next_batch(int* status)
     if (settings::event_based) {
       transport_event_based();
     } else {
-      //transport_history_based();
-      transport_history_based_device();
+      transport_history_based();
+      //transport_history_based_device();
     }
 
     // Accumulate time for transport

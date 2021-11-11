@@ -345,8 +345,6 @@ protected:
   // check grids for rectilinear meshes
   void check_grids(const std::vector<std::vector<double>>& grids);
   
-  bool output_ {true}; //!< Write tallies onto the unstructured mesh at the end of a run
-  std::string filename_; //!< Path to unstructured mesh file
   double length_multiplier_ {
     1.0}; //!< Constant multiplication factor to apply to mesh coordinates
   bool specified_length_multiplier_ {false};

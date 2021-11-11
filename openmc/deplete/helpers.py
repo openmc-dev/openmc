@@ -10,7 +10,7 @@ import sys
 
 from numpy import dot, zeros, newaxis, asarray
 
-from . import comm
+from openmc.mpi import comm
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.data import JOULE_PER_EV, REACTION_MT
 from openmc.lib import (

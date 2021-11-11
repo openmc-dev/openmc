@@ -115,6 +115,10 @@ class TestHarness:
 
         return outstr
 
+    @property
+    def statepoint_name(self):
+        return self._sp_name
+
     def _write_results(self, results_string):
         """Write the results to an ASCII file."""
         with open('results_test.dat', 'w') as fh:

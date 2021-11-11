@@ -7,9 +7,8 @@
 
 namespace openmc {
 
-std::string
-get_node_value(pugi::xml_node node, const char* name, bool lowercase,
-               bool strip)
+std::string get_node_value(
+  pugi::xml_node node, const char* name, bool lowercase, bool strip)
 {
   // Search for either an attribute or child tag and get the data as a char*.
   const pugi::char_t* value_char;
@@ -24,7 +23,8 @@ get_node_value(pugi::xml_node node, const char* name, bool lowercase,
   std::string value {value_char};
 
   // Convert to lower-case if needed
-  if (lowercase) to_lower(value);
+  if (lowercase)
+    to_lower(value);
 
   // Strip leading/trailing whitespace if needed
   if (strip) {
@@ -35,8 +35,7 @@ get_node_value(pugi::xml_node node, const char* name, bool lowercase,
   return value;
 }
 
-bool
-get_node_value_bool(pugi::xml_node node, const char* name)
+bool get_node_value_bool(pugi::xml_node node, const char* name)
 {
   if (node.attribute(name)) {
     return node.attribute(name).as_bool();

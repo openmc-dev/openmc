@@ -219,6 +219,15 @@ Prerequisites
 .. admonition:: Optional
    :class: note
 
+    * libpng_ official reference PNG library
+
+      OpenMC's built-in plotting capabilities use the libpng library to produce
+      compressed PNG files. In the absence of this library, OpenMC will fallback
+      to writing PPM files, which are uncompressed and only supported by select
+      image viewers. libpng can be installed on Ddebian derivates with::
+
+          sudo apt install libpng-dev
+
     * An MPI implementation for distributed-memory parallel runs
 
       To compile with support for parallel runs on a distributed-memory
@@ -484,7 +493,7 @@ to install the Python package in :ref:`"editable" mode <devguide_editable>`.
 Prerequisites
 -------------
 
-The Python API works with Python 3.5+. In addition to Python itself, the API
+The Python API works with Python 3.6+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
 distributions.

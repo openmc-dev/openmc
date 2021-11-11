@@ -1,0 +1,14 @@
+Note: this copyright applies to the following files:
+  - install-commit-hooks.sh
+  - post-commit.git-clang-format
+which originated from https://github.com/celeritas-project/celeritas
+
+Intellectual Property Notice
+----------------------------
+
+Celeritas is licensed under the Apache License, Version 2.0 (LICENSE-APACHE
+or http://www.apache.org/licenses/LICENSE-2.0) or the MIT license,
+(LICENSE-MIT or http://opensource.org/licenses/MIT), at your option.
+
+Copyrights and patents in the Celeritas project are retained by contributors.
+No copyright assignment is required to contribute to Celeritas.

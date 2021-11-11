@@ -24,7 +24,8 @@ namespace openmc {
 void read_particle_restart(Particle& p, RunMode& previous_run_mode)
 {
   // Write meessage
-  write_message(5, "Loading particle restart file {}", settings::path_particle_restart);
+  write_message(
+    5, "Loading particle restart file {}", settings::path_particle_restart);
 
   // Open file
   hid_t file_id = file_open(settings::path_particle_restart, 'r');
@@ -102,7 +103,8 @@ void run_particle_restart()
     particle_seed = p.id();
     break;
   default:
-    throw std::runtime_error{"Unexpected run mode: " +
+    throw std::runtime_error {
+      "Unexpected run mode: " +
       std::to_string(static_cast<int>(previous_run_mode))};
   }
   init_particle_seeds(particle_seed, p.seeds());

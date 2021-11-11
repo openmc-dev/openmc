@@ -22,7 +22,7 @@ from uncertainties import ufloat
 from openmc.data import DataLibrary
 from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
-from . import comm
+from openmc.mpi import comm
 from .results import Results
 from .chain import Chain
 from .results_list import ResultsList
@@ -158,11 +158,8 @@ class TransportOperator(ABC):
     def __enter__(self):
         # Save current directory and move to specific output directory
         self._orig_dir = os.getcwd()
-        if not self.output_dir.exists():
-            self.output_dir.mkdir()  # exist_ok parameter is 3.5+
-
-        # In Python 3.6+, chdir accepts a Path directly
-        os.chdir(str(self.output_dir))
+        self.output_dir.mkdir(exist_ok=True)
+        os.chdir(self.output_dir)
 
         return self.initial_condition()
 

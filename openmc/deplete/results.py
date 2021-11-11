@@ -9,7 +9,8 @@ import copy
 import h5py
 import numpy as np
 
-from . import comm, MPI
+import openmc
+from openmc.mpi import comm, MPI
 from .reaction_rates import ReactionRates
 
 VERSION_RESULTS = (1, 1)
@@ -496,16 +497,23 @@ class Results:
 
         results.export_to_hdf5("depletion_results.h5", step_ind)
 
-    def transfer_volumes(self, geometry):
+    def transfer_volumes(self, model):
         """Transfers volumes from depletion results to geometry
 
         Parameters
         ----------
-        geometry : OpenMC geometry to be used in a depletion restart
+        model : OpenMC model to be used in a depletion restart
             calculation
 
         """
-        for cell in geometry.get_all_material_cells().values():
-            for material in cell.get_all_materials().values():
-                if material.depletable:
-                    material.volume = self.volume[str(material.id)]
+
+        if not model.materials:
+            materials = openmc.Materials(
+                model.geometry.get_all_materials().values()
+            )
+        else:
+            materials = model.materials
+
+        for material in materials:
+            if material.depletable:
+                material.volume = self.volume[str(material.id)]

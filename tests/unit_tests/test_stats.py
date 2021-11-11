@@ -42,6 +42,16 @@ def test_uniform():
     assert t.p == [1/(b-a), 1/(b-a)]
     assert t.interpolation == 'histogram'
 
+def test_powerlaw():
+    a, b, n = 10.0, 20.0, 2.0
+    d = openmc.stats.PowerLaw(a, b, n)
+    elem = d.to_xml_element('distribution')
+
+    d = openmc.stats.PowerLaw.from_xml_element(elem)
+    assert d.a == a
+    assert d.b == b
+    assert d.n == n
+    assert len(d) == 3
 
 def test_maxwell():
     theta = 1.2895e6
@@ -101,8 +111,12 @@ def test_mixture():
     assert mix.distribution == [d1, d2]
     assert len(mix) == 4
 
-    with pytest.raises(NotImplementedError):
-        mix.to_xml_element('distribution')
+    elem = mix.to_xml_element('distribution')
+
+    d = openmc.stats.Mixture.from_xml_element(elem)
+    assert d.probability == p
+    assert d.distribution == [d1, d2]
+    assert len(d) == 4
 
 
 def test_polar_azimuthal():

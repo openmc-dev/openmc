@@ -26,16 +26,17 @@ void sample_neutron_reaction(Particle& p);
 void sample_photon_reaction(Particle& p);
 
 //! Terminates the particle and either deposits all energy locally
-//! (electron_treatment = ElectronTreatment::LED) or creates secondary bremsstrahlung
-//! photons from electron deflections with charged particles (electron_treatment
-//! = ElectronTreatment::TTB).
+//! (electron_treatment = ElectronTreatment::LED) or creates secondary
+//! bremsstrahlung photons from electron deflections with charged particles
+//! (electron_treatment = ElectronTreatment::TTB).
 void sample_electron_reaction(Particle& p);
 
 //! Terminates the particle and either deposits all energy locally
-//! (electron_treatment = ElectronTreatment::LED) or creates secondary bremsstrahlung
-//! photons from electron deflections with charged particles (electron_treatment
-//! = ElectronTreatment::TTB). Two annihilation photons of energy MASS_ELECTRON_EV (0.511
-//! MeV) are created and travel in opposite directions.
+//! (electron_treatment = ElectronTreatment::LED) or creates secondary
+//! bremsstrahlung photons from electron deflections with charged particles
+//! (electron_treatment = ElectronTreatment::TTB). Two annihilation photons of
+//! energy MASS_ELECTRON_EV (0.511 MeV) are created and travel in opposite
+//! directions.
 void sample_positron_reaction(Particle& p);
 
 //! Sample a nuclide based on their total cross sections and densities within
@@ -53,15 +54,15 @@ int sample_element(Particle& p);
 
 Reaction& sample_fission(int i_nuclide, Particle& p);
 
-void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product);
+void sample_photon_product(
+  int i_nuclide, Particle& p, int* i_rx, int* i_product);
 
 void absorption(Particle& p, int i_nuclide);
 
 void scatter(Particle& p, int i_nuclide);
 
 //! Treats the elastic scattering of a neutron with a target.
-void elastic_scatter(int i_nuclide, const Reaction& rx, double kT,
-  Particle& p);
+void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p);
 
 void sab_scatter(int i_nuclide, int i_sab, Particle& p);
 
@@ -76,8 +77,8 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 //! by most Monte Carlo codes, in which cross section is assumed to be constant
 //! in energy. Excellent documentation for this method can be found in
 //! FRA-TM-123.
-Direction sample_cxs_target_velocity(double awr, double E, Direction u, double kT,
-  uint64_t* seed);
+Direction sample_cxs_target_velocity(
+  double awr, double E, Direction u, double kT, uint64_t* seed);
 
 void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
   SourceSite* site, uint64_t* seed);

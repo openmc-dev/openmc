@@ -4,10 +4,10 @@
 #include <string>
 #include <unordered_map>
 
-#include <gsl/gsl>
-#include <hdf5.h>
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
+#include <gsl/gsl-lite.hpp>
+#include <hdf5.h>
 
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
@@ -34,15 +34,14 @@ extern vector<unique_ptr<Material>> materials;
 //! A substance with constituent nuclides and thermal scattering data
 //==============================================================================
 
-class Material
-{
+class Material {
 public:
   //----------------------------------------------------------------------------
   // Types
   struct ThermalTable {
-    int index_table; //!< Index of table in data::thermal_scatt
+    int index_table;   //!< Index of table in data::thermal_scatt
     int index_nuclide; //!< Index in nuclide_
-    double fraction; //!< How often to use table
+    double fraction;   //!< How often to use table
   };
 
   //----------------------------------------------------------------------------
@@ -68,6 +67,14 @@ public:
 
   //! Write material data to HDF5
   void to_hdf5(hid_t group) const;
+
+  //! Export physical properties to HDF5
+  //! \param[in] group  HDF5 group to write to
+  void export_properties_hdf5(hid_t group) const;
+
+  //! Import physical properties from HDF5
+  //! \param[in] group  HDF5 group to read from
+  void import_properties_hdf5(hid_t group);
 
   //! Add nuclide to the material
   //
@@ -108,11 +115,17 @@ public:
 
   //! Get nuclides in material
   //! \return Indices into the global nuclides vector
-  gsl::span<const int> nuclides() const { return {nuclide_.data(), nuclide_.size()}; }
+  gsl::span<const int> nuclides() const
+  {
+    return {nuclide_.data(), nuclide_.size()};
+  }
 
   //! Get densities of each nuclide in material
   //! \return Densities in [atom/b-cm]
-  gsl::span<const double> densities() const { return {atom_density_.data(), atom_density_.size()}; }
+  gsl::span<const double> densities() const
+  {
+    return {atom_density_.data(), atom_density_.size()};
+  }
 
   //! Get ID of material
   //! \return ID of material
@@ -137,15 +150,16 @@ public:
 
   //----------------------------------------------------------------------------
   // Data
-  int32_t id_ {C_NONE}; //!< Unique ID
-  std::string name_; //!< Name of material
+  int32_t id_ {C_NONE};                 //!< Unique ID
+  std::string name_;                    //!< Name of material
   vector<int> nuclide_;                 //!< Indices in nuclides vector
   vector<int> element_;                 //!< Indices in elements vector
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
-  double density_; //!< Total atom density in [atom/b-cm]
-  double density_gpcc_; //!< Total atom density in [g/cm^3]
-  double volume_ {-1.0}; //!< Volume in [cm^3]
-  bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
+  double density_;                      //!< Total atom density in [atom/b-cm]
+  double density_gpcc_;                 //!< Total atom density in [g/cm^3]
+  double volume_ {-1.0};                //!< Volume in [cm^3]
+  bool fissionable_ {
+    false};                 //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
   vector<bool> p0_;         //!< Indicate which nuclides are to be treated with
                             //!< iso-in-lab scattering

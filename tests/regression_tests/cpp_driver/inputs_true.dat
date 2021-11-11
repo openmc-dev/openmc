@@ -3,14 +3,15 @@
   <cell id="1" material="1" region="-1" universe="1" />
   <cell id="2" material="2" region="1 -2" universe="1" />
   <cell id="3" material="3" region="2" universe="1" />
-  <cell fill="2" id="4" region="3 -4 5 -6" universe="3" />
-  <lattice id="2">
+  <cell fill="1" id="4" universe="2" />
+  <cell fill="3" id="5" region="3 -4 5 -6" universe="4" />
+  <lattice id="3">
     <pitch>4.0 4.0</pitch>
     <dimension>2 2</dimension>
     <lower_left>-4.0 -4.0</lower_left>
     <universes>
-1 1 
-1 1 </universes>
+2 2 
+2 2 </universes>
   </lattice>
   <surface coeffs="0.0 0.0 1.5" id="1" type="z-cylinder" />
   <surface coeffs="0.0 0.0 1.7" id="2" type="z-cylinder" />

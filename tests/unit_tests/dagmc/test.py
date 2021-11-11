@@ -29,7 +29,9 @@ def dagmc_model(request):
     source = openmc.Source(space=source_box)
     model.settings.source = source
 
-    model.settings.dagmc = True
+    # geometry
+    dagmc_universe = openmc.DAGMCUniverse('dagmc.h5m')
+    model.geometry = openmc.Geometry(dagmc_universe)
 
     # tally
     tally = openmc.Tally()

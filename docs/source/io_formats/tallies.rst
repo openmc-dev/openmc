@@ -31,7 +31,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :name:
     An optional string name to identify the tally in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 
@@ -317,6 +317,10 @@ attributes/sub-elements:
 
   :dimension:
     The number of mesh cells in each direction. (For regular mesh only.)
+
+  :length_multiplier:
+    A multiplicative factor to apply to the mesh coordinates in all directions.
+    (For unstructured mesh only.)
 
   :lower_left:
     The lower-left corner of the structured mesh. If only two coordinates are

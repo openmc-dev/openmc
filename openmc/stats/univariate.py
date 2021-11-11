@@ -42,6 +42,8 @@ class Univariate(EqualityMixin, ABC):
             return Discrete.from_xml_element(elem)
         elif distribution == 'uniform':
             return Uniform.from_xml_element(elem)
+        elif distribution == 'powerlaw':
+            return PowerLaw.from_xml_element(elem)
         elif distribution == 'maxwell':
             return Maxwell.from_xml_element(elem)
         elif distribution == 'watt':
@@ -237,6 +239,104 @@ class Uniform(Univariate):
         -------
         openmc.stats.Uniform
             Uniform distribution generated from XML element
+
+        """
+        params = get_text(elem, 'parameters').split()
+        return cls(*map(float, params))
+
+class PowerLaw(Univariate):
+    """Distribution with power law probability over a finite interval [a,b]
+    
+    The power law distribution has density function :math:`p(x) dx = c x^n dx`.
+
+    Parameters
+    ----------
+    a : float, optional
+        Lower bound of the sampling interval. Defaults to zero.
+    b : float, optional
+        Upper bound of the sampling interval. Defaults to unity.
+    n : float, optional
+        Power law exponent. Defaults to zero, which is equivalent to a uniform
+        distribution.
+
+    Attributes
+    ----------
+    a : float
+        Lower bound of the sampling interval
+    b : float
+        Upper bound of the sampling interval
+    n : float
+        Power law exponent
+
+    """
+
+    def __init__(self, a=0.0, b=1.0, n=0):
+        self.a = a
+        self.b = b
+        self.n = n
+
+    def __len__(self):
+        return 3
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def b(self):
+        return self._b
+
+    @property
+    def n(self):
+        return self._n
+
+    @a.setter
+    def a(self, a):
+        cv.check_type('interval lower bound', a, Real)
+        self._a = a
+
+    @b.setter
+    def b(self, b):
+        cv.check_type('interval upper bound', b, Real)
+        self._b = b
+
+    @n.setter
+    def n(self, n):
+        cv.check_type('power law exponent', n, Real)
+        self._n = n
+
+    def to_xml_element(self, element_name):
+        """Return XML representation of the power law distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing distribution data
+
+        """
+        element = ET.Element(element_name)
+        element.set("type", "powerlaw")
+        element.set("parameters", f'{self.a} {self.b} {self.n}')
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate power law distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.PowerLaw
+            Distribution generated from XML element
 
         """
         params = get_text(elem, 'parameters').split()
@@ -812,8 +912,48 @@ class Mixture(Univariate):
         self._distribution = distribution
 
     def to_xml_element(self, element_name):
-        raise NotImplementedError
+        """Return XML representation of the mixture distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing mixture distribution data
+
+        """
+        element = ET.Element(element_name)
+        element.set("type", "mixture")
+
+        for p, d in zip(self.probability, self.distribution):
+          data = ET.SubElement(element, "pair")
+          data.set("probability", str(p))
+          data.append(d.to_xml_element("dist"))
+
+        return element
 
     @classmethod
     def from_xml_element(cls, elem):
-        raise NotImplementedError
+        """Generate mixture distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.Mixture
+            Mixture distribution generated from XML element
+
+        """
+        probability = []
+        distribution = []
+        for pair in elem.findall('pair'):
+            probability.append(float(get_text(pair, 'probability')))
+            distribution.append(Univariate.from_xml_element(pair.find("dist")))
+
+        return cls(probability, distribution)

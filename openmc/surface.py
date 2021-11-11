@@ -52,7 +52,7 @@ class SurfaceCoefficient:
     def __set__(self, instance, value):
         if isinstance(self.value, Real):
             raise AttributeError('This coefficient is read-only')
-        check_type('{} coefficient'.format(self.value), value, Real)
+        check_type(f'{self.value} coefficient', value, Real)
         instance._coefficients[self.value] = value
 
 
@@ -432,6 +432,7 @@ class Surface(IDManagerMixin, ABC):
         kwargs = {}
         kwargs['surface_id'] = int(elem.get('id'))
         kwargs['boundary_type'] = elem.get('boundary', 'transmission')
+        kwargs['name'] = elem.get('name')
         coeffs = [float(x) for x in elem.get('coeffs').split()]
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
 
@@ -453,13 +454,19 @@ class Surface(IDManagerMixin, ABC):
 
         """
 
+        # If this is a DAGMC surface, do nothing for now
+        geom_type = group.get('geom_type')
+        if geom_type and geom_type[()].decode() == 'dagmc':
+            return
+
         surface_id = int(group.name.split('/')[-1].lstrip('surface '))
         name = group['name'][()].decode() if 'name' in group else ''
-        surf_type = group['type'][()].decode()
+
         bc = group['boundary_type'][()].decode()
         coeffs = group['coefficients'][...]
         kwargs = {'boundary_type': bc, 'name': name, 'surface_id': surface_id}
 
+        surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]
 
         return cls(*coeffs, **kwargs)

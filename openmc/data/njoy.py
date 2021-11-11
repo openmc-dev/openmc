@@ -5,93 +5,72 @@ import shutil
 from subprocess import Popen, PIPE, STDOUT, CalledProcessError
 import tempfile
 from pathlib import Path
+import warnings
 
 from . import endf
+import openmc.data
 
 
-# For a given MAT number, give a name for the ACE table and a list of ZAID
-# identifiers. This is based on Appendix C in the ENDF manual.
+# For a given material, give a name for the ACE table and a list of ZAID
+# identifiers.
 ThermalTuple = namedtuple('ThermalTuple', ['name', 'zaids', 'nmix'])
 _THERMAL_DATA = {
-    1: ThermalTuple('hh2o', [1001], 1),
-    2: ThermalTuple('parah', [1001], 1),
-    3: ThermalTuple('orthoh', [1001], 1),
-    5: ThermalTuple('hyh2', [1001], 1),
-    7: ThermalTuple('hzrh', [1001], 1),
-    8: ThermalTuple('hcah2', [1001], 1),
-    10: ThermalTuple('hice', [1001], 1),
-    11: ThermalTuple('dd2o', [1002], 1),
-    12: ThermalTuple('parad', [1002], 1),
-    13: ThermalTuple('orthod', [1002], 1),
-    14: ThermalTuple('dice', [1002], 1),
-    26: ThermalTuple('be', [4009], 1),
-    27: ThermalTuple('bebeo', [4009], 1),
-    28: ThermalTuple('bebe2c', [4009], 1),
-    30: ThermalTuple('graph', [6000, 6012, 6013], 1),
-    31: ThermalTuple('grph10', [6000, 6012, 6013], 1),
-    32: ThermalTuple('grph30', [6000, 6012, 6013], 1),
-    33: ThermalTuple('lch4', [1001], 1),
-    34: ThermalTuple('sch4', [1001], 1),
-    35: ThermalTuple('sch4p2', [1001], 1),
-    37: ThermalTuple('hch2', [1001], 1),
-    38: ThermalTuple('mesi00', [1001], 1),
-    39: ThermalTuple('lucite', [1001], 1),
-    40: ThermalTuple('benz', [1001, 6000, 6012], 2),
-    42: ThermalTuple('tol00', [1001], 1),
-    43: ThermalTuple('sisic', [14028, 14029, 14030], 1),
-    44: ThermalTuple('csic', [6000, 6012, 6013], 1),
-    45: ThermalTuple('ouo2', [8016, 8017, 8018], 1),
-    46: ThermalTuple('obeo', [8016, 8017, 8018], 1),
-    47: ThermalTuple('sio2-a', [8016, 8017, 8018, 14028, 14029, 14030], 3),
-    48: ThermalTuple('osap00', [92238], 1),
-    49: ThermalTuple('sio2-b', [8016, 8017, 8018, 14028, 14029, 14030], 3),
-    50: ThermalTuple('oice', [8016, 8017, 8018], 1),
-    51: ThermalTuple('od2o', [8016, 8017, 8018], 1),
-    52: ThermalTuple('mg24', [12024], 1),
-    53: ThermalTuple('al27', [13027], 1),
-    55: ThermalTuple('yyh2', [39089], 1),
-    56: ThermalTuple('fe56', [26056], 1),
-    58: ThermalTuple('zrzrh', [40000, 40090, 40091, 40092, 40094, 40096], 1),
-    59: ThermalTuple('si00', [14028], 1),
-    60: ThermalTuple('asap00', [13027], 1),
-    71: ThermalTuple('n-un', [7014, 7015], 1),
-    72: ThermalTuple('u-un', [92238], 1),
-    75: ThermalTuple('uuo2', [8016, 8017, 8018], 1),
+    'c_Al27': ThermalTuple('al27', [13027], 1),
+    'c_Al_in_Al2O3': ThermalTuple('asap00', [13027], 1),
+    'c_Be': ThermalTuple('be', [4009], 1),
+    'c_Be_in_BeO': ThermalTuple('bebeo', [4009], 1),
+    'c_Be_in_Be2C': ThermalTuple('bebe2c', [4009], 1),
+    'c_Be_in_FLiBe': ThermalTuple('beflib', [4009], 1),
+    'c_C6H6': ThermalTuple('benz', [1001, 6000, 6012], 2),
+    'c_C_in_SiC': ThermalTuple('csic', [6000, 6012, 6013], 1),
+    'c_Ca_in_CaH2': ThermalTuple('cacah2', [20040, 20042, 20043, 20044, 20046, 20048], 1),
+    'c_D_in_D2O': ThermalTuple('dd2o', [1002], 1),
+    'c_D_in_D2O_solid': ThermalTuple('dice', [1002], 1),
+    'c_F_in_FLiBe': ThermalTuple('fflibe', [9019], 1),
+    'c_Fe56': ThermalTuple('fe56', [26056], 1),
+    'c_Graphite': ThermalTuple('graph', [6000, 6012, 6013], 1),
+    'c_Graphite_10p': ThermalTuple('grph10', [6000, 6012, 6013], 1),
+    'c_Graphite_30p': ThermalTuple('grph30', [6000, 6012, 6013], 1),
+    'c_H_in_C5O2H8': ThermalTuple('lucite', [1001], 1),
+    'c_H_in_CaH2': ThermalTuple('hcah2', [1001], 1),
+    'c_H_in_CH2': ThermalTuple('hch2', [1001], 1),
+    'c_H_in_CH4_liquid': ThermalTuple('lch4', [1001], 1),
+    'c_H_in_CH4_solid': ThermalTuple('sch4', [1001], 1),
+    'c_H_in_CH4_solid_phase_II': ThermalTuple('sch4p2', [1001], 1),
+    'c_H_in_H2O': ThermalTuple('hh2o', [1001], 1),
+    'c_H_in_H2O_solid': ThermalTuple('hice', [1001], 1),
+    'c_H_in_HF': ThermalTuple('hhf', [1001], 1),
+    'c_H_in_Mesitylene': ThermalTuple('mesi00', [1001], 1),
+    'c_H_in_ParaffinicOil': ThermalTuple('hparaf', [1001], 1),
+    'c_H_in_Toluene': ThermalTuple('tol00', [1001], 1),
+    'c_H_in_UH3': ThermalTuple('huh3', [1001], 1),
+    'c_H_in_YH2': ThermalTuple('hyh2', [1001], 1),
+    'c_H_in_ZrH': ThermalTuple('hzrh', [1001], 1),
+    'c_H_in_ZrH2': ThermalTuple('hzrh2', [1001], 1),
+    'c_H_in_ZrHx': ThermalTuple('hzrhx', [1001], 1),
+    'c_Li_in_FLiBe': ThermalTuple('liflib', [3006, 3007], 1),
+    'c_Mg24': ThermalTuple('mg24', [12024], 1),
+    'c_N_in_UN': ThermalTuple('n-un', [7014, 7015], 1),
+    'c_O_in_Al2O3': ThermalTuple('osap00', [92238], 1),
+    'c_O_in_BeO': ThermalTuple('obeo', [8016, 8017, 8018], 1),
+    'c_O_in_D2O': ThermalTuple('od2o', [8016, 8017, 8018], 1),
+    'c_O_in_H2O_solid': ThermalTuple('oice', [8016, 8017, 8018], 1),
+    'c_O_in_UO2': ThermalTuple('ouo2', [8016, 8017, 8018], 1),
+    'c_ortho_D': ThermalTuple('orthod', [1002], 1),
+    'c_ortho_H': ThermalTuple('orthoh', [1001], 1),
+    'c_para_D': ThermalTuple('parad', [1002], 1),
+    'c_para_H': ThermalTuple('parah', [1001], 1),
+    'c_Si28': ThermalTuple('si00', [14028], 1),
+    'c_Si_in_SiC': ThermalTuple('sisic', [14028, 14029, 14030], 1),
+    'c_SiO2_alpha': ThermalTuple('sio2-a', [8016, 8017, 8018, 14028, 14029, 14030], 3),
+    'c_SiO2_beta': ThermalTuple('sio2-b', [8016, 8017, 8018, 14028, 14029, 14030], 3),
+    'c_U_in_UN': ThermalTuple('u-un', [92238], 1),
+    'c_U_in_UO2': ThermalTuple('uuo2', [8016, 8017, 8018], 1),
+    'c_Y_in_YH2': ThermalTuple('yyh2', [39089], 1),
+    'c_Zr_in_ZrH': ThermalTuple('zrzrh', [40000, 40090, 40091, 40092, 40094, 40096], 1),
+    'c_Zr_in_ZrH2': ThermalTuple('zrzrh2', [40000, 40090, 40091, 40092, 40094, 40096], 1),
+    'c_Zr_in_ZrHx': ThermalTuple('zrzrhx', [40000, 40090, 40091, 40092, 40094, 40096], 1),
 }
-
-
-def _get_thermal_data(ev, mat):
-    """Return appropriate ThermalTuple, accounting for bugs."""
-
-    # JEFF assigns MAT=59 to Ca in CaH2 (which is supposed to be silicon).
-    if ev.info['library'][0] == 'JEFF':
-        if ev.material == 59:
-            if 'CaH2' in ''.join(ev.info['description']):
-                zaids = [20040, 20042, 20043, 20044, 20046, 20048]
-                return ThermalTuple('cacah2', zaids, 1)
-
-    # Before ENDF/B-VIII.0, crystalline graphite was MAT=31
-    if ev.info['library'] != ('ENDF/B', 8, 0):
-        if ev.material == 31:
-            return _THERMAL_DATA[30]
-
-    # ENDF/B incorrectly assigns MAT numbers for UO2
-    #
-    # Material | ENDF Manual | VII.0 | VII.1 | VIII.0
-    # ---------|-------------|-------|-------|-------
-    # O in UO2 |     45      |  75   |  75   |   75
-    # U in UO2 |     75      |  76   |  48   |   48
-    if ev.info['library'][0] == 'ENDF/B':
-        if ev.material == 75:
-            return _THERMAL_DATA[45]
-        version = ev.info['library'][1:]
-        if version in ((7, 1), (8, 0)) and ev.material == 48:
-            return _THERMAL_DATA[75]
-        if version == (7, 0) and ev.material == 76:
-            return _THERMAL_DATA[75]
-
-    # If not a problematic material, use the dictionary as is
-    return _THERMAL_DATA[mat]
 
 
 _TEMPLATE_RECONR = """
@@ -170,7 +149,7 @@ acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
 {nendf} {nthermal_acer_in} 0 {nace} {ndir}
 2 0 1 .{ext}/
 '{library}: {zsymam_thermal} processed by NJOY'/
-{mat} {temperature} '{data.name}' /
+{mat} {temperature} '{data.name}' {nza} /
 {zaids} /
 222 64 {mt_elastic} {elastic_type} {data.nmix} {energy_max} {iwt}/
 """
@@ -445,7 +424,8 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
                      ace='ace', xsdir=None, output_dir=None, error=0.001,
-                     iwt=2, evaluation=None, evaluation_thermal=None, **kwargs):
+                     iwt=2, evaluation=None, evaluation_thermal=None,
+                     table_name=None, zaids=None, nmix=None, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
     Parameters
@@ -476,6 +456,12 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     evaluation_thermal : openmc.data.endf.Evaluation, optional
         If the ENDF thermal scattering sublibrary file contains multiple
         material evaluations, this argument indicates which evaluation to use.
+    table_name : str, optional
+        Name to assign to ACE table
+    zaids : list of int, optional
+        ZAIDs that the thermal scattering data applies to
+    nmix : int, optional
+        Number of atom types in mixed moderator
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -499,11 +485,23 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     ev_thermal = (evaluation_thermal if evaluation_thermal is not None
                   else endf.Evaluation(filename_thermal))
     mat_thermal = ev_thermal.material
-    zsymam_thermal = ev_thermal.target['zsymam']
+    zsymam_thermal = ev_thermal.target['zsymam'].strip()
 
-    # Determine name, isotopes based on MAT number
-    data = _get_thermal_data(ev_thermal, mat_thermal)
-    zaids = ' '.join(str(zaid) for zaid in data.zaids[:3])
+    # Determine name, isotopes, and number of atom types
+    if table_name and zaids and nmix:
+        data = ThermalTuple(table_name, zaids, nmix)
+    else:
+        with warnings.catch_warnings(record=True) as w:
+            proper_name = openmc.data.get_thermal_name(zsymam_thermal)
+            if w:
+                raise RuntimeError(
+                    f"Thermal scattering material {zsymam_thermal} not "
+                    "recognized. Please contact OpenMC developers at "
+                    "https://openmc.discourse.group.")
+        data = _THERMAL_DATA[proper_name]
+
+    zaids = ' '.join(str(zaid) for zaid in data.zaids)
+    nza = len(data.zaids)
 
     # Determine name of library
     library = '{}-{}.{}'.format(*ev_thermal.info['library'])

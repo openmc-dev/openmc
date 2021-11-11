@@ -2,8 +2,8 @@
 
 #include <stdexcept>
 
-#include <fmt/core.h>
 #include "xtensor/xarray.hpp"
+#include <fmt/core.h>
 
 #include "openmc/bank.h"
 #include "openmc/constants.h"
@@ -22,8 +22,7 @@
 
 namespace openmc {
 
-void
-collision_mg(Particle& p)
+void collision_mg(Particle& p)
 {
   // Add to the collision counter for the particle
   p.n_collision()++;
@@ -37,8 +36,7 @@ collision_mg(Particle& p)
   }
 }
 
-void
-sample_reaction(Particle& p)
+void sample_reaction(Particle& p)
 {
   // Create fission bank sites. Note that while a fission reaction is sampled,
   // it never actually "happens", i.e. the weight of the particle does not
@@ -46,9 +44,9 @@ sample_reaction(Particle& p)
   // absorption (including fission)
 
   if (model::materials[p.material()]->fissionable_) {
-    if (settings::run_mode == RunMode::EIGENVALUE  ||
-       (settings::run_mode == RunMode::FIXED_SOURCE &&
-        settings::create_fission_neutrons)) {
+    if (settings::run_mode == RunMode::EIGENVALUE ||
+        (settings::run_mode == RunMode::FIXED_SOURCE &&
+          settings::create_fission_neutrons)) {
       create_fission_sites(p);
     }
   }
@@ -74,8 +72,7 @@ sample_reaction(Particle& p)
   }
 }
 
-void
-scatter(Particle& p)
+void scatter(Particle& p)
 {
   data::mg.macro_xs_[p.material()].sample_scatter(
     p.g_last(), p.g(), p.mu(), p.wgt(), p.current_seed());
@@ -90,8 +87,7 @@ scatter(Particle& p)
   p.event() = TallyEvent::SCATTER;
 }
 
-void
-create_fission_sites(Particle& p)
+void create_fission_sites(Particle& p)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
@@ -107,9 +103,9 @@ create_fission_sites(Particle& p)
     nu++;
   }
 
-  // Begin banking the source neutrons
-  // First, if our bank is full then don't continue
-  if (nu == 0) return;
+  // If no neutrons were produced then don't continue
+  if (nu == 0)
+    return;
 
   // Initialize the counter of delayed neutrons encountered for each delayed
   // group.
@@ -119,13 +115,16 @@ create_fission_sites(Particle& p)
   p.nu_bank().clear();
 
   p.fission() = true;
-  int skipped = 0;
 
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
 
-  for (int i = 0; i < nu; ++i) {
+  // Counter for the number of fission sites successfully stored to the shared
+  // fission bank or the secondary particle bank
+  int n_sites_stored;
+
+  for (n_sites_stored = 0; n_sites_stored < nu; n_sites_stored++) {
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
@@ -136,10 +135,10 @@ create_fission_sites(Particle& p)
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
-    double mu = 2.*prn(p.current_seed()) - 1.;
+    double mu = 2. * prn(p.current_seed()) - 1.;
 
     // Sample the azimuthal angle uniformly in [0, 2.pi)
-    double phi = 2. * PI * prn(p.current_seed() );
+    double phi = 2. * PI * prn(p.current_seed());
     site.u.x = mu;
     site.u.y = std::sqrt(1. - mu * mu) * std::cos(phi);
     site.u.z = std::sqrt(1. - mu * mu) * std::sin(phi);
@@ -161,9 +160,17 @@ create_fission_sites(Particle& p)
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
       if (idx == -1) {
-        warning("The shared fission bank is full. Additional fission sites created "
-            "in this generation will not be banked.");
-        skipped++;
+        warning(
+          "The shared fission bank is full. Additional fission sites created "
+          "in this generation will not be banked. Results may be "
+          "non-deterministic.");
+
+        // Decrement number of particle progeny as storage was unsuccessful.
+        // This step is needed so that the sum of all progeny is equal to the
+        // size of the shared fission bank.
+        p.n_progeny()--;
+
+        // Break out of loop as no more sites can be added to fission bank
         break;
       }
     } else {
@@ -181,21 +188,21 @@ create_fission_sites(Particle& p)
     // Write fission particles to nuBank
     p.nu_bank().emplace_back();
     NuBank* nu_bank_entry = &p.nu_bank().back();
-    nu_bank_entry->wgt              = site.wgt;
-    nu_bank_entry->E                = site.E;
-    nu_bank_entry->delayed_group    = site.delayed_group;
+    nu_bank_entry->wgt = site.wgt;
+    nu_bank_entry->E = site.E;
+    nu_bank_entry->delayed_group = site.delayed_group;
   }
 
   // If shared fission bank was full, and no fissions could be added,
   // set the particle fission flag to false.
-  if (nu == skipped) {
+  if (n_sites_stored == 0) {
     p.fission() = false;
     return;
   }
 
-  // If shared fission bank was full, but some fissions could be added,
-  // reduce nu accordingly
-  nu -= skipped;
+  // Set nu to the number of fission sites successfully stored. If the fission
+  // bank was not found to be full then these values are already equivalent.
+  nu = n_sites_stored;
 
   // Store the total weight banked for analog fission tallies
   p.n_bank() = nu;
@@ -205,8 +212,7 @@ create_fission_sites(Particle& p)
   }
 }
 
-void
-absorption(Particle& p)
+void absorption(Particle& p)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
@@ -229,4 +235,4 @@ absorption(Particle& p)
   }
 }
 
-} //namespace openmc
+} // namespace openmc

@@ -29,7 +29,7 @@ RUN apt-get update -y && \
     apt-get install -y \
         python3-pip python-is-python3 wget git gfortran g++ cmake \
         mpich libmpich-dev libhdf5-serial-dev libhdf5-mpich-dev \
-        imagemagick && \
+        libpng-dev && \
     apt-get autoremove
 
 # Update system-provided pip

@@ -30,6 +30,8 @@ class SourceTestHarness(PyAPITestHarness):
         y_dist = openmc.stats.Discrete([-4., -1., 3.], [0.2, 0.3, 0.5])
         z_dist = openmc.stats.Tabular([-2., 0., 2.], [0.2, 0.3, 0.2])
         r_dist = openmc.stats.Uniform(2., 3.)
+        r_dist1 = openmc.stats.PowerLaw(2., 3., 1.)
+        r_dist2 = openmc.stats.PowerLaw(2., 3., 2.)
         theta_dist = openmc.stats.Discrete([pi/4, pi/2, 3*pi/4],
                                            [0.3, 0.4, 0.3])
         phi_dist = openmc.stats.Uniform(0.0, 2*pi)
@@ -40,6 +42,12 @@ class SourceTestHarness(PyAPITestHarness):
                                                      phi_dist, 
                                                      origin=(1., 1., 0.))
         spatial5 = openmc.stats.CylindricalIndependent(r_dist, phi_dist, 
+                                                       z_dist,
+                                                       origin=(1., 1., 0.))
+        spatial6 = openmc.stats.SphericalIndependent(r_dist2, theta_dist,
+                                                     phi_dist, 
+                                                     origin=(1., 1., 0.))
+        spatial7 = openmc.stats.CylindricalIndependent(r_dist1, phi_dist, 
                                                        z_dist,
                                                        origin=(1., 1., 0.))
 
@@ -55,18 +63,22 @@ class SourceTestHarness(PyAPITestHarness):
         energy1 = openmc.stats.Maxwell(1.2895e6)
         energy2 = openmc.stats.Watt(0.988e6, 2.249e-6)
         energy3 = openmc.stats.Tabular(E, p, interpolation='histogram')
+        energy4 = openmc.stats.Mixture([1, 2, 3], [energy1, energy2, energy3])
 
-        source1 = openmc.Source(spatial1, angle1, energy1, strength=0.5)
-        source2 = openmc.Source(spatial2, angle2, energy2, strength=0.3)
+        source1 = openmc.Source(spatial1, angle1, energy1, strength=0.3)
+        source2 = openmc.Source(spatial2, angle2, energy2, strength=0.1)
         source3 = openmc.Source(spatial3, angle3, energy3, strength=0.1)
         source4 = openmc.Source(spatial4, angle3, energy3, strength=0.1)
         source5 = openmc.Source(spatial5, angle3, energy3, strength=0.1)
+        source6 = openmc.Source(spatial5, angle3, energy4, strength=0.1)
+        source7 = openmc.Source(spatial6, angle3, energy4, strength=0.1)
+        source8 = openmc.Source(spatial7, angle3, energy4, strength=0.1)
 
         settings = openmc.Settings()
         settings.batches = 10
         settings.inactive = 5
         settings.particles = 1000
-        settings.source = [source1, source2, source3, source4, source5]
+        settings.source = [source1, source2, source3, source4, source5, source6, source7, source8]
         settings.export_to_xml()
 
 

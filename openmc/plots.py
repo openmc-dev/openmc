@@ -1,6 +1,7 @@
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 from pathlib import Path
+import shutil
 import subprocess
 from xml.etree import ElementTree as ET
 
@@ -163,6 +164,18 @@ _SVG_COLORS = {
     'yellow': (255, 255, 0),
     'yellowgreen': (154, 205, 50)
 }
+
+
+def _get_plot_image(plot):
+    from IPython.display import Image
+
+    # Make sure .png file was created
+    stem = plot.filename if plot.filename is not None else f'plot_{plot.id}'
+    png_file = f'{stem}.png'
+    if not Path(png_file).exists():
+        raise FileNotFoundError(f"Could not find .png image for plot {plot.id}")
+
+    return Image(png_file)
 
 
 class Plot(IDManagerMixin):
@@ -379,7 +392,7 @@ class Plot(IDManagerMixin):
 
     @show_overlaps.setter
     def show_overlaps(self, show_overlaps):
-        cv.check_type('Show overlaps flag for Plot ID="{}"'.format(self.id),
+        cv.check_type(f'Show overlaps flag for Plot ID="{self.id}"',
                       show_overlaps, bool)
         self._show_overlaps = show_overlaps
 
@@ -398,8 +411,8 @@ class Plot(IDManagerMixin):
     def meshlines(self, meshlines):
         cv.check_type('plot meshlines', meshlines, dict)
         if 'type' not in meshlines:
-            msg = 'Unable to set the meshlines to "{}" which ' \
-                  'does not have a "type" key'.format(meshlines)
+            msg = f'Unable to set the meshlines to "{meshlines}" which ' \
+                  'does not have a "type" key'
             raise ValueError(msg)
 
         elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
@@ -427,7 +440,7 @@ class Plot(IDManagerMixin):
         cv.check_type(err_string, color, Iterable)
         if isinstance(color, str):
             if color.lower() not in _SVG_COLORS:
-                raise ValueError("'{}' is not a valid color.".format(color))
+                raise ValueError(f"'{color}' is not a valid color.")
         else:
             cv.check_length(err_string, color, 3)
             for rgb in color:
@@ -495,7 +508,7 @@ class Plot(IDManagerMixin):
 
         if np.any(np.isinf((lower_left, upper_right))):
             raise ValueError('The geometry does not appear to be bounded '
-                             'in the {} plane.'.format(basis))
+                             f'in the {basis} plane.')
 
         plot = cls()
         plot.origin = np.insert((lower_left + upper_right)/2,
@@ -568,7 +581,7 @@ class Plot(IDManagerMixin):
         # Get a background (R,G,B) tuple to apply in alpha compositing
         if isinstance(background, str):
             if background.lower() not in _SVG_COLORS:
-                raise ValueError("'{}' is not a valid color.".format(background))
+                raise ValueError(f"'{background}' is not a valid color.")
             background = _SVG_COLORS[background.lower()]
 
         # Generate a color scheme
@@ -671,15 +684,14 @@ class Plot(IDManagerMixin):
 
         return element
 
-    def to_ipython_image(self, openmc_exec='openmc', cwd='.',
-                         convert_exec='convert'):
+    def to_ipython_image(self, openmc_exec='openmc', cwd='.'):
         """Render plot as an image
 
-        This method runs OpenMC in plotting mode to produce a bitmap image which
-        is then converted to a .png file and loaded in as an
-        :class:`IPython.display.Image` object. As such, it requires that your
-        model geometry, materials, and settings have already been exported to
-        XML.
+        This method runs OpenMC in plotting mode to produce a .png file.
+
+        .. versionchanged:: 0.13.0
+            The *convert_exec* argument was removed since OpenMC now produces
+            .png images directly.
 
         Parameters
         ----------
@@ -687,8 +699,6 @@ class Plot(IDManagerMixin):
             Path to OpenMC executable
         cwd : str, optional
             Path to working directory to run in
-        convert_exec : str, optional
-            Command that can convert PPM files into PNG files
 
         Returns
         -------
@@ -696,23 +706,14 @@ class Plot(IDManagerMixin):
             Image generated
 
         """
-        from IPython.display import Image
-
         # Create plots.xml
         Plots([self]).export_to_xml()
 
         # Run OpenMC in geometry plotting mode
         openmc.plot_geometry(False, openmc_exec, cwd)
 
-        # Convert to .png
-        if self.filename is not None:
-            ppm_file = '{}.ppm'.format(self.filename)
-        else:
-            ppm_file = 'plot_{}.ppm'.format(self.id)
-        png_file = ppm_file.replace('.ppm', '.png')
-        subprocess.check_call([convert_exec, ppm_file, png_file])
-
-        return Image(png_file)
+        # Return produced image
+        return _get_plot_image(self)
 
 
 class Plots(cv.CheckedList):

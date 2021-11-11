@@ -57,14 +57,14 @@ kwargs = {
         'Topic :: Scientific/Engineering'
         'Programming Language :: C++',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
 
     # Dependencies
-    'python_requires': '>=3.5',
+    'python_requires': '>=3.6',
     'install_requires': [
         'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
         'pandas', 'lxml', 'uncertainties'
@@ -72,8 +72,7 @@ kwargs = {
     'extras_require': {
         'depletion-mpi': ['mpi4py'],
         'docs': ['sphinx', 'sphinxcontrib-katex', 'sphinx-numfig', 'jupyter',
-                 'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme',
-                 'nbsphinx'],
+                 'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme'],
         'test': ['pytest', 'pytest-cov', 'colorama'],
         'vtk': ['vtk'],
     },

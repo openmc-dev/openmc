@@ -153,9 +153,7 @@ class StatePoint:
         return self
 
     def __exit__(self, *exc):
-        self._f.close()
-        if self._summary is not None:
-            self._summary._f.close()
+        self.close()
 
     @property
     def cmfd_on(self):
@@ -375,7 +373,7 @@ class StatePoint:
 
                 # Iterate over all tallies
                 for tally_id in tally_ids:
-                    group = tallies_group['tally {}'.format(tally_id)]
+                    group = tallies_group[f'tally {tally_id}']
 
                     # Check if tally is internal and therefore has no data
                     if group.attrs.get("internal"):
@@ -403,8 +401,7 @@ class StatePoint:
                         filter_ids = group['filters'][()]
                         filters_group = self._f['tallies/filters']
                         for filter_id in filter_ids:
-                            filter_group = filters_group['filter {}'.format(
-                                filter_id)]
+                            filter_group = filters_group[f'filter {filter_id}']
                             new_filter = openmc.Filter.from_hdf5(
                                 filter_group, meshes=self.meshes)
                             tally.filters.append(new_filter)
@@ -445,8 +442,7 @@ class StatePoint:
 
                 # Create each derivative object and add it to the dictionary.
                 for d_id in deriv_ids:
-                    group = self._f['tallies/derivatives/derivative {}'
-                                    .format(d_id)]
+                    group = self._f[f'tallies/derivatives/derivative {d_id}']
                     deriv = openmc.TallyDerivative(derivative_id=d_id)
                     deriv.variable = group['independent variable'][()].decode()
                     if deriv.variable == 'density':
@@ -489,6 +485,14 @@ class StatePoint:
         if self._tallies_read:
             for tally_id in self.tallies:
                 self.tallies[tally_id].sparse = self.sparse
+
+    def close(self):
+        """Close the statepoint HDF5 file and the corresponding
+        summary HDF5 file if present.
+        """
+        self._f.close()
+        if self._summary is not None:
+            self._summary._f.close()
 
     def add_volume_information(self, volume_calc):
         """Add volume information to the geometry within the file
@@ -651,8 +655,8 @@ class StatePoint:
             return
 
         if not isinstance(summary, openmc.Summary):
-            msg = 'Unable to link statepoint with "{0}" which ' \
-                  'is not a Summary object'.format(summary)
+            msg = f'Unable to link statepoint with "{summary}" which is not a' \
+                  'Summary object'
             raise ValueError(msg)
 
         cells = summary.geometry.get_all_cells()

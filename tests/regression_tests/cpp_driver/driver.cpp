@@ -6,6 +6,7 @@
 #include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/message_passing.h"
 #include "openmc/summary.h"
 #include "openmc/tallies/filter.h"
@@ -31,10 +32,13 @@ int main(int argc, char** argv) {
   for (auto& entry : openmc::model::cell_map) {
       cell_indices.push_back(entry.second);
   }
+  // enable distribcells offsets for all cells
+  prepare_distribcell(&cell_indices);
   // sort to make sure the cell bins appear in the same
   // order as the test relying on the openmc exe
   std::sort(cell_indices.begin(), cell_indices.end());
   cell_filter->set_cells(cell_indices);
+
 
   // create a new tally
   auto tally = Tally::create();
@@ -46,7 +50,7 @@ int main(int argc, char** argv) {
   // the lattice
   auto& root_univ = openmc::model::universes[openmc::model::root_universe];
   auto& lattice_cell = openmc::model::cells[root_univ->cells_[0]];
-  lattice_cell->set_temperature(300, 1, true);
+  lattice_cell->set_temperature(300.0, 0, true);
 
   // check that material-filled cells return no contained cells
   for (auto& cell : openmc::model::cells) {
@@ -55,6 +59,9 @@ int main(int argc, char** argv) {
       assert(contained_cells.empty());
     }
   }
+
+  // set a higher temperature for only one of the lattice cells (ID is 4 in the model)
+  model::cells[model::cell_map[4]]->set_temperature(400.0, 3, true);
 
   // the summary file will be used to check that
   // temperatures were set correctly so clear

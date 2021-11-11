@@ -15,14 +15,15 @@
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
+#include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/surface.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
-#include "openmc/tallies/tally.h"
 #include "openmc/volume_calc.h"
 
 #include "xtensor/xview.hpp"
@@ -45,18 +46,16 @@ void free_memory()
   free_memory_mesh();
   free_memory_tally();
   free_memory_bank();
+  free_memory_plot();
   if (mpi::master) {
     free_memory_cmfd();
   }
   if (settings::event_based) {
     free_event_queues();
   }
-#ifdef DAGMC
-  free_memory_dagmc();
-#endif
 }
 
-}
+} // namespace openmc
 
 using namespace openmc;
 
@@ -74,7 +73,6 @@ int openmc_finalize()
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::electron_treatment = ElectronTreatment::LED;
-  settings::dagmc = false;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
   settings::entropy_on = false;
@@ -132,6 +130,7 @@ int openmc_finalize()
   data::temperature_min = 0.0;
   data::temperature_max = INFTY;
   model::root_universe = -1;
+  model::plotter_seed = 1;
   openmc::openmc_set_seed(DEFAULT_SEED);
 
   // Deallocate arrays
@@ -143,7 +142,8 @@ int openmc_finalize()
 
   // Free all MPI types
 #ifdef OPENMC_MPI
-  if (mpi::source_site != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::source_site);
+  if (mpi::source_site != MPI_DATATYPE_NULL)
+    MPI_Type_free(&mpi::source_site);
 #endif
 
   return 0;

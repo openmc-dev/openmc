@@ -2,15 +2,15 @@
 
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
+#include "openmc/error.h" // for writing messages
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
-#include "openmc/error.h"  // for writing messages
 
 #include <fmt/core.h>
 
-#include <cmath>
 #include <algorithm> // for min
+#include <cmath>
 
 namespace openmc {
 
@@ -50,14 +50,16 @@ WindowedMultipole::WindowedMultipole(hid_t group)
   read_dataset(group, "broaden_poly", broaden_poly);
   if (n_windows != broaden_poly.shape()[0]) {
     fatal_error("broaden_poly array shape is not consistent with the windows "
-      "array shape in WMP library for " + name_ + ".");
+                "array shape in WMP library for " +
+                name_ + ".");
   }
 
   // Read the "curvefit" array.
   read_dataset(group, "curvefit", curvefit_);
   if (n_windows != curvefit_.shape()[0]) {
     fatal_error("curvefit array shape is not consistent with the windows "
-      "array shape in WMP library for " + name_ + ".");
+                "array shape in WMP library for " +
+                name_ + ".");
   }
   fit_order_ = curvefit_.shape()[1] - 1;
 
@@ -77,8 +79,8 @@ WindowedMultipole::WindowedMultipole(hid_t group)
   }
 }
 
-std::tuple<double, double, double>
-WindowedMultipole::evaluate(double E, double sqrtkT) const
+std::tuple<double, double, double> WindowedMultipole::evaluate(
+  double E, double sqrtkT) const
 {
   using namespace std::complex_literals;
 
@@ -106,12 +108,16 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
     // Broaden the curvefit.
     double dopp = sqrt_awr_ / sqrtkT;
     array<double, MAX_POLY_COEFFICIENTS> broadened_polynomials;
-    broaden_wmp_polynomials(E, dopp, fit_order_ + 1, broadened_polynomials.data());
+    broaden_wmp_polynomials(
+      E, dopp, fit_order_ + 1, broadened_polynomials.data());
     for (int i_poly = 0; i_poly < fit_order_ + 1; ++i_poly) {
-      sig_s += curvefit_(i_window, i_poly, FIT_S) * broadened_polynomials[i_poly];
-      sig_a += curvefit_(i_window, i_poly, FIT_A) * broadened_polynomials[i_poly];
+      sig_s +=
+        curvefit_(i_window, i_poly, FIT_S) * broadened_polynomials[i_poly];
+      sig_a +=
+        curvefit_(i_window, i_poly, FIT_A) * broadened_polynomials[i_poly];
       if (fissionable_) {
-        sig_f += curvefit_(i_window, i_poly, FIT_F) * broadened_polynomials[i_poly];
+        sig_f +=
+          curvefit_(i_window, i_poly, FIT_F) * broadened_polynomials[i_poly];
       }
     }
   } else {
@@ -132,7 +138,8 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
 
   if (sqrtkT == 0.0) {
     // If at 0K, use asymptotic form.
-    for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
+    for (int i_pole = window.index_start; i_pole <= window.index_end;
+         ++i_pole) {
       std::complex<double> psi_chi = -1.0i / (data_(i_pole, MP_EA) - sqrtE);
       std::complex<double> c_temp = psi_chi * invE;
       sig_s += (data_(i_pole, MP_RS) * c_temp).real();
@@ -144,7 +151,8 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   } else {
     // At temperature, use Faddeeva function-based form.
     double dopp = sqrt_awr_ / sqrtkT;
-    for (int i_pole = window.index_start; i_pole <= window.index_end; ++i_pole) {
+    for (int i_pole = window.index_start; i_pole <= window.index_end;
+         ++i_pole) {
       std::complex<double> z = (sqrtE - data_(i_pole, MP_EA)) * dopp;
       std::complex<double> w_val = faddeeva(z) * dopp * invE * SQRT_PI;
       sig_s += (data_(i_pole, MP_RS) * w_val).real();
@@ -158,8 +166,8 @@ WindowedMultipole::evaluate(double E, double sqrtkT) const
   return std::make_tuple(sig_s, sig_a, sig_f);
 }
 
-std::tuple<double, double, double>
-WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
+std::tuple<double, double, double> WindowedMultipole::evaluate_deriv(
+  double E, double sqrtkT) const
 {
   // ==========================================================================
   // Bookkeeping
@@ -167,11 +175,11 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
   // Define some frequently used variables.
   double sqrtE = std::sqrt(E);
   double invE = 1.0 / E;
-  double T = sqrtkT*sqrtkT / K_BOLTZMANN;
+  double T = sqrtkT * sqrtkT / K_BOLTZMANN;
 
   if (sqrtkT == 0.0) {
     fatal_error("Windowed multipole temperature derivatives are not implemented"
-      " for 0 Kelvin cross sections.");
+                " for 0 Kelvin cross sections.");
   }
 
   // Locate us
@@ -201,7 +209,7 @@ WindowedMultipole::evaluate_deriv(double E, double sqrtkT) const
       sig_f += (data_(i_pole, MP_RF) * w_val).real();
     }
   }
-  double norm = -0.5*sqrt_awr_ / std::sqrt(K_BOLTZMANN) * std::pow(T, -1.5);
+  double norm = -0.5 * sqrt_awr_ / std::sqrt(K_BOLTZMANN) * std::pow(T, -1.5);
   sig_s *= norm;
   sig_a *= norm;
   sig_f *= norm;
@@ -226,7 +234,8 @@ void check_wmp_version(hid_t file)
     }
   } else {
     fatal_error(fmt::format("WMP data does not indicate a version. Your "
-      "installation of OpenMC expects version {}x data.", WMP_VERSION[0]));
+                            "installation of OpenMC expects version {}x data.",
+      WMP_VERSION[0]));
   }
 }
 
@@ -237,7 +246,8 @@ void read_multipole_data(int i_nuclide)
   auto it = data::library_map.find({Library::Type::wmp, nuc->name_});
 
   // If no WMP library for this nuclide, just return
-  if (it == data::library_map.end()) return;
+  if (it == data::library_map.end())
+    return;
 
   // Check if WMP library exists
   int idx = it->second;
@@ -286,16 +296,17 @@ void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
   // fit, and no less.
   factors[0] = erf_beta / E;
   factors[1] = 1. / sqrtE;
-  factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 /
-       (beta * SQRT_PI);
-  if (n > 3) factors[3] = factors[1] * (E + 3.0 * half_inv_dopp2);
+  factors[2] =
+    factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 / (beta * SQRT_PI);
+  if (n > 3)
+    factors[3] = factors[1] * (E + 3.0 * half_inv_dopp2);
 
   // Perform recursive broadening of high order components (Eq. 16)
   for (int i = 1; i < n - 3; i++) {
     double ip1_dbl = i + 1;
-    factors[i + 3] = -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl *
-          quarter_inv_dopp4 + factors[i + 1] *
-          (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
+    factors[i + 3] =
+      -factors[i - 1] * (ip1_dbl - 1.) * ip1_dbl * quarter_inv_dopp4 +
+      factors[i + 1] * (E + (1. + 2. * ip1_dbl) * half_inv_dopp2);
   }
 }
 

@@ -29,13 +29,14 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
 
   // Accessors
   AngleDistribution& angle() { return angle_; }
+
 private:
-  AngleDistribution angle_; //!< Angle distribution
+  AngleDistribution angle_;               //!< Angle distribution
   unique_ptr<EnergyDistribution> energy_; //!< Energy distribution
 };
 

@@ -7,8 +7,8 @@
 #include "openmc/simulation.h"
 #include "openmc/vector.h"
 
-#include <fmt/core.h>
 #include "xtensor/xtensor.hpp"
+#include <fmt/core.h>
 
 #include <cstddef> // for size_t
 #include <string>
@@ -45,7 +45,7 @@ void finalize_particle_track(Particle& p)
     n_coords.push_back(coords.size());
   }
 
-#pragma omp critical (FinalizeParticleTrack)
+#pragma omp critical(FinalizeParticleTrack)
   {
     hid_t file_id = file_open(filename, 'w');
     write_attribute(file_id, "filetype", "track");
@@ -55,7 +55,7 @@ void finalize_particle_track(Particle& p)
     for (auto i = 1; i <= p.tracks().size(); ++i) {
       const auto& t {p.tracks()[i - 1]};
       size_t n = t.size();
-      xt::xtensor<double, 2> data({n,3});
+      xt::xtensor<double, 2> data({n, 3});
       for (int j = 0; j < n; ++j) {
         data(j, 0) = t[j].x;
         data(j, 1) = t[j].y;

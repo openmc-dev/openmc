@@ -8,15 +8,14 @@
 
 namespace openmc {
 
-void
-UniverseFilter::from_xml(pugi::xml_node node)
+void UniverseFilter::from_xml(pugi::xml_node node)
 {
   // Get material IDs and convert to indices in the global materials vector
   auto universes = get_node_array<int32_t>(node, "bins");
   for (auto& u : universes) {
     auto search = model::universe_map.find(u);
     if (search == model::universe_map.end()) {
-      throw std::runtime_error{fmt::format(
+      throw std::runtime_error {fmt::format(
         "Could not find universe {} specified on tally filter.", u)};
     }
     u = search->second;
@@ -25,8 +24,7 @@ UniverseFilter::from_xml(pugi::xml_node node)
   this->set_universes(universes);
 }
 
-void
-UniverseFilter::set_universes(gsl::span<int32_t> universes)
+void UniverseFilter::set_universes(gsl::span<int32_t> universes)
 {
   // Clear existing universes
   universes_.clear();
@@ -44,9 +42,8 @@ UniverseFilter::set_universes(gsl::span<int32_t> universes)
   n_bins_ = universes_.size();
 }
 
-void
-UniverseFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
-                             FilterMatch& match) const
+void UniverseFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   for (int i = 0; i < p.n_coord(); i++) {
     auto search = map_.find(p.coord(i).universe);
@@ -57,17 +54,16 @@ UniverseFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
   }
 }
 
-void
-UniverseFilter::to_statepoint(hid_t filter_group) const
+void UniverseFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   vector<int32_t> universe_ids;
-  for (auto u : universes_) universe_ids.push_back(model::universes[u]->id_);
+  for (auto u : universes_)
+    universe_ids.push_back(model::universes[u]->id_);
   write_dataset(filter_group, "bins", universe_ids);
 }
 
-std::string
-UniverseFilter::text_label(int bin) const
+std::string UniverseFilter::text_label(int bin) const
 {
   return fmt::format("Universe {}", model::universes[universes_[bin]]->id_);
 }

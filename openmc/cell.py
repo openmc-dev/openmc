@@ -27,7 +27,7 @@ class Cell(IDManagerMixin):
         automatically be assigned.
     name : str, optional
         Name of the cell. If not specified, the name is the empty string.
-    fill : openmc.Material or openmc.Universe or openmc.Lattice or None or iterable of openmc.Material, optional
+    fill : openmc.Material or openmc.UniverseBase or openmc.Lattice or None or iterable of openmc.Material, optional
         Indicates what the region of space is filled with
     region : openmc.Region, optional
         Region of space that is assigned to the cell.
@@ -38,7 +38,7 @@ class Cell(IDManagerMixin):
         Unique identifier for the cell
     name : str
         Name of the cell
-    fill : openmc.Material or openmc.Universe or openmc.Lattice or None or iterable of openmc.Material
+    fill : openmc.Material or openmc.UniverseBase or openmc.Lattice or None or iterable of openmc.Material
         Indicates what the region of space is filled with. If None, the cell is
         treated as a void. An iterable of materials is used to fill repeated
         instances of a cell with different materials.
@@ -156,7 +156,7 @@ class Cell(IDManagerMixin):
     def fill_type(self):
         if isinstance(self.fill, openmc.Material):
             return 'material'
-        elif isinstance(self.fill, openmc.Universe):
+        elif isinstance(self.fill, openmc.UniverseBase):
             return 'universe'
         elif isinstance(self.fill, openmc.Lattice):
             return 'lattice'
@@ -233,7 +233,7 @@ class Cell(IDManagerMixin):
                         self._atoms[key] = atom
 
             else:
-                msg = 'Unrecognized fill_type: {}'.format(self.fill_type)
+                msg = f'Unrecognized fill_type: {self.fill_type}'
                 raise ValueError(msg)
 
         return self._atoms
@@ -278,11 +278,10 @@ class Cell(IDManagerMixin):
                         cv.check_type('cell.fill[i]', f, openmc.Material)
 
             elif not isinstance(fill, (openmc.Material, openmc.Lattice,
-                                       openmc.Universe)):
-                msg = ('Unable to set Cell ID="{0}" to use a non-Material or '
-                       'Universe fill "{1}"'.format(self._id, fill))
+                                       openmc.UniverseBase)):
+                msg = (f'Unable to set Cell ID="{self._id}" to use a '
+                       f'non-Material or Universe fill "{fill}"')
                 raise ValueError(msg)
-
         self._fill = fill
 
         # Info about atom content can now be invalid
@@ -409,10 +408,10 @@ class Cell(IDManagerMixin):
                     nuclides[name] = (nuclide, density)
             else:
                 raise RuntimeError(
-                    'Volume information is needed to calculate microscopic cross '
-                    'sections for cell {}. This can be done by running a '
-                    'stochastic volume calculation via the '
-                    'openmc.VolumeCalculation object'.format(self.id))
+                    'Volume information is needed to calculate microscopic '
+                    f'cross sections for cell {self.id}. This can be done by '
+                    'running a stochastic volume calculation via the '
+                    'openmc.VolumeCalculation object')
 
         return nuclides
 

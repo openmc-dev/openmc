@@ -14,13 +14,13 @@ class Geometry:
 
     Parameters
     ----------
-    root : openmc.Universe or Iterable of openmc.Cell, optional
+    root : openmc.UniverseBase or Iterable of openmc.Cell, optional
         Root universe which contains all others, or an iterable of cells that
         should be used to create a root universe.
 
     Attributes
     ----------
-    root_universe : openmc.Universe
+    root_universe : openmc.UniverseBase
         Root universe which contains all others
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
@@ -32,7 +32,7 @@ class Geometry:
         self._root_universe = None
         self._offsets = {}
         if root is not None:
-            if isinstance(root, openmc.Universe):
+            if isinstance(root, openmc.UniverseBase):
                 self.root_universe = root
             else:
                 univ = openmc.Universe()
@@ -50,7 +50,7 @@ class Geometry:
 
     @root_universe.setter
     def root_universe(self, root_universe):
-        check_type('root universe', root_universe, openmc.Universe)
+        check_type('root universe', root_universe, openmc.UniverseBase)
         self._root_universe = root_universe
 
     def add_volume_information(self, volume_calc):
@@ -158,6 +158,11 @@ class Geometry:
         # Apply periodic surfaces
         for s1, s2 in periodic.items():
             surfaces[s1].periodic_surface = surfaces[s2]
+
+        # Add any DAGMC universes
+        for elem in root.findall('dagmc_universe'):
+            dag_univ = openmc.DAGMCUniverse.from_xml_element(elem)
+            universes[dag_univ.id] = dag_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that
         # contain it (needed to determine which universe is the root)
@@ -419,7 +424,7 @@ class Geometry:
 
         domains = []
 
-        func = getattr(self, 'get_all_{}s'.format(domain_type))
+        func = getattr(self, f'get_all_{domain_type}s')
         for domain in func().values():
             domain_name = domain.name if case_sensitive else domain.name.lower()
             if domain_name == name:

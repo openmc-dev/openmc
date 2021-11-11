@@ -88,14 +88,6 @@ you care. This element has the following attributes/sub-elements:
 
     *Default*: 0.0
 
---------------------------------
-``<dagmc>`` Element
---------------------------------
-
-When the DAGMC mode is enabled, the OpenMC geometry will be read from the file
-``dagmc.h5m``. If a :ref:`geometry.xml <io_geometry>` file is present with
-``dagmc`` set to ``true``, it will be ignored.
-
 ----------------------------
 ``<delayed_photon_scaling>``
 ----------------------------
@@ -627,16 +619,17 @@ variable and whose sub-elements/attributes are as follows:
 
 :type:
   The type of the distribution. Valid options are "uniform", "discrete",
-  "tabular", "maxwell", and "watt". The "uniform" option produces variates
-  sampled from a uniform distribution over a finite interval. The "discrete"
-  option produces random variates that can assume a finite number of values
-  (i.e., a distribution characterized by a probability mass function). The
-  "tabular" option produces random variates sampled from a tabulated
+  "tabular", "maxwell", "watt", and "mixture". The "uniform" option produces
+  variates sampled from a uniform distribution over a finite interval. The 
+  "discrete" option produces random variates that can assume a finite number 
+  of values (i.e., a distribution characterized by a probability mass function). 
+  The "tabular" option produces random variates sampled from a tabulated
   distribution where the density function is either a histogram or
   linearly-interpolated between tabulated points. The "watt" option produces
   random variates is sampled from a Watt fission spectrum (only used for
   energies). The "maxwell" option produce variates sampled from a Maxwell
-  fission spectrum (only used for energies).
+  fission spectrum (only used for energies). The "mixture" option produces samples
+  from univariate sub-distributions with given probabilities.
 
   *Default*: None
 
@@ -644,6 +637,11 @@ variable and whose sub-elements/attributes are as follows:
   For a "uniform" distribution, ``parameters`` should be given as two real
   numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
   which random variates are sampled.
+
+  For a "powerlaw" distribution, ``parameters`` should be given as three real
+  numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
+  which random variates are sampled and :math:`n` that defines the exponent of
+  the probability distribution :math:`p(x)=c x^n`
 
   For a "discrete" or "tabular" distribution, ``parameters`` provides the
   :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`
@@ -659,11 +657,21 @@ variable and whose sub-elements/attributes are as follows:
 
   .. note:: The above format should be used even when using the multi-group
             :ref:`energy_mode`.
+
 :interpolation:
   For a "tabular" distribution, ``interpolation`` can be set to "histogram" or
   "linear-linear" thereby specifying how tabular points are to be interpolated.
 
   *Default*: histogram
+
+:pair:
+  For a "mixture" distribution, this element provides a distribution and its corresponding probability.
+
+  :probability:
+    An attribute or ``pair`` that provides the probability of a univariate distribution within a "mixture" distribution. 
+      
+  :dist:
+    This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
 
 -------------------------
 ``<state_point>`` Element

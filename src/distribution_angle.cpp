@@ -1,6 +1,6 @@
 #include "openmc/distribution_angle.h"
 
-#include <cmath>  // for abs, copysign
+#include <cmath> // for abs, copysign
 
 #include "xtensor/xarray.hpp"
 #include "xtensor/xview.hpp"
@@ -38,15 +38,15 @@ AngleDistribution::AngleDistribution(hid_t group)
     int j = offsets[i];
     int n;
     if (i < n_energy - 1) {
-      n = offsets[i+1] - j;
+      n = offsets[i + 1] - j;
     } else {
       n = temp.shape()[1] - j;
     }
 
     // Create and initialize tabular distribution
-    auto xs = xt::view(temp, 0, xt::range(j, j+n));
-    auto ps = xt::view(temp, 1, xt::range(j, j+n));
-    auto cs = xt::view(temp, 2, xt::range(j, j+n));
+    auto xs = xt::view(temp, 0, xt::range(j, j + n));
+    auto ps = xt::view(temp, 1, xt::range(j, j + n));
+    auto cs = xt::view(temp, 2, xt::range(j, j + n));
     vector<double> x {xs.begin(), xs.end()};
     vector<double> p {ps.begin(), ps.end()};
     vector<double> c {cs.begin(), cs.end()};
@@ -55,8 +55,8 @@ AngleDistribution::AngleDistribution(hid_t group)
     // CDF values that were passed through to the HDF5 library. At a later
     // time, we can remove the CDF values from the HDF5 library and
     // reconstruct them using the PDF
-    Tabular* mudist = new Tabular{x.data(), p.data(), n, int2interp(interp[i]),
-                                  c.data()};
+    Tabular* mudist =
+      new Tabular {x.data(), p.data(), n, int2interp(interp[i]), c.data()};
 
     distribution_.emplace_back(mudist);
   }
@@ -79,17 +79,19 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
     r = 1.0;
   } else {
     i = lower_bound_index(energy_.begin(), energy_.end(), E);
-    r = (E - energy_[i])/(energy_[i+1] - energy_[i]);
+    r = (E - energy_[i]) / (energy_[i + 1] - energy_[i]);
   }
 
   // Sample between the ith and (i+1)th bin
-  if (r > prn(seed)) ++i;
+  if (r > prn(seed))
+    ++i;
 
   // Sample i-th distribution
   double mu = distribution_[i]->sample(seed);
 
   // Make sure mu is in range [-1,1] and return
-  if (std::abs(mu) > 1.0) mu = std::copysign(1.0, mu);
+  if (std::abs(mu) > 1.0)
+    mu = std::copysign(1.0, mu);
   return mu;
 }
 

@@ -1,7 +1,6 @@
 # Compiled objects and modules
 *.a
 *.o
-*.mod
 *.log
 *.out
 
@@ -35,9 +34,6 @@ build
 # build from src/utils/setup.py
 src/utils/build
 
-# xml-fortran reader
-src/xml-fortran/xmlreader
-
 # Test results error file
 results_error.dat
 inputs_error.dat
@@ -68,6 +64,7 @@ scripts/*.tar.*
 scripts/G4EMLOW*/
 
 # Images
+*.png
 *.ppm
 *.voxel
 *.vti
@@ -78,17 +75,6 @@ scripts/G4EMLOW*/
 
 # IPython notebook checkpoints
 .ipynb_checkpoints
-
-# Jupyter notebooks
-examples/jupyter/*.xml
-examples/jupyter/*.png
-examples/jupyter/*.xls
-examples/jupyter/*.ace
-examples/jupyter/*.endf
-examples/jupyter/mgxs
-examples/jupyter/tracks
-examples/jupyter/fission-rates
-examples/jupyter/plots
 
 # Cython files
 *.c
@@ -116,3 +102,6 @@ CMakeSettings.json
 
 # Visual Studio Code configuration files
 .vscode/
+
+# Python pickle files
+*.pkl

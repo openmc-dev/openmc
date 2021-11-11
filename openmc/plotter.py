@@ -335,7 +335,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
     library = openmc.data.DataLibrary.from_xml(cross_sections)
 
     # Convert temperature to format needed for access in the library
-    strT = "{}K".format(int(round(temperature)))
+    strT = f"{int(round(temperature))}K"
     T = temperature
 
     # Now we can create the data sets to be plotted
@@ -828,8 +828,7 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
                     if order < shape[1]:
                         data[i, :] = temp_data[:, order]
     else:
-        raise ValueError("{} not present in provided MGXS "
-                         "library".format(this))
+        raise ValueError(f"{this} not present in provided MGXS library")
 
     return data
 

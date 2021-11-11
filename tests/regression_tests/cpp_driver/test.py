@@ -81,11 +81,15 @@ def model():
 
     pincell_univ = openmc.Universe(cells=[fuel, cladding, moderator])
 
+    # insert an additional cell to add another level to the geometry
+    extra_cell = openmc.Cell(fill=pincell_univ)
+    extra_univ = openmc.Universe(cells=[extra_cell])
+
     # lattice
     lattice = openmc.RectLattice()
     lattice.pitch = (4.0, 4.0)
     lattice.lower_left = (-4.0, -4.0)
-    lattice.universes = [[pincell_univ, pincell_univ], [pincell_univ, pincell_univ]]
+    lattice.universes = [[extra_univ, extra_univ], [extra_univ, extra_univ]]
     lattice_region = openmc.model.rectangular_prism(8.0,
                                                     8.0,
                                                     boundary_type='reflective')
@@ -130,7 +134,8 @@ class ExternalDriverTestHarness(PyAPITestHarness):
         for cell in cells.values():
             if isinstance(cell.fill, openmc.Material):
                 assert len(cell.temperature) == 4
-                assert_allclose(cell.temperature, 300.0)
+                assert_allclose(cell.temperature[:3], 300.0)
+                assert_allclose(cell.temperature[-1:], 400.0)
 
 
 def test_cpp_driver(cpp_driver, model):

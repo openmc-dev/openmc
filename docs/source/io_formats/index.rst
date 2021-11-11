@@ -45,6 +45,7 @@ Output Files
    statepoint
    source
    summary
+   properties
    depletion_results
    particle_restart
    track

@@ -18,9 +18,9 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::unordered_map<int, int> tally_deriv_map;
-  vector<TallyDerivative> tally_derivs;
-}
+std::unordered_map<int, int> tally_deriv_map;
+vector<TallyDerivative> tally_derivs;
+} // namespace model
 
 //==============================================================================
 // TallyDerivative implementation
@@ -55,13 +55,14 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
     }
     if (!found) {
       fatal_error(fmt::format("Could not find the nuclide \"{}\" specified in "
-        "derivative {} in any material.", nuclide_name, id));
+                              "derivative {} in any material.",
+        nuclide_name, id));
     }
   } else if (variable_str == "temperature") {
     variable = DerivativeVariable::TEMPERATURE;
   } else {
-    fatal_error(fmt::format("Unrecognized variable \"{}\" on derivative {}",
-      variable_str, id));
+    fatal_error(fmt::format(
+      "Unrecognized variable \"{}\" on derivative {}", variable_str, id));
   }
 
   diff_material = std::stoi(get_node_value(node, "material"));
@@ -71,8 +72,7 @@ TallyDerivative::TallyDerivative(pugi::xml_node node)
 // Non-method functions
 //==============================================================================
 
-void
-read_tally_derivatives(pugi::xml_node node)
+void read_tally_derivatives(pugi::xml_node node)
 {
   // Populate the derivatives array.
   for (auto deriv_node : node.children("derivative"))
@@ -85,8 +85,8 @@ read_tally_derivatives(pugi::xml_node node)
     if (search == model::tally_deriv_map.end()) {
       model::tally_deriv_map[id] = i;
     } else {
-      fatal_error("Two or more derivatives use the same unique ID: "
-                  + std::to_string(id));
+      fatal_error("Two or more derivatives use the same unique ID: " +
+                  std::to_string(id));
     }
   }
 
@@ -95,13 +95,13 @@ read_tally_derivatives(pugi::xml_node node)
     fatal_error("Differential tallies not supported in multi-group mode");
 }
 
-void
-apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
+void apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
   double atom_density, int score_bin, double& score)
 {
   const Tally& tally {*model::tallies[i_tally]};
 
-  if (score == 0.0) return;
+  if (score == 0.0)
+    return;
 
   // If our score was previously c then the new score is
   // c * (1/f * d_f/d_p + 1/c * d_c/d_p)
@@ -127,13 +127,13 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
 
   switch (deriv.variable) {
 
-  //============================================================================
-  // Density derivative:
-  // c = Sigma_MT
-  // c = sigma_MT * N
-  // c = sigma_MT * rho * const
-  // d_c / d_rho = sigma_MT * const
-  // (1 / c) * (d_c / d_rho) = 1 / rho
+    //============================================================================
+    // Density derivative:
+    // c = Sigma_MT
+    // c = sigma_MT * N
+    // c = sigma_MT * rho * const
+    // d_c / d_rho = sigma_MT * const
+    // (1 / c) * (d_c / d_rho) = 1 / rho
 
   case DerivativeVariable::DENSITY:
     switch (tally.estimator_) {
@@ -151,29 +151,29 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
         break;
 
       default:
-        fatal_error("Tally derivative not defined for a score on tally "
-          + std::to_string(tally.id_));
+        fatal_error("Tally derivative not defined for a score on tally " +
+                    std::to_string(tally.id_));
       }
       break;
 
     default:
       fatal_error("Differential tallies are only implemented for analog and "
-        "collision estimators.");
+                  "collision estimators.");
     }
     break;
 
-  //============================================================================
-  // Nuclide density derivative:
-  // If we are scoring a reaction rate for a single nuclide then
-  // c = Sigma_MT_i
-  // c = sigma_MT_i * N_i
-  // d_c / d_N_i = sigma_MT_i
-  // (1 / c) * (d_c / d_N_i) = 1 / N_i
-  // If the score is for the total material (i_nuclide = -1)
-  // c = Sum_i(Sigma_MT_i)
-  // d_c / d_N_i = sigma_MT_i
-  // (1 / c) * (d_c / d_N) = sigma_MT_i / Sigma_MT
-  // where i is the perturbed nuclide.
+    //============================================================================
+    // Nuclide density derivative:
+    // If we are scoring a reaction rate for a single nuclide then
+    // c = Sigma_MT_i
+    // c = sigma_MT_i * N_i
+    // d_c / d_N_i = sigma_MT_i
+    // (1 / c) * (d_c / d_N_i) = 1 / N_i
+    // If the score is for the total material (i_nuclide = -1)
+    // c = Sum_i(Sigma_MT_i)
+    // d_c / d_N_i = sigma_MT_i
+    // (1 / c) * (d_c / d_N) = sigma_MT_i / Sigma_MT
+    // where i is the perturbed nuclide.
 
   case DerivativeVariable::NUCLIDE_DENSITY:
     switch (tally.estimator_) {
@@ -190,19 +190,18 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
       case SCORE_SCATTER:
       case SCORE_ABSORPTION:
       case SCORE_FISSION:
-      case SCORE_NU_FISSION:
-        {
-          // Find the index of the perturbed nuclide.
-          int i;
-          for (i = 0; i < material.nuclide_.size(); ++i)
-            if (material.nuclide_[i] == deriv.diff_nuclide) break;
-          score *= flux_deriv + 1. / material.atom_density_(i);
-        }
-        break;
+      case SCORE_NU_FISSION: {
+        // Find the index of the perturbed nuclide.
+        int i;
+        for (i = 0; i < material.nuclide_.size(); ++i)
+          if (material.nuclide_[i] == deriv.diff_nuclide)
+            break;
+        score *= flux_deriv + 1. / material.atom_density_(i);
+      } break;
 
       default:
-        fatal_error("Tally derivative not defined for a score on tally "
-          + std::to_string(tally.id_));
+        fatal_error("Tally derivative not defined for a score on tally " +
+                    std::to_string(tally.id_));
       }
       break;
 
@@ -272,120 +271,117 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
         break;
 
       default:
-        fatal_error("Tally derivative not defined for a score on tally "
-          + std::to_string(tally.id_));
+        fatal_error("Tally derivative not defined for a score on tally " +
+                    std::to_string(tally.id_));
       }
       break;
 
     default:
       fatal_error("Differential tallies are only implemented for analog and "
-        "collision estimators.");
+                  "collision estimators.");
     }
     break;
 
-  //============================================================================
-  // Temperature derivative:
-  // If we are scoring a reaction rate for a single nuclide then
-  // c = Sigma_MT_i
-  // c = sigma_MT_i * N_i
-  // d_c / d_T = (d_sigma_Mt_i / d_T) * N_i
-  // (1 / c) * (d_c / d_T) = (d_sigma_MT_i / d_T) / sigma_MT_i
-  // If the score is for the total material (i_nuclide = -1)
-  // (1 / c) * (d_c / d_T) = Sum_i((d_sigma_MT_i / d_T) * N_i) / Sigma_MT_i
-  // where i is the perturbed nuclide.  The d_sigma_MT_i / d_T term is
-  // computed by multipole_deriv_eval.  It only works for the resolved
-  // resonance range and requires multipole data.
+    //============================================================================
+    // Temperature derivative:
+    // If we are scoring a reaction rate for a single nuclide then
+    // c = Sigma_MT_i
+    // c = sigma_MT_i * N_i
+    // d_c / d_T = (d_sigma_Mt_i / d_T) * N_i
+    // (1 / c) * (d_c / d_T) = (d_sigma_MT_i / d_T) / sigma_MT_i
+    // If the score is for the total material (i_nuclide = -1)
+    // (1 / c) * (d_c / d_T) = Sum_i((d_sigma_MT_i / d_T) * N_i) / Sigma_MT_i
+    // where i is the perturbed nuclide.  The d_sigma_MT_i / d_T term is
+    // computed by multipole_deriv_eval.  It only works for the resolved
+    // resonance range and requires multipole data.
 
   case DerivativeVariable::TEMPERATURE:
     switch (tally.estimator_) {
 
-    case TallyEstimator::ANALOG:
-      {
-        // Find the index of the event nuclide.
-        int i;
-        for (i = 0; i < material.nuclide_.size(); ++i)
-          if (material.nuclide_[i] == p.event_nuclide())
-            break;
-
-        const auto& nuc {*data::nuclides[p.event_nuclide()]};
-        if (!multipole_in_range(nuc, p.E_last())) {
-          score *= flux_deriv;
-          break;
-        }
-
-        switch (score_bin) {
-
-        case SCORE_TOTAL:
-          if (p.neutron_xs(p.event_nuclide()).total) {
-            double dsig_s, dsig_a, dsig_f;
-            std::tie(dsig_s, dsig_a, dsig_f) =
-              nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
-            score *= flux_deriv + (dsig_s + dsig_a) *
-                                    material.atom_density_(i) /
-                                    p.macro_xs().total;
-          } else {
-            score *= flux_deriv;
-          }
+    case TallyEstimator::ANALOG: {
+      // Find the index of the event nuclide.
+      int i;
+      for (i = 0; i < material.nuclide_.size(); ++i)
+        if (material.nuclide_[i] == p.event_nuclide())
           break;
 
-        case SCORE_SCATTER:
-          if (p.neutron_xs(p.event_nuclide()).total -
-              p.neutron_xs(p.event_nuclide()).absorption) {
-            double dsig_s, dsig_a, dsig_f;
-            std::tie(dsig_s, dsig_a, dsig_f) =
-              nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
-            score *=
-              flux_deriv + dsig_s * material.atom_density_(i) /
-                             (p.macro_xs().total - p.macro_xs().absorption);
-          } else {
-            score *= flux_deriv;
-          }
-          break;
-
-        case SCORE_ABSORPTION:
-          if (p.neutron_xs(p.event_nuclide()).absorption) {
-            double dsig_s, dsig_a, dsig_f;
-            std::tie(dsig_s, dsig_a, dsig_f) =
-              nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
-            score *= flux_deriv + dsig_a * material.atom_density_(i) /
-                                    p.macro_xs().absorption;
-          } else {
-            score *= flux_deriv;
-          }
-          break;
-
-        case SCORE_FISSION:
-          if (p.neutron_xs(p.event_nuclide()).fission) {
-            double dsig_s, dsig_a, dsig_f;
-            std::tie(dsig_s, dsig_a, dsig_f) =
-              nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
-            score *= flux_deriv +
-                     dsig_f * material.atom_density_(i) / p.macro_xs().fission;
-          } else {
-            score *= flux_deriv;
-          }
-          break;
-
-        case SCORE_NU_FISSION:
-          if (p.neutron_xs(p.event_nuclide()).fission) {
-            double nu = p.neutron_xs(p.event_nuclide()).nu_fission /
-                        p.neutron_xs(p.event_nuclide()).fission;
-            double dsig_s, dsig_a, dsig_f;
-            std::tie(dsig_s, dsig_a, dsig_f) =
-              nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
-            score *= flux_deriv + nu * dsig_f * material.atom_density_(i) /
-                                    p.macro_xs().nu_fission;
-          } else {
-            score *= flux_deriv;
-          }
-          break;
-
-        default:
-          fatal_error("Tally derivative not defined for a score on tally "
-            + std::to_string(tally.id_));
-        }
+      const auto& nuc {*data::nuclides[p.event_nuclide()]};
+      if (!multipole_in_range(nuc, p.E_last())) {
+        score *= flux_deriv;
+        break;
       }
-      break;
+
+      switch (score_bin) {
+
+      case SCORE_TOTAL:
+        if (p.neutron_xs(p.event_nuclide()).total) {
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f) =
+            nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
+          score *= flux_deriv + (dsig_s + dsig_a) * material.atom_density_(i) /
+                                  p.macro_xs().total;
+        } else {
+          score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_SCATTER:
+        if (p.neutron_xs(p.event_nuclide()).total -
+            p.neutron_xs(p.event_nuclide()).absorption) {
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f) =
+            nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
+          score *=
+            flux_deriv + dsig_s * material.atom_density_(i) /
+                           (p.macro_xs().total - p.macro_xs().absorption);
+        } else {
+          score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_ABSORPTION:
+        if (p.neutron_xs(p.event_nuclide()).absorption) {
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f) =
+            nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
+          score *= flux_deriv +
+                   dsig_a * material.atom_density_(i) / p.macro_xs().absorption;
+        } else {
+          score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_FISSION:
+        if (p.neutron_xs(p.event_nuclide()).fission) {
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f) =
+            nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
+          score *= flux_deriv +
+                   dsig_f * material.atom_density_(i) / p.macro_xs().fission;
+        } else {
+          score *= flux_deriv;
+        }
+        break;
+
+      case SCORE_NU_FISSION:
+        if (p.neutron_xs(p.event_nuclide()).fission) {
+          double nu = p.neutron_xs(p.event_nuclide()).nu_fission /
+                      p.neutron_xs(p.event_nuclide()).fission;
+          double dsig_s, dsig_a, dsig_f;
+          std::tie(dsig_s, dsig_a, dsig_f) =
+            nuc.multipole_->evaluate_deriv(p.E_last(), p.sqrtkT());
+          score *= flux_deriv + nu * dsig_f * material.atom_density_(i) /
+                                  p.macro_xs().nu_fission;
+        } else {
+          score *= flux_deriv;
+        }
+        break;
+
+      default:
+        fatal_error("Tally derivative not defined for a score on tally " +
+                    std::to_string(tally.id_));
+      }
+    } break;
 
     case TallyEstimator::COLLISION:
       if (i_nuclide != -1) {
@@ -541,14 +537,13 @@ apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
 
     default:
       fatal_error("Differential tallies are only implemented for analog and "
-        "collision estimators.");
+                  "collision estimators.");
     }
     break;
   }
 }
 
-void
-score_track_derivative(Particle& p, double distance)
+void score_track_derivative(Particle& p, double distance)
 {
   // A void material cannot be perturbed so it will not affect flux derivatives.
   if (p.material() == MATERIAL_VOID)
@@ -559,7 +554,8 @@ score_track_derivative(Particle& p, double distance)
   for (auto idx = 0; idx < model::tally_derivs.size(); idx++) {
     const auto& deriv = model::tally_derivs[idx];
     auto& flux_deriv = p.flux_derivs(idx);
-    if (deriv.diff_material != material.id_) continue;
+    if (deriv.diff_material != material.id_)
+      continue;
 
     switch (deriv.variable) {
 
@@ -587,8 +583,8 @@ score_track_derivative(Particle& p, double distance)
           double dsig_s, dsig_a, dsig_f;
           std::tie(dsig_s, dsig_a, dsig_f) =
             nuc.multipole_->evaluate_deriv(p.E(), p.sqrtkT());
-          flux_deriv -= distance * (dsig_s + dsig_a)
-            * material.atom_density_(i);
+          flux_deriv -=
+            distance * (dsig_s + dsig_a) * material.atom_density_(i);
         }
       }
       break;
@@ -608,7 +604,8 @@ void score_collision_derivative(Particle& p)
     const auto& deriv = model::tally_derivs[idx];
     auto& flux_deriv = p.flux_derivs(idx);
 
-    if (deriv.diff_material != material.id_) continue;
+    if (deriv.diff_material != material.id_)
+      continue;
 
     switch (deriv.variable) {
 
@@ -625,7 +622,8 @@ void score_collision_derivative(Particle& p)
       // Find the index in this material for the diff_nuclide.
       int i;
       for (i = 0; i < material.nuclide_.size(); ++i)
-        if (material.nuclide_[i] == deriv.diff_nuclide) break;
+        if (material.nuclide_[i] == deriv.diff_nuclide)
+          break;
       // Make sure we found the nuclide.
       if (material.nuclide_[i] != deriv.diff_nuclide) {
         fatal_error(fmt::format(
@@ -666,4 +664,4 @@ void score_collision_derivative(Particle& p)
   }
 }
 
-}// namespace openmc
+} // namespace openmc

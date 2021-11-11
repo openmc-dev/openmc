@@ -6,9 +6,9 @@
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
-#include <gsl/gsl>
-#include <hdf5.h>
 #include "xtensor/xtensor.hpp"
+#include <gsl/gsl-lite.hpp>
+#include <hdf5.h>
 
 #include <string>
 #include <unordered_map>
@@ -22,20 +22,22 @@ namespace openmc {
 
 class ElectronSubshell {
 public:
-  // Constructors
-  ElectronSubshell() { };
+  struct Transition {
+    int primary_subshell;   //!< Index in shells_ of originating subshell
+    int secondary_subshell; //!< Index in shells_ of Auger electron subshell
+    double energy;          //!< Energy of transition
+    double probability;     //!< Probability of transition between subshells
+  };
 
-  int index_subshell;  //!< index in SUBSHELLS
+  // Constructors
+  ElectronSubshell() {};
+
+  int index_subshell; //!< index in SUBSHELLS
   int threshold;
   double n_electrons;
   double binding_energy;
   xt::xtensor<double, 1> cross_section;
-
-  // Transition data
-  int n_transitions;
-  xt::xtensor<int, 2> transition_subshells;
-  xt::xtensor<double, 1> transition_energy;
-  xt::xtensor<double, 1> transition_probability;
+  vector<Transition> transitions;
 };
 
 class PhotonInteraction {
@@ -55,11 +57,11 @@ public:
   void pair_production(double alpha, double* E_electron, double* E_positron,
     double* mu_electron, double* mu_positron, uint64_t* seed) const;
 
-  void atomic_relaxation(const ElectronSubshell& shell, Particle& p) const;
+  void atomic_relaxation(int i_shell, Particle& p) const;
 
   // Data members
   std::string name_; //!< Name of element, e.g. "Zr"
-  int Z_; //!< Atomic number
+  int Z_;            //!< Atomic number
   gsl::index index_; //!< Index in global elements vector
 
   // Microscopic cross sections
@@ -79,8 +81,6 @@ public:
   Tabulated1D coherent_anomalous_imag_;
 
   // Photoionization and atomic relaxation data
-  std::unordered_map<int, int> shell_map_; //!< Given a shell designator, e.g. 3, this
-                                           //!< dictionary gives an index in shells_
   vector<ElectronSubshell> shells_;
 
   // Compton profile data
@@ -98,9 +98,21 @@ public:
   // Bremsstrahlung scaled DCS
   xt::xtensor<double, 2> dcs_;
 
+  // Constant data
+  static constexpr int MAX_STACK_SIZE =
+    7; //!< maximum possible size of atomic relaxation stack
 private:
-  void compton_doppler(double alpha, double mu, double* E_out, int* i_shell,
-                       uint64_t* seed) const;
+  void compton_doppler(
+    double alpha, double mu, double* E_out, int* i_shell, uint64_t* seed) const;
+
+  //! Calculate the maximum size of the vacancy stack in atomic relaxation
+  //
+  //! These helper functions use the subshell transition data to calculate the
+  //! maximum size the stack of unprocessed subshell vacancies can grow to for
+  //! the given element while simulating the cascade of photons and electrons
+  //! in atomic relaxation.
+  int calc_max_stack_size() const;
+  int calc_helper(std::unordered_map<int, int>& visited, int i_shell) const;
 };
 
 //==============================================================================
@@ -117,7 +129,8 @@ void free_memory_photon();
 
 namespace data {
 
-extern xt::xtensor<double, 1> compton_profile_pz; //! Compton profile momentum grid
+extern xt::xtensor<double, 1>
+  compton_profile_pz; //! Compton profile momentum grid
 
 //! Photon interaction data for each element
 extern std::unordered_map<std::string, int> element_map;

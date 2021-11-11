@@ -360,7 +360,7 @@ class CrossFilter:
             right_df = self.right_filter.get_pandas_dataframe(data_size, summary)
             left_df = left_df.astype(str)
             right_df = right_df.astype(str)
-            df = '(' + left_df + ' ' + self.binary_op + ' ' + right_df + ')'
+            df = f'({left_df} {self.binary_op} {right_df})'
 
         return df
 
@@ -405,7 +405,7 @@ class AggregateScore:
 
     def __repr__(self):
         string = ', '.join(map(str, self.scores))
-        string = '{}({})'.format(self.aggregate_op, string)
+        string = f'{self.aggregate_op}({string})'
         return string
 
     @property
@@ -476,7 +476,7 @@ class AggregateNuclide:
     def __repr__(self):
 
         # Append each nuclide in the aggregate to the string
-        string = '{}('.format(self.aggregate_op)
+        string = f'{self.aggregate_op}('
         names = [nuclide.name if isinstance(nuclide, openmc.Nuclide)
                  else str(nuclide) for nuclide in self.nuclides]
         string += ', '.join(map(str, names)) + ')'
@@ -543,8 +543,7 @@ class AggregateFilter:
 
     def __init__(self, aggregate_filter, bins=None, aggregate_op=None):
 
-        self._type = '{}({})'.format(aggregate_op,
-                                     aggregate_filter.short_name.lower())
+        self._type = f'{aggregate_op}({aggregate_filter.short_name.lower()})'
         self._bins = None
 
         self._aggregate_filter = None
@@ -608,8 +607,8 @@ class AggregateFilter:
     @type.setter
     def type(self, filter_type):
         if filter_type not in _FILTER_TYPES:
-            msg = 'Unable to set AggregateFilter type to "{}" since it ' \
-                  'is not one of the supported types'.format(filter_type)
+            msg = f'Unable to set AggregateFilter type to "{filter_type}" ' \
+                  'since it is not one of the supported types'
             raise ValueError(msg)
 
         self._type = filter_type
@@ -660,8 +659,8 @@ class AggregateFilter:
         """
 
         if filter_bin not in self.bins:
-            msg = 'Unable to get the bin index for AggregateFilter since ' \
-                  '"{}" is not one of the bins'.format(filter_bin)
+            msg = ('Unable to get the bin index for AggregateFilter since '
+                   f'"{filter_bin}" is not one of the bins')
             raise ValueError(msg)
         else:
             return self.bins.index(filter_bin)
@@ -757,8 +756,7 @@ class AggregateFilter:
         """
 
         if not self.can_merge(other):
-            msg = 'Unable to merge "{}" with "{}" filters'.format(
-                self.type, other.type)
+            msg = f'Unable to merge "{self.type}" with "{other.type}" filters'
             raise ValueError(msg)
 
         # Create deep copy of filter to return as merged filter

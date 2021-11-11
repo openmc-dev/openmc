@@ -294,7 +294,8 @@ class Nuclide:
             for mode_type, daughter, br in self.decay_modes:
                 mode_elem = ET.SubElement(elem, 'decay')
                 mode_elem.set('type', mode_type)
-                mode_elem.set('target', daughter or "Nothing")
+                if daughter:
+                    mode_elem.set('target', daughter)
                 mode_elem.set('branching_ratio', str(br))
 
         elem.set('reactions', str(len(self.reactions)))

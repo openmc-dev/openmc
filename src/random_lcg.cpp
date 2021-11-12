@@ -6,7 +6,7 @@
 namespace openmc {
 
 // Starting seed
-__managed__ int64_t master_seed {1};
+MANAGED int64_t master_seed {1};
 
 // LCG parameters
 constexpr uint64_t prn_mult   {6364136223846793005ULL};  // multiplication

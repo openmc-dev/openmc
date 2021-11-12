@@ -153,7 +153,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
   // Repeat sampling source location until a good site has been found
   bool found = false;
-  // int n_reject = 0;
+  int n_reject = 0;
   static int n_accept = 0;
   while (!found) {
     // Set particle type
@@ -161,14 +161,6 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     // Sample spatial distribution
     site.r = space_->sample(seed);
-
-    // TODO
-    // OK, so, openmc_find_cell is unbearably slow already since it allocates
-    // a full-on particle structure, which is crazy. If we had some approach
-    // where memory can be re-used, that would be great, but at the moment, the
-    // cost incurred by it in allocating memory under my CUDA setup is painful.
-    // I can fix this but the solution is a bit more work than I want to do on
-    // a saturday night...
 
     // Now search to see if location exists in geometry
 #ifndef __CUDACC__
@@ -204,6 +196,16 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       }
     }
 #else
+    // TODO
+    // OK, so, openmc_find_cell is unbearably slow already since it allocates
+    // a full-on particle structure, which is crazy. If we had some approach
+    // where memory can be re-used, that would be great, but at the moment, the
+    // cost incurred by it in allocating memory under my CUDA setup is painful.
+    // I can fix this but the solution is a bit more work than I want to do on
+    // a saturday night...
+
+    std::cout << "REMEMBER TO UPDATE THE PARTICLE SOURCE SAMPLING STUFF!!!"
+              << std::endl;
     found = true;
     auto space_box = dynamic_cast<SpatialBox*>(space_.get());
     if (space_box)

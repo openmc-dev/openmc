@@ -33,6 +33,7 @@ vector<int> progeny_per_particle;
 
 } // namespace simulation
 
+#ifdef __CUDACC__
 namespace gpu {
 __constant__ SourceSite* fission_bank_start;
 __constant__ SourceSite* source_bank;
@@ -40,6 +41,7 @@ __constant__ int* progeny_per_particle;
 __constant__ unsigned fission_bank_capacity;
 __managed__ unsigned fission_bank_index;
 } // namespace gpu
+#endif
 
 //==============================================================================
 // Non-member functions
@@ -59,7 +61,11 @@ void init_fission_bank(int64_t max)
   simulation::progeny_per_particle.resize(simulation::work_per_rank);
 
   auto tmp = simulation::progeny_per_particle.data();
+
+  // TODO make this a managed variable
+#ifdef __CUDACC__
   cudaMemcpyToSymbol(gpu::progeny_per_particle, &tmp, sizeof(int*));
+#endif
 }
 
 // Performs an O(n) sort on the fission bank, by leveraging

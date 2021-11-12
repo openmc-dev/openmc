@@ -1,5 +1,7 @@
 #pragma once
 
+namespace openmc {
+
 #ifdef __CUDACC__
 // This one will work on the GPU since we have the =default definition,
 // which will produce both host and device code in CUDA.
@@ -17,5 +19,8 @@ struct pair {
 };
 #else
 #include <utility>
-using pair = std::pair;
+template<typename First, typename Second>
+using pair = std::pair<First, Second>;
 #endif
+
+} // namespace openmc

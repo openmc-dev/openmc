@@ -2283,7 +2283,7 @@ void score_analog_tally_mg(Particle& p)
           auto j =
             model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
           if (j == C_NONE) continue;
-          atom_density = model::materials[p.material()]->atom_density_(j);
+          atom_density = model::materials[p.material()]->atom_density_[j];
         }
 
         score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,

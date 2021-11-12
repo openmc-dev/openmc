@@ -39,10 +39,12 @@ namespace model {
   vector<unique_ptr<Universe>> universes;
 } // namespace model
 
+#ifdef __CUDACC__
 namespace gpu {
 __constant__ unique_ptr<CSGCell>* cells;
 __constant__ unique_ptr<Universe>* universes;
 } // namespace gpu
+#endif
 
 //==============================================================================
 //! Convert region specification string to integer tokens.
@@ -294,7 +296,7 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained)
 // CSGCell implementation
 //==============================================================================
 
-__host__ CSGCell::CSGCell(pugi::xml_node cell_node)
+CSGCell::CSGCell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));

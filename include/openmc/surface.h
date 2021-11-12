@@ -18,10 +18,6 @@
 #include "openmc/vector.h"
 #include "openmc/string.h"
 
-#ifndef __CUDACC__
-#define max std::max
-#endif
-
 namespace openmc {
 
 //==============================================================================
@@ -35,10 +31,12 @@ namespace model {
   extern vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
+#ifdef __CUDACC__
 namespace gpu {
 // Pointer to start of vector of surface pointers on device
 extern __constant__ unique_ptr<Surface>* surfaces;
 } // namespace gpu
+#endif
 
 //==============================================================================
 //! Coordinates for an axis-aligned cuboid bounding a geometric object.
@@ -73,24 +71,24 @@ struct BoundingBox
   // intersect operator
   HD inline BoundingBox& operator&=(const BoundingBox& other)
   {
-    xmin = max(xmin, other.xmin);
-    xmax = min(xmax, other.xmax);
-    ymin = max(ymin, other.ymin);
-    ymax = min(ymax, other.ymax);
-    zmin = max(zmin, other.zmin);
-    zmax = min(zmax, other.zmax);
+    xmin = std::max(xmin, other.xmin);
+    xmax = std::min(xmax, other.xmax);
+    ymin = std::max(ymin, other.ymin);
+    ymax = std::min(ymax, other.ymax);
+    zmin = std::max(zmin, other.zmin);
+    zmax = std::min(zmax, other.zmax);
     return *this;
   }
 
   // union operator
   HD inline BoundingBox& operator|=(const BoundingBox& other)
   {
-    xmin = min(xmin, other.xmin);
-    xmax = max(xmax, other.xmax);
-    ymin = min(ymin, other.ymin);
-    ymax = max(ymax, other.ymax);
-    zmin = min(zmin, other.zmin);
-    zmax = max(zmax, other.zmax);
+    xmin = std::min(xmin, other.xmin);
+    xmax = std::max(xmax, other.xmax);
+    ymin = std::min(ymin, other.ymin);
+    ymax = std::max(ymax, other.ymax);
+    zmin = std::min(zmin, other.zmin);
+    zmax = std::max(zmax, other.zmax);
     return *this;
   }
 };

@@ -512,5 +512,20 @@ using replicated_vector = std::vector<T>;
 
 #endif
 
+// This is the same between CPU and GPU. Allows read from anything that looks
+// like an xt::view.
+template<typename Vector, typename View>
+HOST void fill_vec_from_view(Vector& vec, View const& view)
+{
+  if (view.shape().size() != 1)
+    throw std::invalid_argument {
+      "operator= template on openmc::vector requires rank 1 argument."};
+
+  unsigned new_size = view.shape()[0];
+  vec.resize(new_size);
+  for (unsigned i = 0; i < new_size; ++i)
+    vec[i] = view(i);
+}
+
 } // namespace openmc
 #endif // OPENMC_VECTOR_H

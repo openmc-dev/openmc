@@ -106,15 +106,15 @@ ContinuousTabular::ContinuousTabular(hid_t group)
     d.n_discrete = n_discrete[i];
 
     // Copy data
-    d.e_out = xt::view(eout, 0, xt::range(j, j+n));
-    d.p = xt::view(eout, 1, xt::range(j, j+n));
+    fill_vec_from_view(d.e_out, xt::view(eout, 0, xt::range(j, j + n)));
+    fill_vec_from_view(d.p, xt::view(eout, 1, xt::range(j, j + n)));
 
     // To get answers that match ACE data, for now we still use the tabulated
     // CDF values that were passed through to the HDF5 library. At a later
     // time, we can remove the CDF values from the HDF5 library and
     // reconstruct them using the PDF
     if (true) {
-      d.c = xt::view(eout, 2, xt::range(j, j+n));
+      fill_vec_from_view(d.c, xt::view(eout, 2, xt::range(j, j + n)));
     } else {
       // Calculate cumulative distribution function -- discrete portion
       for (int k = 0; k < d.n_discrete; ++k) {
@@ -140,8 +140,11 @@ ContinuousTabular::ContinuousTabular(hid_t group)
       }
 
       // Normalize density and distribution functions
-      d.p /= d.c[n - 1];
-      d.c /= d.c[n - 1];
+      auto normalization = d.c[n - 1];
+      for (decltype(d.p)::size_type i = 0; i < d.p.size(); ++i) {
+        d.p[i] /= normalization;
+        d.c[i] /= normalization;
+      }
     }
 
     distribution_.push_back(std::move(d));

@@ -373,6 +373,8 @@ void read_dataset(hid_t obj_id, const char* name, xt::xtensor<T, N>& arr,
   arr = xarr;
 }
 
+// TODO make sure this actually works!!
+#ifdef __CUDACC__
 template<typename T, std::size_t N>
 void read_dataset(
   hid_t obj_id, const char* name, tensor<T, N>& arr, bool indep = false)
@@ -397,6 +399,7 @@ void read_dataset(
   read_dataset_lowlevel(
     dset, nullptr, H5TypeMap<T>::type_id, H5S_ALL, indep, arr.data());
 }
+#endif
 
 // overload for Position
 inline void

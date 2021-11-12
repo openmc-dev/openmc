@@ -363,7 +363,6 @@ list(APPEND libopenmc_SOURCES
   src/secondary_uncorrelated.cpp
   src/settings.cpp
   src/simulation.cpp
-  src/soa_particle.cpp
   src/source.cpp
   src/state_point.cpp
   src/string_utils.cpp
@@ -407,8 +406,12 @@ list(APPEND libopenmc_SOURCES
 
 # If we're compiling for Nvidia GPUs, ensure that nvcc compiles all .cpp files
 if (cuda)
-  list(APPEND libopenmc_SOURCES src/cuda/calculate_xs.cu
-      src/cuda/advance.cu src/cuda/refill.cu)
+  list(APPEND libopenmc_SOURCES
+      src/cuda/calculate_xs.cu
+      src/cuda/advance.cu
+      src/cuda/refill.cu
+      src/soa_particle.cpp
+      )
   set_source_files_properties(${libopenmc_SOURCES} PROPERTIES LANGUAGE CUDA)
   set_source_files_properties(src/main.cpp PROPERTIES LANGUAGE CUDA)
 endif()
@@ -486,12 +489,6 @@ if(libmesh)
   target_link_libraries(libopenmc PkgConfig::LIBMESH)
 endif()
 
-if(cuda)
-  target_compile_definitions(libopenmc PRIVATE HD=__host__\ __device__)
-else()
-  target_compile_definitions(libopenmc PRIVATE HD=)
-endif()
-
 #===============================================================================
 # openmc executable
 #===============================================================================
@@ -499,6 +496,22 @@ add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags} ${cuflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
+
+if(cuda)
+  target_compile_definitions(libopenmc PRIVATE HD=__host__\ __device__)
+  target_compile_definitions(libopenmc PRIVATE MANAGED=__managed__)
+  target_compile_definitions(libopenmc PRIVATE HOST=__managed__)
+  target_compile_definitions(openmc PRIVATE HD=__host__\ __device__)
+  target_compile_definitions(openmc PRIVATE MANAGED=__managed__)
+  target_compile_definitions(openmc PRIVATE HOST=__managed__)
+else()
+  target_compile_definitions(libopenmc PRIVATE HD=)
+  target_compile_definitions(libopenmc PRIVATE MANAGED=)
+  target_compile_definitions(libopenmc PRIVATE HOST=)
+  target_compile_definitions(openmc PRIVATE HD=)
+  target_compile_definitions(openmc PRIVATE MANAGED=)
+  target_compile_definitions(openmc PRIVATE HOST=)
+endif()
 
 # Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
 # be done is using the cxx_std_14 compiler feature.

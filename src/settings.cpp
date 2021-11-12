@@ -89,7 +89,7 @@ unsigned max_particles_in_flight {100000};
 unsigned event_queue_refill_interval {100};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
-__managed__ array<double, 4> energy_cutoff;
+MANAGED array<double, 4> energy_cutoff;
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -120,6 +120,7 @@ int debugger_attach_delay {0};
 
 } // namespace settings
 
+#ifdef __CUDACC__
 namespace gpu {
 __constant__ double weight_cutoff;
 __constant__ double weight_survive;
@@ -135,6 +136,7 @@ __constant__ bool urr_ptables_on;
 
 unsigned thread_block_size {BLOCKSIZE};
 } // namespace gpu
+#endif
 
 //==============================================================================
 // Functions

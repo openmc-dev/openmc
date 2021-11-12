@@ -37,7 +37,7 @@ extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 extern "C" int total_gen;        //!< total number of generations simulated
-__managed__ extern double total_weight; //!< Total source weight in a batch
+MANAGED extern double total_weight; //!< Total source weight in a batch
 extern unsigned work_per_rank; //!< number of particles per MPI rank
 
 extern const RegularMesh* entropy_mesh;
@@ -48,6 +48,7 @@ extern vector<int64_t> work_index;
 
 } // namespace simulation
 
+#ifdef __CUDACC__
 namespace gpu {
 __constant__ extern double keff;
 __constant__ extern int total_gen;
@@ -55,6 +56,7 @@ __constant__ extern int current_batch;
 __constant__ extern int current_gen;
 __constant__ extern int64_t local_work_index;
 }
+#endif
 
 //==============================================================================
 // Functions

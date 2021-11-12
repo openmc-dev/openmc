@@ -21,13 +21,12 @@
 #include "openmc/memory.h"
 
 #ifdef __CUDACC__
-#define HOSTDEVICE __host__ __device__
-#define HOST __host__
+#define ALLOCATOR UnifiedAllocator
 #else
-#define HOSTDEVICE
-#define HOST
+#define ALLOCATOR std::allocator
 #endif
 
+#ifdef __CUDACC__
 namespace openmc {
 
 namespace impl {
@@ -70,7 +69,7 @@ template<int Idx, int Rank>
 struct bracket_indx {
   using tuple_type =
     typename expander<size_type, std::make_index_sequence<Rank>>::type;
-  HOSTDEVICE static size_type calc(
+  HD static size_type calc(
     size_type coeff, tuple_type indices, const size_type* size)
   {
     return coeff * std::get<Idx>(indices) +
@@ -81,7 +80,7 @@ template<int Rank>
 struct bracket_indx<0, Rank> { // Specialize on base case to not recurse
   using tuple_type =
     typename expander<size_type, std::make_index_sequence<Rank>>::type;
-  HOSTDEVICE static size_type calc(
+  HD static size_type calc(
     size_type coeff, tuple_type indices, const size_type* size)
   {
     return coeff * std::get<0>(indices);
@@ -89,7 +88,7 @@ struct bracket_indx<0, Rank> { // Specialize on base case to not recurse
 };
 } // namespace impl
 
-template<typename T, int Rank, typename Alloc = UnifiedAllocator<T>>
+template<typename T, int Rank, typename Alloc = ALLOCATOR<T>>
 class tensor {
 public:
   using value_type = T;
@@ -112,7 +111,7 @@ private:
   Alloc alloc_;
 
 public:
-  HOSTDEVICE size_type num_elements() const
+  HD size_type num_elements() const
   {
     size_type result = 1;
 #pragma unroll
@@ -221,7 +220,7 @@ public:
   // The move constructor may need to run on the device in the case of
   // construction of polymorphic objects living on GPU that contain tensors.
 #pragma hd_warning_disable
-  HOSTDEVICE tensor(tensor&& move_from)
+  HD tensor(tensor&& move_from)
     : begin_(std::move(move_from.begin_)), size_(std::move(move_from.size_)),
       capacity_(std::move(move_from.capacity_)),
       alloc_(std::move(move_from.alloc_))
@@ -271,29 +270,29 @@ public:
       size_[i] = new_size[i];
   }
 
-  HOSTDEVICE bool empty() const { return num_elements() == 0; }
-  HOSTDEVICE pointer data() const { return begin_; }
-  HOSTDEVICE pointer data() { return begin_; }
-  HOSTDEVICE size_type size(int i) const { return size_[i]; }
+  HD bool empty() const { return num_elements() == 0; }
+  HD pointer data() const { return begin_; }
+  HD pointer data() { return begin_; }
+  HD size_type size(int i) const { return size_[i]; }
   template<int Idx>
-  HOSTDEVICE size_type size() const
+  HD size_type size() const
   {
     return size_[Idx];
   }
-  HOSTDEVICE std::array<size_type, Rank> shape() const
+  HD std::array<size_type, Rank> shape() const
   {
     std::array<size_type, Rank> result;
     for (int i = 0; i < Rank; ++i)
       result[i] = size_[i];
     return result;
   }
-  HOSTDEVICE size_type capacity() const { return capacity_; }
-  HOSTDEVICE iterator begin() { return begin_; }
-  HOSTDEVICE iterator end() { return begin_ + num_elements(); }
-  HOSTDEVICE iterator begin() const { return begin_; }
-  HOSTDEVICE iterator end() const { return begin_ + num_elements(); }
-  HOSTDEVICE const_iterator cbegin() const { return begin_; }
-  HOSTDEVICE const_iterator cend() const { return begin_ + num_elements(); }
+  HD size_type capacity() const { return capacity_; }
+  HD iterator begin() { return begin_; }
+  HD iterator end() { return begin_ + num_elements(); }
+  HD iterator begin() const { return begin_; }
+  HD iterator end() const { return begin_ + num_elements(); }
+  HD const_iterator cbegin() const { return begin_; }
+  HD const_iterator cend() const { return begin_ + num_elements(); }
   HOST reverse_iterator rbegin() const
   {
     return std::make_reverse_iterator(begin_ + num_elements());
@@ -310,10 +309,10 @@ public:
   {
     return std::make_reverse_iterator(begin_);
   }
-  HOSTDEVICE const_reference back() const { return begin_[num_elements() - 1]; }
-  HOSTDEVICE const_reference front() const { return begin_[0]; }
-  HOSTDEVICE reference back() { return begin_[num_elements() - 1]; }
-  HOSTDEVICE reference front() { return begin_[0]; }
+  HD const_reference back() const { return begin_[num_elements() - 1]; }
+  HD const_reference front() const { return begin_[0]; }
+  HD reference back() { return begin_[num_elements() - 1]; }
+  HD reference front() { return begin_[0]; }
 
   // Enable host-device synchronization functions if replicated memory is being
   // used
@@ -331,14 +330,14 @@ public:
   // }
 
   template<typename... Args>
-  HOSTDEVICE T& operator()(Args... args)
+  HD T& operator()(Args... args)
   {
     constexpr size_type one = 1;
     return begin_[impl::bracket_indx<Rank - 1, Rank>::calc(
       one, std::forward_as_tuple(std::forward<Args>(args)...), size_)];
   }
   template<typename... Args>
-  HOSTDEVICE T& operator()(Args... args) const
+  HD T& operator()(Args... args) const
   {
     constexpr size_type one = 1;
     return begin_[impl::bracket_indx<Rank - 1, Rank>::calc(
@@ -346,7 +345,7 @@ public:
   }
 
 private:
-  HOSTDEVICE size_type total_size(const size_type* values)
+  HD size_type total_size(const size_type* values)
   {
     size_type result = 1;
     for (int i = 0; i < Rank; ++i) {
@@ -373,7 +372,7 @@ private:
 };
 
 template<typename T, int Rank, typename Alloc>
-HOSTDEVICE bool operator==(
+HD bool operator==(
   const tensor<T, Rank, Alloc>& first, const tensor<T, Rank, Alloc>& second)
 {
   if (first.size() != second.size())
@@ -408,4 +407,11 @@ std::ostream& operator<<(std::ostream& os, tensor<T, 2, Alloc> const& output)
 }
 
 } // namespace openmc
+#else
+#include <xtensor/xtensor.hpp>
+namespace openmc {
+template<typename T, int i>
+using tensor = xt::xtensor<T, i>;
+}
+#endif
 #endif // TENSOR_H

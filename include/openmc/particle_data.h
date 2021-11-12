@@ -418,7 +418,8 @@ public:
   const int64_t& current_work() const { return current_work_; }
   double& flux_derivs(int i) { return flux_derivs_[i]; }
   const double& flux_derivs(int i) const { return flux_derivs_[i]; }
-  decltype(filter_matches_)& filter_matches() { return filter_matches_; }
+  // decltype(filter_matches_)& filter_matches() { return filter_matches_; }
+  auto* filter_matches() { return filter_matches_.data(); }
   FilterMatch& filter_matches(int i) { return filter_matches_[i]; }
   decltype(tracks_)& tracks() { return tracks_; }
   decltype(nu_bank_)& nu_bank() { return nu_bank_; }
@@ -487,6 +488,35 @@ public:
     for (double& d : flux_derivs_) {
       d = 0;
     }
+  }
+
+  // These methods regarding the secondary bank are all trivial
+  // here, but are more nontrivial in the SOA version.
+  void secondary_bank_emplace_back() { secondary_bank_.emplace_back(); }
+  SourceSite& secondary_bank_back() { return secondary_bank_.back(); }
+  bool secondary_bank_empty() { return secondary_bank_.empty(); }
+  void secondary_bank_pop_back() { return secondary_bank_.pop_back(); }
+  auto secondary_bank_end() { return secondary_bank_.end(); }
+
+  void nu_bank_clear() { nu_bank_.clear(); }
+
+  void secondary_bank_push_back(SourceSite const& site)
+  {
+    secondary_bank_.push_back(site);
+  }
+
+  typename decltype(secondary_bank_)::size_type secondary_bank_size()
+  {
+    return secondary_bank_.size();
+  }
+
+  NuBank& nu_bank_back() { return nu_bank_.back(); }
+  void nu_bank_emplace_back() { nu_bank_.emplace_back(); }
+
+  void reset_filter_matches()
+  {
+    for (auto& match : filter_matches_)
+      match.bins_present_ = false;
   }
 };
 

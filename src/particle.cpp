@@ -114,6 +114,21 @@ void Particle::event_calculate_xs()
   event_nuclide() = NUCLIDE_NONE;
   event_mt() = REACTION_NONE;
 
+  // If the cell hasn't been determined based on the particle's location,
+  // initiate a search for the current cell. This generally happens at the
+  // beginning of the history and again for any secondary particles
+  if (coord(n_coord() - 1).cell == C_NONE) {
+    if (!exhaustive_find_cell(*this)) {
+      mark_as_lost(
+        "Could not find the cell containing particle " + std::to_string(id()));
+      return;
+    }
+
+    // Set birth cell attribute
+    if (cell_born() == C_NONE)
+      cell_born() = coord(n_coord() - 1).cell;
+  }
+
   // Write particle track.
   if (write_track())
     write_particle_track(*this);

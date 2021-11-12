@@ -26,9 +26,11 @@ extern vector<int64_t> overlap_check_count;
 
 } // namespace model
 
+#ifdef __CUDACC__
 namespace gpu {
 extern __constant__ int root_universe;
 }
+#endif
 
 //==============================================================================
 //! Check two distances by coincidence tolerance

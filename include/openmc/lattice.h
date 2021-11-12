@@ -38,9 +38,12 @@ namespace model {
   extern vector<unique_ptr<Lattice>> lattices;
 } // namespace model
 
+// TODO put all these pointer variables into their own struct or something
+#ifdef __CUDACC__
 namespace gpu {
 extern __constant__ unique_ptr<Lattice>* lattices;
 }
+#endif
 
 //==============================================================================
 //! \class Lattice
@@ -65,7 +68,7 @@ public:
   Lattice(Lattice const&) = delete;
   Lattice(Lattice&&) = default;
 
-  virtual __host__ ~Lattice() {}
+  virtual HOST ~Lattice() {}
 
   HD virtual int32_t const& operator[](array<int, 3> const& i_xyz) = 0;
 

@@ -78,7 +78,7 @@ extern unsigned
                                //!< refill of event queues with source sites
 
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons
-__managed__ extern array<double, 4>
+MANAGED extern array<double, 4>
   energy_cutoff; //!< Energy cutoff in [eV] for each particle type
 extern int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;                //!< Maximum Legendre order for multigroup data
@@ -114,6 +114,7 @@ extern int debugger_attach_delay; //!< Pause this many seconds before tracking
 
 } // namespace settings
 
+#ifdef __CUDACC__
 namespace gpu {
 __constant__ extern double weight_cutoff;
 __constant__ extern double weight_survive;
@@ -131,6 +132,7 @@ __constant__ extern bool urr_ptables_on;
 #define BLOCKSIZE_S "256" // for error message
 extern unsigned thread_block_size;
 } // namespace gpu
+#endif
 
 //==============================================================================
 // Functions

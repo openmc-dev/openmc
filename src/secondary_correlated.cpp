@@ -75,9 +75,9 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
     d.n_discrete = n_discrete[i];
 
     // Copy data
-    d.e_out = xt::view(eout, 0, xt::range(j, j + n));
-    d.p = xt::view(eout, 1, xt::range(j, j + n));
-    d.c = xt::view(eout, 2, xt::range(j, j + n));
+    fill_vec_from_view(d.e_out, xt::view(eout, 0, xt::range(j, j + n)));
+    fill_vec_from_view(d.p, xt::view(eout, 1, xt::range(j, j + n)));
+    fill_vec_from_view(d.c, xt::view(eout, 2, xt::range(j, j + n)));
 
     // To get answers that match ACE data, for now we still use the tabulated
     // CDF values that were passed through to the HDF5 library. At a later
@@ -108,8 +108,10 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
       }
 
       // Normalize density and distribution functions
-      d.p /= d.c[n - 1];
-      d.c /= d.c[n - 1];
+      for (decltype(d.p)::size_type i = 0; i < d.p.size(); ++i) {
+        d.p[i] /= d.c[n - 1];
+        d.c[i] /= d.c[n - 1];
+      }
     }
 
     for (j = 0; j < n; ++j) {

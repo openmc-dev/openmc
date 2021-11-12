@@ -61,10 +61,10 @@ namespace simulation {
   int32_t n_realizations {0};
 }
 
-__managed__ double global_tally_absorption;
-__managed__ double global_tally_collision;
-__managed__ double global_tally_tracklength;
-__managed__ double global_tally_leakage;
+MANAGED double global_tally_absorption;
+MANAGED double global_tally_collision;
+MANAGED double global_tally_tracklength;
+MANAGED double global_tally_leakage;
 
 //==============================================================================
 // Tally object implementation

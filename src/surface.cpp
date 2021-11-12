@@ -29,10 +29,12 @@ namespace model {
   vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
+#ifdef __CUDACC__
 namespace gpu {
 // Pointer to start of vector of surface pointers on device
 __constant__ unique_ptr<Surface>* surfaces;
 } // namespace gpu
+#endif
 
 //==============================================================================
 // Helper functions for reading the "coeffs" node of an XML surface element

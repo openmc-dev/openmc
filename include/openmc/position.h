@@ -24,8 +24,6 @@ struct Position {
   Position(const vector<float>& xyz)
     : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
   Position(const array<double, 3>& xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
-  Position(const std::array<double, 3>& xyz)
-    : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
 
   // Unary operators
   HD Position& operator+=(Position);

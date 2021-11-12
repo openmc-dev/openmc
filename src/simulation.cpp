@@ -16,7 +16,6 @@
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
-#include "openmc/soa_particle.h"
 #include "openmc/source.h"
 #include "openmc/state_point.h"
 #include "openmc/tallies/derivative.h"
@@ -28,6 +27,7 @@
 
 #ifdef __CUDACC__
 #include "openmc/cuda/calculate_xs.h"
+#include "openmc/soa_particle.h"
 #endif
 
 #ifdef _OPENMP
@@ -291,7 +291,7 @@ bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
-__managed__ double total_weight;
+MANAGED double total_weight;
 unsigned work_per_rank;
 
 const RegularMesh* entropy_mesh {nullptr};
@@ -302,6 +302,7 @@ vector<int64_t> work_index;
 
 } // namespace simulation
 
+#ifdef __CUDACC__
 namespace gpu {
 __constant__ double keff;
 __constant__ int64_t local_work_index;
@@ -309,6 +310,7 @@ __constant__ int total_gen;
 __constant__ int current_batch;
 __constant__ int current_gen;
 }
+#endif
 
 //==============================================================================
 // Non-member functions
@@ -367,8 +369,12 @@ void initialize_batch()
 
   // Add user tallies to active tallies list
   setup_active_tallies();
+
+  // TODO probably just make this a managed variable
+#ifdef __CUDACC__
   cudaMemcpyToSymbol(
     gpu::current_batch, &simulation::current_batch, sizeof(int));
+#endif
 }
 
 void finalize_batch()
@@ -442,7 +448,11 @@ void initialize_generation()
     simulation::keff_generation = simulation::global_tallies(
       GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
   }
+
+  // TODO make this managed or something
+#ifdef __CUDACC__
   cudaMemcpyToSymbol(gpu::current_gen, &simulation::current_gen, sizeof(int));
+#endif
 }
 
 void finalize_generation()

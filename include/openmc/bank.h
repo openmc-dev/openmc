@@ -27,6 +27,7 @@ extern vector<int> progeny_per_particle;
 
 } // namespace simulation
 
+#ifdef __CUDACC__
 namespace gpu {
 __constant__ extern SourceSite* fission_bank_start;
 __constant__ extern SourceSite* source_bank;
@@ -34,6 +35,7 @@ __constant__ extern unsigned fission_bank_capacity;
 __constant__ extern int* progeny_per_particle;
 __managed__ extern unsigned fission_bank_index;
 } // namespace gpu
+#endif
 
 //==============================================================================
 // Non-member functions

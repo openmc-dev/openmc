@@ -61,10 +61,12 @@ namespace model {
   extern vector<unique_ptr<Universe>> universes;
 } // namespace model
 
+#ifdef __CUDACC__
 namespace gpu {
 extern __constant__ unique_ptr<CSGCell>* cells;
 extern __constant__ unique_ptr<Universe>* universes;
 } // namespace gpu
+#endif
 
 //==============================================================================
 //! A geometry primitive that fills all space and contains cells.
@@ -96,7 +98,7 @@ public:
   // Constructors, destructors, factory functions
 
   explicit Cell(pugi::xml_node cell_node);
-  __host__ Cell() {}
+  Cell() = default;
 
   //----------------------------------------------------------------------------
   // Methods
@@ -227,7 +229,7 @@ class CSGCell : public Cell
 {
 public:
   explicit CSGCell(pugi::xml_node cell_node);
-  __host__ CSGCell() {}
+  CSGCell() = default;
 
   bool HD contains(Position r, Direction u, int32_t on_surface) const;
 

@@ -34,9 +34,11 @@ vector<int64_t> overlap_check_count;
 
 } // namespace model
 
+#ifdef __CUDACC__
 namespace gpu {
 __constant__ int root_universe;
 }
+#endif
 
 //==============================================================================
 // Non-member functions

@@ -19,9 +19,11 @@ namespace openmc {
 //==============================================================================
 // Global variables
 //==============================================================================
+#ifdef __CUDACC__
 namespace gpu {
 __constant__ unique_ptr<Lattice>* lattices;
 }
+#endif
 
 namespace model {
   std::unordered_map<int32_t, int32_t> lattice_map;

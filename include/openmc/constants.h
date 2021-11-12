@@ -242,15 +242,6 @@ enum ReactionType {
 
 constexpr array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
 
-enum class URRTableParam {
-  CUM_PROB,
-  TOTAL,
-  ELASTIC,
-  FISSION,
-  N_GAMMA,
-  HEATING
-};
-
 // Maximum number of partial fission reactions
 constexpr int PARTIAL_FISSION_MAX {4};
 

@@ -294,7 +294,7 @@ void read_input_xml()
   read_cross_sections_xml();
   read_materials_xml();
   read_geometry_xml();
-  read_weight_window_xml();
+  read_variance_reduction_xml();
 
   // Final geometry setup and assign temperatures
   finalize_geometry();

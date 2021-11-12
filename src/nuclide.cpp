@@ -835,8 +835,7 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   double r = future_prn(static_cast<int64_t>(index_), *p.current_seed());
   p.stream() = STREAM_TRACKING;
 
-  // Warning: this assumes row-major order of cdf_values_. Also, should it
-  // really be +1?
+  // Warning: this assumes row-major order of cdf_values_
   int i_low = upper_bound_index(&urr.cdf_values_(i_energy, 0),
                 &urr.cdf_values_(i_energy, 0) + urr.n_cdf(), r) +
               1;

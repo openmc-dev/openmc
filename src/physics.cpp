@@ -1212,7 +1212,7 @@ void split_particle(Particle& p)
   // get the paramters 
   auto params = settings::ww_settings->get_params(p);
   double weight = p.wgt();
-
+  
   // first check to see if particle should be killed for
   // weight cutoff
   if ( p.wgt() < params.weight_cutoff ) {

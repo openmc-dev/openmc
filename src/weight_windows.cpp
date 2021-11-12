@@ -15,14 +15,14 @@ void read_weight_window_xml() {
   using namespace pugi;
 
   // Check if weight_window.xml exists                                                         
-  std::string filename = path_input + "weight_windows.xml";
+  std::string filename = path_input + "variance_reduction.xml";
   
   // Parse settings.xml file                                                              
   xml_document doc;                                                                       
   if (file_exists(filename)) {
     auto result = doc.load_file(filename.c_str());                                          
     if (!result) {                                                                          
-      fatal_error("Error processing weight_windows.xml file.");                                   
+      fatal_error("Error processing variance_reduction.xml file.");                                   
     }
     // Get root element                                                                     
     xml_node root = doc.document_element();
@@ -88,6 +88,10 @@ WeightWindow::WeightWindow(pugi::xml_node node) : WeightWindow()
     openmc::ParticleType particle_type = openmc::str_to_particle_type(particle_type_str);
 
     weight_params[particle_type] = read_particle_settings(particle);
+    if ( particle_type_str == "neutron" )
+      this->n_ww = true;
+    if ( particle_type_str == "photon" )
+      this->p_ww = true;
     
   } else {
     fatal_error("Weight window file is missing a particle section");   
@@ -204,11 +208,18 @@ ParticleWeightParams WeightWindow::get_params(Particle& p) const
   }
 	
   // indices in weight window vector
+  // todo access vector of meshes
   int indices = mesh_->get_bin(pos);
 
   // no ww settings found - return in
   if ( indices < 0 ) return ParticleWeightParams();
 
+  // find the min and max energy values
+  const auto [min_e,max_e] = std::minmax_element(begin(energy_bounds),end(energy_bounds));
+
+  // check to make sure energy is in range
+  if ( E < min_e || E > max_e ) return ParticleWeightParams();
+  
   // get the mesh bin in energy group
   int energy_bin = lower_bound_index(ww_settings.energy_bounds.begin(), 
                      ww_settings.energy_bounds.end(), E);

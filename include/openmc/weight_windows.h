@@ -14,7 +14,7 @@ void read_variance_reduction_xml();
 class WeightWindowDomain;
 class WeightWindowParameters;
 
-namespace weight_window {
+namespace variance_reduction {
 
 extern std::unordered_map<int32_t, int32_t> ww_domain_map;
 extern openmc::vector<unique_ptr<WeightWindowDomain>> ww_domains;
@@ -22,7 +22,7 @@ extern openmc::vector<unique_ptr<WeightWindowDomain>> ww_domains;
 extern std::unordered_map<int32_t, int32_t> ww_map;
 extern openmc::vector<unique_ptr<WeightWindowParameters>> ww_params;
 
-} // namespace weight_window
+} // namespace variance_reduction
 
 class WeightWindowParameters {
 public:

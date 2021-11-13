@@ -8,7 +8,7 @@
 
 namespace openmc {
 
-namespace weight_window {
+namespace variance_reduction {
 
 std::unordered_map<int32_t, int32_t> ww_domain_map;
 openmc::vector<unique_ptr<WeightWindowDomain>> ww_domains;
@@ -16,18 +16,15 @@ openmc::vector<unique_ptr<WeightWindowDomain>> ww_domains;
 std::unordered_map<int32_t, int32_t> ww_map;
 openmc::vector<unique_ptr<WeightWindowParameters>> ww_params;
 
-} // namespace weight_window
+} // namespace variance_reduction
 
 // read the weight window file
 void read_variance_reduction_xml() {
-  using namespace weight_window;
-  using namespace settings;
-  using namespace pugi;
 
-  std::string filename = path_input + "variance_reduction.xml";
+  std::string filename = settings::path_input + "variance_reduction.xml";
 
   // Parse variance_reduction.xml file
-  xml_document doc;
+  pugi::xml_document doc;
 
   // try the read vr file
   if (file_exists(filename)) {
@@ -37,7 +34,7 @@ void read_variance_reduction_xml() {
       fatal_error("Error processing variance_reduction.xml file.");
     }
     // Get root element
-    xml_node root = doc.document_element();
+    pugi::xml_node root = doc.document_element();
 
     // Display output message
     write_message("Reading Variance Reduction XML file...", 5);
@@ -47,11 +44,11 @@ void read_variance_reduction_xml() {
       fatal_error("variance_reduction element is missing from the "
                   "variance_reduction.xml file");
     }
-    xml_node variance_reduction = root.child("variance_reduction");
+    pugi::xml_node vr_node = root.child("variance_reduction");
 
     // check for weight window section
-    if (check_for_node(variance_reduction, "weight_windows")) {
-      xml_node weight_windows = variance_reduction.child("weight_windows");
+    if (check_for_node(vr_node, "weight_windows")) {
+      pugi::xml_node weight_windows = vr_node.child("weight_windows");
       read_weight_windows(weight_windows);
     } else {
       // Display output message
@@ -72,10 +69,10 @@ void read_weight_windows(pugi::xml_node node)
   // make sure we have at least one settings section
   if (check_for_node(node, "settings")) {
     for (auto settings : node.children("settings")) {
-      weight_window::ww_params.emplace_back(
+      variance_reduction::ww_params.emplace_back(
         std::make_unique<WeightWindowParameters>(settings));
-      weight_window::ww_map[weight_window::ww_params.back()->id()] =
-        weight_window::ww_params.size() - 1;
+      variance_reduction::ww_map[variance_reduction::ww_params.back()->id()] =
+        variance_reduction::ww_params.size() - 1;
     }
   } else {
     warning("No settings element provided in the variance_reduction.xml file.");
@@ -84,24 +81,26 @@ void read_weight_windows(pugi::xml_node node)
   // make sure we have at least one domain entry
   if (check_for_node(node, "domain")) {
     for (auto domain : node.children("domain")) {
-      weight_window::ww_domains.emplace_back(
+      variance_reduction::ww_domains.emplace_back(
         std::make_unique<WeightWindowDomain>(domain));
-      weight_window::ww_domain_map[weight_window::ww_domains.back()->id()] =
-        weight_window::ww_domains.size() - 1;
+      variance_reduction::ww_domain_map[variance_reduction::ww_domains.back()
+                                          ->id()] =
+        variance_reduction::ww_domains.size() - 1;
     }
   } else {
     warning("No domain element provided in the variance_reduction.xml file.");
   }
 
   // check domains for consistency
-  for (const auto& domain : weight_window::ww_domains) {
+  for (const auto& domain : variance_reduction::ww_domains) {
     // num spatial*energy bins must match num weight bins
     int num_spatial_bins = model::meshes[domain->ww_mesh_idx()]->n_bins();
-    int num_energy_bins =
-      weight_window::ww_params[domain->ww_param_idx()]->energy_bounds().size() -
-      1;
+    int num_energy_bins = variance_reduction::ww_params[domain->ww_param_idx()]
+                            ->energy_bounds()
+                            .size() -
+                          1;
     int num_weight_bins =
-      weight_window::ww_params[domain->ww_param_idx()]->lower_ww().size();
+      variance_reduction::ww_params[domain->ww_param_idx()]->lower_ww().size();
 
     if ( num_weight_bins != num_spatial_bins*num_energy_bins ) {
       auto err_msg =
@@ -119,15 +118,14 @@ void read_weight_windows(pugi::xml_node node)
 // WeightWindowMesh implementation
 //==============================================================================
 
-using namespace weight_window;
-
 WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
 {
 
   if (check_for_node(node, "id")) {
     int id_ = std::stoi(get_node_value(node, "id"));
 
-    if (weight_window::ww_map.find(id_) != weight_window::ww_map.end()) {
+    if (variance_reduction::ww_map.find(id_) !=
+        variance_reduction::ww_map.end()) {
       auto msg = fmt::format(
         "Two or more weight window parameters use the same unique ID: {}", id_);
       fatal_error(msg);
@@ -205,8 +203,8 @@ WeightWindowDomain::WeightWindowDomain(pugi::xml_node node)
     id_ = std::stoi(get_node_value(node, "id"));
 
     // Check to make sure this ID hasn't been used
-    if (weight_window::ww_domain_map.find(id_) !=
-        weight_window::ww_domain_map.end()) {
+    if (variance_reduction::ww_domain_map.find(id_) !=
+        variance_reduction::ww_domain_map.end()) {
       auto msg = fmt::format(
         "Two or more weight window domains use the same unique ID: {}", id_);
       fatal_error(msg);
@@ -231,7 +229,7 @@ WeightWindowDomain::WeightWindowDomain(pugi::xml_node node)
 
   // set the indices to save time later
   ww_mesh_idx_ = model::mesh_map[mesh_id];
-  ww_param_idx_ = weight_window::ww_map[settings_id];
+  ww_param_idx_ = variance_reduction::ww_map[settings_id];
 }
 
 //! Get weight windows parameters given particle - essentially
@@ -243,7 +241,7 @@ ParticleWeightParams WeightWindowDomain::get_params(
 
   // check for particle flavour
   ParticleType type = p.type();
-  if (ww_params[ww_param_idx()]->particle_type() != type) {
+  if (variance_reduction::ww_params[ww_param_idx()]->particle_type() != type) {
     return ParticleWeightParams();
   }
 
@@ -259,14 +257,14 @@ ParticleWeightParams WeightWindowDomain::get_params(
   double E = p.E();
 
   const vector<double> energy_bounds =
-    ww_params[ww_param_idx()]->energy_bounds();
+    variance_reduction::ww_params[ww_param_idx()]->energy_bounds();
 
   // find the min and max energy values
-  const auto [min_e, max_e] =
+  auto e_minmax =
     std::minmax_element(energy_bounds.begin(), energy_bounds.end());
 
   // check to make sure energy is in range
-  if (E < *min_e || E > *max_e)
+  if (E < *(e_minmax.first) || E > *(e_minmax.second))
     return ParticleWeightParams();
 
   // get the mesh bin in energy group
@@ -278,7 +276,8 @@ ParticleWeightParams WeightWindowDomain::get_params(
   indices += energy_bin * model::meshes[ww_mesh_idx()]->n_bins();
 
   in_domain = true;
-  return ParticleWeightParams(ww_params[ww_param_idx()], indices);
+  return ParticleWeightParams(
+    variance_reduction::ww_params[ww_param_idx()], indices);
 }
 
 } // namespace openmc

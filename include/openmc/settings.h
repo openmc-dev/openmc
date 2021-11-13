@@ -61,9 +61,6 @@ extern bool write_all_tracks;      //!< write track files for every particle?
 extern bool write_initial_source;  //!< write out initial source file?
 extern bool weightwindow_on;       //!< use weight window or not
 
-// weight window   
-extern std::shared_ptr<weight_window::WeightWindow>  ww_settings;  //!< weight window settings
-  
 // Paths to various files
 extern std::string path_cross_sections; //!< path to cross_sections.xml
 extern std::string path_input;  //!< directory where main .xml files resides

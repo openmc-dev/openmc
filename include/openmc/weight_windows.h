@@ -8,36 +8,82 @@
 
 namespace openmc {
 
-void read_variance_reduction_xml(); //!< read the weight window file
+void read_weight_windows(pugi::xml_node node);
+void read_variance_reduction_xml();
+
+class WeightWindowDomain;
+class WeightWindowParameters;
 
 namespace weight_window {
 
-// domain map provides
 extern std::unordered_map<int32_t, int32_t> ww_domain_map;
-extern openmc::vector<unique_ptr<>> ww_domains;
+extern openmc::vector<unique_ptr<WeightWindowDomain>> ww_domains;
 
-// ww_map provides
 extern std::unordered_map<int32_t, int32_t> ww_map;
 extern openmc::vector<unique_ptr<WeightWindowParameters>> ww_params;
-  
-// struct to pass specific location data 
+
+} // namespace weight_window
+
+class WeightWindowParameters {
+public:
+  // Constructors - default
+  WeightWindowParameters();
+
+  WeightWindowParameters(pugi::xml_node node);
+
+  // Accessors
+  int32_t id() { return id_; }
+
+  const ParticleType& particle_type() const { return particle_type_; }
+  ParticleType& particle_type() { return particle_type_; }
+
+  const std::vector<double>& energy_bounds() const { return energy_bounds_; }
+  std::vector<double>& energy_bounds() { return energy_bounds_; }
+
+  const std::vector<double>& lower_ww() const { return lower_ww_; }
+  std::vector<double>& lower_ww() { return lower_ww_; }
+
+  const std::vector<double>& upper_ww() const { return upper_ww_; }
+  std::vector<double>& upper_ww() { return upper_ww_; }
+
+  int max_split() const { return max_split_; }
+  int& max_split() { return max_split_; }
+
+  double survival_ratio() const { return survival_ratio_; }
+  double& survival_ratio() { return survival_ratio_; }
+
+  double weight_cutoff() const { return weight_cutoff_; }
+  double& weight_cutoff() { return weight_cutoff_; }
+
+private:
+  int32_t id_;
+  ParticleType particle_type_;
+  openmc::vector<double> energy_bounds_;
+  openmc::vector<double> lower_ww_;
+  openmc::vector<double> upper_ww_;
+  double survival_ratio_;
+  int max_split_;
+  double weight_cutoff_;
+};
+
+// struct to pass specific location data
 struct ParticleWeightParams {
   // 0,1,0.5,1,1e-12
   ParticleWeightParams() : lower_weight(0), upper_weight(1), survival_weight(0.5), max_split(1), weight_cutoff(WEIGHT_CUTOFF) {}
   // constructor
-  ParticleWeightParams(const unique_ptr<WeightWindowParameters> params,
-		       const int indices) {
-    
+  ParticleWeightParams(
+    const unique_ptr<WeightWindowParameters>& params, const int indices)
+  {
     // set the weight for the current location
-    lower_weight = params._lower_ww[indices];  
+    lower_weight = params->lower_ww()[indices];
     // set the upper weight bound
-    upper_weight = ww_settings._upper_ww[indices];
+    upper_weight = params->upper_ww()[indices];
     // set the survival weight
-    survival_weight = lower_weight*params._survival_ratio;
+    survival_weight = lower_weight * params->survival_ratio();
     // set the max split
-    max_split = params._max_split;
+    max_split = params->max_split();
     // set the weight cutoff
-    weight_cutoff = params._weight_cutoff;  
+    weight_cutoff = params->weight_cutoff();
   }
 
   double lower_weight;
@@ -47,25 +93,7 @@ struct ParticleWeightParams {
   double weight_cutoff;
 };
 
-class WeightWindowParameters {
-public:
-  // Constructors - default
-  WeightWindowParameters();
 
-  WeightWindowParameters(pugi::xml_node node);
-
-private:
-  
-  openmc::ParticleType _particle_type; //!< 
-  double _survival_ratio;
-  int _max_split;
-  double _weight_cutoff;
-  std::vector<double> _energy_bounds;
-  std::vector<double> _lower_ww;
-  std::vector<double> _upper_ww;
-  int32_t _id;
-}
-  
 class WeightWindowDomain {
 public:
   // Constructrors - default
@@ -73,18 +101,20 @@ public:
 
   // Constructors
   WeightWindowDomain(pugi::xml_node node);
-  
-  // Constructors
-  WeightWindowDomain(int32_t mesh_idx, int32_t param_idx);
+
+  ParticleWeightParams get_params(Particle& p, bool& in_domain) const;
+
+  int32_t id() const { return id_; }
+
+  int32_t ww_mesh_idx() const { return ww_mesh_idx_; }
+
+  int32_t ww_param_idx() const { return ww_param_idx_; }
 
 private:
-  int32_t _ww_domain_id; //!< the id of the weight window domain
-  int32_t _ww_mesh_idx;  //!< the idx of the mesh this domain uses
-  int32_t _ww_param_idx; //!< the idx of the ww params this domain uses
-  
-}
-  
-// Weight Window class
-} // namespace weight_window
+  int32_t id_;           //!< the id of the weight window domain
+  int32_t ww_mesh_idx_;  //!< the idx of the mesh this domain uses
+  int32_t ww_param_idx_; //!< the idx of the ww params this domain uses
+};
+
 } // namespace openmc
 #endif //OPENMC_WEIGHT_WINDOWS_H

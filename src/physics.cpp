@@ -23,6 +23,7 @@
 #include "openmc/string_utils.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
+#include "openmc/weight_windows.h"
 
 #include <fmt/core.h>
 
@@ -44,14 +45,14 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::weightwindow_on) { 
-      split_particle(p); 
+    if (settings::weightwindow_on) {
+      split_particle(p);
     }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::weightwindow_on) { 
-      split_particle(p); 
+    if (settings::weightwindow_on) {
+      split_particle(p);
     }
     break;
   case ParticleType::electron:
@@ -1203,7 +1204,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
 }
 
 // split a particle on the basis of the statistical weight
-// of the current location	
+// of the current location
 void split_particle(Particle& p)
 {
   // skip dead or no energy
@@ -1211,17 +1212,18 @@ void split_particle(Particle& p)
 
   bool in_domain;
   // todo this is a linear search - should do something more clever
-  for ( auto domain : ww_domains ) {
-    ParticleWeightParams params = domain->get_params(p,in_domain);
+  ParticleWeightParams params;
+  for (const auto& domain : weight_window::ww_domains) {
+    auto params = domain->get_params(p, in_domain);
     if ( in_domain ) break;
   }
 
-  // we are not in the domain do nothing
+  // particle is not in any of the ww domains, do nothing
   if (!in_domain) return;
-  
-  // get the paramters 
+
+  // get the paramters
   double weight = p.wgt();
-  
+
   // first check to see if particle should be killed for
   // weight cutoff
   if ( p.wgt() < params.weight_cutoff ) {
@@ -1230,36 +1232,35 @@ void split_particle(Particle& p)
     p.wgt_last() = p.wgt();
     return;
   }
-  
-  // if particles weight is above the weight window 
+
+  // if particles weight is above the weight window
   // split until they are within the window
   if (weight > params.upper_weight) {
-    double n_split = weight/params.upper_weight;  
+    double n_split = weight / params.upper_weight;
     n_split = std::min(std::ceil(n_split), double(params.max_split));
-        
-    // possibility of some round off 
-    for (int l = 0; l < int(n_split) - 1; l++)  { 
-      p.create_secondary(weight/n_split, p.u(), p.E(), p.type()); 
+
+    // possibility of some round off
+    for (int l = 0; l < int(n_split) - 1; l++) {
+      p.create_secondary(weight / n_split, p.u(), p.E(), p.type());
     }
     // todo maybe weight should be weight - sum of child weight
-    p.wgt() = weight/n_split; 
+    p.wgt() = weight / n_split;
     p.wgt_last() = p.wgt();
-   
-    // if the particle weight is below the window  
+
+    // if the particle weight is below the window
     // roulette until the weight is high enough
-  } else if (weight <= params.lower_weight) {  
+  } else if (weight <= params.lower_weight) {
     double n_split = std::max(1./params.max_split, weight/params.survival_weight);
 
     if (prn(p.current_seed()) <= n_split)  {
       p.wgt() /= n_split;
-    } else {       
+    } else {
       p.alive() = false;
-      p.wgt() = 0.0;    
+      p.wgt() = 0.0;
     }
     p.wgt_last() = p.wgt();
   // else particle is in the window
   }
 }
 
-	
 } // namespace openmc

@@ -1462,7 +1462,6 @@ class Settings:
         self._create_max_particles_in_flight_subelement(root_element)
         self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
-        self._weightwindowmesh.to_xml_element(root_element)
         self._create_write_initial_source_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
@@ -1537,7 +1536,6 @@ class Settings:
         settings._max_particles_in_flight_from_xml_element(root)
         settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
-        settings._weightwindowmesh.from_xml_element(root)
         settings._write_initial_source_from_xml_element(root)
 
         # TODO: Get volume calculations

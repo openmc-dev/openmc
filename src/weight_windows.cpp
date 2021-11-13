@@ -67,20 +67,21 @@ void read_weight_windows(pugi::xml_node node)
   read_meshes(node);
 
   // make sure we have at least one settings section
-  if (check_for_node(node, "settings")) {
-    for (auto settings : node.children("settings")) {
+  if (check_for_node(node, "weight_window_settings")) {
+    for (auto settings : node.children("weight_window_settings")) {
       variance_reduction::ww_params.emplace_back(
         std::make_unique<WeightWindowParameters>(settings));
       variance_reduction::ww_map[variance_reduction::ww_params.back()->id()] =
         variance_reduction::ww_params.size() - 1;
     }
   } else {
-    warning("No settings element provided in the variance_reduction.xml file.");
+    warning("No weight_window_settings element provided in the "
+            "variance_reduction.xml file.");
   }
 
   // make sure we have at least one domain entry
-  if (check_for_node(node, "domain")) {
-    for (auto domain : node.children("domain")) {
+  if (check_for_node(node, "weight_window_domain")) {
+    for (auto domain : node.children("weight_window_domain")) {
       variance_reduction::ww_domains.emplace_back(
         std::make_unique<WeightWindowDomain>(domain));
       variance_reduction::ww_domain_map[variance_reduction::ww_domains.back()
@@ -88,7 +89,8 @@ void read_weight_windows(pugi::xml_node node)
         variance_reduction::ww_domains.size() - 1;
     }
   } else {
-    warning("No domain element provided in the variance_reduction.xml file.");
+    warning("No weight_window_domain element provided in the "
+            "variance_reduction.xml file.");
   }
 
   // check domains for consistency
@@ -120,7 +122,6 @@ void read_weight_windows(pugi::xml_node node)
 
 WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
 {
-
   if (check_for_node(node, "id")) {
     int id_ = std::stoi(get_node_value(node, "id"));
 
@@ -133,8 +134,9 @@ WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
   }
 
   // get the particle type
-  if (check_for_node(node,"particle")) {
-    std::string particle_type_str = std::string(get_node_value(node, "type"));
+  if (check_for_node(node, "particle_type")) {
+    std::string particle_type_str =
+      std::string(get_node_value(node, "particle_type"));
     particle_type() = openmc::str_to_particle_type(particle_type_str);
   } else {
     fatal_error(
@@ -142,8 +144,8 @@ WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
   }
 
   // get the survival value - optional
-  if (check_for_node(node, "survival")) {
-    survival_ratio() = std::stod(get_node_value(node, "survival"));
+  if (check_for_node(node, "survival_ratio")) {
+    survival_ratio() = std::stod(get_node_value(node, "survival_ratio"));
     if (survival_ratio() <= 1)
       fatal_error("Survival to lower weight window ratio must bigger than 1"
                   "and less than the upper to lower weight window ratio.");
@@ -166,39 +168,38 @@ WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
   }
 
   // energy bounds
-  if (!check_for_node(node, "energy")) {
-    fatal_error("<energy> section is missing from the "
-                "weight_windows.xml file.");
-  } else {
+  if (check_for_node(node, "energy_bins")) {
     energy_bounds() = get_node_array<double>(node, "energy");
+  } else {
+    fatal_error("<energy_bins> is missing from the "
+                "weight_windows.xml file.");
   }
 
   // read the lower weight bounds
-  if (!check_for_node(node, "lower_ww")) {
-    fatal_error("<lower_ww> section is missing from the "
-                "variance_reduction.xml file.");
+  if (check_for_node(node, "lower_ww_bounds")) {
+    lower_ww() = get_node_array<double>(node, "lower_ww_bounds");
   } else {
-    lower_ww() = get_node_array<double>(node, "lower_ww");
+    fatal_error("<lower_ww_bounds> section is missing from the "
+                "variance_reduction.xml file.");
   }
 
   // read the upper weight bounds
-  if (!check_for_node(node, "upper_ww")) {
-    fatal_error("<upper_ww> section is missing from the "
-                "variance_reduction.xml file.");
+  if (check_for_node(node, "upper_ww_bounds")) {
+    upper_ww() = get_node_array<double>(node, "upper_ww_bounds");
   } else {
-    upper_ww() = get_node_array<double>(node, "upper_ww");
+    fatal_error("<upper_ww_bounds> node is missing from the "
+                "variance_reduction.xml file.");
   }
 
-  // make sure that the upper and lower bounds have the right size
+  // make sure that the upper and lower bounds have the same size
   if (upper_ww().size() != lower_ww().size()) {
-    fatal_error("The upper and lower weight window lengths do not match");
+    fatal_error("The upper and lower weight window lengths do not match.");
   }
 }
 
 // read the specific weight window settings
 WeightWindowDomain::WeightWindowDomain(pugi::xml_node node)
 {
-
   if (check_for_node(node, "id")) {
     id_ = std::stoi(get_node_value(node, "id"));
 

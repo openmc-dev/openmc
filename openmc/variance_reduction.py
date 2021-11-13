@@ -70,7 +70,7 @@ class WeightWindowSettings(IDManagerMixin):
     used_ids = set()
 
     def __init__(self,
-                particle_types,
+                particle_type,
                 energy_bins,
                 lower_ww_bounds,
                 upper_bound_ratio=None,
@@ -82,10 +82,10 @@ class WeightWindowSettings(IDManagerMixin):
 
         self.id = id
 
-        if particle_types:
-            self.particle_types = particle_types
+        if particle_type:
+            self.particle_type = particle_type
         else:
-            self.particle_types = ['neutron']
+            self.particle_type = 'neutron'
 
         self.energy_bins = energy_bins
         self.lower_ww_bounds = lower_ww_bounds
@@ -122,14 +122,13 @@ class WeightWindowSettings(IDManagerMixin):
         self.weight_cutoff = weight_cutoff
 
     @property
-    def particle_types(self):
-        return self._particle_types
+    def particle_type(self):
+        return self._particle_type
 
-    @particle_types.setter
-    def particle_types(self, types):
-        for pt in types:
-            cv.check_value('Particle type', pt, list(_PARTICLES))
-        self._particle_types = types
+    @particle_type.setter
+    def particle_type(self, pt):
+        cv.check_value('Particle type', pt, list(_PARTICLES))
+        self._particle_type = pt
 
     @property
     def energy_bins(self):
@@ -214,8 +213,8 @@ class WeightWindowSettings(IDManagerMixin):
 
         element.set('id', str(self._id))
 
-        subelement = ET.SubElement(element, 'particle_types')
-        subelement.text = ' '.join(str(p) for p in self.particle_types)
+        subelement = ET.SubElement(element, 'particle_type')
+        subelement.text = self.particle_type
         clean_indentation(subelement, level=2)
 
         subelement = ET.SubElement(element, 'energy_bins')

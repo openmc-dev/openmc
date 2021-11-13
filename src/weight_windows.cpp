@@ -63,9 +63,9 @@ void read_weight_windows(pugi::xml_node node)
   if (check_for_node(node, "settings")) {
     for (auto settings : node.children("settings")) {
       // do i need to check for id?
-      int id = get_node_value(node, "id"));
+      int id = get_node_value(node, "id");
 
-      WWParams paramters = read_settings(settings);
+      std::shared_ptr<WeightWindowParameters> paramters = read_settings(settings);
       ww_map[id] = ww_params.size() - 1; // assign the id of the settings object
       ww_params.emplace_back(ww_params); // put the window in the map
     }

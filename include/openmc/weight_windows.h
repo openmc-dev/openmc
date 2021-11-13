@@ -84,20 +84,6 @@ private:
   
 }
   
-// Weight Window class 
-class WeightWindow {
-public:
-  // Constructors - default
-  WeightWindow();
-
-  // Constructors
-  WeightWindow(pugi::xml_node node);
-
-  // Get weight windows parameters given particle
-  ParticleWeightParams get_params(Particle& p) const;
-    
-};
-  
 // Weight Window class
 } // namespace weight_window
 } // namespace openmc

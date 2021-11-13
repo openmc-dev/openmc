@@ -71,9 +71,6 @@ bool urr_ptables_on {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
 bool weightwindow_on {false};
-
-// weight windows
-std::shared_ptr<weight_window::WeightWindow> ww_settings;
   
 std::string path_cross_sections;
 std::string path_input;

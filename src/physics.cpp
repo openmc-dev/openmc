@@ -44,13 +44,13 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::ww_settings->n_ww) { 
+    if (settings::weightwindow_on) { 
       split_particle(p); 
     }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::ww_settings->p_ww) { 
+    if (settings::weightwindow_on) { 
       split_particle(p); 
     }
     break;
@@ -1208,9 +1208,18 @@ void split_particle(Particle& p)
 {
   // skip dead or no energy
   if (p.E() <= 0 || !p.alive()) return;
+
+  bool in_domain;
+  // todo this is a linear search - should do something more clever
+  for ( auto domain : ww_domains ) {
+    ParticleWeightParams params = domain->get_params(p,in_domain);
+    if ( in_domain ) break;
+  }
+
+  // we are not in the domain do nothing
+  if (!in_domain) return;
   
   // get the paramters 
-  auto params = settings::ww_settings->get_params(p);
   double weight = p.wgt();
   
   // first check to see if particle should be killed for

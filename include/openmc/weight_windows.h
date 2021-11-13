@@ -102,18 +102,18 @@ public:
   // Constructors
   WeightWindowDomain(pugi::xml_node node);
 
-  ParticleWeightParams get_params(Particle& p, bool& in_domain) const;
+  bool find_params(Particle& p, ParticleWeightParams& params) const;
 
   int32_t id() const { return id_; }
 
-  int32_t ww_mesh_idx() const { return ww_mesh_idx_; }
+  int32_t mesh_idx() const { return mesh_idx_; }
 
-  int32_t ww_param_idx() const { return ww_param_idx_; }
+  int32_t param_idx() const { return param_idx_; }
 
 private:
-  int32_t id_;           //!< the id of the weight window domain
-  int32_t ww_mesh_idx_;  //!< the idx of the mesh this domain uses
-  int32_t ww_param_idx_; //!< the idx of the ww params this domain uses
+  int32_t id_;        //!< the id of the weight window domain
+  int32_t mesh_idx_;  //!< the idx of the mesh this domain uses
+  int32_t param_idx_; //!< the idx of the ww params this domain uses
 };
 
 } // namespace openmc

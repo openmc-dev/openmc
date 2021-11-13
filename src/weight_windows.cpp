@@ -94,13 +94,13 @@ void read_weight_windows(pugi::xml_node node)
   // check domains for consistency
   for (const auto& domain : variance_reduction::ww_domains) {
     // num spatial*energy bins must match num weight bins
-    int num_spatial_bins = model::meshes[domain->ww_mesh_idx()]->n_bins();
-    int num_energy_bins = variance_reduction::ww_params[domain->ww_param_idx()]
+    int num_spatial_bins = model::meshes[domain->mesh_idx()]->n_bins();
+    int num_energy_bins = variance_reduction::ww_params[domain->param_idx()]
                             ->energy_bounds()
                             .size() -
                           1;
     int num_weight_bins =
-      variance_reduction::ww_params[domain->ww_param_idx()]->lower_ww().size();
+      variance_reduction::ww_params[domain->param_idx()]->lower_ww().size();
 
     if ( num_weight_bins != num_spatial_bins*num_energy_bins ) {
       auto err_msg =
@@ -228,36 +228,34 @@ WeightWindowDomain::WeightWindowDomain(pugi::xml_node node)
   }
 
   // set the indices to save time later
-  ww_mesh_idx_ = model::mesh_map[mesh_id];
-  ww_param_idx_ = variance_reduction::ww_map[settings_id];
+  mesh_idx_ = model::mesh_map[mesh_id];
+  param_idx_ = variance_reduction::ww_map[settings_id];
 }
 
 //! Get weight windows parameters given particle - essentially
 // given a location tell the particle the right bounds
-ParticleWeightParams WeightWindowDomain::get_params(
-  Particle& p, bool& in_domain) const
+bool WeightWindowDomain::find_params(
+  Particle& p, ParticleWeightParams& params) const
 {
-  in_domain = false;
 
   // check for particle flavour
   ParticleType type = p.type();
-  if (variance_reduction::ww_params[ww_param_idx()]->particle_type() != type) {
-    return ParticleWeightParams();
+  if (variance_reduction::ww_params[param_idx()]->particle_type() != type) {
+    return false;
   }
 
-  // Particle's position
-  Position pos  = p.r();
   // todo access vector of meshes
-  int indices = model::meshes[ww_mesh_idx()]->get_bin(pos);
+  int indices = model::meshes[mesh_idx()]->get_bin(p.r());
 
   // no ww settings found - return in
-  if ( indices < 0 ) return ParticleWeightParams();
+  if (indices < 0)
+    return false;
 
   // particle energy
   double E = p.E();
 
   const vector<double> energy_bounds =
-    variance_reduction::ww_params[ww_param_idx()]->energy_bounds();
+    variance_reduction::ww_params[param_idx()]->energy_bounds();
 
   // find the min and max energy values
   auto e_minmax =
@@ -265,7 +263,7 @@ ParticleWeightParams WeightWindowDomain::get_params(
 
   // check to make sure energy is in range
   if (E < *(e_minmax.first) || E > *(e_minmax.second))
-    return ParticleWeightParams();
+    return false;
 
   // get the mesh bin in energy group
   int energy_bin =
@@ -273,11 +271,12 @@ ParticleWeightParams WeightWindowDomain::get_params(
 
   // indices now points to the correct weight given
   // an energy
-  indices += energy_bin * model::meshes[ww_mesh_idx()]->n_bins();
+  indices += energy_bin * model::meshes[mesh_idx()]->n_bins();
 
-  in_domain = true;
-  return ParticleWeightParams(
-    variance_reduction::ww_params[ww_param_idx()], indices);
+  params =
+    ParticleWeightParams(variance_reduction::ww_params[param_idx()], indices);
+
+  return true;
 }
 
 } // namespace openmc

@@ -1210,12 +1210,13 @@ void split_particle(Particle& p)
   // skip dead or no energy
   if (p.E() <= 0 || !p.alive()) return;
 
-  bool in_domain;
+  bool in_domain = false;
   // todo this is a linear search - should do something more clever
   ParticleWeightParams params;
   for (const auto& domain : variance_reduction::ww_domains) {
-    auto params = domain->get_params(p, in_domain);
-    if ( in_domain ) break;
+    auto in_domain = domain->find_params(p, params);
+    if (in_domain)
+      break;
   }
 
   // particle is not in any of the ww domains, do nothing

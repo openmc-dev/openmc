@@ -67,8 +67,8 @@ void read_weight_windows(pugi::xml_node node)
   read_meshes(node);
 
   // make sure we have at least one settings section
-  if (check_for_node(node, "weight_window_settings")) {
-    for (auto settings : node.children("weight_window_settings")) {
+  if (check_for_node(node, "settings")) {
+    for (auto settings : node.children("settings")) {
       variance_reduction::ww_params.emplace_back(
         std::make_unique<WeightWindowParameters>(settings));
       variance_reduction::ww_map[variance_reduction::ww_params.back()->id()] =
@@ -80,8 +80,8 @@ void read_weight_windows(pugi::xml_node node)
   }
 
   // make sure we have at least one domain entry
-  if (check_for_node(node, "weight_window_domain")) {
-    for (auto domain : node.children("weight_window_domain")) {
+  if (check_for_node(node, "domain")) {
+    for (auto domain : node.children("domain")) {
       variance_reduction::ww_domains.emplace_back(
         std::make_unique<WeightWindowDomain>(domain));
       variance_reduction::ww_domain_map[variance_reduction::ww_domains.back()

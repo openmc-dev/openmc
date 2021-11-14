@@ -209,7 +209,7 @@ class WeightWindowSettings(IDManagerMixin):
         element : xml.etree.ElementTree.Element
             XML element containing the weight window information
         """
-        element = ET.Element('weight_window_settings')
+        element = ET.Element('settings')
 
         element.set('id', str(self._id))
 
@@ -297,7 +297,7 @@ class WeightWindowDomain(IDManagerMixin):
         self._settings = settings
 
     def to_xml_element(self):
-        element = ET.Element("weight_window_domain")
+        element = ET.Element("domain")
         element.set('id', str(self.id))
 
         mesh_element = ET.SubElement(element, 'mesh')
@@ -349,18 +349,23 @@ class VarianceReduction():
             # Create XML representation
             root_element = ET.Element("variance_reduction")
 
-            for domain in self.weight_window_domains:
-                domain_element = domain.to_xml_element()
-                clean_indentation(domain_element, level=1)
-                root_element.append(domain_element)
+            if self.weight_window_domains:
+                ww_element = ET.SubElement(root_element, 'weight_windows')
 
-                mesh_element = domain.mesh.to_xml_element()
-                clean_indentation(mesh_element, level=1)
-                root_element.append(mesh_element)
+                for domain in self.weight_window_domains:
+                    domain_element = domain.to_xml_element()
+                    clean_indentation(domain_element, level=1)
+                    ww_element.append(domain_element)
 
-                settings_element = domain.settings.to_xml_element()
-                clean_indentation(settings_element, level=1)
-                root_element.append(settings_element)
+                    mesh_element = domain.mesh.to_xml_element()
+                    clean_indentation(mesh_element, level=1)
+                    ww_element.append(mesh_element)
+
+                    settings_element = domain.settings.to_xml_element()
+                    clean_indentation(settings_element, level=1)
+                    ww_element.append(settings_element)
+
+                clean_indentation(ww_element)
 
             clean_indentation(root_element)
 

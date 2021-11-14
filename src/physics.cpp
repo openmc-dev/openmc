@@ -1214,7 +1214,7 @@ void split_particle(Particle& p)
   // todo this is a linear search - should do something more clever
   ParticleWeightParams params;
   for (const auto& domain : variance_reduction::ww_domains) {
-    auto in_domain = domain->find_params(p, params);
+    in_domain = domain->find_params(p, params);
     if (in_domain)
       break;
   }

@@ -39,16 +39,9 @@ void read_variance_reduction_xml() {
     // Display output message
     write_message("Reading Variance Reduction XML file...", 5);
 
-    // check for variance_reduction
-    if (!check_for_node(root, "variance_reduction")) {
-      fatal_error("variance_reduction element is missing from the "
-                  "variance_reduction.xml file");
-    }
-    pugi::xml_node vr_node = root.child("variance_reduction");
-
     // check for weight window section
-    if (check_for_node(vr_node, "weight_windows")) {
-      pugi::xml_node weight_windows = vr_node.child("weight_windows");
+    if (check_for_node(root, "weight_windows")) {
+      pugi::xml_node weight_windows = root.child("weight_windows");
       read_weight_windows(weight_windows);
     } else {
       // Display output message
@@ -134,9 +127,9 @@ WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
   }
 
   // get the particle type
-  if (check_for_node(node, "particle_type")) {
+  if (check_for_node(node, "particle")) {
     std::string particle_type_str =
-      std::string(get_node_value(node, "particle_type"));
+      std::string(get_node_value(node, "particle"));
     particle_type() = openmc::str_to_particle_type(particle_type_str);
   } else {
     fatal_error(
@@ -169,7 +162,7 @@ WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
 
   // energy bounds
   if (check_for_node(node, "energy_bins")) {
-    energy_bounds() = get_node_array<double>(node, "energy");
+    energy_bounds() = get_node_array<double>(node, "energy_bins");
   } else {
     fatal_error("<energy_bins> is missing from the "
                 "weight_windows.xml file.");

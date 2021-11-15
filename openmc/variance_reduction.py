@@ -123,6 +123,18 @@ class WeightWindowSettings(IDManagerMixin):
         self.max_split = max_split
         self.weight_cutoff = weight_cutoff
 
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tParticle Type', '=\t', self._particle_type)
+        string += '{0: <16}{1}{2}\n'.format('\tEnergy Bins', '=\t', self._energy_bins)
+        string += '{0: <16}{1}{2}\n'.format('\tLower WW Bounds', '=\t', self._lower_ww_bounds)
+        string += '{0: <16}{1}{2}\n'.format('\tUpper WW Bounds', '=\t', self._upper_ww_bounds)
+        string += '{0: <16}{1}{2}\n'.format('\tSurvival Ratio', '=\t', self._survival_ratio)
+        string += '{0: <16}{1}{2}\n'.format('\tMax Split', '=\t', self._max_split)
+        string += '{0: <16}{1}{2}\n'.format('\tWeight Cutoff', '=\t', self._weight_cutoff)
+        return string
+
     @property
     def particle_type(self):
         return self._particle_type
@@ -140,7 +152,7 @@ class WeightWindowSettings(IDManagerMixin):
     def energy_bins(self, bins):
         cv.check_type('Energy bins', bins, Iterable)
         cv.check_iterable_type('Energy value', bins, Real)
-        self._energy_bins = bins
+        self._energy_bins = np.array(bins)
 
     @property
     def lower_ww_bounds(self):
@@ -150,7 +162,7 @@ class WeightWindowSettings(IDManagerMixin):
     def lower_ww_bounds(self, bounds):
         cv.check_type('Lower WW bounds', bounds, Iterable)
         cv.check_iterable_type('Weight window bound', bounds, Real)
-        self._lower_ww_bounds = bounds
+        self._lower_ww_bounds = np.array(bounds)
 
     @property
     def upper_ww_bounds(self):
@@ -160,7 +172,7 @@ class WeightWindowSettings(IDManagerMixin):
     def upper_ww_bounds(self, bounds):
         cv.check_type('Upper WW bounds', bounds, Iterable)
         cv.check_iterable_type('Weight window bound', bounds, Real)
-        self._upper_ww_bounds = bounds
+        self._upper_ww_bounds = np.array(bounds)
 
     @property
     def survival_ratio(self):
@@ -326,6 +338,13 @@ class WeightWindowDomain(IDManagerMixin):
         self.mesh = mesh
         self.settings = settings
 
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tSettings:', '\n\t', self.settings)
+        string += '{0: <16}{1}{2}\n'.format('\tMesh:', '\n\t', self.mesh)
+        return string
+
     @property
     def mesh(self):
         return self._mesh
@@ -362,6 +381,13 @@ class VarianceReduction():
     """
     def __init__(self):
         self._weight_window_domains = []
+
+    def __repr__(self):
+        string = type(self).__name__ +  '\n\n'
+        string = '{0: <16}\n'.format('\tWeight Window Domains:')
+        for wwd in self._weight_window_domains:
+            string += '{}\n'.format(wwd)
+        return string
 
     @property
     def weight_window_domains(self):

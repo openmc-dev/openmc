@@ -31,6 +31,9 @@ public:
 
   WeightWindowParameters(pugi::xml_node node);
 
+  // Methods
+  void to_statepoint(hid_t group) const;
+
   // Accessors
   int32_t id() { return id_; }
 
@@ -102,7 +105,10 @@ public:
   // Constructors
   WeightWindowDomain(pugi::xml_node node);
 
+  // Methods
   bool find_params(Particle& p, ParticleWeightParams& params) const;
+
+  void to_statepoint(hid_t group) const;
 
   int32_t id() const { return id_; }
 

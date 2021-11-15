@@ -1,9 +1,10 @@
+#include "openmc/weight_windows.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/search.h"
-#include "openmc/weight_windows.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -36,6 +37,9 @@ void read_variance_reduction_xml() {
     // Get root element
     pugi::xml_node root = doc.document_element();
 
+    // read all the meshes in the VR file
+    read_meshes(root);
+
     // Display output message
     write_message("Reading variance reduction XML file...", 5);
 
@@ -54,10 +58,6 @@ void read_variance_reduction_xml() {
 // read the weight window section of a vr file
 void read_weight_windows(pugi::xml_node node)
 {
-  using namespace pugi;
-
-  // read all the meshes in the VR file
-  read_meshes(node);
 
   // make sure we have at least one settings section
   if (check_for_node(node, "settings")) {
@@ -106,7 +106,7 @@ void read_weight_windows(pugi::xml_node node)
       fatal_error(err_msg);
     }
   }
-  settings::weightwindow_on = true;
+  settings::weight_windows_present = true;
 }
 
 //==============================================================================
@@ -116,7 +116,7 @@ void read_weight_windows(pugi::xml_node node)
 WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
 {
   if (check_for_node(node, "id")) {
-    int id_ = std::stoi(get_node_value(node, "id"));
+    id_ = std::stoi(get_node_value(node, "id"));
 
     if (variance_reduction::ww_map.find(id_) !=
         variance_reduction::ww_map.end()) {
@@ -188,6 +188,23 @@ WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
   if (upper_ww().size() != lower_ww().size()) {
     fatal_error("The upper and lower weight window lengths do not match.");
   }
+}
+
+void WeightWindowParameters::to_statepoint(hid_t group) const
+{
+  hid_t params_group =
+    create_group(group, "weight_window_parameters " + std::to_string(id_));
+
+  write_dataset(params_group, "particle_type",
+    openmc::particle_type_to_str(particle_type_));
+  write_dataset(params_group, "energy_bounds", energy_bounds_);
+  write_dataset(params_group, "lower_ww_bounds", lower_ww_);
+  write_dataset(params_group, "upper_ww_bounds", upper_ww_);
+  write_dataset(params_group, "survival_ratio", survival_ratio_);
+  write_dataset(params_group, "max_split", max_split_);
+  write_dataset(params_group, "weight_cutoff", weight_cutoff_);
+
+  close_group(params_group);
 }
 
 // read the specific weight window settings
@@ -271,6 +288,18 @@ bool WeightWindowDomain::find_params(
     ParticleWeightParams(variance_reduction::ww_params[param_idx()], indices);
 
   return true;
+}
+
+void WeightWindowDomain::to_statepoint(hid_t group) const
+{
+  hid_t domain_group =
+    create_group(group, "weight_window_domain " + std::to_string(id_));
+
+  write_dataset(domain_group, "mesh", model::meshes[mesh_idx_]->id_);
+  write_dataset(
+    domain_group, "settings", variance_reduction::ww_params[param_idx_]->id());
+
+  close_group(domain_group);
 }
 
 } // namespace openmc

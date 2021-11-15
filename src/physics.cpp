@@ -45,13 +45,13 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::weightwindow_on) {
+    if (settings::weight_windows_present) {
       split_particle(p);
     }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::weightwindow_on) {
+    if (settings::weight_windows_present) {
       split_particle(p);
     }
     break;

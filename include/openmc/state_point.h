@@ -20,6 +20,7 @@ void read_source_bank(
 void write_tally_results_nr(hid_t file_id);
 void restart_set_keff();
 void write_unstructured_mesh_results();
+void write_variance_reduction_parameters(hid_t file_id);
 
 } // namespace openmc
 #endif // OPENMC_STATE_POINT_H

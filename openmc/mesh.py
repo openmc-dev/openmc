@@ -275,7 +275,6 @@ class RegularMesh(MeshBase):
         if self._upper_right is not None:
             subelement = ET.SubElement(element, "upper_right")
             subelement.text = ' '.join(map(str, self._upper_right))
-
         if self._width is not None:
             subelement = ET.SubElement(element, "width")
             subelement.text = ' '.join(map(str, self._width))
@@ -570,6 +569,29 @@ class RectilinearMesh(MeshBase):
         mesh.x_grid = group['x_grid'][()]
         mesh.y_grid = group['y_grid'][()]
         mesh.z_grid = group['z_grid'][()]
+
+        return mesh
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate a rectilinear mesh from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.RectilinearMesh
+            Rectilinear mesh object
+
+        """
+        id = int(get_text(elem, 'id'))
+        mesh = cls(id)
+        mesh.x_grid = [float(x) for x in get_text(elem, 'x_grid').split()]
+        mesh.y_grid = [float(y) for y in get_text(elem, 'y_grid').split()]
+        mesh.z_grid = [float(z) for z in get_text(elem, 'z_grid').split()]
 
         return mesh
 
@@ -886,3 +908,30 @@ class UnstructuredMesh(MeshBase):
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
         return cls(filename, library, mesh_id, '', length_multiplier)
+
+
+def mesh_from_xml_element(elem):
+    """Generates a mesh from an XML element
+
+    Parameters
+    ----------
+    elem : xml.etree.ElementTree.Element
+        XML element
+
+    Returns
+    -------
+    openmc.MeshBase
+        an openmc mesh object
+
+    """
+
+    mesh_type = get_text(elem, 'type')
+
+    if mesh_type == 'regular':
+        return RegularMesh.from_xml_element(elem)
+    elif mesh_type == 'rectilinear':
+        return RectilinearMesh.from_xml_element(elem)
+    elif mesh_type == 'unstructured':
+        return UnstructuredMesh.from_xml_element(elem)
+    else:
+        raise ValueError(f'Invalid mesh type "{mesh_type}" found.')

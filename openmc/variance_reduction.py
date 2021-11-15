@@ -3,13 +3,16 @@ from collections.abc import Iterable
 from numbers import Real, Integral
 from pathlib import Path
 import warnings
+
 from xml.etree import ElementTree as ET
+import numpy as np
 
 from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase
+from openmc.mesh import mesh_from_xml_element
 import openmc.checkvalue as cv
 
-from ._xml import clean_indentation
+from ._xml import clean_indentation, get_text
 from .mixin import IDManagerMixin
 
 
@@ -90,12 +93,11 @@ class WeightWindowSettings(IDManagerMixin):
         self.energy_bins = energy_bins
         self.lower_ww_bounds = lower_ww_bounds
 
-        if len(self.lower_ww_bounds) != len(self.energy_bins) - 1:
-            msg = ('Size of the window bounds does not match the '
-                   'number of energy bins.')
-            raise ValueError(msg)
+        cv.check_length('Lower window bounds',
+        self.lower_ww_bounds,
+        len(self.energy_bins))
 
-        if upper_ww_bounds and upper_bound_ratio:
+        if upper_ww_bounds is not None and upper_bound_ratio:
             msg = ("Exactly one of uppwer_ww_bounds and "
                    "upper_bound_ratio must be present.")
             raise ValueError(msg)
@@ -109,7 +111,7 @@ class WeightWindowSettings(IDManagerMixin):
             self.upper_ww_bounds = \
                 [lb * upper_bound_ratio for lb in self.lower_ww_bounds]
 
-        if upper_ww_bounds:
+        if upper_ww_bounds is not None:
             self.upper_ww_bounds = upper_ww_bounds
 
         if len(self.lower_ww_bounds) != len(self.upper_ww_bounds):
@@ -243,9 +245,54 @@ class WeightWindowSettings(IDManagerMixin):
 
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate weight window settings from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.WeightWindowSettings
+            Weight window settings object
+        """
+
+        id = int(get_text(elem, 'id'))
+
+        particle_type = get_text(elem, 'particle_type')
+        ebins = \
+            np.array([float(b) for b in get_text(elem, 'energy_bins').split()])
+
+        lower_ww_bounds = \
+            np.array([float(l) for l in get_text(elem, 'lower_ww_bounds').split()])
+
+        upper_ww_bounds = \
+            np.array([float(u) for u in get_text(elem, 'upper_ww_bounds').split()])
+
+        survival_ratio = float(get_text(elem, 'survival_ratio'))
+
+        max_split = int(get_text(elem, 'max_split'))
+
+        weight_cutoff = float(get_text(elem, 'weight_cutoff'))
+
+        ww_settings = cls(particle_type,
+        ebins,
+        lower_ww_bounds,
+        upper_ww_bounds=upper_ww_bounds,
+        survival_ratio=survival_ratio,
+        max_split=max_split,
+        weight_cutoff=weight_cutoff,
+        id=id)
+
+        return ww_settings
+
 
 class WeightWindowDomain(IDManagerMixin):
-    """A class comnining weight window settings with a mesh
+    """A class specifying a weight window domain as the combination
+       of a mesh and weight window settings
 
     Parameter
     ---------
@@ -274,6 +321,7 @@ class WeightWindowDomain(IDManagerMixin):
                 mesh,
                 settings,
                 id=None):
+
         self.id = id
         self.mesh = mesh
         self.settings = settings
@@ -372,3 +420,56 @@ class VarianceReduction():
             # Write the XML Tree
             tree = ET.ElementTree(root_element)
             tree.write(str(p), xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml(cls, path='variance_reduction.xml'):
+        """Generate variance reduction parameters from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to the variance reduction XML file
+
+        Returns
+        -------
+        openmc.VarianceReduction
+            VarianceReduction object
+
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        vr = cls()
+
+        # read any meshes in the file first
+        meshes = {}
+        for mesh_elem in root.findall('mesh'):
+            try:
+                mesh = mesh_from_xml_element(mesh_elem)
+            except AttributeError as e:
+                msg = ('Can only read Regular or Unstructured meshes from XML')
+                raise e(msg)
+
+            meshes[mesh.id] = mesh
+
+        # get the weight window node
+        ww_elem = root.find('weight_windows')
+
+        if ww_elem:
+            ww_settings = {}
+            for settings_elem in ww_elem.findall('settings'):
+                settings = \
+                        WeightWindowSettings.from_xml_element(settings_elem)
+                ww_settings[settings.id] = settings
+
+            # read weight window domains
+            for domain_elem in ww_elem.findall('domain'):
+                mesh_id = int(get_text(domain_elem, 'mesh'))
+                settings_id = int(get_text(domain_elem, 'settings'))
+                id = get_text(domain_elem, 'id')
+                domain = WeightWindowDomain(meshes[mesh_id],
+                ww_settings[settings_id],
+                id=id)
+                vr.weight_window_domains.append(domain)
+
+        return vr

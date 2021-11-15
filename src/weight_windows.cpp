@@ -37,7 +37,7 @@ void read_variance_reduction_xml() {
     pugi::xml_node root = doc.document_element();
 
     // Display output message
-    write_message("Reading Variance Reduction XML file...", 5);
+    write_message("Reading variance reduction XML file...", 5);
 
     // check for weight window section
     if (check_for_node(root, "weight_windows")) {

@@ -302,8 +302,9 @@ unsigned process_refill_events(unsigned remaining_work, unsigned source_offset)
     gpu::managed_calculate_fuel_queue_index);
 
   simulation::time_event_refill.stop();
-#endif
+#else
   unsigned num_particles_refilled = 0;
+#endif
   return num_particles_refilled;
 }
 

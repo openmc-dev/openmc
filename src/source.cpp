@@ -386,6 +386,10 @@ void initialize_source()
 {
   write_message("Initializing source particles...", 5);
 
+  if (settings::work_per_rank != settings : max_particles_in_flight)
+    fatal_error("TODO fix initialize_source to work with different number of "
+                "particles in flight");
+
   // Generation source sites from specified distribution in user input
   #pragma omp parallel for
   for (int64_t i = 0; i < simulation::work_per_rank; ++i) {

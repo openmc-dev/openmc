@@ -43,7 +43,6 @@ bool check_overlaps {false};
 bool cmfd_run {false};
 bool confidence_intervals {false};
 bool create_fission_neutrons {true};
-bool dagmc {false};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
@@ -246,17 +245,6 @@ void read_settings_xml()
   if (check_for_node(root, "verbosity")) {
     verbosity = std::stoi(get_node_value(root, "verbosity"));
   }
-
-  // DAGMC geometry check
-  if (check_for_node(root, "dagmc")) {
-    dagmc = get_node_value_bool(root, "dagmc");
-  }
-
-#ifndef DAGMC
-  if (dagmc) {
-    fatal_error("DAGMC mode unsupported for this build of OpenMC");
-  }
-#endif
 
   // To this point, we haven't displayed any output since we didn't know what
   // the verbosity is. Now that we checked for it, show the title if necessary

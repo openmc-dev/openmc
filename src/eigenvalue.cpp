@@ -94,16 +94,16 @@ void calculate_generation_keff()
         global_tally_alpha_Cd(i,j) = Cd_reduced;
       }
     }
-#endif
-  }
-  
-  // TODO: This should be normalized by total_weight, not by n_particles
-  global_tally_alpha_Cn /= settings::n_particles;
-  global_tally_alpha_Cp /= settings::n_particles;
-  for (int i = 0; i < simulation::n_fissionables; i++) { 
-    for (int j = 0; j < simulation::n_precursors; j++) {
-      global_tally_alpha_Cd(i,j) /= settings::n_particles;
+
+    // TODO: This should be normalized by total_weight, not by n_particles
+    global_tally_alpha_Cn /= settings::n_particles;
+    global_tally_alpha_Cp /= settings::n_particles;
+    for (int i = 0; i < simulation::n_fissionables; i++) { 
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        global_tally_alpha_Cd(i,j) /= settings::n_particles;
+      }
     }
+#endif
   }
 }
 

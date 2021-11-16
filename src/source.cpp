@@ -386,7 +386,7 @@ void initialize_source()
 {
   write_message("Initializing source particles...", 5);
 
-  if (simulation::work_per_rank != settings::max_particles_in_flight)
+  if (simulation::work_per_rank > settings::max_particles_in_flight)
     fatal_error("TODO fix initialize_source to work with different number of "
                 "particles in flight");
 
@@ -401,6 +401,7 @@ void initialize_source()
     Particle* p = nullptr;
 #ifdef __CUDACC__
     Particle this_part(i);
+    this_part.clear(); // required for find_cell calls
     p = &this_part;
 #endif
 

@@ -46,9 +46,9 @@ int word_count(std::string const& str)
   return count;
 }
 
-vector<std::string> split(const std::string& in)
+std::vector<std::string> split(const std::string& in)
 {
-  vector<std::string> out;
+  std::vector<std::string> out;
 
   for (int i = 0; i < in.size(); ) {
     // Increment i until we find a non-whitespace character.

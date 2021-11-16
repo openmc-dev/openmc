@@ -146,7 +146,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the number of lattice cells in each dimension.
   std::string dimension_str {get_node_value(lat_node, "dimension")};
-  vector<std::string> dimension_words {split(dimension_str)};
+  std::vector<std::string> dimension_words {split(dimension_str)};
   if (dimension_words.size() == 2) {
     n_cells_[0] = std::stoi(dimension_words[0]);
     n_cells_[1] = std::stoi(dimension_words[1]);
@@ -163,7 +163,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the lattice lower-left location.
   std::string ll_str {get_node_value(lat_node, "lower_left")};
-  vector<std::string> ll_words {split(ll_str)};
+  std::vector<std::string> ll_words {split(ll_str)};
   if (ll_words.size() != dimension_words.size()) {
     fatal_error("Number of entries on <lower_left> must be the same as the "
                 "number of entries on <dimension>.");
@@ -176,7 +176,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
-  vector<std::string> pitch_words {split(pitch_str)};
+  std::vector<std::string> pitch_words {split(pitch_str)};
   if (pitch_words.size() != dimension_words.size()) {
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <dimension>.");
@@ -189,7 +189,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 
   // Read the universes and make sure the correct number was specified.
   std::string univ_str {get_node_value(lat_node, "universes")};
-  vector<std::string> univ_words {split(univ_str)};
+  std::vector<std::string> univ_words {split(univ_str)};
   if (univ_words.size() != n_cells_[0] * n_cells_[1] * n_cells_[2]) {
     fatal_error(fmt::format(
       "Expected {} universes for a rectangular lattice of size {}x{}x{} but {} "
@@ -468,7 +468,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
   // Read the lattice center.
   std::string center_str {get_node_value(lat_node, "center")};
-  vector<std::string> center_words {split(center_str)};
+  std::vector<std::string> center_words {split(center_str)};
   if (is_3d_ && (center_words.size() != 3)) {
     fatal_error("A hexagonal lattice with <n_axial> must have <center> "
                 "specified by 3 numbers.");
@@ -484,7 +484,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
-  vector<std::string> pitch_words {split(pitch_str)};
+  std::vector<std::string> pitch_words {split(pitch_str)};
   if (is_3d_ && (pitch_words.size() != 2)) {
     fatal_error("A hexagonal lattice with <n_axial> must have <pitch> "
                 "specified by 2 numbers.");
@@ -500,7 +500,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   // Read the universes and make sure the correct number was specified.
   int n_univ = (3*n_rings_*n_rings_ - 3*n_rings_ + 1) * n_axial_;
   std::string univ_str {get_node_value(lat_node, "universes")};
-  vector<std::string> univ_words {split(univ_str)};
+  std::vector<std::string> univ_words {split(univ_str)};
   if (univ_words.size() != n_univ) {
     fatal_error(fmt::format(
       "Expected {} universes for a hexagonal lattice with {} rings and {} "
@@ -527,7 +527,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 
 //==============================================================================
 
-void HexLattice::fill_lattice_x(const vector<std::string>& univ_words)
+void HexLattice::fill_lattice_x(const std::vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {
@@ -579,7 +579,7 @@ void HexLattice::fill_lattice_x(const vector<std::string>& univ_words)
 
 //==============================================================================
 
-void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
+void HexLattice::fill_lattice_y(const std::vector<std::string>& univ_words)
 {
   int input_index = 0;
   for (int m = 0; m < n_axial_; m++) {

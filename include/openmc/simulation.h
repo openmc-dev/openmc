@@ -62,6 +62,9 @@ __constant__ extern int64_t local_work_index;
 // Functions
 //==============================================================================
 
+//! Allows attaching a debugger after stuff like loading XS is done
+void wait_for_debugger_attach();
+
 //! Allocate space for source and fission banks
 void allocate_banks();
 

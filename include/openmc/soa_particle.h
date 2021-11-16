@@ -1073,6 +1073,7 @@ public:
     for (int i_level = 0; i_level < soa::n_coord_levels; ++i_level) {
       soa::coord[p * soa::n_coord_levels + i_level].reset();
     }
+    soa::n_coord[p] = 1;
 #endif
   }
 

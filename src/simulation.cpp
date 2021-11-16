@@ -48,9 +48,9 @@
 #include <iostream>
 #include <unistd.h> // sleep function
 
+namespace openmc {
 void wait_for_debugger_attach()
 {
-  using namespace openmc;
   if (settings::debugger_attach_delay) {
     int countdown = settings::debugger_attach_delay;
     std::cout << std::endl;
@@ -64,6 +64,7 @@ void wait_for_debugger_attach()
     std::cout << std::endl;
   }
 }
+} // namespace openmc
 
 // OPENMC_RUN encompasses all the main logic where iterations are performed
 // over the batches, generations, and histories in a fixed source or k-eigenvalue
@@ -75,7 +76,7 @@ int openmc_run()
 
   int err = 0;
   int status = 0;
-  wait_for_debugger_attach();
+  openmc::wait_for_debugger_attach();
   while (status == 0 && err == 0) {
     err = openmc_next_batch(&status);
   }

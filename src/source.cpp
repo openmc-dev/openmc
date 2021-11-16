@@ -386,7 +386,7 @@ void initialize_source()
 {
   write_message("Initializing source particles...", 5);
 
-  if (settings::work_per_rank != settings : max_particles_in_flight)
+  if (simulation::work_per_rank != settings::max_particles_in_flight)
     fatal_error("TODO fix initialize_source to work with different number of "
                 "particles in flight");
 
@@ -451,7 +451,7 @@ SourceSite sample_external_source(uint64_t* seed, Particle* p)
   }
 
   // Sample source site from i-th source distribution
-  SourceSite site {external_sources[i]->sample(seed)};
+  SourceSite site {external_sources[i]->sample(seed, p)};
 
   // If running in MG, convert site.E to group
 #ifndef __CUDACC__

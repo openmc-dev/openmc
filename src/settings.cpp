@@ -47,7 +47,13 @@ bool create_fission_neutrons {true};
 bool dagmc                   {false};
 bool delayed_photon_scaling  {true};
 bool entropy_on              {false};
+
+#ifdef __CUDACC__
+bool event_based {true};
+#else
 bool event_based             {false};
+#endif
+
 bool legendre_to_tabular     {true};
 bool material_cell_offsets   {true};
 bool output_summary          {true};

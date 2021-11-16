@@ -60,7 +60,7 @@ __constant__ int n_external_sources;
 //==============================================================================
 
 IndependentSource::IndependentSource(
-  UPtrSpace space, UPtrAngle angle, unique_ptr<Distribution> energy)
+  UPtrSpace&& space, UPtrAngle&& angle, unique_ptr<Distribution>&& energy)
   : space_ {std::move(space)}, angle_ {std::move(angle)}, energy_ {
                                                             std::move(energy)}
 {}
@@ -100,17 +100,17 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       if (check_for_node(node_space, "type"))
         type = get_node_value(node_space, "type", true, true);
       if (type == "cartesian") {
-        space_ = UPtrSpace{new CartesianIndependent(node_space)};
+        space_ = UPtrSpace {make_unique<CartesianIndependent>(node_space)};
       } else if (type == "cylindrical") {
-        space_ = UPtrSpace{new CylindricalIndependent(node_space)};
+        space_ = UPtrSpace {make_unique<CylindricalIndependent>(node_space)};
       } else if (type == "spherical") {
-        space_ = UPtrSpace{new SphericalIndependent(node_space)};
+        space_ = UPtrSpace {make_unique<SphericalIndependent>(node_space)};
       } else if (type == "box") {
-        space_ = UPtrSpace{new SpatialBox(node_space)};
+        space_ = UPtrSpace {make_unique<SpatialBox>(node_space)};
       } else if (type == "fission") {
-        space_ = UPtrSpace{new SpatialBox(node_space, true)};
+        space_ = UPtrSpace {make_unique<SpatialBox>(node_space, true)};
       } else if (type == "point") {
-        space_ = UPtrSpace{new SpatialPoint(node_space)};
+        space_ = UPtrSpace {make_unique<SpatialPoint>(node_space)};
       } else {
         fatal_error(fmt::format(
           "Invalid spatial distribution for external source: {}", type));
@@ -118,7 +118,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
 
     } else {
       // If no spatial distribution specified, make it a point source
-      space_ = UPtrSpace{new SpatialPoint()};
+      space_ = UPtrSpace {make_unique<SpatialPoint>()};
     }
 
     // Determine external source angular distribution

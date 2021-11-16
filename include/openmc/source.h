@@ -62,7 +62,7 @@ class IndependentSource : public Source {
 public:
   // Constructors
   IndependentSource(
-    UPtrSpace space, UPtrAngle angle, unique_ptr<Distribution> energy);
+    UPtrSpace&& space, UPtrAngle&& angle, unique_ptr<Distribution>&& energy);
   explicit IndependentSource(pugi::xml_node node);
   IndependentSource(IndependentSource&&) = default;
 

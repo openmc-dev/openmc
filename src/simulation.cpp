@@ -543,13 +543,8 @@ void initialize_history(Particle& p, int64_t index_source)
                  local_work_index + index_source;
     uint64_t seed = init_seed(id, STREAM_SOURCE);
     // sample from external source distribution or custom library then set
-#ifdef __CUDA_ARCH__
-    __trap();
-#else
-    // auto site = sample_external_source(&seed);
-    fatal_error("FIXME fixed source sampling");
-#endif
-    // p.from_source(&site);
+    auto site = sample_external_source(&seed, &p);
+    p.from_source(&site);
   }
 
   p.current_work() = index_source;
@@ -570,7 +565,9 @@ void initialize_history(Particle& p, int64_t index_source)
 
   // set particle trace
   p.trace() = false;
-#ifndef __CUDA_ARCH__
+
+#ifndef __CUDACC__
+  // Writing out particle tracks is simply not possible in CUDA
   if (simulation::current_batch == settings::trace_batch &&
       simulation::current_gen == settings::trace_gen &&
       p.id() == settings::trace_particle)
@@ -589,7 +586,6 @@ void initialize_history(Particle& p, int64_t index_source)
       }
     }
   }
-
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {
     write_message("Simulating Particle {}", p.id());

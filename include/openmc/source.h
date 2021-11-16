@@ -28,6 +28,13 @@ extern vector<unique_ptr<Source>> external_sources;
 
 } // namespace model
 
+#ifdef __CUDACC__
+namespace gpu {
+extern __constant__ unique_ptr<Source>* external_sources;
+extern __constant__ int n_external_sources;
+} // namespace gpu
+#endif
+
 //==============================================================================
 //! Abstract source interface
 //==============================================================================
@@ -38,11 +45,13 @@ public:
   Source() = default;
   Source(Source&&) = default;
 
-  // Methods that must be implemented
-  virtual SourceSite sample(uint64_t* seed) const = 0;
+  // Methods that must be implemented. The particle pointer, if not null,
+  // can be used to not need to allocate a particle object as is required
+  // by openmc_find_cell, which can be time-consuming in the rejection loop.
+  HD virtual SourceSite sample(uint64_t* seed, Particle* p = nullptr) const = 0;
 
   // Methods that can be overridden
-  virtual double strength() const { return 1.0; }
+  HD virtual double strength() const { return 1.0; }
 };
 
 //==============================================================================
@@ -60,16 +69,16 @@ public:
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  SourceSite sample(uint64_t* seed) const override;
+  HD SourceSite sample(uint64_t* seed, Particle* p) const override;
 
   // Properties
-  ParticleType particle_type() const { return particle_; }
-  double strength() const override { return strength_; }
+  HD ParticleType particle_type() const { return particle_; }
+  HD double strength() const override { return strength_; }
 
   // Make observing pointers available
-  SpatialDistribution* space() const { return space_.get(); }
-  UnitSphereDistribution* angle() const { return angle_.get(); }
-  Distribution* energy() const { return energy_.get(); }
+  HD SpatialDistribution* space() const { return space_.get(); }
+  HD UnitSphereDistribution* angle() const { return angle_.get(); }
+  HD Distribution* energy() const { return energy_.get(); }
 
 private:
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
@@ -90,7 +99,7 @@ public:
   FileSource(FileSource&&) = default;
 
   // Methods
-  SourceSite sample(uint64_t* seed) const override;
+  HD SourceSite sample(uint64_t* seed, Particle* p) const override;
 
 private:
   vector<SourceSite> sites_; //!< Source sites from a file
@@ -98,28 +107,35 @@ private:
 
 //==============================================================================
 //! Wrapper for custom sources that manages opening/closing shared library
+//!
+//! This does not work in GPU mode, since the CUDA compiler fails to figure
+//! out the requisite stack size for this. Moreover, dynamically  linked
+//! device code like this is probably impossible.
 //==============================================================================
 
+#ifndef __CUDACC__
 class CustomSourceWrapper : public Source {
 public:
   // Constructors, destructors
   CustomSourceWrapper(std::string const& path, std::string const& parameters);
   CustomSourceWrapper(CustomSourceWrapper&&) = default;
-  ~CustomSourceWrapper();
+  virtual ~CustomSourceWrapper();
 
   // Defer implementation to custom source library
-  SourceSite sample(uint64_t* seed) const override
+  HD SourceSite sample(uint64_t* seed, Particle* p = nullptr) const override
   {
     return custom_source_->sample(seed);
   }
 
-  double strength() const override { return custom_source_->strength(); }
+  HD double strength() const override { return custom_source_->strength(); }
+
 private:
   void* shared_library_; //!< library from dlopen
   unique_ptr<Source> custom_source_;
 };
 
 typedef unique_ptr<Source> create_custom_source_t(std::string parameters);
+#endif
 
 //==============================================================================
 // Functions
@@ -132,7 +148,7 @@ extern "C" void initialize_source();
 //! source strength
 //! \param[inout] seed Pseudorandom seed pointer
 //! \return Sampled source site
-SourceSite sample_external_source(uint64_t* seed);
+HD SourceSite sample_external_source(uint64_t* seed, Particle* p = nullptr);
 
 void free_memory_source();
 

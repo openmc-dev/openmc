@@ -475,8 +475,12 @@ void read_settings_xml()
       }
 
       // Create custom source
+#ifdef __CUDACC__
+      fatal_error("Custom sources do not work in GPU mode.");
+#else
       model::external_sources.push_back(
         openmc::make_unique<CustomSourceWrapper>(path, parameters));
+#endif
     } else {
       model::external_sources.push_back(make_unique<IndependentSource>(node));
     }
@@ -930,6 +934,15 @@ void copy_settings_to_gpu()
     sizeof(TemperatureMethod));
   cudaMemcpyToSymbol(
     gpu::urr_ptables_on, &settings::urr_ptables_on, sizeof(bool));
+
+  {
+    auto tmp = model::external_sources.data();
+    cudaMemcpyToSymbol(gpu::external_sources, &tmp, sizeof(tmp));
+  }
+  {
+    auto tmp = model::external_sources.size();
+    cudaMemcpyToSymbol(gpu::n_external_sources, &tmp, sizeof(int));
+  }
 }
 #endif
 

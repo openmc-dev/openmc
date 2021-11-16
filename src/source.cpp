@@ -18,6 +18,7 @@
 #include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
 #include "openmc/memory.h"
@@ -31,6 +32,10 @@
 #include "openmc/state_point.h"
 #include "openmc/xml_interface.h"
 
+#ifdef __CUDACC__
+#include "openmc/cuda/calculate_xs.h" // gpu::materials
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -42,6 +47,13 @@ namespace model {
 vector<unique_ptr<Source>> external_sources;
 
 }
+
+#ifdef __CUDACC__
+namespace gpu {
+__constant__ unique_ptr<Source>* external_sources;
+__constant__ int n_external_sources;
+} // namespace gpu
+#endif
 
 //==============================================================================
 // IndependentSource implementation
@@ -144,8 +156,16 @@ IndependentSource::IndependentSource(pugi::xml_node node)
   }
 }
 
-SourceSite IndependentSource::sample(uint64_t* seed) const
+SourceSite IndependentSource::sample(uint64_t* seed, Particle* p) const
 {
+#ifdef __CUDA_ARCH__
+  using gpu::cells;
+  using gpu::materials;
+#else
+  using model::cells;
+  using model::materials;
+#endif
+
   SourceSite site;
 
   // Set weight to one by default
@@ -163,55 +183,56 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     site.r = space_->sample(seed);
 
     // Now search to see if location exists in geometry
-#ifndef __CUDACC__
     int32_t cell_index, instance;
-    double xyz[] {site.r.x, site.r.y, site.r.z};
-    int err = openmc_find_cell(xyz, &cell_index, &instance);
-    found = (err != OPENMC_E_GEOMETRY);
+    double xyz[3] {site.r.x, site.r.y, site.r.z};
+
+    // If not provided with a particle, we have to allocate on-the-fly
+    if (!p) {
+#ifdef __CUDA_ARCH__
+      __trap();
+#else
+      int err = openmc_find_cell(xyz, &cell_index, &instance);
+      found = (err != OPENMC_E_GEOMETRY);
+#endif
+    } else {
+      // Otherwise, we can re-use pre-allocated particle data
+      Position pos(xyz);
+      Direction dir(0, 0, 1); // just happens to be what openmc_find_cell does
+      p->r() = pos;
+      p->u() = dir;
+      found = exhaustive_find_cell(*p);
+      cell_index = p->coord(p->n_coord() - 1).cell;
+      instance = p->cell_instance();
+    }
 
     // Check if spatial site is in fissionable material
     if (found) {
-      auto space_box = dynamic_cast<SpatialBox*>(space_.get());
-      if (space_box) {
-        if (space_box->only_fissionable()) {
-          // Determine material
-          const auto& c = model::cells[cell_index];
-          auto mat_index = c->material_.size() == 1
-            ? c->material_[0] : c->material_[instance];
+      if (space_->only_fissionable()) {
+        // Determine material
+        const auto& c = cells[cell_index];
+        auto mat_index =
+          c->material_.size() == 1 ? c->material_[0] : c->material_[instance];
 
-          if (mat_index == MATERIAL_VOID) {
+        if (mat_index == MATERIAL_VOID) {
+          found = false;
+        } else {
+          if (!materials[mat_index]->fissionable_)
             found = false;
-          } else {
-            if (!model::materials[mat_index]->fissionable_) found = false;
-          }
         }
       }
-    }
-    if (!found) {
+    } else { // !found
       ++n_reject;
       if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
           static_cast<double>(n_accept)/n_reject <= EXTSRC_REJECT_FRACTION) {
+#ifdef __CUDA_ARCH__
+        printf("More than 95%% of sources rejected...\n");
+        __trap();
+#else
         fatal_error("More than 95% of external source sites sampled were "
                     "rejected. Please check your external source definition.");
+#endif
       }
     }
-#else
-    // TODO
-    // OK, so, openmc_find_cell is unbearably slow already since it allocates
-    // a full-on particle structure, which is crazy. If we had some approach
-    // where memory can be re-used, that would be great, but at the moment, the
-    // cost incurred by it in allocating memory under my CUDA setup is painful.
-    // I can fix this but the solution is a bit more work than I want to do on
-    // a saturday night...
-
-    std::cout << "REMEMBER TO UPDATE THE PARTICLE SOURCE SAMPLING STUFF!!!"
-              << std::endl;
-    found = true;
-    auto space_box = dynamic_cast<SpatialBox*>(space_.get());
-    if (space_box)
-      if (space_box->only_fissionable())
-        fatal_error("Tell Gavin to implement only_fissionable sources on GPU.");
-#endif
   }
 
   // Increment number of accepted samples
@@ -220,11 +241,12 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   // Sample angle
   site.u = angle_->sample(seed);
 
+#ifndef __CUDA_ARCH__ // just going to not do this error checking on device
+  auto ptype = static_cast<int>(particle_);
   // Check for monoenergetic source above maximum particle energy
-  auto p = static_cast<int>(particle_);
   auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
-  double const& min_energy = data::energy_min[p];
-  double const& max_energy = data::energy_max[p];
+  double const& min_energy = data::energy_min[ptype];
+  double const& max_energy = data::energy_max[ptype];
   if (energy_ptr) {
     auto const& energies = energy_ptr->x();
     if (std::any_of(energies.begin(), energies.end(),
@@ -238,13 +260,23 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
                   "one cross section table");
     }
   }
+#else
+  if (particle_ == ParticleType::photon)
+    printf("TODO make source sampling of photons work");
+#endif
 
   while (true) {
     // Sample energy spectrum
     site.E = energy_->sample(seed);
 
     // Resample if energy falls outside minimum or maximum particle energy
-    if (site.E < data::energy_max[p] && site.E > data::energy_min[p]) break;
+#ifdef __CUDA_ARCH__ // Remove this after addressing the above TODO
+    if (site.E < gpu::energy_max_neutron && site.E > gpu::energy_min_neutron)
+      break;
+#else
+    if (site.E < data::energy_max[ptype] && site.E > data::energy_min[ptype])
+      break;
+#endif
   }
 
   // Set delayed group
@@ -287,7 +319,7 @@ FileSource::FileSource(std::string const& path)
   file_close(file_id);
 }
 
-SourceSite FileSource::sample(uint64_t* seed) const
+SourceSite FileSource::sample(uint64_t* seed, Particle* p) const
 {
   size_t i_site = sites_.size()*prn(seed);
   return sites_[i_site];
@@ -297,6 +329,7 @@ SourceSite FileSource::sample(uint64_t* seed) const
 // CustomSourceWrapper implementation
 //==============================================================================
 
+#ifndef __CUDACC__
 CustomSourceWrapper::CustomSourceWrapper(
   std::string const& path, std::string const& parameters)
 {
@@ -343,6 +376,7 @@ CustomSourceWrapper::~CustomSourceWrapper()
               "non-POSIX systems");
 #endif
 }
+#endif
 
 //==============================================================================
 // Non-member functions
@@ -355,13 +389,24 @@ void initialize_source()
   // Generation source sites from specified distribution in user input
   #pragma omp parallel for
   for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
+
+    // This saves some time re-allocating memory if we're
+    // doing a structure-of-array particle data layout.
+    // sample_external_source is able to use the pre-allocated
+    // space here.
+    Particle* p = nullptr;
+#ifdef __CUDACC__
+    Particle this_part(i);
+    p = &this_part;
+#endif
+
     // initialize random number seed
     int64_t id = simulation::total_gen*settings::n_particles +
       simulation::work_index[mpi::rank] + i + 1;
     uint64_t seed = init_seed(id, STREAM_SOURCE);
 
     // sample external source distribution
-    simulation::source_bank[i] = sample_external_source(&seed);
+    simulation::source_bank[i] = sample_external_source(&seed, p);
   }
 
   // Write out initial source
@@ -374,26 +419,35 @@ void initialize_source()
   }
 }
 
-SourceSite sample_external_source(uint64_t* seed)
+SourceSite sample_external_source(uint64_t* seed, Particle* p)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::external_sources;
+  using gpu::n_external_sources;
+#else
+  using model::external_sources;
+  auto n_external_sources = model::external_sources.size();
+#endif
+
   // Determine total source strength
   double total_strength = 0.0;
-  for (auto& s : model::external_sources)
-    total_strength += s->strength();
+  for (int i = 0; i < n_external_sources; ++i) {
+    total_strength += external_sources[i]->strength();
+  }
 
   // Sample from among multiple source distributions
   int i = 0;
-  if (model::external_sources.size() > 1) {
+  if (n_external_sources > 1) {
     double xi = prn(seed)*total_strength;
     double c = 0.0;
-    for (; i < model::external_sources.size(); ++i) {
-      c += model::external_sources[i]->strength();
+    for (; i < n_external_sources; ++i) {
+      c += external_sources[i]->strength();
       if (xi < c) break;
     }
   }
 
   // Sample source site from i-th source distribution
-  SourceSite site {model::external_sources[i]->sample(seed)};
+  SourceSite site {external_sources[i]->sample(seed)};
 
   // If running in MG, convert site.E to group
 #ifndef __CUDACC__

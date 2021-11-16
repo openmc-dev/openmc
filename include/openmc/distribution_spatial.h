@@ -17,7 +17,8 @@ public:
   virtual ~SpatialDistribution() = default;
 
   //! Sample a position from the distribution
-  virtual Position sample(uint64_t* seed) const = 0;
+  HD virtual Position sample(uint64_t* seed) const = 0;
+  HD virtual bool only_fissionable() const { return false; }
 };
 
 //==============================================================================
@@ -31,7 +32,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  HD virtual Position sample(uint64_t* seed) const override;
 
   // Observer pointers
   Distribution* x() const { return x_.get(); }
@@ -54,8 +55,8 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
-  
+  HD virtual Position sample(uint64_t* seed) const;
+
   Distribution* r() const { return r_.get(); }
   Distribution* phi() const { return phi_.get(); }
   Distribution* z() const { return z_.get(); }
@@ -79,7 +80,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  HD virtual Position sample(uint64_t* seed) const;
 
   Distribution* r() const { return r_.get(); }
   Distribution* theta() const { return theta_.get(); }
@@ -103,10 +104,13 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  HD virtual Position sample(uint64_t* seed) const override;
 
   // Properties
-  bool only_fissionable() const { return only_fissionable_; }
+  HD virtual bool only_fissionable() const override
+  {
+    return only_fissionable_;
+  }
   Position lower_left() const { return lower_left_; }
   Position upper_right() const { return upper_right_; }
 private:
@@ -128,7 +132,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  HD virtual Position sample(uint64_t* seed) const override;
 
   Position r() const { return r_; }
 private:

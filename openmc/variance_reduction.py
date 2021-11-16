@@ -242,7 +242,7 @@ class WeightWindowSettings(IDManagerMixin):
         subelement.text = ' '.join(str(b) for b in self.upper_ww_bounds)
         clean_indentation(subelement, level=2)
 
-        subelement = ET.SubElement(element, 'survivial_ratio')
+        subelement = ET.SubElement(element, 'survival_ratio')
         subelement.text = str(self.survival_ratio)
         clean_indentation(subelement, level=2)
 
@@ -473,13 +473,13 @@ class VarianceReduction():
                     clean_indentation(domain_element, level=1)
                     ww_element.append(domain_element)
 
-                    mesh_element = domain.mesh.to_xml_element()
-                    clean_indentation(mesh_element, level=1)
-                    ww_element.append(mesh_element)
-
                     settings_element = domain.settings.to_xml_element()
                     clean_indentation(settings_element, level=1)
                     ww_element.append(settings_element)
+
+                    mesh_element = domain.mesh.to_xml_element()
+                    clean_indentation(mesh_element, level=1)
+                    root_element.append(mesh_element)
 
                 clean_indentation(ww_element)
 

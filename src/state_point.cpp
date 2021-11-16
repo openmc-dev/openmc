@@ -1010,18 +1010,28 @@ void write_variance_reduction_parameters(hid_t file_id)
   hid_t vr_group;
   if (mpi::master) {
 
-    if (!settings::weight_windows_present)
+    if (!settings::weight_windows_present) {
+      // indicate that variance reduction was not
+      write_attribute(file_id, "variance_reduction_present", 0);
       return;
+    }
+
+    // indicate that variance reduction was used
+    write_attribute(file_id, "variance_reduction_present", 1);
 
     vr_group = create_group(file_id, "variance_reduction");
 
+    hid_t ww_settings_group = create_group(vr_group, "weight_window_settings");
     for (const auto& wws : variance_reduction::ww_params) {
-      wws->to_statepoint(vr_group);
+      wws->to_statepoint(ww_settings_group);
     }
+    close_group(ww_settings_group);
 
+    hid_t ww_domains_group = create_group(vr_group, "weight_window_domains");
     for (const auto& wwd : variance_reduction::ww_domains) {
-      wwd->to_statepoint(vr_group);
+      wwd->to_statepoint(ww_domains_group);
     }
+    close_group(ww_domains_group);
 
     close_group(vr_group);
   }

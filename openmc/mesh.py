@@ -84,6 +84,32 @@ class MeshBase(IDManagerMixin, ABC):
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
+    @classmethod
+    def from_xml(cls, elem):
+        """Generates a mesh from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.MeshBase
+            an openmc mesh object
+
+        """
+        mesh_type = get_text(elem, 'type')
+
+        if mesh_type == 'regular':
+            return RegularMesh.from_xml_element(elem)
+        elif mesh_type == 'rectilinear':
+            return RectilinearMesh.from_xml_element(elem)
+        elif mesh_type == 'unstructured':
+            return UnstructuredMesh.from_xml_element(elem)
+        else:
+            raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
+
 
 class RegularMesh(MeshBase):
     """A regular Cartesian mesh in one, two, or three dimensions
@@ -543,19 +569,19 @@ class RectilinearMesh(MeshBase):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
         string += fmt.format('\tDimensions', '=\t', self.n_dimension)
-        x_grid_str = str(self._x_grid) if not self._x_grid else len(self._x_grid)
+        x_grid_str = str(self._x_grid) if self._x_grid is None else len(self._x_grid)
         string += fmt.format('\tN X pnts:', '=\t', x_grid_str)
-        if self._x_grid:
+        if self._x_grid is not None:
             string += fmt.format('\tX Min:', '=\t', self._x_grid[0])
             string += fmt.format('\tX Max:', '=\t', self._x_grid[-1])
-        y_grid_str = str(self._y_grid) if not self._y_grid else len(self._y_grid)
+        y_grid_str = str(self._y_grid) if self._y_grid is None else len(self._y_grid)
         string += fmt.format('\tN Y pnts:', '=\t', y_grid_str)
-        if self._y_grid:
+        if self._y_grid is not None:
             string += fmt.format('\tY Min:', '=\t', self._y_grid[0])
             string += fmt.format('\tY Max:', '=\t', self._y_grid[-1])
-        z_grid_str = str(self._z_grid) if not self._z_grid else len(self._z_grid)
+        z_grid_str = str(self._z_grid) if self._z_grid is None else len(self._z_grid)
         string += fmt.format('\tN Z pnts:', '=\t', z_grid_str)
-        if self._z_grid:
+        if self._z_grid is not None:
             string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
             string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
@@ -908,30 +934,3 @@ class UnstructuredMesh(MeshBase):
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
         return cls(filename, library, mesh_id, '', length_multiplier)
-
-
-def mesh_from_xml_element(elem):
-    """Generates a mesh from an XML element
-
-    Parameters
-    ----------
-    elem : xml.etree.ElementTree.Element
-        XML element
-
-    Returns
-    -------
-    openmc.MeshBase
-        an openmc mesh object
-
-    """
-
-    mesh_type = get_text(elem, 'type')
-
-    if mesh_type == 'regular':
-        return RegularMesh.from_xml_element(elem)
-    elif mesh_type == 'rectilinear':
-        return RectilinearMesh.from_xml_element(elem)
-    elif mesh_type == 'unstructured':
-        return UnstructuredMesh.from_xml_element(elem)
-    else:
-        raise ValueError(f'Invalid mesh type "{mesh_type}" found.')

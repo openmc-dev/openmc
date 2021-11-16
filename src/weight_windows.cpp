@@ -90,10 +90,9 @@ void read_weight_windows(pugi::xml_node node)
   for (const auto& domain : variance_reduction::ww_domains) {
     // num spatial*energy bins must match num weight bins
     int num_spatial_bins = model::meshes[domain->mesh_idx()]->n_bins();
-    int num_energy_bins = variance_reduction::ww_params[domain->param_idx()]
-                            ->energy_bounds()
-                            .size() -
-                          1;
+    int num_energy_bins =
+      variance_reduction::ww_params[domain->param_idx()]->energy_bins().size() -
+      1;
     int num_weight_bins =
       variance_reduction::ww_params[domain->param_idx()]->lower_ww().size();
 
@@ -162,7 +161,7 @@ WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
 
   // energy bounds
   if (check_for_node(node, "energy_bins")) {
-    energy_bounds() = get_node_array<double>(node, "energy_bins");
+    energy_bins() = get_node_array<double>(node, "energy_bins");
   } else {
     fatal_error("<energy_bins> is missing from the "
                 "weight_windows.xml file.");
@@ -192,12 +191,11 @@ WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
 
 void WeightWindowParameters::to_statepoint(hid_t group) const
 {
-  hid_t params_group =
-    create_group(group, "weight_window_parameters " + std::to_string(id_));
+  hid_t params_group = create_group(group, "parameters " + std::to_string(id_));
 
   write_dataset(params_group, "particle_type",
     openmc::particle_type_to_str(particle_type_));
-  write_dataset(params_group, "energy_bounds", energy_bounds_);
+  write_dataset(params_group, "energy_bins", energy_bins_);
   write_dataset(params_group, "lower_ww_bounds", lower_ww_);
   write_dataset(params_group, "upper_ww_bounds", upper_ww_);
   write_dataset(params_group, "survival_ratio", survival_ratio_);
@@ -265,20 +263,18 @@ bool WeightWindowDomain::find_params(
   // particle energy
   double E = p.E();
 
-  const vector<double> energy_bounds =
-    variance_reduction::ww_params[param_idx()]->energy_bounds();
+  const vector<double> energy_bins =
+    variance_reduction::ww_params[param_idx()]->energy_bins();
 
   // find the min and max energy values
-  auto e_minmax =
-    std::minmax_element(energy_bounds.begin(), energy_bounds.end());
+  auto e_minmax = std::minmax_element(energy_bins.begin(), energy_bins.end());
 
   // check to make sure energy is in range
   if (E < *(e_minmax.first) || E > *(e_minmax.second))
     return false;
 
   // get the mesh bin in energy group
-  int energy_bin =
-    lower_bound_index(energy_bounds.begin(), energy_bounds.end(), E);
+  int energy_bin = lower_bound_index(energy_bins.begin(), energy_bins.end(), E);
 
   // indices now points to the correct weight given
   // an energy
@@ -292,8 +288,7 @@ bool WeightWindowDomain::find_params(
 
 void WeightWindowDomain::to_statepoint(hid_t group) const
 {
-  hid_t domain_group =
-    create_group(group, "weight_window_domain " + std::to_string(id_));
+  hid_t domain_group = create_group(group, "domain " + std::to_string(id_));
 
   write_dataset(domain_group, "mesh", model::meshes[mesh_idx_]->id_);
   write_dataset(

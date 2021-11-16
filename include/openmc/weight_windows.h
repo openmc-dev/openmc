@@ -40,8 +40,8 @@ public:
   const ParticleType& particle_type() const { return particle_type_; }
   ParticleType& particle_type() { return particle_type_; }
 
-  const std::vector<double>& energy_bounds() const { return energy_bounds_; }
-  std::vector<double>& energy_bounds() { return energy_bounds_; }
+  const std::vector<double>& energy_bins() const { return energy_bins_; }
+  std::vector<double>& energy_bins() { return energy_bins_; }
 
   const std::vector<double>& lower_ww() const { return lower_ww_; }
   std::vector<double>& lower_ww() { return lower_ww_; }
@@ -61,7 +61,7 @@ public:
 private:
   int32_t id_;
   ParticleType particle_type_;
-  openmc::vector<double> energy_bounds_;
+  openmc::vector<double> energy_bins_;
   openmc::vector<double> lower_ww_;
   openmc::vector<double> upper_ww_;
   double survival_ratio_;

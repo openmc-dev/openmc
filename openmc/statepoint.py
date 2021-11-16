@@ -10,6 +10,7 @@ from uncertainties import ufloat
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.variance_reduction import VarianceReduction
 
 _VERSION_STATEPOINT = 17
 
@@ -135,6 +136,7 @@ class StatePoint:
         self._global_tallies = None
         self._sparse = False
         self._derivs_read = False
+        self._variance_reduction_read = False
 
         # Automatically link in a summary file if one exists
         if autolink:
@@ -457,6 +459,20 @@ class StatePoint:
             self._derivs_read = True
 
         return self._derivs
+
+    @property
+    def variance_reduction_present(self):
+        return self._f.attrs['variance_reduction_present'] > 0
+
+    @property
+    def variance_reduction(self):
+        if self.variance_reduction_present and not self._variance_reduction_read:
+            vr_group = self._f['variance_reduction']
+            vr = VarianceReduction.from_hdf5(vr_group, self.meshes)
+
+            self._variance_reduction_read = True
+            self._variance_reduction = vr
+        return self._variance_reduction
 
     @property
     def version(self):

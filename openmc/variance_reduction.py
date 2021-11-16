@@ -9,7 +9,6 @@ import numpy as np
 
 from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase
-from openmc.mesh import mesh_from_xml_element
 import openmc.checkvalue as cv
 
 from ._xml import clean_indentation, get_text
@@ -22,8 +21,11 @@ class WeightWindowSettings(IDManagerMixin):
 
     Parameters
     ----------
-    particle_types : Iterable
-        Iterable of particle types the weight windows apply to.
+    id : int
+       Unique identifier for the weight window settings. If not
+       specified an identifier will automatically be assigned.
+    particle_types : str (default is 'netron')
+        Particle type the weight windows will apply to
     energy_bins : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
@@ -42,16 +44,13 @@ class WeightWindowSettings(IDManagerMixin):
         Maximum allowable number of particles when splitting
     weight_cutoff : float (default is 1E-38)
         Threshold below which particles will be terminated
-    id : int
-       Unique identifier for the weight window settings. If not
-       specified an identifier will automatically be assigned.
 
     Attributes
     ----------
     id : int
        Unique identifier for the weight window settings.
-    particle_types : Iterable
-        Iterable of particle types the weight windows apply to.
+    particle_type : str
+        Particle type the weight windows apply to
     energy_bins : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
@@ -73,15 +72,15 @@ class WeightWindowSettings(IDManagerMixin):
     used_ids = set()
 
     def __init__(self,
-                particle_type,
-                energy_bins,
-                lower_ww_bounds,
+                id=None,
+                particle_type=None,
+                energy_bins=None,
+                lower_ww_bounds=None,
                 upper_bound_ratio=None,
                 upper_ww_bounds=None,
                 survival_ratio=3,
                 max_split=10,
-                weight_cutoff=1.e-38,
-                id=None):
+                weight_cutoff=1.e-38):
 
         self.id = id
 
@@ -290,16 +289,52 @@ class WeightWindowSettings(IDManagerMixin):
 
         weight_cutoff = float(get_text(elem, 'weight_cutoff'))
 
-        ww_settings = cls(particle_type,
-        ebins,
-        lower_ww_bounds,
+        ww_settings = cls(id=id,
+        particle_type=particle_type,
+        energy_bins=ebins,
+        lower_ww_bounds=lower_ww_bounds,
         upper_ww_bounds=upper_ww_bounds,
         survival_ratio=survival_ratio,
         max_split=max_split,
-        weight_cutoff=weight_cutoff,
-        id=id)
+        weight_cutoff=weight_cutoff)
 
         return ww_settings
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Create weight window settings from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+
+        Returns
+        -------
+        openmc.WeightwindowSettings
+            A weight window settings object
+        """
+
+        id = int(group.name.split('/')[-1].lstrip('parameters'))
+
+        ptype = group['particle_type'][()].decode()
+        ebins = group['energy_bins'][()]
+        lower_ww_bounds = group['lower_ww_bounds'][()]
+        upper_ww_bounds = group['upper_ww_bounds'][()]
+        survival_ratio = group['survival_ratio'][()]
+        max_split = group['max_split'][()]
+        weight_cutoff = group['weight_cutoff'][()]
+
+        wws = cls(id=id,
+        particle_type=ptype,
+        energy_bins=ebins,
+        lower_ww_bounds=lower_ww_bounds,
+        upper_ww_bounds=upper_ww_bounds,
+        survival_ratio=survival_ratio,
+        max_split=max_split,
+        weight_cutoff=weight_cutoff)
+
+        return wws
 
 
 class WeightWindowDomain(IDManagerMixin):
@@ -329,18 +364,25 @@ class WeightWindowDomain(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self,
-                mesh,
-                settings,
-                id=None):
+    def __init__(self, id=None, mesh=None, settings=None):
 
         self.id = id
+
+        if not mesh:
+            msg = ('Mesh object is required to '
+            'create a weight window domain.')
+            raise ValueError(msg)
         self.mesh = mesh
+
+        if not settings:
+            msg = ('Weight window settings are required to '
+            'create a weight window domain.')
+            raise ValueError(msg)
         self.settings = settings
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tSettings:', '\n\t', self.settings)
         string += '{0: <16}{1}{2}\n'.format('\tMesh:', '\n\t', self.mesh)
         return string
@@ -384,9 +426,9 @@ class VarianceReduction():
 
     def __repr__(self):
         string = type(self).__name__ +  '\n\n'
-        string = '{0: <16}\n'.format('\tWeight Window Domains:')
+        string += '{0: <16}\n'.format('Weight Window Domains:')
         for wwd in self._weight_window_domains:
-            string += '{}\n'.format(wwd)
+            string += '\t{}\n'.format(wwd)
         return string
 
     @property
@@ -471,7 +513,7 @@ class VarianceReduction():
         meshes = {}
         for mesh_elem in root.findall('mesh'):
             try:
-                mesh = mesh_from_xml_element(mesh_elem)
+                mesh = MeshBase.from_xml(mesh_elem)
             except AttributeError as e:
                 msg = ('Can only read Regular or Unstructured meshes from XML')
                 raise e(msg)
@@ -490,12 +532,53 @@ class VarianceReduction():
 
             # read weight window domains
             for domain_elem in ww_elem.findall('domain'):
+                id = int(get_text(domain_elem, 'id'))
                 mesh_id = int(get_text(domain_elem, 'mesh'))
                 settings_id = int(get_text(domain_elem, 'settings'))
-                id = get_text(domain_elem, 'id')
-                domain = WeightWindowDomain(meshes[mesh_id],
-                ww_settings[settings_id],
-                id=id)
+
+                domain = WeightWindowDomain(id=id,
+                mesh=meshes[mesh_id],
+                settings=ww_settings[settings_id])
+
                 vr.weight_window_domains.append(domain)
 
         return vr
+
+    @classmethod
+    def from_hdf5(cls, group, meshes):
+        """Generate a variance reduction class from HDF5 group
+
+        Paramters
+        ----------
+        group : h5py.Group
+            HDF5 group containing variance reduction information
+        meshes: Mapping
+            Set of meshes available in the model
+
+        Returns
+        -------
+        openmc.VarianceReduction
+            A variance reduction object
+        """
+        vr = cls()
+
+        ww_settings_group = group['weight_window_settings']
+        ww_settings = {}
+        for settings_group in ww_settings_group.values():
+            settings = WeightWindowSettings.from_hdf5(settings_group)
+            ww_settings[settings.id] = settings
+
+        ww_domains_group = group['weight_window_domains']
+        for domains_group in ww_domains_group.values():
+            id = int(domains_group.name.split('/')[-1].lstrip('domain'))
+            mesh_id = domains_group['mesh'][()]
+            settings_id = domains_group['settings'][()]
+
+            domain = WeightWindowDomain(id,
+                                        meshes[mesh_id],
+                                        ww_settings[settings_id])
+            vr.weight_window_domains.append(domain)
+
+        return vr
+
+

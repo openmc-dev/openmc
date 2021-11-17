@@ -37,11 +37,11 @@ ENV EMBREE_REPO='https://github.com/embree/embree'
 ENV EMBREE_INSTALL_DIR=$HOME/EMBREE/
 
 # MOAB variables
-ENV MOAB_BRANCH='master'
+ENV MOAB_TAG='5.3.0'
 ENV MOAB_REPO='https://bitbucket.org/fathomteam/moab/'
 
 # Double-Down variables
-ENV DD_TAG='v1.0.0 '
+ENV DD_TAG='v1.0.0'
 ENV DD_REPO='https://github.com/pshriwise/double-down'
 ENV DD_INSTALL_DIR=$HOME/Double_down
 
@@ -96,7 +96,7 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         && rm -rf ${EMBREE_INSTALL_DIR}/build ${EMBREE_INSTALL_DIR}/embree ; \
         # Clone and install MOAB
         mkdir -p $HOME/MOAB && cd $HOME/MOAB \
-        && git clone  --single-branch -b ${MOAB_BRANCH} --depth 1 ${MOAB_REPO} \
+        && git clone  --single-branch -b ${MOAB_TAG} --depth 1 ${MOAB_REPO} \
         && mkdir build && cd build \
         && cmake ../moab -DENABLE_HDF5=ON \
                       -DENABLE_NETCDF=ON \

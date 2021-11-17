@@ -91,6 +91,8 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         && mkdir build && cd build \
         && cmake ../embree \
                     -DCMAKE_INSTALL_PREFIX=${EMBREE_INSTALL_DIR} \
+                    -DEMBREE_MAX_ISA=NONE \
+                    -DEMBREE_ISA_SSE42=ON \
                     -DEMBREE_ISPC_SUPPORT=OFF \
         && make 2>/dev/null -j${compile_cores} install \
         && rm -rf ${EMBREE_INSTALL_DIR}/build ${EMBREE_INSTALL_DIR}/embree ; \

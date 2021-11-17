@@ -1,3 +1,4 @@
+sphinx==4.3.0
 sphinx-numfig
 jupyter
 sphinxcontrib-katex

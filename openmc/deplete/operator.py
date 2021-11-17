@@ -10,6 +10,7 @@ densities is all done in-memory instead of through the filesystem.
 import copy
 from collections import OrderedDict
 import os
+from typing import Type
 import xml.etree.ElementTree as ET
 from warnings import warn
 from pathlib import Path
@@ -65,12 +66,14 @@ class Operator(TransportOperator):
     directly. Instead, an instance of this class is passed to an integrator
     class, such as :class:`openmc.deplete.CECMIntegrator`.
 
+    .. versionchanged:: 0.13.0
+        The geometry and settings parameters have been replaced with a
+        model parameter that takes an openmc.Model object
+
     Parameters
     ----------
-    geometry : openmc.Geometry
-        OpenMC geometry object
-    settings : openmc.Settings
-        OpenMC Settings object
+    model : openmc.Model
+        OpenMC model object
     chain_file : str, optional
         Path to the depletion chain XML file.  Defaults to the file
         listed under ``depletion_chain`` in
@@ -144,6 +147,8 @@ class Operator(TransportOperator):
 
     Attributes
     ----------
+    model : openmc.Model
+        OpenMC model object
     geometry : openmc.Geometry
         OpenMC geometry object
     settings : openmc.Settings
@@ -186,12 +191,21 @@ class Operator(TransportOperator):
         "cutoff": FissionYieldCutoffHelper,
     }
 
-    def __init__(self, geometry, settings, chain_file=None, prev_results=None,
+    def __init__(self, model, chain_file=None, prev_results=None,
                  diff_burnable_mats=False, normalization_mode="fission-q",
                  fission_q=None, dilute_initial=1.0e3,
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
+        # check for old call to constructor
+        if isinstance(model, openmc.Geometry):
+            msg = "As of version 0.13.0 openmc.deplete.Operator requires an " \
+                "openmc.Model object rather than the openmc.Geometry and " \
+                "openmc.Settings parameters. Please use the geometry and " \
+                "settings objects passed here to create a model with which " \
+                "to generate the depletion Operator."
+            raise TypeError(msg)
+
         check_value('fission yield mode', fission_yield_mode,
                     self._fission_helpers.keys())
         check_value('normalization mode', normalization_mode,
@@ -202,15 +216,24 @@ class Operator(TransportOperator):
                 fission_q = None
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
-        self.settings = settings
-        self.geometry = geometry
+        self.model = model
+        self.settings = model.settings
+        self.geometry = model.geometry
+
+        # determine set of materials in the model
+        if not model.materials:
+            model.materials = openmc.Materials(
+                model.geometry.get_all_materials().values()
+            )
+        self.materials = model.materials
+
         self.diff_burnable_mats = diff_burnable_mats
         self.cleanup_when_done = True
 
         # Reduce the chain before we create more materials
         if reduce_chain:
             all_isotopes = set()
-            for material in geometry.get_all_materials().values():
+            for material in self.materials:
                 if not material.depletable:
                     continue
                 for name, _dens_percent, _dens_type in material.nuclides:
@@ -232,7 +255,7 @@ class Operator(TransportOperator):
 
         if self.prev_res is not None:
             # Reload volumes into geometry
-            prev_results[-1].transfer_volumes(geometry)
+            prev_results[-1].transfer_volumes(self.model)
 
             # Store previous results in operator
             # Distribute reaction rates according to those tracked
@@ -373,7 +396,7 @@ class Operator(TransportOperator):
 
         # Extract all burnable materials which have multiple instances
         distribmats = set(
-            [mat for mat in self.geometry.get_all_materials().values()
+            [mat for mat in self.materials
              if mat.depletable and mat.num_instances > 1])
 
         for mat in distribmats:
@@ -411,7 +434,7 @@ class Operator(TransportOperator):
         self.heavy_metal = 0.0
 
         # Iterate once through the geometry to get dictionaries
-        for mat in self.geometry.get_all_materials().values():
+        for mat in self.materials:
             for nuclide in mat.get_nuclides():
                 model_nuclides.add(nuclide)
             if mat.depletable:
@@ -463,13 +486,13 @@ class Operator(TransportOperator):
         # Now extract and store the number densities
         # From the geometry if no previous depletion results
         if prev_res is None:
-            for mat in self.geometry.get_all_materials().values():
+            for mat in self.materials:
                 if str(mat.id) in local_mats:
                     self._set_number_from_mat(mat)
 
         # Else from previous depletion results
         else:
-            for mat in self.geometry.get_all_materials().values():
+            for mat in self.materials:
                 if str(mat.id) in local_mats:
                     self._set_number_from_results(mat, prev_res)
 
@@ -609,12 +632,9 @@ class Operator(TransportOperator):
         through direct memory writing.
 
         """
-        materials = openmc.Materials(self.geometry.get_all_materials()
-                                     .values())
-
         # Sort nuclides according to order in AtomNumber object
         nuclides = list(self.number.nuclides)
-        for mat in materials:
+        for mat in self.materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
         # Grab the cross sections tag from the existing file
@@ -623,9 +643,9 @@ class Operator(TransportOperator):
             tree = ET.parse(str(mfile))
             xs = tree.find('cross_sections')
             if xs is not None:
-                materials.cross_sections = xs.text
+                self.materials.cross_sections = xs.text
 
-        materials.export_to_xml()
+        self.materials.export_to_xml()
 
     def _get_tally_nuclides(self):
         """Determine nuclides that should be tallied for reaction rates.

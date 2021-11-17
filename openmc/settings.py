@@ -150,7 +150,7 @@ class Settings:
 
         :surface_ids: List of surface ids at which crossing particles are to be
                    banked (int)
-        :max_particles: Maximum number of particles to be banked on 
+        :max_particles: Maximum number of particles to be banked on
                    surfaces per process (int)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
@@ -197,6 +197,8 @@ class Settings:
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
+    write_initial_source : bool
+        Indicate whether to write the initial source distribution to file
 
     """
 
@@ -269,6 +271,7 @@ class Settings:
 
         self._event_based = None
         self._max_particles_in_flight = None
+        self._write_initial_source = None
 
     @property
     def run_mode(self):
@@ -437,6 +440,10 @@ class Settings:
     @property
     def max_particles_in_flight(self):
         return self._max_particles_in_flight
+
+    @property
+    def write_initial_source(self):
+        return self._write_initial_source
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -823,6 +830,11 @@ class Settings:
         cv.check_greater_than('log grid bins', log_grid_bins, 0)
         self._log_grid_bins = log_grid_bins
 
+    @write_initial_source.setter
+    def write_initial_source(self, value):
+        cv.check_type('write initial source', value, bool)
+        self._write_initial_source = value
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -1111,6 +1123,11 @@ class Settings:
             elem = ET.SubElement(root, "log_grid_bins")
             elem.text = str(self._log_grid_bins)
 
+    def _create_write_initial_source_subelement(self, root):
+        if self._write_initial_source is not None:
+            elem = ET.SubElement(root, "write_initial_source")
+            elem.text = str(self._write_initial_source).lower()
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -1388,6 +1405,11 @@ class Settings:
         if text is not None:
             self.log_grid_bins = int(text)
 
+    def _write_initial_source_from_xml_element(self, root):
+        text = get_text(root, 'write_initial_source')
+        if text is not None:
+            self.write_initial_source = text in ('true', '1')
+
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1441,6 +1463,7 @@ class Settings:
         self._create_max_particles_in_flight_subelement(root_element)
         self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
+        self._create_write_initial_source_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
@@ -1514,6 +1537,7 @@ class Settings:
         settings._max_particles_in_flight_from_xml_element(root)
         settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
+        settings._write_initial_source_from_xml_element(root)
 
         # TODO: Get volume calculations
 

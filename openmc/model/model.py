@@ -1,11 +1,8 @@
 from collections.abc import Iterable
-import operator
 import os
 from pathlib import Path
 from numbers import Integral
 import time
-import warnings
-import subprocess
 from contextlib import contextmanager
 
 import h5py
@@ -137,7 +134,11 @@ class Model:
 
     @property
     def is_initialized(self):
-        return openmc.lib.is_initialized
+        try:
+            import openmc.lib
+            return openmc.lib.is_initialized
+        except ImportError:
+            return False
 
     @geometry.setter
     def geometry(self, geometry):
@@ -235,6 +236,8 @@ class Model:
             MPI intracommunicator
         """
 
+        import openmc.lib
+
         # TODO: right now the only way to set most of the above parameters via
         # the C API are at initialization time despite use-cases existing to
         # set them for individual runs. For now this functionality is exposed
@@ -272,6 +275,8 @@ class Model:
         .. versionadded:: 0.13.0
 
         """
+
+        import openmc.lib
 
         openmc.lib.finalize()
 
@@ -326,7 +331,7 @@ class Model:
         with _change_directory(Path(directory)):
             with openmc.lib.quiet_dll(output):
                 depletion_operator = \
-                    dep.Operator(self.geometry, self.settings, **op_kwargs)
+                    dep.Operator(self, **op_kwargs)
 
             # Tell depletion_operator.finalize NOT to clear C API memory when
             # it is done
@@ -409,6 +414,8 @@ class Model:
         openmc.lib.export_properties
 
         """
+        import openmc.lib
+
         cells = self.geometry.get_all_cells()
         materials = self.geometry.get_all_materials()
 
@@ -512,7 +519,8 @@ class Model:
                 for arg_name, arg, default in zip(
                     ['threads', 'geometry_debug', 'restart_file', 'tracks'],
                     [threads, geometry_debug, restart_file, tracks],
-                    [None, False, None, False]):
+                    [None, False, None, False]
+                ):
                     if arg != default:
                         msg = f"{arg_name} must be set via Model.is_initialized(...)"
                         raise ValueError(msg)
@@ -688,12 +696,13 @@ class Model:
         if obj_type == 'cell':
             by_name = self._cells_by_name
             by_id = self._cells_by_id
-            obj_by_id = openmc.lib.cells
+            if self.is_initialized:
+                obj_by_id = openmc.lib.cells
         else:
             by_name = self._materials_by_name
             by_id = self._materials_by_id
-            obj_by_id = openmc.lib.materials
-
+            if self.is_initialized:
+                obj_by_id = openmc.lib.materials
         # Get the list of ids to use if converting from names and accepting
         # only values that have actual ids
         ids = []

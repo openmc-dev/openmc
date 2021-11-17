@@ -349,24 +349,26 @@ Material::~Material()
 void Material::finalize()
 {
   // Set fissionable if any nuclide is fissionable
-  for (const auto& i_nuc : nuclide_) {
-    if (data::nuclides[i_nuc]->fissionable_) {
-      fissionable_ = true;
-      break;
+  if (settings::run_CE) {
+    for (const auto& i_nuc : nuclide_) {
+      if (data::nuclides[i_nuc]->fissionable_) {
+        fissionable_ = true;
+        break;
+      }
     }
+
+    // Generate material bremsstrahlung data for electrons and positrons
+    if (settings::photon_transport &&
+        settings::electron_treatment == ElectronTreatment::TTB) {
+      this->init_bremsstrahlung();
+    }
+
+    // Assign thermal scattering tables
+    this->init_thermal();
   }
 
-  // Generate material bremsstrahlung data for electrons and positrons
-  if (settings::photon_transport &&
-      settings::electron_treatment == ElectronTreatment::TTB) {
-    this->init_bremsstrahlung();
-  }
-
-  // Assign thermal scattering tables
-  this->init_thermal();
-
-  // Normalize density
-  this->normalize_density();
+// Normalize density
+this->normalize_density();
 }
 
 void Material::normalize_density()

@@ -1,6 +1,8 @@
 import os
 import glob
-import sys
+
+import numpy as np
+import pytest
 
 import openmc
 
@@ -9,12 +11,15 @@ from tests.testing_harness import PyAPITestHarness
 
 class VolumeTest(PyAPITestHarness):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, is_ce, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.exp_std_dev = 1e-01
         self.exp_rel_err = 1e-01
         self.exp_variance = 5e-02
+        self.is_ce = is_ce
+        if not is_ce:
+            self.inputs_true = 'inputs_true_mg.dat'
 
     def _build_inputs(self):
         # Define materials
@@ -22,7 +27,8 @@ class VolumeTest(PyAPITestHarness):
         water.add_nuclide('H1', 2.0)
         water.add_nuclide('O16', 1.0)
         water.add_nuclide('B10', 0.0001)
-        water.add_s_alpha_beta('c_H_in_H2O')
+        if self.is_ce:
+            water.add_s_alpha_beta('c_H_in_H2O')
         water.set_density('g/cc', 1.0)
 
         fuel = openmc.Material(2)
@@ -31,6 +37,8 @@ class VolumeTest(PyAPITestHarness):
         fuel.set_density('g/cc', 4.5)
 
         materials = openmc.Materials((water, fuel))
+        if not self.is_ce:
+            materials.cross_sections = 'mg_lib.h5'
         materials.export_to_xml()
 
         cyl = openmc.ZCylinder(surface_id=1, r=1.0, boundary_type='vacuum')
@@ -68,8 +76,51 @@ class VolumeTest(PyAPITestHarness):
         # Define settings
         settings = openmc.Settings()
         settings.run_mode = 'volume'
+        if not self.is_ce:
+            settings.energy_mode = 'multi-group'
         settings.volume_calculations = vol_calcs
         settings.export_to_xml()
+
+        # Create the MGXS file if necessary
+        if not self.is_ce:
+            groups = openmc.mgxs.EnergyGroups(group_edges=[0., 20.e6])
+            mg_xs_file = openmc.MGXSLibrary(groups)
+
+            nu = [2.]
+            fiss = [1.]
+            capture = [1.]
+            absorption_fissile = np.add(fiss, capture)
+            absorption_other = capture
+            scatter = np.array([[[1.]]])
+            total_fissile = np.add(absorption_fissile,
+                                   np.sum(scatter[:, :, 0], axis=1))
+            total_other = np.add(absorption_other,
+                                 np.sum(scatter[:, :, 0], axis=1))
+            chi = [1.]
+
+            for iso in ['H1', 'O16', 'B10', 'Mo99', 'U235']:
+                mat = openmc.XSdata(iso, groups)
+                mat.order = 0
+                mat.atomic_weight_ratio = \
+                    openmc.data.atomic_mass(iso) / openmc.data.NEUTRON_MASS
+                mat.set_scatter_matrix(scatter)
+                if iso == 'U235':
+                    mat.set_nu_fission(np.multiply(nu, fiss))
+                    mat.set_absorption(absorption_fissile)
+                    mat.set_total(total_fissile)
+                    mat.set_chi(chi)
+                else:
+                    mat.set_absorption(absorption_other)
+                    mat.set_total(total_other)
+                mg_xs_file.add_xsdata(mat)
+            mg_xs_file.export_to_hdf5('mg_lib.h5')
+
+    def _cleanup(self):
+        super()._cleanup()
+        output = ['mg_lib.h5']
+        for f in output:
+            if os.path.exists(f):
+                os.remove(f)
 
     def _get_results(self):
         outstr = ''
@@ -116,6 +167,8 @@ class VolumeTest(PyAPITestHarness):
     def _test_output_created(self):
         pass
 
-def test_volume_calc():
-    harness = VolumeTest('')
+
+@pytest.mark.parametrize('is_ce', [True, False])
+def test_volume_calc(is_ce):
+    harness = VolumeTest(is_ce, '')
     harness.main()

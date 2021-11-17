@@ -5,6 +5,7 @@
 #include "openmc/constants.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
 #include "openmc/random_dist.h"
@@ -17,9 +18,12 @@
 #include "xtensor/xview.hpp"
 
 #include <cmath>
+#include <fmt/core.h>
 #include <tuple> // for tie
 
 namespace openmc {
+
+constexpr int PhotonInteraction::MAX_STACK_SIZE;
 
 //==============================================================================
 // Global variables
@@ -120,35 +124,39 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       "Photoatomic data for " + name_ + " does not have subshell data."};
   }
 
+  shells_.resize(n_shell);
+
+  // Create mapping from designator to index
+  std::unordered_map<int, int> shell_map;
   for (int i = 0; i < n_shell; ++i) {
     const auto& designator {designators[i]};
 
-    // TODO: Move to ElectronSubshell constructor
-
-    // Add empty shell
-    shells_.emplace_back();
-
-    // Create mapping from designator to index
     int j = 1;
     for (const auto& subshell : SUBSHELLS) {
       if (designator == subshell) {
-        shell_map_[j] = i;
+        shell_map[j] = i;
         shells_[i].index_subshell = j;
         break;
       }
       ++j;
     }
+  }
+  shell_map[0] = -1;
+
+  for (int i = 0; i < n_shell; ++i) {
+    const auto& designator {designators[i]};
+    auto& shell {shells_[i]};
+
+    // TODO: Move to ElectronSubshell constructor
 
     // Read binding energy and number of electrons
-    auto& shell {shells_.back()};
     hid_t tgroup = open_group(rgroup, designator.c_str());
     read_attribute(tgroup, "binding_energy", shell.binding_energy);
     read_attribute(tgroup, "num_electrons", shell.n_electrons);
 
     // Read subshell cross section
     dset = open_dataset(tgroup, "xs");
-    read_attribute(dset, "threshold_idx", j);
-    shell.threshold = j;
+    read_attribute(dset, "threshold_idx", shell.threshold);
     close_dataset(dset);
     read_dataset(tgroup, "xs", shell.cross_section);
 
@@ -162,23 +170,35 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       close_dataset(dset);
 
       int n_transition = dims[0];
-      shell.n_transitions = n_transition;
       if (n_transition > 0) {
         xt::xtensor<double, 2> matrix;
         read_dataset(tgroup, "transitions", matrix);
 
-        shell.transition_subshells =
-          xt::view(matrix, xt::all(), xt::range(0, 2));
-        shell.transition_energy = xt::view(matrix, xt::all(), 2);
-        shell.transition_probability = xt::view(matrix, xt::all(), 3);
-        shell.transition_probability /= xt::sum(shell.transition_probability)();
+        // Transition probability normalization
+        double norm = xt::sum(xt::col(matrix, 3))();
+
+        shell.transitions.resize(n_transition);
+        for (int j = 0; j < n_transition; ++j) {
+          auto& transition = shell.transitions[j];
+          transition.primary_subshell = shell_map.at(matrix(j, 0));
+          transition.secondary_subshell = shell_map.at(matrix(j, 1));
+          transition.energy = matrix(j, 2);
+          transition.probability = matrix(j, 3) / norm;
+        }
       }
-    } else {
-      shell.n_transitions = 0;
     }
     close_group(tgroup);
   }
   close_group(rgroup);
+
+  // Check the maximum size of the atomic relaxation stack
+  auto max_size = this->calc_max_stack_size();
+  if (max_size > MAX_STACK_SIZE && mpi::master) {
+    warning(fmt::format(
+      "The subshell vacancy stack in atomic relaxation can grow up to {}, but "
+      "the stack size limit is set to {}.",
+      max_size, MAX_STACK_SIZE));
+  }
 
   // Determine number of electron shells
   rgroup = open_group(group, "compton_profiles");
@@ -305,6 +325,54 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 PhotonInteraction::~PhotonInteraction()
 {
   data::element_map.erase(name_);
+}
+
+int PhotonInteraction::calc_max_stack_size() const
+{
+  // Table to store solutions to sub-problems
+  std::unordered_map<int, int> visited;
+
+  // Find the maximum possible size of the stack used to store holes created
+  // during atomic relaxation, checking over every subshell the initial hole
+  // could be in
+  int max_size = 0;
+  for (int i_shell = 0; i_shell < shells_.size(); ++i_shell) {
+    max_size = std::max(max_size, this->calc_helper(visited, i_shell));
+  }
+  return max_size;
+}
+
+int PhotonInteraction::calc_helper(
+  std::unordered_map<int, int>& visited, int i_shell) const
+{
+  // No transitions for this subshell, so this is the only shell in the stack
+  const auto& shell {shells_[i_shell]};
+  if (shell.transitions.empty()) {
+    return 1;
+  }
+
+  // Check the table to see if the maximum stack size has already been
+  // calculated for this shell
+  auto it = visited.find(i_shell);
+  if (it != visited.end()) {
+    return it->second;
+  }
+
+  int max_size = 0;
+  for (const auto& transition : shell.transitions) {
+    // If this is a non-radiative transition two vacancies are created and
+    // the stack grows by one; if this is a radiative transition only one
+    // vacancy is created and the stack size stays the same
+    int size = 0;
+    if (transition.secondary_subshell != -1) {
+      size = this->calc_helper(visited, transition.secondary_subshell) + 1;
+    }
+    size =
+      std::max(size, this->calc_helper(visited, transition.primary_subshell));
+    max_size = std::max(max_size, size);
+  }
+  visited[i_shell] = max_size;
+  return max_size;
 }
 
 void PhotonInteraction::compton_scatter(double alpha, bool doppler,
@@ -677,58 +745,60 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
   *mu_positron = (rn + beta) / (rn * beta + 1.0);
 }
 
-void PhotonInteraction::atomic_relaxation(
-  const ElectronSubshell& shell, Particle& p) const
+void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
-  // If no transitions, assume fluorescent photon from captured free electron
-  if (shell.n_transitions == 0) {
+  // Stack for unprocessed holes left by transitioning electrons
+  int n_holes = 0;
+  array<int, MAX_STACK_SIZE> holes;
+
+  // Push the initial hole onto the stack
+  holes[n_holes++] = i_shell;
+
+  while (n_holes > 0) {
+    // Pop the next hole off the stack
+    int i_hole = holes[--n_holes];
+    const auto& shell {shells_[i_hole]};
+
+    // If no transitions, assume fluorescent photon from captured free electron
+    if (shell.transitions.empty()) {
+      Direction u = isotropic_direction(p.current_seed());
+      double E = shell.binding_energy;
+      p.create_secondary(p.wgt(), u, E, ParticleType::photon);
+      continue;
+    }
+
+    // Sample transition
+    double c = -prn(p.current_seed());
+    int i_trans;
+    for (i_trans = 0; i_trans < shell.transitions.size(); ++i_trans) {
+      c += shell.transitions[i_trans].probability;
+      if (c > 0)
+        break;
+    }
+    const auto& transition = shell.transitions[i_trans];
+
+    // Sample angle isotropically
     Direction u = isotropic_direction(p.current_seed());
-    double E = shell.binding_energy;
-    p.create_secondary(p.wgt(), u, E, ParticleType::photon);
-    return;
+
+    // Push the hole created by the electron transitioning to the photoelectron
+    // hole onto the stack
+    holes[n_holes++] = transition.primary_subshell;
+
+    if (transition.secondary_subshell != -1) {
+      // Non-radiative transition -- Auger/Coster-Kronig effect
+
+      // Push the hole left by emitted auger electron onto the stack
+      holes[n_holes++] = transition.secondary_subshell;
+
+      // Create auger electron
+      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::electron);
+    } else {
+      // Radiative transition -- get X-ray energy
+
+      // Create fluorescent photon
+      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon);
+    }
   }
-
-  // Sample transition
-  double rn = prn(p.current_seed());
-  double c = 0.0;
-  int i_transition;
-  for (i_transition = 0; i_transition < shell.n_transitions; ++i_transition) {
-    c += shell.transition_probability(i_transition);
-    if (rn < c)
-      break;
-  }
-
-  // Get primary and secondary subshell designators
-  int primary = shell.transition_subshells(i_transition, 0);
-  int secondary = shell.transition_subshells(i_transition, 1);
-
-  // Sample angle isotropically
-  Direction u = isotropic_direction(p.current_seed());
-
-  // Get the transition energy
-  double E = shell.transition_energy(i_transition);
-
-  if (secondary != 0) {
-    // Non-radiative transition -- Auger/Coster-Kronig effect
-
-    // Create auger electron
-    p.create_secondary(p.wgt(), u, E, ParticleType::electron);
-
-    // Fill hole left by emitted auger electron
-    int i_hole = shell_map_.at(secondary);
-    const auto& hole = shells_[i_hole];
-    this->atomic_relaxation(hole, p);
-  } else {
-    // Radiative transition -- get X-ray energy
-
-    // Create fluorescent photon
-    p.create_secondary(p.wgt(), u, E, ParticleType::photon);
-  }
-
-  // Fill hole created by electron transitioning to the photoelectron hole
-  int i_hole = shell_map_.at(primary);
-  const auto& hole = shells_[i_hole];
-  this->atomic_relaxation(hole, p);
 }
 
 //==============================================================================

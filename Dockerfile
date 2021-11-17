@@ -41,7 +41,7 @@ ENV MOAB_BRANCH='master'
 ENV MOAB_REPO='https://bitbucket.org/fathomteam/moab/'
 
 # Double-Down variables
-ENV DD_BRANCH='main'
+ENV DD_TAG='v1.0.0 '
 ENV DD_REPO='https://github.com/pshriwise/double-down'
 ENV DD_INSTALL_DIR=$HOME/Double_down
 
@@ -113,7 +113,7 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         && rm -rf $HOME/MOAB ; \
         # Clone and install Double-Down
         mkdir -p $HOME/Double_down && cd $HOME/Double_down \
-        && git clone --single-branch -b ${DD_BRANCH} --depth 1 ${DD_REPO} \
+        && git clone --single-branch -b ${DD_TAG} --depth 1 ${DD_REPO} \
         && mkdir build && cd build \
         && cmake ../double-down -DCMAKE_INSTALL_PREFIX=${DD_INSTALL_DIR} \
                              -DMOAB_DIR=/usr/local \

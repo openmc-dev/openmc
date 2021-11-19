@@ -66,6 +66,7 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
       micro->elastic = CACHE_INVALID;
       micro->thermal = 0.0;
       micro->thermal_elastic = 0.0;
+      micro->use_ptable = false;
 
       // Find the appropriate temperature index. why would someone use
       // nearest?

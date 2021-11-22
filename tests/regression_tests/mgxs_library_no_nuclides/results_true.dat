@@ -151,17 +151,13 @@ prompt-nu-fission matrix
 1         1         2          1   total  0.495450   0.012592
 0         1         2          2   total  0.000000   0.000000
 diffusion-coefficient
-   material  group in legendre nuclide       mean  std. dev.
-2         1         1       P0   total  13.267434   9.377780
-3         1         1       P1   total   0.881035   0.050823
-0         1         2       P0   total   1.242844   0.316720
-1         1         2       P1   total   0.519910   0.064395
+   material  group in nuclide      mean  std. dev.
+1         1         1   total  0.881035   0.038500
+0         1         2   total  0.519910   0.049301
 nu-diffusion-coefficient
-   material  group in legendre nuclide       mean  std. dev.
-2         1         1       P0   total  13.360612   9.496523
-3         1         1       P1   total   0.880816   0.050843
-0         1         2       P0   total   1.242844   0.316720
-1         1         2       P1   total   0.519910   0.064395
+   material  group in nuclide      mean  std. dev.
+1         1         1   total  0.880816   0.038534
+0         1         2   total  0.519910   0.049301
 (n,elastic)
    material  group in nuclide      mean  std. dev.
 1         1         1   total  0.361427   0.011879
@@ -457,17 +453,13 @@ prompt-nu-fission matrix
 1         2         2          1   total   0.0        0.0
 0         2         2          2   total   0.0        0.0
 diffusion-coefficient
-   material  group in legendre nuclide        mean   std. dev.
-2         2         1       P0   total  133.637358  904.804108
-3         2         1       P1   total    1.210594    0.082668
-0         2         2       P0   total   34.754997  241.483530
-1         2         2       P1   total    1.110491    0.131041
+   material  group in nuclide      mean  std. dev.
+1         2         1   total  1.210594   0.070439
+0         2         2   total  1.110491   0.099580
 nu-diffusion-coefficient
-   material  group in legendre nuclide        mean   std. dev.
-2         2         1       P0   total  133.637358  904.804108
-3         2         1       P1   total    1.210594    0.082668
-0         2         2       P0   total   34.754997  241.483530
-1         2         2       P1   total    1.110491    0.131041
+   material  group in nuclide      mean  std. dev.
+1         2         1   total  1.210594   0.070439
+0         2         2   total  1.110491   0.099580
 (n,elastic)
    material  group in nuclide      mean  std. dev.
 1         2         1   total  0.301494   0.009403
@@ -763,17 +755,13 @@ prompt-nu-fission matrix
 1         3         2          1   total   0.0        0.0
 0         3         2          2   total   0.0        0.0
 diffusion-coefficient
-   material  group in legendre nuclide       mean  std. dev.
-2         3         1       P0   total  11.244053   8.794903
-3         3         1       P1   total   1.141761   0.081143
-0         3         2       P0   total  -2.888333   3.736106
-1         3         2       P1   total   0.227648   0.021613
+   material  group in nuclide      mean  std. dev.
+1         3         1   total  1.141761   0.074641
+0         3         2   total  0.227648   0.018035
 nu-diffusion-coefficient
-   material  group in legendre nuclide       mean  std. dev.
-2         3         1       P0   total  11.244053   8.794903
-3         3         1       P1   total   1.141761   0.081143
-0         3         2       P0   total  -2.888333   3.736106
-1         3         2       P1   total   0.227648   0.021613
+   material  group in nuclide      mean  std. dev.
+1         3         1   total  1.141761   0.074641
+0         3         2   total  0.227648   0.018035
 (n,elastic)
    material  group in nuclide      mean  std. dev.
 1         3         1   total  0.683777   0.015496

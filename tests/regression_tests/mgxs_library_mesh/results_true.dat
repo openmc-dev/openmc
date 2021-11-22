@@ -212,26 +212,18 @@
 30      2  2  y-max out        1   total  0.0244  0.024400
 29      2  2   y-min in        1   total  0.2326  0.042782
 28      2  2  y-min out        1   total  0.1778  0.009484
-  mesh 1       group in legendre nuclide       mean  std. dev.
-       x  y  z                                                
-0      1  1  1        1       P0   total  26.352505  16.110503
-1      1  1  1        1       P1   total   4.600555   0.424935
-4      1  2  1        1       P0   total  32.890094  15.569252
-5      1  2  1        1       P1   total   4.572518   0.218792
-2      2  1  1        1       P0   total  27.128188  17.388447
-3      2  1  1        1       P1   total   4.493168   0.383445
-6      2  2  1        1       P0   total  21.584163   5.964683
-7      2  2  1        1       P1   total   4.489908   0.236773
-  mesh 1       group in legendre nuclide       mean  std. dev.
-       x  y  z                                                
-0      1  1  1        1       P0   total  26.352505  16.110503
-1      1  1  1        1       P1   total   4.600555   0.424935
-4      1  2  1        1       P0   total  32.996545  15.690979
-5      1  2  1        1       P1   total   4.571696   0.218502
-2      2  1  1        1       P0   total  27.434506  17.764465
-3      2  1  1        1       P1   total   4.496020   0.383903
-6      2  2  1        1       P0   total  21.761315   6.095339
-7      2  2  1        1       P1   total   4.492825   0.237270
+  mesh 1       group in nuclide      mean std. dev.
+       x  y  z                                     
+0      1  1  1        1   total  4.600555  0.368212
+2      1  2  1        1   total  4.572518  0.204129
+1      2  1  1        1   total  4.493168  0.329560
+3      2  2  1        1   total  4.489908  0.228574
+  mesh 1       group in nuclide      mean std. dev.
+       x  y  z                                     
+0      1  1  1        1   total  4.600555  0.368212
+2      1  2  1        1   total  4.571696  0.203824
+1      2  1  1        1   total  4.496020  0.330019
+3      2  2  1        1   total  4.492825  0.229077
    mesh 1       delayedgroup group in nuclide      mean     std. dev.
         x  y  z                                                      
 0       1  1  1            1        1   total  0.000007  4.371033e-07

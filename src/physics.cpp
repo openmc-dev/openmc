@@ -1203,8 +1203,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
   }
 }
 
-// split a particle on the basis of the statistical weight
-// of the current location
+// split a particle based on the statistical weight of the current location
 void split_particle(Particle& p)
 {
   // skip dead or no energy
@@ -1212,55 +1211,54 @@ void split_particle(Particle& p)
 
   bool in_domain = false;
   // todo this is a linear search - should do something more clever
-  ParticleWeightParams params;
-  for (const auto& domain : variance_reduction::ww_domains) {
-    in_domain = domain->find_params(p, params);
+  for (const auto& domain : variance_reduction::weight_window_domains) {
+    in_domain = domain->get_weight_window(p);
     if (in_domain)
       break;
   }
-
   // particle is not in any of the ww domains, do nothing
   if (!in_domain) return;
 
   // get the paramters
   double weight = p.wgt();
+  p.wgt_last() = weight;
+  const auto& weight_window = p.weight_window();
 
   // first check to see if particle should be killed for
   // weight cutoff
-  if ( p.wgt() < params.weight_cutoff ) {
+  if (p.wgt() < weight_window.weight_cutoff) {
     p.alive() = false;
     p.wgt() = 0.0;
-    p.wgt_last() = p.wgt();
     return;
   }
 
   // if particles weight is above the weight window
   // split until they are within the window
-  if (weight > params.upper_weight) {
-    double n_split = weight / params.upper_weight;
-    n_split = std::min(std::ceil(n_split), double(params.max_split));
+  if (weight > weight_window.upper_weight) {
+    double n_split = weight / weight_window.upper_weight;
+    n_split = std::min(
+      std::ceil(n_split), static_cast<double>(weight_window.max_split));
 
-    // possibility of some round off
-    for (int l = 0; l < int(n_split) - 1; l++) {
+    int i_split = std::round(n_split);
+    for (int l = 0; l < i_split - 1; l++) {
       p.create_secondary(weight / n_split, p.u(), p.E(), p.type());
     }
     // todo maybe weight should be weight - sum of child weight
     p.wgt() = weight / n_split;
-    p.wgt_last() = p.wgt();
 
     // if the particle weight is below the window
     // roulette until the weight is high enough
-  } else if (weight <= params.lower_weight) {
-    double n_split = std::max(1./params.max_split, weight/params.survival_weight);
+  } else if (weight <= weight_window.lower_weight) {
 
+    double n_split = std::max(
+      1. / weight_window.max_split, weight / weight_window.survival_weight);
     if (prn(p.current_seed()) <= n_split)  {
       p.wgt() /= n_split;
     } else {
       p.alive() = false;
       p.wgt() = 0.0;
     }
-    p.wgt_last() = p.wgt();
-  // else particle is in the window
+    // else particle is in the window, continue as normal
   }
 }
 

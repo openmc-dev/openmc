@@ -1022,13 +1022,13 @@ void write_variance_reduction_parameters(hid_t file_id)
     vr_group = create_group(file_id, "variance_reduction");
 
     hid_t ww_settings_group = create_group(vr_group, "weight_window_settings");
-    for (const auto& wws : variance_reduction::ww_params) {
+    for (const auto& wws : variance_reduction::weight_windows) {
       wws->to_statepoint(ww_settings_group);
     }
     close_group(ww_settings_group);
 
     hid_t ww_domains_group = create_group(vr_group, "weight_window_domains");
-    for (const auto& wwd : variance_reduction::ww_domains) {
+    for (const auto& wwd : variance_reduction::weight_window_domains) {
       wwd->to_statepoint(ww_domains_group);
     }
     close_group(ww_domains_group);

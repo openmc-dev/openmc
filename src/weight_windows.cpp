@@ -12,10 +12,10 @@ namespace openmc {
 namespace variance_reduction {
 
 std::unordered_map<int32_t, int32_t> ww_domain_map;
-openmc::vector<unique_ptr<WeightWindowDomain>> ww_domains;
+openmc::vector<unique_ptr<WeightWindowDomain>> weight_window_domains;
 
 std::unordered_map<int32_t, int32_t> ww_map;
-openmc::vector<unique_ptr<WeightWindowParameters>> ww_params;
+openmc::vector<unique_ptr<WeightWindows>> weight_windows;
 
 } // namespace variance_reduction
 
@@ -58,14 +58,14 @@ void read_variance_reduction_xml() {
 // read the weight window section of a vr file
 void read_weight_windows(pugi::xml_node node)
 {
-
   // make sure we have at least one settings section
   if (check_for_node(node, "settings")) {
     for (auto settings : node.children("settings")) {
-      variance_reduction::ww_params.emplace_back(
-        std::make_unique<WeightWindowParameters>(settings));
-      variance_reduction::ww_map[variance_reduction::ww_params.back()->id()] =
-        variance_reduction::ww_params.size() - 1;
+      variance_reduction::weight_windows.emplace_back(
+        std::make_unique<WeightWindows>(settings));
+      variance_reduction::ww_map[variance_reduction::weight_windows.back()
+                                   ->id()] =
+        variance_reduction::weight_windows.size() - 1;
     }
   } else {
     warning("No weight_window_settings element provided in the "
@@ -75,11 +75,11 @@ void read_weight_windows(pugi::xml_node node)
   // make sure we have at least one domain entry
   if (check_for_node(node, "domain")) {
     for (auto domain : node.children("domain")) {
-      variance_reduction::ww_domains.emplace_back(
+      variance_reduction::weight_window_domains.emplace_back(
         std::make_unique<WeightWindowDomain>(domain));
-      variance_reduction::ww_domain_map[variance_reduction::ww_domains.back()
-                                          ->id()] =
-        variance_reduction::ww_domains.size() - 1;
+      variance_reduction::ww_domain_map
+        [variance_reduction::weight_window_domains.back()->id()] =
+          variance_reduction::weight_window_domains.size() - 1;
     }
   } else {
     warning("No weight_window_domain element provided in the "
@@ -87,15 +87,16 @@ void read_weight_windows(pugi::xml_node node)
   }
 
   // check domains for consistency
-  for (const auto& domain : variance_reduction::ww_domains) {
-    // num spatial*energy bins must match num weight bins
-    int num_spatial_bins = model::meshes[domain->mesh_idx()]->n_bins();
-    int num_energy_bins =
-      variance_reduction::ww_params[domain->param_idx()]->energy_bins().size() -
-      1;
-    int num_weight_bins =
-      variance_reduction::ww_params[domain->param_idx()]->lower_ww().size();
+  for (const auto& domain : variance_reduction::weight_window_domains) {
 
+    const auto& mesh = model::meshes[domain->mesh_idx()];
+    const auto& weight_windows =
+      variance_reduction::weight_windows[domain->weight_windows_idx()];
+
+    // num spatial*energy bins must match num weight bins
+    int num_spatial_bins = mesh->n_bins();
+    int num_energy_bins = weight_windows->energy_bins().size() - 1;
+    int num_weight_bins = weight_windows->lower_ww().size();
     if ( num_weight_bins != num_spatial_bins*num_energy_bins ) {
       auto err_msg =
         fmt::format("In weight window domain {} the number of spatial "
@@ -109,10 +110,10 @@ void read_weight_windows(pugi::xml_node node)
 }
 
 //==============================================================================
-// WeightWindowMesh implementation
+// Weight window mesh implementation
 //==============================================================================
 
-WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
+WeightWindows::WeightWindows(pugi::xml_node node)
 {
   if (check_for_node(node, "id")) {
     id_ = std::stoi(get_node_value(node, "id"));
@@ -189,7 +190,18 @@ WeightWindowParameters::WeightWindowParameters(pugi::xml_node node)
   }
 }
 
-void WeightWindowParameters::to_statepoint(hid_t group) const
+WeightWindow WeightWindows::weight_window(const int index) const
+{
+  WeightWindow ww;
+  ww.lower_weight = lower_ww()[index];
+  ww.upper_weight = upper_ww()[index];
+  ww.survival_weight = ww.lower_weight * survival_ratio();
+  ww.max_split = max_split();
+  ww.weight_cutoff = weight_cutoff();
+  return ww;
+}
+
+void WeightWindows::to_statepoint(hid_t group) const
 {
   hid_t params_group = create_group(group, "parameters " + std::to_string(id_));
 
@@ -238,50 +250,44 @@ WeightWindowDomain::WeightWindowDomain(pugi::xml_node node)
 
   // set the indices to save time later
   mesh_idx_ = model::mesh_map[mesh_id];
-  param_idx_ = variance_reduction::ww_map[settings_id];
+  weight_windows_idx_ = variance_reduction::ww_map[settings_id];
 }
 
-//! Get weight windows parameters given particle - essentially
-// given a location tell the particle the right bounds
-bool WeightWindowDomain::find_params(
-  Particle& p, ParticleWeightParams& params) const
+//! Get weight window using the particle's location and energy
+bool WeightWindowDomain::get_weight_window(Particle& p) const
 {
+  const auto& weight_windows =
+    variance_reduction::weight_windows[weight_windows_idx()];
 
-  // check for particle flavour
-  ParticleType type = p.type();
-  if (variance_reduction::ww_params[param_idx()]->particle_type() != type) {
+  // check for particle type
+  if (weight_windows->particle_type() != p.type()) {
     return false;
   }
 
-  // todo access vector of meshes
-  int indices = model::meshes[mesh_idx()]->get_bin(p.r());
+  const auto& mesh = model::meshes[mesh_idx()];
 
-  // no ww settings found - return in
-  if (indices < 0)
+  // todo access vector of meshes
+  int ww_index = mesh->get_bin(p.r());
+
+  // particle is outside the weight window mesh
+  if (ww_index < 0)
     return false;
 
   // particle energy
   double E = p.E();
 
-  const vector<double> energy_bins =
-    variance_reduction::ww_params[param_idx()]->energy_bins();
-
-  // find the min and max energy values
-  auto e_minmax = std::minmax_element(energy_bins.begin(), energy_bins.end());
-
-  // check to make sure energy is in range
-  if (E < *(e_minmax.first) || E > *(e_minmax.second))
+  const vector<double>& energy_bins = weight_windows->energy_bins();
+  // check to make sure energy is in range, expects sorted energy values
+  if (E < energy_bins.front() || E > energy_bins.back())
     return false;
 
   // get the mesh bin in energy group
   int energy_bin = lower_bound_index(energy_bins.begin(), energy_bins.end(), E);
 
-  // indices now points to the correct weight given
-  // an energy
-  indices += energy_bin * model::meshes[mesh_idx()]->n_bins();
+  // indices now points to the correct weight for the given energy
+  ww_index += energy_bin * mesh->n_bins();
 
-  params =
-    ParticleWeightParams(variance_reduction::ww_params[param_idx()], indices);
+  p.weight_window() = weight_windows->weight_window(ww_index);
 
   return true;
 }
@@ -291,8 +297,8 @@ void WeightWindowDomain::to_statepoint(hid_t group) const
   hid_t domain_group = create_group(group, "domain " + std::to_string(id_));
 
   write_dataset(domain_group, "mesh", model::meshes[mesh_idx_]->id_);
-  write_dataset(
-    domain_group, "settings", variance_reduction::ww_params[param_idx_]->id());
+  write_dataset(domain_group, "settings",
+    variance_reduction::weight_windows[weight_windows_idx_]->id());
 
   close_group(domain_group);
 }

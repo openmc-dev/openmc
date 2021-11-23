@@ -679,6 +679,8 @@ void transport_history_based_single_particle(Particle& p)
 {
   while (true) {
     p.event_calculate_xs();
+    if (!p.alive())
+      break;
     p.event_advance();
     if (p.collision_distance() > p.boundary().distance) {
       p.event_cross_surface();

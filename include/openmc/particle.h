@@ -37,6 +37,7 @@
 //#define NEUTRON_XS_SIZE 272 // HM-Large
 //#define NEUTRON_XS_SIZE 92 // SMR
 #define NEUTRON_XS_SIZE 296 // Depleted SMR uses 296
+//#define NEUTRON_XS_SIZE 35 // Fresh Pincell
 #define PHOTON_XS_SIZE 9 // Pincell example uses 9
 #define COORD_SIZE 6 // Depleted SMR uses 6
 //#define COORD_SIZE 3 // Depleted SMR uses 6
@@ -473,6 +474,18 @@ public:
   #endif
 
   int64_t n_progeny_ {0}; // Number of progeny produced by this particle
+  
+  bool operator<(const Particle& rhs) const
+  {
+    if( alive_ && !rhs.alive_ )
+      return true;
+    if( !alive_ && rhs.alive_ )
+      return false;
+    if( !alive_ && !rhs.alive_ )
+      return false;
+    // case: both are alive, so we sort by id
+    return id_ < rhs.id_;
+  }
 };
 
 //============================================================================

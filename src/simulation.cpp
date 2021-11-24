@@ -796,6 +796,40 @@ void transport_history_based()
   simulation::total_weight = total_weight;
 }
 
+void update_queue_indices(SharedArray<EventQueueItem>& queue, int64_t n_particles)
+{
+  queue.copy_device_to_host();
+  #pragma omp parallel for
+  for( int64_t i = 0; i < queue.size(); i++ )
+  {
+    for( int64_t p = 0; p < n_particles; p++ )
+    {
+      if( queue[i].id == simulation::device_particles[p].id_ )
+      {
+        EventQueueItem a(simulation::device_particles[p], p);
+        queue[i] = a;
+        break;
+      }
+    }
+  }
+  queue.copy_host_to_device();
+}
+
+void stream_compaction(int64_t n_particles)
+{
+  // Lazy test... Transfer to host, process there
+  #pragma omp target update from(simulation::device_particles[:n_particles])
+  std::sort(simulation::device_particles, simulation::device_particles + n_particles);
+  #pragma omp target update to(simulation::device_particles[:n_particles])
+
+  // Now, need to have all queues point to correct IDs
+  update_queue_indices( simulation::calculate_fuel_xs_queue, n_particles);
+  update_queue_indices( simulation::calculate_nonfuel_xs_queue, n_particles);
+  update_queue_indices( simulation::advance_particle_queue, n_particles);
+  update_queue_indices( simulation::surface_crossing_queue, n_particles);
+  update_queue_indices( simulation::collision_queue, n_particles);
+}
+
 void transport_event_based()
 {
   int64_t remaining_work = simulation::work_per_rank;
@@ -818,6 +852,7 @@ void transport_event_based()
     // Initialize all particle histories for this subiteration
     process_init_events(n_particles, source_offset);
 
+    int64_t last_compaction = n_particles;
     // Event-based transport loop
     while (true) {
       // Determine which event kernel has the longest queue
@@ -827,6 +862,22 @@ void transport_event_based()
         simulation::advance_particle_queue.size(),
         simulation::surface_crossing_queue.size(),
         simulation::collision_queue.size()});
+
+      /*
+      int64_t alive = 
+        simulation::calculate_fuel_xs_queue.size() +
+        simulation::calculate_nonfuel_xs_queue.size() +
+        simulation::advance_particle_queue.size() +
+        simulation::surface_crossing_queue.size() +
+        simulation::collision_queue.size();
+
+      if( alive > 512 && (double) alive / (double) last_compaction < 0.5 )
+      {
+        std::cout << "Performing stream compaction. # particles alive: " << alive << std::endl;
+        stream_compaction(last_compaction);
+        last_compaction = alive;
+      }
+      */
 
       // Execute event with the longest queue
       if (max == 0) {

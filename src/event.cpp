@@ -151,6 +151,20 @@ void quickSort_parallel(EventQueueItem* arr, int lenArray){
 	}
 }
 
+void sort_queue(SharedArray<EventQueueItem>& queue)
+{
+  if( simulation::calculate_fuel_xs_queue.size() > settings::sort_frequency )
+  {
+    {
+      #pragma omp target update from(queue.data_[:queue.size()])
+      {
+        quickSort_parallel(queue.data(), queue.size());
+      }
+      #pragma omp target update to(queue.data_[:queue.size()])
+    }
+  }
+}
+
 void init_event_queues(int64_t n_particles)
 {
   simulation::calculate_fuel_xs_queue.reserve(n_particles);
@@ -278,14 +292,9 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 void process_calculate_xs_events_nonfuel()
 {
   simulation::time_event_calculate_xs.start();
-
-  // TODO: If using C++17, perform a parallel sort of the queue
-  // by particle type, material type, and then energy, in order to
-  // improve cache locality and reduce thread divergence on GPU. Prior
-  // to C++17, std::sort is a serial only operation, which in this case
-  // makes it too slow to be practical for most test problems.
-  //
-  // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
+  
+  // The sort here makes less sense, as there are a lot of other various material types, so sorting becomes less powerful
+  //sort_queue(simulation::calculate_nonfuel_xs_queue);
 
   int64_t offset = simulation::advance_particle_queue.size();;
 
@@ -312,92 +321,9 @@ void process_calculate_xs_events_nonfuel()
 
 void process_calculate_xs_events_fuel()
 {
-  if( q_stack == NULL )
-  {
-    std::cout << "Allocating stack..." << std::endl;
-    q_stack = new int[simulation::particles.size()+1];
-    #pragma omp target enter data map(to: q_stack[:simulation::particles.size()+1])
-  }
   simulation::time_event_calculate_xs.start();
 
-  // TODO: If using C++17, perform a parallel sort of the queue
-  // by particle type, material type, and then energy, in order to
-  // improve cache locality and reduce thread divergence on GPU. Prior
-  // to C++17, std::sort is a serial only operation, which in this case
-  // makes it too slow to be practical for most test problems.
-  //
-  // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
-  /*
-  if( settings::sort_frequency > 0 )
-  {
-    sort_counter++;
-    if( sort_counter == settings::sort_frequency )
-    {
-      #pragma omp target
-      {
-        quick_sort(simulation::calculate_fuel_xs_queue.data(), 0, simulation::calculate_fuel_xs_queue.size()-1);
-      }
-      sort_counter = 0;
-    }
-  }
-  */
-  
-  /*
-  if( settings::sort_frequency > 0 )
-  {
-    sort_counter++;
-    if( sort_counter == settings::sort_frequency )
-    {
-      //#pragma omp target
-      simulation::calculate_fuel_xs_queue.copy_device_to_host();
-      {
-        //quick_sort(simulation::calculate_fuel_xs_queue.data(), 0, simulation::calculate_fuel_xs_queue.size()-1);
-        //std::sort( simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.data() + simulation::calculate_fuel_xs_queue.size());
-        quickSort_parallel(simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.size());
-      }
-      simulation::calculate_fuel_xs_queue.copy_host_to_device();
-      sort_counter = 0;
-    }
-  }
-  */
-  /*
-  if( settings::sort_frequency > 0 )
-  {
-    sort_counter++;
-    if( sort_counter == settings::sort_frequency )
-    {
-      //#pragma omp target
-      //simulation::calculate_fuel_xs_queue.copy_device_to_host();
-      {
-        //quick_sort(simulation::calculate_fuel_xs_queue.data(), 0, simulation::calculate_fuel_xs_queue.size()-1);
-        //std::sort( simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.data() + simulation::calculate_fuel_xs_queue.size());
-        quickSort_parallel(simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.size());
-      }
-      //simulation::calculate_fuel_xs_queue.copy_host_to_device();
-      sort_counter = 0;
-    }
-  }
-  */
-  if( simulation::calculate_fuel_xs_queue.size() > settings::sort_frequency )
-  {
-    //sort_counter++;
-    //if( sort_counter == settings::sort_frequency )
-    {
-      //#pragma omp target
-      //simulation::calculate_fuel_xs_queue.copy_device_to_host();
-      #pragma omp target update from(simulation::calculate_fuel_xs_queue.data_[:simulation::calculate_fuel_xs_queue.size()])
-      {
-        //quick_sort(simulation::calculate_fuel_xs_queue.data(), 0, simulation::calculate_fuel_xs_queue.size()-1);
-        //std::sort( simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.data() + simulation::calculate_fuel_xs_queue.size());
-        quickSort_parallel(simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.size());
-      }
-      #pragma omp target update to(simulation::calculate_fuel_xs_queue.data_[:simulation::calculate_fuel_xs_queue.size()])
-      //simulation::calculate_fuel_xs_queue.copy_host_to_device();
-      //sort_counter = 0;
-    }
-  }
-
-
+  sort_queue(simulation::calculate_fuel_xs_queue);
 
   int64_t offset = simulation::advance_particle_queue.size();;
 

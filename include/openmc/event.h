@@ -28,11 +28,12 @@ struct EventQueueItem{
   Particle::Type type; //!< particle type
   int64_t material;    //!< material that particle is in
   double E;            //!< particle energy
+  int64_t id;
 
   // Constructors
   EventQueueItem() = default;
   EventQueueItem(const Particle& p, int64_t buffer_idx) :
-    idx(buffer_idx), type(p.type_), material(p.material_), E(p.E_) {}
+    idx(buffer_idx), type(p.type_), material(p.material_), E(p.E_), id(p.id_) {}
 
   // Compare by particle type, then by material type (4.5% fuel/7.0% fuel/cladding/etc),
   // then by energy.

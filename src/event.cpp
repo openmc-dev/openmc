@@ -275,6 +275,7 @@ void process_calculate_xs_events_fuel()
   // makes it too slow to be practical for most test problems.
   //
   // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
+  /*
   if( settings::sort_frequency > 0 )
   {
     sort_counter++;
@@ -287,6 +288,25 @@ void process_calculate_xs_events_fuel()
       sort_counter = 0;
     }
   }
+  */
+  
+  if( settings::sort_frequency > 0 )
+  {
+    sort_counter++;
+    if( sort_counter == settings::sort_frequency )
+    {
+      //#pragma omp target
+      simulation::calculate_fuel_xs_queue.copy_device_to_host();
+      {
+        //quick_sort(simulation::calculate_fuel_xs_queue.data(), 0, simulation::calculate_fuel_xs_queue.size()-1);
+        std::sort( simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.data() + simulation::calculate_fuel_xs_queue.size());
+      }
+      simulation::calculate_fuel_xs_queue.copy_host_to_device();
+      sort_counter = 0;
+    }
+  }
+
+
 
   int64_t offset = simulation::advance_particle_queue.size();;
 

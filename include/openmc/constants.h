@@ -367,6 +367,10 @@ constexpr int CMFD_NOACCEL {-1};
 
 enum class GeometryType { CSG, DAG };
 
+//==============================================================================
+// Variance Reduction constants
+constexpr double WEIGHT_CUTOFF {1.0E-38}; // default low weight cutoff
+
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

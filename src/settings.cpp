@@ -70,8 +70,8 @@ bool ufs_on {false};
 bool urr_ptables_on {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
-bool weightwindow_on {false};
-  
+bool weight_windows_present {false};
+
 std::string path_cross_sections;
 std::string path_input;
 std::string path_output;

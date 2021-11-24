@@ -196,12 +196,9 @@ class Settings:
         Verbosity during simulation between 1 and 10. Verbosity levels are
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
-        Stochastic volume calculation specifications      
-    weight_window_mesh : openmc.WeightWindowMesh
-        Mesh to be used for Weight Window
+        Stochastic volume calculation specifications
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
-
     """
 
     def __init__(self):
@@ -273,9 +270,6 @@ class Settings:
 
         self._event_based = None
         self._max_particles_in_flight = None
-        
-        self._weightwindowmesh = None
-
         self._write_initial_source = None
 
     @property
@@ -445,19 +439,6 @@ class Settings:
     @property
     def max_particles_in_flight(self):
         return self._max_particles_in_flight
-    
-    @property
-    def weightwindowmesh(self):
-        return self._weightwindowmesh
-    
-    @weightwindowmesh.setter
-    def weightwindowmesh(self, weightwindowmesh):
-	    if not isinstance(weightwindowmesh, WeightWindowMesh):
-		    msg = 'Unable to set weightwindowmesh from "{0}" which is not a '\
-                  ' Python dictionary'.format(cutoff)
-            raise ValueError(msg)
-        ##cv.check_type('weightwindow', weightwindowmesh, WeightWindowMesh)
-        self._weightwindowmesh = weightwindowmesh
 
     @property
     def write_initial_source(self):
@@ -1481,7 +1462,6 @@ class Settings:
         self._create_max_particles_in_flight_subelement(root_element)
         self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
-        self._weightwindowmesh.to_xml_element(root_element)
         self._create_write_initial_source_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
@@ -1556,7 +1536,6 @@ class Settings:
         settings._max_particles_in_flight_from_xml_element(root)
         settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
-        settings._weightwindowmesh.from_xml_element(root)
         settings._write_initial_source_from_xml_element(root)
 
         # TODO: Get volume calculations

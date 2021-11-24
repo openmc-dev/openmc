@@ -141,6 +141,10 @@ parse_command_line(int argc, char* argv[])
 
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
+      
+      } else if (arg == "-f" || arg == "--frequency") {
+        i += 1;
+        settings::sort_frequency = std::stoll(argv[i]);
 
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;

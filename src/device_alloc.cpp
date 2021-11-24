@@ -176,11 +176,31 @@ void move_read_only_data_to_device()
   // Materials /////////////////////////////////////////////////////////
 
   std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
+  int min = 99999;
+  int max = 0;
+  int average = 0;
+  int n_over_200 = 0;
+  int n_under_200 = 0;
   #pragma omp target update to(model::materials_size)
   #pragma omp target enter data map(to: model::materials[:model::materials_size])
   for (int i = 0; i < model::materials_size; i++) {
     model::materials[i].copy_to_device();
+    if(model::materials[i].fissionable())
+    {
+      int num_nucs = model::materials[i].nuclide_.size();
+      if( num_nucs < min )
+        min = num_nucs;
+      if( num_nucs > max )
+       max = num_nucs;
+     average += num_nucs; 
+     if( num_nucs > 200 )
+       n_over_200++;
+     else
+       n_under_200++;
+    }
   }
+  average /= (double) model::materials_size;
+  std::cout << "Fissionable Material Nuclide Content -- Max Nuclide Count: " << max << " Min Nuclide Count: " << min << " Average Nuclide Count: " << average << " Materials with over 200 Nuclides: " << n_over_200 << " Mateirals with under 200 Nuclides: " << n_under_200 << std::endl;
 
   // Source Bank ///////////////////////////////////////////////////////
 

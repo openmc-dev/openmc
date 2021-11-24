@@ -832,9 +832,11 @@ void transport_event_based()
       if (max == 0) {
         break;
       } else if (max == simulation::calculate_fuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+        //process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
+        process_calculate_xs_events_fuel();
       } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
-        process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+        //process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
+        process_calculate_xs_events_nonfuel();
       } else if (max == simulation::advance_particle_queue.size()) {
         process_advance_particle_events();
       } else if (max == simulation::surface_crossing_queue.size()) {

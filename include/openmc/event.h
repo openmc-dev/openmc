@@ -102,7 +102,9 @@ void process_init_events(int64_t n_particles, int64_t source_offset);
 //! Execute the calculate XS event for all particles in this event's buffer
 //
 //! \param queue A reference to the desired XS lookup queue
-void process_calculate_xs_events(SharedArray<EventQueueItem>& queue);
+//void process_calculate_xs_events(SharedArray<EventQueueItem>& queue);
+void process_calculate_xs_events_fuel();
+void process_calculate_xs_events_nonfuel();
 
 //! Execute the advance particle event for all particles in this event's buffer
 void process_advance_particle_events();

@@ -36,6 +36,7 @@ Particle*  device_particles;
 
 int sort_counter{0};
 
+
 #pragma omp declare target
 int* q_stack {NULL};
 
@@ -98,6 +99,57 @@ void quick_sort(EventQueueItem* arr, int l, int h)
   }
 }
 #pragma omp end declare target
+
+void quickSort_parallel_internal(EventQueueItem* arr, int left, int right, int cutoff)
+{
+	int i = left, j = right;
+	double tmp;
+	double pivot = arr[(left + right) / 2].E;
+
+	{
+		while (i <= j) {
+			while (arr[i].E < pivot)
+				i++;
+			while (arr[j].E > pivot)
+				j--;
+			if (i <= j) {
+        qswap(arr[i], arr[j]);
+				i++;
+				j--;
+			}
+		}
+
+	}
+
+	if ( ((right-left)<cutoff) ){
+		if (left < j){ quickSort_parallel_internal(arr, left, j, cutoff); }
+		if (i < right){ quickSort_parallel_internal(arr, i, right, cutoff); }
+
+	}else{
+		#pragma omp task
+		{ quickSort_parallel_internal(arr, left, j, cutoff); }
+		#pragma omp task
+		{ quickSort_parallel_internal(arr, i, right, cutoff); }
+	}
+
+}
+
+void quickSort_parallel(EventQueueItem* arr, int lenArray){
+
+	// Set minumum problem size to still spawn threads for
+	int cutoff = 1000;
+
+	// For this problem size, more than 16 threads on CPU is not helpful
+	int	numThreads = 16;
+
+  #pragma omp parallel num_threads(numThreads)
+	{
+		#pragma omp single nowait
+		{
+			quickSort_parallel_internal(arr, 0, lenArray-1, cutoff);
+		}
+	}
+}
 
 void init_event_queues(int64_t n_particles)
 {
@@ -290,6 +342,7 @@ void process_calculate_xs_events_fuel()
   }
   */
   
+  /*
   if( settings::sort_frequency > 0 )
   {
     sort_counter++;
@@ -299,10 +352,48 @@ void process_calculate_xs_events_fuel()
       simulation::calculate_fuel_xs_queue.copy_device_to_host();
       {
         //quick_sort(simulation::calculate_fuel_xs_queue.data(), 0, simulation::calculate_fuel_xs_queue.size()-1);
-        std::sort( simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.data() + simulation::calculate_fuel_xs_queue.size());
+        //std::sort( simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.data() + simulation::calculate_fuel_xs_queue.size());
+        quickSort_parallel(simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.size());
       }
       simulation::calculate_fuel_xs_queue.copy_host_to_device();
       sort_counter = 0;
+    }
+  }
+  */
+  /*
+  if( settings::sort_frequency > 0 )
+  {
+    sort_counter++;
+    if( sort_counter == settings::sort_frequency )
+    {
+      //#pragma omp target
+      //simulation::calculate_fuel_xs_queue.copy_device_to_host();
+      {
+        //quick_sort(simulation::calculate_fuel_xs_queue.data(), 0, simulation::calculate_fuel_xs_queue.size()-1);
+        //std::sort( simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.data() + simulation::calculate_fuel_xs_queue.size());
+        quickSort_parallel(simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.size());
+      }
+      //simulation::calculate_fuel_xs_queue.copy_host_to_device();
+      sort_counter = 0;
+    }
+  }
+  */
+  if( simulation::calculate_fuel_xs_queue.size() > settings::sort_frequency )
+  {
+    //sort_counter++;
+    //if( sort_counter == settings::sort_frequency )
+    {
+      //#pragma omp target
+      //simulation::calculate_fuel_xs_queue.copy_device_to_host();
+      #pragma omp target update from(simulation::calculate_fuel_xs_queue.data_[:simulation::calculate_fuel_xs_queue.size()])
+      {
+        //quick_sort(simulation::calculate_fuel_xs_queue.data(), 0, simulation::calculate_fuel_xs_queue.size()-1);
+        //std::sort( simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.data() + simulation::calculate_fuel_xs_queue.size());
+        quickSort_parallel(simulation::calculate_fuel_xs_queue.data(), simulation::calculate_fuel_xs_queue.size());
+      }
+      #pragma omp target update to(simulation::calculate_fuel_xs_queue.data_[:simulation::calculate_fuel_xs_queue.size()])
+      //simulation::calculate_fuel_xs_queue.copy_host_to_device();
+      //sort_counter = 0;
     }
   }
 

@@ -273,6 +273,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(file_id, "n_realizations", simulation::n_realizations);
   }
 
+  write_variance_reduction_parameters(file_id);
+
   if (mpi::master) {
     // Write out the runtime metrics.
     using namespace simulation;
@@ -1000,6 +1002,38 @@ void write_tally_results_nr(hid_t file_id)
     }
 
     close_group(tallies_group);
+  }
+}
+
+void write_variance_reduction_parameters(hid_t file_id)
+{
+  hid_t vr_group;
+  if (mpi::master) {
+
+    if (!settings::weight_windows_present) {
+      // indicate that variance reduction was not
+      write_attribute(file_id, "variance_reduction_present", 0);
+      return;
+    }
+
+    // indicate that variance reduction was used
+    write_attribute(file_id, "variance_reduction_present", 1);
+
+    vr_group = create_group(file_id, "variance_reduction");
+
+    hid_t ww_settings_group = create_group(vr_group, "weight_window_settings");
+    for (const auto& wws : variance_reduction::weight_windows) {
+      wws->to_statepoint(ww_settings_group);
+    }
+    close_group(ww_settings_group);
+
+    hid_t ww_domains_group = create_group(vr_group, "weight_window_domains");
+    for (const auto& wwd : variance_reduction::weight_window_domains) {
+      wwd->to_statepoint(ww_domains_group);
+    }
+    close_group(ww_domains_group);
+
+    close_group(vr_group);
   }
 }
 

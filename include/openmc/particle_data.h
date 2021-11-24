@@ -160,6 +160,24 @@ struct BoundaryInfo {
     lattice_translation {}; //!< which way lattice indices will change
 };
 
+//==============================================================================
+// Information about current weight window
+//==============================================================================
+struct WeightWindow {
+  // Constructors
+  WeightWindow()
+    : lower_weight(0), upper_weight(1), survival_weight(0.5), max_split(1),
+      weight_cutoff(WEIGHT_CUTOFF)
+  {}
+
+  // Data members
+  double lower_weight;
+  double upper_weight;
+  double survival_weight;
+  int max_split;
+  double weight_cutoff;
+};
+
 //============================================================================
 //! Defines how particle data is laid out in memory
 //============================================================================
@@ -302,6 +320,9 @@ private:
 
   int n_event_ {0}; // number of events executed in this particle's history
 
+  // Weight window information
+  WeightWindow weight_window_;
+
 // DagMC state variables
 #ifdef DAGMC
   moab::DagMC::RayHistory history_;
@@ -418,6 +439,9 @@ public:
   bool& trace() { return trace_; }
   double& collision_distance() { return collision_distance_; }
   int& n_event() { return n_event_; }
+
+  const WeightWindow& weight_window() const { return weight_window_; }
+  WeightWindow& weight_window() { return weight_window_; }
 
 #ifdef DAGMC
   moab::DagMC::RayHistory& history() { return history_; }

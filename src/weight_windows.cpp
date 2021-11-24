@@ -1,223 +1,306 @@
+#include "openmc/weight_windows.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/search.h"
-#include "openmc/weight_windows.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
 
+namespace variance_reduction {
+
+std::unordered_map<int32_t, int32_t> ww_domain_map;
+openmc::vector<unique_ptr<WeightWindowDomain>> weight_window_domains;
+
+std::unordered_map<int32_t, int32_t> ww_map;
+openmc::vector<unique_ptr<WeightWindows>> weight_windows;
+
+} // namespace variance_reduction
+
 // read the weight window file
-void read_weight_window_xml() {
-  using namespace weight_window;
-  using namespace settings;
-  using namespace pugi;
+void read_variance_reduction_xml() {
 
-  // Check if weight_window.xml exists                                                         
-  std::string filename = path_input + "weight_windows.xml";
-  
-  // Parse settings.xml file                                                              
-  xml_document doc;                                                                       
+  std::string filename = settings::path_input + "variance_reduction.xml";
+
+  // Parse variance_reduction.xml file
+  pugi::xml_document doc;
+
+  // try the read vr file
   if (file_exists(filename)) {
-    auto result = doc.load_file(filename.c_str());                                          
-    if (!result) {                                                                          
-      fatal_error("Error processing weight_windows.xml file.");                                   
-    }
-    // Get root element                                                                     
-    xml_node root = doc.document_element();
+    auto result = doc.load_file(filename.c_str());
 
+    if (!result) {
+      fatal_error("Error processing variance_reduction.xml file.");
+    }
+    // Get root element
+    pugi::xml_node root = doc.document_element();
+
+    // read all the meshes in the VR file
+    read_meshes(root);
+
+    // Display output message
+    write_message("Reading variance reduction XML file...", 5);
+
+    // check for weight window section
+    if (check_for_node(root, "weight_windows")) {
+      pugi::xml_node weight_windows = root.child("weight_windows");
+      read_weight_windows(weight_windows);
+    } else {
       // Display output message
-    write_message("Reading weight window XML file...", 5);
+      warning("variance_reduction file has been read, but no variance "
+              "reduction has been enabled.");
+    }
+  }
+}
 
-    // try and read a weight window
-    settings::ww_settings = std::make_shared<weight_window::WeightWindow>(root);
+// read the weight window section of a vr file
+void read_weight_windows(pugi::xml_node node)
+{
+  // make sure we have at least one settings section
+  if (check_for_node(node, "settings")) {
+    for (auto settings : node.children("settings")) {
+      variance_reduction::weight_windows.emplace_back(
+        std::make_unique<WeightWindows>(settings));
+      variance_reduction::ww_map[variance_reduction::weight_windows.back()
+                                   ->id()] =
+        variance_reduction::weight_windows.size() - 1;
+    }
   } else {
-    settings::ww_settings = std::make_shared<weight_window::WeightWindow>();
-  }                                                                       
-}
-
-//==============================================================================
-// WeightWindowMesh implementation
-//==============================================================================
-
-using namespace weight_window;
-
-WeightWindow::WeightWindow() 
-{
-  // upper weight window = upper_ratio * lower weight window
-  weight_params[ParticleType::neutron].upper_ratio = 5.; 
-  // survival weight = survival_ratio * lower weight window  
-  weight_params[ParticleType::neutron].survival_ratio = 3.; 
-  // max number of split particles
-  weight_params[ParticleType::neutron].max_split = 5; 
-  // multiplier for weight window lower bounds
-  weight_params[ParticleType::neutron].multiplier = 1.0; 
-  // weight cutoff for the problem
-  weight_params[ParticleType::neutron].weight_cutoff = WEIGHT_CUTOFF; 
-  
-  // upper weight window = upper_ratio * lower weight window
-  weight_params[ParticleType::photon].upper_ratio = 5.; 
-  // survival weight = survival_ratio * lower weight window  
-  weight_params[ParticleType::photon].survival_ratio = 3.; 
-  // max number of split particles
-  weight_params[ParticleType::photon].max_split = 5; 
-  // multiplier for weight window lower bounds
-  weight_params[ParticleType::photon].multiplier = 1.0;
-  // weight cutoff for the problem
-  weight_params[ParticleType::photon].weight_cutoff = WEIGHT_CUTOFF; 
-}
-
-WeightWindow::WeightWindow(pugi::xml_node node) : WeightWindow()
-{
-  using namespace pugi;
-  
-  // check for a mesh
-  if (check_for_node(node, "mesh")) { 
-    xml_node mesh = node.child("mesh");
-    mesh_ = make_unique<RectilinearMesh>(mesh);
+    warning("No weight_window_settings element provided in the "
+            "variance_reduction.xml file.");
   }
 
-  // make sure we have a particle section
+  // make sure we have at least one domain entry
+  if (check_for_node(node, "domain")) {
+    for (auto domain : node.children("domain")) {
+      variance_reduction::weight_window_domains.emplace_back(
+        std::make_unique<WeightWindowDomain>(domain));
+      variance_reduction::ww_domain_map
+        [variance_reduction::weight_window_domains.back()->id()] =
+          variance_reduction::weight_window_domains.size() - 1;
+    }
+  } else {
+    warning("No weight_window_domain element provided in the "
+            "variance_reduction.xml file.");
+  }
+
+  // check domains for consistency
+  for (const auto& domain : variance_reduction::weight_window_domains) {
+
+    const auto& mesh = model::meshes[domain->mesh_idx()];
+    const auto& weight_windows =
+      variance_reduction::weight_windows[domain->weight_windows_idx()];
+
+    // num spatial*energy bins must match num weight bins
+    int num_spatial_bins = mesh->n_bins();
+    int num_energy_bins = weight_windows->energy_bins().size() - 1;
+    int num_weight_bins = weight_windows->lower_ww().size();
+    if ( num_weight_bins != num_spatial_bins*num_energy_bins ) {
+      auto err_msg =
+        fmt::format("In weight window domain {} the number of spatial "
+                    "energy/spatial bins ({}) does not match the number "
+                    "of weight bins ({})",
+          domain->id(), num_energy_bins, num_weight_bins);
+      fatal_error(err_msg);
+    }
+  }
+  settings::weight_windows_present = true;
+}
+
+//==============================================================================
+// Weight window mesh implementation
+//==============================================================================
+
+WeightWindows::WeightWindows(pugi::xml_node node)
+{
+  if (check_for_node(node, "id")) {
+    id_ = std::stoi(get_node_value(node, "id"));
+
+    if (variance_reduction::ww_map.find(id_) !=
+        variance_reduction::ww_map.end()) {
+      auto msg = fmt::format(
+        "Two or more weight window parameters use the same unique ID: {}", id_);
+      fatal_error(msg);
+    }
+  }
+
+  // get the particle type
   if (check_for_node(node, "particle")) {
-    // read the particle specific settings
-    xml_node particle = node.child("particle");
-
-    // get the particle type
-    std::string particle_type_str = std::string(get_node_value(particle, "type"));
-    openmc::ParticleType particle_type = openmc::str_to_particle_type(particle_type_str);
-
-    weight_params[particle_type] = read_particle_settings(particle);
-    
+    std::string particle_type_str =
+      std::string(get_node_value(node, "particle"));
+    particle_type() = openmc::str_to_particle_type(particle_type_str);
   } else {
-    fatal_error("Weight window file is missing a particle section");   
+    fatal_error(
+      "No particle type specifier applied within the weight window setttings.");
   }
-}
 
-// read the particle specific settings 
-WWParams WeightWindow::read_particle_settings(pugi::xml_node node) 
-{ 
-  using namespace pugi;
+  // get the survival value - optional
+  if (check_for_node(node, "survival_ratio")) {
+    survival_ratio() = std::stod(get_node_value(node, "survival_ratio"));
+    if (survival_ratio() <= 1)
+      fatal_error("Survival to lower weight window ratio must bigger than 1"
+                  "and less than the upper to lower weight window ratio.");
+  }
 
-  WWParams settings;
-  
-  // 
-  if (!check_for_node(node, "parameters")) {
-    fatal_error("<parameters> section is missing from the" 
-      "weight_windows.xml file.");
+  // get the max split - optional
+  if (check_for_node(node, "max_split")) {
+    max_split() = std::stod(get_node_value(node, "max_split"));
+    if (max_split() <= 1)
+      fatal_error("max split must be larger than 1");
+  }
+
+  // weight cutoff - optional - but default is 1e-38
+  if (check_for_node(node, "weight_cutoff")) {
+    weight_cutoff() = std::stod(get_node_value(node, "weight_cutoff"));
+    if (weight_cutoff() <= 0)
+      fatal_error("weight_cutoff must be larger than 0");
+    if (weight_cutoff() > 1)
+      fatal_error("weight_cutoff must be less than 1");
+  }
+
+  // energy bounds
+  if (check_for_node(node, "energy_bins")) {
+    energy_bins() = get_node_array<double>(node, "energy_bins");
   } else {
-    pugi::xml_node parameters = node.child("parameters");
-  
-    // get the upper bound - optional - could be defined as a mesh parameter
-    if (check_for_node(parameters, "upper_bound")) {
-      settings.upper_ratio = std::stod(get_node_value(parameters, "upper_bound"));
-      if(settings.upper_ratio < 2) fatal_error("upper bound must be larger than 2");
-    }
-
-    // get the survival value - optional
-    if (check_for_node(parameters, "survival")) { 
-      settings.survival_ratio = std::stod(get_node_value(parameters, "survival"));
-      if(settings.survival_ratio <= 1 
-        || settings.survival_ratio >= settings.upper_ratio) 
-          fatal_error("Survival to lower weight window ratio must bigger than 1"
-                    "and less than the upper to lower weight window ratio.");   
-    }
-
-    // get the max split - optional
-    if (check_for_node(parameters, "max_split")) {
-      settings.max_split = std::stod(get_node_value(parameters, "max_split"));
-      if(settings.max_split <= 1) fatal_error("max split must be larger than 1");
-    }
-
-    // multiplier - optional 
-    if (check_for_node(parameters, "multiplier")) {
-      settings.multiplier = std::stod(get_node_value(parameters, "multiplier"));
-      if(settings.multiplier <= 0) fatal_error("multiplier must be larger than 0");
-    }
-
-    // weight cutoff - optional
-    if (check_for_node(parameters, "weight_cutoff")) {
-      settings.weight_cutoff = std::stod(get_node_value(parameters, "weight_cutoff"));
-      if(settings.weight_cutoff <= 0) fatal_error("weight_cutoff must be larger than 0");
-      if(settings.weight_cutoff > 1) fatal_error("weight_cutoff must be less than 1");
-    }
-  }  
-
-  // 
-  if (!check_for_node(node, "energy")) {
-    fatal_error("<energy> section is missing from the " 
-      "weight_windows.xml file.");
-  } else {
-    settings.energy_bounds = get_node_array<double>(node, "energy");   
+    fatal_error("<energy_bins> is missing from the "
+                "weight_windows.xml file.");
   }
 
   // read the lower weight bounds
-  if (!check_for_node(node, "lower_ww")) {
-    fatal_error("<lower_ww> section is missing from the " 
-      "weight_windows.xml file.");
+  if (check_for_node(node, "lower_ww_bounds")) {
+    lower_ww() = get_node_array<double>(node, "lower_ww_bounds");
   } else {
-    settings.lower_ww = get_node_array<double>(node, "lower_ww");    
-    if (settings.lower_ww.size() != 
-      mesh_->n_bins()*(settings.energy_bounds.size()-1)) {
-         fatal_error("not enough entries in the lower_ww section");
-      }
+    fatal_error("<lower_ww_bounds> section is missing from the "
+                "variance_reduction.xml file.");
   }
 
   // read the upper weight bounds
-  if (check_for_node(node, "upper_ww")) {
-    settings.upper_ww = get_node_array<double>(node, "upper_ww");  
-    // ensure there are enough entries
-    if (settings.upper_ww.size() != 
-      mesh_->n_bins()*(settings.energy_bounds.size()-1)) {
-         fatal_error("not enough entries in the upper_ww section");
+  if (check_for_node(node, "upper_ww_bounds")) {
+    upper_ww() = get_node_array<double>(node, "upper_ww_bounds");
+  } else {
+    fatal_error("<upper_ww_bounds> node is missing from the "
+                "variance_reduction.xml file.");
+  }
+
+  // make sure that the upper and lower bounds have the same size
+  if (upper_ww().size() != lower_ww().size()) {
+    fatal_error("The upper and lower weight window lengths do not match.");
+  }
+}
+
+WeightWindow WeightWindows::weight_window(const int index) const
+{
+  WeightWindow ww;
+  ww.lower_weight = lower_ww()[index];
+  ww.upper_weight = upper_ww()[index];
+  ww.survival_weight = ww.lower_weight * survival_ratio();
+  ww.max_split = max_split();
+  ww.weight_cutoff = weight_cutoff();
+  return ww;
+}
+
+void WeightWindows::to_statepoint(hid_t group) const
+{
+  hid_t params_group = create_group(group, "parameters " + std::to_string(id_));
+
+  write_dataset(params_group, "particle_type",
+    openmc::particle_type_to_str(particle_type_));
+  write_dataset(params_group, "energy_bins", energy_bins_);
+  write_dataset(params_group, "lower_ww_bounds", lower_ww_);
+  write_dataset(params_group, "upper_ww_bounds", upper_ww_);
+  write_dataset(params_group, "survival_ratio", survival_ratio_);
+  write_dataset(params_group, "max_split", max_split_);
+  write_dataset(params_group, "weight_cutoff", weight_cutoff_);
+
+  close_group(params_group);
+}
+
+// read the specific weight window settings
+WeightWindowDomain::WeightWindowDomain(pugi::xml_node node)
+{
+  if (check_for_node(node, "id")) {
+    id_ = std::stoi(get_node_value(node, "id"));
+
+    // Check to make sure this ID hasn't been used
+    if (variance_reduction::ww_domain_map.find(id_) !=
+        variance_reduction::ww_domain_map.end()) {
+      auto msg = fmt::format(
+        "Two or more weight window domains use the same unique ID: {}", id_);
+      fatal_error(msg);
     }
   }
 
-  // maybe multply out a vector for the upper bounds for consistency
+  int32_t mesh_id, settings_id;
 
-  return settings;
+  // get the mesh id
+  if (check_for_node(node,"mesh")) {
+    mesh_id = std::stoi(get_node_value(node, "mesh"));
+  } else {
+    fatal_error("No mesh specifier in the domain.");
+  }
+
+  // get the settings id
+  if (check_for_node(node,"settings")) {
+    settings_id = std::stoi(get_node_value(node, "settings"));
+  } else {
+    fatal_error("No settings specifier in the domain .");
+  }
+
+  // set the indices to save time later
+  mesh_idx_ = model::mesh_map[mesh_id];
+  weight_windows_idx_ = variance_reduction::ww_map[settings_id];
 }
-  
-//! Get weight windows parameters given particle - essentially
-// given a location tell the particle the right bounds
-ParticleWeightParams WeightWindow::get_params(Particle& p) const
-{	
-  // Particle's position and energy
-  Position pos  = p.r();
+
+//! Get weight window using the particle's location and energy
+bool WeightWindowDomain::get_weight_window(Particle& p) const
+{
+  const auto& weight_windows =
+    variance_reduction::weight_windows[weight_windows_idx()];
+
+  // check for particle type
+  if (weight_windows->particle_type() != p.type()) {
+    return false;
+  }
+
+  const auto& mesh = model::meshes[mesh_idx()];
+
+  // todo access vector of meshes
+  int ww_index = mesh->get_bin(p.r());
+
+  // particle is outside the weight window mesh
+  if (ww_index < 0)
+    return false;
+
+  // particle energy
   double E = p.E();
 
-  // get the settings for the weight window
-  ParticleType type = p.type();
-
-  // 
-  WWParams ww_settings;
-  auto it = weight_params.find(p.type());
-  // return if
-
-  // if we dont find the particle in the map return
-  // in the window - no spliting will happen
-  if( it != weight_params.end()) {
-    ww_settings = it->second;
-  } else {
-    // no ww settings found - return in
-    return ParticleWeightParams();
-  }
-	
-  // indices in weight window vector
-  int indices = mesh_->get_bin(pos);
-
-  // no ww settings found - return in
-  if ( indices < 0 ) return ParticleWeightParams();
+  const vector<double>& energy_bins = weight_windows->energy_bins();
+  // check to make sure energy is in range, expects sorted energy values
+  if (E < energy_bins.front() || E > energy_bins.back())
+    return false;
 
   // get the mesh bin in energy group
-  int energy_bin = lower_bound_index(ww_settings.energy_bounds.begin(), 
-                     ww_settings.energy_bounds.end(), E);
+  int energy_bin = lower_bound_index(energy_bins.begin(), energy_bins.end(), E);
 
-  // indices points to the correct weight given 
-  // an energy
-  indices += energy_bin*mesh_->n_bins(); 
-  
-  return ParticleWeightParams(ww_settings,indices);
+  // indices now points to the correct weight for the given energy
+  ww_index += energy_bin * mesh->n_bins();
+
+  p.weight_window() = weight_windows->weight_window(ww_index);
+
+  return true;
+}
+
+void WeightWindowDomain::to_statepoint(hid_t group) const
+{
+  hid_t domain_group = create_group(group, "domain " + std::to_string(id_));
+
+  write_dataset(domain_group, "mesh", model::meshes[mesh_idx_]->id_);
+  write_dataset(domain_group, "settings",
+    variance_reduction::weight_windows[weight_windows_idx_]->id());
+
+  close_group(domain_group);
 }
 
 } // namespace openmc

@@ -901,8 +901,9 @@ void transport_event_based()
     process_death_events(n_particles);
 
     // Adjust remaining work and source offset variables
-    remaining_work -= n_particles;
-    source_offset += n_particles;
+    //remaining_work -= n_particles;
+    //source_offset += n_particles;
+    remaining_work = 0;
   }
 
   // Copy back fission bank to host

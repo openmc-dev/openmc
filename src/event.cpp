@@ -181,6 +181,8 @@ void init_event_queues(int64_t n_particles)
   simulation::advance_particle_queue.allocate_on_device();
   simulation::surface_crossing_queue.allocate_on_device();
   simulation::collision_queue.allocate_on_device();
+  
+  #pragma omp target update to(simulation::work_per_rank)
 }
 
 void free_event_queues(void)
@@ -204,9 +206,16 @@ void dispatch_xs_event(int64_t buffer_idx)
   }
 }
 
+#pragma omp declare target
+int64_t current_source_offset;
+#pragma omp end declare target
+
 void process_init_events(int64_t n_particles, int64_t source_offset)
 {
   simulation::time_event_init.start();
+
+  current_source_offset = source_offset + n_particles;
+  #pragma omp target update to(current_source_offset)
   
   double total_weight = 0.0;
 
@@ -512,8 +521,11 @@ void process_surface_crossing_events()
 {
   simulation::time_event_surface_crossing.start();
 
+
+  double extra_weight = 0;
+
   #ifdef USE_DEVICE
-  #pragma omp target teams distribute parallel for
+  #pragma omp target teams distribute parallel for reduction(+:extra_weight)
   #else
   #pragma omp parallel for schedule(runtime)
   #endif
@@ -522,9 +534,24 @@ void process_surface_crossing_events()
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_cross_surface();
     p.event_revive_from_secondary();
+    if( !p.alive_ )
+    {
+      int64_t source_offset_idx;
+      #pragma omp atomic capture //seq_cst
+      source_offset_idx = current_source_offset++;
+      if( source_offset_idx < simulation::work_per_rank )
+      {
+        p.event_death();
+        initialize_history(p, source_offset_idx + 1);
+        extra_weight += p.wgt_;
+      }
+    }
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
   }
+  
+  // Write total weight to global variable
+  simulation::total_weight += extra_weight;
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
@@ -586,8 +613,10 @@ void process_collision_events()
 {
   simulation::time_event_collision.start();
 
+  double extra_weight = 0;
+
   #ifdef USE_DEVICE
-  #pragma omp target teams distribute parallel for
+  #pragma omp target teams distribute parallel for reduction(+:extra_weight)
   #else
   #pragma omp parallel for schedule(runtime)
   #endif
@@ -596,9 +625,24 @@ void process_collision_events()
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_collide();
     p.event_revive_from_secondary();
+    if( !p.alive_ )
+    {
+      int64_t source_offset_idx;
+      #pragma omp atomic capture //seq_cst
+      source_offset_idx = current_source_offset++;
+      if( source_offset_idx < simulation::work_per_rank )
+      {
+        p.event_death();
+        initialize_history(p, source_offset_idx + 1);
+        extra_weight += p.wgt_;
+      }
+    }
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
   }
+  
+  // Write total weight to global variable
+  simulation::total_weight += extra_weight;
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
@@ -633,10 +677,10 @@ void process_death_events(int64_t n_particles)
   simulation::time_event_death.stop();
 
   // Write local reduction results to global values
-  global_tally_absorption  = absorption;
-  global_tally_collision   = collision;
-  global_tally_tracklength = tracklength;
-  global_tally_leakage     = leakage;
+  global_tally_absorption  += absorption;
+  global_tally_collision   += collision;
+  global_tally_tracklength += tracklength;
+  global_tally_leakage     += leakage;
 
   #ifdef USE_DEVICE
 

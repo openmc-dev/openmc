@@ -34,6 +34,71 @@ Particle*  device_particles;
 // Non-member functions
 //==============================================================================
 
+int sort_counter{0};
+
+#pragma omp declare target
+int* q_stack {NULL};
+
+void qswap(EventQueueItem& a, EventQueueItem& b)
+{
+  EventQueueItem tmp = a;
+  a = b;
+  b = tmp;
+}
+
+int partition_by_index(EventQueueItem* arr, int l, int h)
+{
+  int x = arr[h].idx;
+  int i = (l - 1);
+  for (int j = l; j <= h - 1; j++) {
+    if (arr[j].idx <= x) {
+      i++;
+      qswap(arr[i], arr[j]);
+    }
+  }
+  qswap(arr[i + 1], arr[h]);
+  return (i + 1);
+}
+
+int partition_by_energy(EventQueueItem* arr, int l, int h)
+{
+  double x = arr[h].E;
+  int i = (l - 1);
+  for (int j = l; j <= h - 1; j++) {
+    if (arr[j].E <= x) {
+      i++;
+      qswap(arr[i], arr[j]);
+    }
+  }
+  qswap(arr[i + 1], arr[h]);
+  return (i + 1);
+}
+
+void quick_sort(EventQueueItem* arr, int l, int h)
+{
+  //int q_stack[h-l+1];
+  int top = -1;
+  q_stack[++top]=l;
+  q_stack[++top]=h;
+  while(top >= 0)
+  {
+    h = q_stack[top--];
+    l = q_stack[top--];
+    int p = partition_by_energy(arr, l, h);
+    if(p-1>l)
+    {
+      q_stack[++top] = l;
+      q_stack[++top] = p - 1;
+    }
+    if(p+1<h)
+    {
+      q_stack[++top] = p + 1;
+      q_stack[++top] = h;
+    }
+  }
+}
+#pragma omp end declare target
+
 void init_event_queues(int64_t n_particles)
 {
   simulation::calculate_fuel_xs_queue.reserve(n_particles);
@@ -158,6 +223,95 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 }
 #else
 
+void process_calculate_xs_events_nonfuel()
+{
+  simulation::time_event_calculate_xs.start();
+
+  // TODO: If using C++17, perform a parallel sort of the queue
+  // by particle type, material type, and then energy, in order to
+  // improve cache locality and reduce thread divergence on GPU. Prior
+  // to C++17, std::sort is a serial only operation, which in this case
+  // makes it too slow to be practical for most test problems.
+  //
+  // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
+
+  int64_t offset = simulation::advance_particle_queue.size();;
+
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for
+  #else
+  #pragma omp parallel for schedule(runtime)
+  #endif
+  for (int64_t i = 0; i < simulation::calculate_nonfuel_xs_queue.size(); i++) {
+    int64_t buffer_idx = simulation::calculate_nonfuel_xs_queue[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
+    p.event_calculate_xs();
+    simulation::advance_particle_queue[offset + i] = simulation::calculate_nonfuel_xs_queue[i];
+  }
+
+  // After executing a calculate_xs event, particles will
+  // always require an advance event. Therefore, we don't need to use
+  // the protected enqueuing function.
+  simulation::advance_particle_queue.resize(offset + simulation::calculate_nonfuel_xs_queue.size());
+  simulation::calculate_nonfuel_xs_queue.resize(0);
+
+  simulation::time_event_calculate_xs.stop();
+}
+
+void process_calculate_xs_events_fuel()
+{
+  if( q_stack == NULL )
+  {
+    std::cout << "Allocating stack..." << std::endl;
+    q_stack = new int[simulation::particles.size()+1];
+    #pragma omp target enter data map(to: q_stack[:simulation::particles.size()+1])
+  }
+  simulation::time_event_calculate_xs.start();
+
+  // TODO: If using C++17, perform a parallel sort of the queue
+  // by particle type, material type, and then energy, in order to
+  // improve cache locality and reduce thread divergence on GPU. Prior
+  // to C++17, std::sort is a serial only operation, which in this case
+  // makes it too slow to be practical for most test problems.
+  //
+  // std::sort(std::execution::par_unseq, queue.data(), queue.data() + queue.size());
+  if( settings::sort_frequency > 0 )
+  {
+    sort_counter++;
+    if( sort_counter == settings::sort_frequency )
+    {
+      #pragma omp target
+      {
+        quick_sort(simulation::calculate_fuel_xs_queue.data(), 0, simulation::calculate_fuel_xs_queue.size()-1);
+      }
+      sort_counter = 0;
+    }
+  }
+
+  int64_t offset = simulation::advance_particle_queue.size();;
+
+  #ifdef USE_DEVICE
+  #pragma omp target teams distribute parallel for
+  #else
+  #pragma omp parallel for schedule(runtime)
+  #endif
+  for (int64_t i = 0; i < simulation::calculate_fuel_xs_queue.size(); i++) {
+    int64_t buffer_idx = simulation::calculate_fuel_xs_queue[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
+    p.event_calculate_xs();
+    simulation::advance_particle_queue[offset + i] = simulation::calculate_fuel_xs_queue[i];
+  }
+
+  // After executing a calculate_xs event, particles will
+  // always require an advance event. Therefore, we don't need to use
+  // the protected enqueuing function.
+  simulation::advance_particle_queue.resize(offset + simulation::calculate_fuel_xs_queue.size());
+  simulation::calculate_fuel_xs_queue.resize(0);
+
+  simulation::time_event_calculate_xs.stop();
+}
+
+/*
 void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_calculate_xs.start();
@@ -192,6 +346,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 
   simulation::time_event_calculate_xs.stop();
 }
+*/
 #endif
 
 // No update

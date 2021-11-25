@@ -24,6 +24,7 @@ SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 SharedArray<EventQueueItem> advance_particle_queue;
 SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
+SharedArray<EventQueueItem> revival_queue;
 
 std::vector<Particle>  particles;
 Particle*  device_particles;
@@ -172,6 +173,7 @@ void init_event_queues(int64_t n_particles)
   simulation::advance_particle_queue.reserve(n_particles);
   simulation::surface_crossing_queue.reserve(n_particles);
   simulation::collision_queue.reserve(n_particles);
+  simulation::revival_queue.reserve(n_particles);
 
   simulation::particles.resize(n_particles);
 
@@ -181,6 +183,7 @@ void init_event_queues(int64_t n_particles)
   simulation::advance_particle_queue.allocate_on_device();
   simulation::surface_crossing_queue.allocate_on_device();
   simulation::collision_queue.allocate_on_device();
+  simulation::revival_queue.allocate_on_device();
   
   #pragma omp target update to(simulation::work_per_rank)
 }
@@ -192,6 +195,7 @@ void free_event_queues(void)
   simulation::advance_particle_queue.clear();
   simulation::surface_crossing_queue.clear();
   simulation::collision_queue.clear();
+  simulation::revival_queue.clear();
 
   simulation::particles.clear();
 }
@@ -533,6 +537,7 @@ void process_surface_crossing_events()
     int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_cross_surface();
+    /*
     p.event_revive_from_secondary();
     if( !p.alive_ )
     {
@@ -546,8 +551,11 @@ void process_surface_crossing_events()
         extra_weight += p.wgt_;
       }
     }
+      */
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
+    else
+      simulation::revival_queue.thread_safe_append({p, buffer_idx});
   }
   
   // Write total weight to global variable
@@ -555,6 +563,7 @@ void process_surface_crossing_events()
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
+  simulation::revival_queue.sync_size_device_to_host();
   simulation::surface_crossing_queue.resize(0);
 
   simulation::time_event_surface_crossing.stop();
@@ -624,6 +633,7 @@ void process_collision_events()
     int64_t buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_collide();
+    /*
     p.event_revive_from_secondary();
     if( !p.alive_ )
     {
@@ -637,8 +647,11 @@ void process_collision_events()
         extra_weight += p.wgt_;
       }
     }
+    */
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
+    else
+      simulation::revival_queue.thread_safe_append({p, buffer_idx});
   }
   
   // Write total weight to global variable
@@ -646,6 +659,7 @@ void process_collision_events()
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
+  simulation::revival_queue.sync_size_device_to_host();
   simulation::collision_queue.resize(0);
 
   simulation::time_event_collision.stop();
@@ -672,9 +686,8 @@ void process_death_events(int64_t n_particles)
   for (int64_t i = 0; i < n_particles; i++) {
     Particle& p = simulation::device_particles[i];
     p.accumulate_keff_tallies_local(absorption, collision, tracklength, leakage);
-    p.event_death();
+    //p.event_death();
   }
-  simulation::time_event_death.stop();
 
   // Write local reduction results to global values
   global_tally_absorption  += absorption;
@@ -688,7 +701,46 @@ void process_death_events(int64_t n_particles)
   #pragma omp target update from(simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
 
   #endif
+  simulation::time_event_death.stop();
 
+}
+
+void process_revival_events()
+{
+  simulation::time_event_revival.start();
+
+  double extra_weight = 0;
+
+  #pragma omp target teams distribute parallel for reduction(+:extra_weight)
+  for (int64_t i = 0; i < simulation::revival_queue.size(); i++) {
+    int64_t buffer_idx = simulation::revival_queue[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
+    p.event_revive_from_secondary();
+    if( !p.alive_ )
+    {
+      p.event_death();
+      int64_t source_offset_idx;
+      #pragma omp atomic capture //seq_cst
+      source_offset_idx = current_source_offset++;
+
+      if( source_offset_idx < simulation::work_per_rank )
+      {
+        initialize_history(p, source_offset_idx + 1);
+        extra_weight += p.wgt_;
+      }
+    }
+    if (p.alive_)
+      dispatch_xs_event(buffer_idx);
+  }
+
+  simulation::revival_queue.resize(0);
+  simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
+  simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
+
+  // Write total weight to global variable
+  simulation::total_weight += extra_weight;
+
+  simulation::time_event_revival.stop();
 }
 
 } // namespace openmc

@@ -26,6 +26,7 @@ Timer time_event_advance_particle;
 Timer time_event_surface_crossing;
 Timer time_event_collision;
 Timer time_event_death;
+Timer time_event_revival;
 
 } // namespace simulation
 
@@ -85,6 +86,7 @@ void reset_timers()
   simulation::time_event_surface_crossing.reset();
   simulation::time_event_collision.reset();
   simulation::time_event_death.reset();
+  simulation::time_event_revival.reset();
 }
 
 } // namespace openmc

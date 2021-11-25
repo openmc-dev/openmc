@@ -861,6 +861,7 @@ void transport_event_based()
         simulation::calculate_nonfuel_xs_queue.size(),
         simulation::advance_particle_queue.size(),
         simulation::surface_crossing_queue.size(),
+        simulation::revival_queue.size(),
         simulation::collision_queue.size()});
 
       /*
@@ -894,6 +895,8 @@ void transport_event_based()
         process_surface_crossing_events();
       } else if (max == simulation::collision_queue.size()) {
         process_collision_events();
+      } else if (max == simulation::revival_queue.size()) {
+        process_revival_events();
       }
     }
 

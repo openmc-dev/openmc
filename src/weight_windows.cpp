@@ -127,9 +127,9 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   }
 
   // get the particle type
-  if (check_for_node(node, "particle")) {
+  if (check_for_node(node, "particle_type")) {
     std::string particle_type_str =
-      std::string(get_node_value(node, "particle"));
+      std::string(get_node_value(node, "particle_type"));
     particle_type() = openmc::str_to_particle_type(particle_type_str);
   } else {
     fatal_error(

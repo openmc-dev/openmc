@@ -796,6 +796,7 @@ void transport_history_based()
   simulation::total_weight = total_weight;
 }
 
+/*
 void update_queue_indices(SharedArray<EventQueueItem>& queue, int64_t n_particles)
 {
   queue.copy_device_to_host();
@@ -829,6 +830,7 @@ void stream_compaction(int64_t n_particles)
   update_queue_indices( simulation::surface_crossing_queue, n_particles);
   update_queue_indices( simulation::collision_queue, n_particles);
 }
+*/
 
 void transport_event_based()
 {

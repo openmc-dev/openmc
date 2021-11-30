@@ -1319,6 +1319,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
       // been precalculated. When they are not, we revert to the default case,
       // which looks up cross sections
       if (!simulation::need_depletion_rx) goto default_case;
+      fatal_error("Depletion reaction reconstruction not yet in GPU mode");
 
       if (p.type() != Type::neutron)
         continue;
@@ -1339,7 +1340,9 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         case N_4N: m = 5; break;
         }
         if (i_nuclide >= 0) {
-          score = p.neutron_xs(i_nuclide).reaction[m] * atom_density * flux;
+          // NOTE: temporarily removed reactionp[] from micro xs cache
+          // score = p.neutron_xs(i_nuclide).reaction[m] * atom_density * flux;
+          score = 0;
         } else {
           score = 0.;
           if (p.material() != MATERIAL_VOID) {
@@ -1348,7 +1351,8 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
               auto j_nuclide = material.nuclide_[i];
               auto atom_density = material.atom_density_[i];
               score +=
-                p.neutron_xs(j_nuclide).reaction[m] * atom_density * flux;
+                0; // NOTE: should actually be incrementing the below
+                   // p.neutron_xs(j_nuclide).reaction[m] * atom_density * flux;
             }
           }
         }

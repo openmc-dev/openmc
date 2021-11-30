@@ -613,13 +613,15 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       fissionable_ ? sig_f * this->nu(p.E(), EmissionMode::total) : 0.0;
 
     if (simulation::need_depletion_rx) {
+      fatal_error("Depletion reactions not supported in GPU mode. Need to add "
+                  "reaction reconstruction");
       // Only non-zero reaction is (n,gamma)
-      micro.reaction[0] = sig_a - sig_f;
+      // micro.reaction[0] = sig_a - sig_f;
 
       // Set all other reaction cross sections to zero
-      for (int i = 1; i < DEPLETION_RX.size(); ++i) {
-        micro.reaction[i] = 0.0;
-      }
+      // for (int i = 1; i < DEPLETION_RX.size(); ++i) {
+      //   micro.reaction[i] = 0.0;
+      // }
     }
 
     // Ensure these values are set
@@ -721,43 +723,48 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.photon_prod =
       (1.0 - f) * xs_left.photon_production + f * xs_right.photon_production;
 
+    if (simulation::need_depletion_rx)
+      fatal_error("Depletion reactions not supported in GPU mode. Need to add "
+                  "reaction reconstruction");
     // Depletion-related reactions
-    if (simulation::need_depletion_rx) {
-      // Initialize all reaction cross sections to zero
-      for (auto& xs_i : micro.reaction) {
-        xs_i = 0.0;
-      }
+    // if (simulation::need_depletion_rx) {
+    //   // Initialize all reaction cross sections to zero
+    //   for (auto& xs_i : micro.reaction) {
+    //     xs_i = 0.0;
+    //   }
 
-      for (int j = 0; j < DEPLETION_RX.size(); ++j) {
-        // If reaction is present and energy is greater than threshold, set the
-        // reaction xs appropriately
-        int i_rx = reaction_index_[DEPLETION_RX[j]];
-        if (i_rx >= 0) {
-          const auto& rx = reactions_[i_rx];
-          const auto& rx_xs = rx->xs_[i_temp].value;
+    //   for (int j = 0; j < DEPLETION_RX.size(); ++j) {
+    //     // If reaction is present and energy is greater than threshold, set
+    //     the
+    //     // reaction xs appropriately
+    //     int i_rx = reaction_index_[DEPLETION_RX[j]];
+    //     if (i_rx >= 0) {
+    //       const auto& rx = reactions_[i_rx];
+    //       const auto& rx_xs = rx->xs_[i_temp].value;
 
-          // Physics says that (n,gamma) is not a threshold reaction, so we don't
-          // need to specifically check its threshold index
-          if (j == 0) {
-            micro.reaction[0] = (1.0 - f)*rx_xs[i_grid]
-              + f*rx_xs[i_grid + 1];
-            continue;
-          }
+    //       // Physics says that (n,gamma) is not a threshold reaction, so we
+    //       don't
+    //       // need to specifically check its threshold index
+    //       if (j == 0) {
+    //         micro.reaction[0] = (1.0 - f)*rx_xs[i_grid]
+    //           + f*rx_xs[i_grid + 1];
+    //         continue;
+    //       }
 
-          int threshold = rx->xs_[i_temp].threshold;
-          if (i_grid >= threshold) {
-            micro.reaction[j] = (1.0 - f)*rx_xs[i_grid - threshold] +
-              f*rx_xs[i_grid - threshold + 1];
-          } else if (j >= 3) {
-            // One can show that the the threshold for (n,(x+1)n) is always
-            // higher than the threshold for (n,xn). Thus, if we are below
-            // the threshold for, e.g., (n,2n), there is no reason to check
-            // the threshold for (n,3n) and (n,4n).
-            break;
-          }
-        }
-      }
-    }
+    //       int threshold = rx->xs_[i_temp].threshold;
+    //       if (i_grid >= threshold) {
+    //         micro.reaction[j] = (1.0 - f)*rx_xs[i_grid - threshold] +
+    //           f*rx_xs[i_grid - threshold + 1];
+    //       } else if (j >= 3) {
+    //         // One can show that the the threshold for (n,(x+1)n) is always
+    //         // higher than the threshold for (n,xn). Thus, if we are below
+    //         // the threshold for, e.g., (n,2n), there is no reason to check
+    //         // the threshold for (n,3n) and (n,4n).
+    //         break;
+    //       }
+    //     }
+    //   }
+    // }
   }
 
   // Initialize sab treatment to false
@@ -938,9 +945,9 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   micro.absorption = capture + fission;
   micro.fission = fission;
   micro.total = elastic + inelastic + capture + fission;
-  if (simulation::need_depletion_rx) {
-    micro.reaction[0] = capture;
-  }
+  // if (simulation::need_depletion_rx) {
+  //   micro.reaction[0] = capture;
+  // }
 
   // Determine nu-fission cross-section
   if (fissionable_) {

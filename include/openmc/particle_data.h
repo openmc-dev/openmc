@@ -95,7 +95,8 @@ struct NuclideMicroXS {
 
   // Cross sections for depletion reactions (note that these are not stored in
   // macroscopic cache)
-  xsfloat reaction[DEPLETION_RX.size()];
+  // (note that this is temporarily removed to improve GPU occupancy)
+  // xsfloat reaction[DEPLETION_RX.size()];
 
   // Indicies and factors needed to compute cross sections from the data tables
   int index_grid;       //!< Index on nuclide energy grid

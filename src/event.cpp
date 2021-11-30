@@ -26,6 +26,7 @@ SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 SharedArray<EventQueueItem> revival_queue;
 
+int sort_counter{0};
 std::vector<Particle>  particles;
 Particle*  device_particles;
 
@@ -35,7 +36,6 @@ Particle*  device_particles;
 // Non-member functions
 //==============================================================================
 
-int sort_counter{0};
 
 
 #pragma omp declare target
@@ -104,8 +104,8 @@ void quick_sort(EventQueueItem* arr, int l, int h)
 void quickSort_parallel_internal(EventQueueItem* arr, int left, int right, int cutoff)
 {
 	int i = left, j = right;
-	double tmp;
-	double pivot = arr[(left + right) / 2].E;
+	float tmp;
+	float pivot = arr[(left + right) / 2].E;
 
 	{
 		while (i <= j) {
@@ -141,7 +141,7 @@ void quickSort_parallel(EventQueueItem* arr, int lenArray){
 	int cutoff = 1000;
 
 	// For this problem size, more than 16 threads on CPU is not helpful
-	int	numThreads = 16;
+	int	numThreads = 32;
 
   #pragma omp parallel num_threads(numThreads)
 	{
@@ -154,16 +154,40 @@ void quickSort_parallel(EventQueueItem* arr, int lenArray){
 
 void sort_queue(SharedArray<EventQueueItem>& queue)
 {
+  simulation::time_event_sort.start();
+
   if( simulation::calculate_fuel_xs_queue.size() > settings::sort_frequency )
   {
+    simulation::sort_counter++;
     {
       #pragma omp target update from(queue.data_[:queue.size()])
       {
         quickSort_parallel(queue.data(), queue.size());
+        //std::sort(queue.data(), queue.data() + queue.size());
       }
       #pragma omp target update to(queue.data_[:queue.size()])
     }
   }
+
+  simulation::time_event_sort.stop();
+}
+
+bool is_sorted(SharedArray<EventQueueItem>& queue)
+{
+  int not_sorted = 0;
+  if( simulation::calculate_fuel_xs_queue.size() > settings::sort_frequency )
+  {
+    #pragma omp target teams distribute parallel for reduction(+:not_sorted)
+    for( int i = 1; i < queue.size(); i++ )
+    {
+      if( queue[i-1].E > queue[i].E )
+        not_sorted += 1;
+    }
+  }
+  if( !not_sorted )
+    return true;
+  else
+    return false;
 }
 
 void init_event_queues(int64_t n_particles)
@@ -200,7 +224,7 @@ void free_event_queues(void)
   simulation::particles.clear();
 }
 
-void dispatch_xs_event(int64_t buffer_idx)
+void dispatch_xs_event(int buffer_idx)
 {
   Particle& p = simulation::device_particles[buffer_idx];
   if (p.material_ == MATERIAL_VOID || !model::materials[p.material_].fissionable_) {
@@ -276,7 +300,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
   #pragma omp parallel for schedule(runtime)
   #endif
   for (int64_t i = 0; i < q_size; i++) {
-    int64_t buffer_idx = queue[i].idx;
+    int buffer_idx = queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_calculate_xs();
     simulation::advance_particle_queue[offset + i] = queue[i];
@@ -305,6 +329,7 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 void process_calculate_xs_events_nonfuel()
 {
   simulation::time_event_calculate_xs.start();
+  simulation::time_event_calculate_xs_nonfuel.start();
   
   // The sort here makes less sense, as there are a lot of other various material types, so sorting becomes less powerful
   //sort_queue(simulation::calculate_nonfuel_xs_queue);
@@ -317,7 +342,7 @@ void process_calculate_xs_events_nonfuel()
   #pragma omp parallel for schedule(runtime)
   #endif
   for (int64_t i = 0; i < simulation::calculate_nonfuel_xs_queue.size(); i++) {
-    int64_t buffer_idx = simulation::calculate_nonfuel_xs_queue[i].idx;
+    int buffer_idx = simulation::calculate_nonfuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_calculate_xs();
     simulation::advance_particle_queue[offset + i] = simulation::calculate_nonfuel_xs_queue[i];
@@ -330,13 +355,16 @@ void process_calculate_xs_events_nonfuel()
   simulation::calculate_nonfuel_xs_queue.resize(0);
 
   simulation::time_event_calculate_xs.stop();
+  simulation::time_event_calculate_xs_nonfuel.stop();
 }
 
 void process_calculate_xs_events_fuel()
 {
-  simulation::time_event_calculate_xs.start();
-
   sort_queue(simulation::calculate_fuel_xs_queue);
+  //assert(is_sorted(simulation::calculate_fuel_xs_queue));
+  
+  simulation::time_event_calculate_xs.start();
+  simulation::time_event_calculate_xs_fuel.start();
 
   int64_t offset = simulation::advance_particle_queue.size();;
 
@@ -346,7 +374,7 @@ void process_calculate_xs_events_fuel()
   #pragma omp parallel for schedule(runtime)
   #endif
   for (int64_t i = 0; i < simulation::calculate_fuel_xs_queue.size(); i++) {
-    int64_t buffer_idx = simulation::calculate_fuel_xs_queue[i].idx;
+    int buffer_idx = simulation::calculate_fuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_calculate_xs();
     simulation::advance_particle_queue[offset + i] = simulation::calculate_fuel_xs_queue[i];
@@ -359,6 +387,7 @@ void process_calculate_xs_events_fuel()
   simulation::calculate_fuel_xs_queue.resize(0);
 
   simulation::time_event_calculate_xs.stop();
+  simulation::time_event_calculate_xs_fuel.stop();
 }
 
 /*
@@ -415,7 +444,7 @@ void process_advance_particle_events()
   #pragma omp parallel for schedule(runtime)
   #endif
   for (int64_t i = 0; i < q_size; i++) {
-    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
+    int buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();
     p.event_advance_tally();
@@ -454,7 +483,7 @@ void process_advance_particle_events()
   #pragma omp parallel for schedule(runtime)
   #endif
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
-    int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
+    int buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();
     p.event_advance_tally();
@@ -488,7 +517,7 @@ void process_surface_crossing_events()
   #pragma omp parallel for schedule(runtime)
   #endif
   for (int64_t i = 0; i < q_size; i++) {
-    int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
+    int buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_cross_surface();
     p.event_revive_from_secondary();
@@ -534,7 +563,7 @@ void process_surface_crossing_events()
   #pragma omp parallel for schedule(runtime)
   #endif
   for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
-    int64_t buffer_idx = simulation::surface_crossing_queue[i].idx;
+    int buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_cross_surface();
     /*
@@ -585,7 +614,7 @@ void process_collision_events()
   #pragma omp parallel for schedule(runtime)
   #endif
   for (int64_t i = 0; i < q_size; i++) {
-    int64_t buffer_idx = simulation::collision_queue[i].idx;
+    int buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_collide();
     p.event_revive_from_secondary();
@@ -630,7 +659,7 @@ void process_collision_events()
   #pragma omp parallel for schedule(runtime)
   #endif
   for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
-    int64_t buffer_idx = simulation::collision_queue[i].idx;
+    int buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_collide();
     /*
@@ -713,7 +742,7 @@ void process_revival_events()
 
   #pragma omp target teams distribute parallel for reduction(+:extra_weight)
   for (int64_t i = 0; i < simulation::revival_queue.size(); i++) {
-    int64_t buffer_idx = simulation::revival_queue[i].idx;
+    int buffer_idx = simulation::revival_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_revive_from_secondary();
     if( !p.alive_ )

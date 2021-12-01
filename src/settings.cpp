@@ -115,7 +115,7 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
-int sort_frequency {0};
+int minimum_sort_items {20000};
 
 } // namespace settings
 

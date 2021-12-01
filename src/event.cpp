@@ -156,7 +156,7 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_sort.start();
 
-  if( simulation::calculate_fuel_xs_queue.size() > settings::sort_frequency )
+  if( simulation::calculate_fuel_xs_queue.size() > settings::minimum_sort_items )
   {
     simulation::sort_counter++;
     {
@@ -175,7 +175,7 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 bool is_sorted(SharedArray<EventQueueItem>& queue)
 {
   int not_sorted = 0;
-  if( simulation::calculate_fuel_xs_queue.size() > settings::sort_frequency )
+  if( simulation::calculate_fuel_xs_queue.size() > settings::minimum_sort_items )
   {
     #pragma omp target teams distribute parallel for reduction(+:not_sorted)
     for( int i = 1; i < queue.size(); i++ )

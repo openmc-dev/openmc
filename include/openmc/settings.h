@@ -127,7 +127,7 @@ extern "C" int verbosity;                //!< How verbose to make output
 extern double weight_cutoff;         //!< Weight cutoff for Russian roulette
 extern double weight_survive;        //!< Survival weight after Russian roulette
 #pragma omp end declare target
-extern int sort_frequency;
+extern int minimum_sort_items;
 } // namespace settings
 
 //==============================================================================

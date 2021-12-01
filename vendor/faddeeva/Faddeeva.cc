@@ -689,7 +689,7 @@ static const double expa2n2[] = {
   3.34880215927873807e-304,
   0.0 // underflow (also prevents reads past array end, below)
 };
-#pragma omp declare target to(expa2n2)
+// #pragma omp declare target to(expa2n2)
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -852,7 +852,7 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
         const double expm2ax =
           1 - ax2 * (1 - ax2 * (0.5 - 0.166666666666666666667*ax2));
         for (int n = 1; 1; ++n) {
-          const double coef = expa2n2[n-1] * expx2 / (a2*(n*n) + y*y);
+          const double coef = exp(-a2*n*n) * expx2 / (a2*(n*n) + y*y);
           prod2ax *= exp2ax;
           prodm2ax *= expm2ax;
           sum1 += coef;
@@ -870,7 +870,7 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
         expx2 = exp(-x*x);
         const double exp2ax = exp((2*a)*x), expm2ax = 1 / exp2ax;
         for (int n = 1; 1; ++n) {
-          const double coef = expa2n2[n-1] * expx2 / (a2*(n*n) + y*y);
+          const double coef = exp(-a2*n*n) * expx2 / (a2*(n*n) + y*y);
           prod2ax *= exp2ax;
           prodm2ax *= expm2ax;
           sum1 += coef;

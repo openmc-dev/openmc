@@ -1,6 +1,6 @@
 #include "openmc/math_functions.h"
 
-//#include "../vendor/faddeeva/Faddeeva.cc"
+#include "../vendor/faddeeva/Faddeeva.cc"
 
 namespace openmc {
 
@@ -811,7 +811,6 @@ double spline_integrate(int n, const double x[], const double y[],
 
 // MIT
 
-/*
 std::complex<double> faddeeva(std::complex<double> z)
 {
   // Technically, the value we want is given by the equation:
@@ -831,26 +830,10 @@ std::complex<double> faddeeva(std::complex<double> z)
   return z.imag() > 0.0 ? Faddeeva::w(z) :
     -std::conj(Faddeeva::w(std::conj(z)));
 }
-*/
+
+// Ben Forget
 
 /*
-std::complex<double> zpf6h(std::complex<double> z)
-{
-  constexpr std::array<std::complex<double>, 7> aa6 = {122.607931777104326,
-    214.382388694706425, 181.928533092181549, 93.155580458138441, 30.180142196210589,
-  5.912626209773153, 0.564189583562615};
-  constexpr std::array<std::complex<double>, 7> bb6 = {122.607931773875350,
-  352.730625110963558, 457.334478783897737, 348.703917719495792, 170.354001821091472,
-  53.992906912940207, 10.479857114260399};
-
-  std::complex <double> Z(z.imag(), -z.real());
-
-  return  ((((((aa6[6]*Z+aa6[5])*Z+aa6[4])*Z+aa6[3])*Z+aa6[2])*Z+aa6[1])*Z+aa6[0])/ \
-          (((((((Z+bb6[6])*Z+bb6[5])*Z+bb6[4])*Z+bb6[3])*Z+bb6[2])*Z+bb6[1])*Z+bb6[0]);
-}
-*/
-
-
 #pragma omp declare target
 std::complex<double> zpf8h(std::complex<double> z)
 {
@@ -865,54 +848,6 @@ std::complex<double> zpf8h(std::complex<double> z)
           / ((((bb8[4]*zz+bb8[3])*zz+bb8[2])*zz+bb8[1])*zz+bb8[0]);
 }
 
-
-/*
-std::complex<double> zpf16h(std::complex<double> z)
-{
-  z += std::complex<double>(1.31183j);
-  const auto zz = z * z;
-  constexpr std::array<std::complex<double>, 16> aa = {41445.0374210222,
-    -136631.072925829j, -191726.143960199, 268628.568621291j, 173247.907201704,
-    -179862.56759178j, -63310.0020563537, 56893.7798630723j, 11256.4939105413,
-    -9362.62673144278j, -1018.67334277366, 810.629101627698j, 44.5707404545965,
-    -34.5401929182016j, -0.740120821385939, 0.564189583547714j};
-  constexpr std::array<std::complex<double>, 16> bb = {7918.06640624997, 0.0,
-    -126689.0625, 0.0, 295607.8125, 0.0, -236486.25, 0.0, 84459.375, 0.0,
-    -15015.0, 0.0, 1365.0, 0.0, -60.0, 0.0};
-  return (((((((((((((((aa[15] * z + aa[14]) * z + aa[13]) * z + aa[12]) * z +
-                      aa[11]) *
-                       z +
-                     aa[10]) *
-                      z +
-                    aa[9]) *
-                     z +
-                   aa[8]) *
-                    z +
-                  aa[7]) *
-                   z +
-                 aa[6]) *
-                  z +
-                aa[5]) *
-                 z +
-               aa[4]) *
-                z +
-              aa[3]) *
-               z +
-             aa[2]) *
-              z +
-            aa[1]) *
-             z +
-           aa[0]) /
-         ((((((((zz + bb[14]) * zz + bb[12]) * zz + bb[10]) * zz + bb[8]) * zz +
-              bb[6]) *
-               zz +
-             bb[4]) *
-              zz +
-            bb[2]) *
-             zz +
-           bb[0]);
-}
-*/
 
 std::complex<double> faddeeva(std::complex<double> z)
 {
@@ -941,280 +876,10 @@ std::complex<double> faddeeva(std::complex<double> z)
   return z.imag() > 0.0 ? w_impl(z) : -std::conj(w_impl(std::conj(z)));
 }
 #pragma omp end declare target
-
-
-
-/*
-// FNF
-
-// Complex arithmetic functions
-
-typedef struct{
-  double r;
-  double i;
-} RSComplex;
-
-RSComplex c_add( RSComplex A, RSComplex B)
-{
-	RSComplex C;
-	C.r = A.r + B.r;
-	C.i = A.i + B.i;
-	return C;
-}
-
-RSComplex c_sub( RSComplex A, RSComplex B)
-{
-	RSComplex C;
-	C.r = A.r - B.r;
-	C.i = A.i - B.i;
-	return C;
-}
-
-RSComplex c_mul( RSComplex A, RSComplex B)
-{
-	double a = A.r;
-	double b = A.i;
-	double c = B.r;
-	double d = B.i;
-	RSComplex C;
-	C.r = (a*c) - (b*d);
-	C.i = (a*d) + (b*c);
-	return C;
-}
-
-RSComplex c_div( RSComplex A, RSComplex B)
-{
-	double a = A.r;
-	double b = A.i;
-	double c = B.r;
-	double d = B.i;
-	RSComplex C;
-	double denom = c*c + d*d;
-	C.r = ( (a*c) + (b*d) ) / denom;
-	C.i = ( (b*c) - (a*d) ) / denom;
-	return C;
-}
-
-double c_abs( RSComplex A)
-{
-	return sqrt(A.r*A.r + A.i * A.i);
-}
-
-
-// Fast (but inaccurate) exponential function
-// Written By "ACMer":
-// https://codingforspeed.com/using-faster-exponential-approximation/
-// We use our own to avoid small differences in compiler specific
-// exp() intrinsic implementations that make it difficult to verify
-// if the code is working correctly or not.
-double fast_exp(double x)
-{
-  x = 1.0 + x * 0.000244140625;
-  x *= x; x *= x; x *= x; x *= x;
-  x *= x; x *= x; x *= x; x *= x;
-  x *= x; x *= x; x *= x; x *= x;
-  return x;
-}
-
-// Implementation based on:
-// z = x + iy
-// cexp(z) = e^x * (cos(y) + i * sin(y))
-RSComplex fast_cexp( RSComplex z )
-{
-	double x = z.r;
-	double y = z.i;
-
-	// For consistency across architectures, we
-	// will use our own exponetial implementation
-	double t1 = exp(x);
-	//double t1 = fast_exp(x);
-	double t2 = cos(y);
-	double t3 = sin(y);
-	RSComplex t4 = {t2, t3};
-	RSComplex t5 = {t1, 0};
-	RSComplex result = c_mul(t5, (t4));
-	return result;
-}
-
-std::complex<double> faddeeva(std::complex<double> z_in)
-{
-  RSComplex Z;
-  Z.r = z_in.real();
-  Z.i = z_in.imag();
-  // Abrarov
-  if( c_abs(Z) < 6.0 )
-  {
-    // Precomputed parts for speeding things up
-    // (N = 10, Tm = 12.0)
-    RSComplex prefactor = {0, 8.124330e+01};
-    double an[10] = {
-      2.758402e-01,
-      2.245740e-01,
-      1.594149e-01,
-      9.866577e-02,
-      5.324414e-02,
-      2.505215e-02,
-      1.027747e-02,
-      3.676164e-03,
-      1.146494e-03,
-      3.117570e-04
-    };
-    double neg_1n[10] = {
-      -1.0,
-      1.0,
-      -1.0,
-      1.0,
-      -1.0,
-      1.0,
-      -1.0,
-      1.0,
-      -1.0,
-      1.0
-    };
-
-    double denominator_left[10] = {
-      9.869604e+00,
-      3.947842e+01,
-      8.882644e+01,
-      1.579137e+02,
-      2.467401e+02,
-      3.553058e+02,
-      4.836106e+02,
-      6.316547e+02,
-      7.994380e+02,
-      9.869604e+02
-    };
-
-    RSComplex t1 = {0, 12};
-    RSComplex t2 = {12, 0};
-    RSComplex i = {0,1};
-    RSComplex one = {1, 0};
-    RSComplex W = c_div(c_mul(i, ( c_sub(one, fast_cexp(c_mul(t1, Z))) )) , c_mul(t2, Z));
-    RSComplex sum = {0,0};
-    for( int n = 0; n < 10; n++ )
-    {
-      RSComplex t3 = {neg_1n[n], 0};
-      RSComplex top = c_sub(c_mul(t3, fast_cexp(c_mul(t1, Z))), one);
-      RSComplex t4 = {denominator_left[n], 0};
-      RSComplex t5 = {144, 0};
-      RSComplex bot = c_sub(t4, c_mul(t5,c_mul(Z,Z)));
-      RSComplex t6 = {an[n], 0};
-      sum = c_add(sum, c_mul(t6, c_div(top,bot)));
-    }
-    W = c_add(W, c_mul(prefactor, c_mul(Z, sum)));
-    std::complex<double> ret_W(W.r, W.i);
-    return ret_W;
-  }
-  else
-  {
-    // QUICK_2 3 Term Asymptotic Expansion (Accurate to O(1e-6)).
-    // Pre-computed parameters
-    RSComplex a = {0.512424224754768462984202823134979415014943561548661637413182,0};
-    RSComplex b = {0.275255128608410950901357962647054304017026259671664935783653, 0};
-    RSComplex c = {0.051765358792987823963876628425793170829107067780337219430904, 0};
-    RSComplex d = {2.724744871391589049098642037352945695982973740328335064216346, 0};
-
-    RSComplex i = {0,1};
-    RSComplex Z2 = c_mul(Z, Z);
-    // Three Term Asymptotic Expansion
-    RSComplex W = c_mul(c_mul(Z,i), (c_add(c_div(a,(c_sub(Z2, b))) , c_div(c,(c_sub(Z2, d))))));
-
-    std::complex<double> ret_W(W.r, W.i);
-    return ret_W;
-  }
-}
 */
 
-// CERN
-/*
 
-#define errf_const 1.12837916709551
-#define xLim 5.33
-#define yLim 4.29
 
-void wofz(double in_real, double in_imag,
-                     double* out_real, double* out_imag)
-{
-    int n, nc, nu;
-    double h, q, Saux, Sx, Sy, Tn, Tx, Ty, Wx, Wy, xh, xl, x, yh, y;
-    double Rx [33];
-    double Ry [33];
-
-    x = fabs(in_real);
-    y = fabs(in_imag);
-
-    if (y < yLim && x < xLim) {
-        q = (1.0 - y / yLim) * sqrt(1.0 - (x / xLim) * (x / xLim));
-        h  = 1.0 / (3.2 * q);
-        nc = 7 + int(23.0 * q);
-        xl = pow(h, double(1 - nc));
-        xh = y + 0.5 / h;
-        yh = x;
-        nu = 10 + int(21.0 * q);
-        Rx[nu] = 0.;
-        Ry[nu] = 0.;
-        for (n = nu; n > 0; n--){
-            Tx = xh + n * Rx[n];
-            Ty = yh - n * Ry[n];
-            Tn = Tx*Tx + Ty*Ty;
-            Rx[n-1] = 0.5 * Tx / Tn;
-            Ry[n-1] = 0.5 * Ty / Tn;
-            }
-        Sx = 0.;
-        Sy = 0.;
-        for (n = nc; n>0; n--){
-            Saux = Sx + xl;
-            Sx = Rx[n-1] * Saux - Ry[n-1] * Sy;
-            Sy = Rx[n-1] * Sy + Ry[n-1] * Saux;
-            xl = h * xl;
-        };
-        Wx = errf_const * Sx;
-        Wy = errf_const * Sy;
-    }
-    else {
-        xh = y;
-        yh = x;
-        Rx[0] = 0.;
-        Ry[0] = 0.;
-        for (n = 9; n>0; n--){
-            Tx = xh + n * Rx[0];
-            Ty = yh - n * Ry[0];
-            Tn = Tx * Tx + Ty * Ty;
-            Rx[0] = 0.5 * Tx / Tn;
-            Ry[0] = 0.5 * Ty / Tn;
-        };
-        Wx = errf_const * Rx[0];
-        Wy = errf_const * Ry[0];
-    }
-
-    if (y == 0.) {
-        Wx = exp(-x * x);
-    }
-    if (in_imag < 0.) {
-        Wx =   2.0 * exp(y * y - x * x) * cos(2.0 * x * y) - Wx;
-        Wy = - 2.0 * exp(y * y - x * x) * sin(2.0 * x * y) - Wy;
-        if (in_real > 0.) {
-            Wy = -Wy;
-        }
-    }
-    else if (in_real < 0.) {
-        Wy = -Wy;
-    }
-
-    *out_real = Wx;
-    *out_imag = Wy;
-}
-
-std::complex<double> faddeeva(std::complex<double> z_in)
-{
-  double out_real;
-  double out_imag;
-  wofz(z_in.real(), z_in.imag(),
-                     &out_real, &out_imag);
-  std::complex<double> out(out_real, out_imag);
-  return out;
-}
-*/
 
 std::complex<double> w_derivative(std::complex<double> z, int order)
 {

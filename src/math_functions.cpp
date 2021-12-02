@@ -1,6 +1,8 @@
 #include "openmc/math_functions.h"
 
+#ifndef BEN_FADDEEVA
 #include "../vendor/faddeeva/Faddeeva.cc"
+#endif
 
 namespace openmc {
 
@@ -811,6 +813,7 @@ double spline_integrate(int n, const double x[], const double y[],
 
 // MIT
 
+#ifndef BEN_FADDEEVA
 std::complex<double> faddeeva(std::complex<double> z)
 {
   // Technically, the value we want is given by the equation:
@@ -830,10 +833,10 @@ std::complex<double> faddeeva(std::complex<double> z)
   return z.imag() > 0.0 ? Faddeeva::w(z) :
     -std::conj(Faddeeva::w(std::conj(z)));
 }
+#else
 
 // Ben Forget
 
-/*
 #pragma omp declare target
 std::complex<double> zpf8h(std::complex<double> z)
 {
@@ -847,7 +850,7 @@ std::complex<double> zpf8h(std::complex<double> z)
   return (((((((aa8[7]*z+aa8[6])*z+aa8[5])*z+aa8[4])*z+aa8[3])*z+aa8[2])*z+aa8[1])*z+aa8[0]) \
           / ((((bb8[4]*zz+bb8[3])*zz+bb8[2])*zz+bb8[1])*zz+bb8[0]);
 }
-
+#pragma omp end declare target
 
 std::complex<double> faddeeva(std::complex<double> z)
 {
@@ -875,8 +878,8 @@ std::complex<double> faddeeva(std::complex<double> z)
 #define w_impl zpf8h
   return z.imag() > 0.0 ? w_impl(z) : -std::conj(w_impl(std::conj(z)));
 }
-#pragma omp end declare target
-*/
+
+#endif
 
 
 

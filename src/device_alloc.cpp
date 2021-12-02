@@ -58,6 +58,8 @@ void move_settings_to_device()
   #pragma omp target update to(settings::energy_cutoff)
   #pragma omp target update to(settings::n_log_bins)
   #pragma omp target update to(settings::check_overlaps)
+  #pragma omp target update to(settings::max_particles_in_flight)
+  #pragma omp target update to(settings::minimum_sort_items)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)
@@ -144,10 +146,10 @@ void move_read_only_data_to_device()
     nuc.flatten_wmp_data();
   }
 
+  std::cout << "Moving " << data::nuclides_size << " nuclides to device..." << std::endl;
   #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
   for (int i = 0; i < data::nuclides_size; ++i) {
     auto& nuc = data::nuclides[i];
-    std::cout << "Moving " << nuc.name_ << " data to device..." << std::endl;
     nuc.copy_to_device();
   }
 

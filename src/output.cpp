@@ -312,6 +312,8 @@ void print_usage()
       "  -s, --threads          Number of OpenMP threads\n"
       "  -t, --track            Write tracks for all particles\n"
       "  -e, --event            Run using event-based parallelism\n"
+      "  -m, --minimum          Minimum energy sorting threshold\n"
+      "  -i, --inflight         Maximum number of in-flight particles\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n");
   }

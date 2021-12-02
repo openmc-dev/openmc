@@ -103,21 +103,14 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
       }
 
       const auto& grid {nuclide.grid_[i_temp]};
-      int i_grid;
-      if (E < grid.energy.front()) {
-        i_grid = 0;
-      } else if (E > grid.energy.back()) {
-        i_grid = grid.energy.size() - 2;
-      } else {
-        // Determine bounding indices based on which equal log-spaced
-        // interval the energy is in
-        int i_low = __ldg(&grid.grid_index[i_log_union]);
-        int i_high = __ldg(&grid.grid_index[i_log_union + 1]) + 1;
+      // Determine bounding indices based on which equal log-spaced
+      // interval the energy is in
+      int i_low = __ldg(&grid.grid_index[i_log_union]);
+      int i_high = __ldg(&grid.grid_index[i_log_union + 1]) + 1;
 
-        // Perform binary search over reduced range
-        i_grid = i_low + lower_bound_index_linear(
-                           &grid.energy[i_low], &grid.energy[i_high], E);
-      }
+      // Perform binary search over reduced range
+      int i_grid = i_low + lower_bound_index_linear(
+                             &grid.energy[i_low], &grid.energy[i_high], E);
       const auto xs_left {nuclide.xs_[i_temp][i_grid]};
       const auto xs_right {nuclide.xs_[i_temp][i_grid + 1]};
       // check for rare case where two energy points are the same

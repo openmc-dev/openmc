@@ -95,12 +95,10 @@ void run_particle_restart()
   int64_t particle_seed;
   switch (previous_run_mode) {
   case RunMode::EIGENVALUE:
+  case RunMode::FIXED_SOURCE:
     particle_seed = (simulation::total_gen + overall_generation() - 1) *
                       settings::n_particles +
                     p.id();
-    break;
-  case RunMode::FIXED_SOURCE:
-    particle_seed = p.id();
     break;
   default:
     throw std::runtime_error {

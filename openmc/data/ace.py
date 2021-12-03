@@ -540,7 +540,7 @@ def get_libraries_from_xsdir(path):
     continue_lines = [i for i, line in enumerate(lines)
                       if line.strip().endswith('+')]
     for i in reversed(continue_lines):
-        lines[i] += lines[i].strip()[:-1] + lines.pop(i + 1)
+        lines[i] = lines[i].strip()[:-1] + lines.pop(i + 1)
 
     # Create list of ACE libraries -- we use an ordered dictionary while
     # building to get O(1) membership checks while retaining insertion order

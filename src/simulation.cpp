@@ -855,6 +855,7 @@ void transport_event_based()
     process_init_events(n_particles, source_offset);
 
     int64_t last_compaction = n_particles;
+    int event = 0;
     // Event-based transport loop
     while (true) {
       // Determine which event kernel has the longest queue
@@ -865,6 +866,19 @@ void transport_event_based()
         simulation::surface_crossing_queue.size(),
         simulation::revival_queue.size(),
         simulation::collision_queue.size()});
+      
+      int64_t max_non_fuel_xs = std::max({
+        simulation::calculate_nonfuel_xs_queue.size(),
+        simulation::advance_particle_queue.size(),
+        simulation::surface_crossing_queue.size(),
+        simulation::revival_queue.size(),
+        simulation::collision_queue.size()});
+
+      // Require the fuel XS lookup event to be more full to run as compared to other events
+      // This is motivated by this event having more benefit to running with more particles
+      // due to the particle energy sort.
+      if ( max < 2 * max_non_fuel_xs )
+        max = max_non_fuel_xs;
 
       /*
       int64_t alive = 
@@ -882,9 +896,12 @@ void transport_event_based()
       }
       */
 
+
       // Execute event with the longest queue
       if (max == 0) {
         break;
+      } else if (max == simulation::revival_queue.size() || ( simulation::revival_queue.size() > 0 && event % 100 == 0 )) {
+        process_revival_events();
       } else if (max == simulation::calculate_fuel_xs_queue.size()) {
         //process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
         process_calculate_xs_events_fuel();
@@ -897,9 +914,9 @@ void transport_event_based()
         process_surface_crossing_events();
       } else if (max == simulation::collision_queue.size()) {
         process_collision_events();
-      } else if (max == simulation::revival_queue.size()) {
-        process_revival_events();
       }
+
+      event++;
     }
 
     // Execute death event for all particles

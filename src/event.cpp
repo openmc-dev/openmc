@@ -227,10 +227,15 @@ void free_event_queues(void)
 void dispatch_xs_event(int buffer_idx)
 {
   Particle& p = simulation::device_particles[buffer_idx];
-  if (p.material_ == MATERIAL_VOID || !model::materials[p.material_].fissionable_) {
-    simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
+  bool needs_lookup = p.event_calculate_xs_dispatch();
+  if (needs_lookup) {
+    if (!model::materials[p.material_].fissionable_) {
+      simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
+    } else {
+      simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
+    }
   } else {
-    simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
+    simulation::advance_particle_queue.thread_safe_append({p, buffer_idx});
   }
 }
 
@@ -266,6 +271,7 @@ void process_init_events(int64_t n_particles, int64_t source_offset)
   
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
+  simulation::advance_particle_queue.sync_size_device_to_host();
 
 }
 
@@ -283,7 +289,8 @@ void process_calculate_xs_events_nonfuel()
   for (int64_t i = 0; i < simulation::calculate_nonfuel_xs_queue.size(); i++) {
     int buffer_idx = simulation::calculate_nonfuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
-    p.event_calculate_xs();
+    //p.event_calculate_xs();
+    p.event_calculate_xs_execute();
     simulation::advance_particle_queue[offset + i] = simulation::calculate_nonfuel_xs_queue[i];
   }
 
@@ -311,7 +318,8 @@ void process_calculate_xs_events_fuel()
   for (int64_t i = 0; i < simulation::calculate_fuel_xs_queue.size(); i++) {
     int buffer_idx = simulation::calculate_fuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
-    p.event_calculate_xs();
+    //p.event_calculate_xs();
+    p.event_calculate_xs_execute();
     simulation::advance_particle_queue[offset + i] = simulation::calculate_fuel_xs_queue[i];
   }
 
@@ -373,6 +381,7 @@ void process_surface_crossing_events()
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
+  simulation::advance_particle_queue.sync_size_device_to_host();
   simulation::revival_queue.sync_size_device_to_host();
   simulation::surface_crossing_queue.resize(0);
 
@@ -401,6 +410,7 @@ void process_collision_events()
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
+  simulation::advance_particle_queue.sync_size_device_to_host();
   simulation::revival_queue.sync_size_device_to_host();
   simulation::collision_queue.resize(0);
 
@@ -469,6 +479,7 @@ void process_revival_events()
   simulation::revival_queue.resize(0);
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
+  simulation::advance_particle_queue.sync_size_device_to_host();
 
   // Write total weight to global variable
   simulation::total_weight += extra_weight;

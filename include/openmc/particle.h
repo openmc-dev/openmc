@@ -278,6 +278,8 @@ public:
   #pragma omp declare target
   void event_advance_tally();
   void event_calculate_xs();
+  bool event_calculate_xs_dispatch();
+  void event_calculate_xs_execute();
   void event_collide();
   void event_advance();
   void event_cross_surface();

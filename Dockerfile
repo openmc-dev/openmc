@@ -201,7 +201,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
             -DHDF5_PREFER_PARALLEL=on ; \
     fi ; \
     make 2>/dev/null -j${compile_cores} install \
-    && cd ../openmc && pip install -e .[test, depletion-mpi]
+    && cd ../openmc && pip install -e .[test,depletion-mpi]
 
 # Download cross sections (NNDC and WMP) and ENDF data needed by test suite
 RUN ${HOME}/OpenMC/openmc/tools/ci/download-xs.sh

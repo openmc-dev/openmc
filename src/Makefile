@@ -12,7 +12,7 @@
 # a non-LTO GPU OpenMC.
 
 NVCC=/opt/cuda/bin/nvcc
-ARCH=sm_63 # 63 is better than 70 for some reason, at the moment!
+ARCH=sm_61
 COMPILE_OPTIONS=-forward-unknown-to-host-compiler -DGIT_SHA1=\"definitelyIncorrectSHA\" -DGSL_THROW_ON_CONTRACT_VIOLATION -DHD="__host__ __device__" -Dgsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1 -Dgsl_CONFIG_DEFAULTS_VERSION=1 -Dlibopenmc_EXPORTS -I/home/gavin/Code/openmc/include -I/home/gavin/Code/openmc/vendor/pugixml/src -I/home/gavin/Code/openmc/vendor/faddeeva -I/home/gavin/Code/openmc/vendor/xtensor/include -I/home/gavin/Code/openmc/vendor/xtl/include -I/home/gavin/Code/openmc/vendor/gsl-lite/include -I/home/gavin/Code/openmc/vendor/fmt/include -arch=$(ARCH) -dlto -DH5Oget_info_by_idx_vers=1 -DH5O_info_t_vers=1 -fopenmp -O2 -fno-omit-frame-pointer -Xptxas=-dlcm=ca --expt-relaxed-constexpr -std=c++14 -x cu -Dxsfloat=double -DHOST=__host__ -DHD="__host__ __device__" -DMANAGED=__managed__
 SOURCEFILES=bank.o \
   boundary_condition.o \

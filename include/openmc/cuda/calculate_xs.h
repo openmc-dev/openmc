@@ -6,6 +6,7 @@
 #include "openmc/memory.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/thermal.h" // ThermalScattering
 
 namespace openmc {
 namespace gpu {
@@ -16,6 +17,7 @@ namespace gpu {
 // remove the inclusion of this header where it is no longer necessary.
 extern __constant__ unique_ptr<Material>* materials;
 extern __constant__ unique_ptr<Nuclide>* nuclides;
+extern __constant__ unique_ptr<ThermalScattering>* thermal_scatt;
 extern __constant__ Particle* particles;
 extern __constant__ xsfloat energy_min_neutron;
 extern __constant__ xsfloat energy_max_neutron;

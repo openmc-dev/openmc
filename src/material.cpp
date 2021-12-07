@@ -459,9 +459,10 @@ void Material::init_thermal()
 
     // Check to make sure thermal scattering table matched a nuclide
     if (!found) {
-      fatal_error("Thermal scattering table " + data::thermal_scatt[
-        table.index_table]->name_  + " did not match any nuclide on material "
-        + std::to_string(id_));
+      const std::string name = data::thermal_scatt[table.index_table]->name_;
+      fatal_error("Thermal scattering table " + name +
+                  " did not match any nuclide on material " +
+                  std::to_string(id_));
     }
   }
 

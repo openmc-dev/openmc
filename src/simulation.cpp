@@ -876,6 +876,10 @@ void init_gpu_constant_memory()
   cudaMemcpyToSymbol(
     gpu::nuclides, &first_nuclide, sizeof(unique_ptr<Nuclide>*));
 
+  auto first_thermal_scatt = data::thermal_scatt.data();
+  cudaMemcpyToSymbol(gpu::thermal_scatt, &first_thermal_scatt,
+    sizeof(unique_ptr<ThermalScattering>));
+
   auto first_particle = simulation::particles.data();
   cudaMemcpyToSymbol(gpu::particles, &first_particle, sizeof(Particle*));
 

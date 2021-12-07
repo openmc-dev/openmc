@@ -63,7 +63,7 @@ HD void scatter(Particle& p, int i_nuclide);
 HD void elastic_scatter(
   int i_nuclide, const Reaction& rx, xsfloat kT, Particle& p);
 
-void sab_scatter(int i_nuclide, int i_sab, Particle& p);
+HD void sab_scatter(int i_nuclide, int i_sab, Particle& p);
 
 //! samples the target velocity. The constant cross section free gas model is
 //! the default method. Methods for correctly accounting for the energy

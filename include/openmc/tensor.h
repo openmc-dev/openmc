@@ -157,7 +157,8 @@ public:
   HOST tensor& operator=(tensor&& move_from)
   {
     begin_ = std::move(move_from.begin_);
-    size_ = std::move(move_from.size_);
+    for (int i = 0; i < Rank; ++i)
+      size_[i] = move_from.size(i);
     capacity_ = std::move(move_from.capacity_);
     alloc_ = std::move(move_from.alloc_);
 
@@ -279,9 +280,9 @@ public:
   {
     return size_[Idx];
   }
-  HD std::array<size_type, Rank> shape() const
+  HD array<size_type, Rank> shape() const
   {
-    std::array<size_type, Rank> result;
+    array<size_type, Rank> result;
     for (int i = 0; i < Rank; ++i)
       result[i] = size_[i];
     return result;

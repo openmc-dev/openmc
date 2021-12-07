@@ -109,8 +109,8 @@ public:
 
   HD xsfloat operator()(xsfloat E) const override;
 
-  const vector<xsfloat>& bragg_edges() const { return bragg_edges_; }
-  const vector<xsfloat>& factors() const { return factors_; }
+  HD const vector<xsfloat>& bragg_edges() const { return bragg_edges_; }
+  HD const vector<xsfloat>& factors() const { return factors_; }
 
 private:
   vector<xsfloat> bragg_edges_; //!< Bragg edges in [eV]

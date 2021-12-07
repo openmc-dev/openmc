@@ -1330,16 +1330,17 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
           continue;
         score = p.wgt_last() * flux;
       } else {
-        int m;
-        switch (score_bin) {
-        case N_GAMMA: m = 0; break;
-        case N_P: m = 1; break;
-        case N_A: m = 2; break;
-        case N_2N: m = 3; break;
-        case N_3N: m = 4; break;
-        case N_4N: m = 5; break;
-        }
+        // int m;
+        // switch (score_bin) {
+        // case N_GAMMA: m = 0; break;
+        // case N_P: m = 1; break;
+        // case N_A: m = 2; break;
+        // case N_2N: m = 3; break;
+        // case N_3N: m = 4; break;
+        // case N_4N: m = 5; break;
+        // }
         if (i_nuclide >= 0) {
+          fatal_error("Temporarily removed depletion reactions");
           // NOTE: temporarily removed reactionp[] from micro xs cache
           // score = p.neutron_xs(i_nuclide).reaction[m] * atom_density * flux;
           score = 0;
@@ -1350,6 +1351,7 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
               auto atom_density = material.atom_density_[i];
+              fatal_error("Temporarily removed depletion reactions");
               score +=
                 0; // NOTE: should actually be incrementing the below
                    // p.neutron_xs(j_nuclide).reaction[m] * atom_density * flux;

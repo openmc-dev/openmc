@@ -739,18 +739,7 @@ HD void scatter(Particle& p, int i_nuclide)
     nuc->calculate_elastic_xs(p);
   }
 
-  // TODO TODO add thermal scattering to the GPU. Also, the code here seems
-  // it really could be cleaned up some.
   double prob = micro.elastic - micro.thermal;
-#ifdef __CUDA_ARCH__
-  double kT = nuc->multipole_ ? p.sqrtkT() * p.sqrtkT() : nuc->kTs_[i_temp];
-  if (prob > cutoff) {
-    elastic_scatter(i_nuclide, *nuc->reactions_[0], kT, p);
-    p.event_mt() = ELASTIC;
-    sampled = true;
-  }
-#else
-
   if (prob > cutoff) {
     // =======================================================================
     // NON-S(A,B) ELASTIC SCATTERING
@@ -775,7 +764,6 @@ HD void scatter(Particle& p, int i_nuclide)
     p.event_mt() = ELASTIC;
     sampled = true;
   }
-#endif
 
   if (!sampled) {
     // =======================================================================
@@ -894,16 +882,20 @@ HD void elastic_scatter(
     p.mu() = std::copysign(1.0, p.mu());
 }
 
-// TODO make this work on the device
 void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 {
+#ifdef __CUDA_ARCH__
+  using gpu::thermal_scatt;
+#else
+  using data::thermal_scatt;
+#endif
   // Determine temperature index
   const auto& micro {p.neutron_xs(i_nuclide)};
   int i_temp = micro.index_temp_sab;
 
   // Sample energy and angle
   xsfloat E_out;
-  data::thermal_scatt[i_sab]->data_[i_temp].sample(
+  thermal_scatt[i_sab]->data_[i_temp].sample(
     micro, p.E(), &E_out, &p.mu(), p.current_seed());
 
   // Set energy to outgoing, change direction of particle

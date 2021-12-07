@@ -9,6 +9,7 @@ namespace gpu {
 
 __constant__ unique_ptr<Material>* materials;
 __constant__ unique_ptr<Nuclide>* nuclides;
+__constant__ unique_ptr<ThermalScattering>* thermal_scatt;
 __constant__ Particle* particles;
 __constant__ xsfloat energy_min_neutron;
 __constant__ xsfloat energy_max_neutron;

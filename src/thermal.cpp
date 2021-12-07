@@ -42,7 +42,8 @@ ThermalScattering::ThermalScattering(
   name_ = object_name(group);
 
   // Get rid of leading '/'
-  name_ = name_.substr(1);
+  std::string name_tmp = name_;
+  name_ = name_tmp.substr(1);
 
   read_attribute(group, "atomic_weight_ratio", awr_);
   read_attribute(group, "energy_max", energy_max_);
@@ -90,7 +91,8 @@ ThermalScattering::ThermalScattering(
         }
       } else {
         fatal_error(fmt::format("Nuclear data library does not contain cross "
-          "sections for {} at or near {} K.", name_, std::round(T)));
+                                "sections for {} at or near {} K.",
+          std::string(name_), std::round(T)));
       }
     }
     break;
@@ -114,8 +116,10 @@ ThermalScattering::ThermalScattering(
         }
       }
       if (!found) {
-        fatal_error(fmt::format("Nuclear data library does not contain cross "
-          "sections for {} at temperatures that bound {} K.", name_, std::round(T)));
+        fatal_error(
+          fmt::format("Nuclear data library does not contain cross "
+                      "sections for {} at temperatures that bound {} K.",
+            std::string(name_), std::round(T)));
       }
     }
   }
@@ -150,6 +154,12 @@ ThermalScattering::calculate_xs(xsfloat E, xsfloat sqrtkT, int* i_temp,
                                 xsfloat* elastic, xsfloat* inelastic,
                                 uint64_t* seed) const
 {
+#ifdef __CUDA_ARCH__
+  using gpu::temperature_method;
+#else
+  using settings::temperature_method;
+#endif
+
   // Determine temperature for S(a,b) table
   xsfloat kT = sqrtkT*sqrtkT;
   int i = 0;
@@ -159,7 +169,7 @@ ThermalScattering::calculate_xs(xsfloat E, xsfloat sqrtkT, int* i_temp,
     // Find temperatures that bound the actual temperature
     while (kTs_[i+1] < kT && i + 1 < n - 1) ++i;
 
-    if (settings::temperature_method == TemperatureMethod::NEAREST) {
+    if (temperature_method == TemperatureMethod::NEAREST) {
       // Pick closer of two bounding temperatures
       if (kT - kTs_[i] > kTs_[i+1] - kT) ++i;
 
@@ -190,12 +200,8 @@ ThermalScattering::has_nuclide(const char* name) const
 
 ThermalData::ThermalData(hid_t group)
 {
-  // There is no good way to tell CUDA to NOT compile device code
-  // for this, because it's a class where we call emplace_back on
-  // an openmc::vector, which is a device function. This would be
-  // possible if we could SFINAE for whether a device constructor
-  // exists. Unforunately, this macro trick has to be used instead.
 #ifdef __CUDA_ARCH__
+  printf("WTF???\n");
   __trap();
 #else
   // Coherent/incoherent elastic data

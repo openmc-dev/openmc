@@ -433,7 +433,7 @@ void Plot::set_user_colors(pugi::xml_node plot_node)
         col_id = model::cell_map[col_id];
         colors_[col_id] = user_rgb;
       } else {
-        fatal_error(fmt::format(
+        warning(fmt::format(
           "Could not find cell {} specified in plot {}", col_id, id_));
       }
     } else if (PlotColorBy::mats == color_by_) {
@@ -441,7 +441,7 @@ void Plot::set_user_colors(pugi::xml_node plot_node)
         col_id = model::material_map[col_id];
         colors_[col_id] = user_rgb;
       } else {
-        fatal_error(fmt::format(
+        warning(fmt::format(
           "Could not find material {} specified in plot {}", col_id, id_));
       }
     }

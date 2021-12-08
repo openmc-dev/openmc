@@ -22,6 +22,9 @@
 
 #include <algorithm> // for sort, min_element
 #include <string> // for to_string, stoi
+#ifndef DEVICE_PRINT
+#define printf(fmt, ...) (0)
+#endif
 
 namespace openmc {
 
@@ -351,6 +354,11 @@ void Nuclide::flatten_xs_data()
   assert(idx == total_energy_gridpoints_ * 5);
 }
 
+void Nuclide::flatten_wmp_data() {
+  device_multipole_ = multipole_.get();
+  if (multipole_) multipole_->flatten_wmp_data();
+}
+
 Nuclide::~Nuclide()
 {
   data::nuclide_map.erase(name_);
@@ -630,18 +638,15 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
   // Check to see if there is multipole data present at this energy
   bool use_mp = false;
-  /*
-  if (multipole_) {
-    use_mp = (p.E_ >= multipole_->E_min_ && p.E_ <= multipole_->E_max_);
+  if (multipole()) {
+    use_mp = (p.E_ >= multipole()->E_min_ && p.E_ <= multipole()->E_max_);
   }
-  */
 
   // Evaluate multipole or interpolate
   if (use_mp) {
-    /*
     // Call multipole kernel
     double sig_s, sig_a, sig_f;
-    std::tie(sig_s, sig_a, sig_f) = multipole_->evaluate(p.E_, p.sqrtkT_);
+    std::tie(sig_s, sig_a, sig_f) = multipole()->evaluate(p.E_, p.sqrtkT_);
 
     micro.total = sig_s + sig_a;
     micro.elastic = sig_s;
@@ -650,15 +655,15 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.nu_fission = fissionable_ ?
       sig_f * this->nu(p.E_, EmissionMode::total) : 0.0;
 
-    if (simulation::need_depletion_rx) {
-      // Only non-zero reaction is (n,gamma)
-      micro.reaction[0] = sig_a - sig_f;
+    // if (simulation::need_depletion_rx) {
+    //   // Only non-zero reaction is (n,gamma)
+    //   micro.reaction[0] = sig_a - sig_f;
 
-      // Set all other reaction cross sections to zero
-      for (int i = 1; i < DEPLETION_RX.size(); ++i) {
-        micro.reaction[i] = 0.0;
-      }
-    }
+    //   // Set all other reaction cross sections to zero
+    //   for (int i = 1; i < DEPLETION_RX.size(); ++i) {
+    //     micro.reaction[i] = 0.0;
+    //   }
+    // }
 
     // Ensure these values are set
     // Note, the only time either is used is in one of 4 places:
@@ -673,8 +678,6 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.index_temp = -1;
     micro.index_grid = -1;
     micro.interp_factor = 0.0;
-
-    */
   } else {
     // Find the appropriate temperature index.
     double kT = p.sqrtkT_*p.sqrtkT_;
@@ -717,7 +720,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     // Offset xs
     int xs_offset = flat_temp_offsets_[i_temp] * 5;
     double* xs = &flat_xs_[xs_offset];
-    
+
     // Determine # of gridpoints for this temperature
     int num_gridpoints;
     if (i_temp < kTs_.size() - 1) {
@@ -1134,6 +1137,12 @@ void Nuclide::copy_to_device()
       }
     }
   }
+
+  // Multipole
+  if(multipole_) {
+    #pragma omp target enter data map(to: device_multipole_[:1])
+    multipole_->copy_to_device();
+  }
 }
 
 void Nuclide::release_from_device()
@@ -1161,6 +1170,12 @@ void Nuclide::release_from_device()
     #pragma omp target exit data map(release: u.device_prob_[:u.n_total_prob_])
   }
   #pragma omp target exit data map(release: device_urr_data_[:urr_data_.size()])
+
+  // Multipole
+  if (multipole_) {
+    #pragma omp target exit data map(release: device_multipole_)
+    multipole_->release_from_device();
+  }
 }
 
 //==============================================================================

@@ -265,7 +265,9 @@ double spline_integrate(int n, const double x[], const double y[],
 //!
 //! \param z Complex argument
 //! \return Faddeeva function evaluated at z
+#pragma omp declare target
 std::complex<double> faddeeva(std::complex<double> z);
+#pragma omp end declare target
 
 //! Evaluate derivative of the Faddeeva function
 //!

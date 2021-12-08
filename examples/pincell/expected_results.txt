@@ -26,8 +26,8 @@
          Copyright | 2011-2021 MIT and OpenMC contributors
            License | https://docs.openmc.org/en/latest/license.html
            Version | 0.13.0-dev
-          Git SHA1 | 5d8a270cb4fd1db00c745f932783db30fb791476
-         Date/Time | 2021-05-11 15:41:37
+          Git SHA1 | e934c223d55b444d5812bcae1586a017f5f2369c
+         Date/Time | 2021-10-26 18:37:21
     OpenMP Threads | 8
 
  Reading settings XML file...
@@ -76,10 +76,8 @@
  Preparing distributed cell instances...
  Writing summary.h5 file...
  Maximum neutron transport energy: 20000000.0 eV for U235
-Allocating device particle buffer of size: 1.323 MB
 Moving 7 surfaces to device...
 Moving 1 universes to device...
-Deep copying 4 cell IDs in a universe...
 Moving 4 cells to device...
 Moving 0 lattices to device...
 Moving U234 data to device...
@@ -117,46 +115,50 @@ Moving B10 data to device...
 Moving B11 data to device...
 Moving H1 data to device...
 Moving H2 data to device...
+Moving 4 materials to device...
  Initializing source particles...
 
  ====================>     K EIGENVALUE SIMULATION     <====================
 
   Bat./Gen.      k       Entropy         Average k
   =========   ========   ========   ====================
-        1/1    0.70627    3.21351
-        2/1    0.64279    3.19419
-        3/1    0.86883    2.67379
-        4/1    1.00763    3.12799    0.93823 +/- 0.06940
- Creating state point statepoint.4.h5...
+        1/1    1.15924    6.40825
+        2/1    1.17264    6.40271
+        3/1    1.17304    6.40090
+        4/1    1.13452    6.39946    1.15378 +/- 0.01926
+        5/1    1.16249    6.39421    1.15668 +/- 0.01149
+        6/1    1.16862    6.40629    1.15967 +/- 0.00866
+ Creating state point statepoint.6.h5...
 Releasing data from device...
 
  =======================>     TIMING STATISTICS     <=======================
 
- Total time for initialization     = 2.9105e+00 seconds
-   Reading cross sections          = 2.7077e+00 seconds
- Total time in simulation          = 5.0019e+01 seconds
-   Time in transport only          = 4.9984e+01 seconds
-     Particle initialization       = 1.0953e-04 seconds
-     XS lookups                    = 1.3445e-02 seconds
-     Advancing                     = 2.6265e+01 seconds
-     Surface crossings             = 2.3700e+01 seconds
-     Collisions                    = 2.5601e-03 seconds
-     Particle death                = 1.8594e-05 seconds
-   Time in inactive batches        = 2.4282e+01 seconds
-   Time in active batches          = 2.5736e+01 seconds
-   Time synchronizing fission bank = 1.9857e-05 seconds
-     Sampling source sites         = 1.5198e-05 seconds
-     SEND/RECV source sites        = 6.7500e-07 seconds
-   Time accumulating tallies       = 5.0035e-05 seconds
-   Time writing statepoints        = 3.4657e-02 seconds
- Total time for finalization       = 2.1924e-01 seconds
- Total time elapsed                = 8.1131e+02 seconds
- Calculation Rate (inactive)       = 1.23546 particles/second
- Calculation Rate (active)         = 1.16566 particles/second
+ Total time for initialization     = X seconds
+   Reading cross sections          = X seconds
+ Total time in simulation          = X seconds
+   Time in transport only          = X seconds
+     Particle initialization       = X seconds
+     XS lookups                    = X seconds
+     Advancing                     = X seconds
+     Surface crossings             = X seconds
+     Collisions                    = X seconds
+     Particle death                = X seconds
+   Time in inactive batches        = X seconds
+   Time in active batches          = X seconds
+   Time synchronizing fission bank = X seconds
+     Sampling source sites         = X seconds
+     SEND/RECV source sites        = X seconds
+   Time accumulating tallies       = X seconds
+   Time writing statepoints        = X seconds
+ Total time for finalization       = X seconds
+ Total time elapsed                = X seconds
+ Calculation Rate (inactive)       = X particles/second
+ Calculation Rate (active)         = X particles/second
 
  ============================>     RESULTS     <============================
 
- k-effective (Collision)     = 0.92175 +/- 0.07636
- k-effective (Track-length)  = 0.93823 +/- 0.06940
- k-effective (Absorption)    = 1.08594 +/- 0.12774
+ k-effective (Collision)     = 1.16079 +/- 0.00641
+ k-effective (Track-length)  = 1.15967 +/- 0.00866
+ k-effective (Absorption)    = 1.16627 +/- 0.00233
+ Combined k-effective        = 1.16802 +/- 0.00018
  Leakage Fraction            = 0.00000 +/- 0.00000

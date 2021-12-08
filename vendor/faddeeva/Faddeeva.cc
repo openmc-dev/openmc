@@ -1,7 +1,7 @@
 //  -*- mode:c++; tab-width:2; indent-tabs-mode:nil;  -*-
 
 /* Copyright (c) 2012 Massachusetts Institute of Technology
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -9,17 +9,17 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
  * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /* (Note that this file can be compiled with either C++, in which
@@ -28,9 +28,9 @@
 
 /* Available at: http://ab-initio.mit.edu/Faddeeva
 
-   Computes various error functions (erf, erfc, erfi, erfcx), 
+   Computes various error functions (erf, erfc, erfi, erfcx),
    including the Dawson integral, in the complex plane, based
-   on algorithms for the computation of the Faddeeva function 
+   on algorithms for the computation of the Faddeeva function
               w(z) = exp(-z^2) * erfc(-i*z).
    Given w(z), the error functions are mostly straightforward
    to compute, except for certain regions where we have to
@@ -59,7 +59,7 @@
 
    (I initially used this algorithm for all z, but it turned out to be
     significantly slower than the continued-fraction expansion for
-    larger |z|.  On the other hand, it is competitive for smaller |z|, 
+    larger |z|.  On the other hand, it is competitive for smaller |z|,
     and is significantly more accurate than the Poppe & Wijers code
     in some regions, e.g. in the vicinity of z=1+1i.)
 
@@ -73,7 +73,7 @@
    http://math.mit.edu/~stevenj
    October 2012.
 
-    -- Note that Algorithm 916 assumes that the erfc(x) function, 
+    -- Note that Algorithm 916 assumes that the erfc(x) function,
        or rather the scaled function erfcx(x) = exp(x*x)*erfc(x),
        is supplied for REAL arguments x.   I originally used an
        erfcx routine derived from DERFC in SLATEC, but I have
@@ -170,8 +170,24 @@ using namespace std;
 
 typedef complex<double> cmplx;
 
+// Implementation based on:
+// z = x + iy
+// cexp(z) = e^x * (cos(y) + i * sin(y))
+cmplx manual_cexp( cmplx z )
+{
+  double re = z.real();
+  double im = z.imag();
+  double t1 = exp(re);
+  double t2 = cos(im);
+  double t3 = sin(im);
+  cmplx t4(t2, t3);
+  cmplx t5(t1, 0.0);
+  return t5 * t4;
+}
+#  define cexp(z) manual_cexp(z)
+
 // Use C-like complex syntax, since the C syntax is more restrictive
-#  define cexp(z) exp(z)
+//#  define cexp(z) exp(z)
 #  define creal(z) real(z)
 #  define cimag(z) imag(z)
 #  define cpolar(r,t) polar(r,t)
@@ -252,8 +268,8 @@ typedef double complex cmplx;
 #    endif
 #  else
 #    define C(a,b) ((a) + I*(b))
-#    define Inf (1./0.) 
-#    define NaN (0./0.) 
+#    define Inf (1./0.)
+#    define NaN (0./0.)
 #  endif
 
 static inline cmplx cpolar(double r, double t)
@@ -322,7 +338,7 @@ cmplx FADDEEVA(erf)(cmplx z, double relerr)
                 IEEE will give us a NaN when it should be Inf */
              y*y > 720 ? (y > 0 ? Inf : -Inf)
              : exp(y*y) * FADDEEVA(w_im)(y));
-  
+
   double mRe_z2 = (y - x) * (x + y); // Re(-z^2), being careful of overflow
   double mIm_z2 = -2*x*y; // Im(-z^2)
   if (mRe_z2 < -750) // underflow
@@ -372,11 +388,11 @@ cmplx FADDEEVA(erf)(cmplx z, double relerr)
                                           + mz2 * 0.0052239776254421878422))));
   }
 
-  /* for small |x| and small |xy|, 
+  /* for small |x| and small |xy|,
      use Taylor series to avoid cancellation inaccuracy:
        erf(x+iy) = erf(iy)
           + 2*exp(y^2)/sqrt(pi) *
-            [ x * (1 - x^2 * (1+2y^2)/3 + x^4 * (3+12y^2+4y^4)/30 + ... 
+            [ x * (1 - x^2 * (1+2y^2)/3 + x^4 * (3+12y^2+4y^4)/30 + ...
               - i * x^2 * y * (1 - x^2 * (3+2y^2)/6 + ...) ]
      where:
         erf(iy) = exp(y^2) * Im[w(y)]
@@ -393,8 +409,8 @@ cmplx FADDEEVA(erf)(cmplx z, double relerr)
                                + y2 * (0.45135166683820502956
                                        + 0.15045055561273500986*y2))),
        expy2 * (FADDEEVA(w_im)(y)
-                - x2*y * (1.1283791670955125739 
-                          - x2 * (0.56418958354775628695 
+                - x2*y * (1.1283791670955125739
+                          - x2 * (0.56418958354775628695
                                   + 0.37612638903183752464*y2))));
   }
 }
@@ -423,7 +439,7 @@ double FADDEEVA_RE(erfc)(double x)
 #else
   if (x*x > 750) // underflow
     return (x >= 0 ? 0.0 : 2.0);
-  return x >= 0 ? exp(-x*x) * FADDEEVA_RE(erfcx)(x) 
+  return x >= 0 ? exp(-x*x) * FADDEEVA_RE(erfcx)(x)
     : 2. - exp(-x*x) * FADDEEVA_RE(erfcx)(-x);
 #endif
 }
@@ -444,7 +460,7 @@ cmplx FADDEEVA(erfc)(cmplx z, double relerr)
     if (x*x > 750) // underflow
       return C(x >= 0 ? 0.0 : 2.0,
                -y); // preserve sign of 0
-    return C(x >= 0 ? exp(-x*x) * FADDEEVA_RE(erfcx)(x) 
+    return C(x >= 0 ? exp(-x*x) * FADDEEVA_RE(erfcx)(x)
              : 2. - exp(-x*x) * FADDEEVA_RE(erfcx)(-x),
              -y); // preserve sign of zero
   }
@@ -488,7 +504,7 @@ cmplx FADDEEVA(Dawson)(cmplx z, double relerr)
                             + y2 * 0.26666666666666666666666666666666666667)));
     }
     return C(x, // preserve sign of 0
-             spi2 * (y >= 0 
+             spi2 * (y >= 0
                      ? exp(y2) - FADDEEVA_RE(erfcx)(y)
                      : FADDEEVA_RE(erfcx)(-y) - exp(y2)));
   }
@@ -530,14 +546,14 @@ cmplx FADDEEVA(Dawson)(cmplx z, double relerr)
               + mz2 * (0.6666666666666666666666666666666666666667
                        + mz2 * 0.2666666666666666666666666666666666666667));
 
-  /* for small |y| and small |xy|, 
+  /* for small |y| and small |xy|,
      use Taylor series to avoid cancellation inaccuracy:
        dawson(x + iy)
         = D + y^2 (D + x - 2Dx^2)
             + y^4 (D/2 + 5x/6 - 2Dx^2 - x^3/3 + 2Dx^4/3)
         + iy [ (1-2Dx) + 2/3 y^2 (1 - 3Dx - x^2 + 2Dx^3)
               + y^4/15 (4 - 15Dx - 9x^2 + 20Dx^3 + 2x^4 - 4Dx^5) ] + ...
-     where D = dawson(x) 
+     where D = dawson(x)
 
      However, for large |x|, 2Dx -> 1 which gives cancellation problems in
      this series (many of the leading terms cancel).  So, for large |x|,
@@ -558,7 +574,7 @@ cmplx FADDEEVA(Dawson)(cmplx z, double relerr)
      Finally, for |x| > 5e7, we can use a simpler 1-term continued-fraction
      expansion for the real part, and a 2-term expansion for the imaginary
      part.  (This avoids overflow problems for huge |x|.)  This yields:
-     
+
      Re dawson(x + iy) = [1 + y^2 (1 + y^2/2 - (xy)^2/3)] / (2x)
      Im dawson(x + iy) = y [ -1 - 2/3 y^2 + y^4/15 (2x^2 - 4) ] / (2x^2 - 1)
 
@@ -603,10 +619,10 @@ cmplx FADDEEVA(Dawson)(cmplx z, double relerr)
 
 /////////////////////////////////////////////////////////////////////////
 
-// return sinc(x) = sin(x)/x, given both x and sin(x) 
+// return sinc(x) = sin(x)/x, given both x and sin(x)
 // [since we only use this in cases where sin(x) has already been computed]
-static inline double sinc(double x, double sinx) { 
-  return fabs(x) < 1e-4 ? 1 - (0.1666666666666666666667)*x*x : sinx / x; 
+static inline double sinc(double x, double sinx) {
+  return fabs(x) < 1e-4 ? 1 - (0.1666666666666666666667)*x*x : sinx / x;
 }
 
 // sinh(x) via Taylor series, accurate to machine precision for |x| < 1e-2
@@ -673,13 +689,14 @@ static const double expa2n2[] = {
   3.34880215927873807e-304,
   0.0 // underflow (also prevents reads past array end, below)
 };
+// #pragma omp declare target to(expa2n2)
 
 /////////////////////////////////////////////////////////////////////////
 
 cmplx FADDEEVA(w)(cmplx z, double relerr)
 {
   if (creal(z) == 0.0)
-    return C(FADDEEVA_RE(erfcx)(cimag(z)), 
+    return C(FADDEEVA_RE(erfcx)(cimag(z)),
              creal(z)); // give correct sign of 0 in cimag(w)
   else if (cimag(z) == 0)
     return C(exp(-sqr(creal(z))),
@@ -715,7 +732,7 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
                     Re w(z) for |x| ~ 6 and small |y|, so use
                     algorithm 816 in this region: */
                  && (ya > 0.1 || (x > 8 && ya > 1e-10) || x > 28))) {
-    
+
     /* Poppe & Wijers suggest using a number of terms
            nu = 3 + 1442 / (26*rho + 77)
        where rho = sqrt((x/x0)^2 + (y/y0)^2) where x0=6.3, y0=4.4.
@@ -732,12 +749,12 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
       if (x + ya > 1e7) { // nu == 1, w(z) = i/sqrt(pi) / z
         // scale to avoid overflow
         if (x > ya) {
-          double yax = ya / xs; 
+          double yax = ya / xs;
           double denom = ispi / (xs + yax*ya);
           ret = C(denom*yax, denom);
         }
         else if (isinf(ya))
-          return ((isnan(x) || y < 0) 
+          return ((isnan(x) || y < 0)
                   ? C(NaN,NaN) : C(0,0));
         else {
           double xya = xs / ya;
@@ -767,9 +784,9 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
       }
     }
     if (y < 0) {
-      // use w(z) = 2.0*exp(-z*z) - w(-z), 
-      // but be careful of overflow in exp(-z*z) 
-      //                                = exp(-(xs*xs-ya*ya) -2*i*xs*ya) 
+      // use w(z) = 2.0*exp(-z*z) - w(-z),
+      // but be careful of overflow in exp(-z*z)
+      //                                = exp(-(xs*xs-ya*ya) -2*i*xs*ya)
       return 2.0*cexp(C((ya-xs)*(xs+ya), 2*xs*y)) - ret;
     }
     else
@@ -781,7 +798,7 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
     double xs = y < 0 ? -creal(z) : creal(z); // compute for -z if y < 0
     // scale to avoid overflow
     if (x > ya) {
-      double yax = ya / xs; 
+      double yax = ya / xs;
       double denom = ispi / (xs + yax*ya);
       ret = C(denom*yax, denom);
     }
@@ -791,15 +808,15 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
       ret = C(denom, denom*xya);
     }
     if (y < 0) {
-      // use w(z) = 2.0*exp(-z*z) - w(-z), 
-      // but be careful of overflow in exp(-z*z) 
-      //                                = exp(-(xs*xs-ya*ya) -2*i*xs*ya) 
+      // use w(z) = 2.0*exp(-z*z) - w(-z),
+      // but be careful of overflow in exp(-z*z)
+      //                                = exp(-(xs*xs-ya*ya) -2*i*xs*ya)
       return 2.0*cexp(C((ya-xs)*(xs+ya), 2*xs*y)) - ret;
     }
     else
       return ret;
   }
-#endif // !USE_CONTINUED_FRACTION 
+#endif // !USE_CONTINUED_FRACTION
 
   /* Note: The test that seems to be suggested in the paper is x <
      sqrt(-log(DBL_MIN)), about 26.6, since otherwise exp(-x^2)
@@ -819,7 +836,7 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
 
     if (isnan(y))
       return C(y,y);
-    
+
     /* Somewhat ugly copy-and-paste duplication here, but I see significant
        speedups from using the special-case code with the precomputed
        exponential, and the x < 5e-4 special case is needed for accuracy. */
@@ -835,16 +852,16 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
         const double expm2ax =
           1 - ax2 * (1 - ax2 * (0.5 - 0.166666666666666666667*ax2));
         for (int n = 1; 1; ++n) {
-          const double coef = expa2n2[n-1] * expx2 / (a2*(n*n) + y*y);
+          const double coef = exp(-a2*n*n) * expx2 / (a2*(n*n) + y*y);
           prod2ax *= exp2ax;
           prodm2ax *= expm2ax;
           sum1 += coef;
           sum2 += coef * prodm2ax;
           sum3 += coef * prod2ax;
-          
+
           // really = sum5 - sum4
           sum5 += coef * (2*a) * n * sinh_taylor((2*a)*n*x);
-          
+
           // test convergence via sum3
           if (coef * prod2ax < relerr * sum3) break;
         }
@@ -853,7 +870,7 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
         expx2 = exp(-x*x);
         const double exp2ax = exp((2*a)*x), expm2ax = 1 / exp2ax;
         for (int n = 1; 1; ++n) {
-          const double coef = expa2n2[n-1] * expx2 / (a2*(n*n) + y*y);
+          const double coef = exp(-a2*n*n) * expx2 / (a2*(n*n) + y*y);
           prod2ax *= exp2ax;
           prodm2ax *= expm2ax;
           sum1 += coef;
@@ -878,10 +895,10 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
           sum1 += coef;
           sum2 += coef * prodm2ax;
           sum3 += coef * prod2ax;
-          
+
           // really = sum5 - sum4
           sum5 += coef * (2*a) * n * sinh_taylor((2*a)*n*x);
-          
+
           // test convergence via sum3
           if (coef * prod2ax < relerr * sum3) break;
         }
@@ -920,7 +937,7 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
               coef2 * sinc(2*xs*y, sin2xy) - coef1 * sin2xy);
     }
   }
-  else { // x large: only sum3 & sum5 contribute (see above note)    
+  else { // x large: only sum3 & sum5 contribute (see above note)
     if (isnan(x))
       return C(x,x);
     if (isnan(y))
@@ -966,7 +983,7 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
     }
   }
  finish:
-  return ret + C((0.5*c)*y*(sum2+sum3), 
+  return ret + C((0.5*c)*y*(sum2+sum3),
                  (0.5*c)*copysign(sum5-sum4, creal(z)));
 }
 
@@ -1432,19 +1449,19 @@ double FADDEEVA_RE(erfcx)(double x)
     return erfcx_y100(400/(4+x));
   }
   else
-    return x < -26.7 ? HUGE_VAL : (x < -6.1 ? 2*exp(x*x) 
+    return x < -26.7 ? HUGE_VAL : (x < -6.1 ? 2*exp(x*x)
                                    : 2*exp(x*x) - erfcx_y100(400/(4-x)));
 }
 
 /////////////////////////////////////////////////////////////////////////
-/* Compute a scaled Dawson integral 
+/* Compute a scaled Dawson integral
             FADDEEVA(w_im)(x) = 2*Dawson(x)/sqrt(pi)
    equivalent to the imaginary part w(x) for real x.
 
    Uses methods similar to the erfcx calculation above: continued fractions
    for large |x|, a lookup table of Chebyshev polynomials for smaller |x|,
    and finally a Taylor expansion for |x|<0.01.
-   
+
    Steven G. Johnson, October 2012. */
 
 /* Given y100=100*y, where y = 1/(1+x) for x >= 0, compute w_im(x).
@@ -1846,7 +1863,7 @@ static double w_im_y100(double y100, double x) {
     }
   case 97: case 98:
   case 99: case 100: { // use Taylor expansion for small x (|x| <= 0.0309...)
-      //  (2/sqrt(pi)) * (x - 2/3 x^3  + 4/15 x^5  - 8/105 x^7 + 16/945 x^9) 
+      //  (2/sqrt(pi)) * (x - 2/3 x^3  + 4/15 x^5  - 8/105 x^7 + 16/945 x^9)
       double x2 = x*x;
       return x * (1.1283791670955125739
                   - x2 * (0.75225277806367504925

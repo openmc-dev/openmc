@@ -15,6 +15,10 @@
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
 
+#ifndef DEVICE_PRINT
+#define printf(fmt, ...) (0)
+#endif
+
 
 namespace openmc {
 

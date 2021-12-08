@@ -275,6 +275,8 @@ Particle::Bank FileSource::sample(uint64_t* seed) const
 
 CustomSourceWrapper::CustomSourceWrapper(std::string path, std::string parameters)
 {
+  printf("Custom sources not supported in this build\n");
+  /*
 #ifdef HAS_DYNAMIC_LINKING
   // Open the library
   shared_library_ = dlopen(path.c_str(), RTLD_LAZY);
@@ -304,10 +306,13 @@ CustomSourceWrapper::CustomSourceWrapper(std::string path, std::string parameter
   fatal_error("Custom source libraries have not yet been implemented for "
     "non-POSIX systems");
 #endif
+*/
 }
 
 CustomSourceWrapper::~CustomSourceWrapper()
 {
+  printf("Custom sources not supported in this build\n");
+  /*
   // Make sure custom source is cleared before closing shared library
   if (custom_source_.get()) custom_source_.reset();
 
@@ -317,6 +322,7 @@ CustomSourceWrapper::~CustomSourceWrapper()
   fatal_error("Custom source libraries have not yet been implemented for "
               "non-POSIX systems");
 #endif
+*/
 }
 
 //==============================================================================

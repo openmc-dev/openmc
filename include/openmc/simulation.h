@@ -106,10 +106,16 @@ void free_memory_simulation();
 
 //! Simulate a single particle history (and all generated secondary particles,
 //!  if enabled), from birth to death
-void transport_history_based_single_particle(Particle& p);
+#pragma omp declare target
+//void transport_history_based_single_particle(Particle& p);
+void transport_history_based_single_particle(Particle& p, double& absorption, double& collision, double& tracklength, double& leakage);
+#pragma omp end declare target
 
 //! Simulate all particle histories using history-based parallelism
 void transport_history_based();
+
+//! Simulate all particle histories using history-based parallelism
+void transport_history_based_device();
 
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();

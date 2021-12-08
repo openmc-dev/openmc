@@ -1,5 +1,9 @@
 #include "openmc/neighbor_list.h"
 
+#ifndef DEVICE_PRINT
+#define printf(fmt, ...) (0)
+#endif
+
 namespace openmc{
   
   NeighborList::NeighborList()

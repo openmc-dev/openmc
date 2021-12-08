@@ -81,12 +81,14 @@ constexpr double EXTSRC_REJECT_FRACTION {0.05};
 // use so for now we will reuse the Fortran constant until we are OK with
 // modifying test results
 constexpr double PI {3.1415926535898};
-const double SQRT_PI {std::sqrt(PI)};
 /*
   #pragma omp declare target
+constexpr double SQRT_PI {std::sqrt(PI)};
 constexpr double INFTY {std::numeric_limits<double>::max()};
   #pragma omp end declare target
   */
+
+#define SQRT_PI 1.77245385091
 #define INFTY 1.79769313486231570815e+308
 
 // Physical constants

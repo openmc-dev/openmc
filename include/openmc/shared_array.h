@@ -181,7 +181,7 @@ public:
   //==========================================================================
   // Data members
 
-  private: 
+  //private: 
 
   T* data_ {NULL}; //!< An RAII handle to the elements
   int64_t size_ {0}; //!< The current number of elements 

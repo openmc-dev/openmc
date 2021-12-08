@@ -130,7 +130,8 @@ void run_particle_restart()
 
   // Transport neutron
   // TODO: run on device
-  transport_history_based_single_particle(p);
+  printf("ERROR: THIS HAS BEEN COMMENTED OUT!\n");
+  //transport_history_based_single_particle(p);
 
   // Write output if particle made it
   print_particle(p);

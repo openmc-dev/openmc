@@ -212,45 +212,71 @@ IncoherentInelasticAEDiscrete::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
 IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
 {
   // Read correlated angle-energy distribution
-  CorrelatedAngleEnergy dist {group};
-
+  // CorrelatedAngleEnergy dist {group};
   // Copy incident energies
-  energy_ = dist.energy();
+  // energy_ = dist.energy();
 
-  // Convert to S(a,b) native format
-  for (const auto& edist : dist.distribution()) {
-    // Create temporary distribution
+  hid_t dset = open_dataset(group, "energy");
+  read_dataset(dset, energy_);
+  close_dataset(dset);
+
+  dset = open_dataset(group, "energy_out");
+  vector<int> offsets;
+  read_attribute(dset, "offsets", offsets);
+  xt::xarray<xsfloat> eout;
+  read_dataset(dset, eout);
+  close_dataset(dset);
+
+  xt::xarray<xsfloat> mu;
+  read_dataset(group, "mu", mu);
+
+  distribution_.reserve(energy_.size());
+
+  auto n_energy = energy_.size();
+  auto n_energy_out = eout.shape()[1];
+  for (int i = 0; i < n_energy; ++i) {
+    // Determine number of outgoing energies
+    int j = offsets[i];
+    int n;
+    if (i < n_energy - 1) {
+      n = offsets[i + 1] - j;
+    } else {
+      n = eout.shape()[1] - j;
+    }
     distribution_.emplace_back();
-    DistEnergySab& d = distribution_.back();
-
-    // Copy outgoing energy distribution
-    d.n_e_out = edist.e_out.size();
-    d.e_out = edist.e_out;
-    d.e_out_pdf = edist.p;
-    d.e_out_cdf = edist.c;
-
-    for (int j = 0; j < d.n_e_out; ++j) {
-      auto adist = dynamic_cast<Tabular*>(edist.angle[j].get());
-      if (adist) {
-        // On first pass, allocate space for angles
-        if (j == 0) {
-          auto n_mu = adist->x().size();
-          std::array<decltype(d.mu)::size_type, 2> mu_shape = {
-            static_cast<unsigned>(d.n_e_out), static_cast<unsigned>(n_mu)};
-          d.mu.resize(mu_shape);
-        }
-
-        // Copy outgoing angles
-        // auto mu_j = xt::view(d.mu, j);
-        // std::copy(adist->x().begin(), adist->x().end(), mu_j.begin());
-        auto& x = adist->x();
-        auto n_mu = x.size();
-        for (int i = 0; i < n_mu; ++i) {
-          x[i] = d.mu(j, i);
-        }
-      }
+    auto& d = distribution_.back();
+    d.n_e_out = n;
+    fill_vec_from_view(d.e_out, xt::view(eout, 0, xt::range(j, j + n)));
+    fill_vec_from_view(d.e_out_pdf, xt::view(eout, 1, xt::range(j, j + n)));
+    fill_vec_from_view(d.e_out_cdf, xt::view(eout, 2, xt::range(j, j + n)));
+    for (decltype(d.e_out_pdf)::size_type ii = 0; ii < d.e_out_pdf.size();
+         ++ii) {
+      d.e_out_pdf[ii] /= d.e_out_cdf[n - 1];
+      d.e_out_cdf[ii] /= d.e_out_cdf[n - 1];
     }
 
+    for (j = 0; j < n; ++j) { // Loop over e_out  values
+      int offset_mu = std::lround(eout(4, offsets[i] + j));
+      int m; // number of mu values
+      if (offsets[i] + j + 1 < eout.shape()[1]) {
+        m = std::lround(eout(4, offsets[i] + j + 1)) - offset_mu;
+      } else {
+        m = mu.shape()[1] - offset_mu;
+      }
+
+      if (j == 0) {
+        std::array<decltype(d.mu)::size_type, 2> mu_shape = {
+          static_cast<unsigned>(d.n_e_out), static_cast<unsigned>(m)};
+        d.mu.resize(mu_shape);
+      }
+
+      // Now fill mu values into the tensor
+      auto shape1 = mu.shape();
+      auto shape2 = d.mu.shape();
+      for (int i_mu = 0; i_mu < m; ++i_mu) {
+        d.mu(i, i_mu) = mu(0, offset_mu + i_mu);
+      }
+    }
   }
 }
 

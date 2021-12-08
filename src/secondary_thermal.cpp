@@ -211,11 +211,6 @@ IncoherentInelasticAEDiscrete::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
 
 IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
 {
-  // Read correlated angle-energy distribution
-  // CorrelatedAngleEnergy dist {group};
-  // Copy incident energies
-  // energy_ = dist.energy();
-
   hid_t dset = open_dataset(group, "energy");
   read_dataset(dset, energy_);
   close_dataset(dset);
@@ -243,8 +238,8 @@ IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
     } else {
       n = eout.shape()[1] - j;
     }
-    distribution_.emplace_back();
-    auto& d = distribution_.back();
+    DistEnergySab d;
+
     d.n_e_out = n;
     fill_vec_from_view(d.e_out, xt::view(eout, 0, xt::range(j, j + n)));
     fill_vec_from_view(d.e_out_pdf, xt::view(eout, 1, xt::range(j, j + n)));
@@ -274,9 +269,10 @@ IncoherentInelasticAE::IncoherentInelasticAE(hid_t group)
       auto shape1 = mu.shape();
       auto shape2 = d.mu.shape();
       for (int i_mu = 0; i_mu < m; ++i_mu) {
-        d.mu(i, i_mu) = mu(0, offset_mu + i_mu);
+        d.mu(j, i_mu) = mu(0, offset_mu + i_mu);
       }
     }
+    distribution_.push_back(std::move(d));
   }
 }
 
@@ -361,6 +357,17 @@ IncoherentInelasticAE::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
 
   // Smear cosine
   mu += std::min(mu - mu_left, mu_right - mu)*(prn(seed) - 0.5);
+}
+
+__device__ void IncoherentInelasticAE::blahblah()
+{
+  auto ptr = reinterpret_cast<IncoherentInelasticAE*>(1234);
+  new (ptr) IncoherentInelasticAE(std::move(*this));
+}
+__global__ void asdf420()
+{
+  auto ptr = reinterpret_cast<IncoherentInelasticAE*>(1234);
+  ptr->blahblah();
 }
 
 } // namespace openmc

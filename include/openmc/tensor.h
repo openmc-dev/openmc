@@ -220,14 +220,16 @@ public:
 
   // The move constructor may need to run on the device in the case of
   // construction of polymorphic objects living on GPU that contain tensors.
-#pragma hd_warning_disable
+  // #pragma hd_warning_disable
   HD tensor(tensor&& move_from)
-    : begin_(std::move(move_from.begin_)), size_(std::move(move_from.size_)),
+    : begin_(std::move(move_from.begin_)),
       capacity_(std::move(move_from.capacity_)),
       alloc_(std::move(move_from.alloc_))
   {
     // Remove responsibility of the other one for the memory it held
     move_from.begin_ = nullptr;
+    for (int i = 0; i < Rank; ++i)
+      size_[i] = move_from.size_[i];
     for (int i = 0; i < Rank; ++i)
       move_from.size_[i] = 0;
     move_from.capacity_ = 0;

@@ -113,7 +113,7 @@ SOURCEFILES=bank.o \
   main.o
 
 openmc: objectfiles
-	nvcc -dlto -arch=$(ARCH) $(SOURCEFILES) ../build/lib/libfaddeeva.a ../build/lib/libfmt.a ../build/lib/libpugixml.a -lgomp -lhdf5_hl -lhdf5 -o openmc
+	nvcc -dlto -arch=$(ARCH) $(SOURCEFILES) ../build/lib/libfaddeeva.a ../build/lib/libfmt.a ../build/lib/libpugixml.a -lgomp -lhdf5_hl -lhdf5 -lcudart -o openmc
 .PHONY: objectfiles clean
 objectfiles: $(SOURCEFILES)
 %.o: %.cpp

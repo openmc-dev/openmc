@@ -200,10 +200,6 @@ ThermalScattering::has_nuclide(const char* name) const
 
 ThermalData::ThermalData(hid_t group)
 {
-#ifdef __CUDA_ARCH__
-  printf("WTF???\n");
-  __trap();
-#else
   // Coherent/incoherent elastic data
   if (object_exists(group, "elastic")) {
     // Read cross section data
@@ -254,7 +250,6 @@ ThermalData::ThermalData(hid_t group)
 
     close_group(inelastic_group);
   }
-#endif
 }
 
 void

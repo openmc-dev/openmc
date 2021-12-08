@@ -24,7 +24,7 @@ public:
   //
   //! \param[in] xs Coherent elastic scattering cross section
   explicit CoherentElasticAE(const CoherentElasticXS& xs);
-
+  CoherentElasticAE(CoherentElasticAE&&) = default;
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -47,6 +47,7 @@ public:
   //
   //! \param[in] group  HDF5 group
   explicit IncoherentElasticAE(hid_t group);
+  IncoherentElasticAE(IncoherentElasticAE&&) = default;
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -71,6 +72,7 @@ public:
   //! \param[in] energy  Energies at which cosines are tabulated
   explicit IncoherentElasticAEDiscrete(
     hid_t group, const vector<xsfloat>& energy);
+  IncoherentElasticAEDiscrete(IncoherentElasticAEDiscrete&&) = default;
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -96,6 +98,7 @@ public:
   //! \param[in] energy  Incident energies at which distributions are tabulated
   explicit IncoherentInelasticAEDiscrete(
     hid_t group, const vector<xsfloat>& energy);
+  IncoherentInelasticAEDiscrete(IncoherentInelasticAEDiscrete&&) = default;
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -123,6 +126,8 @@ public:
   //
   //! \param[in] group  HDF5 group
   explicit IncoherentInelasticAE(hid_t group);
+  IncoherentInelasticAE(IncoherentInelasticAE&&) = default;
+  virtual ~IncoherentInelasticAE() = default;
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
@@ -131,9 +136,16 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   HD void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const override;
+
+  // Need this to make things work... compiler bug??? do not touch!
+  __device__ void blahblah();
+
 private:
   //! Secondary energy/angle distribution
   struct DistEnergySab {
+    DistEnergySab() = default;
+    DistEnergySab(DistEnergySab&&) = default;
+
     std::size_t n_e_out; //!< Number of outgoing energies
     vector<xsfloat> e_out;     //!< Outgoing energies
     vector<xsfloat> e_out_pdf; //!< Probability density function

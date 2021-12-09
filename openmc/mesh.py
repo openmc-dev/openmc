@@ -199,10 +199,10 @@ class RegularMesh(MeshBase):
     def __repr__(self):
         string = super().__repr__()
         string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
-        string += '{0: <16}{1}{2}\n'.format('\tMesh Cells', '=\t', self._dimension)
-        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._lower_left)
-        string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._upper_right)
-        string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._width)
+        string += '{0: <16}{1}{2}\n'.format('\tVoxels', '=\t', self._dimension)
+        string += '{0: <16}{1}{2}\n'.format('\tLower left', '=\t', self._lower_left)
+        string += '{0: <16}{1}{2}\n'.format('\tUpper Right', '=\t', self._upper_right)
+        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
         return string
 
     @classmethod
@@ -727,7 +727,7 @@ class UnstructuredMesh(MeshBase):
 
     @length_multiplier.setter
     def length_multiplier(self, length_multiplier):
-        cv.check_type("Unstructured mesh length multiplier", 
+        cv.check_type("Unstructured mesh length multiplier",
                                 length_multiplier,
                                 Real)
         self._length_multiplier = length_multiplier

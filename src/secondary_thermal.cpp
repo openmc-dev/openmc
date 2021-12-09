@@ -359,15 +359,4 @@ IncoherentInelasticAE::sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
   mu += std::min(mu - mu_left, mu_right - mu)*(prn(seed) - 0.5);
 }
 
-__device__ void IncoherentInelasticAE::blahblah()
-{
-  auto ptr = reinterpret_cast<IncoherentInelasticAE*>(1234);
-  new (ptr) IncoherentInelasticAE(std::move(*this));
-}
-__global__ void asdf420()
-{
-  auto ptr = reinterpret_cast<IncoherentInelasticAE*>(1234);
-  ptr->blahblah();
-}
-
 } // namespace openmc

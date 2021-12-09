@@ -54,21 +54,53 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
 
   Material const& m = *materials[mat_idx];
 
+  // Used for looping over thermal tables. Tryna use less registers
+  unsigned char n_therm_tables = m.thermal_tables_.size();
+  unsigned char therm_table_indx = 0;
+  int next_sab_nuclide = -1;
+  if (n_therm_tables) {
+    next_sab_nuclide = m.thermal_tables_[therm_table_indx].index_nuclide;
+  }
+
   unsigned i_log_union = std::log(E / energy_min_neutron) / log_spacing;
 
   // Add contribution from each nuclide in material
   auto const n_nuclides = m.nuclide_.size();
   for (int i = 0; i < n_nuclides; ++i) {
-    auto const& i_nuclide = m.nuclide_[i];
+
+    auto const& i_nuclide =
+      m.nuclide_[i]; // TODO test if making not a reference better
     auto* __restrict__ micro_ref {&p.neutron_xs(i_nuclide)};
     NuclideMicroXS micro;
 
-    if (E != micro.last_E || p.sqrtkT() != micro.last_sqrtkT) {
+    micro.index_sab = C_NONE;
+    micro.sab_frac = 0.0;
+    if (i == next_sab_nuclide) {
+      const auto sab {m.thermal_tables_[therm_table_indx]};
+      micro.index_sab = sab.index_table;
+      micro.sab_frac = sab.fraction;
+      if (E > gpu::thermal_scatt[micro.index_sab]->energy_max_)
+        micro.index_sab = C_NONE;
+      ++therm_table_indx;
+      if (therm_table_indx < n_therm_tables) {
+        next_sab_nuclide = m.thermal_tables_[therm_table_indx].index_nuclide;
+      } else {
+        next_sab_nuclide = -1; // done with S(a, b)
+      }
+    }
+
+    NuclideMicroXS* __restrict__ use_micro = micro_ref;
+    if (E != micro_ref->last_E || p.sqrtkT() != micro_ref->last_sqrtkT ||
+        micro.index_sab != micro_ref->index_sab ||
+        micro.sab_frac != micro_ref->sab_frac) {
+      use_micro = &micro; // ummm
       auto const& nuclide = *nuclides[i_nuclide];
       micro.elastic = CACHE_INVALID;
       micro.thermal = 0.0;
       micro.thermal_elastic = 0.0;
       micro.use_ptable = false;
+      micro.last_E = E;
+      micro.last_sqrtkT = p.sqrtkT();
 
       // Find the appropriate temperature index. why would someone use
       // nearest?
@@ -147,10 +179,28 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
       micro.photon_prod =
         (1.0 - f) * xs_left.photon_production + f * xs_right.photon_production;
 
-      micro.index_sab = C_NONE;
-      micro.sab_frac = 0.0;
-      micro.last_E = E;
-      micro.last_sqrtkT = p.sqrtkT();
+      // Additionally calculate S(a, b) cross section data
+      if (micro.index_sab >= 0) {
+        int i_temp;
+        xsfloat inelastic;
+        xsfloat elastic;
+        gpu::thermal_scatt[micro.index_sab]->calculate_xs(E, micro.last_sqrtkT,
+          &i_temp, &elastic, &inelastic, p.current_seed());
+        micro.thermal = micro.sab_frac * (elastic + inelastic);
+        micro.thermal_elastic = micro.sab_frac * elastic;
+
+        // calculate_elastic_xs
+        if (micro.index_temp >= 0) {
+          const auto& xs = nuclide.reactions_[0]->xs_[micro.index_temp].value;
+          micro.elastic = (1.0 - micro.interp_factor) * xs[micro.index_grid] +
+                          micro.interp_factor * xs[micro.index_grid + 1];
+        }
+
+        micro.total =
+          micro.total + micro.thermal - micro.sab_frac * micro.elastic;
+        micro.elastic = micro.thermal + (1.0 - micro.sab_frac) * micro.elastic;
+        micro.index_temp_sab = i_temp;
+      }
 
       // Calculate URR cross sections if needed
       if (gpu::urr_ptables_on && nuclide.urr_present_) {
@@ -290,11 +340,13 @@ __global__ void __launch_bounds__(BLOCKSIZE) process_calculate_xs_events_device(
     }
 
     double const& atom_density = m.atom_density_[i];
-    p.macro_xs().total += atom_density * micro.total;
-    p.macro_xs().neutron.absorption += atom_density * micro.absorption;
-    p.macro_xs().neutron.fission += atom_density * micro.fission;
-    p.macro_xs().neutron.nu_fission += atom_density * micro.nu_fission;
-    *micro_ref = micro;
+    p.macro_xs().total += atom_density * use_micro->total;
+    p.macro_xs().neutron.absorption += atom_density * use_micro->absorption;
+    p.macro_xs().neutron.fission += atom_density * use_micro->fission;
+    p.macro_xs().neutron.nu_fission += atom_density * use_micro->nu_fission;
+    if (use_micro != micro_ref) {
+      *micro_ref = micro; // save stack variable back to global memory
+    }
   }
 }
 

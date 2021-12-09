@@ -137,9 +137,6 @@ public:
   HD void sample(xsfloat E_in, xsfloat& E_out, xsfloat& mu,
     uint64_t* seed) const override;
 
-  // Need this to make things work... compiler bug??? do not touch!
-  __device__ void blahblah();
-
 private:
   //! Secondary energy/angle distribution
   struct DistEnergySab {

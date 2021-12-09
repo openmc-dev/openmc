@@ -4,6 +4,7 @@
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/simulation.h"
+#include "openmc/sort.h"
 #include "openmc/surface.h"
 #include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
@@ -35,122 +36,6 @@ Particle*  device_particles;
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-
-
-#pragma omp declare target
-int* q_stack {NULL};
-
-void qswap(EventQueueItem& a, EventQueueItem& b)
-{
-  EventQueueItem tmp = a;
-  a = b;
-  b = tmp;
-}
-
-int partition_by_index(EventQueueItem* arr, int l, int h)
-{
-  int x = arr[h].idx;
-  int i = (l - 1);
-  for (int j = l; j <= h - 1; j++) {
-    if (arr[j].idx <= x) {
-      i++;
-      qswap(arr[i], arr[j]);
-    }
-  }
-  qswap(arr[i + 1], arr[h]);
-  return (i + 1);
-}
-
-int partition_by_energy(EventQueueItem* arr, int l, int h)
-{
-  double x = arr[h].E;
-  int i = (l - 1);
-  for (int j = l; j <= h - 1; j++) {
-    if (arr[j].E <= x) {
-      i++;
-      qswap(arr[i], arr[j]);
-    }
-  }
-  qswap(arr[i + 1], arr[h]);
-  return (i + 1);
-}
-
-void quick_sort(EventQueueItem* arr, int l, int h)
-{
-  //int q_stack[h-l+1];
-  int top = -1;
-  q_stack[++top]=l;
-  q_stack[++top]=h;
-  while(top >= 0)
-  {
-    h = q_stack[top--];
-    l = q_stack[top--];
-    int p = partition_by_energy(arr, l, h);
-    if(p-1>l)
-    {
-      q_stack[++top] = l;
-      q_stack[++top] = p - 1;
-    }
-    if(p+1<h)
-    {
-      q_stack[++top] = p + 1;
-      q_stack[++top] = h;
-    }
-  }
-}
-#pragma omp end declare target
-
-void quickSort_parallel_internal(EventQueueItem* arr, int left, int right, int cutoff)
-{
-	int i = left, j = right;
-	float tmp;
-	float pivot = arr[(left + right) / 2].E;
-
-	{
-		while (i <= j) {
-			while (arr[i].E < pivot)
-				i++;
-			while (arr[j].E > pivot)
-				j--;
-			if (i <= j) {
-        qswap(arr[i], arr[j]);
-				i++;
-				j--;
-			}
-		}
-
-	}
-
-	if ( ((right-left)<cutoff) ){
-		if (left < j){ quickSort_parallel_internal(arr, left, j, cutoff); }
-		if (i < right){ quickSort_parallel_internal(arr, i, right, cutoff); }
-
-	}else{
-		#pragma omp task
-		{ quickSort_parallel_internal(arr, left, j, cutoff); }
-		#pragma omp task
-		{ quickSort_parallel_internal(arr, i, right, cutoff); }
-	}
-
-}
-
-void quickSort_parallel(EventQueueItem* arr, int lenArray){
-
-	// Set minumum problem size to still spawn threads for
-	int cutoff = 1000;
-
-	// For this problem size, more than 16 threads on CPU is not helpful
-	int	numThreads = 32;
-
-  #pragma omp parallel num_threads(numThreads)
-	{
-		#pragma omp single nowait
-		{
-			quickSort_parallel_internal(arr, 0, lenArray-1, cutoff);
-		}
-	}
-}
 
 void sort_queue(SharedArray<EventQueueItem>& queue)
 {

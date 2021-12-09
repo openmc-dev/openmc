@@ -22,7 +22,7 @@
 
 #include <algorithm> // for sort, min_element
 #include <string> // for to_string, stoi
-#ifndef DEVICE_PRINT
+#ifndef DEVICE_PRINTF
 #define printf(fmt, ...) (0)
 #endif
 

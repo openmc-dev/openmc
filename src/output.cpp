@@ -389,13 +389,61 @@ void show_rate(const char* label, double particles_per_sec)
   fmt::print(" {:<33} = {:.6} particles/second\n", label, particles_per_sec);
 }
 
+bool is_device()
+{
+  int is_initial;
+  #pragma omp target map(from:is_initial)
+  {
+    is_initial = omp_is_initial_device();
+  }
+  if (is_initial)
+    return false;
+  else
+    return true;
+}
+
+bool was_device_used()
+{
+  int is_initial;
+  if (settings::event_based) {
+    // If simulation was event-based, we test a kernel to see if it runs on device
+    return is_device();
+  } else {
+    // If simulation was history-based, only check if we had device support enabled
+    #ifdef DEVICE_HISTORY
+    return is_device();
+    #else
+    return false;
+    #endif
+  }
+}
+
 void print_runtime()
 {
   using namespace simulation;
 
   // display header block
-  header("Timing Statistics", 6);
+  header("Runtime Information", 6);
   if (settings::verbosity < 6) return;
+
+  fmt::print(" Simulation Algorithm              = ");
+  if (settings::event_based )
+    fmt::print("Event-Based\n");
+  else
+    fmt::print("History-Based\n");
+
+  fmt::print(" Simulation Execution Location     = ");
+  if (was_device_used())
+    fmt::print("GPU Device\n");
+  else
+    fmt::print("CPU Host\n");
+
+  fmt::print(" Faddeeva Implementation           = ");
+  #ifdef NEW_FADDEEVA
+  fmt::print("Ben Forget Rational Approximation\n");
+  #else
+  fmt::print("MIT\n");
+  #endif
 
   // display time elapsed for various sections
   show_time("Total time for initialization", time_initialize.elapsed());

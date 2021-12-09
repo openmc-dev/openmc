@@ -1,6 +1,6 @@
 #include "openmc/math_functions.h"
 
-#ifndef BEN_FADDEEVA
+#ifndef NEW_FADDEEVA
 #include "../vendor/faddeeva/Faddeeva.cc"
 #endif
 
@@ -811,9 +811,9 @@ double spline_integrate(int n, const double x[], const double y[],
   return s;
 }
 
-// MIT
+// MIT Faddeva Implementation by Steven Johnson
 
-#ifndef BEN_FADDEEVA
+#ifndef NEW_FADDEEVA
 std::complex<double> faddeeva(std::complex<double> z)
 {
   // Technically, the value we want is given by the equation:
@@ -835,7 +835,7 @@ std::complex<double> faddeeva(std::complex<double> z)
 }
 #else
 
-// Ben Forget
+// Ben Forget's "Humlicek 8th Order" Rational Approximation to the Faddeeva Function
 
 #pragma omp declare target
 std::complex<double> zpf8h(std::complex<double> z)
@@ -868,14 +868,7 @@ std::complex<double> faddeeva(std::complex<double> z)
   // For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
 
   // Note that Faddeeva::w will interpret zero as machine epsilon
-
-  // NOTE TO DR FORGET: just switch out the two comments below to interchange
-  // the Faddeeva implementation your code uses. if using zpf16h, you have to
-  // add the compile flag -fext-numeric-literals
-  // #define w_impl Faddeeva::w
-// #define w_impl zpf16h
-// #define w_impl zpf6h
-#define w_impl zpf8h
+  #define w_impl zpf8h
   return z.imag() > 0.0 ? w_impl(z) : -std::conj(w_impl(std::conj(z)));
 }
 

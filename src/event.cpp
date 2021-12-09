@@ -7,7 +7,7 @@
 #include "openmc/surface.h"
 #include "openmc/timer.h"
 #include "openmc/tallies/tally.h"
-#ifndef DEVICE_PRINT
+#ifndef DEVICE_PRINTF
 #define printf(fmt, ...) (0)
 #endif
 

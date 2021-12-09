@@ -749,7 +749,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
   }
 
   if (check_for_node(node, "width")) {
-    // Make sure both upper-right or width were specified
+    // Make sure one of upper-right or width were specified
     if (check_for_node(node, "upper_right")) {
       fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
     }
@@ -790,7 +790,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
     // Set width
     width_ = xt::eval((upper_right_ - lower_left_) / shape_);
   } else {
-    fatal_error("Must specify either <upper_right> and <width> on a mesh.");
+    fatal_error("Must specify either <upper_right> or <width> on a mesh.");
   }
 
   // Set volume fraction

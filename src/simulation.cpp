@@ -835,7 +835,7 @@ void transport_event_based()
   int64_t n_particles = std::min(simulation::work_per_rank, settings::max_particles_in_flight);
 
   // Initialize in-flight particles
-  process_init_events(n_particles, 0);
+  process_init_events(n_particles);
 
   int event = 0;
 
@@ -850,6 +850,7 @@ void transport_event_based()
       simulation::revival_queue.size(),
       simulation::collision_queue.size()});
     
+    // Determine which event kernel has the longest queue (not including the fuel XS lookup queue)
     int64_t max_other_than_fuel_xs = std::max({
       simulation::calculate_nonfuel_xs_queue.size(),
       simulation::advance_particle_queue.size(),
@@ -861,7 +862,7 @@ void transport_event_based()
     // This is motivated by this event having more benefit to running with more particles
     // due to the particle energy sort.
     if ( max < fuel_lookup_bias * max_other_than_fuel_xs )
-      max = max_non_fuel_xs;
+      max = max_other_than_fuel_xs;
 
     // Execute event with the longest queue (or revival queue if the revival period is reached)
     if (max == 0) {

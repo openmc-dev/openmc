@@ -796,137 +796,95 @@ void transport_history_based()
   simulation::total_weight = total_weight;
 }
 
-/*
-void update_queue_indices(SharedArray<EventQueueItem>& queue, int64_t n_particles)
-{
-  queue.copy_device_to_host();
-  #pragma omp parallel for
-  for( int64_t i = 0; i < queue.size(); i++ )
-  {
-    for( int64_t p = 0; p < n_particles; p++ )
-    {
-      if( queue[i].id == simulation::device_particles[p].id_ )
-      {
-        EventQueueItem a(simulation::device_particles[p], p);
-        queue[i] = a;
-        break;
-      }
-    }
-  }
-  queue.copy_host_to_device();
-}
-
-void stream_compaction(int64_t n_particles)
-{
-  // Lazy test... Transfer to host, process there
-  #pragma omp target update from(simulation::device_particles[:n_particles])
-  std::sort(simulation::device_particles, simulation::device_particles + n_particles);
-  #pragma omp target update to(simulation::device_particles[:n_particles])
-
-  // Now, need to have all queues point to correct IDs
-  update_queue_indices( simulation::calculate_fuel_xs_queue, n_particles);
-  update_queue_indices( simulation::calculate_nonfuel_xs_queue, n_particles);
-  update_queue_indices( simulation::advance_particle_queue, n_particles);
-  update_queue_indices( simulation::surface_crossing_queue, n_particles);
-  update_queue_indices( simulation::collision_queue, n_particles);
-}
-*/
-
 void transport_event_based()
 {
-  int64_t remaining_work = simulation::work_per_rank;
-  int64_t source_offset = 0;
+  // The fuel lookup bias is the increases the number of particles required before
+  // selecting this event to execute.
+  // E.g., if we had 100 particles in flight, and fuel xs queue had 45 particles
+  // and the next fullest queue had 30 particles, we would usually select the fuel
+  // lookup event to execute. With a bias factor of 2, in this example, since the next
+  // fullest queue has 30 particles, we would not select the fuel lookup event
+  // unless it had 30 * 2 = 60 particles present.
+  //
+  // In practice, this has a several percent improvement in performance, as the fuel lookup
+  // event runs more efficiently with more particles in comparison to other events (due to
+  // the energy sort for the fuel lookup event which is not used for other events).
+  const int64_t fuel_lookup_bias = 2;
+
+  // The max revival period forces particles to be revived (if there are any in the revival queue)
+  // every nth iteration rather than waiting for this queue to be the largest. While the kernel itself
+  // is not very efficient if executing with only a few particles, it is important to revive particles
+  // promptly so as to reduce the length of the tail of particle deaths at the end of each power iteration.
+  // Basically, to reduce the overall number of events run, we want to make sure we start all particles
+  // at the lowest event # possible. The pathological case is if we have a single particle waiting to be
+  // revived, and that event would not normally be selected until all (or nearly all) other particles have
+  // died off. In this case, we would essentially need to launch tens or hundreds of events just to process
+  // that last particle in serial. Introduction of a maximum period for the revival event ensures that such
+  // a particle is revived while there are still many particles in-flight.
+  // 
+  // In practice, this optimization has a few percent improvement in performance. Improvements are largest
+  // when # particles per iteration <= max # particles in flight.
+  const int64_t max_revival_period = 100;
 
   // Transfer source/fission bank to device
   #pragma omp target update to(simulation::device_source_bank[:simulation::source_bank.size()])
   simulation::fission_bank.copy_host_to_device();
   #pragma omp target update to(simulation::keff)
 
-  // To cap the total amount of memory used to store particle object data, the
-  // number of particles in flight at any point in time can bet set. In the case
-  // that the maximum in flight particle count is lower than the total number
-  // of particles that need to be run this iteration, the event-based transport
-  // loop is executed multiple times until all particles have been completed.
-  while (remaining_work > 0) {
-    // Figure out # of particles to run for this subiteration
-    int64_t n_particles = std::min(remaining_work, settings::max_particles_in_flight);
+  // Figure out # of particles to run for this subiteration
+  int64_t n_particles = std::min(simulation::work_per_rank, settings::max_particles_in_flight);
 
-    // Initialize all particle histories for this subiteration
-    process_init_events(n_particles, source_offset);
+  // Initialize in-flight particles
+  process_init_events(n_particles, 0);
 
-    int64_t last_compaction = n_particles;
-    int event = 0;
-    // Event-based transport loop
-    while (true) {
-      // Determine which event kernel has the longest queue
-      int64_t max = std::max({
-        simulation::calculate_fuel_xs_queue.size(),
-        simulation::calculate_nonfuel_xs_queue.size(),
-        simulation::advance_particle_queue.size(),
-        simulation::surface_crossing_queue.size(),
-        simulation::revival_queue.size(),
-        simulation::collision_queue.size()});
-      
-      int64_t max_non_fuel_xs = std::max({
-        simulation::calculate_nonfuel_xs_queue.size(),
-        simulation::advance_particle_queue.size(),
-        simulation::surface_crossing_queue.size(),
-        simulation::revival_queue.size(),
-        simulation::collision_queue.size()});
+  int event = 0;
 
-      // Require the fuel XS lookup event to be more full to run as compared to other events
-      // This is motivated by this event having more benefit to running with more particles
-      // due to the particle energy sort.
-      if ( max < 2 * max_non_fuel_xs )
-        max = max_non_fuel_xs;
+  // Event-based transport loop
+  while (true) {
+    // Determine which event kernel has the longest queue
+    int64_t max = std::max({
+      simulation::calculate_fuel_xs_queue.size(),
+      simulation::calculate_nonfuel_xs_queue.size(),
+      simulation::advance_particle_queue.size(),
+      simulation::surface_crossing_queue.size(),
+      simulation::revival_queue.size(),
+      simulation::collision_queue.size()});
+    
+    int64_t max_other_than_fuel_xs = std::max({
+      simulation::calculate_nonfuel_xs_queue.size(),
+      simulation::advance_particle_queue.size(),
+      simulation::surface_crossing_queue.size(),
+      simulation::revival_queue.size(),
+      simulation::collision_queue.size()});
 
-      /*
-      int64_t alive = 
-        simulation::calculate_fuel_xs_queue.size() +
-        simulation::calculate_nonfuel_xs_queue.size() +
-        simulation::advance_particle_queue.size() +
-        simulation::surface_crossing_queue.size() +
-        simulation::collision_queue.size();
+    // Require the fuel XS lookup event to be more full to run as compared to other events
+    // This is motivated by this event having more benefit to running with more particles
+    // due to the particle energy sort.
+    if ( max < fuel_lookup_bias * max_other_than_fuel_xs )
+      max = max_non_fuel_xs;
 
-      if( alive > 512 && (double) alive / (double) last_compaction < 0.5 )
-      {
-        std::cout << "Performing stream compaction. # particles alive: " << alive << std::endl;
-        stream_compaction(last_compaction);
-        last_compaction = alive;
-      }
-      */
-
-
-      // Execute event with the longest queue
-      if (max == 0) {
-        break;
-      } else if (max == simulation::revival_queue.size() || ( simulation::revival_queue.size() > 0 && event % 100 == 0 )) {
-        process_revival_events();
-      } else if (max == simulation::calculate_fuel_xs_queue.size()) {
-        //process_calculate_xs_events(simulation::calculate_fuel_xs_queue);
-        process_calculate_xs_events_fuel();
-      } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
-        //process_calculate_xs_events(simulation::calculate_nonfuel_xs_queue);
-        process_calculate_xs_events_nonfuel();
-      } else if (max == simulation::advance_particle_queue.size()) {
-        process_advance_particle_events();
-      } else if (max == simulation::surface_crossing_queue.size()) {
-        process_surface_crossing_events();
-      } else if (max == simulation::collision_queue.size()) {
-        process_collision_events();
-      }
-
-      event++;
+    // Execute event with the longest queue (or revival queue if the revival period is reached)
+    if (max == 0) {
+      break;
+    } else if (max == simulation::revival_queue.size() || ( simulation::revival_queue.size() > 0 && event % max_revival_period == 0 )) {
+      process_revival_events();
+    } else if (max == simulation::calculate_fuel_xs_queue.size()) {
+      process_calculate_xs_events_fuel();
+    } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
+      process_calculate_xs_events_nonfuel();
+    } else if (max == simulation::advance_particle_queue.size()) {
+      process_advance_particle_events();
+    } else if (max == simulation::surface_crossing_queue.size()) {
+      process_surface_crossing_events();
+    } else if (max == simulation::collision_queue.size()) {
+      process_collision_events();
     }
 
-    // Execute death event for all particles
-    process_death_events(n_particles);
-
-    // Adjust remaining work and source offset variables
-    //remaining_work -= n_particles;
-    //source_offset += n_particles;
-    remaining_work = 0;
+    event++;
   }
+
+  // Execute death event for all particles
+  process_death_events(n_particles);
 
   // Copy back fission bank to host
   simulation::fission_bank.copy_device_to_host();

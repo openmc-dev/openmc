@@ -144,11 +144,19 @@ class RegularMesh(MeshBase):
 
     @property
     def upper_right(self):
-        return self._upper_right
+        if self._upper_right is not None:
+            return self._upper_right
+        elif self._width is not None:
+            if self._lower_left is not None and self._dimension is not None:
+                return self._lower_left + self._width * self._dimension
 
     @property
     def width(self):
-        return self._width
+        if self._width is not None:
+            return self._width
+        elif self._upper_right is not None:
+            if self._lower_left is not None and self._dimension is not None:
+                return (self._upper_right - self._lower_left)/self._dimension
 
     @property
     def num_mesh_cells(self):
@@ -188,13 +196,21 @@ class RegularMesh(MeshBase):
     def upper_right(self, upper_right):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
         cv.check_length('mesh upper_right', upper_right, 1, 3)
-        self._upper_right = upper_right
+        self._upper_right = np.asarray(upper_right)
+
+        if self._width is not None:
+            self._width = None
+            raise Warning("Unsetting width attribute.")
 
     @width.setter
     def width(self, width):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 1, 3)
-        self._width = width
+        self._width = np.asarray(width)
+
+        if self._upper_right is not None:
+            self._upper_right = None
+            raise Warning("Unsetting upper_right attribute.")
 
     def __repr__(self):
         string = super().__repr__()
@@ -213,8 +229,12 @@ class RegularMesh(MeshBase):
         mesh = cls(mesh_id)
         mesh.dimension = group['dimension'][()]
         mesh.lower_left = group['lower_left'][()]
-        mesh.upper_right = group['upper_right'][()]
-        mesh.width = group['width'][()]
+        if 'width' in group:
+            mesh.width = group['width'][()]
+        elif 'upper_right' in group:
+            mesh.upper_right = group['upper_right'][()]
+        else:
+            raise IOError('Invalid mesh: must have one of "upper_right" or "width"')
 
         return mesh
 

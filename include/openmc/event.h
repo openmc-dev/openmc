@@ -48,6 +48,13 @@ struct EventQueueItem{
     //return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
     return E < rhs.E;
   }
+  
+  // This is needed by the implementation of parallel quicksort
+  bool operator>(const EventQueueItem& rhs) const
+  {
+    //return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
+    return E > rhs.E;
+  }
 };
 
 //==============================================================================

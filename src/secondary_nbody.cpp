@@ -8,7 +8,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
-#ifndef DEVICE_PRINT
+#ifndef DEVICE_PRINTF
 #define printf(fmt, ...) (0)
 #endif
 

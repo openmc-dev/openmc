@@ -26,7 +26,7 @@
 
 #include <algorithm> // for max, min, max_element
 #include <cmath> // for sqrt, exp, log, abs, copysign
-#ifndef DEVICE_PRINT
+#ifndef DEVICE_PRINTF
 #define printf(fmt, ...) (0)
 #endif
 

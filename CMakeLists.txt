@@ -31,6 +31,9 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
+option(new_w    "Use Ben Forget's Rational Fraction Approximation of Faddeeva W(z) (MIT is default)" OFF)
+option(device_history "Enable history-based transport on device" OFF)
+option(device_printf  "Enable printf statements on device"       OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -422,6 +425,18 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc dagmc-shared uwuw-shared)
+endif()
+
+if(new_w)
+  target_compile_definitions(libopenmc PRIVATE NEW_FADDEEVA)
+endif()
+
+if(device_history)
+  target_compile_definitions(libopenmc PRIVATE DEVICE_HISTORY)
+endif()
+
+if(device_printf)
+  target_compile_definitions(libopenmc PRIVATE DEVICE_PRINTF)
 endif()
 
 #===============================================================================

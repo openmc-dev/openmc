@@ -13,7 +13,7 @@
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
-#ifndef DEVICE_PRINT
+#ifndef DEVICE_PRINTF
 #define printf(fmt, ...) (0)
 #endif
 

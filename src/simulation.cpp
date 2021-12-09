@@ -42,7 +42,7 @@
 #include <cmath>
 #include <string>
 
-#ifndef DEVICE_PRINT
+#ifndef DEVICE_PRINTF
 #define printf(fmt, ...) (0)
 #endif
 
@@ -231,8 +231,11 @@ int openmc_next_batch(int* status)
     if (settings::event_based) {
       transport_event_based();
     } else {
+      #ifdef DEVICE_HISTORY
+      transport_history_based_device();
+      #else
       transport_history_based();
-      //transport_history_based_device();
+      #endif
     }
 
     // Accumulate time for transport
@@ -729,14 +732,13 @@ void transport_history_based_single_particle(Particle& p, double& absorption, do
     if (!p.alive_)
       break;
   }
-  //p.accumulate_keff_tallies_global();
   p.accumulate_keff_tallies_local(absorption, collision, tracklength, leakage);
   p.event_death();
 }
 
+#ifdef DEVICE_HISTORY
 void transport_history_based_device()
 {
-  /*
   // Transfer source/fission bank to device
   #pragma omp target update to(simulation::device_source_bank[:simulation::source_bank.size()])
   simulation::fission_bank.copy_host_to_device();
@@ -751,7 +753,6 @@ void transport_history_based_device()
   double total_weight = 0.0;
 
   #pragma omp target teams distribute parallel for reduction(+:total_weight,absorption, collision, tracklength, leakage)
-  //#pragma omp target teams distribute reduction(+:total_weight,absorption, collision, tracklength, leakage)
   for (int64_t i_work = 1; i_work <= work_amount; i_work++) {
     Particle p;
     total_weight += initialize_history(p, i_work);
@@ -771,8 +772,8 @@ void transport_history_based_device()
   
   // Move particle progeny count array back to host
   #pragma omp target update from(simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
-  */
 }
+#endif
 
 void transport_history_based()
 {
@@ -785,7 +786,6 @@ void transport_history_based()
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     total_weight += initialize_history(p, i_work);
-    //transport_history_based_single_particle(p);
     transport_history_based_single_particle(p, absorption, collision, tracklength, leakage);
   }
   // Write local reduction results to global values

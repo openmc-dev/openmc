@@ -15,7 +15,7 @@
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
 
-#ifndef DEVICE_PRINT
+#ifndef DEVICE_PRINTF
 #define printf(fmt, ...) (0)
 #endif
 

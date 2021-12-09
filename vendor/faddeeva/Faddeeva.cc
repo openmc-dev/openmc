@@ -689,7 +689,6 @@ static const double expa2n2[] = {
   3.34880215927873807e-304,
   0.0 // underflow (also prevents reads past array end, below)
 };
-// #pragma omp declare target to(expa2n2)
 
 /////////////////////////////////////////////////////////////////////////
 

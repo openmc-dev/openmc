@@ -83,9 +83,10 @@ extern int sort_counter;
 
 // Particle buffer
 extern std::vector<Particle>  particles;
-  #pragma omp declare target
+#pragma omp declare target
 extern Particle* device_particles;
-  #pragma omp end declare target
+extern int64_t current_source_offset;
+#pragma omp end declare target
 
 } // namespace simulation
 
@@ -109,8 +110,7 @@ void dispatch_xs_event(int buffer_idx);
 //! Execute the initialization event for all particles
 //
 //! \param n_particles The number of particles in the particle buffer
-//! \param source_offset The offset index in the source bank to use
-void process_init_events(int64_t n_particles, int64_t source_offset);
+void process_init_events(int64_t n_particles);
 
 //! Execute the calculate XS event for all particles in this event's buffer
 //

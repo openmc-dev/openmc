@@ -85,6 +85,28 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   }
 }
 
+void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
+                 double &c3, double &c4, double &c5, double &c6)
+{
+  // Check the given number of coefficients.                                              
+  std::string coeffs = get_node_value(surf_node, "coeffs");
+  int n_words = word_count(coeffs);
+  if (n_words != 6) {
+    std::stringstream err_msg;
+    err_msg << "Surface " << surf_id << " expects 6 coeffs but was given "
+            << n_words;
+    fatal_error(err_msg);
+  }
+
+  // Parse the coefficients.                                                              
+  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf %lf %lf", &c1, &c2, &c3, &c4, &c5, &\
+c6);
+  if (stat != 6) {
+    fatal_error("Something went wrong reading surface coeffs");
+  }
+}
+
+  
 void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   double& c3, double& c4, double& c5, double& c6, double& c7, double& c8,
   double& c9, double& c10)
@@ -984,6 +1006,527 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 }
 
 //==============================================================================
+//==============================================================================
+// Generic functions for quadratic, cubic & quartic solver
+//==============================================================================
+
+int quadratic_solve(double a, double b, double c, std::array<double,2> &x) {
+
+  double func = std::pow(b,2) - 4*a*c;
+  
+  if ( func < 0 ) {
+    // this would be imaginary
+  } else {
+    x[0] = -b/(2.*a) - std::sqrt(func)/(2.*a);
+    x[1] = -b/(2.*a) + std::sqrt(func)/(2.*a);
+  }
+
+  return 0;
+}
+
+const double M_2PI = 2*PI;
+const double eps=FP_COINCIDENT;
+
+//typedef std::complex<double> DComplex;
+
+//---------------------------------------------------------------------------
+// solve cubic equation x^3 + a*x^2 + b*x + c
+// x - array of size 3
+// In case 3 real roots: => x[0], x[1], x[2], return 3
+//         2 real roots: x[0], x[1],          return 2
+//         1 real root : x[0], x[1] ± i*x[2], return 1
+unsigned int solve_cubic(const double a, const double b, const double c, std::array<double,3> &x) 
+{
+  double a2 = a*a;
+  double q  = (a2 - 3*b)/9;
+  double r  = (a*(2*a2-9*b) + 27*c)/54;
+  double r2 = r*r;
+  double q3 = std::pow(q,3);
+  double A,B;
+  double a_prime = 0.;
+  if( r2 < q3 ) // 3 roots
+  {
+  	double t=r/sqrt(q3);
+  	if( t<-1) t=-1;
+  	if( t> 1) t= 1;
+  	t=std::acos(t);
+  	a_prime = a/3.; 
+   	q=-2*std::sqrt(q);
+  	x[0]=q*std::cos(t/3)-a_prime;
+  	x[1]=q*std::cos((t+M_2PI)/3)-a_prime;
+  	x[2]=q*std::cos((t-M_2PI)/3)-a_prime;
+  	return 3;
+  } 
+  else 
+  {
+   	A =-std::pow(std::fabs(r)+std::sqrt(r2-q3),1./3);
+  	if( r<0 ) A=-A;
+  	B = (0 == A ? 0 : q/A);
+    
+	a_prime = a/3;
+	x[0] =(A+B)-a_prime;
+	x[1] =-0.5*(A+B)-a_prime;
+	x[2] = 0.5*std::sqrt(3.)*(A-B);
+    // 2 real roots
+	if(std::fabs(x[2])<eps) { x[2]=x[1]; return 2; }
+	// one real root
+	return 1;
+  }
+}
+//---------------------------------------------------------------------------
+// solve quartic equation x^4 + a*x^3 + b*x^2 + c*x + d
+// Attention - this function returns dynamically allocated array. It has to be released afterwards.
+void quartic_solve(double a, double b, double c, double d, std::array<double,4> &real_roots) {
+  double a3 = -b;  
+  double b3 =  a*c -4.*d;
+  double c3 = -a*a*d - c*c + 4.*b*d;
+
+  // cubic resolvent
+  // y^3 − b*y^2 + (ac−4d)*y − a^2*d−c^2+4*b*d = 0
+
+  std::array<double,3> cube_roots;
+  unsigned int num_roots = solve_cubic(a3, b3, c3, cube_roots);
+  
+  double q1, q2, p1, p2, D, sqD, y;
+  
+  y = cube_roots[0];
+  // The essence - choosing Y with maximal absolute value.
+  if(num_roots != 1)
+  {
+  	if(std::fabs(cube_roots[1]) > std::fabs(y)) y = cube_roots[1];
+  	if(std::fabs(cube_roots[2]) > std::fabs(y)) y = cube_roots[2];
+  }
+  
+  // h1+h2 = y && h1*h2 = d  <=>  h^2 -y*h + d = 0    (h === q)
+  
+  D = y*y - 4*d;
+  if(std::fabs(D) < eps) //in other words - D==0
+  {
+  	q1 = q2 = y * 0.5;
+  	// g1+g2 = a && g1+g2 = b-y   <=>   g^2 - a*g + b-y = 0    (p === g)
+  	D = a*a - 4*(b-y);
+  	if(std::fabs(D) < eps) {
+	  p1 = p2 = a * 0.5;
+	}
+  	else
+  	{
+  	  sqD = std::sqrt(D);
+  	  p1 = (a + sqD) * 0.5;
+  	  p2 = (a - sqD) * 0.5;
+  	}
+  }
+  else
+  {
+  	sqD = std::sqrt(D);
+  	q1 = (y + sqD) * 0.5;
+  	q2 = (y - sqD) * 0.5;
+  	p1 = (a*q1-c)/(q1-q2);
+  	p2 = (c-a*q2)/(q1-q2);
+  }
+  
+  std::array<std::complex<double>,4> roots; //the roots to return
+  
+  // solving quadratic eq. - x^2 + p1*x + q1 = 0
+  D = p1*p1 - 4*q1;
+  if(D < 0.0)
+  {
+    roots[0].real( -p1 * 0.5 );
+    roots[0].imag( std::sqrt(-D) * 0.5 );
+    roots[1] = std::conj(roots[0]);
+  }
+  else
+  {
+    sqD = std::sqrt(D);
+    roots[0].real( (-p1 + sqD) * 0.5 );
+    roots[1].real( (-p1 - sqD) * 0.5 );
+  }
+  
+  // solving quadratic eq. - x^2 + p2*x + q2 = 0
+  D = p2*p2 - 4*q2;
+  if(D < 0.0)
+  {
+    roots[2].real( -p2 * 0.5 );
+    roots[2].imag( std::sqrt(-D) * 0.5 );
+    roots[3] = std::conj(roots[2]);
+  }
+  else
+  {
+    sqD = std::sqrt(D);
+    roots[2].real( (-p2 + sqD) * 0.5 );
+    roots[3].real( (-p2 - sqD) * 0.5 );
+  }
+  
+  for ( int i = 0 ; i < 4 ; i++ ) {
+    if (roots[i].imag() == 0. )
+      real_roots[i] = roots[i].real();
+    else
+      real_roots[i] = 0.;
+  }
+
+  std::sort(real_roots.begin(),real_roots.end());
+
+  return;
+}
+
+//==============================================================================
+
+SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node)
+  : CSGSurface(surf_node)
+{
+  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+}
+
+void SurfaceXTorus::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "x-torus", false);
+  std::array<double, 6> coeffs {{x0_, y0_, z0_, A_, B_, C_ }};
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+// todo should do some alebgra first to get rid of the sqrt
+
+double
+SurfaceXTorus::evaluate(Position r) const
+{
+  const double x = r.x;
+  const double y = r.y;
+  const double z = r.z;
+
+  const double x_coeff2 = std::pow(x-x0_,2);
+  const double y_coeff2 = std::pow(y-y0_,2);
+  const double z_coeff2 = std::pow(z-z0_,2);
+
+  const double B2 = B_*B_;
+  const double C2 = C_*C_;
+
+  return x_coeff2/B2 + std::pow(std::sqrt(y_coeff2 + z_coeff2)-A_,2)/C2 - 1.;
+}
+
+double
+SurfaceXTorus::distance(Position r, Direction ang, bool coincident) const
+{
+  double u = ang.x;
+  double v = ang.y;
+  double w = ang.z;
+
+  double xr = r.x;
+  double yr = r.y;
+  double zr = r.z;
+
+  double A = A_;
+  double B = B_;
+  double C = C_;
+
+  double x0 = x0_ + xr;
+  double y0 = y0_ + yr;
+  double z0 = z0_ + zr;
+  
+  double a,b,c,d,e; // coefficients of quartic
+
+  // a is always 1 maybe save the maths?
+  a = std::pow(v,4) + 2*std::pow(v,2)*std::pow(w,2) + std::pow(w,4) + 2*std::pow(C,2)*std::pow(u,2)*std::pow(v,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(u,2)*std::pow(w,2)/std::pow(B,2) + std::pow(C,4)*std::pow(u,4)/std::pow(B,4);
+  b = 4*std::pow(v,3)*y0 + 4*std::pow(v,2)*w*z0 + 4*v*std::pow(w,2)*y0 + 4*std::pow(w,3)*z0 + 4*std::pow(C,2)*std::pow(u,2)*v*y0/std::pow(B,2) + 4*std::pow(C,2)*std::pow(u,2)*w*z0/std::pow(B,2) + 4*std::pow(C,2)*u*std::pow(v,2)*x0/std::pow(B,2) + 4*std::pow(C,2)*u*std::pow(w,2)*x0/std::pow(B,2) + 4*std::pow(C,4)*std::pow(u,3)*x0/std::pow(B,4);
+  c = -2*std::pow(A,2)*std::pow(v,2) - 2*std::pow(A,2)*std::pow(w,2) + 2*std::pow(A,2)*std::pow(C,2)*std::pow(u,2)/std::pow(B,2) - 2*std::pow(C,2)*std::pow(v,2) - 2*std::pow(C,2)*std::pow(w,2) + 6*std::pow(v,2)*std::pow(y0,2) + 2*std::pow(v,2)*std::pow(z0,2) + 8*v*w*y0*z0 + 2*std::pow(w,2)*std::pow(y0,2) + 6*std::pow(w,2)*std::pow(z0,2) - 2*std::pow(C,4)*std::pow(u,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(u,2)*std::pow(y0,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(u,2)*std::pow(z0,2)/std::pow(B,2) + 8*std::pow(C,2)*u*v*x0*y0/std::pow(B,2) + 8*std::pow(C,2)*u*w*x0*z0/std::pow(B,2) + 2*std::pow(C,2)*std::pow(v,2)*std::pow(x0,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(w,2)*std::pow(x0,2)/std::pow(B,2) + 6*std::pow(C,4)*std::pow(u,2)*std::pow(x0,2)/std::pow(B,4);
+  d = -4*std::pow(A,2)*v*y0 - 4*std::pow(A,2)*w*z0 + 4*std::pow(A,2)*std::pow(C,2)*u*x0/std::pow(B,2) - 4*std::pow(C,2)*v*y0 - 4*std::pow(C,2)*w*z0 + 4*v*std::pow(y0,3) + 4*v*y0*std::pow(z0,2) + 4*w*std::pow(y0,2)*z0 + 4*w*std::pow(z0,3) - 4*std::pow(C,4)*u*x0/std::pow(B,2) + 4*std::pow(C,2)*u*x0*std::pow(y0,2)/std::pow(B,2) + 4*std::pow(C,2)*u*x0*std::pow(z0,2)/std::pow(B,2) + 4*std::pow(C,2)*v*std::pow(x0,2)*y0/std::pow(B,2) + 4*std::pow(C,2)*w*std::pow(x0,2)*z0/std::pow(B,2) + 4*std::pow(C,4)*u*std::pow(x0,3)/std::pow(B,4);
+  e = std::pow(A,4) - 2*std::pow(A,2)*std::pow(C,2) - 2*std::pow(A,2)*std::pow(y0,2) - 2*std::pow(A,2)*std::pow(z0,2) + 2*std::pow(A,2)*std::pow(C,2)*std::pow(x0,2)/std::pow(B,2) + std::pow(C,4) - 2*std::pow(C,2)*std::pow(y0,2) - 2*std::pow(C,2)*std::pow(z0,2) + std::pow(y0,4) + 2*std::pow(y0,2)*std::pow(z0,2) + std::pow(z0,4) - 2*std::pow(C,4)*std::pow(x0,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(x0,2)*std::pow(y0,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(x0,2)*std::pow(z0,2)/std::pow(B,2) + std::pow(C,4)*std::pow(x0,4)/std::pow(B,4);
+
+  //
+  std::array<double,4> roots;
+  quartic_solve(b,c,d,e,roots);
+ 
+  if (coincident) r += ang*TINY_BIT;
+
+  // special degerenate case two sets of repated
+  // roots
+  if ( b == 0.0 && d == 0) {
+    if ( roots[1] - roots[0] < 1e-5 ) return INFTY;
+    if ( roots[3] - roots[2] < 1e-5 ) return INFTY;
+  }
+
+  for ( int i = 0 ; i < 4 ; i++ ) {
+    // need something better than just raw tolerance
+    // use fastQS to get back lost precision
+    if ( roots[i] > 1e-6) {
+      return roots[i];
+    } 
+  }
+
+  // otherwise no hit
+  return INFTY;
+}
+
+Direction
+SurfaceXTorus::normal(Position r) const
+{
+  // reduce the expansion of the full form for torus
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+
+  double A2 = A_*A_;
+  double B2 = B_*B_;
+  double C2 = C_*C_;
+
+  // coefficients for the x, x^2, x^3 and x^4 term
+  // but since we differeniate - we get x4 -> 4x3 
+  double dx_4 = 4*x*x*x*C2*C2/(B2*B2);
+  double dx_2 = 4*x*C2/B2*(z*z + 2*y*y - 2*C2 + 2*A2);
+  double dx = dx_4 + dx_2;
+  // similarly to y
+  double dy_4 = 4*y*y*y;
+  double dy_2 = 4*y*(z*z  + C2*x*x/B2  - A2 - C2); 
+  double dy = dy_2 + dy_4;
+  // and z
+  double dz_4 = 4*z*z*z;
+  double dz_2 = 4*z*(C2*x*x/B2 + y*y - C2 - A2);
+  double dz = dz_2 + dz_4;
+
+  double length = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+  return {dx/length,dy/length,dz/length};
+}
+
+SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node)
+  : CSGSurface(surf_node)
+{
+  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+}
+
+void SurfaceYTorus::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "y-torus", false);
+  std::array<double, 6> coeffs {{x0_, y0_, z0_, A_, B_, C_ }};
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+double
+SurfaceYTorus::evaluate(Position r) const
+{
+  const double x = r.x;
+  const double y = r.y;
+  const double z = r.z;
+
+  const double x_coeff2 = std::pow(x-x0_,2);
+  const double y_coeff2 = std::pow(y-y0_,2);
+  const double z_coeff2 = std::pow(z-z0_,2);
+
+  const double B2 = B_*B_;
+  const double C2 = C_*C_;
+
+  return y_coeff2/B2 + std::pow(std::sqrt(x_coeff2 + z_coeff2)-A_,2)/C2 - 1.;
+}
+
+double
+SurfaceYTorus::distance(Position r, Direction ang, bool coincident) const
+{
+  double u = ang.x;
+  double v = ang.y;
+  double w = ang.z;
+
+  double xr = r.x;
+  double yr = r.y;
+  double zr = r.z;
+
+  double A = A_;
+  double B = B_;
+  double C = C_;
+
+  double x0 = x0_ + xr;
+  double y0 = y0_ + yr;
+  double z0 = z0_ + zr;
+  
+  double a,b,c,d,e; // coefficients of quartic
+
+  a = std::pow(u,4) + 2*std::pow(u,2)*std::pow(w,2) + std::pow(w,4) + 2*std::pow(C,2)*std::pow(u,2)*std::pow(v,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(v,2)*std::pow(w,2)/std::pow(B,2) + std::pow(C,4)*std::pow(v,4)/std::pow(B,4);
+  b = 4*std::pow(u,3)*x0 + 4*std::pow(u,2)*w*z0 + 4*u*std::pow(w,2)*x0 + 4*std::pow(w,3)*z0 + 4*std::pow(C,2)*std::pow(u,2)*v*y0/std::pow(B,2) + 4*std::pow(C,2)*u*std::pow(v,2)*x0/std::pow(B,2) + 4*std::pow(C,2)*std::pow(v,2)*w*z0/std::pow(B,2) + 4*std::pow(C,2)*v*std::pow(w,2)*y0/std::pow(B,2) + 4*std::pow(C,4)*std::pow(v,3)*y0/std::pow(B,4);
+  c = -2*std::pow(A,2)*std::pow(u,2) - 2*std::pow(A,2)*std::pow(w,2) + 2*std::pow(A,2)*std::pow(C,2)*std::pow(v,2)/std::pow(B,2) - 2*std::pow(C,2)*std::pow(u,2) - 2*std::pow(C,2)*std::pow(w,2) + 6*std::pow(u,2)*std::pow(x0,2) + 2*std::pow(u,2)*std::pow(z0,2) + 8*u*w*x0*z0 + 2*std::pow(w,2)*std::pow(x0,2) + 6*std::pow(w,2)*std::pow(z0,2) - 2*std::pow(C,4)*std::pow(v,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(u,2)*std::pow(y0,2)/std::pow(B,2) + 8*std::pow(C,2)*u*v*x0*y0/std::pow(B,2) + 2*std::pow(C,2)*std::pow(v,2)*std::pow(x0,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(v,2)*std::pow(z0,2)/std::pow(B,2) + 8*std::pow(C,2)*v*w*y0*z0/std::pow(B,2) + 2*std::pow(C,2)*std::pow(w,2)*std::pow(y0,2)/std::pow(B,2) + 6*std::pow(C,4)*std::pow(v,2)*std::pow(y0,2)/std::pow(B,4);
+  d = -4*std::pow(A,2)*u*x0 - 4*std::pow(A,2)*w*z0 + 4*std::pow(A,2)*std::pow(C,2)*v*y0/std::pow(B,2) - 4*std::pow(C,2)*u*x0 - 4*std::pow(C,2)*w*z0 + 4*u*std::pow(x0,3) + 4*u*x0*std::pow(z0,2) + 4*w*std::pow(x0,2)*z0 + 4*w*std::pow(z0,3) - 4*std::pow(C,4)*v*y0/std::pow(B,2) + 4*std::pow(C,2)*u*x0*std::pow(y0,2)/std::pow(B,2) + 4*std::pow(C,2)*v*std::pow(x0,2)*y0/std::pow(B,2) + 4*std::pow(C,2)*v*y0*std::pow(z0,2)/std::pow(B,2) + 4*std::pow(C,2)*w*std::pow(y0,2)*z0/std::pow(B,2) + 4*std::pow(C,4)*v*std::pow(y0,3)/std::pow(B,4);
+  e = std::pow(A,4) - 2*std::pow(A,2)*std::pow(C,2) - 2*std::pow(A,2)*std::pow(x0,2) - 2*std::pow(A,2)*std::pow(z0,2) + 2*std::pow(A,2)*std::pow(C,2)*std::pow(y0,2)/std::pow(B,2) + std::pow(C,4) - 2*std::pow(C,2)*std::pow(x0,2) - 2*std::pow(C,2)*std::pow(z0,2) + std::pow(x0,4) + 2*std::pow(x0,2)*std::pow(z0,2) + std::pow(z0,4) - 2*std::pow(C,4)*std::pow(y0,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(x0,2)*std::pow(y0,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(y0,2)*std::pow(z0,2)/std::pow(B,2) + std::pow(C,4)*std::pow(y0,4)/std::pow(B,4);
+
+  //
+  std::array<double,4> roots;
+  quartic_solve(b,c,d,e,roots);
+ 
+  if (coincident) r += ang*TINY_BIT;
+
+  // special degerenate case two sets of repated
+  if ( b == 0.0 && d == 0) {
+    if ( roots[1] - roots[0] < 1e-5 ) return INFTY;
+    if ( roots[3] - roots[2] < 1e-5 ) return INFTY;
+  }
+
+  for ( int i = 0 ; i < 4 ; i++ ) {
+    // need something better than just raw tolerance
+    // use fastQS to get back lost precision
+    if ( roots[i] > 1e-6) {
+      return roots[i];
+    } 
+  }
+
+  // otherwise no hit
+  return INFTY;
+
+  return 0;
+}
+
+Direction
+SurfaceYTorus::normal(Position r) const
+{
+  // reduce the expansion of the full form for torus
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+
+  double A2 = A_*A_;
+  double B2 = B_*B_;
+  double C2 = C_*C_;
+
+  // a**4 - 2*a**2*c**2 - 2*a**2*x**2 - 2*a**2*z**2 + 2*a**2*c**2*y**2/b**2 + c**4 
+  // - 2*c**2*x**2 - 2*c**2*z**2 + x**4 + 2*x**2*z**2 + z**4 - 2*c**4*y**2/b**2 + 
+  // 2*c**2*x**2*y**2/b**2 + 2*c**2*y**2*z**2/b**2 + c**4*y**4/b**4
+
+
+  // coefficients for the x, x^2, x^3 and x^4 term
+  // but since we differeniate - we get x4 -> 4x3 
+  double dx_4 = 4*x*x*x;
+  double dx_2 = 4*x*(z*z + C2*y*y/B2 - A2 - C2);
+  double dx = dx_4 + dx_2;
+  // similarly to y
+  double dy_4 = 4*y*y*y*C2*C2/(B2*B2);
+  double dy_2 = 4*y*(z*z  + C2*x*x/B2  - A2 - C2); 
+  double dy = dy_2 + dy_4;
+  // and z
+  double dz_4 = 4*z*z*z;
+  double dz_2 = 4*z*(C2*y*y/B2 + x*x - C2 - A2);
+  double dz = dz_2 + dz_4;
+
+  double length = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+  return {dx/length,dy/length,dz/length};
+}
+
+SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node)
+  : CSGSurface(surf_node)
+{
+  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+}
+
+void SurfaceZTorus::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "z-torus", false);
+  std::array<double, 6> coeffs {{x0_, y0_, z0_, A_, B_, C_ }};
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+double
+SurfaceZTorus::evaluate(Position r) const
+{
+  const double x = r.x;
+  const double y = r.y;
+  const double z = r.z;
+
+  const double x_coeff2 = std::pow(x-x0_,2);
+  const double y_coeff2 = std::pow(y-y0_,2);
+  const double z_coeff2 = std::pow(z-z0_,2);
+
+  const double B2 = B_*B_;
+  const double C2 = C_*C_;
+
+  return z_coeff2/B2 + std::pow(std::sqrt(x_coeff2 + y_coeff2)-A_,2)/C2 - 1.;
+}
+
+double
+SurfaceZTorus::distance(Position r, Direction ang, bool coincident) const
+{
+  double u = ang.x;
+  double v = ang.y;
+  double w = ang.z;
+
+  double xr = r.x;
+  double yr = r.y;
+  double zr = r.z;
+
+  double A = A_;
+  double B = B_;
+  double C = C_;
+
+  double x0 = x0_;
+  double y0 = y0_;
+  double z0 = z0_;
+  
+  double a,b,c,d,e; // coefficients of quartic
+
+  // 4th order coefficient
+  a = std::pow(u,4) + 2*std::pow(u,2)*std::pow(v,2) + std::pow(v,4) + 2*std::pow(C,2)*std::pow(u,2)*std::pow(w,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(v,2)*std::pow(w,2)/std::pow(B,2) + std::pow(C,4)*std::pow(w,4)/std::pow(B,4);
+  // 3rd order coefficient
+  b = -4*std::pow(u,3)*x0 + 4*std::pow(u,3)*xr - 4*std::pow(u,2)*v*y0 + 4*std::pow(u,2)*v*yr - 4*u*std::pow(v,2)*x0 + 4*u*std::pow(v,2)*xr - 4*std::pow(v,3)*y0 + 4*std::pow(v,3)*yr - 4*std::pow(C,2)*std::pow(u,2)*w*z0/std::pow(B,2) + 4*std::pow(C,2)*std::pow(u,2)*w*zr/std::pow(B,2) - 4*std::pow(C,2)*u*std::pow(w,2)*x0/std::pow(B,2) + 4*std::pow(C,2)*u*std::pow(w,2)*xr/std::pow(B,2) - 4*std::pow(C,2)*std::pow(v,2)*w*z0/std::pow(B,2) + 4*std::pow(C,2)*std::pow(v,2)*w*zr/std::pow(B,2) - 4*std::pow(C,2)*v*std::pow(w,2)*y0/std::pow(B,2) + 4*std::pow(C,2)*v*std::pow(w,2)*yr/std::pow(B,2) - 4*std::pow(C,4)*std::pow(w,3)*z0/std::pow(B,4) + 4*std::pow(C,4)*std::pow(w,3)*zr/std::pow(B,4);
+  // 2nd order coefficient
+  c= -2*std::pow(A,2)*std::pow(u,2) - 2*std::pow(A,2)*std::pow(v,2) + 2*std::pow(A,2)*std::pow(C,2)*std::pow(w,2)/std::pow(B,2) - 2*std::pow(C,2)*std::pow(u,2) - 2*std::pow(C,2)*std::pow(v,2) + 6*std::pow(u,2)*std::pow(x0,2) - 12*std::pow(u,2)*x0*xr + 6*std::pow(u,2)*std::pow(xr,2) + 2*std::pow(u,2)*std::pow(y0,2) - 4*std::pow(u,2)*y0*yr + 2*std::pow(u,2)*std::pow(yr,2) + 8*u*v*x0*y0 - 8*u*v*x0*yr - 8*u*v*xr*y0 + 8*u*v*xr*yr + 2*std::pow(v,2)*std::pow(x0,2) - 4*std::pow(v,2)*x0*xr + 2*std::pow(v,2)*std::pow(xr,2) + 6*std::pow(v,2)*std::pow(y0,2) - 12*std::pow(v,2)*y0*yr + 6*std::pow(v,2)*std::pow(yr,2) - 2*std::pow(C,4)*std::pow(w,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(u,2)*std::pow(z0,2)/std::pow(B,2) - 4*std::pow(C,2)*std::pow(u,2)*z0*zr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(u,2)*std::pow(zr,2)/std::pow(B,2) + 8*std::pow(C,2)*u*w*x0*z0/std::pow(B,2) - 8*std::pow(C,2)*u*w*x0*zr/std::pow(B,2) - 8*std::pow(C,2)*u*w*xr*z0/std::pow(B,2) + 8*std::pow(C,2)*u*w*xr*zr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(v,2)*std::pow(z0,2)/std::pow(B,2) - 4*std::pow(C,2)*std::pow(v,2)*z0*zr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(v,2)*std::pow(zr,2)/std::pow(B,2) + 8*std::pow(C,2)*v*w*y0*z0/std::pow(B,2) - 8*std::pow(C,2)*v*w*y0*zr/std::pow(B,2) - 8*std::pow(C,2)*v*w*yr*z0/std::pow(B,2) + 8*std::pow(C,2)*v*w*yr*zr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(w,2)*std::pow(x0,2)/std::pow(B,2) - 4*std::pow(C,2)*std::pow(w,2)*x0*xr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(w,2)*std::pow(xr,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(w,2)*std::pow(y0,2)/std::pow(B,2) - 4*std::pow(C,2)*std::pow(w,2)*y0*yr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(w,2)*std::pow(yr,2)/std::pow(B,2) + 6*std::pow(C,4)*std::pow(w,2)*std::pow(z0,2)/std::pow(B,4) - 12*std::pow(C,4)*std::pow(w,2)*z0*zr/std::pow(B,4) + 6*std::pow(C,4)*std::pow(w,2)*std::pow(zr,2)/std::pow(B,4);
+  // the 1st order terms
+  d = 4*std::pow(A,2)*u*x0 - 4*std::pow(A,2)*u*xr + 4*std::pow(A,2)*v*y0 - 4*std::pow(A,2)*v*yr - 4*std::pow(A,2)*std::pow(C,2)*w*z0/std::pow(B,2) + 4*std::pow(A,2)*std::pow(C,2)*w*zr/std::pow(B,2) + 4*std::pow(C,2)*u*x0 - 4*std::pow(C,2)*u*xr + 4*std::pow(C,2)*v*y0 - 4*std::pow(C,2)*v*yr - 4*u*std::pow(x0,3) + 12*u*std::pow(x0,2)*xr - 12*u*x0*std::pow(xr,2) - 4*u*x0*std::pow(y0,2) + 8*u*x0*y0*yr - 4*u*x0*std::pow(yr,2) + 4*u*std::pow(xr,3) + 4*u*xr*std::pow(y0,2) - 8*u*xr*y0*yr + 4*u*xr*std::pow(yr,2) - 4*v*std::pow(x0,2)*y0 + 4*v*std::pow(x0,2)*yr + 8*v*x0*xr*y0 - 8*v*x0*xr*yr - 4*v*std::pow(xr,2)*y0 + 4*v*std::pow(xr,2)*yr - 4*v*std::pow(y0,3) + 12*v*std::pow(y0,2)*yr - 12*v*y0*std::pow(yr,2) + 4*v*std::pow(yr,3) + 4*std::pow(C,4)*w*z0/std::pow(B,2) - 4*std::pow(C,4)*w*zr/std::pow(B,2) - 4*std::pow(C,2)*u*x0*std::pow(z0,2)/std::pow(B,2) + 8*std::pow(C,2)*u*x0*z0*zr/std::pow(B,2) - 4*std::pow(C,2)*u*x0*std::pow(zr,2)/std::pow(B,2) + 4*std::pow(C,2)*u*xr*std::pow(z0,2)/std::pow(B,2) - 8*std::pow(C,2)*u*xr*z0*zr/std::pow(B,2) + 4*std::pow(C,2)*u*xr*std::pow(zr,2)/std::pow(B,2) - 4*std::pow(C,2)*v*y0*std::pow(z0,2)/std::pow(B,2) + 8*std::pow(C,2)*v*y0*z0*zr/std::pow(B,2) - 4*std::pow(C,2)*v*y0*std::pow(zr,2)/std::pow(B,2) + 4*std::pow(C,2)*v*yr*std::pow(z0,2)/std::pow(B,2) - 8*std::pow(C,2)*v*yr*z0*zr/std::pow(B,2) + 4*std::pow(C,2)*v*yr*std::pow(zr,2)/std::pow(B,2) - 4*std::pow(C,2)*w*std::pow(x0,2)*z0/std::pow(B,2) + 4*std::pow(C,2)*w*std::pow(x0,2)*zr/std::pow(B,2) + 8*std::pow(C,2)*w*x0*xr*z0/std::pow(B,2) - 8*std::pow(C,2)*w*x0*xr*zr/std::pow(B,2) - 4*std::pow(C,2)*w*std::pow(xr,2)*z0/std::pow(B,2) + 4*std::pow(C,2)*w*std::pow(xr,2)*zr/std::pow(B,2) - 4*std::pow(C,2)*w*std::pow(y0,2)*z0/std::pow(B,2) + 4*std::pow(C,2)*w*std::pow(y0,2)*zr/std::pow(B,2) + 8*std::pow(C,2)*w*y0*yr*z0/std::pow(B,2) - 8*std::pow(C,2)*w*y0*yr*zr/std::pow(B,2) - 4*std::pow(C,2)*w*std::pow(yr,2)*z0/std::pow(B,2) + 4*std::pow(C,2)*w*std::pow(yr,2)*zr/std::pow(B,2) - 4*std::pow(C,4)*w*std::pow(z0,3)/std::pow(B,4) + 12*std::pow(C,4)*w*std::pow(z0,2)*zr/std::pow(B,4) - 12*std::pow(C,4)*w*z0*std::pow(zr,2)/std::pow(B,4) + 4*std::pow(C,4)*w*std::pow(zr,3)/std::pow(B,4);
+  // the 0th order terms
+  e = std::pow(A,4) - 2*std::pow(A,2)*std::pow(C,2) - 2*std::pow(A,2)*std::pow(x0,2) + 4*std::pow(A,2)*x0*xr - 2*std::pow(A,2)*std::pow(xr,2) - 2*std::pow(A,2)*std::pow(y0,2) + 4*std::pow(A,2)*y0*yr - 2*std::pow(A,2)*std::pow(yr,2) + 2*std::pow(A,2)*std::pow(C,2)*std::pow(z0,2)/std::pow(B,2) - 4*std::pow(A,2)*std::pow(C,2)*z0*zr/std::pow(B,2) + 2*std::pow(A,2)*std::pow(C,2)*std::pow(zr,2)/std::pow(B,2) + std::pow(C,4) - 2*std::pow(C,2)*std::pow(x0,2) + 4*std::pow(C,2)*x0*xr - 2*std::pow(C,2)*std::pow(xr,2) - 2*std::pow(C,2)*std::pow(y0,2) + 4*std::pow(C,2)*y0*yr - 2*std::pow(C,2)*std::pow(yr,2) + std::pow(x0,4) - 4*std::pow(x0,3)*xr + 6*std::pow(x0,2)*std::pow(xr,2) + 2*std::pow(x0,2)*std::pow(y0,2) - 4*std::pow(x0,2)*y0*yr + 2*std::pow(x0,2)*std::pow(yr,2) - 4*x0*std::pow(xr,3) - 4*x0*xr*std::pow(y0,2) + 8*x0*xr*y0*yr - 4*x0*xr*std::pow(yr,2) + std::pow(xr,4) + 2*std::pow(xr,2)*std::pow(y0,2) - 4*std::pow(xr,2)*y0*yr + 2*std::pow(xr,2)*std::pow(yr,2) + std::pow(y0,4) - 4*std::pow(y0,3)*yr + 6*std::pow(y0,2)*std::pow(yr,2) - 4*y0*std::pow(yr,3) + std::pow(yr,4) - 2*std::pow(C,4)*std::pow(z0,2)/std::pow(B,2) + 4*std::pow(C,4)*z0*zr/std::pow(B,2) - 2*std::pow(C,4)*std::pow(zr,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(x0,2)*std::pow(z0,2)/std::pow(B,2) - 4*std::pow(C,2)*std::pow(x0,2)*z0*zr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(x0,2)*std::pow(zr,2)/std::pow(B,2) - 4*std::pow(C,2)*x0*xr*std::pow(z0,2)/std::pow(B,2) + 8*std::pow(C,2)*x0*xr*z0*zr/std::pow(B,2) - 4*std::pow(C,2)*x0*xr*std::pow(zr,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(xr,2)*std::pow(z0,2)/std::pow(B,2) - 4*std::pow(C,2)*std::pow(xr,2)*z0*zr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(xr,2)*std::pow(zr,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(y0,2)*std::pow(z0,2)/std::pow(B,2) - 4*std::pow(C,2)*std::pow(y0,2)*z0*zr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(y0,2)*std::pow(zr,2)/std::pow(B,2) - 4*std::pow(C,2)*y0*yr*std::pow(z0,2)/std::pow(B,2) + 8*std::pow(C,2)*y0*yr*z0*zr/std::pow(B,2) - 4*std::pow(C,2)*y0*yr*std::pow(zr,2)/std::pow(B,2) + 2*std::pow(C,2)*std::pow(yr,2)*std::pow(z0,2)/std::pow(B,2) - 4*std::pow(C,2)*std::pow(yr,2)*z0*zr/std::pow(B,2) + 2*std::pow(C,2)*std::pow(yr,2)*std::pow(zr,2)/std::pow(B,2) + std::pow(C,4)*std::pow(z0,4)/std::pow(B,4) - 4*std::pow(C,4)*std::pow(z0,3)*zr/std::pow(B,4) + 6*std::pow(C,4)*std::pow(z0,2)*std::pow(zr,2)/std::pow(B,4) - 4*std::pow(C,4)*z0*std::pow(zr,3)/std::pow(B,4) + std::pow(C,4)*std::pow(zr,4)/std::pow(B,4);
+
+  //
+  std::array<double,4> roots;
+  quartic_solve(b,c,d,e,roots);
+ 
+  if (coincident) r += ang*TINY_BIT;
+
+  // special degerenate case two sets of repated
+  // roots
+  if ( b == 0.0 && d == 0) {
+    if ( roots[1] - roots[0] < 1e-5 ) return INFTY;
+    if ( roots[3] - roots[2] < 1e-5 ) return INFTY;
+  }
+
+  for ( int i = 0 ; i < 4 ; i++ ) {
+    // need something better than just raw tolerance
+    // use fastQS to get back lost precision
+    if ( roots[i] > 1e-6) {
+      return roots[i];
+    } 
+  }
+
+  // otherwise no hit
+  return INFTY;
+}
+
+Direction
+SurfaceZTorus::normal(Position r) const
+{
+  // reduce the expansion of the full form for torus
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+
+  double A2 = A_*A_;
+  double B2 = B_*B_;
+  double C2 = C_*C_;
+
+
+  // coefficients for the x, x^2, x^3 and x^4 term
+  // but since we differeniate - we get x4 -> 4x3 
+  double dx_4 = 1.0;
+  double dx_2 = -2.*(A2 - C2 + y*y + C2*z*z/B2);
+  double dx = 4.*dx_4*x*x*x + 2.*dx_2*x;
+  // similarly to y
+  double dy_4 = 1.0;
+  double dy_2 = -2.*(A2 - C2 + x*x + C2*z*z/B2);
+  double dy = 4.*dy_4*y*y*y + 2.*dy_2*y;
+  // and z
+  double dz_4 = std::pow(C_,4)/std::pow(B_,4);
+  double dz_2 = 2.*(A2*C2/B2 - std::pow(C_,4)/B2 + C2*x*x/B2 + C2*y*y/B2);
+  double dz = 4.*dz_4*z*z*z + 2.*dz_2*z;
+
+  double length = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+  return {dx/length,dy/length,dz/length};
+}
+
+
+
+//==============================================================================
 
 void read_surfaces(pugi::xml_node node)
 {
@@ -1041,6 +1584,15 @@ void read_surfaces(pugi::xml_node node)
 
       } else if (surf_type == "quadric") {
         model::surfaces.push_back(make_unique<SurfaceQuadric>(surf_node));
+
+      } else if (surf_type == "x-torus") {
+        model::surfaces.push_back(std::make_unique<SurfaceXTorus>(surf_node));
+
+      } else if (surf_type == "y-torus") {
+        model::surfaces.push_back(std::make_unique<SurfaceYTorus>(surf_node));
+
+      } else if (surf_type == "z-torus") {
+        model::surfaces.push_back(std::make_unique<SurfaceZTorus>(surf_node));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));

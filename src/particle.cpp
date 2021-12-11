@@ -67,8 +67,6 @@ Particle::Particle()
 {
   // Create and clear coordinate levels
   //coord_.resize(model::n_coord_levels);
-  //std::cout << "coord_ size = " << model::n_coord_levels << std::endl;
-  //assert(COORD_SIZE >= model::n_coord_levels);
   //cell_last_.resize(model::n_coord_levels);
   clear();
 
@@ -78,10 +76,6 @@ Particle::Particle()
 
   // Create microscopic cross section caches
   //neutron_xs_.resize(data::nuclides_size);
-  //std::cout << "neutron_xs size = " << data::nuclides_size << std::endl;
-  //assert(NEUTRON_XS_SIZE >= data::nuclides_size);
-  //std::cout << "photon_xs size = " << data::elements.size() << std::endl;
-  //assert(PHOTON_XS_SIZE >= data::elements_size);
   //photon_xs_.resize(data::elements.size());
 }
 
@@ -167,7 +161,7 @@ Particle::event_calculate_xs_dispatch()
   event_ = TallyEvent::KILL;
   event_nuclide_ = NUCLIDE_NONE;
   event_mt_ = REACTION_NONE;
-  
+
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
@@ -182,12 +176,12 @@ Particle::event_calculate_xs_dispatch()
     // Set birth cell attribute
     if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
   }
-  
+
   if (settings::check_overlaps) {
     printf("Check cell overlap not yet supported on device.\n");
     //check_cell_overlap(*this);
   }
-  
+
   // Calculate microscopic and macroscopic cross sections
   if (material_ != MATERIAL_VOID) {
     if (settings::run_CE) {

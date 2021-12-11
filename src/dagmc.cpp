@@ -114,9 +114,7 @@ void legacy_assign_material(std::string mat_string, DAGCell* c)
       // assign the material with that name
       if (!mat_found_by_name) {
         mat_found_by_name = true;
-        //c->material_.push_back(m->id_);
-        assert(c->material_length_ < MATERIAL_SIZE );
-        c->material_[c->material_length_++] = m->id_;
+        c->material_.push_back(m->id_);
       // report error if more than one material is found
       } else {
         fatal_error(fmt::format(
@@ -131,9 +129,7 @@ void legacy_assign_material(std::string mat_string, DAGCell* c)
   if (!mat_found_by_name) {
     try {
       auto id = std::stoi(mat_string);
-      //c->material_.emplace_back(id);
-      assert(c->material_length_ < MATERIAL_SIZE );
-      c->material_[c->material_length_++] = id;
+      c->material_.emplace_back(id);
     } catch (const std::invalid_argument&) {
       fatal_error(fmt::format(
         "No material {} found for volume (cell) {}", mat_string, c->id_));
@@ -240,8 +236,7 @@ void load_dagmc_geometry()
 
     // material void checks
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
-      assert(c->material_length_ < MATERIAL_SIZE );
-      c->material_[c->material_length_++] = MATERIAL_VOID;
+      c->material_.push_back(MATERIAL_VOID);
     } else {
       if (using_uwuw) {
         // lookup material in uwuw if present
@@ -249,8 +244,7 @@ void load_dagmc_geometry()
         if (uwuw.material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW
           int mat_number = uwuw.material_library.get_material(uwuw_mat).metadata["mat_number"].asInt();
-          assert(c->material_length_ < MATERIAL_SIZE );
-          c->material_[c->material_length_++] = mat_number;
+          c->material_.push_back(mat_number);
         } else {
           fatal_error(fmt::format("Material with value {} not found in the "
             "UWUW material library", mat_str));

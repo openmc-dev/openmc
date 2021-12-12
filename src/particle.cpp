@@ -39,6 +39,12 @@ namespace openmc {
 void Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {
+  // If energy is below cutoff for this particle, don't create secondary
+  // particle
+  if (E < settings::energy_cutoff[static_cast<int>(type)]) {
+    return;
+  }
+
   secondary_bank().emplace_back();
 
   auto& bank {secondary_bank().back()};

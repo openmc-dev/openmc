@@ -43,20 +43,21 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_sort.start();
 
-  if( simulation::calculate_fuel_xs_queue.size() > settings::minimum_sort_items )
+  if (queue.size() > settings::minimum_sort_items)
   {
     simulation::sort_counter++;
-    {
-      #pragma omp target update from(queue.data_[:queue.size()])
-      {
-        // OpenMC parallel sort implementation
-        quickSort_parallel(queue.data(), queue.size());
 
-        // STL serial sort
-        //std::sort(queue.data(), queue.data() + queue.size());
-      }
-      #pragma omp target update to(queue.data_[:queue.size()])
-    }
+    // Transfer queue information to the host
+    #pragma omp target update from(queue.data_[:queue.size()])
+
+    // Sort queue via OpenMP parallel sort implementation
+    quickSort_parallel(queue.data(), queue.size());
+
+    // (For debugging, if needed) Sort queue via STL serial sort
+    //std::sort(queue.data(), queue.data() + queue.size());
+    
+    // Transfer queue information back to the device
+    #pragma omp target update to(queue.data_[:queue.size()])
   }
 
   simulation::time_event_sort.stop();
@@ -334,24 +335,38 @@ void process_revival_events()
 {
   simulation::time_event_revival.start();
 
+  // Accumulator for particle weights from any sourced particles
   double extra_weight = 0;
 
   #pragma omp target teams distribute parallel for reduction(+:extra_weight)
   for (int64_t i = 0; i < simulation::revival_queue.size(); i++) {
     int buffer_idx = simulation::revival_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
+
+    // First, attempt to revive a secondary particle
     p.event_revive_from_secondary();
+
+    // If no secondary particle was found, attempt to source new particle
     if (!p.alive_) {
+
+      // Before sourcing new particle, execute death event for old particle
       p.event_death();
+
+      // Atomically retrieve source offset for new particle
       int64_t source_offset_idx;
       #pragma omp atomic capture //seq_cst
       source_offset_idx = simulation::current_source_offset++;
 
+      // Check that we are not going to run more particles than the user specified
       if (source_offset_idx < simulation::work_per_rank) {
+        // If a valid particle is sourced, initialize it and accumulate its weight
         initialize_history(p, source_offset_idx + 1);
         extra_weight += p.wgt_;
       }
     }
+    // If particle has either been revived or a new particle has been sourced,
+    // then dispatch particle to appropriate queue. Otherwise, if particle is
+    // dead, then it will not be queued anywhere.
     if (p.alive_)
       dispatch_xs_event(buffer_idx);
   }
@@ -361,7 +376,7 @@ void process_revival_events()
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
   simulation::advance_particle_queue.sync_size_device_to_host();
 
-  // Write total weight to global variable
+  // Add any newly sourced particle weights to global variable
   simulation::total_weight += extra_weight;
 
   simulation::time_event_revival.stop();

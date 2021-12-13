@@ -23,6 +23,7 @@
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/event.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/math_functions.h"
@@ -396,15 +397,11 @@ bool is_device()
   {
     is_initial = omp_is_initial_device();
   }
-  if (is_initial)
-    return false;
-  else
-    return true;
+  return !is_initial;
 }
 
 bool was_device_used()
 {
-  int is_initial;
   if (settings::event_based) {
     // If simulation was event-based, we test a kernel to see if it runs on device
     return is_device();

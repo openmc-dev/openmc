@@ -40,41 +40,31 @@
 //
 ////////////////////////////////////////////////////////////////////////////////////
 
-template <class T>
-void qswap(T& a, T& b)
-{
-  T tmp = a;
-  a = b;
-  b = tmp;
-}
+#include<algorithm>
 
 template <class T>
 void quickSort_parallel_internal(T* arr, int left, int right, int cutoff)
 {
-  int i = left, j = right;
-  float tmp;
+  int i = left;
+  int j = right;
   T pivot = arr[(left + right) / 2];
 
-  {
-    while (i <= j) {
-      while (arr[i] < pivot)
-        i++;
-      while (arr[j] > pivot)
-        j--;
-      if (i <= j) {
-        qswap(arr[i], arr[j]);
-        i++;
-        j--;
-      }
+  while (i <= j) {
+    while (arr[i] < pivot)
+      i++;
+    while (arr[j] > pivot)
+      j--;
+    if (i <= j) {
+      std::swap(arr[i], arr[j]);
+      i++;
+      j--;
     }
-
   }
 
-  if ( ((right-left)<cutoff) ){
-    if (left < j){ quickSort_parallel_internal(arr, left, j, cutoff); }
-    if (i < right){ quickSort_parallel_internal(arr, i, right, cutoff); }
-
-  }else{
+  if ((right-left) < cutoff) {
+    if (left < j)  { quickSort_parallel_internal(arr, left, j,  cutoff); }
+    if (i < right) { quickSort_parallel_internal(arr, i, right, cutoff); }
+  } else {
     #pragma omp task
     { quickSort_parallel_internal(arr, left, j, cutoff); }
     #pragma omp task
@@ -89,14 +79,13 @@ void quickSort_parallel(T* arr, int lenArray)
   // Set minumum problem size to still spawn threads for
   int cutoff = 1000;
 
-  // For this problem size, more than 16 threads on CPU is not helpful
-  int	numThreads = 32;
+  // For OpenMC's use case, we do not see performance gains past 32 threads.
+  // So, we will limit the number of threads to 32. 
+  int	numThreads = std::min({32,omp_get_num_procs()});
 
   #pragma omp parallel num_threads(numThreads)
   {
     #pragma omp single nowait
-    {
-      quickSort_parallel_internal(arr, 0, lenArray-1, cutoff);
-    }
+    { quickSort_parallel_internal(arr, 0, lenArray-1, cutoff); }
   }
 }

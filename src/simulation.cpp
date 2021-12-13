@@ -831,7 +831,9 @@ void transport_event_based()
   simulation::fission_bank.copy_host_to_device();
   #pragma omp target update to(simulation::keff)
 
-  // Figure out # of particles to run for this subiteration
+  // Figure out # of particles to initialize. If # of particles required per batch for this rank
+  // is greater than what is allowed in-flight at once, then the particles will be refilled
+  // on-the-fly via the revival event.
   int64_t n_particles = std::min(simulation::work_per_rank, settings::max_particles_in_flight);
 
   // Initialize in-flight particles

@@ -811,32 +811,13 @@ double spline_integrate(int n, const double x[], const double y[],
   return s;
 }
 
-// MIT Faddeva Implementation by Steven Johnson
-
 #ifndef NEW_FADDEEVA
-std::complex<double> faddeeva(std::complex<double> z)
-{
-  // Technically, the value we want is given by the equation:
-  // w(z) = I/pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
-  // as shown in Equation 63 from Hwang, R. N. "A rigorous pole
-  // representation of multilevel cross sections and its practical
-  // applications." Nucl. Sci. Eng. 96.3 (1987): 192-209.
-  //
-  // The MIT Faddeeva function evaluates w(z) = exp(-z^2)erfc(-iz). These
-  // two forms of the Faddeeva function are related by a transformation.
-  //
-  // If we call the integral form w_int, and the function form w_fun:
-  // For imag(z) > 0, w_int(z) = w_fun(z)
-  // For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
+// MIT Faddeva Implementation by Steven Johnson
+#define w_impl Faddeeva::w
 
-  // Note that Faddeeva::w will interpret zero as machine epsilon
-  return z.imag() > 0.0 ? Faddeeva::w(z) :
-    -std::conj(Faddeeva::w(std::conj(z)));
-}
 #else
 
 // Ben Forget's "Humlicek 8th Order" Rational Approximation to the Faddeeva Function
-
 #pragma omp declare target
 std::complex<double> zpf8h(std::complex<double> z)
 {
@@ -851,6 +832,10 @@ std::complex<double> zpf8h(std::complex<double> z)
           / ((((bb8[4]*zz+bb8[3])*zz+bb8[2])*zz+bb8[1])*zz+bb8[0]);
 }
 #pragma omp end declare target
+  
+#define w_impl zpf8h
+
+#endif
 
 std::complex<double> faddeeva(std::complex<double> z)
 {
@@ -868,14 +853,8 @@ std::complex<double> faddeeva(std::complex<double> z)
   // For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
 
   // Note that Faddeeva::w will interpret zero as machine epsilon
-  #define w_impl zpf8h
   return z.imag() > 0.0 ? w_impl(z) : -std::conj(w_impl(std::conj(z)));
 }
-
-#endif
-
-
-
 
 std::complex<double> w_derivative(std::complex<double> z, int order)
 {

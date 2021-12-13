@@ -133,6 +133,9 @@ void process_collision_events();
 //! \param n_particles The number of particles in the particle buffer
 void process_death_events(int64_t n_particles);
 
+//! Execute the revival event for all particles in this event's buffer
+void process_revival_events();
+
 } // namespace openmc
 
 #endif // OPENMC_EVENT_H

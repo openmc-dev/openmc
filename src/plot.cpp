@@ -213,7 +213,7 @@ void create_image(Plot const& pl)
 #endif
 }
 
-void Plot::set_id(pugi::xml_node plot_node)
+void PlotBase::set_id(pugi::xml_node plot_node)
 {
   // Copy data into plots
   if (check_for_node(plot_node, "id")) {
@@ -298,16 +298,11 @@ void Plot::set_output_path(pugi::xml_node plot_node)
   }
 }
 
-void Plot::set_bg_color(pugi::xml_node plot_node)
+void PlotBase::set_bg_color(pugi::xml_node plot_node)
 {
   // Copy plot background color
   if (check_for_node(plot_node, "background")) {
     vector<int> bg_rgb = get_node_array<int>(plot_node, "background");
-    if (PlotType::voxel == type_) {
-      if (mpi::master) {
-        warning(fmt::format("Background color ignored in voxel plot {}", id_));
-      }
-    }
     if (bg_rgb.size() == 3) {
       not_found_ = bg_rgb;
     } else {
@@ -371,7 +366,7 @@ void Plot::set_width(pugi::xml_node plot_node)
   }
 }
 
-void Plot::set_universe(pugi::xml_node plot_node)
+void PlotBase::set_universe(pugi::xml_node plot_node)
 {
   // Copy plot universe level
   if (check_for_node(plot_node, "level")) {
@@ -384,7 +379,7 @@ void Plot::set_universe(pugi::xml_node plot_node)
   }
 }
 
-void Plot::set_default_colors(pugi::xml_node plot_node)
+void PlotBase::set_default_colors(pugi::xml_node plot_node)
 {
   // Copy plot color type and initialize all colors randomly
   std::string pl_color_by = "cell";
@@ -411,15 +406,8 @@ void Plot::set_default_colors(pugi::xml_node plot_node)
   }
 }
 
-void Plot::set_user_colors(pugi::xml_node plot_node)
+void PlotBase::set_user_colors(pugi::xml_node plot_node)
 {
-  if (!plot_node.select_nodes("color").empty() && PlotType::voxel == type_) {
-    if (mpi::master) {
-      warning(
-        fmt::format("Color specifications ignored in voxel plot {}", id_));
-    }
-  }
-
   for (auto cn : plot_node.children("color")) {
     // Make sure 3 values are specified for RGB
     vector<int> user_rgb = get_node_array<int>(cn, "rgb");
@@ -562,18 +550,12 @@ void Plot::set_meshlines(pugi::xml_node plot_node)
   }
 }
 
-void Plot::set_mask(pugi::xml_node plot_node)
+void PlotBase::set_mask(pugi::xml_node plot_node)
 {
   // Deal with masks
   pugi::xpath_node_set mask_nodes = plot_node.select_nodes("mask");
 
   if (!mask_nodes.empty()) {
-    if (PlotType::voxel == type_) {
-      if (mpi::master) {
-        warning(fmt::format("Mask ignored in voxel plot {}", id_));
-      }
-    }
-
     if (mask_nodes.size() == 1) {
       // Get pointer to mask
       pugi::xml_node mask_node = mask_nodes[0].node();
@@ -625,7 +607,7 @@ void Plot::set_mask(pugi::xml_node plot_node)
   }
 }
 
-void Plot::set_overlap_color(pugi::xml_node plot_node)
+void PlotBase::set_overlap_color(pugi::xml_node plot_node)
 {
   color_overlaps_ = false;
   if (check_for_node(plot_node, "show_overlaps")) {
@@ -654,23 +636,29 @@ void Plot::set_overlap_color(pugi::xml_node plot_node)
   }
 }
 
-Plot::Plot(pugi::xml_node plot_node)
-  : index_meshlines_mesh_ {-1}, overlap_color_ {RED}
+PlotBase::PlotBase(pugi::xml_node plot_node)
 {
   set_id(plot_node);
-  set_type(plot_node);
-  set_output_path(plot_node);
   set_bg_color(plot_node);
-  set_basis(plot_node);
-  set_origin(plot_node);
-  set_width(plot_node);
   set_universe(plot_node);
   set_default_colors(plot_node);
   set_user_colors(plot_node);
-  set_meshlines(plot_node);
   set_mask(plot_node);
   set_overlap_color(plot_node);
-} // End Plot constructor
+}
+
+Plot::Plot(pugi::xml_node plot_node)
+  : PlotBase(plot_node), index_meshlines_mesh_ {-1}
+{
+  set_type(plot_node);
+  set_output_path(plot_node);
+  set_basis(plot_node);
+  set_origin(plot_node);
+  set_width(plot_node);
+  set_meshlines(plot_node);
+  slice_level_ = level_; // Copy level employed in SlicePlotBase::get_map
+  slice_color_overlaps_ = color_overlaps_;
+}
 
 //==============================================================================
 // OUTPUT_PPM writes out a previously generated image to a PPM file
@@ -914,13 +902,12 @@ void create_voxel(Plot const& pl)
   hid_t dspace, dset, memspace;
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
-  PlotBase pltbase;
+  SlicePlotBase pltbase;
   pltbase.width_ = pl.width_;
   pltbase.origin_ = pl.origin_;
   pltbase.basis_ = PlotBasis::xy;
   pltbase.pixels_ = pl.pixels_;
-  pltbase.level_ = -1; // all universes for voxel files
-  pltbase.color_overlaps_ = pl.color_overlaps_;
+  pltbase.slice_color_overlaps_ = pl.color_overlaps_;
 
   ProgressBar pb;
   for (int z = 0; z < pl.pixels_[2]; z++) {
@@ -989,13 +976,13 @@ RGBColor random_color(void)
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 {
 
-  auto plt = reinterpret_cast<const PlotBase*>(plot);
+  auto plt = reinterpret_cast<const SlicePlotBase*>(plot);
   if (!plt) {
     set_errmsg("Invalid slice pointer passed to openmc_id_map");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (plt->color_overlaps_ && model::overlap_check_count.size() == 0) {
+  if (plt->slice_color_overlaps_ && model::overlap_check_count.size() == 0) {
     model::overlap_check_count.resize(model::cells.size());
   }
 
@@ -1010,13 +997,13 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 extern "C" int openmc_property_map(const void* plot, double* data_out)
 {
 
-  auto plt = reinterpret_cast<const PlotBase*>(plot);
+  auto plt = reinterpret_cast<const SlicePlotBase*>(plot);
   if (!plt) {
     set_errmsg("Invalid slice pointer passed to openmc_id_map");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (plt->color_overlaps_ && model::overlap_check_count.size() == 0) {
+  if (plt->slice_color_overlaps_ && model::overlap_check_count.size() == 0) {
     model::overlap_check_count.resize(model::cells.size());
   }
 

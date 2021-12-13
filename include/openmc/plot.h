@@ -102,7 +102,7 @@ enum class PlotColorBy { cells = 0, mats = 1 };
 //===============================================================================
 // Plot class
 //===============================================================================
-class PlotBase {
+class SlicePlotBase {
 public:
   template<class T>
   T get_map() const;
@@ -113,12 +113,13 @@ public:
   Position width_;          //!< Plot width in geometry
   PlotBasis basis_;         //!< Plot basis (XY/XZ/YZ)
   array<size_t, 3> pixels_; //!< Plot size in pixels
-  bool color_overlaps_;     //!< Show overlapping cells?
-  int level_;               //!< Plot universe level
+  bool slice_color_overlaps_; //!< Show overlapping cells?
+  int slice_level_ {-1};      //!< Plot universe level
+private:
 };
 
 template<class T>
-T PlotBase::get_map() const
+T SlicePlotBase::get_map() const
 {
 
   size_t width = pixels_[0];
@@ -164,7 +165,7 @@ T PlotBase::get_map() const
     p.r() = xyz;
     p.u() = dir;
     p.coord(0).universe = model::root_universe;
-    int level = level_;
+    int level = slice_level_;
     int j {};
 
 #pragma omp for
@@ -182,7 +183,7 @@ T PlotBase::get_map() const
         if (found_cell) {
           data.set_value(y, x, p, j);
         }
-        if (color_overlaps_ && check_cell_overlap(p, false)) {
+        if (slice_color_overlaps_ && check_cell_overlap(p, false)) {
           data.set_overlap(y, x);
         }
       } // inner for
@@ -192,7 +193,31 @@ T PlotBase::get_map() const
   return data;
 }
 
-class Plot : public PlotBase {
+// Common data and methods between ProjectionPlot and Plot types
+class PlotBase {
+protected:
+  void set_id(pugi::xml_node plot_node);
+  void set_bg_color(pugi::xml_node plot_node);
+  void set_universe(pugi::xml_node plot_node);
+  void set_default_colors(pugi::xml_node plot_node);
+  void set_user_colors(pugi::xml_node plot_node);
+  void set_overlap_color(pugi::xml_node plot_node);
+  void set_mask(pugi::xml_node plot_node);
+
+public:
+  PlotBase(pugi::xml_node plot_node);
+  int id_;                       // Plot ID
+  int level_;                    // Universe level to plot
+  bool color_overlaps_;          //!< Show overlapping cells?
+  PlotColorBy color_by_;         // Plot coloring (cell/material)
+  RGBColor not_found_ {WHITE};   // Plot background color
+  RGBColor overlap_color_ {RED}; // Plot overlap color
+  vector<RGBColor> colors_;      // Plot colors
+  std::string path_plot_;        // Plot output filename
+};
+
+// Represents either a voxel or pixel plot
+class Plot : public SlicePlotBase, public PlotBase {
 
 public:
   // Constructor
@@ -200,32 +225,19 @@ public:
 
   // Methods
 private:
-  void set_id(pugi::xml_node plot_node);
-  void set_type(pugi::xml_node plot_node);
   void set_output_path(pugi::xml_node plot_node);
-  void set_bg_color(pugi::xml_node plot_node);
+  void set_type(pugi::xml_node plot_node);
   void set_basis(pugi::xml_node plot_node);
   void set_origin(pugi::xml_node plot_node);
   void set_width(pugi::xml_node plot_node);
-  void set_universe(pugi::xml_node plot_node);
-  void set_default_colors(pugi::xml_node plot_node);
-  void set_user_colors(pugi::xml_node plot_node);
   void set_meshlines(pugi::xml_node plot_node);
-  void set_mask(pugi::xml_node plot_node);
-  void set_overlap_color(pugi::xml_node plot_node);
 
   // Members
 public:
-  int id_;                        //!< Plot ID
   PlotType type_;                 //!< Plot type (Slice/Voxel)
-  PlotColorBy color_by_;          //!< Plot coloring (cell/material)
   int meshlines_width_;           //!< Width of lines added to the plot
   int index_meshlines_mesh_ {-1}; //!< Index of the mesh to draw on the plot
   RGBColor meshlines_color_;      //!< Color of meshlines on the plot
-  RGBColor not_found_ {WHITE};    //!< Plot background color
-  RGBColor overlap_color_ {RED};  //!< Plot overlap color
-  vector<RGBColor> colors_;       //!< Plot colors
-  std::string path_plot_;         //!< Plot output filename
 };
 
 //===============================================================================

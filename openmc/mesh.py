@@ -144,11 +144,25 @@ class RegularMesh(MeshBase):
 
     @property
     def upper_right(self):
-        return self._upper_right
+        if self._upper_right is not None:
+            return self._upper_right
+        elif self._width is not None:
+            if self._lower_left is not None and self._dimension is not None:
+                ls = self._lower_left
+                ws = self._width
+                dims = self._dimension
+                return [l + w * d for l, w, d in zip(ls, ws, dims)]
 
     @property
     def width(self):
-        return self._width
+        if self._width is not None:
+            return self._width
+        elif self._upper_right is not None:
+            if self._lower_left is not None and self._dimension is not None:
+                us = self._upper_right
+                ls = self._lower_left
+                dims =  self._dimension
+                return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @property
     def num_mesh_cells(self):
@@ -190,19 +204,27 @@ class RegularMesh(MeshBase):
         cv.check_length('mesh upper_right', upper_right, 1, 3)
         self._upper_right = upper_right
 
+        if self._width is not None:
+            self._width = None
+            warnings.warn("Unsetting width attribute.")
+
     @width.setter
     def width(self, width):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 1, 3)
         self._width = width
 
+        if self._upper_right is not None:
+            self._upper_right = None
+            warnings.warn("Unsetting upper_right attribute.")
+
     def __repr__(self):
         string = super().__repr__()
         string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
-        string += '{0: <16}{1}{2}\n'.format('\tMesh Cells', '=\t', self._dimension)
-        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._lower_left)
-        string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._upper_right)
-        string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._width)
+        string += '{0: <16}{1}{2}\n'.format('\tVoxels', '=\t', self._dimension)
+        string += '{0: <16}{1}{2}\n'.format('\tLower left', '=\t', self._lower_left)
+        string += '{0: <16}{1}{2}\n'.format('\tUpper Right', '=\t', self._upper_right)
+        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
         return string
 
     @classmethod
@@ -213,8 +235,12 @@ class RegularMesh(MeshBase):
         mesh = cls(mesh_id)
         mesh.dimension = group['dimension'][()]
         mesh.lower_left = group['lower_left'][()]
-        mesh.upper_right = group['upper_right'][()]
-        mesh.width = group['width'][()]
+        if 'width' in group:
+            mesh.width = group['width'][()]
+        elif 'upper_right' in group:
+            mesh.upper_right = group['upper_right'][()]
+        else:
+            raise IOError('Invalid mesh: must have one of "upper_right" or "width"')
 
         return mesh
 
@@ -727,7 +753,7 @@ class UnstructuredMesh(MeshBase):
 
     @length_multiplier.setter
     def length_multiplier(self, length_multiplier):
-        cv.check_type("Unstructured mesh length multiplier", 
+        cv.check_type("Unstructured mesh length multiplier",
                                 length_multiplier,
                                 Real)
         self._length_multiplier = length_multiplier

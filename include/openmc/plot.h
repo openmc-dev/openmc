@@ -23,12 +23,13 @@ namespace openmc {
 // Global variables
 //===============================================================================
 
-class Plot;
+class PlottableInterface;
 
 namespace model {
 
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
-extern vector<Plot> plots;                    //!< Plot instance container
+extern std::vector<std::unique_ptr<PlottableInterface>>
+  plots; //!< Plot instance container
 
 extern uint64_t plotter_seed; // Stream index used by the plotter
 
@@ -67,6 +68,49 @@ struct RGBColor {
 const RGBColor WHITE {255, 255, 255};
 const RGBColor RED {255, 0, 0};
 
+/*
+ * PlottableInterface classes just have to have a unique ID in the plots.xml
+ * file, and guarantee being able to create output in some way.
+ */
+class PlottableInterface {
+private:
+  void set_id(pugi::xml_node plot_node);
+  int id_; // unique plot ID
+
+  void set_bg_color(pugi::xml_node plot_node);
+  void set_universe(pugi::xml_node plot_node);
+  void set_default_colors(pugi::xml_node plot_node);
+  void set_user_colors(pugi::xml_node plot_node);
+  void set_overlap_color(pugi::xml_node plot_node);
+  void set_mask(pugi::xml_node plot_node);
+
+protected:
+  // Plot output filename, derived classes have logic to set it
+  std::string path_plot_;
+
+public:
+  enum class PlotColorBy { cells = 0, mats = 1 };
+
+  // Creates the output image named path_plot_
+  virtual void create_output() const = 0;
+
+  // Print useful info to the terminal
+  virtual void print_info() const = 0;
+
+  const std::string& path_plot() const { return path_plot_; }
+  const int id() const { return id_; }
+  const int level() const { return level_; }
+
+  // Public color-related data
+  PlottableInterface(pugi::xml_node plot_node);
+  int level_;                    // Universe level to plot
+  bool color_overlaps_;          // Show overlapping cells?
+  PlotColorBy color_by_;         // Plot coloring (cell/material)
+  RGBColor not_found_ {WHITE};   // Plot background color
+  RGBColor overlap_color_ {RED}; // Plot overlap color
+  vector<RGBColor> colors_;      // Plot colors
+};
+
 typedef xt::xtensor<RGBColor, 2> ImageData;
 
 struct IdData {
@@ -93,19 +137,16 @@ struct PropertyData {
   xt::xtensor<double, 3> data_; //!< 2D array of temperature & density data
 };
 
-enum class PlotType { slice = 1, voxel = 2 };
-
-enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
-
-enum class PlotColorBy { cells = 0, mats = 1 };
-
 //===============================================================================
 // Plot class
 //===============================================================================
+
 class SlicePlotBase {
 public:
   template<class T>
   T get_map() const;
+
+  enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
 
   // Members
 public:
@@ -193,72 +234,78 @@ T SlicePlotBase::get_map() const
   return data;
 }
 
-// Common data and methods between ProjectionPlot and Plot types
-class PlotBase {
+// Provides methods and data for controlling plot colors
+class PlotColorMixin {
 protected:
-  void set_id(pugi::xml_node plot_node);
-  void set_bg_color(pugi::xml_node plot_node);
-  void set_universe(pugi::xml_node plot_node);
-  void set_default_colors(pugi::xml_node plot_node);
-  void set_user_colors(pugi::xml_node plot_node);
-  void set_overlap_color(pugi::xml_node plot_node);
-  void set_mask(pugi::xml_node plot_node);
 
 public:
-  PlotBase(pugi::xml_node plot_node);
-  int id_;                       // Plot ID
-  int level_;                    // Universe level to plot
-  bool color_overlaps_;          //!< Show overlapping cells?
-  PlotColorBy color_by_;         // Plot coloring (cell/material)
-  RGBColor not_found_ {WHITE};   // Plot background color
-  RGBColor overlap_color_ {RED}; // Plot overlap color
-  vector<RGBColor> colors_;      // Plot colors
-  std::string path_plot_;        // Plot output filename
 };
 
 // Represents either a voxel or pixel plot
-class Plot : public SlicePlotBase, public PlotBase {
+class Plot : public PlottableInterface, public SlicePlotBase {
 
 public:
-  // Constructor
-  Plot(pugi::xml_node plot);
+  enum class PlotType { slice = 1, voxel = 2 };
 
-  // Methods
+  Plot(pugi::xml_node plot, PlotType type);
+
 private:
   void set_output_path(pugi::xml_node plot_node);
-  void set_type(pugi::xml_node plot_node);
   void set_basis(pugi::xml_node plot_node);
   void set_origin(pugi::xml_node plot_node);
   void set_width(pugi::xml_node plot_node);
   void set_meshlines(pugi::xml_node plot_node);
 
-  // Members
 public:
+  // Add mesh lines to ImageData
+  void draw_mesh_lines(ImageData& data) const;
+  void create_image() const;
+  void create_voxel() const;
+
+  virtual void create_output() const;
+  virtual void print_info() const;
+
   PlotType type_;                 //!< Plot type (Slice/Voxel)
   int meshlines_width_;           //!< Width of lines added to the plot
   int index_meshlines_mesh_ {-1}; //!< Index of the mesh to draw on the plot
   RGBColor meshlines_color_;      //!< Color of meshlines on the plot
 };
 
+class ProjectionPlot : public PlottableInterface {
+public:
+  ProjectionPlot(pugi::xml_node plot);
+
+  virtual void create_output() const;
+  virtual void print_info() const;
+
+private:
+  void set_look_at(pugi::xml_node plot);
+  void set_camera_position(pugi::xml_node plot);
+  void set_field_of_view(pugi::xml_node plot);
+
+  std::array<int, 2> pixels_;       // pixel dimension of resulting image
+  double horizontal_field_of_view_; // horiz. f.o.v. in degrees
+  double vertical_field_of_view_;   // vert. f.o.v. in degrees
+  Position camera_position_;        // where camera is
+  Position look_at_;                // point camera is centered looking at
+};
+
 //===============================================================================
 // Non-member functions
 //===============================================================================
 
-//! Add mesh lines to image data of a plot object
-//! \param[in] plot object
-//! \param[out] image data associated with the plot object
-void draw_mesh_lines(Plot const& pl, ImageData& data);
-
-//! Write a PPM image using a plot object's image data
-//! \param[in] plot object
-//! \param[out] image data associated with the plot object
-void output_ppm(Plot const& pl, const ImageData& data);
+/* Write a PPM image
+ * filename - name of output file
+ * data - image data to write
+ */
+void output_ppm(const std::string& filename, const ImageData& data);
 
 #ifdef USE_LIBPNG
-//! Write a PNG image using a plot object's image data
-//! \param[in] plot object
-//! \param[out] image data associated with the plot object
-void output_png(Plot const& pl, const ImageData& data);
+/* Write a PNG image
+ * filename - name of output file
+ * data - image data to write
+ */
+void output_png(const std::string& filename, const ImageData& data);
 #endif
 
 //! Initialize a voxel file
@@ -297,14 +344,6 @@ void read_plots_xml(pugi::xml_node root);
 
 //! Clear memory
 void free_memory_plot();
-
-//! Create an image for a plot object
-//! \param[in] plot object
-void create_image(Plot const& pl);
-
-//! Create an hdf5 voxel file for a plot object
-//! \param[in] plot object
-void create_voxel(Plot const& pl);
 
 //! Create a randomly generated RGB color
 //! \return RGBColor with random value

@@ -97,7 +97,7 @@ void PropertyData::set_overlap(size_t y, size_t x)
 namespace model {
 
 std::unordered_map<int, int> plot_map;
-vector<Plot> plots;
+std::vector<std::unique_ptr<PlottableInterface>> plots;
 uint64_t plotter_seed = 1;
 
 } // namespace model
@@ -110,18 +110,64 @@ extern "C" int openmc_plot_geometry()
 {
 
   for (auto& pl : model::plots) {
-    write_message(5, "Processing plot {}: {}...", pl.id_, pl.path_plot_);
-
-    if (PlotType::slice == pl.type_) {
-      // create 2D image
-      create_image(pl);
-    } else if (PlotType::voxel == pl.type_) {
-      // create voxel file for 3D viewing
-      create_voxel(pl);
-    }
+    write_message(5, "Processing plot {}: {}...", pl->id(), pl->path_plot());
+    pl->create_output();
   }
 
   return 0;
+}
+
+void Plot::create_output() const
+{
+  if (PlotType::slice == type_) {
+    // create 2D image
+    create_image();
+  } else if (PlotType::voxel == type_) {
+    // create voxel file for 3D viewing
+    create_voxel();
+  }
+}
+
+void Plot::print_info() const
+{
+  // Plot type
+  if (PlotType::slice == type_) {
+    fmt::print("Plot Type: Slice\n");
+  } else if (PlotType::voxel == type_) {
+    fmt::print("Plot Type: Voxel\n");
+  }
+
+  // Plot parameters
+  fmt::print("Origin: {} {} {}\n", origin_[0], origin_[1], origin_[2]);
+
+  if (PlotType::slice == type_) {
+    fmt::print("Width: {:4} {:4}\n", width_[0], width_[1]);
+  } else if (PlotType::voxel == type_) {
+    fmt::print("Width: {:4} {:4} {:4}\n", width_[0], width_[1], width_[2]);
+  }
+
+  if (PlotColorBy::cells == color_by_) {
+    fmt::print("Coloring: Cells\n");
+  } else if (PlotColorBy::mats == color_by_) {
+    fmt::print("Coloring: Materials\n");
+  }
+
+  if (PlotType::slice == type_) {
+    switch (basis_) {
+    case PlotBasis::xy:
+      fmt::print("Basis: XY\n");
+      break;
+    case PlotBasis::xz:
+      fmt::print("Basis: XZ\n");
+      break;
+    case PlotBasis::yz:
+      fmt::print("Basis: YZ\n");
+      break;
+    }
+    fmt::print("Pixels: {} {}\n", pixels_[0], pixels_[1]);
+  } else if (PlotType::voxel == type_) {
+    fmt::print("Voxels: {} {} {}\n", pixels_[0], pixels_[1], pixels_[2]);
+  }
 }
 
 void read_plots_xml()
@@ -148,8 +194,26 @@ void read_plots_xml()
 void read_plots_xml(pugi::xml_node root)
 {
   for (auto node : root.children("plot")) {
-    model::plots.emplace_back(node);
-    model::plot_map[model::plots.back().id_] = model::plots.size() - 1;
+    std::string id_string = get_node_value(node, "id", true);
+    int id = std::stoi(id_string);
+    if (check_for_node(node, "type")) {
+      std::string type_str = get_node_value(node, "type", true);
+      if (type_str == "slice")
+        model::plots.emplace_back(
+          std::make_unique<Plot>(node, Plot::PlotType::slice));
+      else if (type_str == "voxel")
+        model::plots.emplace_back(
+          std::make_unique<Plot>(node, Plot::PlotType::voxel));
+      else if (type_str == "projection")
+        model::plots.emplace_back(std::make_unique<ProjectionPlot>(node));
+      else
+        fatal_error(
+          fmt::format("Unsupported plot type '{}' in plot {}", type_str, id));
+
+      model::plot_map[model::plots.back()->id()] = model::plots.size() - 1;
+    } else {
+      fatal_error(fmt::format("Must specify plot type in plot {}", id));
+    }
   }
 }
 
@@ -159,61 +223,58 @@ void free_memory_plot()
   model::plot_map.clear();
 }
 
-//==============================================================================
-// CREATE_IMAGE creates an image based on user input from a plots.xml <plot>
+// creates an image based on user input from a plots.xml <plot>
 // specification in the PNG/PPM format
-//==============================================================================
-
-void create_image(Plot const& pl)
+void Plot::create_image() const
 {
 
-  size_t width = pl.pixels_[0];
-  size_t height = pl.pixels_[1];
+  size_t width = pixels_[0];
+  size_t height = pixels_[1];
 
-  ImageData data({width, height}, pl.not_found_);
+  ImageData data({width, height}, not_found_);
 
   // generate ids for the plot
-  auto ids = pl.get_map<IdData>();
+  auto ids = get_map<IdData>();
 
   // assign colors
   for (size_t y = 0; y < height; y++) {
     for (size_t x = 0; x < width; x++) {
-      int idx = pl.color_by_ == PlotColorBy::cells ? 0 : 2;
+      int idx = color_by_ == PlotColorBy::cells ? 0 : 2;
       auto id = ids.data_(y, x, idx);
       // no setting needed if not found
       if (id == NOT_FOUND) {
         continue;
       }
       if (id == OVERLAP) {
-        data(x, y) = pl.overlap_color_;
+        data(x, y) = overlap_color_;
         continue;
       }
-      if (PlotColorBy::cells == pl.color_by_) {
-        data(x, y) = pl.colors_[model::cell_map[id]];
-      } else if (PlotColorBy::mats == pl.color_by_) {
+      if (PlotColorBy::cells == color_by_) {
+        data(x, y) = colors_[model::cell_map[id]];
+      } else if (PlotColorBy::mats == color_by_) {
         if (id == MATERIAL_VOID) {
           data(x, y) = WHITE;
           continue;
         }
-        data(x, y) = pl.colors_[model::material_map[id]];
+        data(x, y) = colors_[model::material_map[id]];
       } // color_by if-else
     }   // x for loop
   }     // y for loop
 
   // draw mesh lines if present
-  if (pl.index_meshlines_mesh_ >= 0) {
-    draw_mesh_lines(pl, data);
+  if (index_meshlines_mesh_ >= 0) {
+    draw_mesh_lines(data);
   }
 
 // create image file
 #ifdef USE_LIBPNG
-  output_png(pl, data);
+  output_png(path_plot(), data);
 #else
-  output_ppm(pl, data);
+  output_ppm(path_plot(), data);
 #endif
 }
 
-void PlotBase::set_id(pugi::xml_node plot_node)
+void PlottableInterface::set_id(pugi::xml_node plot_node)
 {
   // Copy data into plots
   if (check_for_node(plot_node, "id")) {
@@ -229,27 +290,6 @@ void PlotBase::set_id(pugi::xml_node plot_node)
   }
 }
 
-void Plot::set_type(pugi::xml_node plot_node)
-{
-  // Copy plot type
-  // Default is slice
-  type_ = PlotType::slice;
-  // check type specified on plot node
-  if (check_for_node(plot_node, "type")) {
-    std::string type_str = get_node_value(plot_node, "type", true);
-    // set type using node value
-    if (type_str == "slice") {
-      type_ = PlotType::slice;
-    } else if (type_str == "voxel") {
-      type_ = PlotType::voxel;
-    } else {
-      // if we're here, something is wrong
-      fatal_error(
-        fmt::format("Unsupported plot type '{}' in plot {}", type_str, id_));
-    }
-  }
-}
-
 void Plot::set_output_path(pugi::xml_node plot_node)
 {
   // Set output file path
@@ -258,7 +298,7 @@ void Plot::set_output_path(pugi::xml_node plot_node)
   if (check_for_node(plot_node, "filename")) {
     filename = get_node_value(plot_node, "filename");
   } else {
-    filename = fmt::format("plot_{}", id_);
+    filename = fmt::format("plot_{}", id());
   }
   // add appropriate file extension to name
   switch (type_) {
@@ -284,7 +324,7 @@ void Plot::set_output_path(pugi::xml_node plot_node)
       pixels_[1] = pxls[1];
     } else {
       fatal_error(
-        fmt::format("<pixels> must be length 2 in slice plot {}", id_));
+        fmt::format("<pixels> must be length 2 in slice plot {}", id()));
     }
   } else if (PlotType::voxel == type_) {
     if (pxls.size() == 3) {
@@ -293,12 +333,12 @@ void Plot::set_output_path(pugi::xml_node plot_node)
       pixels_[2] = pxls[2];
     } else {
       fatal_error(
-        fmt::format("<pixels> must be length 3 in voxel plot {}", id_));
+        fmt::format("<pixels> must be length 3 in voxel plot {}", id()));
     }
   }
 }
 
-void PlotBase::set_bg_color(pugi::xml_node plot_node)
+void PlottableInterface::set_bg_color(pugi::xml_node plot_node)
 {
   // Copy plot background color
   if (check_for_node(plot_node, "background")) {
@@ -306,7 +346,7 @@ void PlotBase::set_bg_color(pugi::xml_node plot_node)
     if (bg_rgb.size() == 3) {
       not_found_ = bg_rgb;
     } else {
-      fatal_error(fmt::format("Bad background RGB in plot {}", id_));
+      fatal_error(fmt::format("Bad background RGB in plot {}", id()));
     }
   }
 }
@@ -327,7 +367,7 @@ void Plot::set_basis(pugi::xml_node plot_node)
       basis_ = PlotBasis::yz;
     } else {
       fatal_error(
-        fmt::format("Unsupported plot basis '{}' in plot {}", pl_basis, id_));
+        fmt::format("Unsupported plot basis '{}' in plot {}", pl_basis, id()));
     }
   }
 }
@@ -339,7 +379,7 @@ void Plot::set_origin(pugi::xml_node plot_node)
   if (pl_origin.size() == 3) {
     origin_ = pl_origin;
   } else {
-    fatal_error(fmt::format("Origin must be length 3 in plot {}", id_));
+    fatal_error(fmt::format("Origin must be length 3 in plot {}", id()));
   }
 }
 
@@ -353,7 +393,7 @@ void Plot::set_width(pugi::xml_node plot_node)
       width_.y = pl_width[1];
     } else {
       fatal_error(
-        fmt::format("<width> must be length 2 in slice plot {}", id_));
+        fmt::format("<width> must be length 2 in slice plot {}", id()));
     }
   } else if (PlotType::voxel == type_) {
     if (pl_width.size() == 3) {
@@ -361,25 +401,25 @@ void Plot::set_width(pugi::xml_node plot_node)
       width_ = pl_width;
     } else {
       fatal_error(
-        fmt::format("<width> must be length 3 in voxel plot {}", id_));
+        fmt::format("<width> must be length 3 in voxel plot {}", id()));
     }
   }
 }
 
-void PlotBase::set_universe(pugi::xml_node plot_node)
+void PlottableInterface::set_universe(pugi::xml_node plot_node)
 {
   // Copy plot universe level
   if (check_for_node(plot_node, "level")) {
     level_ = std::stoi(get_node_value(plot_node, "level"));
     if (level_ < 0) {
-      fatal_error(fmt::format("Bad universe level in plot {}", id_));
+      fatal_error(fmt::format("Bad universe level in plot {}", id()));
     }
   } else {
     level_ = PLOT_LEVEL_LOWEST;
   }
 }
 
-void PlotBase::set_default_colors(pugi::xml_node plot_node)
+void PlottableInterface::set_default_colors(pugi::xml_node plot_node)
 {
   // Copy plot color type and initialize all colors randomly
   std::string pl_color_by = "cell";
@@ -394,7 +434,7 @@ void PlotBase::set_default_colors(pugi::xml_node plot_node)
     colors_.resize(model::materials.size());
   } else {
     fatal_error(fmt::format(
-      "Unsupported plot color type '{}' in plot {}", pl_color_by, id_));
+      "Unsupported plot color type '{}' in plot {}", pl_color_by, id()));
   }
 
   for (auto& c : colors_) {
@@ -406,21 +446,21 @@ void PlotBase::set_default_colors(pugi::xml_node plot_node)
   }
 }
 
-void PlotBase::set_user_colors(pugi::xml_node plot_node)
+void PlottableInterface::set_user_colors(pugi::xml_node plot_node)
 {
   for (auto cn : plot_node.children("color")) {
     // Make sure 3 values are specified for RGB
     vector<int> user_rgb = get_node_array<int>(cn, "rgb");
     if (user_rgb.size() != 3) {
-      fatal_error(fmt::format("Bad RGB in plot {}", id_));
+      fatal_error(fmt::format("Bad RGB in plot {}", id()));
     }
     // Ensure that there is an id for this color specification
     int col_id;
     if (check_for_node(cn, "id")) {
       col_id = std::stoi(get_node_value(cn, "id"));
     } else {
-      fatal_error(
-        fmt::format("Must specify id for color specification in plot {}", id_));
+      fatal_error(fmt::format(
+        "Must specify id for color specification in plot {}", id()));
     }
     // Add RGB
     if (PlotColorBy::cells == color_by_) {
@@ -429,7 +469,7 @@ void PlotBase::set_user_colors(pugi::xml_node plot_node)
         colors_[col_id] = user_rgb;
       } else {
         warning(fmt::format(
-          "Could not find cell {} specified in plot {}", col_id, id_));
+          "Could not find cell {} specified in plot {}", col_id, id()));
       }
     } else if (PlotColorBy::mats == color_by_) {
       if (model::material_map.find(col_id) != model::material_map.end()) {
@@ -437,7 +477,7 @@ void PlotBase::set_user_colors(pugi::xml_node plot_node)
         colors_[col_id] = user_rgb;
       } else {
         warning(fmt::format(
-          "Could not find material {} specified in plot {}", col_id, id_));
+          "Could not find material {} specified in plot {}", col_id, id()));
       }
     }
   } // color node loop
@@ -450,7 +490,7 @@ void Plot::set_meshlines(pugi::xml_node plot_node)
 
   if (!mesh_line_nodes.empty()) {
     if (PlotType::voxel == type_) {
-      warning(fmt::format("Meshlines ignored in voxel plot {}", id_));
+      warning(fmt::format("Meshlines ignored in voxel plot {}", id()));
     }
 
     if (mesh_line_nodes.size() == 1) {
@@ -464,7 +504,7 @@ void Plot::set_meshlines(pugi::xml_node plot_node)
       } else {
         fatal_error(fmt::format(
           "Must specify a meshtype for meshlines specification in plot {}",
-          id_));
+          id()));
       }
 
       // Ensure that there is a linewidth for this meshlines specification
@@ -475,7 +515,7 @@ void Plot::set_meshlines(pugi::xml_node plot_node)
       } else {
         fatal_error(fmt::format(
           "Must specify a linewidth for meshlines specification in plot {}",
-          id_));
+          id()));
       }
 
       // Check for color
@@ -484,7 +524,7 @@ void Plot::set_meshlines(pugi::xml_node plot_node)
         vector<int> ml_rgb = get_node_array<int>(meshlines_node, "color");
         if (ml_rgb.size() != 3) {
           fatal_error(
-            fmt::format("Bad RGB for meshlines color in plot {}", id_));
+            fmt::format("Bad RGB for meshlines color in plot {}", id()));
         }
         meshlines_color_ = ml_rgb;
       }
@@ -492,7 +532,8 @@ void Plot::set_meshlines(pugi::xml_node plot_node)
       // Set mesh based on type
       if ("ufs" == meshtype) {
         if (!simulation::ufs_mesh) {
-          fatal_error(fmt::format("No UFS mesh for meshlines on plot {}", id_));
+          fatal_error(
+            fmt::format("No UFS mesh for meshlines on plot {}", id()));
         } else {
           for (int i = 0; i < model::meshes.size(); ++i) {
             if (const auto* m =
@@ -508,7 +549,7 @@ void Plot::set_meshlines(pugi::xml_node plot_node)
       } else if ("entropy" == meshtype) {
         if (!simulation::entropy_mesh) {
           fatal_error(
-            fmt::format("No entropy mesh for meshlines on plot {}", id_));
+            fmt::format("No entropy mesh for meshlines on plot {}", id()));
         } else {
           for (int i = 0; i < model::meshes.size(); ++i) {
             if (const auto* m =
@@ -530,7 +571,7 @@ void Plot::set_meshlines(pugi::xml_node plot_node)
           std::stringstream err_msg;
           fatal_error(fmt::format("Must specify a mesh id for meshlines tally "
                                   "mesh specification in plot {}",
-            id_));
+            id()));
         }
         // find the tally index
         int idx;
@@ -538,19 +579,19 @@ void Plot::set_meshlines(pugi::xml_node plot_node)
         if (err != 0) {
           fatal_error(fmt::format("Could not find mesh {} specified in "
                                   "meshlines for plot {}",
-            tally_mesh_id, id_));
+            tally_mesh_id, id()));
         }
         index_meshlines_mesh_ = idx;
       } else {
-        fatal_error(fmt::format("Invalid type for meshlines on plot {}", id_));
+        fatal_error(fmt::format("Invalid type for meshlines on plot {}", id()));
       }
     } else {
-      fatal_error(fmt::format("Mutliple meshlines specified in plot {}", id_));
+      fatal_error(fmt::format("Mutliple meshlines specified in plot {}", id()));
     }
   }
 }
 
-void PlotBase::set_mask(pugi::xml_node plot_node)
+void PlottableInterface::set_mask(pugi::xml_node plot_node)
 {
   // Deal with masks
   pugi::xpath_node_set mask_nodes = plot_node.select_nodes("mask");
@@ -564,7 +605,7 @@ void PlotBase::set_mask(pugi::xml_node plot_node)
       vector<int> iarray = get_node_array<int>(mask_node, "components");
       if (iarray.size() == 0) {
         fatal_error(
-          fmt::format("Missing <components> in mask of plot {}", id_));
+          fmt::format("Missing <components> in mask of plot {}", id()));
       }
 
       // First we need to change the user-specified identifiers to indices
@@ -576,7 +617,7 @@ void PlotBase::set_mask(pugi::xml_node plot_node)
           } else {
             fatal_error(fmt::format("Could not find cell {} specified in the "
                                     "mask in plot {}",
-              col_id, id_));
+              col_id, id()));
           }
         } else if (PlotColorBy::mats == color_by_) {
           if (model::material_map.find(col_id) != model::material_map.end()) {
@@ -584,7 +625,7 @@ void PlotBase::set_mask(pugi::xml_node plot_node)
           } else {
             fatal_error(fmt::format("Could not find material {} specified in "
                                     "the mask in plot {}",
-              col_id, id_));
+              col_id, id()));
           }
         }
       }
@@ -602,12 +643,12 @@ void PlotBase::set_mask(pugi::xml_node plot_node)
       }
 
     } else {
-      fatal_error(fmt::format("Mutliple masks specified in plot {}", id_));
+      fatal_error(fmt::format("Mutliple masks specified in plot {}", id()));
     }
   }
 }
 
-void PlotBase::set_overlap_color(pugi::xml_node plot_node)
+void PlottableInterface::set_overlap_color(pugi::xml_node plot_node)
 {
   color_overlaps_ = false;
   if (check_for_node(plot_node, "show_overlaps")) {
@@ -617,13 +658,13 @@ void PlotBase::set_overlap_color(pugi::xml_node plot_node)
       if (!color_overlaps_) {
         warning(fmt::format(
           "Overlap color specified in plot {} but overlaps won't be shown.",
-          id_));
+          id()));
       }
       vector<int> olap_clr = get_node_array<int>(plot_node, "overlap_color");
       if (olap_clr.size() == 3) {
         overlap_color_ = olap_clr;
       } else {
-        fatal_error(fmt::format("Bad overlap RGB in plot {}", id_));
+        fatal_error(fmt::format("Bad overlap RGB in plot {}", id()));
       }
     }
   }
@@ -636,7 +677,7 @@ void PlotBase::set_overlap_color(pugi::xml_node plot_node)
   }
 }
 
-PlotBase::PlotBase(pugi::xml_node plot_node)
+PlottableInterface::PlottableInterface(pugi::xml_node plot_node)
 {
   set_id(plot_node);
   set_bg_color(plot_node);
@@ -647,10 +688,9 @@ PlotBase::PlotBase(pugi::xml_node plot_node)
   set_overlap_color(plot_node);
 }
 
-Plot::Plot(pugi::xml_node plot_node)
-  : PlotBase(plot_node), index_meshlines_mesh_ {-1}
+Plot::Plot(pugi::xml_node plot_node, PlotType type)
+  : PlottableInterface(plot_node), index_meshlines_mesh_ {-1}, type_(type)
 {
-  set_type(plot_node);
   set_output_path(plot_node);
   set_basis(plot_node);
   set_origin(plot_node);
@@ -664,10 +704,10 @@ Plot::Plot(pugi::xml_node plot_node)
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //==============================================================================
 
-void output_ppm(Plot const& pl, const ImageData& data)
+void output_ppm(const std::string& filename, const ImageData& data)
 {
   // Open PPM file for writing
-  std::string fname = pl.path_plot_;
+  std::string fname = filename;
   fname = strtrim(fname);
   std::ofstream of;
 
@@ -675,14 +715,14 @@ void output_ppm(Plot const& pl, const ImageData& data)
 
   // Write header
   of << "P6\n";
-  of << pl.pixels_[0] << " " << pl.pixels_[1] << "\n";
+  of << data.shape()[0] << " " << data.shape()[1] << "\n";
   of << "255\n";
   of.close();
 
   of.open(fname, std::ios::binary | std::ios::app);
   // Write color for each pixel
-  for (int y = 0; y < pl.pixels_[1]; y++) {
-    for (int x = 0; x < pl.pixels_[0]; x++) {
+  for (int y = 0; y < data.shape()[1]; y++) {
+    for (int x = 0; x < data.shape()[0]; x++) {
       RGBColor rgb = data(x, y);
       of << rgb.red << rgb.green << rgb.blue;
     }
@@ -695,10 +735,10 @@ void output_ppm(Plot const& pl, const ImageData& data)
 //==============================================================================
 
 #ifdef USE_LIBPNG
-void output_png(Plot const& pl, const ImageData& data)
+void output_png(const std::string& filename, const ImageData& data)
 {
   // Open PNG file for writing
-  std::string fname = pl.path_plot_;
+  std::string fname = filename;
   fname = strtrim(fname);
   auto fp = std::fopen(fname.c_str(), "wb");
 
@@ -714,8 +754,8 @@ void output_png(Plot const& pl, const ImageData& data)
   png_init_io(png_ptr, fp);
 
   // Write header (8 bit colour depth)
-  int width = pl.pixels_[0];
-  int height = pl.pixels_[1];
+  int width = data.shape()[0];
+  int height = data.shape()[1];
   png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGB,
     PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
   png_write_info(png_ptr, info_ptr);
@@ -748,13 +788,13 @@ void output_png(Plot const& pl, const ImageData& data)
 // DRAW_MESH_LINES draws mesh line boundaries on an image
 //==============================================================================
 
-void draw_mesh_lines(Plot const& pl, ImageData& data)
+void Plot::draw_mesh_lines(ImageData& data) const
 {
   RGBColor rgb;
-  rgb = pl.meshlines_color_;
+  rgb = meshlines_color_;
 
   int ax1, ax2;
-  switch (pl.basis_) {
+  switch (basis_) {
   case PlotBasis::xy:
     ax1 = 0;
     ax2 = 1;
@@ -771,45 +811,45 @@ void draw_mesh_lines(Plot const& pl, ImageData& data)
     UNREACHABLE();
   }
 
-  Position ll_plot {pl.origin_};
-  Position ur_plot {pl.origin_};
+  Position ll_plot {origin_};
+  Position ur_plot {origin_};
 
-  ll_plot[ax1] -= pl.width_[0] / 2.;
-  ll_plot[ax2] -= pl.width_[1] / 2.;
-  ur_plot[ax1] += pl.width_[0] / 2.;
-  ur_plot[ax2] += pl.width_[1] / 2.;
+  ll_plot[ax1] -= width_[0] / 2.;
+  ll_plot[ax2] -= width_[1] / 2.;
+  ur_plot[ax1] += width_[0] / 2.;
+  ur_plot[ax2] += width_[1] / 2.;
 
   Position width = ur_plot - ll_plot;
 
   // Find the (axis-aligned) lines of the mesh that intersect this plot.
   auto axis_lines =
-    model::meshes[pl.index_meshlines_mesh_]->plot(ll_plot, ur_plot);
+    model::meshes[index_meshlines_mesh_]->plot(ll_plot, ur_plot);
 
   // Find the bounds along the second axis (accounting for low-D meshes).
   int ax2_min, ax2_max;
   if (axis_lines.second.size() > 0) {
     double frac = (axis_lines.second.back() - ll_plot[ax2]) / width[ax2];
-    ax2_min = (1.0 - frac) * pl.pixels_[1];
+    ax2_min = (1.0 - frac) * pixels_[1];
     if (ax2_min < 0)
       ax2_min = 0;
     frac = (axis_lines.second.front() - ll_plot[ax2]) / width[ax2];
-    ax2_max = (1.0 - frac) * pl.pixels_[1];
-    if (ax2_max > pl.pixels_[1])
-      ax2_max = pl.pixels_[1];
+    ax2_max = (1.0 - frac) * pixels_[1];
+    if (ax2_max > pixels_[1])
+      ax2_max = pixels_[1];
   } else {
     ax2_min = 0;
-    ax2_max = pl.pixels_[1];
+    ax2_max = pixels_[1];
   }
 
   // Iterate across the first axis and draw lines.
   for (auto ax1_val : axis_lines.first) {
     double frac = (ax1_val - ll_plot[ax1]) / width[ax1];
-    int ax1_ind = frac * pl.pixels_[0];
+    int ax1_ind = frac * pixels_[0];
     for (int ax2_ind = ax2_min; ax2_ind < ax2_max; ++ax2_ind) {
-      for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
-        if (ax1_ind + plus >= 0 && ax1_ind + plus < pl.pixels_[0])
+      for (int plus = 0; plus <= meshlines_width_; plus++) {
+        if (ax1_ind + plus >= 0 && ax1_ind + plus < pixels_[0])
           data(ax1_ind + plus, ax2_ind) = rgb;
-        if (ax1_ind - plus >= 0 && ax1_ind - plus < pl.pixels_[0])
+        if (ax1_ind - plus >= 0 && ax1_ind - plus < pixels_[0])
           data(ax1_ind - plus, ax2_ind) = rgb;
       }
     }
@@ -819,60 +859,57 @@ void draw_mesh_lines(Plot const& pl, ImageData& data)
   int ax1_min, ax1_max;
   if (axis_lines.first.size() > 0) {
     double frac = (axis_lines.first.front() - ll_plot[ax1]) / width[ax1];
-    ax1_min = frac * pl.pixels_[0];
+    ax1_min = frac * pixels_[0];
     if (ax1_min < 0)
       ax1_min = 0;
     frac = (axis_lines.first.back() - ll_plot[ax1]) / width[ax1];
-    ax1_max = frac * pl.pixels_[0];
-    if (ax1_max > pl.pixels_[0])
-      ax1_max = pl.pixels_[0];
+    ax1_max = frac * pixels_[0];
+    if (ax1_max > pixels_[0])
+      ax1_max = pixels_[0];
   } else {
     ax1_min = 0;
-    ax1_max = pl.pixels_[0];
+    ax1_max = pixels_[0];
   }
 
   // Iterate across the second axis and draw lines.
   for (auto ax2_val : axis_lines.second) {
     double frac = (ax2_val - ll_plot[ax2]) / width[ax2];
-    int ax2_ind = (1.0 - frac) * pl.pixels_[1];
+    int ax2_ind = (1.0 - frac) * pixels_[1];
     for (int ax1_ind = ax1_min; ax1_ind < ax1_max; ++ax1_ind) {
-      for (int plus = 0; plus <= pl.meshlines_width_; plus++) {
-        if (ax2_ind + plus >= 0 && ax2_ind + plus < pl.pixels_[1])
+      for (int plus = 0; plus <= meshlines_width_; plus++) {
+        if (ax2_ind + plus >= 0 && ax2_ind + plus < pixels_[1])
           data(ax1_ind, ax2_ind + plus) = rgb;
-        if (ax2_ind - plus >= 0 && ax2_ind - plus < pl.pixels_[1])
+        if (ax2_ind - plus >= 0 && ax2_ind - plus < pixels_[1])
           data(ax1_ind, ax2_ind - plus) = rgb;
       }
     }
   }
 }
 
-//==============================================================================
-// CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D
-// geometry visualization.  It works the same way as create_image by dragging a
-// particle across the geometry for the specified number of voxels. The first 3
-// int's in the binary are the number of x, y, and z voxels.  The next 3
-// double's are the widths of the voxels in the x, y, and z directions. The
-// next 3 double's are the x, y, and z coordinates of the lower left
-// point. Finally the binary is filled with entries of four int's each. Each
-// 'row' in the binary contains four int's: 3 for x,y,z position and 1 for
-// cell or material id.  For 1 million voxels this produces a file of
-// approximately 15MB.
-// =============================================================================
-
-void create_voxel(Plot const& pl)
+/* outputs a binary file that can be input into silomesh for 3D geometry
+ * visualization.  It works the same way as create_image by dragging a particle
+ * across the geometry for the specified number of voxels. The first 3 int's in
+ * the binary are the number of x, y, and z voxels.  The next 3 double's are
+ * the widths of the voxels in the x, y, and z directions. The next 3 double's
+ * are the x, y, and z coordinates of the lower left point. Finally the binary
+ * is filled with entries of four int's each. Each 'row' in the binary contains
+ * four int's: 3 for x,y,z position and 1 for cell or material id.  For 1
+ * million voxels this produces a file of approximately 15MB.
+ */
+void Plot::create_voxel() const
 {
   // compute voxel widths in each direction
   array<double, 3> vox;
-  vox[0] = pl.width_[0] / (double)pl.pixels_[0];
-  vox[1] = pl.width_[1] / (double)pl.pixels_[1];
-  vox[2] = pl.width_[2] / (double)pl.pixels_[2];
+  vox[0] = width_[0] / static_cast<double>(pixels_[0]);
+  vox[1] = width_[1] / static_cast<double>(pixels_[1]);
+  vox[2] = width_[2] / static_cast<double>(pixels_[2]);
 
   // initial particle position
-  Position ll = pl.origin_ - pl.width_ / 2.;
+  Position ll = origin_ - width_ / 2.;
 
   // Open binary plot file for writing
   std::ofstream of;
-  std::string fname = std::string(pl.path_plot_);
+  std::string fname = std::string(path_plot_);
   fname = strtrim(fname);
   hid_t file_id = file_open(fname, 'w');
 
@@ -888,7 +925,7 @@ void create_voxel(Plot const& pl)
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
   array<int, 3> pixels;
-  std::copy(pl.pixels_.begin(), pl.pixels_.end(), pixels.begin());
+  std::copy(pixels_.begin(), pixels_.end(), pixels.begin());
   write_attribute(file_id, "num_voxels", pixels);
   write_attribute(file_id, "voxel_width", vox);
   write_attribute(file_id, "lower_left", ll);
@@ -896,23 +933,24 @@ void create_voxel(Plot const& pl)
   // Create dataset for voxel data -- note that the dimensions are reversed
   // since we want the order in the file to be z, y, x
   hsize_t dims[3];
-  dims[0] = pl.pixels_[2];
-  dims[1] = pl.pixels_[1];
-  dims[2] = pl.pixels_[0];
+  dims[0] = pixels_[2];
+  dims[1] = pixels_[1];
+  dims[2] = pixels_[0];
   hid_t dspace, dset, memspace;
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
   SlicePlotBase pltbase;
-  pltbase.width_ = pl.width_;
-  pltbase.origin_ = pl.origin_;
+  pltbase.width_ = width_;
+  pltbase.origin_ = origin_;
   pltbase.basis_ = PlotBasis::xy;
-  pltbase.pixels_ = pl.pixels_;
-  pltbase.slice_color_overlaps_ = pl.color_overlaps_;
+  pltbase.pixels_ = pixels_;
+  pltbase.slice_color_overlaps_ = color_overlaps_;
 
   ProgressBar pb;
-  for (int z = 0; z < pl.pixels_[2]; z++) {
+  for (int z = 0; z < pixels_[2]; z++) {
     // update progress bar
-    pb.set_value(100. * (double)z / (double)(pl.pixels_[2] - 1));
+    pb.set_value(
+      100. * static_cast<double>(z) / static_cast<double>((pixels_[2] - 1)));
 
     // update z coordinate
     pltbase.origin_.z = ll.z + z * vox[2];
@@ -921,7 +959,7 @@ void create_voxel(Plot const& pl)
     IdData ids = pltbase.get_map<IdData>();
 
     // select only cell/material ID data and flip the y-axis
-    int idx = pl.color_by_ == PlotColorBy::cells ? 0 : 2;
+    int idx = color_by_ == PlotColorBy::cells ? 0 : 2;
     xt::xtensor<int32_t, 2> data_slice =
       xt::view(ids.data_, xt::all(), xt::all(), idx);
     xt::xtensor<int32_t, 2> data_flipped = xt::flip(data_slice, 0);
@@ -972,6 +1010,29 @@ RGBColor random_color(void)
   return {int(prn(&model::plotter_seed) * 255),
     int(prn(&model::plotter_seed) * 255), int(prn(&model::plotter_seed) * 255)};
 }
+
+ProjectionPlot::ProjectionPlot(pugi::xml_node node) : PlottableInterface(node)
+{
+  set_look_at(node);
+  set_camera_position(node);
+  set_field_of_view(node);
+}
+
+void ProjectionPlot::create_output() const
+{
+  // TODO
+}
+
+void ProjectionPlot::print_info() const
+{
+  // TODO
+}
+
+void ProjectionPlot::set_camera_position(pugi::xml_node node) {}
+
+void ProjectionPlot::set_look_at(pugi::xml_node node) {}
+
+void ProjectionPlot::set_field_of_view(pugi::xml_node node) {}
 
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 {

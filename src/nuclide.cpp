@@ -627,7 +627,7 @@ double Nuclide::elastic_xs_0K(double E) const
   return (1.0 - f)*device_elastic_0K_[i_grid] + f*device_elastic_0K_[i_grid + 1];
 }
 
-void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p)
+void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, double atom_density)
 {
   auto& micro {p.neutron_xs_[index_]};
 
@@ -860,6 +860,12 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
   micro.last_E = p.E_;
   micro.last_sqrtkT = p.sqrtkT_;
+    
+  // Add contributions to cross sections
+  p.macro_xs_.total += atom_density * micro.total;
+  p.macro_xs_.absorption += atom_density * micro.absorption;
+  p.macro_xs_.fission += atom_density * micro.fission;
+  p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
 }
 
 void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)

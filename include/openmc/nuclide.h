@@ -44,7 +44,7 @@ public:
   void init_grid();
 
   #pragma omp declare target
-  void calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p);
+  void calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, double atom_density);
 
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 

@@ -1016,23 +1016,259 @@ ProjectionPlot::ProjectionPlot(pugi::xml_node node) : PlottableInterface(node)
   set_look_at(node);
   set_camera_position(node);
   set_field_of_view(node);
+  set_pixels(node);
+  set_opacities(node);
+
+  // TODO naming stuff...
+  std::string name = "projection" + std::to_string(id()) + ".png";
+  path_plot_ = name;
+}
+
+// Advances to the next boundary from outside the geometry
+bool ProjectionPlot::advance_to_boundary_from_void(Particle& p)
+{
+  constexpr double scoot = 1e-5;
+  double min_dist = {INFINITY};
+  auto coord = p.coord(0);
+  Universe* uni = model::universes[model::root_universe].get();
+  for (auto c_i : uni->cells_) {
+    auto dist = model::cells.at(c_i)->distance(coord.r, coord.u, 0, &p);
+    if (dist.first < min_dist)
+      min_dist = dist.first;
+  }
+  if (min_dist > 1e300)
+    return false;
+  else { // advance the particle
+    for (int j = 0; j < p.n_coord(); ++j)
+      p.coord(j).r += (min_dist + scoot) * p.coord(j).u;
+    return true;
+  }
 }
 
 void ProjectionPlot::create_output() const
 {
-  // TODO
+  // Get centerline vector for camera-to-model. We create vectors around this
+  // that form a pixel array, and then trace rays along that.
+  Direction looking_direction = look_at_ - camera_position_;
+  looking_direction /= looking_direction.norm();
+
+  // Now we convert to the polar coordinate system with the polar angle
+  // measuring the angle from the vector up_. Phi is the rotation about up_. For
+  // now, up_ is hard-coded to be +z.
+  constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
+  double phi0 = std::atan2(looking_direction.y, looking_direction.x);
+  double mu0 = std::acos(looking_direction.z);
+  double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
+  double p0 = static_cast<double>(pixels_[0]);
+  double p1 = static_cast<double>(pixels_[1]);
+  double vert_fov_radians = horiz_fov_radians * p1 / p0;
+  double dphi = horiz_fov_radians / p0;
+  double dmu = vert_fov_radians / p1;
+
+  size_t width = pixels_[0];
+  size_t height = pixels_[1];
+  ImageData data({width, height}, not_found_);
+
+  // Loop over horizontal lines (vert field of view)
+  SourceSite s; // Where particle starts from (camera)
+  s.E = 1;
+  s.wgt = 1;
+  s.delayed_group = 0;
+  s.particle = ParticleType::photon; // just has to be something reasonable
+  s.parent_id = 1;
+  s.progeny_id = 2;
+  s.r = camera_position_;
+
+  Particle p;
+  s.u.x = 1.0;
+  s.u.y = 0.0;
+  s.u.z = 0.0;
+  p.from_source(&s);
+
+  // Do preliminary loop to advance to get within the geometry
+  struct TrackSegment {
+    int id;        // material or cell ID (which is being colored)
+    double length; // length of this track intersection
+    TrackSegment(int id_a, double length_a) : id(id_a), length(length_a) {}
+  };
+  std::vector<TrackSegment> segments;
+  std::vector<TrackSegment> old_segments;
+
+  for (int vert = 0; vert < pixels_[1]; ++vert) {
+    for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+      double this_phi = phi0 - horiz_fov_radians / 2.0 + dphi * horiz;
+      double this_mu = mu0 - vert_fov_radians / 2.0 + dmu * vert;
+      s.u.x = std::cos(this_phi) * std::sin(this_mu);
+      s.u.y = std::sin(this_phi) * std::sin(this_mu);
+      s.u.z = std::cos(this_mu);
+      p.from_source(&s); // put particle at camera
+      bool hitsomething = false;
+      bool intersection_found = true;
+      int loop_counter = 0;
+      const int max_intersections = 1000000;
+
+      old_segments = segments;
+      segments.clear();
+      while (intersection_found) {
+        bool inside_cell = exhaustive_find_cell(p);
+        if (inside_cell) {
+          hitsomething = true;
+          intersection_found = true;
+          auto dist = distance_to_boundary(p);
+          segments.emplace_back(color_by_ == PlotColorBy::mats
+                                  ? p.material()
+                                  : p.coord(p.n_coord() - 1).cell,
+            dist.distance);
+
+          // Advance particle
+          for (int lev = 0; lev < p.n_coord(); ++lev) {
+            p.coord(lev).r += dist.distance * p.coord(lev).u;
+          }
+          p.surface() = dist.surface_index;
+          p.n_coord_last() = p.n_coord();
+          p.n_coord() = dist.coord_level;
+          if (dist.lattice_translation[0] != 0 ||
+              dist.lattice_translation[1] != 0 ||
+              dist.lattice_translation[2] != 0) {
+            cross_lattice(p, dist);
+          }
+
+        } else {
+          intersection_found = advance_to_boundary_from_void(p);
+        }
+        loop_counter++;
+        if (loop_counter > max_intersections)
+          fatal_error("Infinite loop in projection plot");
+      }
+
+      // Now color the pixel based on what we have intersected...
+      // Loops backwards over intersections.
+      Position current_color(not_found_.red, not_found_.green, not_found_.blue);
+      for (unsigned i = segments.size(); i-- > 0;) {
+        int colormap_idx = segments[i].id;
+        RGBColor seg_color = colors_[colormap_idx];
+        Position seg_color_vec(seg_color.red, seg_color.green, seg_color.blue);
+        double mixing = std::exp(-xs_[colormap_idx] * segments[i].length);
+        current_color = current_color * mixing + (1.0 - mixing) * seg_color_vec;
+        RGBColor result;
+        result.red = static_cast<uint8_t>(current_color.x);
+        result.green = static_cast<uint8_t>(current_color.y);
+        result.blue = static_cast<uint8_t>(current_color.z);
+        data(horiz, vert) = result;
+      }
+
+      // Check to draw wireframe
+      bool draw_wireframe = false;
+      if (segments.size() == old_segments.size()) {
+        for (int i = 0; i < segments.size(); ++i) {
+          if (segments[i].id != old_segments[i].id) {
+            draw_wireframe = true;
+            break;
+          }
+        }
+      } else {
+        draw_wireframe = true;
+      }
+      if (draw_wireframe) {
+        data(horiz, vert) = wireframe_color_;
+      }
+    }
+  }
+#ifdef USE_LIBPNG
+  output_png(path_plot(), data);
+#else
+  output_ppm(path_plot(), data);
+#endif
 }
 
 void ProjectionPlot::print_info() const
 {
-  // TODO
+  fmt::print("Plot Type: Projection\n");
+  fmt::print("Camera position: {} {} {}\n", camera_position_.x,
+    camera_position_.y, camera_position_.z);
+  fmt::print("Look at: {} {} {}\n", look_at_.x, look_at_.y, look_at_.z);
+  fmt::print(
+    "Horizontal field of view: {} degrees\n", horizontal_field_of_view_);
+  fmt::print("Pixels: {} {}\n", pixels_[0], pixels_[1]);
 }
 
-void ProjectionPlot::set_camera_position(pugi::xml_node node) {}
+void ProjectionPlot::set_opacities(pugi::xml_node node)
+{
 
-void ProjectionPlot::set_look_at(pugi::xml_node node) {}
+  xs_.resize(colors_.size(), 1e6); // set to large value for opaque by default
 
-void ProjectionPlot::set_field_of_view(pugi::xml_node node) {}
+  for (auto cn : node.children("color")) {
+    // Make sure 3 values are specified for RGB
+    double user_xs = std::stod(get_node_value(cn, "xs"));
+    int col_id = std::stoi(get_node_value(cn, "id"));
+
+    // Add RGB
+    if (PlotColorBy::cells == color_by_) {
+      if (model::cell_map.find(col_id) != model::cell_map.end()) {
+        col_id = model::cell_map[col_id];
+        xs_[col_id] = user_xs;
+      } else {
+        warning(fmt::format(
+          "Could not find cell {} specified in plot {}", col_id, id()));
+      }
+    } else if (PlotColorBy::mats == color_by_) {
+      if (model::material_map.find(col_id) != model::material_map.end()) {
+        col_id = model::material_map[col_id];
+        xs_[col_id] = user_xs;
+      } else {
+        warning(fmt::format(
+          "Could not find material {} specified in plot {}", col_id, id()));
+      }
+    }
+  }
+}
+
+void ProjectionPlot::set_pixels(pugi::xml_node node)
+{
+  vector<int> pxls = get_node_array<int>(node, "pixels");
+  if (pxls.size() != 2)
+    fatal_error(
+      fmt::format("<pixels> must be length 2 in projection plot {}", id()));
+  pixels_[0] = pxls[0];
+  pixels_[1] = pxls[1];
+}
+
+void ProjectionPlot::set_camera_position(pugi::xml_node node)
+{
+  vector<double> camera_pos = get_node_array<double>(node, "camera_position");
+  if (camera_pos.size() != 3) {
+    fatal_error(
+      fmt::format("look_at element must have three floating point values"));
+  }
+  camera_position_.x = camera_pos[0];
+  camera_position_.y = camera_pos[1];
+  camera_position_.z = camera_pos[2];
+}
+
+void ProjectionPlot::set_look_at(pugi::xml_node node)
+{
+  vector<double> look_at = get_node_array<double>(node, "look_at");
+  if (look_at.size() != 3) {
+    fatal_error("look_at element must have three floating point values");
+  }
+  look_at_.x = look_at[0];
+  look_at_.y = look_at[1];
+  look_at_.z = look_at[2];
+}
+
+void ProjectionPlot::set_field_of_view(pugi::xml_node node)
+{
+  // Defaults to 70 degree horizontal field of view (see .h file)
+  if (check_for_node(node, "field_of_view")) {
+    double fov = std::stod(get_node_value(node, "field_of_view", true));
+    if (fov < 180.0 && fov > 0.0) {
+      horizontal_field_of_view_ = fov;
+    } else {
+      fatal_error(fmt::format(
+        "Field of view for plot {} out-of-range. Must be in (0, 180).", id()));
+    }
+  }
+}
 
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 {

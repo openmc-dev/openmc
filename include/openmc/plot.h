@@ -67,6 +67,7 @@ struct RGBColor {
 // some default colors
 const RGBColor WHITE {255, 255, 255};
 const RGBColor RED {255, 0, 0};
+const RGBColor BLACK {0, 0, 0};
 
 /*
  * PlottableInterface classes just have to have a unique ID in the plots.xml
@@ -272,6 +273,10 @@ public:
 };
 
 class ProjectionPlot : public PlottableInterface {
+
+  // TODO add optional choice between perspective or orthographic
+  // TODO add optionl to turn off wireframe
+
 public:
   ProjectionPlot(pugi::xml_node plot);
 
@@ -279,15 +284,27 @@ public:
   virtual void print_info() const;
 
 private:
-  void set_look_at(pugi::xml_node plot);
-  void set_camera_position(pugi::xml_node plot);
-  void set_field_of_view(pugi::xml_node plot);
+  void set_look_at(pugi::xml_node node);
+  void set_camera_position(pugi::xml_node node);
+  void set_field_of_view(pugi::xml_node node);
+  void set_pixels(pugi::xml_node node);
+  void set_opacities(pugi::xml_node node);
 
   std::array<int, 2> pixels_;       // pixel dimension of resulting image
-  double horizontal_field_of_view_; // horiz. f.o.v. in degrees
-  double vertical_field_of_view_;   // vert. f.o.v. in degrees
+  double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
   Position camera_position_;        // where camera is
   Position look_at_;                // point camera is centered looking at
+  Direction up_ {0.0, 0.0, 1.0};    // which way is up
+  bool wireframe_; // draw wireframe around ID boundaries (material or cell
+                   // based on color_by)
+  RGBColor wireframe_color_ {BLACK}; // wireframe color
+  std::vector<double>
+    xs_; // macro cross section values for cell volume rendering
+
+  // If starting the particle from outside the geometry, we have to
+  // find a distance to the boundary in a non-standard surface intersection
+  // check. It's an exhaustive search over surfaces in the top-level universe.
+  static bool advance_to_boundary_from_void(Particle& p);
 };
 
 //===============================================================================

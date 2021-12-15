@@ -36,6 +36,8 @@ void enforce_assumptions()
 
   assert(model::active_tracklength_tallies.empty() && "Tracklength tallies not yet supported.");
   assert(model::active_tallies.empty() && "Tallies not yet supported.");
+    
+  assert(!simulation::need_depletion_rx && "Depletion-related reactions not yet implemented.");
 }
 
 void move_settings_to_device()

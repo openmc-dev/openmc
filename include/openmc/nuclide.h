@@ -46,8 +46,6 @@ public:
   #pragma omp declare target
   void calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, double atom_density);
 
-  void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
-
   // Methods
   double nu(double E, EmissionMode mode, int group=0) const;
   void calculate_elastic_xs(Particle& p) const;
@@ -55,10 +53,6 @@ public:
   //! Determines the microscopic 0K elastic cross section at a trial relative
   //! energy used in resonance scattering
   double elastic_xs_0K(double E) const;
-
-  //! \brief Determines cross sections in the unresolved resonance range
-  //! from probability tables.
-  void calculate_urr_xs(int i_temp, Particle& p) const;
   #pragma omp end declare target
 
   //! \brief Calculate reaction rate based on group-wise flux distribution

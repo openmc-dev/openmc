@@ -650,6 +650,10 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
   // Evaluate multipole or interpolate
   if (use_mp) {
+    // ======================================================================
+    // MULTIPOLE LOOKUP BEGIN
+    // ======================================================================
+    
     // Call multipole kernel
     double sig_s, sig_a, sig_f;
     std::tie(sig_s, sig_a, sig_f) = multipole()->evaluate(p.E_, p.sqrtkT_);
@@ -684,7 +688,15 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.index_temp = -1;
     micro.index_grid = -1;
     micro.interp_factor = 0.0;
+
+    // ======================================================================
+    // MULTIPOLE LOOKUP END
+    // ======================================================================
   } else {
+    // ======================================================================
+    // POINTWISE LOOKUP BEGIN
+    // ======================================================================
+   
     // Find the appropriate temperature index.
     double kT = p.sqrtkT_*p.sqrtkT_;
     double f;
@@ -802,10 +814,10 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.photon_prod = (1.0 - f)*xs[i_grid1D + XS_PHOTON_PROD]
       + f*xs[i_next1D + XS_PHOTON_PROD];
 
+    /*
     // Depletion-related reactions
     if (simulation::need_depletion_rx) {
       printf("Depletion-related reactions not yet implemented!\n");
-      /*
       // Initialize all reaction cross sections to zero
       for (double& xs_i : micro.reaction) {
         xs_i = 0.0;
@@ -837,8 +849,12 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
           }
         }
       }
-      */
     } // end depletion RX conditional
+    */
+
+    // ======================================================================
+    // POINTWISE LOOKUP END
+    // ======================================================================
   }
 
   // Initialize sab treatment to false
@@ -848,184 +864,190 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
   // Initialize URR probability table treatment to false
   micro.use_ptable = false;
 
+  // ======================================================================
+  // SAB BEGIN
+  // ======================================================================
+  
   // If there is S(a,b) data for this nuclide, we need to set the sab_scatter
   // and sab_elastic cross sections and correct the total and elastic cross
   // sections.
+  if (i_sab >= 0)
+  {
+    // Set flag that S(a,b) treatment should be used for scattering
+    micro.index_sab = i_sab;
 
-  if (i_sab >= 0) this->calculate_sab_xs(i_sab, sab_frac, p);
+    // Calculate the S(a,b) cross section
+    int i_temp;
+    double elastic;
+    double inelastic;
+    data::device_thermal_scatt[i_sab].calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic, p.current_seed());
+
+    // Store the S(a,b) cross sections.
+    micro.thermal = sab_frac * (elastic + inelastic);
+    micro.thermal_elastic = sab_frac * elastic;
+
+    // Calculate free atom elastic cross section
+    this->calculate_elastic_xs(p);
+
+    // Correct total and elastic cross sections
+    micro.total = micro.total + micro.thermal - sab_frac*micro.elastic;
+    micro.elastic = micro.thermal + (1.0 - sab_frac)*micro.elastic;
+
+    // Save temperature index and thermal fraction
+    micro.index_temp_sab = i_temp;
+    micro.sab_frac = sab_frac;
+  }
+  // ======================================================================
+  // SAB END
+  // ======================================================================
+  
+  // ======================================================================
+  // URR BEGIN
+  // ======================================================================
 
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
   if (settings::urr_ptables_on && urr_present_ && !use_mp) {
     int n = device_urr_data_[micro.index_temp].n_energy_;
     if ((p.E_ > device_urr_data_[micro.index_temp].device_energy_[0]) &&
-        (p.E_ < device_urr_data_[micro.index_temp].device_energy_[n-1])) {
-      this->calculate_urr_xs(micro.index_temp, p);
+        (p.E_ < device_urr_data_[micro.index_temp].device_energy_[n-1]))
+    {
+      int i_temp = micro.index_temp;
+      micro.use_ptable = true;
+
+      // Create a shorthand for the URR data
+      const auto& urr = device_urr_data_[i_temp];
+
+      // Determine the energy table
+      int i_energy = 0;
+      while (p.E_ >= urr.device_energy_[i_energy + 1]) {++i_energy;};
+
+      // Sample the probability table using the cumulative distribution
+
+      // Random nmbers for the xs calculation are sampled from a separate stream.
+      // This guarantees the randomness and, at the same time, makes sure we
+      // reuse random numbers for the same nuclide at different temperatures,
+      // therefore preserving correlation of temperature in probability tables.
+      p.stream_ = STREAM_URR_PTABLE;
+      //TODO: to maintain the same random number stream as the Fortran code this
+      //replaces, the seed is set with index_ + 1 instead of index_
+      double r = future_prn(static_cast<int64_t>(index_ + 1), *p.current_seed());
+      p.stream_ = STREAM_TRACKING;
+
+      int i_low = 0;
+      while (urr.prob(i_energy, URRTableParam::CUM_PROB, i_low) <= r) {++i_low;};
+
+      int i_up = 0;
+      while (urr.prob(i_energy + 1, URRTableParam::CUM_PROB, i_up) <= r) {++i_up;};
+
+      // Determine elastic, fission, and capture cross sections from the
+      // probability table
+      double elastic = 0.;
+      double fission = 0.;
+      double capture = 0.;
+      double f;
+      if (urr.interp_ == Interpolation::lin_lin) {
+        // Determine the interpolation factor on the table
+        f = (p.E_ - urr.device_energy_[i_energy]) /
+          (urr.device_energy_[i_energy + 1] - urr.device_energy_[i_energy]);
+
+        elastic = (1. - f) * urr.prob(i_energy, URRTableParam::ELASTIC, i_low) +
+          f * urr.prob(i_energy + 1, URRTableParam::ELASTIC, i_up);
+        fission = (1. - f) * urr.prob(i_energy, URRTableParam::FISSION, i_low) +
+          f * urr.prob(i_energy + 1, URRTableParam::FISSION, i_up);
+        capture = (1. - f) * urr.prob(i_energy, URRTableParam::N_GAMMA, i_low) +
+          f * urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up);
+      } else if (urr.interp_ == Interpolation::log_log) {
+        // Determine interpolation factor on the table
+        f = std::log(p.E_ / urr.device_energy_[i_energy]) /
+          std::log(urr.device_energy_[i_energy + 1] / urr.device_energy_[i_energy]);
+
+        // Calculate the elastic cross section/factor
+        if ((urr.prob(i_energy, URRTableParam::ELASTIC, i_low) > 0.) &&
+            (urr.prob(i_energy + 1, URRTableParam::ELASTIC, i_up) > 0.)) {
+          elastic =
+            std::exp((1. - f) *
+                std::log(urr.prob(i_energy, URRTableParam::ELASTIC, i_low)) +
+                f * std::log(urr.prob(i_energy + 1, URRTableParam::ELASTIC, i_up)));
+        } else {
+          elastic = 0.;
+        }
+
+        // Calculate the fission cross section/factor
+        if ((urr.prob(i_energy, URRTableParam::FISSION, i_low) > 0.) &&
+            (urr.prob(i_energy + 1, URRTableParam::FISSION, i_up) > 0.)) {
+          fission =
+            std::exp((1. - f) *
+                std::log(urr.prob(i_energy, URRTableParam::FISSION, i_low)) +
+                f * std::log(urr.prob(i_energy + 1, URRTableParam::FISSION, i_up)));
+        } else {
+          fission = 0.;
+        }
+
+        // Calculate the capture cross section/factor
+        if ((urr.prob(i_energy, URRTableParam::N_GAMMA, i_low) > 0.) &&
+            (urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up) > 0.)) {
+          capture =
+            std::exp((1. - f) *
+                std::log(urr.prob(i_energy, URRTableParam::N_GAMMA, i_low)) +
+                f * std::log(urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up)));
+        } else {
+          capture = 0.;
+        }
+      }
+
+      // Determine the treatment of inelastic scattering
+      double inelastic = 0.;
+      if (urr.inelastic_flag_ != C_NONE) {
+        // Determine inelastic scattering cross section
+        auto rx = device_reactions_[urr_inelastic_].obj();
+        inelastic = rx.xs(micro);
+      }
+
+      // Multiply by smooth cross-section if needed
+      if (urr.multiply_smooth_) {
+        calculate_elastic_xs(p);
+        elastic *= micro.elastic;
+        capture *= (micro.absorption - micro.fission);
+        fission *= micro.fission;
+      }
+
+      // Check for negative values
+      if (elastic < 0.) {elastic = 0.;}
+      if (fission < 0.) {fission = 0.;}
+      if (capture < 0.) {capture = 0.;}
+
+      // Set elastic, absorption, fission, total, and capture x/s. Note that the
+      // total x/s is calculated as a sum of partials instead of the table-provided
+      // value
+      micro.elastic = elastic;
+      micro.absorption = capture + fission;
+      micro.fission = fission;
+      micro.total = elastic + inelastic + capture + fission;
+      if (simulation::need_depletion_rx) {
+        micro.reaction[0] = capture;
+      }
+
+      // Determine nu-fission cross-section
+      if (fissionable_) {
+        micro.nu_fission = nu(p.E_, EmissionMode::total) * micro.fission;
+      }
     }
   }
+  // ======================================================================
+  // URR END
+  // ======================================================================
 
   micro.last_E = p.E_;
   micro.last_sqrtkT = p.sqrtkT_;
     
   // ======================================================================
-  // ADD TO MACROSCOPIC CROSS SECTION
+  // ACCUMULATE TO MACROSCOPIC CROSS SECTION
+  // ======================================================================
   p.macro_xs_.total += atom_density * micro.total;
   p.macro_xs_.absorption += atom_density * micro.absorption;
   p.macro_xs_.fission += atom_density * micro.fission;
   p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
-}
-
-void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
-{
-  auto& micro {p.neutron_xs_[index_]};
-
-  // Set flag that S(a,b) treatment should be used for scattering
-  micro.index_sab = i_sab;
-
-  // Calculate the S(a,b) cross section
-  int i_temp;
-  double elastic;
-  double inelastic;
-  data::device_thermal_scatt[i_sab].calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic, p.current_seed());
-
-  // Store the S(a,b) cross sections.
-  micro.thermal = sab_frac * (elastic + inelastic);
-  micro.thermal_elastic = sab_frac * elastic;
-
-  // Calculate free atom elastic cross section
-  this->calculate_elastic_xs(p);
-
-  // Correct total and elastic cross sections
-  micro.total = micro.total + micro.thermal - sab_frac*micro.elastic;
-  micro.elastic = micro.thermal + (1.0 - sab_frac)*micro.elastic;
-
-  // Save temperature index and thermal fraction
-  micro.index_temp_sab = i_temp;
-  micro.sab_frac = sab_frac;
-}
-
-void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
-{
-  auto& micro = p.neutron_xs_[index_];
-  micro.use_ptable = true;
-
-  // Create a shorthand for the URR data
-  const auto& urr = device_urr_data_[i_temp];
-
-  // Determine the energy table
-  int i_energy = 0;
-  while (p.E_ >= urr.device_energy_[i_energy + 1]) {++i_energy;};
-
-  // Sample the probability table using the cumulative distribution
-
-  // Random nmbers for the xs calculation are sampled from a separate stream.
-  // This guarantees the randomness and, at the same time, makes sure we
-  // reuse random numbers for the same nuclide at different temperatures,
-  // therefore preserving correlation of temperature in probability tables.
-  p.stream_ = STREAM_URR_PTABLE;
-  //TODO: to maintain the same random number stream as the Fortran code this
-  //replaces, the seed is set with index_ + 1 instead of index_
-  double r = future_prn(static_cast<int64_t>(index_ + 1), *p.current_seed());
-  p.stream_ = STREAM_TRACKING;
-
-  int i_low = 0;
-  while (urr.prob(i_energy, URRTableParam::CUM_PROB, i_low) <= r) {++i_low;};
-
-  int i_up = 0;
-  while (urr.prob(i_energy + 1, URRTableParam::CUM_PROB, i_up) <= r) {++i_up;};
-
-  // Determine elastic, fission, and capture cross sections from the
-  // probability table
-  double elastic = 0.;
-  double fission = 0.;
-  double capture = 0.;
-  double f;
-  if (urr.interp_ == Interpolation::lin_lin) {
-    // Determine the interpolation factor on the table
-    f = (p.E_ - urr.device_energy_[i_energy]) /
-         (urr.device_energy_[i_energy + 1] - urr.device_energy_[i_energy]);
-
-    elastic = (1. - f) * urr.prob(i_energy, URRTableParam::ELASTIC, i_low) +
-         f * urr.prob(i_energy + 1, URRTableParam::ELASTIC, i_up);
-    fission = (1. - f) * urr.prob(i_energy, URRTableParam::FISSION, i_low) +
-         f * urr.prob(i_energy + 1, URRTableParam::FISSION, i_up);
-    capture = (1. - f) * urr.prob(i_energy, URRTableParam::N_GAMMA, i_low) +
-         f * urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up);
-  } else if (urr.interp_ == Interpolation::log_log) {
-    // Determine interpolation factor on the table
-    f = std::log(p.E_ / urr.device_energy_[i_energy]) /
-         std::log(urr.device_energy_[i_energy + 1] / urr.device_energy_[i_energy]);
-
-    // Calculate the elastic cross section/factor
-    if ((urr.prob(i_energy, URRTableParam::ELASTIC, i_low) > 0.) &&
-        (urr.prob(i_energy + 1, URRTableParam::ELASTIC, i_up) > 0.)) {
-      elastic =
-           std::exp((1. - f) *
-                    std::log(urr.prob(i_energy, URRTableParam::ELASTIC, i_low)) +
-                    f * std::log(urr.prob(i_energy + 1, URRTableParam::ELASTIC, i_up)));
-    } else {
-      elastic = 0.;
-    }
-
-    // Calculate the fission cross section/factor
-    if ((urr.prob(i_energy, URRTableParam::FISSION, i_low) > 0.) &&
-        (urr.prob(i_energy + 1, URRTableParam::FISSION, i_up) > 0.)) {
-      fission =
-           std::exp((1. - f) *
-                    std::log(urr.prob(i_energy, URRTableParam::FISSION, i_low)) +
-                    f * std::log(urr.prob(i_energy + 1, URRTableParam::FISSION, i_up)));
-    } else {
-      fission = 0.;
-    }
-
-    // Calculate the capture cross section/factor
-    if ((urr.prob(i_energy, URRTableParam::N_GAMMA, i_low) > 0.) &&
-        (urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up) > 0.)) {
-      capture =
-           std::exp((1. - f) *
-                    std::log(urr.prob(i_energy, URRTableParam::N_GAMMA, i_low)) +
-                    f * std::log(urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up)));
-    } else {
-      capture = 0.;
-    }
-  }
-
-  // Determine the treatment of inelastic scattering
-  double inelastic = 0.;
-  if (urr.inelastic_flag_ != C_NONE) {
-    // Determine inelastic scattering cross section
-    auto rx = device_reactions_[urr_inelastic_].obj();
-    inelastic = rx.xs(micro);
-  }
-
-  // Multiply by smooth cross-section if needed
-  if (urr.multiply_smooth_) {
-    calculate_elastic_xs(p);
-    elastic *= micro.elastic;
-    capture *= (micro.absorption - micro.fission);
-    fission *= micro.fission;
-  }
-
-  // Check for negative values
-  if (elastic < 0.) {elastic = 0.;}
-  if (fission < 0.) {fission = 0.;}
-  if (capture < 0.) {capture = 0.;}
-
-  // Set elastic, absorption, fission, total, and capture x/s. Note that the
-  // total x/s is calculated as a sum of partials instead of the table-provided
-  // value
-  micro.elastic = elastic;
-  micro.absorption = capture + fission;
-  micro.fission = fission;
-  micro.total = elastic + inelastic + capture + fission;
-  if (simulation::need_depletion_rx) {
-    micro.reaction[0] = capture;
-  }
-
-  // Determine nu-fission cross-section
-  if (fissionable_) {
-    micro.nu_fission = nu(p.E_, EmissionMode::total) * micro.fission;
-  }
 }
 
 std::pair<gsl::index, double> Nuclide::find_temperature(double T) const

@@ -779,22 +779,20 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
     // 1D indexing conversion for lower XS value
     int i_grid1D = i_grid * 5;
-
-    // Execute All Lookups (would usually use a __ldg())
-    double total              = xs[i_grid1D + XS_TOTAL];
-    double absorption         = xs[i_grid1D + XS_ABSORPTION];
-    double fission            = xs[i_grid1D + XS_FISSION];
-    double nu_fission         = xs[i_grid1D + XS_NU_FISSION];
-    double photon_prod        = xs[i_grid1D + XS_PHOTON_PROD];
-    
-    // 1D indexing conversion for higher XS value
     int i_next1D = (i_grid + 1) * 5;
 
-    double total_next         = xs[i_next1D + XS_TOTAL];
-    double absorption_next    = xs[i_next1D + XS_ABSORPTION];
-    double fission_next       = xs[i_next1D + XS_FISSION];
-    double nu_fission_next    = xs[i_next1D + XS_NU_FISSION];
-    double photton_prod_next  = xs[i_next1D + XS_PHOTON_PROD];
+    // Execute All Lookups (in CUDA, it would be nice to try __ldg())
+    double total            = xs[i_grid1D + XS_TOTAL];
+    double absorption       = xs[i_grid1D + XS_ABSORPTION];
+    double fission          = xs[i_grid1D + XS_FISSION];
+    double nu_fission       = xs[i_grid1D + XS_NU_FISSION];
+    double photon_prod      = xs[i_grid1D + XS_PHOTON_PROD];
+    
+    double total_next       = xs[i_next1D + XS_TOTAL];
+    double absorption_next  = xs[i_next1D + XS_ABSORPTION];
+    double fission_next     = xs[i_next1D + XS_FISSION];
+    double nu_fission_next  = xs[i_next1D + XS_NU_FISSION];
+    double photon_prod_next = xs[i_next1D + XS_PHOTON_PROD];
 
     // Calculate interpolation factor and complement
     f = (p.E_ - energy[i_grid]) /

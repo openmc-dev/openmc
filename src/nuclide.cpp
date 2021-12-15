@@ -766,7 +766,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       // Note the STL-based binary search seems to work on llvm/V100 but not elsewhere
       //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
 
-      // Iterative linear search (may be faster on device anyway due to reduced branching)
+      // Iterative linear search (a few percent faster on device due to reduced branching)
       for (; i_low < i_high - 1; i_low++) {
         if (p.E_ < energy[i_low + 1])
           break;
@@ -777,42 +777,46 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     // check for rare case where two energy points are the same
     if (energy[i_grid] == energy[i_grid + 1]) ++i_grid;
 
-    // calculate interpolation factor
-    f = (p.E_ - energy[i_grid]) /
-      (energy[i_grid + 1]- energy[i_grid]);
-
-    micro.index_temp = i_temp;
-    micro.index_grid = i_grid;
-    micro.interp_factor = f;
-
-    // 1D indexing conversion
+    // 1D indexing conversion for lower XS value
     int i_grid1D = i_grid * 5;
+
+    // Execute All Lookups (would usually use a __ldg())
+    double total              = xs[i_grid1D + XS_TOTAL];
+    double absorption         = xs[i_grid1D + XS_ABSORPTION];
+    double fission            = xs[i_grid1D + XS_FISSION];
+    double nu_fission         = xs[i_grid1D + XS_NU_FISSION];
+    double photon_prod        = xs[i_grid1D + XS_PHOTON_PROD];
+    
+    // 1D indexing conversion for higher XS value
     int i_next1D = (i_grid + 1) * 5;
 
-    // Calculate microscopic nuclide total cross section
-    micro.total = (1.0 - f)*xs[i_grid1D + XS_TOTAL]
-          + f*xs[i_next1D + XS_TOTAL];
+    double total_next         = xs[i_next1D + XS_TOTAL];
+    double absorption_next    = xs[i_next1D + XS_ABSORPTION];
+    double fission_next       = xs[i_next1D + XS_FISSION];
+    double nu_fission_next    = xs[i_next1D + XS_NU_FISSION];
+    double photton_prod_next  = xs[i_next1D + XS_PHOTON_PROD];
 
-    // Calculate microscopic nuclide absorption cross section
-    micro.absorption = (1.0 - f)*xs[i_grid1D + XS_ABSORPTION]
-      + f*xs[i_next1D + XS_ABSORPTION];
+    // Calculate interpolation factor and complement
+    f = (p.E_ - energy[i_grid]) /
+      (energy[i_grid + 1]- energy[i_grid]);
+    double f_comp = 1.0 - f;
 
-    if (fissionable_) {
-      // Calculate microscopic nuclide total cross section
-      micro.fission = (1.0 - f)*xs[i_grid1D + XS_FISSION]
-            + f*xs[i_next1D + XS_FISSION];
-
-      // Calculate microscopic nuclide nu-fission cross section
-      micro.nu_fission = (1.0 - f)*xs[i_grid1D + XS_NU_FISSION]
-        + f*xs[i_next1D + XS_NU_FISSION];
-    } else {
-      micro.fission = 0.0;
-      micro.nu_fission = 0.0;
-    }
-
-    // Calculate microscopic nuclide photon production cross section
-    micro.photon_prod = (1.0 - f)*xs[i_grid1D + XS_PHOTON_PROD]
-      + f*xs[i_next1D + XS_PHOTON_PROD];
+    // Perform Interpolation
+    double total_interp       = f_comp * total       + f * total_next;
+    double absorption_interp  = f_comp * absorption  + f * absorption_next;
+    double fission_interp     = f_comp * fission     + f * fission_next;
+    double nu_fission_interp  = f_comp * nu_fission  + f * nu_fission_next;
+    double photon_prod_interp = f_comp * photon_prod + f * photon_prod_next;
+    
+    // Write to microscopic cache
+    micro.index_temp    = i_temp;
+    micro.index_grid    = i_grid;
+    micro.interp_factor = f;
+    micro.total         = total_interp;
+    micro.absorption    = absorption_interp;
+    micro.fission       = fission_interp;
+    micro.nu_fission    = nu_fission_interp;
+    micro.photon_prod   = photon_prod_interp;
 
     /*
     // Depletion-related reactions

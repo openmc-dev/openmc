@@ -1024,9 +1024,12 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       micro.absorption = capture + fission;
       micro.fission = fission;
       micro.total = elastic + inelastic + capture + fission;
+
+      /*
       if (simulation::need_depletion_rx) {
         micro.reaction[0] = capture;
       }
+      */
 
       // Determine nu-fission cross-section
       if (fissionable_) {

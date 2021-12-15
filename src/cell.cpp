@@ -241,11 +241,11 @@ void Universe::allocate_and_copy_to_device()
   device_cells_ = cells_.data();
   #pragma omp target enter data map(to: device_cells_[:cells_.size()])
 
-  if(partitioner_ != NULL) 
+  if(partitioner_ != NULL)
   {
     // Map partitioner object
     #pragma omp target enter data map(to: partitioner_[:1])
-  
+
     // Deep copy
     partitioner_->allocate_and_copy_to_device();
   }
@@ -315,7 +315,7 @@ Cell::set_temperature(double T, int32_t instance, bool set_contained)
     }
   }
 }
-  
+
 void Cell::allocate_on_device()
 {
   // Functionality moved to copy_to_device()
@@ -323,7 +323,7 @@ void Cell::allocate_on_device()
 
 void Cell::copy_to_device()
 {
-  device_material_ = material_.data(); 
+  device_material_ = material_.data();
   #pragma omp target enter data map(to: device_material_[:material_.size()])
   device_sqrtkT_  = sqrtkT_.data()    ;
   #pragma omp target enter data map(to: device_sqrtkT_[:sqrtkT_.size()])
@@ -395,12 +395,8 @@ Cell::Cell(pugi::xml_node cell_node)
       for (std::string mat : mats) {
         if (mat.compare("void") == 0) {
           material_.push_back(MATERIAL_VOID);
-          //assert(material_length_ < MATERIAL_SIZE );
-          //material_[material_length_++] = MATERIAL_VOID;
         } else {
           material_.push_back(std::stoi(mat));
-          //assert(material_length_ < MATERIAL_SIZE );
-          //material_[material_length_++] = std::stoi(mat);
         }
       }
     } else {
@@ -416,7 +412,6 @@ Cell::Cell(pugi::xml_node cell_node)
 
     // Make sure this is a material-filled cell.
     if (material_.size() == 0) {
-    //if (material_length_ == 0) {
       fatal_error(fmt::format(
         "Cell {} was specified with a temperature but no material. Temperature"
         "specification is only valid for cells filled with a material.", id_));
@@ -948,7 +943,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
         auto i_surf = std::abs(token) - 1;
         const auto* surf = &model::surfaces[i_surf];
         //if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
-        if( surf->type_ == Surface::SurfaceType::SurfaceZPlane ) 
+        if( surf->type_ == Surface::SurfaceType::SurfaceZPlane )
           surf_set.insert(i_surf);
       }
     }
@@ -976,7 +971,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
       if (token < OP_UNION) {
         const auto* surf = &model::surfaces[std::abs(token) - 1];
         //if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
-        if( surf->type_ == Surface::SurfaceType::SurfaceZPlane ) 
+        if( surf->type_ == Surface::SurfaceType::SurfaceZPlane )
         {
           const auto* zplane = surf;
           if (lower_token == 0 || zplane->z0_ < min_z) {
@@ -1170,14 +1165,11 @@ extern "C" int
 openmc_cell_get_fill(int32_t index, int* type, int32_t** indices, int32_t* n)
 {
   if (index >= 0 && index < model::cells.size()) {
-    //Cell& c {*model::cells[index]};
     Cell& c {model::cells[index]};
     *type = static_cast<int>(c.type_);
     if (c.type_ == Fill::MATERIAL) {
       *indices = c.material_.data();
-      //*indices = c.material_;
       *n = c.material_.size();
-      //*n = c.material_length_;
     } else {
       *indices = &c.fill_;
       *n = 1;
@@ -1195,22 +1187,16 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
 {
   Fill filltype = static_cast<Fill>(type);
   if (index >= 0 && index < model::cells.size()) {
-    //Cell& c {*model::cells[index]};
     Cell& c {model::cells[index]};
     if (filltype == Fill::MATERIAL) {
       c.type_ = Fill::MATERIAL;
       c.material_.clear();
-      //c.material_length_ = 0;
       for (int i = 0; i < n; i++) {
         int i_mat = indices[i];
         if (i_mat == MATERIAL_VOID) {
           c.material_.push_back(MATERIAL_VOID);
-          //assert(c.material_length_ < MATERIAL_SIZE );
-          //c.material_[c.material_length_++] = MATERIAL_VOID;
         } else if (i_mat >= 0 && i_mat < model::materials_size) {
           c.material_.push_back(i_mat);
-          //assert(c.material_length_ < MATERIAL_SIZE );
-          //c.material_[c.material_length_++] = i_mat;
         } else {
           set_errmsg("Index in materials array is out of bounds.");
           return OPENMC_E_OUT_OF_BOUNDS;

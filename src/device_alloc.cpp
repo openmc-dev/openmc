@@ -8,6 +8,7 @@
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
+#include "openmc/particle.h"
 #include "openmc/photon.h"
 #include "openmc/simulation.h"
 #include "openmc/thermal.h"
@@ -29,6 +30,9 @@ void enforce_assumptions()
   // Assertions made when initializing particles
   assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
   assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
+  assert(model::n_coord_levels <= COORD_SIZE);
+  assert(data::nuclides_size <= NEUTRON_XS_SIZE);
+  assert(data::elements_size <= PHOTON_XS_SIZE);
 
   assert(model::active_tracklength_tallies.empty() && "Tracklength tallies not yet supported.");
   assert(model::active_tallies.empty() && "Tallies not yet supported.");

@@ -815,19 +815,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     // Copy atom density of nuclide in material
     double atom_density = device_atom_density_[i];
 
-    // Calculate microscopic cross section for this nuclide
-    const auto& micro {p.neutron_xs_[i_nuclide]};
-    if (p.E_ != micro.last_E
-        || p.sqrtkT_ != micro.last_sqrtkT
-        || i_sab != micro.index_sab
-        || sab_frac != micro.sab_frac) {
-      data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, atom_density);
-    }
-
-    // ======================================================================
-    // ADD TO MACROSCOPIC CROSS SECTION
-
-
+    data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, atom_density);
   }
 }
 

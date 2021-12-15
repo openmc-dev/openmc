@@ -23,6 +23,7 @@
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/event.h"
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/math_functions.h"
@@ -312,6 +313,8 @@ void print_usage()
       "  -s, --threads          Number of OpenMP threads\n"
       "  -t, --track            Write tracks for all particles\n"
       "  -e, --event            Run using event-based parallelism\n"
+      "  -m, --minimum          Minimum energy sorting threshold\n"
+      "  -i, --inflight         Maximum number of in-flight particles\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n");
   }
@@ -387,13 +390,57 @@ void show_rate(const char* label, double particles_per_sec)
   fmt::print(" {:<33} = {:.6} particles/second\n", label, particles_per_sec);
 }
 
+bool is_device()
+{
+  int is_initial;
+  #pragma omp target map(from:is_initial)
+  {
+    is_initial = omp_is_initial_device();
+  }
+  return !is_initial;
+}
+
+bool was_device_used()
+{
+  if (settings::event_based) {
+    // If simulation was event-based, we test a kernel to see if it runs on device
+    return is_device();
+  } else {
+    // If simulation was history-based, only check if we had device support enabled
+    #ifdef DEVICE_HISTORY
+    return is_device();
+    #else
+    return false;
+    #endif
+  }
+}
+
 void print_runtime()
 {
   using namespace simulation;
 
   // display header block
-  header("Timing Statistics", 6);
+  header("Runtime Information", 6);
   if (settings::verbosity < 6) return;
+
+  fmt::print(" Simulation Algorithm              = ");
+  if (settings::event_based )
+    fmt::print("Event-Based\n");
+  else
+    fmt::print("History-Based\n");
+
+  fmt::print(" Simulation Execution Location     = ");
+  if (was_device_used())
+    fmt::print("GPU Device\n");
+  else
+    fmt::print("CPU Host\n");
+
+  fmt::print(" Faddeeva Implementation           = ");
+  #ifdef NEW_FADDEEVA
+  fmt::print("Ben Forget Rational Approximation\n");
+  #else
+  fmt::print("MIT\n");
+  #endif
 
   // display time elapsed for various sections
   show_time("Total time for initialization", time_initialize.elapsed());
@@ -403,11 +450,16 @@ void print_runtime()
   show_time("Time in transport only", time_transport.elapsed(), 1);
   if (settings::event_based) {
     show_time("Particle initialization", time_event_init.elapsed(), 2);
-    show_time("XS lookups", time_event_calculate_xs.elapsed(), 2);
+    show_time("XS lookups (Total)", time_event_calculate_xs.elapsed(), 2);
+    show_time("XS lookups (Fuel)", time_event_calculate_xs_fuel.elapsed(), 2);
+    show_time("XS lookups (Non-Fuel)", time_event_calculate_xs_nonfuel.elapsed(), 2);
+    show_time("Fuel energy sorting", time_event_sort.elapsed(), 2);
+    show_time("Avg. time per sort", time_event_sort.elapsed() / sort_counter, 2);
     show_time("Advancing", time_event_advance_particle.elapsed(), 2);
     show_time("Surface crossings", time_event_surface_crossing.elapsed(), 2);
     show_time("Collisions", time_event_collision.elapsed(), 2);
     show_time("Particle death", time_event_death.elapsed(), 2);
+    show_time("Revival", time_event_revival.elapsed(), 2);
   }
   if (settings::run_mode == RunMode::EIGENVALUE) {
     show_time("Time in inactive batches", time_inactive.elapsed(), 1);

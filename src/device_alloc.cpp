@@ -58,6 +58,8 @@ void move_settings_to_device()
   #pragma omp target update to(settings::energy_cutoff)
   #pragma omp target update to(settings::n_log_bins)
   #pragma omp target update to(settings::check_overlaps)
+  #pragma omp target update to(settings::max_particles_in_flight)
+  #pragma omp target update to(settings::minimum_sort_items)
 
   // message_passing.h
   #pragma omp target update to(mpi::rank)
@@ -144,10 +146,10 @@ void move_read_only_data_to_device()
     nuc.flatten_wmp_data();
   }
 
+  std::cout << "Moving " << data::nuclides_size << " nuclides to device..." << std::endl;
   #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
   for (int i = 0; i < data::nuclides_size; ++i) {
     auto& nuc = data::nuclides[i];
-    std::cout << "Moving " << nuc.name_ << " data to device..." << std::endl;
     nuc.copy_to_device();
   }
 
@@ -176,11 +178,32 @@ void move_read_only_data_to_device()
   // Materials /////////////////////////////////////////////////////////
 
   std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
+  int min = 99999;
+  int max = 0;
+  int n_over_200 = 0;
+  int n_under_200 = 0;
   #pragma omp target update to(model::materials_size)
   #pragma omp target enter data map(to: model::materials[:model::materials_size])
   for (int i = 0; i < model::materials_size; i++) {
     model::materials[i].copy_to_device();
+    if(model::materials[i].fissionable())
+    {
+      int num_nucs = model::materials[i].nuclide_.size();
+      if( num_nucs < min )
+        min = num_nucs;
+      if( num_nucs > max )
+       max = num_nucs;
+     if( num_nucs >= 200 )
+       n_over_200++;
+     else
+       n_under_200++;
+    }
   }
+  std::cout << "Fissionable Material Statistics:" << std::endl <<
+  " Max Nuclide Count: " << max << std::endl <<
+  " Min Nuclide Count: " << min << std::endl <<
+  " # Fissionable Materials with >= 200 Nuclides: " << n_over_200 << std::endl <<
+  " # Fissionable Materials with  < 200 Nuclides: " << n_under_200 << std::endl;
 
   // Source Bank ///////////////////////////////////////////////////////
 

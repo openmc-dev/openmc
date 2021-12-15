@@ -1,6 +1,8 @@
 #include "openmc/math_functions.h"
 
+#ifndef NEW_FADDEEVA
 #include "../vendor/faddeeva/Faddeeva.cc"
+#endif
 
 namespace openmc {
 
@@ -809,6 +811,32 @@ double spline_integrate(int n, const double x[], const double y[],
   return s;
 }
 
+#ifndef NEW_FADDEEVA
+// MIT Faddeva Implementation by Steven Johnson
+#define w_impl Faddeeva::w
+
+#else
+
+// Ben Forget's "Humlicek 8th Order" Rational Approximation to the Faddeeva Function
+#pragma omp declare target
+std::complex<double> zpf8h(std::complex<double> z)
+{
+  z += std::complex<double>(0.9j);
+  const auto zz = z * z;
+  constexpr std::array<std::complex<double>, 8> aa8 = {+11.7559071436993,
+    -32.310199761603j, -21.9357456686406, 31.490536152863j, 6.75847413957232,
+	-8.07354660639634j, -0.507771291744591, 0.564189504758109j};
+  constexpr std::array<std::complex<double>, 5> bb8 = {6.5625,
+    -52.5, 52.5, -14.0, 1.0};
+  return (((((((aa8[7]*z+aa8[6])*z+aa8[5])*z+aa8[4])*z+aa8[3])*z+aa8[2])*z+aa8[1])*z+aa8[0]) \
+          / ((((bb8[4]*zz+bb8[3])*zz+bb8[2])*zz+bb8[1])*zz+bb8[0]);
+}
+#pragma omp end declare target
+  
+#define w_impl zpf8h
+
+#endif
+
 std::complex<double> faddeeva(std::complex<double> z)
 {
   // Technically, the value we want is given by the equation:
@@ -825,8 +853,7 @@ std::complex<double> faddeeva(std::complex<double> z)
   // For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
 
   // Note that Faddeeva::w will interpret zero as machine epsilon
-  return z.imag() > 0.0 ? Faddeeva::w(z) :
-    -std::conj(Faddeeva::w(std::conj(z)));
+  return z.imag() > 0.0 ? w_impl(z) : -std::conj(w_impl(std::conj(z)));
 }
 
 std::complex<double> w_derivative(std::complex<double> z, int order)
@@ -837,6 +864,9 @@ std::complex<double> w_derivative(std::complex<double> z, int order)
     return faddeeva(z);
   case 1:
     return -2.0*z*faddeeva(z) + 2.0i / SQRT_PI;
+    //std::complex<double> add(0.0, 2.0 / SQRT_PI);
+    //return -2.0*z*faddeeva(z) + add;
+    //return std::complex<double>-2.0*z*faddeeva(z) + 2.0i / SQRT_PI;
   default:
     return -2.0*z*w_derivative(z, order-1)
       - 2.0*(order-1)*w_derivative(z, order-2);

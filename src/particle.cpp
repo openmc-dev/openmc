@@ -28,7 +28,7 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
-#ifndef DEVICE_PRINT
+#ifndef DEVICE_PRINTF
 #define printf(fmt, ...) (0)
 #endif
 
@@ -147,8 +147,8 @@ Particle::from_source(const Bank& src)
   E_last_ = E_;
 }
 
-void
-Particle::event_calculate_xs()
+bool
+Particle::event_calculate_xs_dispatch()
 {
   // Set the random number stream
   if (type_ == Particle::Type::neutron) {
@@ -167,7 +167,7 @@ Particle::event_calculate_xs()
   event_ = TallyEvent::KILL;
   event_nuclide_ = NUCLIDE_NONE;
   event_mt_ = REACTION_NONE;
-
+  
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
@@ -176,21 +176,18 @@ Particle::event_calculate_xs()
       //this->mark_as_lost("Could not find the cell containing particle "
       //  + std::to_string(id_));
       printf("Could not find the cell containing particle %d\n", id_);
-      return;
+      return false; // the false is arbitrary
     }
 
     // Set birth cell attribute
     if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
   }
-
-  // Write particle track.
-  //if (write_track_) write_particle_track(*this);
-
+  
   if (settings::check_overlaps) {
     printf("Check cell overlap not yet supported on device.\n");
     //check_cell_overlap(*this);
   }
-
+  
   // Calculate microscopic and macroscopic cross sections
   if (material_ != MATERIAL_VOID) {
     if (settings::run_CE) {
@@ -198,7 +195,8 @@ Particle::event_calculate_xs()
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
         // sections again.
-        model::materials[material_].calculate_xs(*this);
+        //model::materials[material_].calculate_xs(*this);
+        return true;
       }
     } else {
       printf("multigroup mode not yet supported on device.\n");
@@ -218,6 +216,21 @@ Particle::event_calculate_xs()
     macro_xs_.fission    = 0.0;
     macro_xs_.nu_fission = 0.0;
   }
+  return false;
+}
+
+void
+Particle::event_calculate_xs_execute()
+{
+  model::materials[material_].calculate_xs(*this);
+}
+
+void
+Particle::event_calculate_xs()
+{
+  bool needs_lookup = this->event_calculate_xs_dispatch();
+  if (needs_lookup)
+    this->event_calculate_xs_execute();
 }
 
 void

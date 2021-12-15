@@ -22,10 +22,14 @@ Timer time_total;
 Timer time_transport;
 Timer time_event_init;
 Timer time_event_calculate_xs;
+Timer time_event_calculate_xs_fuel;
+Timer time_event_calculate_xs_nonfuel;
 Timer time_event_advance_particle;
 Timer time_event_surface_crossing;
 Timer time_event_collision;
 Timer time_event_death;
+Timer time_event_revival;
+Timer time_event_sort;
 
 } // namespace simulation
 
@@ -81,10 +85,14 @@ void reset_timers()
   simulation::time_transport.reset();
   simulation::time_event_init.reset();
   simulation::time_event_calculate_xs.reset();
+  simulation::time_event_calculate_xs_fuel.reset();
+  simulation::time_event_calculate_xs_nonfuel.reset();
   simulation::time_event_advance_particle.reset();
   simulation::time_event_surface_crossing.reset();
   simulation::time_event_collision.reset();
   simulation::time_event_death.reset();
+  simulation::time_event_revival.reset();
+  simulation::time_event_sort.reset();
 }
 
 } // namespace openmc

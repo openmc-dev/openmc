@@ -24,15 +24,17 @@ namespace openmc {
 // result in any benefits if not enough particles are present for them to achieve
 // consistent locality improvements. 
 struct EventQueueItem{
-  int64_t idx;         //!< particle index in event-based particle buffer
-  Particle::Type type; //!< particle type
-  int64_t material;    //!< material that particle is in
-  double E;            //!< particle energy
+  int idx;         //!< particle index in event-based particle buffer
+  //Particle::Type type; //!< particle type
+  //int64_t material;    //!< material that particle is in
+  //double E;            //!< particle energy
+  float E;            //!< particle energy
+  //int64_t id;
 
   // Constructors
   EventQueueItem() = default;
-  EventQueueItem(const Particle& p, int64_t buffer_idx) :
-    idx(buffer_idx), type(p.type_), material(p.material_), E(p.E_) {}
+  EventQueueItem(const Particle& p, int buffer_idx) :
+    idx(buffer_idx), E(static_cast<float>(p.E_)) {}
 
   // Compare by particle type, then by material type (4.5% fuel/7.0% fuel/cladding/etc),
   // then by energy.
@@ -43,7 +45,15 @@ struct EventQueueItem{
   // can update the material field of this struct to contain the more general id.
   bool operator<(const EventQueueItem& rhs) const
   {
-    return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
+    //return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
+    return E < rhs.E;
+  }
+  
+  // This is needed by the implementation of parallel quicksort
+  bool operator>(const EventQueueItem& rhs) const
+  {
+    //return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
+    return E > rhs.E;
   }
 };
 
@@ -66,13 +76,17 @@ extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 extern SharedArray<EventQueueItem> advance_particle_queue;
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
+extern SharedArray<EventQueueItem> revival_queue;
 #pragma omp end declare target
+
+extern int sort_counter;
 
 // Particle buffer
 extern std::vector<Particle>  particles;
-  #pragma omp declare target
+#pragma omp declare target
 extern Particle* device_particles;
-  #pragma omp end declare target
+extern int64_t current_source_offset;
+#pragma omp end declare target
 
 } // namespace simulation
 
@@ -91,18 +105,19 @@ void free_event_queues(void);
 //! Enqueue a particle based on if it is in fuel or a non-fuel material
 //
 //! \param buffer_idx The particle's actual index in the particle buffer
-void dispatch_xs_event(int64_t buffer_idx);
+void dispatch_xs_event(int buffer_idx);
 
 //! Execute the initialization event for all particles
 //
 //! \param n_particles The number of particles in the particle buffer
-//! \param source_offset The offset index in the source bank to use
-void process_init_events(int64_t n_particles, int64_t source_offset);
+void process_init_events(int64_t n_particles);
 
 //! Execute the calculate XS event for all particles in this event's buffer
 //
 //! \param queue A reference to the desired XS lookup queue
-void process_calculate_xs_events(SharedArray<EventQueueItem>& queue);
+//void process_calculate_xs_events(SharedArray<EventQueueItem>& queue);
+void process_calculate_xs_events_fuel();
+void process_calculate_xs_events_nonfuel();
 
 //! Execute the advance particle event for all particles in this event's buffer
 void process_advance_particle_events();
@@ -117,6 +132,9 @@ void process_collision_events();
 //
 //! \param n_particles The number of particles in the particle buffer
 void process_death_events(int64_t n_particles);
+
+//! Execute the revival event for all particles in this event's buffer
+void process_revival_events();
 
 } // namespace openmc
 

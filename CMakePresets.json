@@ -9,18 +9,18 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64=\"-O0\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode -DNO_UPDATE"
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode"
             }
         },
         {
-            "name": "spirv_default",
-            "displayName": "Intel GPUs",
-            "binaryDir": "${sourceDir}/build/spirv",
+            "name": "spirv_aot",
+            "displayName": "Intel GPUs w/Ahead of Time (AOT) Compilation",
+            "binaryDir": "${sourceDir}/build/spirv_aot",
             "generator": "Unix Makefiles",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode"
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -internal_options -ze-opt-greater-than-4GB-buffer-required -internal_options -ze-opt-large-register-file -internal_options -ze-force-global-mem-allocation -internal_options -ze-no-local-to-generic\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode"
             }
         },
         {
@@ -87,6 +87,17 @@
                 "CMAKE_C_COMPILER": "nvc",
                 "CMAKE_CXX_COMPILER": "nvc++",
                 "CMAKE_CXX_FLAGS": "-mp=gpu -Minfo=mp -gpu=cc70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
+            }
+         },
+        {
+            "name": "nvhpc_a100",
+            "displayName": "NVIDIA NVHPC A100",
+            "binaryDir": "${sourceDir}/build/nvhpc_a100",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "nvc",
+                "CMAKE_CXX_COMPILER": "nvc++",
+                "CMAKE_CXX_FLAGS": "-mp=gpu -Minfo=mp -gpu=cc80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
             }
          }
     ]

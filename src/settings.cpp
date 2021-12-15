@@ -84,8 +84,7 @@ double rel_max_lost_particles {1.0e-6};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
-//int64_t max_particles_in_flight {100000};
-int64_t max_particles_in_flight {10000000};
+int64_t max_particles_in_flight {675000};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
@@ -115,6 +114,7 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+int minimum_sort_items {20000};
 
 } // namespace settings
 

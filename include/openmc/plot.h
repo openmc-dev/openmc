@@ -284,6 +284,7 @@ public:
   virtual void print_info() const;
 
 private:
+  void set_output_path(pugi::xml_node plot_node);
   void set_look_at(pugi::xml_node node);
   void set_camera_position(pugi::xml_node node);
   void set_field_of_view(pugi::xml_node node);

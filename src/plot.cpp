@@ -290,6 +290,17 @@ void PlottableInterface::set_id(pugi::xml_node plot_node)
   }
 }
 
+// Checks if png or ppm is already present
+bool file_extension_present(
+  const std::string& filename, const std::string& extension)
+{
+  std::string file_extension_if_present =
+    filename.substr(filename.find_last_of(".") + 1);
+  if (file_extension_if_present == extension)
+    return true;
+  return false;
+}
+
 void Plot::set_output_path(pugi::xml_node plot_node)
 {
   // Set output file path
@@ -304,13 +315,16 @@ void Plot::set_output_path(pugi::xml_node plot_node)
   switch (type_) {
   case PlotType::slice:
 #ifdef USE_LIBPNG
-    filename.append(".png");
+    if (!file_extension_present(filename, "png"))
+      filename.append(".png");
 #else
-    filename.append(".ppm");
+    if (!file_extension_present(filename, "ppm"))
+      filename.append(".ppm");
 #endif
     break;
   case PlotType::voxel:
-    filename.append(".h5");
+    if (!file_extension_present(filename, "h5"))
+      filename.append(".h5");
     break;
   }
 
@@ -1013,15 +1027,33 @@ RGBColor random_color(void)
 
 ProjectionPlot::ProjectionPlot(pugi::xml_node node) : PlottableInterface(node)
 {
+  set_output_path(node);
   set_look_at(node);
   set_camera_position(node);
   set_field_of_view(node);
   set_pixels(node);
   set_opacities(node);
+}
 
-  // TODO naming stuff...
-  std::string name = "projection" + std::to_string(id()) + ".png";
-  path_plot_ = name;
+void ProjectionPlot::set_output_path(pugi::xml_node node)
+{
+  // Set output file path
+  std::string filename;
+
+  if (check_for_node(node, "filename")) {
+    filename = get_node_value(node, "filename");
+  } else {
+    filename = fmt::format("plot_{}", id());
+  }
+
+#ifdef USE_LIBPNG
+  if (!file_extension_present(filename, "png"))
+    filename.append(".png");
+#else
+  if (!file_extension_present(filename, "ppm"))
+    filename.append(".ppm");
+#endif
+  path_plot_ = filename;
 }
 
 // Advances to the next boundary from outside the geometry

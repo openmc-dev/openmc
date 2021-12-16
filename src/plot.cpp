@@ -1033,6 +1033,12 @@ ProjectionPlot::ProjectionPlot(pugi::xml_node node) : PlottableInterface(node)
   set_field_of_view(node);
   set_pixels(node);
   set_opacities(node);
+  set_orthographic_width(node);
+
+  if (check_for_node(node, "orthographic_width") &&
+      check_for_node(node, "field_of_view"))
+    fatal_error("orthographic_width and field_of_view are mutually exclusive "
+                "parameters.");
 }
 
 void ProjectionPlot::set_output_path(pugi::xml_node node)
@@ -1101,15 +1107,26 @@ void ProjectionPlot::create_output() const
 {
   // Get centerline vector for camera-to-model. We create vectors around this
   // that form a pixel array, and then trace rays along that.
+  auto up = up_ / up_.norm();
   Direction looking_direction = look_at_ - camera_position_;
   looking_direction /= looking_direction.norm();
+  if (std::abs(std::abs(looking_direction.dot(up)) - 1.0) < 1e-9)
+    fatal_error("Up vector cannot align with vector between camera position "
+                "and look_at!");
+  Direction cam_yaxis = looking_direction.cross(up);
+  cam_yaxis /= cam_yaxis.norm();
+  Direction cam_zaxis = cam_yaxis.cross(looking_direction);
+  cam_zaxis /= cam_zaxis.norm();
+
+  // Transformation matrix for directions
+  std::vector<double> camera_to_model = {looking_direction.x, cam_yaxis.x,
+    cam_zaxis.x, looking_direction.y, cam_yaxis.y, cam_zaxis.y,
+    looking_direction.z, cam_yaxis.z, cam_zaxis.z};
 
   // Now we convert to the polar coordinate system with the polar angle
   // measuring the angle from the vector up_. Phi is the rotation about up_. For
   // now, up_ is hard-coded to be +z.
   constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
-  double phi0 = std::atan2(looking_direction.y, looking_direction.x);
-  double mu0 = std::acos(looking_direction.z);
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
   double p0 = static_cast<double>(pixels_[0]);
   double p1 = static_cast<double>(pixels_[1]);
@@ -1154,11 +1171,25 @@ void ProjectionPlot::create_output() const
   for (int vert = 0; vert < pixels_[1]; ++vert) {
     old_segments = this_line_segments;
     for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
-      double this_phi = phi0 - horiz_fov_radians / 2.0 + dphi * horiz;
-      double this_mu = mu0 - vert_fov_radians / 2.0 + dmu * vert;
-      s.u.x = std::cos(this_phi) * std::sin(this_mu);
-      s.u.y = std::sin(this_phi) * std::sin(this_mu);
-      s.u.z = std::cos(this_mu);
+
+      // Generate the starting position/direction of the ray
+      if (orthographic_width_ == 0.0) { // perspective projection
+        double this_phi = -horiz_fov_radians / 2.0 + dphi * horiz;
+        double this_mu = -vert_fov_radians / 2.0 + dmu * vert + M_PI / 2.0;
+        Direction camera_local_vec;
+        camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
+        camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);
+        camera_local_vec.z = std::cos(this_mu);
+        s.u = camera_local_vec.rotate(camera_to_model);
+      } else { // orthographic projection
+        s.u = looking_direction;
+
+        double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
+        double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
+        s.r = camera_position_ + cam_yaxis * x_pix_coord * orthographic_width_ +
+              cam_zaxis * y_pix_coord * orthographic_width_;
+      }
+
       p.from_source(&s); // put particle at camera
       bool hitsomething = false;
       bool intersection_found = true;
@@ -1238,7 +1269,7 @@ void ProjectionPlot::create_output() const
           draw_wireframe || !trackstack_equivalent(
                               this_line_segments[horiz], old_segments[horiz]);
       }
-      if (draw_wireframe) {
+      if (draw_wireframe && wireframe_) {
         data(horiz, vert) = wireframe_color_;
       }
     }
@@ -1263,7 +1294,6 @@ void ProjectionPlot::print_info() const
 
 void ProjectionPlot::set_opacities(pugi::xml_node node)
 {
-
   xs_.resize(colors_.size(), 1e6); // set to large value for opaque by default
 
   for (auto cn : node.children("color")) {
@@ -1289,6 +1319,17 @@ void ProjectionPlot::set_opacities(pugi::xml_node node)
           "Could not find material {} specified in plot {}", col_id, id()));
       }
     }
+  }
+}
+
+void ProjectionPlot::set_orthographic_width(pugi::xml_node node)
+{
+  if (check_for_node(node, "orthographic_width")) {
+    double orthographic_width =
+      std::stod(get_node_value(node, "orthographic_width", true));
+    if (orthographic_width < 0.0)
+      fatal_error("Requires positive orthographic_width");
+    orthographic_width_ = orthographic_width;
   }
 }
 

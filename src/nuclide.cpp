@@ -631,11 +631,20 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 {
   auto& micro {p.neutron_xs_[index_]};
 
-  if (!(p.E_ != micro.last_E
-        || p.sqrtkT_ != micro.last_sqrtkT
-        || i_sab != micro.index_sab
-        || sab_frac != micro.sab_frac))
+  // Check if a microscopic XS lookup is even required. If all state variables are the same, then we can
+  // just accumulate the micro XS data directly into the macro and skip the rest of this function.
+  if (     p.E_      == micro.last_E
+        && p.sqrtkT_ == micro.last_sqrtkT
+        && i_sab     == micro.index_sab
+        && sab_frac  == micro.sab_frac
+     )
+  {
+    p.macro_xs_.total += atom_density * micro.total;
+    p.macro_xs_.absorption += atom_density * micro.absorption;
+    p.macro_xs_.fission += atom_density * micro.fission;
+    p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
     return;
+  }
 
   // Initialize cached cross sections to zero
   micro.elastic = CACHE_INVALID;

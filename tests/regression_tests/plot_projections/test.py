@@ -56,5 +56,5 @@ class PlotTestHarness(TestHarness):
 
 
 def test_plot():
-    harness = PlotTestHarness(('projection1.png', 'projection2.png', 'projection3.png'))
+    harness = PlotTestHarness(('plot_1.png', 'example1.png', 'example3.png', 'orthographic_example1.png'))
     harness.main()

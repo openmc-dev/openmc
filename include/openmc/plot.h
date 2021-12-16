@@ -312,8 +312,8 @@ private:
   Position camera_position_;        // where camera is
   Position look_at_;                // point camera is centered looking at
   Direction up_ {0.0, 0.0, 1.0};    // which way is up
-  bool wireframe_; // draw wireframe around ID boundaries (material or cell
-                   // based on color_by)
+  bool wireframe_ {true}; // draw wireframe around ID boundaries (material or
+                          // cell based on color_by)
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.

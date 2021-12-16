@@ -119,4 +119,15 @@ using particle restart mode with the ``-r`` command-line option in conjunction
 with the particle restart files that are created when particles are lost with
 this error.
 
-.. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users
+Depletion
+*********
+
+If you are running a depletion simulation and are experiencing random hangs or
+crashes, you may need to set::
+
+    openmc.deplete.pool.USE_MULTIPROCESSING = False
+
+in your Python file before making any calls to the integrator. This can be
+caused by an MPI implementation that is not compatible with forking (e.g., see
+the `OpenMPI FAQ entry about forking
+<https://www.open-mpi.org/faq/?category=tuning#fork-warning>`_).

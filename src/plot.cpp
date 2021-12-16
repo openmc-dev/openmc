@@ -1085,16 +1085,28 @@ void ProjectionPlot::create_output() const
   s.u.z = 0.0;
   p.from_source(&s);
 
-  // Do preliminary loop to advance to get within the geometry
   struct TrackSegment {
     int id;        // material or cell ID (which is being colored)
     double length; // length of this track intersection
     TrackSegment(int id_a, double length_a) : id(id_a), length(length_a) {}
   };
-  std::vector<TrackSegment> segments;
-  std::vector<TrackSegment> old_segments;
+
+  /* Holds all of the track segments for the current rendered line of pixels.
+   * old_segments holds a copy of this_line_segments from the previous line.
+   * By holding both we can check if the cell/material intersection stack
+   * differs from the left or upper neighbor. This allows a robustly drawn
+   * wireframe. If only checking the left pixel (which requires substantially
+   * less memory), the wireframe tends to be spotty and be disconnected for
+   * surface edges oriented horizontally in the rendering.
+   *
+   * Note that a vector of vectors is required rather than a 2-tensor,
+   * since the stack size varies within each column.
+   */
+  std::vector<std::vector<TrackSegment>> this_line_segments(pixels_[0]);
+  std::vector<std::vector<TrackSegment>> old_segments(pixels_[0]);
 
   for (int vert = 0; vert < pixels_[1]; ++vert) {
+    old_segments = this_line_segments;
     for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
       double this_phi = phi0 - horiz_fov_radians / 2.0 + dphi * horiz;
       double this_mu = mu0 - vert_fov_radians / 2.0 + dmu * vert;
@@ -1107,17 +1119,16 @@ void ProjectionPlot::create_output() const
       int loop_counter = 0;
       const int max_intersections = 1000000;
 
-      old_segments = segments;
-      segments.clear();
+      this_line_segments[horiz].clear();
       while (intersection_found) {
         bool inside_cell = exhaustive_find_cell(p);
         if (inside_cell) {
           hitsomething = true;
           intersection_found = true;
           auto dist = distance_to_boundary(p);
-          segments.emplace_back(color_by_ == PlotColorBy::mats
-                                  ? p.material()
-                                  : p.coord(p.n_coord() - 1).cell,
+          this_line_segments[horiz].emplace_back(
+            color_by_ == PlotColorBy::mats ? p.material()
+                                           : p.coord(p.n_coord() - 1).cell,
             dist.distance);
 
           // Advance particle
@@ -1144,6 +1155,7 @@ void ProjectionPlot::create_output() const
       // Now color the pixel based on what we have intersected...
       // Loops backwards over intersections.
       Position current_color(not_found_.red, not_found_.green, not_found_.blue);
+      const auto& segments = this_line_segments[horiz];
       for (unsigned i = segments.size(); i-- > 0;) {
         int colormap_idx = segments[i].id;
         RGBColor seg_color = colors_[colormap_idx];
@@ -1157,17 +1169,30 @@ void ProjectionPlot::create_output() const
         data(horiz, vert) = result;
       }
 
-      // Check to draw wireframe
-      bool draw_wireframe = false;
-      if (segments.size() == old_segments.size()) {
-        for (int i = 0; i < segments.size(); ++i) {
-          if (segments[i].id != old_segments[i].id) {
-            draw_wireframe = true;
-            break;
+      auto trackstack_equivalent =
+        [](const std::vector<TrackSegment>& track1,
+          const std::vector<TrackSegment>& track2) -> bool {
+        if (track1.size() != track2.size())
+          return false;
+        for (int i = 0; i < track1.size(); ++i) {
+          if (track1[i].id != track2[i].id) {
+            return false;
           }
         }
-      } else {
-        draw_wireframe = true;
+        return true;
+      };
+
+      // Check to draw wireframe
+      bool draw_wireframe = false;
+      if (horiz > 0) {
+        draw_wireframe =
+          draw_wireframe || !trackstack_equivalent(this_line_segments[horiz],
+                              this_line_segments[horiz - 1]);
+      }
+      if (vert > 0) {
+        draw_wireframe =
+          draw_wireframe || !trackstack_equivalent(
+                              this_line_segments[horiz], old_segments[horiz]);
       }
       if (draw_wireframe) {
         data(horiz, vert) = wireframe_color_;

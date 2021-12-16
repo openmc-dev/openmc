@@ -1025,24 +1025,44 @@ ProjectionPlot::ProjectionPlot(pugi::xml_node node) : PlottableInterface(node)
 }
 
 // Advances to the next boundary from outside the geometry
-bool ProjectionPlot::advance_to_boundary_from_void(Particle& p)
+// Returns -1 if no intersection found, and the surface index
+// if an intersection was found.
+int ProjectionPlot::advance_to_boundary_from_void(Particle& p)
 {
   constexpr double scoot = 1e-5;
   double min_dist = {INFINITY};
   auto coord = p.coord(0);
   Universe* uni = model::universes[model::root_universe].get();
+  int intersected_surface = -1;
   for (auto c_i : uni->cells_) {
     auto dist = model::cells.at(c_i)->distance(coord.r, coord.u, 0, &p);
-    if (dist.first < min_dist)
+    if (dist.first < min_dist) {
       min_dist = dist.first;
+      intersected_surface = dist.second;
+    }
   }
   if (min_dist > 1e300)
-    return false;
+    return -1;
   else { // advance the particle
     for (int j = 0; j < p.n_coord(); ++j)
       p.coord(j).r += (min_dist + scoot) * p.coord(j).u;
-    return true;
+    return intersected_surface;
   }
+}
+
+bool ProjectionPlot::trackstack_equivalent(
+  const std::vector<TrackSegment>& track1,
+  const std::vector<TrackSegment>& track2)
+{
+  if (track1.size() != track2.size())
+    return false;
+  for (int i = 0; i < track1.size(); ++i) {
+    if (track1[i].id != track2[i].id ||
+        track1[i].surface != track2[i].surface) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void ProjectionPlot::create_output() const
@@ -1085,12 +1105,6 @@ void ProjectionPlot::create_output() const
   s.u.z = 0.0;
   p.from_source(&s);
 
-  struct TrackSegment {
-    int id;        // material or cell ID (which is being colored)
-    double length; // length of this track intersection
-    TrackSegment(int id_a, double length_a) : id(id_a), length(length_a) {}
-  };
-
   /* Holds all of the track segments for the current rendered line of pixels.
    * old_segments holds a copy of this_line_segments from the previous line.
    * By holding both we can check if the cell/material intersection stack
@@ -1120,16 +1134,26 @@ void ProjectionPlot::create_output() const
       const int max_intersections = 1000000;
 
       this_line_segments[horiz].clear();
+      int first_surface = -1; // surface first passed when entering the model
+      bool first_inside_model = true; // false after entering the model
       while (intersection_found) {
         bool inside_cell = exhaustive_find_cell(p);
         if (inside_cell) {
+
+          // This allows drawing wireframes with surface intersection
+          // edges on the model boundary for the same cell.
+          if (first_inside_model) {
+            this_line_segments[horiz].emplace_back(0, 0.0, first_surface);
+            first_inside_model = false;
+          }
+
           hitsomething = true;
           intersection_found = true;
           auto dist = distance_to_boundary(p);
           this_line_segments[horiz].emplace_back(
             color_by_ == PlotColorBy::mats ? p.material()
                                            : p.coord(p.n_coord() - 1).cell,
-            dist.distance);
+            dist.distance, dist.surface_index);
 
           // Advance particle
           for (int lev = 0; lev < p.n_coord(); ++lev) {
@@ -1145,7 +1169,8 @@ void ProjectionPlot::create_output() const
           }
 
         } else {
-          intersection_found = advance_to_boundary_from_void(p);
+          first_surface = advance_to_boundary_from_void(p);
+          intersection_found = first_surface != -1; // -1 if no surface found
         }
         loop_counter++;
         if (loop_counter > max_intersections)
@@ -1168,19 +1193,6 @@ void ProjectionPlot::create_output() const
         result.blue = static_cast<uint8_t>(current_color.z);
         data(horiz, vert) = result;
       }
-
-      auto trackstack_equivalent =
-        [](const std::vector<TrackSegment>& track1,
-          const std::vector<TrackSegment>& track2) -> bool {
-        if (track1.size() != track2.size())
-          return false;
-        for (int i = 0; i < track1.size(); ++i) {
-          if (track1[i].id != track2[i].id) {
-            return false;
-          }
-        }
-        return true;
-      };
 
       // Check to draw wireframe
       bool draw_wireframe = false;

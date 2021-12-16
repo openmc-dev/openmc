@@ -290,6 +290,24 @@ private:
   void set_pixels(pugi::xml_node node);
   void set_opacities(pugi::xml_node node);
 
+  /* Used for drawing wireframe and colors. We record the list of
+   * surface/cell/material intersections and the corresponding lengths as a ray
+   * traverses the geometry, then color by iterating in reverse.
+   */
+  struct TrackSegment {
+    int id;        // material or cell ID (which is being colored)
+    double length; // length of this track intersection
+
+    /* Recording this allows us to draw edges on the wireframe. For instance
+     * if two surfaces bound a single cell, it allows drawing that sharp edge
+     * where the surfaces intersect.
+     */
+    int surface; // last surface ID intersected in this segment
+    TrackSegment(int id_a, double length_a, int surface_a)
+      : id(id_a), length(length_a), surface(surface_a)
+    {}
+  };
+
   std::array<int, 2> pixels_;       // pixel dimension of resulting image
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
   Position camera_position_;        // where camera is
@@ -301,10 +319,18 @@ private:
   std::vector<double>
     xs_; // macro cross section values for cell volume rendering
 
-  // If starting the particle from outside the geometry, we have to
-  // find a distance to the boundary in a non-standard surface intersection
-  // check. It's an exhaustive search over surfaces in the top-level universe.
-  static bool advance_to_boundary_from_void(Particle& p);
+  /* If starting the particle from outside the geometry, we have to
+   * find a distance to the boundary in a non-standard surface intersection
+   * check. It's an exhaustive search over surfaces in the top-level universe.
+   */
+  static int advance_to_boundary_from_void(Particle& p);
+
+  /* Checks if a vector of two TrackSegments is equivalent. We define this
+   * to mean not having matching intersection lengths, but rather having
+   * a matching sequence of surface/cell/material intersections.
+   */
+  static bool trackstack_equivalent(const std::vector<TrackSegment>& track1,
+    const std::vector<TrackSegment>& track2);
 };
 
 //===============================================================================

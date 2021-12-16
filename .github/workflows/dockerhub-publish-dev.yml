@@ -29,6 +29,7 @@ jobs:
           tags: openmc/openmc:develop
           build-args: |
             compile_cores=2
+            openmc_branch=develop
       -
         name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}

@@ -1,8 +1,8 @@
-name: dockerhub-publish-latest-dagmc
+name: dockerhub-publish-develop-dagmc-libmesh
 
 on:
   push:
-    branches: master
+    branches: develop
 
 jobs:
   main:
@@ -26,10 +26,12 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: openmc/openmc:latest-dagmc
+          tags: openmc/openmc:develop-dagmc
           build-args: |
             build_dagmc=on
+            build_libmesh=on
             compile_cores=2
+            openmc_branch=develop
       -
         name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}

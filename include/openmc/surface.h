@@ -377,10 +377,10 @@ public:
 //! \f$(x-x_0)^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2}-A)^2/C^2 -1 \f$
 //==============================================================================
 
-class SurfaceXTorus : public CSGSurface
-{
+class SurfaceXTorus : public CSGSurface {
   // (x-x0)^2/B^2 + (((y-y0)^2 + (z-z0)^2)^-1/2 -A))^2/C^2 -1 = 0
   double x0_, y0_, z0_, A_, B_, C_;
+
 public:
   explicit SurfaceXTorus(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -395,10 +395,10 @@ public:
 //! \f$(x-x_0)^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2}-A)^2/C^2 -1 \f$
 //==============================================================================
 
-class SurfaceYTorus : public CSGSurface
-{
+class SurfaceYTorus : public CSGSurface {
   // (y-y0)^2/B^2 + (((x-x0)^2 + (z-z0)^2)^-1/2 -A))^2/C^2 -1 = 0
   double x0_, y0_, z0_, A_, B_, C_;
+
 public:
   explicit SurfaceYTorus(pugi::xml_node surf_node);
   double evaluate(Position r) const;
@@ -413,10 +413,10 @@ public:
 //! \f$(x-x_0)^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2}-A)^2/C^2 -1 \f$
 //==============================================================================
 
-class SurfaceZTorus : public CSGSurface
-{
+class SurfaceZTorus : public CSGSurface {
   // (z-z0)^2/B^2 + (((x-x0)^2 + (y-y0)^2)^-1/2 -A))^2/C^2 -1 = 0
   double x0_, y0_, z0_, A_, B_, C_;
+
 public:
   explicit SurfaceZTorus(pugi::xml_node surf_node);
   double evaluate(Position r) const;

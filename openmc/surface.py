@@ -2118,6 +2118,213 @@ class Quadric(QuadricMixin, Surface):
         return tuple(getattr(self, c) for c in self._coeff_keys)
 
 
+class XTorus(Surface):
+    """description.
+
+    Parameters
+    ----------
+    surface_id : int, optional
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
+        Boundary condition that defines the behavior for particles hitting the
+        surface. Defaults to transmissive boundary condition where particles
+        freely pass through the surface.
+    x0, y0 ,z0, A, B, C,  : float, optional
+        coefficients for the surface. All default to 0.
+    name : str, optional
+        Name of the surface. If not specified, the name will be the empty string.
+
+    Attributes
+    ----------
+    a, b, c, d, e, f, g, h, j, k : float
+        coefficients for the surface
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
+
+    """
+
+    _type = 'x-torus'
+    _coeff_keys = ('x0', 'y0', 'z0', 'A', 'B', 'C')
+
+    def __init__(self, surface_id=None, boundary_type='transmission',
+                 x0=0., y0=0., z0=0., A=0., B=0., C=0., name=''):
+        super().__init__(surface_id, boundary_type, name=name)
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
+        self.a = A
+        self.b = B
+        self.c = C
+
+    def translate(self, vector):
+        return self
+
+    def evaluate(self, point):
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+
+        x_coeff = x**2
+        y_coeff = y**2
+        z_coeff = z**2
+
+        B2 = self.b*self.b
+        C2 = self.c*self.c
+
+        value = x_coeff/B2 + (np.sqrt(y_coeff+z_coeff)-self.a)**2/C2 - 1
+
+        return value
+
+
+class YTorus(Surface):
+    """description.
+
+    Parameters
+    ----------
+    surface_id : int, optional
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
+        Boundary condition that defines the behavior for particles hitting the
+        surface. Defaults to transmissive boundary condition where particles
+        freely pass through the surface.
+    x0, y0 ,z0, A, B, C,  : float, optional
+        coefficients for the surface. All default to 0.
+    name : str, optional
+        Name of the surface. If not specified, the name will be the empty string.
+
+    Attributes
+    ----------
+    a, b, c, d, e, f, g, h, j, k : float
+        coefficients for the surface
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
+
+    """
+
+    _type = 'y-torus'
+    _coeff_keys = ('x0', 'y0', 'z0', 'A', 'B', 'C')
+
+    def __init__(self, surface_id=None, boundary_type='transmission',
+                 x0=0., y0=0., z0=0., A=0., B=0., C=0., name=''):
+        super().__init__(surface_id, boundary_type, name=name)
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
+        self.a = A
+        self.b = B
+        self.c = C
+
+    def evaluate(self, point):
+
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+
+        x_coeff = x**2
+        y_coeff = y**2
+        z_coeff = z**2
+
+        B2 = self.b*self.b
+        C2 = self.c*self.c
+
+        value = y_coeff/B2 + (np.sqrt(x_coeff+z_coeff)-self.a)**2/C2 - 1
+
+        return value
+
+    def translate(self, vector):
+        return self
+
+
+class ZTorus(Surface):
+    """description.
+
+    Parameters
+    ----------
+    surface_id : int, optional
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
+        Boundary condition that defines the behavior for particles hitting the
+        surface. Defaults to transmissive boundary condition where particles
+        freely pass through the surface.
+    x0, y0 ,z0, A, B, C,  : float, optional
+        coefficients for the surface. All default to 0.
+    name : str, optional
+        Name of the surface. If not specified, the name will be the empty string.
+
+    Attributes
+    ----------
+    a, b, c, d, e, f, g, h, j, k : float
+        coefficients for the surface
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
+
+    """
+
+    _type = 'z-torus'
+    _coeff_keys = ('x0', 'y0', 'z0', 'A', 'B', 'C')
+
+    def __init__(self, surface_id=None, boundary_type='transmission',
+                 x0=0., y0=0., z0=0., A=0., B=0., C=0., name=''):
+        super().__init__(surface_id, boundary_type, name=name)
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
+        self.a = A
+        self.b = B
+        self.c = C
+
+    def evaluate(self, point):
+
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+
+        x_coeff = x**2
+        y_coeff = y**2
+        z_coeff = z**2
+
+        B2 = self.b*self.b
+        C2 = self.c*self.c
+
+        value = z_coeff/B2 + (np.sqrt(x_coeff+y_coeff)-self.a)**2/C2 - 1
+
+        return value
+
+
+    def translate(self, vector):
+        return self
+
+
 class Halfspace(Region):
     """A positive or negative half-space region.
 

@@ -186,7 +186,7 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
             raise ValueError('Periodic boundary conditions not permitted when '
                              'rounded corners are used.')
 
-        args = {'R': corner_radius, 'boundary_type': boundary_type}
+        args = {'r': corner_radius, 'boundary_type': boundary_type}
 
         args[x1 + '0'] = origin[0] - width/2 + corner_radius
         args[x2 + '0'] = origin[1] - height/2 + corner_radius

@@ -1034,6 +1034,7 @@ ProjectionPlot::ProjectionPlot(pugi::xml_node node) : PlottableInterface(node)
   set_pixels(node);
   set_opacities(node);
   set_orthographic_width(node);
+  set_wireframe_thickness(node);
 
   if (check_for_node(node, "orthographic_width") &&
       check_for_node(node, "field_of_view"))
@@ -1137,6 +1138,11 @@ void ProjectionPlot::create_output() const
   size_t width = pixels_[0];
   size_t height = pixels_[1];
   ImageData data({width, height}, not_found_);
+
+  // This array marks where the initial wireframe was drawn.
+  // We convolve it with a filter that gets adjusted with the
+  // wireframe thickness in order to thicken the lines.
+  xt::xtensor<int, 2> wireframe_initial({width, height}, 0);
 
   // Loop over horizontal lines (vert field of view)
   SourceSite s; // Where particle starts from (camera)
@@ -1269,11 +1275,31 @@ void ProjectionPlot::create_output() const
           draw_wireframe || !trackstack_equivalent(
                               this_line_segments[horiz], old_segments[horiz]);
       }
-      if (draw_wireframe && wireframe_) {
-        data(horiz, vert) = wireframe_color_;
+      if (draw_wireframe) {
+        wireframe_initial(horiz, vert) = 1;
       }
     }
   }
+
+  // Now thicken the wireframe lines and apply them to our image
+  for (int vert = 0; vert < pixels_[1]; ++vert) {
+    for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+      if (wireframe_initial(horiz, vert)) {
+        if (wireframe_thickness_ == 1)
+          data(horiz, vert) = wireframe_color_;
+        for (int i = -wireframe_thickness_ / 2; i < wireframe_thickness_ / 2;
+             ++i)
+          for (int j = -wireframe_thickness_ / 2; j < wireframe_thickness_ / 2;
+               ++j)
+            if (i * i + j * j < wireframe_thickness_ * wireframe_thickness_) {
+              if (horiz + i >= 0 && horiz + i < pixels_[0] && vert + j >= 0 &&
+                  vert + j < pixels_[1])
+                data(horiz + i, vert + j) = wireframe_color_;
+            }
+      }
+    }
+  }
+
 #ifdef USE_LIBPNG
   output_png(path_plot(), data);
 #else
@@ -1330,6 +1356,17 @@ void ProjectionPlot::set_orthographic_width(pugi::xml_node node)
     if (orthographic_width < 0.0)
       fatal_error("Requires positive orthographic_width");
     orthographic_width_ = orthographic_width;
+  }
+}
+
+void ProjectionPlot::set_wireframe_thickness(pugi::xml_node node)
+{
+  if (check_for_node(node, "wireframe_thickness")) {
+    int wireframe_thickness =
+      std::stoi(get_node_value(node, "wireframe_thickness", true));
+    if (wireframe_thickness < 0)
+      fatal_error("Requires non-negative wireframe thickness");
+    wireframe_thickness_ = wireframe_thickness;
   }
 }
 

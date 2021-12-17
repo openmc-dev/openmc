@@ -288,6 +288,7 @@ private:
   void set_pixels(pugi::xml_node node);
   void set_opacities(pugi::xml_node node);
   void set_orthographic_width(pugi::xml_node node);
+  void set_wireframe_thickness(pugi::xml_node node);
 
   /* Used for drawing wireframe and colors. We record the list of
    * surface/cell/material intersections and the corresponding lengths as a ray
@@ -312,13 +313,14 @@ private:
   Position camera_position_;        // where camera is
   Position look_at_;                // point camera is centered looking at
   Direction up_ {0.0, 0.0, 1.0};    // which way is up
-  bool wireframe_ {true}; // draw wireframe around ID boundaries (material or
-                          // cell based on color_by)
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.
    */
   double orthographic_width_ {0.0};
+
+  // Thickness of the wireframe lines. Can set to zero for no wireframe.
+  int wireframe_thickness_ {1};
 
   RGBColor wireframe_color_ {BLACK}; // wireframe color
   std::vector<double>

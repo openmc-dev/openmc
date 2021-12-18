@@ -2118,22 +2118,40 @@ class Quadric(QuadricMixin, Surface):
         return tuple(getattr(self, c) for c in self._coeff_keys)
 
 
-class XTorus(Surface):
+class TorusMixin:
+    _coeff_keys = ('x0', 'y0', 'z0', 'a', 'b', 'c')
+
+    def __init__(self, x0=0., y0=0., z0=0., a=0., b=0., c=0., **kwargs):
+        super().__init__(**kwargs)
+        for key, val in zip(self._coeff_keys, (x0, y0, z0, a, b, c)):
+            setattr(self, key, val)
+
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    a = SurfaceCoefficient('a')
+    b = SurfaceCoefficient('b')
+    c = SurfaceCoefficient('c')
+
+    def translate(self, vector, inplace=False):
+        surf = self if inplace else self.clone()
+        surf.x0 += vector[0]
+        surf.y0 += vector[1]
+        surf.z0 += vector[2]
+        return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        raise NotImplemented('Torus surfaces cannot be rotated.')
+
+
+class XTorus(TorusMixin, Surface):
     """description.
 
     Parameters
     ----------
-    surface_id : int, optional
-        Unique identifier for the surface. If not specified, an identifier will
-        automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
-        Boundary condition that defines the behavior for particles hitting the
-        surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface.
-    x0, y0 ,z0, A, B, C,  : float, optional
+    x0, y0, z0, a, b, c : float, optional
         coefficients for the surface. All default to 0.
-    name : str, optional
-        Name of the surface. If not specified, the name will be the empty string.
+    kwargs
 
     Attributes
     ----------
@@ -2152,41 +2170,19 @@ class XTorus(Surface):
         Type of the surface
 
     """
-
     _type = 'x-torus'
-    _coeff_keys = ('x0', 'y0', 'z0', 'A', 'B', 'C')
-
-    def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., y0=0., z0=0., A=0., B=0., C=0., name=''):
-        super().__init__(surface_id, boundary_type, name=name)
-        self.x0 = x0
-        self.y0 = y0
-        self.z0 = z0
-        self.a = A
-        self.b = B
-        self.c = C
-
-    def translate(self, vector):
-        return self
 
     def evaluate(self, point):
         x = point[0] - self.x0
         y = point[1] - self.y0
         z = point[2] - self.z0
-
-        x_coeff = x**2
-        y_coeff = y**2
-        z_coeff = z**2
-
-        B2 = self.b*self.b
-        C2 = self.c*self.c
-
-        value = x_coeff/B2 + (np.sqrt(y_coeff+z_coeff)-self.a)**2/C2 - 1
-
-        return value
+        a = self.a
+        b = self.b
+        c = self.c
+        return (x*x)/(b*b) + (math.sqrt(y*y + z*z) - a)**2/(c*c) - 1
 
 
-class YTorus(Surface):
+class YTorus(TorusMixin, Surface):
     """description.
 
     Parameters
@@ -2220,42 +2216,19 @@ class YTorus(Surface):
         Type of the surface
 
     """
-
     _type = 'y-torus'
-    _coeff_keys = ('x0', 'y0', 'z0', 'A', 'B', 'C')
-
-    def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., y0=0., z0=0., A=0., B=0., C=0., name=''):
-        super().__init__(surface_id, boundary_type, name=name)
-        self.x0 = x0
-        self.y0 = y0
-        self.z0 = z0
-        self.a = A
-        self.b = B
-        self.c = C
 
     def evaluate(self, point):
-
         x = point[0] - self.x0
         y = point[1] - self.y0
         z = point[2] - self.z0
-
-        x_coeff = x**2
-        y_coeff = y**2
-        z_coeff = z**2
-
-        B2 = self.b*self.b
-        C2 = self.c*self.c
-
-        value = y_coeff/B2 + (np.sqrt(x_coeff+z_coeff)-self.a)**2/C2 - 1
-
-        return value
-
-    def translate(self, vector):
-        return self
+        a = self.a
+        b = self.b
+        c = self.c
+        return (y*y)/(b*b) + (math.sqrt(x*x + z*z) - a)**2/(c*c) - 1
 
 
-class ZTorus(Surface):
+class ZTorus(TorusMixin, Surface):
     """description.
 
     Parameters
@@ -2291,38 +2264,15 @@ class ZTorus(Surface):
     """
 
     _type = 'z-torus'
-    _coeff_keys = ('x0', 'y0', 'z0', 'A', 'B', 'C')
-
-    def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=0., y0=0., z0=0., A=0., B=0., C=0., name=''):
-        super().__init__(surface_id, boundary_type, name=name)
-        self.x0 = x0
-        self.y0 = y0
-        self.z0 = z0
-        self.a = A
-        self.b = B
-        self.c = C
 
     def evaluate(self, point):
-
         x = point[0] - self.x0
         y = point[1] - self.y0
         z = point[2] - self.z0
-
-        x_coeff = x**2
-        y_coeff = y**2
-        z_coeff = z**2
-
-        B2 = self.b*self.b
-        C2 = self.c*self.c
-
-        value = z_coeff/B2 + (np.sqrt(x_coeff+y_coeff)-self.a)**2/C2 - 1
-
-        return value
-
-
-    def translate(self, vector):
-        return self
+        a = self.a
+        b = self.b
+        c = self.c
+        return (z*z)/(b*b) + (math.sqrt(x*x + y*y) - a)**2/(c*c) - 1
 
 
 class Halfspace(Region):

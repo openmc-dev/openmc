@@ -26,7 +26,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: openmc/openmc:develop-dagmc
+          tags: openmc/openmc:develop-dagmc-libmesh
           build-args: |
             build_dagmc=on
             build_libmesh=on

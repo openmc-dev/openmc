@@ -1185,19 +1185,11 @@ void SurfaceXTorus::to_hdf5_inner(hid_t group_id) const
 
 double SurfaceXTorus::evaluate(Position r) const
 {
-  const double x = r.x;
-  const double y = r.y;
-  const double z = r.z;
-
-  const double x_coeff2 = std::pow(x - x0_, 2);
-  const double y_coeff2 = std::pow(y - y0_, 2);
-  const double z_coeff2 = std::pow(z - z0_, 2);
-
-  const double B2 = B_ * B_;
-  const double C2 = C_ * C_;
-
-  return x_coeff2 / B2 + std::pow(std::sqrt(y_coeff2 + z_coeff2) - A_, 2) / C2 -
-         1.;
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+  return (x * x) / (B_ * B_) +
+         std::pow(std::sqrt(y * y + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
 double SurfaceXTorus::distance(Position r, Direction ang, bool coincident) const
@@ -1343,19 +1335,11 @@ void SurfaceYTorus::to_hdf5_inner(hid_t group_id) const
 
 double SurfaceYTorus::evaluate(Position r) const
 {
-  const double x = r.x;
-  const double y = r.y;
-  const double z = r.z;
-
-  const double x_coeff2 = std::pow(x - x0_, 2);
-  const double y_coeff2 = std::pow(y - y0_, 2);
-  const double z_coeff2 = std::pow(z - z0_, 2);
-
-  const double B2 = B_ * B_;
-  const double C2 = C_ * C_;
-
-  return y_coeff2 / B2 + std::pow(std::sqrt(x_coeff2 + z_coeff2) - A_, 2) / C2 -
-         1.;
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+  return (y * y) / (B_ * B_) +
+         std::pow(std::sqrt(x * x + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
 double SurfaceYTorus::distance(Position r, Direction ang, bool coincident) const
@@ -1506,19 +1490,11 @@ void SurfaceZTorus::to_hdf5_inner(hid_t group_id) const
 
 double SurfaceZTorus::evaluate(Position r) const
 {
-  const double x = r.x;
-  const double y = r.y;
-  const double z = r.z;
-
-  const double x_coeff2 = std::pow(x - x0_, 2);
-  const double y_coeff2 = std::pow(y - y0_, 2);
-  const double z_coeff2 = std::pow(z - z0_, 2);
-
-  const double B2 = B_ * B_;
-  const double C2 = C_ * C_;
-
-  return z_coeff2 / B2 + std::pow(std::sqrt(x_coeff2 + y_coeff2) - A_, 2) / C2 -
-         1.;
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+  return (z * z) / (B_ * B_) +
+         std::pow(std::sqrt(x * x + y * y) - A_, 2) / (C_ * C_) - 1.;
 }
 
 double SurfaceZTorus::distance(Position r, Direction ang, bool coincident) const

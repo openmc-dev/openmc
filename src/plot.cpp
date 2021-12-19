@@ -1161,8 +1161,8 @@ void ProjectionPlot::create_output() const
   const int n_threads = 1;
 #endif
   std::vector<std::vector<std::vector<TrackSegment>>> this_line_segments(
-    omp_get_max_threads());
-  for (int t = 0; t < omp_get_max_threads(); ++t) {
+    n_threads);
+  for (int t = 0; t < n_threads; ++t) {
     this_line_segments[t].resize(pixels_[0]);
   }
 
@@ -1195,7 +1195,7 @@ void ProjectionPlot::create_output() const
     s.u.z = 0.0;
     p.from_source(&s);
 
-    int vert = omp_get_thread_num();
+    int vert = tid;
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
 
       // Save bottom line of current work chunk to compare against later

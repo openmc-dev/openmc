@@ -1197,11 +1197,15 @@ void ProjectionPlot::create_output() const
 
     int vert = omp_get_thread_num();
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
-      if (vert < pixels_[1]) {
 
-        // Save bottom line of current work chunk to compare against later
-        if (tid == n_threads - 1)
-          old_segments = this_line_segments[n_threads - 1];
+      // Save bottom line of current work chunk to compare against later
+      // I used to have this inside the below if block, but it causes a
+      // spurious line to be drawn at the bottom of the image. Not sure
+      // why, but moving it here fixes things.
+      if (tid == n_threads - 1)
+        old_segments = this_line_segments[n_threads - 1];
+
+      if (vert < pixels_[1]) {
 
         for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
 

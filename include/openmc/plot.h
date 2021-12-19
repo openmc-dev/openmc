@@ -235,13 +235,6 @@ T SlicePlotBase::get_map() const
   return data;
 }
 
-// Provides methods and data for controlling plot colors
-class PlotColorMixin {
-protected:
-
-public:
-};
-
 // Represents either a voxel or pixel plot
 class Plot : public PlottableInterface, public SlicePlotBase {
 

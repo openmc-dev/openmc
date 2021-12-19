@@ -1144,22 +1144,6 @@ void ProjectionPlot::create_output() const
   // wireframe thickness in order to thicken the lines.
   xt::xtensor<int, 2> wireframe_initial({width, height}, 0);
 
-  // Loop over horizontal lines (vert field of view)
-  SourceSite s; // Where particle starts from (camera)
-  s.E = 1;
-  s.wgt = 1;
-  s.delayed_group = 0;
-  s.particle = ParticleType::photon; // just has to be something reasonable
-  s.parent_id = 1;
-  s.progeny_id = 2;
-  s.r = camera_position_;
-
-  Particle p;
-  s.u.x = 1.0;
-  s.u.y = 0.0;
-  s.u.z = 0.0;
-  p.from_source(&s);
-
   /* Holds all of the track segments for the current rendered line of pixels.
    * old_segments holds a copy of this_line_segments from the previous line.
    * By holding both we can check if the cell/material intersection stack
@@ -1171,115 +1155,192 @@ void ProjectionPlot::create_output() const
    * Note that a vector of vectors is required rather than a 2-tensor,
    * since the stack size varies within each column.
    */
-  std::vector<std::vector<TrackSegment>> this_line_segments(pixels_[0]);
+#ifdef _OPENMP
+  const int n_threads = omp_get_max_threads();
+#else
+  const int n_threads = 1;
+#endif
+  std::vector<std::vector<std::vector<TrackSegment>>> this_line_segments(
+    omp_get_max_threads());
+  for (int t = 0; t < omp_get_max_threads(); ++t) {
+    this_line_segments[t].resize(pixels_[0]);
+  }
+
+  // The last thread writes to this, and the first thread reads from it.
   std::vector<std::vector<TrackSegment>> old_segments(pixels_[0]);
 
-  for (int vert = 0; vert < pixels_[1]; ++vert) {
-    old_segments = this_line_segments;
-    for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+#pragma omp parallel
+  {
 
-      // Generate the starting position/direction of the ray
-      if (orthographic_width_ == 0.0) { // perspective projection
-        double this_phi = -horiz_fov_radians / 2.0 + dphi * horiz;
-        double this_mu = -vert_fov_radians / 2.0 + dmu * vert + M_PI / 2.0;
-        Direction camera_local_vec;
-        camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
-        camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);
-        camera_local_vec.z = std::cos(this_mu);
-        s.u = camera_local_vec.rotate(camera_to_model);
-      } else { // orthographic projection
-        s.u = looking_direction;
+#ifdef _OPENMP
+    const int n_threads = omp_get_max_threads();
+    const int tid = omp_get_thread_num();
+#else
+    int n_threads = 1;
+    int tid = 0;
+#endif
 
-        double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
-        double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
-        s.r = camera_position_ + cam_yaxis * x_pix_coord * orthographic_width_ +
-              cam_zaxis * y_pix_coord * orthographic_width_;
-      }
+    SourceSite s; // Where particle starts from (camera)
+    s.E = 1;
+    s.wgt = 1;
+    s.delayed_group = 0;
+    s.particle = ParticleType::photon; // just has to be something reasonable
+    s.parent_id = 1;
+    s.progeny_id = 2;
+    s.r = camera_position_;
 
-      p.from_source(&s); // put particle at camera
-      bool hitsomething = false;
-      bool intersection_found = true;
-      int loop_counter = 0;
-      const int max_intersections = 1000000;
+    Particle p;
+    s.u.x = 1.0;
+    s.u.y = 0.0;
+    s.u.z = 0.0;
+    p.from_source(&s);
 
-      this_line_segments[horiz].clear();
-      int first_surface = -1; // surface first passed when entering the model
-      bool first_inside_model = true; // false after entering the model
-      while (intersection_found) {
-        bool inside_cell = exhaustive_find_cell(p);
-        if (inside_cell) {
+    int vert = omp_get_thread_num();
+    for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
+      if (vert < pixels_[1]) {
 
-          // This allows drawing wireframes with surface intersection
-          // edges on the model boundary for the same cell.
-          if (first_inside_model) {
-            this_line_segments[horiz].emplace_back(0, 0.0, first_surface);
-            first_inside_model = false;
+        // Save bottom line of current work chunk to compare against later
+        if (tid == n_threads - 1)
+          old_segments = this_line_segments[n_threads - 1];
+
+        for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+
+          // Generate the starting position/direction of the ray
+          if (orthographic_width_ == 0.0) { // perspective projection
+            double this_phi = -horiz_fov_radians / 2.0 + dphi * horiz;
+            double this_mu = -vert_fov_radians / 2.0 + dmu * vert + M_PI / 2.0;
+            Direction camera_local_vec;
+            camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
+            camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);
+            camera_local_vec.z = std::cos(this_mu);
+            s.u = camera_local_vec.rotate(camera_to_model);
+          } else { // orthographic projection
+            s.u = looking_direction;
+
+            double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
+            double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
+            s.r = camera_position_ +
+                  cam_yaxis * x_pix_coord * orthographic_width_ +
+                  cam_zaxis * y_pix_coord * orthographic_width_;
           }
 
-          hitsomething = true;
-          intersection_found = true;
-          auto dist = distance_to_boundary(p);
-          this_line_segments[horiz].emplace_back(
-            color_by_ == PlotColorBy::mats ? p.material()
-                                           : p.coord(p.n_coord() - 1).cell,
-            dist.distance, dist.surface_index);
+          p.from_source(&s); // put particle at camera
+          bool hitsomething = false;
+          bool intersection_found = true;
+          int loop_counter = 0;
+          const int max_intersections = 1000000;
 
-          // Advance particle
-          for (int lev = 0; lev < p.n_coord(); ++lev) {
-            p.coord(lev).r += dist.distance * p.coord(lev).u;
-          }
-          p.surface() = dist.surface_index;
-          p.n_coord_last() = p.n_coord();
-          p.n_coord() = dist.coord_level;
-          if (dist.lattice_translation[0] != 0 ||
-              dist.lattice_translation[1] != 0 ||
-              dist.lattice_translation[2] != 0) {
-            cross_lattice(p, dist);
+          this_line_segments[tid][horiz].clear();
+
+          int first_surface =
+            -1; // surface first passed when entering the model
+          bool first_inside_model = true; // false after entering the model
+          while (intersection_found) {
+            bool inside_cell = exhaustive_find_cell(p);
+            if (inside_cell) {
+
+              // This allows drawing wireframes with surface intersection
+              // edges on the model boundary for the same cell.
+              if (first_inside_model) {
+                this_line_segments[tid][horiz].emplace_back(
+                  0, 0.0, first_surface);
+                first_inside_model = false;
+              }
+
+              hitsomething = true;
+              intersection_found = true;
+              auto dist = distance_to_boundary(p);
+              this_line_segments[tid][horiz].emplace_back(
+                color_by_ == PlotColorBy::mats ? p.material()
+                                               : p.coord(p.n_coord() - 1).cell,
+                dist.distance, dist.surface_index);
+
+              // Advance particle
+              for (int lev = 0; lev < p.n_coord(); ++lev) {
+                p.coord(lev).r += dist.distance * p.coord(lev).u;
+              }
+              p.surface() = dist.surface_index;
+              p.n_coord_last() = p.n_coord();
+              p.n_coord() = dist.coord_level;
+              if (dist.lattice_translation[0] != 0 ||
+                  dist.lattice_translation[1] != 0 ||
+                  dist.lattice_translation[2] != 0) {
+                cross_lattice(p, dist);
+              }
+
+            } else {
+              first_surface = advance_to_boundary_from_void(p);
+              intersection_found =
+                first_surface != -1; // -1 if no surface found
+            }
+            loop_counter++;
+            if (loop_counter > max_intersections)
+              fatal_error("Infinite loop in projection plot");
           }
 
-        } else {
-          first_surface = advance_to_boundary_from_void(p);
-          intersection_found = first_surface != -1; // -1 if no surface found
+          // Now color the pixel based on what we have intersected...
+          // Loops backwards over intersections.
+          Position current_color(
+            not_found_.red, not_found_.green, not_found_.blue);
+          const auto& segments = this_line_segments[tid][horiz];
+          for (unsigned i = segments.size(); i-- > 0;) {
+            int colormap_idx = segments[i].id;
+            RGBColor seg_color = colors_[colormap_idx];
+            Position seg_color_vec(
+              seg_color.red, seg_color.green, seg_color.blue);
+            double mixing = std::exp(-xs_[colormap_idx] * segments[i].length);
+            current_color =
+              current_color * mixing + (1.0 - mixing) * seg_color_vec;
+            RGBColor result;
+            result.red = static_cast<uint8_t>(current_color.x);
+            result.green = static_cast<uint8_t>(current_color.y);
+            result.blue = static_cast<uint8_t>(current_color.z);
+            data(horiz, vert) = result;
+          }
+
+          // Check to draw wireframe in horizontal direction. No inter-thread
+          // comm.
+          if (horiz > 0) {
+            if (!trackstack_equivalent(this_line_segments[tid][horiz],
+                  this_line_segments[tid][horiz - 1])) {
+              wireframe_initial(horiz, vert) = 1;
+            }
+          }
         }
-        loop_counter++;
-        if (loop_counter > max_intersections)
-          fatal_error("Infinite loop in projection plot");
+      } // end "if" vert in correct range
+
+      // We require a barrier before comparing vertical neighbors' intersection
+      // stacks. i.e. all threads must be done with their line.
+#pragma omp barrier
+
+      // Now that the horizontal line has finished rendering, we can fill in
+      // wireframe entries that require comparison among all the threads. Hence
+      // the omp barrier being used. It has to be OUTSIDE any if blocks!
+      if (vert < pixels_[1]) {
+        // Loop over horizontal pixels, checking intersection stack of upper
+        // neighbor
+
+        const std::vector<std::vector<TrackSegment>>* top_cmp = nullptr;
+        if (tid == 0)
+          top_cmp = &old_segments;
+        else
+          top_cmp = &this_line_segments[tid - 1];
+
+        for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+          if (!trackstack_equivalent(
+                this_line_segments[tid][horiz], (*top_cmp)[horiz])) {
+            wireframe_initial(horiz, vert) = 1;
+          }
+        }
       }
 
-      // Now color the pixel based on what we have intersected...
-      // Loops backwards over intersections.
-      Position current_color(not_found_.red, not_found_.green, not_found_.blue);
-      const auto& segments = this_line_segments[horiz];
-      for (unsigned i = segments.size(); i-- > 0;) {
-        int colormap_idx = segments[i].id;
-        RGBColor seg_color = colors_[colormap_idx];
-        Position seg_color_vec(seg_color.red, seg_color.green, seg_color.blue);
-        double mixing = std::exp(-xs_[colormap_idx] * segments[i].length);
-        current_color = current_color * mixing + (1.0 - mixing) * seg_color_vec;
-        RGBColor result;
-        result.red = static_cast<uint8_t>(current_color.x);
-        result.green = static_cast<uint8_t>(current_color.y);
-        result.blue = static_cast<uint8_t>(current_color.z);
-        data(horiz, vert) = result;
-      }
-
-      // Check to draw wireframe
-      bool draw_wireframe = false;
-      if (horiz > 0) {
-        draw_wireframe =
-          draw_wireframe || !trackstack_equivalent(this_line_segments[horiz],
-                              this_line_segments[horiz - 1]);
-      }
-      if (vert > 0) {
-        draw_wireframe =
-          draw_wireframe || !trackstack_equivalent(
-                              this_line_segments[horiz], old_segments[horiz]);
-      }
-      if (draw_wireframe) {
-        wireframe_initial(horiz, vert) = 1;
-      }
+      // We need another barrier to ensure threads don't proceed to modify their
+      // intersection stacks on that horizontal line while others are
+      // potentially still working on the above.
+#pragma omp barrier
+      vert += n_threads;
     }
-  }
+  } // end omp parallel
 
   // Now thicken the wireframe lines and apply them to our image
   for (int vert = 0; vert < pixels_[1]; ++vert) {

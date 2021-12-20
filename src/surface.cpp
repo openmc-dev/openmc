@@ -1012,7 +1012,7 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 int quadratic_solve(double a, double b, double c, std::array<double, 2>& x)
 {
 
-  double func = std::pow(b, 2) - 4 * a * c;
+  double func = (b * b) - 4 * a * c;
 
   if (func < 0) {
     // this would be imaginary
@@ -1213,55 +1213,46 @@ double SurfaceXTorus::distance(Position r, Direction ang, bool coincident) const
   double a, b, c, d, e; // coefficients of quartic
 
   // a is always 1 maybe save the maths?
-  a = std::pow(v, 4) + 2 * std::pow(v, 2) * std::pow(w, 2) + std::pow(w, 4) +
-      2 * std::pow(C, 2) * std::pow(u, 2) * std::pow(v, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(u, 2) * std::pow(w, 2) / std::pow(B, 2) +
-      std::pow(C, 4) * std::pow(u, 4) / std::pow(B, 4);
-  b = 4 * std::pow(v, 3) * y0 + 4 * std::pow(v, 2) * w * z0 +
-      4 * v * std::pow(w, 2) * y0 + 4 * std::pow(w, 3) * z0 +
-      4 * std::pow(C, 2) * std::pow(u, 2) * v * y0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * std::pow(u, 2) * w * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * std::pow(v, 2) * x0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * std::pow(w, 2) * x0 / std::pow(B, 2) +
-      4 * std::pow(C, 4) * std::pow(u, 3) * x0 / std::pow(B, 4);
-  c =
-    -2 * std::pow(A, 2) * std::pow(v, 2) - 2 * std::pow(A, 2) * std::pow(w, 2) +
-    2 * std::pow(A, 2) * std::pow(C, 2) * std::pow(u, 2) / std::pow(B, 2) -
-    2 * std::pow(C, 2) * std::pow(v, 2) - 2 * std::pow(C, 2) * std::pow(w, 2) +
-    6 * std::pow(v, 2) * std::pow(y0, 2) +
-    2 * std::pow(v, 2) * std::pow(z0, 2) + 8 * v * w * y0 * z0 +
-    2 * std::pow(w, 2) * std::pow(y0, 2) +
-    6 * std::pow(w, 2) * std::pow(z0, 2) -
-    2 * std::pow(C, 4) * std::pow(u, 2) / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(u, 2) * std::pow(y0, 2) / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(u, 2) * std::pow(z0, 2) / std::pow(B, 2) +
-    8 * std::pow(C, 2) * u * v * x0 * y0 / std::pow(B, 2) +
-    8 * std::pow(C, 2) * u * w * x0 * z0 / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(v, 2) * std::pow(x0, 2) / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(w, 2) * std::pow(x0, 2) / std::pow(B, 2) +
-    6 * std::pow(C, 4) * std::pow(u, 2) * std::pow(x0, 2) / std::pow(B, 4);
-  d = -4 * std::pow(A, 2) * v * y0 - 4 * std::pow(A, 2) * w * z0 +
-      4 * std::pow(A, 2) * std::pow(C, 2) * u * x0 / std::pow(B, 2) -
-      4 * std::pow(C, 2) * v * y0 - 4 * std::pow(C, 2) * w * z0 +
-      4 * v * std::pow(y0, 3) + 4 * v * y0 * std::pow(z0, 2) +
-      4 * w * std::pow(y0, 2) * z0 + 4 * w * std::pow(z0, 3) -
-      4 * std::pow(C, 4) * u * x0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * x0 * std::pow(y0, 2) / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * x0 * std::pow(z0, 2) / std::pow(B, 2) +
-      4 * std::pow(C, 2) * v * std::pow(x0, 2) * y0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * w * std::pow(x0, 2) * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 4) * u * std::pow(x0, 3) / std::pow(B, 4);
-  e = std::pow(A, 4) - 2 * std::pow(A, 2) * std::pow(C, 2) -
-      2 * std::pow(A, 2) * std::pow(y0, 2) -
-      2 * std::pow(A, 2) * std::pow(z0, 2) +
-      2 * std::pow(A, 2) * std::pow(C, 2) * std::pow(x0, 2) / std::pow(B, 2) +
-      std::pow(C, 4) - 2 * std::pow(C, 2) * std::pow(y0, 2) -
-      2 * std::pow(C, 2) * std::pow(z0, 2) + std::pow(y0, 4) +
-      2 * std::pow(y0, 2) * std::pow(z0, 2) + std::pow(z0, 4) -
-      2 * std::pow(C, 4) * std::pow(x0, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(x0, 2) * std::pow(y0, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(x0, 2) * std::pow(z0, 2) / std::pow(B, 2) +
-      std::pow(C, 4) * std::pow(x0, 4) / std::pow(B, 4);
+  a = (v * v * v * v) + 2 * (v * v) * (w * w) + (w * w * w * w) +
+      2 * (C * C) * (u * u) * (v * v) / (B * B) +
+      2 * (C * C) * (u * u) * (w * w) / (B * B) +
+      (C * C * C * C) * (u * u * u * u) / (B * B * B * B);
+  b = 4 * (v * v * v) * y0 + 4 * (v * v) * w * z0 + 4 * v * (w * w) * y0 +
+      4 * (w * w * w) * z0 + 4 * (C * C) * (u * u) * v * y0 / (B * B) +
+      4 * (C * C) * (u * u) * w * z0 / (B * B) +
+      4 * (C * C) * u * (v * v) * x0 / (B * B) +
+      4 * (C * C) * u * (w * w) * x0 / (B * B) +
+      4 * (C * C * C * C) * (u * u * u) * x0 / (B * B * B * B);
+  c = -2 * (A * A) * (v * v) - 2 * (A * A) * (w * w) +
+      2 * (A * A) * (C * C) * (u * u) / (B * B) - 2 * (C * C) * (v * v) -
+      2 * (C * C) * (w * w) + 6 * (v * v) * (y0 * y0) +
+      2 * (v * v) * (z0 * z0) + 8 * v * w * y0 * z0 + 2 * (w * w) * (y0 * y0) +
+      6 * (w * w) * (z0 * z0) - 2 * (C * C * C * C) * (u * u) / (B * B) +
+      2 * (C * C) * (u * u) * (y0 * y0) / (B * B) +
+      2 * (C * C) * (u * u) * (z0 * z0) / (B * B) +
+      8 * (C * C) * u * v * x0 * y0 / (B * B) +
+      8 * (C * C) * u * w * x0 * z0 / (B * B) +
+      2 * (C * C) * (v * v) * (x0 * x0) / (B * B) +
+      2 * (C * C) * (w * w) * (x0 * x0) / (B * B) +
+      6 * (C * C * C * C) * (u * u) * (x0 * x0) / (B * B * B * B);
+  d = -4 * (A * A) * v * y0 - 4 * (A * A) * w * z0 +
+      4 * (A * A) * (C * C) * u * x0 / (B * B) - 4 * (C * C) * v * y0 -
+      4 * (C * C) * w * z0 + 4 * v * (y0 * y0 * y0) + 4 * v * y0 * (z0 * z0) +
+      4 * w * (y0 * y0) * z0 + 4 * w * (z0 * z0 * z0) -
+      4 * (C * C * C * C) * u * x0 / (B * B) +
+      4 * (C * C) * u * x0 * (y0 * y0) / (B * B) +
+      4 * (C * C) * u * x0 * (z0 * z0) / (B * B) +
+      4 * (C * C) * v * (x0 * x0) * y0 / (B * B) +
+      4 * (C * C) * w * (x0 * x0) * z0 / (B * B) +
+      4 * (C * C * C * C) * u * (x0 * x0 * x0) / (B * B * B * B);
+  e = (A * A * A * A) - 2 * (A * A) * (C * C) - 2 * (A * A) * (y0 * y0) -
+      2 * (A * A) * (z0 * z0) + 2 * (A * A) * (C * C) * (x0 * x0) / (B * B) +
+      (C * C * C * C) - 2 * (C * C) * (y0 * y0) - 2 * (C * C) * (z0 * z0) +
+      (y0 * y0 * y0 * y0) + 2 * (y0 * y0) * (z0 * z0) + (z0 * z0 * z0 * z0) -
+      2 * (C * C * C * C) * (x0 * x0) / (B * B) +
+      2 * (C * C) * (x0 * x0) * (y0 * y0) / (B * B) +
+      2 * (C * C) * (x0 * x0) * (z0 * z0) / (B * B) +
+      (C * C * C * C) * (x0 * x0 * x0 * x0) / (B * B * B * B);
 
   //
   std::array<double, 4> roots;
@@ -1362,55 +1353,46 @@ double SurfaceYTorus::distance(Position r, Direction ang, bool coincident) const
 
   double a, b, c, d, e; // coefficients of quartic
 
-  a = std::pow(u, 4) + 2 * std::pow(u, 2) * std::pow(w, 2) + std::pow(w, 4) +
-      2 * std::pow(C, 2) * std::pow(u, 2) * std::pow(v, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(v, 2) * std::pow(w, 2) / std::pow(B, 2) +
-      std::pow(C, 4) * std::pow(v, 4) / std::pow(B, 4);
-  b = 4 * std::pow(u, 3) * x0 + 4 * std::pow(u, 2) * w * z0 +
-      4 * u * std::pow(w, 2) * x0 + 4 * std::pow(w, 3) * z0 +
-      4 * std::pow(C, 2) * std::pow(u, 2) * v * y0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * std::pow(v, 2) * x0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * std::pow(v, 2) * w * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * v * std::pow(w, 2) * y0 / std::pow(B, 2) +
-      4 * std::pow(C, 4) * std::pow(v, 3) * y0 / std::pow(B, 4);
-  c =
-    -2 * std::pow(A, 2) * std::pow(u, 2) - 2 * std::pow(A, 2) * std::pow(w, 2) +
-    2 * std::pow(A, 2) * std::pow(C, 2) * std::pow(v, 2) / std::pow(B, 2) -
-    2 * std::pow(C, 2) * std::pow(u, 2) - 2 * std::pow(C, 2) * std::pow(w, 2) +
-    6 * std::pow(u, 2) * std::pow(x0, 2) +
-    2 * std::pow(u, 2) * std::pow(z0, 2) + 8 * u * w * x0 * z0 +
-    2 * std::pow(w, 2) * std::pow(x0, 2) +
-    6 * std::pow(w, 2) * std::pow(z0, 2) -
-    2 * std::pow(C, 4) * std::pow(v, 2) / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(u, 2) * std::pow(y0, 2) / std::pow(B, 2) +
-    8 * std::pow(C, 2) * u * v * x0 * y0 / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(v, 2) * std::pow(x0, 2) / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(v, 2) * std::pow(z0, 2) / std::pow(B, 2) +
-    8 * std::pow(C, 2) * v * w * y0 * z0 / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(w, 2) * std::pow(y0, 2) / std::pow(B, 2) +
-    6 * std::pow(C, 4) * std::pow(v, 2) * std::pow(y0, 2) / std::pow(B, 4);
-  d = -4 * std::pow(A, 2) * u * x0 - 4 * std::pow(A, 2) * w * z0 +
-      4 * std::pow(A, 2) * std::pow(C, 2) * v * y0 / std::pow(B, 2) -
-      4 * std::pow(C, 2) * u * x0 - 4 * std::pow(C, 2) * w * z0 +
-      4 * u * std::pow(x0, 3) + 4 * u * x0 * std::pow(z0, 2) +
-      4 * w * std::pow(x0, 2) * z0 + 4 * w * std::pow(z0, 3) -
-      4 * std::pow(C, 4) * v * y0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * x0 * std::pow(y0, 2) / std::pow(B, 2) +
-      4 * std::pow(C, 2) * v * std::pow(x0, 2) * y0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * v * y0 * std::pow(z0, 2) / std::pow(B, 2) +
-      4 * std::pow(C, 2) * w * std::pow(y0, 2) * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 4) * v * std::pow(y0, 3) / std::pow(B, 4);
-  e = std::pow(A, 4) - 2 * std::pow(A, 2) * std::pow(C, 2) -
-      2 * std::pow(A, 2) * std::pow(x0, 2) -
-      2 * std::pow(A, 2) * std::pow(z0, 2) +
-      2 * std::pow(A, 2) * std::pow(C, 2) * std::pow(y0, 2) / std::pow(B, 2) +
-      std::pow(C, 4) - 2 * std::pow(C, 2) * std::pow(x0, 2) -
-      2 * std::pow(C, 2) * std::pow(z0, 2) + std::pow(x0, 4) +
-      2 * std::pow(x0, 2) * std::pow(z0, 2) + std::pow(z0, 4) -
-      2 * std::pow(C, 4) * std::pow(y0, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(x0, 2) * std::pow(y0, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(y0, 2) * std::pow(z0, 2) / std::pow(B, 2) +
-      std::pow(C, 4) * std::pow(y0, 4) / std::pow(B, 4);
+  a = (u * u * u * u) + 2 * (u * u) * (w * w) + (w * w * w * w) +
+      2 * (C * C) * (u * u) * (v * v) / (B * B) +
+      2 * (C * C) * (v * v) * (w * w) / (B * B) +
+      (C * C * C * C) * (v * v * v * v) / (B * B * B * B);
+  b = 4 * (u * u * u) * x0 + 4 * (u * u) * w * z0 + 4 * u * (w * w) * x0 +
+      4 * (w * w * w) * z0 + 4 * (C * C) * (u * u) * v * y0 / (B * B) +
+      4 * (C * C) * u * (v * v) * x0 / (B * B) +
+      4 * (C * C) * (v * v) * w * z0 / (B * B) +
+      4 * (C * C) * v * (w * w) * y0 / (B * B) +
+      4 * (C * C * C * C) * (v * v * v) * y0 / (B * B * B * B);
+  c = -2 * (A * A) * (u * u) - 2 * (A * A) * (w * w) +
+      2 * (A * A) * (C * C) * (v * v) / (B * B) - 2 * (C * C) * (u * u) -
+      2 * (C * C) * (w * w) + 6 * (u * u) * (x0 * x0) +
+      2 * (u * u) * (z0 * z0) + 8 * u * w * x0 * z0 + 2 * (w * w) * (x0 * x0) +
+      6 * (w * w) * (z0 * z0) - 2 * (C * C * C * C) * (v * v) / (B * B) +
+      2 * (C * C) * (u * u) * (y0 * y0) / (B * B) +
+      8 * (C * C) * u * v * x0 * y0 / (B * B) +
+      2 * (C * C) * (v * v) * (x0 * x0) / (B * B) +
+      2 * (C * C) * (v * v) * (z0 * z0) / (B * B) +
+      8 * (C * C) * v * w * y0 * z0 / (B * B) +
+      2 * (C * C) * (w * w) * (y0 * y0) / (B * B) +
+      6 * (C * C * C * C) * (v * v) * (y0 * y0) / (B * B * B * B);
+  d = -4 * (A * A) * u * x0 - 4 * (A * A) * w * z0 +
+      4 * (A * A) * (C * C) * v * y0 / (B * B) - 4 * (C * C) * u * x0 -
+      4 * (C * C) * w * z0 + 4 * u * (x0 * x0 * x0) + 4 * u * x0 * (z0 * z0) +
+      4 * w * (x0 * x0) * z0 + 4 * w * (z0 * z0 * z0) -
+      4 * (C * C * C * C) * v * y0 / (B * B) +
+      4 * (C * C) * u * x0 * (y0 * y0) / (B * B) +
+      4 * (C * C) * v * (x0 * x0) * y0 / (B * B) +
+      4 * (C * C) * v * y0 * (z0 * z0) / (B * B) +
+      4 * (C * C) * w * (y0 * y0) * z0 / (B * B) +
+      4 * (C * C * C * C) * v * (y0 * y0 * y0) / (B * B * B * B);
+  e = (A * A * A * A) - 2 * (A * A) * (C * C) - 2 * (A * A) * (x0 * x0) -
+      2 * (A * A) * (z0 * z0) + 2 * (A * A) * (C * C) * (y0 * y0) / (B * B) +
+      (C * C * C * C) - 2 * (C * C) * (x0 * x0) - 2 * (C * C) * (z0 * z0) +
+      (x0 * x0 * x0 * x0) + 2 * (x0 * x0) * (z0 * z0) + (z0 * z0 * z0 * z0) -
+      2 * (C * C * C * C) * (y0 * y0) / (B * B) +
+      2 * (C * C) * (x0 * x0) * (y0 * y0) / (B * B) +
+      2 * (C * C) * (y0 * y0) * (z0 * z0) / (B * B) +
+      (C * C * C * C) * (y0 * y0 * y0 * y0) / (B * B * B * B);
 
   //
   std::array<double, 4> roots;
@@ -1518,158 +1500,143 @@ double SurfaceZTorus::distance(Position r, Direction ang, bool coincident) const
   double a, b, c, d, e; // coefficients of quartic
 
   // 4th order coefficient
-  a = std::pow(u, 4) + 2 * std::pow(u, 2) * std::pow(v, 2) + std::pow(v, 4) +
-      2 * std::pow(C, 2) * std::pow(u, 2) * std::pow(w, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(v, 2) * std::pow(w, 2) / std::pow(B, 2) +
-      std::pow(C, 4) * std::pow(w, 4) / std::pow(B, 4);
+  a = (u * u * u * u) + 2 * (u * u) * (v * v) + (v * v * v * v) +
+      2 * (C * C) * (u * u) * (w * w) / (B * B) +
+      2 * (C * C) * (v * v) * (w * w) / (B * B) +
+      (C * C * C * C) * (w * w * w * w) / (B * B * B * B);
   // 3rd order coefficient
-  b = -4 * std::pow(u, 3) * x0 + 4 * std::pow(u, 3) * xr -
-      4 * std::pow(u, 2) * v * y0 + 4 * std::pow(u, 2) * v * yr -
-      4 * u * std::pow(v, 2) * x0 + 4 * u * std::pow(v, 2) * xr -
-      4 * std::pow(v, 3) * y0 + 4 * std::pow(v, 3) * yr -
-      4 * std::pow(C, 2) * std::pow(u, 2) * w * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * std::pow(u, 2) * w * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * u * std::pow(w, 2) * x0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * std::pow(w, 2) * xr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * std::pow(v, 2) * w * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * std::pow(v, 2) * w * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * v * std::pow(w, 2) * y0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * v * std::pow(w, 2) * yr / std::pow(B, 2) -
-      4 * std::pow(C, 4) * std::pow(w, 3) * z0 / std::pow(B, 4) +
-      4 * std::pow(C, 4) * std::pow(w, 3) * zr / std::pow(B, 4);
+  b = -4 * (u * u * u) * x0 + 4 * (u * u * u) * xr - 4 * (u * u) * v * y0 +
+      4 * (u * u) * v * yr - 4 * u * (v * v) * x0 + 4 * u * (v * v) * xr -
+      4 * (v * v * v) * y0 + 4 * (v * v * v) * yr -
+      4 * (C * C) * (u * u) * w * z0 / (B * B) +
+      4 * (C * C) * (u * u) * w * zr / (B * B) -
+      4 * (C * C) * u * (w * w) * x0 / (B * B) +
+      4 * (C * C) * u * (w * w) * xr / (B * B) -
+      4 * (C * C) * (v * v) * w * z0 / (B * B) +
+      4 * (C * C) * (v * v) * w * zr / (B * B) -
+      4 * (C * C) * v * (w * w) * y0 / (B * B) +
+      4 * (C * C) * v * (w * w) * yr / (B * B) -
+      4 * (C * C * C * C) * (w * w * w) * z0 / (B * B * B * B) +
+      4 * (C * C * C * C) * (w * w * w) * zr / (B * B * B * B);
   // 2nd order coefficient
-  c =
-    -2 * std::pow(A, 2) * std::pow(u, 2) - 2 * std::pow(A, 2) * std::pow(v, 2) +
-    2 * std::pow(A, 2) * std::pow(C, 2) * std::pow(w, 2) / std::pow(B, 2) -
-    2 * std::pow(C, 2) * std::pow(u, 2) - 2 * std::pow(C, 2) * std::pow(v, 2) +
-    6 * std::pow(u, 2) * std::pow(x0, 2) - 12 * std::pow(u, 2) * x0 * xr +
-    6 * std::pow(u, 2) * std::pow(xr, 2) +
-    2 * std::pow(u, 2) * std::pow(y0, 2) - 4 * std::pow(u, 2) * y0 * yr +
-    2 * std::pow(u, 2) * std::pow(yr, 2) + 8 * u * v * x0 * y0 -
-    8 * u * v * x0 * yr - 8 * u * v * xr * y0 + 8 * u * v * xr * yr +
-    2 * std::pow(v, 2) * std::pow(x0, 2) - 4 * std::pow(v, 2) * x0 * xr +
-    2 * std::pow(v, 2) * std::pow(xr, 2) +
-    6 * std::pow(v, 2) * std::pow(y0, 2) - 12 * std::pow(v, 2) * y0 * yr +
-    6 * std::pow(v, 2) * std::pow(yr, 2) -
-    2 * std::pow(C, 4) * std::pow(w, 2) / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(u, 2) * std::pow(z0, 2) / std::pow(B, 2) -
-    4 * std::pow(C, 2) * std::pow(u, 2) * z0 * zr / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(u, 2) * std::pow(zr, 2) / std::pow(B, 2) +
-    8 * std::pow(C, 2) * u * w * x0 * z0 / std::pow(B, 2) -
-    8 * std::pow(C, 2) * u * w * x0 * zr / std::pow(B, 2) -
-    8 * std::pow(C, 2) * u * w * xr * z0 / std::pow(B, 2) +
-    8 * std::pow(C, 2) * u * w * xr * zr / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(v, 2) * std::pow(z0, 2) / std::pow(B, 2) -
-    4 * std::pow(C, 2) * std::pow(v, 2) * z0 * zr / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(v, 2) * std::pow(zr, 2) / std::pow(B, 2) +
-    8 * std::pow(C, 2) * v * w * y0 * z0 / std::pow(B, 2) -
-    8 * std::pow(C, 2) * v * w * y0 * zr / std::pow(B, 2) -
-    8 * std::pow(C, 2) * v * w * yr * z0 / std::pow(B, 2) +
-    8 * std::pow(C, 2) * v * w * yr * zr / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(w, 2) * std::pow(x0, 2) / std::pow(B, 2) -
-    4 * std::pow(C, 2) * std::pow(w, 2) * x0 * xr / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(w, 2) * std::pow(xr, 2) / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(w, 2) * std::pow(y0, 2) / std::pow(B, 2) -
-    4 * std::pow(C, 2) * std::pow(w, 2) * y0 * yr / std::pow(B, 2) +
-    2 * std::pow(C, 2) * std::pow(w, 2) * std::pow(yr, 2) / std::pow(B, 2) +
-    6 * std::pow(C, 4) * std::pow(w, 2) * std::pow(z0, 2) / std::pow(B, 4) -
-    12 * std::pow(C, 4) * std::pow(w, 2) * z0 * zr / std::pow(B, 4) +
-    6 * std::pow(C, 4) * std::pow(w, 2) * std::pow(zr, 2) / std::pow(B, 4);
+  c = -2 * (A * A) * (u * u) - 2 * (A * A) * (v * v) +
+      2 * (A * A) * (C * C) * (w * w) / (B * B) - 2 * (C * C) * (u * u) -
+      2 * (C * C) * (v * v) + 6 * (u * u) * (x0 * x0) - 12 * (u * u) * x0 * xr +
+      6 * (u * u) * (xr * xr) + 2 * (u * u) * (y0 * y0) -
+      4 * (u * u) * y0 * yr + 2 * (u * u) * (yr * yr) + 8 * u * v * x0 * y0 -
+      8 * u * v * x0 * yr - 8 * u * v * xr * y0 + 8 * u * v * xr * yr +
+      2 * (v * v) * (x0 * x0) - 4 * (v * v) * x0 * xr +
+      2 * (v * v) * (xr * xr) + 6 * (v * v) * (y0 * y0) -
+      12 * (v * v) * y0 * yr + 6 * (v * v) * (yr * yr) -
+      2 * (C * C * C * C) * (w * w) / (B * B) +
+      2 * (C * C) * (u * u) * (z0 * z0) / (B * B) -
+      4 * (C * C) * (u * u) * z0 * zr / (B * B) +
+      2 * (C * C) * (u * u) * (zr * zr) / (B * B) +
+      8 * (C * C) * u * w * x0 * z0 / (B * B) -
+      8 * (C * C) * u * w * x0 * zr / (B * B) -
+      8 * (C * C) * u * w * xr * z0 / (B * B) +
+      8 * (C * C) * u * w * xr * zr / (B * B) +
+      2 * (C * C) * (v * v) * (z0 * z0) / (B * B) -
+      4 * (C * C) * (v * v) * z0 * zr / (B * B) +
+      2 * (C * C) * (v * v) * (zr * zr) / (B * B) +
+      8 * (C * C) * v * w * y0 * z0 / (B * B) -
+      8 * (C * C) * v * w * y0 * zr / (B * B) -
+      8 * (C * C) * v * w * yr * z0 / (B * B) +
+      8 * (C * C) * v * w * yr * zr / (B * B) +
+      2 * (C * C) * (w * w) * (x0 * x0) / (B * B) -
+      4 * (C * C) * (w * w) * x0 * xr / (B * B) +
+      2 * (C * C) * (w * w) * (xr * xr) / (B * B) +
+      2 * (C * C) * (w * w) * (y0 * y0) / (B * B) -
+      4 * (C * C) * (w * w) * y0 * yr / (B * B) +
+      2 * (C * C) * (w * w) * (yr * yr) / (B * B) +
+      6 * (C * C * C * C) * (w * w) * (z0 * z0) / (B * B * B * B) -
+      12 * (C * C * C * C) * (w * w) * z0 * zr / (B * B * B * B) +
+      6 * (C * C * C * C) * (w * w) * (zr * zr) / (B * B * B * B);
   // the 1st order terms
-  d = 4 * std::pow(A, 2) * u * x0 - 4 * std::pow(A, 2) * u * xr +
-      4 * std::pow(A, 2) * v * y0 - 4 * std::pow(A, 2) * v * yr -
-      4 * std::pow(A, 2) * std::pow(C, 2) * w * z0 / std::pow(B, 2) +
-      4 * std::pow(A, 2) * std::pow(C, 2) * w * zr / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * x0 - 4 * std::pow(C, 2) * u * xr +
-      4 * std::pow(C, 2) * v * y0 - 4 * std::pow(C, 2) * v * yr -
-      4 * u * std::pow(x0, 3) + 12 * u * std::pow(x0, 2) * xr -
-      12 * u * x0 * std::pow(xr, 2) - 4 * u * x0 * std::pow(y0, 2) +
-      8 * u * x0 * y0 * yr - 4 * u * x0 * std::pow(yr, 2) +
-      4 * u * std::pow(xr, 3) + 4 * u * xr * std::pow(y0, 2) -
-      8 * u * xr * y0 * yr + 4 * u * xr * std::pow(yr, 2) -
-      4 * v * std::pow(x0, 2) * y0 + 4 * v * std::pow(x0, 2) * yr +
-      8 * v * x0 * xr * y0 - 8 * v * x0 * xr * yr -
-      4 * v * std::pow(xr, 2) * y0 + 4 * v * std::pow(xr, 2) * yr -
-      4 * v * std::pow(y0, 3) + 12 * v * std::pow(y0, 2) * yr -
-      12 * v * y0 * std::pow(yr, 2) + 4 * v * std::pow(yr, 3) +
-      4 * std::pow(C, 4) * w * z0 / std::pow(B, 2) -
-      4 * std::pow(C, 4) * w * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * u * x0 * std::pow(z0, 2) / std::pow(B, 2) +
-      8 * std::pow(C, 2) * u * x0 * z0 * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * u * x0 * std::pow(zr, 2) / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * xr * std::pow(z0, 2) / std::pow(B, 2) -
-      8 * std::pow(C, 2) * u * xr * z0 * zr / std::pow(B, 2) +
-      4 * std::pow(C, 2) * u * xr * std::pow(zr, 2) / std::pow(B, 2) -
-      4 * std::pow(C, 2) * v * y0 * std::pow(z0, 2) / std::pow(B, 2) +
-      8 * std::pow(C, 2) * v * y0 * z0 * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * v * y0 * std::pow(zr, 2) / std::pow(B, 2) +
-      4 * std::pow(C, 2) * v * yr * std::pow(z0, 2) / std::pow(B, 2) -
-      8 * std::pow(C, 2) * v * yr * z0 * zr / std::pow(B, 2) +
-      4 * std::pow(C, 2) * v * yr * std::pow(zr, 2) / std::pow(B, 2) -
-      4 * std::pow(C, 2) * w * std::pow(x0, 2) * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * w * std::pow(x0, 2) * zr / std::pow(B, 2) +
-      8 * std::pow(C, 2) * w * x0 * xr * z0 / std::pow(B, 2) -
-      8 * std::pow(C, 2) * w * x0 * xr * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * w * std::pow(xr, 2) * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * w * std::pow(xr, 2) * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * w * std::pow(y0, 2) * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * w * std::pow(y0, 2) * zr / std::pow(B, 2) +
-      8 * std::pow(C, 2) * w * y0 * yr * z0 / std::pow(B, 2) -
-      8 * std::pow(C, 2) * w * y0 * yr * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * w * std::pow(yr, 2) * z0 / std::pow(B, 2) +
-      4 * std::pow(C, 2) * w * std::pow(yr, 2) * zr / std::pow(B, 2) -
-      4 * std::pow(C, 4) * w * std::pow(z0, 3) / std::pow(B, 4) +
-      12 * std::pow(C, 4) * w * std::pow(z0, 2) * zr / std::pow(B, 4) -
-      12 * std::pow(C, 4) * w * z0 * std::pow(zr, 2) / std::pow(B, 4) +
-      4 * std::pow(C, 4) * w * std::pow(zr, 3) / std::pow(B, 4);
+  d = 4 * (A * A) * u * x0 - 4 * (A * A) * u * xr + 4 * (A * A) * v * y0 -
+      4 * (A * A) * v * yr - 4 * (A * A) * (C * C) * w * z0 / (B * B) +
+      4 * (A * A) * (C * C) * w * zr / (B * B) + 4 * (C * C) * u * x0 -
+      4 * (C * C) * u * xr + 4 * (C * C) * v * y0 - 4 * (C * C) * v * yr -
+      4 * u * (x0 * x0 * x0) + 12 * u * (x0 * x0) * xr -
+      12 * u * x0 * (xr * xr) - 4 * u * x0 * (y0 * y0) + 8 * u * x0 * y0 * yr -
+      4 * u * x0 * (yr * yr) + 4 * u * (xr * xr * xr) + 4 * u * xr * (y0 * y0) -
+      8 * u * xr * y0 * yr + 4 * u * xr * (yr * yr) - 4 * v * (x0 * x0) * y0 +
+      4 * v * (x0 * x0) * yr + 8 * v * x0 * xr * y0 - 8 * v * x0 * xr * yr -
+      4 * v * (xr * xr) * y0 + 4 * v * (xr * xr) * yr - 4 * v * (y0 * y0 * y0) +
+      12 * v * (y0 * y0) * yr - 12 * v * y0 * (yr * yr) +
+      4 * v * (yr * yr * yr) + 4 * (C * C * C * C) * w * z0 / (B * B) -
+      4 * (C * C * C * C) * w * zr / (B * B) -
+      4 * (C * C) * u * x0 * (z0 * z0) / (B * B) +
+      8 * (C * C) * u * x0 * z0 * zr / (B * B) -
+      4 * (C * C) * u * x0 * (zr * zr) / (B * B) +
+      4 * (C * C) * u * xr * (z0 * z0) / (B * B) -
+      8 * (C * C) * u * xr * z0 * zr / (B * B) +
+      4 * (C * C) * u * xr * (zr * zr) / (B * B) -
+      4 * (C * C) * v * y0 * (z0 * z0) / (B * B) +
+      8 * (C * C) * v * y0 * z0 * zr / (B * B) -
+      4 * (C * C) * v * y0 * (zr * zr) / (B * B) +
+      4 * (C * C) * v * yr * (z0 * z0) / (B * B) -
+      8 * (C * C) * v * yr * z0 * zr / (B * B) +
+      4 * (C * C) * v * yr * (zr * zr) / (B * B) -
+      4 * (C * C) * w * (x0 * x0) * z0 / (B * B) +
+      4 * (C * C) * w * (x0 * x0) * zr / (B * B) +
+      8 * (C * C) * w * x0 * xr * z0 / (B * B) -
+      8 * (C * C) * w * x0 * xr * zr / (B * B) -
+      4 * (C * C) * w * (xr * xr) * z0 / (B * B) +
+      4 * (C * C) * w * (xr * xr) * zr / (B * B) -
+      4 * (C * C) * w * (y0 * y0) * z0 / (B * B) +
+      4 * (C * C) * w * (y0 * y0) * zr / (B * B) +
+      8 * (C * C) * w * y0 * yr * z0 / (B * B) -
+      8 * (C * C) * w * y0 * yr * zr / (B * B) -
+      4 * (C * C) * w * (yr * yr) * z0 / (B * B) +
+      4 * (C * C) * w * (yr * yr) * zr / (B * B) -
+      4 * (C * C * C * C) * w * (z0 * z0 * z0) / (B * B * B * B) +
+      12 * (C * C * C * C) * w * (z0 * z0) * zr / (B * B * B * B) -
+      12 * (C * C * C * C) * w * z0 * (zr * zr) / (B * B * B * B) +
+      4 * (C * C * C * C) * w * (zr * zr * zr) / (B * B * B * B);
   // the 0th order terms
-  e = std::pow(A, 4) - 2 * std::pow(A, 2) * std::pow(C, 2) -
-      2 * std::pow(A, 2) * std::pow(x0, 2) + 4 * std::pow(A, 2) * x0 * xr -
-      2 * std::pow(A, 2) * std::pow(xr, 2) -
-      2 * std::pow(A, 2) * std::pow(y0, 2) + 4 * std::pow(A, 2) * y0 * yr -
-      2 * std::pow(A, 2) * std::pow(yr, 2) +
-      2 * std::pow(A, 2) * std::pow(C, 2) * std::pow(z0, 2) / std::pow(B, 2) -
-      4 * std::pow(A, 2) * std::pow(C, 2) * z0 * zr / std::pow(B, 2) +
-      2 * std::pow(A, 2) * std::pow(C, 2) * std::pow(zr, 2) / std::pow(B, 2) +
-      std::pow(C, 4) - 2 * std::pow(C, 2) * std::pow(x0, 2) +
-      4 * std::pow(C, 2) * x0 * xr - 2 * std::pow(C, 2) * std::pow(xr, 2) -
-      2 * std::pow(C, 2) * std::pow(y0, 2) + 4 * std::pow(C, 2) * y0 * yr -
-      2 * std::pow(C, 2) * std::pow(yr, 2) + std::pow(x0, 4) -
-      4 * std::pow(x0, 3) * xr + 6 * std::pow(x0, 2) * std::pow(xr, 2) +
-      2 * std::pow(x0, 2) * std::pow(y0, 2) - 4 * std::pow(x0, 2) * y0 * yr +
-      2 * std::pow(x0, 2) * std::pow(yr, 2) - 4 * x0 * std::pow(xr, 3) -
-      4 * x0 * xr * std::pow(y0, 2) + 8 * x0 * xr * y0 * yr -
-      4 * x0 * xr * std::pow(yr, 2) + std::pow(xr, 4) +
-      2 * std::pow(xr, 2) * std::pow(y0, 2) - 4 * std::pow(xr, 2) * y0 * yr +
-      2 * std::pow(xr, 2) * std::pow(yr, 2) + std::pow(y0, 4) -
-      4 * std::pow(y0, 3) * yr + 6 * std::pow(y0, 2) * std::pow(yr, 2) -
-      4 * y0 * std::pow(yr, 3) + std::pow(yr, 4) -
-      2 * std::pow(C, 4) * std::pow(z0, 2) / std::pow(B, 2) +
-      4 * std::pow(C, 4) * z0 * zr / std::pow(B, 2) -
-      2 * std::pow(C, 4) * std::pow(zr, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(x0, 2) * std::pow(z0, 2) / std::pow(B, 2) -
-      4 * std::pow(C, 2) * std::pow(x0, 2) * z0 * zr / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(x0, 2) * std::pow(zr, 2) / std::pow(B, 2) -
-      4 * std::pow(C, 2) * x0 * xr * std::pow(z0, 2) / std::pow(B, 2) +
-      8 * std::pow(C, 2) * x0 * xr * z0 * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * x0 * xr * std::pow(zr, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(xr, 2) * std::pow(z0, 2) / std::pow(B, 2) -
-      4 * std::pow(C, 2) * std::pow(xr, 2) * z0 * zr / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(xr, 2) * std::pow(zr, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(y0, 2) * std::pow(z0, 2) / std::pow(B, 2) -
-      4 * std::pow(C, 2) * std::pow(y0, 2) * z0 * zr / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(y0, 2) * std::pow(zr, 2) / std::pow(B, 2) -
-      4 * std::pow(C, 2) * y0 * yr * std::pow(z0, 2) / std::pow(B, 2) +
-      8 * std::pow(C, 2) * y0 * yr * z0 * zr / std::pow(B, 2) -
-      4 * std::pow(C, 2) * y0 * yr * std::pow(zr, 2) / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(yr, 2) * std::pow(z0, 2) / std::pow(B, 2) -
-      4 * std::pow(C, 2) * std::pow(yr, 2) * z0 * zr / std::pow(B, 2) +
-      2 * std::pow(C, 2) * std::pow(yr, 2) * std::pow(zr, 2) / std::pow(B, 2) +
-      std::pow(C, 4) * std::pow(z0, 4) / std::pow(B, 4) -
-      4 * std::pow(C, 4) * std::pow(z0, 3) * zr / std::pow(B, 4) +
-      6 * std::pow(C, 4) * std::pow(z0, 2) * std::pow(zr, 2) / std::pow(B, 4) -
-      4 * std::pow(C, 4) * z0 * std::pow(zr, 3) / std::pow(B, 4) +
-      std::pow(C, 4) * std::pow(zr, 4) / std::pow(B, 4);
+  e =
+    (A * A * A * A) - 2 * (A * A) * (C * C) - 2 * (A * A) * (x0 * x0) +
+    4 * (A * A) * x0 * xr - 2 * (A * A) * (xr * xr) - 2 * (A * A) * (y0 * y0) +
+    4 * (A * A) * y0 * yr - 2 * (A * A) * (yr * yr) +
+    2 * (A * A) * (C * C) * (z0 * z0) / (B * B) -
+    4 * (A * A) * (C * C) * z0 * zr / (B * B) +
+    2 * (A * A) * (C * C) * (zr * zr) / (B * B) + (C * C * C * C) -
+    2 * (C * C) * (x0 * x0) + 4 * (C * C) * x0 * xr - 2 * (C * C) * (xr * xr) -
+    2 * (C * C) * (y0 * y0) + 4 * (C * C) * y0 * yr - 2 * (C * C) * (yr * yr) +
+    (x0 * x0 * x0 * x0) - 4 * (x0 * x0 * x0) * xr + 6 * (x0 * x0) * (xr * xr) +
+    2 * (x0 * x0) * (y0 * y0) - 4 * (x0 * x0) * y0 * yr +
+    2 * (x0 * x0) * (yr * yr) - 4 * x0 * (xr * xr * xr) -
+    4 * x0 * xr * (y0 * y0) + 8 * x0 * xr * y0 * yr - 4 * x0 * xr * (yr * yr) +
+    (xr * xr * xr * xr) + 2 * (xr * xr) * (y0 * y0) - 4 * (xr * xr) * y0 * yr +
+    2 * (xr * xr) * (yr * yr) + (y0 * y0 * y0 * y0) - 4 * (y0 * y0 * y0) * yr +
+    6 * (y0 * y0) * (yr * yr) - 4 * y0 * (yr * yr * yr) + (yr * yr * yr * yr) -
+    2 * (C * C * C * C) * (z0 * z0) / (B * B) +
+    4 * (C * C * C * C) * z0 * zr / (B * B) -
+    2 * (C * C * C * C) * (zr * zr) / (B * B) +
+    2 * (C * C) * (x0 * x0) * (z0 * z0) / (B * B) -
+    4 * (C * C) * (x0 * x0) * z0 * zr / (B * B) +
+    2 * (C * C) * (x0 * x0) * (zr * zr) / (B * B) -
+    4 * (C * C) * x0 * xr * (z0 * z0) / (B * B) +
+    8 * (C * C) * x0 * xr * z0 * zr / (B * B) -
+    4 * (C * C) * x0 * xr * (zr * zr) / (B * B) +
+    2 * (C * C) * (xr * xr) * (z0 * z0) / (B * B) -
+    4 * (C * C) * (xr * xr) * z0 * zr / (B * B) +
+    2 * (C * C) * (xr * xr) * (zr * zr) / (B * B) +
+    2 * (C * C) * (y0 * y0) * (z0 * z0) / (B * B) -
+    4 * (C * C) * (y0 * y0) * z0 * zr / (B * B) +
+    2 * (C * C) * (y0 * y0) * (zr * zr) / (B * B) -
+    4 * (C * C) * y0 * yr * (z0 * z0) / (B * B) +
+    8 * (C * C) * y0 * yr * z0 * zr / (B * B) -
+    4 * (C * C) * y0 * yr * (zr * zr) / (B * B) +
+    2 * (C * C) * (yr * yr) * (z0 * z0) / (B * B) -
+    4 * (C * C) * (yr * yr) * z0 * zr / (B * B) +
+    2 * (C * C) * (yr * yr) * (zr * zr) / (B * B) +
+    (C * C * C * C) * (z0 * z0 * z0 * z0) / (B * B * B * B) -
+    4 * (C * C * C * C) * (z0 * z0 * z0) * zr / (B * B * B * B) +
+    6 * (C * C * C * C) * (z0 * z0) * (zr * zr) / (B * B * B * B) -
+    4 * (C * C * C * C) * z0 * (zr * zr * zr) / (B * B * B * B) +
+    (C * C * C * C) * (zr * zr * zr * zr) / (B * B * B * B);
 
   //
   std::array<double, 4> roots;

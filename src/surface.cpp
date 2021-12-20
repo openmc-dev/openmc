@@ -1,6 +1,7 @@
 #include "openmc/surface.h"
 
 #include <cmath>
+#include <complex>
 #include <set>
 #include <utility>
 
@@ -10,6 +11,7 @@
 #include "openmc/array.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
+#include "openmc/external/quartic_solver.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
@@ -1005,169 +1007,6 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 }
 
 //==============================================================================
-//==============================================================================
-// Generic functions for quadratic, cubic & quartic solver
-//==============================================================================
-
-int quadratic_solve(double a, double b, double c, std::array<double, 2>& x)
-{
-
-  double func = (b * b) - 4 * a * c;
-
-  if (func < 0) {
-    // this would be imaginary
-  } else {
-    x[0] = -b / (2. * a) - std::sqrt(func) / (2. * a);
-    x[1] = -b / (2. * a) + std::sqrt(func) / (2. * a);
-  }
-
-  return 0;
-}
-
-const double M_2PI = 2 * PI;
-const double eps = FP_COINCIDENT;
-
-// typedef std::complex<double> DComplex;
-
-//---------------------------------------------------------------------------
-// solve cubic equation x^3 + a*x^2 + b*x + c
-// x - array of size 3
-// In case 3 real roots: => x[0], x[1], x[2], return 3
-//         2 real roots: x[0], x[1],          return 2
-//         1 real root : x[0], x[1] ± i*x[2], return 1
-unsigned int solve_cubic(
-  const double a, const double b, const double c, std::array<double, 3>& x)
-{
-  double a2 = a * a;
-  double q = (a2 - 3 * b) / 9;
-  double r = (a * (2 * a2 - 9 * b) + 27 * c) / 54;
-  double r2 = r * r;
-  double q3 = std::pow(q, 3);
-  double A, B;
-  double a_prime = 0.;
-  if (r2 < q3) // 3 roots
-  {
-    double t = r / sqrt(q3);
-    if (t < -1)
-      t = -1;
-    if (t > 1)
-      t = 1;
-    t = std::acos(t);
-    a_prime = a / 3.;
-    q = -2 * std::sqrt(q);
-    x[0] = q * std::cos(t / 3) - a_prime;
-    x[1] = q * std::cos((t + M_2PI) / 3) - a_prime;
-    x[2] = q * std::cos((t - M_2PI) / 3) - a_prime;
-    return 3;
-  } else {
-    A = -std::pow(std::fabs(r) + std::sqrt(r2 - q3), 1. / 3);
-    if (r < 0)
-      A = -A;
-    B = (0 == A ? 0 : q / A);
-
-    a_prime = a / 3;
-    x[0] = (A + B) - a_prime;
-    x[1] = -0.5 * (A + B) - a_prime;
-    x[2] = 0.5 * std::sqrt(3.) * (A - B);
-    // 2 real roots
-    if (std::fabs(x[2]) < eps) {
-      x[2] = x[1];
-      return 2;
-    }
-    // one real root
-    return 1;
-  }
-}
-//---------------------------------------------------------------------------
-// solve quartic equation x^4 + a*x^3 + b*x^2 + c*x + d
-// Attention - this function returns dynamically allocated array. It has to be
-// released afterwards.
-void quartic_solve(
-  double a, double b, double c, double d, std::array<double, 4>& real_roots)
-{
-  double a3 = -b;
-  double b3 = a * c - 4. * d;
-  double c3 = -a * a * d - c * c + 4. * b * d;
-
-  // cubic resolvent
-  // y^3 − b*y^2 + (ac−4d)*y − a^2*d−c^2+4*b*d = 0
-
-  std::array<double, 3> cube_roots;
-  unsigned int num_roots = solve_cubic(a3, b3, c3, cube_roots);
-
-  double q1, q2, p1, p2, D, sqD, y;
-
-  y = cube_roots[0];
-  // The essence - choosing Y with maximal absolute value.
-  if (num_roots != 1) {
-    if (std::fabs(cube_roots[1]) > std::fabs(y))
-      y = cube_roots[1];
-    if (std::fabs(cube_roots[2]) > std::fabs(y))
-      y = cube_roots[2];
-  }
-
-  // h1+h2 = y && h1*h2 = d  <=>  h^2 -y*h + d = 0    (h === q)
-
-  D = y * y - 4 * d;
-  if (std::fabs(D) < eps) // in other words - D==0
-  {
-    q1 = q2 = y * 0.5;
-    // g1+g2 = a && g1+g2 = b-y   <=>   g^2 - a*g + b-y = 0    (p === g)
-    D = a * a - 4 * (b - y);
-    if (std::fabs(D) < eps) {
-      p1 = p2 = a * 0.5;
-    } else {
-      sqD = std::sqrt(D);
-      p1 = (a + sqD) * 0.5;
-      p2 = (a - sqD) * 0.5;
-    }
-  } else {
-    sqD = std::sqrt(D);
-    q1 = (y + sqD) * 0.5;
-    q2 = (y - sqD) * 0.5;
-    p1 = (a * q1 - c) / (q1 - q2);
-    p2 = (c - a * q2) / (q1 - q2);
-  }
-
-  std::array<std::complex<double>, 4> roots; // the roots to return
-
-  // solving quadratic eq. - x^2 + p1*x + q1 = 0
-  D = p1 * p1 - 4 * q1;
-  if (D < 0.0) {
-    roots[0].real(-p1 * 0.5);
-    roots[0].imag(std::sqrt(-D) * 0.5);
-    roots[1] = std::conj(roots[0]);
-  } else {
-    sqD = std::sqrt(D);
-    roots[0].real((-p1 + sqD) * 0.5);
-    roots[1].real((-p1 - sqD) * 0.5);
-  }
-
-  // solving quadratic eq. - x^2 + p2*x + q2 = 0
-  D = p2 * p2 - 4 * q2;
-  if (D < 0.0) {
-    roots[2].real(-p2 * 0.5);
-    roots[2].imag(std::sqrt(-D) * 0.5);
-    roots[3] = std::conj(roots[2]);
-  } else {
-    sqD = std::sqrt(D);
-    roots[2].real((-p2 + sqD) * 0.5);
-    roots[3].real((-p2 - sqD) * 0.5);
-  }
-
-  for (int i = 0; i < 4; i++) {
-    if (roots[i].imag() == 0.)
-      real_roots[i] = roots[i].real();
-    else
-      real_roots[i] = 0.;
-  }
-
-  std::sort(real_roots.begin(), real_roots.end());
-
-  return;
-}
-
-//==============================================================================
 
 SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
@@ -1212,37 +1051,31 @@ double SurfaceXTorus::distance(Position r, Direction ang, bool coincident) const
   double d0 = four_A2 * (y * y + z * z);
 
   // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
-  double a = c2 * c2;
-  double b = 2 * c1 * c2;
-  double c = c1 * c1 + 2 * c0 * c2 - d2;
-  double d = 2 * c0 * c1 - d1;
-  double e = c0 * c0 - d0;
+  double coeff[5];
+  coeff[0] = c0 * c0 - d0;
+  coeff[1] = 2 * c0 * c1 - d1;
+  coeff[2] = c1 * c1 + 2 * c0 * c2 - d2;
+  coeff[3] = 2 * c1 * c2;
+  coeff[4] = c2 * c2;
 
-  std::array<double, 4> roots;
-  quartic_solve(b, c, d, e, roots);
+  std::complex<double> roots[4];
+  oqs_quartic_solver(coeff, roots);
 
-  if (coincident)
-    r += ang * TINY_BIT;
-
-  // special degerenate case two sets of repated
-  // roots
-  if (b == 0.0 && d == 0) {
-    if (roots[1] - roots[0] < 1e-5)
-      return INFTY;
-    if (roots[3] - roots[2] < 1e-5)
-      return INFTY;
-  }
-
-  for (int i = 0; i < 4; i++) {
-    // need something better than just raw tolerance
-    // use fastQS to get back lost precision
-    if (roots[i] > 1e-6) {
-      return roots[i];
+  // Find smallest positive, real root. In the case where the particle is
+  // coincident with the surface, we are sure to have one root very close to
+  // zero but possibly small and positive. A tolerance is set to discard that
+  // zero.
+  double distance = INFTY;
+  double cutoff = coincident ? 1e-9 : 0.0;
+  for (int i = 0; i < 4; ++i) {
+    if (roots[i].imag() == 0) {
+      double root = roots[i].real();
+      if (root > cutoff && root < distance) {
+        distance = root;
+      }
     }
   }
-
-  // otherwise no hit
-  return INFTY;
+  return distance;
 }
 
 Direction SurfaceXTorus::normal(Position r) const
@@ -1306,36 +1139,31 @@ double SurfaceYTorus::distance(Position r, Direction ang, bool coincident) const
   double d0 = four_A2 * (x * x + z * z);
 
   // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
-  double a = c2 * c2;
-  double b = 2 * c1 * c2;
-  double c = c1 * c1 + 2 * c0 * c2 - d2;
-  double d = 2 * c0 * c1 - d1;
-  double e = c0 * c0 - d0;
+  double coeff[5];
+  coeff[0] = c0 * c0 - d0;
+  coeff[1] = 2 * c0 * c1 - d1;
+  coeff[2] = c1 * c1 + 2 * c0 * c2 - d2;
+  coeff[3] = 2 * c1 * c2;
+  coeff[4] = c2 * c2;
 
-  std::array<double, 4> roots;
-  quartic_solve(b, c, d, e, roots);
+  std::complex<double> roots[4];
+  oqs_quartic_solver(coeff, roots);
 
-  if (coincident)
-    r += ang * TINY_BIT;
-
-  // special degerenate case two sets of repated
-  if (b == 0.0 && d == 0) {
-    if (roots[1] - roots[0] < 1e-5)
-      return INFTY;
-    if (roots[3] - roots[2] < 1e-5)
-      return INFTY;
-  }
-
-  for (int i = 0; i < 4; i++) {
-    // need something better than just raw tolerance
-    // use fastQS to get back lost precision
-    if (roots[i] > 1e-6) {
-      return roots[i];
+  // Find smallest positive, real root. In the case where the particle is
+  // coincident with the surface, we are sure to have one root very close to
+  // zero but possibly small and positive. A tolerance is set to discard that
+  // zero.
+  double distance = INFTY;
+  double cutoff = coincident ? 1e-9 : 0.0;
+  for (int i = 0; i < 4; ++i) {
+    if (roots[i].imag() == 0) {
+      double root = roots[i].real();
+      if (root > cutoff && root < distance) {
+        distance = root;
+      }
     }
   }
-
-  // otherwise no hit
-  return INFTY;
+  return distance;
 }
 
 Direction SurfaceYTorus::normal(Position r) const
@@ -1399,37 +1227,31 @@ double SurfaceZTorus::distance(Position r, Direction ang, bool coincident) const
   double d0 = four_A2 * (x * x + y * y);
 
   // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
-  double a = c2 * c2;
-  double b = 2 * c1 * c2;
-  double c = c1 * c1 + 2 * c0 * c2 - d2;
-  double d = 2 * c0 * c1 - d1;
-  double e = c0 * c0 - d0;
+  double coeff[5];
+  coeff[0] = c0 * c0 - d0;
+  coeff[1] = 2 * c0 * c1 - d1;
+  coeff[2] = c1 * c1 + 2 * c0 * c2 - d2;
+  coeff[3] = 2 * c1 * c2;
+  coeff[4] = c2 * c2;
 
-  std::array<double, 4> roots;
-  quartic_solve(b, c, d, e, roots);
+  std::complex<double> roots[4];
+  oqs_quartic_solver(coeff, roots);
 
-  if (coincident)
-    r += ang * TINY_BIT;
-
-  // special degerenate case two sets of repated
-  // roots
-  if (b == 0.0 && d == 0) {
-    if (roots[1] - roots[0] < 1e-5)
-      return INFTY;
-    if (roots[3] - roots[2] < 1e-5)
-      return INFTY;
-  }
-
-  for (int i = 0; i < 4; i++) {
-    // need something better than just raw tolerance
-    // use fastQS to get back lost precision
-    if (roots[i] > 1e-6) {
-      return roots[i];
+  // Find smallest positive, real root. In the case where the particle is
+  // coincident with the surface, we are sure to have one root very close to
+  // zero but possibly small and positive. A tolerance is set to discard that
+  // zero.
+  double distance = INFTY;
+  double cutoff = coincident ? 1e-9 : 0.0;
+  for (int i = 0; i < 4; ++i) {
+    if (roots[i].imag() == 0) {
+      double root = roots[i].real();
+      if (root > cutoff && root < distance) {
+        distance = root;
+      }
     }
   }
-
-  // otherwise no hit
-  return INFTY;
+  return distance;
 }
 
 Direction SurfaceZTorus::normal(Position r) const

@@ -24,6 +24,24 @@ element tallies {
           attribute y_grid { list { xsd:double+ } }) &
         (element z_grid { list { xsd:double+ } } |
           attribute z_grid { list { xsd:double+ } })
+      ) | (
+        (element type { ( "cylindrical" ) } |
+          attribute type { ( "cylindrical" ) }) &
+        (element r_grid { list { xsd:double+ } } |
+          attribute r_grid { list { xsd:double+ } }) &
+        (element p_grid { list { xsd:double+ } } |
+          attribute p_grid { list { xsd:double+ } }) &
+        (element z_grid { list { xsd:double+ } } |
+          attribute z_grid { list { xsd:double+ } })
+      ) | (
+        (element type { ( "spherical" ) } |
+          attribute type { ( "spherical" ) }) &
+        (element r_grid { list { xsd:double+ } } |
+          attribute r_grid { list { xsd:double+ } }) &
+        (element t_grid { list { xsd:double+ } } |
+          attribute p_grid { list { xsd:double+ } }) &
+        (element p_grid { list { xsd:double+ } } |
+          attribute z_grid { list { xsd:double+ } })
       )
     )
   }* &

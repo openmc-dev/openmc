@@ -1197,64 +1197,27 @@ double SurfaceXTorus::distance(Position r, Direction ang, bool coincident) const
   double u = ang.x;
   double v = ang.y;
   double w = ang.z;
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
 
-  double xr = r.x;
-  double yr = r.y;
-  double zr = r.z;
+  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = d2 t^2 + d1 t + d0
+  double D = (C_ * C_) / (B_ * B_);
+  double c2 = D * u * u + v * v + w * w;
+  double c1 = 2 * (D * u * x + v * y + w * z);
+  double c0 = D * x * x + y * y + z * z + A_ * A_ - C_ * C_;
+  double four_A2 = 4 * A_ * A_;
+  double d2 = four_A2 * (v * v + w * w);
+  double d1 = 2 * four_A2 * (v * y + w * z);
+  double d0 = four_A2 * (y * y + z * z);
 
-  double A = A_;
-  double B = B_;
-  double C = C_;
+  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
+  double a = c2 * c2;
+  double b = 2 * c1 * c2;
+  double c = c1 * c1 + 2 * c0 * c2 - d2;
+  double d = 2 * c0 * c1 - d1;
+  double e = c0 * c0 - d0;
 
-  double x0 = x0_ + xr;
-  double y0 = y0_ + yr;
-  double z0 = z0_ + zr;
-
-  double a, b, c, d, e; // coefficients of quartic
-
-  // a is always 1 maybe save the maths?
-  a = (v * v * v * v) + 2 * (v * v) * (w * w) + (w * w * w * w) +
-      2 * (C * C) * (u * u) * (v * v) / (B * B) +
-      2 * (C * C) * (u * u) * (w * w) / (B * B) +
-      (C * C * C * C) * (u * u * u * u) / (B * B * B * B);
-  b = 4 * (v * v * v) * y0 + 4 * (v * v) * w * z0 + 4 * v * (w * w) * y0 +
-      4 * (w * w * w) * z0 + 4 * (C * C) * (u * u) * v * y0 / (B * B) +
-      4 * (C * C) * (u * u) * w * z0 / (B * B) +
-      4 * (C * C) * u * (v * v) * x0 / (B * B) +
-      4 * (C * C) * u * (w * w) * x0 / (B * B) +
-      4 * (C * C * C * C) * (u * u * u) * x0 / (B * B * B * B);
-  c = -2 * (A * A) * (v * v) - 2 * (A * A) * (w * w) +
-      2 * (A * A) * (C * C) * (u * u) / (B * B) - 2 * (C * C) * (v * v) -
-      2 * (C * C) * (w * w) + 6 * (v * v) * (y0 * y0) +
-      2 * (v * v) * (z0 * z0) + 8 * v * w * y0 * z0 + 2 * (w * w) * (y0 * y0) +
-      6 * (w * w) * (z0 * z0) - 2 * (C * C * C * C) * (u * u) / (B * B) +
-      2 * (C * C) * (u * u) * (y0 * y0) / (B * B) +
-      2 * (C * C) * (u * u) * (z0 * z0) / (B * B) +
-      8 * (C * C) * u * v * x0 * y0 / (B * B) +
-      8 * (C * C) * u * w * x0 * z0 / (B * B) +
-      2 * (C * C) * (v * v) * (x0 * x0) / (B * B) +
-      2 * (C * C) * (w * w) * (x0 * x0) / (B * B) +
-      6 * (C * C * C * C) * (u * u) * (x0 * x0) / (B * B * B * B);
-  d = -4 * (A * A) * v * y0 - 4 * (A * A) * w * z0 +
-      4 * (A * A) * (C * C) * u * x0 / (B * B) - 4 * (C * C) * v * y0 -
-      4 * (C * C) * w * z0 + 4 * v * (y0 * y0 * y0) + 4 * v * y0 * (z0 * z0) +
-      4 * w * (y0 * y0) * z0 + 4 * w * (z0 * z0 * z0) -
-      4 * (C * C * C * C) * u * x0 / (B * B) +
-      4 * (C * C) * u * x0 * (y0 * y0) / (B * B) +
-      4 * (C * C) * u * x0 * (z0 * z0) / (B * B) +
-      4 * (C * C) * v * (x0 * x0) * y0 / (B * B) +
-      4 * (C * C) * w * (x0 * x0) * z0 / (B * B) +
-      4 * (C * C * C * C) * u * (x0 * x0 * x0) / (B * B * B * B);
-  e = (A * A * A * A) - 2 * (A * A) * (C * C) - 2 * (A * A) * (y0 * y0) -
-      2 * (A * A) * (z0 * z0) + 2 * (A * A) * (C * C) * (x0 * x0) / (B * B) +
-      (C * C * C * C) - 2 * (C * C) * (y0 * y0) - 2 * (C * C) * (z0 * z0) +
-      (y0 * y0 * y0 * y0) + 2 * (y0 * y0) * (z0 * z0) + (z0 * z0 * z0 * z0) -
-      2 * (C * C * C * C) * (x0 * x0) / (B * B) +
-      2 * (C * C) * (x0 * x0) * (y0 * y0) / (B * B) +
-      2 * (C * C) * (x0 * x0) * (z0 * z0) / (B * B) +
-      (C * C * C * C) * (x0 * x0 * x0 * x0) / (B * B * B * B);
-
-  //
   std::array<double, 4> roots;
   quartic_solve(b, c, d, e, roots);
 
@@ -1338,63 +1301,27 @@ double SurfaceYTorus::distance(Position r, Direction ang, bool coincident) const
   double u = ang.x;
   double v = ang.y;
   double w = ang.z;
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
 
-  double xr = r.x;
-  double yr = r.y;
-  double zr = r.z;
+  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = d2 t^2 + d1 t + d0
+  double D = (C_ * C_) / (B_ * B_);
+  double c2 = u * u + D * v * v + w * w;
+  double c1 = 2 * (u * x + D * v * y + w * z);
+  double c0 = x * x + D * y * y + z * z + A_ * A_ - C_ * C_;
+  double four_A2 = 4 * A_ * A_;
+  double d2 = four_A2 * (u * u + w * w);
+  double d1 = 2 * four_A2 * (u * x + w * z);
+  double d0 = four_A2 * (x * x + z * z);
 
-  double A = A_;
-  double B = B_;
-  double C = C_;
+  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
+  double a = c2 * c2;
+  double b = 2 * c1 * c2;
+  double c = c1 * c1 + 2 * c0 * c2 - d2;
+  double d = 2 * c0 * c1 - d1;
+  double e = c0 * c0 - d0;
 
-  double x0 = x0_ + xr;
-  double y0 = y0_ + yr;
-  double z0 = z0_ + zr;
-
-  double a, b, c, d, e; // coefficients of quartic
-
-  a = (u * u * u * u) + 2 * (u * u) * (w * w) + (w * w * w * w) +
-      2 * (C * C) * (u * u) * (v * v) / (B * B) +
-      2 * (C * C) * (v * v) * (w * w) / (B * B) +
-      (C * C * C * C) * (v * v * v * v) / (B * B * B * B);
-  b = 4 * (u * u * u) * x0 + 4 * (u * u) * w * z0 + 4 * u * (w * w) * x0 +
-      4 * (w * w * w) * z0 + 4 * (C * C) * (u * u) * v * y0 / (B * B) +
-      4 * (C * C) * u * (v * v) * x0 / (B * B) +
-      4 * (C * C) * (v * v) * w * z0 / (B * B) +
-      4 * (C * C) * v * (w * w) * y0 / (B * B) +
-      4 * (C * C * C * C) * (v * v * v) * y0 / (B * B * B * B);
-  c = -2 * (A * A) * (u * u) - 2 * (A * A) * (w * w) +
-      2 * (A * A) * (C * C) * (v * v) / (B * B) - 2 * (C * C) * (u * u) -
-      2 * (C * C) * (w * w) + 6 * (u * u) * (x0 * x0) +
-      2 * (u * u) * (z0 * z0) + 8 * u * w * x0 * z0 + 2 * (w * w) * (x0 * x0) +
-      6 * (w * w) * (z0 * z0) - 2 * (C * C * C * C) * (v * v) / (B * B) +
-      2 * (C * C) * (u * u) * (y0 * y0) / (B * B) +
-      8 * (C * C) * u * v * x0 * y0 / (B * B) +
-      2 * (C * C) * (v * v) * (x0 * x0) / (B * B) +
-      2 * (C * C) * (v * v) * (z0 * z0) / (B * B) +
-      8 * (C * C) * v * w * y0 * z0 / (B * B) +
-      2 * (C * C) * (w * w) * (y0 * y0) / (B * B) +
-      6 * (C * C * C * C) * (v * v) * (y0 * y0) / (B * B * B * B);
-  d = -4 * (A * A) * u * x0 - 4 * (A * A) * w * z0 +
-      4 * (A * A) * (C * C) * v * y0 / (B * B) - 4 * (C * C) * u * x0 -
-      4 * (C * C) * w * z0 + 4 * u * (x0 * x0 * x0) + 4 * u * x0 * (z0 * z0) +
-      4 * w * (x0 * x0) * z0 + 4 * w * (z0 * z0 * z0) -
-      4 * (C * C * C * C) * v * y0 / (B * B) +
-      4 * (C * C) * u * x0 * (y0 * y0) / (B * B) +
-      4 * (C * C) * v * (x0 * x0) * y0 / (B * B) +
-      4 * (C * C) * v * y0 * (z0 * z0) / (B * B) +
-      4 * (C * C) * w * (y0 * y0) * z0 / (B * B) +
-      4 * (C * C * C * C) * v * (y0 * y0 * y0) / (B * B * B * B);
-  e = (A * A * A * A) - 2 * (A * A) * (C * C) - 2 * (A * A) * (x0 * x0) -
-      2 * (A * A) * (z0 * z0) + 2 * (A * A) * (C * C) * (y0 * y0) / (B * B) +
-      (C * C * C * C) - 2 * (C * C) * (x0 * x0) - 2 * (C * C) * (z0 * z0) +
-      (x0 * x0 * x0 * x0) + 2 * (x0 * x0) * (z0 * z0) + (z0 * z0 * z0 * z0) -
-      2 * (C * C * C * C) * (y0 * y0) / (B * B) +
-      2 * (C * C) * (x0 * x0) * (y0 * y0) / (B * B) +
-      2 * (C * C) * (y0 * y0) * (z0 * z0) / (B * B) +
-      (C * C * C * C) * (y0 * y0 * y0 * y0) / (B * B * B * B);
-
-  //
   std::array<double, 4> roots;
   quartic_solve(b, c, d, e, roots);
 
@@ -1419,8 +1346,6 @@ double SurfaceYTorus::distance(Position r, Direction ang, bool coincident) const
 
   // otherwise no hit
   return INFTY;
-
-  return 0;
 }
 
 Direction SurfaceYTorus::normal(Position r) const
@@ -1484,161 +1409,27 @@ double SurfaceZTorus::distance(Position r, Direction ang, bool coincident) const
   double u = ang.x;
   double v = ang.y;
   double w = ang.z;
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
 
-  double xr = r.x;
-  double yr = r.y;
-  double zr = r.z;
+  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = d2 t^2 + d1 t + d0
+  double D = (C_ * C_) / (B_ * B_);
+  double c2 = u * u + v * v + D * w * w;
+  double c1 = 2 * (u * x + v * y + D * w * z);
+  double c0 = x * x + y * y + D * z * z + A_ * A_ - C_ * C_;
+  double four_A2 = 4 * A_ * A_;
+  double d2 = four_A2 * (u * u + v * v);
+  double d1 = 2 * four_A2 * (u * x + v * y);
+  double d0 = four_A2 * (x * x + y * y);
 
-  double A = A_;
-  double B = B_;
-  double C = C_;
+  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
+  double a = c2 * c2;
+  double b = 2 * c1 * c2;
+  double c = c1 * c1 + 2 * c0 * c2 - d2;
+  double d = 2 * c0 * c1 - d1;
+  double e = c0 * c0 - d0;
 
-  double x0 = x0_;
-  double y0 = y0_;
-  double z0 = z0_;
-
-  double a, b, c, d, e; // coefficients of quartic
-
-  // 4th order coefficient
-  a = (u * u * u * u) + 2 * (u * u) * (v * v) + (v * v * v * v) +
-      2 * (C * C) * (u * u) * (w * w) / (B * B) +
-      2 * (C * C) * (v * v) * (w * w) / (B * B) +
-      (C * C * C * C) * (w * w * w * w) / (B * B * B * B);
-  // 3rd order coefficient
-  b = -4 * (u * u * u) * x0 + 4 * (u * u * u) * xr - 4 * (u * u) * v * y0 +
-      4 * (u * u) * v * yr - 4 * u * (v * v) * x0 + 4 * u * (v * v) * xr -
-      4 * (v * v * v) * y0 + 4 * (v * v * v) * yr -
-      4 * (C * C) * (u * u) * w * z0 / (B * B) +
-      4 * (C * C) * (u * u) * w * zr / (B * B) -
-      4 * (C * C) * u * (w * w) * x0 / (B * B) +
-      4 * (C * C) * u * (w * w) * xr / (B * B) -
-      4 * (C * C) * (v * v) * w * z0 / (B * B) +
-      4 * (C * C) * (v * v) * w * zr / (B * B) -
-      4 * (C * C) * v * (w * w) * y0 / (B * B) +
-      4 * (C * C) * v * (w * w) * yr / (B * B) -
-      4 * (C * C * C * C) * (w * w * w) * z0 / (B * B * B * B) +
-      4 * (C * C * C * C) * (w * w * w) * zr / (B * B * B * B);
-  // 2nd order coefficient
-  c = -2 * (A * A) * (u * u) - 2 * (A * A) * (v * v) +
-      2 * (A * A) * (C * C) * (w * w) / (B * B) - 2 * (C * C) * (u * u) -
-      2 * (C * C) * (v * v) + 6 * (u * u) * (x0 * x0) - 12 * (u * u) * x0 * xr +
-      6 * (u * u) * (xr * xr) + 2 * (u * u) * (y0 * y0) -
-      4 * (u * u) * y0 * yr + 2 * (u * u) * (yr * yr) + 8 * u * v * x0 * y0 -
-      8 * u * v * x0 * yr - 8 * u * v * xr * y0 + 8 * u * v * xr * yr +
-      2 * (v * v) * (x0 * x0) - 4 * (v * v) * x0 * xr +
-      2 * (v * v) * (xr * xr) + 6 * (v * v) * (y0 * y0) -
-      12 * (v * v) * y0 * yr + 6 * (v * v) * (yr * yr) -
-      2 * (C * C * C * C) * (w * w) / (B * B) +
-      2 * (C * C) * (u * u) * (z0 * z0) / (B * B) -
-      4 * (C * C) * (u * u) * z0 * zr / (B * B) +
-      2 * (C * C) * (u * u) * (zr * zr) / (B * B) +
-      8 * (C * C) * u * w * x0 * z0 / (B * B) -
-      8 * (C * C) * u * w * x0 * zr / (B * B) -
-      8 * (C * C) * u * w * xr * z0 / (B * B) +
-      8 * (C * C) * u * w * xr * zr / (B * B) +
-      2 * (C * C) * (v * v) * (z0 * z0) / (B * B) -
-      4 * (C * C) * (v * v) * z0 * zr / (B * B) +
-      2 * (C * C) * (v * v) * (zr * zr) / (B * B) +
-      8 * (C * C) * v * w * y0 * z0 / (B * B) -
-      8 * (C * C) * v * w * y0 * zr / (B * B) -
-      8 * (C * C) * v * w * yr * z0 / (B * B) +
-      8 * (C * C) * v * w * yr * zr / (B * B) +
-      2 * (C * C) * (w * w) * (x0 * x0) / (B * B) -
-      4 * (C * C) * (w * w) * x0 * xr / (B * B) +
-      2 * (C * C) * (w * w) * (xr * xr) / (B * B) +
-      2 * (C * C) * (w * w) * (y0 * y0) / (B * B) -
-      4 * (C * C) * (w * w) * y0 * yr / (B * B) +
-      2 * (C * C) * (w * w) * (yr * yr) / (B * B) +
-      6 * (C * C * C * C) * (w * w) * (z0 * z0) / (B * B * B * B) -
-      12 * (C * C * C * C) * (w * w) * z0 * zr / (B * B * B * B) +
-      6 * (C * C * C * C) * (w * w) * (zr * zr) / (B * B * B * B);
-  // the 1st order terms
-  d = 4 * (A * A) * u * x0 - 4 * (A * A) * u * xr + 4 * (A * A) * v * y0 -
-      4 * (A * A) * v * yr - 4 * (A * A) * (C * C) * w * z0 / (B * B) +
-      4 * (A * A) * (C * C) * w * zr / (B * B) + 4 * (C * C) * u * x0 -
-      4 * (C * C) * u * xr + 4 * (C * C) * v * y0 - 4 * (C * C) * v * yr -
-      4 * u * (x0 * x0 * x0) + 12 * u * (x0 * x0) * xr -
-      12 * u * x0 * (xr * xr) - 4 * u * x0 * (y0 * y0) + 8 * u * x0 * y0 * yr -
-      4 * u * x0 * (yr * yr) + 4 * u * (xr * xr * xr) + 4 * u * xr * (y0 * y0) -
-      8 * u * xr * y0 * yr + 4 * u * xr * (yr * yr) - 4 * v * (x0 * x0) * y0 +
-      4 * v * (x0 * x0) * yr + 8 * v * x0 * xr * y0 - 8 * v * x0 * xr * yr -
-      4 * v * (xr * xr) * y0 + 4 * v * (xr * xr) * yr - 4 * v * (y0 * y0 * y0) +
-      12 * v * (y0 * y0) * yr - 12 * v * y0 * (yr * yr) +
-      4 * v * (yr * yr * yr) + 4 * (C * C * C * C) * w * z0 / (B * B) -
-      4 * (C * C * C * C) * w * zr / (B * B) -
-      4 * (C * C) * u * x0 * (z0 * z0) / (B * B) +
-      8 * (C * C) * u * x0 * z0 * zr / (B * B) -
-      4 * (C * C) * u * x0 * (zr * zr) / (B * B) +
-      4 * (C * C) * u * xr * (z0 * z0) / (B * B) -
-      8 * (C * C) * u * xr * z0 * zr / (B * B) +
-      4 * (C * C) * u * xr * (zr * zr) / (B * B) -
-      4 * (C * C) * v * y0 * (z0 * z0) / (B * B) +
-      8 * (C * C) * v * y0 * z0 * zr / (B * B) -
-      4 * (C * C) * v * y0 * (zr * zr) / (B * B) +
-      4 * (C * C) * v * yr * (z0 * z0) / (B * B) -
-      8 * (C * C) * v * yr * z0 * zr / (B * B) +
-      4 * (C * C) * v * yr * (zr * zr) / (B * B) -
-      4 * (C * C) * w * (x0 * x0) * z0 / (B * B) +
-      4 * (C * C) * w * (x0 * x0) * zr / (B * B) +
-      8 * (C * C) * w * x0 * xr * z0 / (B * B) -
-      8 * (C * C) * w * x0 * xr * zr / (B * B) -
-      4 * (C * C) * w * (xr * xr) * z0 / (B * B) +
-      4 * (C * C) * w * (xr * xr) * zr / (B * B) -
-      4 * (C * C) * w * (y0 * y0) * z0 / (B * B) +
-      4 * (C * C) * w * (y0 * y0) * zr / (B * B) +
-      8 * (C * C) * w * y0 * yr * z0 / (B * B) -
-      8 * (C * C) * w * y0 * yr * zr / (B * B) -
-      4 * (C * C) * w * (yr * yr) * z0 / (B * B) +
-      4 * (C * C) * w * (yr * yr) * zr / (B * B) -
-      4 * (C * C * C * C) * w * (z0 * z0 * z0) / (B * B * B * B) +
-      12 * (C * C * C * C) * w * (z0 * z0) * zr / (B * B * B * B) -
-      12 * (C * C * C * C) * w * z0 * (zr * zr) / (B * B * B * B) +
-      4 * (C * C * C * C) * w * (zr * zr * zr) / (B * B * B * B);
-  // the 0th order terms
-  e =
-    (A * A * A * A) - 2 * (A * A) * (C * C) - 2 * (A * A) * (x0 * x0) +
-    4 * (A * A) * x0 * xr - 2 * (A * A) * (xr * xr) - 2 * (A * A) * (y0 * y0) +
-    4 * (A * A) * y0 * yr - 2 * (A * A) * (yr * yr) +
-    2 * (A * A) * (C * C) * (z0 * z0) / (B * B) -
-    4 * (A * A) * (C * C) * z0 * zr / (B * B) +
-    2 * (A * A) * (C * C) * (zr * zr) / (B * B) + (C * C * C * C) -
-    2 * (C * C) * (x0 * x0) + 4 * (C * C) * x0 * xr - 2 * (C * C) * (xr * xr) -
-    2 * (C * C) * (y0 * y0) + 4 * (C * C) * y0 * yr - 2 * (C * C) * (yr * yr) +
-    (x0 * x0 * x0 * x0) - 4 * (x0 * x0 * x0) * xr + 6 * (x0 * x0) * (xr * xr) +
-    2 * (x0 * x0) * (y0 * y0) - 4 * (x0 * x0) * y0 * yr +
-    2 * (x0 * x0) * (yr * yr) - 4 * x0 * (xr * xr * xr) -
-    4 * x0 * xr * (y0 * y0) + 8 * x0 * xr * y0 * yr - 4 * x0 * xr * (yr * yr) +
-    (xr * xr * xr * xr) + 2 * (xr * xr) * (y0 * y0) - 4 * (xr * xr) * y0 * yr +
-    2 * (xr * xr) * (yr * yr) + (y0 * y0 * y0 * y0) - 4 * (y0 * y0 * y0) * yr +
-    6 * (y0 * y0) * (yr * yr) - 4 * y0 * (yr * yr * yr) + (yr * yr * yr * yr) -
-    2 * (C * C * C * C) * (z0 * z0) / (B * B) +
-    4 * (C * C * C * C) * z0 * zr / (B * B) -
-    2 * (C * C * C * C) * (zr * zr) / (B * B) +
-    2 * (C * C) * (x0 * x0) * (z0 * z0) / (B * B) -
-    4 * (C * C) * (x0 * x0) * z0 * zr / (B * B) +
-    2 * (C * C) * (x0 * x0) * (zr * zr) / (B * B) -
-    4 * (C * C) * x0 * xr * (z0 * z0) / (B * B) +
-    8 * (C * C) * x0 * xr * z0 * zr / (B * B) -
-    4 * (C * C) * x0 * xr * (zr * zr) / (B * B) +
-    2 * (C * C) * (xr * xr) * (z0 * z0) / (B * B) -
-    4 * (C * C) * (xr * xr) * z0 * zr / (B * B) +
-    2 * (C * C) * (xr * xr) * (zr * zr) / (B * B) +
-    2 * (C * C) * (y0 * y0) * (z0 * z0) / (B * B) -
-    4 * (C * C) * (y0 * y0) * z0 * zr / (B * B) +
-    2 * (C * C) * (y0 * y0) * (zr * zr) / (B * B) -
-    4 * (C * C) * y0 * yr * (z0 * z0) / (B * B) +
-    8 * (C * C) * y0 * yr * z0 * zr / (B * B) -
-    4 * (C * C) * y0 * yr * (zr * zr) / (B * B) +
-    2 * (C * C) * (yr * yr) * (z0 * z0) / (B * B) -
-    4 * (C * C) * (yr * yr) * z0 * zr / (B * B) +
-    2 * (C * C) * (yr * yr) * (zr * zr) / (B * B) +
-    (C * C * C * C) * (z0 * z0 * z0 * z0) / (B * B * B * B) -
-    4 * (C * C * C * C) * (z0 * z0 * z0) * zr / (B * B * B * B) +
-    6 * (C * C * C * C) * (z0 * z0) * (zr * zr) / (B * B * B * B) -
-    4 * (C * C * C * C) * z0 * (zr * zr * zr) / (B * B * B * B) +
-    (C * C * C * C) * (zr * zr * zr * zr) / (B * B * B * B);
-
-  //
   std::array<double, 4> roots;
   quartic_solve(b, c, d, e, roots);
 

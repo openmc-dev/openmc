@@ -312,8 +312,8 @@ element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
   :type:
-    The type of mesh. This can be either "regular", "rectilinear", or
-    "unstructured".
+    The type of mesh. This can be either "regular", "rectilinear",
+    "cylindrical", "spherical", or "unstructured".
 
   :dimension:
     The number of mesh cells in each direction. (For regular mesh only.)
@@ -340,7 +340,16 @@ attributes/sub-elements:
     The mesh divisions along the y-axis. (For rectilinear mesh only.)
 
   :z_grid:
-    The mesh divisions along the z-axis. (For rectilinear mesh only.)
+    The mesh divisions along the z-axis. (For rectilinear and cylindrical meshes only.)
+
+  :r_grid:
+    The mesh divisions along the r-axis. (For cylindrical and spherical meshes only.)
+
+  :p_grid:
+    The mesh divisions along the phi-axis. (For cylindrical and spherical meshes only.)
+
+  :t_grid:
+    The mesh divisions along the theta-axis. (For spherical mesh only.)
 
   :library:
     The mesh library used to represent an unstructured mesh. This can be either

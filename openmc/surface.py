@@ -2143,6 +2143,9 @@ class TorusMixin:
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
         raise NotImplemented('Torus surfaces cannot be rotated.')
 
+    def _get_base_coeffs(self):
+        raise NotImplementedError
+
 
 class XTorus(TorusMixin, Surface):
     """description.

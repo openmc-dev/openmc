@@ -79,6 +79,10 @@ class MeshBase(IDManagerMixin, ABC):
             return RegularMesh.from_hdf5(group)
         elif mesh_type == 'rectilinear':
             return RectilinearMesh.from_hdf5(group)
+        elif mesh_type == 'cylindrical':
+            return CylindricalMesh.from_hdf5(group)
+        elif mesh_type == 'spherical':
+            return SphericalMesh.from_hdf5(group)
         elif mesh_type == 'unstructured':
             return UnstructuredMesh.from_hdf5(group)
         else:
@@ -623,6 +627,339 @@ class RectilinearMesh(MeshBase):
         subelement.text = ' '.join(map(str, self.z_grid))
 
         return element
+
+class CylindricalMesh(MeshBase):
+    """A 3D cylindrical mesh
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    dimension : Iterable of int
+        The number of mesh cells in each direction.
+    n_dimension : int
+        Number of mesh dimensions (always 3 for a CylindricalMesh).
+    r_grid : Iterable of float
+        Mesh boundary points along the r-axis.
+    phi_grid : Iterable of float
+        Mesh boundary points along the phi-axis.
+    z_grid : Iterable of float
+        Mesh boundary points along the z-axis.
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
+        (2, 1, 1), ...]
+
+    """
+
+    def __init__(self, mesh_id=None, name=''):
+        super().__init__(mesh_id, name)
+
+        self._r_grid = None
+        self._phi_grid = [0, 360]
+        self._z_grid = None
+
+    @property
+    def dimension(self):
+        return (len(self.r_grid) - 1,
+                len(self.phi_grid) - 1,
+                len(self.z_grid) - 1)
+
+    @property
+    def n_dimension(self):
+        return 3
+
+    @property
+    def r_grid(self):
+        return self._r_grid
+
+    @property
+    def phi_grid(self):
+        return self._phi_grid
+
+    @property
+    def z_grid(self):
+        return self._z_grid
+
+    @property
+    def indices(self):
+        nr = len(self.r_grid) - 1
+        np = len(self.phi_grid) - 1
+        nz = len(self.z_grid) - 1
+        return ((r, p, z)
+                for z in range(1, nz + 1)
+                for p in range(1, np + 1)
+                for r in range(1, nr + 1))
+
+    @r_grid.setter
+    def r_grid(self, grid):
+        cv.check_type('mesh r_grid', grid, Iterable, Real)
+        self._r_grid = grid
+
+    @phi_grid.setter
+    def phi_grid(self, grid):
+        cv.check_type('mesh phi_grid', grid, Iterable, Real)
+        self._phi_grid = np.array(grid)
+
+    @z_grid.setter
+    def z_grid(self, grid):
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
+        self._z_grid = np.array(grid)
+
+    def __repr__(self):
+        fmt = '{0: <16}{1}{2}\n'
+        string = super().__repr__()
+        string += fmt.format('\tDimensions', '=\t', self.n_dimension)
+        r_grid_str = str(self._r_grid) if self._r_grid is None else len(self._r_grid)
+        string += fmt.format('\tN R pnts:', '=\t', r_grid_str)
+        if self._r_grid is not None:
+            string += fmt.format('\tR Min:', '=\t', self._r_grid[0])
+            string += fmt.format('\tR Max:', '=\t', self._r_grid[-1])
+        t_grid_str = str(self._phi_grid) if self._phi_grid is None else len(self._phi_grid)
+        string += fmt.format('\tN Phi pnts:', '=\t', t_grid_str)
+        if self._phi_grid is not None:
+            string += fmt.format('\tPhi Min:', '=\t', self._phi_grid[0])
+            string += fmt.format('\tPhi Max:', '=\t', self._phi_grid[-1])
+        p_grid_str = str(self._z_grid) if self._z_grid is None else len(self._z_grid)
+        string += fmt.format('\tN Z pnts:', '=\t', p_grid_str)
+        if self._z_grid is not None:
+            string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
+            string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
+        return string
+
+    @classmethod
+    def from_hdf5(cls, group):
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+
+        # Read and assign mesh properties
+        mesh = cls(mesh_id)
+        mesh.r_grid = group['r_grid'][()]
+        mesh.phi_grid = 180 / np.pi * group['p_grid'][()]
+        mesh.z_grid = group['z_grid'][()]
+
+        return mesh
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing mesh data
+
+        """
+
+        element = ET.Element("mesh")
+        element.set("id", str(self._id))
+        element.set("type", "cylindrical")
+
+        subelement = ET.SubElement(element, "r_grid")
+        subelement.text = ' '.join(map(str, self.r_grid))
+
+        subelement = ET.SubElement(element, "p_grid")
+        subelement.text = ' '.join(map(str, self.phi_grid))
+
+        subelement = ET.SubElement(element, "z_grid")
+        subelement.text = ' '.join(map(str, self.z_grid))
+
+        return element
+
+    def calc_mesh_volumes(self):
+        """Return Volumes for every mesh cell
+
+        Returns
+        -------
+        volumes : Iterable of float
+            Volumes
+
+        """
+
+        # V = int_r int_phi int_phi r dr dphi dz
+
+        V_r = np.array(self.r_grid)**2 / 3
+        V_r = V_r[1:] - V_r[:-1]
+        V_p = -np.cos(np.pi * np.array(self.phi_grid) / 180.0)
+        V_p = V_p[1:] - V_p[:-1]
+        V_z = np.array(self.z_grid) * np.pi / 180
+        V_z = V_z[1:] - V_z[:-1]
+
+        return np.multiply.outer(np.outer(V_r, V_p), V_z)
+
+
+class SphericalMesh(MeshBase):
+    """A 3D spherical mesh
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+    dimension : Iterable of int
+        The number of mesh cells in each direction.
+    n_dimension : int
+        Number of mesh dimensions (always 3 for a RectilinearMesh).
+    r_grid : Iterable of float
+        Mesh boundary points along the r-axis.
+    theta_grid : Iterable of float
+        Mesh boundary points along the theta-axis.
+    phi_grid : Iterable of float
+        Mesh boundary points along the phi-axis.
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
+        (2, 1, 1), ...]
+
+    """
+
+    def __init__(self, mesh_id=None, name=''):
+        super().__init__(mesh_id, name)
+
+        self._r_grid = None
+        self._theta_grid = [0, 180]
+        self._phi_grid = [0, 360]
+
+    @property
+    def dimension(self):
+        return (len(self.r_grid) - 1,
+                len(self.theta_grid) - 1,
+                len(self.phi_grid) - 1)
+
+    @property
+    def n_dimension(self):
+        return 3
+
+    @property
+    def r_grid(self):
+        return self._r_grid
+
+    @property
+    def theta_grid(self):
+        return self._theta_grid
+
+    @property
+    def phi_grid(self):
+        return self._phi_grid
+
+    @property
+    def indices(self):
+        nr = len(self.r_grid) - 1
+        nt = len(self.theta_grid) - 1
+        np = len(self.phi_grid) - 1
+        return ((r, t, p)
+                for p in range(1, np + 1)
+                for t in range(1, nt + 1)
+                for r in range(1, nr + 1))
+
+    @r_grid.setter
+    def r_grid(self, grid):
+        cv.check_type('mesh r_grid', grid, Iterable, Real)
+        self._r_grid = grid
+
+    @theta_grid.setter
+    def theta_grid(self, grid):
+        cv.check_type('mesh theta_grid', grid, Iterable, Real)
+        self._theta_grid = np.array(grid)
+
+    @phi_grid.setter
+    def phi_grid(self, grid):
+        cv.check_type('mesh phi_grid', grid, Iterable, Real)
+        self._phi_grid = np.array(grid)
+
+    def __repr__(self):
+        fmt = '{0: <16}{1}{2}\n'
+        string = super().__repr__()
+        string += fmt.format('\tDimensions', '=\t', self.n_dimension)
+        r_grid_str = str(self._r_grid) if not self._r_grid else len(self._r_grid)
+        string += fmt.format('\tN R pnts:', '=\t', r_grid_str)
+        if self._r_grid:
+            string += fmt.format('\tR Min:', '=\t', self._r_grid[0])
+            string += fmt.format('\tR Max:', '=\t', self._r_grid[-1])
+        t_grid_str = str(self._theta_grid) if not self._theta_grid else len(self._theta_grid)
+        string += fmt.format('\tN Theta pnts:', '=\t', t_grid_str)
+        if self._theta_grid:
+            string += fmt.format('\tTheta Min:', '=\t', self._theta_grid[0])
+            string += fmt.format('\tTheta Max:', '=\t', self._theta_grid[-1])
+        p_grid_str = str(self._phi_grid) if not self._phi_grid else len(self._phi_grid)
+        string += fmt.format('\tN Phi pnts:', '=\t', p_grid_str)
+        if self._phi_grid:
+            string += fmt.format('\tPhi Min:', '=\t', self._phi_grid[0])
+            string += fmt.format('\tPhi Max:', '=\t', self._phi_grid[-1])
+        return string
+
+    @classmethod
+    def from_hdf5(cls, group):
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+
+        # Read and assign mesh properties
+        mesh = cls(mesh_id)
+        mesh.r_grid = group['r_grid'][()]
+        mesh.theta_grid = 180 / np.pi * group['t_grid'][()]
+        mesh.phi_grid = 180 / np.pi * group['p_grid'][()]
+
+        return mesh
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing mesh data
+
+        """
+
+        element = ET.Element("mesh")
+        element.set("id", str(self._id))
+        element.set("type", "spherical")
+
+        subelement = ET.SubElement(element, "r_grid")
+        subelement.text = ' '.join(map(str, self.r_grid))
+
+        subelement = ET.SubElement(element, "t_grid")
+        subelement.text = ' '.join(map(str, self.theta_grid))
+
+        subelement = ET.SubElement(element, "p_grid")
+        subelement.text = ' '.join(map(str, self.phi_grid))
+
+        return element
+
+    def calc_mesh_volumes(self):
+        """Return Volumes for every mesh cell
+
+        Returns
+        -------
+        volumes : Iterable of float
+            Volumes
+
+        """
+
+        # V = int_r int_theta int_phi r^2 dr sin(theta) dtheta dphi
+
+        V_r = np.array(self.r_grid)**3 / 3
+        V_r = V_r[1:] - V_r[:-1]
+        V_t = -np.cos(np.pi * np.array(self.theta_grid) / 180.0)
+        V_t = V_t[1:] - V_t[:-1]
+        V_p = np.array(self.phi_grid) * np.pi / 180
+        V_p = V_p[1:] - V_p[:-1]
+
+        return np.multiply.outer(np.outer(V_r, V_t), V_p)
+
+
 
 
 class UnstructuredMesh(MeshBase):

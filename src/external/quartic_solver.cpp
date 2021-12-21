@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <cstdlib>
@@ -10,18 +11,11 @@ constexpr double QUART_RESCAL_FACT =
   7.156344627944542e+76; // = pow(DBL_MAX,1.0/4.0)/1.618034;
 constexpr double MACHEPS = std::numeric_limits<double>::epsilon();
 
-double max2(double a, double b)
-{
-  if (a >= b)
-    return a;
-  else
-    return b;
-}
 double max3(double a, double b, double c)
 {
   double t;
-  t = oqs::max2(a, b);
-  return oqs::max2(t, c);
+  t = std::max(a, b);
+  return std::max(t, c);
 }
 
 void solve_cubic_analytic_depressed_handle_inf(double b, double c, double* sol)

@@ -1059,7 +1059,7 @@ double SurfaceXTorus::distance(Position r, Direction ang, bool coincident) const
   coeff[4] = c2 * c2;
 
   std::complex<double> roots[4];
-  oqs_quartic_solver(coeff, roots);
+  oqs::quartic_solver(coeff, roots);
 
   // Find smallest positive, real root. In the case where the particle is
   // coincident with the surface, we are sure to have one root very close to
@@ -1147,7 +1147,7 @@ double SurfaceYTorus::distance(Position r, Direction ang, bool coincident) const
   coeff[4] = c2 * c2;
 
   std::complex<double> roots[4];
-  oqs_quartic_solver(coeff, roots);
+  oqs::quartic_solver(coeff, roots);
 
   // Find smallest positive, real root. In the case where the particle is
   // coincident with the surface, we are sure to have one root very close to
@@ -1235,7 +1235,7 @@ double SurfaceZTorus::distance(Position r, Direction ang, bool coincident) const
   coeff[4] = c2 * c2;
 
   std::complex<double> roots[4];
-  oqs_quartic_solver(coeff, roots);
+  oqs::quartic_solver(coeff, roots);
 
   // Find smallest positive, real root. In the case where the particle is
   // coincident with the surface, we are sure to have one root very close to

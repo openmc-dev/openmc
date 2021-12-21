@@ -3,6 +3,8 @@
 
 #include <complex>
 
-void oqs_quartic_solver(double coeff[5], std::complex<double> roots[4]);
+namespace oqs {
+void quartic_solver(double coeff[5], std::complex<double> roots[4]);
+} // end namespace oqs
 
 #endif // OPENMC_EXTERNAL_QUARTIC_SOLVER_H

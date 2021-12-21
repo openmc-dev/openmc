@@ -1,7 +1,6 @@
 #include <cmath>
 #include <complex>
 #include <cstdlib>
-#include <iostream>
 
 const double cubic_rescal_fact =
   3.488062113727083E+102; //= pow(DBL_MAX,1.0/3.0)/1.618034;
@@ -376,10 +375,6 @@ void oqs_quartic_solver(double coeff[5], std::complex<double> roots[4])
   int realcase[2], whichcase, k1, k, kmin, nsol;
   double rfactsq, rfact = 1.0;
 
-  if (coeff[4] == 0.0) {
-    std::cout << "That's not a quartic!\n";
-    return;
-  }
   a = coeff[3] / coeff[4];
   b = coeff[2] / coeff[4];
   c = coeff[1] / coeff[4];

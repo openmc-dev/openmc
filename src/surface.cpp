@@ -1259,7 +1259,7 @@ Direction SurfaceXTorus::normal(Position r) const
   // coefficients for the x, x^2, x^3 and x^4 term
   // but since we differeniate - we get x4 -> 4x3
   double dx_4 = 4 * x * x * x * C2 * C2 / (B2 * B2);
-  double dx_2 = 4 * x * C2 / B2 * (z * z + 2 * y * y - 2 * C2 + 2 * A2);
+  double dx_2 = 4 * x * C2 / B2 * (z * z + y * y - C2 + A2);
   double dx = dx_4 + dx_2;
   // similarly to y
   double dy_4 = 4 * y * y * y;
@@ -1371,7 +1371,7 @@ Direction SurfaceYTorus::normal(Position r) const
   double dx = dx_4 + dx_2;
   // similarly to y
   double dy_4 = 4 * y * y * y * C2 * C2 / (B2 * B2);
-  double dy_2 = 4 * y * (z * z + C2 * x * x / B2 - A2 - C2);
+  double dy_2 = 4 * y * C2 / B2 * (z * z + x * x + A2 - C2);
   double dy = dy_2 + dy_4;
   // and z
   double dz_4 = 4 * z * z * z;
@@ -1471,11 +1471,11 @@ Direction SurfaceZTorus::normal(Position r) const
   // coefficients for the x, x^2, x^3 and x^4 term
   // but since we differeniate - we get x4 -> 4x3
   double dx_4 = 1.0;
-  double dx_2 = -2. * (A2 - C2 + y * y + C2 * z * z / B2);
+  double dx_2 = -2. * (A2 + C2 - y * y - C2 * z * z / B2);
   double dx = 4. * dx_4 * x * x * x + 2. * dx_2 * x;
   // similarly to y
   double dy_4 = 1.0;
-  double dy_2 = -2. * (A2 - C2 + x * x + C2 * z * z / B2);
+  double dy_2 = -2. * (A2 + C2 - x * x - C2 * z * z / B2);
   double dy = 4. * dy_4 * y * y * y + 2. * dy_2 * y;
   // and z
   double dz_4 = std::pow(C_, 4) / std::pow(B_, 4);

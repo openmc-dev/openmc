@@ -4,11 +4,12 @@
 
 namespace oqs {
 
-const double cubic_rescal_fact =
-  3.488062113727083E+102; //= pow(DBL_MAX,1.0/3.0)/1.618034;
-const double quart_rescal_fact =
-  7.156344627944542E+76; // = pow(DBL_MAX,1.0/4.0)/1.618034;
-const double macheps = 2.2204460492503131E-16; // DBL_EPSILON
+constexpr double CUBIC_RESCAL_FACT =
+  3.488062113727083e+102; //= pow(DBL_MAX,1.0/3.0)/1.618034;
+constexpr double QUART_RESCAL_FACT =
+  7.156344627944542e+76; // = pow(DBL_MAX,1.0/4.0)/1.618034;
+constexpr double MACHEPS = std::numeric_limits<double>::epsilon();
+
 double max2(double a, double b)
 {
   if (a >= b)
@@ -137,7 +138,7 @@ void calc_phi0(double a, double b, double c, double d, double* phi0, int scaled)
     if ((std::isnan(rmax) || std::isinf(rmax)) && scaled) {
       // try harder: rescale also the depressed cubic if quartic has been
       // already rescaled
-      rfact = cubic_rescal_fact;
+      rfact = CUBIC_RESCAL_FACT;
       rfactsq = rfact * rfact;
       ggss = gg / rfactsq;
       hhss = hh / rfactsq;
@@ -171,7 +172,7 @@ void calc_phi0(double a, double b, double c, double d, double* phi0, int scaled)
   if (std::fabs(h) > maxtt)
     maxtt = std::fabs(h);
 
-  if (std::fabs(f) > macheps * maxtt) {
+  if (std::fabs(f) > MACHEPS * maxtt) {
     for (iter = 0; iter < 8; iter++) {
       df = 3.0 * xsq + g;
       if (df == 0) {
@@ -383,7 +384,7 @@ void quartic_solver(double coeff[5], std::complex<double> roots[4])
 
   // simple polynomial rescaling
   if (std::isnan(phi0) || std::isinf(phi0)) {
-    rfact = quart_rescal_fact;
+    rfact = QUART_RESCAL_FACT;
     a /= rfact;
     rfactsq = rfact * rfact;
     b /= rfactsq;
@@ -509,7 +510,7 @@ void quartic_solver(double coeff[5], std::complex<double> roots[4])
   /* Case III: d2 is 0 or approximately 0 (in this case check which solution is
    * better) */
   if (realcase[0] == -1 ||
-      (std::fabs(d2) <= macheps * oqs::max3(std::fabs(2. * b / 3.),
+      (std::fabs(d2) <= MACHEPS * oqs::max3(std::fabs(2. * b / 3.),
                                     std::fabs(phi0), l1 * l1))) {
     d3 = d - l3 * l3;
     if (realcase[0] == 1)

@@ -18,7 +18,7 @@ double max3(double a, double b, double c)
   return std::max(t, c);
 }
 
-void solve_cubic_analytic_depressed_handle_inf(double b, double c, double* sol)
+double solve_cubic_analytic_depressed_handle_inf(double b, double c)
 {
   /* find analytically the dominant root of a depressed cubic x^3+b*x+c
    * where coefficients b and c are large (see sec. 2.2 in the manuscript) */
@@ -29,11 +29,10 @@ void solve_cubic_analytic_depressed_handle_inf(double b, double c, double* sol)
   R = 0.5 * c;
   if (R == 0) {
     if (b <= 0) {
-      *sol = std::sqrt(-b);
+      return std::sqrt(-b);
     } else {
-      *sol = 0;
+      return 0;
     }
-    return;
   }
 
   if (std::fabs(Q) < std::fabs(R)) {
@@ -49,9 +48,9 @@ void solve_cubic_analytic_depressed_handle_inf(double b, double c, double* sol)
     sqrtQ = std::sqrt(Q);
     theta = std::acos((R / std::fabs(Q)) / sqrtQ);
     if (theta < PI2)
-      *sol = -2.0 * sqrtQ * std::cos(theta / 3.0);
+      return -2.0 * sqrtQ * std::cos(theta / 3.0);
     else
-      *sol = -2.0 * sqrtQ * std::cos((theta + TWOPI) / 3.0);
+      return -2.0 * sqrtQ * std::cos((theta + TWOPI) / 3.0);
   } else {
     if (std::fabs(Q) < std::fabs(R))
       A = -std::copysign(1.0, R) * cbrt(std::fabs(R) * (1.0 + std::sqrt(KK)));
@@ -64,10 +63,11 @@ void solve_cubic_analytic_depressed_handle_inf(double b, double c, double* sol)
       B = 0.0;
     else
       B = Q / A;
-    *sol = A + B;
+    return A + B;
   }
 }
-void solve_cubic_analytic_depressed(double b, double c, double* sol)
+
+double solve_cubic_analytic_depressed(double b, double c)
 {
   /* find analytically the dominant root of a depressed cubic x^3+b*x+c
    * (see sec. 2.2 in the manuscript) */
@@ -75,8 +75,7 @@ void solve_cubic_analytic_depressed(double b, double c, double* sol)
   Q = -b / 3.0;
   R = 0.5 * c;
   if (std::fabs(Q) > 1e102 || std::fabs(R) > 1e154) {
-    oqs::solve_cubic_analytic_depressed_handle_inf(b, c, sol);
-    return;
+    return oqs::solve_cubic_analytic_depressed_handle_inf(b, c);
   }
   Q3 = Q * Q * Q;
   R2 = R * R;
@@ -84,9 +83,9 @@ void solve_cubic_analytic_depressed(double b, double c, double* sol)
     theta = std::acos(R / std::sqrt(Q3));
     sqrtQ = -2.0 * std::sqrt(Q);
     if (theta < M_PI / 2)
-      *sol = sqrtQ * std::cos(theta / 3.0);
+      return sqrtQ * std::cos(theta / 3.0);
     else
-      *sol = sqrtQ * std::cos((theta + 2.0 * M_PI) / 3.0);
+      return sqrtQ * std::cos((theta + 2.0 * M_PI) / 3.0);
   } else {
     A = -std::copysign(1.0, R) *
         std::pow(std::fabs(R) + std::sqrt(R2 - Q3), 1.0 / 3.0);
@@ -94,10 +93,11 @@ void solve_cubic_analytic_depressed(double b, double c, double* sol)
       B = 0.0;
     else
       B = Q / A;
-    *sol = A + B; /* this is always largest root even if A=B */
+    return A + B; /* this is always largest root even if A=B */
   }
 }
-void calc_phi0(double a, double b, double c, double d, double* phi0, int scaled)
+
+double calc_phi0(double a, double b, double c, double d, int scaled)
 {
   /* find phi0 as the dominant root of the depressed and shifted cubic
    * in eq. (79) (see also the discussion in sec. 2.2 of the manuscript) */
@@ -126,9 +126,9 @@ void calc_phi0(double a, double b, double c, double d, double* phi0, int scaled)
 
   g = hh - 4 * dq - 3 * gg;                                     /* eq. (85) */
   h = (8 * dq + hh - 2 * gg) * bq / 3 - cq * cq - dq * aq * aq; /* eq. (86) */
-  oqs::solve_cubic_analytic_depressed(g, h, &rmax);
+  rmax = oqs::solve_cubic_analytic_depressed(g, h);
   if (std::isnan(rmax) || std::isinf(rmax)) {
-    oqs::solve_cubic_analytic_depressed_handle_inf(g, h, &rmax);
+    rmax = oqs::solve_cubic_analytic_depressed_handle_inf(g, h);
     if ((std::isnan(rmax) || std::isinf(rmax)) && scaled) {
       // try harder: rescale also the depressed cubic if quartic has been
       // already rescaled
@@ -145,9 +145,9 @@ void calc_phi0(double a, double b, double c, double d, double* phi0, int scaled)
       g = hhss - 4.0 * dqss - 3.0 * ggss;
       h = (8.0 * dqss + hhss - 2.0 * ggss) * bqs / 3 - cqs * (cqs / rfact) -
           (dq / rfact) * aqs * aqs;
-      oqs::solve_cubic_analytic_depressed(g, h, &rmax);
+      rmax = oqs::solve_cubic_analytic_depressed(g, h);
       if (std::isnan(rmax) || std::isinf(rmax)) {
-        oqs::solve_cubic_analytic_depressed_handle_inf(g, h, &rmax);
+        rmax = oqs::solve_cubic_analytic_depressed_handle_inf(g, h);
       }
       rmax *= rfact;
     }
@@ -187,8 +187,9 @@ void calc_phi0(double a, double b, double c, double d, double* phi0, int scaled)
       }
     }
   }
-  *phi0 = x;
+  return x;
 }
+
 double calc_err_ldlt(
   double b, double c, double d, double d2, double l1, double l2, double l3)
 {
@@ -202,6 +203,7 @@ double calc_err_ldlt(
                   : std::fabs(((d2 * l2 * l2 + l3 * l3) - d) / d);
   return sum;
 }
+
 double calc_err_abcd_cmplx(double a, double b, double c, double d,
   std::complex<double> aq, std::complex<double> bq, std::complex<double> cq,
   std::complex<double> dq)
@@ -231,6 +233,7 @@ double calc_err_abcd(double a, double b, double c, double d, double aq,
   sum += (a == 0) ? std::fabs(aq + cq) : std::fabs(((aq + cq) - a) / a);
   return sum;
 }
+
 double calc_err_abc(
   double a, double b, double c, double aq, double bq, double cq, double dq)
 {
@@ -323,6 +326,7 @@ void NRabcd(double a, double b, double c, double d, double* AQ, double* BQ,
   *CQ = x[2];
   *DQ = x[3];
 }
+
 void solve_quadratic(double a, double b, std::complex<double> roots[2])
 {
   double div, sqrtd, diskr, zmax, zmin;
@@ -348,6 +352,7 @@ void solve_quadratic(double a, double b, std::complex<double> roots[2])
     roots[1] = std::complex<double>(-a / 2, -sqrtd / 2);
   }
 }
+
 void quartic_solver(double coeff[5], std::complex<double> roots[4])
 {
   /* USAGE:
@@ -374,7 +379,7 @@ void quartic_solver(double coeff[5], std::complex<double> roots[4])
   b = coeff[2] / coeff[4];
   c = coeff[1] / coeff[4];
   d = coeff[0] / coeff[4];
-  oqs::calc_phi0(a, b, c, d, &phi0, 0);
+  phi0 = oqs::calc_phi0(a, b, c, d, 0);
 
   // simple polynomial rescaling
   if (std::isnan(phi0) || std::isinf(phi0)) {
@@ -384,7 +389,7 @@ void quartic_solver(double coeff[5], std::complex<double> roots[4])
     b /= rfactsq;
     c /= rfactsq * rfact;
     d /= rfactsq * rfactsq;
-    oqs::calc_phi0(a, b, c, d, &phi0, 1);
+    phi0 = oqs::calc_phi0(a, b, c, d, 1);
   }
   l1 = a / 2;            /* eq. (16) */
   l3 = b / 6 + phi0 / 2; /* eq. (18) */

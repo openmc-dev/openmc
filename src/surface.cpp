@@ -1007,6 +1007,53 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 }
 
 //==============================================================================
+// Torus helper functions
+//==============================================================================
+
+double torus_distance(double x1, double x2, double x3, double u1, double u2,
+  double u3, double A, double B, double C, bool coincident)
+{
+  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = d2 t^2 + d1 t + d0
+  double D = (C * C) / (B * B);
+  double c2 = u1 * u1 + u2 * u2 + D * u3 * u3;
+  double c1 = 2 * (u1 * x1 + u2 * x2 + D * u3 * x3);
+  double c0 = x1 * x1 + x2 * x2 + D * x3 * x3 + A * A - C * C;
+  double four_A2 = 4 * A * A;
+  double d2 = four_A2 * (u1 * u1 + u2 * u2);
+  double d1 = 2 * four_A2 * (u1 * x1 + u2 * x2);
+  double d0 = four_A2 * (x1 * x1 + x2 * x2);
+
+  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
+  double coeff[5];
+  coeff[0] = c0 * c0 - d0;
+  coeff[1] = 2 * c0 * c1 - d1;
+  coeff[2] = c1 * c1 + 2 * c0 * c2 - d2;
+  coeff[3] = 2 * c1 * c2;
+  coeff[4] = c2 * c2;
+
+  std::complex<double> roots[4];
+  oqs::quartic_solver(coeff, roots);
+
+  // Find smallest positive, real root. In the case where the particle is
+  // coincident with the surface, we are sure to have one root very close to
+  // zero but possibly small and positive. A tolerance is set to discard that
+  // zero.
+  double distance = INFTY;
+  double cutoff = coincident ? 1e-9 : 0.0;
+  for (int i = 0; i < 4; ++i) {
+    if (roots[i].imag() == 0) {
+      double root = roots[i].real();
+      if (root > cutoff && root < distance) {
+        distance = root;
+      }
+    }
+  }
+  return distance;
+}
+
+//==============================================================================
+// SurfaceXTorus implementation
+//==============================================================================
 
 SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
@@ -1031,51 +1078,12 @@ double SurfaceXTorus::evaluate(Position r) const
          std::pow(std::sqrt(y * y + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
-double SurfaceXTorus::distance(Position r, Direction ang, bool coincident) const
+double SurfaceXTorus::distance(Position r, Direction u, bool coincident) const
 {
-  double u = ang.x;
-  double v = ang.y;
-  double w = ang.z;
   double x = r.x - x0_;
   double y = r.y - y0_;
   double z = r.z - z0_;
-
-  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = d2 t^2 + d1 t + d0
-  double D = (C_ * C_) / (B_ * B_);
-  double c2 = D * u * u + v * v + w * w;
-  double c1 = 2 * (D * u * x + v * y + w * z);
-  double c0 = D * x * x + y * y + z * z + A_ * A_ - C_ * C_;
-  double four_A2 = 4 * A_ * A_;
-  double d2 = four_A2 * (v * v + w * w);
-  double d1 = 2 * four_A2 * (v * y + w * z);
-  double d0 = four_A2 * (y * y + z * z);
-
-  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
-  double coeff[5];
-  coeff[0] = c0 * c0 - d0;
-  coeff[1] = 2 * c0 * c1 - d1;
-  coeff[2] = c1 * c1 + 2 * c0 * c2 - d2;
-  coeff[3] = 2 * c1 * c2;
-  coeff[4] = c2 * c2;
-
-  std::complex<double> roots[4];
-  oqs::quartic_solver(coeff, roots);
-
-  // Find smallest positive, real root. In the case where the particle is
-  // coincident with the surface, we are sure to have one root very close to
-  // zero but possibly small and positive. A tolerance is set to discard that
-  // zero.
-  double distance = INFTY;
-  double cutoff = coincident ? 1e-9 : 0.0;
-  for (int i = 0; i < 4; ++i) {
-    if (roots[i].imag() == 0) {
-      double root = roots[i].real();
-      if (root > cutoff && root < distance) {
-        distance = root;
-      }
-    }
-  }
-  return distance;
+  return torus_distance(y, z, x, u.y, u.z, u.x, A_, B_, C_, coincident);
 }
 
 Direction SurfaceXTorus::normal(Position r) const
@@ -1098,6 +1106,10 @@ Direction SurfaceXTorus::normal(Position r) const
   return n / n.norm();
 }
 
+//==============================================================================
+// SurfaceYTorus implementation
+//==============================================================================
+
 SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
@@ -1119,51 +1131,12 @@ double SurfaceYTorus::evaluate(Position r) const
          std::pow(std::sqrt(x * x + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
-double SurfaceYTorus::distance(Position r, Direction ang, bool coincident) const
+double SurfaceYTorus::distance(Position r, Direction u, bool coincident) const
 {
-  double u = ang.x;
-  double v = ang.y;
-  double w = ang.z;
   double x = r.x - x0_;
   double y = r.y - y0_;
   double z = r.z - z0_;
-
-  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = d2 t^2 + d1 t + d0
-  double D = (C_ * C_) / (B_ * B_);
-  double c2 = u * u + D * v * v + w * w;
-  double c1 = 2 * (u * x + D * v * y + w * z);
-  double c0 = x * x + D * y * y + z * z + A_ * A_ - C_ * C_;
-  double four_A2 = 4 * A_ * A_;
-  double d2 = four_A2 * (u * u + w * w);
-  double d1 = 2 * four_A2 * (u * x + w * z);
-  double d0 = four_A2 * (x * x + z * z);
-
-  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
-  double coeff[5];
-  coeff[0] = c0 * c0 - d0;
-  coeff[1] = 2 * c0 * c1 - d1;
-  coeff[2] = c1 * c1 + 2 * c0 * c2 - d2;
-  coeff[3] = 2 * c1 * c2;
-  coeff[4] = c2 * c2;
-
-  std::complex<double> roots[4];
-  oqs::quartic_solver(coeff, roots);
-
-  // Find smallest positive, real root. In the case where the particle is
-  // coincident with the surface, we are sure to have one root very close to
-  // zero but possibly small and positive. A tolerance is set to discard that
-  // zero.
-  double distance = INFTY;
-  double cutoff = coincident ? 1e-9 : 0.0;
-  for (int i = 0; i < 4; ++i) {
-    if (roots[i].imag() == 0) {
-      double root = roots[i].real();
-      if (root > cutoff && root < distance) {
-        distance = root;
-      }
-    }
-  }
-  return distance;
+  return torus_distance(x, z, y, u.x, u.z, u.y, A_, B_, C_, coincident);
 }
 
 Direction SurfaceYTorus::normal(Position r) const
@@ -1186,6 +1159,10 @@ Direction SurfaceYTorus::normal(Position r) const
   return n / n.norm();
 }
 
+//==============================================================================
+// SurfaceZTorus implementation
+//==============================================================================
+
 SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
@@ -1207,51 +1184,12 @@ double SurfaceZTorus::evaluate(Position r) const
          std::pow(std::sqrt(x * x + y * y) - A_, 2) / (C_ * C_) - 1.;
 }
 
-double SurfaceZTorus::distance(Position r, Direction ang, bool coincident) const
+double SurfaceZTorus::distance(Position r, Direction u, bool coincident) const
 {
-  double u = ang.x;
-  double v = ang.y;
-  double w = ang.z;
   double x = r.x - x0_;
   double y = r.y - y0_;
   double z = r.z - z0_;
-
-  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = d2 t^2 + d1 t + d0
-  double D = (C_ * C_) / (B_ * B_);
-  double c2 = u * u + v * v + D * w * w;
-  double c1 = 2 * (u * x + v * y + D * w * z);
-  double c0 = x * x + y * y + D * z * z + A_ * A_ - C_ * C_;
-  double four_A2 = 4 * A_ * A_;
-  double d2 = four_A2 * (u * u + v * v);
-  double d1 = 2 * four_A2 * (u * x + v * y);
-  double d0 = four_A2 * (x * x + y * y);
-
-  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
-  double coeff[5];
-  coeff[0] = c0 * c0 - d0;
-  coeff[1] = 2 * c0 * c1 - d1;
-  coeff[2] = c1 * c1 + 2 * c0 * c2 - d2;
-  coeff[3] = 2 * c1 * c2;
-  coeff[4] = c2 * c2;
-
-  std::complex<double> roots[4];
-  oqs::quartic_solver(coeff, roots);
-
-  // Find smallest positive, real root. In the case where the particle is
-  // coincident with the surface, we are sure to have one root very close to
-  // zero but possibly small and positive. A tolerance is set to discard that
-  // zero.
-  double distance = INFTY;
-  double cutoff = coincident ? 1e-9 : 0.0;
-  for (int i = 0; i < 4; ++i) {
-    if (roots[i].imag() == 0) {
-      double root = roots[i].real();
-      if (root > cutoff && root < distance) {
-        distance = root;
-      }
-    }
-  }
-  return distance;
+  return torus_distance(x, y, z, u.x, u.y, u.z, A_, B_, C_, coincident);
 }
 
 Direction SurfaceZTorus::normal(Position r) const

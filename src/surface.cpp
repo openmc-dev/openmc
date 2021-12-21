@@ -1252,27 +1252,17 @@ Direction SurfaceXTorus::normal(Position r) const
   double y = r.y - y0_;
   double z = r.z - z0_;
 
-  double A2 = A_ * A_;
-  double B2 = B_ * B_;
-  double C2 = C_ * C_;
-
-  // coefficients for the x, x^2, x^3 and x^4 term
-  // but since we differeniate - we get x4 -> 4x3
-  double dx_4 = 4 * x * x * x * C2 * C2 / (B2 * B2);
-  double dx_2 = 4 * x * C2 / B2 * (z * z + y * y - C2 + A2);
-  double dx = dx_4 + dx_2;
-  // similarly to y
-  double dy_4 = 4 * y * y * y;
-  double dy_2 = 4 * y * (z * z + C2 * x * x / B2 - A2 - C2);
-  double dy = dy_2 + dy_4;
-  // and z
-  double dz_4 = 4 * z * z * z;
-  double dz_2 = 4 * z * (C2 * x * x / B2 + y * y - C2 - A2);
-  double dz = dz_2 + dz_4;
-
-  double length = std::sqrt(dx * dx + dy * dy + dz * dz);
-
-  return {dx / length, dy / length, dz / length};
+  // f(x,y,z) = x^2/B^2 + (sqrt(y^2 + z^2) - A)^2/C^2 - 1
+  // ∂f/∂x = 2x/B^2
+  // ∂f/∂y = 2y(g - A)/(g*C^2) where g = sqrt(y^2 + z^2)
+  // ∂f/∂z = 2z(g - A)/(g*C^2)
+  // Multiplying by g*C^2*B^2 / 2 gives:
+  double g = std::sqrt(y * y + z * z);
+  double nx = C_ * C_ * g * x;
+  double ny = y * (g - A_) * B_ * B_;
+  double nz = z * (g - A_) * B_ * B_;
+  Direction n(nx, ny, nz);
+  return n / n.norm();
 }
 
 SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
@@ -1355,32 +1345,17 @@ Direction SurfaceYTorus::normal(Position r) const
   double y = r.y - y0_;
   double z = r.z - z0_;
 
-  double A2 = A_ * A_;
-  double B2 = B_ * B_;
-  double C2 = C_ * C_;
-
-  // a**4 - 2*a**2*c**2 - 2*a**2*x**2 - 2*a**2*z**2 + 2*a**2*c**2*y**2/b**2 +
-  // c**4
-  // - 2*c**2*x**2 - 2*c**2*z**2 + x**4 + 2*x**2*z**2 + z**4 - 2*c**4*y**2/b**2
-  // + 2*c**2*x**2*y**2/b**2 + 2*c**2*y**2*z**2/b**2 + c**4*y**4/b**4
-
-  // coefficients for the x, x^2, x^3 and x^4 term
-  // but since we differeniate - we get x4 -> 4x3
-  double dx_4 = 4 * x * x * x;
-  double dx_2 = 4 * x * (z * z + C2 * y * y / B2 - A2 - C2);
-  double dx = dx_4 + dx_2;
-  // similarly to y
-  double dy_4 = 4 * y * y * y * C2 * C2 / (B2 * B2);
-  double dy_2 = 4 * y * C2 / B2 * (z * z + x * x + A2 - C2);
-  double dy = dy_2 + dy_4;
-  // and z
-  double dz_4 = 4 * z * z * z;
-  double dz_2 = 4 * z * (C2 * y * y / B2 + x * x - C2 - A2);
-  double dz = dz_2 + dz_4;
-
-  double length = std::sqrt(dx * dx + dy * dy + dz * dz);
-
-  return {dx / length, dy / length, dz / length};
+  // f(x,y,z) = y^2/B^2 + (sqrt(x^2 + z^2) - A)^2/C^2 - 1
+  // ∂f/∂x = 2x(g - A)/(g*C^2) where g = sqrt(x^2 + z^2)
+  // ∂f/∂y = 2y/B^2
+  // ∂f/∂z = 2z(g - A)/(g*C^2)
+  // Multiplying by g*C^2*B^2 / 2 gives:
+  double g = std::sqrt(x * x + z * z);
+  double nx = x * (g - A_) * B_ * B_;
+  double ny = C_ * C_ * g * y;
+  double nz = z * (g - A_) * B_ * B_;
+  Direction n(nx, ny, nz);
+  return n / n.norm();
 }
 
 SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
@@ -1464,28 +1439,17 @@ Direction SurfaceZTorus::normal(Position r) const
   double y = r.y - y0_;
   double z = r.z - z0_;
 
-  double A2 = A_ * A_;
-  double B2 = B_ * B_;
-  double C2 = C_ * C_;
-
-  // coefficients for the x, x^2, x^3 and x^4 term
-  // but since we differeniate - we get x4 -> 4x3
-  double dx_4 = 1.0;
-  double dx_2 = -2. * (A2 + C2 - y * y - C2 * z * z / B2);
-  double dx = 4. * dx_4 * x * x * x + 2. * dx_2 * x;
-  // similarly to y
-  double dy_4 = 1.0;
-  double dy_2 = -2. * (A2 + C2 - x * x - C2 * z * z / B2);
-  double dy = 4. * dy_4 * y * y * y + 2. * dy_2 * y;
-  // and z
-  double dz_4 = std::pow(C_, 4) / std::pow(B_, 4);
-  double dz_2 = 2. * (A2 * C2 / B2 - std::pow(C_, 4) / B2 + C2 * x * x / B2 +
-                       C2 * y * y / B2);
-  double dz = 4. * dz_4 * z * z * z + 2. * dz_2 * z;
-
-  double length = std::sqrt(dx * dx + dy * dy + dz * dz);
-
-  return {dx / length, dy / length, dz / length};
+  // f(x,y,z) = z^2/B^2 + (sqrt(x^2 + y^2) - A)^2/C^2 - 1
+  // ∂f/∂x = 2x(g - A)/(g*C^2) where g = sqrt(x^2 + y^2)
+  // ∂f/∂y = 2y(g - A)/(g*C^2)
+  // ∂f/∂z = 2z/B^2
+  // Multiplying by g*C^2*B^2 / 2 gives:
+  double g = std::sqrt(x * x + y * y);
+  double nx = x * (g - A_) * B_ * B_;
+  double ny = y * (g - A_) * B_ * B_;
+  double nz = C_ * C_ * g * z;
+  Position n(nx, ny, nz);
+  return n / n.norm();
 }
 
 //==============================================================================

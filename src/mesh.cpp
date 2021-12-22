@@ -201,6 +201,10 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 
 const std::string UnstructuredMesh::mesh_type = "unstructured";
 
+virtual std::string UnstructuredMesh::get_mesh_type() const {
+  return mesh_type;
+}
+
 void UnstructuredMesh::surface_bins_crossed(
   Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
@@ -1956,7 +1960,7 @@ double MOABMesh::volume(int bin) const
 
 std::string MOABMesh::library() const
 {
-  return MOABMesh::mesh_lib_type;
+  return mesh_lib_type;
 }
 
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
@@ -2351,7 +2355,7 @@ Position LibMesh::centroid(int bin) const
 
 std::string LibMesh::library() const
 {
-  return LibMesh::mesh_lib_type;
+  return mesh_lib_type;
 }
 
 int LibMesh::n_bins() const

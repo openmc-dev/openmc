@@ -437,7 +437,8 @@ public:
   UnstructuredMesh(const std::string& filename);
 
   static const std::string mesh_type;
-
+  virtual std::string get_mesh_type() const override;
+  
   // Overridden Methods
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;

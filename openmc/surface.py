@@ -648,7 +648,7 @@ class Plane(PlaneMixin, Surface):
         The 'C' parameter for the plane. Defaults to 0.
     d : float, optional
         The 'D' parameter for the plane. Defaults to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -668,7 +668,7 @@ class Plane(PlaneMixin, Surface):
         The 'C' parameter for the plane
     d : float
         The 'D' parameter for the plane
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     periodic_surface : openmc.Surface
@@ -2064,7 +2064,7 @@ class Quadric(QuadricMixin, Surface):
     ----------
     a, b, c, d, e, f, g, h, j, k : float, optional
         coefficients for the surface. All default to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -2078,7 +2078,7 @@ class Quadric(QuadricMixin, Surface):
     ----------
     a, b, c, d, e, f, g, h, j, k : float
         coefficients for the surface
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -2119,6 +2119,7 @@ class Quadric(QuadricMixin, Surface):
 
 
 class TorusMixin:
+    """A Mixin class implementing common functionality for torus surfaces"""
     _coeff_keys = ('x0', 'y0', 'z0', 'a', 'b', 'c')
 
     def __init__(self, x0=0., y0=0., z0=0., a=0., b=0., c=0., **kwargs):
@@ -2141,26 +2142,48 @@ class TorusMixin:
         return surf
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
-        raise NotImplemented('Torus surfaces cannot be rotated.')
+        raise NotImplementedError('Torus surfaces cannot be rotated.')
 
     def _get_base_coeffs(self):
         raise NotImplementedError
 
 
 class XTorus(TorusMixin, Surface):
-    """description.
+    """A torus of the form :math:`(x - x_0)^2/B^2 + (\sqrt{(y - y_0)^2 + (z -
+    z_0)^2} - A)^2/C^2 - 1 = 0`.
 
     Parameters
     ----------
-    x0, y0, z0, a, b, c : float, optional
-        coefficients for the surface. All default to 0.
-    kwargs
+    x0 : float
+        x-coordinate of the center of the axis of revolution
+    y0 : float
+        y-coordinate of the center of the axis of revolution
+    z0 : float
+        z-coordinate of the center of the axis of revolution
+    a : float
+        Major radius of the torus
+    b : float
+        Minor radius of the torus (parallel to axis of revolution)
+    c : float
+        Minor radius of the torus (perpendicular to axis of revolution)
+    kwargs : dict
+        Keyword arguments passed to the :class:`Surface` constructor
 
     Attributes
     ----------
-    a, b, c, d, e, f, g, h, j, k : float
-        coefficients for the surface
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    x0 : float
+        x-coordinate of the center of the axis of revolution
+    y0 : float
+        y-coordinate of the center of the axis of revolution
+    z0 : float
+        z-coordinate of the center of the axis of revolution
+    a : float
+        Major radius of the torus
+    b : float
+        Minor radius of the torus (parallel to axis of revolution)
+    c : float
+        Minor radius of the torus (perpendicular to axis of revolution)
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -2184,29 +2207,52 @@ class XTorus(TorusMixin, Surface):
         c = self.c
         return (x*x)/(b*b) + (math.sqrt(y*y + z*z) - a)**2/(c*c) - 1
 
+    def bounding_box(self, side):
+        x0, y0, z0 = self.x0, self.y0, self.z0
+        a, b, c = self.a, self.b, self.c
+        if side == '-':
+            return (np.array([x0 - b, y0 - a - c, z0 - a - c]),
+                    np.array([x0 + b, y0 + a + c, z0 + a + c]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
 class YTorus(TorusMixin, Surface):
-    """description.
+    """A torus of the form :math:`(y - y_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (z -
+    z_0)^2} - A)^2/C^2 - 1 = 0`.
 
     Parameters
     ----------
-    surface_id : int, optional
-        Unique identifier for the surface. If not specified, an identifier will
-        automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
-        Boundary condition that defines the behavior for particles hitting the
-        surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface.
-    x0, y0 ,z0, A, B, C,  : float, optional
-        coefficients for the surface. All default to 0.
-    name : str, optional
-        Name of the surface. If not specified, the name will be the empty string.
+    x0 : float
+        x-coordinate of the center of the axis of revolution
+    y0 : float
+        y-coordinate of the center of the axis of revolution
+    z0 : float
+        z-coordinate of the center of the axis of revolution
+    a : float
+        Major radius of the torus
+    b : float
+        Minor radius of the torus (parallel to axis of revolution)
+    c : float
+        Minor radius of the torus (perpendicular to axis of revolution)
+    kwargs : dict
+        Keyword arguments passed to the :class:`Surface` constructor
 
     Attributes
     ----------
-    a, b, c, d, e, f, g, h, j, k : float
-        coefficients for the surface
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    x0 : float
+        x-coordinate of the center of the axis of revolution
+    y0 : float
+        y-coordinate of the center of the axis of revolution
+    z0 : float
+        z-coordinate of the center of the axis of revolution
+    a : float
+        Major radius of the torus
+    b : float
+        Minor radius of the torus (parallel to axis of revolution)
+    c : float
+        Minor radius of the torus (perpendicular to axis of revolution)
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -2230,29 +2276,52 @@ class YTorus(TorusMixin, Surface):
         c = self.c
         return (y*y)/(b*b) + (math.sqrt(x*x + z*z) - a)**2/(c*c) - 1
 
+    def bounding_box(self, side):
+        x0, y0, z0 = self.x0, self.y0, self.z0
+        a, b, c = self.a, self.b, self.c
+        if side == '-':
+            return (np.array([x0 - a - c, y0 - b, z0 - a - c]),
+                    np.array([x0 + a + c, y0 + b, z0 + a + c]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
 class ZTorus(TorusMixin, Surface):
-    """description.
+    """A torus of the form :math:`(z - z_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (y -
+    y_0)^2} - A)^2/C^2 - 1 = 0`.
 
     Parameters
     ----------
-    surface_id : int, optional
-        Unique identifier for the surface. If not specified, an identifier will
-        automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
-        Boundary condition that defines the behavior for particles hitting the
-        surface. Defaults to transmissive boundary condition where particles
-        freely pass through the surface.
-    x0, y0 ,z0, A, B, C,  : float, optional
-        coefficients for the surface. All default to 0.
-    name : str, optional
-        Name of the surface. If not specified, the name will be the empty string.
+    x0 : float
+        x-coordinate of the center of the axis of revolution
+    y0 : float
+        y-coordinate of the center of the axis of revolution
+    z0 : float
+        z-coordinate of the center of the axis of revolution
+    a : float
+        Major radius of the torus
+    b : float
+        Minor radius of the torus (parallel to axis of revolution)
+    c : float
+        Minor radius of the torus (perpendicular to axis of revolution)
+    kwargs : dict
+        Keyword arguments passed to the :class:`Surface` constructor
 
     Attributes
     ----------
-    a, b, c, d, e, f, g, h, j, k : float
-        coefficients for the surface
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    x0 : float
+        x-coordinate of the center of the axis of revolution
+    y0 : float
+        y-coordinate of the center of the axis of revolution
+    z0 : float
+        z-coordinate of the center of the axis of revolution
+    a : float
+        Major radius of the torus
+    b : float
+        Minor radius of the torus (parallel to axis of revolution)
+    c : float
+        Minor radius of the torus (perpendicular to axis of revolution)
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coefficients : dict
@@ -2263,7 +2332,6 @@ class ZTorus(TorusMixin, Surface):
         Name of the surface
     type : str
         Type of the surface
-
     """
 
     _type = 'z-torus'
@@ -2276,6 +2344,16 @@ class ZTorus(TorusMixin, Surface):
         b = self.b
         c = self.c
         return (z*z)/(b*b) + (math.sqrt(x*x + y*y) - a)**2/(c*c) - 1
+
+    def bounding_box(self, side):
+        x0, y0, z0 = self.x0, self.y0, self.z0
+        a, b, c = self.a, self.b, self.c
+        if side == '-':
+            return (np.array([x0 - a - c, y0 - a - c, z0 - b]),
+                    np.array([x0 + a + c, y0 + a + c, z0 + b]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
 
 class Halfspace(Region):
@@ -2520,7 +2598,7 @@ class Halfspace(Region):
 _SURFACE_CLASSES = {cls._type: cls for cls in Surface.__subclasses__()}
 
 
-# Set virtual base classes for "casting" up the heirarchy
+# Set virtual base classes for "casting" up the hierarchy
 Plane._virtual_base = Plane
 XPlane._virtual_base = Plane
 YPlane._virtual_base = Plane

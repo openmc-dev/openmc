@@ -201,7 +201,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 
 const std::string UnstructuredMesh::mesh_type = "unstructured";
 
-virtual std::string UnstructuredMesh::get_mesh_type() const {
+std::string UnstructuredMesh::get_mesh_type() const {
   return mesh_type;
 }
 

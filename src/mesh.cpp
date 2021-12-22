@@ -32,8 +32,6 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/xml_interface.h"
 
-#include <iostream>
-
 #ifdef LIBMESH
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
@@ -158,6 +156,10 @@ std::string StructuredMesh::bin_label(int bin) const
   }
 }
 
+xt::xtensor<int, 1> StructuredMesh::get_x_shape() const {
+  return xt::adapt(shape_, { n_dimension_});
+}
+
 //==============================================================================
 // Unstructured Mesh implementation
 //==============================================================================
@@ -168,7 +170,7 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   // check the mesh type
   if (check_for_node(node, "type")) {
     auto temp = get_node_value(node, "type", true, true);
-    if (temp != "unstructured") {
+    if (temp != mesh_type) {
       fatal_error(fmt::format("Invalid mesh type: {}", temp));
     }
   }
@@ -197,6 +199,8 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   }
 }
 
+const std::string UnstructuredMesh::mesh_type = "unstructured";
+
 void UnstructuredMesh::surface_bins_crossed(
   Position r0, Position r1, const Direction& u, vector<int>& bins) const
 {
@@ -212,7 +216,7 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
 
-  write_dataset(mesh_group, "type", "unstructured");
+  write_dataset(mesh_group, "type", mesh_type);
   write_dataset(mesh_group, "filename", filename_);
   write_dataset(mesh_group, "library", this->library());
   // write volume of each element
@@ -298,7 +302,7 @@ int StructuredMesh::get_bin(Position r) const
 
 int StructuredMesh::n_bins() const
 {
-  return xt::prod(shape_)();
+  return std::accumulate(shape_.begin(), shape_.begin() + n_dimension_, 1, std::multiplies<>());
 }
 
 int StructuredMesh::n_surface_bins() const
@@ -428,7 +432,7 @@ void StructuredMesh::raytrace_mesh(Position r0, Position r1, const Direction& u,
       ijk[k] = distances[k].nextIndex;
       distances[k] = distance_to_grid_boundary(ijk, k, r0, u, l);
 
-      // Check if we have left the interiour of the mesh 
+      // Check if we have left the interior of the mesh 
       in_mesh = ((ijk[k]>=1) and (ijk[k]<=shape_[k]));
 
       // If we are still inside the mesh, tally inward current for the next cell
@@ -524,14 +528,15 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
     fatal_error("Must specify <dimension> on a regular mesh.");
   }
 
-  shape_ = get_node_xarray<int>(node, "dimension");
-  int n = n_dimension_ = shape_.size();
+  xt::xtensor<int, 1> shape = get_node_xarray<int>(node, "dimension");
+  int n = n_dimension_ = shape.size();
   if (n != 1 && n != 2 && n != 3) {
     fatal_error("Mesh must be one, two, or three dimensions.");
   }
+  std::copy(shape.begin(), shape.end(), shape_.begin());
 
   // Check that dimensions are all greater than zero
-  if (xt::any(shape_ <= 0)) {
+  if (xt::any(shape <= 0)) {
     fatal_error("All entries on the <dimension> element for a tally "
                 "mesh must be positive.");
   }
@@ -545,7 +550,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
   }
 
   // Make sure lower_left and dimension match
-  if (shape_.size() != lower_left_.size()) {
+  if (shape.size() != lower_left_.size()) {
     fatal_error("Number of entries on <lower_left> must be the same "
                 "as the number of entries on <dimension>.");
   }
@@ -571,7 +576,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
     }
 
     // Set width and upper right coordinate
-    upper_right_ = xt::eval(lower_left_ + shape_ * width_);
+    upper_right_ = xt::eval(lower_left_ + shape * width_);
 
   } else if (check_for_node(node, "upper_right")) {
     upper_right_ = get_node_xarray<double>(node, "upper_right");
@@ -590,18 +595,24 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
     }
 
     // Set width
-    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    width_ = xt::eval((upper_right_ - lower_left_) / shape);
   } else {
     fatal_error("Must specify either <upper_right> or <width> on a mesh.");
   }
 
   // Set volume fraction
-  volume_frac_ = 1.0 / xt::prod(shape_)();
+  volume_frac_ = 1.0 / xt::prod(shape)();
 }
 
 int RegularMesh::get_index_in_direction(double r, int i) const
 {
   return std::ceil((r - lower_left_[i]) / width_[i]);
+}
+
+const std::string RegularMesh::mesh_type = "regular";
+
+std::string RegularMesh::get_mesh_type() const {
+  return mesh_type;
 }
 
 double RegularMesh::positive_grid_boundary(const MeshIndex& ijk, int i) const
@@ -679,7 +690,7 @@ void RegularMesh::to_hdf5(hid_t group) const
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
   write_dataset(mesh_group, "type", "regular");
-  write_dataset(mesh_group, "dimension", shape_);
+  write_dataset(mesh_group, "dimension", get_x_shape());
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
   write_dataset(mesh_group, "width", width_);
@@ -752,7 +763,6 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
 {
   n_dimension_ = 3;
 
-  grid_.resize(n_dimension_);
   grid_[0] = get_node_array<double>(node, "x_grid");
   grid_[1] = get_node_array<double>(node, "y_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
@@ -760,6 +770,12 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
   }
+}
+
+const std::string RectilinearMesh::mesh_type = "rectilinear";
+
+std::string RectilinearMesh::get_mesh_type() const {
+  return mesh_type;
 }
 
 double RectilinearMesh::positive_grid_boundary(const MeshIndex& ijk, int i) const
@@ -802,12 +818,10 @@ int RectilinearMesh::set_grid()
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
-    for (int i = 1; i < g.size(); ++i) {
-      if (g[i] <= g[i - 1]) {
-        set_errmsg("Values in for x-, y-, and z- grids for "
-                   "rectilinear meshes must be sorted and unique.");
-        return OPENMC_E_INVALID_ARGUMENT;
-      }
+    if (not std::is_sorted(g.begin(), g.end(), std::less_equal<double>())) {
+      set_errmsg("Values in for x-, y-, and z- grids for "
+                 "rectilinear meshes must be sorted and unique.");
+      return OPENMC_E_INVALID_ARGUMENT;
     }
   }
 
@@ -816,8 +830,6 @@ int RectilinearMesh::set_grid()
 
   return 0;
 }
-
-
 
 int RectilinearMesh::get_index_in_direction(double r, int i) const
 {
@@ -874,7 +886,6 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
 {
   n_dimension_ = 3;
 
-  grid_.resize(n_dimension_);
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "p_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
@@ -882,6 +893,12 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
   }
+}
+
+const std::string CylindricalMesh::mesh_type = "cylindrical";
+
+std::string CylindricalMesh::get_mesh_type() const {
+  return mesh_type;
 }
 
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(Position r, bool& in_mesh) const
@@ -1020,12 +1037,10 @@ int CylindricalMesh::set_grid()
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
-    for (int i = 1; i < g.size(); ++i) {
-      if (g[i] <= g[i - 1]) {
-        set_errmsg("Values in for r-, phi-, and z- grids for "
-                   "cylindrical meshes must be sorted and unique.");
-        return OPENMC_E_INVALID_ARGUMENT;
-      }
+    if (not std::is_sorted(g.begin(), g.end(), std::less_equal<double>())) {
+      set_errmsg("Values in for r-, phi-, and z- grids for "
+                 "cylindrical meshes must be sorted and unique.");
+      return OPENMC_E_INVALID_ARGUMENT;
     }
   }
   if (grid_[0].front() < 0.0) {
@@ -1093,7 +1108,6 @@ SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
 {
   n_dimension_ = 3;
 
-  grid_.resize(n_dimension_);
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "t_grid");
   grid_[2] = get_node_array<double>(node, "p_grid");
@@ -1101,6 +1115,12 @@ SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
   }
+}
+
+const std::string SphericalMesh::mesh_type = "spherical";
+
+std::string SphericalMesh::get_mesh_type() const {
+  return mesh_type;
 }
 
 StructuredMesh::MeshIndex SphericalMesh::get_indices(Position r, bool& in_mesh) const
@@ -1128,8 +1148,6 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(Position r, bool& in_mesh) 
 double SphericalMesh::find_r_crossing(const Position& r, const Direction& u, double l, int shell) const 
 {
   
-  ////std::cout << "    r: " << shell << " " << grid_[0].size() << " " << shape_[0] << "\n";
-
   if ((shell < 0) || (shell >= shape_[0])) return INFTY;
   
   // solve |r+s*u| = r0
@@ -1275,12 +1293,10 @@ int SphericalMesh::set_grid()
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
-    for (int i = 1; i < g.size(); ++i) {
-      if (g[i] <= g[i - 1]) {
-        set_errmsg("Values in for r-, theta-, and phi- grids for "
-                   "spherical meshes must be sorted and unique.");
-        return OPENMC_E_INVALID_ARGUMENT;
-      }
+    if (not std::is_sorted(g.begin(), g.end(), std::less_equal<double>())) {
+      set_errmsg("Values in for r-, theta-, and phi- grids for "
+                 "spherical meshes must be sorted and unique.");
+      return OPENMC_E_INVALID_ARGUMENT;
     }
     if (g.front() < 0.0) {
         set_errmsg("r-, theta-, and phi- grids for "
@@ -1333,7 +1349,7 @@ void SphericalMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
-  write_dataset(mesh_group, "type", "spherical");
+  write_dataset(mesh_group, "type", SphericalMesh::mesh_type);
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "t_grid", grid_[1]);
   write_dataset(mesh_group, "p_grid", grid_[2]);
@@ -1388,15 +1404,8 @@ extern "C" int openmc_mesh_get_type(int32_t index, char* type)
   if (int err = check_mesh(index))
     return err;
 
-  if (is_mesh_type<RegularMesh>(index)) {
-    std::strcpy(type, "regular");
-  } else if (is_mesh_type<RectilinearMesh>(index)) {
-    std::strcpy(type, "rectilinear");
-  } else if (is_mesh_type<CylindricalMesh>(index)) {
-    std::strcpy(type, "cylindrical");
-  } else if (is_mesh_type<SphericalMesh>(index)) {
-    std::strcpy(type, "spherical");
-  }
+  std::strcpy(type, model::meshes[index].get()->get_mesh_type().c_str());
+
   return 0;
 }
 
@@ -1409,13 +1418,14 @@ extern "C" int openmc_extend_meshes(
   std::string mesh_type;
 
   for (int i = 0; i < n; ++i) {
-    if (std::strcmp(type, "regular") == 0) {
+    //if (std::strcmp(type, RegularMesh::mesh_type.c_str()) == 0) {
+    if (RegularMesh::mesh_type == type)  {
       model::meshes.push_back(make_unique<RegularMesh>());
-    } else if (std::strcmp(type, "rectilinear") == 0) {
+    } else if (RectilinearMesh::mesh_type == type) {
       model::meshes.push_back(make_unique<RectilinearMesh>());
-    } else if (std::strcmp(type, "cylindrical") == 0) {
+    } else if (CylindricalMesh::mesh_type == type) {
       model::meshes.push_back(make_unique<CylindricalMesh>());
-    } else if (std::strcmp(type, "spherical") == 0) {
+    } else if (SphericalMesh::mesh_type == type) {
       model::meshes.push_back(make_unique<SphericalMesh>());
     } else {
       throw std::runtime_error {"Unknown mesh type: " + std::string(type)};
@@ -1436,14 +1446,14 @@ extern "C" int openmc_add_unstructured_mesh(
   bool valid_lib = false;
 
 #ifdef DAGMC
-  if (lib_name == "moab") {
+  if (lib_name == MOABMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<MOABMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
 
 #ifdef LIBMESH
-  if (lib_name == "libmesh") {
+  if (lib_name == LibMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<LibMesh>(mesh_file)));
     valid_lib = true;
   }
@@ -1515,9 +1525,8 @@ extern "C" int openmc_regular_mesh_set_dimension(
   RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   // Copy dimension
-  vector<std::size_t> shape = {static_cast<std::size_t>(n)};
-  mesh->shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
-  mesh->n_dimension_ = mesh->shape_.size();
+  mesh->n_dimension_ = n;
+  std::copy(dims, dims + n, mesh->shape_.begin());
   return 0;
 }
 
@@ -1553,15 +1562,15 @@ extern "C" int openmc_regular_mesh_set_params(
   if (ll && ur) {
     m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
     m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
-    m->width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
+    m->width_ = (m->upper_right_ - m->lower_left_) / m->get_x_shape();
   } else if (ll && width) {
     m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
     m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
-    m->upper_right_ = m->lower_left_ + m->shape_ * m->width_;
+    m->upper_right_ = m->lower_left_ + m->get_x_shape() * m->width_;
   } else if (ur && width) {
     m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
     m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
-    m->lower_left_ = m->upper_right_ - m->shape_ * m->width_;
+    m->lower_left_ = m->upper_right_ - m->get_x_shape() * m->width_;
   } else {
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1570,42 +1579,23 @@ extern "C" int openmc_regular_mesh_set_params(
   return 0;
 }
 
-//! Get the rectilinear mesh grid
-extern "C" int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x,
-  int* nx, double** grid_y, int* ny, double** grid_z, int* nz)
-{
-  if (int err = check_mesh_type<RectilinearMesh>(index))
-    return err;
-  RectilinearMesh* m =
-    dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
 
-  if (m->lower_left_.dimension() == 0) {
-    set_errmsg("Mesh parameters have not been set.");
-    return OPENMC_E_ALLOCATE;
-  }
-
-  *grid_x = m->grid_[0].data();
-  *nx = m->grid_[0].size();
-  *grid_y = m->grid_[1].data();
-  *ny = m->grid_[1].size();
-  *grid_z = m->grid_[2].data();
-  *nz = m->grid_[2].size();
-
-  return 0;
-}
-
-//! Set the rectilienar mesh parameters
-extern "C" int openmc_rectilinear_mesh_set_grid(int32_t index,
+//! Set the mesh parameters for rectilinear, cylindrical and spharical meshes
+template <class C>
+int openmc_structured_mesh_set_grid_impl(int32_t index,
   const double* grid_x, const int nx, const double* grid_y, const int ny,
   const double* grid_z, const int nz)
 {
-  if (int err = check_mesh_type<RectilinearMesh>(index))
+  if (int err = check_mesh_type<C>(index))
     return err;
-  RectilinearMesh* m =
-    dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
+
+  C* m = dynamic_cast<C*>(model::meshes[index].get());
 
   m->n_dimension_ = 3;
-  m->grid_.resize(m->n_dimension_);
+
+  m->grid_[0].reserve(nx);
+  m->grid_[1].reserve(ny);
+  m->grid_[2].reserve(nz);
 
   for (int i = 0; i < nx; i++) {
     m->grid_[0].push_back(grid_x[i]);
@@ -1618,17 +1608,17 @@ extern "C" int openmc_rectilinear_mesh_set_grid(int32_t index,
   }
 
   int err = m->set_grid();
-  return err;
+  return err;  
 }
 
-//! Get the cylindrical mesh grid
-extern "C" int openmc_cylindrical_mesh_get_grid(int32_t index, double** grid_x,
+//! Get the mesh parameters for rectilinear, cylindrical and spharical meshes
+template <class C>
+int openmc_structured_mesh_get_grid_impl(int32_t index, double** grid_x,
   int* nx, double** grid_y, int* ny, double** grid_z, int* nz)
 {
-  if (int err = check_mesh_type<CylindricalMesh>(index))
+  if (int err = check_mesh_type<C>(index))
     return err;
-  CylindricalMesh* m =
-    dynamic_cast<CylindricalMesh*>(model::meshes[index].get());
+  C* m = dynamic_cast<C*>(model::meshes[index].get());
 
   if (m->lower_left_.dimension() == 0) {
     set_errmsg("Mesh parameters have not been set.");
@@ -1643,6 +1633,30 @@ extern "C" int openmc_cylindrical_mesh_get_grid(int32_t index, double** grid_x,
   *nz = m->grid_[2].size();
 
   return 0;
+}
+
+
+//! Get the rectilinear mesh grid
+extern "C" int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x,
+  int* nx, double** grid_y, int* ny, double** grid_z, int* nz)
+{
+  return openmc_structured_mesh_get_grid_impl<RectilinearMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
+}
+
+
+//! Set the rectilienar mesh parameters
+extern "C" int openmc_rectilinear_mesh_set_grid(int32_t index,
+  const double* grid_x, const int nx, const double* grid_y, const int ny,
+  const double* grid_z, const int nz)
+{
+  return openmc_structured_mesh_set_grid_impl<RectilinearMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
+}
+
+//! Get the cylindrical mesh grid
+extern "C" int openmc_cylindrical_mesh_get_grid(int32_t index, double** grid_x,
+  int* nx, double** grid_y, int* ny, double** grid_z, int* nz)
+{
+  return openmc_structured_mesh_get_grid_impl<CylindricalMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
 //! Set the cylindrical mesh parameters
@@ -1650,50 +1664,15 @@ extern "C" int openmc_cylindrical_mesh_set_grid(int32_t index,
   const double* grid_x, const int nx, const double* grid_y, const int ny,
   const double* grid_z, const int nz)
 {
-  if (int err = check_mesh_type<CylindricalMesh>(index))
-    return err;
-  CylindricalMesh* m =
-    dynamic_cast<CylindricalMesh*>(model::meshes[index].get());
-
-  m->n_dimension_ = 3;
-  m->grid_.resize(m->n_dimension_);
-
-  for (int i = 0; i < nx; i++) {
-    m->grid_[0].push_back(grid_x[i]);
-  }
-  for (int i = 0; i < ny; i++) {
-    m->grid_[1].push_back(grid_y[i]);
-  }
-  for (int i = 0; i < nz; i++) {
-    m->grid_[2].push_back(grid_z[i]);
-  }
-
-  int err = m->set_grid();
-  return err;
+  return openmc_structured_mesh_set_grid_impl<CylindricalMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
 //! Get the spherical mesh grid
 extern "C" int openmc_spherical_mesh_get_grid(int32_t index, double** grid_x,
   int* nx, double** grid_y, int* ny, double** grid_z, int* nz)
 {
-  if (int err = check_mesh_type<SphericalMesh>(index))
-    return err;
-  SphericalMesh* m =
-    dynamic_cast<SphericalMesh*>(model::meshes[index].get());
 
-  if (m->lower_left_.dimension() == 0) {
-    set_errmsg("Mesh parameters have not been set.");
-    return OPENMC_E_ALLOCATE;
-  }
-
-  *grid_x = m->grid_[0].data();
-  *nx = m->grid_[0].size();
-  *grid_y = m->grid_[1].data();
-  *ny = m->grid_[1].size();
-  *grid_z = m->grid_[2].data();
-  *nz = m->grid_[2].size();
-
-  return 0;
+  return openmc_structured_mesh_get_grid_impl<SphericalMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);;
 }
 
 //! Set the spherical mesh parameters
@@ -1701,29 +1680,12 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
   const double* grid_x, const int nx, const double* grid_y, const int ny,
   const double* grid_z, const int nz)
 {
-  if (int err = check_mesh_type<SphericalMesh>(index))
-    return err;
-  SphericalMesh* m =
-    dynamic_cast<SphericalMesh*>(model::meshes[index].get());
-
-  m->n_dimension_ = 3;
-  m->grid_.resize(m->n_dimension_);
-
-  for (int i = 0; i < nx; i++) {
-    m->grid_[0].push_back(grid_x[i]);
-  }
-  for (int i = 0; i < ny; i++) {
-    m->grid_[1].push_back(grid_y[i]);
-  }
-  for (int i = 0; i < nz; i++) {
-    m->grid_[2].push_back(grid_z[i]);
-  }
-
-  int err = m->set_grid();
-  return err;
+  return openmc_structured_mesh_set_grid_impl<SphericalMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
 #ifdef DAGMC
+
+const std::string MOABMesh::mesh_lib_type = "moab";
 
 MOABMesh::MOABMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
@@ -1994,7 +1956,7 @@ double MOABMesh::volume(int bin) const
 
 std::string MOABMesh::library() const
 {
-  return "moab";
+  return MOABMesh::mesh_lib_type;
 }
 
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
@@ -2313,6 +2275,8 @@ void MOABMesh::write(const std::string& base_filename) const
 
 #ifdef LIBMESH
 
+const std::string LibMesh::mesh_lib_type = "libmesh";
+
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
   initialize();
@@ -2387,7 +2351,7 @@ Position LibMesh::centroid(int bin) const
 
 std::string LibMesh::library() const
 {
-  return "libmesh";
+  return LibMesh::mesh_lib_type;
 }
 
 int LibMesh::n_bins() const
@@ -2564,23 +2528,23 @@ void read_meshes(pugi::xml_node root)
     }
 
     // Read mesh and add to vector
-    if (mesh_type == "regular") {
+    if (mesh_type == RegularMesh::mesh_type) {
       model::meshes.push_back(make_unique<RegularMesh>(node));
-    } else if (mesh_type == "rectilinear") {
+    } else if (mesh_type == RectilinearMesh::mesh_type) {
       model::meshes.push_back(make_unique<RectilinearMesh>(node));
-    } else if (mesh_type == "cylindrical") {
+    } else if (mesh_type == CylindricalMesh::mesh_type) {
       model::meshes.push_back(make_unique<CylindricalMesh>(node));
-    } else if (mesh_type == "spherical") {
+    } else if (mesh_type == SphericalMesh::mesh_type) {
       model::meshes.push_back(make_unique<SphericalMesh>(node));
 #ifdef DAGMC
-    } else if (mesh_type == "unstructured" && mesh_lib == "moab") {
+    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == MOABMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<MOABMesh>(node));
 #endif
 #ifdef LIBMESH
-    } else if (mesh_type == "unstructured" && mesh_lib == "libmesh") {
+    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == LibMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<LibMesh>(node));
 #endif
-    } else if (mesh_type == "unstructured") {
+    } else if (mesh_type == UnstructuredMesh::mesh_type) {
       fatal_error("Unstructured mesh support is not enabled or the mesh "
                   "library is invalid.");
     } else {

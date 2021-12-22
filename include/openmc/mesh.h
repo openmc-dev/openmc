@@ -123,6 +123,9 @@ public:
   //! \param[in] bin Mesh bin to generate a label for
   virtual std::string bin_label(int bin) const = 0;
 
+  //! Return the mesh type
+  virtual std::string get_mesh_type() const = 0;
+
   // Data members
   int id_ {-1};     //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
@@ -135,9 +138,12 @@ public:
   virtual ~StructuredMesh() = default;
 
   using MeshIndex = std::array<int, 3>;
+
   struct MeshDistance {
-    MeshDistance() {};
-    MeshDistance(int _index, bool _maxSurface, double _distance): nextIndex{_index}, maxSurface(_maxSurface), distance{_distance} {};
+    MeshDistance() = default;
+    MeshDistance(int _index, bool _maxSurface, double _distance): 
+      nextIndex{_index}, maxSurface{_maxSurface}, distance{_distance}
+      { }
     int nextIndex { -1 };
     double distance { INFTY };
     bool maxSurface { true };
@@ -185,13 +191,13 @@ public:
   //
   //! \param[in] r Position to get indices for
   //! \param[out] in_mesh Whether position is in mesh
-  //! \return ijk Array of mesh indices
+  //! \return Array of mesh indices
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const;
 
   //! Get mesh indices corresponding to a mesh bin
   //
   //! \param[in] bin Mesh bin
-  //! \param[out] ijk Mesh indices
+  //! \return ijk Mesh indices
   virtual MeshIndex get_indices_from_bin(int bin) const;
 
   //! Get mesh index in a particular direction
@@ -200,19 +206,30 @@ public:
   //! \param[in] i Direction index
   virtual int get_index_in_direction(double r, int i) const = 0;
 
-  //! Get the closest distance from to coordinate r to the grid for the mesh grid boundary in the negative direction
+  //! Get the closest distance from the coordinate r to the grid surface  
+  //! in i direction  that bounds mesh cell ijk and that is larger than l
+  //! The coordinate r does not have to be inside the mesh cell ijk. In 
+  //! curved coordinates, multiple crossings of the same surface can happen,
+  //! these are selected by the parameter l 
   //!
   //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index  
+  //! \param[in] i direction index of grid surface
+  //! \param[in] r0 position, from where to calculate the distance
+  //! \param[in] u direction of flight. actual position is r0 + l * u
+  //! \param[in] l actual chord length
+  //! \return MeshDistance struct with closest distance, next cell index in i-direction and min/max surface indicator
   virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const = 0;
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
+  //! Get shape as xt::xtensor
+  xt::xtensor<int, 1> get_x_shape() const;
+
   // Data members
   xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
+  std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
 
 protected:
 
@@ -231,7 +248,9 @@ public:
   // Overridden methods
   int get_index_in_direction(double r, int i) const override;
 
+  virtual std::string get_mesh_type() const override;
 
+  static const std::string mesh_type;
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const override;
 
@@ -274,6 +293,10 @@ public:
 
   // Overridden methods
   int get_index_in_direction(double r, int i) const override;
+
+  virtual std::string get_mesh_type() const override;
+
+  static const std::string mesh_type;
     
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const override;
 
@@ -296,7 +319,7 @@ public:
   double negative_grid_boundary(const MeshIndex& ijk, int i) const;
 
 
-  vector<vector<double>> grid_;
+  array<vector<double>, 3> grid_;
 
   int set_grid();
 };
@@ -312,6 +335,10 @@ public:
 
   int get_index_in_direction(double r, int i) const override;
 
+  virtual std::string get_mesh_type() const override;
+
+  static const std::string mesh_type;
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
@@ -319,7 +346,7 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  vector<vector<double>> grid_;
+  array<vector<double>, 3> grid_;
 
   int set_grid();
 
@@ -358,6 +385,10 @@ public:
 
   int get_index_in_direction(double r, int i) const override;
 
+  virtual std::string get_mesh_type() const override;
+
+  static const std::string mesh_type;
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
@@ -365,7 +396,7 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  vector<vector<double>> grid_;
+  array<vector<double>, 3> grid_;
 
   int set_grid();
 
@@ -404,6 +435,8 @@ public:
   UnstructuredMesh() {};
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(const std::string& filename);
+
+  static const std::string mesh_type;
 
   // Overridden Methods
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
@@ -475,6 +508,8 @@ public:
   MOABMesh(pugi::xml_node);
   MOABMesh(const std::string& filename, double length_multiplier = 1.0);
   MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
+
+  static const std::string mesh_lib_type;
 
   // Overridden Methods
 
@@ -622,6 +657,8 @@ public:
   // Constructors
   LibMesh(pugi::xml_node node);
   LibMesh(const std::string& filename, double length_multiplier = 1.0);
+
+  static const std::string mesh_lib_type;
 
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,

@@ -471,8 +471,8 @@ class SphericalMesh(Mesh):
 _MESH_TYPE_MAP = {
     'regular': RegularMesh,
     'rectilinear': RectilinearMesh,
-    'cylindrical': RectilinearMesh,
-    'spherical': RectilinearMesh
+    'cylindrical': CylindricalMesh,
+    'spherical': SphericalMesh
 }
 
 

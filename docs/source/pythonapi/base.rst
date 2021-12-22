@@ -80,6 +80,9 @@ Building geometry
    openmc.YCone
    openmc.ZCone
    openmc.Quadric
+   openmc.XTorus
+   openmc.YTorus
+   openmc.ZTorus
    openmc.Halfspace
    openmc.Intersection
    openmc.Union

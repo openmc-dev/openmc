@@ -1013,21 +1013,21 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 double torus_distance(double x1, double x2, double x3, double u1, double u2,
   double u3, double A, double B, double C, bool coincident)
 {
-  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = d2 t^2 + d1 t + d0
+  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = c2' t^2 + c1' t + c0'
   double D = (C * C) / (B * B);
   double c2 = u1 * u1 + u2 * u2 + D * u3 * u3;
   double c1 = 2 * (u1 * x1 + u2 * x2 + D * u3 * x3);
   double c0 = x1 * x1 + x2 * x2 + D * x3 * x3 + A * A - C * C;
   double four_A2 = 4 * A * A;
-  double d2 = four_A2 * (u1 * u1 + u2 * u2);
-  double d1 = 2 * four_A2 * (u1 * x1 + u2 * x2);
-  double d0 = four_A2 * (x1 * x1 + x2 * x2);
+  double c2p = four_A2 * (u1 * u1 + u2 * u2);
+  double c1p = 2 * four_A2 * (u1 * x1 + u2 * x2);
+  double c0p = four_A2 * (x1 * x1 + x2 * x2);
 
   // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
   double coeff[5];
-  coeff[0] = c0 * c0 - d0;
-  coeff[1] = 2 * c0 * c1 - d1;
-  coeff[2] = c1 * c1 + 2 * c0 * c2 - d2;
+  coeff[0] = c0 * c0 - c0p;
+  coeff[1] = 2 * c0 * c1 - c1p;
+  coeff[2] = c1 * c1 + 2 * c0 * c2 - c2p;
   coeff[3] = 2 * c1 * c2;
   coeff[4] = c2 * c2;
 

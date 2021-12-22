@@ -94,10 +94,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   std::string coeffs = get_node_value(surf_node, "coeffs");
   int n_words = word_count(coeffs);
   if (n_words != 6) {
-    std::stringstream err_msg;
-    err_msg << "Surface " << surf_id << " expects 6 coeffs but was given "
-            << n_words;
-    fatal_error(err_msg);
+    fatal_error(fmt::format(
+      "Surface {} expects 6 coeffs but was given {}", surf_id, n_words));
   }
 
   // Parse the coefficients.

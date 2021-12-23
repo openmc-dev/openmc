@@ -47,26 +47,39 @@ void TimeFilter::get_all_bins(
   if (t_end < bins_.front() || t_start >= bins_.back())
     return;
 
-  // Determine first bin containing a portion of time interval
-  int i_bin = 0;
-  while (bins_[i_bin + 1] < t_start) {
-    ++i_bin;
-  }
-
-  // Find matching bins
-  double dt_total = t_end - t_start;
-  for (; i_bin < bins_.size() - 1; ++i_bin) {
-    double t_left = std::max(t_start, bins_[i_bin]);
-    double t_right = std::min(t_end, bins_[i_bin + 1]);
-
-    // Add match with weight equal to the fraction of the time interval within
-    // the current time bin
-    double fraction = (t_right - t_left) / dt_total;
+  if (estimator == TallyEstimator::ANALOG) {
+    // -------------------------------------------------------------------------
+    // For surface tallies, find a match based on the exact time the particle
+    // crosses the surface
+    auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_end);
     match.bins_.push_back(i_bin);
-    match.weights_.push_back(fraction);
+    match.weights_.push_back(1.0);
 
-    if (t_end < bins_[i_bin + 1])
-      break;
+  } else {
+    // -------------------------------------------------------------------------
+    // For volume tallies, we have to check the start/end time of the current
+    // track and find where it overlaps with time bins and score accordingly
+
+    // Determine first bin containing a portion of time interval
+    auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_start);
+
+    // Find matching bins
+    double dt_total = t_end - t_start;
+    for (; i_bin < bins_.size() - 1; ++i_bin) {
+      double t_left = std::max(t_start, bins_[i_bin]);
+      double t_right = std::min(t_end, bins_[i_bin + 1]);
+
+      // Add match with weight equal to the fraction of the time interval within
+      // the current time bin
+      if (dt_total > 0.0) {
+        double fraction = (t_right - t_left) / dt_total;
+        match.bins_.push_back(i_bin);
+        match.weights_.push_back(fraction);
+      }
+
+      if (t_end < bins_[i_bin + 1])
+        break;
+    }
   }
 }
 

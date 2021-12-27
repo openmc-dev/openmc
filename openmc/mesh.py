@@ -784,12 +784,9 @@ class CylindricalMesh(MeshBase):
 
         # V = int_r int_phi int_phi r dr dphi dz
 
-        V_r = np.array(self.r_grid)**2 / 3
-        V_r = V_r[1:] - V_r[:-1]
-        V_p = -np.cos(np.pi * np.array(self.phi_grid) / 180.0)
-        V_p = V_p[1:] - V_p[:-1]
-        V_z = np.array(self.z_grid) * np.pi / 180
-        V_z = V_z[1:] - V_z[:-1]
+        V_r = np.diff(np.array(self.r_grid)**2 / 2)
+        V_p = np.diff(np.array(self.phi_grid) * np.pi / 180.0)
+        V_z = np.diff(np.array(self.z_grid))
 
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
@@ -950,12 +947,9 @@ class SphericalMesh(MeshBase):
 
         # V = int_r int_theta int_phi r^2 dr sin(theta) dtheta dphi
 
-        V_r = np.array(self.r_grid)**3 / 3
-        V_r = V_r[1:] - V_r[:-1]
-        V_t = -np.cos(np.pi * np.array(self.theta_grid) / 180.0)
-        V_t = V_t[1:] - V_t[:-1]
-        V_p = np.array(self.phi_grid) * np.pi / 180
-        V_p = V_p[1:] - V_p[:-1]
+        V_r = np.diff(np.array(self.r_grid)**3 / 3)
+        V_t = np.diff(-np.cos(np.pi * np.array(self.theta_grid) / 180.0))
+        V_p = np.diff(np.array(self.phi_grid) * np.pi / 180)
 
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 

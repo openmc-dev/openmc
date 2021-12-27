@@ -50,6 +50,7 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   read_dataset(file_id, "energy", p.E());
   read_dataset(file_id, "xyz", p.r());
   read_dataset(file_id, "uvw", p.u());
+  read_dataset(file_id, "time", p.time());
 
   // Set energy group and average energy in multi-group mode
   if (!settings::run_CE) {
@@ -64,6 +65,7 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   p.u_last() = p.u();
   p.E_last() = p.E();
   p.g_last() = p.g();
+  p.time_last() = p.time();
 
   // Close hdf5 file
   file_close(file_id);

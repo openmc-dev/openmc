@@ -32,3 +32,4 @@ The current version of the particle restart file format is 2.0.
              multi-group mode.
            - **xyz** (*double[3]*) -- Position of the particle.
            - **uvw** (*double[3]*) -- Direction of the particle.
+           - **time** (*double*) -- Time of the particle in [s].

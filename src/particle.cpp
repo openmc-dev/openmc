@@ -54,7 +54,7 @@ double Particle::speed() const
   }
 
   // Calculate inverse of Lorentz factor
-  double inv_gamma = mass / (this->E() + mass);
+  const double inv_gamma = mass / (this->E() + mass);
 
   // Calculate speed via v = c * sqrt(1 - γ^-2)
   return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
@@ -685,6 +685,7 @@ void Particle::write_restart() const
       write_dataset(file_id, "energy", simulation::source_bank[i - 1].E);
       write_dataset(file_id, "xyz", simulation::source_bank[i - 1].r);
       write_dataset(file_id, "uvw", simulation::source_bank[i - 1].u);
+      write_dataset(file_id, "time", simulation::source_bank[i - 1].time);
     } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
       // re-sample using rng random number seed used to generate source particle
       int64_t id = (simulation::total_gen + overall_generation() - 1) *
@@ -697,6 +698,7 @@ void Particle::write_restart() const
       write_dataset(file_id, "energy", site.E);
       write_dataset(file_id, "xyz", site.r);
       write_dataset(file_id, "uvw", site.u);
+      write_dataset(file_id, "time", site.time);
     }
 
     // Close file

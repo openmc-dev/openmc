@@ -1,6 +1,7 @@
 #include "openmc/tallies/filter_time.h"
 
-#include <algorithm> // for min, max
+#include <algorithm> // for min, max, copy
+#include <iterator>  // for back_inserter
 
 #include <fmt/core.h>
 
@@ -25,14 +26,13 @@ void TimeFilter::set_bins(gsl::span<const double> bins)
   bins_.clear();
   bins_.reserve(bins.size());
 
-  // Copy bins, ensuring they are valid
-  for (gsl::index i = 0; i < bins.size(); ++i) {
-    if (i > 0 && bins[i] <= bins[i - 1]) {
-      throw std::runtime_error {"Time bins must be monotonically increasing."};
-    }
-    bins_.push_back(bins[i]);
+  // Ensure time bins are sorted
+  if (!std::is_sorted(bins.cbegin(), bins.cend(), std::less_equal<double>())) {
+    throw std::runtime_error {"Time bins must be monotonically increasing."};
   }
 
+  // Copy bins
+  std::copy(bins.cbegin(), bins.cend(), std::back_inserter(bins_));
   n_bins_ = bins_.size() - 1;
 }
 
@@ -40,8 +40,8 @@ void TimeFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   // Get the start/end time of the particle for this track
-  auto t_start = p.time_last();
-  auto t_end = p.time();
+  const auto t_start = p.time_last();
+  const auto t_end = p.time();
 
   // If time interval is entirely out of time bin range, exit
   if (t_end < bins_.front() || t_start >= bins_.back())
@@ -51,7 +51,7 @@ void TimeFilter::get_all_bins(
     // -------------------------------------------------------------------------
     // For surface tallies, find a match based on the exact time the particle
     // crosses the surface
-    auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_end);
+    const auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_end);
     match.bins_.push_back(i_bin);
     match.weights_.push_back(1.0);
 
@@ -59,6 +59,10 @@ void TimeFilter::get_all_bins(
     // -------------------------------------------------------------------------
     // For volume tallies, we have to check the start/end time of the current
     // track and find where it overlaps with time bins and score accordingly
+
+    // Skip if time interval is zero
+    if (t_start == t_end)
+      return;
 
     // Determine first bin containing a portion of time interval
     auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_start);
@@ -71,11 +75,9 @@ void TimeFilter::get_all_bins(
 
       // Add match with weight equal to the fraction of the time interval within
       // the current time bin
-      if (dt_total > 0.0) {
-        double fraction = (t_right - t_left) / dt_total;
-        match.bins_.push_back(i_bin);
-        match.weights_.push_back(fraction);
-      }
+      const double fraction = (t_right - t_left) / dt_total;
+      match.bins_.push_back(i_bin);
+      match.weights_.push_back(fraction);
 
       if (t_end < bins_[i_bin + 1])
         break;

@@ -374,7 +374,7 @@ public:
 //==============================================================================
 //! A toroidal surface described by the quartic torus lies in the x direction
 //
-//! \f$(x-x_0)^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
+//! \f$(x-x_0)^2/B^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
 //==============================================================================
 
 class SurfaceXTorus : public CSGSurface {
@@ -391,7 +391,7 @@ public:
 //==============================================================================
 //! A toroidal surface described by the quartic torus lies in the y direction
 //
-//! \f$(x-x_0)^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
+//! \f$(y-y_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
 //==============================================================================
 
 class SurfaceYTorus : public CSGSurface {
@@ -408,7 +408,7 @@ public:
 //==============================================================================
 //! A toroidal surface described by the quartic torus lies in the z direction
 //
-//! \f$(x-x_0)^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
+//! \f$(z-z_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (y-y_0)^2} - A)^2/C^2 -1 \f$
 //==============================================================================
 
 class SurfaceZTorus : public CSGSurface {

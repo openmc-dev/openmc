@@ -980,7 +980,7 @@ Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
 Torus Parallel to an Axis
 -------------------------
 
-A cone parallel to, for example, the x-axis has the form
+A torus parallel to, for example, the x-axis has the form
 
 .. math::
     :label: reflection-torus-1

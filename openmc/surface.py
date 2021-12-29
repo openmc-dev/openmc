@@ -2142,7 +2142,48 @@ class TorusMixin:
         return surf
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
-        raise NotImplementedError('Torus surfaces cannot be rotated.')
+        pivot = np.asarray(pivot)
+        rotation = np.asarray(rotation, dtype=float)
+
+        # Allow rotation matrix to be passed in directly, otherwise build it
+        if rotation.ndim == 2:
+            check_length('surface rotation', rotation.ravel(), 9)
+            Rmat = rotation
+        else:
+            Rmat = get_rotation_matrix(rotation, order=order)
+
+        # Only can handle trivial rotation matrices
+        close = np.isclose
+        if not np.all(close(Rmat, -1.0) | close(Rmat, 0.0) | close(Rmat, 1.0)):
+            raise NotImplementedError('Torus surfaces cannot handle generic rotations')
+
+        # Translate surface to pivot
+        surf = self.translate(-pivot, inplace=inplace)
+
+        # Determine "center" of torus and a point above it (along main axis)
+        center = [surf.x0, surf.y0, surf.z0]
+        above_center = center.copy()
+        index = ['x-torus', 'y-torus', 'z-torus'].index(surf._type)
+        above_center[index] += 1
+
+        # Compute new rotated torus center
+        center = Rmat @ center
+
+        # Figure out which axis should be used after rotation
+        above_center = Rmat @ above_center
+        new_index = np.where(np.isclose(np.abs(above_center - center), 1.0))[0][0]
+        cls = [XTorus, YTorus, ZTorus][new_index]
+
+        # Create rotated torus
+        kwargs = {
+            'boundary_type': surf.boundary_type, 'name': surf.name,
+            'a': surf.a, 'b': surf.b, 'c': surf.c
+        }
+        if inplace:
+            kwargs['surface_id'] = surf.id
+        surf = cls(x0=center[0], y0=center[1], z0=center[2], **kwargs)
+
+        return surf.translate(pivot, inplace=inplace)
 
     def _get_base_coeffs(self):
         raise NotImplementedError

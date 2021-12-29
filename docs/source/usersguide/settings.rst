@@ -174,10 +174,11 @@ create an instance of :class:`openmc.Source` and use it to set the
 varying source strengths, :attr:`Settings.source` should be set to a list of
 :class:`openmc.Source` objects.
 
-The :class:`openmc.Source` class has three main attributes that one can set:
+The :class:`openmc.Source` class has four main attributes that one can set:
 :attr:`Source.space`, which defines the spatial distribution,
-:attr:`Source.angle`, which defines the angular distribution, and
-:attr:`Source.energy`, which defines the energy distribution.
+:attr:`Source.angle`, which defines the angular distribution,
+:attr:`Source.energy`, which defines the energy distribution, and
+:attr:`Source.time`, which defines the time distribution.
 
 The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.Spatial`; common choices are :class:`openmc.stats.Point` or
@@ -210,14 +211,23 @@ distribution. This could be a probability mass function
 specified, a Watt fission spectrum with :math:`a` = 0.988 MeV and :math:`b` =
 2.249 MeV :sup:`-1` is used.
 
+The time distribution can be set equal to any univariate probability
+distribution. This could be a probability mass function
+(:class:`openmc.stats.Discrete`), a uniform distribution
+(:class:`openmc.stats.Uniform`), or a tabular distribution
+(:class:`openmc.stats.Tabular`). By default, if no time distribution is
+specified, particles are started at :math:`t=0`.
+
 As an example, to create an isotropic, 10 MeV monoenergetic source uniformly
-distributed over a cube centered at the origin with an edge length of 10 cm, one
+distributed over a cube centered at the origin with an edge length of 10 cm, and
+emitting a pulse of particles from 0 to 10 µs, one
 would run::
 
   source = openmc.Source()
   source.space = openmc.stats.Box((-5, -5, -5), (5, 5, 5))
   source.angle = openmc.stats.Isotropic()
   source.energy = openmc.stats.Discrete([10.0e6], [1.0])
+  source.time = openmc.stats.Uniform(0, 1e-6)
   settings.source = source
 
 The :class:`openmc.Source` class also has a :attr:`Source.strength` attribute

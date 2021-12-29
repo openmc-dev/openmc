@@ -11,11 +11,6 @@ constexpr double CUBIC_RESCAL_FACT = 3.488062113727083e+102;
 constexpr double QUART_RESCAL_FACT = 7.156344627944542e+76;
 constexpr double MACHEPS = std::numeric_limits<double>::epsilon();
 
-double max3(double a, double b, double c)
-{
-  return std::max(std::max(a, b), c);
-}
-
 double solve_cubic_analytic_depressed_handle_inf(double b, double c)
 {
   /* find analytically the dominant root of a depressed cubic x^3+b*x+c
@@ -479,7 +474,7 @@ void quartic_solver(double coeff[5], std::complex<double> roots[4])
    * better) */
   if (realcase[0] == -1 ||
       (std::abs(d2) <=
-        MACHEPS * oqs::max3(std::abs(2. * b / 3.), std::abs(phi0), l1 * l1))) {
+        MACHEPS * (std::abs(2. * b / 3.) + std::abs(phi0) + l1 * l1))) {
     double d3 = d - l3 * l3;
     double err0 = 0.0;
     if (realcase[0] == 1)

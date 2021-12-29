@@ -630,9 +630,15 @@ def torus_common(center, R, r1, r2, cls):
     assert st.b == s.b
     assert st.c == s.c
 
-    # can't rotate at present
+    # trivial rotations
+    for rotation in [(0., 0., 0.), (180., 0., 0.), (0., 180., 0.), (0., 0., 180.)]:
+        sr = s.rotate(rotation)
+        assert type(sr) == type(s)
+        assert (sr.a, sr.b, sr.c) == (s.a, s.b, s.c)
+
+    # can't do generic rotate at present
     with pytest.raises(NotImplementedError):
-        s.rotate((0., 1., 0.))
+        s.rotate((0., 45., 0.))
 
     # Check bounding box
     ll, ur = (+s).bounding_box
@@ -676,6 +682,12 @@ def test_xtorus():
     assert s.evaluate((x + r1 + 0.01, y, z + R)) > 0.0
     assert s.evaluate((x + r1 + 0.01, y + R, z)) > 0.0
 
+    # rotation
+    sr = s.rotate((0., 0., 90.))
+    assert isinstance(sr, openmc.YTorus)
+    sr = s.rotate((0., 90., 0.))
+    assert isinstance(sr, openmc.ZTorus)
+
 
 def test_ytorus():
     x, y, z = 2, -4, 5
@@ -703,6 +715,12 @@ def test_ytorus():
     assert s.evaluate((x, y + r1 + 0.01, z + R)) > 0.0
     assert s.evaluate((x + R, y + r1 + 0.01, z)) > 0.0
 
+    # rotation
+    sr = s.rotate((90., 0., 0.))
+    assert isinstance(sr, openmc.ZTorus)
+    sr = s.rotate((0., 0., 90.))
+    assert isinstance(sr, openmc.XTorus)
+
 
 def test_ztorus():
     x, y, z = 2, -4, 5
@@ -729,3 +747,9 @@ def test_ztorus():
     assert s.evaluate((x + R + r2 + 0.01, y, z)) > 0.0
     assert s.evaluate((x + R, y, z + r1 + 0.01)) > 0.0
     assert s.evaluate((x, y + R, z + r1 + 0.01)) > 0.0
+
+    # rotation
+    sr = s.rotate((90., 0., 0.))
+    assert isinstance(sr, openmc.YTorus)
+    sr = s.rotate((0., 90., 0.))
+    assert isinstance(sr, openmc.XTorus)

@@ -27,7 +27,7 @@ double solve_cubic_analytic_depressed_handle_inf(double b, double c)
   }
 
   double KK;
-  if (std::fabs(Q) < std::fabs(R)) {
+  if (std::abs(Q) < std::abs(R)) {
     double QR = Q / R;
     double QRSQ = QR * QR;
     KK = 1.0 - Q * QRSQ;
@@ -38,19 +38,19 @@ double solve_cubic_analytic_depressed_handle_inf(double b, double c)
 
   if (KK < 0.0) {
     double sqrtQ = std::sqrt(Q);
-    double theta = std::acos((R / std::fabs(Q)) / sqrtQ);
+    double theta = std::acos((R / std::abs(Q)) / sqrtQ);
     if (2.0 * theta < M_PI)
       return -2.0 * sqrtQ * std::cos(theta / 3.0);
     else
       return -2.0 * sqrtQ * std::cos((theta + 2.0 * M_PI) / 3.0);
   } else {
     double A;
-    if (std::fabs(Q) < std::fabs(R))
-      A = -std::copysign(1.0, R) * cbrt(std::fabs(R) * (1.0 + std::sqrt(KK)));
+    if (std::abs(Q) < std::abs(R))
+      A = -std::copysign(1.0, R) * cbrt(std::abs(R) * (1.0 + std::sqrt(KK)));
     else {
       A = -std::copysign(1.0, R) *
-          cbrt(std::fabs(R) +
-               std::sqrt(std::fabs(Q)) * std::fabs(Q) * std::sqrt(KK));
+          cbrt(
+            std::abs(R) + std::sqrt(std::abs(Q)) * std::abs(Q) * std::sqrt(KK));
     }
     double B = (A == 0.0) ? 0.0 : Q / A;
     return A + B;
@@ -63,7 +63,7 @@ double solve_cubic_analytic_depressed(double b, double c)
    * (see sec. 2.2 in the manuscript) */
   double Q = -b / 3.0;
   double R = 0.5 * c;
-  if (std::fabs(Q) > 1e102 || std::fabs(R) > 1e154) {
+  if (std::abs(Q) > 1e102 || std::abs(R) > 1e154) {
     return oqs::solve_cubic_analytic_depressed_handle_inf(b, c);
   }
   double Q3 = Q * Q * Q;
@@ -77,7 +77,7 @@ double solve_cubic_analytic_depressed(double b, double c)
       return sqrtQ * std::cos((theta + 2.0 * M_PI) / 3.0);
   } else {
     double A = -std::copysign(1.0, R) *
-               std::pow(std::fabs(R) + std::sqrt(R2 - Q3), 1.0 / 3.0);
+               std::pow(std::abs(R) + std::sqrt(R2 - Q3), 1.0 / 3.0);
     double B = (A == 0.0) ? 0.0 : Q / A;
     return A + B; /* this is always largest root even if A=B */
   }
@@ -140,11 +140,11 @@ double calc_phi0(double a, double b, double c, double d, int scaled)
   double xxx = x * xsq;
   double gx = g * x;
   double f = x * (xsq + g) + h;
-  double maxtt = std::max(std::fabs(xxx), std::fabs(gx));
-  if (std::fabs(h) > maxtt)
-    maxtt = std::fabs(h);
+  double maxtt = std::max(std::abs(xxx), std::abs(gx));
+  if (std::abs(h) > maxtt)
+    maxtt = std::abs(h);
 
-  if (std::fabs(f) > MACHEPS * maxtt) {
+  if (std::abs(f) > MACHEPS * maxtt) {
     for (int iter = 0; iter < 8; iter++) {
       double df = 3.0 * xsq + g;
       if (df == 0) {
@@ -159,7 +159,7 @@ double calc_phi0(double a, double b, double c, double d, int scaled)
         break;
       }
 
-      if (std::fabs(f) >= std::fabs(fold)) {
+      if (std::abs(f) >= std::abs(fold)) {
         x = xold;
         break;
       }
@@ -172,12 +172,12 @@ double calc_err_ldlt(
   double b, double c, double d, double d2, double l1, double l2, double l3)
 {
   /* Eqs. (29) and (30) in the manuscript */
-  double sum = (b == 0) ? std::fabs(d2 + l1 * l1 + 2.0 * l3)
-                        : std::fabs(((d2 + l1 * l1 + 2.0 * l3) - b) / b);
-  sum += (c == 0) ? std::fabs(2.0 * d2 * l2 + 2.0 * l1 * l3)
-                  : std::fabs(((2.0 * d2 * l2 + 2.0 * l1 * l3) - c) / c);
-  sum += (d == 0) ? std::fabs(d2 * l2 * l2 + l3 * l3)
-                  : std::fabs(((d2 * l2 * l2 + l3 * l3) - d) / d);
+  double sum = (b == 0) ? std::abs(d2 + l1 * l1 + 2.0 * l3)
+                        : std::abs(((d2 + l1 * l1 + 2.0 * l3) - b) / b);
+  sum += (c == 0) ? std::abs(2.0 * d2 * l2 + 2.0 * l1 * l3)
+                  : std::abs(((2.0 * d2 * l2 + 2.0 * l1 * l3) - c) / c);
+  sum += (d == 0) ? std::abs(d2 * l2 * l2 + l3 * l3)
+                  : std::abs(((d2 * l2 * l2 + l3 * l3) - d) / d);
   return sum;
 }
 
@@ -200,12 +200,12 @@ double calc_err_abcd(double a, double b, double c, double d, double aq,
 {
   /* Eqs. (68) and (69) in the manuscript for real alpha1 (aq), beta1 (bq),
    * alpha2 (cq) and beta2 (dq)*/
-  double sum = (d == 0) ? std::fabs(bq * dq) : std::fabs((bq * dq - d) / d);
-  sum += (c == 0) ? std::fabs(bq * cq + aq * dq)
-                  : std::fabs(((bq * cq + aq * dq) - c) / c);
-  sum += (b == 0) ? std::fabs(bq + aq * cq + dq)
-                  : std::fabs(((bq + aq * cq + dq) - b) / b);
-  sum += (a == 0) ? std::fabs(aq + cq) : std::fabs(((aq + cq) - a) / a);
+  double sum = (d == 0) ? std::abs(bq * dq) : std::abs((bq * dq - d) / d);
+  sum += (c == 0) ? std::abs(bq * cq + aq * dq)
+                  : std::abs(((bq * cq + aq * dq) - c) / c);
+  sum += (b == 0) ? std::abs(bq + aq * cq + dq)
+                  : std::abs(((bq + aq * cq + dq) - b) / b);
+  sum += (a == 0) ? std::abs(aq + cq) : std::abs(((aq + cq) - a) / a);
   return sum;
 }
 
@@ -213,11 +213,11 @@ double calc_err_abc(
   double a, double b, double c, double aq, double bq, double cq, double dq)
 {
   /* Eqs. (48)-(51) in the manuscript */
-  double sum = (c == 0) ? std::fabs(bq * cq + aq * dq)
-                        : std::fabs(((bq * cq + aq * dq) - c) / c);
-  sum += (b == 0) ? std::fabs(bq + aq * cq + dq)
-                  : std::fabs(((bq + aq * cq + dq) - b) / b);
-  sum += (a == 0) ? std::fabs(aq + cq) : std::fabs(((aq + cq) - a) / a);
+  double sum = (c == 0) ? std::abs(bq * cq + aq * dq)
+                        : std::abs(((bq * cq + aq * dq) - c) / c);
+  sum += (b == 0) ? std::abs(bq + aq * cq + dq)
+                  : std::abs(((bq + aq * cq + dq) - b) / b);
+  sum += (a == 0) ? std::abs(aq + cq) : std::abs(((aq + cq) - a) / a);
   return sum;
 }
 void NRabcd(double a, double b, double c, double d, double* AQ, double* BQ,
@@ -240,7 +240,7 @@ void NRabcd(double a, double b, double c, double d, double* AQ, double* BQ,
   fvec[3] = x[0] + x[2] - a;
   double errf = 0;
   for (int k1 = 0; k1 < 4; k1++) {
-    errf += (vr[k1] == 0) ? std::fabs(fvec[k1]) : std::fabs(fvec[k1] / vr[k1]);
+    errf += (vr[k1] == 0) ? std::abs(fvec[k1]) : std::abs(fvec[k1] / vr[k1]);
   }
   for (int iter = 0; iter < 8; iter++) {
     double x02 = x[0] - x[2];
@@ -282,8 +282,7 @@ void NRabcd(double a, double b, double c, double d, double* AQ, double* BQ,
     double errfold = errf;
     errf = 0;
     for (int k1 = 0; k1 < 4; k1++) {
-      errf +=
-        (vr[k1] == 0) ? std::fabs(fvec[k1]) : std::fabs(fvec[k1] / vr[k1]);
+      errf += (vr[k1] == 0) ? std::abs(fvec[k1]) : std::abs(fvec[k1] / vr[k1]);
     }
     if (errf == 0)
       break;
@@ -408,11 +407,11 @@ void quartic_solver(double coeff[5], std::complex<double> roots[4])
 
     cq = l1 - gamma;
     dq = l3 - gamma * l2;
-    if (std::fabs(dq) < std::fabs(bq))
+    if (std::abs(dq) < std::abs(bq))
       dq = d / bq;
-    else if (std::fabs(dq) > std::fabs(bq))
+    else if (std::abs(dq) > std::abs(bq))
       bq = d / dq;
-    if (std::fabs(aq) < std::fabs(cq)) {
+    if (std::abs(aq) < std::abs(cq)) {
       nsol = 0;
       if (dq != 0) {
         aqv[nsol] = (c - bq * cq) / dq; /* see eqs. (47) */
@@ -479,8 +478,8 @@ void quartic_solver(double coeff[5], std::complex<double> roots[4])
   /* Case III: d2 is 0 or approximately 0 (in this case check which solution is
    * better) */
   if (realcase[0] == -1 ||
-      (std::fabs(d2) <= MACHEPS * oqs::max3(std::fabs(2. * b / 3.),
-                                    std::fabs(phi0), l1 * l1))) {
+      (std::abs(d2) <=
+        MACHEPS * oqs::max3(std::abs(2. * b / 3.), std::abs(phi0), l1 * l1))) {
     double d3 = d - l3 * l3;
     double err0 = 0.0;
     if (realcase[0] == 1)
@@ -496,9 +495,9 @@ void quartic_solver(double coeff[5], std::complex<double> roots[4])
       bq1 = l3 + std::sqrt(-d3);
       cq1 = l1;
       dq1 = l3 - std::sqrt(-d3);
-      if (std::fabs(dq1) < std::fabs(bq1))
+      if (std::abs(dq1) < std::abs(bq1))
         dq1 = d / bq1;
-      else if (std::fabs(dq1) > std::fabs(bq1))
+      else if (std::abs(dq1) > std::abs(bq1))
         bq1 = d / dq1;
       err1 = oqs::calc_err_abcd(a, b, c, d, aq1, bq1, cq1, dq1); /* eq. (68) */
     } else {

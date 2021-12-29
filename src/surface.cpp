@@ -47,7 +47,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1)
   // Parse the coefficients.
   int stat = sscanf(coeffs.c_str(), "%lf", &c1);
   if (stat != 1) {
-    fatal_error("Something went wrong reading surface coeffs");
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
   }
 }
 
@@ -65,7 +66,8 @@ void read_coeffs(
   // Parse the coefficients.
   int stat = sscanf(coeffs.c_str(), "%lf %lf %lf", &c1, &c2, &c3);
   if (stat != 3) {
-    fatal_error("Something went wrong reading surface coeffs");
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
   }
 }
 
@@ -83,7 +85,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   // Parse the coefficients.
   int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf", &c1, &c2, &c3, &c4);
   if (stat != 4) {
-    fatal_error("Something went wrong reading surface coeffs");
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
   }
 }
 
@@ -102,7 +105,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   int stat = sscanf(
     coeffs.c_str(), "%lf %lf %lf %lf %lf %lf", &c1, &c2, &c3, &c4, &c5, &c6);
   if (stat != 6) {
-    fatal_error("Something went wrong reading surface coeffs");
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
   }
 }
 
@@ -122,7 +126,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
     &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10);
   if (stat != 10) {
-    fatal_error("Something went wrong reading surface coeffs");
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
   }
 }
 
@@ -1064,8 +1069,6 @@ void SurfaceXTorus::to_hdf5_inner(hid_t group_id) const
   std::array<double, 6> coeffs {{x0_, y0_, z0_, A_, B_, C_}};
   write_dataset(group_id, "coefficients", coeffs);
 }
-
-// todo should do some alebgra first to get rid of the sqrt
 
 double SurfaceXTorus::evaluate(Position r) const
 {

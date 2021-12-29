@@ -1,17 +1,18 @@
 from itertools import combinations
 from random import uniform
 import openmc
+import pytest
 
 
-def get_torus_keff(cls, center=(0, 0, 0)):
+def get_torus_keff(cls, R, r, center=(0, 0, 0)):
     model = openmc.Model()
     mat = openmc.Material()
     mat.add_nuclide('U235', 1.0)
     mat.set_density('g/cm3', 10.0)
 
     x, y, z = center
-    torus = cls(x0=x, y0=y, z0=z, a=3, b=2, c=2)
-    sphere = openmc.Sphere(x0=x, y0=y, z0=z, r=5.5, boundary_type="vacuum")
+    torus = cls(x0=x, y0=y, z0=z, a=R, b=r, c=r)
+    sphere = openmc.Sphere(x0=x, y0=y, z0=z, r=R + r + 1, boundary_type="vacuum")
     torus_cell = openmc.Cell(fill=mat, region=-torus)
     outer_cell = openmc.Cell(region=+torus & -sphere)
     model.geometry = openmc.Geometry([torus_cell, outer_cell])
@@ -26,15 +27,16 @@ def get_torus_keff(cls, center=(0, 0, 0)):
         return sp.k_combined
 
 
-def test_torus_keff(run_in_tmpdir):
+@pytest.mark.parametrize("R,r", [(2.1, 2.0), (3.0, 1.0)])
+def test_torus_keff(R, r, run_in_tmpdir):
     random_point = lambda: (uniform(-5, 5), uniform(-5, 5), uniform(-5, 5))
     keffs = [
-        get_torus_keff(openmc.XTorus),
-        get_torus_keff(openmc.XTorus, random_point()),
-        get_torus_keff(openmc.YTorus),
-        get_torus_keff(openmc.YTorus, random_point()),
-        get_torus_keff(openmc.ZTorus),
-        get_torus_keff(openmc.ZTorus, random_point())
+        get_torus_keff(openmc.XTorus, R, r),
+        get_torus_keff(openmc.XTorus, R, r, random_point()),
+        get_torus_keff(openmc.YTorus, R, r),
+        get_torus_keff(openmc.YTorus, R, r, random_point()),
+        get_torus_keff(openmc.ZTorus, R, r),
+        get_torus_keff(openmc.ZTorus, R, r, random_point())
     ]
 
     # For each combination of keff values, their difference should be within

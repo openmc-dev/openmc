@@ -27,7 +27,7 @@ void TimeFilter::set_bins(gsl::span<const double> bins)
   bins_.reserve(bins.size());
 
   // Ensure time bins are sorted
-  if (!std::is_sorted(bins.cbegin(), bins.cend(), std::less_equal<double>())) {
+  if (!std::is_sorted(bins.cbegin(), bins.cend())) {
     throw std::runtime_error {"Time bins must be monotonically increasing."};
   }
 

@@ -1042,7 +1042,7 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
   // zero but possibly small and positive. A tolerance is set to discard that
   // zero.
   double distance = INFTY;
-  double cutoff = coincident ? 1e-9 : 0.0;
+  double cutoff = coincident ? 1e-10 : 0.0;
   for (int i = 0; i < 4; ++i) {
     if (roots[i].imag() == 0) {
       double root = roots[i].real();

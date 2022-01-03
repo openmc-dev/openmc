@@ -2190,7 +2190,7 @@ class TorusMixin:
 
 
 class XTorus(TorusMixin, Surface):
-    """A torus of the form :math:`(x - x_0)^2/B^2 + (\sqrt{(y - y_0)^2 + (z -
+    r"""A torus of the form :math:`(x - x_0)^2/B^2 + (\sqrt{(y - y_0)^2 + (z -
     z_0)^2} - A)^2/C^2 - 1 = 0`.
 
     Parameters
@@ -2259,7 +2259,7 @@ class XTorus(TorusMixin, Surface):
                     np.array([np.inf, np.inf, np.inf]))
 
 class YTorus(TorusMixin, Surface):
-    """A torus of the form :math:`(y - y_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (z -
+    r"""A torus of the form :math:`(y - y_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (z -
     z_0)^2} - A)^2/C^2 - 1 = 0`.
 
     Parameters
@@ -2328,7 +2328,7 @@ class YTorus(TorusMixin, Surface):
                     np.array([np.inf, np.inf, np.inf]))
 
 class ZTorus(TorusMixin, Surface):
-    """A torus of the form :math:`(z - z_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (y -
+    r"""A torus of the form :math:`(z - z_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (y -
     y_0)^2} - A)^2/C^2 - 1 = 0`.
 
     Parameters

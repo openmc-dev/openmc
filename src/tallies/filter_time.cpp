@@ -1,7 +1,8 @@
 #include "openmc/tallies/filter_time.h"
 
-#include <algorithm> // for min, max, copy
-#include <iterator>  // for back_inserter
+#include <algorithm>  // for min, max, copy, adjacent_find
+#include <functional> // for greater_equal
+#include <iterator>   // for back_inserter
 
 #include <fmt/core.h>
 
@@ -26,8 +27,9 @@ void TimeFilter::set_bins(gsl::span<const double> bins)
   bins_.clear();
   bins_.reserve(bins.size());
 
-  // Ensure time bins are sorted
-  if (!std::is_sorted(bins.cbegin(), bins.cend())) {
+  // Ensure time bins are sorted and don't have duplicates
+  if (std::adjacent_find(bins.cbegin(), bins.cend(), std::greater_equal<>()) !=
+      bins.end()) {
     throw std::runtime_error {"Time bins must be monotonically increasing."};
   }
 
@@ -47,18 +49,11 @@ void TimeFilter::get_all_bins(
   if (t_end < bins_.front() || t_start >= bins_.back())
     return;
 
-  if (estimator == TallyEstimator::ANALOG) {
+  if (estimator == TallyEstimator::TRACKLENGTH) {
     // -------------------------------------------------------------------------
-    // For surface tallies, find a match based on the exact time the particle
-    // crosses the surface
-    const auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_end);
-    match.bins_.push_back(i_bin);
-    match.weights_.push_back(1.0);
-
-  } else {
-    // -------------------------------------------------------------------------
-    // For volume tallies, we have to check the start/end time of the current
-    // track and find where it overlaps with time bins and score accordingly
+    // For tracklength estimator, we have to check the start/end time of
+    // the current track and find where it overlaps with time bins and score
+    // accordingly
 
     // Skip if time interval is zero
     if (t_start == t_end)
@@ -82,6 +77,13 @@ void TimeFilter::get_all_bins(
       if (t_end < bins_[i_bin + 1])
         break;
     }
+  } else {
+    // -------------------------------------------------------------------------
+    // For collision estimator or surface tallies, find a match based on the
+    // exact time of the particle
+    const auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_end);
+    match.bins_.push_back(i_bin);
+    match.weights_.push_back(1.0);
   }
 }
 

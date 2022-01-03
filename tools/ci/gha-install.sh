@@ -1,10 +1,13 @@
 #!/bin/bash
 set -ex
 
-# Upgrade pip, pytest, numpy before doing anything else
+# Upgrade pip, pytest, numpy before doing anything else.
+# TODO: numpy 1.22 results in several failing tests, so we force a lower version
+# for now (similar change made in pyproject.toml). When this is removed, those
+# tests will need to be updated.
 pip install --upgrade pip
 pip install --upgrade pytest
-pip install --upgrade numpy
+pip install --upgrade "numpy<1.22"
 
 # Install NJOY 2016
 ./tools/ci/gha-install-njoy.sh

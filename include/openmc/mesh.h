@@ -164,7 +164,7 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  //! Determine the which cell or surface bins were crossed by a particle
+  //! Determine which cell or surface bins were crossed by a particle
   //
   //! \param[in] r0 Previous position of the particle
   //! \param[in] r1 Current position of the particle

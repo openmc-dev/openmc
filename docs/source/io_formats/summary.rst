@@ -55,7 +55,8 @@ The current version of the summary file format is 6.0.
 :Datasets: - **name** (*char[]*) -- Name of the surface.
            - **type** (*char[]*) -- Type of the surface. Can be 'x-plane',
              'y-plane', 'z-plane', 'plane', 'x-cylinder', 'y-cylinder',
-             'z-cylinder', 'sphere', 'x-cone', 'y-cone', 'z-cone', or 'quadric'.
+             'z-cylinder', 'sphere', 'x-cone', 'y-cone', 'z-cone', 'quadric',
+             'x-torus', 'y-torus', or 'z-torus'.
            - **coefficients** (*double[]*) -- Array of coefficients that define
              the surface. See :ref:`surface_element` for what coefficients are
              defined for each surface type.

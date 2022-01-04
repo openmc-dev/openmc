@@ -364,6 +364,10 @@ list(APPEND libopenmc_SOURCES
   src/xml_interface.cpp
   src/xsdata.cpp)
 
+# Add bundled external dependencies
+list(APPEND libopenmc_SOURCES
+  src/external/quartic_solver.cpp)
+
 # For Visual Studio compilers
 if(MSVC)
   # Use static library (otherwise explicit symbol portings are needed)

@@ -691,7 +691,7 @@ class CylindricalMesh(MeshBase):
 
     @property
     def indices(self):
-        nr = len(self.r_grid) - 1
+        nr, np, nz = self.dimension
         np = len(self.phi_grid) - 1
         nz = len(self.z_grid) - 1
         return ((r, p, z)
@@ -782,8 +782,6 @@ class CylindricalMesh(MeshBase):
 
         """
 
-        # V = int_r int_phi int_phi r dr dphi dz
-
         V_r = np.diff(np.array(self.r_grid)**2 / 2)
         V_p = np.diff(np.array(self.phi_grid) * np.pi / 180.0)
         V_z = np.diff(np.array(self.z_grid))
@@ -854,7 +852,7 @@ class SphericalMesh(MeshBase):
 
     @property
     def indices(self):
-        nr = len(self.r_grid) - 1
+        nr, nt, np = self.dimension
         nt = len(self.theta_grid) - 1
         np = len(self.phi_grid) - 1
         return ((r, t, p)
@@ -944,8 +942,6 @@ class SphericalMesh(MeshBase):
             Volumes
 
         """
-
-        # V = int_r int_theta int_phi r^2 dr sin(theta) dtheta dphi
 
         V_r = np.diff(np.array(self.r_grid)**3 / 3)
         V_t = np.diff(-np.cos(np.pi * np.array(self.theta_grid) / 180.0))

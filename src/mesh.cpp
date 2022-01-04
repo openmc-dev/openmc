@@ -391,7 +391,7 @@ void StructuredMesh::raytrace_mesh(Position r0, Position r1, const Direction& u,
   bool in_mesh;
 
   // Calculate index of current cell. Offset the position a tiny bit in direction of flight
-  MeshIndex ijk = get_indices(r0+TINY_BIT*u, in_mesh);
+  MeshIndex ijk = get_indices(r0 + TINY_BIT*u, in_mesh);
   
 
   // if track is very short, assume that it is completely inside one cell.
@@ -480,7 +480,7 @@ void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   struct TallyBins {
     TallyBins(const StructuredMesh* _mesh, vector<int>& _bins, vector<double>& _lengths):
       mesh(_mesh), bins(_bins), lengths(_lengths) {}
-    void surface(const MeshIndex& ijk, int k, bool max, int inwward) const {}
+    void surface(const MeshIndex& ijk, int k, bool max, int inward) const {}
     void track(const MeshIndex& ijk, double l) const {
       bins.push_back(mesh->get_bin_from_indices(ijk));
       lengths.push_back(l);
@@ -949,7 +949,7 @@ double CylindricalMesh::find_r_crossing(const Position& r, const Direction& u, d
     // the solution -p - D is always smaller as -p + D : Check this one first
     if (-p - D > l)
       return -p - D;
-    if ( -p + D > l)
+    if (-p + D > l)
       return -p + D;
   }
 
@@ -979,7 +979,7 @@ double CylindricalMesh::find_phi_crossing(const Position& r, const Direction& u,
   if (std::fabs(denominator) > FP_PRECISION) {
     const double s = - (r.x * s0 - r.y * c0) / denominator;
     // Check if solution is in positive direction of flight and crosses the correct phi surface (not -phi)
-    if ((s>l) and ((c0*(r.x+s*u.x) + s0*(r.y+s*u.y))>0.0))
+    if ((s > l) and ((c0*(r.x + s*u.x) + s0*(r.y + s*u.y)) > 0.0))
       return s;
   }
   
@@ -1166,7 +1166,7 @@ double SphericalMesh::find_r_crossing(const Position& r, const Direction& u, dou
     // the solution -p - D is always smaller as -p + D : Check this one first
     if (-p - D > l)
       return -p - D;
-    if ( -p + D > l)
+    if (-p + D > l)
       return -p + D;
   }
 
@@ -1193,14 +1193,14 @@ double SphericalMesh::find_theta_crossing(const Position& r, const Direction& u,
   const double cos_t_2 = cos_t * cos_t;
 
   const double a = cos_t_2 - u.z * u.z;
-  const double b = (r.dot(u) * cos_t_2 - r.z * u.z);
-  const double c = (r.dot(r) * cos_t_2 - r.z * r.z);
+  const double b = r.dot(u) * cos_t_2 - r.z * u.z;
+  const double c = r.dot(r) * cos_t_2 - r.z * r.z;
 
   // if factor of s^2 is zero, direction of flight is parallel to theta surface
   if (fabs(a) < FP_PRECISION) {
     // if b vanishes, direction of flight is within theta surface and crossing is not possible
     if (fabs(b) > FP_PRECISION) {
-      const double s = - 0.5 * c / b;
+      const double s = -0.5 * c / b;
       // Check if solution is in positive direction of flight and has correct sign 
       if ((s > l) and (std::signbit(r.z+s*u.z) == sgn)) return s;
     }
@@ -1216,11 +1216,11 @@ double SphericalMesh::find_theta_crossing(const Position& r, const Direction& u,
   D = std::sqrt(D);
 
   // the solution -p-D is always smaller as -p+D : Check this one first
-  double s = - p - D;
+  double s = -p - D;
   // Check if solution is in positive direction of flight and has correct sign 
   if ((s > l) and (std::signbit(r.z+s*u.z) == sgn)) return s;
 
-  s = - p + D;
+  s = -p + D;
   // Check if solution is in positive direction of flight and has correct sign 
   if ((s > l) and (std::signbit(r.z+s*u.z) == sgn)) return s;
 
@@ -1360,9 +1360,6 @@ void SphericalMesh::to_hdf5(hid_t group) const
 
   close_group(mesh_group);
 }
-
-
-
 
 //==============================================================================
 // Helper functions for the C API
@@ -1615,7 +1612,7 @@ int openmc_structured_mesh_set_grid_impl(int32_t index,
   return err;  
 }
 
-//! Get the mesh parameters for rectilinear, cylindrical and spharical meshes
+//! Get the mesh parameters for rectilinear, cylindrical and spherical meshes
 template <class C>
 int openmc_structured_mesh_get_grid_impl(int32_t index, double** grid_x,
   int* nx, double** grid_y, int* ny, double** grid_z, int* nz)

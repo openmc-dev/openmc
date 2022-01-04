@@ -146,7 +146,7 @@ public:
       { }
     int nextIndex { -1 };
     double distance { INFTY };
-    bool maxSurface { true };
+    bool max_surface { true };
     bool operator<(const MeshDistance& o) const {
       return distance < o.distance;
     }
@@ -355,7 +355,7 @@ protected:
   double find_phi_crossing(const Position& r, const Direction& u, double l, int shell) const;
   StructuredMesh::MeshDistance find_z_crossing(const Position& r, const Direction& u, double l, int shell) const;
 
-  bool full_phi { false };
+  bool full_phi_ { false };
 
   constexpr inline int sanitize_angular_index(int idx, bool full, int N) const {
     if ((idx > 0) and (idx <= N)) {

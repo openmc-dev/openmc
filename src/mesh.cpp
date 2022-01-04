@@ -825,7 +825,7 @@ int RectilinearMesh::set_grid()
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
-    if (not std::is_sorted(g.begin(), g.end(), std::less_equal<double>())) {
+    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) != g.end()) {
       set_errmsg("Values in for x-, y-, and z- grids for "
                  "rectilinear meshes must be sorted and unique.");
       return OPENMC_E_INVALID_ARGUMENT;
@@ -1047,7 +1047,7 @@ int CylindricalMesh::set_grid()
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
-    if (not std::is_sorted(g.begin(), g.end(), std::less_equal<double>())) {
+    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) != g.end()) {
       set_errmsg("Values in for r-, phi-, and z- grids for "
                  "cylindrical meshes must be sorted and unique.");
       return OPENMC_E_INVALID_ARGUMENT;
@@ -1305,7 +1305,7 @@ int SphericalMesh::set_grid()
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
-    if (not std::is_sorted(g.begin(), g.end(), std::less_equal<double>())) {
+    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) != g.end()) {
       set_errmsg("Values in for r-, theta-, and phi- grids for "
                  "spherical meshes must be sorted and unique.");
       return OPENMC_E_INVALID_ARGUMENT;

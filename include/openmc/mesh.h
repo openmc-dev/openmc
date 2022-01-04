@@ -141,8 +141,8 @@ public:
 
   struct MeshDistance {
     MeshDistance() = default;
-    MeshDistance(int _index, bool _maxSurface, double _distance): 
-      nextIndex{_index}, maxSurface{_maxSurface}, distance{_distance}
+    MeshDistance(int _index, bool _max_surface, double _distance): 
+      nextIndex{_index}, max_surface{_max_surface}, distance{_distance}
       { }
     int nextIndex { -1 };
     double distance { INFTY };
@@ -350,7 +350,7 @@ public:
 
   int set_grid();
 
-protected:
+private:
   double find_r_crossing(const Position& r, const Direction& u, double l, int shell) const;
   double find_phi_crossing(const Position& r, const Direction& u, double l, int shell) const;
   StructuredMesh::MeshDistance find_z_crossing(const Position& r, const Direction& u, double l, int shell) const;
@@ -368,7 +368,7 @@ protected:
   }
 
   inline int sanitize_phi(int idx) const {
-    return sanitize_angular_index(idx, full_phi, shape_[1]);
+    return sanitize_angular_index(idx, full_phi_, shape_[1]);
   }
 
 };
@@ -400,13 +400,13 @@ public:
 
   int set_grid();
 
-protected:
+private:
   double find_r_crossing(const Position& r, const Direction& u, double l, int shell) const;
   double find_theta_crossing(const Position& r, const Direction& u, double l, int shell) const;
   double find_phi_crossing(const Position& r, const Direction& u, double l, int shell) const;
 
-  bool full_theta { false };
-  bool full_phi { false };
+  bool full_theta_ { false };
+  bool full_phi_ { false };
 
   constexpr inline int sanitize_angular_index(int idx, bool full, int N) const {
     if ((idx > 0) and (idx <= N)) {
@@ -419,10 +419,10 @@ protected:
   }
 
   inline int sanitize_theta(int idx) const {
-    return sanitize_angular_index(idx, full_theta, shape_[1]);
+    return sanitize_angular_index(idx, full_theta_, shape_[1]);
   }
   inline int sanitize_phi(int idx) const {
-    return sanitize_angular_index(idx, full_phi, shape_[2]);
+    return sanitize_angular_index(idx, full_phi_, shape_[2]);
   }
 
 };

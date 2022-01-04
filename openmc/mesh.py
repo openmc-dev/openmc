@@ -649,9 +649,11 @@ class CylindricalMesh(MeshBase):
     n_dimension : int
         Number of mesh dimensions (always 3 for a CylindricalMesh).
     r_grid : Iterable of float
-        Mesh boundary points along the r-axis.
+        Mesh boundary points along the r-axis. 
+        Requirement is r >= 0.
     phi_grid : Iterable of float
-        Mesh boundary points along the phi-axis.
+        Mesh boundary points along the phi-axis. 
+        The default value is [0, 360], i.e. the full phi range.
     z_grid : Iterable of float
         Mesh boundary points along the z-axis.
     indices : Iterable of tuple
@@ -808,13 +810,16 @@ class SphericalMesh(MeshBase):
     dimension : Iterable of int
         The number of mesh cells in each direction.
     n_dimension : int
-        Number of mesh dimensions (always 3 for a RectilinearMesh).
+        Number of mesh dimensions (always 3 for a SphericalMesh).
     r_grid : Iterable of float
         Mesh boundary points along the r-axis.
+        Requirement is r >= 0.
     theta_grid : Iterable of float
-        Mesh boundary points along the theta-axis.
+        Mesh boundary points along the theta-axis in degrees.
+        The default value is [0, 180], i.e. the full theta range.
     phi_grid : Iterable of float
-        Mesh boundary points along the phi-axis.
+        Mesh boundary points along the phi-axis in degrees.
+        The default value is [0, 360], i.e. the full phi range.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]

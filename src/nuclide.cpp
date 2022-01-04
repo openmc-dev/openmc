@@ -627,7 +627,7 @@ double Nuclide::elastic_xs_0K(double E) const
   return (1.0 - f)*device_elastic_0K_[i_grid] + f*device_elastic_0K_[i_grid + 1];
 }
 
-void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, double atom_density)
+MacroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, double atom_density)
 {
   auto& micro {p.neutron_xs_[index_]};
 
@@ -639,11 +639,12 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
         && sab_frac  == micro.sab_frac
      )
   {
-    p.macro_xs_.total += atom_density * micro.total;
-    p.macro_xs_.absorption += atom_density * micro.absorption;
-    p.macro_xs_.fission += atom_density * micro.fission;
-    p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
-    return;
+    MacroXS xs;
+    xs.total      = atom_density * micro.total;
+    xs.absorption = atom_density * micro.absorption;
+    xs.fission    = atom_density * micro.fission;
+    xs.nu_fission = atom_density * micro.nu_fission;
+    return xs;
   }
 
   // Initialize cached cross sections to zero
@@ -1058,10 +1059,12 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
   // ======================================================================
   // ACCUMULATE TO MACROSCOPIC CROSS SECTION
   // ======================================================================
-  p.macro_xs_.total += atom_density * micro.total;
-  p.macro_xs_.absorption += atom_density * micro.absorption;
-  p.macro_xs_.fission += atom_density * micro.fission;
-  p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
+  MacroXS xs;
+  xs.total      = atom_density * micro.total;
+  xs.absorption = atom_density * micro.absorption;
+  xs.fission    = atom_density * micro.fission;
+  xs.nu_fission = atom_density * micro.nu_fission;
+  return xs;
 }
 
 std::pair<gsl::index, double> Nuclide::find_temperature(double T) const

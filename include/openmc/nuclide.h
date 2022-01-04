@@ -44,7 +44,7 @@ public:
   void init_grid();
 
   #pragma omp declare target
-  void calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, double atom_density);
+  MacroXS calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, double atom_density);
 
   // Methods
   double nu(double E, EmissionMode mode, int group=0) const;

@@ -485,6 +485,7 @@ void Tally::set_scores(const vector<std::string>& scores)
           fatal_error("Cannot tally mesh surface currents in the same tally as "
                       "normal surface currents");
         type_ = TallyType::SURFACE;
+        estimator_ = TallyEstimator::ANALOG;
       } else if (meshsurface_present) {
         type_ = TallyType::MESH_SURFACE;
       } else {

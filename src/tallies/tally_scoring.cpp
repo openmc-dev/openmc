@@ -628,7 +628,7 @@ void score_general_ce(Particle& p, int i_tally, int start_index,
         score = flux;
       }
       // Score inverse velocity in units of s/cm.
-      score /= std::sqrt(2. * E / MASS_NEUTRON_EV) * C_LIGHT * 100.;
+      score /= p.speed();
       break;
 
     case SCORE_SCATTER:

@@ -253,6 +253,8 @@ class SourceParticle:
         Directional cosines
     E : float
         Energy of particle in [eV]
+    time : float
+        Time of particle in [s]
     wgt : float
         Weight of the particle
     delayed_group : int
@@ -263,11 +265,12 @@ class SourceParticle:
         Type of the particle
 
     """
-    def __init__(self, r=(0., 0., 0.), u=(0., 0., 1.), E=1.0e6, wgt=1.0,
+    def __init__(self, r=(0., 0., 0.), u=(0., 0., 1.), E=1.0e6, time=0.0, wgt=1.0,
                  delayed_group=0, surf_id=0, particle=ParticleType.NEUTRON):
         self.r = tuple(r)
         self.u = tuple(u)
         self.E = float(E)
+        self.time = float(time)
         self.wgt = float(wgt)
         self.delayed_group = delayed_group
         self.surf_id = surf_id
@@ -282,7 +285,7 @@ class SourceParticle:
             Source particle attributes
 
         """
-        return (self.r, self.u, self.E, self.wgt,
+        return (self.r, self.u, self.E, self.time, self.wgt,
                 self.delayed_group, self.surf_id, self.particle.value)
 
 
@@ -309,6 +312,7 @@ def write_source_file(source_particles, filename, **kwargs):
         ('r', pos_dtype),
         ('u', pos_dtype),
         ('E', '<f8'),
+        ('time', '<f8'),
         ('wgt', '<f8'),
         ('delayed_group', '<i4'),
         ('surf_id', '<i4'),

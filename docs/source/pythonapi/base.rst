@@ -136,6 +136,7 @@ Constructing Tallies
    openmc.LegendreFilter
    openmc.SpatialLegendreFilter
    openmc.SphericalHarmonicsFilter
+   openmc.TimeFilter
    openmc.ZernikeFilter
    openmc.ZernikeRadialFilter
    openmc.ParticleFilter

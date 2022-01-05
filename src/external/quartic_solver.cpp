@@ -2,6 +2,7 @@
 #include <cmath>
 #include <complex>
 #include <cstdlib>
+#include <limits>
 
 namespace oqs {
 

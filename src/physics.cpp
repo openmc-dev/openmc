@@ -524,7 +524,8 @@ int sample_nuclide(Particle& p)
     // Lookup micro XS or retrieve from XS cache
     double total;
     #ifdef NO_MICRO_XS_CACHE
-    MicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, true);
+    bool cache_micro = false;
+    MicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, cache_micro);
     total = xs.total;
     #else
     total = p.neutron_xs_[i_nuclide].total;
@@ -532,7 +533,16 @@ int sample_nuclide(Particle& p)
 
     // Increment probability to compare to cutoff
     prob += atom_density * total;
-    if (prob >= cutoff) return i_nuclide;
+    if (prob >= cutoff) {
+      #ifdef NO_MICRO_XS_CACHE
+      // If no micro XS cache is being used, we need to store this nuclide's micro XS data
+      // in the particle for other collision physics kernels to utilize.
+      bool cache_micro = true;
+      data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, cache_micro);
+      #endif
+
+      return i_nuclide;
+    }
   }
 
   /*

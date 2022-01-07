@@ -200,7 +200,16 @@ struct MacroXS {
   double pair_production; //!< macroscopic pair production xs
 };
 
-using MicroXS = MacroXS;
+//==============================================================================
+// MICROXS contains microscopic neutron cross sections for a nuclide
+//==============================================================================
+
+struct MicroXS {
+  double total;         //!< macroscopic total xs
+  double absorption;    //!< macroscopic absorption xs
+  double fission;       //!< macroscopic fission xs
+  double nu_fission;    //!< macroscopic production xs
+};
 
 //==============================================================================
 // Information about nearest boundary crossing

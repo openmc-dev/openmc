@@ -752,14 +752,6 @@ void Material::init_nuclide_index()
 
 void Material::calculate_xs(Particle& p) const
 {
-  // Set all material macroscopic cross sections to zero
-  /*
-  p.macro_xs_.total = 0.0;
-  p.macro_xs_.absorption = 0.0;
-  p.macro_xs_.fission = 0.0;
-  p.macro_xs_.nu_fission = 0.0;
-  */
-
   if (p.type_ == Particle::Type::neutron) {
     this->calculate_neutron_xs(p);
   } else if (p.type_ == Particle::Type::photon) {
@@ -779,7 +771,8 @@ void Material::calculate_neutron_xs(Particle& p) const
   // Initialize position in i_sab_nuclides
   int j = 0;
 
-  MacroXS macro = {0., 0., 0., 0., 0., 0., 0., 0., 0.};
+  // Local macro XS accumulator
+  MacroXS macro = {};
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -845,6 +838,7 @@ void Material::calculate_neutron_xs(Particle& p) const
 
 void Material::calculate_photon_xs(Particle& p) const
 {
+  p.macro_xs_.total = 0.0;
   p.macro_xs_.coherent = 0.0;
   p.macro_xs_.incoherent = 0.0;
   p.macro_xs_.photoelectric = 0.0;

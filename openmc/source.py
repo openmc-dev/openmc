@@ -251,7 +251,6 @@ class Source:
         if time is not None:
             source.time = Univariate.from_xml_element(time)
 
-
         return source
 
 

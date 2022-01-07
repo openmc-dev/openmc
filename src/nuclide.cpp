@@ -626,7 +626,7 @@ double Nuclide::elastic_xs_0K(double E) const
   return (1.0 - f)*device_elastic_0K_[i_grid] + f*device_elastic_0K_[i_grid + 1];
 }
 
-MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, bool write_cache)
+MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p)
 {
   #ifndef NO_MICRO_XS_CACHE
   {
@@ -1056,26 +1056,24 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   // ======================================================================
   // Write to Micro XS Cache
   // ======================================================================
-  if (write_cache) {
-    auto& micro {p.neutron_xs_[index_]};
-    micro.elastic = elastic;
-    micro.thermal_elastic = thermal_elastic;
-    micro.thermal = thermal;
-    micro.index_sab = index_sab;
-    micro.sab_frac = sab_frac;
-    micro.use_ptable = use_ptable;
-    micro.last_E = p.E_;
-    micro.last_sqrtkT = p.sqrtkT_;
-    micro.index_temp    = i_temp;
-    micro.index_grid    = i_grid;
-    micro.interp_factor = f;
-    micro.total         = total;
-    micro.absorption    = absorption;
-    micro.fission       = fission;
-    micro.nu_fission    = nu_fission;
-    micro.photon_prod   = photon_prod;
-    micro.index_temp_sab = index_temp_sab;
-  }
+  auto& micro {p.neutron_xs_[index_]};
+  micro.elastic = elastic;
+  micro.thermal_elastic = thermal_elastic;
+  micro.thermal = thermal;
+  micro.index_sab = index_sab;
+  micro.sab_frac = sab_frac;
+  micro.use_ptable = use_ptable;
+  micro.last_E = p.E_;
+  micro.last_sqrtkT = p.sqrtkT_;
+  micro.index_temp    = i_temp;
+  micro.index_grid    = i_grid;
+  micro.interp_factor = f;
+  micro.total         = total;
+  micro.absorption    = absorption;
+  micro.fission       = fission;
+  micro.nu_fission    = nu_fission;
+  micro.photon_prod   = photon_prod;
+  micro.index_temp_sab = index_temp_sab;
     
   // ======================================================================
   // Return MicroXS

@@ -475,14 +475,63 @@ int sample_nuclide(Particle& p)
   const auto& mat = model::materials[p.material_];
   int n = mat.nuclide_.size();
 
+  // Find energy index on energy grid
+  int neutron = static_cast<int>(Particle::Type::neutron);
+  int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
+
+  // Determine if this material has S(a,b) tables
+  bool check_sab = (mat.thermal_tables_.size() > 0);
+
+  // Initialize position in i_sab_nuclides
+  int j = 0;
+
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
     // Get atom density
     int i_nuclide = mat.device_nuclide_[i];
     double atom_density = mat.device_atom_density_[i];
 
+    // ======================================================================
+    // CHECK FOR S(A,B) TABLE
+
+    int i_sab = C_NONE;
+    double sab_frac = 0.0;
+
+    // Check if this nuclide matches one of the S(a,b) tables specified.
+    // This relies on thermal_tables_ being sorted by .index_nuclide
+    if (check_sab) {
+      const auto& sab {mat.device_thermal_tables_[j]};
+      if (i == sab.index_nuclide) {
+        // Get index in sab_tables
+        i_sab = sab.index_table;
+        sab_frac = sab.fraction;
+
+        // If particle energy is greater than the highest energy for the
+        // S(a,b) table, then don't use the S(a,b) table
+        if (p.E_ > data::device_thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
+
+        // Increment position in thermal_tables_
+        ++j;
+
+        // Don't check for S(a,b) tables if there are no more left
+        if (j == mat.thermal_tables_.size()) check_sab = false;
+      }
+    }
+
+    // CHECK FOR S(A,B) TABLE FINISHED
+    // ======================================================================
+    
+    // Lookup micro XS or retrieve from XS cache
+    double total;
+    #ifdef NO_MICRO_XS_CACHE
+    MicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p);
+    total = xs.total;
+    #else
+    total = p.neutron_xs_[i_nuclide].total;
+    #endif
+
     // Increment probability to compare to cutoff
-    prob += atom_density * p.neutron_xs_[i_nuclide].total;
+    prob += atom_density * total;
     if (prob >= cutoff) return i_nuclide;
   }
 
@@ -493,6 +542,7 @@ int sample_nuclide(Particle& p)
   */
   printf("Did not sample any nuclide during collision.\n");
 }
+
 
 int sample_element(Particle& p)
 {

@@ -14,6 +14,7 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
+#include "openmc/settings.h"
 #include "openmc/tallies/filter_match.h"
 
 #ifdef DAGMC
@@ -93,11 +94,11 @@ public:
   bool rotated {false};  //!< Is the level rotated?
 };
 
+
 //==============================================================================
 //! Cached microscopic cross sections for a particular nuclide at the current
 //! energy
 //==============================================================================
-
 struct NuclideMicroXS {
   // Microscopic cross sections in barns
   double total;            //!< total cross section
@@ -129,6 +130,35 @@ struct NuclideMicroXS {
   double last_E {0.0};      //!< Last evaluated energy
   double last_sqrtkT {0.0}; //!< Last temperature in sqrt(Boltzmann constant
                             //!< * temperature (eV))
+};
+
+class NuclideMicroXSCache {
+  public:
+  NuclideMicroXS neutron_xs_[NEUTRON_XS_SIZE]; //!< Microscopic neutron cross sections
+  #pragma omp declare target
+  NuclideMicroXS  operator [](int64_t i) const
+  {
+    #ifdef NO_MICRO_XS_CACHE
+    return neutron_xs_[0];
+    #else
+    return neutron_xs_[i];
+    #endif
+  }
+  NuclideMicroXS& operator [](int64_t i)
+  {
+    #ifdef NO_MICRO_XS_CACHE
+    return neutron_xs_[0];
+    #else
+    return neutron_xs_[i];
+    #endif
+  }
+  #pragma omp end declare target
+  void clear()
+  {
+    if (settings::run_CE) {
+      for (auto& micro : neutron_xs_) micro.last_E = 0.0;
+    }
+  }
 };
 
 //==============================================================================
@@ -165,6 +195,8 @@ struct MacroXS {
   double photoelectric;   //!< macroscopic photoelectric xs
   double pair_production; //!< macroscopic pair production xs
 };
+
+using MicroXS = MacroXS;
 
 //==============================================================================
 // Information about nearest boundary crossing
@@ -352,7 +384,8 @@ public:
 
   // TODO: neutron_xs_ can eventually be converted to an allocated array, with size fixed at runtime
   //std::vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
-  NuclideMicroXS neutron_xs_[NEUTRON_XS_SIZE]; //!< Microscopic neutron cross sections
+  //NuclideMicroXS neutron_xs_[NEUTRON_XS_SIZE]; //!< Microscopic neutron cross sections
+  NuclideMicroXSCache neutron_xs_; //!< Microscopic neutron cross sections
 
   // TODO: photon_xs_ can eventually be converted to an allocated array, with size fixed at runtime
   //std::vector<ElementMicroXS> photon_xs_; //!< Microscopic photon cross sections

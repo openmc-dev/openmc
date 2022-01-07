@@ -820,13 +820,13 @@ void Material::calculate_neutron_xs(Particle& p) const
     double atom_density = device_atom_density_[i];
 
     // Lookup micro XS
-    MacroXS nuclide_macro = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, atom_density);
+    MicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, atom_density);
     
     // Accumulate this nuclide's contribution to the local macro XS variable
-    macro.total      += nuclide_macro.total;
-    macro.absorption += nuclide_macro.absorption;
-    macro.fission    += nuclide_macro.fission;
-    macro.nu_fission += nuclide_macro.nu_fission;
+    macro.total      += atom_density * nuclide_micro.total;
+    macro.absorption += atom_density * nuclide_micro.absorption;
+    macro.fission    += atom_density * nuclide_micro.fission;
+    macro.nu_fission += atom_density * nuclide_micro.nu_fission;
   }
 
   // Store accumulated macro XS to particle

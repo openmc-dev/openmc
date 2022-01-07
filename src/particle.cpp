@@ -429,6 +429,9 @@ Particle::event_revive_from_secondary()
     this->from_source(secondary_bank_[--secondary_bank_length_]);
     //secondary_bank_.pop_back();
     n_event_ = 0;
+  
+    // Force calculation of cross-sections by setting last energy to zero
+    neutron_xs_.clear();
 
     // Enter new particle in particle track file
     /*

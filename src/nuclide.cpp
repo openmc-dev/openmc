@@ -591,17 +591,16 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
   UNREACHABLE();
 }
 
-void Nuclide::calculate_elastic_xs(Particle& p) const
+double Nuclide::calculate_elastic_xs(int i_temp, int i_grid, double interp_factor ) const
 {
-  // Get temperature index, grid index, and interpolation factor
-  auto& micro {p.neutron_xs_[index_]};
-  int i_temp = micro.index_temp;
-
+  double elastic = CACHE_INVALID;
   if (i_temp >= 0) {
     auto rx = device_reactions_[0].obj();
-    micro.elastic = rx.xs(micro);
+    elastic = rx.xs(i_temp, i_grid, interp_factor);
   }
+  return elastic;
 }
+
 
 double Nuclide::elastic_xs_0K(double E) const
 {

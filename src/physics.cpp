@@ -652,7 +652,7 @@ void scatter(Particle& p, int i_nuclide)
 
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {data::nuclides[i_nuclide]};
-  const auto& micro {p.neutron_xs_[i_nuclide]};
+  auto& micro {p.neutron_xs_[i_nuclide]};
   int i_temp =  micro.index_temp;
 
   // For tallying purposes, this routine might be called directly. In that
@@ -662,7 +662,7 @@ void scatter(Particle& p, int i_nuclide)
 
   // Calculate elastic cross section if it wasn't precalculated
   if (micro.elastic == CACHE_INVALID) {
-    nuc.calculate_elastic_xs(p);
+    micro.elastic = nuc.calculate_elastic_xs(micro.index_temp, micro.index_grid, micro.interp_factor);
   }
 
   double prob = micro.elastic - micro.thermal;

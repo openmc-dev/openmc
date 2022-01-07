@@ -48,7 +48,7 @@ public:
 
   // Methods
   double nu(double E, EmissionMode mode, int group=0) const;
-  void calculate_elastic_xs(Particle& p) const;
+  double calculate_elastic_xs(int i_temp, int i_grid, double interp_factor ) const;
 
   //! Determines the microscopic 0K elastic cross section at a trial relative
   //! energy used in resonance scattering

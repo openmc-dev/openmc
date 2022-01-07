@@ -524,7 +524,7 @@ int sample_nuclide(Particle& p)
     // Lookup micro XS or retrieve from XS cache
     double total;
     #ifdef NO_MICRO_XS_CACHE
-    MicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p);
+    MicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, true);
     total = xs.total;
     #else
     total = p.neutron_xs_[i_nuclide].total;

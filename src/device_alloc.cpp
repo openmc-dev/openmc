@@ -31,7 +31,9 @@ void enforce_assumptions()
   assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
   assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
   assert(model::n_coord_levels <= COORD_SIZE);
+  #ifndef NO_MICRO_XS_CACHE
   assert(data::nuclides_size <= NEUTRON_XS_SIZE);
+  #endif
   assert(data::elements_size <= PHOTON_XS_SIZE);
 
   assert(model::active_tracklength_tallies.empty() && "Tracklength tallies not yet supported.");

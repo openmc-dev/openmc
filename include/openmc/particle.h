@@ -37,7 +37,11 @@
 //#define NEUTRON_XS_SIZE 69 // HM-Small
 //#define NEUTRON_XS_SIZE 272 // HM-Large
 //#define NEUTRON_XS_SIZE 92 // SMR
+#ifdef NO_MICRO_XS_CACHE
+#define NEUTRON_XS_SIZE 1
+#else
 #define NEUTRON_XS_SIZE 296 // Depleted SMR uses 296
+#endif
 //#define NEUTRON_XS_SIZE 35 // Fresh Pincell
 #define PHOTON_XS_SIZE 9 // Pincell example uses 9
 #define COORD_SIZE 6 // Depleted SMR uses 6

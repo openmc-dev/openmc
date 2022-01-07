@@ -816,11 +816,11 @@ void Material::calculate_neutron_xs(Particle& p) const
     // Determine microscopic cross sections for this nuclide
     int i_nuclide = device_nuclide_[i];
     
+    // Lookup micro XS
+    MicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, false);
+    
     // Copy atom density of nuclide in material
     double atom_density = device_atom_density_[i];
-
-    // Lookup micro XS
-    MicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p);
     
     // Accumulate this nuclide's contribution to the local macro XS variable
     macro.total      += atom_density * nuclide_micro.total;

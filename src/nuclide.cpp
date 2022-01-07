@@ -628,13 +628,16 @@ double Nuclide::elastic_xs_0K(double E) const
 
 MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, bool write_cache)
 {
+  double E = p.E_;
+  double sqrtkT = p.sqrtkT_;
+
   #ifndef NO_MICRO_XS_CACHE
   {
     auto& micro {p.neutron_xs_[index_]};
     // Check if a microscopic XS lookup is even required. If all state variables are the same, then we can
     // just accumulate the micro XS data directly into the macro and skip the rest of this function.
-    if (     p.E_      == micro.last_E
-          && p.sqrtkT_ == micro.last_sqrtkT
+    if (     E      == micro.last_E
+          && sqrtkT == micro.last_sqrtkT
           && i_sab     == micro.index_sab
           && sab_frac  == micro.sab_frac
        )
@@ -661,7 +664,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   bool use_mp = false;
   // Check to see if there is multipole data present at this energy
   if (multipole()) {
-    use_mp = (p.E_ >= multipole()->E_min_ && p.E_ <= multipole()->E_max_);
+    use_mp = (E >= multipole()->E_min_ && E <= multipole()->E_max_);
   }
 
   int i_temp = -1;
@@ -675,14 +678,14 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     
     // Call multipole kernel
     double sig_s, sig_a, sig_f;
-    std::tie(sig_s, sig_a, sig_f) = multipole()->evaluate(p.E_, p.sqrtkT_);
+    std::tie(sig_s, sig_a, sig_f) = multipole()->evaluate(E, sqrtkT);
 
     total = sig_s + sig_a;
     elastic = sig_s;
     absorption = sig_a;
     fission = sig_f;
     nu_fission = fissionable_ ?
-      sig_f * this->nu(p.E_, EmissionMode::total) : 0.0;
+      sig_f * this->nu(E, EmissionMode::total) : 0.0;
 
     // if (simulation::need_depletion_rx) {
     //   // Only non-zero reaction is (n,gamma)
@@ -716,7 +719,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     // ======================================================================
    
     // Find the appropriate temperature index.
-    double kT = p.sqrtkT_*p.sqrtkT_;
+    double kT = sqrtkT*sqrtkT;
     switch (settings::temperature_method) {
     case TemperatureMethod::NEAREST:
       {
@@ -767,9 +770,9 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     // reduce the energy range over which a binary search needs to be
     // performed
 
-    if (p.E_ < energy[0]) {
+    if (E < energy[0]) {
       i_grid = 0;
-    } else if (p.E_ > energy[num_gridpoints-1]) {
+    } else if (E > energy[num_gridpoints-1]) {
       i_grid = num_gridpoints - 2;
     } else {
       // Determine bounding indices based on which equal log-spaced
@@ -779,11 +782,11 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
 
       // Perform binary search over reduced range
       // Note the STL-based binary search seems to work on llvm/V100 but not elsewhere
-      //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], p.E_);
+      //i_grid = i_low + lower_bound_index(&energy[i_low], &energy[i_high], E);
 
       // Iterative linear search (a few percent faster on device due to reduced branching)
       for (; i_low < i_high - 1; i_low++) {
-        if (p.E_ < energy[i_low + 1])
+        if (E < energy[i_low + 1])
           break;
       }
       i_grid = i_low;
@@ -810,7 +813,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     double photon_prod_next = xs[i_next1D + XS_PHOTON_PROD];
 
     // Calculate interpolation factor and complement
-    f = (p.E_ - energy[i_grid]) /
+    f = (E - energy[i_grid]) /
       (energy[i_grid + 1]- energy[i_grid]);
     double f_comp = 1.0 - f;
 
@@ -888,7 +891,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     int sab_i_temp;
     double sab_elastic;
     double sab_inelastic;
-    data::device_thermal_scatt[i_sab].calculate_xs(p.E_, p.sqrtkT_, &sab_i_temp, &sab_elastic, &sab_inelastic, p.current_seed());
+    data::device_thermal_scatt[i_sab].calculate_xs(E, sqrtkT, &sab_i_temp, &sab_elastic, &sab_inelastic, p.current_seed());
 
     // Store the S(a,b) cross sections.
     thermal = sab_frac * (sab_elastic + sab_inelastic);
@@ -924,8 +927,8 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   // probability tables, we need to determine cross sections from the table
   if (settings::urr_ptables_on && urr_present_ && !use_mp) {
     int n = device_urr_data_[i_temp].n_energy_;
-    if ((p.E_ > device_urr_data_[i_temp].device_energy_[0]) &&
-        (p.E_ < device_urr_data_[i_temp].device_energy_[n-1]))
+    if ((E > device_urr_data_[i_temp].device_energy_[0]) &&
+        (E < device_urr_data_[i_temp].device_energy_[n-1]))
     {
       use_ptable = true;
 
@@ -934,7 +937,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
 
       // Determine the energy table
       int i_energy = 0;
-      while (p.E_ >= urr.device_energy_[i_energy + 1]) {++i_energy;};
+      while (E >= urr.device_energy_[i_energy + 1]) {++i_energy;};
 
       // Sample the probability table using the cumulative distribution
 
@@ -962,7 +965,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
       double p_f;
       if (urr.interp_ == Interpolation::lin_lin) {
         // Determine the interpolation factor on the table
-        p_f = (p.E_ - urr.device_energy_[i_energy]) /
+        p_f = (E - urr.device_energy_[i_energy]) /
           (urr.device_energy_[i_energy + 1] - urr.device_energy_[i_energy]);
 
         p_elastic = (1. - p_f) * urr.prob(i_energy, URRTableParam::ELASTIC, i_low) +
@@ -973,7 +976,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
           p_f * urr.prob(i_energy + 1, URRTableParam::N_GAMMA, i_up);
       } else if (urr.interp_ == Interpolation::log_log) {
         // Determine interpolation factor on the table
-        p_f = std::log(p.E_ / urr.device_energy_[i_energy]) /
+        p_f = std::log(E / urr.device_energy_[i_energy]) /
           std::log(urr.device_energy_[i_energy + 1] / urr.device_energy_[i_energy]);
 
         // Calculate the elastic cross section/factor
@@ -1044,7 +1047,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
 
       // Determine nu-fission cross-section
       if (fissionable_) {
-        nu_fission = nu(p.E_, EmissionMode::total) * fission;
+        nu_fission = nu(E, EmissionMode::total) * fission;
       }
     }
   }
@@ -1065,8 +1068,8 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
     micro.index_sab = index_sab;
     micro.sab_frac = sab_frac;
     micro.use_ptable = use_ptable;
-    micro.last_E = p.E_;
-    micro.last_sqrtkT = p.sqrtkT_;
+    micro.last_E = E;
+    micro.last_sqrtkT = sqrtkT;
     micro.index_temp    = i_temp;
     micro.index_grid    = i_grid;
     micro.interp_factor = f;

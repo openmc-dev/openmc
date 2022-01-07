@@ -1083,9 +1083,9 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   // ======================================================================
   MicroXS xs;
   xs.total = total;
-	xs.absorption = absorption;
-	xs.fission    = fission;
-	xs.nu_fission = nu_fission;
+  xs.absorption = absorption;
+  xs.fission    = fission;
+  xs.nu_fission = nu_fission;
 
   return xs;
 }

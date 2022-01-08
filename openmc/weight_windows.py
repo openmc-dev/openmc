@@ -34,7 +34,7 @@ class WeightWindows(IDManagerMixin):
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
     survival_ratio : float
-        Ratio of the lower weight window bound to the survival weight for
+        Ratio of the survival weight to the lower weight window bound for
         rouletting
     max_split : int
         Maximum allowable number of particles when splitting
@@ -62,7 +62,7 @@ class WeightWindows(IDManagerMixin):
         A list of values for which each value is the upper bound of a weight
         window
     survival_ratio : float
-        Ratio of the lower weight window bound to the survival weight for
+        Ratio of the survival weight to the lower weight window bound for
         rouletting
     max_split : int
         Maximum allowable number of particles when splitting

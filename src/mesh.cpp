@@ -33,9 +33,9 @@
 #include "openmc/xml_interface.h"
 
 #ifdef LIBMESH
+#include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
-#include "libmesh/mesh_modification.h"
 #endif
 
 namespace openmc {

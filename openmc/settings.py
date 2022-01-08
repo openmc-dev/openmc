@@ -201,7 +201,7 @@ class Settings:
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
-    weight_windows : iterable of openmc.WeightWindows
+    weight_windows : WeightWindows iterable of WeightWindows
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13

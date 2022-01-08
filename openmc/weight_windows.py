@@ -13,8 +13,20 @@ from .mixin import IDManagerMixin
 
 
 class WeightWindows(IDManagerMixin):
-    """ A class to handle the creation of a set of specific weight window
-    paramaters - a variance reduction class may have several of these
+    """Mesh-based weight windows
+
+    This class enables you to specify weight window parameters that are used in
+    a simulation. Multiple sets of weight windows can be defined for different
+    meshes and different particles. An iterable of :class:`WeightWindows`
+    instances can be assigned to the :attr:`~openmc.Settings.weight_windows`
+    attribute, which is then exported to XML.
+
+    Weight window lower/upper bounds are to be specified for each combination of
+    a mesh element and an energy bin. Thus the total number of bounds should be
+    equal to the product of the number of mesh bins and the number of energy
+    bins.
+
+    .. versionadded:: 0.13
 
     Parameters
     ----------
@@ -68,6 +80,11 @@ class WeightWindows(IDManagerMixin):
         Maximum allowable number of particles when splitting
     weight_cutoff : float
         Threshold below which particles will be terminated
+
+    See Also
+    --------
+    openmc.Settings
+
     """
     next_id = 1
     used_ids = set()

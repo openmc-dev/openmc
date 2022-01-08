@@ -19,6 +19,10 @@ namespace openmc {
 // Non-member functions
 //==============================================================================
 
+//! Apply weight windows to a particle
+//! \param[in] p  Particle to apply weight windows to
+void apply_weight_windows(Particle& p);
+
 //! Free memory associated with weight windows
 void free_memory_weight_windows();
 

@@ -80,15 +80,15 @@ public:
 
 private:
   // Data members
-  int32_t id_;                 //!< Unique ID
-  ParticleType particle_type_; //!< Particle type to apply weight windows to
-  vector<double> energy_bins_; //!< Energy bins [eV]
-  vector<double> lower_ww_;    //!< Lower weight window bounds
-  vector<double> upper_ww_;    //!< Upper weight window bounds
-  double survival_ratio_;      //!< Survival weight ratio
-  double weight_cutoff_;       //!< Weight cutoff
-  int max_split_;              //!< Maximum value for particle splitting
-  int32_t mesh_idx_;           //!< index in meshes vector
+  int32_t id_;                     //!< Unique ID
+  ParticleType particle_type_;     //!< Particle type to apply weight windows to
+  vector<double> energy_bins_;     //!< Energy bins [eV]
+  vector<double> lower_ww_;        //!< Lower weight window bounds
+  vector<double> upper_ww_;        //!< Upper weight window bounds
+  double survival_ratio_ {3.0};    //!< Survival weight ratio
+  double weight_cutoff_ {1.0e-38}; //!< Weight cutoff
+  int max_split_ {10};             //!< Maximum value for particle splitting
+  int32_t mesh_idx_;               //!< index in meshes vector
 };
 
 } // namespace openmc

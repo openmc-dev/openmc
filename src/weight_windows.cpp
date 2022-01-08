@@ -40,18 +40,33 @@ void free_memory_weight_windows()
 
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
-  if (!check_for_node(node, "id")) {
-    fatal_error("Must specify 'id' for weight windows.");
+  // Make sure required elements are present
+  vector<std::string> required_elems {
+    "id", "particle_type", "energy_bins", "lower_ww_bounds", "upper_ww_bounds"};
+  for (const auto& elem : required_elems) {
+    if (!check_for_node(node, elem.c_str())) {
+      fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
+    }
   }
+
+  // Get weight windows ID
   int32_t id = std::stoi(get_node_value(node, "id"));
   this->set_id(id);
 
   // get the particle type
-  if (!check_for_node(node, "particle_type")) {
-    fatal_error("Must specify 'particle_type' for weight windows.");
-  }
   auto particle_type_str = std::string(get_node_value(node, "particle_type"));
   particle_type_ = openmc::str_to_particle_type(particle_type_str);
+
+  // Determine associated mesh
+  int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
+  mesh_idx_ = model::mesh_map.at(mesh_id);
+
+  // energy bounds
+  energy_bins_ = get_node_array<double>(node, "energy_bins");
+
+  // read the lower/upper weight bounds
+  lower_ww_ = get_node_array<double>(node, "lower_ww_bounds");
+  upper_ww_ = get_node_array<double>(node, "upper_ww_bounds");
 
   // get the survival value - optional
   if (check_for_node(node, "survival_ratio")) {
@@ -68,47 +83,13 @@ WeightWindows::WeightWindows(pugi::xml_node node)
       fatal_error("max split must be larger than 1");
   }
 
-  // weight cutoff - optional - but default is 1e-38
+  // weight cutoff - optional
   if (check_for_node(node, "weight_cutoff")) {
     weight_cutoff_ = std::stod(get_node_value(node, "weight_cutoff"));
     if (weight_cutoff_ <= 0)
       fatal_error("weight_cutoff must be larger than 0");
     if (weight_cutoff_ > 1)
       fatal_error("weight_cutoff must be less than 1");
-  }
-
-  // get the mesh id
-  int32_t mesh_id;
-  if (check_for_node(node, "mesh")) {
-    mesh_id = std::stoi(get_node_value(node, "mesh"));
-  } else {
-    fatal_error("No mesh specifier in the domain.");
-  }
-
-  // set the indices to save time later
-  mesh_idx_ = model::mesh_map.at(mesh_id);
-
-  // energy bounds
-  if (check_for_node(node, "energy_bins")) {
-    energy_bins_ = get_node_array<double>(node, "energy_bins");
-  } else {
-    fatal_error("<energy_bins> is missing from the weight_windows.xml file.");
-  }
-
-  // read the lower weight bounds
-  if (check_for_node(node, "lower_ww_bounds")) {
-    lower_ww_ = get_node_array<double>(node, "lower_ww_bounds");
-  } else {
-    fatal_error("<lower_ww_bounds> section is missing from the "
-                "variance_reduction.xml file.");
-  }
-
-  // read the upper weight bounds
-  if (check_for_node(node, "upper_ww_bounds")) {
-    upper_ww_ = get_node_array<double>(node, "upper_ww_bounds");
-  } else {
-    fatal_error("<upper_ww_bounds> node is missing from the "
-                "variance_reduction.xml file.");
   }
 
   // make sure that the upper and lower bounds have the same size

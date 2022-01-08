@@ -620,9 +620,9 @@ variable and whose sub-elements/attributes are as follows:
 :type:
   The type of the distribution. Valid options are "uniform", "discrete",
   "tabular", "maxwell", "watt", and "mixture". The "uniform" option produces
-  variates sampled from a uniform distribution over a finite interval. The 
-  "discrete" option produces random variates that can assume a finite number 
-  of values (i.e., a distribution characterized by a probability mass function). 
+  variates sampled from a uniform distribution over a finite interval. The
+  "discrete" option produces random variates that can assume a finite number
+  of values (i.e., a distribution characterized by a probability mass function).
   The "tabular" option produces random variates sampled from a tabulated
   distribution where the density function is either a histogram or
   linearly-interpolated between tabulated points. The "watt" option produces
@@ -668,8 +668,8 @@ variable and whose sub-elements/attributes are as follows:
   For a "mixture" distribution, this element provides a distribution and its corresponding probability.
 
   :probability:
-    An attribute or ``pair`` that provides the probability of a univariate distribution within a "mixture" distribution. 
-      
+    An attribute or ``pair`` that provides the probability of a univariate distribution within a "mixture" distribution.
+
   :dist:
     This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
 
@@ -1007,170 +1007,55 @@ sub-elements/attributes:
      sample points within.
 
      *Default*: None
-     
--------------------------
-``<weightwindow>`` Element
--------------------------
 
-The ``<weightwindow>`` element specifies all necessary parameters for weight 
-window mesh function.This element has the following sub-elements/attributes:
+----------------------------
+``<weight_windows>`` Element
+----------------------------
 
-  :type:
-    This input indicates where the space-energy cell boundary and lower weight 
-    window bound should read from. 0 means read these from the settings.xml, 1
-    means read these from MCNP WWINP file. This input is necessary for weight
-    window mesh function to be used.
+The ``<weight_windows>`` element specifies all necessary parameters for
+mesh-based weight windows. This element has the following
+sub-elements/attributes:
+
+  :id:
+    A unique integer that is used to identify the weight windows
+
+  :mesh:
+    ID of a mesh that is to be used for weight windows
 
     *Default*: None
-    
-  :origin:
-    The lower-left coordinates of weight window mesh.
-      
+
+  :particle_type:
+    The particle that the weight windows will apply to (e.g., 'neutron')
+
     *Default*: None
-    
-    *Example*: 0 0 0
-      
-  :xmesh:
-    The locations of the coarse meshes in the X direction.
-      
+
+  :energy_bins:
+    Monotonically increasing list of bounding energies in [eV] to be used for
+    weight windows
+
     *Default*: None
-    
-    *Example*: 10 20
-      
-  :xints:
-    The number of fine meshes within corresponding coarse meshes in the X direction.
-      
+
+  :lower_ww_bounds:
+    Lower weight window bound for each (energy bin, mesh bin) combination.
+
     *Default*: None
-    
-    *Example*: 10 20
-      
-  :ymesh:
-    The locations of the coarse meshes in the Y direction.
-      
+
+  :upper_ww_bounds:
+    Upper weight window bound for each (energy bin, mesh bin) combination.
+
     *Default*: None
-    
-    *Example*: 10 20
-      
-  :yints:
-    The number of fine meshes within corresponding coarse meshes in the Y direction.
-      
-    *Default*: None
-    
-    *Example*: 10 20
-      
-  :zmesh:
-    The locations of the coarse meshes in the Z direction.
-      
-    *Default*: None
-    
-    *Example*: 10 20
-      
-  :zints:
-    The number of fine meshes within corresponding coarse meshes in the Z direction.
-      
-    *Default*: None
-    
-    *Example*: 10 20
-      
-  :energy:
-    The energy groups for neutron and/or photon in eV.
-      
-      :neutron:
-        The energy groups for neutron in eV.
-      
-        *Default*: None
-        
-        *Example*: 1e6 2e6 10e6
-          
-      :photon:
-        The energy groups for photon in eV.
-      
-        *Default*: None
-        
-        *Example*: 1e6 5e6
-      
-  :lower_ww:
-    The lower weight window bound for weight window mesh to be used. 
-      
-    *Default*: None
-    
-    *Example*: 
-      [x0,y0,z0,E0] ...... [xn,y0,z0,E0]   Index of X increasing first
-      
-      ... 
-      
-      [x0,y1,z0,E0] ...... [xn,y1,z0,E0]   Index of Y increasing second  
-      
-      ...               
-      
-      [x0,y0,z1,E0] ...... [xn,yn,z1,E0]   Index of Z increasing third     
-      
-      ...               
-      
-      [x0,y0,z0,E1] ...... [xn,yn,zn,E1]   Index of Energy increasing forth
-                 
-  .. note:: All these sub-elements (from ``<origin>`` to ``<lower_ww>``) are only
-            valide for ``<type>`` 0. ``<type>`` 1 will read all these necessary 
-            parameters from MCNP wwinp file, which should named as ``wwinp``.
-            The examples above indicate that there are 10 fine meshes in 0~10 cm
-            and 10 fine meshes in 10~20 cm at all 3 dimensions, and 3 energy 
-            groups (0~1e6, 1e6~2e6, 2e6~10e6) for neutron and 2 energy groups
-            (0~1e6, 1e6~5e6) for photon.                 
 
-  :neutron_parameters:
-    The weight window parameters for neutron.
-    
-    :upper:
-      The ratio of upper weight window bound and lower weight window bound.
+  :survival:
+    The ratio of survival weight and lower weight window bound.
 
-      *Default*: 5
-      
-    :survival:
-      The ratio of survival weight and lower weight window bound.
+    *Default*: 3.0
 
-      *Default*: 3
-      
-    :max_split:
-      The max number of split particles.
+  :max_split:
+    Maximum allowable number of particles when splitting
 
-      *Default*: 5
-      
-    :multiplier:
-      The multiplier for all lower weight window bounds.
+    *Default*: 10
 
-      *Default*: 1
-      
-  :photon_parameters:
-    The weight window parameters for photon.
-    
-    :upper:
-      The ratio of upper weight window bound and lower weight window bound.
+  :weight_cutoff:
+    Threshold below which particles will be terminated
 
-      *Default*: 5
-      
-    :survival:
-      The ratio of survival weight and lower weight window bound.
-
-      *Default*: 3
-      
-    :max_split:
-      The max number of split particles.
-
-      *Default*: 5
-      
-    :multiplier:
-      The multiplier for all lower weight window bounds.
-
-      *Default*: 1
-
-  :user_defined_biasing:
-     The usder defined weight biasing in energy.
-     
-     :biasing_energy:
-       The energy groups for source.
-       
-     :origin_probability:
-       The origin probability for each energy groups.
-       
-     :biasing:
-       The biasing probability for each energy groups.
+    *Default*: :math:`10^{-38}`

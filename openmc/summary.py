@@ -12,7 +12,7 @@ _VERSION_SUMMARY = 6
 
 
 class Summary:
-    """Summary of geometry, materials, and tallies used in a simulation.
+    """Summary of model used in a simulation.
 
     Attributes
     ----------

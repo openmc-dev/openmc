@@ -25,6 +25,7 @@
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/volume_calc.h"
+#include "openmc/weight_windows.h"
 
 #include "xtensor/xview.hpp"
 
@@ -47,6 +48,7 @@ void free_memory()
   free_memory_tally();
   free_memory_bank();
   free_memory_plot();
+  free_memory_weight_windows();
   if (mpi::master) {
     free_memory_cmfd();
   }
@@ -82,6 +84,7 @@ int openmc_finalize()
   settings::legendre_to_tabular_points = -1;
   settings::material_cell_offsets = true;
   settings::max_particles_in_flight = 100000;
+  settings::max_splits = 1000;
   settings::n_inactive = 0;
   settings::n_particles = -1;
   settings::output_summary = true;
@@ -113,6 +116,7 @@ int openmc_finalize()
   settings::verbosity = 7;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
+  settings::weight_windows_on = false;
   settings::write_all_tracks = false;
   settings::write_initial_source = false;
 

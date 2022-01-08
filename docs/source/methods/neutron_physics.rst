@@ -1627,6 +1627,8 @@ cross sections.
 Variance Reduction Techniques
 -----------------------------
 
+.. _survival_biasing:
+
 Survival Biasing
 ----------------
 
@@ -1676,6 +1678,47 @@ Russian roulette is simply :math:`w`, so the game can be considered "fair". By
 default, the cutoff weight in OpenMC is :math:`w_c = 0.25` and the survival
 weight is :math:`w_s = 1.0`. These parameters vary from one Monte Carlo code to
 another.
+
+Weight Windows
+--------------
+
+In fixed source problems, it can often be difficult to obtain sufficiently low
+variance on tallies in regions that are far from the source. The `weight window
+method <https://doi.org/10.13182/FST84-A23082>`_ was developed to increase the
+population of particles in important spatial regions and energy ranges by
+controlling particle weights. Each spatial region and particle energy range is
+assigned upper and lower weight bounds, :math:`w_u` and :math:`w_\ell`,
+respectively. When a particle is in a given spatial region / energy range, its
+weight, :math:`w`, is compared to the lower and upper bounds. If the weight of
+the particle is above the upper weight bound, the particle is split into
+:math:`N` particles, where
+
+.. math::
+    :label: ww-split
+
+    N = \min(N_{max}, \lceil w/w_u \rceil)
+
+and :math:`N_{max}` is a user-defined maximum number of splits. To ensure a
+fair game, each of the :math:`N` particles is assigned a weight :math:`w/N`. If
+the weight is below :math:`w_\ell`, it is Russian rouletted as described in
+:ref:`survival_biasing` with a survival weight :math:`w_s` that is set equal to
+
+.. math::
+    :label: ww-survival-weight
+
+    w_s = \min(N_{max} w, f_s w_l)
+
+where :math:`f_s` is a user-defined survival weight ratio greater than one.
+
+On top of the standard weight window method described above, OpenMC implements
+two additional checks intended to mitigate problems with long histories. First,
+particles with a weight that falls below some very small cutoff (defaults to
+:math:`10^{-38}`) are killed with no Russian rouletting. Additionally, the total
+number of splits experienced by a particle is tracked and if it reaches some
+maximum value, it is prohibited from splitting further.
+
+At present, OpenMC allows weight windows to be defined on all supported mesh
+types.
 
 .. only:: html
 

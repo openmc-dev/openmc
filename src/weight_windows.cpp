@@ -28,6 +28,70 @@ openmc::vector<unique_ptr<WeightWindows>> weight_windows;
 // Non-member functions
 //==============================================================================
 
+void apply_weight_windows(Particle& p)
+{
+  // skip dead or no energy
+  if (p.E() <= 0 || !p.alive())
+    return;
+
+  bool in_domain = false;
+  // TODO: this is a linear search - should do something more clever
+  WeightWindow weight_window;
+  for (const auto& ww : variance_reduction::weight_windows) {
+    weight_window = ww->get_weight_window(p);
+    if (weight_window)
+      break;
+  }
+  // particle is not in any of the ww domains, do nothing
+  if (!weight_window)
+    return;
+
+  // get the paramters
+  double weight = p.wgt();
+  p.wgt_last() = weight;
+
+  // first check to see if particle should be killed for weight cutoff
+  if (p.wgt() < weight_window.weight_cutoff) {
+    p.alive() = false;
+    p.wgt() = 0.0;
+    return;
+  }
+
+  // if particle's weight is above the weight window split until they are within
+  // the window
+  if (weight > weight_window.upper_weight) {
+    // do not further split the particle if above the limit
+    if (p.n_split() >= settings::max_splits)
+      return;
+
+    double n_split = std::ceil(weight / weight_window.upper_weight);
+    double max_split = weight_window.max_split;
+    n_split = std::min(n_split, max_split);
+
+    p.n_split() += n_split;
+
+    // Create secondaries and divide weight among all particles
+    int i_split = std::round(n_split);
+    for (int l = 0; l < i_split - 1; l++) {
+      p.create_secondary(weight / n_split, p.u(), p.E(), p.type());
+    }
+    // TODO: maybe weight should be weight - sum of child weight
+    p.wgt() = weight / n_split;
+
+  } else if (weight <= weight_window.lower_weight) {
+    // if the particle weight is below the window, play Russian roulette
+    double weight_survive =
+      std::min(weight * weight_window.max_split, weight_window.survival_weight);
+    if (weight_survive * prn(p.current_seed()) <= weight) {
+      p.wgt() = weight_survive;
+    } else {
+      p.alive() = false;
+      p.wgt() = 0.0;
+    }
+    // else particle is in the window, continue as normal
+  }
+}
+
 void free_memory_weight_windows()
 {
   variance_reduction::ww_map.clear();

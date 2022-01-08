@@ -24,6 +24,7 @@ Simulation Settings
    openmc.Source
    openmc.SourceParticle
    openmc.VolumeCalculation
+   openmc.WeightWindows
    openmc.Settings
 
 The following function can be used for generating a source file:

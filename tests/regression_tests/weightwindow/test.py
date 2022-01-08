@@ -4,7 +4,6 @@ import numpy as np
 
 import openmc
 from openmc.stats import Discrete, Point
-from openmc.weight_windows import WeightWindows
 
 from tests.testing_harness import HashedPyAPITestHarness
 
@@ -77,7 +76,6 @@ def model():
 
     # weight windows
 
-
     # load pre-generated weight windows
     # (created using the same tally as above)
     ww_n_lower_bnds = np.loadtxt('ww_n.txt')
@@ -90,17 +88,17 @@ def model():
     ww_mesh.upper_right = (240, 240, 240)
     ww_mesh.dimension = (5, 6, 7)
 
-    ww_n = WeightWindows(ww_mesh,
-                         ww_n_lower_bnds,
-                         None,
-                         10.0,
-                         e_bnds)
+    ww_n = openmc.WeightWindows(ww_mesh,
+                                ww_n_lower_bnds,
+                                None,
+                                10.0,
+                                e_bnds)
 
-    ww_p = WeightWindows(ww_mesh,
-                         ww_p_lower_bnds,
-                         None,
-                         10.0,
-                         e_bnds)
+    ww_p = openmc.WeightWindows(ww_mesh,
+                                ww_p_lower_bnds,
+                                None,
+                                10.0,
+                                e_bnds)
 
     model.settings.weight_windows = [ww_n, ww_p]
 

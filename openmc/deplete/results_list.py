@@ -361,6 +361,7 @@ class ResultsList(list):
             mat_id = str(mat.id)
             if mat_id in result.mat_to_ind:
                 mat.volume = result.volume[mat_id]
+                mat.set_density('sum')
                 for nuc in result.nuc_to_ind:
                     if nuc not in available_cross_sections:
                         continue

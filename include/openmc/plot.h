@@ -282,6 +282,8 @@ private:
   void set_opacities(pugi::xml_node node);
   void set_orthographic_width(pugi::xml_node node);
   void set_wireframe_thickness(pugi::xml_node node);
+  void set_wireframe_ids(pugi::xml_node node);
+  void set_wireframe_color(pugi::xml_node node);
 
   /* Used for drawing wireframe and colors. We record the list of
    * surface/cell/material intersections and the corresponding lengths as a ray
@@ -306,6 +308,8 @@ private:
   Position camera_position_;        // where camera is
   Position look_at_;                // point camera is centered looking at
   Direction up_ {0.0, 0.0, 1.0};    // which way is up
+  std::vector<int>
+    wireframe_ids_; // which color IDs should be wireframed. If empty, all
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.
@@ -329,8 +333,8 @@ private:
    * to mean not having matching intersection lengths, but rather having
    * a matching sequence of surface/cell/material intersections.
    */
-  static bool trackstack_equivalent(const std::vector<TrackSegment>& track1,
-    const std::vector<TrackSegment>& track2);
+  bool trackstack_equivalent(const std::vector<TrackSegment>& track1,
+    const std::vector<TrackSegment>& track2) const;
 
   // Closed form 3x3 matrix inversion
   static std::vector<double> invert_matrix(const std::vector<double>& input);

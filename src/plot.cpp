@@ -1035,11 +1035,26 @@ ProjectionPlot::ProjectionPlot(pugi::xml_node node) : PlottableInterface(node)
   set_opacities(node);
   set_orthographic_width(node);
   set_wireframe_thickness(node);
+  set_wireframe_ids(node);
+  set_wireframe_color(node);
 
   if (check_for_node(node, "orthographic_width") &&
       check_for_node(node, "field_of_view"))
     fatal_error("orthographic_width and field_of_view are mutually exclusive "
                 "parameters.");
+}
+
+void ProjectionPlot::set_wireframe_color(pugi::xml_node plot_node)
+{
+  // Copy plot background color
+  if (check_for_node(plot_node, "wireframe_color")) {
+    vector<int> w_rgb = get_node_array<int>(plot_node, "wireframe_color");
+    if (w_rgb.size() == 3) {
+      wireframe_color_ = w_rgb;
+    } else {
+      fatal_error(fmt::format("Bad wireframe RGB in plot {}", id()));
+    }
+  }
 }
 
 void ProjectionPlot::set_output_path(pugi::xml_node node)
@@ -1091,17 +1106,55 @@ int ProjectionPlot::advance_to_boundary_from_void(Particle& p)
 
 bool ProjectionPlot::trackstack_equivalent(
   const std::vector<TrackSegment>& track1,
-  const std::vector<TrackSegment>& track2)
+  const std::vector<TrackSegment>& track2) const
 {
-  if (track1.size() != track2.size())
-    return false;
-  for (int i = 0; i < track1.size(); ++i) {
-    if (track1[i].id != track2[i].id ||
-        track1[i].surface != track2[i].surface) {
-      return false;
+  if (wireframe_ids_.empty()) {
+    // TODO old version
+    return true;
+  } else {
+    // This runs in O(nm) where n is the intersection stack size
+    // and m is the number of IDs we are wireframing. A simpler
+    // algorithm can likely be found.
+    for (const int id : wireframe_ids_) {
+      int t1_i = 0;
+      int t2_i = 0;
+
+      // Advance to first instance of the ID
+      while (t1_i < track1.size() && t2_i < track2.size()) {
+        while (t1_i < track1.size() && track1[t1_i].id != id)
+          t1_i++;
+        while (t2_i < track2.size() && track2[t2_i].id != id)
+          t2_i++;
+
+        // This one is really important!
+        if ((t1_i == track1.size() && t2_i != track2.size()) ||
+            (t1_i != track1.size() && t2_i == track2.size()))
+          return false;
+        if (t1_i == track1.size() && t2_i == track2.size())
+          break;
+        // Check if surface different
+        if (track1[t1_i].surface != track2[t2_i].surface)
+          return false;
+
+        // Pretty sure this should not be used:
+        // if (t2_i != track2.size() - 1 &&
+        //     t1_i != track1.size() - 1 &&
+        //     track1[t1_i+1].id != track2[t2_i+1].id) return false;
+        if (t2_i != 0 && t1_i != 0 &&
+            track1[t1_i - 1].surface != track2[t2_i - 1].surface)
+          return false;
+
+        // Check if neighboring cells are different
+        // if (track1[t1_i ? t1_i - 1 : 0].id != track2[t2_i ? t2_i - 1 : 0].id)
+        // return false; if (track1[t1_i < track1.size() - 1 ? t1_i + 1 : t1_i
+        // ].id !=
+        //    track2[t2_i < track2.size() - 1 ? t2_i + 1 : t2_i].id) return
+        //    false;
+        t1_i++, t2_i++;
+      }
     }
+    return true;
   }
-  return true;
 }
 
 void ProjectionPlot::create_output() const
@@ -1247,7 +1300,10 @@ void ProjectionPlot::create_output() const
               // edges on the model boundary for the same cell.
               if (first_inside_model) {
                 this_line_segments[tid][horiz].emplace_back(
-                  0, 0.0, first_surface);
+                  color_by_ == PlotColorBy::mats
+                    ? p.material()
+                    : p.coord(p.n_coord() - 1).cell,
+                  0.0, first_surface);
                 first_inside_model = false;
               }
 
@@ -1433,6 +1489,21 @@ void ProjectionPlot::set_wireframe_thickness(pugi::xml_node node)
       fatal_error("Requires non-negative wireframe thickness");
     wireframe_thickness_ = wireframe_thickness;
   }
+}
+
+void ProjectionPlot::set_wireframe_ids(pugi::xml_node node)
+{
+  if (check_for_node(node, "wireframe_ids")) {
+    wireframe_ids_ = get_node_array<int>(node, "wireframe_ids");
+    // It is read in as actual ID values, but we have to convert to indices in
+    // mat/cell array
+    for (auto& x : wireframe_ids_)
+      x = color_by_ == PlotColorBy::mats ? model::material_map[x]
+                                         : model::cell_map[x];
+  }
+  // We make sure the list is sorted in order to later use
+  // std::binary_search.
+  std::sort(wireframe_ids_.begin(), wireframe_ids_.end());
 }
 
 void ProjectionPlot::set_pixels(pugi::xml_node node)

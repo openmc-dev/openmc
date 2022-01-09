@@ -372,6 +372,57 @@ public:
 };
 
 //==============================================================================
+//! A toroidal surface described by the quartic torus lies in the x direction
+//
+//! \f$(x-x_0)^2/B^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
+//==============================================================================
+
+class SurfaceXTorus : public CSGSurface {
+public:
+  explicit SurfaceXTorus(pugi::xml_node surf_node);
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u, bool coincident) const;
+  Direction normal(Position r) const;
+  void to_hdf5_inner(hid_t group_id) const;
+
+  double x0_, y0_, z0_, A_, B_, C_;
+};
+
+//==============================================================================
+//! A toroidal surface described by the quartic torus lies in the y direction
+//
+//! \f$(y-y_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
+//==============================================================================
+
+class SurfaceYTorus : public CSGSurface {
+public:
+  explicit SurfaceYTorus(pugi::xml_node surf_node);
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u, bool coincident) const;
+  Direction normal(Position r) const;
+  void to_hdf5_inner(hid_t group_id) const;
+
+  double x0_, y0_, z0_, A_, B_, C_;
+};
+
+//==============================================================================
+//! A toroidal surface described by the quartic torus lies in the z direction
+//
+//! \f$(z-z_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (y-y_0)^2} - A)^2/C^2 -1 \f$
+//==============================================================================
+
+class SurfaceZTorus : public CSGSurface {
+public:
+  explicit SurfaceZTorus(pugi::xml_node surf_node);
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u, bool coincident) const;
+  Direction normal(Position r) const;
+  void to_hdf5_inner(hid_t group_id) const;
+
+  double x0_, y0_, z0_, A_, B_, C_;
+};
+
+//==============================================================================
 // Non-member functions
 //==============================================================================
 

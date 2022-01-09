@@ -28,6 +28,7 @@
     <pixels>200 200</pixels>
     <background>240 240 240</background>
     <filename>example2.png</filename>
+    <wireframe_ids>2</wireframe_ids>
   </plot>
 
   <plot id="4" color_by="material" type="projection">

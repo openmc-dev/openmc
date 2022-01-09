@@ -1100,7 +1100,7 @@ int ProjectionPlot::advance_to_boundary_from_void(Particle& p)
   else { // advance the particle
     for (int j = 0; j < p.n_coord(); ++j)
       p.coord(j).r += (min_dist + scoot) * p.coord(j).u;
-    return intersected_surface;
+    return std::abs(intersected_surface);
   }
 }
 
@@ -1321,7 +1321,7 @@ void ProjectionPlot::create_output() const
               this_line_segments[tid][horiz].emplace_back(
                 color_by_ == PlotColorBy::mats ? p.material()
                                                : p.coord(p.n_coord() - 1).cell,
-                dist.distance, dist.surface_index);
+                dist.distance, std::abs(dist.surface_index));
 
               // Advance particle
               for (int lev = 0; lev < p.n_coord(); ++lev) {

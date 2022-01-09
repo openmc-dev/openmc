@@ -87,7 +87,7 @@ settings.entropy_mesh = entropy_mesh
 model = openmc.Model(geometry=geometry, settings=settings)
 
 # Create depletion "operator"
-chain_file = './chain_simple.xml'
+chain_file = 'chain_simple.xml'
 op = openmc.deplete.Operator(model, chain_file)
 
 # Perform simulation using the predictor algorithm
@@ -118,7 +118,7 @@ time, Xe_capture = results.get_reaction_rate('1', 'Xe135', '(n,gamma)')
 
 days = 24*60*60
 plt.figure()
-plt.plot(time/days, keff, label="K-effective")
+plt.plot(time/days, keff[:, 0], label="K-effective")
 plt.xlabel("Time (days)")
 plt.ylabel("Keff")
 plt.show()

@@ -1109,7 +1109,15 @@ bool ProjectionPlot::trackstack_equivalent(
   const std::vector<TrackSegment>& track2) const
 {
   if (wireframe_ids_.empty()) {
-    // TODO old version
+    // Draw wireframe for all surfaces/cells/materials
+    if (track1.size() != track2.size())
+      return false;
+    for (int i = 0; i < track1.size(); ++i) {
+      if (track1[i].id != track2[i].id ||
+          track1[i].surface != track2[i].surface) {
+        return false;
+      }
+    }
     return true;
   } else {
     // This runs in O(nm) where n is the intersection stack size

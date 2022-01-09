@@ -309,7 +309,7 @@ class Operator(TransportOperator):
         if normalization_mode == "fission-q":
             self._normalization_helper = ChainFissionHelper()
         elif normalization_mode == "energy-deposition":
-            score = "heating" if settings.photon_transport else "heating-local"
+            score = "heating" if self.settings.photon_transport else "heating-local"
             self._normalization_helper = EnergyScoreHelper(score)
         else:
             self._normalization_helper = SourceRateHelper()

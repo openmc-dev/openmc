@@ -642,7 +642,7 @@ class Operator(TransportOperator):
         if mfile.exists():
             tree = ET.parse(str(mfile))
             xs = tree.find('cross_sections')
-            if xs is not None:
+            if xs is not None and self.materials.cross_sections is None:
                 self.materials.cross_sections = xs.text
 
         self.materials.export_to_xml()

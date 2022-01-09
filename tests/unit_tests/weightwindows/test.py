@@ -11,6 +11,7 @@ from tests import cdtemp
 
 @pytest.fixture
 def model():
+    openmc.reset_auto_ids()
     model = openmc.Model()
 
     # materials (M4 steel alloy)
@@ -154,7 +155,6 @@ def test_weightwindows(model):
                                                 filter_bins=[(particle,)],
                                                 value='rel_err')
 
-            print(an_rel_err)
             an_rel_err[an_mean == 0.0] = 1.0
             ww_rel_err[ww_mean == 0.0] = 1.0
 

@@ -90,7 +90,7 @@ constexpr double FINE_STRUCTURE {
 constexpr double PLANCK_C {
   1.2398419839593942e4}; // Planck's constant times c in eV-Angstroms
 constexpr double AMU {1.66053906660e-27};      // 1 amu in kg
-constexpr double C_LIGHT {2.99792458e8};       // speed of light in m/s
+constexpr double C_LIGHT {2.99792458e10};      // speed of light in cm/s
 constexpr double N_AVOGADRO {0.602214076};     // Avogadro's number in 10^24/mol
 constexpr double K_BOLTZMANN {8.617333262e-5}; // Boltzmann constant in eV/K
 

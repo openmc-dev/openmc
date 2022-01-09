@@ -80,6 +80,9 @@ Building geometry
    openmc.YCone
    openmc.ZCone
    openmc.Quadric
+   openmc.XTorus
+   openmc.YTorus
+   openmc.ZTorus
    openmc.Halfspace
    openmc.Intersection
    openmc.Union
@@ -133,6 +136,7 @@ Constructing Tallies
    openmc.LegendreFilter
    openmc.SpatialLegendreFilter
    openmc.SphericalHarmonicsFilter
+   openmc.TimeFilter
    openmc.ZernikeFilter
    openmc.ZernikeRadialFilter
    openmc.ParticleFilter

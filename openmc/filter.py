@@ -23,7 +23,7 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision'
+    'collision', 'time'
 )
 
 _CURRENT_NAMES = (
@@ -1307,6 +1307,50 @@ class EnergyoutFilter(EnergyFilter):
         The number of filter bins
 
     """
+
+class TimeFilter(RealFilter):
+    """Bins tally events based on the particle's time.
+
+    Parameters
+    ----------
+    values : iterable of float
+        A list of values for which each successive pair constitutes a range of
+        time in [s] for a single bin
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        time in [s] for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of time in [s]
+        for a single filter bin
+    num_bins : int
+        The number of filter bins
+
+    """
+    units = 's'
+
+    def get_bin_index(self, filter_bin):
+        # Use lower energy bound to find index for RealFilters
+        deltas = np.abs(self.bins[:, 1] - filter_bin[1]) / filter_bin[1]
+        min_delta = np.min(deltas)
+        if min_delta < 1e-3:
+            return deltas.argmin()
+        else:
+            msg = ('Unable to get the bin index for Filter since '
+                   f'"{filter_bin}" is not one of the bins')
+            raise ValueError(msg)
+
+    def check_bins(self, bins):
+        super().check_bins(bins)
+        for v0, v1 in bins:
+            cv.check_greater_than('filter value', v0, 0., equality=True)
+            cv.check_greater_than('filter value', v1, 0., equality=True)
 
 
 def _path_to_levels(path):

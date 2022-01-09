@@ -26,7 +26,7 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
   :type:
     The type of the surfaces. This can be "x-plane", "y-plane", "z-plane",
     "plane", "x-cylinder", "y-cylinder", "z-cylinder", "sphere", "x-cone",
-    "y-cone", "z-cone", or "quadric".
+    "y-cone", "z-cone", "quadric", "x-torus", "y-torus", or "z-torus".
 
     *Default*: None
 

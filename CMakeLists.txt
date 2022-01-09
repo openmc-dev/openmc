@@ -350,6 +350,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_sph_harm.cpp
   src/tallies/filter_sptl_legendre.cpp
   src/tallies/filter_surface.cpp
+  src/tallies/filter_time.cpp
   src/tallies/filter_universe.cpp
   src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp
@@ -363,6 +364,10 @@ list(APPEND libopenmc_SOURCES
   src/wmp.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
+
+# Add bundled external dependencies
+list(APPEND libopenmc_SOURCES
+  src/external/quartic_solver.cpp)
 
 # For Visual Studio compilers
 if(MSVC)

@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from functools import lru_cache
 import os
 from pathlib import Path
 from numbers import Integral
@@ -88,30 +89,6 @@ class Model:
         if plots is not None:
             self.plots = plots
 
-        # Store dictionaries to the materials and cells by ID and names
-        if materials is None:
-            mats = self.geometry.get_all_materials().values()
-        else:
-            mats = self.materials
-        cells = self.geometry.get_all_cells()
-        # Get the ID maps
-        self._materials_by_id = {mat.id: mat for mat in mats}
-        self._cells_by_id = {cell.id: cell for cell in cells.values()}
-
-        # Get the names maps, but since names are not unique, store a list for
-        # each name key. In this way when the user requests a change by a name,
-        # the change will be applied to all of the same name.
-        self._cells_by_name = {}
-        for cell in cells.values():
-            if cell.name not in self._cells_by_name:
-                self._cells_by_name[cell.name] = set()
-            self._cells_by_name[cell.name].add(cell)
-        self._materials_by_name = {}
-        for mat in mats:
-            if mat.name not in self._materials_by_name:
-                self._materials_by_name[mat.name] = set()
-            self._materials_by_name[mat.name].add(mat)
-
     @property
     def geometry(self):
         return self._geometry
@@ -139,6 +116,50 @@ class Model:
             return openmc.lib.is_initialized
         except ImportError:
             return False
+
+    @property
+    @lru_cache(maxsize=None)
+    def _materials_by_id(self):
+        """Dictionary mapping material ID --> material"""
+        if self.materials is None:
+            mats = self.geometry.get_all_materials().values()
+        else:
+            mats = self.materials
+        return {mat.id: mat for mat in mats}
+
+    @property
+    @lru_cache(maxsize=None)
+    def _cells_by_id(self):
+        """Dictionary mapping cell ID --> cell"""
+        cells = self.geometry.get_all_cells()
+        return {cell.id: cell for cell in cells.values()}
+
+    @property
+    @lru_cache(maxsize=None)
+    def _cells_by_name(self):
+        # Get the names maps, but since names are not unique, store a set for
+        # each name key. In this way when the user requests a change by a name,
+        # the change will be applied to all of the same name.
+        result = {}
+        for cell in self.geometry.get_all_cells().values():
+            if cell.name not in result:
+                result[cell.name] = set()
+            result[cell.name].add(cell)
+        return result
+
+    @property
+    @lru_cache(maxsize=None)
+    def _materials_by_name(self):
+        if self.materials is None:
+            mats = self.geometry.get_all_materials().values()
+        else:
+            mats = self.materials
+        result = {}
+        for mat in mats:
+            if mat.name not in result:
+                result[mat.name] = set()
+            result[mat.name].add(mat)
+        return result
 
     @geometry.setter
     def geometry(self, geometry):

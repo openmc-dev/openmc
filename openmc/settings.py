@@ -283,7 +283,7 @@ class Settings:
         self._event_based = None
         self._max_particles_in_flight = None
         self._write_initial_source = None
-        self._weight_windows = cv.CheckedList(Source, 'weight windows')
+        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
         self._weight_windows_on = None
         self._max_splits = None
 

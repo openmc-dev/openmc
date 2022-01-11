@@ -10,20 +10,20 @@ densities is all done in-memory instead of through the filesystem.
 import copy
 from collections import OrderedDict
 import os
-from typing import Type
-import xml.etree.ElementTree as ET
 from warnings import warn
-from pathlib import Path
 
 import numpy as np
 from uncertainties import ufloat
 
 import openmc
 from openmc.checkvalue import check_value
+from openmc.data import DataLibrary
+from openmc.exceptions import DataError
 import openmc.lib
 from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
+from .chain import _find_chain_file
 from .reaction_rates import ReactionRates
 from .results_list import ResultsList
 from .helpers import (
@@ -56,6 +56,22 @@ def _distribute(items):
         if comm.rank == i:
             return items[j:j + chunk_size]
         j += chunk_size
+
+
+def _find_cross_sections(model):
+    """Determine cross sections to use for depletion"""
+    if model.materials and model.materials.cross_sections is not None:
+        # Prefer info from Model class if available
+        return model.materials.cross_sections
+
+    # otherwise fallback to environment variable
+    cross_sections = os.environ.get("OPENMC_CROSS_SECTIONS")
+    if cross_sections is None:
+        raise DataError(
+            "Cross sections were not specified in Model.materials and "
+            "the OPENMC_CROSS_SECTIONS environment variable is not set."
+        )
+    return cross_sections
 
 
 class Operator(TransportOperator):
@@ -206,6 +222,11 @@ class Operator(TransportOperator):
                 "to generate the depletion Operator."
             raise TypeError(msg)
 
+        # Determine cross sections / depletion chain
+        cross_sections = _find_cross_sections(model)
+        if chain_file is None:
+            chain_file = _find_chain_file(cross_sections)
+
         check_value('fission yield mode', fission_yield_mode,
                     self._fission_helpers.keys())
         check_value('normalization mode', normalization_mode,
@@ -270,7 +291,7 @@ class Operator(TransportOperator):
                     self.prev_res.append(new_res)
 
         # Determine which nuclides have incident neutron data
-        self.nuclides_with_data = self._get_nuclides_with_data()
+        self.nuclides_with_data = self._get_nuclides_with_data(cross_sections)
 
         # Select nuclides with data that are also in the chain
         self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
@@ -637,14 +658,6 @@ class Operator(TransportOperator):
         for mat in self.materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
-        # Grab the cross sections tag from the existing file
-        mfile = Path("materials.xml")
-        if mfile.exists():
-            tree = ET.parse(str(mfile))
-            xs = tree.find('cross_sections')
-            if xs is not None and self.materials.cross_sections is None:
-                self.materials.cross_sections = xs.text
-
         self.materials.export_to_xml()
 
     def _get_tally_nuclides(self):
@@ -768,40 +781,14 @@ class Operator(TransportOperator):
 
         return OperatorResult(k_combined, rates)
 
-    def _get_nuclides_with_data(self):
-        """Loads a cross_sections.xml file to find participating nuclides.
-
-        This allows for nuclides that are important in the decay chain but not
-        important neutronically, or have no cross section data.
-        """
-
-        # Reads cross_sections.xml to create a dictionary containing
-        # participating (burning and not just decaying) nuclides.
-
-        try:
-            filename = os.environ["OPENMC_CROSS_SECTIONS"]
-        except KeyError:
-            filename = None
-
+    def _get_nuclides_with_data(self, cross_sections):
+        """Loads cross_sections.xml file to find nuclides with neutron data"""
         nuclides = set()
-
-        try:
-            tree = ET.parse(filename)
-        except Exception:
-            if filename is None:
-                msg = "No cross_sections.xml specified in materials."
-            else:
-                msg = 'Cross section file "{}" is invalid.'.format(filename)
-            raise IOError(msg)
-
-        root = tree.getroot()
-        for nuclide_node in root.findall('library'):
-            mats = nuclide_node.get('materials')
-            if not mats:
+        data_lib = DataLibrary.from_xml(cross_sections)
+        for library in data_lib.libraries:
+            if library['type'] != 'neutron':
                 continue
-            for name in mats.split():
-                # Make a burn list of the union of nuclides in cross_sections.xml
-                # and nuclides in depletion chain.
+            for name in library['materials']:
                 if name not in nuclides:
                     nuclides.add(name)
 

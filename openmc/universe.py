@@ -629,6 +629,8 @@ class Universe(UniverseBase):
 class DAGMCUniverse(UniverseBase):
     """A reference to a DAGMC file to be used in the model.
 
+    .. versionadded:: 0.13.0
+
     Parameters
     ----------
     filename : str

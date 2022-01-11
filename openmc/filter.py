@@ -1354,6 +1354,8 @@ class EnergyoutFilter(EnergyFilter):
 class TimeFilter(RealFilter):
     """Bins tally events based on the particle's time.
 
+    .. versionadded:: 0.13.0
+
     Parameters
     ----------
     values : iterable of float

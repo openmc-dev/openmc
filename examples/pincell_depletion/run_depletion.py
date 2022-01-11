@@ -87,7 +87,7 @@ settings.entropy_mesh = entropy_mesh
 model = openmc.Model(geometry=geometry, settings=settings)
 
 # Create depletion "operator"
-chain_file = './chain_simple.xml'
+chain_file = 'chain_simple.xml'
 op = openmc.deplete.Operator(model, chain_file)
 
 # Perform simulation using the predictor algorithm
@@ -117,21 +117,20 @@ time, Xe_capture = results.get_reaction_rate('1', 'Xe135', '(n,gamma)')
 ###############################################################################
 
 days = 24*60*60
-plt.figure()
-plt.plot(time/days, keff, label="K-effective")
-plt.xlabel("Time (days)")
-plt.ylabel("Keff")
+fig, ax = plt.subplots()
+ax.errorbar(time/days, keff[:, 0], keff[:, 1], label="K-effective")
+ax.set_xlabel("Time [d]")
+ax.set_ylabel("Keff")
 plt.show()
 
-plt.figure()
-plt.plot(time/days, n_U235, label="U235")
-plt.xlabel("Time (days)")
-plt.ylabel("n U5 (-)")
+fig, ax = plt.subplots()
+ax.plot(time/days, n_U235, label="U235")
+ax.set_xlabel("Time [d]")
+ax.set_ylabel("U235 atoms")
 plt.show()
 
-plt.figure()
-plt.plot(time/days, Xe_capture, label="Xe135 capture")
-plt.xlabel("Time (days)")
-plt.ylabel("RR (-)")
+fig, ax = plt.subplots()
+ax.plot(time/days, Xe_capture, label="Xe135 capture")
+ax.set_xlabel("Time [d]")
+ax.set_ylabel("Xe135 capture rate")
 plt.show()
-plt.close('all')

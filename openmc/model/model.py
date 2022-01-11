@@ -781,7 +781,7 @@ class Model:
         The rotation is only applied to cells filled with a universe.
 
         .. note:: If applying this change to a name that is not unique, then
-        the change will be applied to all objects of that name.
+                  the change will be applied to all objects of that name.
 
         .. versionadded:: 0.13.0
 
@@ -803,7 +803,7 @@ class Model:
         The translation is only applied to cells filled with a universe.
 
         .. note:: If applying this change to a name that is not unique, then
-        the change will be applied to all objects of that name.
+                  the change will be applied to all objects of that name.
 
         .. versionadded:: 0.13.0
 
@@ -825,7 +825,7 @@ class Model:
         """Update the density of a given set of materials to a new value
 
         .. note:: If applying this change to a name that is not unique, then
-        the change will be applied to all objects of that name.
+                  the change will be applied to all objects of that name.
 
         .. versionadded:: 0.13.0
 
@@ -848,7 +848,7 @@ class Model:
         """Update the temperature of a set of cells to the given value
 
         .. note:: If applying this change to a name that is not unique, then
-        the change will be applied to all objects of that name.
+                  the change will be applied to all objects of that name.
 
         .. versionadded:: 0.13.0
 
@@ -869,7 +869,7 @@ class Model:
         """Update the volume of a set of materials to the given value
 
         .. note:: If applying this change to a name that is not unique, then
-        the change will be applied to all objects of that name.
+                  the change will be applied to all objects of that name.
 
         .. versionadded:: 0.13.0
 

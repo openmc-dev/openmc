@@ -19,7 +19,6 @@ from warnings import warn
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
 
-from openmc.data import DataLibrary
 from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.mpi import comm
@@ -70,10 +69,8 @@ class TransportOperator(ABC):
 
     Parameters
     ----------
-    chain_file : str, optional
-        Path to the depletion chain XML file.  Defaults to the file
-        listed under ``depletion_chain`` in
-        :envvar:`OPENMC_CROSS_SECTIONS` environment variable.
+    chain_file : str
+        Path to the depletion chain XML file
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
@@ -95,30 +92,12 @@ class TransportOperator(ABC):
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
     """
-    def __init__(self, chain_file=None, fission_q=None, dilute_initial=1.0e3,
+    def __init__(self, chain_file, fission_q=None, dilute_initial=1.0e3,
                  prev_results=None):
         self.dilute_initial = dilute_initial
         self.output_dir = '.'
 
         # Read depletion chain
-        if chain_file is None:
-            chain_file = os.environ.get("OPENMC_DEPLETE_CHAIN", None)
-            if chain_file is None:
-                data = DataLibrary.from_xml()
-                # search for depletion_chain path from end of list
-                for lib in reversed(data.libraries):
-                    if lib['type'] == 'depletion_chain':
-                        break
-                else:
-                    raise IOError(
-                        "No chain specified, either manually or "
-                        "under depletion_chain in environment variable "
-                        "OPENMC_CROSS_SECTIONS.")
-                chain_file = lib['path']
-            else:
-                warn("Use of OPENMC_DEPLETE_CHAIN is deprecated in favor "
-                     "of adding depletion_chain to OPENMC_CROSS_SECTIONS",
-                     FutureWarning)
         self.chain = Chain.from_xml(chain_file, fission_q)
         if prev_results is None:
             self.prev_res = None

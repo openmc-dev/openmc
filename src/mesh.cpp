@@ -1015,22 +1015,22 @@ StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(const Position& r,
 StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const
 {
 
-  if (i==0) {
+  if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i]+1, true,  find_r_crossing(r0, u, l, ijk[i]  )),
+      MeshDistance(ijk[i]+1, true,  find_r_crossing(r0, u, l, ijk[i])),
       MeshDistance(ijk[i]-1, false, find_r_crossing(r0, u, l, ijk[i]-1))
     );
 
-  } else if (i==1) {
+  } else if (i == 1) {
 
     return std::min(
-      MeshDistance(sanitize_phi(ijk[i]+1), true,  find_phi_crossing(r0, u, l, ijk[i]  )),
+      MeshDistance(sanitize_phi(ijk[i]+1), true,  find_phi_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i]-1), false, find_phi_crossing(r0, u, l, ijk[i]-1))
     );
 
   } else {
-    return find_z_crossing(r0, u, l, ijk[i]  );
+    return find_z_crossing(r0, u, l, ijk[i] );
   } 
 
 }
@@ -1073,7 +1073,6 @@ int CylindricalMesh::set_grid()
   full_phi_   = (grid_[1].front() == 0.0) and (grid_[1].back()==360.0);
 
   // Transform phi-grid from degrees to radians
-  
   std::transform(grid_[1].begin(), grid_[1].end(), grid_[1].begin(), [](double d){ return M_PI*d/180.0; });
 
   lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
@@ -1157,12 +1156,10 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(Position r, bool& in_mesh) 
 
 double SphericalMesh::find_r_crossing(const Position& r, const Direction& u, double l, int shell) const 
 {
-  
   if ((shell < 0) || (shell >= shape_[0])) return INFTY;
   
   // solve |r+s*u| = r0
   // |r+s*u| = |r| + 2*s*r*u + s^2 (|u|==1 !)
-
   const double r0 = grid_[0][shell];  
   const double p = r.dot(u);    
   double D = p * p - r.dot(r) + r0 * r0;
@@ -1185,7 +1182,6 @@ double SphericalMesh::find_theta_crossing(const Position& r, const Direction& u,
   if (full_theta_ and (shape_[1]==1)) return INFTY;
   
   shell = sanitize_theta(shell);
-  
 
   // solving z(s) = cos/theta) * r(s) with r(s) = r+s*u
   // yields 
@@ -1269,24 +1265,24 @@ double SphericalMesh::find_phi_crossing(const Position& r, const Direction& u, d
 StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const
 {
 
-  if (i==0) {
+  if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i]+1, true,  find_r_crossing(r0, u, l, ijk[i]  )),
+      MeshDistance(ijk[i]+1, true,  find_r_crossing(r0, u, l, ijk[i])),
       MeshDistance(ijk[i]-1, false, find_r_crossing(r0, u, l, ijk[i]-1))
     );
 
-  } else if (i==1) {
+  } else if (i == 1) {
 
     return std::min(
-      MeshDistance(sanitize_theta(ijk[i]+1), true,  find_theta_crossing(r0, u, l, ijk[i]  )),
+      MeshDistance(sanitize_theta(ijk[i]+1), true,  find_theta_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_theta(ijk[i]-1), false, find_theta_crossing(r0, u, l, ijk[i]-1))
     );
 
   } else {
     
     return std::min(
-      MeshDistance(sanitize_phi(ijk[i]+1), true,  find_phi_crossing(r0, u, l, ijk[i]  )),
+      MeshDistance(sanitize_phi(ijk[i]+1), true,  find_phi_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i]-1), false, find_phi_crossing(r0, u, l, ijk[i]-1))
     );
   } 

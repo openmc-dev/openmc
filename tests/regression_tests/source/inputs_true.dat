@@ -121,6 +121,7 @@
         </dist>
       </pair>
     </energy>
+    <time parameters="2 5" type="uniform" />
   </source>
   <source strength="0.1">
     <space origin="1.0 1.0 0.0" type="cylindrical">
@@ -144,5 +145,6 @@
         </dist>
       </pair>
     </energy>
+    <time parameters="2 5" type="uniform" />
   </source>
 </settings>

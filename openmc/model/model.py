@@ -1,10 +1,11 @@
 from collections.abc import Iterable
+from contextlib import contextmanager
 from functools import lru_cache
 import os
 from pathlib import Path
 from numbers import Integral
+from tempfile import NamedTemporaryFile
 import time
-from contextlib import contextmanager
 
 import h5py
 
@@ -528,8 +529,11 @@ class Model:
         """
 
         # Setting tstart here ensures we don't pick up any pre-existing
-        # statepoint files in the output directory
-        tstart = time.time()
+        # statepoint files in the output directory -- just in case there are
+        # differences between the system clock and the filesystem, we get the
+        # time of a just-created temporary file
+        with NamedTemporaryFile() as fp:
+            tstart = Path(fp.name).stat().st_mtime
         last_statepoint = None
 
         # Operate in the provided working directory

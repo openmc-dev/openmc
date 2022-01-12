@@ -33,9 +33,9 @@
 #include "openmc/xml_interface.h"
 
 #ifdef LIBMESH
+#include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
-#include "libmesh/mesh_modification.h"
 #endif
 
 namespace openmc {
@@ -156,8 +156,9 @@ std::string StructuredMesh::bin_label(int bin) const
   }
 }
 
-xt::xtensor<int, 1> StructuredMesh::get_x_shape() const {
-  return xt::adapt(shape_, { n_dimension_});
+xt::xtensor<int, 1> StructuredMesh::get_x_shape() const
+{
+  return xt::adapt(shape_, {n_dimension_});
 }
 
 //==============================================================================
@@ -201,7 +202,8 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 
 const std::string UnstructuredMesh::mesh_type = "unstructured";
 
-std::string UnstructuredMesh::get_mesh_type() const {
+std::string UnstructuredMesh::get_mesh_type() const
+{
   return mesh_type;
 }
 
@@ -249,7 +251,8 @@ void UnstructuredMesh::set_length_multiplier(double length_multiplier)
     specified_length_multiplier_ = true;
 }
 
-StructuredMesh::MeshIndex StructuredMesh::get_indices(Position r, bool& in_mesh) const
+StructuredMesh::MeshIndex StructuredMesh::get_indices(
+  Position r, bool& in_mesh) const
 {
   MeshIndex ijk;
   in_mesh = true;
@@ -306,7 +309,8 @@ int StructuredMesh::get_bin(Position r) const
 
 int StructuredMesh::n_bins() const
 {
-  return std::accumulate(shape_.begin(), shape_.begin() + n_dimension_, 1, std::multiplies<>());
+  return std::accumulate(
+    shape_.begin(), shape_.begin() + n_dimension_, 1, std::multiplies<>());
 }
 
 int StructuredMesh::n_surface_bins() const
@@ -369,17 +373,19 @@ xt::xtensor<double, 1> StructuredMesh::count_sites(
   return counts;
 }
 
-// raytrace through the mesh. The template class T will do the tallying. 
-// A modern optimizing compiler can recognize the noop method of T and eleminate that call entirely.
-template <class T>
-void StructuredMesh::raytrace_mesh(Position r0, Position r1, const Direction& u,
-  T tally) const
+// raytrace through the mesh. The template class T will do the tallying.
+// A modern optimizing compiler can recognize the noop method of T and eleminate
+// that call entirely.
+template<class T>
+void StructuredMesh::raytrace_mesh(
+  Position r0, Position r1, const Direction& u, T tally) const
 {
 
-  // TODO: when c++-17 is available, use "if constexpr ()" to compile-time enable/disable tally calls
-  // for now, T template type needs to provide both surface and track methods, which might be empty.
-  // modern optimizing compilers will (hopefully) eleminate the complete code (including calculation of parameters)
-  // but for the future: be explicit
+  // TODO: when c++-17 is available, use "if constexpr ()" to compile-time
+  // enable/disable tally calls for now, T template type needs to provide both
+  // surface and track methods, which might be empty. modern optimizing
+  // compilers will (hopefully) eleminate the complete code (including
+  // calculation of parameters) but for the future: be explicit
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
@@ -392,11 +398,11 @@ void StructuredMesh::raytrace_mesh(Position r0, Position r1, const Direction& u,
   bool in_mesh;
 
   // Position is r = r0 + u * traveled_distance, start at r0
-  double traveled_distance { 0.0 };
+  double traveled_distance {0.0};
 
-  // Calculate index of current cell. Offset the position a tiny bit in direction of flight
+  // Calculate index of current cell. Offset the position a tiny bit in
+  // direction of flight
   MeshIndex ijk = get_indices(r0 + TINY_BIT * u, in_mesh);
-  
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
@@ -413,21 +419,23 @@ void StructuredMesh::raytrace_mesh(Position r0, Position r1, const Direction& u,
     distances[k] = distance_to_grid_boundary(ijk, k, r0, u, 0.0);
   }
 
-
   // Loop until r = r1 is eventually reached
   while (true) {
 
     if (in_mesh) {
 
       // find surface with minimal distance to current position
-      const auto k = std::min_element(distances.begin(), distances.end()) - distances.begin();
+      const auto k = std::min_element(distances.begin(), distances.end()) -
+                     distances.begin();
 
-      // Tally track length delta since last step 
-      tally.track(ijk, (std::min(distances[k].distance, total_distance) - traveled_distance) / total_distance);
+      // Tally track length delta since last step
+      tally.track(ijk,
+        (std::min(distances[k].distance, total_distance) - traveled_distance) /
+          total_distance);
 
       // update position and leave, if we have reached end position
       traveled_distance = distances[k].distance;
-      if (traveled_distance >= total_distance) 
+      if (traveled_distance >= total_distance)
         return;
 
       // If we have not reached r1, we have hit a surface. Tally outward current
@@ -435,55 +443,64 @@ void StructuredMesh::raytrace_mesh(Position r0, Position r1, const Direction& u,
 
       // Update cell and calculate distance to next surface in k-direction.
       // The two other directions are still valid!
-      ijk[k] = distances[k].nextIndex;
-      distances[k] = distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+      ijk[k] = distances[k].next_index;
+      distances[k] =
+        distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
 
-      // Check if we have left the interior of the mesh 
-      in_mesh = ((ijk[k] >= 1) and (ijk[k] <= shape_[k]));
+      // Check if we have left the interior of the mesh
+      in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
 
       // If we are still inside the mesh, tally inward current for the next cell
-      if (in_mesh) tally.surface(ijk, k, !distances[k].max_surface, true);
+      if (in_mesh)
+        tally.surface(ijk, k, !distances[k].max_surface, true);
 
     } else { // not inside mesh
 
-      // For all directions outside the mesh, find the distance that we need to travel to reach the next surface. 
-      // Use the largest distance, as only this will cross all outer surfaces.
-      int k_max { 0 };
+      // For all directions outside the mesh, find the distance that we need to
+      // travel to reach the next surface. Use the largest distance, as only
+      // this will cross all outer surfaces.
+      int k_max {0};
       for (int k = 0; k < n; ++k) {
-        if ((ijk[k] < 1 || ijk[k] > shape_[k]) and (distances[k].distance > traveled_distance)) {
+        if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
+            (distances[k].distance > traveled_distance)) {
           traveled_distance = distances[k].distance;
           k_max = k;
         }
       }
 
       // If r1 is not inside the mesh, exit here
-      if (traveled_distance >= total_distance) 
+      if (traveled_distance >= total_distance)
         return;
 
       // Calculate the new cell index and update all distances to next surfaces.
       ijk = get_indices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
       for (int k = 0; k < n; ++k) {
-        distances[k] = distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+        distances[k] =
+          distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
       }
 
       // If inside the mesh, Tally inward current
-      if (in_mesh) tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
-
+      if (in_mesh)
+        tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
     }
   }
 }
 
 void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
-  vector<int>& bins, vector<double>& lengths) const {
+  vector<int>& bins, vector<double>& lengths) const
+{
 
   // Helper tally class.
-  // stores a pointer to the mesh class and references to bins and lengths parameters.
-  // Performs the actual tally through the track method.
+  // stores a pointer to the mesh class and references to bins and lengths
+  // parameters. Performs the actual tally through the track method.
   struct TrackAggregator {
-    TrackAggregator(const StructuredMesh* _mesh, vector<int>& _bins, vector<double>& _lengths):
-      mesh(_mesh), bins(_bins), lengths(_lengths) {}
+    TrackAggregator(
+      const StructuredMesh* _mesh, vector<int>& _bins, vector<double>& _lengths)
+      : mesh(_mesh), bins(_bins), lengths(_lengths)
+    {}
     void surface(const MeshIndex& ijk, int k, bool max, bool inward) const {}
-    void track(const MeshIndex& ijk, double l) const {
+    void track(const MeshIndex& ijk, double l) const
+    {
       bins.push_back(mesh->get_bin_from_indices(ijk));
       lengths.push_back(l);
     }
@@ -505,12 +522,17 @@ void StructuredMesh::surface_bins_crossed(
   // stores a pointer to the mesh class and a reference to the bins parameter.
   // Performs the actual tally through the surface method.
   struct SurfaceAggregator {
-    SurfaceAggregator(const StructuredMesh* _mesh, vector<int>& _bins):
-      mesh(_mesh), bins(_bins) {}
-    void surface(const MeshIndex& ijk, int k, bool max, bool inward) const {
-      int i_bin = 4 * mesh->n_dimension_ * mesh->get_bin_from_indices(ijk) + 4 * k;
-      if (max) i_bin += 2;
-      if (inward) i_bin += 1;
+    SurfaceAggregator(const StructuredMesh* _mesh, vector<int>& _bins)
+      : mesh(_mesh), bins(_bins)
+    {}
+    void surface(const MeshIndex& ijk, int k, bool max, bool inward) const
+    {
+      int i_bin =
+        4 * mesh->n_dimension_ * mesh->get_bin_from_indices(ijk) + 4 * k;
+      if (max)
+        i_bin += 2;
+      if (inward)
+        i_bin += 1;
       bins.push_back(i_bin);
     }
     void track(const MeshIndex& idx, double l) const {}
@@ -518,11 +540,10 @@ void StructuredMesh::surface_bins_crossed(
     const StructuredMesh* mesh;
     vector<int>& bins;
   };
-  
+
   // Perform the mesh raytrace with the helper class.
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
-
 
 //==============================================================================
 // RegularMesh implementation
@@ -618,7 +639,8 @@ int RegularMesh::get_index_in_direction(double r, int i) const
 
 const std::string RegularMesh::mesh_type = "regular";
 
-std::string RegularMesh::get_mesh_type() const {
+std::string RegularMesh::get_mesh_type() const
+{
   return mesh_type;
 }
 
@@ -632,24 +654,25 @@ double RegularMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
   return lower_left_[i] + (ijk[i] - 1) * width_[i];
 }
 
-StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const
+StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
+  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  double l) const
 {
   MeshDistance d;
-  d.nextIndex = ijk[i];
-  if (std::fabs(u[i]) < FP_PRECISION) 
+  d.next_index = ijk[i];
+  if (std::abs(u[i]) < FP_PRECISION)
     return d;
 
   d.max_surface = (u[i] > 0);
-  if (d.max_surface and (ijk[i] <= shape_[i])) {
-    d.nextIndex++;
+  if (d.max_surface && (ijk[i] <= shape_[i])) {
+    d.next_index++;
     d.distance = (positive_grid_boundary(ijk, i) - r0[i]) / u[i];
-  } else if (not d.max_surface and (ijk[i] >= 1)) {
-    d.nextIndex--;
+  } else if (!d.max_surface && (ijk[i] >= 1)) {
+    d.next_index--;
     d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
   }
   return d;
 }
-
 
 std::pair<vector<double>, vector<double>> RegularMesh::plot(
   Position plot_ll, Position plot_ur) const
@@ -760,8 +783,6 @@ xt::xtensor<double, 1> RegularMesh::count_sites(
   return counts;
 }
 
-
-
 //==============================================================================
 // RectilinearMesh implementation
 //==============================================================================
@@ -781,33 +802,38 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
 
 const std::string RectilinearMesh::mesh_type = "rectilinear";
 
-std::string RectilinearMesh::get_mesh_type() const {
+std::string RectilinearMesh::get_mesh_type() const
+{
   return mesh_type;
 }
 
-double RectilinearMesh::positive_grid_boundary(const MeshIndex& ijk, int i) const
+double RectilinearMesh::positive_grid_boundary(
+  const MeshIndex& ijk, int i) const
 {
   return grid_[i][ijk[i]];
 }
 
-double RectilinearMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
+double RectilinearMesh::negative_grid_boundary(
+  const MeshIndex& ijk, int i) const
 {
   return grid_[i][ijk[i] - 1];
 }
 
-StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const
+StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
+  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  double l) const
 {
   MeshDistance d;
-  d.nextIndex = ijk[i];
-  if (std::fabs(u[i]) < FP_PRECISION) 
+  d.next_index = ijk[i];
+  if (std::abs(u[i]) < FP_PRECISION)
     return d;
 
   d.max_surface = (u[i] > 0);
-  if (d.max_surface and (ijk[i] <= shape_[i])) {
-    d.nextIndex++;
+  if (d.max_surface && (ijk[i] <= shape_[i])) {
+    d.next_index++;
     d.distance = (positive_grid_boundary(ijk, i) - r0[i]) / u[i];
-  } else if (not d.max_surface and (ijk[i] > 0)) {
-    d.nextIndex--;
+  } else if (!d.max_surface && (ijk[i] > 0)) {
+    d.next_index--;
     d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
   }
   return d;
@@ -825,7 +851,8 @@ int RectilinearMesh::set_grid()
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
-    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) != g.end()) {
+    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) !=
+        g.end()) {
       set_errmsg("Values in for x-, y-, and z- grids for "
                  "rectilinear meshes must be sorted and unique.");
       return OPENMC_E_INVALID_ARGUMENT;
@@ -894,7 +921,7 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
   n_dimension_ = 3;
 
   grid_[0] = get_node_array<double>(node, "r_grid");
-  grid_[1] = get_node_array<double>(node, "p_grid");
+  grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
 
   if (int err = set_grid()) {
@@ -904,11 +931,13 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
 
 const std::string CylindricalMesh::mesh_type = "cylindrical";
 
-std::string CylindricalMesh::get_mesh_type() const {
+std::string CylindricalMesh::get_mesh_type() const
+{
   return mesh_type;
 }
 
-StructuredMesh::MeshIndex CylindricalMesh::get_indices(Position r, bool& in_mesh) const
+StructuredMesh::MeshIndex CylindricalMesh::get_indices(
+  Position r, bool& in_mesh) const
 {
   Position mapped_r;
 
@@ -918,9 +947,10 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(Position r, bool& in_mesh
     mapped_r[1] = 0.0;
   } else {
     mapped_r[1] = std::atan2(r.y, r.x);
-    if (mapped_r[1] < 0) mapped_r[1] += 2*M_PI;
+    if (mapped_r[1] < 0)
+      mapped_r[1] += 2 * M_PI;
   }
-   
+
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 
   idx[1] = sanitize_phi(idx[1]);
@@ -928,31 +958,35 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(Position r, bool& in_mesh
   return idx;
 }
 
-double CylindricalMesh::find_r_crossing(const Position& r, const Direction& u, double l, int shell) const 
-{  
+double CylindricalMesh::find_r_crossing(
+  const Position& r, const Direction& u, double l, int shell) const
+{
 
-  if ((shell < 0) || (shell >= shape_[0])) return INFTY;
+  if ((shell < 0) || (shell >= shape_[0]))
+    return INFTY;
 
-  //solve r.x^2 + r.y^2 == r0^2
+  // solve r.x^2 + r.y^2 == r0^2
   // x^2 + 2*s*u*x + s^2*u^2 + s^2*v^2+2*s*v*y + y^2 -r0^2 = 0
   // s^2 * (u^2 + v^2) + 2*s*(u*x+v*y) + x^2+y^2-r0^2 = 0
 
-  const double r0 = grid_[0][shell];  
-  const double denominator = u.x*u.x + u.y*u.y;
+  const double r0 = grid_[0][shell];
+  const double denominator = u.x * u.x + u.y * u.y;
 
   // Direction of flight is in z-direction. Will never intersect r.
-  if (fabs(denominator) < FP_PRECISION) return INFTY;
+  if (std::abs(denominator) < FP_PRECISION)
+    return INFTY;
 
   // inverse of dominator to help the compiler to speed things up
   const double inv_denominator = 1.0 / denominator;
 
-  const double p = (u.x*r.x + u.y*r.y) * inv_denominator;
-  double D = p*p + (r0*r0 - r.x*r.x - r.y*r.y) * inv_denominator;
+  const double p = (u.x * r.x + u.y * r.y) * inv_denominator;
+  double D = p * p + (r0 * r0 - r.x * r.x - r.y * r.y) * inv_denominator;
 
-  if (D < 0.0) return INFTY;
-  
+  if (D < 0.0)
+    return INFTY;
+
   D = std::sqrt(D);
-    
+
   // the solution -p - D is always smaller as -p + D : Check this one first
   if (-p - D > l)
     return -p - D;
@@ -962,77 +996,81 @@ double CylindricalMesh::find_r_crossing(const Position& r, const Direction& u, d
   return INFTY;
 }
 
-double CylindricalMesh::find_phi_crossing(const Position& r, const Direction& u, double l, int shell) const 
-{  
+double CylindricalMesh::find_phi_crossing(
+  const Position& r, const Direction& u, double l, int shell) const
+{
   // Phi grid is [0, 360], thus there is no real surface to cross
-  if (full_phi_ and (shape_[1]==1)) return INFTY;
+  if (full_phi_ && (shape_[1] == 1))
+    return INFTY;
 
   shell = sanitize_phi(shell);
 
   const double p0 = grid_[1][shell];
 
-  // solve y(s)/x(s) = tan(p0) = sin(p0)/cos(p0) 
+  // solve y(s)/x(s) = tan(p0) = sin(p0)/cos(p0)
   // => x(s) * cos(p0) = y(s) * sin(p0)
   // => (y + s * v) * cos(p0) = (x + s * u) * sin(p0)
   // = s * (v * cos(p0) - u * sin(p0)) = - (y * cos(p0) - x * sin(p0))
-   
+
   const double c0 = std::cos(p0);
   const double s0 = std::sin(p0);
 
   const double denominator = (u.x * s0 - u.y * c0);
 
   // Check if direction of flight is not parallel to phi surface
-  if (std::fabs(denominator) > FP_PRECISION) {
-    const double s = - (r.x * s0 - r.y * c0) / denominator;
-    // Check if solution is in positive direction of flight and crosses the correct phi surface (not -phi)
-    if ((s > l) and ((c0*(r.x + s*u.x) + s0*(r.y + s*u.y)) > 0.0))
+  if (std::abs(denominator) > FP_PRECISION) {
+    const double s = -(r.x * s0 - r.y * c0) / denominator;
+    // Check if solution is in positive direction of flight and crosses the
+    // correct phi surface (not -phi)
+    if ((s > l) && ((c0 * (r.x + s * u.x) + s0 * (r.y + s * u.y)) > 0.0))
       return s;
   }
-  
-  return INFTY;   
+
+  return INFTY;
 }
 
-StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(const Position& r, const Direction& u, double l, int shell) const 
-{  
+StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(
+  const Position& r, const Direction& u, double l, int shell) const
+{
   MeshDistance d;
-  d.nextIndex = shell;
+  d.next_index = shell;
 
   // Direction of flight is within xy-plane. Will never intersect z.
-  if (std::fabs(u.z) < FP_PRECISION) 
+  if (std::abs(u.z) < FP_PRECISION)
     return d;
 
   d.max_surface = (u.z > 0.0);
-  if (d.max_surface and (shell <= shape_[2])) {
-    d.nextIndex += 1;
+  if (d.max_surface && (shell <= shape_[2])) {
+    d.next_index += 1;
     d.distance = (grid_[2][shell] - r.z) / u.z;
-  } else if (not d.max_surface and (shell > 0)) {
-    d.nextIndex -= 1;
-    d.distance = (grid_[2][shell-1] - r.z) / u.z;
+  } else if (!d.max_surface && (shell > 0)) {
+    d.next_index -= 1;
+    d.distance = (grid_[2][shell - 1] - r.z) / u.z;
   }
   return d;
 }
 
-StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const
+StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
+  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  double l) const
 {
 
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i]+1, true,  find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i]-1, false, find_r_crossing(r0, u, l, ijk[i]-1))
-    );
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
-    return std::min(
-      MeshDistance(sanitize_phi(ijk[i]+1), true,  find_phi_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_phi(ijk[i]-1), false, find_phi_crossing(r0, u, l, ijk[i]-1))
-    );
+    return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
+                      find_phi_crossing(r0, u, l, ijk[i])),
+      MeshDistance(sanitize_phi(ijk[i] - 1), false,
+        find_phi_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
-    return find_z_crossing(r0, u, l, ijk[i] );
-  } 
-
+    return find_z_crossing(r0, u, l, ijk[i]);
+  }
 }
 
 int CylindricalMesh::set_grid()
@@ -1047,40 +1085,41 @@ int CylindricalMesh::set_grid()
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
-    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) != g.end()) {
+    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) !=
+        g.end()) {
       set_errmsg("Values in for r-, phi-, and z- grids for "
                  "cylindrical meshes must be sorted and unique.");
       return OPENMC_E_INVALID_ARGUMENT;
     }
   }
   if (grid_[0].front() < 0.0) {
-      set_errmsg("r-grid for "
-                  "cylindrical meshes must start at r >= 0.");
-      return OPENMC_E_INVALID_ARGUMENT;
+    set_errmsg("r-grid for "
+               "cylindrical meshes must start at r >= 0.");
+    return OPENMC_E_INVALID_ARGUMENT;
   }
   if (grid_[1].front() < 0.0) {
-      set_errmsg("phi-grid for "
-                  "cylindrical meshes must start at phi >= 0.");
-      return OPENMC_E_INVALID_ARGUMENT;
+    set_errmsg("phi-grid for "
+               "cylindrical meshes must start at phi >= 0.");
+    return OPENMC_E_INVALID_ARGUMENT;
   }
   if (grid_[1].back() > 360) {
     set_errmsg("phi-grids for "
-                "cylindrical meshes must end with theta <= 360 degree.");
-                
+               "cylindrical meshes must end with theta <= 360 degree.");
+
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  full_phi_   = (grid_[1].front() == 0.0) and (grid_[1].back()==360.0);
+  full_phi_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 360.0);
 
   // Transform phi-grid from degrees to radians
-  std::transform(grid_[1].begin(), grid_[1].end(), grid_[1].begin(), [](double d){ return M_PI*d/180.0; });
+  std::transform(grid_[1].begin(), grid_[1].end(), grid_[1].begin(),
+    [](double d) { return M_PI * d / 180.0; });
 
   lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 
   return 0;
 }
-
 
 int CylindricalMesh::get_index_in_direction(double r, int i) const
 {
@@ -1091,7 +1130,7 @@ std::pair<vector<double>, vector<double>> CylindricalMesh::plot(
   Position plot_ll, Position plot_ur) const
 {
   fatal_error("Plot of cylindrical Mesh not implemented");
-  
+
   // Figure out which axes lie in the plane of the plot.
   array<vector<double>, 2> axis_lines;
   return {axis_lines[0], axis_lines[1]};
@@ -1103,7 +1142,7 @@ void CylindricalMesh::to_hdf5(hid_t group) const
 
   write_dataset(mesh_group, "type", "cylindrical");
   write_dataset(mesh_group, "r_grid", grid_[0]);
-  write_dataset(mesh_group, "p_grid", grid_[1]);
+  write_dataset(mesh_group, "phi_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
 
   close_group(mesh_group);
@@ -1118,8 +1157,8 @@ SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
   n_dimension_ = 3;
 
   grid_[0] = get_node_array<double>(node, "r_grid");
-  grid_[1] = get_node_array<double>(node, "t_grid");
-  grid_[2] = get_node_array<double>(node, "p_grid");
+  grid_[1] = get_node_array<double>(node, "theta_grid");
+  grid_[2] = get_node_array<double>(node, "phi_grid");
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -1128,11 +1167,13 @@ SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
 
 const std::string SphericalMesh::mesh_type = "spherical";
 
-std::string SphericalMesh::get_mesh_type() const {
+std::string SphericalMesh::get_mesh_type() const
+{
   return mesh_type;
 }
 
-StructuredMesh::MeshIndex SphericalMesh::get_indices(Position r, bool& in_mesh) const
+StructuredMesh::MeshIndex SphericalMesh::get_indices(
+  Position r, bool& in_mesh) const
 {
   Position mapped_r;
 
@@ -1143,9 +1184,10 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(Position r, bool& in_mesh) 
   } else {
     mapped_r[1] = std::acos(r.z / mapped_r.x);
     mapped_r[2] = std::atan2(r.y, r.x);
-    if (mapped_r[2] < 0) mapped_r[2] += 2*M_PI;
+    if (mapped_r[2] < 0)
+      mapped_r[2] += 2 * M_PI;
   }
-   
+
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 
   idx[1] = sanitize_theta(idx[1]);
@@ -1154,16 +1196,18 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(Position r, bool& in_mesh) 
   return idx;
 }
 
-double SphericalMesh::find_r_crossing(const Position& r, const Direction& u, double l, int shell) const 
+double SphericalMesh::find_r_crossing(
+  const Position& r, const Direction& u, double l, int shell) const
 {
-  if ((shell < 0) || (shell >= shape_[0])) return INFTY;
-  
+  if ((shell < 0) || (shell >= shape_[0]))
+    return INFTY;
+
   // solve |r+s*u| = r0
   // |r+s*u| = |r| + 2*s*r*u + s^2 (|u|==1 !)
-  const double r0 = grid_[0][shell];  
-  const double p = r.dot(u);    
+  const double r0 = grid_[0][shell];
+  const double p = r.dot(u);
   double D = p * p - r.dot(r) + r0 * r0;
-  
+
   if (D >= 0.0) {
     D = std::sqrt(D);
     // the solution -p - D is always smaller as -p + D : Check this one first
@@ -1176,21 +1220,23 @@ double SphericalMesh::find_r_crossing(const Position& r, const Direction& u, dou
   return INFTY;
 }
 
-double SphericalMesh::find_theta_crossing(const Position& r, const Direction& u, double l, int shell) const 
+double SphericalMesh::find_theta_crossing(
+  const Position& r, const Direction& u, double l, int shell) const
 {
   // Theta grid is [0, 180], thus there is no real surface to cross
-  if (full_theta_ and (shape_[1]==1)) return INFTY;
-  
+  if (full_theta_ && (shape_[1] == 1))
+    return INFTY;
+
   shell = sanitize_theta(shell);
 
   // solving z(s) = cos/theta) * r(s) with r(s) = r+s*u
-  // yields 
-  // a*s^2 + 2*b*s + c == 0 with 
+  // yields
+  // a*s^2 + 2*b*s + c == 0 with
   // a = cos(theta)^2 - u.z * u.z
   // b = r*u * cos(theta)^2 - u.z * r.z
   // c = r*r * cos(theta)^2 - r.z^2
-  
-  const double cos_t  = std::cos(grid_[1][shell]);
+
+  const double cos_t = std::cos(grid_[1][shell]);
   const bool sgn = std::signbit(cos_t);
   const double cos_t_2 = cos_t * cos_t;
 
@@ -1199,21 +1245,24 @@ double SphericalMesh::find_theta_crossing(const Position& r, const Direction& u,
   const double c = r.dot(r) * cos_t_2 - r.z * r.z;
 
   // if factor of s^2 is zero, direction of flight is parallel to theta surface
-  if (fabs(a) < FP_PRECISION) {
-    // if b vanishes, direction of flight is within theta surface and crossing is not possible
-    if (fabs(b) < FP_PRECISION) return INFTY;
-   
+  if (std::abs(a) < FP_PRECISION) {
+    // if b vanishes, direction of flight is within theta surface and crossing
+    // is not possible
+    if (std::abs(b) < FP_PRECISION)
+      return INFTY;
+
     const double s = -0.5 * c / b;
-    // Check if solution is in positive direction of flight and has correct sign 
-    if ((s > l) and (std::signbit(r.z+s*u.z) == sgn)) return s;
-    
+    // Check if solution is in positive direction of flight and has correct sign
+    if ((s > l) && (std::signbit(r.z + s * u.z) == sgn))
+      return s;
+
     // no crossing is possible
     return INFTY;
   }
 
   const double p = b / a;
   double D = p * p - c / a;
-  
+
   if (D < 0.0)
     return INFTY;
 
@@ -1221,72 +1270,76 @@ double SphericalMesh::find_theta_crossing(const Position& r, const Direction& u,
 
   // the solution -p-D is always smaller as -p+D : Check this one first
   double s = -p - D;
-  // Check if solution is in positive direction of flight and has correct sign 
-  if ((s > l) and (std::signbit(r.z+s*u.z) == sgn)) return s;
+  // Check if solution is in positive direction of flight and has correct sign
+  if ((s > l) && (std::signbit(r.z + s * u.z) == sgn))
+    return s;
 
   s = -p + D;
-  // Check if solution is in positive direction of flight and has correct sign 
-  if ((s > l) and (std::signbit(r.z+s*u.z) == sgn)) return s;
+  // Check if solution is in positive direction of flight and has correct sign
+  if ((s > l) && (std::signbit(r.z + s * u.z) == sgn))
+    return s;
 
   return INFTY;
 }
 
-double SphericalMesh::find_phi_crossing(const Position& r, const Direction& u, double l, int shell) const 
-{  
+double SphericalMesh::find_phi_crossing(
+  const Position& r, const Direction& u, double l, int shell) const
+{
   // Phi grid is [0, 360], thus there is no real surface to cross
-  if (full_phi_ and (shape_[2]==1)) return INFTY;
+  if (full_phi_ && (shape_[2] == 1))
+    return INFTY;
 
   shell = sanitize_phi(shell);
 
   const double p0 = grid_[2][shell];
 
-  // solve y(s)/x(s) = tan(p0) = sin(p0)/cos(p0) 
+  // solve y(s)/x(s) = tan(p0) = sin(p0)/cos(p0)
   // => x(s) * cos(p0) = y(s) * sin(p0)
   // => (y + s * v) * cos(p0) = (x + s * u) * sin(p0)
   // = s * (v * cos(p0) - u * sin(p0)) = - (y * cos(p0) - x * sin(p0))
-   
+
   const double c0 = std::cos(p0);
   const double s0 = std::sin(p0);
 
   const double denominator = (u.x * s0 - u.y * c0);
 
   // Check if direction of flight is not parallel to phi surface
-  if (std::fabs(denominator) > FP_PRECISION) {
-    const double s = - (r.x * s0 - r.y * c0) / denominator;
-    // Check if solution is in positive direction of flight and crosses the correct phi surface (not -phi)
-    if ((s>l) and ((c0*(r.x+s*u.x) + s0*(r.y+s*u.y))>0.0))
+  if (std::abs(denominator) > FP_PRECISION) {
+    const double s = -(r.x * s0 - r.y * c0) / denominator;
+    // Check if solution is in positive direction of flight and crosses the
+    // correct phi surface (not -phi)
+    if ((s > l) && ((c0 * (r.x + s * u.x) + s0 * (r.y + s * u.y)) > 0.0))
       return s;
   }
-  
-  return INFTY;   
+
+  return INFTY;
 }
 
-
-StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const
+StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
+  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  double l) const
 {
 
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i]+1, true,  find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i]-1, false, find_r_crossing(r0, u, l, ijk[i]-1))
-    );
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
-    return std::min(
-      MeshDistance(sanitize_theta(ijk[i]+1), true,  find_theta_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_theta(ijk[i]-1), false, find_theta_crossing(r0, u, l, ijk[i]-1))
-    );
+    return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
+                      find_theta_crossing(r0, u, l, ijk[i])),
+      MeshDistance(sanitize_theta(ijk[i] - 1), false,
+        find_theta_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
-    
-    return std::min(
-      MeshDistance(sanitize_phi(ijk[i]+1), true,  find_phi_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_phi(ijk[i]-1), false, find_phi_crossing(r0, u, l, ijk[i]-1))
-    );
-  } 
 
+    return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
+                      find_phi_crossing(r0, u, l, ijk[i])),
+      MeshDistance(sanitize_phi(ijk[i] - 1), false,
+        find_phi_crossing(r0, u, l, ijk[i] - 1)));
+  }
 }
 
 int SphericalMesh::set_grid()
@@ -1301,42 +1354,43 @@ int SphericalMesh::set_grid()
                  "must each have at least 2 points");
       return OPENMC_E_INVALID_ARGUMENT;
     }
-    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) != g.end()) {
+    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) !=
+        g.end()) {
       set_errmsg("Values in for r-, theta-, and phi- grids for "
                  "spherical meshes must be sorted and unique.");
       return OPENMC_E_INVALID_ARGUMENT;
     }
     if (g.front() < 0.0) {
-        set_errmsg("r-, theta-, and phi- grids for "
-                   "spherical meshes must start at v >= 0.");
-        return OPENMC_E_INVALID_ARGUMENT;
+      set_errmsg("r-, theta-, and phi- grids for "
+                 "spherical meshes must start at v >= 0.");
+      return OPENMC_E_INVALID_ARGUMENT;
     }
   }
   if (grid_[1].back() > 180) {
     set_errmsg("theta-grids for "
-                "spherical meshes must end with theta <= 180 degree.");
-                
+               "spherical meshes must end with theta <= 180 degree.");
+
     return OPENMC_E_INVALID_ARGUMENT;
   }
   if (grid_[2].back() > 360) {
     set_errmsg("phi-grids for "
-                "spherical meshes must end with phi <= 180 degree.");
+               "spherical meshes must end with phi <= 180 degree.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  full_theta_ = (grid_[1].front() == 0.0) and (grid_[1].back()==180.0);
-  full_phi_   = (grid_[2].front() == 0.0) and (grid_[2].back()==360.0);
+  full_theta_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 180.0);
+  full_phi_ = (grid_[2].front() == 0.0) && (grid_[2].back() == 360.0);
 
-    // Transform theta- and phi-grid from degrees to radians
-  for (int i=1; i<3; i++)
-    std::transform(grid_[i].begin(), grid_[i].end(), grid_[i].begin(), [](double d){ return M_PI*d/180.0; });
+  // Transform theta- and phi-grid from degrees to radians
+  for (int i = 1; i < 3; i++)
+    std::transform(grid_[i].begin(), grid_[i].end(), grid_[i].begin(),
+      [](double d) { return M_PI * d / 180.0; });
 
   lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 
   return 0;
 }
-
 
 int SphericalMesh::get_index_in_direction(double r, int i) const
 {
@@ -1347,7 +1401,7 @@ std::pair<vector<double>, vector<double>> SphericalMesh::plot(
   Position plot_ll, Position plot_ur) const
 {
   fatal_error("Plot of spherical Mesh not implemented");
-  
+
   // Figure out which axes lie in the plane of the plot.
   array<vector<double>, 2> axis_lines;
   return {axis_lines[0], axis_lines[1]};
@@ -1359,8 +1413,8 @@ void SphericalMesh::to_hdf5(hid_t group) const
 
   write_dataset(mesh_group, "type", SphericalMesh::mesh_type);
   write_dataset(mesh_group, "r_grid", grid_[0]);
-  write_dataset(mesh_group, "t_grid", grid_[1]);
-  write_dataset(mesh_group, "p_grid", grid_[2]);
+  write_dataset(mesh_group, "theta_grid", grid_[1]);
+  write_dataset(mesh_group, "phi_grid", grid_[2]);
 
   close_group(mesh_group);
 }
@@ -1423,7 +1477,7 @@ extern "C" int openmc_extend_meshes(
   std::string mesh_type;
 
   for (int i = 0; i < n; ++i) {
-    if (RegularMesh::mesh_type == type)  {
+    if (RegularMesh::mesh_type == type) {
       model::meshes.push_back(make_unique<RegularMesh>());
     } else if (RectilinearMesh::mesh_type == type) {
       model::meshes.push_back(make_unique<RectilinearMesh>());
@@ -1583,12 +1637,11 @@ extern "C" int openmc_regular_mesh_set_params(
   return 0;
 }
 
-
 //! Set the mesh parameters for rectilinear, cylindrical and spharical meshes
-template <class C>
-int openmc_structured_mesh_set_grid_impl(int32_t index,
-  const double* grid_x, const int nx, const double* grid_y, const int ny,
-  const double* grid_z, const int nz)
+template<class C>
+int openmc_structured_mesh_set_grid_impl(int32_t index, const double* grid_x,
+  const int nx, const double* grid_y, const int ny, const double* grid_z,
+  const int nz)
 {
   if (int err = check_mesh_type<C>(index))
     return err;
@@ -1612,11 +1665,11 @@ int openmc_structured_mesh_set_grid_impl(int32_t index,
   }
 
   int err = m->set_grid();
-  return err;  
+  return err;
 }
 
 //! Get the mesh parameters for rectilinear, cylindrical and spherical meshes
-template <class C>
+template<class C>
 int openmc_structured_mesh_get_grid_impl(int32_t index, double** grid_x,
   int* nx, double** grid_y, int* ny, double** grid_z, int* nz)
 {
@@ -1639,28 +1692,29 @@ int openmc_structured_mesh_get_grid_impl(int32_t index, double** grid_x,
   return 0;
 }
 
-
 //! Get the rectilinear mesh grid
 extern "C" int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x,
   int* nx, double** grid_y, int* ny, double** grid_z, int* nz)
 {
-  return openmc_structured_mesh_get_grid_impl<RectilinearMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
+  return openmc_structured_mesh_get_grid_impl<RectilinearMesh>(
+    index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
-
 
 //! Set the rectilienar mesh parameters
 extern "C" int openmc_rectilinear_mesh_set_grid(int32_t index,
   const double* grid_x, const int nx, const double* grid_y, const int ny,
   const double* grid_z, const int nz)
 {
-  return openmc_structured_mesh_set_grid_impl<RectilinearMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
+  return openmc_structured_mesh_set_grid_impl<RectilinearMesh>(
+    index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
 //! Get the cylindrical mesh grid
 extern "C" int openmc_cylindrical_mesh_get_grid(int32_t index, double** grid_x,
   int* nx, double** grid_y, int* ny, double** grid_z, int* nz)
 {
-  return openmc_structured_mesh_get_grid_impl<CylindricalMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
+  return openmc_structured_mesh_get_grid_impl<CylindricalMesh>(
+    index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
 //! Set the cylindrical mesh parameters
@@ -1668,7 +1722,8 @@ extern "C" int openmc_cylindrical_mesh_set_grid(int32_t index,
   const double* grid_x, const int nx, const double* grid_y, const int ny,
   const double* grid_z, const int nz)
 {
-  return openmc_structured_mesh_set_grid_impl<CylindricalMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
+  return openmc_structured_mesh_set_grid_impl<CylindricalMesh>(
+    index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
 //! Get the spherical mesh grid
@@ -1676,7 +1731,9 @@ extern "C" int openmc_spherical_mesh_get_grid(int32_t index, double** grid_x,
   int* nx, double** grid_y, int* ny, double** grid_z, int* nz)
 {
 
-  return openmc_structured_mesh_get_grid_impl<SphericalMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);;
+  return openmc_structured_mesh_get_grid_impl<SphericalMesh>(
+    index, grid_x, nx, grid_y, ny, grid_z, nz);
+  ;
 }
 
 //! Set the spherical mesh parameters
@@ -1684,7 +1741,8 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
   const double* grid_x, const int nx, const double* grid_y, const int ny,
   const double* grid_z, const int nz)
 {
-  return openmc_structured_mesh_set_grid_impl<SphericalMesh>(index, grid_x, nx, grid_y, ny, grid_z, nz);
+  return openmc_structured_mesh_set_grid_impl<SphericalMesh>(
+    index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
 #ifdef DAGMC
@@ -2541,11 +2599,13 @@ void read_meshes(pugi::xml_node root)
     } else if (mesh_type == SphericalMesh::mesh_type) {
       model::meshes.push_back(make_unique<SphericalMesh>(node));
 #ifdef DAGMC
-    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == MOABMesh::mesh_lib_type) {
+    } else if (mesh_type == UnstructuredMesh::mesh_type &&
+               mesh_lib == MOABMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<MOABMesh>(node));
 #endif
 #ifdef LIBMESH
-    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == LibMesh::mesh_lib_type) {
+    } else if (mesh_type == UnstructuredMesh::mesh_type &&
+               mesh_lib == LibMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<LibMesh>(node));
 #endif
     } else if (mesh_type == UnstructuredMesh::mesh_type) {

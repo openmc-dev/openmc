@@ -725,13 +725,13 @@ class CylindricalMesh(MeshBase):
         if self._r_grid is not None:
             string += fmt.format('\tR Min:', '=\t', self._r_grid[0])
             string += fmt.format('\tR Max:', '=\t', self._r_grid[-1])
-        t_grid_str = str(self._phi_grid) if self._phi_grid is None else len(self._phi_grid)
-        string += fmt.format('\tN Phi pnts:', '=\t', t_grid_str)
+        phi_grid_str = str(self._phi_grid) if self._phi_grid is None else len(self._phi_grid)
+        string += fmt.format('\tN Phi pnts:', '=\t', phi_grid_str)
         if self._phi_grid is not None:
             string += fmt.format('\tPhi Min:', '=\t', self._phi_grid[0])
             string += fmt.format('\tPhi Max:', '=\t', self._phi_grid[-1])
-        p_grid_str = str(self._z_grid) if self._z_grid is None else len(self._z_grid)
-        string += fmt.format('\tN Z pnts:', '=\t', p_grid_str)
+        z_grid_str = str(self._z_grid) if self._z_grid is None else len(self._z_grid)
+        string += fmt.format('\tN Z pnts:', '=\t', z_grid_str)
         if self._z_grid is not None:
             string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
             string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
@@ -744,7 +744,7 @@ class CylindricalMesh(MeshBase):
         # Read and assign mesh properties
         mesh = cls(mesh_id)
         mesh.r_grid = group['r_grid'][()]
-        mesh.phi_grid = 180 / np.pi * group['p_grid'][()]
+        mesh.phi_grid = 180 / np.pi * group['phi_grid'][()]
         mesh.z_grid = group['z_grid'][()]
 
         return mesh
@@ -766,7 +766,7 @@ class CylindricalMesh(MeshBase):
         subelement = ET.SubElement(element, "r_grid")
         subelement.text = ' '.join(map(str, self.r_grid))
 
-        subelement = ET.SubElement(element, "p_grid")
+        subelement = ET.SubElement(element, "phi_grid")
         subelement.text = ' '.join(map(str, self.phi_grid))
 
         subelement = ET.SubElement(element, "z_grid")
@@ -889,13 +889,13 @@ class SphericalMesh(MeshBase):
         if self._r_grid:
             string += fmt.format('\tR Min:', '=\t', self._r_grid[0])
             string += fmt.format('\tR Max:', '=\t', self._r_grid[-1])
-        t_grid_str = str(self._theta_grid) if not self._theta_grid else len(self._theta_grid)
-        string += fmt.format('\tN Theta pnts:', '=\t', t_grid_str)
+        theta_grid_str = str(self._theta_grid) if not self._theta_grid else len(self._theta_grid)
+        string += fmt.format('\tN Theta pnts:', '=\t', theta_grid_str)
         if self._theta_grid:
             string += fmt.format('\tTheta Min:', '=\t', self._theta_grid[0])
             string += fmt.format('\tTheta Max:', '=\t', self._theta_grid[-1])
-        p_grid_str = str(self._phi_grid) if not self._phi_grid else len(self._phi_grid)
-        string += fmt.format('\tN Phi pnts:', '=\t', p_grid_str)
+        phi_grid_str = str(self._phi_grid) if not self._phi_grid else len(self._phi_grid)
+        string += fmt.format('\tN Phi pnts:', '=\t', phi_grid_str)
         if self._phi_grid:
             string += fmt.format('\tPhi Min:', '=\t', self._phi_grid[0])
             string += fmt.format('\tPhi Max:', '=\t', self._phi_grid[-1])
@@ -908,8 +908,8 @@ class SphericalMesh(MeshBase):
         # Read and assign mesh properties
         mesh = cls(mesh_id)
         mesh.r_grid = group['r_grid'][()]
-        mesh.theta_grid = 180 / np.pi * group['t_grid'][()]
-        mesh.phi_grid = 180 / np.pi * group['p_grid'][()]
+        mesh.theta_grid = 180 / np.pi * group['theta_grid'][()]
+        mesh.phi_grid = 180 / np.pi * group['phi_grid'][()]
 
         return mesh
 
@@ -930,10 +930,10 @@ class SphericalMesh(MeshBase):
         subelement = ET.SubElement(element, "r_grid")
         subelement.text = ' '.join(map(str, self.r_grid))
 
-        subelement = ET.SubElement(element, "t_grid")
+        subelement = ET.SubElement(element, "theta_grid")
         subelement.text = ' '.join(map(str, self.theta_grid))
 
-        subelement = ET.SubElement(element, "p_grid")
+        subelement = ET.SubElement(element, "phi_grid")
         subelement.text = ' '.join(map(str, self.phi_grid))
 
         return element

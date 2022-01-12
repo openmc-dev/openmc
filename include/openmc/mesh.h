@@ -141,13 +141,14 @@ public:
 
   struct MeshDistance {
     MeshDistance() = default;
-    MeshDistance(int _index, bool _max_surface, double _distance): 
-      nextIndex{_index}, max_surface{_max_surface}, distance{_distance}
-      { }
-    int nextIndex { -1 };
-    double distance { INFTY };
-    bool max_surface { true };
-    bool operator<(const MeshDistance& o) const {
+    MeshDistance(int _index, bool _max_surface, double _distance)
+      : next_index {_index}, max_surface {_max_surface}, distance {_distance}
+    {}
+    int next_index {-1};
+    double distance {INFTY};
+    bool max_surface {true};
+    bool operator<(const MeshDistance& o) const
+    {
       return distance < o.distance;
     }
   };
@@ -169,9 +170,10 @@ public:
   //! \param[in] r0 Previous position of the particle
   //! \param[in] r1 Current position of the particle
   //! \param[in] u Particle direction
-  //! \param[in] tally Functor that eventually stores the tally data 
-  template <class T> void raytrace_mesh(Position r0, Position r1, const Direction& u,
-  T tally) const;
+  //! \param[in] tally Functor that eventually stores the tally data
+  template<class T>
+  void raytrace_mesh(
+    Position r0, Position r1, const Direction& u, T tally) const;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -206,19 +208,21 @@ public:
   //! \param[in] i Direction index
   virtual int get_index_in_direction(double r, int i) const = 0;
 
-  //! Get the closest distance from the coordinate r to the grid surface  
+  //! Get the closest distance from the coordinate r to the grid surface
   //! in i direction  that bounds mesh cell ijk and that is larger than l
-  //! The coordinate r does not have to be inside the mesh cell ijk. In 
+  //! The coordinate r does not have to be inside the mesh cell ijk. In
   //! curved coordinates, multiple crossings of the same surface can happen,
-  //! these are selected by the parameter l 
+  //! these are selected by the parameter l
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i direction index of grid surface
   //! \param[in] r0 position, from where to calculate the distance
   //! \param[in] u direction of flight. actual position is r0 + l * u
   //! \param[in] l actual chord length
-  //! \return MeshDistance struct with closest distance, next cell index in i-direction and min/max surface indicator
-  virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const = 0;
+  //! \return MeshDistance struct with closest distance, next cell index in
+  //! i-direction and min/max surface indicator
+  virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const = 0;
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
@@ -232,7 +236,6 @@ public:
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
 
 protected:
-
 };
 
 //==============================================================================
@@ -252,7 +255,8 @@ public:
 
   static const std::string mesh_type;
 
-  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const override;
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -297,8 +301,9 @@ public:
   virtual std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
-    
-  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const override;
+
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -317,7 +322,6 @@ public:
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
   double negative_grid_boundary(const MeshIndex& ijk, int i) const;
-
 
   array<vector<double>, 3> grid_;
 
@@ -339,7 +343,8 @@ public:
 
   static const std::string mesh_type;
 
-  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const override;
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -351,13 +356,17 @@ public:
   int set_grid();
 
 private:
-  double find_r_crossing(const Position& r, const Direction& u, double l, int shell) const;
-  double find_phi_crossing(const Position& r, const Direction& u, double l, int shell) const;
-  StructuredMesh::MeshDistance find_z_crossing(const Position& r, const Direction& u, double l, int shell) const;
+  double find_r_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  double find_phi_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  StructuredMesh::MeshDistance find_z_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
 
-  bool full_phi_ { false };
+  bool full_phi_ {false};
 
-  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const {
+  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const
+  {
     if ((idx > 0) and (idx <= N)) {
       return idx;
     } else if (full) {
@@ -367,12 +376,11 @@ private:
     }
   }
 
-  inline int sanitize_phi(int idx) const {
+  inline int sanitize_phi(int idx) const
+  {
     return sanitize_angular_index(idx, full_phi_, shape_[1]);
   }
-
 };
-
 
 class SphericalMesh : public StructuredMesh {
 public:
@@ -389,7 +397,8 @@ public:
 
   static const std::string mesh_type;
 
-  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const override;
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -401,14 +410,18 @@ public:
   int set_grid();
 
 private:
-  double find_r_crossing(const Position& r, const Direction& u, double l, int shell) const;
-  double find_theta_crossing(const Position& r, const Direction& u, double l, int shell) const;
-  double find_phi_crossing(const Position& r, const Direction& u, double l, int shell) const;
+  double find_r_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  double find_theta_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  double find_phi_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
 
-  bool full_theta_ { false };
-  bool full_phi_ { false };
+  bool full_theta_ {false};
+  bool full_phi_ {false};
 
-  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const {
+  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const
+  {
     if ((idx > 0) and (idx <= N)) {
       return idx;
     } else if (full) {
@@ -418,13 +431,14 @@ private:
     }
   }
 
-  inline int sanitize_theta(int idx) const {
+  inline int sanitize_theta(int idx) const
+  {
     return sanitize_angular_index(idx, full_theta_, shape_[1]);
   }
-  inline int sanitize_phi(int idx) const {
+  inline int sanitize_phi(int idx) const
+  {
     return sanitize_angular_index(idx, full_phi_, shape_[2]);
   }
-
 };
 
 // Abstract class for unstructured meshes
@@ -438,7 +452,7 @@ public:
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;
-  
+
   // Overridden Methods
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;

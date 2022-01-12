@@ -345,10 +345,10 @@ attributes/sub-elements:
   :r_grid:
     The mesh divisions along the r-axis. (For cylindrical and spherical meshes only.)
 
-  :p_grid:
+  :phi_grid:
     The mesh divisions along the phi-axis. (For cylindrical and spherical meshes only.)
 
-  :t_grid:
+  :theta_grid:
     The mesh divisions along the theta-axis. (For spherical mesh only.)
 
   :library:

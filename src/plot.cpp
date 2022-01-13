@@ -745,7 +745,7 @@ void output_png(Plot const& pl, const ImageData& data)
   // Clean up data structures
   std::fclose(fp);
   png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
-  png_destroy_write_struct(&png_ptr, nullptr);
+  png_destroy_write_struct(&png_ptr, &info_ptr);
 }
 #endif
 

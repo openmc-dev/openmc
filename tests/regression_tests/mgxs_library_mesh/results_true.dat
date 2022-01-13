@@ -181,11 +181,11 @@
    mesh 1               group in nuclide    mean std. dev.
         x  y       surf                                   
 3       1  1   x-max in        1   total  0.1816  0.006129
-2       1  1  x-max out        1   total  0.2718  0.095077
+2       1  1  x-max out        1   total  0.1730  0.004382
 1       1  1   x-min in        1   total  0.0000  0.000000
 0       1  1  x-min out        1   total  0.0000  0.000000
 7       1  1   y-max in        1   total  0.1790  0.011921
-6       1  1  y-max out        1   total  0.2290  0.034821
+6       1  1  y-max out        1   total  0.1802  0.016599
 5       1  1   y-min in        1   total  0.0000  0.000000
 4       1  1  y-min out        1   total  0.0000  0.000000
 19      1  2   x-max in        1   total  0.1872  0.012447
@@ -194,23 +194,23 @@
 16      1  2  x-min out        1   total  0.0000  0.000000
 23      1  2   y-max in        1   total  0.0000  0.000000
 22      1  2  y-max out        1   total  0.0000  0.000000
-21      1  2   y-min in        1   total  0.2290  0.034821
+21      1  2   y-min in        1   total  0.1802  0.016599
 20      1  2  y-min out        1   total  0.1790  0.011921
 11      2  1   x-max in        1   total  0.0000  0.000000
 10      2  1  x-max out        1   total  0.0000  0.000000
-9       2  1   x-min in        1   total  0.2718  0.095077
+9       2  1   x-min in        1   total  0.1730  0.004382
 8       2  1  x-min out        1   total  0.1816  0.006129
 15      2  1   y-max in        1   total  0.1778  0.009484
-14      2  1  y-max out        1   total  0.2326  0.042782
+14      2  1  y-max out        1   total  0.1822  0.010077
 13      2  1   y-min in        1   total  0.0000  0.000000
 12      2  1  y-min out        1   total  0.0000  0.000000
 27      2  2   x-max in        1   total  0.0000  0.000000
-26      2  2  x-max out        1   total  0.0260  0.026000
+26      2  2  x-max out        1   total  0.0000  0.000000
 25      2  2   x-min in        1   total  0.1952  0.015948
 24      2  2  x-min out        1   total  0.1872  0.012447
 31      2  2   y-max in        1   total  0.0000  0.000000
-30      2  2  y-max out        1   total  0.0244  0.024400
-29      2  2   y-min in        1   total  0.2326  0.042782
+30      2  2  y-max out        1   total  0.0000  0.000000
+29      2  2   y-min in        1   total  0.1822  0.010077
 28      2  2  y-min out        1   total  0.1778  0.009484
   mesh 1       group in nuclide      mean std. dev.
        x  y  z                                     

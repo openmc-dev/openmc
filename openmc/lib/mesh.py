@@ -11,7 +11,7 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 
-__all__ = ['RegularMesh', 'RectilinearMesh', 'meshes']
+__all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'meshes']
 
 # Mesh functions
 _dll.openmc_extend_meshes.argtypes = [c_int32, c_char_p, POINTER(c_int32),
@@ -55,6 +55,26 @@ _dll.openmc_regular_mesh_set_params.argtypes = [
     c_int32, c_int, POINTER(c_double), POINTER(c_double), POINTER(c_double)]
 _dll.openmc_regular_mesh_set_params.restype = c_int
 _dll.openmc_regular_mesh_set_params.errcheck = _error_handler
+
+_dll.openmc_cylindrical_mesh_get_grid.argtypes = [c_int32,
+    POINTER(POINTER(c_double)), POINTER(c_int), POINTER(POINTER(c_double)),
+    POINTER(c_int), POINTER(POINTER(c_double)), POINTER(c_int)]
+_dll.openmc_cylindrical_mesh_get_grid.restype = c_int
+_dll.openmc_cylindrical_mesh_get_grid.errcheck = _error_handler
+_dll.openmc_cylindrical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
+    c_int, POINTER(c_double), c_int, POINTER(c_double), c_int]
+_dll.openmc_cylindrical_mesh_set_grid.restype = c_int
+_dll.openmc_cylindrical_mesh_set_grid.errcheck = _error_handler
+
+_dll.openmc_spherical_mesh_get_grid.argtypes = [c_int32,
+    POINTER(POINTER(c_double)), POINTER(c_int), POINTER(POINTER(c_double)),
+    POINTER(c_int), POINTER(POINTER(c_double)), POINTER(c_int)]
+_dll.openmc_spherical_mesh_get_grid.restype = c_int
+_dll.openmc_spherical_mesh_get_grid.errcheck = _error_handler
+_dll.openmc_spherical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
+    c_int, POINTER(c_double), c_int, POINTER(c_double), c_int]
+_dll.openmc_spherical_mesh_set_grid.restype = c_int
+_dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
 
 
 class Mesh(_FortranObjectWithID):
@@ -275,9 +295,184 @@ class RectilinearMesh(Mesh):
                                               ny, z_grid, nz)
 
 
+class CylindricalMesh(Mesh):
+    """CylindricalMesh stored internally.
+
+    This class exposes a mesh that is stored internally in the OpenMC
+    library. To obtain a view of a mesh with a given ID, use the
+    :data:`openmc.lib.meshes` mapping.
+
+    Parameters
+    ----------
+    index : int
+         Index in the `meshes` array.
+
+    Attributes
+    ----------
+    id : int
+        ID of the mesh
+    dimension : iterable of int
+        The number of mesh cells in each direction.
+    lower_left : numpy.ndarray
+        The lower-left corner of the structured mesh.
+    upper_right : numpy.ndarray
+        The upper-right corner of the structrued mesh.
+    width : numpy.ndarray
+        The width of mesh cells in each direction.
+
+    """
+    mesh_type = 'cylindrical'
+
+    def __init__(self, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+
+    @property
+    def lower_left(self):
+        return self._get_parameters()[0]
+
+    @property
+    def upper_right(self):
+        return self._get_parameters()[1]
+
+    @property
+    def dimension(self):
+        return self._get_parameters()[2]
+
+    @property
+    def width(self):
+        return self._get_parameters()[3]
+
+    def _get_parameters(self):
+        gx = POINTER(c_double)()
+        nx = c_int()
+        gy = POINTER(c_double)()
+        ny = c_int()
+        gz = POINTER(c_double)()
+        nz = c_int()
+        # Call C API to get grid parameters
+        _dll.openmc_cylindrical_mesh_get_grid(self._index, gx, nx, gy, ny, gz,
+                                              nz)
+
+        # Convert grid parameters to Numpy arrays
+        grid_x = as_array(gx, (nx.value,))
+        grid_y = as_array(gy, (ny.value,))
+        grid_z = as_array(gz, (nz.value,))
+
+        # Calculate lower_left, upper_right, width, and dimension from grid
+        lower_left = np.array((grid_x[0], grid_y[0], grid_z[0]))
+        upper_right = np.array((grid_x[-1], grid_y[-1], grid_z[-1]))
+        dimension = np.array((nx.value - 1, ny.value - 1, nz.value - 1))
+        width = np.zeros(list(dimension) + [3])
+
+        for i, diff_x in enumerate(np.diff(grid_x)):
+            for j, diff_y in enumerate(np.diff(grid_y)):
+                for k, diff_z in enumerate(np.diff(grid_z)):
+                    width[i, j, k, :] = diff_x, diff_y, diff_z
+
+        return (lower_left, upper_right, dimension, width)
+
+    def set_grid(self, x_grid, y_grid, z_grid):
+        nx = len(x_grid)
+        x_grid = (c_double*nx)(*x_grid)
+        ny = len(y_grid)
+        y_grid = (c_double*ny)(*y_grid)
+        nz = len(z_grid)
+        z_grid = (c_double*nz)(*z_grid)
+        _dll.openmc_cylindrical_mesh_set_grid(self._index, x_grid, nx, y_grid,
+                                              ny, z_grid, nz)                                              
+
+class SphericalMesh(Mesh):
+    """SphericalMesh stored internally.
+
+    This class exposes a mesh that is stored internally in the OpenMC
+    library. To obtain a view of a mesh with a given ID, use the
+    :data:`openmc.lib.meshes` mapping.
+
+    Parameters
+    ----------
+    index : int
+         Index in the `meshes` array.
+
+    Attributes
+    ----------
+    id : int
+        ID of the mesh
+    dimension : iterable of int
+        The number of mesh cells in each direction.
+    lower_left : numpy.ndarray
+        The lower-left corner of the structured mesh.
+    upper_right : numpy.ndarray
+        The upper-right corner of the structrued mesh.
+    width : numpy.ndarray
+        The width of mesh cells in each direction.
+
+    """
+    mesh_type = 'spherical'
+
+    def __init__(self, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+
+    @property
+    def lower_left(self):
+        return self._get_parameters()[0]
+
+    @property
+    def upper_right(self):
+        return self._get_parameters()[1]
+
+    @property
+    def dimension(self):
+        return self._get_parameters()[2]
+
+    @property
+    def width(self):
+        return self._get_parameters()[3]
+
+    def _get_parameters(self):
+        gx = POINTER(c_double)()
+        nx = c_int()
+        gy = POINTER(c_double)()
+        ny = c_int()
+        gz = POINTER(c_double)()
+        nz = c_int()
+        # Call C API to get grid parameters
+        _dll.openmc_spherical_mesh_get_grid(self._index, gx, nx, gy, ny, gz,
+                                              nz)
+
+        # Convert grid parameters to Numpy arrays
+        grid_x = as_array(gx, (nx.value,))
+        grid_y = as_array(gy, (ny.value,))
+        grid_z = as_array(gz, (nz.value,))
+
+        # Calculate lower_left, upper_right, width, and dimension from grid
+        lower_left = np.array((grid_x[0], grid_y[0], grid_z[0]))
+        upper_right = np.array((grid_x[-1], grid_y[-1], grid_z[-1]))
+        dimension = np.array((nx.value - 1, ny.value - 1, nz.value - 1))
+        width = np.zeros(list(dimension) + [3])
+
+        for i, diff_x in enumerate(np.diff(grid_x)):
+            for j, diff_y in enumerate(np.diff(grid_y)):
+                for k, diff_z in enumerate(np.diff(grid_z)):
+                    width[i, j, k, :] = diff_x, diff_y, diff_z
+
+        return (lower_left, upper_right, dimension, width)
+
+    def set_grid(self, x_grid, y_grid, z_grid):
+        nx = len(x_grid)
+        x_grid = (c_double*nx)(*x_grid)
+        ny = len(y_grid)
+        y_grid = (c_double*ny)(*y_grid)
+        nz = len(z_grid)
+        z_grid = (c_double*nz)(*z_grid)
+        _dll.openmc_spherical_mesh_set_grid(self._index, x_grid, nx, y_grid,
+                                              ny, z_grid, nz)                                              
+
+
 _MESH_TYPE_MAP = {
     'regular': RegularMesh,
-    'rectilinear': RectilinearMesh
+    'rectilinear': RectilinearMesh,
+    'cylindrical': CylindricalMesh,
+    'spherical': SphericalMesh
 }
 
 

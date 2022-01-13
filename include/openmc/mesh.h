@@ -123,6 +123,9 @@ public:
   //! \param[in] bin Mesh bin to generate a label for
   virtual std::string bin_label(int bin) const = 0;
 
+  //! Return the mesh type
+  virtual std::string get_mesh_type() const = 0;
+
   // Data members
   int id_ {-1};     //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
@@ -134,6 +137,22 @@ public:
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
   virtual ~StructuredMesh() = default;
 
+  using MeshIndex = std::array<int, 3>;
+
+  struct MeshDistance {
+    MeshDistance() = default;
+    MeshDistance(int _index, bool _max_surface, double _distance)
+      : next_index {_index}, max_surface {_max_surface}, distance {_distance}
+    {}
+    int next_index {-1};
+    double distance {INFTY};
+    bool max_surface {true};
+    bool operator<(const MeshDistance& o) const
+    {
+      return distance < o.distance;
+    }
+  };
+
   int get_bin(Position r) const override;
 
   int n_bins() const override;
@@ -142,6 +161,19 @@ public:
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
+
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
+
+  //! Determine which cell or surface bins were crossed by a particle
+  //
+  //! \param[in] r0 Previous position of the particle
+  //! \param[in] r1 Current position of the particle
+  //! \param[in] u Particle direction
+  //! \param[in] tally Functor that eventually stores the tally data
+  template<class T>
+  void raytrace_mesh(
+    Position r0, Position r1, const Direction& u, T tally) const;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -155,20 +187,20 @@ public:
   //
   //! \param[in] Array of mesh indices
   //! \return Mesh bin
-  virtual int get_bin_from_indices(const int* ijk) const;
+  virtual int get_bin_from_indices(const MeshIndex& ijk) const;
 
   //! Get mesh indices given a position
   //
   //! \param[in] r Position to get indices for
-  //! \param[out] ijk Array of mesh indices
   //! \param[out] in_mesh Whether position is in mesh
-  virtual void get_indices(Position r, int* ijk, bool* in_mesh) const;
+  //! \return Array of mesh indices
+  virtual MeshIndex get_indices(Position r, bool& in_mesh) const;
 
   //! Get mesh indices corresponding to a mesh bin
   //
   //! \param[in] bin Mesh bin
-  //! \param[out] ijk Mesh indices
-  virtual void get_indices_from_bin(int bin, int* ijk) const;
+  //! \return ijk Mesh indices
+  virtual MeshIndex get_indices_from_bin(int bin) const;
 
   //! Get mesh index in a particular direction
   //!
@@ -176,38 +208,34 @@ public:
   //! \param[in] i Direction index
   virtual int get_index_in_direction(double r, int i) const = 0;
 
-  //! Check where a line segment intersects the mesh and if it intersects at all
-  //
-  //! \param[in,out] r0 In: starting position, out: intersection point
-  //! \param[in] r1 Ending position
-  //! \param[out] ijk Indices of the mesh bin containing the intersection point
-  //! \return Whether the line segment connecting r0 and r1 intersects mesh
-  virtual bool intersects(Position& r0, Position r1, int* ijk) const;
-
-  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //! Get the closest distance from the coordinate r to the grid surface
+  //! in i direction  that bounds mesh cell ijk and that is larger than l
+  //! The coordinate r does not have to be inside the mesh cell ijk. In
+  //! curved coordinates, multiple crossings of the same surface can happen,
+  //! these are selected by the parameter l
   //!
   //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  virtual double positive_grid_boundary(int* ijk, int i) const = 0;
-
-  //! Get the coordinate for the mesh grid boundary in the negative direction
-  //!
-  //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  virtual double negative_grid_boundary(int* ijk, int i) const = 0;
+  //! \param[in] i direction index of grid surface
+  //! \param[in] r0 position, from where to calculate the distance
+  //! \param[in] u direction of flight. actual position is r0 + l * u
+  //! \param[in] l actual chord length
+  //! \return MeshDistance struct with closest distance, next cell index in
+  //! i-direction and min/max surface indicator
+  virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const = 0;
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
 
+  //! Get shape as xt::xtensor
+  xt::xtensor<int, 1> get_x_shape() const;
+
   // Data members
   xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
+  std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
 
 protected:
-  virtual bool intersects_1d(Position& r0, Position r1, int* ijk) const;
-  virtual bool intersects_2d(Position& r0, Position r1, int* ijk) const;
-  virtual bool intersects_3d(Position& r0, Position r1, int* ijk) const;
 };
 
 //==============================================================================
@@ -221,14 +249,14 @@ public:
   RegularMesh(pugi::xml_node node);
 
   // Overridden methods
-  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins) const override;
-
   int get_index_in_direction(double r, int i) const override;
 
-  double positive_grid_boundary(int* ijk, int i) const override;
+  virtual std::string get_mesh_type() const override;
 
-  double negative_grid_boundary(int* ijk, int i) const override;
+  static const std::string mesh_type;
+
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -236,6 +264,17 @@ public:
   void to_hdf5(hid_t group) const override;
 
   // New methods
+  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
+
+  //! Get the coordinate for the mesh grid boundary in the negative direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -257,23 +296,149 @@ public:
   RectilinearMesh(pugi::xml_node node);
 
   // Overridden methods
-  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins) const override;
-
   int get_index_in_direction(double r, int i) const override;
 
-  double positive_grid_boundary(int* ijk, int i) const override;
+  virtual std::string get_mesh_type() const override;
 
-  double negative_grid_boundary(int* ijk, int i) const override;
+  static const std::string mesh_type;
+
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 
-  vector<vector<double>> grid_;
+  // New methods
+  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
+
+  //! Get the coordinate for the mesh grid boundary in the negative direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
+
+  array<vector<double>, 3> grid_;
 
   int set_grid();
+};
+
+class CylindricalMesh : public StructuredMesh {
+public:
+  // Constructors
+  CylindricalMesh() = default;
+  CylindricalMesh(pugi::xml_node node);
+
+  // Overridden methods
+  virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
+
+  int get_index_in_direction(double r, int i) const override;
+
+  virtual std::string get_mesh_type() const override;
+
+  static const std::string mesh_type;
+
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
+
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
+
+  void to_hdf5(hid_t group) const override;
+
+  array<vector<double>, 3> grid_;
+
+  int set_grid();
+
+private:
+  double find_r_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  double find_phi_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  StructuredMesh::MeshDistance find_z_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+
+  bool full_phi_ {false};
+
+  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const
+  {
+    if ((idx > 0) and (idx <= N)) {
+      return idx;
+    } else if (full) {
+      return (idx + N - 1) % N + 1;
+    } else {
+      return 0;
+    }
+  }
+
+  inline int sanitize_phi(int idx) const
+  {
+    return sanitize_angular_index(idx, full_phi_, shape_[1]);
+  }
+};
+
+class SphericalMesh : public StructuredMesh {
+public:
+  // Constructors
+  SphericalMesh() = default;
+  SphericalMesh(pugi::xml_node node);
+
+  // Overridden methods
+  virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
+
+  int get_index_in_direction(double r, int i) const override;
+
+  virtual std::string get_mesh_type() const override;
+
+  static const std::string mesh_type;
+
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
+
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
+
+  void to_hdf5(hid_t group) const override;
+
+  array<vector<double>, 3> grid_;
+
+  int set_grid();
+
+private:
+  double find_r_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  double find_theta_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  double find_phi_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+
+  bool full_theta_ {false};
+  bool full_phi_ {false};
+
+  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const
+  {
+    if ((idx > 0) and (idx <= N)) {
+      return idx;
+    } else if (full) {
+      return (idx + N - 1) % N + 1;
+    } else {
+      return 0;
+    }
+  }
+
+  inline int sanitize_theta(int idx) const
+  {
+    return sanitize_angular_index(idx, full_theta_, shape_[1]);
+  }
+  inline int sanitize_phi(int idx) const
+  {
+    return sanitize_angular_index(idx, full_phi_, shape_[2]);
+  }
 };
 
 // Abstract class for unstructured meshes
@@ -284,6 +449,9 @@ public:
   UnstructuredMesh() {};
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(const std::string& filename);
+
+  static const std::string mesh_type;
+  virtual std::string get_mesh_type() const override;
 
   // Overridden Methods
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
@@ -355,6 +523,8 @@ public:
   MOABMesh(pugi::xml_node);
   MOABMesh(const std::string& filename, double length_multiplier = 1.0);
   MOABMesh(std::shared_ptr<moab::Interface> external_mbi);
+
+  static const std::string mesh_lib_type;
 
   // Overridden Methods
 
@@ -502,6 +672,8 @@ public:
   // Constructors
   LibMesh(pugi::xml_node node);
   LibMesh(const std::string& filename, double length_multiplier = 1.0);
+
+  static const std::string mesh_lib_type;
 
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,

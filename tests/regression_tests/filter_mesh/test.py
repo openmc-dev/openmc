@@ -51,18 +51,32 @@ def model():
     recti_mesh.y_grid = np.linspace(-7.5, 7.5, 18)
     recti_mesh.z_grid = np.logspace(0, np.log10(7.5), 11)
 
+    cyl_mesh = openmc.CylindricalMesh()
+    cyl_mesh.r_grid = np.linspace(0, 7.5, 18)
+    cyl_mesh.phi_grid = np.linspace(0, 360, 19)
+    cyl_mesh.z_grid = np.linspace(-7.5, 7.5, 17)
+
+    sph_mesh = openmc.SphericalMesh()
+    sph_mesh.r_grid = np.linspace(0, 7.5, 18)
+    sph_mesh.theta_grid = np.linspace(0, 180, 9)
+    sph_mesh.phi_grid = np.linspace(0, 360, 19)
+
     # Create filters
     reg_filters = [
         openmc.MeshFilter(mesh_1d),
         openmc.MeshFilter(mesh_2d),
         openmc.MeshFilter(mesh_3d),
-        openmc.MeshFilter(recti_mesh)
+        openmc.MeshFilter(recti_mesh),
+        openmc.MeshFilter(cyl_mesh),
+        openmc.MeshFilter(sph_mesh)
     ]
     surf_filters = [
         openmc.MeshSurfaceFilter(mesh_1d),
         openmc.MeshSurfaceFilter(mesh_2d),
         openmc.MeshSurfaceFilter(mesh_3d),
-        openmc.MeshSurfaceFilter(recti_mesh)
+        openmc.MeshSurfaceFilter(recti_mesh),
+        openmc.MeshSurfaceFilter(cyl_mesh),
+        openmc.MeshSurfaceFilter(sph_mesh)
     ]
 
     # Create tallies

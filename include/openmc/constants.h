@@ -360,7 +360,7 @@ enum class GeometryType { CSG, DAG };
 
 //==============================================================================
 // Variance Reduction constants
-constexpr double WEIGHT_CUTOFF {1.0e-38}; // default low weight cutoff
+constexpr double DEFAULT_WEIGHT_CUTOFF {1.0e-38}; // default low weight cutoff
 
 } // namespace openmc
 

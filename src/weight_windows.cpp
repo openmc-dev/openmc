@@ -39,11 +39,11 @@ void apply_weight_windows(Particle& p)
   WeightWindow weight_window;
   for (const auto& ww : variance_reduction::weight_windows) {
     weight_window = ww->get_weight_window(p);
-    if (weight_window)
+    if (weight_window.is_valid())
       break;
   }
   // particle is not in any of the ww domains, do nothing
-  if (!weight_window)
+  if (!weight_window.is_valid())
     return;
 
   // get the paramters
@@ -74,7 +74,7 @@ void apply_weight_windows(Particle& p)
     for (int l = 0; l < i_split - 1; l++) {
       p.create_secondary(weight / n_split, p.u(), p.E(), p.type());
     }
-    // TODO: maybe weight should be weight - sum of child weight
+    // remaining weight is applied to current particle
     p.wgt() = weight / n_split;
 
   } else if (weight <= weight_window.lower_weight) {
@@ -104,7 +104,7 @@ void free_memory_weight_windows()
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
   // Make sure required elements are present
-  vector<std::string> required_elems {
+  const vector<std::string> required_elems {
     "id", "particle_type", "energy_bins", "lower_ww_bounds", "upper_ww_bounds"};
   for (const auto& elem : required_elems) {
     if (!check_for_node(node, elem.c_str())) {

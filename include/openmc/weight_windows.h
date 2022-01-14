@@ -44,14 +44,14 @@ extern vector<unique_ptr<WeightWindows>> weight_windows;
 //==============================================================================
 
 struct WeightWindow {
-  double lower_weight {-1}; // -1 indicates not valid state
+  double lower_weight {-1}; // -1 indicates invalid state
   double upper_weight {1};
   double survival_weight {0.5};
-  double weight_cutoff {WEIGHT_CUTOFF};
+  double weight_cutoff {DEFAULT_WEIGHT_CUTOFF};
   int max_split {1};
 
   //! Whether the weight window is in a valid state
-  operator bool() const { return lower_weight >= 0.0; }
+  bool is_valid() const { return lower_weight >= 0.0; }
 };
 
 //==============================================================================
@@ -74,7 +74,7 @@ public:
   //! \param[in] group  HDF5 group to write to
   void to_hdf5(hid_t group) const;
 
-  //! Return a weight window at the specified index
+  //! Retrieve the weight window for a particle
   //! \param[in] p  Particle to get weight window for
   WeightWindow get_weight_window(const Particle& p) const;
 
@@ -90,7 +90,7 @@ private:
   vector<double> lower_ww_;        //!< Lower weight window bounds
   vector<double> upper_ww_;        //!< Upper weight window bounds
   double survival_ratio_ {3.0};    //!< Survival weight ratio
-  double weight_cutoff_ {1.0e-38}; //!< Weight cutoff
+  double weight_cutoff_ {DEFAULT_WEIGHT_CUTOFF}; //!< Weight cutoff
   int max_split_ {10};             //!< Maximum value for particle splitting
   int32_t mesh_idx_;               //!< index in meshes vector
 };

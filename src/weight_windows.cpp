@@ -48,7 +48,6 @@ void apply_weight_windows(Particle& p)
 
   // get the paramters
   double weight = p.wgt();
-  p.wgt_last() = weight;
 
   // first check to see if particle should be killed for weight cutoff
   if (p.wgt() < weight_window.weight_cutoff) {

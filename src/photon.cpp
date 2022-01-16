@@ -218,14 +218,9 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   close_group(rgroup);
 
   // Create Compton profile CDF
-  if (n_shell != profile_pdf_.shape(0)) {
-    warning(fmt::format(
-      "The number of subshells is {} but only {} compton profiles are available in .",
-      n_shell, profile_pdf_.shape(0)));
-  }
   auto n_profile = data::compton_profile_pz.size();
   profile_cdf_ = xt::empty<double>({n_shell, n_profile});
-  for (int i = 0; i < std::min(n_shell, profile_pdf_.shape(0)); ++i) {
+  for (int i = 0; i < profile_pdf_.shape(0); ++i) {
     double c = 0.0;
     profile_cdf_(i, 0) = 0.0;
     for (int j = 0; j < n_profile - 1; ++j) {

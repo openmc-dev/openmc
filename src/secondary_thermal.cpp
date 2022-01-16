@@ -19,8 +19,8 @@ void get_energy_index(
   f = 0.0;
   if (E >= energies.front()) {
     i = lower_bound_index(energies.begin(), energies.end(), E);
-    if (i+1 < energies.size())
-    f = (E - energies[i]) / (energies[i + 1] - energies[i]);
+    if (i + 1 < energies.size())
+      f = (E - energies[i]) / (energies[i + 1] - energies[i]);
   }
 }
 
@@ -28,7 +28,6 @@ void get_energy_index(
 // CoherentElasticAE implementation
 //==============================================================================
 
-#include <iostream>
 CoherentElasticAE::CoherentElasticAE(const CoherentElasticXS& xs) : xs_ {xs} {}
 
 void CoherentElasticAE::sample(
@@ -42,7 +41,7 @@ void CoherentElasticAE::sample(
   if (E_in < energies.front()) {
     // XS is zero for E < energies[0] -> no scatter
     mu = 1.0;
-    return ;
+    return;
   }
 
   const int i = lower_bound_index(energies.begin(), energies.end(), E_in);
@@ -52,11 +51,11 @@ void CoherentElasticAE::sample(
   const auto& factors = xs_.factors();
   const double prob = prn(seed) * factors[i];
 
-  const int k = std::lower_bound(factors.begin(), factors.begin() + i, prob) - factors.begin();
+  const int k = std::lower_bound(factors.begin(), factors.begin() + i, prob) -
+                factors.begin();
 
   // Characteristic scattering cosine for this Bragg edge (ENDF-102, Eq. 7-2)
   mu = 1.0 - 2.0 * energies[k] / E_in;
-
 }
 
 //==============================================================================

@@ -251,7 +251,7 @@ inline void read_dataset(
 
   // Read attribute and set string
   read_string(obj_id, name, n, buffer.data(), indep);
-  str = std::string { buffer.begin(), buffer.end() };
+  str = std::string {buffer.begin(), buffer.end()};
 }
 
 // array version

@@ -631,7 +631,6 @@ void absorption(Particle& p, int i_nuclide)
 
     // Adjust weight of particle by probability of absorption
     p.wgt() -= p.wgt_absorb();
-    p.wgt_last() = p.wgt();
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {

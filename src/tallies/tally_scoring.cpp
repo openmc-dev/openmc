@@ -546,6 +546,14 @@ void score_general_ce(Particle& p, int i_tally, int start_index,
   // Get the pre-collision energy of the particle.
   auto E = p.E_last();
 
+  // Determine how much weight was absorbed due to survival biasing
+  double wgt_absorb = 0.0;
+  if (tally.estimator_ == TallyEstimator::ANALOG &&
+      settings::survival_biasing) {
+    wgt_absorb = p.wgt_last() * p.neutron_xs(p.event_nuclide()).absorption /
+                 p.neutron_xs(p.event_nuclide()).total;
+  }
+
   using Type = ParticleType;
 
   for (auto i = 0; i < tally.scores_.size(); ++i) {
@@ -614,7 +622,7 @@ void score_general_ce(Particle& p, int i_tally, int start_index,
           continue;
         // Since only scattering events make it here, again we can use the
         // weight entering the collision as the estimator for the reaction rate
-        score = (p.wgt_last() - p.wgt_absorb()) * flux;
+        score = (p.wgt_last() - wgt_absorb) * flux;
       } else {
         if (i_nuclide >= 0) {
           if (p.type() == Type::neutron) {
@@ -645,7 +653,7 @@ void score_general_ce(Particle& p, int i_tally, int start_index,
       // For scattering production, we need to use the pre-collision weight
       // times the yield as the estimate for the number of neutrons exiting a
       // reaction with neutrons in the exit channel
-      score = (p.wgt_last() - p.wgt_absorb()) * flux;
+      score = (p.wgt_last() - wgt_absorb) * flux;
 
       // Don't waste time on very common reactions we know have multiplicities
       // of one.
@@ -667,7 +675,7 @@ void score_general_ce(Particle& p, int i_tally, int start_index,
         if (settings::survival_biasing) {
           // No absorption events actually occur if survival biasing is on --
           // just use weight absorbed in survival biasing
-          score = p.wgt_absorb() * flux;
+          score = wgt_absorb * flux;
         } else {
           // Skip any event where the particle wasn't absorbed
           if (p.event() == TallyEvent::SCATTER)
@@ -1240,7 +1248,7 @@ void score_general_ce(Particle& p, int i_tally, int start_index,
         // Check if event MT matches
         if (p.event_mt() != ELASTIC)
           continue;
-        score = (p.wgt_last() - p.wgt_absorb()) * flux;
+        score = (p.wgt_last() - wgt_absorb) * flux;
       } else {
         if (i_nuclide >= 0) {
           if (p.neutron_xs(i_nuclide).elastic == CACHE_INVALID)
@@ -1289,7 +1297,7 @@ void score_general_ce(Particle& p, int i_tally, int start_index,
         // Check if the event MT matches
         if (p.event_mt() != score_bin)
           continue;
-        score = (p.wgt_last() - p.wgt_absorb()) * flux;
+        score = (p.wgt_last() - wgt_absorb) * flux;
       } else {
         int m;
         switch (score_bin) {
@@ -1405,7 +1413,7 @@ void score_general_ce(Particle& p, int i_tally, int start_index,
         // to check if it matches the MT number of the event
         if (p.event_mt() != score_bin)
           continue;
-        score = (p.wgt_last() - p.wgt_absorb()) * flux;
+        score = (p.wgt_last() - wgt_absorb) * flux;
       } else {
         // Any other cross section has to be calculated on-the-fly
         if (score_bin < 2)
@@ -1452,10 +1460,13 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
   // Set the direction and group to use with get_xs
   Direction p_u;
   int p_g;
+  double wgt_absorb = 0.0;
   if (tally.estimator_ == TallyEstimator::ANALOG ||
       tally.estimator_ == TallyEstimator::COLLISION) {
-
     if (settings::survival_biasing) {
+      // Determine weight that was absorbed
+      wgt_absorb = p.wgt_last() * p.neutron_xs(p.event_nuclide()).absorption /
+                   p.neutron_xs(p.event_nuclide()).total;
 
       // Then we either are alive and had a scatter (and so g changed),
       // or are dead and g did not change
@@ -1563,7 +1574,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           continue;
         // Since only scattering events make it here, again we can use the
         // weight entering the collision as the estimator for the reaction rate
-        score = (p.wgt_last() - p.wgt_absorb()) * flux;
+        score = (p.wgt_last() - wgt_absorb) * flux;
         if (i_nuclide >= 0) {
           score *= atom_density *
                    nuc_xs.get_xs(MgxsType::SCATTER_FMU, p.g_last(), &p.g(),
@@ -1591,7 +1602,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         // For scattering production, we need to use the pre-collision weight
         // times the multiplicity as the estimate for the number of neutrons
         // exiting a reaction with neutrons in the exit channel
-        score = (p.wgt_last() - p.wgt_absorb()) * flux;
+        score = (p.wgt_last() - wgt_absorb) * flux;
         // Since we transport based on material data, the angle selected
         // was not selected from the f(mu) for the nuclide.  Therefore
         // adjust the score by the actual probability for that nuclide.
@@ -1617,7 +1628,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         if (settings::survival_biasing) {
           // No absorption events actually occur if survival biasing is on --
           // just use weight absorbed in survival biasing
-          score = p.wgt_absorb() * flux;
+          score = wgt_absorb * flux;
         } else {
           // Skip any event where the particle wasn't absorbed
           if (p.event() == TallyEvent::SCATTER)
@@ -1646,7 +1657,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // fission
-          score = p.wgt_absorb() * flux;
+          score = wgt_absorb * flux;
         } else {
           // Skip any non-absorption events
           if (p.event() == TallyEvent::SCATTER)
@@ -1686,7 +1697,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // nu-fission
-          score = p.wgt_absorb() * flux;
+          score = wgt_absorb * flux;
           if (i_nuclide >= 0) {
             score *= atom_density * nuc_xs.get_xs(MgxsType::NU_FISSION, p_g) /
                      macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
@@ -1733,7 +1744,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // prompt-nu-fission
-          score = p.wgt_absorb() * flux;
+          score = wgt_absorb * flux;
           if (i_nuclide >= 0) {
             score *= atom_density *
                      nuc_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g) /
@@ -1794,7 +1805,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                 auto d = filt.groups()[d_bin] - 1;
-                score = p.wgt_absorb() * flux;
+                score = wgt_absorb * flux;
                 if (i_nuclide >= 0) {
                   score *= nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
                              nullptr, nullptr, &d) /
@@ -1812,7 +1823,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
               // If the delayed group filter is not present, compute the score
               // by multiplying the absorbed weight by the fraction of the
               // delayed-nu-fission xs to the absorption xs
-              score = p.wgt_absorb() * flux;
+              score = wgt_absorb * flux;
               if (i_nuclide >= 0) {
                 score *=
                   nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g) / abs_xs;
@@ -1909,7 +1920,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                 auto d = filt.groups()[d_bin] - 1;
-                score = p.wgt_absorb() * flux;
+                score = wgt_absorb * flux;
                 if (i_nuclide >= 0) {
                   score *= nuc_xs.get_xs(
                              MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
@@ -1935,14 +1946,14 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
               score = 0.;
               for (auto d = 0; d < data::mg.num_delayed_groups_; ++d) {
                 if (i_nuclide >= 0) {
-                  score += p.wgt_absorb() * flux *
+                  score += wgt_absorb * flux *
                            nuc_xs.get_xs(
                              MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
                            nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
                              nullptr, nullptr, &d) /
                            abs_xs;
                 } else {
-                  score += p.wgt_absorb() * flux *
+                  score += wgt_absorb * flux *
                            macro_xs.get_xs(
                              MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
                            macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
@@ -2050,7 +2061,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // fission scaled by the Q-value
-          score = p.wgt_absorb() * flux;
+          score = wgt_absorb * flux;
         } else {
           // Skip any non-absorption events
           if (p.event() == TallyEvent::SCATTER)

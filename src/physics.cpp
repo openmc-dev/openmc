@@ -134,8 +134,6 @@ void sample_neutron_reaction(Particle& p)
 
   if (p.neutron_xs(i_nuclide).absorption > 0.0) {
     absorption(p, i_nuclide);
-  } else {
-    p.wgt_absorb() = 0.0;
   }
   if (!p.alive())
     return;
@@ -626,15 +624,15 @@ void absorption(Particle& p, int i_nuclide)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p.wgt_absorb() = p.wgt() * p.neutron_xs(i_nuclide).absorption /
-                     p.neutron_xs(i_nuclide).total;
+    double wgt_absorb = p.wgt() * p.neutron_xs(i_nuclide).absorption /
+                        p.neutron_xs(i_nuclide).total;
 
     // Adjust weight of particle by probability of absorption
-    p.wgt() -= p.wgt_absorb();
+    p.wgt() -= wgt_absorb;
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      p.keff_tally_absorption() += p.wgt_absorb() *
+      p.keff_tally_absorption() += wgt_absorb *
                                    p.neutron_xs(i_nuclide).nu_fission /
                                    p.neutron_xs(i_nuclide).absorption;
     }

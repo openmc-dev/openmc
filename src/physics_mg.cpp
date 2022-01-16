@@ -220,7 +220,6 @@ void absorption(Particle& p)
 
     // Adjust weight of particle by the probability of absorption
     p.wgt() -= p.wgt_absorb();
-    p.wgt_last() = p.wgt();
 
     // Score implicit absorpion estimate of keff
     p.keff_tally_absorption() +=

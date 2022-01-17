@@ -7,6 +7,7 @@ loaded from an .xml file and all the nuclides are linked together.
 from io import StringIO
 from itertools import chain
 import math
+import os
 import re
 from collections import OrderedDict, defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
@@ -14,7 +15,8 @@ from numbers import Real, Integral
 from warnings import warn
 
 from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import gnd_name, zam
+from openmc.data import gnd_name, zam, DataLibrary
+from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution
 
 # Try to use lxml if it is available. It preserves the order of attributes and
@@ -235,6 +237,24 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
 
     # If all else fails, use U235 yields
     return 'U235'
+
+
+def _find_chain_file(cross_sections=None):
+    # First check deprecated OPENMC_DEPLETE_CHAIN environment variable
+    chain_file = os.environ.get("OPENMC_DEPLETE_CHAIN")
+    if chain_file is not None:
+        warn("Use of OPENMC_DEPLETE_CHAIN is deprecated in favor of adding "
+             "depletion_chain to OPENMC_CROSS_SECTIONS", FutureWarning)
+        return chain_file
+
+    # Check for depletion chain in cross_sections.xml
+    data = DataLibrary.from_xml(cross_sections)
+    for lib in reversed(data.libraries):
+        if lib['type'] == 'depletion_chain':
+            return lib['path']
+
+    raise DataError("No depletion chain specified and could not find depletion "
+                    f"chain in {cross_sections}")
 
 
 class Chain:

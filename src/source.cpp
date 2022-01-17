@@ -46,12 +46,11 @@ vector<unique_ptr<Source>> external_sources;
 // IndependentSource implementation
 //==============================================================================
 
-IndependentSource::IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time)
-  : space_{std::move(space)},
-    angle_{std::move(angle)},
-    energy_{std::move(energy)},
-    time_{std::move(time)}
-{ }
+IndependentSource::IndependentSource(
+  UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time)
+  : space_ {std::move(space)}, angle_ {std::move(angle)},
+    energy_ {std::move(energy)}, time_ {std::move(time)}
+{}
 
 IndependentSource::IndependentSource(pugi::xml_node node)
 {
@@ -150,7 +149,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       // Default to a Constant time T=0
       double T[] {0.0};
       double p[] {1.0};
-      time_ = UPtrDist {new Discrete{T, p, 1}};
+      time_ = UPtrDist {new Discrete {T, p, 1}};
     }
   }
 }
@@ -238,7 +237,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
   // Sample particle creation time
   site.time = time_->sample(seed);
-  
+
   return site;
 }
 

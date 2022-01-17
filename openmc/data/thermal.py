@@ -615,7 +615,8 @@ class ThermalScattering(EqualityMixin):
         ace_name, xs = ace.name.split('.')
         if not xs.endswith('t'):
             raise TypeError("{} is not a thermal scattering ACE table.".format(ace))
-        name = get_thermal_name(ace_name)
+        if name is None:
+            name = get_thermal_name(ace_name)
 
         # Assign temperature to the running list
         kTs = [ace.temperature*EV_PER_MEV]
@@ -783,9 +784,10 @@ class ThermalScattering(EqualityMixin):
 
             # Create instance from ACE tables within library
             lib = Library(kwargs['ace'])
-            data = cls.from_ace(lib.tables[0])
+            name = kwargs.get('table_name')
+            data = cls.from_ace(lib.tables[0], name=name)
             for table in lib.tables[1:]:
-                data.add_temperature_from_ace(table)
+                data.add_temperature_from_ace(table, name=name)
 
             # Load ENDF data to replace incoherent elastic
             if use_endf_data:

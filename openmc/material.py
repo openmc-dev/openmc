@@ -700,14 +700,7 @@ class Material(IDManagerMixin):
         cv.check_type('S(a,b) fraction', fraction, Real)
         cv.check_greater_than('S(a,b) fraction', fraction, 0.0, True)
         cv.check_less_than('S(a,b) fraction', fraction, 1.0, True)
-
-        new_name = openmc.data.get_thermal_name(name)
-        if new_name != name:
-            msg = 'OpenMC S(a,b) tables follow the GND naming convention. ' \
-                  'Table "{}" is being renamed as "{}".'.format(name, new_name)
-            warnings.warn(msg)
-
-        self._sab.append((new_name, fraction))
+        self._sab.append((name, fraction))
 
     def make_isotropic_in_lab(self):
         self.isotropic = [x.name for x in self._nuclides]

@@ -16,16 +16,14 @@ typename std::iterator_traits<It>::difference_type lower_bound_index(
 {
   if (*first == value)
     return 0;
-  It index = std::lower_bound(first, last, value) - 1;
-  return (index == last) ? -1 : index - first;
+  return std::lower_bound(first, last, value) - first - 1;
 }
 
 template<class It, class T>
 typename std::iterator_traits<It>::difference_type upper_bound_index(
   It first, It last, const T& value)
 {
-  It index = std::upper_bound(first, last, value) - 1;
-  return (index == last) ? -1 : index - first;
+  return std::upper_bound(first, last, value) - first - 1;
 }
 
 } // namespace openmc

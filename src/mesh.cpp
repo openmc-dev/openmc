@@ -158,7 +158,9 @@ std::string StructuredMesh::bin_label(int bin) const
 
 xt::xtensor<int, 1> StructuredMesh::get_x_shape() const
 {
-  return xt::adapt(shape_, {n_dimension_});
+  // because method is const, shape_ is const as well and can't be adapted
+  auto tmp_shape = shape_;
+  return xt::adapt(tmp_shape, {n_dimension_});
 }
 
 //==============================================================================

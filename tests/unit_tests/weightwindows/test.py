@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from uncertainties import ufloat
 
 import openmc
 from openmc.stats import Discrete, Point
@@ -61,7 +62,7 @@ def model():
     mesh = openmc.RegularMesh()
     mesh.lower_left = (-240, -240, -240)
     mesh.upper_right = (240, 240, 240)
-    mesh.dimension = (5, 10, 15)
+    mesh.dimension = (3, 5, 7)
 
     mesh_filter = openmc.MeshFilter(mesh)
 
@@ -113,13 +114,15 @@ def test_weightwindows(model):
                                     ww_n_lower_bnds,
                                     None,
                                     10.0,
-                                    e_bnds)
+                                    e_bnds,
+                                    survival_ratio=1.01)
 
         ww_p = openmc.WeightWindows(ww_mesh,
                                     ww_p_lower_bnds,
                                     None,
                                     10.0,
-                                    e_bnds)
+                                    e_bnds,
+                                    survival_ratio=1.01)
 
         model.settings.weight_windows = [ww_n, ww_p]
 
@@ -137,7 +140,6 @@ def test_weightwindows(model):
         ww_tally = wsp.tallies[1]
 
         def compare_results(particle, analog_tally, ww_tally):
-
             # get values from each of the tallies
             an_mean = analog_tally.get_values(filters=[openmc.ParticleFilter],
                                               filter_bins=[(particle,)])
@@ -149,11 +151,11 @@ def test_weightwindows(model):
             assert np.count_nonzero(an_mean) < np.count_nonzero(ww_mean)
 
             an_rel_err = analog_tally.get_values(filters=[openmc.ParticleFilter],
-                                                filter_bins=[(particle,)],
-                                                value='rel_err')
+                                                 filter_bins=[(particle,)],
+                                                 value='rel_err')
             ww_rel_err = ww_tally.get_values(filters=[openmc.ParticleFilter],
-                                                filter_bins=[(particle,)],
-                                                value='rel_err')
+                                             filter_bins=[(particle,)],
+                                             value='rel_err')
 
             an_rel_err[an_mean == 0.0] = 1.0
             ww_rel_err[ww_mean == 0.0] = 1.0
@@ -164,6 +166,29 @@ def test_weightwindows(model):
             # expect that the average relative error in the tally
             # decreases
             assert an_avg_rel_err > ww_avg_rel_err
+
+            # ensure that the value of the mesh bin containing the
+            # source is statistically similar in both runs
+            an_std_dev = analog_tally.get_values(filters=[openmc.ParticleFilter],
+                                                 filter_bins=[(particle,)],
+                                                 value='std_dev')
+            ww_std_dev = ww_tally.get_values(filters=[openmc.ParticleFilter],
+                                             filter_bins=[(particle,)],
+                                             value='std_dev')
+
+            # index of the mesh bin containing the source for the higher
+            # energy group
+            source_bin_idx = (an_mean.shape[0]//2, 0, 0)
+
+            an_source_bin = ufloat(an_mean[source_bin_idx],
+                                   an_std_dev[source_bin_idx])
+            ww_source_bin = ufloat(ww_mean[source_bin_idx],
+                                   ww_std_dev[source_bin_idx])
+
+            diff = an_source_bin - ww_source_bin
+
+            # check that values are within two combined standard deviations
+            assert abs(diff.nominal_value) / diff.std_dev < 2.0
 
         compare_results('neutron', analog_tally, ww_tally)
         compare_results('photon', analog_tally, ww_tally)

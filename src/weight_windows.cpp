@@ -135,7 +135,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   if (check_for_node(node, "survival_ratio")) {
     survival_ratio_ = std::stod(get_node_value(node, "survival_ratio"));
     if (survival_ratio_ <= 1)
-      fatal_error("Survival to lower weight window ratio must bigger than 1"
+      fatal_error("Survival to lower weight window ratio must bigger than 1 "
                   "and less than the upper to lower weight window ratio.");
   }
 

@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 from math import ceil
 
 import openmc.checkvalue as cv
-from . import VolumeCalculation, Source, RegularMesh
+from . import VolumeCalculation, Source, RegularMesh, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 
 
@@ -96,6 +96,10 @@ class Settings:
         .. versionadded:: 0.12
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
+    max_splits : int
+        Maximum number of times a particle can split during a history
+
+        .. versionadded:: 0.13
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
@@ -197,9 +201,16 @@ class Settings:
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
+    weight_windows : WeightWindows iterable of WeightWindows
+        Weight windows to use for variance reduction
+
+        .. versionadded:: 0.13
+    weight_windows_on : bool
+        Whether weight windows are enabled
+
+        .. versionadded:: 0.13
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
-
     """
 
     def __init__(self):
@@ -272,6 +283,9 @@ class Settings:
         self._event_based = None
         self._max_particles_in_flight = None
         self._write_initial_source = None
+        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
+        self._weight_windows_on = None
+        self._max_splits = None
 
     @property
     def run_mode(self):
@@ -444,6 +458,18 @@ class Settings:
     @property
     def write_initial_source(self):
         return self._write_initial_source
+
+    @property
+    def weight_windows(self):
+        return self._weight_windows
+
+    @property
+    def weight_windows_on(self):
+        return self._weight_windows_on
+
+    @property
+    def max_splits(self):
+        return self._max_splits
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -835,6 +861,23 @@ class Settings:
         cv.check_type('write initial source', value, bool)
         self._write_initial_source = value
 
+    @weight_windows.setter
+    def weight_windows(self, value):
+        if not isinstance(value, MutableSequence):
+            value = [value]
+        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
+
+    @weight_windows_on.setter
+    def weight_windows_on(self, value):
+        cv.check_type('weight windows on', value, bool)
+        self._weight_windows_on = value
+
+    @max_splits.setter
+    def max_splits(self, value):
+        cv.check_type('maximum particle splits', value, Integral)
+        cv.check_greater_than('max particles in flight', value, 0)
+        self._max_splits = value
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -1128,6 +1171,25 @@ class Settings:
             elem = ET.SubElement(root, "write_initial_source")
             elem.text = str(self._write_initial_source).lower()
 
+    def _create_weight_windows_subelement(self, root):
+        for ww in self._weight_windows:
+            # Add weight window information
+            root.append(ww.to_xml_element())
+
+            # See if a <mesh> element already exists -- if not, add it
+            path = f"./mesh[@id='{ww.mesh.id}']"
+            if root.find(path) is None:
+                root.append(ww.mesh.to_xml_element())
+
+        if self._weight_windows_on is not None:
+            elem = ET.SubElement(root, "weight_windows_on")
+            elem.text = str(self._weight_windows_on).lower()
+
+    def _create_max_splits_subelement(self, root):
+        if self._max_splits is not None:
+            elem = ET.SubElement(root, "max_splits")
+            elem.text = str(self._max_splits)
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -1410,6 +1472,20 @@ class Settings:
         if text is not None:
             self.write_initial_source = text in ('true', '1')
 
+    def _weight_windows_from_xml_element(self, root):
+        for elem in root.findall('weight_windows'):
+            ww = WeightWindows.from_xml_element(elem, root)
+            self.weight_windows.append(ww)
+
+        text = get_text(root, 'weight_windows_on')
+        if text is not None:
+            self.weight_windows_on = text in ('true', '1')
+
+    def _max_splits_from_xml_element(self, root):
+        text = get_text(root, 'max_splits')
+        if text is not None:
+            self.max_splits = int(text)
+
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1464,6 +1540,8 @@ class Settings:
         self._create_material_cell_offsets_subelement(root_element)
         self._create_log_grid_bins_subelement(root_element)
         self._create_write_initial_source_subelement(root_element)
+        self._create_weight_windows_subelement(root_element)
+        self._create_max_splits_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
@@ -1538,6 +1616,8 @@ class Settings:
         settings._material_cell_offsets_from_xml_element(root)
         settings._log_grid_bins_from_xml_element(root)
         settings._write_initial_source_from_xml_element(root)
+        settings._weight_windows_from_xml_element(root)
+        settings._max_splits_from_xml_element(root)
 
         # TODO: Get volume calculations
 

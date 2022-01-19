@@ -11,6 +11,7 @@ from openmc.plots import *
 from openmc.region import *
 from openmc.volume import *
 from openmc.source import *
+from openmc.weight_windows import *
 from openmc.settings import *
 from openmc.surface import *
 from openmc.universe import *

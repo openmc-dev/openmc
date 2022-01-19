@@ -305,6 +305,9 @@ private:
 
   int n_event_ {0}; // number of events executed in this particle's history
 
+  // Weight window information
+  int n_split_ {0}; // Number of splits this particle has undergone
+
 // DagMC state variables
 #ifdef DAGMC
   moab::DagMC::RayHistory history_;
@@ -425,6 +428,9 @@ public:
   bool& trace() { return trace_; }
   double& collision_distance() { return collision_distance_; }
   int& n_event() { return n_event_; }
+
+  int n_split() const { return n_split_; }
+  int& n_split() { return n_split_; }
 
 #ifdef DAGMC
   moab::DagMC::RayHistory& history() { return history_; }

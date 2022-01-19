@@ -89,6 +89,11 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p);
 
 void sample_secondary_photons(Particle& p, int i_nuclide);
 
+//！Split or Roulette particles based their weight and the lower weight window
+// bound.
+//! \param[in] p, particle to be split or rouletted with the weight window.
+void split_particle(Particle& p);
+
 } // namespace openmc
 
 #endif // OPENMC_PHYSICS_H

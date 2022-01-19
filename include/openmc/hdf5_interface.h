@@ -76,7 +76,7 @@ int dataset_ndims(hid_t dset);
 size_t dataset_typesize(hid_t obj_id, const char* name);
 hid_t file_open(const char* filename, char mode, bool parallel);
 void file_close(hid_t file_id);
-void get_name(hid_t obj_id, char* name);
+void get_name(hid_t obj_id, std::string& name);
 int get_num_datasets(hid_t group_id);
 int get_num_groups(hid_t group_id);
 void get_datasets(hid_t group_id, char* name[]);

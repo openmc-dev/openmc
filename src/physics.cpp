@@ -151,9 +151,9 @@ void sample_neutron_reaction(Particle& p)
 
   // Play russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
-    russian_roulette(p);
-    if (!p.alive())
-      return;
+    if (p.wgt() < settings::weight_cutoff) {
+      russian_roulette(p, settings::weight_survive);
+    }
   }
 }
 

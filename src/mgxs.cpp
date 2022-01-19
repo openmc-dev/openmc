@@ -63,9 +63,8 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   vector<int>& temps_to_read, int& order_dim)
 {
   // get name
-  char char_name[MAX_WORD_LEN];
-  get_name(xs_id, char_name);
-  std::string in_name {char_name};
+  std::string in_name;
+  get_name(xs_id, in_name);
   // remove the leading '/'
   in_name = in_name.substr(1);
 
@@ -168,8 +167,8 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   // Load the remaining metadata
   AngleDistributionType in_scatter_format;
   if (attribute_exists(xs_id, "scatter_format")) {
-    std::string temp_str(MAX_WORD_LEN, ' ');
-    read_attr_string(xs_id, "scatter_format", MAX_WORD_LEN, &temp_str[0]);
+    std::string temp_str;
+    read_attribute(xs_id, "scatter_format", temp_str);
     to_lower(strtrim(temp_str));
     if (temp_str.compare(0, 8, "legendre") == 0) {
       in_scatter_format = AngleDistributionType::LEGENDRE;
@@ -185,8 +184,8 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   }
 
   if (attribute_exists(xs_id, "scatter_shape")) {
-    std::string temp_str(MAX_WORD_LEN, ' ');
-    read_attr_string(xs_id, "scatter_shape", MAX_WORD_LEN, &temp_str[0]);
+    std::string temp_str;
+    read_attribute(xs_id, "scatter_shape", temp_str);
     to_lower(strtrim(temp_str));
     if (temp_str.compare(0, 14, "[g][g\'][order]") != 0) {
       fatal_error("Invalid scatter_shape option!");
@@ -223,8 +222,8 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   int in_n_azi;
   bool in_is_isotropic = true;
   if (attribute_exists(xs_id, "representation")) {
-    std::string temp_str(MAX_WORD_LEN, ' ');
-    read_attr_string(xs_id, "representation", MAX_WORD_LEN, &temp_str[0]);
+    std::string temp_str;
+    read_attribute(xs_id, "representation", temp_str);
     to_lower(strtrim(temp_str));
     if (temp_str.compare(0, 5, "angle") == 0) {
       in_is_isotropic = false;

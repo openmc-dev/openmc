@@ -215,10 +215,12 @@ void file_close(hid_t file_id)
   H5Fclose(file_id);
 }
 
-void get_name(hid_t obj_id, char* name)
+void get_name(hid_t obj_id, std::string& name)
 {
   size_t size = 1 + H5Iget_name(obj_id, nullptr, 0);
-  H5Iget_name(obj_id, name, size);
+  name.resize(size);
+  // TODO: switch to name.data() when using C++17
+  H5Iget_name(obj_id, &name[0], size);
 }
 
 int get_num_datasets(hid_t group_id)

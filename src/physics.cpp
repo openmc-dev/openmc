@@ -23,6 +23,7 @@
 #include "openmc/string_utils.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
+#include "openmc/weight_windows.h"
 
 #include <fmt/core.h>
 
@@ -44,9 +45,15 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
+    if (settings::weight_windows_on) {
+      apply_weight_windows(p);
+    }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
+    if (settings::weight_windows_on) {
+      apply_weight_windows(p);
+    }
     break;
   case ParticleType::electron:
     sample_electron_reaction(p);

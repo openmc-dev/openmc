@@ -27,6 +27,7 @@
 #include "openmc/string_utils.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/volume_calc.h"
+#include "openmc/weight_windows.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -67,6 +68,7 @@ bool trigger_on {false};
 bool trigger_predict {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
+bool weight_windows_on {false};
 bool write_all_tracks {false};
 bool write_initial_source {false};
 
@@ -92,6 +94,7 @@ int max_order {0};
 int n_log_bins {8000};
 int n_batches;
 int n_max_batches;
+int max_splits {1000};
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
@@ -850,6 +853,23 @@ void read_settings_xml()
   // Check whether material cell offsets should be generated
   if (check_for_node(root, "material_cell_offsets")) {
     material_cell_offsets = get_node_value_bool(root, "material_cell_offsets");
+  }
+
+  // Weight window information
+  for (pugi::xml_node node_ww : root.children("weight_windows")) {
+    variance_reduction::weight_windows.emplace_back(
+      std::make_unique<WeightWindows>(node_ww));
+
+    // Enable weight windows by default if one or more are present
+    settings::weight_windows_on = true;
+  }
+
+  if (check_for_node(root, "weight_windows_on")) {
+    weight_windows_on = get_node_value_bool(root, "weight_windows_on");
+  }
+
+  if (check_for_node(root, "max_splits")) {
+    settings::max_splits = std::stoi(get_node_value(root, "max_splits"));
   }
 }
 

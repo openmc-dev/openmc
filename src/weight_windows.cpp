@@ -5,6 +5,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
+#include "openmc/physics_common.h"
 #include "openmc/search.h"
 #include "openmc/xml_interface.h"
 
@@ -94,14 +95,8 @@ void apply_weight_windows(Particle& p)
     // if the particle weight is below the window, play Russian roulette
     double weight_survive =
       std::min(weight * weight_window.max_split, weight_window.survival_weight);
-    if (weight_survive * prn(p.current_seed()) <= weight) {
-      p.wgt() = weight_survive;
-    } else {
-      p.alive() = false;
-      p.wgt() = 0.0;
-    }
-    // else particle is in the window, continue as normal
-  }
+    russian_roulette(p, weight_survive);
+  } // else particle is in the window, continue as normal
 }
 
 void free_memory_weight_windows()

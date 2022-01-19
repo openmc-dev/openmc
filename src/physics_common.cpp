@@ -9,15 +9,13 @@ namespace openmc {
 // RUSSIAN_ROULETTE
 //==============================================================================
 
-void russian_roulette(Particle& p)
+void russian_roulette(Particle& p, double weight_survive)
 {
-  if (p.wgt() < settings::weight_cutoff) {
-    if (settings::weight_survive * prn(p.current_seed()) < p.wgt()) {
-      p.wgt() = settings::weight_survive;
-    } else {
-      p.wgt() = 0.;
-      p.alive() = false;
-    }
+  if (weight_survive * prn(p.current_seed()) < p.wgt()) {
+    p.wgt() = weight_survive;
+  } else {
+    p.wgt() = 0.;
+    p.alive() = false;
   }
 }
 

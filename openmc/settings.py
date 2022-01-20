@@ -1247,6 +1247,12 @@ class Settings:
         for elem in root.findall('source'):
             self.source.append(Source.from_xml_element(elem))
 
+    def _volume_calcs_from_xml_element(self, root):
+        volume_elems = root.findall("volume_calc")
+        if volume_elems:
+            self.volume_calculations = [VolumeCalculation.from_xml_element(elem)
+                                        for elem in volume_elems]
+
     def _output_from_xml_element(self, root):
         elem = root.find('output')
         if elem is not None:
@@ -1585,6 +1591,7 @@ class Settings:
         settings._generations_per_batch_from_xml_element(root)
         settings._keff_trigger_from_xml_element(root)
         settings._source_from_xml_element(root)
+        settings._volume_calcs_from_xml_element(root)
         settings._output_from_xml_element(root)
         settings._statepoint_from_xml_element(root)
         settings._sourcepoint_from_xml_element(root)

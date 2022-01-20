@@ -11,6 +11,7 @@ from uncertainties import ufloat
 
 import openmc
 import openmc.checkvalue as cv
+from openmc._xml import get_text
 
 _VERSION_VOLUME = 1
 
@@ -352,3 +353,49 @@ class VolumeCalculation:
             trigger_elem.set("type", self.trigger_type)
             trigger_elem.set("threshold", str(self.threshold))
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate volume calculation object from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.VolumeCalculation
+            Volume calculation object
+
+        """
+        domain_type = get_text(elem, "domain_type")
+        domain_ids = get_text(elem, "domain_ids").split()
+        ids = [int(x) for x in domain_ids]
+        samples = int(get_text(elem, "samples"))
+        lower_left = get_text(elem, "lower_left").split()
+        lower_left = tuple([float(x) for x in lower_left])
+        upper_right = get_text(elem, "upper_right").split()
+        upper_right = tuple([float(x) for x in upper_right])
+
+        # Instantiate some throw-away domains that are used by the constructor
+        # to assign IDs
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', openmc.IDWarning)
+            if domain_type == 'cell':
+                domains = [openmc.Cell(uid) for uid in ids]
+            elif domain_type == 'material':
+                domains = [openmc.Material(uid) for uid in ids]
+            elif domain_type == 'universe':
+                domains = [openmc.Universe(uid) for uid in ids]
+
+        vol = cls(domains, samples, lower_left, upper_right)
+
+        # Check for trigger
+        trigger_elem = elem.find("threshold")
+        if trigger_elem is not None:
+            trigger_type = get_text(trigger_elem, "type")
+            threshold = float(get_text(trigger_elem, "threshold"))
+            vol.set_trigger(threshold, trigger_type)
+
+        return vol

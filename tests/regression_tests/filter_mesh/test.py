@@ -1,4 +1,5 @@
 import numpy as np
+from math import pi
 
 import openmc
 import pytest
@@ -53,13 +54,13 @@ def model():
 
     cyl_mesh = openmc.CylindricalMesh()
     cyl_mesh.r_grid = np.linspace(0, 7.5, 18)
-    cyl_mesh.phi_grid = np.linspace(0, 360, 19)
+    cyl_mesh.phi_grid = np.linspace(0, 2*pi, 19)
     cyl_mesh.z_grid = np.linspace(-7.5, 7.5, 17)
 
     sph_mesh = openmc.SphericalMesh()
     sph_mesh.r_grid = np.linspace(0, 7.5, 18)
-    sph_mesh.theta_grid = np.linspace(0, 180, 9)
-    sph_mesh.phi_grid = np.linspace(0, 360, 19)
+    sph_mesh.theta_grid = np.linspace(0, pi, 9)
+    sph_mesh.phi_grid = np.linspace(0, 2*pi, 19)
 
     # Create filters
     reg_filters = [

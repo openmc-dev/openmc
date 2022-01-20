@@ -1,5 +1,6 @@
 from abc import ABC
 from collections.abc import Iterable
+from math import pi
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
@@ -705,7 +706,7 @@ class CylindricalMesh(MeshBase):
         Requirement is r >= 0.
     phi_grid : Iterable of float
         Mesh boundary points along the phi-axis.
-        The default value is [0, 360], i.e. the full phi range.
+        The default value is [0, 2π], i.e. the full phi range.
     z_grid : Iterable of float
         Mesh boundary points along the z-axis.
     indices : Iterable of tuple
@@ -718,7 +719,7 @@ class CylindricalMesh(MeshBase):
         super().__init__(mesh_id, name)
 
         self._r_grid = None
-        self._phi_grid = [0, 360]
+        self._phi_grid = [0.0, 2*pi]
         self._z_grid = None
 
     @property
@@ -761,12 +762,12 @@ class CylindricalMesh(MeshBase):
     @phi_grid.setter
     def phi_grid(self, grid):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.array(grid)
+        self._phi_grid = np.asarray(grid)
 
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = np.array(grid)
+        self._z_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -796,7 +797,7 @@ class CylindricalMesh(MeshBase):
         # Read and assign mesh properties
         mesh = cls(mesh_id)
         mesh.r_grid = group['r_grid'][()]
-        mesh.phi_grid = 180 / np.pi * group['phi_grid'][()]
+        mesh.phi_grid = group['phi_grid'][()]
         mesh.z_grid = group['z_grid'][()]
 
         return mesh
@@ -859,9 +860,9 @@ class CylindricalMesh(MeshBase):
 
         """
 
-        V_r = np.diff(np.array(self.r_grid)**2 / 2)
-        V_p = np.diff(np.array(self.phi_grid) * np.pi / 180.0)
-        V_z = np.diff(np.array(self.z_grid))
+        V_r = np.diff(np.asarray(self.r_grid)**2 / 2)
+        V_p = np.diff(self.phi_grid)
+        V_z = np.diff(self.z_grid)
 
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
@@ -891,10 +892,10 @@ class SphericalMesh(MeshBase):
         Requirement is r >= 0.
     theta_grid : Iterable of float
         Mesh boundary points along the theta-axis in degrees.
-        The default value is [0, 180], i.e. the full theta range.
+        The default value is [0, π], i.e. the full theta range.
     phi_grid : Iterable of float
         Mesh boundary points along the phi-axis in degrees.
-        The default value is [0, 360], i.e. the full phi range.
+        The default value is [0, 2π], i.e. the full phi range.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -905,8 +906,8 @@ class SphericalMesh(MeshBase):
         super().__init__(mesh_id, name)
 
         self._r_grid = None
-        self._theta_grid = [0, 180]
-        self._phi_grid = [0, 360]
+        self._theta_grid = [0, pi]
+        self._phi_grid = [0, 2*pi]
 
     @property
     def dimension(self):
@@ -948,12 +949,12 @@ class SphericalMesh(MeshBase):
     @theta_grid.setter
     def theta_grid(self, grid):
         cv.check_type('mesh theta_grid', grid, Iterable, Real)
-        self._theta_grid = np.array(grid)
+        self._theta_grid = np.asarray(grid)
 
     @phi_grid.setter
     def phi_grid(self, grid):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.array(grid)
+        self._phi_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -983,8 +984,8 @@ class SphericalMesh(MeshBase):
         # Read and assign mesh properties
         mesh = cls(mesh_id)
         mesh.r_grid = group['r_grid'][()]
-        mesh.theta_grid = 180 / np.pi * group['theta_grid'][()]
-        mesh.phi_grid = 180 / np.pi * group['phi_grid'][()]
+        mesh.theta_grid = group['theta_grid'][()]
+        mesh.phi_grid = group['phi_grid'][()]
 
         return mesh
 
@@ -1046,9 +1047,9 @@ class SphericalMesh(MeshBase):
 
         """
 
-        V_r = np.diff(np.array(self.r_grid)**3 / 3)
-        V_t = np.diff(-np.cos(np.pi * np.array(self.theta_grid) / 180.0))
-        V_p = np.diff(np.array(self.phi_grid) * np.pi / 180)
+        V_r = np.diff(np.asarray(self.r_grid)**3 / 3)
+        V_t = np.diff(-np.cos(self.theta_grid))
+        V_p = np.diff(self.phi_grid)
 
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 

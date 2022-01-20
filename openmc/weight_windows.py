@@ -270,7 +270,7 @@ class WeightWindows(IDManagerMixin):
         path = f"./mesh[@id='{mesh_id}']"
         mesh_elem = root.find(path)
         if mesh_elem is not None:
-            mesh = MeshBase.from_xml(mesh_elem)
+            mesh = MeshBase.from_xml_element(mesh_elem)
 
         # Read all other parameters
         lower_ww_bounds = [float(l) for l in get_text(elem, 'lower_ww_bounds').split()]

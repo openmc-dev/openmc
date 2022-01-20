@@ -89,7 +89,7 @@ class MeshBase(IDManagerMixin, ABC):
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
     @classmethod
-    def from_xml(cls, elem):
+    def from_xml_element(cls, elem):
         """Generates a mesh from an XML element
 
         Parameters
@@ -109,6 +109,10 @@ class MeshBase(IDManagerMixin, ABC):
             return RegularMesh.from_xml_element(elem)
         elif mesh_type == 'rectilinear':
             return RectilinearMesh.from_xml_element(elem)
+        elif mesh_type == 'cylindrical':
+            return CylindricalMesh.from_xml_element(elem)
+        elif mesh_type == 'spherical':
+            return SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
             return UnstructuredMesh.from_xml_element(elem)
         else:
@@ -697,10 +701,10 @@ class CylindricalMesh(MeshBase):
     n_dimension : int
         Number of mesh dimensions (always 3 for a CylindricalMesh).
     r_grid : Iterable of float
-        Mesh boundary points along the r-axis. 
+        Mesh boundary points along the r-axis.
         Requirement is r >= 0.
     phi_grid : Iterable of float
-        Mesh boundary points along the phi-axis. 
+        Mesh boundary points along the phi-axis.
         The default value is [0, 360], i.e. the full phi range.
     z_grid : Iterable of float
         Mesh boundary points along the z-axis.
@@ -821,6 +825,29 @@ class CylindricalMesh(MeshBase):
         subelement.text = ' '.join(map(str, self.z_grid))
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate a cylindrical mesh from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.CylindricalMesh
+            Cylindrical mesh object
+
+        """
+
+        mesh_id = int(get_text(elem, 'id'))
+        mesh = cls(mesh_id)
+        mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
+        mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
+        mesh.z_grid = [float(x) for x in get_text(elem, "z_grid").split()]
+        return mesh
 
     def calc_mesh_volumes(self):
         """Return Volumes for every mesh cell
@@ -986,6 +1013,29 @@ class SphericalMesh(MeshBase):
 
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate a spherical mesh from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.SphericalMesh
+            Spherical mesh object
+
+        """
+
+        mesh_id = int(get_text(elem, 'id'))
+        mesh = cls(mesh_id)
+        mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
+        mesh.theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()]
+        mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
+        return mesh
+
     def calc_mesh_volumes(self):
         """Return Volumes for every mesh cell
 
@@ -1003,8 +1053,6 @@ class SphericalMesh(MeshBase):
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
 
-
-
 class UnstructuredMesh(MeshBase):
     """A 3D unstructured mesh
 
@@ -1017,6 +1065,8 @@ class UnstructuredMesh(MeshBase):
     ----------
     filename : str
         Location of the unstructured mesh file
+    library : {'moab', 'libmesh'}
+        Mesh library used for the unstructured mesh tally
     mesh_id : int
         Unique identifier for the mesh
     name : str
@@ -1034,7 +1084,7 @@ class UnstructuredMesh(MeshBase):
         Name of the file containing the unstructured mesh
     length_multiplier: float
         Multiplicative factor to apply to mesh coordinates
-    library : str
+    library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
     output : bool
         Indicates whether or not automatic tally output should

@@ -492,6 +492,7 @@ class SphericalIndependent(Spatial):
         origin = [float(x) for x in elem.get('origin').split()]
         return cls(r, theta, phi, origin=origin)
 
+
 class CylindricalIndependent(Spatial):
     r"""Spatial distribution represented in cylindrical coordinates.
 

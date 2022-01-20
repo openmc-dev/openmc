@@ -131,6 +131,8 @@ if __name__ == '__main__':
     parser.add_argument('--generate', action='store_true')
     parser.add_argument('--run', action='store_true')
     args = parser.parse_args()
+    if not args.generate and not args.run:
+        parser.print_help()
 
     if args.generate or args.run:
         model = assembly_model()

@@ -39,9 +39,6 @@ constexpr array<int, 2> VERSION_PROPERTIES {1, 0};
 // NOTE: This is the only section of the constants module that should ever be
 // adjusted. Modifying constants in other sections may cause the code to fail.
 
-// Monoatomic ideal-gas scattering treatment threshold
-constexpr double FREE_GAS_THRESHOLD {400.0};
-
 // Significance level for confidence intervals
 constexpr double CONFIDENCE_LEVEL {0.95};
 
@@ -53,14 +50,8 @@ constexpr double FP_PRECISION {1e-14};
 constexpr double FP_REL_PRECISION {1e-5};
 constexpr double FP_COINCIDENT {1e-12};
 
-// Maximum number of collisions/crossings
-constexpr int MAX_EVENTS {1000000};
+// Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
-
-// Maximum number of external source spatial resamples to encounter before an
-// error is thrown.
-constexpr int EXTSRC_REJECT_THRESHOLD {10000};
-constexpr double EXTSRC_REJECT_FRACTION {0.05};
 
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
@@ -237,9 +228,6 @@ enum ReactionType {
 
 constexpr array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
 
-// Maximum number of partial fission reactions
-constexpr int PARTIAL_FISSION_MAX {4};
-
 // Resonance elastic scattering methods
 enum class ResScatMethod {
   rvs,  // Relative velocity sampling
@@ -342,20 +330,10 @@ enum class RunMode {
   VOLUME
 };
 
-// ============================================================================
-// CMFD CONSTANTS
-
-// For non-accelerated regions on coarse mesh overlay
-constexpr int CMFD_NOACCEL {-1};
-
 //==============================================================================
 // Geometry Constants
 
 enum class GeometryType { CSG, DAG };
-
-//==============================================================================
-// Variance Reduction constants
-constexpr double DEFAULT_WEIGHT_CUTOFF {1.0e-38}; // default low weight cutoff
 
 } // namespace openmc
 

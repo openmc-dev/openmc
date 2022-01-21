@@ -583,17 +583,17 @@ def test_rectilinear_mesh(lib_init):
 def test_cylindrical_mesh(lib_init):
     deg2rad = lambda deg: deg*np.pi/180
     mesh = openmc.lib.CylindricalMesh()
-    x_grid = [0., 5., 10.]
-    y_grid = [0., 10., 20.]
+    r_grid = [0., 5., 10.]
+    phi_grid = np.radians([0., 10., 20.])
     z_grid = [10., 20., 30.]
-    mesh.set_grid(x_grid, y_grid, z_grid)
+    mesh.set_grid(r_grid, phi_grid, z_grid)
     assert np.all(mesh.lower_left == (0., 0., 10.))
     assert np.all(mesh.upper_right == (10., deg2rad(20.), 30.))
     assert np.all(mesh.dimension == (2, 2, 2))
-    for i, diff_x in enumerate(np.diff(x_grid)):
-        for j, diff_y in enumerate(np.diff(y_grid)):
-            for k, diff_z in enumerate(np.diff(z_grid)):
-                assert np.all(mesh.width[i, j, k, :] == (5, deg2rad(10), 10))
+    for i, _ in enumerate(np.diff(r_grid)):
+        for j, _ in enumerate(np.diff(phi_grid)):
+            for k, _ in enumerate(np.diff(z_grid)):
+                assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), 10))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.CylindricalMesh(mesh.id)
@@ -614,17 +614,17 @@ def test_cylindrical_mesh(lib_init):
 def test_spherical_mesh(lib_init):
     deg2rad = lambda deg: deg*np.pi/180
     mesh = openmc.lib.SphericalMesh()
-    x_grid = [0., 5., 10.]
-    y_grid = [0., 10., 20.]
-    z_grid = [10., 20., 30.]
-    mesh.set_grid(x_grid, y_grid, z_grid)
+    r_grid = [0., 5., 10.]
+    theta_grid = np.radians([0., 10., 20.])
+    phi_grid = np.radians([10., 20., 30.])
+    mesh.set_grid(r_grid, theta_grid, phi_grid)
     assert np.all(mesh.lower_left == (0., 0., deg2rad(10.)))
     assert np.all(mesh.upper_right == (10., deg2rad(20.), deg2rad(30.)))
     assert np.all(mesh.dimension == (2, 2, 2))
-    for i, diff_x in enumerate(np.diff(x_grid)):
-        for j, diff_y in enumerate(np.diff(y_grid)):
-            for k, diff_z in enumerate(np.diff(z_grid)):
-                assert np.all(abs(mesh.width[i, j, k, :] - (5, deg2rad(10), deg2rad(10))) < 1e-16)
+    for i, _ in enumerate(np.diff(r_grid)):
+        for j, _ in enumerate(np.diff(theta_grid)):
+            for k, _ in enumerate(np.diff(phi_grid)):
+                assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), deg2rad(10)))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.SphericalMesh(mesh.id)

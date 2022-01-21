@@ -48,6 +48,10 @@ class WeightWindows(IDManagerMixin):
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
         rouletting
+    max_lower_bound_ratio: float
+        Maximum allowed ratio of a weight window's lower bound to particle weight.
+        A factor will be applied to raise the weight window to the particle's weight
+        during transport if exceeded. Only applied if > 1.0. (Default: 1.0).
     max_split : int
         Maximum allowable number of particles when splitting
     weight_cutoff : float
@@ -76,6 +80,9 @@ class WeightWindows(IDManagerMixin):
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
         rouletting
+    max_lower_bound_ratio: float
+        Maximum allowed ratio of a weight window's lower bound to particle
+        weight. (Default: 1.0)
     max_split : int
         Maximum allowable number of particles when splitting
     weight_cutoff : float
@@ -91,7 +98,7 @@ class WeightWindows(IDManagerMixin):
 
     def __init__(self, mesh, lower_ww_bounds, upper_ww_bounds=None,
                  upper_bound_ratio=None, energy_bins=None, particle_type='neutron',
-                 survival_ratio=3, max_split=10, weight_cutoff=1.e-38, id=None):
+                 survival_ratio=3, max_lb_ratio=1.0, max_split=10, weight_cutoff=1.e-38, id=None):
         self.mesh = mesh
         self.id = id
         self.particle_type = particle_type
@@ -121,6 +128,7 @@ class WeightWindows(IDManagerMixin):
                              'do not match')
 
         self.survival_ratio = survival_ratio
+        self.max_lower_bound_ratio = max_lb_ratio
         self.max_split = max_split
         self.weight_cutoff = weight_cutoff
 
@@ -193,6 +201,16 @@ class WeightWindows(IDManagerMixin):
         self._survival_ratio = val
 
     @property
+    def max_lower_bound_ratio(self):
+        return self._max_lower_bound_ratio
+
+    @max_lower_bound_ratio.setter
+    def max_lower_bound_ratio(self, val):
+        cv.check_type('Maximum lower bound ratio', val, Real)
+        cv.check_greater_than('Maximum lower bound ratio', val, 1.0, True)
+        self._max_lower_bound_ratio = val
+
+    @property
     def max_split(self):
         return self._max_split
 
@@ -241,6 +259,9 @@ class WeightWindows(IDManagerMixin):
         subelement = ET.SubElement(element, 'survival_ratio')
         subelement.text = str(self.survival_ratio)
 
+        subelement = ET.SubElement(element, 'max_lower_bound_ratio')
+        subelement.text = str(self.max_lower_bound_ratio)
+
         subelement = ET.SubElement(element, 'max_split')
         subelement.text = str(self.max_split)
 
@@ -278,6 +299,7 @@ class WeightWindows(IDManagerMixin):
         ebins = [float(b) for b in get_text(elem, 'energy_bins').split()]
         particle_type = get_text(elem, 'particle_type')
         survival_ratio = float(get_text(elem, 'survival_ratio'))
+        max_lb_ratio = float(get_text(elem, 'max_lower_bound_ratio'))
         max_split = int(get_text(elem, 'max_split'))
         weight_cutoff = float(get_text(elem, 'weight_cutoff'))
         id = int(get_text(elem, 'id'))
@@ -289,6 +311,7 @@ class WeightWindows(IDManagerMixin):
             energy_bins=ebins,
             particle_type=particle_type,
             survival_ratio=survival_ratio,
+            max_lb_ratio=max_lb_ratio,
             max_split=max_split,
             weight_cutoff=weight_cutoff,
             id=id
@@ -318,6 +341,7 @@ class WeightWindows(IDManagerMixin):
         lower_ww_bounds = group['lower_ww_bounds'][()]
         upper_ww_bounds = group['upper_ww_bounds'][()]
         survival_ratio = group['survival_ratio'][()]
+        max_lb_ratio = group['max_lower_bound_ratio'][()]
         max_split = group['max_split'][()]
         weight_cutoff = group['weight_cutoff'][()]
 
@@ -328,6 +352,7 @@ class WeightWindows(IDManagerMixin):
             energy_bins=ebins,
             particle_type=ptype,
             survival_ratio=survival_ratio,
+            max_lb_ratio=max_lb_ratio,
             max_split=max_split,
             weight_cutoff=weight_cutoff,
             id=id

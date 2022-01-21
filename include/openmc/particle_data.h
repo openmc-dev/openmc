@@ -309,7 +309,9 @@ private:
   int n_event_ {0}; // number of events executed in this particle's history
 
   // Weight window information
-  int n_split_ {0}; // Number of splits this particle has undergone
+  int n_split_ {0}; // Number of times this particle has been split
+  double ww_factor_ {
+    0.0}; // Particle-specific factor for on-the-fly weight window adjustment
 
 // DagMC state variables
 #ifdef DAGMC
@@ -434,6 +436,9 @@ public:
 
   int n_split() const { return n_split_; }
   int& n_split() { return n_split_; }
+
+  double ww_factor() const { return ww_factor_; }
+  double& ww_factor() { return ww_factor_; }
 
 #ifdef DAGMC
   moab::DagMC::RayHistory& history() { return history_; }

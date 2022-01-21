@@ -56,6 +56,19 @@ void apply_weight_windows(Particle& p)
     return;
   }
 
+  // check if particle is far above current weight window
+  // only do this if the factor is not already set on the particle and a
+  // maximum lower bound ratio is specified
+  if (p.ww_factor() == 0.0 && weight_window.max_lb_ratio > 1.0 &&
+      p.wgt() > weight_window.lower_weight * weight_window.max_lb_ratio) {
+    p.ww_factor() =
+      p.wgt() / (weight_window.lower_weight * weight_window.max_lb_ratio);
+  }
+
+  // move weight window closer to the particle weight if needed
+  if (p.ww_factor() > 1.0)
+    weight_window.scale(p.ww_factor());
+
   // if particle's weight is above the weight window split until they are within
   // the window
   if (weight > weight_window.upper_weight) {
@@ -137,6 +150,14 @@ WeightWindows::WeightWindows(pugi::xml_node node)
     if (survival_ratio_ <= 1)
       fatal_error("Survival to lower weight window ratio must bigger than 1 "
                   "and less than the upper to lower weight window ratio.");
+  }
+
+  // get the max lower bound ratio - optional
+  if (check_for_node(node, "max_lower_bound_ratio")) {
+    max_lb_ratio_ = std::stod(get_node_value(node, "max_lower_bound_ratio"));
+    if (max_lb_ratio_ < 1.0) {
+      fatal_error("Maximum lower bound ratio must be larger than 1");
+    }
   }
 
   // get the max split - optional
@@ -254,6 +275,7 @@ void WeightWindows::to_hdf5(hid_t group) const
   write_dataset(ww_group, "lower_ww_bounds", lower_ww_);
   write_dataset(ww_group, "upper_ww_bounds", upper_ww_);
   write_dataset(ww_group, "survival_ratio", survival_ratio_);
+  write_dataset(ww_group, "max_lower_bound_ratio", max_lb_ratio_);
   write_dataset(ww_group, "max_split", max_split_);
   write_dataset(ww_group, "weight_cutoff", weight_cutoff_);
   write_dataset(ww_group, "mesh", this->mesh().id_);

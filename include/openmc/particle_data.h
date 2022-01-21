@@ -103,10 +103,7 @@ struct NuclideMicroXS {
   double nu_fission_prompt; //!< prompt neutron production from fission
   double nu_fission_alpha;  //!< Effective, time-corrected nu_fission
                             //!< See Eq. (45) of [1].
-  // [1] I Variansyah, BR Betzler, WR Martin (2020) Multigroup Constant 
-  // Calculation with Static N1-Eigenvalue Monte Carlo for Time-Dependent
-  // Neutron Transport Simulations, Nuclear Science and Engineering, 194:11, 
-  // 1025-1043, DOI:10.1080/00295639.2020.1743578
+  // [1] I Variansyah et al. NSE 2020. DOI:10.1080/00295639.2020.1743578
 
   // Cross sections for depletion reactions (note that these are not stored in
   // macroscopic cache)
@@ -156,9 +153,9 @@ struct MacroXS {
   double nu_fission;  //!< macroscopic production xs
   double photon_prod; //!< macroscopic photon production xs
 
-  // Cross sections for alpha-eigenvalue mode
-  double nu_fission_alpha;  //!< nu_fission with time correction
+  // Cross sections for alpha-eigenvalue mode (see above)
   double nu_fission_prompt;
+  double nu_fission_alpha;
 
   // Photon cross sections
   double coherent;        //!< macroscopic coherent xs
@@ -321,6 +318,8 @@ private:
   double alpha_tally_Cp_ {0.0}; // Prompt fission production
   xt::xtensor<double, 2> alpha_tally_Cd_; // Effective delayed production for
                                           // nuclide/material i & group j
+  // Note: Precursor group j of different nuclides may be of different species
+  //       e.g., decay contsant of group 1 of U235 is different to that of U238
 
   bool trace_ {false}; //!< flag to show debug information
 

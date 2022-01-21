@@ -49,8 +49,8 @@ extern vector<double> alpha_generation;
 extern vector<int64_t> work_index;
 
 // For alpha-eigenvalue mode
-extern "C" double alpha_eff;     //!< average alpha over batches
-extern "C" double alpha_eff_std; //!< standard deviation of average alpha
+extern "C" double alpha_eff;     //!< mean of alpha over batches
+extern "C" double alpha_eff_std; //!< mean standard deviation of alpha
 extern "C" double alpha_min;     //!< minimum possible value of alpha
                                  //!< (negative of the smallest precursor group 
                                  //!<  decay constant)
@@ -59,7 +59,7 @@ extern "C" double alpha_min;     //!< minimum possible value of alpha
 // We assume equal number of precusor groups for all fissionables.
 // However, decay constants of same precursor group from different 
 // nuclides/materials can be different. E.g, group 6 of U235 and U238 are
-// 2.853 and 3.0487, respectively.
+// 2.853 and 3.0487 /s, respectively.
 extern size_t n_fissionables;  //!< # of fissionable nuclides/materials
 extern size_t n_precursors;    //!< # of delayed neutron precursor groups
 extern vector<int> fissionable_index; //!< indexing for fissionable nucs/mats;

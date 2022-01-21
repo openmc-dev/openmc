@@ -94,7 +94,7 @@ void calculate_generation_keff()
         global_tally_alpha_Cd(i,j) = Cd_reduced;
       }
     }
-
+#endif
     // TODO: This should be normalized by total_weight, not by n_particles
     global_tally_alpha_Cn /= settings::n_particles;
     global_tally_alpha_Cp /= settings::n_particles;
@@ -103,7 +103,6 @@ void calculate_generation_keff()
         global_tally_alpha_Cd(i,j) /= settings::n_particles;
       }
     }
-#endif
   }
 }
 
@@ -403,14 +402,15 @@ void calculate_average_keff()
   // Update alpha eigenvalue
   //============================================================================
  
-  // Here we solve the non-linear equation formed by the global integral tallies
+  // Here we solve the non-linear equation based on the global integral tallies
   // Cn (neutron density), Cp (prompt fission), and Cd (delayed fission).
-  // See Eq. (49) of https://doi.org/10.1080/00295639.2020.1743578
+  // [Eq. (49) of https://doi.org/10.1080/00295639.2020.1743578]
   // This non-linear equation has a form of the typical in-hour equation having
   // (1 + n_precursor_groups) roots. alpha_min was set so that we aim for
-  // the right-most, fundamental root. Newton-raphson is used to reach the 
-  // desired fundamental root; but whenever in an iterate we jump over the 
-  // alpha_min, we switch to bisection algorithm.
+  // the right-most, fundamental root. The non-linear problem is iteratively
+  // solved by using Newton-Raphson; however, whenever *in an iterate* we jump 
+  // over the alpha_min, the Newton-raphson iterate estimate is switched to 
+  // a bisection one.
 
   if (settings::alpha_mode) {
     // The constants (for easy referring)
@@ -753,8 +753,6 @@ void write_eigenvalue_hdf5(hid_t group)
   write_dataset(group, "n_inactive", settings::n_inactive);
   write_dataset(group, "generations_per_batch", settings::gen_per_batch);
   write_dataset(group, "k_generation", simulation::k_generation);
-  if (settings::alpha_mode)
-    write_dataset(group, "alpha_generation", simulation::alpha_generation);
   if (settings::entropy_on) {
     write_dataset(group, "entropy", simulation::entropy);
   }
@@ -765,13 +763,15 @@ void write_eigenvalue_hdf5(hid_t group)
   openmc_get_keff(k_combined.data());
   write_dataset(group, "k_combined", k_combined);
 
-  // alpha (time) eigenvalue for easy access
-  std::array<double, 2> alpha_final;
-  const int n = simulation::k_generation.size() - settings::n_inactive;
-  alpha_final[0] = simulation::alpha_sum[0]/n;
-  alpha_final[1] = simulation::alpha_eff_std;
-  write_dataset(group, "alpha_final", alpha_final);
-  write_attribute(group, "alpha_final", alpha_final);
+  // alpha-eigenvalue mode
+  if (settings::alpha_mode) {
+    write_dataset(group, "alpha_generation", simulation::alpha_generation);
+    std::array<double, 2> alpha_final;
+    const int n = simulation::k_generation.size() - settings::n_inactive;
+    alpha_final[0] = simulation::alpha_sum[0]/n;
+    alpha_final[1] = simulation::alpha_eff_std;
+    write_dataset(group, "alpha_final", alpha_final);
+  }
 }
 
 void read_eigenvalue_hdf5(hid_t group)
@@ -779,16 +779,17 @@ void read_eigenvalue_hdf5(hid_t group)
   read_dataset(group, "generations_per_batch", settings::gen_per_batch);
   int n = simulation::restart_batch * settings::gen_per_batch;
   simulation::k_generation.resize(n);
-  simulation::alpha_generation.resize(n);
   read_dataset(group, "k_generation", simulation::k_generation);
-  if (settings::alpha_mode)
-    read_dataset(group, "alpha_generation", simulation::alpha_generation);
   if (settings::entropy_on) {
     read_dataset(group, "entropy", simulation::entropy);
   }
   read_dataset(group, "k_col_abs", simulation::k_col_abs);
   read_dataset(group, "k_col_tra", simulation::k_col_tra);
   read_dataset(group, "k_abs_tra", simulation::k_abs_tra);
+  if (settings::alpha_mode) {
+    simulation::alpha_generation.resize(n);
+    read_dataset(group, "alpha_generation", simulation::alpha_generation);
+  }
 }
 
 } // namespace openmc

@@ -552,6 +552,15 @@ void print_results()
     std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::LEAKAGE, 0), n);
     fmt::print(
       " Leakage Fraction            = {:.5f} +/- {:.5f}\n", mean, t_n1 * stdev);
+    if (settings::alpha_mode) {
+      std::array<double, 2> alpha_final;
+      double alpha, alpha_sd;
+      const int n = simulation::k_generation.size() - settings::n_inactive;
+      alpha    = simulation::alpha_sum[0]/n;
+      alpha_sd = simulation::alpha_eff_std;
+      fmt::print(
+      "\n Alpha-effective = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
+    }
   } else {
     if (mpi::master)
       warning("Could not compute uncertainties -- only one "

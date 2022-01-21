@@ -556,11 +556,13 @@ void finalize_generation()
       print_generation();
     }
 
-    // Use k_generation instead of the current running average
+    // TODO: Should we k_generation instead of the current running average
+    /*
     int idx = overall_generation() - 1;
     simulation::keff = simulation::k_generation[idx];
     if (settings::alpha_mode)
       simulation::alpha_eff = simulation::alpha_generation[idx];
+    */
   }
 }
 

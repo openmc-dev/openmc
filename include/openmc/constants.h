@@ -306,8 +306,7 @@ enum TallyScore {
 
 // Global tally parameters
 constexpr int N_GLOBAL_TALLIES {4};
-enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE,
-                         ALPHA_COLLISION, ALPHA_ABSORPTION, ALPHA_TRACKLENGTH };
+enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};

@@ -88,7 +88,7 @@ class Trigger(EqualityMixin):
         element.set("type", self._trigger_type)
         element.set("threshold", str(self._threshold))
         if len(self._scores) != 0:
-            element.set("scores", ' '.join(map(str, self._scores)))
+            element.set("scores", ' '.join(self._scores))
         return element
 
     @classmethod

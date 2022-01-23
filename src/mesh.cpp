@@ -1001,7 +1001,7 @@ double CylindricalMesh::find_r_crossing(
 double CylindricalMesh::find_phi_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  // Phi grid is [0, 2pi], thus there is no real surface to cross
+  // Phi grid is [0, 2π], thus there is no real surface to cross
   if (full_phi_ && (shape_[1] == 1))
     return INFTY;
 
@@ -1221,7 +1221,7 @@ double SphericalMesh::find_r_crossing(
 double SphericalMesh::find_theta_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  // Theta grid is [0, pi], thus there is no real surface to cross
+  // Theta grid is [0, π], thus there is no real surface to cross
   if (full_theta_ && (shape_[1] == 1))
     return INFTY;
 
@@ -1283,7 +1283,7 @@ double SphericalMesh::find_theta_crossing(
 double SphericalMesh::find_phi_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  // Phi grid is [0, 2pi], thus there is no real surface to cross
+  // Phi grid is [0, 2π], thus there is no real surface to cross
   if (full_phi_ && (shape_[2] == 1))
     return INFTY;
 

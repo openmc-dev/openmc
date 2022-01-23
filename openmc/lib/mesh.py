@@ -290,11 +290,11 @@ class RectilinearMesh(Mesh):
         Parameters
         ----------
         x_grid : iterable of float
-            Mesh boundary points along the x-axis.
+            Mesh boundary points along the x-axis
         y_grid : iterable of float
-            Mesh boundary points along the y-axis.
+            Mesh boundary points along the y-axis
         z_grid : iterable of float
-            Mesh boundary points along the z-axis.
+            Mesh boundary points along the z-axis
 
         """
         nx = len(x_grid)

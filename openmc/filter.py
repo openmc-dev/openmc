@@ -254,7 +254,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         filter_type = elem.get('type')
 
         # If the filter type matches this class's short_name, then
-        # there is no overriden from_xml_element method.
+        # there is no overriden from_xml_element method
         if filter_type == cls.short_name.lower():
             # Get bins from element -- the default here works for any filters
             # that just store a list of bins that can be represented as integers
@@ -263,7 +263,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             return cls(bins, filter_id=filter_id)
 
         # Search through all subclasses and find the one matching the HDF5
-        # 'type'.  Call that class's from_hdf5 method.
+        # 'type'.  Call that class's from_hdf5 method
         for subclass in cls._recursive_subclasses():
             if filter_type == subclass.short_name.lower():
                 return subclass.from_xml_element(elem, **kwargs)

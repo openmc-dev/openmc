@@ -1,5 +1,4 @@
-from math import sqrt, pi
-
+import numpy as np
 import openmc
 from pytest import fixture, approx
 
@@ -38,6 +37,11 @@ def test_cell_instance():
     assert all(x == c1.id for x in bins[:6:2])
     assert all(x == c2.id for x in bins[6::2])
 
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert np.all(new_f.bins == f.bins)
+
     # get_pandas_dataframe()
     df = f.get_pandas_dataframe(f.num_bins, 1)
     cells = df['cellinstance', 'cell']
@@ -61,6 +65,11 @@ def test_collision():
     assert elem.tag == 'filter'
     assert elem.attrib['type'] == 'collision'
 
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert np.all(new_f.bins == f.bins)
+
 
 def test_legendre():
     n = 5
@@ -78,6 +87,11 @@ def test_legendre():
     assert elem.tag == 'filter'
     assert elem.attrib['type'] == 'legendre'
     assert elem.find('order').text == str(n)
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert new_f.bins, f.bins
 
 
 def test_spatial_legendre():
@@ -102,6 +116,12 @@ def test_spatial_legendre():
     assert elem.find('order').text == str(n)
     assert elem.find('axis').text == str(axis)
 
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert new_f.order == f.order
+    assert new_f.axis == f.axis
+
 
 def test_spherical_harmonics():
     n = 3
@@ -122,6 +142,12 @@ def test_spherical_harmonics():
     assert elem.attrib['cosine'] == f.cosine
     assert elem.find('order').text == str(n)
 
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert new_f.order == f.order
+    assert new_f.cosine == f.cosine
+
 
 def test_zernike():
     n = 4
@@ -140,6 +166,12 @@ def test_zernike():
     assert elem.attrib['type'] == 'zernike'
     assert elem.find('order').text == str(n)
 
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    for attr in ('id', 'order', 'x', 'y', 'r'):
+        assert getattr(new_f, attr) == getattr(f, attr)
+
+
 def test_zernike_radial():
     n = 4
     f = openmc.ZernikeRadialFilter(n, 0., 0., 1.)
@@ -156,6 +188,11 @@ def test_zernike_radial():
     assert elem.tag == 'filter'
     assert elem.attrib['type'] == 'zernikeradial'
     assert elem.find('order').text == str(n)
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    for attr in ('id', 'order', 'x', 'y', 'r'):
+        assert getattr(new_f, attr) == getattr(f, attr)
 
 
 def test_first_moment(run_in_tmpdir, box_model):

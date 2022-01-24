@@ -195,8 +195,8 @@ def test_from_xml(run_in_tmpdir, pin_model_attributes):
     keys = sorted(k for k in settings.__dict__.keys() if k not in no_test)
     for ref_k in keys:
         assert test_model.settings.__dict__[ref_k] == settings.__dict__[ref_k]
-    assert len(test_model.tallies) == 0
-    assert len(test_model.plots) == 0
+    assert len(test_model.tallies) == 1
+    assert len(test_model.plots) == 2
     assert test_model._materials_by_id == \
         {1: test_model.materials[0], 2: test_model.materials[1],
          3: test_model.materials[2]}

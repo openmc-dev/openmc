@@ -466,6 +466,11 @@ void sample_positron_reaction(Particle& p)
   p.event_ = TallyEvent::ABSORB;
 }
 
+// If no micro XS cache is being used then we must perform all microscopic cross
+// section lookups until nuclide is sapled. This involves extra logic to track
+// the presence of S(A,B) tables, so separate implementations (with and without the
+// micro XS cache) are given below.
+#ifdef NO_MICRO_XS_CACHE
 int sample_nuclide(Particle& p)
 {
   // Sample cumulative distribution function
@@ -523,24 +528,17 @@ int sample_nuclide(Particle& p)
     
     // Lookup micro XS or retrieve from XS cache
     double total;
-    #ifdef NO_MICRO_XS_CACHE
     bool cache_micro = false;
     MicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, cache_micro);
     total = xs.total;
-    #else
-    total = p.neutron_xs_[i_nuclide].total;
-    #endif
 
     // Increment probability to compare to cutoff
     prob += atom_density * total;
     if (prob >= cutoff) {
-      #ifdef NO_MICRO_XS_CACHE
       // If no micro XS cache is being used, we need to store this nuclide's micro XS data
       // in the particle for other collision physics kernels to utilize.
-      bool cache_micro = true;
+      cache_micro = true;
       data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, cache_micro);
-      #endif
-
       return i_nuclide;
     }
   }
@@ -552,7 +550,35 @@ int sample_nuclide(Particle& p)
   */
   printf("Did not sample any nuclide during collision.\n");
 }
+#else
+int sample_nuclide(Particle& p)
+{
+  // Sample cumulative distribution function
+  double cutoff = prn(p.current_seed()) * p.macro_xs_.total;
 
+  // Get pointers to nuclide/density arrays
+  const auto& mat = model::materials[p.material_];
+  int n = mat.nuclide_.size();
+
+  double prob = 0.0;
+  for (int i = 0; i < n; ++i) {
+    // Get atom density
+    int i_nuclide = mat.device_nuclide_[i];
+    double atom_density = mat.device_atom_density_[i];
+
+    // Increment probability to compare to cutoff
+    prob += atom_density * p.neutron_xs_[i_nuclide].total;
+    if (prob >= cutoff) return i_nuclide;
+  }
+
+  /*
+  // If we reach here, no nuclide was sampled
+  p.write_restart();
+  throw std::runtime_error{"Did not sample any nuclide during collision."};
+  */
+  printf("Did not sample any nuclide during collision.\n");
+}
+#endif
 
 int sample_element(Particle& p)
 {

@@ -654,7 +654,7 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   }
   #endif
 
-	double total; 
+  double total; 
   double elastic = CACHE_INVALID;
   double absorption;
   double fission;

@@ -16,6 +16,7 @@ from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
 from .universe import UniverseBase
+from ._xml import get_text
 
 
 _FILTER_TYPES = (
@@ -231,8 +232,42 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         subelement = ET.SubElement(element, 'bins')
         subelement.text = ' '.join(str(b) for b in self.bins)
-
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        """Generate a filter from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+        **kwargs
+            Keyword arguments (e.g., mesh information)
+
+        Returns
+        -------
+        openmc.Filter
+            Filter object
+
+        """
+        filter_type = elem.get('type')
+
+        # If the filter type matches this class's short_name, then
+        # there is no overriden from_xml_element method
+        if filter_type == cls.short_name.lower():
+            # Get bins from element -- the default here works for any filters
+            # that just store a list of bins that can be represented as integers
+            filter_id = int(elem.get('id'))
+            bins = [int(x) for x in get_text(elem, 'bins').split()]
+            return cls(bins, filter_id=filter_id)
+
+        # Search through all subclasses and find the one matching the HDF5
+        # 'type'.  Call that class's from_hdf5 method
+        for subclass in cls._recursive_subclasses():
+            if filter_type == subclass.short_name.lower():
+                return subclass.from_xml_element(elem, **kwargs)
+
 
     def can_merge(self, other):
         """Determine if filter can be merged with another.
@@ -622,6 +657,13 @@ class CellInstanceFilter(Filter):
         subelement.text = ' '.join(str(i) for i in self.bins.ravel())
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        bins = [int(x) for x in get_text(elem, 'bins').split()]
+        cell_instances = list(zip(bins[::2], bins[1::2]))
+        return cls(cell_instances, filter_id=filter_id)
+
 
 class SurfaceFilter(WithIDFilter):
     """Filters particles by surface crossing
@@ -661,8 +703,8 @@ class ParticleFilter(Filter):
 
     Attributes
     ----------
-    bins : Iterable of Integral
-        The Particles to tally
+    bins : iterable of str
+        The particles to tally
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -697,6 +739,12 @@ class ParticleFilter(Filter):
         particles = [b.decode() for b in group['bins'][()]]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
         return cls(particles, filter_id=filter_id)
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        bins = get_text(elem, 'bins').split()
+        return cls(bins, filter_id=filter_id)
 
 
 class MeshFilter(Filter):
@@ -877,6 +925,18 @@ class MeshFilter(Filter):
             element.set('translation', ' '.join(map(str, self.translation)))
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        mesh_id = int(get_text(elem, 'bins'))
+        mesh_obj = kwargs['meshes'][mesh_id]
+        filter_id = int(elem.get('id'))
+        out = cls(mesh_obj, filter_id=filter_id)
+
+        translation = elem.get('translation')
+        if translation:
+            out.translation = [float(x) for x in translation.split()]
+        return out
+
 
 class MeshSurfaceFilter(MeshFilter):
     """Filter events by surface crossings on a regular, rectangular mesh.
@@ -1019,34 +1079,11 @@ class CollisionFilter(Filter):
         self.bins = np.asarray(bins)
         self.id = filter_id
 
-    def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tValues', self.bins)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
-        return string
-
-    @Filter.bins.setter
-    def bins(self, bins):
-        Filter.bins.__set__(self, np.asarray(bins))
-
     def check_bins(self, bins):
         for x in bins:
             # Values should be integers
             cv.check_type('filter value', x, Integral)
             cv.check_greater_than('filter value', x, 0, equality=True)
-
-    def to_xml_element(self):
-        """Return XML Element representing the Filter.
-
-        Returns
-        -------
-        element : xml.etree.ElementTree.Element
-            XML element containing filter data
-
-        """
-        element = super().to_xml_element()
-        element[0].text = ' '.join(str(x) for x in self.bins)
-        return element
 
 
 class RealFilter(Filter):
@@ -1235,6 +1272,12 @@ class RealFilter(Filter):
         element = super().to_xml_element()
         element[0].text = ' '.join(str(x) for x in self.values)
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        bins = [float(x) for x in get_text(elem, 'bins').split()]
+        return cls(bins, filter_id=filter_id)
 
 
 class EnergyFilter(RealFilter):
@@ -1968,6 +2011,13 @@ class EnergyFunctionFilter(Filter):
         subelement.text = ' '.join(str(y) for y in self.y)
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        energy = [float(x) for x in get_text(elem, 'energy').split()]
+        y = [float(x) for x in get_text(elem, 'y').split()]
+        return cls(energy, y, filter_id=filter_id)
 
     def can_merge(self, other):
         return False

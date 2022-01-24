@@ -46,6 +46,12 @@ class ExpansionFilter(Filter):
 
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        order = int(elem.find('order').text)
+        return cls(order, filter_id=filter_id)
+
 
 class LegendreFilter(ExpansionFilter):
     r"""Score Legendre expansion moments up to specified order.
@@ -226,6 +232,15 @@ class SpatialLegendreFilter(ExpansionFilter):
 
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        order = int(elem.find('order').text)
+        axis = elem.find('axis').text
+        minimum = float(elem.find('min').text)
+        maximum = float(elem.find('max').text)
+        return cls(order, axis, minimum, maximum, filter_id=filter_id)
+
 
 class SphericalHarmonicsFilter(ExpansionFilter):
     r"""Score spherical harmonic expansion moments up to specified order.
@@ -316,6 +331,14 @@ class SphericalHarmonicsFilter(ExpansionFilter):
         element.set('cosine', self.cosine)
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        order = int(elem.find('order').text)
+        filter = cls(order, filter_id=filter_id)
+        filter.cosine = elem.get('cosine')
+        return filter
+
 
 class ZernikeFilter(ExpansionFilter):
     r"""Score Zernike expansion moments in space up to specified order.
@@ -358,7 +381,7 @@ class ZernikeFilter(ExpansionFilter):
         x-coordinate of center of circle for normalization
     y : float
         y-coordinate of center of circle for normalization
-    r : int or None
+    r : float
         Radius of circle for normalization
 
     Attributes
@@ -369,7 +392,7 @@ class ZernikeFilter(ExpansionFilter):
         x-coordinate of center of circle for normalization
     y : float
         y-coordinate of center of circle for normalization
-    r : int or None
+    r : float
         Radius of circle for normalization
     id : int
         Unique identifier for the filter
@@ -464,6 +487,15 @@ class ZernikeFilter(ExpansionFilter):
 
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        order = int(elem.find('order').text)
+        x = float(elem.find('x').text)
+        y = float(elem.find('y').text)
+        r = float(elem.find('r').text)
+        return cls(order, x, y, r, filter_id=filter_id)
+
 
 class ZernikeRadialFilter(ZernikeFilter):
     r"""Score the :math:`m = 0` (radial variation only) Zernike moments up to
@@ -499,7 +531,7 @@ class ZernikeRadialFilter(ZernikeFilter):
         x-coordinate of center of circle for normalization
     y : float
         y-coordinate of center of circle for normalization
-    r : int or None
+    r : float
         Radius of circle for normalization
 
     Attributes
@@ -510,7 +542,7 @@ class ZernikeRadialFilter(ZernikeFilter):
         x-coordinate of center of circle for normalization
     y : float
         y-coordinate of center of circle for normalization
-    r : int or None
+    r : float
         Radius of circle for normalization
     id : int
         Unique identifier for the filter

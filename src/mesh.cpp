@@ -1001,7 +1001,7 @@ double CylindricalMesh::find_r_crossing(
 double CylindricalMesh::find_phi_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  // Phi grid is [0, 360], thus there is no real surface to cross
+  // Phi grid is [0, 2π], thus there is no real surface to cross
   if (full_phi_ && (shape_[1] == 1))
     return INFTY;
 
@@ -1104,18 +1104,14 @@ int CylindricalMesh::set_grid()
                "cylindrical meshes must start at phi >= 0.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
-  if (grid_[1].back() > 360) {
+  if (grid_[1].back() > 2.0 * PI) {
     set_errmsg("phi-grids for "
-               "cylindrical meshes must end with theta <= 360 degree.");
+               "cylindrical meshes must end with theta <= 2*pi.");
 
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  full_phi_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 360.0);
-
-  // Transform phi-grid from degrees to radians
-  std::transform(grid_[1].begin(), grid_[1].end(), grid_[1].begin(),
-    [](double d) { return M_PI * d / 180.0; });
+  full_phi_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 2.0 * PI);
 
   lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
@@ -1225,7 +1221,7 @@ double SphericalMesh::find_r_crossing(
 double SphericalMesh::find_theta_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  // Theta grid is [0, 180], thus there is no real surface to cross
+  // Theta grid is [0, π], thus there is no real surface to cross
   if (full_theta_ && (shape_[1] == 1))
     return INFTY;
 
@@ -1287,7 +1283,7 @@ double SphericalMesh::find_theta_crossing(
 double SphericalMesh::find_phi_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  // Phi grid is [0, 360], thus there is no real surface to cross
+  // Phi grid is [0, 2π], thus there is no real surface to cross
   if (full_phi_ && (shape_[2] == 1))
     return INFTY;
 
@@ -1368,25 +1364,20 @@ int SphericalMesh::set_grid()
       return OPENMC_E_INVALID_ARGUMENT;
     }
   }
-  if (grid_[1].back() > 180) {
+  if (grid_[1].back() > PI) {
     set_errmsg("theta-grids for "
-               "spherical meshes must end with theta <= 180 degree.");
+               "spherical meshes must end with theta <= pi.");
 
     return OPENMC_E_INVALID_ARGUMENT;
   }
-  if (grid_[2].back() > 360) {
+  if (grid_[2].back() > 2 * PI) {
     set_errmsg("phi-grids for "
-               "spherical meshes must end with phi <= 180 degree.");
+               "spherical meshes must end with phi <= 2*pi.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  full_theta_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 180.0);
-  full_phi_ = (grid_[2].front() == 0.0) && (grid_[2].back() == 360.0);
-
-  // Transform theta- and phi-grid from degrees to radians
-  for (int i = 1; i < 3; i++)
-    std::transform(grid_[i].begin(), grid_[i].end(), grid_[i].begin(),
-      [](double d) { return M_PI * d / 180.0; });
+  full_theta_ = (grid_[1].front() == 0.0) && (grid_[1].back() == PI);
+  full_phi_ = (grid_[2].front() == 0.0) && (grid_[2].back() == 2 * PI);
 
   lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};

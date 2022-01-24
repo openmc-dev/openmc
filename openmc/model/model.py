@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
-import time
 
 import h5py
 
@@ -204,10 +203,9 @@ class Model:
 
     @classmethod
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
-                 settings='settings.xml'):
+                 settings='settings.xml', tallies='tallies.xml',
+                 plots='plots.xml'):
         """Create model from existing XML files
-        When initializing this way, the user must manually load plots and
-        tallies.
 
         Parameters
         ----------
@@ -217,6 +215,14 @@ class Model:
             Path to materials.xml file
         settings : str
             Path to settings.xml file
+        tallies : str
+            Path to tallies.xml file
+
+            .. versionadded:: 0.13.0
+        plots : str
+            Path to plots.xml file
+
+            .. versionadded:: 0.13.0
 
         Returns
         -------
@@ -227,7 +233,9 @@ class Model:
         materials = openmc.Materials.from_xml(materials)
         geometry = openmc.Geometry.from_xml(geometry, materials)
         settings = openmc.Settings.from_xml(settings)
-        return cls(geometry, materials, settings)
+        tallies = openmc.Tallies.from_xml(tallies) if Path(tallies).exists() else None
+        plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
+        return cls(geometry, materials, settings, tallies, plots)
 
     def init_lib(self, threads=None, geometry_debug=False, restart_file=None,
                  tracks=False, output=True, event_based=None, intracomm=None):

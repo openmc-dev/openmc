@@ -74,7 +74,7 @@ class Trigger(EqualityMixin):
             if score not in self._scores:
                 self._scores.append(score)
 
-    def get_trigger_xml(self, element):
+    def to_xml_element(self):
         """Return XML representation of the trigger
 
         Returns
@@ -84,8 +84,36 @@ class Trigger(EqualityMixin):
 
         """
 
-        subelement = ET.SubElement(element, "trigger")
-        subelement.set("type", self._trigger_type)
-        subelement.set("threshold", str(self._threshold))
+        element = ET.Element("trigger")
+        element.set("type", self._trigger_type)
+        element.set("threshold", str(self._threshold))
         if len(self._scores) != 0:
-            subelement.set("scores", ' '.join(map(str, self._scores)))
+            element.set("scores", ' '.join(self._scores))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate trigger object from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Trigger
+            Trigger object
+
+        """
+        # Generate trigger object
+        trigger_type = elem.get("type")
+        threshold = float(elem.get("threshold"))
+        trigger = cls(trigger_type, threshold)
+
+        # Add scores if present
+        scores = elem.get("scores")
+        if scores is not None:
+            trigger.scores = scores.split()
+
+        return trigger

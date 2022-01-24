@@ -105,3 +105,24 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
         if self.variable == 'nuclide_density':
             element.set("nuclide", self.nuclide)
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate tally derivative from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.TallyDerivative
+            Tally derivative object
+
+        """
+        derivative_id = int(elem.get("id"))
+        variable = elem.get("variable")
+        material = int(elem.get("material"))
+        nuclide = elem.get("nuclide") if variable == "nuclide_density" else None
+        return cls(derivative_id, variable, material, nuclide)

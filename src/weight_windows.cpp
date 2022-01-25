@@ -260,6 +260,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   ww.lower_weight = lower_ww_[ww_index];
   ww.upper_weight = upper_ww_[ww_index];
   ww.survival_weight = ww.lower_weight * survival_ratio_;
+  ww.max_lb_ratio = max_lb_ratio_;
   ww.max_split = max_split_;
   ww.weight_cutoff = weight_cutoff_;
   return ww;

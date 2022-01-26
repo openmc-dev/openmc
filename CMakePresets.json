@@ -24,6 +24,17 @@
             }
         },
         {
+            "name": "spirv_aot_no_workarounds",
+            "displayName": "Intel GPUs w/Ahead of Time (AOT) Compilation",
+            "binaryDir": "${sourceDir}/build/spirv_aot_no_workarounds",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "icc",
+                "CMAKE_CXX_COMPILER": "icpx",
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
+            }
+        },
+        {
             "name": "intel_cpu",
             "displayName": "Intel CPU Offloading",
             "binaryDir": "${sourceDir}/build/intel_cpu",

@@ -49,8 +49,9 @@ class WeightWindows(IDManagerMixin):
         Ratio of the survival weight to the lower weight window bound for
         rouletting
     max_lower_bound_ratio: float
-        Maximum allowed ratio of a weight window's lower bound to particle weight.
-        A factor will be applied to raise the weight window to the particle's weight
+        Maximum allowed ratio of a particle's weight to the weight window's
+	lower bound. A factor will be applied to raise the weight window to
+	be lower than the particle's weight by a factor of max_lower_bound_ratio
         during transport if exceeded. Only applied if > 1.0. (Default: 1.0).
     max_split : int
         Maximum allowable number of particles when splitting
@@ -81,8 +82,8 @@ class WeightWindows(IDManagerMixin):
         Ratio of the survival weight to the lower weight window bound for
         rouletting
     max_lower_bound_ratio: float
-        Maximum allowed ratio of a weight window's lower bound to particle
-        weight. (Default: 1.0)
+        Maximum allowed ratio of a particle's weight to the weight window's
+        lower bound. (Default: 1.0)
     max_split : int
         Maximum allowable number of particles when splitting
     weight_cutoff : float

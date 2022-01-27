@@ -429,6 +429,16 @@ Particle::event_revive_from_secondary()
     this->from_source(secondary_bank_[--secondary_bank_length_]);
     //secondary_bank_.pop_back();
     n_event_ = 0;
+  
+    // Force calculation of cross-sections by setting last energy to zero
+    // Not necessary for correctness, but does allow for reproducibility
+    // for XS cache vs. no XS cache as some rare edge cases result in 
+    // cache being re-used even after URR sample has changed (e.g., when
+    // a neutron is created in an inelastic collision in URR region and then immediately
+    // exits that material never to return. In this case, when the secondary
+    // particle is started, it could re-use the old cache even though the
+    // URR seed state is different.)
+    neutron_xs_.clear();
 
     // Enter new particle in particle track file
     /*

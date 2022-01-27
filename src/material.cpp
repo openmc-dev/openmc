@@ -752,12 +752,6 @@ void Material::init_nuclide_index()
 
 void Material::calculate_xs(Particle& p) const
 {
-  // Set all material macroscopic cross sections to zero
-  p.macro_xs_.total = 0.0;
-  p.macro_xs_.absorption = 0.0;
-  p.macro_xs_.fission = 0.0;
-  p.macro_xs_.nu_fission = 0.0;
-
   if (p.type_ == Particle::Type::neutron) {
     this->calculate_neutron_xs(p);
   } else if (p.type_ == Particle::Type::photon) {
@@ -776,6 +770,9 @@ void Material::calculate_neutron_xs(Particle& p) const
 
   // Initialize position in i_sab_nuclides
   int j = 0;
+
+  // Local macro XS accumulator
+  MacroXS macro = {};
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -811,32 +808,37 @@ void Material::calculate_neutron_xs(Particle& p) const
 
     // Determine microscopic cross sections for this nuclide
     int i_nuclide = device_nuclide_[i];
+    
+    // Determine if we need to save the micro XS data or not
+    #ifdef NO_MICRO_XS_CACHE
+    bool write_cache = false;
+    #else
+    bool write_cache = true;
+    #endif
 
-    // Calculate microscopic cross section for this nuclide
-    const auto& micro {p.neutron_xs_[i_nuclide]};
-    if (p.E_ != micro.last_E
-        || p.sqrtkT_ != micro.last_sqrtkT
-        || i_sab != micro.index_sab
-        || sab_frac != micro.sab_frac) {
-      data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p);
-    }
-
-    // ======================================================================
-    // ADD TO MACROSCOPIC CROSS SECTION
-
+    // Perform microscopic XS lookup
+    MicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, write_cache);
+    
     // Copy atom density of nuclide in material
     double atom_density = device_atom_density_[i];
-
-    // Add contributions to cross sections
-    p.macro_xs_.total += atom_density * micro.total;
-    p.macro_xs_.absorption += atom_density * micro.absorption;
-    p.macro_xs_.fission += atom_density * micro.fission;
-    p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
+    
+    // Accumulate this nuclide's contribution to the local macro XS variable
+    macro.total      += atom_density * nuclide_micro.total;
+    macro.absorption += atom_density * nuclide_micro.absorption;
+    macro.fission    += atom_density * nuclide_micro.fission;
+    macro.nu_fission += atom_density * nuclide_micro.nu_fission;
   }
+
+  // Store accumulated macro XS to particle
+  p.macro_xs_.total      = macro.total;
+  p.macro_xs_.absorption = macro.absorption;
+  p.macro_xs_.fission    = macro.fission;
+  p.macro_xs_.nu_fission = macro.nu_fission;
 }
 
 void Material::calculate_photon_xs(Particle& p) const
 {
+  p.macro_xs_.total = 0.0;
   p.macro_xs_.coherent = 0.0;
   p.macro_xs_.incoherent = 0.0;
   p.macro_xs_.photoelectric = 0.0;

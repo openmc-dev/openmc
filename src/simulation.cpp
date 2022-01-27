@@ -558,9 +558,7 @@ double initialize_history(Particle& p, int64_t index_source)
 void initialize_history_partial(Particle& p)
 {
   // Force calculation of cross-sections by setting last energy to zero
-  if (settings::run_CE) {
-    for (auto& micro : p.neutron_xs_) micro.last_E = 0.0;
-  }
+  p.neutron_xs_.clear();
 
   // Prepare to write out particle track.
   //if (p.write_track_) add_particle_track(p);

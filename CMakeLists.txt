@@ -34,6 +34,7 @@ option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 option(new_w    "Use Ben Forget's Rational Fraction Approximation of Faddeeva W(z) (MIT is default)" OFF)
 option(device_history "Enable history-based transport on device" OFF)
 option(device_printf  "Enable printf statements on device"       OFF)
+option(disable_xs_cache "Disable Micro XS cache"       OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -437,6 +438,10 @@ endif()
 
 if(device_printf)
   target_compile_definitions(libopenmc PRIVATE DEVICE_PRINTF)
+endif()
+
+if(disable_xs_cache)
+  target_compile_definitions(libopenmc PRIVATE NO_MICRO_XS_CACHE)
 endif()
 
 #===============================================================================

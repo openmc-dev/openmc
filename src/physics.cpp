@@ -466,6 +466,91 @@ void sample_positron_reaction(Particle& p)
   p.event_ = TallyEvent::ABSORB;
 }
 
+// If no micro XS cache is being used then we must perform all microscopic cross
+// section lookups until nuclide is sapled. This involves extra logic to track
+// the presence of S(A,B) tables, so separate implementations (with and without the
+// micro XS cache) are given below.
+#ifdef NO_MICRO_XS_CACHE
+int sample_nuclide(Particle& p)
+{
+  // Sample cumulative distribution function
+  double cutoff = prn(p.current_seed()) * p.macro_xs_.total;
+
+  // Get pointers to nuclide/density arrays
+  const auto& mat = model::materials[p.material_];
+  int n = mat.nuclide_.size();
+
+  // Find energy index on energy grid
+  int neutron = static_cast<int>(Particle::Type::neutron);
+  int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
+
+  // Determine if this material has S(a,b) tables
+  bool check_sab = (mat.thermal_tables_.size() > 0);
+
+  // Initialize position in i_sab_nuclides
+  int j = 0;
+
+  double prob = 0.0;
+  for (int i = 0; i < n; ++i) {
+    // Get atom density
+    int i_nuclide = mat.device_nuclide_[i];
+    double atom_density = mat.device_atom_density_[i];
+
+    // ======================================================================
+    // CHECK FOR S(A,B) TABLE
+
+    int i_sab = C_NONE;
+    double sab_frac = 0.0;
+
+    // Check if this nuclide matches one of the S(a,b) tables specified.
+    // This relies on thermal_tables_ being sorted by .index_nuclide
+    if (check_sab) {
+      const auto& sab {mat.device_thermal_tables_[j]};
+      if (i == sab.index_nuclide) {
+        // Get index in sab_tables
+        i_sab = sab.index_table;
+        sab_frac = sab.fraction;
+
+        // If particle energy is greater than the highest energy for the
+        // S(a,b) table, then don't use the S(a,b) table
+        if (p.E_ > data::device_thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
+
+        // Increment position in thermal_tables_
+        ++j;
+
+        // Don't check for S(a,b) tables if there are no more left
+        if (j == mat.thermal_tables_.size()) check_sab = false;
+      }
+    }
+
+    // CHECK FOR S(A,B) TABLE FINISHED
+    // ======================================================================
+    
+    // Lookup micro XS or retrieve from XS cache
+    double total;
+    bool cache_micro = false;
+    MicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, cache_micro);
+    total = xs.total;
+
+    // Increment probability to compare to cutoff
+    prob += atom_density * total;
+    if (prob >= cutoff) {
+      // If no micro XS cache is being used, we need to store this nuclide's micro XS data
+      // in the particle for other collision physics kernels to utilize.
+      cache_micro = true;
+      data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, cache_micro);
+      return i_nuclide;
+    }
+  }
+
+  /*
+  // If we reach here, no nuclide was sampled
+  p.write_restart();
+  throw std::runtime_error{"Did not sample any nuclide during collision."};
+  */
+  printf("Did not sample any nuclide during collision.\n");
+}
+#else
 int sample_nuclide(Particle& p)
 {
   // Sample cumulative distribution function
@@ -493,6 +578,7 @@ int sample_nuclide(Particle& p)
   */
   printf("Did not sample any nuclide during collision.\n");
 }
+#endif
 
 int sample_element(Particle& p)
 {
@@ -652,7 +738,7 @@ void scatter(Particle& p, int i_nuclide)
 
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {data::nuclides[i_nuclide]};
-  const auto& micro {p.neutron_xs_[i_nuclide]};
+  auto& micro {p.neutron_xs_[i_nuclide]};
   int i_temp =  micro.index_temp;
 
   // For tallying purposes, this routine might be called directly. In that
@@ -662,7 +748,7 @@ void scatter(Particle& p, int i_nuclide)
 
   // Calculate elastic cross section if it wasn't precalculated
   if (micro.elastic == CACHE_INVALID) {
-    nuc.calculate_elastic_xs(p);
+    micro.elastic = nuc.calculate_elastic_xs(micro.index_temp, micro.index_grid, micro.interp_factor);
   }
 
   double prob = micro.elastic - micro.thermal;

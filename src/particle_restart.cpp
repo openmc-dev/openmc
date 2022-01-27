@@ -109,9 +109,7 @@ void run_particle_restart()
   init_particle_seeds(particle_seed, p.seeds_);
 
   // Force calculation of cross-sections by setting last energy to zero
-  if (settings::run_CE) {
-    for (auto& micro : p.neutron_xs_) micro.last_E = 0.0;
-  }
+  p.neutron_xs_.clear();
 
   // Prepare to write out particle track.
   if (p.write_track_) add_particle_track(p);

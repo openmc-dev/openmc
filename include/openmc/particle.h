@@ -14,6 +14,7 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
+#include "openmc/settings.h"
 #include "openmc/tallies/filter_match.h"
 
 #ifdef DAGMC
@@ -36,7 +37,11 @@
 //#define NEUTRON_XS_SIZE 69 // HM-Small
 //#define NEUTRON_XS_SIZE 272 // HM-Large
 //#define NEUTRON_XS_SIZE 92 // SMR
+#ifdef NO_MICRO_XS_CACHE
+#define NEUTRON_XS_SIZE 1
+#else
 #define NEUTRON_XS_SIZE 296 // Depleted SMR uses 296
+#endif
 //#define NEUTRON_XS_SIZE 35 // Fresh Pincell
 #define PHOTON_XS_SIZE 9 // Pincell example uses 9
 #define COORD_SIZE 6 // Depleted SMR uses 6
@@ -93,11 +98,11 @@ public:
   bool rotated {false};  //!< Is the level rotated?
 };
 
+
 //==============================================================================
 //! Cached microscopic cross sections for a particular nuclide at the current
 //! energy
 //==============================================================================
-
 struct NuclideMicroXS {
   // Microscopic cross sections in barns
   double total;            //!< total cross section
@@ -129,6 +134,35 @@ struct NuclideMicroXS {
   double last_E {0.0};      //!< Last evaluated energy
   double last_sqrtkT {0.0}; //!< Last temperature in sqrt(Boltzmann constant
                             //!< * temperature (eV))
+};
+
+class NuclideMicroXSCache {
+  public:
+  NuclideMicroXS neutron_xs_[NEUTRON_XS_SIZE]; //!< Microscopic neutron cross sections
+  #pragma omp declare target
+  NuclideMicroXS  operator [](int64_t i) const
+  {
+    #ifdef NO_MICRO_XS_CACHE
+    return neutron_xs_[0];
+    #else
+    return neutron_xs_[i];
+    #endif
+  }
+  NuclideMicroXS& operator [](int64_t i)
+  {
+    #ifdef NO_MICRO_XS_CACHE
+    return neutron_xs_[0];
+    #else
+    return neutron_xs_[i];
+    #endif
+  }
+  #pragma omp end declare target
+  void clear()
+  {
+    if (settings::run_CE) {
+      for (auto& micro : neutron_xs_) micro.last_E = 0.0;
+    }
+  }
 };
 
 //==============================================================================
@@ -164,6 +198,17 @@ struct MacroXS {
   double incoherent;      //!< macroscopic incoherent xs
   double photoelectric;   //!< macroscopic photoelectric xs
   double pair_production; //!< macroscopic pair production xs
+};
+
+//==============================================================================
+// MICROXS contains microscopic neutron cross sections for a nuclide
+//==============================================================================
+
+struct MicroXS {
+  double total;         //!< macroscopic total xs
+  double absorption;    //!< macroscopic absorption xs
+  double fission;       //!< macroscopic fission xs
+  double nu_fission;    //!< macroscopic production xs
 };
 
 //==============================================================================
@@ -352,7 +397,8 @@ public:
 
   // TODO: neutron_xs_ can eventually be converted to an allocated array, with size fixed at runtime
   //std::vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
-  NuclideMicroXS neutron_xs_[NEUTRON_XS_SIZE]; //!< Microscopic neutron cross sections
+  //NuclideMicroXS neutron_xs_[NEUTRON_XS_SIZE]; //!< Microscopic neutron cross sections
+  NuclideMicroXSCache neutron_xs_; //!< Microscopic neutron cross sections
 
   // TODO: photon_xs_ can eventually be converted to an allocated array, with size fixed at runtime
   //std::vector<ElementMicroXS> photon_xs_; //!< Microscopic photon cross sections

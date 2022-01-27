@@ -1345,20 +1345,22 @@ score_general_ce(Particle& p, int i_tally, int start_index, int filter_index,
         if (p.event_mt_ != ELASTIC) continue;
         score = p.wgt_last_ * flux;
       } else {
+        auto& micro {p.neutron_xs_[i_nuclide]};
         if (i_nuclide >= 0) {
-          if (p.neutron_xs_[i_nuclide].elastic == CACHE_INVALID)
-            data::nuclides[i_nuclide].calculate_elastic_xs(p);
-          score = p.neutron_xs_[i_nuclide].elastic * atom_density * flux;
+          if (micro.elastic == CACHE_INVALID)
+            micro.elastic = data::nuclides[i_nuclide].calculate_elastic_xs(micro.index_temp, micro.index_grid, micro.interp_factor);
+          score = micro.elastic * atom_density * flux;
         } else {
           score = 0.;
           if (p.material_ != MATERIAL_VOID) {
             const Material& material {model::materials[p.material_]};
             for (auto i = 0; i < material.nuclide_.size(); ++i) {
               auto j_nuclide = material.nuclide_[i];
+              auto& micro {p.neutron_xs_[j_nuclide]};
               auto atom_density = material.atom_density_(i);
-              if (p.neutron_xs_[j_nuclide].elastic == CACHE_INVALID)
-                data::nuclides[j_nuclide].calculate_elastic_xs(p);
-              score += p.neutron_xs_[j_nuclide].elastic * atom_density
+              if (micro.elastic == CACHE_INVALID)
+                micro.elastic = data::nuclides[j_nuclide].calculate_elastic_xs(micro.index_temp, micro.index_grid, micro.interp_factor);
+              score += micro.elastic * atom_density
                 * flux;
             }
           }

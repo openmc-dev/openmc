@@ -215,9 +215,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node) : Lattice {lat_node}
 
 int32_t const& RectLattice::operator[](array<int, 3> const& i_xyz)
 {
-  int indx =
-    n_cells_[0] * n_cells_[1] * i_xyz[2] + n_cells_[0] * i_xyz[1] + i_xyz[0];
-  return universes_[indx];
+  return universes_[get_flat_index(i_xyz)];
 }
 
 //==============================================================================
@@ -321,6 +319,12 @@ void RectLattice::get_indices(
       result[2] = std::floor(iz_);
     }
   }
+}
+
+int RectLattice::get_flat_index(const array<int, 3>& i_xyz) const
+{
+  return n_cells_[0] * n_cells_[1] * i_xyz[2] + n_cells_[0] * i_xyz[1] +
+         i_xyz[0];
 }
 
 //==============================================================================
@@ -662,9 +666,7 @@ void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
 
 int32_t const& HexLattice::operator[](array<int, 3> const& i_xyz)
 {
-  int indx = (2 * n_rings_ - 1) * (2 * n_rings_ - 1) * i_xyz[2] +
-             (2 * n_rings_ - 1) * i_xyz[1] + i_xyz[0];
-  return universes_[indx];
+  return universes_[get_flat_index(i_xyz)];
 }
 
 //==============================================================================
@@ -927,6 +929,12 @@ void HexLattice::get_indices(
   // update outgoing indices
   result[0] += i1_chg;
   result[1] += i2_chg;
+}
+
+int HexLattice::get_flat_index(const array<int, 3>& i_xyz) const
+{
+  return (2 * n_rings_ - 1) * (2 * n_rings_ - 1) * i_xyz[2] +
+         (2 * n_rings_ - 1) * i_xyz[1] + i_xyz[0];
 }
 
 //==============================================================================

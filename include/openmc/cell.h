@@ -172,11 +172,12 @@ public:
   //! \return Map with cell indexes as keys and
   //! instances as values
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(
-    int32_t instance = 0) const;
+    int32_t instance = 0, Position* hint = nullptr) const;
 
 protected:
   //! Determine the path to this cell instance in the geometry hierarchy
-  vector<ParentCell> find_parent_cells(int32_t instance) const;
+  vector<ParentCell> find_parent_cells(
+    int32_t instance, Position* hint = nullptr) const;
 
   //! Inner function for retrieving contained cells
   void get_contained_cells_inner(

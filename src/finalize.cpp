@@ -119,7 +119,6 @@ int openmc_finalize()
   simulation::keff = 1.0;
   simulation::n_lost_particles = 0;
   simulation::need_depletion_rx = false;
-  simulation::satisfy_triggers = false;
   simulation::total_gen = 0;
 
   simulation::entropy_mesh = nullptr;
@@ -167,6 +166,7 @@ int openmc_reset()
   simulation::k_col_tra = 0.0;
   simulation::k_abs_tra = 0.0;
   simulation::k_sum = {0.0, 0.0};
+  simulation::satisfy_triggers = false;
 
   settings::cmfd_run = false;
 

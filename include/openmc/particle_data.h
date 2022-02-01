@@ -310,8 +310,7 @@ private:
 
   // Weight window information
   int n_split_ {0}; // Number of times this particle has been split
-  // Particle-specific factor for on-the-fly weight window adjustment
-  double ww_factor_ {0.0};
+  double ww_factor_ {0.0}; // Particle-specific factor for on-the-fly weight window adjustment
 
 // DagMC state variables
 #ifdef DAGMC

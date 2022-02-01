@@ -1050,6 +1050,12 @@ sub-elements/attributes:
 
     *Default*: 3.0
 
+  :max_lower_bound_ratio:
+    Maximum allowed ratio of a particle's weight to the weight window's lower
+    bound. A factor will be applied to raise the weight window to be lower than
+	  the particle's weight by a factor of max_lower_bound_ratio during transport
+    if exceeded.
+
   :max_split:
     Maximum allowable number of particles when splitting
 

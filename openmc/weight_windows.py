@@ -130,8 +130,11 @@ class WeightWindows(IDManagerMixin):
                              'do not match')
 
         self.survival_ratio = survival_ratio
-        if self.max_lower_bound_ratio is not None:
+
+        self._max_lower_bound_ratio = None
+        if max_lower_bound_ratio is not None:
             self.max_lower_bound_ratio = max_lower_bound_ratio
+
         self.max_split = max_split
         self.weight_cutoff = weight_cutoff
 

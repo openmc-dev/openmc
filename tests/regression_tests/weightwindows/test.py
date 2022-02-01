@@ -93,14 +93,14 @@ def model():
                                 None,
                                 10.0,
                                 e_bnds,
-                                max_lb_ratio=1.0)
+                                max_lower_bound_ratio=1.0)
 
     ww_p = openmc.WeightWindows(ww_mesh,
                                 ww_p_lower_bnds,
                                 None,
                                 10.0,
                                 e_bnds,
-                                max_lb_ratio=1.0)
+                                max_lower_bound_ratio=1.0)
 
     model.settings.weight_windows = [ww_n, ww_p]
 

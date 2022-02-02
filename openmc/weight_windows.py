@@ -50,8 +50,8 @@ class WeightWindows(IDManagerMixin):
         rouletting
     max_lower_bound_ratio : float
         Maximum allowed ratio of a particle's weight to the weight window's
-	lower bound. A factor will be applied to raise the weight window to
-	be lower than the particle's weight by a factor of max_lower_bound_ratio
+        lower bound. A factor will be applied to raise the weight window to be lower
+        than the particle's weight by a factor of max_lower_bound_ratio
         during transport if exceeded.
     max_split : int
         Maximum allowable number of particles when splitting
@@ -213,7 +213,7 @@ class WeightWindows(IDManagerMixin):
     @max_lower_bound_ratio.setter
     def max_lower_bound_ratio(self, val):
         cv.check_type('Maximum lower bound ratio', val, Real)
-        cv.check_greater_than('Maximum lower bound ratio', val, 1.0, True)
+        cv.check_greater_than('Maximum lower bound ratio', val, 1.0)
         self._max_lower_bound_ratio = val
 
     @property

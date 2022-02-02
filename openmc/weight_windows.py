@@ -101,11 +101,11 @@ class WeightWindows(IDManagerMixin):
         cv.check_length('Lower window bounds', self.lower_ww_bounds, len(self.energy_bins))
 
         if upper_ww_bounds is not None and upper_bound_ratio:
-            raise ValueError("Exactly one of uppwer_ww_bounds and "
+            raise ValueError("Exactly one of upper_ww_bounds and "
                              "upper_bound_ratio must be present.")
 
         if upper_ww_bounds is None and upper_bound_ratio is None:
-            raise ValueError("Exactly one of uppwer_ww_bounds and "
+            raise ValueError("Exactly one of upper_ww_bounds and "
                              "upper_bound_ratio must be present.")
 
         if upper_bound_ratio:
@@ -117,7 +117,7 @@ class WeightWindows(IDManagerMixin):
             self.upper_ww_bounds = upper_ww_bounds
 
         if len(self.lower_ww_bounds) != len(self.upper_ww_bounds):
-            raise ValueError('Size of the lower and upper weight window bounds'
+            raise ValueError('Size of the lower and upper weight window bounds '
                              'do not match')
 
         self.survival_ratio = survival_ratio

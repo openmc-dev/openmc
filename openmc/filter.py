@@ -510,20 +510,20 @@ class CellFilter(WithIDFilter):
 
 
 class CellFromFilter(WithIDFilter):
-    """Bins tally on which Cell the neutron came from.
+    """Bins tally on which cell the particle came from.
 
     Parameters
     ----------
     bins : openmc.Cell, Integral, or iterable thereof
-        The Cell(s) to tally. Either openmc.Cell objects or their
-        Integral ID numbers can be used.
+        The cell(s) to tally. Either :class:`openmc.Cell` objects or their
+        integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
     bins : Integral or Iterable of Integral
-        openmc.Cell IDs.
+        Cell IDs.
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -534,20 +534,20 @@ class CellFromFilter(WithIDFilter):
 
 
 class CellbornFilter(WithIDFilter):
-    """Bins tally events based on which Cell the neutron was born in.
+    """Bins tally events based on which cell the particle was born in.
 
     Parameters
     ----------
     bins : openmc.Cell, Integral, or iterable thereof
-        The birth Cells to tally. Either openmc.Cell objects or their
-        Integral ID numbers can be used.
+        The birth cells to tally. Either :class:`openmc.Cell` objects or their
+        integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
     bins : Iterable of Integral
-        openmc.Cell IDs.
+        Cell IDs.
     id : int
         Unique identifier for the filter
     num_bins : Integral

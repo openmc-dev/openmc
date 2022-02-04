@@ -145,8 +145,8 @@ public:
       : next_index {_index}, max_surface {_max_surface}, distance {_distance}
     {}
     int next_index {-1};
-    double distance {INFTY};
     bool max_surface {true};
+    double distance {INFTY};
     bool operator<(const MeshDistance& o) const
     {
       return distance < o.distance;

@@ -490,6 +490,9 @@ void initialize_history(Particle& p, int64_t index_source)
   // Reset split counter
   p.n_split() = 0;
 
+  // Reset weight window ratio
+  p.ww_factor() = 0.0;
+
   // set random number seed
   int64_t particle_seed =
     (simulation::total_gen + overall_generation() - 1) * settings::n_particles +

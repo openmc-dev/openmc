@@ -169,6 +169,7 @@ public:
   //! Get all cell instances contained by this cell
   //! \param[in] instance Instance of the cell for which to get contained cells
   //! (default instance is zero)
+  //! \param[in] hint positional hint for determining the parent cells
   //! \return Map with cell indexes as keys and
   //! instances as values
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(
@@ -176,8 +177,24 @@ public:
 
 protected:
   //! Determine the path to this cell instance in the geometry hierarchy
+  //! \param[in] instance of the cell to find parent cells for
+  //! \param[in] r position used to do a fast search for parent cells
+  //! \return parent cells
   vector<ParentCell> find_parent_cells(
-    int32_t instance, Position* hint = nullptr) const;
+    int32_t instance, const Position& r) const;
+
+  //! Determine the path to this cell instance in the geometry hierarchy
+  //! \param[in] instance of the cell to find parent cells for
+  //! \param[in] p particle used to do a fast search for parent cells
+  //! \return parent cells
+  vector<ParentCell> find_parent_cells(
+    int32_t instance, Particle& p) const;
+
+  //! Determine the path to this cell instance in the geometry hierarchy
+  //! \param[in] instance of the cell to find parent cells for
+  //! \return parent cells
+  vector<ParentCell> find_parent_cells_exhaustive(
+    int32_t instance) const;
 
   //! Inner function for retrieving contained cells
   void get_contained_cells_inner(

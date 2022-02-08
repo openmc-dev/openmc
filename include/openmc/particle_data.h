@@ -341,6 +341,8 @@ public:
   const int& cell_instance() const { return cell_instance_; }
   LocalCoord& coord(int i) { return coord_[i]; }
   const LocalCoord& coord(int i) const { return coord_[i]; }
+  const vector<LocalCoord>& coord() const { return coord_; }
+
 
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }

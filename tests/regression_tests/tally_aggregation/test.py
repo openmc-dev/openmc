@@ -1,5 +1,4 @@
-import hashlib
-
+import numpy as np
 import openmc
 import pytest
 
@@ -67,25 +66,28 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         # Perform tally aggregations across filter bins, nuclides and scores
         outstr = ''
 
-        # Sum across all energy filter bins
-        tally_sum = tally.summation(filter_type=openmc.EnergyFilter)
-        outstr += ', '.join(map(str, tally_sum.mean))
-        outstr += ', '.join(map(str, tally_sum.std_dev))
+        # This test occasionally fails in CI due to differences in the 8th
+        # significant digit. Lowering precision to 7 digits prevents failures
+        with np.printoptions(precision=7):
+            # Sum across all energy filter bins
+            tally_sum = tally.summation(filter_type=openmc.EnergyFilter)
+            outstr += ', '.join(map(str, tally_sum.mean))
+            outstr += ', '.join(map(str, tally_sum.std_dev))
 
-        # Sum across all distribcell filter bins
-        tally_sum = tally.summation(filter_type=openmc.DistribcellFilter)
-        outstr += ', '.join(map(str, tally_sum.mean))
-        outstr += ', '.join(map(str, tally_sum.std_dev))
+            # Sum across all distribcell filter bins
+            tally_sum = tally.summation(filter_type=openmc.DistribcellFilter)
+            outstr += ', '.join(map(str, tally_sum.mean))
+            outstr += ', '.join(map(str, tally_sum.std_dev))
 
-        # Sum across all nuclides
-        tally_sum = tally.summation(nuclides=['U234', 'U235', 'U238'])
-        outstr += ', '.join(map(str, tally_sum.mean))
-        outstr += ', '.join(map(str, tally_sum.std_dev))
+            # Sum across all nuclides
+            tally_sum = tally.summation(nuclides=['U234', 'U235', 'U238'])
+            outstr += ', '.join(map(str, tally_sum.mean))
+            outstr += ', '.join(map(str, tally_sum.std_dev))
 
-        # Sum across all scores
-        tally_sum = tally.summation(scores=['nu-fission', 'total'])
-        outstr += ', '.join(map(str, tally_sum.mean))
-        outstr += ', '.join(map(str, tally_sum.std_dev))
+            # Sum across all scores
+            tally_sum = tally.summation(scores=['nu-fission', 'total'])
+            outstr += ', '.join(map(str, tally_sum.mean))
+            outstr += ', '.join(map(str, tally_sum.std_dev))
 
         return outstr
 

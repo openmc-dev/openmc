@@ -1317,13 +1317,64 @@ struct ParentCellStack {
 };
 
 vector<ParentCell> Cell::find_parent_cells(
-  int32_t instance, Position* hint) const
+  int32_t instance, const Position& r) const {
+
+  // create a temporary particle
+  Particle dummy_particle {};
+  dummy_particle.clear();
+  dummy_particle.r() = r;
+  dummy_particle.u() = {0., 0., 1.};
+
+  return find_parent_cells(instance, dummy_particle);
+}
+
+vector<ParentCell> Cell::find_parent_cells(
+  int32_t instance, Particle& p) const {
+  // look up the particle's location
+  openmc::exhaustive_find_cell(p);
+  const auto& coords = p.coord();
+
+  // build a parent cell stack from the particle coordinates
+  ParentCellStack stack;
+  bool cell_found = false;
+  for (auto it = coords.begin(); it != coords.end(); it++) {
+    const auto& coord = *it;
+    auto& cell = model::cells[coord.cell];
+    // if the cell at this level matches the current cell, stop adding to the stack
+    if (coord.cell == model::cell_map[this->id_]) {
+      cell_found = true;
+      break;
+    }
+
+    // if filled with a lattice, get the lattice index from the next
+    // level in the coordinates to push to the stack
+    int lattice_idx = C_NONE;
+    if (cell->type_ == Fill::LATTICE) {
+      const auto& next_coord = *(it + 1);
+      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(next_coord.lattice_i);
+    }
+    stack.push(coord.universe, {coord.cell, lattice_idx});
+  }
+
+  // if this loop finished because the cell was found and
+  // the instance matches the one requested in the call
+  // we have the correct path and can return the stack
+  if (cell_found && stack.compute_instance(this->distribcell_index_) == instance) {
+    return stack.parent_cells();
+  }
+
+  // fall back on an exhaustive search for the cell's parents
+  return find_parent_cells_exhaustive(instance);
+}
+
+
+vector<ParentCell> Cell::find_parent_cells_exhaustive(
+  int32_t instance) const
 {
   ParentCellStack stack;
   // start with this cell's universe
   int32_t prev_univ_idx;
   int32_t univ_idx = this->universe_;
-  bool hint_used = false;
 
   while (true) {
     const auto& univ = model::universes[univ_idx];
@@ -1352,38 +1403,26 @@ vector<ParentCell> Cell::find_parent_cells(
         const auto& lattice = model::lattices[cell->fill_];
         const auto& lattice_univs = lattice->universes_;
 
-        // if a hint position is provided, look up the lattice cell
-        // for that position
-        if (hint && !hint_used) {
-          std::array<int, 3> hint_idx;
-          lattice->get_indices(*hint, Direction(0.0, 0.0, 0.0), hint_idx);
-          int hint_offset = lattice->get_flat_index(hint_idx);
-          if (univ_idx == lattice_univs[hint_offset]) {
-            hint_used = true;
-            stack.push(univ_idx, {model::cell_map[cell->id_], hint_offset});
-          }
-        } else {
-          // start search for universe
-          auto lat_it = lattice_univs.begin();
-          while (true) {
-            // find the next lattice cell with this universe
-            lat_it = std::find(lat_it, lattice_univs.end(), univ_idx);
-            if (lat_it == lattice_univs.end())
-              break;
-
-            int lattice_idx = lat_it - lattice_univs.begin();
-
-            // move iterator forward one to avoid finding the same entry
-            lat_it++;
-            if (stack.visited(
-                  univ_idx, {model::cell_map[cell->id_], lattice_idx}))
-              continue;
-
-            // add this cell and lattice index to the stack and exit loop
-            stack.push(univ_idx, {model::cell_map[cell->id_], lattice_idx});
-            univ_idx = cell->universe_;
+        // start search for universe
+        auto lat_it = lattice_univs.begin();
+        while (true) {
+          // find the next lattice cell with this universe
+          lat_it = std::find(lat_it, lattice_univs.end(), univ_idx);
+          if (lat_it == lattice_univs.end())
             break;
-          }
+
+          int lattice_idx = lat_it - lattice_univs.begin();
+
+          // move iterator forward one to avoid finding the same entry
+          lat_it++;
+          if (stack.visited(
+                univ_idx, {model::cell_map[cell->id_], lattice_idx}))
+            continue;
+
+          // add this cell and lattice index to the stack and exit loop
+          stack.push(univ_idx, {model::cell_map[cell->id_], lattice_idx});
+          univ_idx = cell->universe_;
+          break;
         }
       }
       // if we've updated the universe, break
@@ -1426,7 +1465,14 @@ std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(
     return contained_cells;
 
   // find the pathway through the geometry to this cell
-  vector<ParentCell> parent_cells = this->find_parent_cells(instance, hint);
+  vector<ParentCell> parent_cells;
+
+  // if a positional hint is provided, attempt to do a fast lookup
+  // of the parent cells
+  if (hint)
+    parent_cells = find_parent_cells(instance, *hint);
+  else
+    parent_cells = find_parent_cells_exhaustive(instance);
 
   // if this cell is filled w/ a material, it contains no other cells
   if (type_ != Fill::MATERIAL) {

@@ -1364,11 +1364,11 @@ vector<ParentCell> Cell::find_parent_cells(
   }
 
   // fall back on an exhaustive search for the cell's parents
-  return find_parent_cells_exhaustive(instance);
+  return exhaustive_find_parent_cells(instance);
 }
 
 
-vector<ParentCell> Cell::find_parent_cells_exhaustive(
+vector<ParentCell> Cell::exhaustive_find_parent_cells(
   int32_t instance) const
 {
   ParentCellStack stack;
@@ -1472,7 +1472,7 @@ std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(
   if (hint)
     parent_cells = find_parent_cells(instance, *hint);
   else
-    parent_cells = find_parent_cells_exhaustive(instance);
+    parent_cells = exhaustive_find_parent_cells(instance);
 
   // if this cell is filled w/ a material, it contains no other cells
   if (type_ != Fill::MATERIAL) {

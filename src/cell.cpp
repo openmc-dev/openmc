@@ -1321,7 +1321,6 @@ vector<ParentCell> Cell::find_parent_cells(
 
   // create a temporary particle
   Particle dummy_particle {};
-  dummy_particle.clear();
   dummy_particle.r() = r;
   dummy_particle.u() = {0., 0., 1.};
 
@@ -1331,7 +1330,7 @@ vector<ParentCell> Cell::find_parent_cells(
 vector<ParentCell> Cell::find_parent_cells(
   int32_t instance, Particle& p) const {
   // look up the particle's location
-  openmc::exhaustive_find_cell(p);
+  exhaustive_find_cell(p);
   const auto& coords = p.coord();
 
   // build a parent cell stack from the particle coordinates
@@ -1339,7 +1338,7 @@ vector<ParentCell> Cell::find_parent_cells(
   bool cell_found = false;
   for (auto it = coords.begin(); it != coords.end(); it++) {
     const auto& coord = *it;
-    auto& cell = model::cells[coord.cell];
+    const auto& cell = model::cells[coord.cell];
     // if the cell at this level matches the current cell, stop adding to the stack
     if (coord.cell == model::cell_map[this->id_]) {
       cell_found = true;
@@ -1469,10 +1468,8 @@ std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(
 
   // if a positional hint is provided, attempt to do a fast lookup
   // of the parent cells
-  if (hint)
-    parent_cells = find_parent_cells(instance, *hint);
-  else
-    parent_cells = exhaustive_find_parent_cells(instance);
+  parent_cells = hint ? find_parent_cells(instance, *hint)
+                      : exhaustive_find_parent_cells(instance);
 
   // if this cell is filled w/ a material, it contains no other cells
   if (type_ != Fill::MATERIAL) {

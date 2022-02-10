@@ -144,8 +144,7 @@ def current_batch():
 def export_properties(filename=None, output=True):
     """Export physical properties.
 
-    .. versionchanged:: 0.13.0
-        The *output* argument was added.
+    .. versionadded:: 0.13.0
 
     Parameters
     ----------
@@ -227,6 +226,8 @@ def hard_reset():
 
 def import_properties(filename):
     """Import physical properties.
+
+    .. versionadded:: 0.13.0
 
     Parameters
     ----------

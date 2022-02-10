@@ -869,6 +869,8 @@ class Tally(IDManagerMixin):
     def from_xml_element(cls, elem, **kwargs):
         """Generate tally object from an XML element
 
+        .. versionadded:: 0.13.0
+
         Parameters
         ----------
         elem : xml.etree.ElementTree.Element

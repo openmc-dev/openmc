@@ -18,7 +18,7 @@ class WeightWindows(IDManagerMixin):
     This class enables you to specify weight window parameters that are used in
     a simulation. Multiple sets of weight windows can be defined for different
     meshes and different particles. An iterable of :class:`WeightWindows`
-    instances can be assigned to the :attr:`~openmc.Settings.weight_windows`
+    instances can be assigned to the :attr:`openmc.Settings.weight_windows`
     attribute, which is then exported to XML.
 
     Weight window lower/upper bounds are to be specified for each combination of

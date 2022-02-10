@@ -490,14 +490,14 @@ where
 .. math::
     :label: dist-xtorus-4
 
-    \begin{align*}
+    \begin{aligned}
     c_2 &= Du^2 + v^2 + w^2 \\
     c_1 &= 2(Du\bar{x} + v\bar{y} + w\bar{z}) \\
     c_0 &= D\bar{x}^2 + \bar{y}^2 + \bar{z}^2 + A^2 - C^2 \\
     c_2' &= 4A^2 (v^2 + w^2) \\
     c_1' &= 8A^2 (v\bar{y} + w\bar{z}) \\
     c_0' &= 4A^2(\bar{y}^2 + \bar{z}^2).
-    \end{align*}
+    \end{aligned}
 
 Expanding the left-hand side and collecting like powers of :math:`d` on one
 side, we obtain

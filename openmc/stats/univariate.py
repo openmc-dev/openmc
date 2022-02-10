@@ -244,10 +244,13 @@ class Uniform(Univariate):
         params = get_text(elem, 'parameters').split()
         return cls(*map(float, params))
 
+
 class PowerLaw(Univariate):
     """Distribution with power law probability over a finite interval [a,b]
-    
+
     The power law distribution has density function :math:`p(x) dx = c x^n dx`.
+
+    .. versionadded:: 0.13.0
 
     Parameters
     ----------
@@ -914,6 +917,8 @@ class Mixture(Univariate):
     def to_xml_element(self, element_name):
         """Return XML representation of the mixture distribution
 
+        .. versionadded:: 0.13.0
+
         Parameters
         ----------
         element_name : str
@@ -938,6 +943,8 @@ class Mixture(Univariate):
     @classmethod
     def from_xml_element(cls, elem):
         """Generate mixture distribution from an XML element
+
+        .. versionadded:: 0.13.0
 
         Parameters
         ----------

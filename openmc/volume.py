@@ -358,6 +358,8 @@ class VolumeCalculation:
     def from_xml_element(cls, elem):
         """Generate volume calculation object from an XML element
 
+        .. versionadded:: 0.13.0
+
         Parameters
         ----------
         elem : xml.etree.ElementTree.Element

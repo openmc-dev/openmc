@@ -274,7 +274,9 @@ Prerequisites
 .. _MPICH: https://www.mpich.org
 .. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
 .. _DAGMC: https://svalinn.github.io/DAGMC/index.html
+.. _MOAB: https://bitbucket.org/fathomteam/moab
 .. _libMesh: https://libmesh.github.io/
+.. _libpng: http://www.libpng.org/pub/png/libpng.html
 
 Obtaining the Source
 --------------------

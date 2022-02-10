@@ -2193,6 +2193,8 @@ class XTorus(TorusMixin, Surface):
     r"""A torus of the form :math:`(x - x_0)^2/B^2 + (\sqrt{(y - y_0)^2 + (z -
     z_0)^2} - A)^2/C^2 - 1 = 0`.
 
+    .. versionadded:: 0.13.0
+
     Parameters
     ----------
     x0 : float
@@ -2262,6 +2264,8 @@ class YTorus(TorusMixin, Surface):
     r"""A torus of the form :math:`(y - y_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (z -
     z_0)^2} - A)^2/C^2 - 1 = 0`.
 
+    .. versionadded:: 0.13.0
+
     Parameters
     ----------
     x0 : float
@@ -2330,6 +2334,8 @@ class YTorus(TorusMixin, Surface):
 class ZTorus(TorusMixin, Surface):
     r"""A torus of the form :math:`(z - z_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (y -
     y_0)^2} - A)^2/C^2 - 1 = 0`.
+
+    .. versionadded:: 0.13.0
 
     Parameters
     ----------

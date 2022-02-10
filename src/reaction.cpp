@@ -65,6 +65,23 @@ Reaction::Reaction(hid_t group, const vector<int>& temperatures)
   }
 }
 
+double Reaction::xs(
+  gsl::index i_temp, gsl::index i_grid, double interp_factor) const
+{
+  // If energy is below threshold, return 0. Otherwise interpolate between
+  // nearest grid points
+  const auto& x = xs_[i_temp];
+  return (i_grid < x.threshold)
+           ? 0.0
+           : (1.0 - interp_factor) * x.value[i_grid - x.threshold] +
+               interp_factor * x.value[i_grid - x.threshold + 1];
+}
+
+double Reaction::xs(const NuclideMicroXS& micro) const
+{
+  return this->xs(micro.index_temp, micro.index_grid, micro.interp_factor);
+}
+
 double Reaction::collapse_rate(gsl::index i_temp,
   gsl::span<const double> energy, gsl::span<const double> flux,
   const vector<double>& grid) const

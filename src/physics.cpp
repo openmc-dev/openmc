@@ -541,23 +541,15 @@ Reaction& sample_fission(int i_nuclide, Particle& p)
     }
   }
 
-  // Get grid index and interpolatoin factor and sample fission cdf
-  int i_temp = p.neutron_xs(i_nuclide).index_temp;
-  int i_grid = p.neutron_xs(i_nuclide).index_grid;
-  double f = p.neutron_xs(i_nuclide).interp_factor;
+  // Get grid index and interpolation factor and sample fission cdf
+  const auto& micro = p.neutron_xs(i_nuclide);
   double cutoff = prn(p.current_seed()) * p.neutron_xs(i_nuclide).fission;
   double prob = 0.0;
 
   // Loop through each partial fission reaction type
   for (auto& rx : nuc->fission_rx_) {
-    // if energy is below threshold for this reaction, skip it
-    int threshold = rx->xs_[i_temp].threshold;
-    if (i_grid < threshold)
-      continue;
-
     // add to cumulative probability
-    prob += (1.0 - f) * rx->xs_[i_temp].value[i_grid - threshold] +
-            f * rx->xs_[i_temp].value[i_grid - threshold + 1];
+    prob += rx->xs(micro);
 
     // Create fission bank sites if fission occurs
     if (prob > cutoff)
@@ -573,25 +565,20 @@ void sample_photon_product(
   int i_nuclide, Particle& p, int* i_rx, int* i_product)
 {
   // Get grid index and interpolation factor and sample photon production cdf
-  int i_temp = p.neutron_xs(i_nuclide).index_temp;
-  int i_grid = p.neutron_xs(i_nuclide).index_grid;
-  double f = p.neutron_xs(i_nuclide).interp_factor;
-  double cutoff = prn(p.current_seed()) * p.neutron_xs(i_nuclide).photon_prod;
+  const auto& micro = p.neutron_xs(i_nuclide);
+  double cutoff = prn(p.current_seed()) * micro.photon_prod;
   double prob = 0.0;
 
   // Loop through each reaction type
   const auto& nuc {data::nuclides[i_nuclide]};
   for (int i = 0; i < nuc->reactions_.size(); ++i) {
-    const auto& rx = nuc->reactions_[i];
-    int threshold = rx->xs_[i_temp].threshold;
-
-    // if energy is below threshold for this reaction, skip it
-    if (i_grid < threshold)
-      continue;
-
     // Evaluate neutron cross section
-    double xs = ((1.0 - f) * rx->xs_[i_temp].value[i_grid - threshold] +
-                 f * (rx->xs_[i_temp].value[i_grid - threshold + 1]));
+    const auto& rx = nuc->reactions_[i];
+    double xs = rx->xs(micro);
+
+    // if cross section is zero for this reaction, skip it
+    if (xs == 0.0)
+      continue;
 
     for (int j = 0; j < rx->products_.size(); ++j) {
       if (rx->products_[j].particle_ == ParticleType::photon) {
@@ -663,8 +650,6 @@ void scatter(Particle& p, int i_nuclide)
   const auto& nuc {data::nuclides[i_nuclide]};
   const auto& micro {p.neutron_xs(i_nuclide)};
   int i_temp = micro.index_temp;
-  int i_grid = micro.index_grid;
-  double f = micro.interp_factor;
 
   // For tallying purposes, this routine might be called directly. In that
   // case, we need to sample a reaction via the cutoff variable
@@ -718,14 +703,8 @@ void scatter(Particle& p, int i_nuclide)
         fatal_error("Did not sample any reaction for nuclide " + nuc->name_);
       }
 
-      // if energy is below threshold for this reaction, skip it
-      const auto& xs {nuc->reactions_[i]->xs_[i_temp]};
-      if (i_grid < xs.threshold)
-        continue;
-
       // add to cumulative probability
-      prob += (1.0 - f) * xs.value[i_grid - xs.threshold] +
-              f * xs.value[i_grid - xs.threshold + 1];
+      prob += nuc->reactions_[i]->xs(micro);
     }
 
     // Perform collision physics for inelastic scattering

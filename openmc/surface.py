@@ -255,7 +255,7 @@ class Surface(IDManagerMixin, ABC):
         if memo is None:
             memo = {}
 
-        # If no nemoize'd clone exists, instantiate one
+        # If no memoize'd clone exists, instantiate one
         if self not in memo:
             clone = deepcopy(self)
             clone.id = None
@@ -1053,7 +1053,7 @@ class QuadricMixin:
         pivot = np.asarray(pivot)
         rotation = np.asarray(rotation, dtype=float)
 
-        # Allow rotaiton matrix to be passed in directly, otherwise build it
+        # Allow rotation matrix to be passed in directly, otherwise build it
         if rotation.ndim == 2:
             check_length('surface rotation', rotation.ravel(), 9)
             Rmat = rotation
@@ -1746,7 +1746,7 @@ class Cone(QuadricMixin, Surface):
         #
         # (d*(r - p))^2 - (r - p)*(r - p)cos^2(theta) = 0
         #
-        # where * is the dot product and the vector r is the evaulation point
+        # where * is the dot product and the vector r is the evaluation point
         # r = (x, y, z)
         #
         # The argument r2 for cones is actually tan^2(theta) so that

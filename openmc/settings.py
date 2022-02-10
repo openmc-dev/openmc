@@ -194,7 +194,7 @@ class Settings:
         batches specified via ``batches`` is interpreted as the minimum number
         of batches
     ufs_mesh : openmc.RegularMesh
-        Mesh to be used for redistributing source sites via the uniform fision
+        Mesh to be used for redistributing source sites via the uniform fission
         site (UFS) method.
     verbosity : int
         Verbosity during simulation between 1 and 10. Verbosity levels are

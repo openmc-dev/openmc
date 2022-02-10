@@ -54,8 +54,8 @@ class Element(str):
         percent_type : {'ao', 'wo'}
             'ao' for atom percent and 'wo' for weight percent
         enrichment : float, optional
-            Enrichment of an enrichment_taget nuclide in percent (ao or wo).
-            If enrichment_taget is not supplied then it is enrichment for U235
+            Enrichment of an enrichment_target nuclide in percent (ao or wo).
+            If enrichment_target is not supplied then it is enrichment for U235
             in weight percent. For example, input 4.95 for 4.95 weight percent
             enriched U. Default is None (natural composition).
         enrichment_target: str, optional
@@ -149,7 +149,7 @@ class Element(str):
             mutual_nuclides = sorted(list(mutual_nuclides))
             absent_nuclides = sorted(list(absent_nuclides))
 
-            # If all naturally ocurring isotopes are present in the library,
+            # If all naturally occurring isotopes are present in the library,
             # add them based on their abundance
             if len(absent_nuclides) == 0:
                 for nuclide in mutual_nuclides:
@@ -277,7 +277,7 @@ class Element(str):
             tail_fraction = 1.0 - enrichment / 100.0
 
             # Enrich all nuclides
-            # Do bogus operation for enrichment target but overwrite immediatly
+            # Do bogus operation for enrichment target but overwrite immediately
             # to avoid if statement in the loop
             for nuclide, fraction in abundances.items():
                 abundances[nuclide] = tail_fraction * fraction / non_enriched

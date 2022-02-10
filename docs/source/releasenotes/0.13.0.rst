@@ -1,0 +1,100 @@
+====================
+What's New in 0.13.0
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC includes several noteworthy and unique features. Most
+importantly, mesh-based weight windows have been added and work with all
+supported mesh types (regular, rectilinear, cylindrical, spherical, and
+unstructured). Other additions include torus surfaces, an ability to place
+CAD-based geometries in universes, a feature to export/import physical
+properties, and a filter for particle time.
+
+There is one breaking changing in the Python API. The
+:class:`openmc.deplete.Operator` class used to accept :class:`~openmc.Geometry`
+and :class:`~openmc.Settings` objects as its first two arguments; users now need
+to pass a :class:`~openmc.model.Model` class instead.
+
+The minimum supported Python version is now 3.6.
+
+------------
+New Features
+------------
+
+- Variance reduction using mesh-based weight windows is now possible with the
+  :class:`~openmc.WeightWindows` class.
+- Users can now model axis-aligned tori using the :class:`~openmc.XTorus`,
+  :class:`~openmc.YTorus`, and :class:`~openmc.ZTorus` classes.
+- DAGMC CAD-based geometries can now be placed in a universe using
+  :class:`~openmc.DAGMCUniverse`, allowing users to combine CSG and CAD-based
+  geometry in a single model.
+- The C/C++ API has two new functions ``openmc_properties_export`` and
+  ``openmc_properties_import`` with corresponding Python API bindings,
+  :func:`~openmc.lib.export_properties` and
+  :func:`~openmc.lib.import_properties`. These functions allow physical
+  properties (temperatures, densities, material compositions) to be written to
+  an HDF5 file and re-used for subsequent simulations.
+- A new :class:`~openmc.stats.PowerLaw` univariate distribution
+- The capabilities of the :class:`~openmc.Model` class have been substantially
+  expanded (e.g., the :meth:`~openmc.model.Model.deplete`,
+  :meth:`~openmc.model.Model.plot_geometry`, and
+  :meth:`~openmc.model.Model.rotate_cells` methods).
+- A new :class:`~openmc.TimeFilter` class that allows tallies to be filtered
+  by the particle's time, which is now tracked.
+- The :class:`~openmc.Source` class now allows you to specify a time
+  distribution.
+- The new :class:`~openmc.CylindricalMesh` and :class:`~openmc.SphericalMesh`
+  can be used for mesh tallies over cylidrical and spherical meshes,
+  respectively.
+- Geometry plotting, which used to produce the files in the unusual .ppm format,
+  now produces .png files by default.
+
+---------
+Bug Fixes
+---------
+
+- `Fix for shared fission bank memory errors <https://github.com/openmc-dev/openmc/pull/1856>`_
+- `Make sure properties export only happens from root process <https://github.com/openmc-dev/openmc/pull/1864>`_
+- `Fix pathlib use error in openmc-ace-to-hdf5 <https://github.com/openmc-dev/openmc/pull/1867>`_
+- `Fix DAGMC and libMesh variable in CMake config <https://github.com/openmc-dev/openmc/pull/1870>`_
+- `Fix bug associated with volume calc in MG mode <https://github.com/openmc-dev/openmc/pull/1889>`_
+- `Add missing Settings.write_initial_source property <https://github.com/openmc-dev/openmc/pull/1895>`_
+- `Bug fixes for specifying Materials.cross_sections <https://github.com/openmc-dev/openmc/pull/1898>`_
+- `Removing Legendre filter in diffusion coefficient results <https://github.com/openmc-dev/openmc/pull/1909>`_
+- `Ensure particles lost during event_calculate_xs are terminated <https://github.com/openmc-dev/openmc/pull/1911>`_
+- `Fixed parsing of xsdir entries with a continuation line <https://github.com/openmc-dev/openmc/pull/1913>`_
+- `openmc.RegularMesh attribute consistency <https://github.com/openmc-dev/openmc/pull/1922>`_
+- `Ensure secondary particles below energy cutoff are not created <https://github.com/openmc-dev/openmc/pull/1924>`_
+- `Allow compilation with g++ 11 <https://github.com/openmc-dev/openmc/pull/1938>`_
+- `Depletion-related bug fixes <https://github.com/openmc-dev/openmc/pull/1946>`_
+- `Miscellaneous bug fixes <https://github.com/openmc-dev/openmc/pull/1948>`_
+- `Fixes for various bugs <https://github.com/openmc-dev/openmc/pull/1949>`_
+- `Reset triggers in openmc_reset <https://github.com/openmc-dev/openmc/issues/1957>`_
+
+------------
+Contributors
+------------
+
+- `Hunter Belanger <https://github.com/HunterBelanger>`_
+- `Helen Brooks <https://github.com/helen-brooks>`_
+- `Andrew Davis <https://github.com/makeclean>`_
+- `Valerio Giusti <https://github.com/valeriogiusti>`_
+- `Jeff Hammond <https://github.com/jeffhammond>`_
+- `Yuan Hu <https://github.com/YuanHu-PKU-KIT>`_
+- `Andrew Johnson <https://github.com/drewejohnson>`_
+- `Miriam Kreher <https://github.com/mkreher13>`_
+- `Amanda Lund <https://github.com/amandalund>`_
+- `Adam Nelson <https://github.com/nelsonag>`_
+- `April Novak <https://github.com/aprilnovak>`_
+- `Ariful Islam Pranto <https://github.com/AI-Pranto>`_
+- `Gavin Ridley <https://github.com/gridley>`_
+- `Paul Romano <https://github.com/paulromano>`_
+- `Olaf Schumann <https://github.com/ojschumann>`_
+- `Jonathan Shimwell <https://github.com/Shimwell>`_
+- `Patrick Shriwise <https://github.com/pshriwise>`_
+- `John Tramm <https://github.com/jtramm>`_

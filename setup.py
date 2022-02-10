@@ -38,7 +38,7 @@ kwargs = {
 
     # Metadata
     'author': 'The OpenMC Development Team',
-    'author_email': 'openmc-dev@googlegroups.com',
+    'author_email': 'openmc@anl.gov',
     'description': 'OpenMC',
     'url': 'https://openmc.org',
     'download_url': 'https://github.com/openmc-dev/openmc/releases',

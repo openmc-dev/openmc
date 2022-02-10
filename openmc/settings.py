@@ -1566,6 +1566,8 @@ class Settings:
     def from_xml(cls, path='settings.xml'):
         """Generate settings from XML file
 
+        .. versionadded:: 0.13.0
+
         Parameters
         ----------
         path : str, optional

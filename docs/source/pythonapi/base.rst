@@ -90,6 +90,7 @@ Building geometry
    openmc.Complement
    openmc.Cell
    openmc.Universe
+   openmc.DAGMCUniverse
    openmc.RectLattice
    openmc.HexLattice
    openmc.Geometry
@@ -143,6 +144,8 @@ Constructing Tallies
    openmc.ParticleFilter
    openmc.RegularMesh
    openmc.RectilinearMesh
+   openmc.CylindricalMesh
+   openmc.SphericalMesh
    openmc.UnstructuredMesh
    openmc.Trigger
    openmc.TallyDerivative

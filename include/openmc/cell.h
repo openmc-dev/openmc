@@ -193,7 +193,7 @@ protected:
   //! Determine the path to this cell instance in the geometry hierarchy
   //! \param[in] instance of the cell to find parent cells for
   //! \return parent cells
-  vector<ParentCell> find_parent_cells_exhaustive(
+  vector<ParentCell> exhaustive_find_parent_cells(
     int32_t instance) const;
 
   //! Inner function for retrieving contained cells

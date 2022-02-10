@@ -100,8 +100,8 @@ public:
     Position r, Direction u, array<int, 3>& result) const = 0;
 
   //! \brief Compute the the flat index for a set of lattice cell indices
-  //! \param i_xyz The indices for a lattice cell
-  //! \return Flat index into the universes vector
+  //! \param i_xyz The indices for a lattice cell.
+  //! \return Flat index into the universes vector.
   virtual int get_flat_index(const array<int, 3>& i_xyz) const = 0;
 
   //! \brief Get coordinates local to a lattice tile.

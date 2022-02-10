@@ -220,7 +220,7 @@ class Plot(IDManagerMixin):
     mask_background : Iterable of int or str
         Color to apply to all cells/materials not listed in mask_components
     show_overlaps : bool
-        Inidicate whether or not overlapping regions are shown
+        Indicate whether or not overlapping regions are shown
     overlap_color : Iterable of int or str
         Color to apply to overlapping regions
     colors : dict
@@ -565,9 +565,9 @@ class Plot(IDManagerMixin):
         seed : int
             The random number seed used to generate the color scheme
         alpha : float
-            The value between 0 and 1 to apply in alpha compisiting
+            The value between 0 and 1 to apply in alpha compositing
         background : 3-tuple of int or str
-            The background color to apply in alpha compisiting
+            The background color to apply in alpha compositing
 
         """
 
@@ -883,9 +883,9 @@ class Plots(cv.CheckedList):
         seed : int
             The random number seed used to generate the color scheme
         alpha : float
-            The value between 0 and 1 to apply in alpha compisiting
+            The value between 0 and 1 to apply in alpha compositing
         background : 3-tuple of int or str
-            The background color to apply in alpha compisiting
+            The background color to apply in alpha compositing
 
         """
 

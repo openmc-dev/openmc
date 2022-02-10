@@ -2977,7 +2977,7 @@ class Tally(IDManagerMixin):
         Returns
         -------
         openmc.Tally
-            A new derived Tally with data diagaonalized along the new filter.
+            A new derived Tally with data diagonalized along the new filter.
 
         """
 

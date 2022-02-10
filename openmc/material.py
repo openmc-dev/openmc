@@ -443,7 +443,7 @@ class Material(IDManagerMixin):
 
         # Generally speaking, the density for a macroscopic object will
         # be 1.0. Therefore, lets set density to 1.0 so that the user
-        # doesnt need to set it unless its needed.
+        # doesn't need to set it unless its needed.
         # Of course, if the user has already set a value of density,
         # then we will not override it.
         if self._density is None:
@@ -482,8 +482,8 @@ class Material(IDManagerMixin):
             'ao' for atom percent and 'wo' for weight percent. Defaults to atom
             percent.
         enrichment : float, optional
-            Enrichment of an enrichment_taget nuclide in percent (ao or wo).
-            If enrichment_taget is not supplied then it is enrichment for U235
+            Enrichment of an enrichment_target nuclide in percent (ao or wo).
+            If enrichment_target is not supplied then it is enrichment for U235
             in weight percent. For example, input 4.95 for 4.95 weight percent
             enriched U.
             Default is None (natural composition).
@@ -625,7 +625,7 @@ class Material(IDManagerMixin):
                         raise ValueError(msg)
                 elif token not in ['(', ')', ''] and not token.isdigit():
                         msg = 'Formula must be made from a sequence of ' \
-                              'element symbols, integers, and backets. ' \
+                              'element symbols, integers, and brackets. ' \
                               '{} is not an allowable entry.'.format(token)
                         raise ValueError(msg)
 

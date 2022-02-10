@@ -30,7 +30,7 @@ New Features
   :class:`~openmc.WeightWindows` class.
 - Users can now model axis-aligned tori using the :class:`~openmc.XTorus`,
   :class:`~openmc.YTorus`, and :class:`~openmc.ZTorus` classes.
-- DAGMC CAD-based geometries can now be placed in a single universe using
+- DAGMC CAD-based geometries can now be placed in a universe using
   :class:`~openmc.DAGMCUniverse`, allowing users to combine CSG and CAD-based
   geometry in a single model.
 - The C/C++ API has two new functions ``openmc_properties_export`` and

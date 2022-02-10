@@ -56,7 +56,7 @@ class VolumeCalculation:
     volumes : dict
         Dictionary mapping unique IDs of domains to estimated volumes in cm^3.
     threshold : float
-        Threshold for the maxmimum standard deviation of volumes.
+        Threshold for the maximum standard deviation of volumes.
 
         .. versionadded:: 0.12
     trigger_type : {'variance', 'std_dev', 'rel_err'}
@@ -228,14 +228,14 @@ class VolumeCalculation:
         self._atoms = atoms
 
     def set_trigger(self, threshold, trigger_type):
-        """Set a trigger on the voulme calculation
+        """Set a trigger on the volume calculation
 
         .. versionadded:: 0.12
 
         Parameters
         ----------
         threshold : float
-            Threshold for the maxmimum standard deviation of volumes
+            Threshold for the maximum standard deviation of volumes
         trigger_type : {'variance', 'std_dev', 'rel_err'}
             Value type used to halt volume calculation
         """

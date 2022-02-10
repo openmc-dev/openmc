@@ -89,7 +89,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
     ----------
     bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter. This takes on different meaning for different
-        filters. See the docstrings for sublcasses of this filter or the online
+        filters. See the docstrings for subclasses of this filter or the online
         documentation for more details.
     filter_id : int
         Unique identifier for the filter
@@ -177,7 +177,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
         # If the HDF5 'type' variable matches this class's short_name, then
-        # there is no overriden from_hdf5 method.  Pass the bins to __init__.
+        # there is no overridden from_hdf5 method.  Pass the bins to __init__.
         if group['type'][()].decode() == cls.short_name.lower():
             out = cls(group['bins'][()], filter_id=filter_id)
             out._num_bins = group['n_bins'][()]
@@ -254,7 +254,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         filter_type = elem.get('type')
 
         # If the filter type matches this class's short_name, then
-        # there is no overriden from_xml_element method
+        # there is no overridden from_xml_element method
         if filter_type == cls.short_name.lower():
             # Get bins from element -- the default here works for any filters
             # that just store a list of bins that can be represented as integers
@@ -438,7 +438,7 @@ class WithIDFilter(Filter):
 
 
 class UniverseFilter(WithIDFilter):
-    """Bins tally event locations based on the Universe they occured in.
+    """Bins tally event locations based on the Universe they occurred in.
 
     Parameters
     ----------
@@ -462,7 +462,7 @@ class UniverseFilter(WithIDFilter):
 
 
 class MaterialFilter(WithIDFilter):
-    """Bins tally event locations based on the Material they occured in.
+    """Bins tally event locations based on the Material they occurred in.
 
     Parameters
     ----------
@@ -486,7 +486,7 @@ class MaterialFilter(WithIDFilter):
 
 
 class CellFilter(WithIDFilter):
-    """Bins tally event locations based on the Cell they occured in.
+    """Bins tally event locations based on the Cell they occurred in.
 
     Parameters
     ----------
@@ -1945,7 +1945,7 @@ class EnergyFunctionFilter(Filter):
             raise ValueError('Only Tabulated1Ds with a single interpolation '
                              'region are supported')
         if tab1d.interpolation[0] != 2:
-            raise ValueError('Only linear-linar Tabulated1Ds are supported')
+            raise ValueError('Only linear-linear Tabulated1Ds are supported')
 
         return cls(tab1d.x, tab1d.y)
 

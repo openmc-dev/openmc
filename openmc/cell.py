@@ -193,7 +193,7 @@ class Cell(IDManagerMixin):
     def atoms(self):
         if self._atoms is None:
             if self._volume is None:
-                msg = ('Cannot calculate atom content becouse no volume '
+                msg = ('Cannot calculate atom content because no volume '
                        'is set. Use Cell.volume to provide it or perform '
                        'a stochastic volume calculation.')
                 raise ValueError(msg)
@@ -350,7 +350,7 @@ class Cell(IDManagerMixin):
         self._volume = volume
 
         # Info about atom content can now be invalid
-        # (sice volume has just changed)
+        # (since volume has just changed)
         self._atoms = None
 
     def add_volume_information(self, volume_calc):

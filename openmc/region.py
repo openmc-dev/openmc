@@ -87,7 +87,7 @@ class Region(ABC):
             operators are union '|', intersection ' ', and complement '~'. For
             example, '(1 -2) | 3 ~(4 -5)'.
         surfaces : dict
-            Dictionary whose keys are suface IDs that appear in the Boolean
+            Dictionary whose keys are surface IDs that appear in the Boolean
             expression and whose values are Surface objects.
 
         """
@@ -104,7 +104,7 @@ class Region(ABC):
         while i < len(expression):
             if expression[i] in '()|~ ':
                 # If special character appears immediately after a non-operator,
-                # create a token with the apporpriate half-space
+                # create a token with the appropriate half-space
                 if i_start >= 0:
                     j = int(expression[i_start:i])
                     if j < 0:

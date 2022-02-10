@@ -882,7 +882,7 @@ def _calculate_mgxs_elem_mat(this, types, library, orders=None,
         else:
             T = temperature
 
-        # Check to see if we have nuclides/elements or a macrocopic object
+        # Check to see if we have nuclides/elements or a macroscopic object
         if this._macroscopic is not None:
             # We have macroscopics
             nuclides = {this._macroscopic: (this._macroscopic, this.density)}

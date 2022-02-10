@@ -477,7 +477,7 @@ class XSdata:
 
     def add_temperature(self, temperature):
         """This method re-sizes the attributes of this XSdata object so that it
-        can accomodate an additional temperature.  Note that the set_* methods
+        can accommodate an additional temperature.  Note that the set_* methods
         will still need to be executed.
 
         Parameters

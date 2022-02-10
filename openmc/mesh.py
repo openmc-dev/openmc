@@ -144,7 +144,7 @@ class RegularMesh(MeshBase):
         The lower-left corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
     upper_right : Iterable of float
-        The upper-right corner of the structrued mesh. If only two coordinate
+        The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
     width : Iterable of float
         The width of mesh cells in each direction.

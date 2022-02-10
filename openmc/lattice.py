@@ -106,7 +106,7 @@ class Lattice(IDManagerMixin, ABC):
         elif lattice_type == 'hexagonal':
             return openmc.HexLattice.from_hdf5(group, universes)
         else:
-            raise ValueError(f'Unkown lattice type: {lattice_type}')
+            raise ValueError(f'Unknown lattice type: {lattice_type}')
 
     def get_unique_universes(self):
         """Determine all unique universes in the lattice
@@ -1215,7 +1215,7 @@ class HexLattice(Lattice):
             for rings in self._universes:
                 if len(rings) != self._num_rings:
                     msg = 'HexLattice ID={0:d} has an inconsistent number of ' \
-                          'rings per axial positon'.format(self._id)
+                          'rings per axial position'.format(self._id)
                     raise ValueError(msg)
 
         else:

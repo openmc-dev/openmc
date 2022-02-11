@@ -1,4 +1,6 @@
 
+from tests.unit_tests.test_lattice import rlat2
+
 
 def test_discretization_degenerate(rlat2):
 

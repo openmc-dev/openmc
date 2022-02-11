@@ -1316,7 +1316,59 @@ struct ParentCellStack {
     visited_cells_;
 };
 
-vector<ParentCell> Cell::find_parent_cells(int32_t instance) const
+vector<ParentCell> Cell::find_parent_cells(
+  int32_t instance, const Position& r) const {
+
+  // create a temporary particle
+  Particle dummy_particle {};
+  dummy_particle.r() = r;
+  dummy_particle.u() = {0., 0., 1.};
+
+  return find_parent_cells(instance, dummy_particle);
+}
+
+vector<ParentCell> Cell::find_parent_cells(
+  int32_t instance, Particle& p) const {
+  // look up the particle's location
+  exhaustive_find_cell(p);
+  const auto& coords = p.coord();
+
+  // build a parent cell stack from the particle coordinates
+  ParentCellStack stack;
+  bool cell_found = false;
+  for (auto it = coords.begin(); it != coords.end(); it++) {
+    const auto& coord = *it;
+    const auto& cell = model::cells[coord.cell];
+    // if the cell at this level matches the current cell, stop adding to the stack
+    if (coord.cell == model::cell_map[this->id_]) {
+      cell_found = true;
+      break;
+    }
+
+    // if filled with a lattice, get the lattice index from the next
+    // level in the coordinates to push to the stack
+    int lattice_idx = C_NONE;
+    if (cell->type_ == Fill::LATTICE) {
+      const auto& next_coord = *(it + 1);
+      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(next_coord.lattice_i);
+    }
+    stack.push(coord.universe, {coord.cell, lattice_idx});
+  }
+
+  // if this loop finished because the cell was found and
+  // the instance matches the one requested in the call
+  // we have the correct path and can return the stack
+  if (cell_found && stack.compute_instance(this->distribcell_index_) == instance) {
+    return stack.parent_cells();
+  }
+
+  // fall back on an exhaustive search for the cell's parents
+  return exhaustive_find_parent_cells(instance);
+}
+
+
+vector<ParentCell> Cell::exhaustive_find_parent_cells(
+  int32_t instance) const
 {
   ParentCellStack stack;
   // start with this cell's universe
@@ -1403,7 +1455,7 @@ vector<ParentCell> Cell::find_parent_cells(int32_t instance) const
 }
 
 std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(
-  int32_t instance) const
+  int32_t instance, Position* hint) const
 {
   std::unordered_map<int32_t, vector<int32_t>> contained_cells;
 
@@ -1412,7 +1464,12 @@ std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(
     return contained_cells;
 
   // find the pathway through the geometry to this cell
-  vector<ParentCell> parent_cells = this->find_parent_cells(instance);
+  vector<ParentCell> parent_cells;
+
+  // if a positional hint is provided, attempt to do a fast lookup
+  // of the parent cells
+  parent_cells = hint ? find_parent_cells(instance, *hint)
+                      : exhaustive_find_parent_cells(instance);
 
   // if this cell is filled w/ a material, it contains no other cells
   if (type_ != Fill::MATERIAL) {

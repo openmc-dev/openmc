@@ -2,10 +2,8 @@ from difflib import unified_diff
 import filecmp
 import glob
 import hashlib
-from optparse import OptionParser
 import os
 import shutil
-import sys
 
 import numpy as np
 import openmc

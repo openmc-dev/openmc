@@ -4,8 +4,6 @@ Modifies and resets environment variable OPENMC_CROSS_SECTIONS
 to a custom file with new depletion_chain node
 """
 
-from os import environ
-from unittest import mock
 from pathlib import Path
 
 import pytest

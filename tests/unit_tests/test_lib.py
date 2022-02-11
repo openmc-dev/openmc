@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-from ctypes import ArgumentError
 import os
 
 import numpy as np

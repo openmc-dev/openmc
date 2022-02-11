@@ -1,6 +1,5 @@
 from math import pi
 from pathlib import Path
-from shutil import which
 
 import numpy as np
 import pytest

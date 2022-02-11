@@ -1,8 +1,6 @@
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 from pathlib import Path
-import shutil
-import subprocess
 from xml.etree import ElementTree as ET
 
 import numpy as np

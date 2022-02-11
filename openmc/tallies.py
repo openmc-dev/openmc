@@ -10,12 +10,11 @@ from xml.etree import ElementTree as ET
 import h5py
 import numpy as np
 import pandas as pd
-from scipy.misc import derivative
 import scipy.sparse as sps
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes, get_text
+from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 from .mesh import MeshBase
 

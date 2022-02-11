@@ -446,7 +446,7 @@
     <filters>12</filters>
     <scores>total</scores>
   </tally>
-  <tally id="34">
+  <tally id="30">
     <filters>15</filters>
     <scores>scatter</scores>
   </tally>
@@ -499,30 +499,6 @@
     <estimator>collision</estimator>
   </tally>
   <tally id="29">
-    <filters>13</filters>
-    <nuclides>all</nuclides>
-    <scores>total</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="30">
-    <filters>13</filters>
-    <nuclides>all</nuclides>
-    <scores>total</scores>
-    <estimator>collision</estimator>
-  </tally>
-  <tally id="31">
-    <filters>2</filters>
-    <nuclides>all</nuclides>
-    <scores>total</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="32">
-    <filters>2</filters>
-    <nuclides>U235</nuclides>
-    <scores>total</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="33">
     <scores>H1-production H2-production H3-production He3-production He4-production heating damage-energy</scores>
   </tally>
 </tallies>

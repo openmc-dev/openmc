@@ -99,6 +99,11 @@ public:
   virtual void get_indices(
     Position r, Direction u, array<int, 3>& result) const = 0;
 
+  //! \brief Compute the the flat index for a set of lattice cell indices
+  //! \param i_xyz The indices for a lattice cell.
+  //! \return Flat index into the universes vector.
+  virtual int get_flat_index(const array<int, 3>& i_xyz) const = 0;
+
   //! \brief Get coordinates local to a lattice tile.
   //! \param r A 3D Cartesian coordinate.
   //! \param i_xyz The indices for a lattice tile.
@@ -210,6 +215,8 @@ public:
 
   void get_indices(Position r, Direction u, array<int, 3>& result) const;
 
+  int get_flat_index(const array<int, 3>& i_xyz) const;
+
   Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
 
   int32_t& offset(int map, array<int, 3> const& i_xyz);
@@ -244,6 +251,8 @@ public:
     Position r, Direction u, const array<int, 3>& i_xyz) const;
 
   void get_indices(Position r, Direction u, array<int, 3>& result) const;
+
+  int get_flat_index(const array<int, 3>& i_xyz) const;
 
   Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
 

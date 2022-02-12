@@ -1110,7 +1110,11 @@ class Tally(IDManagerMixin):
                     bins = self_filter.bins
 
             # Add indices for each bin in this Filter to the list
-            indices = np.array([self_filter.get_bin_index(b) for b in bins])
+
+            if type(self_filter) in filters:
+                indices = np.array([self_filter.get_bin_index(b) for b in bins])
+            else:
+                indices = np.arange(len(bins))
             filter_indices.append(indices)
 
             # Account for stride in each of the previous filters

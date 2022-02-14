@@ -9,7 +9,7 @@ Continuous-Energy Data
 ----------------------
 
 In OpenMC, the data governing the interaction of neutrons with various nuclei
-for continous-energy problems are represented using an HDF5 format that can be
+for continuous-energy problems are represented using an HDF5 format that can be
 produced by converting files in the ACE format, which is used by MCNP_ and
 Serpent_. ACE-format data can be generated with the NJOY_ nuclear data
 processing system, which converts raw `ENDF/B data`_ into linearly-interpolable

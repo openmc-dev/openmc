@@ -45,7 +45,7 @@ following steps:
 
   - Initialize the pseudorandom number generator.
 
-  - Read the contiuous-energy or multi-group cross section data specified in
+  - Read the continuous-energy or multi-group cross section data specified in
     the problem.
 
   - If using a special energy grid treatment such as a union energy grid or

@@ -1,7 +1,4 @@
-"""Regression tests for openmc.deplete.Results.transfer_volumes method.
-
-
-"""
+"""Regression tests for openmc.deplete.Results.transfer_volumes method."""
 
 from pytest import approx
 import openmc

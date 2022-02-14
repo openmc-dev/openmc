@@ -355,7 +355,7 @@ Functions
    Get density of a material.
 
    :param int32_t index: Index in the materials array
-   :param double* denity: Pointer to a density
+   :param double* density: Pointer to a density
    :return: Return status (negative if an error occurs)
    :rtype: int
 

@@ -215,6 +215,7 @@ latex_elements = {
 \setcounter{tocdepth}{2}
 \numberwithin{equation}{section}
 \DeclareUnicodeCharacter{03B1}{$\alpha$}
+\DeclareUnicodeCharacter{03C0}{$\pi$}
 """,
 'printindex': r""
 }

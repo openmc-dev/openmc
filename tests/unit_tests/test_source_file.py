@@ -1,5 +1,4 @@
 from random import random
-import subprocess
 
 import h5py
 import numpy as np

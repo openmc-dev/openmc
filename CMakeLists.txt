@@ -351,6 +351,7 @@ list(APPEND libopenmc_SOURCES
   src/timer.cpp
   src/thermal.cpp
   src/track_output.cpp
+  src/universe.cpp
   src/urr.cpp
   src/volume_calc.cpp
   src/weight_windows.cpp

@@ -182,7 +182,7 @@ Inelastic Scattering
 --------------------
 
 Note that the multi-group mode makes no distinction between elastic or
-inelastic scattering reactions. The spceific multi-group scattering
+inelastic scattering reactions. The specific multi-group scattering
 implementation is discussed in the :ref:`multi-group-scatter` section.
 
 The major algorithms for inelastic scattering were described in previous

@@ -4,7 +4,7 @@
 Development Workflow
 ====================
 
-Anyone wishing to make contributions to OpenMC should be fully acquianted and
+Anyone wishing to make contributions to OpenMC should be fully acquainted and
 comfortable working with git_ and GitHub_. We assume here that you have git
 installed on your system, have a GitHub account, and have setup SSH keys to be
 able to create/push to repositories on GitHub.
@@ -81,7 +81,7 @@ features and bug fixes. The general steps for contributing are as follows:
    openmc-dev/openmc as the target.
 
    At a minimum, you should describe what the changes you've made are and why
-   you are making them. If the changes are related to an oustanding issue, make
+   you are making them. If the changes are related to an outstanding issue, make
    sure it is cross-referenced.
 
 5. A committer will review your pull request based on the criteria

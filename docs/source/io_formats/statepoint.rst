@@ -149,7 +149,7 @@ All values are given in seconds and are measured on the master process.
              finalization.
            - **transport** (*double*) -- Time spent transporting particles.
            - **inactive batches** (*double*) -- Time spent in the inactive
-             batches (including non-transport activities like communcating
+             batches (including non-transport activities like communicating
              sites).
            - **active batches** (*double*) -- Time spent in the active batches
              (including non-transport activities like communicating sites).

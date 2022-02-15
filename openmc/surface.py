@@ -2633,7 +2633,7 @@ class Halfspace(Region):
             memo = {}
 
         # If rotated surface not in memo, add it
-        key = (self.surface, tuple(rotation), tuple(pivot), order, inplace)
+        key = (self.surface, tuple(np.ravel(rotation)), tuple(pivot), order, inplace)
         if key not in memo:
             memo[key] = self.surface.rotate(rotation, pivot=pivot, order=order,
                                             inplace=inplace)

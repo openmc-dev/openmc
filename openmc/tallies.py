@@ -1092,9 +1092,6 @@ class Tally(IDManagerMixin):
         for i, self_filter in enumerate(self.filters):
             # If a user-requested Filter, get the user-requested bins
             for j, test_filter in enumerate(filters):
-                if type(self_filter) is openmc.EnergyFunctionFilter:
-                    indices = [self_filter.get_bin_index(None)]
-                    break
                 if type(self_filter) is test_filter:
                     bins = filter_bins[j]
                     indices = np.array([self_filter.get_bin_index(b) for b in bins])

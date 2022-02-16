@@ -80,7 +80,7 @@ high enough to produce any pixels in the overlapping area.
 To reliably validate a geometry input, it is best to run the problem in
 geometry debugging mode with the ``-g``, ``-geometry-debug``, or
 ``--geometry-debug`` command-line options.  This will enable checks for
-overlapping cells at every move of esch simulated particle.  Depending on the
+overlapping cells at every move of each simulated particle.  Depending on the
 complexity of the geometry input file, this could add considerable overhead to
 the run (these runs can still be done in parallel).  As a result, for this run
 mode the user will probably want to run fewer particles than a normal

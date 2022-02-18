@@ -244,7 +244,6 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
   double wgt_last_ {1.0};   //!< pre-collision particle weight
-  double wgt_absorb_ {0.0}; //!< weight absorbed for survival biasing
 
   // What event took place
   bool fission_ {false};  //!< did particle cause implicit fission
@@ -375,8 +374,6 @@ public:
   const Position& u_last() const { return u_last_; }
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
-  double& wgt_absorb() { return wgt_absorb_; }
-  const double& wgt_absorb() const { return wgt_absorb_; }
 
   bool& fission() { return fission_; }
   TallyEvent& event() { return event_; }

@@ -134,8 +134,6 @@ void sample_neutron_reaction(Particle& p)
 
   if (p.neutron_xs(i_nuclide).absorption > 0.0) {
     absorption(p, i_nuclide);
-  } else {
-    p.wgt_absorb() = 0.0;
   }
   if (!p.alive())
     return;
@@ -153,9 +151,9 @@ void sample_neutron_reaction(Particle& p)
 
   // Play russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
-    russian_roulette(p);
-    if (!p.alive())
-      return;
+    if (p.wgt() < settings::weight_cutoff) {
+      russian_roulette(p, settings::weight_survive);
+    }
   }
 }
 
@@ -626,16 +624,15 @@ void absorption(Particle& p, int i_nuclide)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p.wgt_absorb() = p.wgt() * p.neutron_xs(i_nuclide).absorption /
-                     p.neutron_xs(i_nuclide).total;
+    const double wgt_absorb = p.wgt() * p.neutron_xs(i_nuclide).absorption /
+                              p.neutron_xs(i_nuclide).total;
 
     // Adjust weight of particle by probability of absorption
-    p.wgt() -= p.wgt_absorb();
-    p.wgt_last() = p.wgt();
+    p.wgt() -= wgt_absorb;
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      p.keff_tally_absorption() += p.wgt_absorb() *
+      p.keff_tally_absorption() += wgt_absorb *
                                    p.neutron_xs(i_nuclide).nu_fission /
                                    p.neutron_xs(i_nuclide).absorption;
     }
@@ -952,9 +949,8 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
       // cdf value at upper bound attainable energy
       double m = (nuc.xs_cdf_[i_E_up + 1] - nuc.xs_cdf_[i_E_up]) /
-          (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
-      double cdf_up =
-        nuc.xs_cdf_[i_E_up] + m * (E_up - nuc.energy_0K_[i_E_up]);
+                 (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
+      double cdf_up = nuc.xs_cdf_[i_E_up] + m * (E_up - nuc.energy_0K_[i_E_up]);
 
       while (true) {
         // directly sample Maxwellian
@@ -962,9 +958,8 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
         // sample a relative energy using the xs cdf
         double cdf_rel = cdf_low + prn(seed) * (cdf_up - cdf_low);
-        int i_E_rel = lower_bound_index(nuc.xs_cdf_.begin() + i_E_low, 
-                                        nuc.xs_cdf_.begin() + i_E_up+2, 
-                                        cdf_rel);
+        int i_E_rel = lower_bound_index(nuc.xs_cdf_.begin() + i_E_low,
+          nuc.xs_cdf_.begin() + i_E_up + 2, cdf_rel);
         double E_rel = nuc.energy_0K_[i_E_low + i_E_rel];
         double m = (nuc.xs_cdf_[i_E_low + i_E_rel + 1] -
                      nuc.xs_cdf_[i_E_low + i_E_rel]) /

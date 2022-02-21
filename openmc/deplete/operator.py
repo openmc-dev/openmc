@@ -158,6 +158,10 @@ class Operator(TransportOperator):
         Depth of the search when reducing the depletion chain. Only used
         if ``reduce_chain`` evaluates to true. The default value of
         ``None`` implies no limit on the depth.
+ 
+    remove_dep_nuc : list of dicts, optional 
+        If not empty, depletable nuclides concentrations are changed accordingly
+        before solving bateman equation.
 
         .. versionadded:: 0.12
 
@@ -212,7 +216,8 @@ class Operator(TransportOperator):
                  fission_q=None, dilute_initial=1.0e3,
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
-                 reduce_chain=False, reduce_chain_level=None):
+                 reduce_chain=False, reduce_chain_level=None,
+                 remove_dep_nuc=None):
         # check for old call to constructor
         if isinstance(model, openmc.Geometry):
             msg = "As of version 0.13.0 openmc.deplete.Operator requires an " \
@@ -290,6 +295,8 @@ class Operator(TransportOperator):
                     new_res = res_obj.distribute(self.local_mats, mat_indexes)
                     self.prev_res.append(new_res)
 
+        self.remove_dep_nuc = remove_dep_nuc
+
         # Determine which nuclides have incident neutron data
         self.nuclides_with_data = self._get_nuclides_with_data(cross_sections)
 
@@ -334,7 +341,7 @@ class Operator(TransportOperator):
             self._normalization_helper = EnergyScoreHelper(score)
         else:
             self._normalization_helper = SourceRateHelper()
-
+        
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]
         fission_yield_opts = (
@@ -364,11 +371,10 @@ class Operator(TransportOperator):
         """
         # Reset results in OpenMC
         openmc.lib.reset()
-
         # Update the number densities regardless of the source rate
         self.number.set_density(vec)
         self._update_materials()
-
+        
         # If the source rate is zero, return zero reaction rates without running
         # a transport solve
         if source_rate == 0.0:
@@ -391,7 +397,6 @@ class Operator(TransportOperator):
 
         # Extract results
         op_result = self._unpack_tallies_and_normalize(source_rate)
-
         return copy.deepcopy(op_result)
 
     @staticmethod
@@ -483,7 +488,61 @@ class Operator(TransportOperator):
 
         return burnable_mats, volume, nuclides
 
-    def _extract_number(self, local_mats, volume, nuclides, prev_res=None):
+    def set_tot_fission(self, x):
+        """Method to keep k_eff critical by maintaing constant the 
+            total number of fissile atoms.
+        
+        Parameters
+        ---------
+        x : list of float
+
+        Returns
+        -------
+        x : list of float
+
+        """
+        fissile = ["U235"]
+        mat_id = "1"
+        nuc = "U235"
+        # compute total original fissile concentration, from openmc.materials
+        ofc = 0
+        for mat in self.materials:
+            if mat.depletable:
+                for nuc,val in mat.get_nuclide_atom_densities().items():
+                    if nuc in fissile:
+                        ofc += val[1]
+                    else:
+                        continue
+            else:
+                continue
+
+        #get depletable info from get_results_info() 
+        volume_dict, nucs, burns, full_burns =  self.get_results_info()
+        
+        #compute before time-step fissile concentration from previous iteration
+        bfc = 0
+        for m,id in enumerate(volume_dict.keys()):
+            for i,nuc in enumerate(nucs):
+                    if nuc in fissile:
+                        bfc += x[m,i]
+            else:
+                continue
+
+        # compute the differenc
+        diff = ofc - bfc
+
+        #add the difference to the desired fissile nuclide
+        for m,id in enumerate(volume_dict.keys()):
+            for i,nuc in enumerate(nucs):
+                if id == mat_id and nuc == nuc_id:
+                    x[m,i] += diff
+                else:
+                    continue
+
+        return x
+
+
+    def _extract_number(self, local_mats, volume, nuclides, remove_nuc, prev_res=None):
         """Construct AtomNumber using geometry
 
         Parameters
@@ -515,7 +574,7 @@ class Operator(TransportOperator):
         else:
             for mat in self.materials:
                 if str(mat.id) in local_mats:
-                    self._set_number_from_results(mat, prev_res)
+                    self._set_number_from_results(mat, prev_res, remove_nuc)
 
     def _set_number_from_mat(self, mat):
         """Extracts material and number densities from openmc.Material
@@ -552,10 +611,8 @@ class Operator(TransportOperator):
         # Get nuclide lists from geometry and depletion results
         depl_nuc = prev_res[-1].nuc_to_ind
         geom_nuc_densities = mat.get_nuclide_atom_densities()
-
         # Merge lists of nuclides, with the same order for every calculation
         geom_nuc_densities.update(depl_nuc)
-
         for nuclide in geom_nuc_densities.keys():
             if nuclide in depl_nuc:
                 concentration = prev_res.get_atoms(mat_id, nuclide)[1][-1]
@@ -567,6 +624,51 @@ class Operator(TransportOperator):
 
             self.number.set_atom_density(mat_id, nuclide, number)
 
+    def get_mod_nuc(self, x):
+        """ Change depletable material nuclide concentrations
+
+        If remove_dep_nuc attribute is defined and passed to the 
+        operator class, this method will modify depletable nuclide
+        concentration accordingly, before solving bateman equation. 
+
+        Parameters
+        ----------
+        x : list of float 
+            Nuclides concentrations from previous iteration
+
+        Returns
+        -------
+        x : list of float
+            Nuclide concentration after change, based of remove_dep_nuc
+            attribute
+        
+        """
+
+        # get info from get_results_info method
+        volume_dict, nucs, burns, full_burns  = self.get_results_info()
+        # iterate over depletable materials and nuclides
+        for m,id in enumerate(volume_dict.keys()):
+            for i,nuc in enumerate(nucs):
+                # iterate over remove_dep_nuc list 
+                for item in self.remove_dep_nuc:
+                    # find nuclide to modify
+                    if id in item['mat_id'] and nuc in item['nuc']:
+                        # perfomr change, based on action
+                        if item['action'] == 'remove':
+                            # instead of remove completely, keep few atoms
+                            x[m][i] = 1.0e3
+                        elif item['action'] == 'add':
+                            # this is ugly, but gets the material id from which to add the atoms
+                            x_id = [idx for idx, i in enumerate(volume_dict.keys()) if i == item['from']][0]
+                            x[m][i] += x[x_id][i]
+                            x[x_id][i] = 1.0e3
+                        else:
+                            x[m][i] = x[m][i]
+                    else:
+                        x[m][i] = x[m][i]
+        return x
+
+        
     def initial_condition(self):
         """Performs final setup and returns initial condition.
 
@@ -637,7 +739,6 @@ class Operator(TransportOperator):
                                 print("WARNING: nuclide ", nuc, " in material ", mat,
                                       " is negative (density = ", val, " at/barn-cm)")
                             number_i[mat, nuc] = 0.0
-
                 # Update densities on C API side
                 mat_internal = openmc.lib.materials[int(mat)]
                 mat_internal.set_densities(nuclides, densities)

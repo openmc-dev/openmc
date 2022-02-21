@@ -775,7 +775,7 @@ class Integrator(ABC):
         self._solver = func
 
     def _timed_deplete(self, concs, rates, dt, matrix_func=None):
-        start = time.time()
+        start = time.time()        
         results = deplete(
             self._solver, self.chain, concs, rates, dt, matrix_func)
         return time.time() - start, results
@@ -827,8 +827,10 @@ class Integrator(ABC):
 
     def _get_bos_data_from_operator(self, step_index, source_rate, bos_conc):
         """Get beginning of step concentrations, reaction rates from Operator
-        """
+        and modify accordingly if remove_dep_nuc arguments is present """
         x = deepcopy(bos_conc)
+        if step_index > 0 and self.operator.remove_dep_nuc is not None:
+            x = self.operator.get_mod_nuc(x)
         res = self.operator(x, source_rate)
         self.operator.write_bos_data(step_index + self._i_res)
         return x, res
@@ -840,7 +842,6 @@ class Integrator(ABC):
         bos_conc = list(res.data[0])
         rates = res.rates[0]
         k = ufloat(res.k[0, 0], res.k[0, 1])
-
         # Scale reaction rates by ratio of source rates
         rates *= source_rate / res.source_rate[0]
         return bos_conc, OperatorResult(k, rates)
@@ -872,10 +873,10 @@ class Integrator(ABC):
                     conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
                 else:
                     conc, res = self._get_bos_data_from_restart(i, source_rate, conc)
-
+                
                 # Solve Bateman equations over time interval
                 proc_time, conc_list, res_list = self(conc, res.rates, dt, source_rate, i)
-
+                
                 # Insert BOS concentration, transport results
                 conc_list.insert(0, conc)
                 res_list.insert(0, res)
@@ -885,7 +886,7 @@ class Integrator(ABC):
 
                 Results.save(self.operator, conc_list, res_list, [t, t + dt],
                              source_rate, self._i_res + i, proc_time)
-
+                
                 t += dt
 
             # Final simulation -- in the case that final_step is False, a zero
@@ -896,8 +897,7 @@ class Integrator(ABC):
             Results.save(self.operator, [conc], res_list, [t, t],
                          source_rate, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(len(self) + self._i_res)
-
-
+    
 @add_params
 class SIIntegrator(Integrator):
     r"""Abstract class for the Stochastic Implicit Euler integrators

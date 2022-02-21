@@ -488,60 +488,6 @@ class Operator(TransportOperator):
 
         return burnable_mats, volume, nuclides
 
-    def set_tot_fission(self, x):
-        """Method to keep k_eff critical by maintaing constant the 
-            total number of fissile atoms.
-        
-        Parameters
-        ---------
-        x : list of float
-
-        Returns
-        -------
-        x : list of float
-
-        """
-        fissile = ["U235"]
-        mat_id = "1"
-        nuc = "U235"
-        # compute total original fissile concentration, from openmc.materials
-        ofc = 0
-        for mat in self.materials:
-            if mat.depletable:
-                for nuc,val in mat.get_nuclide_atom_densities().items():
-                    if nuc in fissile:
-                        ofc += val[1]
-                    else:
-                        continue
-            else:
-                continue
-
-        #get depletable info from get_results_info() 
-        volume_dict, nucs, burns, full_burns =  self.get_results_info()
-        
-        #compute before time-step fissile concentration from previous iteration
-        bfc = 0
-        for m,id in enumerate(volume_dict.keys()):
-            for i,nuc in enumerate(nucs):
-                    if nuc in fissile:
-                        bfc += x[m,i]
-            else:
-                continue
-
-        # compute the differenc
-        diff = ofc - bfc
-
-        #add the difference to the desired fissile nuclide
-        for m,id in enumerate(volume_dict.keys()):
-            for i,nuc in enumerate(nucs):
-                if id == mat_id and nuc == nuc_id:
-                    x[m,i] += diff
-                else:
-                    continue
-
-        return x
-
-
     def _extract_number(self, local_mats, volume, nuclides, remove_nuc, prev_res=None):
         """Construct AtomNumber using geometry
 

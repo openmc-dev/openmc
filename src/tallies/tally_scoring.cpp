@@ -251,20 +251,16 @@ double get_nuclide_neutron_heating(
   if (mt == C_NONE)
     return 0.0;
 
-  auto i_temp = p.neutron_xs(i_nuclide).index_temp;
+  const auto& micro = p.neutron_xs(i_nuclide);
+  auto i_temp = micro.index_temp;
   if (i_temp < 0)
     return 0.0; // Can be true due to multipole
 
-  const auto& rxn {*nuc.reactions_[mt]};
-  const auto& xs {rxn.xs_[i_temp]};
-  auto i_grid = p.neutron_xs(i_nuclide).index_grid;
-  if (i_grid < xs.threshold)
-    return 0.0;
-
   // Determine total kerma
-  auto f = p.neutron_xs(i_nuclide).interp_factor;
-  double kerma = (1.0 - f) * xs.value[i_grid - xs.threshold] +
-                 f * xs.value[i_grid - xs.threshold + 1];
+  const auto& rx {*nuc.reactions_[mt]};
+  double kerma = rx.xs(micro);
+  if (kerma == 0.0)
+    return 0.0;
 
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // Determine kerma for fission as (EFR + EB)*sigma_f
@@ -477,7 +473,7 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
   auto m = nuc.reaction_index_[score_bin];
   if (m == C_NONE)
     return 0.0;
-  const auto& rxn {*nuc.reactions_[m]};
+  const auto& rx {*nuc.reactions_[m]};
   const auto& micro {p.neutron_xs(i_nuclide)};
 
   // In the URR, the (n,gamma) cross section is sampled randomly from
@@ -494,14 +490,7 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
     auto f = micro.interp_factor;
 
     // Calculate interpolated cross section
-    const auto& xs {rxn.xs_[i_temp]};
-    double value;
-    if (i_grid >= xs.threshold) {
-      value = ((1.0 - f) * xs.value[i_grid - xs.threshold] +
-               f * xs.value[i_grid - xs.threshold + 1]);
-    } else {
-      value = 0.0;
-    }
+    double xs = rx.xs(micro);
 
     if (settings::run_mode == RunMode::EIGENVALUE &&
         score_bin == HEATING_LOCAL) {
@@ -515,18 +504,18 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
           : 0.0;
 
       // Determine non-fission kerma as difference
-      double kerma_non_fission = value - kerma_fission;
+      double kerma_non_fission = xs - kerma_fission;
 
       // Re-weight non-fission kerma by keff to properly balance energy release
       // and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
       // Stedry, "Self-consistent energy normalization for quasistatic reactor
       // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
-      value = simulation::keff * kerma_non_fission + kerma_fission;
+      xs = simulation::keff * kerma_non_fission + kerma_fission;
     }
-    return value;
+    return xs;
   } else {
     // For multipole, calculate (n,gamma) from other reactions
-    return rxn.mt_ == N_GAMMA ? micro.absorption - micro.fission : 0.0;
+    return rx.mt_ == N_GAMMA ? micro.absorption - micro.fission : 0.0;
   }
   return 0.0;
 }
@@ -1497,7 +1486,8 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
   }
 
   // For shorthand, assign pointers to the material and nuclide xs set
-  auto& nuc_xs = (i_nuclide >= 0) ? data::mg.nuclides_[i_nuclide] : data::mg.macro_xs_[p.material()];
+  auto& nuc_xs = (i_nuclide >= 0) ? data::mg.nuclides_[i_nuclide]
+                                  : data::mg.macro_xs_[p.material()];
   auto& macro_xs = data::mg.macro_xs_[p.material()];
 
   // Find the temperature and angle indices of interest

@@ -2481,14 +2481,14 @@ void score_pht_tally(Particle& p)
 
     auto filter_iter = FilterBinIter(tally, p);
     auto score_index = 0;
-
+    
     auto score = p.pht_storage()[simulation::cell_pht];
+    //auto score = p.pht_storage()[7]; 
+    //auto score = p.pht_storage()[0]; 
     // the -1 in the next line is for the index shift
     auto scoring_it = std::upper_bound(simulation::bins_pht.begin(), simulation::bins_pht.end(), score) - simulation::bins_pht.begin() - 1;    
-
 #pragma omp atomic    
     tally.results_(scoring_it, score_index, TallyResult::VALUE) += 1;
-
   }
 
   // Reset all the filter matches for the next tally event.

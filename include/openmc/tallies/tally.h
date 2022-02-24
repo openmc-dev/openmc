@@ -98,9 +98,6 @@ public:
   //! Index of each nuclide to be tallied.  -1 indicates total material.
   std::vector<int> nuclides_ {-1};
 
-  //! True if this tally has a bin for every nuclide in the problem
-  bool all_nuclides_ {false};
-
   //! Results for each bin -- the first dimension of the array is for the
   //! combination of filters (e.g. specific cell, specific energy group, etc.)
   //! and the second dimension of the array is for scores (e.g. flux, total

@@ -40,15 +40,15 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
-    summation of reactions from all nuclides. The format for nuclides should be
-    [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all
+    summation of reactions from all nuclides. Nuclides are expressed using the
+    GNDS naming convention, e.g. "U235" or "Am242_m1". The reaction rate for all
     nuclides can be obtained with "total". For example, to obtain the reaction
-    rates for U-235, Pu-239, and all nuclides in a material, this element should
+    rates for U235, Pu239, and all nuclides in a material, this element should
     be:
 
     .. code-block:: xml
 
-        <nuclides>U-235 Pu-239 total</nuclides>
+        <nuclides>U235 Pu239 total</nuclides>
 
     *Default*: total
 

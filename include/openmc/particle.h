@@ -440,7 +440,6 @@ public:
   Position r_last_;   //!< previous coordinates
   Direction u_last_;  //!< previous direction coordinates
   double wgt_last_ {1.0};   //!< pre-collision particle weight
-  double wgt_absorb_ {0.0}; //!< weight absorbed for survival biasing
 
   // What event took place
   bool fission_ {false}; //!< did particle cause implicit fission
@@ -522,7 +521,7 @@ public:
   #endif
 
   int64_t n_progeny_ {0}; // Number of progeny produced by this particle
-  
+
   bool operator<(const Particle& rhs) const
   {
     if( alive_ && !rhs.alive_ )

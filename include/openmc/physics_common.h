@@ -9,8 +9,10 @@
 namespace openmc {
 
 //! \brief Performs the russian roulette operation for a particle
+//! \param[in,out] p  Particle object
+//! \param[in] weight_survive Weight assigned to particles that survive
 #pragma omp declare target
-void russian_roulette(Particle& p);
+void russian_roulette(Particle& p, double weight_survive);
 #pragma omp end declare target
 
 } // namespace openmc

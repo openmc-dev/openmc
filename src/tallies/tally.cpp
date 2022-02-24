@@ -542,22 +542,10 @@ void Tally::set_nuclides(pugi::xml_node node)
     return;
   }
 
-  if (get_node_value(node, "nuclides") == "all") {
-    // This tally should bin every nuclide in the problem.  It should also bin
-    // the total material rates.  To achieve this, set the nuclides_ vector to
-    // 0, 1, 2, ..., -1.
-    nuclides_.reserve(data::nuclides.size() + 1);
-    for (auto i = 0; i < data::nuclides.size(); ++i)
-      nuclides_.push_back(i);
-    nuclides_.push_back(-1);
-    all_nuclides_ = true;
-
-  } else {
-    // The user provided specifics nuclides.  Parse it as an array with either
-    // "total" or a nuclide name like "U-235" in each position.
-    auto words = get_node_array<std::string>(node, "nuclides");
-    this->set_nuclides(words);
-  }
+  // The user provided specifics nuclides.  Parse it as an array with either
+  // "total" or a nuclide name like "U235" in each position.
+  auto words = get_node_array<std::string>(node, "nuclides");
+  this->set_nuclides(words);
 }
 
 void Tally::set_nuclides(const vector<std::string>& nuclides)

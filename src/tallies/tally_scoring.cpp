@@ -2095,43 +2095,6 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
   }
 }
 
-//! Tally rates for when the user requests a tally on all nuclides.
-
-void score_all_nuclides(
-  Particle& p, int i_tally, double flux, int filter_index, double filter_weight)
-{
-  const Tally& tally {*model::tallies[i_tally]};
-  const Material& material {*model::materials[p.material()]};
-
-  // Score all individual nuclide reaction rates.
-  for (auto i = 0; i < material.nuclide_.size(); ++i) {
-    auto i_nuclide = material.nuclide_[i];
-    auto atom_density = material.atom_density_(i);
-
-    // TODO: consider replacing this "if" with pointers or templates
-    if (settings::run_CE) {
-      score_general_ce(p, i_tally, i_nuclide * tally.scores_.size(),
-        filter_index, filter_weight, i_nuclide, atom_density, flux);
-    } else {
-      score_general_mg(p, i_tally, i_nuclide * tally.scores_.size(),
-        filter_index, filter_weight, i_nuclide, atom_density, flux);
-    }
-  }
-
-  // Score total material reaction rates.
-  int i_nuclide = -1;
-  double atom_density = 0.;
-  auto n_nuclides = data::nuclides.size();
-  // TODO: consider replacing this "if" with pointers or templates
-  if (settings::run_CE) {
-    score_general_ce(p, i_tally, n_nuclides * tally.scores_.size(),
-      filter_index, filter_weight, i_nuclide, atom_density, flux);
-  } else {
-    score_general_mg(p, i_tally, n_nuclides * tally.scores_.size(),
-      filter_index, filter_weight, i_nuclide, atom_density, flux);
-  }
-}
-
 void score_analog_tally_ce(Particle& p)
 {
   // Since electrons/positrons are not transported, we assign a flux of zero.
@@ -2159,30 +2122,15 @@ void score_analog_tally_ce(Particle& p)
       auto filter_weight = filter_iter.weight_;
 
       // Loop over nuclide bins.
-      if (!tally.all_nuclides_) {
-        for (auto i = 0; i < tally.nuclides_.size(); ++i) {
-          auto i_nuclide = tally.nuclides_[i];
+      for (auto i = 0; i < tally.nuclides_.size(); ++i) {
+        auto i_nuclide = tally.nuclides_[i];
 
-          // Tally this event in the present nuclide bin if that bin represents
-          // the event nuclide or the total material.  Note that the atomic
-          // density argument for score_general is not used for analog tallies.
-          if (i_nuclide == p.event_nuclide() || i_nuclide == -1)
-            score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
-              filter_weight, i_nuclide, -1.0, flux);
-        }
-
-      } else {
-        // In the case that the user has requested to tally all nuclides, we
-        // can take advantage of the fact that we know exactly how nuclide
-        // bins correspond to nuclide indices.  First, tally the nuclide.
-        auto i = p.event_nuclide();
-        score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
-          filter_weight, -1, -1.0, flux);
-
-        // Now tally the total material.
-        i = tally.nuclides_.size();
-        score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
-          filter_weight, -1, -1.0, flux);
+        // Tally this event in the present nuclide bin if that bin represents
+        // the event nuclide or the total material.  Note that the atomic
+        // density argument for score_general is not used for analog tallies.
+        if (i_nuclide == p.event_nuclide() || i_nuclide == -1)
+          score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
+            filter_weight, i_nuclide, -1.0, flux);
       }
     }
 
@@ -2270,34 +2218,27 @@ void score_tracklength_tally(Particle& p, double distance)
       auto filter_weight = filter_iter.weight_;
 
       // Loop over nuclide bins.
-      if (tally.all_nuclides_) {
-        if (p.material() != MATERIAL_VOID)
-          score_all_nuclides(
-            p, i_tally, flux * filter_weight, filter_index, filter_weight);
+      for (auto i = 0; i < tally.nuclides_.size(); ++i) {
+        auto i_nuclide = tally.nuclides_[i];
 
-      } else {
-        for (auto i = 0; i < tally.nuclides_.size(); ++i) {
-          auto i_nuclide = tally.nuclides_[i];
-
-          double atom_density = 0.;
-          if (i_nuclide >= 0) {
-            if (p.material() != MATERIAL_VOID) {
-              auto j =
-                model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
-              if (j == C_NONE)
-                continue;
-              atom_density = model::materials[p.material()]->atom_density_(j);
-            }
+        double atom_density = 0.;
+        if (i_nuclide >= 0) {
+          if (p.material() != MATERIAL_VOID) {
+            auto j =
+              model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
+            if (j == C_NONE)
+              continue;
+            atom_density = model::materials[p.material()]->atom_density_(j);
           }
+        }
 
-          // TODO: consider replacing this "if" with pointers or templates
-          if (settings::run_CE) {
-            score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
-              filter_weight, i_nuclide, atom_density, flux);
-          } else {
-            score_general_mg(p, i_tally, i * tally.scores_.size(), filter_index,
-              filter_weight, i_nuclide, atom_density, flux);
-          }
+        // TODO: consider replacing this "if" with pointers or templates
+        if (settings::run_CE) {
+          score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
+            filter_weight, i_nuclide, atom_density, flux);
+        } else {
+          score_general_mg(p, i_tally, i * tally.scores_.size(), filter_index,
+            filter_weight, i_nuclide, atom_density, flux);
         }
       }
     }
@@ -2340,31 +2281,25 @@ void score_collision_tally(Particle& p)
       auto filter_weight = filter_iter.weight_;
 
       // Loop over nuclide bins.
-      if (tally.all_nuclides_) {
-        score_all_nuclides(
-          p, i_tally, flux * filter_weight, filter_index, filter_weight);
+      for (auto i = 0; i < tally.nuclides_.size(); ++i) {
+        auto i_nuclide = tally.nuclides_[i];
 
-      } else {
-        for (auto i = 0; i < tally.nuclides_.size(); ++i) {
-          auto i_nuclide = tally.nuclides_[i];
+        double atom_density = 0.;
+        if (i_nuclide >= 0) {
+          auto j =
+            model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
+          if (j == C_NONE)
+            continue;
+          atom_density = model::materials[p.material()]->atom_density_(j);
+        }
 
-          double atom_density = 0.;
-          if (i_nuclide >= 0) {
-            auto j =
-              model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
-            if (j == C_NONE)
-              continue;
-            atom_density = model::materials[p.material()]->atom_density_(j);
-          }
-
-          // TODO: consider replacing this "if" with pointers or templates
-          if (settings::run_CE) {
-            score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
-              filter_weight, i_nuclide, atom_density, flux);
-          } else {
-            score_general_mg(p, i_tally, i * tally.scores_.size(), filter_index,
-              filter_weight, i_nuclide, atom_density, flux);
-          }
+        // TODO: consider replacing this "if" with pointers or templates
+        if (settings::run_CE) {
+          score_general_ce(p, i_tally, i * tally.scores_.size(), filter_index,
+            filter_weight, i_nuclide, atom_density, flux);
+        } else {
+          score_general_mg(p, i_tally, i * tally.scores_.size(), filter_index,
+            filter_weight, i_nuclide, atom_density, flux);
         }
       }
     }

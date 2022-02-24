@@ -53,6 +53,10 @@ Benchmarking
   Reactor Physics Simulations with the B&W 1810 Series Benchmarks,"
   *Trans. Am. Nucl. Soc.*, **109**, 1301--1304 (2013).
 
+- Jin Whan Bae, Ethan Peterson and Jonathan Shimwell, "`ARC reactor neutronics
+  multi-code validation <https://doi.org/10.1088/1741-4326/ac5450>`_," *Nuclear
+  Fusion*, Feb. 11 (2022).
+
 --------------------------
 Coupling and Multi-physics
 --------------------------

@@ -56,7 +56,6 @@ ENV LIBMESH_REPO='https://github.com/libMesh/libmesh'
 ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 
 # NJOY variables
-ENV NJOY_TAG='2016.65'
 ENV NJOY_REPO='https://github.com/njoy/NJOY2016'
 
 # Setup environment variables for Docker image
@@ -80,7 +79,7 @@ RUN pip install --upgrade pip
 
 # Clone and install NJOY2016
 RUN cd $HOME \
-    && git clone --single-branch -b ${NJOY_TAG} --depth 1 ${NJOY_REPO} \
+    && git clone --single-branch --depth 1 ${NJOY_REPO} \
     && cd NJOY2016 \
     && mkdir build \
     && cd build \

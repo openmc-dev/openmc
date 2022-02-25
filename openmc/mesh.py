@@ -204,6 +204,22 @@ class RegularMesh(MeshBase):
         return np.prod(self._dimension)
 
     @property
+    def volumes(self):
+        """Return Volumes for every mesh cell
+
+        Returns
+        -------
+        volumes : Iterable of float
+            Volumes
+
+        """
+        return np.full(self.dimension, np.prod(self.width))
+
+    @property
+    def total_volume(self):
+        return np.prod(self.dimension) * np.prod(self.width)
+
+    @property
     def indices(self):
         ndim = len(self._dimension)
         if ndim == 3:
@@ -576,6 +592,26 @@ class RectilinearMesh(MeshBase):
         return self._z_grid
 
     @property
+    def volumes(self):
+        """Return Volumes for every mesh cell
+
+        Returns
+        -------
+        volumes : Iterable of float
+            Volumes
+
+        """
+        V_x = np.diff(self.x_grid)
+        V_y = np.diff(self.y_grid)
+        V_z = np.diff(self.z_grid)
+
+        return np.multiply.outer(np.outer(V_x, V_y), V_z)
+
+    @property
+    def total_volume(self):
+        return np.sum(self.volumes)
+
+    @property
     def indices(self):
         nx = len(self.x_grid) - 1
         ny = len(self.y_grid) - 1
@@ -680,6 +716,7 @@ class RectilinearMesh(MeshBase):
         subelement.text = ' '.join(map(str, self.z_grid))
 
         return element
+
 
 class CylindricalMesh(MeshBase):
     """A 3D cylindrical mesh
@@ -850,7 +887,8 @@ class CylindricalMesh(MeshBase):
         mesh.z_grid = [float(x) for x in get_text(elem, "z_grid").split()]
         return mesh
 
-    def calc_mesh_volumes(self):
+    @property
+    def volumes(self):
         """Return Volumes for every mesh cell
 
         Returns
@@ -1037,7 +1075,8 @@ class SphericalMesh(MeshBase):
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
         return mesh
 
-    def calc_mesh_volumes(self):
+    @property
+    def volumes(self):
         """Return Volumes for every mesh cell
 
         Returns
@@ -1150,6 +1189,15 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def volumes(self):
+        """Return Volumes for every mesh cell if
+        populated by a StatePoint file
+
+        Returns
+        -------
+        volumes : Iterable of float
+            Volumes
+
+        """
         return self._volumes
 
     @volumes.setter

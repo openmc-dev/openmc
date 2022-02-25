@@ -960,19 +960,19 @@ class SphericalMesh(MeshBase):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
         string += fmt.format('\tDimensions', '=\t', self.n_dimension)
-        r_grid_str = str(self._r_grid) if not self._r_grid else len(self._r_grid)
+        r_grid_str = str(self._r_grid) if self._r_grid is None else len(self._r_grid)
         string += fmt.format('\tN R pnts:', '=\t', r_grid_str)
-        if self._r_grid:
+        if self._r_grid is not None:
             string += fmt.format('\tR Min:', '=\t', self._r_grid[0])
             string += fmt.format('\tR Max:', '=\t', self._r_grid[-1])
-        theta_grid_str = str(self._theta_grid) if not self._theta_grid else len(self._theta_grid)
+        theta_grid_str = str(self._theta_grid) if self._theta_grid is None else len(self._theta_grid)
         string += fmt.format('\tN Theta pnts:', '=\t', theta_grid_str)
-        if self._theta_grid:
+        if self._theta_grid is not None:
             string += fmt.format('\tTheta Min:', '=\t', self._theta_grid[0])
             string += fmt.format('\tTheta Max:', '=\t', self._theta_grid[-1])
-        phi_grid_str = str(self._phi_grid) if not self._phi_grid else len(self._phi_grid)
+        phi_grid_str = str(self._phi_grid) if self._phi_grid is None else len(self._phi_grid)
         string += fmt.format('\tN Phi pnts:', '=\t', phi_grid_str)
-        if self._phi_grid:
+        if self._phi_grid is not None:
             string += fmt.format('\tPhi Min:', '=\t', self._phi_grid[0])
             string += fmt.format('\tPhi Max:', '=\t', self._phi_grid[-1])
         return string

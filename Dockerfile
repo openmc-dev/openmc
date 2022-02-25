@@ -119,6 +119,7 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         && make 2>/dev/null -j${compile_cores} install \
         && cd pymoab && bash install.sh \
         && python setup.py install \
+        && python -c "import pymoab" \
         && rm -rf $HOME/MOAB ; \
         # Clone and install Double-Down
         mkdir -p $HOME/Double_down && cd $HOME/Double_down \

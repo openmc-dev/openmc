@@ -46,7 +46,7 @@ ENV DD_REPO='https://github.com/pshriwise/double-down'
 ENV DD_INSTALL_DIR=$HOME/Double_down
 
 # DAGMC variables
-ENV DAGMC_BRANCH='develop'
+ENV DAGMC_BRANCH='v3.2.1'
 ENV DAGMC_REPO='https://github.com/svalinn/DAGMC'
 ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
 
@@ -54,6 +54,10 @@ ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
 ENV LIBMESH_TAG='v1.6.0'
 ENV LIBMESH_REPO='https://github.com/libMesh/libmesh'
 ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
+
+# NJOY variables
+ENV NJOY_TAG='2016.65'
+ENV NJOY_REPO='https://github.com/njoy/NJOY2016'
 
 # Setup environment variables for Docker image
 ENV CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \
@@ -75,10 +79,14 @@ RUN apt-get update -y && \
 RUN pip install --upgrade pip
 
 # Clone and install NJOY2016
-RUN cd $HOME && git clone --depth 1 https://github.com/njoy/NJOY2016.git && \
-    cd NJOY2016 && mkdir build && cd build && \
-    cmake -Dstatic=on .. && make 2>/dev/null -j${compile_cores} install && \
-    rm -rf $HOME/NJOY2016
+RUN cd $HOME \
+    && git clone --single-branch -b ${NJOY_TAG} --depth 1 ${NJOY_REPO} \
+    && cd NJOY2016 \
+    && mkdir build \
+    && cd build \
+    && cmake -Dstatic=on .. \
+    && make 2>/dev/null -j${compile_cores} install \
+    && rm -rf $HOME/NJOY2016
 
 
 RUN if [ "$build_dagmc" = "on" ]; then \
@@ -167,7 +175,7 @@ RUN if [ "$build_libmesh" = "on" ]; then \
 
 # clone and install openmc
 RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
-    && git clone --shallow-submodules --recurse-submodules -b ${openmc_branch} --depth=1 ${OPENMC_REPO} \
+    && git clone --shallow-submodules --recurse-submodules --single-branch -b ${openmc_branch} --depth=1 ${OPENMC_REPO} \
     && mkdir build && cd build ; \
     if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "on" ]; then \
         cmake ../openmc \
@@ -201,7 +209,8 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
             -DHDF5_PREFER_PARALLEL=on ; \
     fi ; \
     make 2>/dev/null -j${compile_cores} install \
-    && cd ../openmc && pip install .[test,depletion-mpi]
+    && cd ../openmc && pip install .[test,depletion-mpi] \
+    && python -c "import openmc"
 
 # Download cross sections (NNDC and WMP) and ENDF data needed by test suite
 RUN ${HOME}/OpenMC/openmc/tools/ci/download-xs.sh

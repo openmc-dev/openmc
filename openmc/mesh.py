@@ -59,6 +59,12 @@ class MeshBase(IDManagerMixin, ABC):
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         return string
 
+    def _volume_dim_check(self):
+        if len(self.dimension) != 3 or \
+           any([d == 0 for d in self.dimension]):
+            raise RuntimeError(f'Mesh {self.id} is not 3D. '
+                               'Volumes cannot be provided.')
+
     @classmethod
     def from_hdf5(cls, group):
         """Create mesh from HDF5 group
@@ -213,6 +219,7 @@ class RegularMesh(MeshBase):
             Volumes
 
         """
+        self._volume_dim_check()
         return np.full(self.dimension, np.prod(self.width))
 
     @property
@@ -601,6 +608,7 @@ class RectilinearMesh(MeshBase):
             Volumes
 
         """
+        self._volume_dim_check()
         V_x = np.diff(self.x_grid)
         V_y = np.diff(self.y_grid)
         V_z = np.diff(self.z_grid)
@@ -897,7 +905,7 @@ class CylindricalMesh(MeshBase):
             Volumes
 
         """
-
+        self._volume_dim_check()
         V_r = np.diff(np.asarray(self.r_grid)**2 / 2)
         V_p = np.diff(self.phi_grid)
         V_z = np.diff(self.z_grid)
@@ -1085,7 +1093,7 @@ class SphericalMesh(MeshBase):
             Volumes
 
         """
-
+        self._volume_dim_check()
         V_r = np.diff(np.asarray(self.r_grid)**3 / 3)
         V_t = np.diff(-np.cos(self.theta_grid))
         V_p = np.diff(self.phi_grid)

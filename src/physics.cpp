@@ -140,8 +140,6 @@ void sample_neutron_reaction(Particle& p)
 
   if (p.neutron_xs_[i_nuclide].absorption > 0.0) {
     absorption(p, i_nuclide);
-  } else {
-    p.wgt_absorb_ = 0.0;
   }
   if (!p.alive_) return;
 
@@ -158,7 +156,9 @@ void sample_neutron_reaction(Particle& p)
 
   // Play russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
-    russian_roulette(p);
+    if (p.wgt_ < settings::weight_cutoff) {
+      russian_roulette(p, settings::weight_survive);
+    }
     if (!p.alive_) return;
   }
 }
@@ -525,7 +525,7 @@ int sample_nuclide(Particle& p)
 
     // CHECK FOR S(A,B) TABLE FINISHED
     // ======================================================================
-    
+
     // Lookup micro XS or retrieve from XS cache
     double total;
     bool cache_micro = false;
@@ -702,16 +702,15 @@ void absorption(Particle& p, int i_nuclide)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p.wgt_absorb_ = p.wgt_ * p.neutron_xs_[i_nuclide].absorption /
+    const double wgt_absorb = p.wgt_ * p.neutron_xs_[i_nuclide].absorption /
           p.neutron_xs_[i_nuclide].total;
 
     // Adjust weight of particle by probability of absorption
-    p.wgt_ -= p.wgt_absorb_;
-    p.wgt_last_ = p.wgt_;
+    p.wgt_ -= wgt_absorb;
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      p.keff_tally_absorption_ += p.wgt_absorb_ * p.neutron_xs_[
+      p.keff_tally_absorption_ += wgt_absorb * p.neutron_xs_[
         i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].absorption;
     }
   } else {

@@ -56,8 +56,6 @@ sample_reaction(Particle& p)
   // weight of the particle. Otherwise, it checks to see if absorption occurs.
   if (p.macro_xs_.absorption > 0.) {
     absorption(p);
-  } else {
-    p.wgt_absorb_ = 0.;
   }
   if (!p.alive_) return;
 
@@ -66,7 +64,9 @@ sample_reaction(Particle& p)
 
   // Play Russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
-    russian_roulette(p);
+    if (p.wgt_ < settings::weight_cutoff) {
+      russian_roulette(p, settings::weight_survive);
+    }
     if (!p.alive_) return;
   }
 }
@@ -213,14 +213,13 @@ absorption(Particle& p)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p.wgt_absorb_ = p.wgt_ * p.macro_xs_.absorption / p.macro_xs_.total;
+    double wgt_absorb = p.wgt_ * p.macro_xs_.absorption / p.macro_xs_.total;
 
     // Adjust weight of particle by the probability of absorption
-    p.wgt_ -= p.wgt_absorb_;
-    p.wgt_last_ = p.wgt_;
+    p.wgt_ -= wgt_absorb;
 
     // Score implicit absorpion estimate of keff
-    p.keff_tally_absorption_ += p.wgt_absorb_ * p.macro_xs_.nu_fission /
+    p.keff_tally_absorption_ += wgt_absorb * p.macro_xs_.nu_fission /
         p.macro_xs_.absorption;
   } else {
     if (p.macro_xs_.absorption > prn(p.current_seed()) * p.macro_xs_.total) {

@@ -50,7 +50,6 @@ def model():
     reg_mesh_exp_vols = np.full(mesh_3d.dimension, dx*dy*dz)
     np.testing.assert_equal(mesh_3d.volumes, reg_mesh_exp_vols)
 
-
     recti_mesh = openmc.RectilinearMesh()
     recti_mesh.x_grid = np.linspace(-7.5, 7.5, 18)
     recti_mesh.y_grid = np.linspace(-7.5, 7.5, 18)
@@ -73,7 +72,6 @@ def model():
     cyl_mesh_exp_vols = np.multiply.outer(drdp, dz)
     np.testing.assert_allclose(cyl_mesh.volumes, cyl_mesh_exp_vols)
 
-
     sph_mesh = openmc.SphericalMesh()
     sph_mesh.r_grid = np.linspace(0, 7.5, 18)
     sph_mesh.theta_grid = np.linspace(0, pi, 9)
@@ -84,7 +82,6 @@ def model():
     drdt = np.outer(dr, dt)
     sph_mesh_exp_vols = np.multiply.outer(drdt, dp)
     np.testing.assert_allclose(sph_mesh.volumes, sph_mesh_exp_vols)
-
 
     # Create filters
     reg_filters = [

@@ -557,12 +557,12 @@ class RectilinearMesh(MeshBase):
         The number of mesh cells in each direction.
     n_dimension : int
         Number of mesh dimensions (always 3 for a RectilinearMesh).
-    x_grid : Iterable of float
-        Mesh boundary points along the x-axis.
-    y_grid : Iterable of float
-        Mesh boundary points along the y-axis.
-    z_grid : Iterable of float
-        Mesh boundary points along the z-axis.
+    x_grid : numpy.ndarray
+        1-D array of mesh boundary points along the x-axis.
+    y_grid : numpy.ndarray
+        1-D array of mesh boundary points along the y-axis.
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -632,17 +632,17 @@ class RectilinearMesh(MeshBase):
     @x_grid.setter
     def x_grid(self, grid):
         cv.check_type('mesh x_grid', grid, Iterable, Real)
-        self._x_grid = grid
+        self._x_grid = np.asarray(grid)
 
     @y_grid.setter
     def y_grid(self, grid):
         cv.check_type('mesh y_grid', grid, Iterable, Real)
-        self._y_grid = grid
+        self._y_grid = np.asarray(grid)
 
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = grid
+        self._z_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -746,14 +746,14 @@ class CylindricalMesh(MeshBase):
         The number of mesh cells in each direction.
     n_dimension : int
         Number of mesh dimensions (always 3 for a CylindricalMesh).
-    r_grid : Iterable of float
-        Mesh boundary points along the r-axis.
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
-    phi_grid : Iterable of float
-        Mesh boundary points along the phi-axis.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis.
         The default value is [0, 2π], i.e. the full phi range.
-    z_grid : Iterable of float
-        Mesh boundary points along the z-axis.
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -802,7 +802,7 @@ class CylindricalMesh(MeshBase):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = grid
+        self._r_grid = np.asarray(grid)
 
     @phi_grid.setter
     def phi_grid(self, grid):
@@ -933,14 +933,14 @@ class SphericalMesh(MeshBase):
         The number of mesh cells in each direction.
     n_dimension : int
         Number of mesh dimensions (always 3 for a SphericalMesh).
-    r_grid : Iterable of float
-        Mesh boundary points along the r-axis.
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
-    theta_grid : Iterable of float
-        Mesh boundary points along the theta-axis in degrees.
+    theta_grid : numpy.ndarray
+        1-D array of mesh boundary points along the theta-axis in degrees.
         The default value is [0, π], i.e. the full theta range.
-    phi_grid : Iterable of float
-        Mesh boundary points along the phi-axis in degrees.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis in degrees.
         The default value is [0, 2π], i.e. the full phi range.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
@@ -990,7 +990,7 @@ class SphericalMesh(MeshBase):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = grid
+        self._r_grid = np.asarray(grid)
 
     @theta_grid.setter
     def theta_grid(self, grid):

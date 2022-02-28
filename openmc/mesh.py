@@ -215,7 +215,7 @@ class RegularMesh(MeshBase):
 
         Returns
         -------
-        volumes : Iterable of float
+        volumes : numpy.ndarray
             Volumes
 
         """
@@ -604,7 +604,7 @@ class RectilinearMesh(MeshBase):
 
         Returns
         -------
-        volumes : Iterable of float
+        volumes : numpy.ndarray
             Volumes
 
         """
@@ -1202,7 +1202,7 @@ class UnstructuredMesh(MeshBase):
 
         Returns
         -------
-        volumes : Iterable of float
+        volumes : numpy.ndarray
             Volumes
 
         """

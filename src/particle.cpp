@@ -86,7 +86,6 @@ void Particle::from_source(const SourceSite* src)
 {
   // Reset some attributes
   clear();
-  alive() = true;
   surface() = 0;
   cell_born() = C_NONE;
   material() = C_NONE;
@@ -333,7 +332,7 @@ void Particle::event_revive_from_secondary()
   if (n_event() == MAX_EVENTS) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
-    alive() = false;
+    wgt() = 0.0;
   }
 
   // Check for secondary particles if this particle is dead
@@ -483,9 +482,6 @@ void Particle::cross_surface()
 
 void Particle::cross_vacuum_bc(const Surface& surf)
 {
-  // Kill the particle
-  alive() = false;
-
   // Score any surface current tallies -- note that the particle is moved
   // forward slightly so that if the mesh boundary is on the surface, it is
   // still processed
@@ -500,6 +496,9 @@ void Particle::cross_vacuum_bc(const Surface& surf)
 
   // Score to global leakage tally
   keff_tally_leakage() += wgt();
+
+  // Kill the particle
+  wgt() = 0.0;
 
   // Display message
   if (settings::verbosity >= 10 || trace()) {
@@ -618,7 +617,7 @@ void Particle::mark_as_lost(const char* message)
   write_restart();
 
   // Increment number of lost particles
-  alive() = false;
+  wgt() = 0.0;
 #pragma omp atomic
   simulation::n_lost_particles += 1;
 

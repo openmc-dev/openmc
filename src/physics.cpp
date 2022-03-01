@@ -66,7 +66,6 @@ void collision(Particle& p)
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type());
   if (p.E() < settings::energy_cutoff[type]) {
-    p.alive() = false;
     p.wgt() = 0.0;
   }
 
@@ -272,7 +271,7 @@ void sample_photon_reaction(Particle& p)
   int photon = static_cast<int>(ParticleType::photon);
   if (p.E() < settings::energy_cutoff[photon]) {
     p.E() = 0.0;
-    p.alive() = false;
+    p.wgt() = 0.0;
     return;
   }
 
@@ -397,7 +396,7 @@ void sample_photon_reaction(Particle& p)
         element.atomic_relaxation(i_shell, p);
         p.event() = TallyEvent::ABSORB;
         p.event_mt() = 533 + shell.index_subshell;
-        p.alive() = false;
+        p.wgt() = 0.0;
         p.E() = 0.0;
         return;
       }
@@ -423,7 +422,7 @@ void sample_photon_reaction(Particle& p)
 
     p.event() = TallyEvent::ABSORB;
     p.event_mt() = PAIR_PROD;
-    p.alive() = false;
+    p.wgt() = 0.0;
     p.E() = 0.0;
   }
 }
@@ -438,7 +437,7 @@ void sample_electron_reaction(Particle& p)
   }
 
   p.E() = 0.0;
-  p.alive() = false;
+  p.wgt() = 0.0;
   p.event() = TallyEvent::ABSORB;
 }
 
@@ -459,7 +458,7 @@ void sample_positron_reaction(Particle& p)
   p.create_secondary(p.wgt(), -u, MASS_ELECTRON_EV, ParticleType::photon);
 
   p.E() = 0.0;
-  p.alive() = false;
+  p.wgt() = 0.0;
   p.event() = TallyEvent::ABSORB;
 }
 
@@ -634,7 +633,7 @@ void absorption(Particle& p, int i_nuclide)
                                      p.neutron_xs(i_nuclide).absorption;
       }
 
-      p.alive() = false;
+      p.wgt() = 0.0;
       p.event() = TallyEvent::ABSORB;
       p.event_mt() = N_DISAPPEAR;
     }

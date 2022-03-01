@@ -750,7 +750,7 @@ class CylindricalMesh(MeshBase):
         1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
     phi_grid : numpy.ndarray
-        1-D array of mesh boundary points along the phi-axis.
+        1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
     z_grid : numpy.ndarray
         1-D array of mesh boundary points along the z-axis.
@@ -937,10 +937,10 @@ class SphericalMesh(MeshBase):
         1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
     theta_grid : numpy.ndarray
-        1-D array of mesh boundary points along the theta-axis in degrees.
+        1-D array of mesh boundary points along the theta-axis in radians.
         The default value is [0, π], i.e. the full theta range.
     phi_grid : numpy.ndarray
-        1-D array of mesh boundary points along the phi-axis in degrees.
+        1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),

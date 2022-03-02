@@ -110,7 +110,7 @@ time, keff = results.get_eigenvalue()
 time, n_U235 = results.get_atoms('1', 'U235')
 
 # Obtain Xe135 capture reaction rate as a function of time
-time, Xe_capture = results.get_reaction_rate('1', 'Xe135', '(n,gamma)')
+time, Xe_capture = results.get_reaction_rate(uo2, 'Xe135', '(n,gamma)')
 
 ###############################################################################
 #                            Generate plots

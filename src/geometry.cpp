@@ -445,7 +445,7 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
     // The particle is outside the lattice.  Search for it from the base coords.
     p.n_coord_ = 1;
     bool found = exhaustive_find_cell(p);
-    if (!found && p.alive_) {
+    if (!found && p.alive()) {
       /*
       p.mark_as_lost(fmt::format("Could not locate particle {} after "
         "crossing a lattice boundary", p.id_));
@@ -463,7 +463,7 @@ cross_lattice(Particle& p, const BoundaryInfo& boundary)
       // this case, search for it from the base coords.
       p.n_coord_ = 1;
       bool found = exhaustive_find_cell(p);
-      if (!found && p.alive_) {
+      if (!found && p.alive()) {
         /*
         p.mark_as_lost(fmt::format("Could not locate particle {} after "
           "crossing a lattice boundary", p.id_));

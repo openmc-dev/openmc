@@ -57,7 +57,7 @@ sample_reaction(Particle& p)
   if (p.macro_xs_.absorption > 0.) {
     absorption(p);
   }
-  if (!p.alive_) return;
+  if (!p.alive()) return;
 
   // Sample a scattering event to determine the energy of the exiting neutron
   scatter(p);
@@ -67,7 +67,7 @@ sample_reaction(Particle& p)
     if (p.wgt_ < settings::weight_cutoff) {
       russian_roulette(p, settings::weight_survive);
     }
-    if (!p.alive_) return;
+    if (!p.alive()) return;
   }
 }
 
@@ -225,7 +225,7 @@ absorption(Particle& p)
     if (p.macro_xs_.absorption > prn(p.current_seed()) * p.macro_xs_.total) {
       p.keff_tally_absorption_ += p.wgt_ * p.macro_xs_.nu_fission /
            p.macro_xs_.absorption;
-      p.alive_ = false;
+      p.wgt_ = 0.0;
       p.event_ = TallyEvent::ABSORB;
     }
 

@@ -1659,7 +1659,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
 
       // Then we either are alive and had a scatter (and so g changed),
       // or are dead and g did not change
-      if (p.alive_) {
+      if (p.alive()) {
         p_u = p.u_last_;
         p_g = p.g_last_;
       } else {
@@ -2497,7 +2497,7 @@ void
 score_surface_tally(Particle& p, const std::vector<int>& tallies)
 {
   // No collision, so no weight change when survival biasing
-  double flux = p.wgt_;
+  double current = p.wgt_last_;
 
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
@@ -2518,7 +2518,7 @@ score_surface_tally(Particle& p, const std::vector<int>& tallies)
       // Loop over scores.
       // There is only one score type for current tallies so there is no need
       // for a further scoring function.
-      double score = flux * filter_weight;
+      double score = current * filter_weight;
       for (auto score_index = 0; score_index < tally.scores_.size();
            ++score_index) {
         #pragma omp atomic

@@ -109,7 +109,6 @@ Particle::from_source(const Bank& src)
 {
   // Reset some attributes
   this->clear();
-  alive_ = true;
   surface_ = 0;
   cell_born_ = C_NONE;
   material_ = C_NONE;
@@ -416,11 +415,11 @@ Particle::event_revive_from_secondary()
     warning("Particle " + std::to_string(id_) +
       " underwent maximum number of events.");
       */
-    alive_ = false;
+    wgt_ = 0.0;
   }
 
   // Check for secondary particles if this particle is dead
-  if (!alive_) {
+  if (!alive()) {
     // If no secondary particles, break out of event loop
     //if (secondary_bank_.empty()) return;
     if (secondary_bank_length_ == 0) return;
@@ -429,10 +428,10 @@ Particle::event_revive_from_secondary()
     this->from_source(secondary_bank_[--secondary_bank_length_]);
     //secondary_bank_.pop_back();
     n_event_ = 0;
-  
+
     // Force calculation of cross-sections by setting last energy to zero
     // Not necessary for correctness, but does allow for reproducibility
-    // for XS cache vs. no XS cache as some rare edge cases result in 
+    // for XS cache vs. no XS cache as some rare edge cases result in
     // cache being re-used even after URR sample has changed (e.g., when
     // a neutron is created in an inelastic collision in URR region and then immediately
     // exits that material never to return. In this case, when the secondary
@@ -609,9 +608,6 @@ Particle::cross_surface()
 void
 Particle::cross_vacuum_bc(const Surface& surf)
 {
-  // Kill the particle
-  alive_ = false;
-
   // Score any surface current tallies -- note that the particle is moved
   // forward slightly so that if the mesh boundary is on the surface, it is
   // still processed
@@ -628,6 +624,9 @@ Particle::cross_vacuum_bc(const Surface& surf)
 
   // Score to global leakage tally
   keff_tally_leakage_ += wgt_;
+
+  // Kill the particle
+  wgt_ = 0.0;
 
   // Display message
   /*
@@ -763,7 +762,7 @@ Particle::mark_as_lost(const char* message)
   write_restart();
 
   // Increment number of lost particles
-  alive_ = false;
+  wgt_ = 0.0;
   #pragma omp atomic
   simulation::n_lost_particles += 1;
 
@@ -783,7 +782,7 @@ void
 Particle::mark_as_lost_short()
 {
   // Increment number of lost particles
-  alive_ = false;
+  wgt_ = 0.0;
   #pragma omp atomic
   simulation::n_lost_particles += 1;
 

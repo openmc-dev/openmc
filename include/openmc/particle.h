@@ -282,18 +282,17 @@ public:
   const Position& r_local() const { return coord_[n_coord_ - 1].r; }
 
   // Accessors for direction in global coordinates
-  #pragma omp declare target
   Direction& u() { return coord_[0].u; }
   const Direction& u() const { return coord_[0].u; }
-  #pragma omp end declare target
 
   // Accessors for direction in local coordinates
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
-  #pragma omp end declare target
+
+  //! Whether particle is alive
+  bool alive() const { return wgt_ != 0.0; }
 
   //! resets all coordinate levels for the particle
-  #pragma omp declare target
   void clear();
   #pragma omp end declare target
 
@@ -431,7 +430,6 @@ public:
   // Other physical data
   double wgt_ {1.0};     //!< particle weight
   double mu_;      //!< angle of scatter
-  bool alive_ {true};     //!< is particle alive?
 
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or
@@ -524,11 +522,11 @@ public:
 
   bool operator<(const Particle& rhs) const
   {
-    if( alive_ && !rhs.alive_ )
+    if( alive() && !rhs.alive() )
       return true;
-    if( !alive_ && rhs.alive_ )
+    if( !alive() && rhs.alive() )
       return false;
-    if( !alive_ && !rhs.alive_ )
+    if( !alive() && !rhs.alive() )
       return false;
     // case: both are alive, so we sort by id
     return id_ < rhs.id_;

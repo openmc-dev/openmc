@@ -727,7 +727,7 @@ void transport_history_based_single_particle(Particle& p, double& absorption, do
       p.event_collide();
     }
     p.event_revive_from_secondary();
-    if (!p.alive_)
+    if (!p.alive())
       break;
   }
   p.accumulate_keff_tallies_local(absorption, collision, tracklength, leakage);
@@ -743,7 +743,7 @@ void transport_history_based_device()
   #pragma omp target update to(simulation::keff)
 
   int64_t work_amount = simulation::work_per_rank;
-  
+
   double absorption = 0.0;
   double collision = 0.0;
   double tracklength = 0.0;
@@ -758,16 +758,16 @@ void transport_history_based_device()
   }
 
   simulation::total_weight = total_weight;
-  
+
   // Write local reduction results to global values
   global_tally_absorption  = absorption;
   global_tally_collision   = collision;
   global_tally_tracklength = tracklength;
   global_tally_leakage     = leakage;
-  
+
   // Copy back fission bank to host
   simulation::fission_bank.copy_device_to_host();
-  
+
   // Move particle progeny count array back to host
   #pragma omp target update from(simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
 }
@@ -819,7 +819,7 @@ void transport_event_based()
   // died off. In this case, we would essentially need to launch tens or hundreds of events just to process
   // that last particle in serial. Introduction of a maximum period for the revival event ensures that such
   // a particle is revived while there are still many particles in-flight.
-  // 
+  //
   // In practice, this optimization has a few percent improvement in performance. Improvements are largest
   // when # particles per iteration <= max # particles in flight.
   const int64_t max_revival_period = 100;
@@ -849,7 +849,7 @@ void transport_event_based()
       simulation::surface_crossing_queue.size(),
       simulation::revival_queue.size(),
       simulation::collision_queue.size()});
-    
+
     // Determine which event kernel has the longest queue (not including the fuel XS lookup queue)
     int64_t max_other_than_fuel_xs = std::max({
       simulation::calculate_nonfuel_xs_queue.size(),

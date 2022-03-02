@@ -363,7 +363,7 @@ public:
   const double& time() const { return time_; }
   double& time_last() { return time_last_; }
   const double& time_last() const { return time_last_; }
-  bool alive() { return wgt_ != 0.0; }
+  bool alive() const { return wgt_ != 0.0; }
 
   Position& r_last_current() { return r_last_current_; }
   const Position& r_last_current() const { return r_last_current_; }

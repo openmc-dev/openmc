@@ -80,7 +80,6 @@ class ResultsList(list):
             Concentration of specified nuclide in units of ``nuc_units``
 
         """
-        cv.check_value("mat", mat, Material)
         cv.check_value("time_units", time_units, {"s", "d", "min", "h"})
         cv.check_value("nuc_units", nuc_units,
                     {"atoms", "atom/b-cm", "atom/cm3"})
@@ -138,7 +137,6 @@ class ResultsList(list):
             Array of reaction rates
 
         """
-        cv.check_value("mat", mat, Material)
         times = np.empty_like(self, dtype=float)
         rates = np.empty_like(self, dtype=float)
 

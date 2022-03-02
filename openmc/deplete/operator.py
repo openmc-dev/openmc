@@ -558,7 +558,7 @@ class Operator(TransportOperator):
 
         for nuclide in geom_nuc_densities.keys():
             if nuclide in depl_nuc:
-                concentration = prev_res.get_atoms(mat_id, nuclide)[1][-1]
+                concentration = prev_res.get_atoms(mat, nuclide)[1][-1]
                 volume = prev_res[-1].volume[mat_id]
                 number = concentration / volume
             else:

@@ -6,6 +6,7 @@ problem described in dummy_geometry.py.
 
 import pytest
 
+from openmc import Material
 import openmc.deplete
 
 from tests import dummy_operator
@@ -87,8 +88,10 @@ def test_restart(run_in_tmpdir, scheme):
     results = openmc.deplete.ResultsList.from_hdf5(
         operator.output_dir / "depletion_results.h5")
 
-    _t, y1 = results.get_atoms("1", "1")
-    _t, y2 = results.get_atoms("1", "2")
+    mat = openmc.Material(id=1)
+
+    _t, y1 = results.get_atoms(mat, "1")
+    _t, y2 = results.get_atoms(mat, "2")
 
     assert y1 == pytest.approx(bundle.atoms_1)
     assert y2 == pytest.approx(bundle.atoms_2)

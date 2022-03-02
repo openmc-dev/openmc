@@ -88,7 +88,7 @@ def test_restart(run_in_tmpdir, scheme):
     results = openmc.deplete.ResultsList.from_hdf5(
         operator.output_dir / "depletion_results.h5")
 
-    mat = openmc.Material(id=1)
+    mat = openmc.Material()
 
     _t, y1 = results.get_atoms(mat, "1")
     _t, y2 = results.get_atoms(mat, "2")

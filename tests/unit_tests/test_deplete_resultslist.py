@@ -19,7 +19,7 @@ def res():
 
 def test_get_atoms(res):
     """Tests evaluating single nuclide concentration."""
-    mat = openmc.Material(id=1)
+    mat = openmc.Material()
     t, n = res.get_atoms(mat, "Xe135")
 
     t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
@@ -47,7 +47,7 @@ def test_get_atoms(res):
 
 def test_get_reaction_rate(res):
     """Tests evaluating reaction rate."""
-    mat = openmc.Material(id=1)
+    mat = openmc.Material()
     t, r = res.get_reaction_rate(mat, "Xe135", "(n,gamma)")
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]

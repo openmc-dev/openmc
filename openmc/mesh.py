@@ -59,6 +59,12 @@ class MeshBase(IDManagerMixin, ABC):
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         return string
 
+    def _volume_dim_check(self):
+        if len(self.dimension) != 3 or \
+           any([d == 0 for d in self.dimension]):
+            raise RuntimeError(f'Mesh {self.id} is not 3D. '
+                               'Volumes cannot be provided.')
+
     @classmethod
     def from_hdf5(cls, group):
         """Create mesh from HDF5 group
@@ -202,6 +208,23 @@ class RegularMesh(MeshBase):
     @property
     def num_mesh_cells(self):
         return np.prod(self._dimension)
+
+    @property
+    def volumes(self):
+        """Return Volumes for every mesh cell
+
+        Returns
+        -------
+        volumes : numpy.ndarray
+            Volumes
+
+        """
+        self._volume_dim_check()
+        return np.full(self.dimension, np.prod(self.width))
+
+    @property
+    def total_volume(self):
+        return np.prod(self.dimension) * np.prod(self.width)
 
     @property
     def indices(self):
@@ -534,12 +557,12 @@ class RectilinearMesh(MeshBase):
         The number of mesh cells in each direction.
     n_dimension : int
         Number of mesh dimensions (always 3 for a RectilinearMesh).
-    x_grid : Iterable of float
-        Mesh boundary points along the x-axis.
-    y_grid : Iterable of float
-        Mesh boundary points along the y-axis.
-    z_grid : Iterable of float
-        Mesh boundary points along the z-axis.
+    x_grid : numpy.ndarray
+        1-D array of mesh boundary points along the x-axis.
+    y_grid : numpy.ndarray
+        1-D array of mesh boundary points along the y-axis.
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -576,6 +599,27 @@ class RectilinearMesh(MeshBase):
         return self._z_grid
 
     @property
+    def volumes(self):
+        """Return Volumes for every mesh cell
+
+        Returns
+        -------
+        volumes : numpy.ndarray
+            Volumes
+
+        """
+        self._volume_dim_check()
+        V_x = np.diff(self.x_grid)
+        V_y = np.diff(self.y_grid)
+        V_z = np.diff(self.z_grid)
+
+        return np.multiply.outer(np.outer(V_x, V_y), V_z)
+
+    @property
+    def total_volume(self):
+        return np.sum(self.volumes)
+
+    @property
     def indices(self):
         nx = len(self.x_grid) - 1
         ny = len(self.y_grid) - 1
@@ -588,17 +632,17 @@ class RectilinearMesh(MeshBase):
     @x_grid.setter
     def x_grid(self, grid):
         cv.check_type('mesh x_grid', grid, Iterable, Real)
-        self._x_grid = grid
+        self._x_grid = np.asarray(grid)
 
     @y_grid.setter
     def y_grid(self, grid):
         cv.check_type('mesh y_grid', grid, Iterable, Real)
-        self._y_grid = grid
+        self._y_grid = np.asarray(grid)
 
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = grid
+        self._z_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -681,6 +725,7 @@ class RectilinearMesh(MeshBase):
 
         return element
 
+
 class CylindricalMesh(MeshBase):
     """A 3D cylindrical mesh
 
@@ -701,14 +746,14 @@ class CylindricalMesh(MeshBase):
         The number of mesh cells in each direction.
     n_dimension : int
         Number of mesh dimensions (always 3 for a CylindricalMesh).
-    r_grid : Iterable of float
-        Mesh boundary points along the r-axis.
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
-    phi_grid : Iterable of float
-        Mesh boundary points along the phi-axis.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
-    z_grid : Iterable of float
-        Mesh boundary points along the z-axis.
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -757,7 +802,7 @@ class CylindricalMesh(MeshBase):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = grid
+        self._r_grid = np.asarray(grid)
 
     @phi_grid.setter
     def phi_grid(self, grid):
@@ -850,7 +895,8 @@ class CylindricalMesh(MeshBase):
         mesh.z_grid = [float(x) for x in get_text(elem, "z_grid").split()]
         return mesh
 
-    def calc_mesh_volumes(self):
+    @property
+    def volumes(self):
         """Return Volumes for every mesh cell
 
         Returns
@@ -859,7 +905,7 @@ class CylindricalMesh(MeshBase):
             Volumes
 
         """
-
+        self._volume_dim_check()
         V_r = np.diff(np.asarray(self.r_grid)**2 / 2)
         V_p = np.diff(self.phi_grid)
         V_z = np.diff(self.z_grid)
@@ -887,14 +933,14 @@ class SphericalMesh(MeshBase):
         The number of mesh cells in each direction.
     n_dimension : int
         Number of mesh dimensions (always 3 for a SphericalMesh).
-    r_grid : Iterable of float
-        Mesh boundary points along the r-axis.
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
-    theta_grid : Iterable of float
-        Mesh boundary points along the theta-axis in degrees.
+    theta_grid : numpy.ndarray
+        1-D array of mesh boundary points along the theta-axis in radians.
         The default value is [0, π], i.e. the full theta range.
-    phi_grid : Iterable of float
-        Mesh boundary points along the phi-axis in degrees.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
@@ -944,7 +990,7 @@ class SphericalMesh(MeshBase):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = grid
+        self._r_grid = np.asarray(grid)
 
     @theta_grid.setter
     def theta_grid(self, grid):
@@ -1037,7 +1083,8 @@ class SphericalMesh(MeshBase):
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
         return mesh
 
-    def calc_mesh_volumes(self):
+    @property
+    def volumes(self):
         """Return Volumes for every mesh cell
 
         Returns
@@ -1046,7 +1093,7 @@ class SphericalMesh(MeshBase):
             Volumes
 
         """
-
+        self._volume_dim_check()
         V_r = np.diff(np.asarray(self.r_grid)**3 / 3)
         V_t = np.diff(-np.cos(self.theta_grid))
         V_p = np.diff(self.phi_grid)
@@ -1150,6 +1197,15 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def volumes(self):
+        """Return Volumes for every mesh cell if
+        populated by a StatePoint file
+
+        Returns
+        -------
+        volumes : numpy.ndarray
+            Volumes
+
+        """
         return self._volumes
 
     @volumes.setter

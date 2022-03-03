@@ -108,7 +108,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
 
     # Get resulting number of atoms
     results = openmc.deplete.ResultsList.from_hdf5('depletion_results.h5')
-    _, atoms = results.get_atoms(w.id, "W186")
+    _, atoms = results.get_atoms(w, "W186")
 
     assert atoms[0] == pytest.approx(n0)
     assert atoms[1] / atoms[0] == pytest.approx(0.5, rel=tolerance)

@@ -55,7 +55,7 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 
     // (For debugging, if needed) Sort queue via STL serial sort
     //std::sort(queue.data(), queue.data() + queue.size());
-    
+
     // Transfer queue information back to the device
     #pragma omp target update to(queue.data_[:queue.size()])
   }
@@ -99,7 +99,7 @@ void init_event_queues(int64_t n_particles)
   simulation::surface_crossing_queue.allocate_on_device();
   simulation::collision_queue.allocate_on_device();
   simulation::revival_queue.allocate_on_device();
-  
+
   #pragma omp target update to(simulation::work_per_rank)
 }
 
@@ -141,7 +141,7 @@ void process_init_events(int64_t n_particles)
 
   simulation::current_source_offset = n_particles;
   #pragma omp target update to(simulation::current_source_offset)
-  
+
   double total_weight = 0.0;
 
   #pragma omp target teams distribute parallel for
@@ -160,7 +160,7 @@ void process_init_events(int64_t n_particles)
 
   // Write total weight to global variable
   simulation::total_weight = total_weight;
-  
+
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
   simulation::advance_particle_queue.sync_size_device_to_host();
@@ -171,7 +171,7 @@ void process_calculate_xs_events_nonfuel()
 {
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_nonfuel.start();
-  
+
   // The sort here makes less sense, as there are a lot of other various material types, so sorting becomes less powerful
   //sort_queue(simulation::calculate_nonfuel_xs_queue);
 
@@ -203,7 +203,7 @@ void process_calculate_xs_events_fuel()
   // The below line can be used to check if the queue has actually been sorted.
   // May be useful for debugging future on-device sorting strategies.
   //assert(is_sorted(simulation::calculate_fuel_xs_queue));
-  
+
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_fuel.start();
 
@@ -261,12 +261,12 @@ void process_surface_crossing_events()
     int buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_cross_surface();
-    if (p.alive_)
+    if (p.alive())
       dispatch_xs_event(buffer_idx);
     else
       simulation::revival_queue.thread_safe_append({p, buffer_idx});
   }
-  
+
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
   simulation::advance_particle_queue.sync_size_device_to_host();
@@ -285,7 +285,7 @@ void process_collision_events()
     int buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_collide();
-    if (p.alive_)
+    if (p.alive())
       dispatch_xs_event(buffer_idx);
     else
       simulation::revival_queue.thread_safe_append({p, buffer_idx});
@@ -347,7 +347,7 @@ void process_revival_events()
     p.event_revive_from_secondary();
 
     // If no secondary particle was found, attempt to source new particle
-    if (!p.alive_) {
+    if (!p.alive()) {
 
       // Before sourcing new particle, execute death event for old particle
       p.event_death();
@@ -367,7 +367,7 @@ void process_revival_events()
     // If particle has either been revived or a new particle has been sourced,
     // then dispatch particle to appropriate queue. Otherwise, if particle is
     // dead, then it will not be queued anywhere.
-    if (p.alive_)
+    if (p.alive())
       dispatch_xs_event(buffer_idx);
   }
 

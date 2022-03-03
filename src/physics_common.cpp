@@ -15,7 +15,6 @@ void russian_roulette(Particle& p, double weight_survive)
     p.wgt_ = weight_survive;
   } else {
     p.wgt_ = 0.;
-    p.alive_ = false;
   }
 }
 

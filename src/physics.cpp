@@ -60,7 +60,6 @@ void collision(Particle& p)
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type_);
   if (p.E_ < settings::energy_cutoff[type]) {
-    p.alive_ = false;
     p.wgt_ = 0.0;
   }
 
@@ -141,7 +140,7 @@ void sample_neutron_reaction(Particle& p)
   if (p.neutron_xs_[i_nuclide].absorption > 0.0) {
     absorption(p, i_nuclide);
   }
-  if (!p.alive_) return;
+  if (!p.alive()) return;
 
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
@@ -159,7 +158,6 @@ void sample_neutron_reaction(Particle& p)
     if (p.wgt_ < settings::weight_cutoff) {
       russian_roulette(p, settings::weight_survive);
     }
-    if (!p.alive_) return;
   }
 }
 
@@ -275,7 +273,7 @@ void sample_photon_reaction(Particle& p)
   int photon = static_cast<int>(Particle::Type::photon);
   if (p.E_ < settings::energy_cutoff[photon]) {
     p.E_ = 0.0;
-    p.alive_ = false;
+    p.wgt_ = 0.0;
     return;
   }
 
@@ -395,7 +393,7 @@ void sample_photon_reaction(Particle& p)
         element.atomic_relaxation(i_shell, p);
         p.event_ = TallyEvent::ABSORB;
         p.event_mt_ = 533 + shell.index_subshell;
-        p.alive_ = false;
+        p.wgt_ = 0.0;
         p.E_ = 0.0;
         return;
       }
@@ -421,7 +419,7 @@ void sample_photon_reaction(Particle& p)
 
     p.event_ = TallyEvent::ABSORB;
     p.event_mt_ = PAIR_PROD;
-    p.alive_ = false;
+    p.wgt_ = 0.0;
     p.E_ = 0.0;
   }
 }
@@ -436,7 +434,7 @@ void sample_electron_reaction(Particle& p)
   }
 
   p.E_ = 0.0;
-  p.alive_ = false;
+  p.wgt_ = 0.0;
   p.event_ = TallyEvent::ABSORB;
 }
 
@@ -462,7 +460,7 @@ void sample_positron_reaction(Particle& p)
   p.create_secondary(p.wgt_, -u, MASS_ELECTRON_EV, Particle::Type::photon);
 
   p.E_ = 0.0;
-  p.alive_ = false;
+  p.wgt_ = 0.0;
   p.event_ = TallyEvent::ABSORB;
 }
 
@@ -723,7 +721,7 @@ void absorption(Particle& p, int i_nuclide)
           i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].absorption;
       }
 
-      p.alive_ = false;
+      p.wgt_ = 0.0;
       p.event_ = TallyEvent::ABSORB;
       p.event_mt_ = N_DISAPPEAR;
     }

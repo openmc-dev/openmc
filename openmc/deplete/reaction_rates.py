@@ -112,8 +112,8 @@ class ReactionRates(np.ndarray):
 
         Parameters
         ----------
-        mat : str
-            Material ID as a string
+        mat : openmc.Material
+            Material object to evaluate
         nuc : str
             Nuclide name
         rx : str
@@ -125,7 +125,7 @@ class ReactionRates(np.ndarray):
             Reaction rate corresponding to given material, nuclide, and reaction
 
         """
-        mat = self.index_mat[mat]
+        mat = self.index_mat[mat.id]
         nuc = self.index_nuc[nuc]
         rx = self.index_rx[rx]
         return self[mat, nuc, rx]
@@ -135,8 +135,8 @@ class ReactionRates(np.ndarray):
 
         Parameters
         ----------
-        mat : str
-            Material ID as a string
+        mat : openmc.Material
+            Material object to evaluate
         nuc : str
             Nuclide name
         rx : str
@@ -145,7 +145,7 @@ class ReactionRates(np.ndarray):
             Corresponding reaction rate to set
 
         """
-        mat = self.index_mat[mat]
+        mat = self.index_mat[mat.id]
         nuc = self.index_nuc[nuc]
         rx = self.index_rx[rx]
         self[mat, nuc, rx] = value

@@ -58,8 +58,8 @@ class ResultsList(list):
 
         Parameters
         ----------
-        mat : str
-            Material name to evaluate
+        mat : openmc.Material
+            Material object to evaluate
         nuc : str
             Nuclide name to evaluate
         nuc_units : {"atoms", "atom/b-cm", "atom/cm3"}, optional
@@ -84,13 +84,14 @@ class ResultsList(list):
         cv.check_value("nuc_units", nuc_units,
                     {"atoms", "atom/b-cm", "atom/cm3"})
 
+        mat_id = str(mat.id)
         times = np.empty_like(self, dtype=float)
         concentrations = np.empty_like(self, dtype=float)
 
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            concentrations[i] = result[0, mat, nuc]
+            concentrations[i] = result[0, mat_id, nuc]
 
         # Unit conversions
         if time_units == "d":
@@ -102,7 +103,7 @@ class ResultsList(list):
 
         if nuc_units != "atoms":
             # Divide by volume to get density
-            concentrations /= self[0].volume[mat]
+            concentrations /= self[0].volume[mat_id]
             if nuc_units == "atom/b-cm":
                 # 1 barn = 1e-24 cm^2
                 concentrations *= 1e-24
@@ -122,8 +123,8 @@ class ResultsList(list):
 
         Parameters
         ----------
-        mat : str
-            Material name to evaluate
+        mat : openmc.Material
+            Material object to evaluate
         nuc : str
             Nuclide name to evaluate
         rx : str
@@ -143,7 +144,7 @@ class ResultsList(list):
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            rates[i] = result.rates[0].get(mat, nuc, rx) * result[0, mat, nuc]
+            rates[i] = result.rates[0].get(str(mat.id), nuc, rx) * result[0, mat, nuc]
 
         return times, rates
 

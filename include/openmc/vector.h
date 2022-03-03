@@ -6,6 +6,8 @@
 #include <iterator> // for reverse_iterator
 #include <utility> // for swap
 
+#include <omp.h>
+
 namespace openmc {
 
 template<typename T>
@@ -40,9 +42,12 @@ public:
   // Figure out a way around this
   ~vector() {
     if (data_) {
+      if (omp_is_initial_device()) {
+        this->clear();
+        std::free(data_);
+      } else {
 #pragma omp target exit data map(delete: data_)
-      this->clear();
-      std::free(data_);
+      }
     }
   }
 

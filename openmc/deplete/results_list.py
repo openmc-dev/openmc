@@ -84,7 +84,8 @@ class ResultsList(list):
         cv.check_value("nuc_units", nuc_units,
                     {"atoms", "atom/b-cm", "atom/cm3"})
 
-        mat_id = str(mat.id)
+        if isinstance(mat, openmc.Material):
+            mat = mat.id
         times = np.empty_like(self, dtype=float)
         concentrations = np.empty_like(self, dtype=float)
 

@@ -444,8 +444,7 @@ class WeightWindows(IDManagerMixin):
             for value in values:
                 yield value
 
-    @classmethod
-    def from_wwinp(cls, path):
+    def wws_from_wwinp(self, path):
         """Creates WeightWindows classes from a wwinp file
 
         Parameters
@@ -522,12 +521,12 @@ class WeightWindows(IDManagerMixin):
             coords = [float(next(wwinp))]
 
             for _ in range(n_coarse_bins):
-                # TODO: These are setup to read according to the MCNP5 format
-                sx = int(float(next(wwinp))) # number of fine mesh elements in between, sx
-                px = float(next(wwinp))  # value of next coordinate, px
-                qx = next(wwinp)  # this value is unused, qx
-                print(qx)
-
+                # number of fine mesh elements in this coarse element, sx
+                sx = int(float(next(wwinp)))
+                # value of next coordinate, px
+                px = float(next(wwinp))
+                # fine mesh ratio, qx, is currently unused
+                qx = next(wwinp)
                 # append the fine mesh coordinates for this coarse element
                 coords += list(np.linspace(coords[-1], px, sx + 1))[1:]
 
@@ -548,6 +547,7 @@ class WeightWindows(IDManagerMixin):
                        'the value read in block 1 of the wwinp file ({})')
                 raise ValueError(msg.format(dim, mesh_val, header_val))
 
+        # check totaly number of mesh elements in each direction
         mesh_dims = mesh.dimension
         for dim, header_val, mesh_val in zip(dims, header_mesh_dims, mesh_dims):
             if header_val != mesh_val:
@@ -561,8 +561,8 @@ class WeightWindows(IDManagerMixin):
         # read energy bins and weight window values for each particle
         wws = []
         for particle, ne in zip(particles, n_egroups):
-            # read energy
-            e_groups = np.asarray([float(next(wwinp)) for _ in range(ne)])
+            # read upper energy bounds
+            e_groups = np.asarray([0.0] + [float(next(wwinp)) for _ in range(ne)])
 
             # adjust energy from MeV to eV
             e_groups *= 1E6

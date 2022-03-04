@@ -412,172 +412,176 @@ class WeightWindows(IDManagerMixin):
             id=id
         )
 
-    @staticmethod
-    def wwinp(path):
-        """
-        Generator that returns the next value in a wwinp file.
+def __wwinp_reader(path):
+    """
+    Generator that returns the next value in a wwinp file.
 
-        path : str or pathlib.Path
-            Location of the wwinp file
-        """
-        fh = open(path, 'r')
+    path : str or pathlib.Path
+        Location of the wwinp file
+    """
+    fh = open(path, 'r')
 
-        # read the first line of the file and
-        # keep only the first four entries
-        while(True):
-            line = next(fh)
-            if line and not line.startswith('c'):
-                break
+    # read the first line of the file and
+    # keep only the first four entries
+    while(True):
+        line = next(fh)
+        if line and not line.startswith('c'):
+            break
 
-        values = line.strip().split()[:4]
+    values = line.strip().split()[:4]
+    for value in values:
+        yield value
+
+    # the remainder of the file can be read as
+    # sequential values
+    while(True):
+        line = next(fh)
+        # skip empty or commented lines
+        if not line or line.startswith('c'):
+            continue
+        values = line.strip().split()
         for value in values:
             yield value
 
-        # the remainder of the file can be read as
-        # sequential values
-        while(True):
-            line = next(fh)
-            # skip empty or commented lines
-            if not line or line.startswith('c'):
-                continue
-            values = line.strip().split()
-            for value in values:
-                yield value
+def wwinp_to_wws(path):
+    """Creates WeightWindows classes from a wwinp file
 
-    def wws_from_wwinp(self, path):
-        """Creates WeightWindows classes from a wwinp file
+    Parameters
+    ----------
+    path : str
+        Path to the wwinp file.
 
-        Parameters
-        ----------
-        path : str
-            Path to the wwinp file.
+    Returns
+    -------
+    list of openmc.WeightWindows
+    """
+    # create generator for getting the next parameter from the file
+    wwinp = __wwinp_reader(path)
 
-        Returns
-        -------
-        list of openmc.WeightWindows
-        """
-        # create generator for getting the next parameter from the file
-        wwinp = WeightWindows.wwinp(path)
+    # first parameter, if, of wwinp file is unused
+    next(wwinp)
 
-        # first parameter, if, of wwinp file is unused
-        next(wwinp)
+    # check time parameter, iv
+    if int(float(next(wwinp))) > 1:
+        raise ValueError('Time-dependent weight windows are not yet supported.')
 
-        # check time parameter, iv
-        if int(float(next(wwinp))) > 1:
-            raise ValueError('Time-dependent weight windows are not yet supported.')
+    # number of particle types, ni
+    n_particle_types = int(float(next(wwinp)))
 
-        # number of particle types, ni
-        n_particle_types = int(float(next(wwinp)))
+    # read an indicator of the mesh type.
+    # this will be 10 if a rectilinear mesh
+    # and 16 for cylindrical or spherical meshes
+    mesh_chars = int(float(next(wwinp)))
 
-        # read an indicator of the mesh type.
-        # this will be 10 if a rectilinear mesh
-        # and 16 for cylindrical or spherical meshes
-        mesh_chars = int(float(next(wwinp)))
+    if mesh_chars != 10:
+        # TODO: read the first entry by default and display a warning
+        raise ValueError('Cylindrical and Spherical meshes are not currently supported')
 
-        if mesh_chars != 10:
-            # TODO: read the first entry by default and display a warning
-            raise ValueError('Cylindrical and Spherical meshes are not currently supported')
+    # read the number of energy groups for each particle, ne
+    n_egroups = [int(next(wwinp)) for _ in range(n_particle_types)]
 
-        # read the number of energy groups for each particle, ne
-        n_egroups = [int(next(wwinp)) for _ in range(n_particle_types)]
+    if len(n_egroups) == 1:
+        particles = ['neutron']
+    elif len(n_egroups) == 2:
+        particles = ['neutron', 'photon']
 
-        if len(n_egroups) == 1:
-            particles = ['neutron']
-        elif len(n_egroups) == 2:
-            particles = ['neutron', 'photon']
+    if len(n_egroups) > 2:
+        msg = ('More than two particle types are present. '
+                'Only neutron and photon weight windows will be read.')
+        warnings.warn(msg)
 
-        if len(n_egroups) > 2:
-            msg = ('More than two particle types are present. '
-                   'Only neutron and photon weight windows will be read.')
-            warnings.warn(msg)
+    # read total number of fine mesh elements in each coarse
+    # element (nfx, nfy, nfz)
+    n_fine_x = int(float(next(wwinp)))
+    n_fine_y = int(float(next(wwinp)))
+    n_fine_z = int(float(next(wwinp)))
+    header_mesh_dims = (n_fine_x, n_fine_y, n_fine_z)
 
-        # read total number of fine mesh elements in each coarse
-        # element (nfx, nfy, nfz)
-        n_fine_x = int(float(next(wwinp)))
-        n_fine_y = int(float(next(wwinp)))
-        n_fine_z = int(float(next(wwinp)))
-        header_mesh_dims = (n_fine_x, n_fine_y, n_fine_z)
+    # read the mesh origin: x0, y0, z0
+    llc = tuple(float(next(wwinp)) for _ in range(3))
 
-        # read the mesh origin: x0, y0, z0
-        llc = tuple(float(next(wwinp)) for _ in range(3))
+    # read the number of coarse mesh elements (ncx, ncy, ncz)
+    n_coarse_x = int(float(next(wwinp)))
+    n_coarse_y = int(float(next(wwinp)))
+    n_coarse_z = int(float(next(wwinp)))
 
-        # read the number of coarse mesh elements (ncx, ncy, ncz)
-        n_coarse_x = int(float(next(wwinp)))
-        n_coarse_y = int(float(next(wwinp)))
-        n_coarse_z = int(float(next(wwinp)))
+    # skip the value defining the geometry type, nwg, we already know this
+    # 1 - rectilinear mesh
+    # 2 - cylindrical mesh
+    # 3 - spherical mesh
+    mesh_type = int(float(next(wwinp)))
 
-        # skip the value defining the geometry type, nwg, we already know this
-        # 1 - rectilinear mesh
-        # 2 - cylindrical mesh
-        # 3 - spherical mesh
-        mesh_type = int(float(next(wwinp)))
+    if mesh_type != 1:
+        # TODO: support additional mesh types
+        raise ValueError('Cylindrical and Spherical meshes are not currently supported')
 
-        if mesh_type != 1:
-            # TODO: support additional mesh types
-            raise ValueError('Cylindrical and Spherical meshes are not currently supported')
+    # internal function for parsing mesh coordinates
+    def _read_mesh_coords(wwinp, n_coarse_bins):
+        coords = [float(next(wwinp))]
 
-        # internal function for parsing mesh coordinates
-        def _read_mesh_coords(wwinp, n_coarse_bins):
-            coords = [float(next(wwinp))]
+        for _ in range(n_coarse_bins):
+            # number of fine mesh elements in this coarse element, sx
+            sx = int(float(next(wwinp)))
+            # value of next coordinate, px
+            px = float(next(wwinp))
+            # fine mesh ratio, qx, is currently unused
+            qx = next(wwinp)
+            # append the fine mesh coordinates for this coarse element
+            coords += list(np.linspace(coords[-1], px, sx + 1))[1:]
 
-            for _ in range(n_coarse_bins):
-                # number of fine mesh elements in this coarse element, sx
-                sx = int(float(next(wwinp)))
-                # value of next coordinate, px
-                px = float(next(wwinp))
-                # fine mesh ratio, qx, is currently unused
-                qx = next(wwinp)
-                # append the fine mesh coordinates for this coarse element
-                coords += list(np.linspace(coords[-1], px, sx + 1))[1:]
+        return np.asarray(coords)
 
-            return np.asarray(coords)
+    # read the coordinates for each dimension into a rectilinear mesh
+    mesh = RectilinearMesh()
+    mesh.x_grid = _read_mesh_coords(wwinp, n_coarse_x)
+    mesh.y_grid = _read_mesh_coords(wwinp, n_coarse_y)
+    mesh.z_grid = _read_mesh_coords(wwinp, n_coarse_z)
 
-        # read the coordinates for each dimension into a rectilinear mesh
-        mesh = RectilinearMesh()
-        mesh.x_grid = _read_mesh_coords(wwinp, n_coarse_x)
-        mesh.y_grid = _read_mesh_coords(wwinp, n_coarse_y)
-        mesh.z_grid = _read_mesh_coords(wwinp, n_coarse_z)
+    dims = ('x', 'y', 'z')
+    # check consistency of mesh coordinates
+    mesh_llc = mesh_val = (mesh.x_grid[0], mesh.y_grid[0], mesh.z_grid[0])
+    for dim, header_val, mesh_val in zip(dims, llc, mesh_llc):
+        if header_val != mesh_val:
+            msg = ('The {} corner of the mesh ({}) does not match '
+                    'the value read in block 1 of the wwinp file ({})')
+            raise ValueError(msg.format(dim, mesh_val, header_val))
 
-        dims = ('x', 'y', 'z')
-        # check consistency of mesh coordinates
-        mesh_llc = mesh_val = (mesh.x_grid[0], mesh.y_grid[0], mesh.z_grid[0])
-        for dim, header_val, mesh_val in zip(dims, llc, mesh_llc):
-            if header_val != mesh_val:
-                msg = ('The {} corner of the mesh ({}) does not match '
-                       'the value read in block 1 of the wwinp file ({})')
-                raise ValueError(msg.format(dim, mesh_val, header_val))
+    # check totaly number of mesh elements in each direction
+    mesh_dims = mesh.dimension
+    for dim, header_val, mesh_val in zip(dims, header_mesh_dims, mesh_dims):
+        if header_val != mesh_val:
+            msg = ('Total number of mesh elements read in the {} '
+                    'direction ({}) is inconsistent with the '
+                    'number read in block 1 of the wwinp file ({})')
+            raise ValueError(msg.format(dim, mesh_val, header_val))
 
-        # check totaly number of mesh elements in each direction
-        mesh_dims = mesh.dimension
-        for dim, header_val, mesh_val in zip(dims, header_mesh_dims, mesh_dims):
-            if header_val != mesh_val:
-                msg = ('Total number of mesh elements read in the {} '
-                       'direction ({}) is inconsistent with the '
-                       'number read in block 1 of the wwinp file ({})')
-                raise ValueError(msg.format(dim, mesh_val, header_val))
+    # total number of fine mesh elements, nft
+    n_elements = n_fine_x * n_fine_y * n_fine_z
+    # read energy bins and weight window values for each particle
+    wws = []
+    for particle, ne in zip(particles, n_egroups):
+        # read upper energy bounds
+        # it is implied that zero is always the first bound in MCNP
+        e_groups = np.asarray([0.0] + [float(next(wwinp)) for _ in range(ne)])
 
-        # total number of fine mesh elements, nft
-        n_elements = n_fine_x * n_fine_y * n_fine_z
-        # read energy bins and weight window values for each particle
-        wws = []
-        for particle, ne in zip(particles, n_egroups):
-            # read upper energy bounds
-            e_groups = np.asarray([0.0] + [float(next(wwinp)) for _ in range(ne)])
+        # adjust energy from MeV to eV
+        e_groups *= 1E6
 
-            # adjust energy from MeV to eV
-            e_groups *= 1E6
+        # create an array for weight window lower bounds
+        ww_lb = np.zeros((ne, n_elements))
+        for e in range(ne):
+            ww_lb[e, :] = [float(next(wwinp)) for _ in range(n_elements)]
 
-            # create an array for weight window lower bounds
-            ww_lb = np.zeros((ne, n_elements))
-            for e in range(ne):
-                ww_lb[e, :] = [float(next(wwinp)) for _ in range(n_elements)]
+        # reorder weight window lower bounds
+        # MCNP ordering - 'zyx', with z changing fastest
+        # OpenMC ordering 'xyz', with x changing fastest
+        ww_lb = np.swapaxes(ww_lb, 1, 3)
+        settings = WeightWindows(id=None,
+                                    mesh=mesh,
+                                    lower_ww_bounds=ww_lb.flatten(),
+                                    upper_bound_ratio=5.0,
+                                    energy_bins=e_groups,
+                                    particle_type=particle)
+        wws.append(settings)
 
-            settings = WeightWindows(id=None,
-                                     mesh=mesh,
-                                     lower_ww_bounds=ww_lb.flatten(),
-                                     upper_bound_ratio=5.0,
-                                     energy_bins=e_groups,
-                                     particle_type=particle)
-            wws.append(settings)
-
-        return wws
+    return wws

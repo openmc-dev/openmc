@@ -58,8 +58,8 @@ class ResultsList(list):
 
         Parameters
         ----------
-        mat : openmc.Material
-            Material object to evaluate
+        mat : openmc.Material, str
+            Material object or material id to evaluate
         nuc : str
             Nuclide name to evaluate
         nuc_units : {"atoms", "atom/b-cm", "atom/cm3"}, optional
@@ -84,7 +84,12 @@ class ResultsList(list):
         cv.check_value("nuc_units", nuc_units,
                     {"atoms", "atom/b-cm", "atom/cm3"})
 
-        mat_id = str(mat.id)
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
         times = np.empty_like(self, dtype=float)
         concentrations = np.empty_like(self, dtype=float)
 
@@ -123,8 +128,8 @@ class ResultsList(list):
 
         Parameters
         ----------
-        mat : openmc.Material
-            Material object to evaluate
+        mat : openmc.Material, str
+            Material object or material id to evaluate
         nuc : str
             Nuclide name to evaluate
         rx : str
@@ -141,10 +146,17 @@ class ResultsList(list):
         times = np.empty_like(self, dtype=float)
         rates = np.empty_like(self, dtype=float)
 
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            rates[i] = result.rates[0].get(str(mat.id), nuc, rx) * result[0, mat, nuc]
+            rates[i] = result.rates[0].get(mat_id, nuc, rx) * result[0, mat, nuc]
 
         return times, rates
 

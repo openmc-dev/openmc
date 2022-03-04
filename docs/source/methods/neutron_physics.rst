@@ -359,7 +359,7 @@ secondary energy and angle sampling.
 For a reaction with secondary products, it is necessary to determine the
 outgoing angle and energy of the products. For any reaction other than elastic
 and level inelastic scattering, the outgoing energy must be determined based on
-tabulated or parameterized data. The `ENDF-6 Format <endf102>`_ specifies a
+tabulated or parameterized data. The `ENDF-6 Format` specifies a
 variety of ways that the secondary energy distribution can be represented. ENDF
 File 5 contains uncorrelated energy distribution whereas ENDF File 6 contains
 correlated energy-angle distributions. The ACE format specifies its own
@@ -1416,8 +1416,7 @@ For incoherent elastic scattering, OpenMC has two methods for calculating the
 cosine of the angle of scattering. The first method uses the Debye-Waller
 integral, :math:`W'`, and the characteristic bound cross section as given
 directly in an ENDF-6 formatted file. In this case, the cosine of the angle of
-scattering can be sampled by inverting equation 7.4 from the `ENDF-6 Format
-Manual <endf102>`_:
+scattering can be sampled by inverting equation 7.4 from the `ENDF-6 Format`_:
 
 .. math::
     :label: incoherent-elastic-mu-exact
@@ -1752,7 +1751,7 @@ types.
 
 .. _PREPRO: https://www-nds.iaea.org/ndspub/endf/prepro/
 
-.. _endf102: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
+.. _ENDF-6 Format: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
 
 .. _Monte Carlo Sampler: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-09721-MS
 

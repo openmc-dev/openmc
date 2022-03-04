@@ -119,8 +119,8 @@ pip_. From the root directory of the OpenMC repository, run:
     pip install -e .[test]
 
 This installs the OpenMC Python package in `"editable" mode
-<https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>`_ so
-that 1) it can be imported from a Python interpreter and 2) any changes made are
+<https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs>`_ so that 1)
+it can be imported from a Python interpreter and 2) any changes made are
 immediately reflected in the installed version (that is, you don't need to keep
 reinstalling it). While the same effect can be achieved using the
 :envvar:`PYTHONPATH` environment variable, this is generally discouraged as it

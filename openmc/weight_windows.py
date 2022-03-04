@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from numbers import Real, Integral
+import warnings
 
 from xml.etree import ElementTree as ET
 import numpy as np
@@ -486,7 +487,7 @@ class WeightWindows(IDManagerMixin):
         else:
             msg = ('More than two particle types are present. '
                    'Only neutron and photon weight windows will be read.')
-            raise Warning(msg)
+            raise warnings.warn(msg)
 
         # read number of fine mesh elements in each coarse
         # element: nfx, nfy, nfz

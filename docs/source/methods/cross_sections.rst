@@ -187,9 +187,10 @@ are represented using a multi-group library format specific to the OpenMC code.
 The format is described in the :ref:`mgxs_lib_spec`. The data itself can be
 prepared via traditional paths or directly from a continuous-energy OpenMC
 calculation by use of the Python API as is shown in an `example notebook
-<../examples/mg-mode-part-i.ipynb>`_. This multi-group library consists of
-meta-data (such as the energy group structure) and multiple `xsdata` objects
-which contains the required microscopic or macroscopic multi-group data.
+<https://nbviewer.jupyter.org/github/openmc-dev/openmc-notebooks/blob/main/mg-mode-part-i.ipynb>`_.
+This multi-group library consists of meta-data (such as the energy group
+structure) and multiple `xsdata` objects which contains the required microscopic
+or macroscopic multi-group data.
 
 At a minimum, the library must contain the absorption cross section
 (:math:`\sigma_{a,g}`) and a scattering matrix. If the problem is an eigenvalue
@@ -275,6 +276,6 @@ or even isotropic scattering.
 .. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _NJOY: https://www.njoy21.io/NJOY21/
-.. _ENDF/B data: https://www.nndc.bnl.gov/endf/b8.0/
+.. _ENDF/B data: https://www.nndc.bnl.gov/endf-b8.0/
 .. _Leppanen: https://doi.org/10.1016/j.anucene.2009.03.019
 .. _algorithms: http://ab-initio.mit.edu/wiki/index.php/Faddeeva_Package

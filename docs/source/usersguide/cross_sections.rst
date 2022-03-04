@@ -124,7 +124,7 @@ OpenMC.
 .. hint:: The :class:`IncidentNeutron` class allows you to view/modify cross
           sections, secondary angle/energy distributions, probability tables,
           etc. For a more thorough overview of the capabilities of this class,
-          see the `example notebook <../examples/nuclear-data.ipynb>`__.
+          see the `example notebook <https://nbviewer.jupyter.org/github/openmc-dev/openmc-notebooks/blob/main/nuclear-data.ipynb>`_.
 
 Manually Creating a Library from ENDF files
 -------------------------------------------
@@ -259,7 +259,7 @@ For an example of how to create a multi-group library, see the `example notebook
 .. _NNDC: https://www.nndc.bnl.gov/endf
 .. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
-.. _ENDF/B: https://www.nndc.bnl.gov/endf/b7.1/acefiles.html
+.. _ENDF/B: https://www.nndc.bnl.gov/endf-b7.1/acefiles.html
 .. _JEFF: https://www.oecd-nea.org/dbdata/jeff/jeff33/
 .. _TENDL: https://tendl.web.psi.ch/tendl_2017/tendl2017.html
 .. _Seltzer and Berger: https://doi.org/10.1016/0092-640X(86)90014-8

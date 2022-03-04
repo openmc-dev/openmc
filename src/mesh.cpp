@@ -21,6 +21,7 @@
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
@@ -97,16 +98,8 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
 
 Mesh::Mesh(pugi::xml_node node)
 {
-  // Copy mesh id
-  if (check_for_node(node, "id")) {
-    id_ = std::stoi(get_node_value(node, "id"));
-
-    // Check to make sure 'id' hasn't been used
-    if (model::mesh_map.find(id_) != model::mesh_map.end()) {
-      fatal_error(
-        "Two or more meshes use the same unique ID: " + std::to_string(id_));
-    }
-  }
+  // Read mesh id
+  id_ = std::stoi(get_node_value(node, "id"));
 }
 
 void Mesh::set_id(int32_t id)
@@ -2568,7 +2561,24 @@ double LibMesh::volume(int bin) const
 
 void read_meshes(pugi::xml_node root)
 {
+  std::unordered_set<int> mesh_ids;
+
   for (auto node : root.children("mesh")) {
+    // Check to make sure multiple meshes in the same file don't share IDs
+    int id = std::stoi(get_node_value(node, "id"));
+    if (contains(mesh_ids, id)) {
+      fatal_error(
+        "Two or more meshes use the same unique ID: " + std::to_string(id));
+    }
+    mesh_ids.insert(id);
+
+    // If we've already read a mesh with the same ID in a *different* file,
+    // assume it is the same here
+    if (model::mesh_map.find(id) != model::mesh_map.end()) {
+      warning(fmt::format("Mesh with ID={} appears in multiple files.", id));
+      continue;
+    }
+
     std::string mesh_type;
     if (check_for_node(node, "type")) {
       mesh_type = get_node_value(node, "type", true, true);

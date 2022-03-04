@@ -235,7 +235,6 @@ private:
   double mu_;              //!< angle of scatter
   double time_ {0.0};      //!< time in [s]
   double time_last_ {0.0}; //!< previous time in [s]
-  bool alive_ {true};      //!< is particle alive?
 
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or
@@ -309,7 +308,8 @@ private:
 
   // Weight window information
   int n_split_ {0}; // Number of times this particle has been split
-  double ww_factor_ {0.0}; // Particle-specific factor for on-the-fly weight window adjustment
+  double ww_factor_ {
+    0.0}; // Particle-specific factor for on-the-fly weight window adjustment
 
 // DagMC state variables
 #ifdef DAGMC
@@ -342,7 +342,6 @@ public:
   const LocalCoord& coord(int i) const { return coord_[i]; }
   const vector<LocalCoord>& coord() const { return coord_; }
 
-
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
   int& cell_last(int i) { return cell_last_[i]; }
@@ -364,7 +363,7 @@ public:
   const double& time() const { return time_; }
   double& time_last() { return time_last_; }
   const double& time_last() const { return time_last_; }
-  bool& alive() { return alive_; }
+  bool alive() const { return wgt_ != 0.0; }
 
   Position& r_last_current() { return r_last_current_; }
   const Position& r_last_current() const { return r_last_current_; }

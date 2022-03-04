@@ -562,25 +562,23 @@ def wwinp_to_wws(path):
     for particle, ne in zip(particles, n_egroups):
         # read upper energy bounds
         # it is implied that zero is always the first bound in MCNP
-        e_groups = np.asarray([0.0] + [float(next(wwinp)) for _ in range(ne)])
-
+        e_bounds = np.asarray([0.0] + [float(next(wwinp)) for _ in range(ne)])
         # adjust energy from MeV to eV
-        e_groups *= 1E6
+        e_bounds *= 1E6
 
         # create an array for weight window lower bounds
-        ww_lb = np.zeros((ne, n_elements))
+        ww_lb = np.zeros((ne, *mesh.dimension))
         for e in range(ne):
-            ww_lb[e, :] = [float(next(wwinp)) for _ in range(n_elements)]
+            # MCNP ordering for weight windows matches that of OpenMC
+            # ('xyz' with x changing fastest)
+            ww_vals = [float(next(wwinp)) for _ in range(n_elements)]
+            ww_lb[e, :] = np.asarray(ww_vals).reshape(mesh.dimension)
 
-        # reorder weight window lower bounds
-        # MCNP ordering - 'zyx', with z changing fastest
-        # OpenMC ordering 'xyz', with x changing fastest
-        ww_lb = np.swapaxes(ww_lb, 1, 3)
         settings = WeightWindows(id=None,
                                     mesh=mesh,
                                     lower_ww_bounds=ww_lb.flatten(),
                                     upper_bound_ratio=5.0,
-                                    energy_bins=e_groups,
+                                    energy_bins=e_bounds,
                                     particle_type=particle)
         wws.append(settings)
 

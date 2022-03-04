@@ -2421,8 +2421,7 @@ void score_collision_tally(Particle& p)
 
 void score_surface_tally(Particle& p, const vector<int>& tallies)
 {
-  // No collision, so no weight change when survival biasing
-  double flux = p.wgt();
+  double current = p.wgt_last();
 
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
@@ -2443,7 +2442,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
       // Loop over scores.
       // There is only one score type for current tallies so there is no need
       // for a further scoring function.
-      double score = flux * filter_weight;
+      double score = current * filter_weight;
       for (auto score_index = 0; score_index < tally.scores_.size();
            ++score_index) {
 #pragma omp atomic

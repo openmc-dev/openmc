@@ -29,10 +29,10 @@ kwargs = {
     'packages': find_packages(exclude=['tests*']),
     'scripts': glob.glob('scripts/openmc-*'),
 
-    # Data files and librarries
+    # Data files and libraries
     'package_data': {
         'openmc.lib': ['libopenmc.{}'.format(suffix)],
-        'openmc.data': ['mass16.txt', 'BREMX.DAT', '*.h5', '*.pyx'],
+        'openmc.data': ['mass16.txt', 'BREMX.DAT', '*.h5'],
         'openmc.data.effective_dose': ['*.txt']
     },
 

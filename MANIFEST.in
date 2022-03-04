@@ -27,7 +27,7 @@ recursive-include examples *.py
 recursive-include examples *.xml
 recursive-include include *.h
 recursive-include man *.1
-recursive-inlcude openmc *.pyx
+recursive-include openmc *.pyx
 recursive-include openmc *.c
 recursive-include src *.c
 recursive-include src *.cc
@@ -38,7 +38,7 @@ recursive-include src *.rnc
 recursive-include src *.rng
 recursive-include tests *.dat
 recursive-include tests *.h5
-recursive-inlcude tests *.h5m
+recursive-include tests *.h5m
 recursive-include tests *.py
 recursive-include tests *.xml
 recursive-include vendor CMakeLists.txt

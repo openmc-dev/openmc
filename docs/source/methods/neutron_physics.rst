@@ -359,7 +359,7 @@ secondary energy and angle sampling.
 For a reaction with secondary products, it is necessary to determine the
 outgoing angle and energy of the products. For any reaction other than elastic
 and level inelastic scattering, the outgoing energy must be determined based on
-tabulated or parameterized data. The `ENDF-6 Format` specifies a
+tabulated or parameterized data. The `ENDF-6 Format`_ specifies a
 variety of ways that the secondary energy distribution can be represented. ENDF
 File 5 contains uncorrelated energy distribution whereas ENDF File 6 contains
 correlated energy-angle distributions. The ACE format specifies its own

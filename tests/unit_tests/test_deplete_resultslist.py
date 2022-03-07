@@ -18,9 +18,6 @@ def res():
 
 def test_get_atoms(res):
     """Tests evaluating single nuclide concentration."""
-    mat = openmc.Material()
-    mat.id = 1
-
     t, n = res.get_atoms("1", "Xe135")
 
     t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])

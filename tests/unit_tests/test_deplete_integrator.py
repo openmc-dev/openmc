@@ -14,7 +14,6 @@ import numpy as np
 from uncertainties import ufloat
 import pytest
 
-from openmc import Material
 from openmc.mpi import comm
 from openmc.deplete import (
     ReactionRates, Results, ResultsList, OperatorResult, PredictorIntegrator,
@@ -180,11 +179,8 @@ def test_integrator(run_in_tmpdir, scheme):
     res = ResultsList.from_hdf5(
         operator.output_dir / "depletion_results.h5")
 
-    mat = Material()
-    mat.id = 1
-
-    t1, y1 = res.get_atoms(mat, "1")
-    t2, y2 = res.get_atoms(mat, "2")
+    t1, y1 = res.get_atoms("1", "1")
+    t2, y2 = res.get_atoms("1", "2")
 
     assert (t1 == [0.0, 0.75, 1.5]).all()
     assert y1 == pytest.approx(bundle.atoms_1)

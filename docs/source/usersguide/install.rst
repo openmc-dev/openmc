@@ -512,8 +512,9 @@ distributions.
       are used for several optional features in the API.
 
    `pandas <https://pandas.pydata.org/>`_
-      Pandas is used to generate tally DataFrames as demonstrated in
-      an `example notebook <../examples/pandas-dataframes.ipynb>`_.
+      Pandas is used to generate tally DataFrames as demonstrated in an `example
+      notebook
+      <https://nbviewer.jupyter.org/github/openmc-dev/openmc-notebooks/blob/main/pandas-dataframes.ipynb>`_.
 
    `h5py <http://www.h5py.org/>`_
       h5py provides Python bindings to the HDF5 library. Since OpenMC outputs

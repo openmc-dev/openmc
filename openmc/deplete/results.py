@@ -86,6 +86,8 @@ class Results:
 
         """
         stage, mat, nuc = pos
+        if isinstance(mat, openmc.Material):
+            mat = str(mat.id)
         if isinstance(mat, str):
             mat = self.mat_to_ind[mat]
         if isinstance(nuc, str):

@@ -2568,7 +2568,7 @@ void read_meshes(pugi::xml_node root)
     int id = std::stoi(get_node_value(node, "id"));
     if (contains(mesh_ids, id)) {
       fatal_error(
-        "Two or more meshes use the same unique ID: " + std::to_string(id));
+        fmt::format("Two or more meshes use the same unique ID '{}' in the same input file", id));
     }
     mesh_ids.insert(id);
 

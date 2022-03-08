@@ -478,10 +478,10 @@ OpenMC to verify that the model matches one's expectations.
 
 **Note:** DAGMC geometries used in OpenMC are currently required to be clean,
 meaning that all surfaces have been `imprinted and merged
-<https://svalinn.github.io/DAGMC/usersguide/trelis_workflow.html>`_
-successfully and that the model is `watertight
-<https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_. Future
-implementations of DAGMC geometry will support small volume overlaps and
+<https://svalinn.github.io/DAGMC/usersguide/cubit_basics.html>`_ successfully
+and that the model is `watertight
+<https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_.
+Future implementations of DAGMC geometry will support small volume overlaps and
 un-merged surfaces.
 
 Cell, Surface, and Material IDs

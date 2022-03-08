@@ -101,6 +101,18 @@ void Lattice::adjust_indices()
 int32_t Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id,
   int map, std::unordered_map<int32_t, int32_t>& univ_count_memo)
 {
+  // If the offsets have already been determined for this "map", don't bother
+  // recalculating all of them and just return the total offset. Note that the
+  // offsets_ array doesn't actually include the offset accounting for the last
+  // universe, so we get the before-last offset for the given map and then
+  // explicitly add the count for the last universe.
+  if (offsets_[map * universes_.size()] != C_NONE) {
+    int last_offset = offsets_[(map + 1) * universes_.size() - 1];
+    int last_univ = universes_.back();
+    return last_offset +
+           count_universe_instances(last_univ, target_univ_id, univ_count_memo);
+  }
+
   for (LatticeIter it = begin(); it != end(); ++it) {
     offsets_[map * universes_.size() + it.indx_] = offset;
     offset += count_universe_instances(*it, target_univ_id, univ_count_memo);

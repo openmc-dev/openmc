@@ -491,7 +491,7 @@ int sample_nuclide(Particle& p)
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
     // Get atom density
-    int i_nuclide = mat.device_nuclide_[i];
+    int i_nuclide = mat.nuclide_[i];
     double atom_density = mat.device_atom_density_[i];
 
     // ======================================================================
@@ -503,7 +503,7 @@ int sample_nuclide(Particle& p)
     // Check if this nuclide matches one of the S(a,b) tables specified.
     // This relies on thermal_tables_ being sorted by .index_nuclide
     if (check_sab) {
-      const auto& sab {mat.device_thermal_tables_[j]};
+      const auto& sab {mat.thermal_tables_[j]};
       if (i == sab.index_nuclide) {
         // Get index in sab_tables
         i_sab = sab.index_table;

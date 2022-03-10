@@ -480,12 +480,15 @@ def wwinp_to_wws(path):
     # read the number of energy groups for each particle, ne
     n_egroups = [int(next(wwinp)) for _ in range(n_particle_types)]
 
-    if len(n_egroups) == 1:
-        particles = ['neutron']
-    elif len(n_egroups) == 2:
-        particles = ['neutron', 'photon']
+    # order that supported particle types will appear in the file
+    particle_types = ['neutron', 'photon']
 
-    if len(n_egroups) > 2:
+    # add particle to list if at least one energy group is present
+    particles = [p for e, p in zip(n_egroups, particle_types) if e > 0]
+    # truncate list of energy groups if needed
+    n_egroups = [e for e in n_egroups if e > 0]
+
+    if n_particle_types > 2:
         msg = ('More than two particle types are present. '
                 'Only neutron and photon weight windows will be read.')
         warnings.warn(msg)
@@ -546,7 +549,7 @@ def wwinp_to_wws(path):
                     'the value read in block 1 of the wwinp file ({})')
             raise ValueError(msg.format(dim, mesh_val, header_val))
 
-    # check totaly number of mesh elements in each direction
+    # check total number of mesh elements in each direction
     mesh_dims = mesh.dimension
     for dim, header_val, mesh_val in zip(dims, header_mesh_dims, mesh_dims):
         if header_val != mesh_val:
@@ -567,13 +570,15 @@ def wwinp_to_wws(path):
         e_bounds *= 1E6
 
         # create an array for weight window lower bounds
-        ww_lb = np.zeros((ne, *mesh.dimension))
-        for e in range(ne):
-            # MCNP ordering for weight windows matches that of OpenMC
-            # ('xyz' with x changing fastest)
-            ww_vals = [float(next(wwinp)) for _ in range(n_elements)]
-            ww_lb[e, :] = np.asarray(ww_vals).reshape(mesh.dimension)
-
+        ww_lb = np.zeros((*mesh.dimension, ne))
+        for ijk in mesh.indices:
+            idx = tuple([v - 1 for v in ijk] + [slice(None)])
+            ww_lb[idx] = [float(next(wwinp)) for _ in range(ne)]
+        # for e in range(ne):
+        #     # MCNP ordering for weight windows matches that of OpenMC
+        #     # ('xyz' with x changing fastest)
+        #     ww_vals = [float(next(wwinp)) for _ in range(n_elements)]
+        #     ww_lb[e, :] = np.asarray(ww_vals).reshape(mesh.dimension)
         settings = WeightWindows(id=None,
                                     mesh=mesh,
                                     lower_ww_bounds=ww_lb.flatten(),

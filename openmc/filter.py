@@ -1324,6 +1324,20 @@ class EnergyFilter(RealFilter):
             cv.check_greater_than('filter value', v0, 0., equality=True)
             cv.check_greater_than('filter value', v1, 0., equality=True)
 
+    @classmethod
+    def from_group_structure(cls, group_structure):
+        """Construct an EnergyFilter instance from a standard group structure.
+
+        Parameters
+        ----------
+        group_structure : str
+            Name of the group structure. Must be a valid key of
+            openmc.mgxs.GROUP_STRUCTURES dictionary.
+
+        """
+
+        return cls(openmc.mgxs.GROUP_STRUCTURES[group_structure.upper()])
+
 
 class EnergyoutFilter(EnergyFilter):
     """Bins tally events based on outgoing particle energy.

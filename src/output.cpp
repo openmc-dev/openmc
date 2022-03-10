@@ -577,7 +577,7 @@ void write_tallies()
     return;
 
   // Set filename for tallies_out
-  filename = fmt::format("{}tallies.out", settings::path_output, w);
+  filename = fmt::format("{}tallies.out", settings::path_output);
 
   // Open the tallies.out file.
   std::ofstream tallies_out;

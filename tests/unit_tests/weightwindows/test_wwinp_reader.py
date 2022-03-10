@@ -1,0 +1,117 @@
+import numpy as np
+
+import openmc
+import pytest
+
+
+# check that we can successfully read wwinp files with the following contents:
+#
+#  - neutrons on a rectilinear mesh
+#  - neutrons and photons on a rectilinear mesh
+
+# check that the following raises the correct exceptions (for now):
+#
+#  - wwinp file with multiple time steps
+#  - wwinp file with cylindrical or spherical mesh
+
+
+# expected retults - neutron data only
+n_mesh = openmc.RectilinearMesh()
+n_mesh.x_grid = np.asarray([-100.0,
+                            -99.0,
+                            -97.0,
+                            -79.36364,
+                            -61.72727,
+                            -44.09091,
+                            -26.45455,
+                            -8.818182,
+                            8.818182,
+                            26.45455,
+                            44.09091,
+                            61.72727,
+                            79.36364,
+                            97.0,
+                            99.0,
+                            100])
+n_mesh.y_grid = np.asarray([-100.0,
+                            -50.0,
+                            -13.33333,
+                            23.33333,
+                            60.0,
+                            70.0,
+                            80.0,
+                            90.0,
+                            100.0])
+n_mesh.z_grid = np.asarray([-100.0,
+                            -66.66667,
+                            -33.33333,
+                            0.0,
+                            33.33333,
+                            66.66667,
+                            100.0])
+n_e_bounds = np.asarray([0.0,
+                         100000.0,
+                         146780.0])
+
+# expected results - neutron and photon data
+np_mesh = openmc.RectilinearMesh()
+np_mesh.x_grid = np.asarray([-100.0, 100.0])
+# y grid and z grid are the same as the previous mesh
+np_mesh.y_grid = n_mesh.y_grid
+np_mesh.z_grid = n_mesh.z_grid
+
+np_n_e_bounds = np.asarray([0.0, 100000.0, 146780.0, 215440.0])
+np_p_e_bounds = np.asarray([0.0, 1.0E8])
+
+# expected results - photon data only
+p_mesh = openmc.RectilinearMesh()
+# adopts z grid from previous meshes as its x grid
+p_mesh.x_grid = np_mesh.z_grid
+# uses the same y grid
+p_mesh.y_grid = np_mesh.y_grid
+p_mesh.z_grid = np.asarray([-50.0, 50.0])
+
+p_e_bounds = np.asarray([0.0, 100000.0, 146780.0, 215440.0, 316230.0])
+
+expected_results = [('wwinp_n', n_mesh, ('neutron',), (n_e_bounds,)),
+                    ('wwinp_np', np_mesh, ('neutron', 'photon'), (np_n_e_bounds, np_p_e_bounds)),
+                    ('wwinp_p', p_mesh, ('photon',), (p_e_bounds,))]
+
+def id_fn(params):
+    suffix = params[0].split('_')[-1]
+    if suffix == 'n':
+        return 'neutron-only'
+    elif suffix == 'np':
+        return 'neutron-photon'
+    elif suffix == 'p':
+        return 'photon-only'
+
+
+@pytest.mark.parametrize('wwinp_data', expected_results, ids=id_fn)
+def test_wwinp_reader(wwinp_data):
+    wwinp_file, mesh, particle_types, energy_bounds = wwinp_data
+
+    wws = openmc.wwinp_to_wws(wwinp_file)
+
+    for i, ww in enumerate(wws):
+        e_bounds = energy_bounds[i]
+        particle_type = particle_types[i]
+
+        assert ww.particle_type == particle_type
+
+        # check the mesh grid
+        # there will be some very small changes due to the number of digits
+        # provided in the wwinp format and the use of np.linspace to compute
+        # boundaries of the fine mesh intervals
+        np.testing.assert_allclose(mesh.x_grid, ww.mesh.x_grid, rtol=1e-6)
+        np.testing.assert_allclose(mesh.y_grid, ww.mesh.y_grid, rtol=1e-6)
+        np.testing.assert_allclose(mesh.z_grid, ww.mesh.z_grid, rtol=1e-6)
+
+        # check the energy bounds
+        np.testing.assert_array_equal(e_bounds, ww.energy_bins)
+
+        # check the expected weight window values mocked in the file --
+        # a reversed array of the flat index into the numpy array
+        n_wws = np.prod((*mesh.dimension, e_bounds.size - 1))
+        exp_ww_lb = np.linspace(1, n_wws, n_wws)[::-1]
+        np.testing.assert_array_equal(exp_ww_lb, ww.lower_ww_bounds)

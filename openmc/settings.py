@@ -474,7 +474,7 @@ class Settings:
         return self._max_splits
 
     @run_mode.setter
-    def run_mode(self, run_mode: RunMode):
+    def run_mode(self, run_mode: str):
         cv.check_value('run mode', run_mode, {x.value for x in RunMode})
         for mode in RunMode:
             if mode.value == run_mode:
@@ -774,7 +774,7 @@ class Settings:
         self._trace = trace
 
     @track.setter
-    def track(self, track: Iterable):
+    def track(self, track: typint.Iterable[int]):
         cv.check_type('track', track, Iterable, Integral)
         if len(track) % 3 != 0:
             msg = f'Unable to set the track to "{track}" since its length is ' \

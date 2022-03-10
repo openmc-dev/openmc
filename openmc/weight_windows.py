@@ -570,21 +570,20 @@ def wwinp_to_wws(path):
         e_bounds *= 1E6
 
         # create an array for weight window lower bounds
+        #     # MCNP ordering for weight windows matches that of OpenMC
+        #     # ('xyz' with x changing fastest)
         ww_lb = np.zeros((*mesh.dimension, ne))
         for ijk in mesh.indices:
             idx = tuple([v - 1 for v in ijk] + [slice(None)])
             ww_lb[idx] = [float(next(wwinp)) for _ in range(ne)]
-        # for e in range(ne):
-        #     # MCNP ordering for weight windows matches that of OpenMC
-        #     # ('xyz' with x changing fastest)
-        #     ww_vals = [float(next(wwinp)) for _ in range(n_elements)]
-        #     ww_lb[e, :] = np.asarray(ww_vals).reshape(mesh.dimension)
-        settings = WeightWindows(id=None,
-                                    mesh=mesh,
-                                    lower_ww_bounds=ww_lb.flatten(),
-                                    upper_bound_ratio=5.0,
-                                    energy_bins=e_bounds,
-                                    particle_type=particle)
-        wws.append(settings)
+
+        # create a WeightWindows object and add it to the output list
+        ww = WeightWindows(id=None,
+                           mesh=mesh,
+                           lower_ww_bounds=ww_lb.flatten(),
+                           upper_bound_ratio=5.0,
+                           energy_bins=e_bounds,
+                           particle_type=particle)
+        wws.append(ww)
 
     return wws

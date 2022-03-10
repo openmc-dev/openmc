@@ -1,14 +1,16 @@
-from collections.abc import Iterable, MutableSequence, Mapping
+import os
+import typing as typing  # imported separately as py3.8 requires typing.Iterable
+from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
+from math import ceil
+from numbers import Integral, Real
 from pathlib import Path
-from numbers import Real, Integral
-import typing as typing  # imported separately as py3.8 requires typing.Iterable 
 from typing import Optional, Union
 from xml.etree import ElementTree as ET
-from math import ceil
 
 import openmc.checkvalue as cv
-from . import VolumeCalculation, Source, RegularMesh, WeightWindows
+
+from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 
 
@@ -561,7 +563,7 @@ class Settings:
         self._max_order = max_order
 
     @source.setter
-    def source(self, source: typing.Iterable[Source]):
+    def source(self, source: Union[Source, typing.Iterable[Source]]):
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(Source, 'source distributions', source)
@@ -1494,7 +1496,7 @@ class Settings:
         if text is not None:
             self.max_splits = int(text)
 
-    def export_to_xml(self, path: str = 'settings.xml'):
+    def export_to_xml(self, path: Union[str, os.PathLike] = 'settings.xml'):
         """Export simulation settings to an XML file.
 
         Parameters
@@ -1565,7 +1567,7 @@ class Settings:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml(cls, path: str = 'settings.xml'):
+    def from_xml(cls, path: Union[str, os.PathLike] = 'settings.xml'):
         """Generate settings from XML file
 
         .. versionadded:: 0.13.0

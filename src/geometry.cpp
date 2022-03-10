@@ -86,6 +86,7 @@ int cell_instance_at_level(const Particle& p, int level)
     if (c_i.type_ == Fill::UNIVERSE) {
       instance += c_i.offset_[c.distribcell_index_];
     } else if (c_i.type_ == Fill::LATTICE) {
+      instance += c_i.offset_[c.distribcell_index_];
       auto& lat {*model::lattices[p.coord(i + 1).lattice]};
       const auto& i_xyz {p.coord(i + 1).lattice_i};
       if (lat.are_valid_indices(i_xyz)) {

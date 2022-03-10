@@ -412,8 +412,9 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
             search_univ, target_univ_id, univ_count_memo);
 
         } else if (c.type_ == Fill::LATTICE) {
+          c.offset_[map] = offset;
           Lattice& lat = *model::lattices[c.fill_];
-          offset =
+          offset +=
             lat.fill_offset_table(offset, target_univ_id, map, univ_count_memo);
         }
       }

@@ -776,7 +776,7 @@ class Settings:
         self._trace = trace
 
     @track.setter
-    def track(self, track: typint.Iterable[int]):
+    def track(self, track: typing.Iterable[int]):
         cv.check_type('track', track, Iterable, Integral)
         if len(track) % 3 != 0:
             msg = f'Unable to set the track to "{track}" since its length is ' \

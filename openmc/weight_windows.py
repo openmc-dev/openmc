@@ -58,7 +58,7 @@ class WeightWindows(IDManagerMixin):
     weight_cutoff : float
         Threshold below which particles will be terminated
     id : int
-       Unique identifier for the weight window settings. If not specified an
+       Unique identifier for the weight window settings. If not specified, an
        identifier will automatically be assigned.
 
     Attributes
@@ -101,17 +101,25 @@ class WeightWindows(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, mesh, lower_ww_bounds, upper_ww_bounds=None,
-                 upper_bound_ratio=None, energy_bounds=None, particle_type='neutron',
-                 survival_ratio=3, max_lower_bound_ratio=None, max_split=10,
-                 weight_cutoff=1.e-38, id=None):
+    def __init__(self, mesh, lower_ww_bounds,
+                 upper_ww_bounds=None,
+                 upper_bound_ratio=None,
+                 energy_bounds=None,
+                 particle_type='neutron',
+                 survival_ratio=3,
+                 max_lower_bound_ratio=None,
+                 max_split=10,
+                 weight_cutoff=1.e-38,
+                 id=None):
         self.mesh = mesh
         self.id = id
         self.particle_type = particle_type
         self.energy_bounds = energy_bounds
         self.lower_ww_bounds = lower_ww_bounds
 
-        cv.check_length('Lower window bounds', self.lower_ww_bounds, len(self.energy_bounds))
+        cv.check_length('Lower window bounds',
+                        self.lower_ww_bounds,
+                        len(self.energy_bounds))
 
         if upper_ww_bounds is not None and upper_bound_ratio:
             raise ValueError("Exactly one of upper_ww_bounds and "
@@ -130,8 +138,8 @@ class WeightWindows(IDManagerMixin):
             self.upper_ww_bounds = upper_ww_bounds
 
         if len(self.lower_ww_bounds) != len(self.upper_ww_bounds):
-            raise ValueError('Size of the lower and upper weight window bounds '
-                             'do not match')
+            raise ValueError('Size of the lower and upper weight '
+                             'window bounds do not match')
 
         self.survival_ratio = survival_ratio
 

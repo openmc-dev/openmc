@@ -8,14 +8,17 @@ densities is all done in-memory instead of through the filesystem.
 """
 
 import copy
+from copy import deepcopy
 from collections import OrderedDict
 import os
 from warnings import warn
+import re
 
 import numpy as np
 from uncertainties import ufloat
 
 import openmc
+import openmc.model
 from openmc.checkvalue import check_value
 from openmc.data import DataLibrary
 from openmc.exceptions import DataError
@@ -158,8 +161,8 @@ class Operator(TransportOperator):
         Depth of the search when reducing the depletion chain. Only used
         if ``reduce_chain`` evaluates to true. The default value of
         ``None`` implies no limit on the depth.
- 
-    remove_dep_nuc : list of dicts, optional 
+
+    remove_dep_nuc : list of dicts, optional
         If not empty, depletable nuclides concentrations are changed accordingly
         before solving bateman equation.
 
@@ -217,7 +220,7 @@ class Operator(TransportOperator):
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None,
-                 remove_dep_nuc=None):
+                 remove_dep_nuc=None, k_search=None):
         # check for old call to constructor
         if isinstance(model, openmc.Geometry):
             msg = "As of version 0.13.0 openmc.deplete.Operator requires an " \
@@ -297,6 +300,8 @@ class Operator(TransportOperator):
 
         self.remove_dep_nuc = remove_dep_nuc
 
+        self.k_search = k_search
+
         # Determine which nuclides have incident neutron data
         self.nuclides_with_data = self._get_nuclides_with_data(cross_sections)
 
@@ -341,7 +346,7 @@ class Operator(TransportOperator):
             self._normalization_helper = EnergyScoreHelper(score)
         else:
             self._normalization_helper = SourceRateHelper()
-        
+
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]
         fission_yield_opts = (
@@ -374,7 +379,7 @@ class Operator(TransportOperator):
         # Update the number densities regardless of the source rate
         self.number.set_density(vec)
         self._update_materials()
-        
+
         # If the source rate is zero, return zero reaction rates without running
         # a transport solve
         if source_rate == 0.0:
@@ -488,6 +493,99 @@ class Operator(TransportOperator):
 
         return burnable_mats, volume, nuclides
 
+    def make_k_search(self, x):
+        """Perform a search_for_keff in between depletion iterations.
+
+        If k_search attribute is defined and passed to the operator class,
+        this method will look for critical concentration of fissile nuclide and
+        return modified concentration vector, before solving bateman equation.
+
+        Parameters
+        ---------
+        x : list of float
+            Nuclides concentration from previous iteration
+
+        Returns
+        -------
+        x : list
+            Nuclides concentration after search_for_keff
+
+        """
+        fissile = self.k_search['fissile']
+        mat_id = self.k_search['mat_id']
+        exclude = self.k_search['exclude']
+        tol = self.k_search['tol']
+
+        # Get dep. mat ids and nuclides from previous result file
+        volume_dict, nucs, burns, full_burns =  self.get_results_info()
+
+        #Check if mat_id is a valid depletable material id
+        if str(mat_id) not in volume_dict.keys():
+            msg = (f'Mat_id: {mat_id} is not a valid depletable material id')
+            raise Exception(msg)
+
+        #create list of dicts of atom densities for each dep. mat.
+        list_of_dict = []
+        for m, (id,vol) in enumerate(volume_dict.items()):
+            dict = {}
+            for i,nuc in enumerate(nucs):
+                # convert number of atoms into densities (atom/b-cm)
+                dict[nuc] = x[m][i]  / vol * 1.e-24
+            list_of_dict.append(dict)
+
+            #store parametric material index
+            if id == str(mat_id):
+                param_index = m
+                # check if fissile nuclide is in the dictionary
+                if dict[fissile] == 0:
+                    msg = (f'Material {id} does not contain {fissile}')
+                    raise Exception(msg)
+
+        # create a copy model instance
+        copy_model = deepcopy(self.model)
+
+        # define parametric model for k_search algorithm
+        def _create_param_model(param):
+            _model = copy_model
+
+            for idx,mat in enumerate(_model.materials):
+
+                if mat.depletable:
+                    # remove all nuclides in depletable materials
+                    for nuc in mat.get_nuclides():
+                        _model.materials[idx].remove_nuclide(nuc)
+                    # add new nuclides in depletable materials
+                    for nuc,val in list_of_dict[idx].items():
+                        # Atom density less than limit and nuclides not in cross section library
+                        if nuc != fissile and val > 1.0e-8 and nuc not in exclude:
+                            _model.materials[idx].add_nuclide(nuc,val)
+                        # the fissile nuclide is added as parameteric
+                        elif nuc == fissile and mat.id == int(mat_id):
+                            _model.materials[idx].add_nuclide(fissile,param)
+                        # only in one material
+                        elif nuc == fissile and val > 1.0e-8 and mat.id != int(mat_id):
+                            _model.materials[idx].add_nuclide(nuc,val)
+                    _model.materials[idx].set_density('sum')
+
+            _model.export_to_xml()
+            return _model
+
+        # Initialize and perform k_eff searching
+        guess_val  = list_of_dict[param_index][fissile]
+        res, guess, k = openmc.search_for_keff(_create_param_model, initial_guess=guess_val, #bracket=[guess_val/2,guess_val*3],
+                                            tol=tol, print_iterations=True)
+
+        # Re-convert atom densities result from k_eff search into number of atoms and update x vector
+        for m, (id,vol) in enumerate(volume_dict.items()):
+            for i,nuc in enumerate(nucs):
+                    #the fissile nuclide atom density is the only change
+                    if nuc == fissile and id == str(mat_id):
+                        # convert atom densities (atom/b-cm) into number of atoms
+                        x[m][i] = res  * vol / 1.e-24
+                    else:
+                        continue
+        return x
+
     def _extract_number(self, local_mats, volume, nuclides, remove_nuc, prev_res=None):
         """Construct AtomNumber using geometry
 
@@ -573,48 +671,52 @@ class Operator(TransportOperator):
     def get_mod_nuc(self, x):
         """ Change depletable material nuclide concentrations
 
-        If remove_dep_nuc attribute is defined and passed to the 
+        If remove_dep_nuc attribute is defined and passed to the
         operator class, this method will modify depletable nuclide
-        concentration accordingly, before solving bateman equation. 
+        concentration accordingly, before solving bateman equation.
 
         Parameters
         ----------
-        x : list of float 
-            Nuclides concentrations from previous iteration
+        x : list of float
+            Nuclides concentration from previous iteration
 
         Returns
         -------
         x : list of float
-            Nuclide concentration after change, based of remove_dep_nuc
+            Nuclides concentration after change, based of remove_dep_nuc
             attribute
-        
+
         """
 
+        # to split Alphanumeric string (ex. U233)
+        regex = re.compile(r'(\d+|\s+)')
         # get info from get_results_info method
         volume_dict, nucs, burns, full_burns  = self.get_results_info()
-        # iterate over depletable materials and nuclides
-        for m,id in enumerate(volume_dict.keys()):
+        # Iterate list of dicts
+        for item in self.remove_dep_nuc:
+            # find mat_id index
+            m = [idx for idx, mat in enumerate(volume_dict.keys()) if mat == item['mat_id']][0]
+            # Iterate all nuclides in depletable materials
             for i,nuc in enumerate(nucs):
-                # iterate over remove_dep_nuc list 
-                for item in self.remove_dep_nuc:
-                    # find nuclide to modify
-                    if id in item['mat_id'] and nuc in item['nuc']:
-                        # perfomr change, based on action
-                        if item['action'] == 'remove':
-                            # instead of remove completely, keep few atoms
-                            x[m][i] = 1.0e3
-                        elif item['action'] == 'add':
-                            # this is ugly, but gets the material id from which to add the atoms
-                            x_id = [idx for idx, i in enumerate(volume_dict.keys()) if i == item['from']][0]
-                            x[m][i] += x[x_id][i]
-                            x[x_id][i] = 1.0e3
-                        else:
-                            x[m][i] = x[m][i]
+                # nuclide can either match itsel or the element they correspond, depending on the assignment
+                if "nuc" in item.keys() and nuc in item["nuc"] or "elem" in item.keys() and regex.split(nuc)[0] in item["elem"]:
+                    # Remove element from concentration vector, but add few atoms for the decay chain
+                    if item['action'] == 'remove':
+                        x[m][i] -= x[m][i] * item['efficiency'] / 100
+                        x[m][i] += 1.0e3
+                    # Swap nuclide from one material to another
+                    elif item['action'] == 'add':
+                        # find index of material from which to add
+                        a = [idx for idx, mat in enumerate(volume_dict.keys()) if mat == item['from']][0]
+                        x[m][i] += x[a][i] * item['efficiency'] / 100
+                        x[a][i] -= x[a][i] * item['efficiency'] / 100
+                        x[a][i] += 1.0e3
                     else:
-                        x[m][i] = x[m][i]
+                        msg = (f'Action in {item} is neither remove nor add')
+                        raise Exception(msg)
+
         return x
 
-        
     def initial_condition(self):
         """Performs final setup and returns initial condition.
 

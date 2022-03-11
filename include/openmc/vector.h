@@ -282,8 +282,12 @@ template<typename T>
 template<class... Args>
 void vector<T>::emplace_back(Args&&... args)
 {
-  // TODO: better growth pattern here
-  this->reserve(size_ + 1);
+  if (capacity_ == 0) {
+    this->reserve(8);
+  } else if (size_ == capacity_ ) {
+    this->reserve(2*capacity_);
+  }
+
   new(data_ + size_++) T(std::forward<Args>(args)...);
 }
 
@@ -316,8 +320,10 @@ typename vector<T>::iterator vector<T>::insert(vector<T>::const_iterator pos, co
   this->resize(size_ + 1);
 
   // Move elements from [pos, end) one forward
-  for (size_type i = size_ - 1; i >= idx; --i) {
-    data_[i + 1] = data_[i];
+  if (size_ - 1 > 0) {
+    for (size_type i = size_ - 2; i >= idx; --i) {
+      data_[i + 1] = data_[i];
+    }
   }
 
   // Insert given element
@@ -342,8 +348,10 @@ typename vector<T>::iterator vector<T>::insert(
   this->resize(size_ + n);
 
   // Move elements from [pos, end) n forward
-  for (size_type i = size_ - n; i >= start; --i) {
-    data_[i + n] = data_[i];
+  if (size_ - n > 0) {
+    for (size_type i = size_ - n - 1; i >= start; --i) {
+      data_[i + n] = data_[i];
+    }
   }
 
   // Insert elements
@@ -363,10 +371,8 @@ void vector<T>::assign(InputIt first, InputIt last)
   // Get index of position
   size_type n = std::distance(first, last);
 
-  // Add space for one more element
+  // Replace original contents with the n values between first and last
   this->resize(n);
-
-  // Assign elements
   for (size_type i = 0; i < n; ++i) {
     data_[i] = *first;
     ++first;

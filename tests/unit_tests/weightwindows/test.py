@@ -126,6 +126,7 @@ def test_weightwindows(model):
 
         model.settings.weight_windows = [ww_n, ww_p]
 
+        # check that string form of the class can be created
         _ = [str(ww) for ww in model.settings.weight_windows]
 
         # run again with variance reduction on

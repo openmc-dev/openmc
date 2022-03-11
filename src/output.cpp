@@ -576,9 +576,12 @@ void write_tallies()
   if (model::tallies.empty())
     return;
 
+  // Set filename for tallies_out
+  std::string filename = fmt::format("{}tallies.out", settings::path_output);
+
   // Open the tallies.out file.
   std::ofstream tallies_out;
-  tallies_out.open("tallies.out", std::ios::out | std::ios::trunc);
+  tallies_out.open(filename, std::ios::out | std::ios::trunc);
 
   // Loop over each tally.
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {

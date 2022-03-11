@@ -100,7 +100,7 @@ private:
   // Data members
   int32_t id_;                     //!< Unique ID
   ParticleType particle_type_;     //!< Particle type to apply weight windows to
-  vector<double> energy_bins_;     //!< Energy bins [eV]
+  vector<double> energy_bounds_;   //!< Energy boundaries [eV]
   vector<double> lower_ww_;        //!< Lower weight window bounds
   vector<double> upper_ww_;        //!< Upper weight window bounds
   double survival_ratio_ {3.0};    //!< Survival weight ratio

@@ -192,6 +192,8 @@ class WeightWindows(IDManagerMixin):
 
     @property
     def num_energy_bins(self):
+        if self.energy_bounds is None:
+            raise ValueError('Energy bounds are not set')
         return self.energy_bounds.size - 1
 
     @property

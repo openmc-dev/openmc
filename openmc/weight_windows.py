@@ -76,12 +76,12 @@ class WeightWindows(IDManagerMixin):
         Number of energy bins
     lower_ww_bounds : numpy.ndarray of float
         An array of values for which each value is the lower bound of a weight
-        window. Shape: (ni, nj, nk, num_energy_bins) for StructuredMesh; (-1,
-        num_energy_bins) for UnstructuredMesh
+        window. Shape: (ni, nj, nk, num_energy_bins) for StructuredMesh;
+        (num_elements, num_energy_bins) for UnstructuredMesh
     upper_ww_bounds : numpy.ndarray of float
         An array of values for which each value is the upper bound of a weight
-        window. Shape: (ni, nj, nk, num_energy_bins) for StructuredMesh; (-1,
-        num_energy_bins) for UnstructuredMesh
+        window. Shape: (ni, nj, nk, num_energy_bins) for StructuredMesh;
+        (num_elements, num_energy_bins) for UnstructuredMesh
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
         rouletting

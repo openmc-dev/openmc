@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 from openmc.filter import _PARTICLES
-from openmc.mesh import MeshBase
+from openmc.mesh import MeshBase, UnstructuredMesh
 import openmc.checkvalue as cv
 
 from ._xml import get_text
@@ -179,13 +179,27 @@ class WeightWindows(IDManagerMixin):
         self._energy_bounds = np.array(bnds)
 
     @property
+    def num_energy_bins(self):
+        return self.energy_bounds.size - 1
+
+    @property
     def lower_ww_bounds(self):
         return self._lower_ww_bounds
 
     @lower_ww_bounds.setter
     def lower_ww_bounds(self, bounds):
-        cv.check_type('Lower WW bounds', bounds, Iterable, Real)
-        self._lower_ww_bounds = np.array(bounds)
+        cv.check_iterable_type('Lower WW bounds',
+                               bounds,
+                               Real,
+                               min_depth=1,
+                               max_depth=4)
+        # reshape data according to mesh and energy bins
+        bounds = np.asarray(bounds)
+        if isinstance(self.mesh, UnstructuredMesh):
+            bounds.reshape(-1, self.num_energy_bins)
+        else:
+            bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
+        self._lower_ww_bounds = bounds
 
     @property
     def upper_ww_bounds(self):
@@ -193,8 +207,18 @@ class WeightWindows(IDManagerMixin):
 
     @upper_ww_bounds.setter
     def upper_ww_bounds(self, bounds):
-        cv.check_type('Upper WW bounds', bounds, Iterable, Real)
-        self._upper_ww_bounds = np.array(bounds)
+        cv.check_iterable_type('Upper WW bounds',
+                               bounds,
+                               Real,
+                               min_depth=1,
+                               max_depth=4)
+        # reshape data according to mesh and energy bins
+        bounds = np.asarray(bounds)
+        if isinstance(self.mesh, UnstructuredMesh):
+            bounds.reshape(-1, self.num_energy_bins)
+        else:
+            bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
+        self._upper_ww_bounds = bounds
 
     @property
     def survival_ratio(self):

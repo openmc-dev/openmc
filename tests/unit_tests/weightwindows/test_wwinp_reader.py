@@ -1,10 +1,8 @@
 import numpy as np
+from pathlib import Path
 
 import openmc
 import pytest
-
-from openmc.weight_windows import wwinp_to_wws
-
 
 # check that we can successfully read wwinp files with the following contents:
 #
@@ -93,12 +91,16 @@ def id_fn(params):
     elif suffix == 'p':
         return 'photon-only'
 
+# function to resolve full path to the test data
+def full_path(filename):
+    cwd = Path(__file__).parent.absolute()
+    return cwd / Path(filename)
 
 @pytest.mark.parametrize('wwinp_data', expected_results, ids=id_fn)
 def test_wwinp_reader(wwinp_data):
     wwinp_file, mesh, particle_types, energy_bounds = wwinp_data
 
-    wws = openmc.wwinp_to_wws(wwinp_file)
+    wws = openmc.wwinp_to_wws(full_path(wwinp_file))
 
     for i, ww in enumerate(wws):
         e_bounds = energy_bounds[i]
@@ -142,4 +144,4 @@ def test_wwinp_reader_failures(wwinp_data):
     filename, expected_failure = wwinp_data
 
     with pytest.raises(expected_failure):
-        _ = openmc.wwinp_to_wws(filename)
+        _ = openmc.wwinp_to_wws(full_path(filename))

@@ -112,8 +112,8 @@ void free_memory_weight_windows()
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
   // Make sure required elements are present
-  const vector<std::string> required_elems {
-    "id", "particle_type", "energy_bins", "lower_ww_bounds", "upper_ww_bounds"};
+  const vector<std::string> required_elems {"id", "particle_type",
+    "energy_bounds", "lower_ww_bounds", "upper_ww_bounds"};
   for (const auto& elem : required_elems) {
     if (!check_for_node(node, elem.c_str())) {
       fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
@@ -133,7 +133,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   mesh_idx_ = model::mesh_map.at(mesh_id);
 
   // energy bounds
-  energy_bins_ = get_node_array<double>(node, "energy_bins");
+  energy_bounds_ = get_node_array<double>(node, "energy_bounds");
 
   // read the lower/upper weight bounds
   lower_ww_ = get_node_array<double>(node, "lower_ww_bounds");
@@ -178,7 +178,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // num spatial*energy bins must match num weight bins
   int num_spatial_bins = this->mesh().n_bins();
-  int num_energy_bins = energy_bins_.size() - 1;
+  int num_energy_bins = energy_bounds_.size() - 1;
   int num_weight_bins = lower_ww_.size();
   if (num_weight_bins != num_spatial_bins * num_energy_bins) {
     auto err_msg =
@@ -240,12 +240,12 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   double E = p.E();
 
   // check to make sure energy is in range, expects sorted energy values
-  if (E < energy_bins_.front() || E > energy_bins_.back())
+  if (E < energy_bounds_.front() || E > energy_bounds_.back())
     return {};
 
   // get the mesh bin in energy group
   int energy_bin =
-    lower_bound_index(energy_bins_.begin(), energy_bins_.end(), E);
+    lower_bound_index(energy_bounds_.begin(), energy_bounds_.end(), E);
 
   // indices now points to the correct weight for the given energy
   ww_index += energy_bin * mesh.n_bins();
@@ -267,7 +267,7 @@ void WeightWindows::to_hdf5(hid_t group) const
 
   write_dataset(
     ww_group, "particle_type", openmc::particle_type_to_str(particle_type_));
-  write_dataset(ww_group, "energy_bins", energy_bins_);
+  write_dataset(ww_group, "energy_bounds", energy_bounds_);
   write_dataset(ww_group, "lower_ww_bounds", lower_ww_);
   write_dataset(ww_group, "upper_ww_bounds", upper_ww_);
   write_dataset(ww_group, "survival_ratio", survival_ratio_);

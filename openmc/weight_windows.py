@@ -443,6 +443,7 @@ def __wwinp_reader(path):
         for value in values:
             yield value
 
+
 def wwinp_to_wws(path):
     """Creates WeightWindows classes from a wwinp file
 
@@ -530,7 +531,7 @@ def wwinp_to_wws(path):
             sx = int(float(next(wwinp)))
             # value of next coordinate, px
             px = float(next(wwinp))
-            # fine mesh ratio, qx, is currently unused
+            # fine mesh ratio, qx (currently unused)
             qx = next(wwinp)
             # append the fine mesh coordinates for this coarse element
             coords += list(np.linspace(coords[-1], px, sx + 1))[1:]
@@ -561,8 +562,6 @@ def wwinp_to_wws(path):
                    'number read in block 1 of the wwinp file ({})')
             raise ValueError(msg.format(dim, mesh_val, header_val))
 
-    # total number of fine mesh elements, nft
-    n_elements = n_fine_x * n_fine_y * n_fine_z
     # read energy bins and weight window values for each particle
     wws = []
     for particle, ne in zip(particles, n_egroups):

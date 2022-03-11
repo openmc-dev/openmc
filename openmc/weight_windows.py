@@ -419,29 +419,30 @@ def __wwinp_reader(path):
     path : str or pathlib.Path
         Location of the wwinp file
     """
-    fh = open(path, 'r')
 
-    # read the first line of the file and
-    # keep only the first four entries
-    while(True):
-        line = next(fh)
-        if line and not line.startswith('c'):
-            break
+    with open(path, 'r') as fh:
 
-    values = line.strip().split()[:4]
-    for value in values:
-        yield value
+        # read the first line of the file and
+        # keep only the first four entries
+        while True:
+            line = next(fh)
+            if line and not line.startswith('c'):
+                break
 
-    # the remainder of the file can be read as
-    # sequential values
-    while(True):
-        line = next(fh)
-        # skip empty or commented lines
-        if not line or line.startswith('c'):
-            continue
-        values = line.strip().split()
+        values = line.strip().split()[:4]
         for value in values:
             yield value
+
+        # the remainder of the file can be read as
+        # sequential values
+        while True:
+            line = next(fh)
+            # skip empty or commented lines
+            if not line or line.startswith('c'):
+                continue
+            values = line.strip().split()
+            for value in values:
+                yield value
 
 
 def wwinp_to_wws(path):
@@ -449,8 +450,8 @@ def wwinp_to_wws(path):
 
     Parameters
     ----------
-    path : str
-        Path to the wwinp file.
+    path : str or pathlib.Path object
+        Path to the wwinp file
 
     Returns
     -------

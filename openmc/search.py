@@ -49,9 +49,12 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
 
     # Build the model
     model = model_builder(guess, **model_args)
-
     # Run the model and obtain keff
-    sp_filepath = model.run(output=print_output)
+    #sp_filepath = model.run(output=print_output)
+    #model.export_to_xml()
+    #sp_filepath = model.run()
+    openmc.run(output=print_output)
+    sp_filepath = f'statepoint.{str(model.settings.batches)}.h5'
     with openmc.StatePoint(sp_filepath) as sp:
         keff = sp.k_combined
 

@@ -463,7 +463,8 @@ def wwinp_to_wws(path):
 
     # check time parameter, iv
     if int(float(next(wwinp))) > 1:
-        raise ValueError('Time-dependent weight windows are not yet supported.')
+        raise ValueError('Time-dependent weight windows '
+                         'are not yet supported.')
 
     # number of particle types, ni
     n_particle_types = int(float(next(wwinp)))
@@ -475,7 +476,8 @@ def wwinp_to_wws(path):
 
     if mesh_chars != 10:
         # TODO: read the first entry by default and display a warning
-        raise ValueError('Cylindrical and Spherical meshes are not currently supported')
+        raise ValueError('Cylindrical and Spherical meshes '
+                         'are not currently supported')
 
     # read the number of energy groups for each particle, ne
     n_egroups = [int(next(wwinp)) for _ in range(n_particle_types)]
@@ -490,7 +492,7 @@ def wwinp_to_wws(path):
 
     if n_particle_types > 2:
         msg = ('More than two particle types are present. '
-                'Only neutron and photon weight windows will be read.')
+               'Only neutron and photon weight windows will be read.')
         warnings.warn(msg)
 
     # read total number of fine mesh elements in each coarse
@@ -546,7 +548,7 @@ def wwinp_to_wws(path):
     for dim, header_val, mesh_val in zip(dims, llc, mesh_llc):
         if header_val != mesh_val:
             msg = ('The {} corner of the mesh ({}) does not match '
-                    'the value read in block 1 of the wwinp file ({})')
+                   'the value read in block 1 of the wwinp file ({})')
             raise ValueError(msg.format(dim, mesh_val, header_val))
 
     # check total number of mesh elements in each direction
@@ -554,8 +556,8 @@ def wwinp_to_wws(path):
     for dim, header_val, mesh_val in zip(dims, header_mesh_dims, mesh_dims):
         if header_val != mesh_val:
             msg = ('Total number of mesh elements read in the {} '
-                    'direction ({}) is inconsistent with the '
-                    'number read in block 1 of the wwinp file ({})')
+                   'direction ({}) is inconsistent with the '
+                   'number read in block 1 of the wwinp file ({})')
             raise ValueError(msg.format(dim, mesh_val, header_val))
 
     # total number of fine mesh elements, nft

@@ -186,9 +186,9 @@ class WeightWindows(IDManagerMixin):
         return self._energy_bounds
 
     @energy_bounds.setter
-    def energy_bounds(self, bnds):
-        cv.check_type('Energy bounds', bnds, Iterable, Real)
-        self._energy_bounds = np.array(bnds)
+    def energy_bounds(self, bounds):
+        cv.check_type('Energy bounds', bounds, Iterable, Real)
+        self._energy_bounds = np.asarray(bounds)
 
     @property
     def num_energy_bins(self):
@@ -341,7 +341,7 @@ class WeightWindows(IDManagerMixin):
         # Read all other parameters
         lower_ww_bounds = [float(l) for l in get_text(elem, 'lower_ww_bounds').split()]
         upper_ww_bounds = [float(u) for u in get_text(elem, 'upper_ww_bounds').split()]
-        ebnds = [float(b) for b in get_text(elem, 'energy_bounds').split()]
+        e_bounds = [float(b) for b in get_text(elem, 'energy_bounds').split()]
         particle_type = get_text(elem, 'particle_type')
         survival_ratio = float(get_text(elem, 'survival_ratio'))
 
@@ -357,7 +357,7 @@ class WeightWindows(IDManagerMixin):
             mesh=mesh,
             lower_ww_bounds=lower_ww_bounds,
             upper_ww_bounds=upper_ww_bounds,
-            energy_bounds=ebnds,
+            energy_bounds=e_bounds,
             particle_type=particle_type,
             survival_ratio=survival_ratio,
             max_lower_bound_ratio=max_lower_bound_ratio,
@@ -386,7 +386,7 @@ class WeightWindows(IDManagerMixin):
         id = int(group.name.split('/')[-1].lstrip('weight_windows'))
         mesh_id = group['mesh'][()]
         ptype = group['particle_type'][()].decode()
-        ebnds = group['energy_bounds'][()]
+        e_bounds = group['energy_bounds'][()]
         lower_ww_bounds = group['lower_ww_bounds'][()]
         upper_ww_bounds = group['upper_ww_bounds'][()]
         survival_ratio = group['survival_ratio'][()]
@@ -402,7 +402,7 @@ class WeightWindows(IDManagerMixin):
             mesh=meshes[mesh_id],
             lower_ww_bounds=lower_ww_bounds,
             upper_ww_bounds=upper_ww_bounds,
-            energy_bounds=ebnds,
+            energy_bounds=e_bounds,
             particle_type=ptype,
             survival_ratio=survival_ratio,
             max_lower_bound_ratio=max_lower_bound_ratio,

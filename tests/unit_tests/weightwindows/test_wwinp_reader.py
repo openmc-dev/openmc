@@ -49,9 +49,10 @@ n_mesh.z_grid = np.asarray([-100.0,
                             33.3333,
                             66.6667,
                             100.0])
-n_e_bounds = np.asarray([0.0,
+n_e_bounds = (np.asarray([0.0,
                          100000.0,
-                         146780.0])
+                         146780.0]),)
+n_particles = ('neutron',)
 
 # expected results - neutron and photon data
 np_mesh = openmc.RectilinearMesh()
@@ -60,8 +61,9 @@ np_mesh.x_grid = np.asarray([-100.0, 100.0])
 np_mesh.y_grid = n_mesh.y_grid
 np_mesh.z_grid = n_mesh.z_grid
 
-np_n_e_bounds = np.asarray([0.0, 100000.0, 146780.0, 215440.0])
-np_p_e_bounds = np.asarray([0.0, 1.0E8])
+np_e_bounds = (np.asarray([0.0, 100000.0, 146780.0, 215440.0]),
+               np.asarray([0.0, 1.0E8]))
+np_particles = ('neutron', 'photon')
 
 # expected results - photon data only
 p_mesh = openmc.RectilinearMesh()
@@ -71,11 +73,13 @@ p_mesh.x_grid = np_mesh.z_grid
 p_mesh.y_grid = np_mesh.y_grid
 p_mesh.z_grid = np.asarray([-50.0, 50.0])
 
-p_e_bounds = np.asarray([0.0, 100000.0, 146780.0, 215440.0, 316230.0])
+p_e_bounds = (np.asarray([0.0, 100000.0, 146780.0, 215440.0, 316230.0]),)
+p_particles = ('photon',)
 
-expected_results = [('wwinp_n', n_mesh, ('neutron',), (n_e_bounds,)),
-                    ('wwinp_np', np_mesh, ('neutron', 'photon'), (np_n_e_bounds, np_p_e_bounds)),
-                    ('wwinp_p', p_mesh, ('photon',), (p_e_bounds,))]
+expected_results = [('wwinp_n', n_mesh, n_particles, n_e_bounds),
+                    ('wwinp_np', np_mesh, np_particles, np_e_bounds),
+                    ('wwinp_p', p_mesh, p_particles, p_e_bounds)]
+
 
 def id_fn(params):
     suffix = params[0].split('_')[-1]

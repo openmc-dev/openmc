@@ -22,8 +22,11 @@ void write_summary()
   // Display output message
   write_message("Writing summary.h5 file...", 5);
 
+  // Set filename for summary file
+  std::string filename = fmt::format("{}summary.h5", settings::path_output);
+
   // Create a new file using default properties.
-  hid_t file = file_open("summary.h5", 'w');
+  hid_t file = file_open(filename, 'w');
 
   write_header(file);
   write_nuclides(file);

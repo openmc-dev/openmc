@@ -3,6 +3,8 @@ import numpy as np
 import openmc
 import pytest
 
+from openmc.weight_windows import wwinp_to_wws
+
 
 # check that we can successfully read wwinp files with the following contents:
 #
@@ -81,6 +83,7 @@ expected_results = [('wwinp_n', n_mesh, n_particles, n_e_bounds),
                     ('wwinp_p', p_mesh, p_particles, p_e_bounds)]
 
 
+# function for printing readable test labels
 def id_fn(params):
     suffix = params[0].split('_')[-1]
     if suffix == 'n':
@@ -119,3 +122,24 @@ def test_wwinp_reader(wwinp_data):
         n_wws = np.prod((*mesh.dimension, e_bounds.size - 1))
         exp_ww_lb = np.linspace(1, n_wws, n_wws)[::-1]
         np.testing.assert_array_equal(exp_ww_lb, ww.lower_ww_bounds)
+
+
+# check expected failures
+def fail_id_fn(params):
+    suffix = params[0].split('_')[-1]
+    if suffix == 't':
+        return 'time-steps-failure'
+    elif suffix == 'cyl':
+        return 'cyl-mesh-failure'
+
+
+expected_failure_data = (('wwinp_t', ValueError),
+                         ('wwinp_cyl', NotImplementedError))
+
+
+@pytest.mark.parametrize('wwinp_data', expected_failure_data, ids=fail_id_fn)
+def test_wwinp_reader_failures(wwinp_data):
+    filename, expected_failure = wwinp_data
+
+    with pytest.raises(expected_failure):
+        _ = openmc.wwinp_to_wws(filename)

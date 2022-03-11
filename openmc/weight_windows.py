@@ -476,8 +476,8 @@ def wwinp_to_wws(path):
 
     if mesh_chars != 10:
         # TODO: read the first entry by default and display a warning
-        raise ValueError('Cylindrical and Spherical meshes '
-                         'are not currently supported')
+        raise NotImplementedError('Cylindrical and Spherical meshes '
+                                  'are not currently supported')
 
     # read the number of energy groups for each particle, ne
     n_egroups = [int(next(wwinp)) for _ in range(n_particle_types)]
@@ -518,7 +518,8 @@ def wwinp_to_wws(path):
 
     if mesh_type != 1:
         # TODO: support additional mesh types
-        raise ValueError('Cylindrical and Spherical meshes are not currently supported')
+        raise NotImplementedError('Cylindrical and Spherical meshes '
+                                  'are not currently supported')
 
     # internal function for parsing mesh coordinates
     def _read_mesh_coords(wwinp, n_coarse_bins):

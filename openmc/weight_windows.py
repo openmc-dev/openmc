@@ -50,34 +50,38 @@ class WeightWindows(IDManagerMixin):
         rouletting
     max_lower_bound_ratio : float
         Maximum allowed ratio of a particle's weight to the weight window's
-        lower bound. A factor will be applied to raise the weight window to be lower
-        than the particle's weight by a factor of max_lower_bound_ratio
+        lower bound. A factor will be applied to raise the weight window to be
+        lower than the particle's weight by a factor of max_lower_bound_ratio
         during transport if exceeded.
     max_split : int
         Maximum allowable number of particles when splitting
     weight_cutoff : float
         Threshold below which particles will be terminated
     id : int
-       Unique identifier for the weight window settings. If not
-       specified an identifier will automatically be assigned.
+       Unique identifier for the weight window settings. If not specified an
+       identifier will automatically be assigned.
 
     Attributes
     ----------
     id : int
        Unique identifier for the weight window settings.
     mesh : openmc.MeshBase
-        Mesh for the weight windows
+        Mesh for the weight windows with dimension (ni, nj, nk)
     particle_type : str
         Particle type the weight windows apply to
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
-    lower_ww_bounds : Iterable of Real
-        A list of values for which each value is the lower bound of a weight
-        window
-    upper_ww_bounds : Iterable of Real
-        A list of values for which each value is the upper bound of a weight
-        window
+    num_energy_bins : int
+        Number of energy bins
+    lower_ww_bounds : numpy.ndarray of float
+        An array of values for which each value is the lower bound of a weight
+        window. Shape: (ni, nj, nk, num_energy_bins) for StructuredMesh; (-1,
+        num_energy_bins) for UnstructuredMesh
+    upper_ww_bounds : numpy.ndarray of float
+        An array of values for which each value is the upper bound of a weight
+        window. Shape: (ni, nj, nk, num_energy_bins) for StructuredMesh; (-1,
+        num_energy_bins) for UnstructuredMesh
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
         rouletting

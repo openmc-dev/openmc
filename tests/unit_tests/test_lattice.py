@@ -361,3 +361,19 @@ def test_show_indices():
         assert len(lines) == 4*i - 3
         lines_x = openmc.HexLattice.show_indices(i, 'x').split('\n')
         assert len(lines) == 4*i - 3
+
+
+def test_unset_universes():
+    elem = ET.Element("dummy")
+
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-1., -1.)
+    lattice.pitch = (1., 1.)
+    with pytest.raises(ValueError):
+        lattice.create_xml_subelement(elem)
+
+    hex_lattice = openmc.HexLattice()
+    hex_lattice.center = (0., 0.)
+    hex_lattice.pitch = (1.,)
+    with pytest.raises(ValueError):
+        hex_lattice.create_xml_subelement(elem)

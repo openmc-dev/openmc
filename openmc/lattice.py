@@ -852,6 +852,10 @@ class RectLattice(Lattice):
         if memo is not None:
             memo.add(self)
 
+        # Make sure universes have been assigned
+        if self.universes is None:
+            raise ValueError(f"Lattice {self.id} does not have universes assigned.")
+
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
 
@@ -876,7 +880,7 @@ class RectLattice(Lattice):
         lower_left = ET.SubElement(lattice_subelement, "lower_left")
         lower_left.text = ' '.join(map(str, self._lower_left))
 
-        # Export the Lattice nested Universe IDs - column major for Fortran
+        # Export the Lattice nested Universe IDs
         universe_ids = '\n'
 
         # 3D Lattices
@@ -1448,6 +1452,8 @@ class HexLattice(Lattice):
         center.text = ' '.join(map(str, self._center))
 
         # Export the Lattice nested Universe IDs.
+        if self.universes is None:
+            raise ValueError(f"Lattice {self.id} does not have universes assigned.")
 
         # 3D Lattices
         if self._num_axial is not None:

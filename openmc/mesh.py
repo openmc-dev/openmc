@@ -1137,9 +1137,6 @@ class UnstructuredMesh(MeshBase):
     output : bool
         Indicates whether or not automatic tally output should
         be generated for this mesh
-    specified_length_multiplier: bool
-        Indicates whether a non-unity length multiplier has been
-        applied to this mesh
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     total_volume : float
@@ -1156,7 +1153,6 @@ class UnstructuredMesh(MeshBase):
         self._centroids = None
         self.library = library
         self._output = True
-        self._specified_length_multiplier = False
         self.length_multiplier = length_multiplier
 
     @property
@@ -1241,17 +1237,17 @@ class UnstructuredMesh(MeshBase):
     @length_multiplier.setter
     def length_multiplier(self, length_multiplier):
         cv.check_type("Unstructured mesh length multiplier",
-                                length_multiplier,
-                                Real)
+                      length_multiplier,
+                      Real)
         self._length_multiplier = length_multiplier
-
-        if (self._length_multiplier != 1.0):
-          self._specified_length_multiplier = True
 
     def __repr__(self):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
         string += '{: <16}=\t{}\n'.format('\tMesh Library', self.mesh_lib)
+        if self.length_multiplier != 1.0:
+            string += '{: <16}=\t{}\n'.format('\tLength multiplier',
+                                              self.length_multiplier)
         return string
 
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
@@ -1374,7 +1370,7 @@ class UnstructuredMesh(MeshBase):
         subelement = ET.SubElement(element, "filename")
         subelement.text = self.filename
 
-        if (self._specified_length_multiplier):
+        if self._length_multiplier != 1.0:
           element.set("length_multiplier", str(self.length_multiplier))
 
         return element

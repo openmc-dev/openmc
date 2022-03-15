@@ -91,10 +91,12 @@ def id_fn(params):
     elif suffix == 'p':
         return 'photon-only'
 
+
 # function to resolve full path to the test data
 def full_path(filename):
     cwd = Path(__file__).parent.absolute()
     return cwd / Path(filename)
+
 
 @pytest.mark.parametrize('wwinp_data', expected_results, ids=id_fn)
 def test_wwinp_reader(wwinp_data):

@@ -460,7 +460,7 @@ def wwinp_to_wws(path):
     # create generator for getting the next parameter from the file
     wwinp = _wwinp_reader(path)
 
-    # first parameter, if, of wwinp file is unused
+    # first parameter, 'if' (file type), of wwinp file is unused
     next(wwinp)
 
     # check time parameter, iv
@@ -569,7 +569,7 @@ def wwinp_to_wws(path):
         # it is implied that zero is always the first bound in MCNP
         e_bounds = np.asarray([0.0] + [float(next(wwinp)) for _ in range(ne)])
         # adjust energy from MeV to eV
-        e_bounds *= 1E6
+        e_bounds *= 1e6
 
         # create an array for weight window lower bounds
         ww_lb = np.zeros((*mesh.dimension, ne))

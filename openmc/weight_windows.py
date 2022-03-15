@@ -585,7 +585,7 @@ def wwinp_to_wws(path):
                            mesh=mesh,
                            lower_ww_bounds=ww_lb.flatten(),
                            upper_bound_ratio=5.0,
-                           energy_bins=e_bounds,
+                           energy_bounds=e_bounds,
                            particle_type=particle)
         wws.append(ww)
 

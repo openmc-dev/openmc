@@ -117,7 +117,7 @@ def test_wwinp_reader(wwinp_data):
         np.testing.assert_allclose(mesh.z_grid, ww.mesh.z_grid, rtol=1e-6)
 
         # check the energy bounds
-        np.testing.assert_array_equal(e_bounds, ww.energy_bins)
+        np.testing.assert_array_equal(e_bounds, ww.energy_bounds)
 
         # check the expected weight window values mocked in the file --
         # a reversed array of the flat index into the numpy array

@@ -412,7 +412,7 @@ class WeightWindows(IDManagerMixin):
             id=id
         )
 
-def __wwinp_reader(path):
+def _wwinp_reader(path):
     """
     Generator that returns the next value in a wwinp file.
 
@@ -458,7 +458,7 @@ def wwinp_to_wws(path):
     list of openmc.WeightWindows
     """
     # create generator for getting the next parameter from the file
-    wwinp = __wwinp_reader(path)
+    wwinp = _wwinp_reader(path)
 
     # first parameter, if, of wwinp file is unused
     next(wwinp)
@@ -493,9 +493,8 @@ def wwinp_to_wws(path):
     n_egroups = [e for e in n_egroups if e > 0]
 
     if n_particle_types > 2:
-        msg = ('More than two particle types are present. '
-               'Only neutron and photon weight windows will be read.')
-        warnings.warn(msg)
+        warnings.warn('More than two particle types are present. '
+                      'Only neutron and photon weight windows will be read.')
 
     # read total number of fine mesh elements in each coarse
     # element (nfx, nfy, nfz)

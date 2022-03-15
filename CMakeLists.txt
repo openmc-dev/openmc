@@ -77,10 +77,17 @@ if(xtensor_FOUND)
 else()
   message(STATUS "Did not find xtensor, will use submodule instead")
 endif()
+find_package(xtl QUIET NO_SYSTEM_ENVIRONMENT_PATH)
 if(xtl_FOUND)
   message(STATUS "Found xtl: ${xtl_DIR} (version ${xtl_VERSION})")
 else()
   message(STATUS "Did not find xtl, will use submodule instead")
+endif()
+find_package(gsl-lite QUIET NO_SYSTEM_ENVIRONMENT_PATH)
+if(gsl-lite_FOUND)
+  message(STATUS "Found : ${gsl-lite_DIR} (version ${gsl-lite_VERSION})")
+else()
+  message(STATUS "Did not find gsl-lite, will use submodule instead")
 endif()
 #===============================================================================
 # libMesh Unstructured Mesh Support
@@ -234,11 +241,13 @@ endif()
 # GSL header-only library
 #===============================================================================
 
-add_subdirectory(vendor/gsl-lite)
+if (NOT gsl-lite_FOUND)
+  add_subdirectory(vendor/gsl-lite)
 
-# Make sure contract violations throw exceptions
-target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
-target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
+  # Make sure contract violations throw exceptions
+  target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+  target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
+endif()
 
 #===============================================================================
 # RPATH information

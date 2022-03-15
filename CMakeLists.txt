@@ -71,7 +71,12 @@ if(pugixml_FOUND)
 else()
   message(STATUS "Did not find pugixml, will use submodule instead")
 endif()
-
+find_package(xtensor QUIET NO_SYSTEM_ENVIRONMENT_PATH)
+if(xtensor_FOUND)
+  message(STATUS "Found xtensor: ${xtensor_DIR} (version ${xtensor_VERSION})")
+else()
+  message(STATUS "Did not find xtensor, will use submodule instead")
+endif()
 #===============================================================================
 # libMesh Unstructured Mesh Support
 #===============================================================================
@@ -211,9 +216,11 @@ if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
   cmake_policy(SET CMP0079 NEW)
 endif()
 
-add_subdirectory(vendor/xtl)
-set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
-add_subdirectory(vendor/xtensor)
+if (NOT xtensor_FOUND)
+  add_subdirectory(vendor/xtl)
+  set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
+  add_subdirectory(vendor/xtensor)
+endif()
 
 #===============================================================================
 # GSL header-only library

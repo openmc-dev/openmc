@@ -346,7 +346,7 @@ void sample_photon_reaction(Particle& p)
   double prob_after = prob + micro.photoelectric;
   if (prob_after > cutoff) {
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
-      const auto& shell {element.device_shells_[i_shell]};
+      const auto& shell {element.shells_[i_shell]};
 
       // Get grid index and interpolation factor
       int i_grid = micro.index_grid;
@@ -491,7 +491,7 @@ int sample_nuclide(Particle& p)
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
     // Get atom density
-    int i_nuclide = mat.device_nuclide_[i];
+    int i_nuclide = mat.nuclide_[i];
     double atom_density = mat.device_atom_density_[i];
 
     // ======================================================================
@@ -503,7 +503,7 @@ int sample_nuclide(Particle& p)
     // Check if this nuclide matches one of the S(a,b) tables specified.
     // This relies on thermal_tables_ being sorted by .index_nuclide
     if (check_sab) {
-      const auto& sab {mat.device_thermal_tables_[j]};
+      const auto& sab {mat.thermal_tables_[j]};
       if (i == sab.index_nuclide) {
         // Get index in sab_tables
         i_sab = sab.index_table;
@@ -561,7 +561,7 @@ int sample_nuclide(Particle& p)
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
     // Get atom density
-    int i_nuclide = mat.device_nuclide_[i];
+    int i_nuclide = mat.nuclide_[i];
     double atom_density = mat.device_atom_density_[i];
 
     // Increment probability to compare to cutoff
@@ -589,7 +589,7 @@ int sample_element(Particle& p)
   double prob = 0.0;
   for (int i = 0; i < mat.element_.size(); ++i) {
     // Find atom density
-    int i_element = mat.device_element_[i];
+    int i_element = mat.element_[i];
     double atom_density = mat.device_atom_density_[i];
 
     // Determine microscopic cross section
@@ -599,7 +599,7 @@ int sample_element(Particle& p)
     prob += sigma;
     if (prob > cutoff) {
       // Save which nuclide particle had collision with for tally purpose
-      p.event_nuclide_ = mat.device_nuclide_[i];
+      p.event_nuclide_ = mat.nuclide_[i];
 
       return i_element;
     }
@@ -754,10 +754,10 @@ void scatter(Particle& p, int i_nuclide)
     // NON-S(A,B) ELASTIC SCATTERING
 
     // Determine temperature
-    double kT = nuc.multipole() ? p.sqrtkT_*p.sqrtkT_ : nuc.device_kTs_[i_temp];
+    double kT = nuc.multipole() ? p.sqrtkT_*p.sqrtkT_ : nuc.kTs_[i_temp];
 
     // Perform collision physics for elastic scattering
-    elastic_scatter(i_nuclide, nuc.device_reactions_[0].obj(), kT, p);
+    elastic_scatter(i_nuclide, nuc.reactions_[0].obj(), kT, p);
 
     p.event_mt_ = ELASTIC;
     sampled = true;
@@ -782,7 +782,7 @@ void scatter(Particle& p, int i_nuclide)
     int i = 0;
 
     while (prob < cutoff) {
-      i = nuc.device_index_inelastic_scatter_[j];
+      i = nuc.index_inelastic_scatter_[j];
       ++j;
 
       /*
@@ -794,12 +794,12 @@ void scatter(Particle& p, int i_nuclide)
       */
 
       // add to cumulative probability
-      auto rx = nuc.device_reactions_[i].obj();
+      auto rx = nuc.reactions_[i].obj();
       prob += rx.xs(micro);
     }
 
     // Perform collision physics for inelastic scattering
-    auto rx = nuc.device_reactions_[i].obj();
+    auto rx = nuc.reactions_[i].obj();
     inelastic_scatter(nuc, rx, p);
     p.event_mt_ = rx.mt();
   }
@@ -809,9 +809,9 @@ void scatter(Particle& p, int i_nuclide)
 
   // Sample new outgoing angle for isotropic-in-lab scattering
   const auto& mat {model::materials[p.material_]};
-  if (mat.device_p0_) {
-    int i_nuc_mat = mat.device_mat_nuclide_index_[i_nuclide];
-    if (mat.device_p0_[i_nuc_mat]) {
+  if (!mat.p0_.empty()) {
+    int i_nuc_mat = mat.mat_nuclide_index_[i_nuclide];
+    if (mat.p0_[i_nuc_mat]) {
       // Sample isotropic-in-lab outgoing direction
       double mu = 2.0*prn(p.current_seed()) - 1.0;
       double phi = 2.0*PI*prn(p.current_seed());
@@ -899,7 +899,7 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 
   // Sample energy and angle
   double E_out;
-  auto& sab_data = data::device_thermal_scatt[i_sab].device_data_[i_temp];
+  auto& sab_data = data::device_thermal_scatt[i_sab].data_[i_temp];
   sab_data.sample(micro, p.E_, &E_out, &p.mu_, p.current_seed());
 
   // Set energy to outgoing, change direction of particle
@@ -952,24 +952,24 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     // lower index
     int i_E_low;
     size_t n = nuc.energy_0K_.size();
-    if (E_low < nuc.device_energy_0K_[0]) {
+    if (E_low < nuc.energy_0K_[0]) {
       i_E_low = 0;
-    } else if (E_low > nuc.device_energy_0K_[n-1]) {
+    } else if (E_low > nuc.energy_0K_[n-1]) {
       i_E_low = n - 2;
     } else {
-      i_E_low = lower_bound_index(nuc.device_energy_0K_,
-        nuc.device_energy_0K_ + n, E_low);
+      i_E_low =
+        lower_bound_index(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_low);
     }
 
     // upper index
     int i_E_up;
-    if (E_up < nuc.device_energy_0K_[0]) {
+    if (E_up < nuc.energy_0K_[0]) {
       i_E_up = 0;
-    } else if (E_up > nuc.device_energy_0K_[n-1]) {
+    } else if (E_up > nuc.energy_0K_[n-1]) {
       i_E_up = n - 2;
     } else {
-      i_E_up = lower_bound_index(nuc.device_energy_0K_,
-        nuc.device_energy_0K_ + n, E_up);
+      i_E_up =
+        lower_bound_index(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_up);
     }
 
     if (i_E_up == i_E_low) {
@@ -980,18 +980,18 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
     if (sampling_method == ResScatMethod::dbrc) {
       // interpolate xs since we're not exactly at the energy indices
-      double xs_low = nuc.device_elastic_0K_[i_E_low];
-      double m = (nuc.device_elastic_0K_[i_E_low + 1] - xs_low)
-        / (nuc.device_energy_0K_[i_E_low + 1] - nuc.device_energy_0K_[i_E_low]);
-      xs_low += m * (E_low - nuc.device_energy_0K_[i_E_low]);
-      double xs_up = nuc.device_elastic_0K_[i_E_up];
-      m = (nuc.device_elastic_0K_[i_E_up + 1] - xs_up)
-        / (nuc.device_energy_0K_[i_E_up + 1] - nuc.device_energy_0K_[i_E_up]);
-      xs_up += m * (E_up - nuc.device_energy_0K_[i_E_up]);
+      double xs_low = nuc.elastic_0K_[i_E_low];
+      double m = (nuc.elastic_0K_[i_E_low + 1] - xs_low)
+        / (nuc.energy_0K_[i_E_low + 1] - nuc.energy_0K_[i_E_low]);
+      xs_low += m * (E_low - nuc.energy_0K_[i_E_low]);
+      double xs_up = nuc.elastic_0K_[i_E_up];
+      m = (nuc.elastic_0K_[i_E_up + 1] - xs_up)
+        / (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
+      xs_up += m * (E_up - nuc.energy_0K_[i_E_up]);
 
       // get max 0K xs value over range of practical relative energies
-      double xs_max = *std::max_element(&nuc.device_elastic_0K_[i_E_low + 1],
-        &nuc.device_elastic_0K_[i_E_up + 1]);
+      double xs_max = *std::max_element(&nuc.elastic_0K_[i_E_low + 1],
+        &nuc.elastic_0K_[i_E_up + 1]);
       xs_max = std::max({xs_low, xs_max, xs_up});
 
       while (true) {
@@ -1014,17 +1014,17 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     } else if (sampling_method == ResScatMethod::rvs) {
       // interpolate xs CDF since we're not exactly at the energy indices
       // cdf value at lower bound attainable energy
-      double m = (nuc.device_xs_cdf_[i_E_low] - nuc.device_xs_cdf_[i_E_low - 1])
-        / (nuc.device_energy_0K_[i_E_low + 1] - nuc.device_energy_0K_[i_E_low]);
-      double cdf_low = nuc.device_xs_cdf_[i_E_low - 1]
-            + m * (E_low - nuc.device_energy_0K_[i_E_low]);
-      if (E_low <= nuc.device_energy_0K_[0]) cdf_low = 0.0;
+      double m = (nuc.xs_cdf_[i_E_low] - nuc.xs_cdf_[i_E_low - 1])
+        / (nuc.energy_0K_[i_E_low + 1] - nuc.energy_0K_[i_E_low]);
+      double cdf_low = nuc.xs_cdf_[i_E_low - 1]
+            + m * (E_low - nuc.energy_0K_[i_E_low]);
+      if (E_low <= nuc.energy_0K_[0]) cdf_low = 0.0;
 
       // cdf value at upper bound attainable energy
-      m = (nuc.device_xs_cdf_[i_E_up] - nuc.device_xs_cdf_[i_E_up - 1])
-        / (nuc.device_energy_0K_[i_E_up + 1] - nuc.device_energy_0K_[i_E_up]);
-      double cdf_up = nuc.device_xs_cdf_[i_E_up - 1]
-        + m*(E_up - nuc.device_energy_0K_[i_E_up]);
+      m = (nuc.xs_cdf_[i_E_up] - nuc.xs_cdf_[i_E_up - 1])
+        / (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
+      double cdf_up = nuc.xs_cdf_[i_E_up - 1]
+        + m*(E_up - nuc.energy_0K_[i_E_up]);
 
       while (true) {
         // directly sample Maxwellian
@@ -1032,14 +1032,14 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
         // sample a relative energy using the xs cdf
         double cdf_rel = cdf_low + prn(seed)*(cdf_up - cdf_low);
-        int i_E_rel = lower_bound_index(&nuc.device_xs_cdf_[i_E_low-1],
-          &nuc.device_xs_cdf_[i_E_up+1], cdf_rel);
-        double E_rel = nuc.device_energy_0K_[i_E_low + i_E_rel];
-        double m = (nuc.device_xs_cdf_[i_E_low + i_E_rel]
-              - nuc.device_xs_cdf_[i_E_low + i_E_rel - 1])
-              / (nuc.device_energy_0K_[i_E_low + i_E_rel + 1]
-              -  nuc.device_energy_0K_[i_E_low + i_E_rel]);
-        E_rel += (cdf_rel - nuc.device_xs_cdf_[i_E_low + i_E_rel - 1]) / m;
+        int i_E_rel = lower_bound_index(&nuc.xs_cdf_[i_E_low-1],
+          &nuc.xs_cdf_[i_E_up+1], cdf_rel);
+        double E_rel = nuc.energy_0K_[i_E_low + i_E_rel];
+        double m = (nuc.xs_cdf_[i_E_low + i_E_rel]
+              - nuc.xs_cdf_[i_E_low + i_E_rel - 1])
+              / (nuc.energy_0K_[i_E_low + i_E_rel + 1]
+              -  nuc.energy_0K_[i_E_low + i_E_rel]);
+        E_rel += (cdf_rel - nuc.xs_cdf_[i_E_low + i_E_rel - 1]) / m;
 
         // perform rejection sampling on cosine between
         // neutron and target velocities

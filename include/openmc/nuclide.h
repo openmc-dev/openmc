@@ -19,6 +19,7 @@
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
 #include "openmc/urr.h"
+#include "openmc/vector.h"
 #include "openmc/wmp.h"
 
 namespace openmc {
@@ -81,8 +82,7 @@ public:
   gsl::index index_; //!< Index in the nuclides array
 
   // Temperature dependent cross section data
-  std::vector<double> kTs_; //!< temperatures in eV (k*T)
-  double* device_kTs_;
+  vector<double> kTs_; //!< temperatures in eV (k*T)
   std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
   std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
 
@@ -115,26 +115,20 @@ public:
 
   // Resonance scattering information
   bool resonant_ {false};
-  std::vector<double> energy_0K_;
-  std::vector<double> elastic_0K_;
-  std::vector<double> xs_cdf_;
-  double* device_energy_0K_;
-  double* device_elastic_0K_;
-  double* device_xs_cdf_;
+  vector<double> energy_0K_;
+  vector<double> elastic_0K_;
+  vector<double> xs_cdf_;
 
   // Unresolved resonance range information
   bool urr_present_ {false};
   int urr_inelastic_ {C_NONE};
-  std::vector<UrrData> urr_data_;
-  UrrData* device_urr_data_;
+  vector<UrrData> urr_data_;
 
-  std::vector<ReactionFlatContainer> reactions_; //!< Reactions
+  vector<ReactionFlatContainer> reactions_; //!< Reactions
   std::array<size_t, 902> reaction_index_; //!< Index of each reaction
-  std::vector<int> index_inelastic_scatter_;
+  vector<int> index_inelastic_scatter_;
 
-  int* device_index_inelastic_scatter_;
   ReactionFlatContainer** device_fission_rx_;
-  ReactionFlatContainer* device_reactions_;
 private:
   void create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons);
 

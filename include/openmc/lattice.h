@@ -13,6 +13,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/position.h"
+#include "openmc/vector.h"
 
 
 namespace openmc {
@@ -57,11 +58,9 @@ public:
   int32_t id_;                         //!< Universe ID number
   std::string name_;                   //!< User-defined name
   LatticeType type_;
-  std::vector<int32_t> universes_;     //!< Universes filling each lattice tile
-  int32_t* device_universes_;     //!< Universes filling each lattice tile
+  vector<int32_t> universes_;     //!< Universes filling each lattice tile
   int32_t outer_ {NO_OUTER_UNIVERSE};  //!< Universe tiled outside the lattice
-  std::vector<int32_t> offsets_;       //!< Distribcell offset table
-  int32_t* device_offsets_;       //!< Distribcell offset table
+  vector<int32_t> offsets_;       //!< Distribcell offset table
 
   explicit Lattice(pugi::xml_node lat_node, LatticeType type);
 
@@ -185,7 +184,7 @@ public:
   void to_hdf5(hid_t group_id) const;
 
   void allocate_and_copy_to_device(void);
-  
+
 private:
   //! Fill universes_ vector for 'y' orientation
   void fill_lattice_y(const std::vector<std::string>& univ_words);
@@ -203,7 +202,7 @@ private:
   Orientation orientation_;       //!< Orientation of lattice
   Position center_;               //!< Global center of lattice
   Position pitch_;                //!< Lattice tile width along each axis
-  
+
   std::array<int, 3> n_cells_;    //!< Number of cells along each axis
   Position lower_left_;           //!< Global lower-left corner of the lattice
 
@@ -355,7 +354,7 @@ private:
       y, //!< Flat side of lattice parallel to y-axis
       x  //!< Flat side of lattice parallel to x-axis
   };
-  
+
   //! Fill universes_ vector for 'y' orientation
   void fill_lattice_y(const std::vector<std::string>& univ_words);
 

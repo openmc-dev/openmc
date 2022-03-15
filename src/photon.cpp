@@ -588,7 +588,7 @@ void PhotonInteraction::calculate_xs(Particle& p) const
   // Calculate microscopic photoelectric cross section
   xs.photoelectric = 0.0;
   for (int i = 0; i < shells_.size(); ++i) {
-    const auto& shell = device_shells_[i];
+    const auto& shell = shells_[i];
 
     // Check threshold of reaction
     int i_start = shell.threshold;
@@ -772,7 +772,7 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
   while (n_holes > 0)
   {
     // Pop the next hole off the stack
-    const auto& shell {device_shells_[holes[--n_holes]]};
+    const auto& shell {shells_[holes[--n_holes]]};
 
     // If no transitions, assume fluorescent photon from captured free electron
     if (shell.transitions.size() == 0) {
@@ -847,12 +847,9 @@ void PhotonInteraction::copy_to_device()
   buffer_.copy_to_device();
 
   // Atomic relaxation data
-  device_shells_ = shells_.data();
-  device_cross_section_ = cross_section_.data();
-  device_transitions_ = transitions_.data();
-  #pragma omp target enter data map(to: device_shells_[:shells_.size()])
-  #pragma omp target enter data map(to: device_cross_section_[:cross_section_.size()])
-  #pragma omp target enter data map(to: device_transitions_[:transitions_.size()])
+  shells_.copy_to_device();
+  cross_section_.copy_to_device();
+  transitions_.copy_to_device();
 
   // Set the device pointers for cross sections and transitions
   #pragma omp target
@@ -860,16 +857,16 @@ void PhotonInteraction::copy_to_device()
     int xs_offset = 0;
     int tr_offset = 0;
     for (int i = 0; i < shells_.size(); ++i) {
-      auto& shell = device_shells_[i];
+      auto& shell = shells_[i];
 
       // Set photoionization cross sections pointers
       auto xs_size = shell.cross_section.size();
-      shell.cross_section = {device_cross_section_ + xs_offset, xs_size};
+      shell.cross_section = {&cross_section_[xs_offset], xs_size};
       xs_offset += xs_size;
 
       // Set transition pointers
       auto tr_size = shell.transitions.size();
-      shell.transitions = {device_transitions_ + tr_offset, tr_size};
+      shell.transitions = {&transitions_[tr_offset], tr_size};
       tr_offset += tr_size;
     }
   }
@@ -897,9 +894,9 @@ void PhotonInteraction::release_from_device()
   buffer_.release_device();
 
   // Atomic relaxation data
-  #pragma omp target exit data map(release: device_shells_[:shells_.size()])
-  #pragma omp target exit data map(release: device_cross_section_[:cross_section_.size()])
-  #pragma omp target exit data map(release: device_transitions_[:transitions_.size()])
+  shells_.release_device();
+  cross_section_.release_device();
+  transitions_.release_device();
 
   // Compton profile data
   #pragma omp target exit data map(release: device_profile_pdf_[:profile_pdf_.size()])

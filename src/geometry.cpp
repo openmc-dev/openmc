@@ -145,7 +145,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       int32_t* cells;
       if(!univ.partitioner_){
         //cells = model::universes[i_universe].cells_.data();
-        cells = model::device_universes[i_universe].device_cells_;
+        cells = model::device_universes[i_universe].cells_.data();
         //ncells = model::universes[i_universe].cells_.size();
         ncells = model::device_universes[i_universe].cells_.size();
       } else {
@@ -214,8 +214,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
           //const auto& c_i {model::cells[p.coord_[i].cell]};
           const auto& c_i {model::device_cells[p.coord_[i].cell]};
           if (c_i.type_ == Fill::UNIVERSE) {
-            //offset += c_i.offset_[c.distribcell_index_];
-            offset += c_i.device_offset_[c.distribcell_index_];
+            offset += c_i.offset_[c.distribcell_index_];
           } else if (c_i.type_ == Fill::LATTICE) {
             //auto& lat {model::lattices[p.coord_[i + 1].lattice]};
             auto& lat {model::device_lattices[p.coord_[i + 1].lattice]};
@@ -232,19 +231,15 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       // Set the material and temperature.
       p.material_last_ = p.material_;
       if (c.material_.size() > 1) {
-        //p.material_ = c.material_[p.cell_instance_];
-        p.material_ = c.device_material_[p.cell_instance_];
+        p.material_ = c.material_[p.cell_instance_];
       } else {
-        //p.material_ = c.material_[0];
-        p.material_ = c.device_material_[0];
+        p.material_ = c.material_[0];
       }
       p.sqrtkT_last_ = p.sqrtkT_;
       if (c.sqrtkT_.size() > 1) {
-        //p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
-        p.sqrtkT_ = c.device_sqrtkT_[p.cell_instance_];
+        p.sqrtkT_ = c.sqrtkT_[p.cell_instance_];
       } else {
-        //p.sqrtkT_ = c.sqrtkT_[0];
-        p.sqrtkT_ = c.device_sqrtkT_[0];
+        p.sqrtkT_ = c.sqrtkT_[0];
       }
 
       } // End OMP target

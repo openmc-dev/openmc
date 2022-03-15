@@ -10,6 +10,8 @@
 #include <string>
 #include <tuple>
 
+#include "openmc/vector.h"
+
 namespace openmc {
 
 //========================================================================
@@ -77,8 +79,6 @@ public:
   #pragma omp declare target
   double curvefit(int window, int poly_order, int reaction) const;
 
-  const WindowInfo& window_info(int i_window) const;
-
   std::complex<double> data(int pole, int res) const;
   #pragma omp end declare target
 
@@ -90,13 +90,11 @@ public:
   double inv_spacing_; //!< 1 / spacing in sqrt(E) space
   int fit_order_; //!< Order of the fit
   bool fissionable_; //!< Is the nuclide fissionable?
-  std::vector<WindowInfo> window_info_; // Information about a window
-  WindowInfo* device_window_info_ {nullptr};
+  vector<WindowInfo> window_info_; // Information about a window
   xt::xtensor<double, 3> curvefit_; // Curve fit coefficients (window, poly order, reaction)
   double* device_curvefit_ {nullptr};
   xt::xtensor<std::complex<double>, 2> data_; //!< Poles and residues
   std::complex<double>* device_data_ {nullptr};
-  int n_windows_;
   int n_order_;
   int n_reactions_;
   int n_data_size_;

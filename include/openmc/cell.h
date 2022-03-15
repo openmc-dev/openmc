@@ -18,6 +18,7 @@
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
+#include "openmc/vector.h"
 
 #define RPN_SIZE 24 // complex cell
 
@@ -74,8 +75,7 @@ class Universe
 {
 public:
   int32_t id_;                  //!< Unique ID
-  std::vector<int32_t> cells_;  //!< Cells within this universe
-  int32_t* device_cells_;  //!< Cells within this universe
+  vector<int32_t> cells_;  //!< Cells within this universe
 
   ~Universe();
 
@@ -198,22 +198,18 @@ public:
   //! \brief Material(s) within this cell.
   //!
   //! May be multiple materials for distribcell.
-  std::vector<int32_t> material_;
-  int32_t* device_material_{NULL};
+  vector<int32_t> material_;
 
   //! \brief Temperature(s) within this cell.
   //!
   //! The stored values are actually sqrt(k_Boltzmann * T) for each temperature
   //! T. The units are sqrt(eV).
-  std::vector<double> sqrtkT_;
-  double* device_sqrtkT_{NULL};
+  vector<double> sqrtkT_;
 
   //! Definition of spatial region as Boolean expression of half-spaces
-  std::vector<std::int32_t> region_;
-  int32_t* device_region_{NULL};
+  vector<std::int32_t> region_;
   //! Reverse Polish notation for region expression
-  std::vector<std::int32_t> rpn_;
-  int32_t* device_rpn_{NULL};
+  vector<std::int32_t> rpn_;
   bool simple_;  //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
@@ -232,8 +228,7 @@ public:
   double rotation_[12];
   int rotation_length_{0};
 
-  std::vector<int32_t> offset_;  //!< Distribcell offset table
-  int32_t* device_offset_{NULL};
+  vector<int32_t> offset_;  //!< Distribcell offset table
 
 protected:
   #pragma omp declare target
@@ -241,26 +236,26 @@ protected:
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   #pragma omp end declare target
   BoundingBox bounding_box_simple() const;
-  static BoundingBox bounding_box_complex(std::vector<int32_t> rpn);
+  static BoundingBox bounding_box_complex(vector<int32_t> rpn);
 
   //! Applies DeMorgan's laws to a section of the RPN
   //! \param start Starting point for token modification
   //! \param stop Stopping point for token modification
-  static void apply_demorgan(std::vector<int32_t>::iterator start,
-                             std::vector<int32_t>::iterator stop);
+  static void apply_demorgan(vector<int32_t>::iterator start,
+                             vector<int32_t>::iterator stop);
 
   //! Removes complement operators from the RPN
   //! \param rpn The rpn to remove complement operators from.
-  static void remove_complement_ops(std::vector<int32_t>& rpn);
+  static void remove_complement_ops(vector<int32_t>& rpn);
 
   //! Returns the beginning position of a parenthesis block (immediately before
   //! two surface tokens) in the RPN given a starting position at the end of
   //! that block (immediately after two surface tokens)
   //! \param start Starting position of the search
   //! \param rpn The rpn being searched
-  static std::vector<int32_t>::iterator
-  find_left_parenthesis(std::vector<int32_t>::iterator start,
-                        const std::vector<int32_t>& rpn);
+  static vector<int32_t>::iterator
+  find_left_parenthesis(vector<int32_t>::iterator start,
+                        const vector<int32_t>& rpn);
 };
 
 struct CellInstanceItem {
@@ -360,8 +355,7 @@ public:
 
 //private:
   //! A sorted vector of indices to surfaces that partition the universe
-  std::vector<int32_t> surfs_;
-  int32_t* device_surfs_{NULL};
+  vector<int32_t> surfs_;
 
   //! Vectors listing the indices of the cells that lie within each partition
   //

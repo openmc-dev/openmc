@@ -22,6 +22,8 @@ public:
   DataBuffer() = default;
   explicit DataBuffer(size_t n);
   DataBuffer(const DataBuffer& buffer);
+  // TODO: Should add copy assignment
+  //DataBuffer& operator=(const DataBuffer& buffer);
   ~DataBuffer();
 
   void reserve(size_t n);

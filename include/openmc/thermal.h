@@ -16,6 +16,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 #include "openmc/secondary_flat.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -120,13 +121,11 @@ public:
   std::string name_; //!< name of table, e.g. "c_H_in_H2O"
   double awr_;       //!< weight of nucleus in neutron masses
   double energy_max_; //!< maximum energy for thermal scattering in [eV]
-  std::vector<double> kTs_;  //!< temperatures in [eV] (k*T)
-  double* device_kTs_;
+  vector<double> kTs_;  //!< temperatures in [eV] (k*T)
   std::vector<std::string> nuclides_; //!< Valid nuclides
 
   //! cross sections and distributions at each temperature
-  std::vector<ThermalData> data_;
-  ThermalData* device_data_;
+  vector<ThermalData> data_;
 };
 
 void free_memory_thermal();

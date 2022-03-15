@@ -4,6 +4,7 @@
 #include "openmc/endf.h"
 #include "openmc/particle.h"
 #include "openmc/serialize.h"
+#include "openmc/vector.h"
 
 #include <gsl/gsl>
 #include <hdf5.h>
@@ -95,9 +96,7 @@ public:
   Tabulated1DFlat coherent_int_form_factor() const;
 
   // Photoionization and atomic relaxation data
-  std::vector<ElectronSubshell> shells_;
-
-  ElectronSubshell* device_shells_;
+  vector<ElectronSubshell> shells_;
 
   // Compton profile data
   xt::xtensor<double, 2> profile_pdf_;
@@ -134,11 +133,9 @@ private:
   int calc_helper(std::unordered_map<int, int>& visited, int i_shell) const;
 
   // Backend storage
-  std::vector<double> cross_section_;
-  std::vector<ElectronSubshell::Transition> transitions_;
+  vector<double> cross_section_;
+  vector<ElectronSubshell::Transition> transitions_;
 
-  double* device_cross_section_;
-  ElectronSubshell::Transition* device_transitions_;
   DataBuffer buffer_; // form factors
 };
 

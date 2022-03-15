@@ -17,7 +17,7 @@ import pytest
 
 # expected retults - neutron data only
 n_mesh = openmc.RectilinearMesh()
-n_mesh.x_grid = np.asarray([-100.0,
+n_mesh.x_grid = np.array([-100.0,
                             -99.0,
                             -97.0,
                             -79.3636,
@@ -33,7 +33,7 @@ n_mesh.x_grid = np.asarray([-100.0,
                             97.0,
                             99.0,
                             100])
-n_mesh.y_grid = np.asarray([-100.0,
+n_mesh.y_grid = np.array([-100.0,
                             -50.0,
                             -13.3333,
                             23.3333,
@@ -42,27 +42,27 @@ n_mesh.y_grid = np.asarray([-100.0,
                             80.0,
                             90.0,
                             100.0])
-n_mesh.z_grid = np.asarray([-100.0,
+n_mesh.z_grid = np.array([-100.0,
                             -66.6667,
                             -33.3333,
                             0.0,
                             33.3333,
                             66.6667,
                             100.0])
-n_e_bounds = (np.asarray([0.0,
+n_e_bounds = (np.array([0.0,
                          100000.0,
                          146780.0]),)
 n_particles = ('neutron',)
 
 # expected results - neutron and photon data
 np_mesh = openmc.RectilinearMesh()
-np_mesh.x_grid = np.asarray([-100.0, 100.0])
+np_mesh.x_grid = np.array([-100.0, 100.0])
 # y grid and z grid are the same as the previous mesh
 np_mesh.y_grid = n_mesh.y_grid
 np_mesh.z_grid = n_mesh.z_grid
 
-np_e_bounds = (np.asarray([0.0, 100000.0, 146780.0, 215440.0]),
-               np.asarray([0.0, 1.0E8]))
+np_e_bounds = (np.array([0.0, 100000.0, 146780.0, 215440.0]),
+               np.array([0.0, 1.0E8]))
 np_particles = ('neutron', 'photon')
 
 # expected results - photon data only
@@ -71,9 +71,9 @@ p_mesh = openmc.RectilinearMesh()
 p_mesh.x_grid = np_mesh.z_grid
 # uses the same y grid
 p_mesh.y_grid = np_mesh.y_grid
-p_mesh.z_grid = np.asarray([-50.0, 50.0])
+p_mesh.z_grid = np.array([-50.0, 50.0])
 
-p_e_bounds = (np.asarray([0.0, 100000.0, 146780.0, 215440.0, 316230.0]),)
+p_e_bounds = (np.array([0.0, 100000.0, 146780.0, 215440.0, 316230.0]),)
 p_particles = ('photon',)
 
 expected_results = [('wwinp_n', n_mesh, n_particles, n_e_bounds),
@@ -92,17 +92,11 @@ def id_fn(params):
         return 'photon-only'
 
 
-# function to resolve full path to the test data
-def full_path(filename):
-    cwd = Path(__file__).parent.absolute()
-    return cwd / Path(filename)
-
-
 @pytest.mark.parametrize('wwinp_data', expected_results, ids=id_fn)
-def test_wwinp_reader(wwinp_data):
+def test_wwinp_reader(wwinp_data, request):
     wwinp_file, mesh, particle_types, energy_bounds = wwinp_data
 
-    wws = openmc.wwinp_to_wws(full_path(wwinp_file))
+    wws = openmc.wwinp_to_wws(request.node.path.parent / wwinp_file)
 
     for i, ww in enumerate(wws):
         e_bounds = energy_bounds[i]
@@ -142,8 +136,8 @@ expected_failure_data = (('wwinp_t', ValueError),
 
 
 @pytest.mark.parametrize('wwinp_data', expected_failure_data, ids=fail_id_fn)
-def test_wwinp_reader_failures(wwinp_data):
+def test_wwinp_reader_failures(wwinp_data, request):
     filename, expected_failure = wwinp_data
 
     with pytest.raises(expected_failure):
-        _ = openmc.wwinp_to_wws(full_path(filename))
+        _ = openmc.wwinp_to_wws(request.node.path.parent / filename)

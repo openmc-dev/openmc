@@ -77,6 +77,11 @@ if(xtensor_FOUND)
 else()
   message(STATUS "Did not find xtensor, will use submodule instead")
 endif()
+if(xtl_FOUND)
+  message(STATUS "Found xtl: ${xtl_DIR} (version ${xtl_VERSION})")
+else()
+  message(STATUS "Did not find xtl, will use submodule instead")
+endif()
 #===============================================================================
 # libMesh Unstructured Mesh Support
 #===============================================================================
@@ -216,9 +221,12 @@ if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
   cmake_policy(SET CMP0079 NEW)
 endif()
 
-if (NOT xtensor_FOUND)
+if (NOT xtl_FOUND)
   add_subdirectory(vendor/xtl)
   set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
+endif()
+
+if (NOT xtensor_FOUND)
   add_subdirectory(vendor/xtensor)
 endif()
 

@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 import math
+from multiprocessing.sharedctypes import Value
 from numbers import Real, Integral
 import warnings
 
@@ -118,10 +119,6 @@ class WeightWindows(IDManagerMixin):
         self.particle_type = particle_type
         self.energy_bounds = energy_bounds
         self.lower_ww_bounds = lower_ww_bounds
-
-        cv.check_length('Lower window bounds',
-                        self.lower_ww_bounds,
-                        len(self.energy_bounds))
 
         if upper_ww_bounds is not None and upper_bound_ratio:
             raise ValueError("Exactly one of upper_ww_bounds and "
@@ -413,38 +410,6 @@ class WeightWindows(IDManagerMixin):
             id=id
         )
 
-def _wwinp_reader(path):
-    """
-    Generator that returns the next value in a wwinp file.
-
-    path : str or pathlib.Path
-        Location of the wwinp file
-    """
-
-    with open(path, 'r') as fh:
-
-        # read the first line of the file and
-        # keep only the first four entries
-        while True:
-            line = next(fh)
-            if line and not line.startswith('c'):
-                break
-
-        values = line.strip().split()[:4]
-        for value in values:
-            yield value
-
-        # the remainder of the file can be read as
-        # sequential values
-        while True:
-            line = next(fh)
-            # skip empty or commented lines
-            if not line or line.startswith('c'):
-                continue
-            values = line.strip().split()
-            for value in values:
-                yield value
-
 
 def wwinp_to_wws(path):
     """Creates WeightWindows classes from a wwinp file
@@ -459,7 +424,6 @@ def wwinp_to_wws(path):
     list of openmc.WeightWindows
     """
 
-    # read wwinp data
     with open(path) as wwinp:
         # BLOCK 1
         header = wwinp.readline().split(None, 4)
@@ -468,8 +432,10 @@ def wwinp_to_wws(path):
         _if, iv, ni, nr = [int(x) for x in header[:4]]
         probid = header[4] if len(header) > 4 else ""
 
+        # header value checks
         if _if != 1:
-            raise ValueError(f'Found incorrect file type, if: "{_if}"')
+            raise ValueError(f'Found incorrect file type, if: {_if}')
+
         if iv > 1:
             # read number of time bins for each particle, 'nt(1...ni)'
             nt = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
@@ -480,233 +446,130 @@ def wwinp_to_wws(path):
         else:
             nt = ni * [1]
 
+        if nr == 16:
+            raise NotImplementedError('Cylindrical and spherical mesh '
+                                      'types are not yet supported')
+
         # read number of energy bins for each particle, 'ne(1...ni)'
         ne = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
 
         # read coarse mesh dimensions and lower left corner
         mesh_description = np.fromstring(wwinp.readline(), sep=' ')
         nfx, nfy, nfz = [int(x) for x in mesh_description[:3]]
-        x0, y0, z0 = mesh_description[3:]
+        xyz0 = mesh_description[3:]
 
-        # read cylindrical and spherical mesh data if needed
+        # read cylindrical and spherical mesh vectors if present
         if nr == 16:
             # read number of coarse bins
             line_arr = np.fromstring(wwinp.readline(), sep=' ')
             ncx, ncy, ncz = [int(x) for x in line_arr[:3]]
             # read polar vector (x1, y1, z1)
-            polar_vec = line_arr[3:] - mesh_llc
-            polar_vec /= np.linalg.norm(polar_vec)
-            line_arr = np.fromstring(wwinp.readline(), sep=' ')
+            xyz1 = line_arr[3:] - xyz0
+            polar_vec = xyz1 / np.linalg.norm(xyz1)
             # read azimuthal vector (x2, y2, z2)
-            azimuthal_vec = line_arr[:3] - mesh_llc
-            azimuthal_vec /= np.linalg.norm(polar_vec)
+            line_arr = np.fromstring(wwinp.readline(), sep=' ')
+            xyz2 = line_arr[:3] - xyz0
+            azimuthal_vec = xyz2 / np.linalg.norm(xyz2)
             # read geometry type
             nwg = int(line_arr[-1])
         elif nr == 10:
             # read rectilinear data:
             # number of coarse mesh bins and mesh type
-            ncx, ncy, ncz, nwg = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
+            ncx, ncy, ncz, nwg = [int(x) for x in np.fromstring(wwinp.readline(), sep=' ')]
         else:
             raise RuntimeError(f'Invalid mesh description (nr) found: {nr}')
 
-        # BLOCK 2
-        # read the x dimension description of the mesh
-        # x0, (qx(i), px(i), sx(i), i...ncx)
-        # y0, (qy(i), py(i), sy(i), i...ncy)
-        # z0, (qz(i), pz(i), sz(i), i...ncz)
-        # deterine number of lines to read (6 entries per line)
-        n_x_lines = math.ceil((1 + 3 * ncx) / 6)
-        x_vals = np.fromstring([wwinp.readline() for _ in range(n_x_lines)], sep=' ').flatten()
-        n_y_lines = math.ceil((1 + 3 * ncy) / 6)
-        y_vals = np.fromstring([wwinp.readline() for _ in range(n_y_lines)], sep=' ').flatten()
-        n_z_lines = math.ceil((1 + 3 * ncz) / 6)
-        z_vals = np.fromstring([wwinp.readline() for _ in range(n_z_lines)], sep=' ').flatten()
-
-        # BLOCK 3 - option A
-        particle_data = []
-        for p in range(ni):
-            if iv > 1:
-                # read time bins
-                n_time_bin_lines = math.ceil(nt[p] / 6)
-                time_bins = np.fromstring([wwinp.readline() for _ in range(n_time_bin_lines)], sep=' ').flatten()
-
-            # read energy bins
-            n_energy_bin_lines = math.ceil(ne[p] / 6)
-            energy_bins = np.np.fromstring([wwinp.readline() for _ in range(n_energy_bin_lines)], sep=' ').flatten()
-
-            # read weight window parameters
-            n_ww_lines = math.ceil((nfx * nfy * nfz) * (nt[p]) * (num_energy_bins[p]) / 6)
-            ww_values = np.fromstring([wwinp.readline() for _ in range(n_ww_lines)], sep=' ').flatten()
-
-            particle_dict = {'time_bins': time_bins,
-                             'energy_bins': energy_bins,
-                             'ww_values': ww_values}
-
-            particle_data.append(particle_dict)
-
-        # BLOCK 3 - option B
-        # read all remaining ww data
+        # read BLOCK 2 and BLOCK 3 data into a single array
         ww_data = np.fromstring(wwinp.read(), sep=' ')
 
-        start_idx = 0
-        particle_data = []
-        for p in range(ni):
-            if iv > 1:
-                end_idx = start_idx + nt[p]
-                time_bins = ww_data[start_idx:end_idx]
+    # extract mesh data from the ww_data array
+    start_idx = 0
 
-            start_idx += end_idx
+    end_idx = start_idx + 1 + 3 * ncx
+    x_vals = ww_data[start_idx:end_idx]
+    start_idx = end_idx
 
-            end_idx = start_idx + ne[p]
-            energy_bins = ww_data[start_idx:end_idx]
+    end_idx = start_idx + 1 + 3 * ncy
+    y_vals = ww_data[start_idx:end_idx]
+    start_idx = end_idx
 
-            end_idx = start_idx + (nfx * nfy * nfz) * nt[p] * ne[p]
-            ww_values = ww_data[start_idx:end_idx]
-            start_idx += end_idx
+    end_idx = start_idx + 1 + 3 * ncz
+    z_vals = ww_data[start_idx:end_idx]
+    start_idx = end_idx
 
-            particle_dict = {'time_bins': time_bins,
-                             'energy_bins': energy_bins,
-                             'ww_values': ww_values}
+    # mesh consistency checks
+    if nr == 16 and nwg == 1:
+        raise ValueError(f'Mesh description in header ({nr}) '
+                         f'does not match the mesh type ({nwg})')
 
-            particle_data.append(particle_dict)
+    if not (xyz0 == (x_vals[0], y_vals[0], z_vals[0])).all():
+        raise ValueError(f'Mesh origin in the header ({xyz0}) '
+                         f' does not match the origin in the mesh '
+                         f' description ({x_vals[0], y_vals[0], z_vals[0]})')
 
+    # extract weight window values from array
+    particle_types = {0: 'neutron', 1: 'photon'}
+    particle_data = []
+    for p in range(ni):
+        # no information to read for this particle if
+        # either the energy bins or time bins are empty
+        if ne[p] == 0 or nt[p] == 0:
+            continue
 
-    # create mesh object here
+        if iv > 1:
+            # unused for now
+            end_idx = start_idx + nt[p]
+            time_bounds = ww_data[start_idx:end_idx]
+            np.insert(time_bounds, (0,), (0.0,))
+            start_idx = end_idx
 
-    for i, data in enumerate(particle_data):
-        pass
-        # create WeightWindow objects here
+        # read energy boundaries and convert from MeV to eV
+        end_idx = start_idx + ne[p]
+        energy_bounds = 1e6 * np.insert(ww_data[start_idx:end_idx], (0,), (0.0,))
+        start_idx = end_idx
 
+        # read weight window values
+        end_idx = start_idx + (nfx * nfy * nfz) * nt[p] * ne[p]
 
-    # create generator for getting the next parameter from the file
-    wwinp = _wwinp_reader(path)
+        # read values and reshape according to ordering
+        # slowest to fastest: z, y, x, e
+        ww_values = ww_data[start_idx:end_idx].reshape(nfz, nfy, nfx, ne[p])
+        # swap z and x axes for correct shape and (ijk, e) mesh indexing
+        ww_values = np.swapaxes(ww_values, 2, 0)
+        start_idx = end_idx
 
-    # first parameter, 'if' (file type), of wwinp file is unused
-    next(wwinp)
+        # gather particle data in container
+        particle_dict = {'particle': particle_types[p],
+                         'energy_bounds': energy_bounds,
+                         'ww_values': ww_values}
+        particle_data.append(particle_dict)
 
-    # check time parameter, iv
-    if int(float(next(wwinp))) > 1:
-        raise ValueError('Time-dependent weight windows '
-                         'are not yet supported.')
+    # create openmc mesh object
+    grids = []
+    for grid_info in [x_vals, y_vals, z_vals]:
+        # first value is the start of the grid
+        coords = [grid_info[0]]
 
-    # number of particle types, ni
-    n_particle_types = int(float(next(wwinp)))
+        # extend the grid based on the next coarse bin endpoint, px
+        # and the number of fine bines in the coarse bin, sx
+        intervals = grid_info[1:].reshape(-1, 3)
+        for sx, px, qx in intervals:
+            coords += list(np.linspace(coords[-1], px, int(sx + 1)))[1:]
 
-    # read an indicator of the mesh type.
-    # this will be 10 if a rectilinear mesh
-    # and 16 for cylindrical or spherical meshes
-    mesh_chars = int(float(next(wwinp)))
+        grids.append(np.asarray(coords))
 
-    if mesh_chars != 10:
-        # TODO: read the first entry by default and display a warning
-        raise NotImplementedError('Cylindrical and Spherical meshes '
-                                  'are not currently supported')
-
-    # read the number of energy groups for each particle, ne
-    n_egroups = [int(next(wwinp)) for _ in range(n_particle_types)]
-
-    # order that supported particle types will appear in the file
-    particle_types = ['neutron', 'photon']
-
-    # add particle to list if at least one energy group is present
-    particles = [p for e, p in zip(n_egroups, particle_types) if e > 0]
-    # truncate list of energy groups if needed
-    n_egroups = [e for e in n_egroups if e > 0]
-
-    if n_particle_types > 2:
-        warnings.warn('More than two particle types are present. '
-                      'Only neutron and photon weight windows will be read.')
-
-    # read total number of fine mesh elements in each coarse
-    # element (nfx, nfy, nfz)
-    n_fine_x = int(float(next(wwinp)))
-    n_fine_y = int(float(next(wwinp)))
-    n_fine_z = int(float(next(wwinp)))
-    header_mesh_dims = (n_fine_x, n_fine_y, n_fine_z)
-
-    # read the mesh origin: x0, y0, z0
-    llc = tuple(float(next(wwinp)) for _ in range(3))
-
-    # read the number of coarse mesh elements (ncx, ncy, ncz)
-    n_coarse_x = int(float(next(wwinp)))
-    n_coarse_y = int(float(next(wwinp)))
-    n_coarse_z = int(float(next(wwinp)))
-
-    # skip the value defining the geometry type, nwg, we already know this
-    # 1 - rectilinear mesh
-    # 2 - cylindrical mesh
-    # 3 - spherical mesh
-    mesh_type = int(float(next(wwinp)))
-
-    if mesh_type != 1:
-        # TODO: support additional mesh types
-        raise NotImplementedError('Cylindrical and Spherical meshes '
-                                  'are not currently supported')
-
-    # internal function for parsing mesh coordinates
-    def _read_mesh_coords(wwinp, n_coarse_bins):
-        coords = [float(next(wwinp))]
-
-        for _ in range(n_coarse_bins):
-            # number of fine mesh elements in this coarse element, sx
-            sx = int(float(next(wwinp)))
-            # value of next coordinate, px
-            px = float(next(wwinp))
-            # fine mesh ratio, qx (currently unused)
-            qx = next(wwinp)
-            # append the fine mesh coordinates for this coarse element
-            coords += list(np.linspace(coords[-1], px, sx + 1))[1:]
-
-        return np.asarray(coords)
-
-    # read the coordinates for each dimension into a rectilinear mesh
     mesh = RectilinearMesh()
-    mesh.x_grid = _read_mesh_coords(wwinp, n_coarse_x)
-    mesh.y_grid = _read_mesh_coords(wwinp, n_coarse_y)
-    mesh.z_grid = _read_mesh_coords(wwinp, n_coarse_z)
+    mesh.x_grid, mesh.y_grid, mesh.z_grid = grids
 
-    dims = ('x', 'y', 'z')
-    # check consistency of mesh coordinates
-    mesh_llc = mesh_val = (mesh.x_grid[0], mesh.y_grid[0], mesh.z_grid[0])
-    for dim, header_val, mesh_val in zip(dims, llc, mesh_llc):
-        if header_val != mesh_val:
-            msg = ('The {} corner of the mesh ({}) does not match '
-                   'the value read in block 1 of the wwinp file ({})')
-            raise ValueError(msg.format(dim, mesh_val, header_val))
-
-    # check total number of mesh elements in each direction
-    mesh_dims = mesh.dimension
-    for dim, header_val, mesh_val in zip(dims, header_mesh_dims, mesh_dims):
-        if header_val != mesh_val:
-            msg = ('Total number of mesh elements read in the {} '
-                   'direction ({}) is inconsistent with the '
-                   'number read in block 1 of the wwinp file ({})')
-            raise ValueError(msg.format(dim, mesh_val, header_val))
-
-    # read energy bins and weight window values for each particle
+    # create openmc weight window objects
     wws = []
-    for particle, ne in zip(particles, n_egroups):
-        # read upper energy bounds
-        # it is implied that zero is always the first bound in MCNP
-        e_bounds = np.asarray([0.0] + [float(next(wwinp)) for _ in range(ne)])
-        # adjust energy from MeV to eV
-        e_bounds *= 1e6
-
-        # create an array for weight window lower bounds
-        ww_lb = np.zeros((*mesh.dimension, ne))
-        for ijk in mesh.indices:
-            # MCNP ordering for weight windows matches that of OpenMC
-            # ('xyz' with x changing fastest)
-            idx = tuple([v - 1 for v in ijk] + [slice(None)])
-            ww_lb[idx] = [float(next(wwinp)) for _ in range(ne)]
-
-        # create a WeightWindows object and add it to the output list
+    for data in particle_data:
         ww = WeightWindows(id=None,
                            mesh=mesh,
-                           lower_ww_bounds=ww_lb.flatten(),
+                           lower_ww_bounds=data['ww_values'],
                            upper_bound_ratio=5.0,
-                           energy_bounds=e_bounds,
-                           particle_type=particle)
+                           energy_bounds=data['energy_bounds'],
+                           particle_type=data['particle'])
         wws.append(ww)
 
     return wws

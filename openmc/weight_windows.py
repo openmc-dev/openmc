@@ -1,8 +1,5 @@
 from collections.abc import Iterable
-import math
-from multiprocessing.sharedctypes import Value
 from numbers import Real, Integral
-import warnings
 
 from xml.etree import ElementTree as ET
 import numpy as np

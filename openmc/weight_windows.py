@@ -515,7 +515,7 @@ def wwinp_to_wws(path):
             continue
 
         if iv > 1:
-            # unused for now
+            # time bins are parsed but unused for now
             end_idx = start_idx + nt[p]
             time_bounds = ww_data[start_idx:end_idx]
             np.insert(time_bounds, (0,), (0.0,))
@@ -551,7 +551,7 @@ def wwinp_to_wws(path):
         coords = [grid_info[0]]
 
         # extend the grid based on the next coarse bin endpoint, px
-        # and the number of fine bines in the coarse bin, sx
+        # and the number of fine bins in the coarse bin, sx
         intervals = grid_info[1:].reshape(-1, 3)
         for sx, px, qx in intervals:
             coords += list(np.linspace(coords[-1], px, int(sx + 1)))[1:]

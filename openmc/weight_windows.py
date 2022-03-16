@@ -483,16 +483,18 @@ def wwinp_to_wws(path):
     # extract mesh data from the ww_data array
     start_idx = 0
 
+    # first values in the mesh definition arrays are the first
+    # coordinate of the grid
     end_idx = start_idx + 1 + 3 * ncx
-    x_vals = ww_data[start_idx:end_idx]
+    x0, x_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
     start_idx = end_idx
 
     end_idx = start_idx + 1 + 3 * ncy
-    y_vals = ww_data[start_idx:end_idx]
+    y0, y_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
     start_idx = end_idx
 
     end_idx = start_idx + 1 + 3 * ncz
-    z_vals = ww_data[start_idx:end_idx]
+    z0, z_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
     start_idx = end_idx
 
     # mesh consistency checks
@@ -500,10 +502,35 @@ def wwinp_to_wws(path):
         raise ValueError(f'Mesh description in header ({nr}) '
                          f'does not match the mesh type ({nwg})')
 
-    if not (xyz0 == (x_vals[0], y_vals[0], z_vals[0])).all():
+    if not (xyz0 == (x0, y0, z0)).all():
         raise ValueError(f'Mesh origin in the header ({xyz0}) '
                          f' does not match the origin in the mesh '
-                         f' description ({x_vals[0], y_vals[0], z_vals[0]})')
+                         f' description ({x0, y0, z0})')
+
+    # create openmc mesh object
+    grids = []
+    mesh_definition = [(x0, x_vals, nfx), (y0, y_vals, nfy), (z0, z_vals, nfz)]
+    for grid0, grid_vals, n_pnts in mesh_definition:
+        # file spec checks for the mesh definition
+        if not all(grid_vals[2::3] == 1.0):
+            raise ValueError('One or more mesh ratio value, qx, '
+                             'is not equal to one')
+
+        if np.sum(grid_vals[::3]) != n_pnts:
+            raise ValueError('Sum of the fine bin entries, s, does '
+                             'not match the number of fine bins')
+
+        # extend the grid based on the next coarse bin endpoint, px
+        # and the number of fine bins in the coarse bin, sx
+        intervals = grid_vals.reshape(-1, 3)
+        coords = [grid0]
+        for sx, px, qx in intervals:
+            coords += list(np.linspace(coords[-1], px, int(sx + 1)))[1:]
+
+        grids.append(np.array(coords))
+
+    mesh = RectilinearMesh()
+    mesh.x_grid, mesh.y_grid, mesh.z_grid = grids
 
     # extract weight window values from array
     particle_types = {0: 'neutron', 1: 'photon'}
@@ -543,23 +570,6 @@ def wwinp_to_wws(path):
                          'energy_bounds': energy_bounds,
                          'ww_values': ww_values}
         particle_data.append(particle_dict)
-
-    # create openmc mesh object
-    grids = []
-    for grid_info in [x_vals, y_vals, z_vals]:
-        # first value is the start of the grid
-        coords = [grid_info[0]]
-
-        # extend the grid based on the next coarse bin endpoint, px
-        # and the number of fine bins in the coarse bin, sx
-        intervals = grid_info[1:].reshape(-1, 3)
-        for sx, px, qx in intervals:
-            coords += list(np.linspace(coords[-1], px, int(sx + 1)))[1:]
-
-        grids.append(np.asarray(coords))
-
-    mesh = RectilinearMesh()
-    mesh.x_grid, mesh.y_grid, mesh.z_grid = grids
 
     # create openmc weight window objects
     wws = []

@@ -475,7 +475,8 @@ def wwinp_to_wws(path):
         elif nr == 10:
             # read rectilinear data:
             # number of coarse mesh bins and mesh type
-            ncx, ncy, ncz, nwg = [int(x) for x in np.fromstring(wwinp.readline(), sep=' ')]
+            ncx, ncy, ncz, nwg = \
+                [int(x) for x in np.fromstring(wwinp.readline(), sep=' ')]
         else:
             raise RuntimeError(f'Invalid mesh description (nr) found: {nr}')
 
@@ -523,9 +524,11 @@ def wwinp_to_wws(path):
             np.insert(time_bounds, (0,), (0.0,))
             start_idx = end_idx
 
-        # read energy boundaries and convert from MeV to eV
+        # read energy boundaries
         end_idx = start_idx + ne[p]
-        energy_bounds = 1e6 * np.insert(ww_data[start_idx:end_idx], (0,), (0.0,))
+        energy_bounds = np.insert(ww_data[start_idx:end_idx], (0,), (0.0,))
+        # convert from MeV to eV
+        energy_bounds *= 1e6
         start_idx = end_idx
 
         # read weight window values

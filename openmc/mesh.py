@@ -45,6 +45,51 @@ class MeshBase(IDManagerMixin, ABC):
     def name(self):
         return self._name
 
+    @property
+    @abstractmethod
+    def dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def n_dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def _grids(self):
+        pass
+
+    @property
+    def vertices(self):
+        """Return coordinates of mesh vertices.
+
+        Returns
+        -------
+        vertices : numpy.ndarray
+            Returns a numpy.ndarray representing the coordinates of the mesh
+            vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim).
+
+        """
+        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
+
+    @property
+    def centroids(self):
+        """Return coordinates of mesh element centroids.
+
+        Returns
+        -------
+        centroids : numpy.ndarray
+            Returns a numpy.ndarray representing the mesh element centroid
+            coordinates with a shape equal to (dim1, ..., dimn, ndim).
+
+        """
+        ndim = len(self.dimension)
+        vertices = self.vertices
+        s0 = (slice(0, -1),)*ndim + (slice(None),)
+        s1 = (slice(1, None),)*ndim + (slice(None),)
+        return (vertices[s0] + vertices[s1]) / 2
+
     @name.setter
     def name(self, name):
         if name is not None:
@@ -245,18 +290,7 @@ class RegularMesh(MeshBase):
             return ((x,) for x in range(1, nx + 1))
 
     @property
-    def vertices(self):
-        """Return coordinates of mesh vertices
-
-        Returns
-        -------
-        vertices : numpy.ndarray
-            Returns a numpy.ndarray representing the coordinates of mesh
-            vertices with a shape equal to (nx + 1, ny + 1, nz + 1, 3)
-            where nx, ny, nz = dimension in 3D. For 2D the shape is
-            (nx + 1, ny + 1, 2), and for 1D the shape is (nx,).
-
-        """
+    def _grids(self):
         ndim = len(self._dimension)
         if ndim == 3:
             x0, y0, z0 = self.lower_left
@@ -265,42 +299,19 @@ class RegularMesh(MeshBase):
             xarr = np.linspace(x0, x1, nx + 1)
             yarr = np.linspace(y0, y1, ny + 1)
             zarr = np.linspace(z0, z1, nz + 1)
-            xx, yy, zz = np.meshgrid(xarr, yarr, zarr, indexing='ij')
-            return np.stack((xx, yy, zz), axis=-1)
+            return (xarr, yarr, zarr)
         elif ndim == 2:
             x0, y0 = self.lower_left
             x1, y1 = self.upper_right
             nx, ny = self.dimension
             xarr = np.linspace(x0, x1, nx + 1)
             yarr = np.linspace(y0, y1, ny + 1)
-            xx, yy = np.meshgrid(xarr, yarr, indexing='ij')
-            return np.stack((xx, yy), axis=-1)
+            return (xarr, yarr)
         else:
             nx, = self.dimension
             x0, = self.lower_left
             x1, = self.upper_right
-            return np.linspace(x0, x1, nx + 1)
-
-    @property
-    def centroids(self):
-        """Return coordinates of mesh element centroids
-
-        Returns
-        -------
-        coordinates : numpy.ndarray or tuple of numpy.ndarray
-            Returns a numpy.ndarray for each dimension representing the mesh
-            element centroid coordinates. Each array has an identical shape
-            equal to (nx, ny, nz) where nx, ny, nz = n_dimension.
-
-        """
-        ndim = len(self._dimension)
-        vertices = self.vertices
-        if ndim == 3:
-            return (vertices[:-1, :-1, :-1, :] + vertices[1:, 1:, 1:, :]) / 2
-        elif ndim == 2:
-            return (vertices[:-1, :-1, :] + vertices[1:, 1:, :]) / 2
-        else:
-            return (vertices[:-1] + vertices[1:]) / 2
+            return (np.linspace(x0, x1, nx + 1),)
 
     @dimension.setter
     def dimension(self, dimension):
@@ -657,6 +668,10 @@ class RectilinearMesh(MeshBase):
         return self._z_grid
 
     @property
+    def _grids(self):
+        return (self.x_grid, self.y_grid, self.z_grid)
+
+    @property
     def volumes(self):
         """Return Volumes for every mesh cell
 
@@ -686,39 +701,6 @@ class RectilinearMesh(MeshBase):
                 for z in range(1, nz + 1)
                 for y in range(1, ny + 1)
                 for x in range(1, nx + 1))
-
-    @property
-    def vertices(self):
-        """Return coordinates of mesh vertices
-
-        Returns
-        -------
-        vertices : numpy.ndarray
-            Returns a numpy.ndarray representing the coordinates of mesh
-            vertices with a shape equal to (nx + 1, ny + 1, nz + 1, 3)
-            where nx, ny, nz = dimension.
-
-        """
-        xx, yy, zz = np.meshgrid(self.x_grid, self.y_grid, self.z_grid, indexing='ij')
-        return np.stack((xx, yy, zz), axis=-1)
-
-    @property
-    def centroids(self):
-        """Return coordinates of mesh element centroids
-
-        Returns
-        -------
-        coordinates : 3-tuple of numpy.ndarray
-            Returns a numpy.ndarray for each dimension representing the mesh
-            element centroid coordinates. Each array has an identical shape
-            equal to (nx, ny, nz) where nx, ny, nz = n_dimension.
-
-        """
-        xx, yy, zz = self.vertices
-        xc = (xx[:-1, :-1, :-1] + xx[1:, 1:, 1:]) / 2
-        yc = (yy[:-1, :-1, :-1] + yy[1:, 1:, 1:]) / 2
-        zc = (zz[:-1, :-1, :-1] + zz[1:, 1:, 1:]) / 2
-        return xc, yc, zc
 
     @x_grid.setter
     def x_grid(self, grid):
@@ -881,7 +863,7 @@ class CylindricalMesh(MeshBase):
         return self._z_grid
 
     @property
-    def grids(self):
+    def _grids(self):
         return (self.r_grid, self.phi_grid, self.z_grid)
 
     @property
@@ -893,38 +875,6 @@ class CylindricalMesh(MeshBase):
                 for z in range(1, nz + 1)
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
-
-    @property
-    def vertices(self):
-        """Return coordinates of mesh vertices
-
-        Returns
-        -------
-        vertices : numpy.ndarray
-            Returns a numpy.ndarray representing the coordinates of mesh
-            vertices with a shape equal to (nr + 1, nphi + 1, nz + 1, 3)
-            where nr, nphi, nz = dimension.
-
-        """
-        return np.stack(np.meshgrid(*self.grids, indexing='ij'), axis=-1)
-
-    @property
-    def centroids(self):
-        """Return coordinates of mesh element centroids
-
-        Returns
-        -------
-        coordinates : 3-tuple of numpy.ndarray
-            Returns a numpy.ndarray for each dimension representing the mesh
-            element centroid coordinates. Each array has an identical shape
-            equal to (nx, nphi, nz) where nx, nphi, nz = n_dimension.
-
-        """
-        rr, pp, zz = self.vertices
-        rc = (rr[:-1, :-1, :-1] + rr[1:, 1:, 1:]) / 2
-        pc = (pp[:-1, :-1, :-1] + pp[1:, 1:, 1:]) / 2
-        zc = (zz[:-1, :-1, :-1] + zz[1:, 1:, 1:]) / 2
-        return rc, pc, zc
 
     @r_grid.setter
     def r_grid(self, grid):
@@ -1105,6 +1055,10 @@ class SphericalMesh(MeshBase):
         return self._phi_grid
 
     @property
+    def _grids(self):
+        return (self.r_grid, self.theta_grid, self.phi_grid)
+
+    @property
     def indices(self):
         nr, nt, np = self.dimension
         nt = len(self.theta_grid) - 1
@@ -1113,42 +1067,6 @@ class SphericalMesh(MeshBase):
                 for p in range(1, np + 1)
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
-
-    @property
-    def vertices(self):
-        """Return coordinates of mesh vertices
-
-        Returns
-        -------
-        vertices : numpy.ndarray
-            Returns a numpy.ndarray representing the coordinates of mesh
-            vertices with a shape equal to (nr + 1, ntheta + 1, nphi + 1, 3)
-            where nr, ntheta, nphi = dimension.
-
-        """
-        rr, tt, pp = np.meshgrid(self.r_grid,
-                                 self.theta_grid,
-                                 self.phi_grid,
-                                 indexing='ij')
-        return np.stack((rr, tt, pp), axis=-1)
-
-    @property
-    def centroids(self):
-        """Return coordinates of mesh element centroids
-
-        Returns
-        -------
-        coordinates : 3-tuple of numpy.ndarray
-            Returns a numpy.ndarray for each dimension representing the mesh
-            element centroid coordinates. Each array has an identical shape
-            equal to (nx, ntheta, nphi) where nx, ntheta, nphi = n_dimension.
-
-        """
-        rr, tt, pp = self.vertices
-        rc = (rr[:-1, :-1, :-1] + rr[1:, 1:, 1:]) / 2
-        tc = (tt[:-1, :-1, :-1] + tt[1:, 1:, 1:]) / 2
-        pc = (pp[:-1, :-1, :-1] + pp[1:, 1:, 1:]) / 2
-        return rc, tc, pc
 
     @r_grid.setter
     def r_grid(self, grid):

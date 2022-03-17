@@ -452,14 +452,14 @@ def wwinp_to_wws(path):
 
         # read coarse mesh dimensions and lower left corner
         mesh_description = np.fromstring(wwinp.readline(), sep=' ')
-        nfx, nfy, nfz = [int(x) for x in mesh_description[:3]]
+        nfx, nfy, nfz = mesh_description[:3].astype(int)
         xyz0 = mesh_description[3:]
 
         # read cylindrical and spherical mesh vectors if present
         if nr == 16:
             # read number of coarse bins
             line_arr = np.fromstring(wwinp.readline(), sep=' ')
-            ncx, ncy, ncz = [int(x) for x in line_arr[:3]]
+            ncx, ncy, ncz = line_arr[:3].astype(int)
             # read polar vector (x1, y1, z1)
             xyz1 = line_arr[3:] - xyz0
             polar_vec = xyz1 / np.linalg.norm(xyz1)
@@ -502,7 +502,7 @@ def wwinp_to_wws(path):
         raise ValueError(f'Mesh description in header ({nr}) '
                          f'does not match the mesh type ({nwg})')
 
-    if not (xyz0 == (x0, y0, z0)).all():
+    if (xyz0 != (x0, y0, z0)).any():
         raise ValueError(f'Mesh origin in the header ({xyz0}) '
                          f' does not match the origin in the mesh '
                          f' description ({x0, y0, z0})')
@@ -512,11 +512,11 @@ def wwinp_to_wws(path):
     mesh_definition = [(x0, x_vals, nfx), (y0, y_vals, nfy), (z0, z_vals, nfz)]
     for grid0, grid_vals, n_pnts in mesh_definition:
         # file spec checks for the mesh definition
-        if not all(grid_vals[2::3] == 1.0):
+        if (grid_vals[2::3] != 1.0).any():
             raise ValueError('One or more mesh ratio value, qx, '
                              'is not equal to one')
 
-        if np.sum(grid_vals[::3]) != n_pnts:
+        if grid_vals[::3].sum() != n_pnts:
             raise ValueError('Sum of the fine bin entries, s, does '
                              'not match the number of fine bins')
 

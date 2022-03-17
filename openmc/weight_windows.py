@@ -473,7 +473,7 @@ def wwinp_to_wws(path):
             # read rectilinear data:
             # number of coarse mesh bins and mesh type
             ncx, ncy, ncz, nwg = \
-                [int(x) for x in np.fromstring(wwinp.readline(), sep=' ')]
+                np.fromstring(wwinp.readline(), sep=' ').astype(int)
         else:
             raise RuntimeError(f'Invalid mesh description (nr) found: {nr}')
 
@@ -534,7 +534,7 @@ def wwinp_to_wws(path):
 
     # extract weight window values from array
     particle_types = {0: 'neutron', 1: 'photon'}
-    particle_data = []
+    wws = []
     for p in range(ni):
         # no information to read for this particle if
         # either the energy bins or time bins are empty
@@ -565,21 +565,13 @@ def wwinp_to_wws(path):
         ww_values = np.swapaxes(ww_values, 2, 0)
         start_idx = end_idx
 
-        # gather particle data in container
-        particle_dict = {'particle': particle_types[p],
-                         'energy_bounds': energy_bounds,
-                         'ww_values': ww_values}
-        particle_data.append(particle_dict)
-
-    # create openmc weight window objects
-    wws = []
-    for data in particle_data:
+        # create a weight window object
         ww = WeightWindows(id=None,
                            mesh=mesh,
-                           lower_ww_bounds=data['ww_values'],
+                           lower_ww_bounds=ww_values,
                            upper_bound_ratio=5.0,
-                           energy_bounds=data['energy_bounds'],
-                           particle_type=data['particle'])
+                           energy_bounds=energy_bounds,
+                           particle_type=particle_types[p])
         wws.append(ww)
 
     return wws

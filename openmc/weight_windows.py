@@ -525,7 +525,7 @@ def wwinp_to_wws(path):
         intervals = grid_vals.reshape(-1, 3)
         coords = [grid0]
         for sx, px, qx in intervals:
-            coords += list(np.linspace(coords[-1], px, int(sx + 1)))[1:]
+            coords += np.linspace(coords[-1], px, int(sx + 1)).tolist()[1:]
 
         grids.append(np.array(coords))
 

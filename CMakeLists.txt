@@ -437,7 +437,13 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      pugixml::pugixml faddeeva xtensor gsl::gsl-lite-v1 fmt::fmt)
+                      faddeeva xtensor gsl::gsl-lite-v1 fmt::fmt)
+
+if(TARGET pugixml::pugixml)
+  target_link_libraries(libopenmc pugixml::pugixml)
+else()
+  target_link_libraries(libopenmc pugixml)
+endif()
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)

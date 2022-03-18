@@ -4,10 +4,10 @@ set -ex
 PYBIND_BRANCH='master'
 PYBIND_REPO='https://github.com/pybind/pybind11'
 
-XTL_BRANCH='0.6.9'
+XTL_BRANCH='0.6.13'
 XTL_REPO='https://github.com/xtensor-stack/xtl'
 
-XTENSOR_BRANCH='0.21.2'
+XTENSOR_BRANCH='0.21.3'
 XTENSOR_REPO='https://github.com/xtensor-stack/xtensor'
 
 XTENSOR_PYTHON_BRANCH='0.24.1'

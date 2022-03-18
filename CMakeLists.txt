@@ -71,7 +71,18 @@ if(pugixml_FOUND)
 else()
   message(STATUS "Did not find pugixml, will use submodule instead")
 endif()
-
+find_package(xtensor QUIET NO_SYSTEM_ENVIRONMENT_PATH)
+if(xtensor_FOUND)
+  message(STATUS "Found xtensor: ${xtensor_DIR} (version ${xtensor_VERSION})")
+else()
+  message(STATUS "Did not find xtensor, will use submodule instead")
+endif()
+find_package(gsl-lite QUIET NO_SYSTEM_ENVIRONMENT_PATH)
+if(gsl-lite_FOUND)
+  message(STATUS "Found gsl-lite: ${gsl-lite_DIR} (version ${gsl-lite_VERSION})")
+else()
+  message(STATUS "Did not find gsl-lite, will use submodule instead")
+endif()
 #===============================================================================
 # libMesh Unstructured Mesh Support
 #===============================================================================
@@ -211,19 +222,23 @@ if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
   cmake_policy(SET CMP0079 NEW)
 endif()
 
-add_subdirectory(vendor/xtl)
-set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
-add_subdirectory(vendor/xtensor)
+if (NOT xtensor_FOUND)
+  add_subdirectory(vendor/xtl)
+  set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
+  add_subdirectory(vendor/xtensor)
+endif()
 
 #===============================================================================
 # GSL header-only library
 #===============================================================================
 
-add_subdirectory(vendor/gsl-lite)
+if (NOT gsl-lite_FOUND)
+  add_subdirectory(vendor/gsl-lite)
 
-# Make sure contract violations throw exceptions
-target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
-target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
+  # Make sure contract violations throw exceptions
+  target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+  target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
+endif()
 
 #===============================================================================
 # RPATH information
@@ -422,7 +437,13 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      pugixml faddeeva xtensor gsl-lite-v1 fmt::fmt)
+                      faddeeva xtensor gsl::gsl-lite-v1 fmt::fmt)
+
+if(TARGET pugixml::pugixml)
+  target_link_libraries(libopenmc pugixml::pugixml)
+else()
+  target_link_libraries(libopenmc pugixml)
+endif()
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)

@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include "xtensor/xview.hpp"
+#include "xtensor/xmanipulation.hpp"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 #ifdef USE_LIBPNG

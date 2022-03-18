@@ -27,14 +27,13 @@ Simulation Settings
    openmc.WeightWindows
    openmc.Settings
 
-The following function can be used for generating a source file:
-
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: myfunction.rst
 
    openmc.write_source_file
+   openmc.wwinp_to_wws
 
 Material Specification
 ----------------------

@@ -537,29 +537,29 @@ def wwinp_to_wws(path):
     for ne_i, nt_i, particle_type in zip(ne, nt, ('neutron', 'photon')):
         # no information to read for this particle if
         # either the energy bins or time bins are empty
-        if ne[p] == 0 or nt[p] == 0:
+        if ne_i == 0 or nt_i == 0:
             continue
 
         if iv > 1:
             # time bins are parsed but unused for now
-            end_idx = start_idx + nt[p]
+            end_idx = start_idx + nt_i
             time_bounds = ww_data[start_idx:end_idx]
             np.insert(time_bounds, (0,), (0.0,))
             start_idx = end_idx
 
         # read energy boundaries
-        end_idx = start_idx + ne[p]
+        end_idx = start_idx + ne_i
         energy_bounds = np.insert(ww_data[start_idx:end_idx], (0,), (0.0,))
         # convert from MeV to eV
         energy_bounds *= 1e6
         start_idx = end_idx
 
         # read weight window values
-        end_idx = start_idx + (nfx * nfy * nfz) * nt[p] * ne[p]
+        end_idx = start_idx + (nfx * nfy * nfz) * nt_i * ne_i
 
         # read values and reshape according to ordering
         # slowest to fastest: z, y, x, e
-        ww_values = ww_data[start_idx:end_idx].reshape(nfz, nfy, nfx, ne[p])
+        ww_values = ww_data[start_idx:end_idx].reshape(nfz, nfy, nfx, ne_i)
         # swap z and x axes for correct shape and (ijk, e) mesh indexing
         ww_values = np.swapaxes(ww_values, 2, 0)
         start_idx = end_idx
@@ -570,7 +570,7 @@ def wwinp_to_wws(path):
                            lower_ww_bounds=ww_values,
                            upper_bound_ratio=5.0,
                            energy_bounds=energy_bounds,
-                           particle_type=particle_types[p])
+                           particle_type=particle_type)
         wws.append(ww)
 
     return wws

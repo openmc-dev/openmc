@@ -533,9 +533,8 @@ def wwinp_to_wws(path):
     mesh.x_grid, mesh.y_grid, mesh.z_grid = grids
 
     # extract weight window values from array
-    particle_types = {0: 'neutron', 1: 'photon'}
     wws = []
-    for p in range(ni):
+    for ne_i, nt_i, particle_type in zip(ne, nt, ('neutron', 'photon')):
         # no information to read for this particle if
         # either the energy bins or time bins are empty
         if ne[p] == 0 or nt[p] == 0:

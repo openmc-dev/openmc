@@ -413,7 +413,7 @@ def wwinp_to_wws(path):
 
     Parameters
     ----------
-    path : str or pathlib.Path object
+    path : str or pathlib.Path
         Path to the wwinp file
 
     Returns

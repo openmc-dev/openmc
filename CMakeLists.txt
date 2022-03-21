@@ -27,11 +27,11 @@ endif()
 
 option(openmp   "Enable shared-memory parallelism with OpenMP"         ON)
 option(profile  "Compile with profiling flags"                         OFF)
-option(debug    "Compile with debug flags"                             OFF)
-option(optimize "Turn on all compiler optimization flags"              OFF)
 option(coverage "Compile with coverage analysis flags"                 OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"              OFF)
 option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
+
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -134,17 +134,12 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-list(APPEND cxxflags -O2)
-if(debug)
-  list(REMOVE_ITEM cxxflags -O2)
-  list(APPEND cxxflags -g -O0)
+if (NOT ${CMAKE_BUILD_TYPE})
+   add_compile_options(-O2)
 endif()
+
 if(profile)
   list(APPEND cxxflags -g -fno-omit-frame-pointer)
-endif()
-if(optimize)
-  list(REMOVE_ITEM cxxflags -O2)
-  list(APPEND cxxflags -O3)
 endif()
 if(coverage)
   list(APPEND cxxflags --coverage)

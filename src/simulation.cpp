@@ -886,7 +886,7 @@ void transport_event_based()
     // Check if the maximum number of lost particles has been reached
     #pragma omp target update from(simulation::n_lost_particles)
     if (simulation::n_lost_particles >= settings::max_lost_particles &&
-        simulation::n_lost_particles >= settings::rel_max_lost_particles*simulation::work_per_rank) {
+        simulation::n_lost_particles >= settings::rel_max_lost_particles * simulation::work_per_rank * simulation::current_batch * settings::gen_per_batch) {
         fatal_error("Too many particles have been lost.");
     }
   }

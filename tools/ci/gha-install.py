@@ -26,7 +26,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     os.chdir('build')
 
     # Build in debug mode by default
-    cmake_cmd = ['cmake', '-Ddebug=on']
+    cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug']
 
     # Turn off OpenMP if specified
     if not omp:

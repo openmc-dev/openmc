@@ -44,8 +44,22 @@ if(${CMAKE_CXX_COMPILER} MATCHES "(mpi[^/]*|CC)$")
 endif()
 
 #===============================================================================
+# Helper macro for finding a dependency
+#===============================================================================
+
+macro(find_package_write_status pkg)
+  find_package(${pkg} QUIET NO_SYSTEM_ENVIRONMENT_PATH)
+  if(${pkg}_FOUND)
+    message(STATUS "Found ${pkg}: ${${pkg}_DIR} (version ${${pkg}_VERSION})")
+  else()
+    message(STATUS "Did not find ${pkg}, will use submodule instead")
+  endif()
+endmacro()
+
+#===============================================================================
 # DAGMC Geometry Support - need DAGMC/MOAB
 #===============================================================================
+
 if(dagmc)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
   if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
@@ -55,37 +69,9 @@ if(dagmc)
 endif()
 
 #===============================================================================
-# Check for submodules perhaps already on system
-#===============================================================================
-
-# If not found, we just pull appropriate versions from github and build them.
-find_package(fmt QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-if(fmt_FOUND)
-  message(STATUS "Found fmt: ${fmt_DIR} (version ${fmt_VERSION})")
-else()
-  message(STATUS "Did not find fmt, will use submodule instead")
-endif()
-find_package(pugixml QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-if(pugixml_FOUND)
-  message(STATUS "Found pugixml: ${pugixml_DIR}")
-else()
-  message(STATUS "Did not find pugixml, will use submodule instead")
-endif()
-find_package(xtensor QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-if(xtensor_FOUND)
-  message(STATUS "Found xtensor: ${xtensor_DIR} (version ${xtensor_VERSION})")
-else()
-  message(STATUS "Did not find xtensor, will use submodule instead")
-endif()
-find_package(gsl-lite QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-if(gsl-lite_FOUND)
-  message(STATUS "Found gsl-lite: ${gsl-lite_DIR} (version ${gsl-lite_VERSION})")
-else()
-  message(STATUS "Did not find gsl-lite, will use submodule instead")
-endif()
-#===============================================================================
 # libMesh Unstructured Mesh Support
 #===============================================================================
+
 if(libmesh)
   find_package(LIBMESH REQUIRED)
 endif()
@@ -93,6 +79,7 @@ endif()
 #===============================================================================
 # libpng
 #===============================================================================
+
 find_package(PNG)
 
 #===============================================================================
@@ -137,9 +124,9 @@ endif()
 if(NOT MSVC)
 
 if(openmp)
-  # Requires CMake 3.1+
   find_package(OpenMP)
   if(OPENMP_FOUND)
+    # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
     list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
     list(APPEND ldflags ${OpenMP_CXX_FLAGS})
   endif()
@@ -199,6 +186,7 @@ endif()
 # pugixml library
 #===============================================================================
 
+find_package_write_status(pugixml)
 if (NOT pugixml_FOUND)
   add_subdirectory(vendor/pugixml)
   set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
@@ -208,6 +196,7 @@ endif()
 # {fmt} library
 #===============================================================================
 
+find_package_write_status(fmt)
 if (NOT fmt_FOUND)
   set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
   add_subdirectory(vendor/fmt)
@@ -222,6 +211,7 @@ if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
   cmake_policy(SET CMP0079 NEW)
 endif()
 
+find_package_write_status(xtensor)
 if (NOT xtensor_FOUND)
   add_subdirectory(vendor/xtl)
   set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
@@ -232,6 +222,7 @@ endif()
 # GSL header-only library
 #===============================================================================
 
+find_package_write_status(gsl-lite)
 if (NOT gsl-lite_FOUND)
   add_subdirectory(vendor/gsl-lite)
 

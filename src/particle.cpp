@@ -785,17 +785,6 @@ Particle::mark_as_lost_short()
   wgt_ = 0.0;
   #pragma omp atomic
   simulation::n_lost_particles += 1;
-
-  // Count the total number of simulated particles (on this processor)
-  auto n = simulation::current_batch * settings::gen_per_batch *
-    simulation::work_per_rank;
-
-  // Alert if the maximum number of lost particles has been
-  // reached
-  if (simulation::n_lost_particles >= settings::max_lost_particles &&
-      simulation::n_lost_particles >= settings::rel_max_lost_particles*n) {
-    printf("WARNING: Too many particles lost! You should terminate!\n");
-  }
 }
 
 void

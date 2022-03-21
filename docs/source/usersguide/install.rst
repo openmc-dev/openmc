@@ -331,16 +331,8 @@ CMakeLists.txt Options
 
 The following options are available in the CMakeLists.txt file:
 
-debug
-  Enables debugging when compiling. The flags added are dependent on which
-  compiler is used.
-
 profile
   Enables profiling using the GNU profiler, gprof.
-
-optimize
-  Enables high-optimization using compiler-dependent flags. For gcc and
-  Intel C++, this compiles with -O3.
 
 openmp
   Enables shared-memory parallelism using the OpenMP API. The C++ compiler
@@ -360,12 +352,12 @@ coverage
   Compile and link code instrumented for coverage analysis. This is typically
   used in conjunction with gcov_.
 
-To set any of these options (e.g. turning on debug mode), the following form
+To set any of these options (e.g. turning on profiling), the following form
 should be used:
 
 .. code-block:: sh
 
-    cmake -Ddebug=on /path/to/openmc
+    cmake -Dprofile=on /path/to/openmc
 
 .. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 

@@ -31,7 +31,13 @@ option(coverage "Compile with coverage analysis flags"                 OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"              OFF)
 option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
 
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+#===============================================================================
+# Set build configuration to Release if not set
+#===============================================================================
+
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -133,10 +139,6 @@ if(openmp)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-if (NOT ${CMAKE_BUILD_TYPE})
-   add_compile_options(-O2)
-endif()
 
 if(profile)
   list(APPEND cxxflags -g -fno-omit-frame-pointer)

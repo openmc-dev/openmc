@@ -30,7 +30,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
 
     # Turn off OpenMP if specified
     if not omp:
-        cmake_cmd.append('-Dopenmp=off')
+        cmake_cmd.append('-DOPENMC_USE_OPENMP=off')
 
     # Use MPI wrappers when building in parallel
     if mpi:
@@ -46,16 +46,16 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
         cmake_cmd.append('-DHDF5_PREFER_PARALLEL=OFF')
 
     if dagmc:
-        cmake_cmd.append('-Ddagmc=ON')
+        cmake_cmd.append('-DOPENMC_USE_DAGMC=ON')
         cmake_cmd.append('-DCMAKE_PREFIX_PATH=~/DAGMC')
 
     if libmesh:
-        cmake_cmd.append('-Dlibmesh=ON')
+        cmake_cmd.append('-DOPENMC_USE_LIBMESH=ON')
         libmesh_path = os.environ.get('HOME') + '/LIBMESH'
         cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + libmesh_path)
 
     # Build in coverage mode for coverage testing
-    cmake_cmd.append('-Dcoverage=on')
+    cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
 
     # Build and install
     cmake_cmd.append('..')

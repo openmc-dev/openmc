@@ -331,33 +331,33 @@ CMakeLists.txt Options
 
 The following options are available in the CMakeLists.txt file:
 
-profile
-  Enables profiling using the GNU profiler, gprof.
+OPENMC_ENABLE_PROFILE
+  Enables profiling using the GNU profiler, gprof. (Default: off)
 
-openmp
+OPENMC_USE_OPENMP
   Enables shared-memory parallelism using the OpenMP API. The C++ compiler
   being used must support OpenMP. (Default: on)
 
-dagmc
+OPENMC_USE_DAGMC
   Enables use of CAD-based DAGMC_ geometries and MOAB_ unstructured mesh
   tallies. Please see the note about DAGMC in the optional dependencies list
   for more information on this feature. The installation directory for DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
   (Default: off)
 
-libmesh
+OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
-coverage
+OPENMC_ENABLE_COVERAGE
   Compile and link code instrumented for coverage analysis. This is typically
-  used in conjunction with gcov_.
+  used in conjunction with gcov_. (Default: off)
 
 To set any of these options (e.g. turning on profiling), the following form
 should be used:
 
 .. code-block:: sh
 
-    cmake -Dprofile=on /path/to/openmc
+    cmake -DOPENMC_ENABLE_PROFILE=on /path/to/openmc
 
 .. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 

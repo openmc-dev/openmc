@@ -25,9 +25,9 @@ endif()
 # Command line options
 #===============================================================================
 
-option(OPENMC_ENABLE_PROFILE  "Enable shared-memory parallelism with OpenMP"         ON)
-option(OPENMC_ENABLE_COVERAGE "Compile with profiling flags"                         OFF)
-option(OPENMC_USE_OPENMP      "Compile with coverage analysis flags"                 OFF)
+option(OPENMC_USE_OPENMP      "Enable shared-memory parallelism with OpenMP"         ON)
+option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
+option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 

@@ -363,6 +363,27 @@ should be used:
 
 .. _usersguide_compile_mpi:
 
+Specifying the Build Type
++++++++++++++++++++++++++
+
+OpenMC can be configured for debug, release, or release with debug info by setting
+the `CMAKE_BUILD_TYPE` option.
+
+Debug
+  Enable debug compiler flags with no optimization `-O0 -g`.
+
+Release
+  Disable debug and enable optimization `-O3 -DNDEBUG`.
+
+RelWithDebInfo
+  (Default if no type is specified.) Enable optimization and debug `-O2 -g`.
+
+Example of configuring for Debug mode:
+
+.. code-block:: sh
+
+    cmake -DCMAKE_BUILD_TYPE=Debug /path/to/openmc
+
 Compiling with MPI
 ++++++++++++++++++
 

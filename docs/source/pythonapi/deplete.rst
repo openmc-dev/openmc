@@ -166,6 +166,12 @@ with :func:`cram.CRAM48` being the default.
 
    :type: bool
 
+.. data:: pool.NUM_PROCESSES
+
+   Number of worker processes used for depletion calculations, which rely on the
+   :class:`multiprocessing.pool.Pool` class. If set to ``None`` (default), the
+   number returned by :func:`os.cpu_count` is used.
+
 The following classes are used to help the :class:`openmc.deplete.Operator`
 compute quantities like effective fission yields, reaction rates, and
 total system energy.

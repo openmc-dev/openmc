@@ -36,7 +36,7 @@ option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
 #===============================================================================
 
 if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build" FORCE)
 endif()
 
 #===============================================================================

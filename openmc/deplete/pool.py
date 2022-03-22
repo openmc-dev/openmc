@@ -10,6 +10,10 @@ from multiprocessing import Pool
 # multiprocessing routines during depletion
 USE_MULTIPROCESSING = True
 
+# Allow user to override the number of worker processes to use for depletion
+# calculations
+NUM_PROCESSES = None
+
 
 def deplete(func, chain, x, rates, dt, matrix_func=None):
     """Deplete materials using given reaction rates for a specified time
@@ -58,7 +62,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None):
     inputs = zip(matrices, x, repeat(dt))
 
     if USE_MULTIPROCESSING:
-        with Pool() as pool:
+        with Pool(NUM_PROCESSES) as pool:
             x_result = list(pool.starmap(func, inputs))
     else:
         x_result = list(starmap(func, inputs))

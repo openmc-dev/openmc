@@ -179,33 +179,25 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && mkdir build && cd build ; \
     if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "on" ]; then \
         cmake ../openmc \
-            -Doptimize=off \
-            -Ddebug=off \
             -DHDF5_PREFER_PARALLEL=on \
-            -Ddagmc=on \
-            -Dlibmesh=on \
+            -DOPENMC_USE_DAGMC=on \
+            -DOPENMC_USE_LIBMESH=on \
             -DCMAKE_PREFIX_PATH="${DAGMC_INSTALL_DIR};${LIBMESH_INSTALL_DIR}" ; \
     fi ; \
     if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "off" ]; then \
         cmake ../openmc \
-            -Doptimize=off \
-            -Ddebug=off \
             -DHDF5_PREFER_PARALLEL=on \
-            -Ddagmc=ON \
+            -DOPENMC_USE_DAGMC=ON \
             -DCMAKE_PREFIX_PATH=${DAGMC_INSTALL_DIR} ; \
     fi ; \
     if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "on" ]; then \
         cmake ../openmc \
-            -Doptimize=off \
-            -Ddebug=off \
             -DHDF5_PREFER_PARALLEL=on \
-            -Dlibmesh=on \
+            -DOPENMC_USE_LIBMESH=on \
             -DCMAKE_PREFIX_PATH=${LIBMESH_INSTALL_DIR} ; \
     fi ; \
     if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "off" ]; then \
         cmake ../openmc \
-            -Doptimize=off \
-            -Ddebug=off \
             -DHDF5_PREFER_PARALLEL=on ; \
     fi ; \
     make 2>/dev/null -j${compile_cores} install \

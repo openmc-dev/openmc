@@ -25,13 +25,20 @@ endif()
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"         ON)
-option(profile  "Compile with profiling flags"                         OFF)
-option(debug    "Compile with debug flags"                             OFF)
-option(optimize "Turn on all compiler optimization flags"              OFF)
-option(coverage "Compile with coverage analysis flags"                 OFF)
-option(dagmc    "Enable support for DAGMC (CAD) geometry"              OFF)
-option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
+option(OPENMC_USE_OPENMP      "Enable shared-memory parallelism with OpenMP"         ON)
+option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
+option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
+option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
+option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
+
+#===============================================================================
+# Set a default build configuration if not explicitly specified
+#===============================================================================
+
+if(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "No build type selected, defaulting to RelWithDebInfo")
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build" FORCE)
+endif()
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -60,7 +67,7 @@ endmacro()
 # DAGMC Geometry Support - need DAGMC/MOAB
 #===============================================================================
 
-if(dagmc)
+if(OPENMC_USE_DAGMC)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
   if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
     message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
@@ -72,7 +79,7 @@ endif()
 # libMesh Unstructured Mesh Support
 #===============================================================================
 
-if(libmesh)
+if(OPENMC_USE_LIBMESH)
   find_package(LIBMESH REQUIRED)
 endif()
 
@@ -123,7 +130,7 @@ endif()
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
 
-if(openmp)
+if(OPENMC_USE_OPENMP)
   find_package(OpenMP)
   if(OPENMP_FOUND)
     # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
@@ -134,19 +141,10 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-list(APPEND cxxflags -O2)
-if(debug)
-  list(REMOVE_ITEM cxxflags -O2)
-  list(APPEND cxxflags -g -O0)
-endif()
-if(profile)
+if(OPENMC_ENABLE_PROFILE)
   list(APPEND cxxflags -g -fno-omit-frame-pointer)
 endif()
-if(optimize)
-  list(REMOVE_ITEM cxxflags -O2)
-  list(APPEND cxxflags -O3)
-endif()
-if(coverage)
+if(OPENMC_ENABLE_COVERAGE)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
 endif()
@@ -436,12 +434,12 @@ else()
   target_link_libraries(libopenmc pugixml)
 endif()
 
-if(dagmc)
+if(OPENMC_USE_DAGMC)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc dagmc-shared uwuw-shared)
 endif()
 
-if(libmesh)
+if(OPENMC_USE_LIBMESH)
   target_compile_definitions(libopenmc PRIVATE LIBMESH)
   target_link_libraries(libopenmc PkgConfig::LIBMESH)
 endif()

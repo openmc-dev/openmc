@@ -252,7 +252,7 @@ Prerequisites
       In addition to turning this option on, the path to the DAGMC installation
       should be specified as part of the ``CMAKE_PREFIX_PATH`` variable::
 
-          cmake -Ddagmc=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation
+          cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation
 
     * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
@@ -263,7 +263,7 @@ Prerequisites
       installation should be specified as part of the ``CMAKE_PREFIX_PATH``
       variable.::
 
-          CXX=mpicxx cmake -Dlibmesh=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation
+          CXX=mpicxx cmake -DOPENMC_USE_LIBMESH=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation
 
       Note that libMesh is most commonly compiled with MPI support. If that
       is the case, then OpenMC should be compiled with MPI support as well.
@@ -331,45 +331,58 @@ CMakeLists.txt Options
 
 The following options are available in the CMakeLists.txt file:
 
-debug
-  Enables debugging when compiling. The flags added are dependent on which
-  compiler is used.
+OPENMC_ENABLE_PROFILE
+  Enables profiling using the GNU profiler, gprof. (Default: off)
 
-profile
-  Enables profiling using the GNU profiler, gprof.
-
-optimize
-  Enables high-optimization using compiler-dependent flags. For gcc and
-  Intel C++, this compiles with -O3.
-
-openmp
+OPENMC_USE_OPENMP
   Enables shared-memory parallelism using the OpenMP API. The C++ compiler
   being used must support OpenMP. (Default: on)
 
-dagmc
+OPENMC_USE_DAGMC
   Enables use of CAD-based DAGMC_ geometries and MOAB_ unstructured mesh
   tallies. Please see the note about DAGMC in the optional dependencies list
   for more information on this feature. The installation directory for DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
   (Default: off)
 
-libmesh
+OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
-coverage
+OPENMC_ENABLE_COVERAGE
   Compile and link code instrumented for coverage analysis. This is typically
-  used in conjunction with gcov_.
+  used in conjunction with gcov_. (Default: off)
 
-To set any of these options (e.g. turning on debug mode), the following form
+To set any of these options (e.g., turning on profiling), the following form
 should be used:
 
 .. code-block:: sh
 
-    cmake -Ddebug=on /path/to/openmc
+    cmake -DOPENMC_ENABLE_PROFILE=on /path/to/openmc
 
 .. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 
 .. _usersguide_compile_mpi:
+
+Specifying the Build Type
++++++++++++++++++++++++++
+
+OpenMC can be configured for debug, release, or release with debug info by setting
+the `CMAKE_BUILD_TYPE` option.
+
+Debug
+  Enable debug compiler flags with no optimization `-O0 -g`.
+
+Release
+  Disable debug and enable optimization `-O3 -DNDEBUG`.
+
+RelWithDebInfo
+  (Default if no type is specified.) Enable optimization and debug `-O2 -g`.
+
+Example of configuring for Debug mode:
+
+.. code-block:: sh
+
+    cmake -DCMAKE_BUILD_TYPE=Debug /path/to/openmc
 
 Compiling with MPI
 ++++++++++++++++++

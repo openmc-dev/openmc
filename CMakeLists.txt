@@ -35,7 +35,8 @@ option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tall
 # Set build configuration to Release if not set
 #===============================================================================
 
-if (NOT CMAKE_BUILD_TYPE)
+if(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "No build type selected, defaulting to RelWithDebInfo")
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build" FORCE)
 endif()
 

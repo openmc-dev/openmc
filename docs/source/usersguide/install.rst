@@ -352,7 +352,7 @@ OPENMC_ENABLE_COVERAGE
   Compile and link code instrumented for coverage analysis. This is typically
   used in conjunction with gcov_. (Default: off)
 
-To set any of these options (e.g. turning on profiling), the following form
+To set any of these options (e.g., turning on profiling), the following form
 should be used:
 
 .. code-block:: sh

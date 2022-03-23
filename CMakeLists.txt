@@ -32,7 +32,7 @@ option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"         
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 
 #===============================================================================
-# Set build configuration to Release if not set
+# Set a default build configuration if not explicitly specified
 #===============================================================================
 
 if(NOT CMAKE_BUILD_TYPE)

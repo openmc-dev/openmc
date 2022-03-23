@@ -9,7 +9,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -mllvm -vpo-paropt-atomic-free-reduction=false"
             }
         },
         {
@@ -20,7 +20,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4 -internal_options -ze-opt-greater-than-4GB-buffer-required -internal_options -ze-opt-large-register-file -internal_options -ze-force-global-mem-allocation -internal_options -ze-no-local-to-generic\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4 -internal_options -ze-opt-large-register-file\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -mllvm -vpo-paropt-atomic-free-reduction=false"
             }
         },
         {

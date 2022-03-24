@@ -325,6 +325,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
           return false;
           */
           printf("ERROR: particle %ld is outside lattice %d but the lattice has no defined outer universe! Undefined behavior to follow...\n", p.id_, lat.id_);
+          p.mark_as_lost_short();
         }
       }
       } // END OMP TARGET

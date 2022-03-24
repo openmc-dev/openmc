@@ -504,9 +504,9 @@ Lattice::RectLattice_get_indices(Position r, Direction u) const
 {
   // Determine x index, accounting for coincidence
   double ix_ {(r.x - lower_left_.x) / pitch_.x};
-  long ix_close {std::lround(ix_)};
+  long ix_close = static_cast<long>(std::round(ix_));
   int ix;
-  if (coincident(ix_, ix_close)) {
+  if (coincident(ix_, static_cast<double>(ix_close))) {
     ix = (u.x > 0) ? ix_close : ix_close - 1;
   } else {
     ix = std::floor(ix_);
@@ -514,9 +514,9 @@ Lattice::RectLattice_get_indices(Position r, Direction u) const
 
   // Determine y index, accounting for coincidence
   double iy_ {(r.y - lower_left_.y) / pitch_.y};
-  long iy_close {std::lround(iy_)};
+  long iy_close = static_cast<long>(std::round(iy_));
   int iy;
-  if (coincident(iy_, iy_close)) {
+  if (coincident(iy_, static_cast<double>(iy_close))) {
     iy = (u.y > 0) ? iy_close : iy_close - 1;
   } else {
     iy = std::floor(iy_);
@@ -526,8 +526,8 @@ Lattice::RectLattice_get_indices(Position r, Direction u) const
   int iz = 0;
   if (is_3d_) {
     double iz_ {(r.z - lower_left_.z) / pitch_.z};
-    long iz_close {std::lround(iz_)};
-    if (coincident(iz_, iz_close)) {
+    long iz_close = static_cast<long>(std::round(iz_));
+    if (coincident(iz_, static_cast<double>(iz_close))) {
       iz = (u.z > 0) ? iz_close : iz_close - 1;
     } else {
       iz = std::floor(iz_);

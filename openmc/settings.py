@@ -821,7 +821,9 @@ class Settings:
         self._resonance_scattering = res
 
     @volume_calculations.setter
-    def volume_calculations(self, vol_calcs: Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]):
+    def volume_calculations(
+        self, vol_calcs: Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
+    ):
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
         self._volume_calculations = cv.CheckedList(

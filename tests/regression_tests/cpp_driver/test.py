@@ -48,8 +48,8 @@ def cpp_driver(request):
 
     finally:
         # Remove local build directory when test is complete
-        shutil.rmtree('build')
-        os.remove('CMakeLists.txt')
+        shutil.rmtree(request.node.path.parent / 'build')
+        os.remove(request.node.path.parent / 'CMakeLists.txt')
 
 
 @pytest.fixture

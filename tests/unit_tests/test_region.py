@@ -200,3 +200,7 @@ def test_from_expression(reset):
     assert isinstance(r, openmc.Intersection)
     assert isinstance(r[1], openmc.Union)
     assert r[1][:] == [-s2, +s3]
+
+    # Make sure ")(" is handled correctly
+    r = openmc.Region.from_expression('(-1|2)(2|-3)', surfs)
+    assert str(r) == '((-1 | 2) (2 | -3))'

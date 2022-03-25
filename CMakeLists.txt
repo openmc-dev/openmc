@@ -386,6 +386,8 @@ else()
   add_library(libopenmc SHARED ${libopenmc_SOURCES})
 endif()
 
+add_library(OpenMC::libopenmc ALIAS libopenmc)
+
 # Avoid vs error lnk1149 :output filename matches input filename
 if(NOT MSVC)
   set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
@@ -453,6 +455,7 @@ endif()
 # openmc executable
 #===============================================================================
 add_executable(openmc src/main.cpp)
+add_executable(OpenMC::openmc ALIAS openmc)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)

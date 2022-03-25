@@ -116,14 +116,20 @@ class Region(ABC):
                     # For everything other than intersection, add the operator
                     # to the list of tokens
                     tokens.append(expression[i])
+
+                    # If two parentheses appear immediately adjacent to one
+                    # another, we need an intersection between them
+                    if expression[i:i+2] == ')(':
+                        tokens.append(' ')
                 else:
                     # Find next non-space character
                     while expression[i+1] == ' ':
                         i += 1
 
-                    # If previous token is a halfspace or right parenthesis and next token
-                    # is not a left parenthese or union operator, that implies that the
-                    # whitespace is to be interpreted as an intersection operator
+                    # If previous token is a halfspace or right parenthesis and
+                    # next token is not a left parenthesis or union operator,
+                    # that implies that the whitespace is to be interpreted as
+                    # an intersection operator
                     if (i_start >= 0 or tokens[-1] == ')') and \
                        expression[i+1] not in ')|':
                         tokens.append(' ')

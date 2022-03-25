@@ -1,5 +1,5 @@
 import os
-import typing as typing  # imported separately as py3.8 requires typing.Iterable
+import typing  # imported separately as py3.8 requires typing.Iterable
 from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
 from math import ceil

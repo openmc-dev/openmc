@@ -5,6 +5,13 @@ on:
   workflow_dispatch:
 
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'examples/**'
+      - 'man/**'
+      - '**.md'
+      - CODEOWNERS
+      - LICENSE
     branches:
       - develop
       - master

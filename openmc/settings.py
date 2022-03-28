@@ -1,12 +1,16 @@
-from collections.abc import Iterable, MutableSequence, Mapping
+import os
+import typing  # imported separately as py3.8 requires typing.Iterable
+from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
-from pathlib import Path
-from numbers import Real, Integral
-from xml.etree import ElementTree as ET
 from math import ceil
+from numbers import Integral, Real
+from pathlib import Path
+from typing import Optional, Union
+from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
-from . import VolumeCalculation, Source, RegularMesh, WeightWindows
+
+from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 
 
@@ -472,51 +476,51 @@ class Settings:
         return self._max_splits
 
     @run_mode.setter
-    def run_mode(self, run_mode):
+    def run_mode(self, run_mode: str):
         cv.check_value('run mode', run_mode, {x.value for x in RunMode})
         for mode in RunMode:
             if mode.value == run_mode:
                 self._run_mode = mode
 
     @batches.setter
-    def batches(self, batches):
+    def batches(self, batches: int):
         cv.check_type('batches', batches, Integral)
         cv.check_greater_than('batches', batches, 0)
         self._batches = batches
 
     @generations_per_batch.setter
-    def generations_per_batch(self, generations_per_batch):
+    def generations_per_batch(self, generations_per_batch: int):
         cv.check_type('generations per patch', generations_per_batch, Integral)
         cv.check_greater_than('generations per batch', generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @inactive.setter
-    def inactive(self, inactive):
+    def inactive(self, inactive: int):
         cv.check_type('inactive batches', inactive, Integral)
         cv.check_greater_than('inactive batches', inactive, 0, True)
         self._inactive = inactive
 
     @max_lost_particles.setter
-    def max_lost_particles(self, max_lost_particles):
+    def max_lost_particles(self, max_lost_particles: int):
         cv.check_type('max_lost_particles', max_lost_particles, Integral)
         cv.check_greater_than('max_lost_particles', max_lost_particles, 0)
         self._max_lost_particles = max_lost_particles
 
     @rel_max_lost_particles.setter
-    def rel_max_lost_particles(self, rel_max_lost_particles):
+    def rel_max_lost_particles(self, rel_max_lost_particles: int):
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
         cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
         self._rel_max_lost_particles = rel_max_lost_particles
 
     @particles.setter
-    def particles(self, particles):
+    def particles(self, particles: int):
         cv.check_type('particles', particles, Integral)
         cv.check_greater_than('particles', particles, 0)
         self._particles = particles
 
     @keff_trigger.setter
-    def keff_trigger(self, keff_trigger):
+    def keff_trigger(self, keff_trigger: dict):
         if not isinstance(keff_trigger, dict):
             msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
                   'which is not a Python dictionary'
@@ -545,13 +549,13 @@ class Settings:
         self._keff_trigger = keff_trigger
 
     @energy_mode.setter
-    def energy_mode(self, energy_mode):
+    def energy_mode(self, energy_mode: str):
         cv.check_value('energy mode', energy_mode,
                     ['continuous-energy', 'multi-group'])
         self._energy_mode = energy_mode
 
     @max_order.setter
-    def max_order(self, max_order):
+    def max_order(self, max_order: Optional[int]):
         if max_order is not None:
             cv.check_type('maximum scattering order', max_order, Integral)
             cv.check_greater_than('maximum scattering order', max_order, 0,
@@ -559,13 +563,13 @@ class Settings:
         self._max_order = max_order
 
     @source.setter
-    def source(self, source):
+    def source(self, source: Union[Source, typing.Iterable[Source]]):
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(Source, 'source distributions', source)
 
     @output.setter
-    def output(self, output):
+    def output(self, output: dict):
         cv.check_type('output', output, Mapping)
         for key, value in output.items():
             cv.check_value('output key', key, ('summary', 'tallies', 'path'))
@@ -576,14 +580,14 @@ class Settings:
         self._output = output
 
     @verbosity.setter
-    def verbosity(self, verbosity):
+    def verbosity(self, verbosity: int):
         cv.check_type('verbosity', verbosity, Integral)
         cv.check_greater_than('verbosity', verbosity, 1, True)
         cv.check_less_than('verbosity', verbosity, 10, True)
         self._verbosity = verbosity
 
     @sourcepoint.setter
-    def sourcepoint(self, sourcepoint):
+    def sourcepoint(self, sourcepoint: dict):
         cv.check_type('sourcepoint options', sourcepoint, Mapping)
         for key, value in sourcepoint.items():
             if key == 'batches':
@@ -602,7 +606,7 @@ class Settings:
         self._sourcepoint = sourcepoint
 
     @statepoint.setter
-    def statepoint(self, statepoint):
+    def statepoint(self, statepoint: dict):
         cv.check_type('statepoint options', statepoint, Mapping)
         for key, value in statepoint.items():
             if key == 'batches':
@@ -615,7 +619,7 @@ class Settings:
         self._statepoint = statepoint
 
     @surf_source_read.setter
-    def surf_source_read(self, surf_source_read):
+    def surf_source_read(self, surf_source_read: dict):
         cv.check_type('surface source reading options', surf_source_read, Mapping)
         for key, value in surf_source_read.items():
             cv.check_value('surface source reading key', key,
@@ -625,7 +629,7 @@ class Settings:
         self._surf_source_read = surf_source_read
 
     @surf_source_write.setter
-    def surf_source_write(self, surf_source_write):
+    def surf_source_write(self, surf_source_write: dict):
         cv.check_type('surface source writing options', surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value('surface source writing key', key,
@@ -644,38 +648,38 @@ class Settings:
         self._surf_source_write = surf_source_write
 
     @confidence_intervals.setter
-    def confidence_intervals(self, confidence_intervals):
+    def confidence_intervals(self, confidence_intervals: bool):
         cv.check_type('confidence interval', confidence_intervals, bool)
         self._confidence_intervals = confidence_intervals
 
     @electron_treatment.setter
-    def electron_treatment(self, electron_treatment):
+    def electron_treatment(self, electron_treatment: str):
         cv.check_value('electron treatment', electron_treatment, ['led', 'ttb'])
         self._electron_treatment = electron_treatment
 
     @photon_transport.setter
-    def photon_transport(self, photon_transport):
+    def photon_transport(self, photon_transport: bool):
         cv.check_type('photon transport', photon_transport, bool)
         self._photon_transport = photon_transport
 
     @ptables.setter
-    def ptables(self, ptables):
+    def ptables(self, ptables: bool):
         cv.check_type('probability tables', ptables, bool)
         self._ptables = ptables
 
     @seed.setter
-    def seed(self, seed):
+    def seed(self, seed: int):
         cv.check_type('random number generator seed', seed, Integral)
         cv.check_greater_than('random number generator seed', seed, 0)
         self._seed = seed
 
     @survival_biasing.setter
-    def survival_biasing(self, survival_biasing):
+    def survival_biasing(self, survival_biasing: bool):
         cv.check_type('survival biasing', survival_biasing, bool)
         self._survival_biasing = survival_biasing
 
     @cutoff.setter
-    def cutoff(self, cutoff):
+    def cutoff(self, cutoff: dict):
         if not isinstance(cutoff, Mapping):
             msg = f'Unable to set cutoff from "{cutoff}" which is not a '\
                   'Python dictionary'
@@ -699,34 +703,34 @@ class Settings:
         self._cutoff = cutoff
 
     @entropy_mesh.setter
-    def entropy_mesh(self, entropy):
+    def entropy_mesh(self, entropy: RegularMesh):
         cv.check_type('entropy mesh', entropy, RegularMesh)
         self._entropy_mesh = entropy
 
     @trigger_active.setter
-    def trigger_active(self, trigger_active):
+    def trigger_active(self, trigger_active: bool):
         cv.check_type('trigger active', trigger_active, bool)
         self._trigger_active = trigger_active
 
     @trigger_max_batches.setter
-    def trigger_max_batches(self, trigger_max_batches):
+    def trigger_max_batches(self, trigger_max_batches: int):
         cv.check_type('trigger maximum batches', trigger_max_batches, Integral)
         cv.check_greater_than('trigger maximum batches', trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @trigger_batch_interval.setter
-    def trigger_batch_interval(self, trigger_batch_interval):
+    def trigger_batch_interval(self, trigger_batch_interval: int):
         cv.check_type('trigger batch interval', trigger_batch_interval, Integral)
         cv.check_greater_than('trigger batch interval', trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @no_reduce.setter
-    def no_reduce(self, no_reduce):
+    def no_reduce(self, no_reduce: bool):
         cv.check_type('no reduction option', no_reduce, bool)
         self._no_reduce = no_reduce
 
     @tabular_legendre.setter
-    def tabular_legendre(self, tabular_legendre):
+    def tabular_legendre(self, tabular_legendre: dict):
         cv.check_type('tabular_legendre settings', tabular_legendre, Mapping)
         for key, value in tabular_legendre.items():
             cv.check_value('tabular_legendre key', key,
@@ -739,7 +743,7 @@ class Settings:
         self._tabular_legendre = tabular_legendre
 
     @temperature.setter
-    def temperature(self, temperature):
+    def temperature(self, temperature: dict):
 
         cv.check_type('temperature settings', temperature, Mapping)
         for key, value in temperature.items():
@@ -763,7 +767,7 @@ class Settings:
         self._temperature = temperature
 
     @trace.setter
-    def trace(self, trace):
+    def trace(self, trace: Iterable):
         cv.check_type('trace', trace, Iterable, Integral)
         cv.check_length('trace', trace, 3)
         cv.check_greater_than('trace batch', trace[0], 0)
@@ -772,7 +776,7 @@ class Settings:
         self._trace = trace
 
     @track.setter
-    def track(self, track):
+    def track(self, track: typing.Iterable[int]):
         cv.check_type('track', track, Iterable, Integral)
         if len(track) % 3 != 0:
             msg = f'Unable to set the track to "{track}" since its length is ' \
@@ -785,7 +789,7 @@ class Settings:
         self._track = track
 
     @ufs_mesh.setter
-    def ufs_mesh(self, ufs_mesh):
+    def ufs_mesh(self, ufs_mesh: RegularMesh):
         cv.check_type('UFS mesh', ufs_mesh, RegularMesh)
         cv.check_length('UFS mesh dimension', ufs_mesh.dimension, 3)
         cv.check_length('UFS mesh lower-left corner', ufs_mesh.lower_left, 3)
@@ -793,7 +797,7 @@ class Settings:
         self._ufs_mesh = ufs_mesh
 
     @resonance_scattering.setter
-    def resonance_scattering(self, res):
+    def resonance_scattering(self, res: dict):
         cv.check_type('resonance scattering settings', res, Mapping)
         keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
         for key, value in res.items():
@@ -817,52 +821,54 @@ class Settings:
         self._resonance_scattering = res
 
     @volume_calculations.setter
-    def volume_calculations(self, vol_calcs):
+    def volume_calculations(
+        self, vol_calcs: Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
+    ):
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'stochastic volume calculations', vol_calcs)
 
     @create_fission_neutrons.setter
-    def create_fission_neutrons(self, create_fission_neutrons):
+    def create_fission_neutrons(self, create_fission_neutrons: bool):
         cv.check_type('Whether create fission neutrons',
                       create_fission_neutrons, bool)
         self._create_fission_neutrons = create_fission_neutrons
 
     @delayed_photon_scaling.setter
-    def delayed_photon_scaling(self, value):
+    def delayed_photon_scaling(self, value: bool):
         cv.check_type('delayed photon scaling', value, bool)
         self._delayed_photon_scaling = value
 
     @event_based.setter
-    def event_based(self, value):
+    def event_based(self, value: bool):
         cv.check_type('event based', value, bool)
         self._event_based = value
 
     @max_particles_in_flight.setter
-    def max_particles_in_flight(self, value):
+    def max_particles_in_flight(self, value: int):
         cv.check_type('max particles in flight', value, Integral)
         cv.check_greater_than('max particles in flight', value, 0)
         self._max_particles_in_flight = value
 
     @material_cell_offsets.setter
-    def material_cell_offsets(self, value):
+    def material_cell_offsets(self, value: bool):
         cv.check_type('material cell offsets', value, bool)
         self._material_cell_offsets = value
 
     @log_grid_bins.setter
-    def log_grid_bins(self, log_grid_bins):
+    def log_grid_bins(self, log_grid_bins: int):
         cv.check_type('log grid bins', log_grid_bins, Real)
         cv.check_greater_than('log grid bins', log_grid_bins, 0)
         self._log_grid_bins = log_grid_bins
 
     @write_initial_source.setter
-    def write_initial_source(self, value):
+    def write_initial_source(self, value: bool):
         cv.check_type('write initial source', value, bool)
         self._write_initial_source = value
 
     @weight_windows.setter
-    def weight_windows(self, value):
+    def weight_windows(self, value: Union[WeightWindows, typing.Iterable[WeightWindows]]):
         if not isinstance(value, MutableSequence):
             value = [value]
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
@@ -873,7 +879,7 @@ class Settings:
         self._weight_windows_on = value
 
     @max_splits.setter
-    def max_splits(self, value):
+    def max_splits(self, value: int):
         cv.check_type('maximum particle splits', value, Integral)
         cv.check_greater_than('max particles in flight', value, 0)
         self._max_splits = value
@@ -1492,7 +1498,7 @@ class Settings:
         if text is not None:
             self.max_splits = int(text)
 
-    def export_to_xml(self, path='settings.xml'):
+    def export_to_xml(self, path: Union[str, os.PathLike] = 'settings.xml'):
         """Export simulation settings to an XML file.
 
         Parameters
@@ -1563,7 +1569,7 @@ class Settings:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml(cls, path='settings.xml'):
+    def from_xml(cls, path: Union[str, os.PathLike] = 'settings.xml'):
         """Generate settings from XML file
 
         .. versionadded:: 0.13.0

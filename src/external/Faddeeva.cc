@@ -157,7 +157,7 @@
 
 #ifdef __cplusplus
 
-#  include "Faddeeva.hh"
+#  include "openmc/external/Faddeeva.hh"
 
 #  include <cfloat>
 #  include <cmath>

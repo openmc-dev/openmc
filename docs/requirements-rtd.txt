@@ -3,6 +3,7 @@ sphinx-numfig
 jupyter
 sphinxcontrib-katex
 sphinxcontrib-svg2pdfconverter
+sphinx_autodoc_typehints
 numpy
 scipy
 h5py

@@ -104,192 +104,308 @@ class Settings:
 
     @property
     def run_mode(self):
+        """{'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
+        The type of calculation to perform (default is 'eigenvalue')"""
         return self._run_mode.value
 
     @property
     def batches(self):
+        """Number of batches to simulate"""
         return self._batches
 
     @property
     def generations_per_batch(self):
+        """Number of generations per batch"""
         return self._generations_per_batch
 
     @property
     def inactive(self):
+        """Number of inactive batches"""
         return self._inactive
 
     @property
     def max_lost_particles(self):
+        """Maximum number of lost particles"""
         return self._max_lost_particles
 
     @property
     def rel_max_lost_particles(self):
+        """Maximum number of lost particles, relative to the total number of particles"""
         return self._rel_max_lost_particles
 
     @property
     def particles(self):
+        """Number of particles per generation"""
         return self._particles
 
     @property
     def keff_trigger(self):
+        """Dictionary defining a trigger on eigenvalue. The dictionary must have
+        two keys, 'type' and 'threshold'. Acceptable values corresponding to
+        type are 'variance', 'std_dev', and 'rel_err'. The threshold value
+        should be a float indicating the variance, standard deviation, or
+        relative error used."""
         return self._keff_trigger
 
     @property
     def energy_mode(self):
+        """Set whether the calculation should be 'continuous-energy' or
+        'multi-group'."""
         return self._energy_mode
 
     @property
     def max_order(self):
+        """Maximum scattering order to apply globally when in multi-group mode."""
         return self._max_order
 
     @property
     def source(self):
+        """Distribution of source sites in space, angle, and energy"""
         return self._source
 
     @property
     def confidence_intervals(self):
+        """If True, uncertainties on tally results will be reported as the
+        half-width of the 95% two-sided confidence interval. If False,
+        uncertainties on tally results will be reported as the sample standard
+        deviation."""
         return self._confidence_intervals
 
     @property
     def electron_treatment(self):
+        """Whether to deposit all energy from electrons locally ('led') or create
+        secondary bremsstrahlung photons ('ttb')."""
         return self._electron_treatment
 
     @property
     def ptables(self):
+        """Determine whether probability tables are used."""
         return self._ptables
 
     @property
     def photon_transport(self):
+        """Whether to use photon transport."""
         return self._photon_transport
 
     @property
     def seed(self):
+        """Seed for the linear congruential pseudorandom number generator"""
         return self._seed
 
     @property
     def survival_biasing(self):
+        """Indicate whether survival biasing is to be used"""
         return self._survival_biasing
 
     @property
     def entropy_mesh(self):
+        """Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
+        not specified, OpenMC assigns a mesh such that 20 source sites per mesh
+        cell are to be expected on average."""
         return self._entropy_mesh
 
     @property
     def trigger_active(self):
+        """Indicate whether tally triggers are used"""
         return self._trigger_active
 
     @property
     def trigger_max_batches(self):
+        """Maximum number of batches simulated. If this is set, the number of
+        batches specified via ``batches`` is interpreted as the minimum number
+        of batches"""
         return self._trigger_max_batches
 
     @property
     def trigger_batch_interval(self):
+        """"Number of batches in between convergence checks"""
         return self._trigger_batch_interval
 
     @property
     def output(self):
+        """Dictionary indicating what files to output. Acceptable keys are:
+        :path: String indicating a directory where output files should be 
+        written,
+        :summary: Whether the 'summary.h5' file should be written (bool),
+        :tallies: Whether the 'tallies.out' file should be written (bool)"""
         return self._output
 
     @property
     def sourcepoint(self):
+        """Options for writing source points. Acceptable keys are:
+        :batches: list of batches at which to write source,
+        :overwrite: bool indicating whether to overwrite,
+        :separate: bool indicating whether the source should be written as a
+        separate file,
+        :write: bool indicating whether or not to write the source"""
         return self._sourcepoint
 
     @property
     def statepoint(self):
+        """Options for writing state points. Acceptable keys are:
+        :batches: list of batches at which to write source"""
         return self._statepoint
 
     @property
     def surf_source_read(self):
+        """Options for reading surface source points. Acceptable keys are:
+        :path: Path to surface source file (str)."""
         return self._surf_source_read
 
     @property
     def surf_source_write(self):
+        """Options for writing surface source points. Acceptable keys are:
+        :surface_ids: List of surface ids at which crossing particles are to be
+        banked (int)
+        :max_particles: Maximum number of particles to be banked on
+        surfaces per process (int)"""
         return self._surf_source_write
 
     @property
     def no_reduce(self):
+        """Indicate that all user-defined and global tallies should not be reduced
+        across processes in a parallel calculation."""
         return self._no_reduce
 
     @property
     def verbosity(self):
+        """Verbosity during simulation between 1 and 10. Verbosity levels are
+        described in :ref:`verbosity`."""
         return self._verbosity
 
     @property
     def tabular_legendre(self):
+        """Determines if a multi-group scattering moment kernel expanded via
+        Legendre polynomials is to be converted to a tabular distribution or
+        not. Accepted keys are 'enable' and 'num_points'. The value for
+        'enable' is a bool stating whether the conversion to tabular is
+        performed; the value for 'num_points' sets the number of points to use
+        in the tabular distribution, should 'enable' be True."""
         return self._tabular_legendre
 
     @property
     def temperature(self):
+        """Defines a default temperature and method for treating intermediate
+        temperatures at which nuclear data doesn't exist. Accepted keys are
+        'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+        for 'default' should be a float representing the default temperature in
+        Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+        If the method is 'nearest', 'tolerance' indicates a range of temperature
+        within which cross sections may be used. The value for 'range' should be
+        a pair a minimum and maximum temperatures which are used to indicate
+        that cross sections be loaded at all temperatures within the
+        range. 'multipole' is a boolean indicating whether or not the windowed
+        multipole method should be used to evaluate resolved resonance cross
+        sections."""
         return self._temperature
 
     @property
     def trace(self):
+        """Show detailed information about a single particle, indicated by three
+        integers: the batch number, generation number, and particle number"""
         return self._trace
 
     @property
     def track(self):
+        """Specify particles for which track files should be written. Each particle
+        is identified by a triplet with the batch number, generation number, and
+        particle number."""
         return self._track
 
     @property
     def cutoff(self):
+        """Dictionary defining weight cutoff and energy cutoff. The dictionary may
+        have six keys, 'weight', 'weight_avg', 'energy_neutron', 'energy_photon',
+        'energy_electron', and 'energy_positron'. Value for 'weight'
+        should be a float indicating weight cutoff below which particle undergo
+        Russian roulette. Value for 'weight_avg' should be a float indicating
+        weight assigned to particles that are not killed after Russian
+        roulette. Value of energy should be a float indicating energy in eV
+        below which particle type will be killed."""
         return self._cutoff
 
     @property
     def ufs_mesh(self):
+        """Mesh to be used for redistributing source sites via the uniform
+        fission site (UFS) method."""
         return self._ufs_mesh
 
     @property
     def resonance_scattering(self):
+        """Settings for resonance elastic scattering. Accepted keys are 'enable'
+        (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
+        'nuclides' (list). The 'method' can be set to 'dbrc' (Doppler broadening
+        rejection correction) or 'rvs' (relative velocity sampling). If not
+        specified, 'rvs' is the default method. The 'energy_min' and
+        'energy_max' values indicate the minimum and maximum energies above and
+        below which the resonance elastic scattering method is to be
+        applied. The 'nuclides' list indicates what nuclides the method should
+        be applied to. In its absence, the method will be applied to all
+        nuclides with 0 K elastic scattering data present."""
         return self._resonance_scattering
 
     @property
     def volume_calculations(self):
+        """Stochastic volume calculation specifications"""
         return self._volume_calculations
 
     @property
     def create_fission_neutrons(self):
+        """Indicate whether fission neutrons should be created or not."""
         return self._create_fission_neutrons
 
     @property
     def delayed_photon_scaling(self):
+        """Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
+        where EGP is the energy release of prompt photons and EGD is the energy
+        release of delayed photons."""
         return self._delayed_photon_scaling
 
     @property
     def material_cell_offsets(self):
+        """Generate an "offset table" for material cells by default. These tables
+        are necessary when a particular instance of a cell needs to be tallied."""
         return self._material_cell_offsets
 
     @property
     def log_grid_bins(self):
+        """Number of bins for logarithmic energy grid search"""
         return self._log_grid_bins
 
     @property
     def event_based(self):
+        """Indicate whether to use event-based parallelism instead of the default
+        history-based parallelism."""
         return self._event_based
 
     @property
     def max_particles_in_flight(self):
+        """Number of neutrons to run concurrently when using event-based
+        parallelism."""
         return self._max_particles_in_flight
 
     @property
     def write_initial_source(self):
+        """Indicate whether to write the initial source distribution to file"""
         return self._write_initial_source
 
     @property
     def weight_windows(self):
+        """Weight windows to use for variance reduction"""
         return self._weight_windows
 
     @property
     def weight_windows_on(self):
+        """Whether weight windows are enabled"""
         return self._weight_windows_on
 
     @property
     def max_splits(self):
+        """Maximum number of times a particle can split during a history"""
         return self._max_splits
 
     @run_mode.setter
     def run_mode(self, run_mode: str):
-        """{'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
-        The type of calculation to perform (default is 'eigenvalue')"""
         cv.check_value('run mode', run_mode, {x.value for x in RunMode})
         for mode in RunMode:
             if mode.value == run_mode:
@@ -297,35 +413,30 @@ class Settings:
 
     @batches.setter
     def batches(self, batches: int):
-        """Number of batches to simulate"""
         cv.check_type('batches', batches, Integral)
         cv.check_greater_than('batches', batches, 0)
         self._batches = batches
 
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch: int):
-        """Number of generations per batch"""
         cv.check_type('generations per patch', generations_per_batch, Integral)
         cv.check_greater_than('generations per batch', generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @inactive.setter
     def inactive(self, inactive: int):
-        """Number of inactive batches"""
         cv.check_type('inactive batches', inactive, Integral)
         cv.check_greater_than('inactive batches', inactive, 0, True)
         self._inactive = inactive
 
     @max_lost_particles.setter
     def max_lost_particles(self, max_lost_particles: int):
-        """Maximum number of lost particles"""
         cv.check_type('max_lost_particles', max_lost_particles, Integral)
         cv.check_greater_than('max_lost_particles', max_lost_particles, 0)
         self._max_lost_particles = max_lost_particles
 
     @rel_max_lost_particles.setter
     def rel_max_lost_particles(self, rel_max_lost_particles: int):
-        """Maximum number of lost particles, relative to the total number of particles"""
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
         cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
@@ -333,18 +444,12 @@ class Settings:
 
     @particles.setter
     def particles(self, particles: int):
-        """Number of particles per generation"""
         cv.check_type('particles', particles, Integral)
         cv.check_greater_than('particles', particles, 0)
         self._particles = particles
 
     @keff_trigger.setter
     def keff_trigger(self, keff_trigger: dict):
-        """Dictionary defining a trigger on eigenvalue. The dictionary must have
-        two keys, 'type' and 'threshold'. Acceptable values corresponding to
-        type are 'variance', 'std_dev', and 'rel_err'. The threshold value
-        should be a float indicating the variance, standard deviation, or
-        relative error used."""
         if not isinstance(keff_trigger, dict):
             msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
                   'which is not a Python dictionary'
@@ -374,15 +479,12 @@ class Settings:
 
     @energy_mode.setter
     def energy_mode(self, energy_mode: str):
-        """Set whether the calculation should be 'continuous-energy' or
-        'multi-group'."""
         cv.check_value('energy mode', energy_mode,
                     ['continuous-energy', 'multi-group'])
         self._energy_mode = energy_mode
 
     @max_order.setter
     def max_order(self, max_order: Optional[int]):
-        """Maximum scattering order to apply globally when in multi-group mode."""
         if max_order is not None:
             cv.check_type('maximum scattering order', max_order, Integral)
             cv.check_greater_than('maximum scattering order', max_order, 0,
@@ -391,18 +493,12 @@ class Settings:
 
     @source.setter
     def source(self, source: Union[Source, typing.Iterable[Source]]):
-        """Distribution of source sites in space, angle, and energy"""
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(Source, 'source distributions', source)
 
     @output.setter
     def output(self, output: dict):
-        """Dictionary indicating what files to output. Acceptable keys are:
-        :path: String indicating a directory where output files should be 
-        written,
-        :summary: Whether the 'summary.h5' file should be written (bool),
-        :tallies: Whether the 'tallies.out' file should be written (bool)"""
         cv.check_type('output', output, Mapping)
         for key, value in output.items():
             cv.check_value('output key', key, ('summary', 'tallies', 'path'))
@@ -414,8 +510,6 @@ class Settings:
 
     @verbosity.setter
     def verbosity(self, verbosity: int):
-        """Verbosity during simulation between 1 and 10. Verbosity levels are
-        described in :ref:`verbosity`."""
         cv.check_type('verbosity', verbosity, Integral)
         cv.check_greater_than('verbosity', verbosity, 1, True)
         cv.check_less_than('verbosity', verbosity, 10, True)
@@ -423,12 +517,6 @@ class Settings:
 
     @sourcepoint.setter
     def sourcepoint(self, sourcepoint: dict):
-        """Options for writing source points. Acceptable keys are:
-        :batches: list of batches at which to write source,
-        :overwrite: bool indicating whether to overwrite,
-        :separate: bool indicating whether the source should be written as a
-        separate file,
-        :write: bool indicating whether or not to write the source"""
         cv.check_type('sourcepoint options', sourcepoint, Mapping)
         for key, value in sourcepoint.items():
             if key == 'batches':
@@ -448,8 +536,6 @@ class Settings:
 
     @statepoint.setter
     def statepoint(self, statepoint: dict):
-        """Options for writing state points. Acceptable keys are:
-        :batches: list of batches at which to write source"""
         cv.check_type('statepoint options', statepoint, Mapping)
         for key, value in statepoint.items():
             if key == 'batches':
@@ -463,8 +549,6 @@ class Settings:
 
     @surf_source_read.setter
     def surf_source_read(self, surf_source_read: dict):
-        """Options for reading surface source points. Acceptable keys are:
-        :path: Path to surface source file (str)."""
         cv.check_type('surface source reading options', surf_source_read, Mapping)
         for key, value in surf_source_read.items():
             cv.check_value('surface source reading key', key,
@@ -475,11 +559,6 @@ class Settings:
 
     @surf_source_write.setter
     def surf_source_write(self, surf_source_write: dict):
-        """Options for writing surface source points. Acceptable keys are:
-        :surface_ids: List of surface ids at which crossing particles are to be
-        banked (int)
-        :max_particles: Maximum number of particles to be banked on
-        surfaces per process (int)"""
         cv.check_type('surface source writing options', surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value('surface source writing key', key,
@@ -499,55 +578,37 @@ class Settings:
 
     @confidence_intervals.setter
     def confidence_intervals(self, confidence_intervals: bool):
-        """If True, uncertainties on tally results will be reported as the
-        half-width of the 95% two-sided confidence interval. If False,
-        uncertainties on tally results will be reported as the sample standard
-        deviation."""
         cv.check_type('confidence interval', confidence_intervals, bool)
         self._confidence_intervals = confidence_intervals
 
     @electron_treatment.setter
     def electron_treatment(self, electron_treatment: str):
-        """Whether to deposit all energy from electrons locally ('led') or create
-        secondary bremsstrahlung photons ('ttb')."""
         cv.check_value('electron treatment', electron_treatment, ['led', 'ttb'])
         self._electron_treatment = electron_treatment
 
     @photon_transport.setter
     def photon_transport(self, photon_transport: bool):
-        """Whether to use photon transport."""
         cv.check_type('photon transport', photon_transport, bool)
         self._photon_transport = photon_transport
 
     @ptables.setter
     def ptables(self, ptables: bool):
-        """Determine whether probability tables are used."""
         cv.check_type('probability tables', ptables, bool)
         self._ptables = ptables
 
     @seed.setter
     def seed(self, seed: int):
-        """Seed for the linear congruential pseudorandom number generator"""
         cv.check_type('random number generator seed', seed, Integral)
         cv.check_greater_than('random number generator seed', seed, 0)
         self._seed = seed
 
     @survival_biasing.setter
     def survival_biasing(self, survival_biasing: bool):
-        """Indicate whether survival biasing is to be used"""
         cv.check_type('survival biasing', survival_biasing, bool)
         self._survival_biasing = survival_biasing
 
     @cutoff.setter
     def cutoff(self, cutoff: dict):
-        """Dictionary defining weight cutoff and energy cutoff. The dictionary may
-        have six keys, 'weight', 'weight_avg', 'energy_neutron', 'energy_photon',
-        'energy_electron', and 'energy_positron'. Value for 'weight'
-        should be a float indicating weight cutoff below which particle undergo
-        Russian roulette. Value for 'weight_avg' should be a float indicating
-        weight assigned to particles that are not killed after Russian
-        roulette. Value of energy should be a float indicating energy in eV
-        below which particle type will be killed."""
         if not isinstance(cutoff, Mapping):
             msg = f'Unable to set cutoff from "{cutoff}" which is not a '\
                   'Python dictionary'
@@ -572,49 +633,33 @@ class Settings:
 
     @entropy_mesh.setter
     def entropy_mesh(self, entropy: RegularMesh):
-        """Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
-        not specified, OpenMC assigns a mesh such that 20 source sites per mesh
-        cell are to be expected on average."""
         cv.check_type('entropy mesh', entropy, RegularMesh)
         self._entropy_mesh = entropy
 
     @trigger_active.setter
     def trigger_active(self, trigger_active: bool):
-        """Indicate whether tally triggers are used"""
         cv.check_type('trigger active', trigger_active, bool)
         self._trigger_active = trigger_active
 
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches: int):
-        """Maximum number of batches simulated. If this is set, the number of
-        batches specified via ``batches`` is interpreted as the minimum number
-        of batches"""
         cv.check_type('trigger maximum batches', trigger_max_batches, Integral)
         cv.check_greater_than('trigger maximum batches', trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval: int):
-        """"Number of batches in between convergence checks"""
         cv.check_type('trigger batch interval', trigger_batch_interval, Integral)
         cv.check_greater_than('trigger batch interval', trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @no_reduce.setter
     def no_reduce(self, no_reduce: bool):
-        """Indicate that all user-defined and global tallies should not be reduced
-        across processes in a parallel calculation."""
         cv.check_type('no reduction option', no_reduce, bool)
         self._no_reduce = no_reduce
 
     @tabular_legendre.setter
     def tabular_legendre(self, tabular_legendre: dict):
-        """Determines if a multi-group scattering moment kernel expanded via
-        Legendre polynomials is to be converted to a tabular distribution or
-        not. Accepted keys are 'enable' and 'num_points'. The value for
-        'enable' is a bool stating whether the conversion to tabular is
-        performed; the value for 'num_points' sets the number of points to use
-        in the tabular distribution, should 'enable' be True."""
         cv.check_type('tabular_legendre settings', tabular_legendre, Mapping)
         for key, value in tabular_legendre.items():
             cv.check_value('tabular_legendre key', key,
@@ -628,18 +673,6 @@ class Settings:
 
     @temperature.setter
     def temperature(self, temperature: dict):
-        """Defines a default temperature and method for treating intermediate
-        temperatures at which nuclear data doesn't exist. Accepted keys are
-        'default', 'method', 'range', 'tolerance', and 'multipole'. The value
-        for 'default' should be a float representing the default temperature in
-        Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
-        If the method is 'nearest', 'tolerance' indicates a range of temperature
-        within which cross sections may be used. The value for 'range' should be
-        a pair a minimum and maximum temperatures which are used to indicate
-        that cross sections be loaded at all temperatures within the
-        range. 'multipole' is a boolean indicating whether or not the windowed
-        multipole method should be used to evaluate resolved resonance cross
-        sections."""
         cv.check_type('temperature settings', temperature, Mapping)
         for key, value in temperature.items():
             cv.check_value('temperature key', key,
@@ -663,8 +696,6 @@ class Settings:
 
     @trace.setter
     def trace(self, trace: Iterable):
-        """Show detailed information about a single particle, indicated by three
-        integers: the batch number, generation number, and particle number"""
         cv.check_type('trace', trace, Iterable, Integral)
         cv.check_length('trace', trace, 3)
         cv.check_greater_than('trace batch', trace[0], 0)
@@ -674,9 +705,6 @@ class Settings:
 
     @track.setter
     def track(self, track: typing.Iterable[int]):
-        """Specify particles for which track files should be written. Each particle
-        is identified by a triplet with the batch number, generation number, and
-        particle number."""
         cv.check_type('track', track, Iterable, Integral)
         if len(track) % 3 != 0:
             msg = f'Unable to set the track to "{track}" since its length is ' \
@@ -690,8 +718,6 @@ class Settings:
 
     @ufs_mesh.setter
     def ufs_mesh(self, ufs_mesh: RegularMesh):
-        """Mesh to be used for redistributing source sites via the uniform
-        fission site (UFS) method."""
         cv.check_type('UFS mesh', ufs_mesh, RegularMesh)
         cv.check_length('UFS mesh dimension', ufs_mesh.dimension, 3)
         cv.check_length('UFS mesh lower-left corner', ufs_mesh.lower_left, 3)
@@ -700,16 +726,6 @@ class Settings:
 
     @resonance_scattering.setter
     def resonance_scattering(self, res: dict):
-        """Settings for resonance elastic scattering. Accepted keys are 'enable'
-        (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
-        'nuclides' (list). The 'method' can be set to 'dbrc' (Doppler broadening
-        rejection correction) or 'rvs' (relative velocity sampling). If not
-        specified, 'rvs' is the default method. The 'energy_min' and
-        'energy_max' values indicate the minimum and maximum energies above and
-        below which the resonance elastic scattering method is to be
-        applied. The 'nuclides' list indicates what nuclides the method should
-        be applied to. In its absence, the method will be applied to all
-        nuclides with 0 K elastic scattering data present."""
         cv.check_type('resonance scattering settings', res, Mapping)
         keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
         for key, value in res.items():
@@ -736,7 +752,6 @@ class Settings:
     def volume_calculations(
         self, vol_calcs: Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
     ):
-        """Stochastic volume calculation specifications"""
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
         self._volume_calculations = cv.CheckedList(
@@ -744,70 +759,55 @@ class Settings:
 
     @create_fission_neutrons.setter
     def create_fission_neutrons(self, create_fission_neutrons: bool):
-        """Indicate whether fission neutrons should be created or not."""
         cv.check_type('Whether create fission neutrons',
                       create_fission_neutrons, bool)
         self._create_fission_neutrons = create_fission_neutrons
 
     @delayed_photon_scaling.setter
     def delayed_photon_scaling(self, value: bool):
-        """Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
-        where EGP is the energy release of prompt photons and EGD is the energy
-        release of delayed photons."""
         cv.check_type('delayed photon scaling', value, bool)
         self._delayed_photon_scaling = value
 
     @event_based.setter
     def event_based(self, value: bool):
-        """Indicate whether to use event-based parallelism instead of the default
-        history-based parallelism."""
         cv.check_type('event based', value, bool)
         self._event_based = value
 
     @max_particles_in_flight.setter
     def max_particles_in_flight(self, value: int):
-        """Number of neutrons to run concurrently when using event-based
-        parallelism."""
         cv.check_type('max particles in flight', value, Integral)
         cv.check_greater_than('max particles in flight', value, 0)
         self._max_particles_in_flight = value
 
     @material_cell_offsets.setter
     def material_cell_offsets(self, value: bool):
-        """Generate an "offset table" for material cells by default. These tables
-        are necessary when a particular instance of a cell needs to be tallied."""
         cv.check_type('material cell offsets', value, bool)
         self._material_cell_offsets = value
 
     @log_grid_bins.setter
     def log_grid_bins(self, log_grid_bins: int):
-        """Number of bins for logarithmic energy grid search"""
         cv.check_type('log grid bins', log_grid_bins, Real)
         cv.check_greater_than('log grid bins', log_grid_bins, 0)
         self._log_grid_bins = log_grid_bins
 
     @write_initial_source.setter
     def write_initial_source(self, value: bool):
-        """Indicate whether to write the initial source distribution to file"""
         cv.check_type('write initial source', value, bool)
         self._write_initial_source = value
 
     @weight_windows.setter
     def weight_windows(self, value: Union[WeightWindows, typing.Iterable[WeightWindows]]):
-        """Weight windows to use for variance reduction"""
         if not isinstance(value, MutableSequence):
             value = [value]
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
 
     @weight_windows_on.setter
     def weight_windows_on(self, value):
-        """Whether weight windows are enabled"""
         cv.check_type('weight windows on', value, bool)
         self._weight_windows_on = value
 
     @max_splits.setter
     def max_splits(self, value: int):
-        """Maximum number of times a particle can split during a history"""
         cv.check_type('maximum particle splits', value, Integral)
         cv.check_greater_than('max particles in flight', value, 0)
         self._max_splits = value

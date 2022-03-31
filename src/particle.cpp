@@ -393,7 +393,7 @@ void Particle::remove_energy_of_secondary()
 
   // settings::energy_cutoff[1] is the cutoff energy of photons
   // Remove the energy of created secondary particles from the pht_storage array
-  if (type() == ParticleType::photon)// && E() > settings::energy_cutoff[1])
+  if (type() == ParticleType::photon)
     pht_storage()[cell_born()] -= E();
 }
 

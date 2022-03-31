@@ -753,6 +753,38 @@ class Plane(PlaneMixin, Surface):
         d = np.dot(n, p1)
         return cls(a=a, b=b, c=c, d=d, **kwargs)
 
+    @classmethod
+    def from_xy_angle(cls, x0, y0, angle, degrees=False, **kwargs):
+        """Return a plane given a single xy-point and an angle.
+
+        Parameters
+        ----------
+        angle : float, optional
+            Angle CCW from the x-axis.
+        degrees : bool, optional
+            Whether the angle is in degrees. Otherwise, it is in radians.
+            Defaults to False.
+        x0 : float, optional
+            X-coordinate of the "center" of the plane. Defaults to 0.
+        y0 : float, optional
+            Y-coordinate of the "center" of the plane. Defaults to 0.
+        kwargs : dict
+            Keyword arguments passed to the :class:`Plane` constructor
+
+        Returns
+        -------
+        Plane
+            Plane that passes through the three points
+
+        """
+        if degrees:
+            angle = np.deg2rad(angle)
+        a = np.sin(angle)
+        b = np.cos(angle)
+        c = 0.
+        d = a*x0 + b*y0
+        return cls(a=a, b=b, c=c, d=d, **kwargs)
+
 
 class XPlane(PlaneMixin, Surface):
     """A plane perpendicular to the x axis of the form :math:`x - x_0 = 0`

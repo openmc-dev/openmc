@@ -66,6 +66,18 @@ def test_plane_from_points():
     assert s.d == 1.0
 
 
+def test_plane_from_xy_angle():
+    # Generate the plane which forms a 60-degree angle with the axis,
+    # centered at (+2.0, -1.0).
+    s = openmc.Plane.from_xy_angle(x0=2.0, y0=-1.0, angle=60, degrees=True)
+
+    # Confirm correct coefficients
+    assert np.isclose(s.a, np.sqrt(3.)/2)
+    assert np.isclose(s.b, 0.5)
+    assert s.c == 0.0
+    assert np.isclose(s.d, np.sqrt(3.) - 0.5)
+
+
 def test_xplane():
     s = openmc.XPlane(3., boundary_type='reflective')
     assert s.x0 == 3.

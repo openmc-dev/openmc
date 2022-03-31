@@ -166,13 +166,13 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.'):
         plots = [plots]
 
     # Create plots.xml
-    openmc.Plots(plots).export_to_xml()
+    openmc.Plots(plots).export_to_xml(cwd)
 
     # Run OpenMC in geometry plotting mode
     plot_geometry(False, openmc_exec, cwd)
 
     if plots is not None:
-        images = [_get_plot_image(p) for p in plots]
+        images = [_get_plot_image(p, cwd) for p in plots]
         display(*images)
 
 

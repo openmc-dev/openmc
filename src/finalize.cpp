@@ -121,7 +121,6 @@ int openmc_finalize()
   settings::write_initial_source = false;
 
   simulation::keff = 1.0;
-  simulation::n_lost_particles = 0;
   simulation::need_depletion_rx = false;
   simulation::total_gen = 0;
 
@@ -173,6 +172,8 @@ int openmc_reset()
   simulation::satisfy_triggers = false;
 
   settings::cmfd_run = false;
+
+  simulation::n_lost_particles = 0;
 
   return 0;
 }

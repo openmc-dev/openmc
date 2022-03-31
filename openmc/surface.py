@@ -1968,7 +1968,7 @@ class YCone(QuadricMixin, Surface):
 
 
 class ZCone(QuadricMixin, Surface):
-    """A cone parallel to the x-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
+    """A cone parallel to the z-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
     r^2 (z - z_0)^2`.
 
     Parameters

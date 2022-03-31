@@ -2056,8 +2056,8 @@ class HexLattice(Lattice):
 
         Returns
         -------
-        openmc.RectLattice
-            Rectangular lattice
+        openmc.HexLattice
+            Hexagonal lattice
 
         """
         n_rings = group['n_rings'][()]

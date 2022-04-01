@@ -22,7 +22,7 @@ namespace openmc {
 
 constexpr int32_t NO_OUTER_UNIVERSE {-1};
 
-enum class LatticeType { rect, hex };
+enum class LatticeType { rect, hex, stack };
 
 //==============================================================================
 // Global variables
@@ -284,6 +284,59 @@ private:
   Position center_;         //!< Global center of lattice
   array<double, 2> pitch_;  //!< Lattice tile width and height
 };
+
+//==============================================================================
+
+class NonuniformStackLattice : public Lattice {
+public:
+  explicit NonuniformStackLattice(pugi::xml_node lat_node);
+
+  int32_t const& operator[](array<int, 3> const& i_xyz);
+
+  bool are_valid_indices(array<int, 3> const& i_xyz) const;
+
+  std::pair<double, array<int, 3>> distance(
+    Position r, Direction u, const array<int, 3>& i_xyz) const;
+
+  void get_indices(Position r, Direction u, array<int, 3>& result) const;
+
+  int get_flat_index(const array<int, 3>& i_xyz) const;
+
+  Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
+
+  bool is_valid_index(int indx) const;
+
+  int32_t& offset(int map, array<int, 3> const& i_xyz);
+
+  int32_t offset(int map, int indx) const;
+
+  std::string index_to_string(int indx) const;
+
+  void to_hdf5_inner(hid_t group_id) const;
+
+private:
+  enum class Orientation {
+    z, //!< Central axis of lattice parallel to z-axis
+    y, //!< Central axis of lattice parallel to y-axis
+    x  //!< Central axis of lattice parallel to x-axis
+  };
+
+  //! Fill universes_ vector for 'y' orientation
+  void fill_lattice_y(const vector<std::string>& univ_words);
+
+  //! Fill universes_ vector for 'x' orientation
+  void fill_lattice_x(const vector<std::string>& univ_words);
+
+  //! Fill universes_ vector for 'z' orientation
+  void fill_lattice_z(const vector<std::string>& univ_words);
+
+
+  int n_levels_;            //!< Number of radial tile positions
+  Orientation orientation_; //!< Orientation of lattice
+  Position central_axis_;   //!< Axial center of lattice
+  **double pitch_;  //!< Lattice tile width and height
+};
+
 
 //==============================================================================
 // Non-member functions

@@ -1079,6 +1079,302 @@ void HexLattice::to_hdf5_inner(hid_t lat_group) const
 }
 
 //==============================================================================
+// NonuniformStackLattice implementation
+//==============================================================================
+
+NonuniformStackLattice::NonuniformStackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
+{
+  type_ = LatticeType::rect;
+
+  // Read the number of lattice cells in each dimension.
+  std::string dimension_str {get_node_value(lat_node, "dimension")};
+  vector<std::string> dimension_words {split(dimension_str)};
+  if (dimension_words.size() == 2) {
+    n_cells_[0] = std::stoi(dimension_words[0]);
+    n_cells_[1] = std::stoi(dimension_words[1]);
+    n_cells_[2] = 1;
+    is_3d_ = false;
+  } else if (dimension_words.size() == 3) {
+    n_cells_[0] = std::stoi(dimension_words[0]);
+    n_cells_[1] = std::stoi(dimension_words[1]);
+    n_cells_[2] = std::stoi(dimension_words[2]);
+    is_3d_ = true;
+  } else {
+    fatal_error("Rectangular lattice must be two or three dimensions.");
+  }
+
+  // Read the lattice lower-left location.
+  std::string ll_str {get_node_value(lat_node, "lower_left")};
+  vector<std::string> ll_words {split(ll_str)};
+  if (ll_words.size() != dimension_words.size()) {
+    fatal_error("Number of entries on <lower_left> must be the same as the "
+                "number of entries on <dimension>.");
+  }
+  lower_left_[0] = stod(ll_words[0]);
+  lower_left_[1] = stod(ll_words[1]);
+  if (is_3d_) {
+    lower_left_[2] = stod(ll_words[2]);
+  }
+
+  // Read the lattice pitches.
+  std::string pitch_str {get_node_value(lat_node, "pitch")};
+  vector<std::string> pitch_words {split(pitch_str)};
+  if (pitch_words.size() != dimension_words.size()) {
+    fatal_error("Number of entries on <pitch> must be the same as the "
+                "number of entries on <dimension>.");
+  }
+  pitch_[0] = stod(pitch_words[0]);
+  pitch_[1] = stod(pitch_words[1]);
+  if (is_3d_) {
+    pitch_[2] = stod(pitch_words[2]);
+  }
+
+  // Read the universes and make sure the correct number was specified.
+  std::string univ_str {get_node_value(lat_node, "universes")};
+  vector<std::string> univ_words {split(univ_str)};
+  if (univ_words.size() != n_cells_[0] * n_cells_[1] * n_cells_[2]) {
+    fatal_error(fmt::format(
+      "Expected {} universes for a rectangular lattice of size {}x{}x{} but {} "
+      "were specified.",
+      n_cells_[0] * n_cells_[1] * n_cells_[2], n_cells_[0], n_cells_[1],
+      n_cells_[2], univ_words.size()));
+  }
+
+  // Parse the universes.
+  universes_.resize(n_cells_[0] * n_cells_[1] * n_cells_[2], C_NONE);
+  for (int iz = 0; iz < n_cells_[2]; iz++) {
+    for (int iy = n_cells_[1] - 1; iy > -1; iy--) {
+      for (int ix = 0; ix < n_cells_[0]; ix++) {
+        int indx1 = n_cells_[0] * n_cells_[1] * iz +
+                    n_cells_[0] * (n_cells_[1] - iy - 1) + ix;
+        int indx2 = n_cells_[0] * n_cells_[1] * iz + n_cells_[0] * iy + ix;
+        universes_[indx1] = std::stoi(univ_words[indx2]);
+      }
+    }
+  }
+}
+
+//==============================================================================
+
+int32_t const& NonuniformStackLattice::operator[](array<int, 3> const& i_xyz)
+{
+  return universes_[get_flat_index(i_xyz)];
+}
+
+//==============================================================================
+
+bool NonuniformStackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
+{
+  return ((i_xyz[0] >= 0) && (i_xyz[0] < n_cells_[0]) && (i_xyz[1] >= 0) &&
+          (i_xyz[1] < n_cells_[1]) && (i_xyz[2] >= 0) &&
+          (i_xyz[2] < n_cells_[2]));
+}
+
+//==============================================================================
+
+std::pair<double, array<int, 3>> NonuniformStackLattice::distance(
+  Position r, Direction u, const array<int, 3>& i_xyz) const
+{
+  // Get short aliases to the coordinates.
+  double x = r.x;
+  double y = r.y;
+  double z = r.z;
+
+  // Determine the oncoming edge.
+  double x0 {copysign(0.5 * pitch_[0], u.x)};
+  double y0 {copysign(0.5 * pitch_[1], u.y)};
+
+  // Left and right sides
+  double d {INFTY};
+  array<int, 3> lattice_trans;
+  if ((std::abs(x - x0) > FP_PRECISION) && u.x != 0) {
+    d = (x0 - x) / u.x;
+    if (u.x > 0) {
+      lattice_trans = {1, 0, 0};
+    } else {
+      lattice_trans = {-1, 0, 0};
+    }
+  }
+
+  // Front and back sides
+  if ((std::abs(y - y0) > FP_PRECISION) && u.y != 0) {
+    double this_d = (y0 - y) / u.y;
+    if (this_d < d) {
+      d = this_d;
+      if (u.y > 0) {
+        lattice_trans = {0, 1, 0};
+      } else {
+        lattice_trans = {0, -1, 0};
+      }
+    }
+  }
+
+  // Top and bottom sides
+  if (is_3d_) {
+    double z0 {copysign(0.5 * pitch_[2], u.z)};
+    if ((std::abs(z - z0) > FP_PRECISION) && u.z != 0) {
+      double this_d = (z0 - z) / u.z;
+      if (this_d < d) {
+        d = this_d;
+        if (u.z > 0) {
+          lattice_trans = {0, 0, 1};
+        } else {
+          lattice_trans = {0, 0, -1};
+        }
+      }
+    }
+  }
+
+  return {d, lattice_trans};
+}
+
+//==============================================================================
+
+void NonuniformStackLattice::get_indices(
+  Position r, Direction u, array<int, 3>& result) const
+{
+  // Determine x index, accounting for coincidence
+  double ix_ {(r.x - lower_left_.x) / pitch_.x};
+  long ix_close {std::lround(ix_)};
+  if (coincident(ix_, ix_close)) {
+    result[0] = (u.x > 0) ? ix_close : ix_close - 1;
+  } else {
+    result[0] = std::floor(ix_);
+  }
+
+  // Determine y index, accounting for coincidence
+  double iy_ {(r.y - lower_left_.y) / pitch_.y};
+  long iy_close {std::lround(iy_)};
+  if (coincident(iy_, iy_close)) {
+    result[1] = (u.y > 0) ? iy_close : iy_close - 1;
+  } else {
+    result[1] = std::floor(iy_);
+  }
+
+  // Determine z index, accounting for coincidence
+  result[2] = 0;
+  if (is_3d_) {
+    double iz_ {(r.z - lower_left_.z) / pitch_.z};
+    long iz_close {std::lround(iz_)};
+    if (coincident(iz_, iz_close)) {
+      result[2] = (u.z > 0) ? iz_close : iz_close - 1;
+    } else {
+      result[2] = std::floor(iz_);
+    }
+  }
+}
+
+int NonuniformStackLattice::get_flat_index(const array<int, 3>& i_xyz) const
+{
+  return n_cells_[0] * n_cells_[1] * i_xyz[2] + n_cells_[0] * i_xyz[1] +
+         i_xyz[0];
+}
+
+//==============================================================================
+
+Position NonuniformStackLattice::get_local_position(
+  Position r, const array<int, 3>& i_xyz) const
+{
+  r.x -= (lower_left_.x + (i_xyz[0] + 0.5) * pitch_.x);
+  r.y -= (lower_left_.y + (i_xyz[1] + 0.5) * pitch_.y);
+  if (is_3d_) {
+    r.z -= (lower_left_.z + (i_xyz[2] + 0.5) * pitch_.z);
+  }
+  return r;
+}
+
+//==============================================================================
+
+int32_t& NonuniformStackLattice::offset(int map, array<int, 3> const& i_xyz)
+{
+  return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
+                  n_cells_[0] * n_cells_[1] * i_xyz[2] +
+                  n_cells_[0] * i_xyz[1] + i_xyz[0]];
+}
+
+//==============================================================================
+
+int32_t NonuniformStackLattice::offset(int map, int indx) const
+{
+  return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map + indx];
+}
+
+//==============================================================================
+
+std::string NonuniformStackLattice::index_to_string(int indx) const
+{
+  int iz {indx / (n_cells_[0] * n_cells_[1])};
+  int iy {(indx - n_cells_[0] * n_cells_[1] * iz) / n_cells_[0]};
+  int ix {indx - n_cells_[0] * n_cells_[1] * iz - n_cells_[0] * iy};
+  std::string out {std::to_string(ix)};
+  out += ',';
+  out += std::to_string(iy);
+  if (is_3d_) {
+    out += ',';
+    out += std::to_string(iz);
+  }
+  return out;
+}
+
+//==============================================================================
+
+void NonuniformStackLattice::to_hdf5_inner(hid_t lat_group) const
+{
+  // Write basic lattice information.
+  write_string(lat_group, "type", "nonuniformstack", false);
+  if (is_3d_) {
+    write_dataset(lat_group, "pitch", pitch_);
+    write_dataset(lat_group, "lower_left", lower_left_);
+    write_dataset(lat_group, "dimension", n_cells_);
+  } else {
+    array<double, 2> pitch_short {{pitch_[0], pitch_[1]}};
+    write_dataset(lat_group, "pitch", pitch_short);
+    array<double, 2> ll_short {{lower_left_[0], lower_left_[1]}};
+    write_dataset(lat_group, "lower_left", ll_short);
+    array<int, 2> nc_short {{n_cells_[0], n_cells_[1]}};
+    write_dataset(lat_group, "dimension", nc_short);
+  }
+
+  // Write the universe ids.  The convention here is to switch the ordering on
+  // the y-axis to match the way universes are input in a text file.
+  if (is_3d_) {
+    hsize_t nx {static_cast<hsize_t>(n_cells_[0])};
+    hsize_t ny {static_cast<hsize_t>(n_cells_[1])};
+    hsize_t nz {static_cast<hsize_t>(n_cells_[2])};
+    vector<int> out(nx * ny * nz);
+
+    for (int m = 0; m < nz; m++) {
+      for (int k = 0; k < ny; k++) {
+        for (int j = 0; j < nx; j++) {
+          int indx1 = nx * ny * m + nx * k + j;
+          int indx2 = nx * ny * m + nx * (ny - k - 1) + j;
+          out[indx2] = model::universes[universes_[indx1]]->id_;
+        }
+      }
+    }
+
+    hsize_t dims[3] {nz, ny, nx};
+    write_int(lat_group, 3, dims, "universes", out.data(), false);
+
+  } else {
+    hsize_t nx {static_cast<hsize_t>(n_cells_[0])};
+    hsize_t ny {static_cast<hsize_t>(n_cells_[1])};
+    vector<int> out(nx * ny);
+
+    for (int k = 0; k < ny; k++) {
+      for (int j = 0; j < nx; j++) {
+        int indx1 = nx * k + j;
+        int indx2 = nx * (ny - k - 1) + j;
+        out[indx2] = model::universes[universes_[indx1]]->id_;
+      }
+    }
+
+    hsize_t dims[3] {1, ny, nx};
+    write_int(lat_group, 3, dims, "universes", out.data(), false);
+  }
+}
+
+//==============================================================================
 // Non-method functions
 //==============================================================================
 

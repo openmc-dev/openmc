@@ -50,6 +50,148 @@ class CompositeSurface(ABC):
     def __neg__(self):
         """Return the negative half-space of the composite surface."""
 
+class Octagon(CompositeSurface):
+    """Infinite octogonal prism composite surface
+
+    An octagonal prism is composed of eight surfaces. The prism is parallel to
+    the x, y, or z axis; two pars of surfaces are perpendicualr to the z and y,
+    x and z, or y and x axes, respectively.
+
+    This class
+    acts as a proper surface, meaning that unary `+` and `-` operators applied
+    to it will produce a half-space. The negative side is defined to be the
+    region inside of the octogonal prism.
+
+    Parameters
+    ----------
+    center : 2-tuple
+        (q1,q2) coordinate for the center of the octagon. (q1,q2) pairs are
+        (x,y), (x,z), or (x,z).
+    r1 : float
+        Half-width of octagon across axis-perpendicualr sides
+    r2 : float
+        Half-width of octagon across off-axis sides
+    axis : {'x', 'y', 'z'}
+        Central axis of ocatgon. Defaults to 'z'
+    **kwargs
+        Keyword arguments passed to underlying cylinder and plane classes
+
+    Attributes
+    ----------
+    top : openmc.ZPlane or openmc.XPlane
+        Top planar surface of octagon
+    bottom : openmc.ZPlane or openmc.XPlane
+        Bottom planar surface of octagon
+    right: openmc.YPlane or openmc.ZPlane
+        Right planaer surface of octagon
+    left: openmc.YPlane or openmc.ZPlane
+        Left planar surface of octagon
+    upper_right : openmc.Plane
+        Upper right planar surface of octagon
+    lower_right : openmc.Plane
+        Lower right planar surface of octagon
+    lower_left : openmc.Plane
+        Lower left planar surface of octagon
+    upper_left : openmc.Plane
+        Upper left planar surface of octagon
+
+    """
+
+    _surface_names = ('top', 'bottom',
+                      'upper_right', 'lower_left',
+                      'right', 'left',
+                      'lower_right', 'upper_left')
+
+    def __init__(self, center, r1, r2, axis='z', **kwargs):
+        self._axis = axis
+        q1c, q2c = center
+
+        # Coords for axis-perpendicular planes
+        ctop = q1c+r1
+        cbottom = q1c-r1
+
+        cright= q2c+r1
+        cleft = q2c-r1
+
+        # Side lengths
+        L_perp_ax1 = (r2 * np.sqrt(2) - r1) * 2
+        L_perp_ax2 = (r1 * np.sqrt(2) - r2) * 2
+
+        # Coords for quadrant planes
+        p1_ur = [L_perp_ax1/2, r1, 0]
+        p2_ur = [r1, L_perp_ax1/2, 0]
+        p3_ur = [r1, L_perp_ax1/2, 1]
+
+        p1_lr = [r1, -L_perp_ax1/2, 0]
+        p2_lr = [L_perp_ax1/2, -r1, 0]
+        p3_lr = [L_perp_ax1/2, -r1, 1]
+
+        points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr]
+
+        # Orientation specific variables
+        if axis == 'z':
+            coord_map = [0,1,2]
+            self.top = openmc.YPlane(y0=ctop, **kwargs)
+            self.bottom = openmc.YPlane(y0=cbottom, **kwargs)
+            self.right = openmc.XPlane(x0=cright, **kwargs)
+            self.left = openmc.XPlane(x0=cleft, **kwargs)
+        elif axis == 'y':
+            coord_map = [0,2,1]
+            self.top = openmc.ZPlane(z0=ctop, **kwargs)
+            self.bottom = openmc.ZPlane(z0=cbottom, **kwargs)
+            self.right = openmc.XPlane(x0=cright, **kwargs)
+            self.left = openmc.XPlane(x0=cleft, **kwargs)
+        elif axis == 'x':
+            coord_map = [2,0,1]
+            self.top = openmc.ZPlane(z0=ctop, **kwargs)
+            self.bottom = openmc.ZPlane(z0=cbottom, **kwargs)
+            self.right = openmc.YPlane(y0=cright, **kwargs)
+            self.left = openmc.YPlane(y0=cleft, **kwargs)
+
+        # Put our coordinates in (x,y,z) order
+        calibrated_points = []
+        for p in points:
+            p_temp = []
+            for i in coord_map:
+                p_temp += [p[i]]
+            calibrated_points += [np.array(p_temp)]
+
+        p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr = calibrated_points
+
+        upper_right_params = _plane_from_points(p1_ur, p2_ur, p3_ur)
+        lower_right_params = _plane_from_points(p1_lr, p2_lr, p3_lr)
+        lower_left_params = _plane_from_points(-p1_ur, -p2_ur, -p3_ur)
+        upper_left_params = _plane_from_points(-p1_lr, -p2_lr, -p3_lr)
+
+        self.upper_right = openmc.Plane(*tuple(upper_right_params), **kwargs)
+        self.lower_right = openmc.Plane(*tuple(lower_right_params), **kwargs)
+        self.lower_left = openmc.Plane(*tuple(lower_left_params), **kwargs)
+        self.upper_left = openmc.Plane(*tuple(upper_left_params), **kwargs)
+
+
+    def __neg__(self):
+        reg = -self.top & +self.bottom & -self.right & +self.left
+        if self._axis == 'y':
+            reg = reg & -self.upper_right & -self.lower_right & \
+                +self.lower_left & +self.upper_left
+        else:
+            reg = reg & +self.upper_right & +self.lower_right & \
+                -self.lower_left & -self.upper_left
+
+        return reg
+
+
+    def __pos__(self):
+        reg = +self.top | -self.bottom | +self.right | -self.left
+        if self._axis == 'y':
+            reg = reg | +self.upper_right | +self.lower_right | \
+                -self.lower_left | -self.upper_left
+        else:
+            reg = reg | -self.upper_right | -self.lower_right | \
+                +self.lower_left | +self.upper_left
+
+        return reg
+
 
 class RightCircularCylinder(CompositeSurface):
     """Right circular cylinder composite surface

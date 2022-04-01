@@ -754,7 +754,7 @@ class Plane(PlaneMixin, Surface):
         return cls(a=a, b=b, c=c, d=d, **kwargs)
 
     @classmethod
-    def from_xy_angle(cls, x0, y0, angle, degrees=False, **kwargs):
+    def from_xy_angle(cls, angle, degrees=False, x0=0., y0=0., **kwargs):
         """Return a plane given a single xy-point and an angle.
 
         Parameters

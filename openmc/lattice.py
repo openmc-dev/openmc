@@ -105,6 +105,8 @@ class Lattice(IDManagerMixin, ABC):
             return openmc.RectLattice.from_hdf5(group, universes)
         elif lattice_type == 'hexagonal':
             return openmc.HexLattice.from_hdf5(group, universes)
+        elif lattice_type == 'stack':
+            return openmc.NonuniformStackLattice.from_hdf5(group, universes)
         else:
             raise ValueError(f'Unknown lattice type: {lattice_type}')
 
@@ -2203,5 +2205,421 @@ class HexLattice(Lattice):
         else:
             # Lattice is 2D; extract the only axial level
             lattice.universes = uarray[0]
+
+        return lattice
+
+
+class NonuniformStackLattice(openmc.Lattice):
+    """A lattice consisting of universes stacked nonuniformly along a central
+    axis.
+
+    To completley define a nonuniform stack lattice, the
+    :attr:`NonuniformStackLattice.central_axis`,
+    :attr:`NonuniformStackLattice.pitch`, :attr:`NonuniformStackLattice.outer`,
+    and :attr:`NonuniformStackLattice.universes` properties need to be set.
+
+    Most methods for this class use a natural indexing scheme wherein elements
+    are assigned an index corresponding to their position relative to the
+    :math:`x`, :math:`y`, or :math:`z` bases, depending on the lattice
+    orientation, as described fully in :ref:`stack_indexing`, i.e., an index of
+    (0) in the lattice oriented to the :math:`z` basis gives the element whose
+    `z` coordinate is the smallest. However, note that when universes are
+    assigned to lattice elements using the
+    :attr:`NonuniformStackLattice.universes` property, the array indices do not
+    correspond to natural indices.
+
+    Parameters
+    ----------
+    lattice_id : int, optional
+        Unique identifier for the lattice. If not specified, an identifier will
+        automatically be assigned.
+    name : str, optional
+        Name of the lattice. If not specified, the name is the empty string.
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the lattice
+    name : str
+        Name of the lattice
+    pitch : Iterable of float
+        Height of the bottom of each lattice cell x, y, or z directions
+        (depending on the :attr:`orientation`) in cm.
+    outer : openmc.Universe
+        A universe to fill all space outside the lattice
+    universes : Iterable of openmc.Universe
+        A one-dimensional list/array of universes filling each element
+        of the lattice. The first dimension corresponds to the
+        :attr:`orientation`-direction
+    central_axis : Iterable of float
+        The :math:`(y,z)`, :math:`(x,z)`, or :math:`(x,y)` coordinates of the central
+        axis of the lattice, depending on the lattice orientation
+    indices : list of tuple
+        A list of all possible lattice element indices. These
+        indices correspond to indices in the
+        :attr:`NonuniformStackLattice.universes`property.
+    levels : int
+        An integer representing the number of lattice
+        cells along the orientation axis.
+
+    """
+
+    def __init__(self, lattice_id=None, name=''):
+        super().__init__(lattice_id, name)
+
+        # Initalize Lattice class attributes
+        self._central_axis = None
+        self._num_levels = None
+        self._orientation = 'z'
+
+    def __repr__(self):
+        string = 'StackLattice\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t',
+                                            self._orientation)
+        string += '{0: <16}{1}{2}\n'.format('\t# Levels', '=\t', self._num_levels)
+        string += '{0: <16}{1}{2}\n'.format('\tcentral_axis', '=\t',
+                                            self._central_axis)
+        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
+        if self._outer is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer._id)
+        else:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer)
+
+        string += '{: <16}\n'.format('\tUniverses')
+
+        for i, universe in enumerate(np.ravel(self._universes)):
+            string += f'universe._id\n'
+
+        string = string.rstrip('\n')
+
+        return string
+
+
+    @property
+    def num_levels(self):
+        return self.universes.shape[0]
+
+
+    @property
+    def central_axis(self):
+        return self._central_axis
+
+
+    @property
+    def orientation(self):
+        return self._orientation
+
+
+    @property
+    def indices(self):
+        if self.ndim == 1:
+            return list(np.broadcast(*np.ogrid[:self.num_levels]))
+        else:
+            raise ValueError("NonuniformStackLattice should only have 1 dimension")
+
+
+    @property
+    def _natural_indices(self):
+        """Iterate over all possible lattice element indices.
+
+        """
+        if self.ndim == 1:
+            n = self.num_levels
+            for i in range(n):
+                yield i
+        else:
+            raise ValueError("NonuniformStackLattice should only have 1 dimension")
+
+
+    @central_axis.setter
+    def central_axis(self, central_axis):
+        cv.check_type('lattice central_axis', central_axis, Iterable, Real)
+        cv.check_length('lattice central_axis', central_axis, 2)
+        self._central_axis = central_axis
+
+
+    @orientation.setter
+    def orientation(self, orientation):
+        cv.check_value('orientation', orientation.lower(), ('x','y','z'))
+        self._oreientation = orientation.lower()
+
+
+    @openmc.Lattice.pitch.setter
+    def pitch(self, pitch):
+        cv.check_type('lattice pitch', pitch, Iterable, Real)
+        cv.check_length('lattice pitch', pitch, self.num_levels)
+        self._pitch = pitch
+
+
+    @openmc.Lattice.universes.setter
+    def universes(self, universes):
+        cv.check_iterable_type('lattice universes', universes, openmc.UniverseBase, min_depth=1, max_depth=1)
+        self._universes = np.asarray(universes)
+
+
+    def find_element(self, point):
+        """Determine index of lattice element and local coordinates for a point
+
+        Parameters
+        ----------
+        point : Iterable of float
+            Cartesian coordinates of point
+
+        Returns
+        -------
+        int
+            The corresponding lattice element index
+        3-tuple of float
+            Carestian coordinates of the point in the corresponding lattice
+            element coordinate system
+
+        """
+        if self.oriention == 'x':
+            _idx = 0
+        elif self.orientation == 'y':
+            _idx = 1
+        else:
+            _idx = 2
+
+        # find the level:
+        p = point(_idx)
+        idx = 0
+        while not(p >= self.pitch[idx] and p <= self.pitch[idx + 1]):
+               idx += 1
+
+        return idx, self.get_local_coordinates(point, idx)
+
+
+    def get_local_coordinates(self, point, idx):
+        """Determine local coordinates of a point within a lattice element
+
+        Parameters
+        ----------
+        point : Iterable of float
+            Cartesian coordinates of point
+        idx : int
+            index of lattice element
+
+        Returns
+        -------
+        3-tuple of float
+            Cartesian coordinates of point in the lattice element coordinate
+            system
+        """
+        x,y,z = point
+        c1, c2 = self.central_axis
+        if self.oriention == 'x':
+            x -= self.pitch[idx]
+            y -= c1
+            z -= c2
+        elif self.orientation == 'y':
+            x -= c1
+            y -= self.pitch[idx]
+            z -= c2
+        else:
+            x -= c1
+            y -= c2
+            z -= self.pitch[idx]
+
+        return (x,y,z)
+
+
+    def get_universe_index(self, idx):
+        """Return index in the universes array corresponding
+        to a lattice element index
+
+        Parameters
+        ----------
+        idx : int
+            Lattice element index
+
+        Returns
+        -------
+        int
+            Index used when setting the :attr:`NonuniformStackLattice.universes` property
+
+        """
+        return idx
+
+
+    def is_valid_index(self, idx):
+        """Determine whether lattice element index is within defined range
+
+        Parameters
+        ----------
+        idx : int
+            Lattice element index
+
+        Returns
+        -------
+        bool
+            Whether index is valid
+
+        """
+        if self.ndim == 1:
+            return (0 <= idx < self.num_levels)
+        else:
+            raise ValueError("StackLattice must have only one dimension")
+
+    def create_xml_subelement(self, xml_element, memo=None):
+        """Add the lattice xml representation to an incoming xml element
+
+        Parameters
+        ----------
+        xml_element : xml.etree.ElementTree.Element
+            XML element to be added to
+
+        memo : set or None
+            A set of object id's representing geometry entities already
+            written to the xml_element. This parameter is used internally
+            and should not be specified by users.
+
+        Returns
+        -------
+        None
+
+        """
+        if memo and self in memo:
+            return
+        if memo is not None:
+            memo.add(self)
+
+        lattice_subelement = ET.Element("lattice")
+        lattice_subelement.set("id", str(self._id))
+        if len(self._name) > 0:
+            lattice_subelement.set("name", str(self._id))
+
+        # Export the Lattice cell pitch
+        pitch = ET.SubElement(lattice_subelement, "pitch")
+        pitch.text = ' '.join(map(str, self._pitch))
+
+        # Export the Lattice outer Universe (if specified)
+        if self._outer is not None:
+            outer = ET.SubElement(lattice_subelement, "outer")
+            outer.text = str(self._outer._id)
+            self._outer.create_xml_subelement(xml_element, memo)
+
+        # Export Lattice cell levels
+        levels = ET.SubElement(lattice_subelement, "levels")
+        levels.text = ' '.join(map(str, self.num_levels))
+
+        # Export lattice orientation
+        lattice_subelement.set("orientation", self._orientation)
+
+        # Export Lattice central axis
+        central_axis = ET.SubElement(lattice_subelement, "central_axis")
+        central_axis.text = ' '.join(map(str, self._central_axis))
+
+        # Export the Lattice nested Universe IDs - column major for Fortran
+        universe_ids = '\n'
+
+        # 1D stack
+        if self.ndim == 1:
+            for l in range(self.num_levels):
+                universe = self._universes[l]
+                # Append Universe ID to the Lattice XML subelement
+                universe_ids += f'{universe._id} '
+
+                # Create XML subelement for this Universe
+                universe.create_xml_subelement(xml_element, memo)
+
+                # Add newline for each level
+                universe_ids += '\n'
+
+        # Remove trailing newline character from Universe IDs string
+        universe_ids = universe_ids.rstrip('\n')
+
+        universes = ET.SubElement(lattice_subelement, "universes")
+        universes.text = universe_ids
+
+        # Append the XML subelement for this Lattice to the XML element
+        xml_element.append(lattice_subelement)
+
+
+    @classmethod
+    def from_xml_element(cls, elem, get_universe):
+        """Generate nonuniform stack lattice from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            `<lattice>` element
+        get_universe : function
+            Function returning universe (defined in
+            :meth:`openmc.Geometry.from_xml`)
+
+        Returns
+        -------
+        NonuniformStackLattice
+            Nonuniform stack lattice
+
+        """
+        lat_id = int(get_text(elem, 'id'))
+        name = get_text(elem, 'name')
+        lat = cls(lat_id, name)
+        lat.central_axis = [float(i)
+                          for i in get_text(elem, 'central_axis').split()]
+        lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
+        outer = get_text(elem, 'outer')
+        if outer is not None:
+            lat.outer = get_universe(int(outer))
+
+        # Get array of universes
+        levels = get_text(elem, 'levels').split()
+        shape = np.array(levels, dtype=int)[::-1]
+        uarray = np.array([get_universe(int(i)) for i in
+                           get_text(elem, 'universes').split()])
+        uarray.shape = shape
+        lat.universes = uarray
+        return lat
+
+    @classmethod
+    def from_hdf5(cls, group, universes):
+        """Create nonuniform stack lattice from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+        universes : dict
+            Dictionary mapping universe IDs to instances of
+            :class:`openmc.Universe`.
+
+        Returns
+        -------
+        openmc.NonuniformStackLattice
+            Nonuniform stack lattice
+
+        """
+
+        levels = group['levels'][...]
+        central_axis = group['central_axis'][...]
+        pitch = group['pitch'][...]
+        outer = group['outer'][()]
+        universe_ids = group['universes'][...]
+
+        # Create the Lattice
+        lattice_id = int(group.name.split('/')[-1].lstrip('lattice '))
+        name = group['name'][()].decode() if 'name' in group else ''
+        lattice = cls(lattice_id, name)
+        lattice.central_axis = central_axis
+        lattice.pitch = pitch
+
+        # If the Universe specified outer the Lattice is not void
+        if outer >= 0:
+            lattice.outer = universes[outer]
+
+        # Build array of Universe pointers for the Lattice
+        uarray = np.empty(universe_ids.shape, dtype=openmc.Universe)
+
+        for l in range(universe_ids.shape[0]):
+            uarray[l] = universes[universe_ids[l]]
+
+        # Set the universes for the lattice
+        lattice.universes = uarray
 
         return lattice

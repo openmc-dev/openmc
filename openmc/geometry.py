@@ -191,6 +191,16 @@ class Geometry:
                         for u in ring:
                             child_of[u].append(lat)
 
+        for elem in root.findall('stack_lattice'):
+            lat = openmc.NonuniformStackLattice.from_xml_element(elem, get_universe)
+            universes[lat.id] = lat
+            if lat.outer is not None:
+                child_of[lat.outer].append(lat)
+            for u in lat.universes.ravel():
+                child_of[u].append(lat)
+
+
+
         # Create dictionary to easily look up materials
         if materials is None:
             filename = Path(path).parent / 'materials.xml'

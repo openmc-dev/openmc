@@ -123,15 +123,19 @@ class Lattice(IDManagerMixin, ABC):
 
         univs = OrderedDict()
         for k in range(len(self._universes)):
-            for j in range(len(self._universes[k])):
-                if isinstance(self._universes[k][j], openmc.Universe):
-                    u = self._universes[k][j]
-                    univs[u._id] = u
-                else:
-                    for i in range(len(self._universes[k][j])):
-                        u = self._universes[k][j][i]
-                        assert isinstance(u, openmc.Universe)
+            if isinstance(self._universes[k], openmc.Universe):
+                u = self._universes[k]
+                univs[u._id] = u
+            else:
+                for j in range(len(self._universes[k])):
+                    if isinstance(self._universes[k][j], openmc.Universe):
+                        u = self._universes[k][j]
                         univs[u._id] = u
+                    else:
+                        for i in range(len(self._universes[k][j])):
+                            u = self._universes[k][j][i]
+                            assert isinstance(u, openmc.Universe)
+                            univs[u._id] = u
 
         if self.outer is not None:
             univs[self.outer._id] = self.outer
@@ -2209,7 +2213,7 @@ class HexLattice(Lattice):
         return lattice
 
 
-class NonuniformStackLattice(openmc.Lattice):
+class NonuniformStackLattice(Lattice):
     """A lattice consisting of universes stacked nonuniformly along a central
     axis.
 
@@ -2269,19 +2273,17 @@ class NonuniformStackLattice(openmc.Lattice):
 
         # Initalize Lattice class attributes
         self._central_axis = None
-        self._num_levels = None
         self._orientation = 'z'
 
     def __repr__(self):
-        string = 'StackLattice\n'
+        string = 'NonuniformStackLattice\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t',
                                             self._orientation)
-        string += '{0: <16}{1}{2}\n'.format('\t# Levels', '=\t', self._num_levels)
+        string += '{0: <16}{1}{2}\n'.format('\t# Levels', '=\t', self.num_levels)
         string += '{0: <16}{1}{2}\n'.format('\tcentral_axis', '=\t',
                                             self._central_axis)
-        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
         if self._outer is not None:
             string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
                                                 self._outer._id)
@@ -2289,10 +2291,11 @@ class NonuniformStackLattice(openmc.Lattice):
             string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
                                                 self._outer)
 
-        string += '{: <16}\n'.format('\tUniverses')
+        string += '{: <16}\n'.format('\tUniverses, Pitch')
 
         for i, universe in enumerate(np.ravel(self._universes)):
-            string += f'universe._id\n'
+            string += f'{universe._id}, {self.pitch[i]}'
+            string += '\n'
 
         string = string.rstrip('\n')
 
@@ -2301,8 +2304,11 @@ class NonuniformStackLattice(openmc.Lattice):
 
     @property
     def num_levels(self):
-        return self.universes.shape[0]
-
+        if self.pitch is not None:
+            return len(self.pitch)
+        else:
+            raise ValueError('Number of levels cannot be determined until '
+                             'the lattice pitch has been set.')
 
     @property
     def central_axis(self):
@@ -2316,10 +2322,7 @@ class NonuniformStackLattice(openmc.Lattice):
 
     @property
     def indices(self):
-        if self.ndim == 1:
-            return list(np.broadcast(*np.ogrid[:self.num_levels]))
-        else:
-            raise ValueError("NonuniformStackLattice should only have 1 dimension")
+        return list(np.broadcast(*np.ogrid[:self.num_levels]))
 
 
     @property
@@ -2327,12 +2330,9 @@ class NonuniformStackLattice(openmc.Lattice):
         """Iterate over all possible lattice element indices.
 
         """
-        if self.ndim == 1:
-            n = self.num_levels
-            for i in range(n):
-                yield i
-        else:
-            raise ValueError("NonuniformStackLattice should only have 1 dimension")
+        n = self.num_levels
+        for i in range(n):
+            yield i
 
 
     @central_axis.setter
@@ -2348,16 +2348,16 @@ class NonuniformStackLattice(openmc.Lattice):
         self._oreientation = orientation.lower()
 
 
-    @openmc.Lattice.pitch.setter
+    @Lattice.pitch.setter
     def pitch(self, pitch):
         cv.check_type('lattice pitch', pitch, Iterable, Real)
-        cv.check_length('lattice pitch', pitch, self.num_levels)
         self._pitch = pitch
 
 
-    @openmc.Lattice.universes.setter
+    @Lattice.universes.setter
     def universes(self, universes):
         cv.check_iterable_type('lattice universes', universes, openmc.UniverseBase, min_depth=1, max_depth=1)
+        cv.check_length('lattice universes', universes, self.num_levels)
         self._universes = np.asarray(universes)
 
 
@@ -2460,10 +2460,7 @@ class NonuniformStackLattice(openmc.Lattice):
             Whether index is valid
 
         """
-        if self.ndim == 1:
-            return (0 <= idx < self.num_levels)
-        else:
-            raise ValueError("StackLattice must have only one dimension")
+        return (0 <= idx < self.num_levels)
 
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the lattice xml representation to an incoming xml element
@@ -2488,7 +2485,7 @@ class NonuniformStackLattice(openmc.Lattice):
         if memo is not None:
             memo.add(self)
 
-        lattice_subelement = ET.Element("lattice")
+        lattice_subelement = ET.Element("stack_lattice")
         lattice_subelement.set("id", str(self._id))
         if len(self._name) > 0:
             lattice_subelement.set("name", str(self._id))
@@ -2504,8 +2501,8 @@ class NonuniformStackLattice(openmc.Lattice):
             self._outer.create_xml_subelement(xml_element, memo)
 
         # Export Lattice cell levels
-        levels = ET.SubElement(lattice_subelement, "levels")
-        levels.text = ' '.join(map(str, self.num_levels))
+        num_levels = ET.SubElement(lattice_subelement, "num_levels")
+        num_levels.text = ' '.join(str(self.num_levels))
 
         # Export lattice orientation
         lattice_subelement.set("orientation", self._orientation)
@@ -2518,17 +2515,13 @@ class NonuniformStackLattice(openmc.Lattice):
         universe_ids = '\n'
 
         # 1D stack
-        if self.ndim == 1:
-            for l in range(self.num_levels):
-                universe = self._universes[l]
-                # Append Universe ID to the Lattice XML subelement
-                universe_ids += f'{universe._id} '
+        for l in range(self.num_levels):
+            universe = self._universes[l]
+            # Append Universe ID to the Lattice XML subelement
+            universe_ids += f'{universe._id} '
 
-                # Create XML subelement for this Universe
-                universe.create_xml_subelement(xml_element, memo)
-
-                # Add newline for each level
-                universe_ids += '\n'
+            # Create XML subelement for this Universe
+            universe.create_xml_subelement(xml_element, memo)
 
         # Remove trailing newline character from Universe IDs string
         universe_ids = universe_ids.rstrip('\n')
@@ -2547,7 +2540,7 @@ class NonuniformStackLattice(openmc.Lattice):
         Parameters
         ----------
         elem : xml.etree.ElementTree.Element
-            `<lattice>` element
+            `<stack_lattice>` element
         get_universe : function
             Function returning universe (defined in
             :meth:`openmc.Geometry.from_xml`)
@@ -2569,11 +2562,10 @@ class NonuniformStackLattice(openmc.Lattice):
             lat.outer = get_universe(int(outer))
 
         # Get array of universes
-        levels = get_text(elem, 'levels').split()
-        shape = np.array(levels, dtype=int)[::-1]
+        num_levels = get_text(elem, 'num_levels')
         uarray = np.array([get_universe(int(i)) for i in
                            get_text(elem, 'universes').split()])
-        uarray.shape = shape
+        uarray.shape = int(num_levels)
         lat.universes = uarray
         return lat
 
@@ -2596,7 +2588,7 @@ class NonuniformStackLattice(openmc.Lattice):
 
         """
 
-        levels = group['levels'][...]
+        num_levels = group['num_levels'][...]
         central_axis = group['central_axis'][...]
         pitch = group['pitch'][...]
         outer = group['outer'][()]

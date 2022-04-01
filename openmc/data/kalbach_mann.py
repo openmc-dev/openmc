@@ -5,11 +5,474 @@ from warnings import warn
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 from openmc.stats import Tabular, Univariate, Discrete, Mixture
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
 from .data import EV_PER_MEV
 from .endf import get_list_record, get_tab2_record
+
+
+# Kalbach-Mann constants as defined in ENDF-6 manual BNL-203218-2018-INRE,
+# Revision 215, File 6 description for LAW=1 and LANG=2.
+_C1 = 0.04  # [1/MeV]
+_C2 = 1.8E-6  # [1/MeV^3]
+_C3 = 6.7E-7  # [1/MeV^4]
+_ET1 = 130.  # [MeV]
+_ET3 = 41.  # [MeV]
+_M_NEUTRON = 1.
+_M_PROTON = 1.
+_M_DEUTERON = 1.
+_M_TRITON = None
+_M_3HE = None
+_M_ALPHA = 0.
+_SM_NEUTRON = 1/2.
+_SM_PROTON = 1.
+_SM_DEUTERON = 1.
+_SM_TRITON = 1.
+_SM_3HE = 1.
+_SM_ALPHA = 2.
+
+# Kalbach-Mann M coefficients
+_TABULATED_PARTICLE_M = {
+    1: _M_NEUTRON,
+    1001: _M_PROTON,
+    1002: _M_DEUTERON,
+    1003: _M_TRITON,
+    2003: _M_3HE,
+    2004: _M_ALPHA
+}
+
+# Kalbach-Mann m coefficients
+_TABULATED_PARTICLE_SM = {
+    1: _SM_NEUTRON,
+    1001: _SM_PROTON,
+    1002: _SM_DEUTERON,
+    1003: _SM_TRITON,
+    2003: _SM_3HE,
+    2004: _SM_ALPHA
+}
+
+# Breaking energy as defined in ENDF-6 manual BNL-203218-2018-INRE,
+# Revision 215, Appendix H, Table 3.
+_BREAKING_ENERGY_NEUTRON = 0.
+_BREAKING_ENERGY_PROTON = 0.
+_BREAKING_ENERGY_DEUTERON = 2.224566  # [MeV]
+_BREAKING_ENERGY_TRITON = 8.481798  # [MeV]
+_BREAKING_ENERGY_3HE = 7.718043  # [MeV]
+_BREAKING_ENERGY_ALPHA = 28.29566  # [MeV]
+
+_TABULATED_BREAKING_ENERGY = {
+    1: _BREAKING_ENERGY_NEUTRON,
+    1001: _BREAKING_ENERGY_PROTON,
+    1002: _BREAKING_ENERGY_DEUTERON,
+    1003: _BREAKING_ENERGY_TRITON,
+    2003: _BREAKING_ENERGY_3HE,
+    2004: _BREAKING_ENERGY_ALPHA
+}
+
+# Abundant IZA translation in merged library
+_IZA_TRANSLATION = {
+    6000: 6012,
+}
+
+
+class AtomicRepresentation(EqualityMixin):
+    """Atomic representation of an isotope or a particle.
+
+    Parameters
+    ----------
+    z: int
+        Number of protons (atomic number)
+    a: int
+        Number of nucleons (mass number)
+
+    Raises
+    ------
+    IOError:
+        When the number of protons (z) declared is higher than the number
+        of nucleons (a)
+
+    Attributes
+    ----------
+    z: int
+        Number of protons (atomic number)
+    a: int
+        Number of nucleons (mass number)
+    n: int
+        Number of neutrons
+    breaking_energy: float
+        Energy required to break the isotope or particle into their
+        constituent nucleons from tabulated values
+    M: float
+        Kalbach-Mann M coefficient
+    m: float
+        Kalbach-Mann m coefficient
+    iza: int
+        ZA identifier defined as:
+        iza = Z x 1000 + A,
+        where Z is the number of protons and A the number of nucleons
+
+    """
+    def __init__(self, z, a):
+        self._consistency_check(z, a)
+        self._z = z
+        self._a = a
+        self.z = self._z
+        self.a = self._a
+
+    def __add__(self, other):
+        """Adds two AtomicRepresentations.
+
+        """
+        z = self.z + other.z
+        a = self.a + other.a
+        return AtomicRepresentation(z=z, a=a)
+
+    def __sub__(self, other):
+        """Substracts two AtomicRepresentations.
+
+        """
+        z = self.z - other.z
+        a = self.a - other.a
+        return AtomicRepresentation(z=z, a=a)
+
+    @property
+    def a(self):
+        self._consistency_check(self._z, self._a)
+        return self._a
+
+    @property
+    def z(self):
+        self._consistency_check(self._z, self._a)
+        return self._z
+
+    @property
+    def n(self):
+        return self.a - self.z
+
+    @property
+    def breaking_energy(self):
+        breaking_energy = None
+        if self.iza in _TABULATED_BREAKING_ENERGY:
+            breaking_energy = _TABULATED_BREAKING_ENERGY[self.iza]
+        return breaking_energy
+
+    @property
+    def M(self):
+        M = None
+        if self.iza in _TABULATED_PARTICLE_M:
+            M = _TABULATED_PARTICLE_M[self.iza]
+        return M
+
+    @property
+    def m(self):
+        m = None
+        if self.iza in _TABULATED_PARTICLE_SM:
+            m = _TABULATED_PARTICLE_SM[self.iza]
+        return m
+
+    @property
+    def iza(self):
+        iza = self.z * 1000 + self.a
+        return iza
+
+    @a.setter
+    def a(self, an):
+        cv.check_type('a', an, Integral)
+        cv.check_greater_than('a', an, 0, equality=True)
+        self._consistency_check(self._z, an)
+        self._a = an
+
+    @z.setter
+    def z(self, zn):
+        cv.check_type('z', zn, Integral)
+        cv.check_greater_than('z', zn, 0, equality=True)
+        self._consistency_check(zn, self._a)
+        self._z = zn
+
+    @staticmethod
+    def _consistency_check(z, a):
+        """Simple consistency check.
+
+        Parameters
+        ----------
+        z: int
+            Number of protons (atomic number)
+        a: int
+            Number of nucleons (mass number)
+
+        Raises
+        ------
+        IOError:
+            When the number of protons (z) declared is higher than the number
+            of nucleons (a)
+
+        """
+        if z > a:
+            raise IOError(
+                "Number of protons (%i) incompatible with number of "
+                "nucleons (%i)" % (z, a)
+            )
+
+    @classmethod
+    def from_iza(cls, iza):
+        """Instantiates an AtomicRepresentation from a ZA identifier.
+
+        The ZA identifier is defined as:
+        iza = Z x 1000 + A,
+        where Z is the number of protons and A the number of nucleons.
+
+        Parameters
+        ----------
+        iza: int
+            ZA identifier
+
+        Returns
+        -------
+        AtomicRepresentation
+            Atomic representation of the isotope/particle
+
+        """
+        if iza in _IZA_TRANSLATION.keys():
+            iza = _IZA_TRANSLATION[iza]
+
+        z = int(iza/1000)
+        a = np.mod(iza, 1000)
+
+        return cls(z, a)
+
+
+def _calculate_separation_energy(compound, nucleus, particle):
+    """Calculates the separation energy as defined in ENDF-6 manual
+    BNL-203218-2018-INRE, Revision 215, File 6 description for LAW=1
+    and LANG=2. This function can be used for the incident or emitted
+    particle of the following reaction: A + a -> C -> B + b
+
+    Parameters
+    ----------
+    compound: AtomicRepresentation
+        Atomic representation of the compound (C)
+    nucleus: AtomicRepresentation
+        Atomic representation of the nucleus (A or B)
+    particle: AtomicRepresentation
+        Atomic representation of the particle (a or b)
+
+    Returns
+    -------
+    separation_energy: float
+        Separation energy in MeV
+
+    """
+    coef_1 = 15.68 * (compound.a - nucleus.a)
+    coef_2 = 28.07 * ((compound.n - compound.z)**2 / float(compound.a) - \
+        (nucleus.n - nucleus.z)**2 / float(nucleus.a))
+    coef_3 = 18.56 * (compound.a**(2./3.) - nucleus.a**(2./3.))
+    coef_4 = 33.22 * ((compound.n - compound.z)**2 / float(compound.a)**(4./3.) - \
+        (nucleus.n - nucleus.z)**2 / float(nucleus.a)**(4./3.))
+    coef_5 = 0.717 * (compound.z**2 / float(compound.a)**(1./3.) - \
+        nucleus.z**2 / float(nucleus.a)**(1./3.))
+    coef_6 = 1.211 * (compound.z**2 / float(compound.a) - \
+        nucleus.z**2 / float(nucleus.a))
+
+    separation_energy = coef_1 - coef_2 - coef_3 + coef_4 \
+        - coef_5 + coef_6 - particle.breaking_energy
+
+    return separation_energy
+
+
+def _return_entrance_channel_energy(e_p, awr_t, awr_p):
+    """Returns the entrance channel energy as defined in ENDF-6 manual
+    BNL-203218-2018-INRE, Revision 215, File 6 description for LAW=1
+    and LANG=2.
+
+    Parameters
+    ----------
+    e_p: float
+        Energy of the incident projectile in the laboratory system in eV
+    awr_t: float
+        Atomic weight ratio of the target
+    awr_p: float
+        Atomic weight ratio of the projectile
+
+    Returns
+    -------
+    epsilon_p: float
+        Entrance channel energy in eV
+
+    """
+    epsilon_p = e_p * awr_t / (awr_t + awr_p)
+    return epsilon_p
+
+
+def _return_emission_channel_energy(e_e, awr_r, awr_e):
+    """Returns the emission channel energy as defined in ENDF-6 manual
+    BNL-203218-2018-INRE, Revision 215, File 6 description for LAW=1
+    and LANG=2.
+
+    Parameters
+    ----------
+    e_e: float
+        Energy of the emitted particle in the center of mass system in eV
+    awr_r: float
+        Atomic weight ratio of the residual nucleus
+    awr_e: float
+        Atomic weight ratio of the emitted particle
+
+    Returns
+    -------
+    epsilon_e: float
+        Emission channel energy in eV
+
+    """
+    epsilon_e = e_e * (awr_r + awr_e) / awr_r
+    return epsilon_e
+
+
+def _calculate_kalbach_slope(energy_projectile,
+                             energy_emitted,
+                             projectile,
+                             target,
+                             compound,
+                             emitted,
+                             residual):
+    """Calculate the Kalbach slope for projectiles other than photons
+    as defined in ENDF-6 manual BNL-203218-2018-INRE, Revision 215,
+    File 6 description for LAW=1 and LANG=2.
+
+    The entrance and emission channel energies are not calculated with
+    the AWR number, but approximated with the number of mass instead.
+
+    Parameters
+    ----------
+    energy_projectile: float
+        Energy of the projectile in the laboratory system in eV
+    energy_emitted: float
+        Energy of the emitted particle in the center of mass system in eV
+    projectile: AtomicRepresentation
+        Atomic representation of the projectile
+    target: AtomicRepresentation
+        Atomic representation of the target
+    compound: AtomicRepresentation
+        Atomic representation of the compound
+    emitted: AtomicRepresentation
+        Atomic representation of the emitted particle
+    residual: AtomicRepresentation
+        Atomic representation of the residual nucleus
+
+    Returns
+    -------
+    slope: float
+        Kalbach-Mann slope
+
+    """
+    epsilon_a = _return_entrance_channel_energy(
+        energy_projectile,
+        target.a,
+        projectile.a
+    ) / EV_PER_MEV
+    epsilon_b = _return_emission_channel_energy(
+        energy_emitted,
+        residual.a,
+        emitted.a
+    ) / EV_PER_MEV
+
+    s_a = _calculate_separation_energy(compound, target, projectile)
+    s_b = _calculate_separation_energy(compound, residual, emitted)
+
+    e_a = epsilon_a + s_a
+    e_b = epsilon_b + s_b
+
+    r_1 = min(e_a, _ET1)
+    r_3 = min(e_a, _ET3)
+
+    x_1 = r_1 * e_b / e_a
+    x_3 = r_3 * e_b / e_a
+
+    slope = _C1 * x_1 \
+        + _C2 * x_1**3 \
+        + _C3 * projectile.M * emitted.m * x_3**4
+
+    return slope
+
+
+def return_kalbach_slope(energy_projectile,
+                         energy_emitted,
+                         iza_projectile,
+                         iza_emitted,
+                         iza_target):
+    """Returns Kalbach-Mann slope from calculations.
+    
+    The associated reaction is defined as:
+    A + a -> C -> B + b
+
+    Where:
+
+    - A is the targeted nucleus,
+    - a is the projectile,
+    - C is the compound,
+    - B is the residual nucleus,
+    - b is the emitted particle.
+
+    This function uses the concept of ZA identifier defined as:
+    iza = Z x 1000 + A,
+    where Z is the number of protons and A the number of nucleons.
+
+    The Kalbach-Mann slope calculation is done as defined in ENDF-6 manual
+    BNL-203218-2018-INRE, Revision 215, File 6 description for LAW=1 and
+    LANG=2. One exception to this, is that the entrance and emission channel
+    energies are not calculated with the AWR number, but approximated with
+    the number of mass instead.
+
+    Parameters
+    ----------
+    energy_projectile: float
+        Energy of the projectile in the laboratory system in eV
+    energy_emitted: float
+        Energy of the emitted particle in the center of mass system in eV
+    iza_projectile: int
+        ZA identifier of the projectile
+    iza_emitted: int
+        ZA identifier of the emitted particle
+    iza_target: int
+        ZA identifier of the targeted nucleus
+
+    Raises
+    ------
+    NotImplementedError:
+        When the ZA identifier of the projectile is not equal to 1
+        (ie. other than a neutron).
+
+    Returns
+    -------
+    slope: float
+        Kalbach-Mann slope given with the same format as ACE file.
+
+    """
+    # TODO: develop for photons as projectile
+    # TODO: test for other particles than neutron
+    if iza_projectile != 1:
+        raise NotImplementedError(
+            "Developed and tested for neutron projectile only."
+        )
+
+    projectile = AtomicRepresentation.from_iza(iza_projectile)
+    emitted = AtomicRepresentation.from_iza(iza_emitted)
+    target = AtomicRepresentation.from_iza(iza_target)
+    compound = projectile + target
+    residual = compound - emitted
+
+    slope = _calculate_kalbach_slope(
+        energy_projectile,
+        energy_emitted,
+        projectile,
+        target,
+        compound,
+        emitted,
+        residual
+    )
+
+    return float("%7e" % slope)
 
 
 class KalbachMann(AngleEnergy):
@@ -319,7 +782,7 @@ class KalbachMann(AngleEnergy):
             n_energy_out = int(ace.xss[idx + 1])
             data = ace.xss[idx + 2:idx + 2 + 5*n_energy_out].copy()
             data.shape = (5, n_energy_out)
-            data[0,:] *= EV_PER_MEV
+            data[0, :] *= EV_PER_MEV
 
             # Create continuous distribution
             eout_continuous = Tabular(data[0][n_discrete_lines:],
@@ -352,13 +815,28 @@ class KalbachMann(AngleEnergy):
         return cls(breakpoints, interpolation, energy, energy_out, km_r, km_a)
 
     @classmethod
-    def from_endf(cls, file_obj):
-        """Generate Kalbach-Mann distribution from an ENDF evaluation
+    def from_endf(cls, file_obj, iza_emitted, iza_target, projectile_mass):
+        """Generate Kalbach-Mann distribution from an ENDF evaluation.
+
+        If the projectile is a neutron, the slope is calculated when it is
+        not given explicitly.
 
         Parameters
         ----------
         file_obj : file-like object
             ENDF file positioned at the start of the Kalbach-Mann distribution
+        iza_emitted : int
+            ZA identifier of the emitted particle
+        iza_target : int
+            ZA identifier of the target
+        projectile_mass: float
+            Mass of the projectile
+
+        Warns
+        -----
+        UserWarning
+            If the mass of the projectile is not equal to 1 (other than
+            a neutron), the slope is not calculated and set to 0 if missing.
 
         Returns
         -------
@@ -374,6 +852,7 @@ class KalbachMann(AngleEnergy):
         energy_out = []
         precompound = []
         slope = []
+        calculated_slope = []
         for i in range(ne):
             items, values = get_list_record(file_obj)
             energy[i] = items[1]
@@ -385,19 +864,46 @@ class KalbachMann(AngleEnergy):
             values.shape = (n_energy_out, n_angle + 2)
 
             # Outgoing energy distribution at the i-th incoming energy
-            eout_i = values[:,0]
-            eout_p_i = values[:,1]
+            eout_i = values[:, 0]
+            eout_p_i = values[:, 1]
             energy_out_i = Tabular(eout_i, eout_p_i, INTERPOLATION_SCHEME[lep])
             energy_out.append(energy_out_i)
 
-            # Precompound and slope factors for Kalbach-Mann
-            r_i = values[:,2]
+            # Precompound factors for Kalbach-Mann
+            r_i = values[:, 2]
+
+            # Slope factors for Kalbach-Mann
             if n_angle == 2:
-                a_i = values[:,3]
+                a_i = values[:, 3]
+                calculated_slope.append(False)
             else:
-                a_i = np.zeros_like(r_i)
+                # Check if the projectile is not a neutron
+                if not np.isclose(projectile_mass, 1.0, atol=1.0e-12, rtol=0.):
+                    warn(
+                        "Kalbach-Mann slope calculation is only available with "
+                        "neutrons as projectile. Slope coefficients are set to 0."
+                    )
+                    a_i = np.zeros_like(r_i)
+                    calculated_slope.append(False)
+
+                else:
+                    # TODO: retrieve IZA of the projectile
+                    iza_projectile = 1
+                    a_i = [return_kalbach_slope(energy_projectile=energy[i],
+                                                energy_emitted=e,
+                                                iza_projectile=iza_projectile,
+                                                iza_emitted=iza_emitted,
+                                                iza_target=iza_target)
+                           for e in eout_i]
+                    calculated_slope.append(True)
+
             precompound.append(Tabulated1D(eout_i, r_i))
             slope.append(Tabulated1D(eout_i, a_i))
 
-        return cls(tab2.breakpoints, tab2.interpolation, energy,
-                   energy_out, precompound, slope)
+        km_distribution = cls(tab2.breakpoints, tab2.interpolation, energy,
+                              energy_out, precompound, slope)
+
+        # List of bool to indicate slope calculation by OpenMC
+        km_distribution._calculated_slope = calculated_slope
+
+        return km_distribution

@@ -165,6 +165,95 @@ class RectangularParallelepiped(CompositeSurface):
     def __pos__(self):
         return -self.xmin | +self.xmax | -self.ymin | +self.ymax | -self.zmin | +self.zmax
 
+class CylinderSector(CompositeSurface):
+    """Infinite cylindrical sector composite surface
+
+    This class
+    acts as a proper surface, meaning that unary `+` and `-` operators applied
+    to it will produce a half-space. The negative side is defined to be the
+    region inside of the octogonal prism.
+
+    Parameters
+    ----------
+    center_axis : 2-tuple
+         (x,y), (x,z), or (y,z) coordiante of cylinders' central axes.
+         Defaults to (0,0)
+    r1, r2 : float
+        Inner and outer cylinder radii
+    alpha1, alpha2 : float
+        Angular segmentation in degrees relative to the x-, x-, or y-axis.
+    axis : {'z', 'y', 'x'}
+        Axes of the cylinders
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    outer : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+        Outer cylinder surface
+    inner : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+        Inner cylinder surface
+    plane_1 : openmc.Plane
+        Segment plane corresponding to :attr:`alpha1`
+    plane_2 : openmc.Plane
+        Segmenting plane correspodning to :attr:`alpha2`
+
+    """
+
+    _surface_names = ('outer','inner',
+                      'plane_a', 'plane_b')
+
+    def __init__(self, center, r1, r2, alpha1, alpha2, **kwargs):
+
+        alpha1 = np.pi / 180 * alpha1
+        alpha2 = np.pi / 180 * alpha2
+        # Coords for axis-perpendicular planes
+        p1 = np.array([0,0,1])
+
+        p2_plane1 = np.array([r1 * np.cos(alpha1), -r1 * np.sin(alpha1), 0])
+        p3_plane1 = np.array([r2 * np.cos(alpha1), -r2 * np.sin(alpha1), 0])
+
+        p2_plane2 = np.array([r1 * np.cos(alpha2), r1 * np.sin(alpha2), 0])
+        p3_plane2 = np.array([r2 * np.cos(alpha2), r2 * np.sin(alpha2), 0])
+
+        points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
+        if axis == 'x':
+            self.inner = openmc.XCylinder(*center_axis, r=r1, **kwargs)
+            self.outer = openmc.XCylinder(*center_axis, r=r2, **kwargs)
+            coord_map = [2,0,1]
+         elif axis == 'y':
+            self.inner = openmc.YCylinder(*center_axis, r=r1, **kwargs)
+            self.outer = openmc.YCylinder(*center_axis, r=r2, **kwargs)
+            coord_map = [0,2,1]
+         elif axis == 'z':
+            self.inner = openmc.ZCylinder(*center_axis, r=r1, **kwargs)
+            self.outer = openmc.ZCylinder(*center_axis, r=r2, **kwargs)
+            coord_map = [0,1,2]
+
+        calibrated_points = []
+        for p in points:
+            p_temp = []
+            for i in coord_map:
+                p_temp += [p[i]]
+            calibrated_points += [np.array(p_temp)]
+
+        p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2 = calibrated_points
+
+        plane1_params = _plane_from_points(p1, p2_plane1, p3_plane1)
+        plane2_params = _plane_from_points(p1, p2_plane2, p3_plane2)
+
+        self.inner = openmc.ZCylinder(x0=x0, y0=y0, r=r1, **kwargs)
+        self.outer = openmc.ZCylinder(x0=x0, y0=y0, r=r2, **kwargs)
+        self.plane1 = openmc.Plane(*plane1_params, **kwargs)
+        self.plane2 = openmc.Plane(*plane2_params, **kwargs)
+
+
+    def __neg__(self):
+        return -self.outer & +self.inner & -self.plane1 &  +self.plane2
+
+
+    def __pos__(self):
+        return +self.outer | -self.inner | +self.plane1 | -self.plane2
 
 class XConeOneSided(CompositeSurface):
     """One-sided cone parallel the x-axis

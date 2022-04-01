@@ -1086,47 +1086,64 @@ NonuniformStackLattice::NonuniformStackLattice(pugi::xml_node lat_node) : Lattic
 {
   type_ = LatticeType::rect;
 
-  // Read the number of lattice cells in each dimension.
-  std::string dimension_str {get_node_value(lat_node, "dimension")};
-  vector<std::string> dimension_words {split(dimension_str)};
-  if (dimension_words.size() == 2) {
-    n_cells_[0] = std::stoi(dimension_words[0]);
-    n_cells_[1] = std::stoi(dimension_words[1]);
-    n_cells_[2] = 1;
-    is_3d_ = false;
-  } else if (dimension_words.size() == 3) {
-    n_cells_[0] = std::stoi(dimension_words[0]);
-    n_cells_[1] = std::stoi(dimension_words[1]);
-    n_cells_[2] = std::stoi(dimension_words[2]);
-    is_3d_ = true;
+  // Read the lattice orientation.  Default to 'z'.
+  if (check_for_node(lat_node, "orientation")) {
+    std::string orientation = get_node_value(lat_node, "orientation");
+    if (orientation == "z") {
+      orientation_ = Orientation::z;
+    } else if (orientation == "y") {
+      orientation_ = Orientation::y;
+    } else if (orientation == "x") {
+      orientation_ = Orientation::x;
+    } else {
+      fatal_error("Unrecognized orientation '" + orientation +
+                  "' for lattice " + std::to_string(id_));
+    }
   } else {
-    fatal_error("Rectangular lattice must be two or three dimensions.");
+    orientation_ = Orientation::z;
   }
 
-  // Read the lattice lower-left location.
-  std::string ll_str {get_node_value(lat_node, "lower_left")};
-  vector<std::string> ll_words {split(ll_str)};
-  if (ll_words.size() != dimension_words.size()) {
-    fatal_error("Number of entries on <lower_left> must be the same as the "
-                "number of entries on <dimension>.");
+  // Read the number of lattice cells along its axis.
+  std::string n_levels_str {get_node_value(lat_node, "num_levels")};
+  vector<std::string> n_levels_words {split(n_levels_str)};
+  if (n_levels_words.size() == 1) {
+    if (orientation_ == Orientaion::z:) {
+      n_cells[0] = 1;
+      n_cells[1] = 1;
+      n_cells[2] = std::stoi(n_levels_words[0]);
+    }
+    else if (orientation_ == Orientation::y:) {
+      n_cells[0] = 1;
+      n_cells[1] = std::stoid(n_levels_words[0]);
+      n_cells[2] = 1;
+    }
+    else {
+      n_cells[0] = std::stoid(n_levels_words[0]);
+      n_cells[1] = 1;
+      n_cells[2] = 1;
+    }
+  } else {
+    fatal_error("Stack lattice must be one dimensional.");
   }
-  lower_left_[0] = stod(ll_words[0]);
-  lower_left_[1] = stod(ll_words[1]);
-  if (is_3d_) {
-    lower_left_[2] = stod(ll_words[2]);
+
+  // Read the lattice central-axis location.
+  std::string ca_str {get_node_value(lat_node, "central_axis")};
+  vector<std::string> ca_words {split(ca_str)};
+  if (ca_words.size() != 2) {
+    fatal_error("Number of entries on <central_axis> must be 2.");
   }
+  central_axis_[0] = stod(ca_words[0]);
+  central_axis_[1] = stod(ca_words[1]);
 
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
   vector<std::string> pitch_words {split(pitch_str)};
-  if (pitch_words.size() != dimension_words.size()) {
+  if (pitch_words.size() != n_levels_words.size()) {
     fatal_error("Number of entries on <pitch> must be the same as the "
-                "number of entries on <dimension>.");
+                "number of entries on <num_levels>.");
   }
-  pitch_[0] = stod(pitch_words[0]);
-  pitch_[1] = stod(pitch_words[1]);
-  if (is_3d_) {
-    pitch_[2] = stod(pitch_words[2]);
+  for (int i = 0; i < n_levels_words.size(); i++) {
+    pitch_[i] = stod(pitch_words[i]);
   }
 
   // Read the universes and make sure the correct number was specified.
@@ -1134,13 +1151,15 @@ NonuniformStackLattice::NonuniformStackLattice(pugi::xml_node lat_node) : Lattic
   vector<std::string> univ_words {split(univ_str)};
   if (univ_words.size() != n_cells_[0] * n_cells_[1] * n_cells_[2]) {
     fatal_error(fmt::format(
-      "Expected {} universes for a rectangular lattice of size {}x{}x{} but {} "
+      "Expected {} universes for a stack lattice of size {}x{}x{} but {} "
       "were specified.",
       n_cells_[0] * n_cells_[1] * n_cells_[2], n_cells_[0], n_cells_[1],
       n_cells_[2], univ_words.size()));
   }
 
   // Parse the universes.
+  // leaving this as is for now; may remove these for loops
+  // later since we only really need a 1D array
   universes_.resize(n_cells_[0] * n_cells_[1] * n_cells_[2], C_NONE);
   for (int iz = 0; iz < n_cells_[2]; iz++) {
     for (int iy = n_cells_[1] - 1; iy > -1; iy--) {
@@ -1324,8 +1343,8 @@ void NonuniformStackLattice::to_hdf5_inner(hid_t lat_group) const
   write_string(lat_group, "type", "nonuniformstack", false);
   if (is_3d_) {
     write_dataset(lat_group, "pitch", pitch_);
-    write_dataset(lat_group, "lower_left", lower_left_);
-    write_dataset(lat_group, "dimension", n_cells_);
+    write_dataset(lat_group, "central_axis", central_axis_);
+    write_dataset(lat_group, "num_levels", n_cells_);
   } else {
     array<double, 2> pitch_short {{pitch_[0], pitch_[1]}};
     write_dataset(lat_group, "pitch", pitch_short);

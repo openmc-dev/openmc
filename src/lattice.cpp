@@ -1079,10 +1079,10 @@ void HexLattice::to_hdf5_inner(hid_t lat_group) const
 }
 
 //==============================================================================
-// NonuniformStackLattice implementation
+// StackLattice implementation
 //==============================================================================
 
-NonuniformStackLattice::NonuniformStackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
+StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
 {
   type_ = LatticeType::rect;
 
@@ -1091,6 +1091,7 @@ NonuniformStackLattice::NonuniformStackLattice(pugi::xml_node lat_node) : Lattic
     std::string orientation = get_node_value(lat_node, "orientation");
     if (orientation == "z") {
       orientation_ = Orientation::z;
+      is_3d_ = true; // only in the sense that we intersect the z-plane
     } else if (orientation == "y") {
       orientation_ = Orientation::y;
     } else if (orientation == "x") {
@@ -1138,12 +1139,19 @@ NonuniformStackLattice::NonuniformStackLattice(pugi::xml_node lat_node) : Lattic
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
   vector<std::string> pitch_words {split(pitch_str)};
-  if (pitch_words.size() != n_levels_words.size()) {
+  is_uniform = false;
+  if (pitch_words.size() == 1) {
+    pitch_[0] = stod(pitch_words[i]);
+    is_uniform_ = true;
+  }
+  else if (pitch_words.size() != n_levels_words.size()) {
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <num_levels>.");
   }
-  for (int i = 0; i < n_levels_words.size(); i++) {
-    pitch_[i] = stod(pitch_words[i]);
+  if (!is_uniform_) {
+    for (int i = 0; i < n_levels_words.size(); i++) {
+      pitch_[i] = stod(pitch_words[i]);
+    }
   }
 
   // Read the universes and make sure the correct number was specified.
@@ -1175,14 +1183,14 @@ NonuniformStackLattice::NonuniformStackLattice(pugi::xml_node lat_node) : Lattic
 
 //==============================================================================
 
-int32_t const& NonuniformStackLattice::operator[](array<int, 3> const& i_xyz)
+int32_t const& StackLattice::operator[](array<int, 3> const& i_xyz)
 {
   return universes_[get_flat_index(i_xyz)];
 }
 
 //==============================================================================
 
-bool NonuniformStackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
+bool StackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 {
   return ((i_xyz[0] >= 0) && (i_xyz[0] < n_cells_[0]) && (i_xyz[1] >= 0) &&
           (i_xyz[1] < n_cells_[1]) && (i_xyz[2] >= 0) &&
@@ -1191,7 +1199,7 @@ bool NonuniformStackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 
 //==============================================================================
 
-std::pair<double, array<int, 3>> NonuniformStackLattice::distance(
+std::pair<double, array<int, 3>> StackLattice::distance(
   Position r, Direction u, const array<int, 3>& i_xyz) const
 {
   // Get short aliases to the coordinates.
@@ -1249,7 +1257,7 @@ std::pair<double, array<int, 3>> NonuniformStackLattice::distance(
 
 //==============================================================================
 
-void NonuniformStackLattice::get_indices(
+void StackLattice::get_indices(
   Position r, Direction u, array<int, 3>& result) const
 {
   // Determine x index, accounting for coincidence
@@ -1283,7 +1291,7 @@ void NonuniformStackLattice::get_indices(
   }
 }
 
-int NonuniformStackLattice::get_flat_index(const array<int, 3>& i_xyz) const
+int StackLattice::get_flat_index(const array<int, 3>& i_xyz) const
 {
   return n_cells_[0] * n_cells_[1] * i_xyz[2] + n_cells_[0] * i_xyz[1] +
          i_xyz[0];
@@ -1291,7 +1299,7 @@ int NonuniformStackLattice::get_flat_index(const array<int, 3>& i_xyz) const
 
 //==============================================================================
 
-Position NonuniformStackLattice::get_local_position(
+Position StackLattice::get_local_position(
   Position r, const array<int, 3>& i_xyz) const
 {
   r.x -= (lower_left_.x + (i_xyz[0] + 0.5) * pitch_.x);
@@ -1304,7 +1312,7 @@ Position NonuniformStackLattice::get_local_position(
 
 //==============================================================================
 
-int32_t& NonuniformStackLattice::offset(int map, array<int, 3> const& i_xyz)
+int32_t& StackLattice::offset(int map, array<int, 3> const& i_xyz)
 {
   return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
                   n_cells_[0] * n_cells_[1] * i_xyz[2] +
@@ -1313,14 +1321,14 @@ int32_t& NonuniformStackLattice::offset(int map, array<int, 3> const& i_xyz)
 
 //==============================================================================
 
-int32_t NonuniformStackLattice::offset(int map, int indx) const
+int32_t StackLattice::offset(int map, int indx) const
 {
   return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map + indx];
 }
 
 //==============================================================================
 
-std::string NonuniformStackLattice::index_to_string(int indx) const
+std::string StackLattice::index_to_string(int indx) const
 {
   int iz {indx / (n_cells_[0] * n_cells_[1])};
   int iy {(indx - n_cells_[0] * n_cells_[1] * iz) / n_cells_[0]};
@@ -1337,7 +1345,7 @@ std::string NonuniformStackLattice::index_to_string(int indx) const
 
 //==============================================================================
 
-void NonuniformStackLattice::to_hdf5_inner(hid_t lat_group) const
+void StackLattice::to_hdf5_inner(hid_t lat_group) const
 {
   // Write basic lattice information.
   write_string(lat_group, "type", "nonuniformstack", false);

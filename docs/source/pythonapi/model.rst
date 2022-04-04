@@ -30,6 +30,7 @@ Composite Surfaces
    openmc.model.XConeOneSided
    openmc.model.YConeOneSided
    openmc.model.ZConeOneSided
+   openmc.model.Octagon
 
 TRISO Fuel Modeling
 -------------------

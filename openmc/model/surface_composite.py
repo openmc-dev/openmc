@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from copy import copy
+from math import sqrt, pi, sin, cos
+from numpy import array
 
 import openmc
-from math import sin, cos, sqrt
 from openmc.checkvalue import check_greater_than, check_value
 
 
@@ -209,41 +210,39 @@ class CylinderSector(CompositeSurface):
 
     def __init__(self, center, r1, r2, theta0, theta, axis='z', **kwargs):
 
-        theta0 = np.pi / 180 * theta0
-        theta = np.pi / 180 * theta
+        theta0 = pi / 180 * theta0
+        theta = pi / 180 * theta
         theta1 = theta0 + theta
 
         # Coords for axis-perpendicular planes
-        p1 = np.array([0,0])
+        p1 = array([0.,0.,1.])
 
-        p2_plane0 = np.array([r1 * cos(theta0), r1 * sin(theta0)])
-        p3_plane0 = np.array([r2 * cos(theta0), r2 * sin(theta0)])
+        p2_plane0 = array([r1 * cos(theta0), r1 * sin(theta0), 0.])
+        p3_plane0 = array([r2 * cos(theta0), r2 * sin(theta0), 0.])
 
-        p2_plane1 = np.array([r1 * cos(theta1), r1 * sin(theta1)])
-        p3_plane1 = np.array([r2 * cos(theta1), r2 * sin(theta1)])
+        p2_plane1 = array([r1 * cos(theta1), r1 * sin(theta1), 0.])
+        p3_plane1 = array([r2 * cos(theta1), r2 * sin(theta1), 0.])
 
-        points = [p2_plane0, p3_plane0, p2_plane1, p3_plane1]
-        if axis == 'x':
-            self.inner = openmc.XCylinder(*center, r=r1, **kwargs)
-            self.outer = openmc.XCylinder(*center, r=r2, **kwargs)
-            axis_idx = 0
-         elif axis == 'y':
-            self.inner = openmc.YCylinder(*center, r=r1, **kwargs)
-            self.outer = openmc.YCylinder(*center, r=r2, **kwargs)
-            axis_idx = 1
-         elif axis == 'z':
+        points = [p1, p2_plane0, p3_plane0, p2_plane1, p3_plane1]
+        if axis == 'z':
+            coord_map = [0,1,2]
             self.inner = openmc.ZCylinder(*center, r=r1, **kwargs)
             self.outer = openmc.ZCylinder(*center, r=r2, **kwargs)
-            axis_idx = 3
+
+        elif axis == 'y':
+             coord_map = [0,2,1]
+            self.inner = openmc.YCylinder(*center, r=r1, **kwargs)
+            self.outer = openmc.YCylinder(*center, r=r2, **kwargs)
+        elif axis == 'x':
+            coord_map = [2,0,1]
+            self.inner = openmc.XCylinder(*center, r=r1, **kwargs)
+            self.outer = openmc.XCylinder(*center, r=r2, **kwargs)
 
         calibrated_points = []
         for p in points:
-            p_temp = []
-            for i in coord_map:
-            calibrated_points += [np.insert(p, axis_idx, 0)]
+            calibrated_points += [p[coord_map]]
 
-        p2_plane0, p3_plane0, p2_plane1, p3_plane1 = calibrated_points
-        p1 = np.insert(p1, axis_idx, 1)
+        p1, p2_plane0, p3_plane0, p2_plane1, p3_plane1 = calibrated_points
 
         self.plane0 = openmc.Plane.from_points(p1, p2_plane0, p3_plane0, **kwargs)
         self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1, **kwargs)

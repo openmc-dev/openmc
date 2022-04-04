@@ -3,18 +3,8 @@ from copy import copy
 
 import openmc
 from openmc.checkvalue import check_greater_than, check_value
-from numpy import sqrt, cross, dot, array
-
-def _plane_from_points(p1, p2, p3):
-    # get plane from points p1, p2, p3
-    n = cross(p2 - p1, p3 - p1)
-    n0 = -p1
-    A = n[0]
-    B = n[1]
-    C = n[2]
-    D = dot(n, n0)
-
-    return [A, B, C, -D]
+import openmc.Plane.from_points as plane_from_points
+from numpy import sqrt
 
 class CompositeSurface(ABC):
     """Multiple primitive surfaces combined into a composite surface"""
@@ -164,19 +154,14 @@ class Octagon(CompositeSurface):
             p_temp = []
             for i in coord_map:
                 p_temp += [p[i]]
-            calibrated_points += [array(p_temp)]
+            calibrated_points += [p_temp]
 
         p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr = calibrated_points
 
-        upper_right_params = _plane_from_points(p1_ur, p2_ur, p3_ur)
-        lower_right_params = _plane_from_points(p1_lr, p2_lr, p3_lr)
-        lower_left_params = _plane_from_points(-p1_ur, -p2_ur, -p3_ur)
-        upper_left_params = _plane_from_points(-p1_lr, -p2_lr, -p3_lr)
-
-        self.upper_right = openmc.Plane(*tuple(upper_right_params), **kwargs)
-        self.lower_right = openmc.Plane(*tuple(lower_right_params), **kwargs)
-        self.lower_left = openmc.Plane(*tuple(lower_left_params), **kwargs)
-        self.upper_left = openmc.Plane(*tuple(upper_left_params), **kwargs)
+        self.upper_right = plane_from_points(p1_ur, p2_ur, p3_ur, **kwargs)
+        self.lower_right = plane_from_points(p1_lr, p2_lr, p3_lr, **kwargs)
+        self.lower_left = plane_from_points(-p1_ur, -p2_ur, -p3_ur, **kwargs)
+        self.upper_left = plane_from_points(-p1_lr, -p2_lr, -p3_lr, **kwargs)
 
 
     def __neg__(self):

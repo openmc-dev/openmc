@@ -64,38 +64,37 @@ class CompositeSurface(ABC):
 class Octagon(CompositeSurface):
     """Infinite octogonal prism composite surface
 
-    An octagonal prism is composed of eight surfaces. The prism is parallel to
-    the x, y, or z axis; two pars of surfaces are perpendicualr to the z and y,
-    x and z, or y and x axes, respectively.
+    An octagonal prism is composed of eight planar surfaces. The prism is
+    parallel to the x, y, or z axis; two pars of surfaces are perpendicular to
+    the y and z, x and z, or x and y axes, respectively.
 
-    This class
-    acts as a proper surface, meaning that unary `+` and `-` operators applied
-    to it will produce a half-space. The negative side is defined to be the
-    region inside of the octogonal prism.
+    This class acts as a proper surface, meaning that unary `+` and `-`
+    operators applied to it will produce a half-space. The negative side is
+    defined to be the region inside of the octogonal prism.
 
     Parameters
     ----------
-    center : 2-tuple
-        (q1,q2) coordinate for the center of the octagon. (q1,q2) pairs are
-        (x,y), (x,z), or (x,z).
+    center : iterable of float
+        (q1,q2) coordinate for the central axis of the octagon. (q1,q2) pairs
+        are (y,z), (x,z), or (x,y).
     r1 : float
-        Half-width of octagon across axis-perpendicualr sides
+        Half-width of octagon across axis-pendicular sides
     r2 : float
         Half-width of octagon across off-axis sides
     axis : {'x', 'y', 'z'}
-        Central axis of ocatgon. Defaults to 'z'
+        Central axis of octagon. Defaults to 'z'
     **kwargs
         Keyword arguments passed to underlying cylinder and plane classes
 
     Attributes
     ----------
-    top : openmc.ZPlane or openmc.XPlane
+    top : openmc.ZPlane or openmc.YPlane
         Top planar surface of octagon
-    bottom : openmc.ZPlane or openmc.XPlane
+    bottom : openmc.ZPlane or openmc.YPlane
         Bottom planar surface of octagon
-    right: openmc.YPlane or openmc.ZPlane
+    right: openmc.YPlane or openmc.XPlane
         Right planaer surface of octagon
-    left: openmc.YPlane or openmc.ZPlane
+    left: openmc.YPlane or openmc.XPlane
         Left planar surface of octagon
     upper_right : openmc.Plane
         Upper right planar surface of octagon

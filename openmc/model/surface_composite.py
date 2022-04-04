@@ -3,7 +3,7 @@ from copy import copy
 
 import openmc
 from openmc.checkvalue import check_greater_than, check_value
-from numpy import sqrt
+from numpy import sqrt, array
 
 class CompositeSurface(ABC):
     """Multiple primitive surfaces combined into a composite surface"""
@@ -161,18 +161,14 @@ class IsogonalOctagon(CompositeSurface):
             p_temp = []
             for i in coord_map:
                 p_temp += [p[i]]
-            calibrated_points += [p_temp]
+            calibrated_points += [array(p_temp)]
 
         p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr = calibrated_points
 
-        self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
-                                                    **kwargs)
-        self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr,
-                                                    **kwargs)
-        self.lower_left = openmc.Plane.from_points(-p1_ur, -p2_ur, -p3_ur,
-                                                   **kwargs)
-        self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr,
-                                                   **kwargs)
+        self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur, **kwargs)
+        self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr, **kwargs)
+        self.lower_left = openmc.Plane.from_points(-p1_ur, -p2_ur, -p3_ur,  **kwargs)
+        self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr, **kwargs)
 
 
     def __neg__(self):

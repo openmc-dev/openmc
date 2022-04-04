@@ -3,7 +3,18 @@ from copy import copy
 
 import openmc
 from openmc.checkvalue import check_greater_than, check_value
+from numpy import sqrt, cross, dot, array
 
+def _plane_from_points(p1, p2, p3):
+    # get plane from points p1, p2, p3
+    n = cross(p2 - p1, p3 - p1)
+    n0 = -p1
+    A = n[0]
+    B = n[1]
+    C = n[2]
+    D = dot(n, n0)
+
+    return [A, B, C, -D]
 
 class CompositeSurface(ABC):
     """Multiple primitive surfaces combined into a composite surface"""
@@ -114,8 +125,8 @@ class Octagon(CompositeSurface):
         cleft = q2c-r1
 
         # Side lengths
-        L_perp_ax1 = (r2 * np.sqrt(2) - r1) * 2
-        L_perp_ax2 = (r1 * np.sqrt(2) - r2) * 2
+        L_perp_ax1 = (r2 * sqrt(2) - r1) * 2
+        L_perp_ax2 = (r1 * sqrt(2) - r2) * 2
 
         # Coords for quadrant planes
         p1_ur = [L_perp_ax1/2, r1, 0]
@@ -154,7 +165,7 @@ class Octagon(CompositeSurface):
             p_temp = []
             for i in coord_map:
                 p_temp += [p[i]]
-            calibrated_points += [np.array(p_temp)]
+            calibrated_points += [array(p_temp)]
 
         p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr = calibrated_points
 
@@ -170,27 +181,27 @@ class Octagon(CompositeSurface):
 
 
     def __neg__(self):
-        reg = -self.top & +self.bottom & -self.right & +self.left
+        region1 = -self.top & +self.bottom & -self.right & +self.left
         if self._axis == 'y':
-            reg = reg & -self.upper_right & -self.lower_right & \
+            region2 = -self.upper_right & -self.lower_right & \
                 +self.lower_left & +self.upper_left
         else:
-            reg = reg & +self.upper_right & +self.lower_right & \
+            region2 = +self.upper_right & +self.lower_right & \
                 -self.lower_left & -self.upper_left
 
-        return reg
+        return region1 & region2
 
 
     def __pos__(self):
-        reg = +self.top | -self.bottom | +self.right | -self.left
+        region1 = +self.top | -self.bottom | +self.right | -self.left
         if self._axis == 'y':
-            reg = reg | +self.upper_right | +self.lower_right | \
+            region2 = +self.upper_right | +self.lower_right | \
                 -self.lower_left | -self.upper_left
         else:
-            reg = reg | -self.upper_right | -self.lower_right | \
+            region2 = -self.upper_right | -self.lower_right | \
                 +self.lower_left | +self.upper_left
 
-        return reg
+        return region1 | region2
 
 
 class RightCircularCylinder(CompositeSurface):

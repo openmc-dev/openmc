@@ -4,6 +4,7 @@ from math import sqrt
 from numpy import array
 
 import openmc
+import warnings
 from openmc.checkvalue import check_greater_than, check_value
 
 class CompositeSurface(ABC):
@@ -72,7 +73,7 @@ class IsogonalOctagon(CompositeSurface):
         (y, z), (x, z), or (x, y) basis.
     r1 : float
         Half-width of octagon across its basis axis-parallel sides in units
-        of cm
+        of cm. Assumed to be less than :math:`r_2\sqrt{2}`.
     r2 : float
         Half-width of octagon across its basis axis intersecting sides in
         units of cm. Assumed to be less than :math:`r_1\sqrt{2}`.
@@ -109,31 +110,34 @@ class IsogonalOctagon(CompositeSurface):
 
     def __init__(self, center, r1, r2, axis='z', **kwargs):
         self._axis = axis
-        q1c, q2c = center
+        c1, c2 = center
 
         # Coords for axis-perpendicular planes
-        ctop = q1c+r1
-        cbottom = q1c-r1
+        ctop = c1 + r1
+        cbottom = c1 - r1
 
-        cright= q2c+r1
-        cleft = q2c-r1
+        cright = c2 + r1
+        cleft = c2 - r1
 
         # Side lengths
-        if (r2 > r1 * sqrt(2)):
-            raise Warning(f'r2 is greater than {sqrt(2) * r1}. Octagon may'
-                          'be erroneous.')
+        if r2 > r1 * sqrt(2):
+            warnings.warn(f'r2 is greater than sqrt(2) * r1. Octagon may' + \
+                          ' be erroneous.')
+        if r1 > r2 * sqrt(2):
+            warnings.warn(f'r1 is greater than sqrt(2) * r2. Octagon may' + \
+                          ' be erroneous.')
 
         L_perp_ax1 = (r2 * sqrt(2) - r1) * 2
         L_perp_ax2 = (r1 * sqrt(2) - r2) * 2
 
         # Coords for quadrant planes
-        p1_ur = [L_perp_ax1/2, r1, 0]
-        p2_ur = [r1, L_perp_ax1/2, 0]
-        p3_ur = [r1, L_perp_ax1/2, 1]
+        p1_ur = array([L_perp_ax1/2, r1, 0.])
+        p2_ur = array([r1, L_perp_ax1/2, 0.])
+        p3_ur = array([r1, L_perp_ax1/2, 1.])
 
-        p1_lr = [r1, -L_perp_ax1/2, 0]
-        p2_lr = [L_perp_ax1/2, -r1, 0]
-        p3_lr = [L_perp_ax1/2, -r1, 1]
+        p1_lr = array([r1, -L_perp_ax1/2, 0.])
+        p2_lr = array([L_perp_ax1/2, -r1, 0.])
+        p3_lr = array([L_perp_ax1/2, -r1, 1.])
 
         points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr]
 
@@ -160,17 +164,18 @@ class IsogonalOctagon(CompositeSurface):
         # Put our coordinates in (x,y,z) order
         calibrated_points = []
         for p in points:
-            p_temp = []
-            for i in coord_map:
-                p_temp += [p[i]]
-            calibrated_points += [array(p_temp)]
+            calibrated_points += [p[coord_map]]
 
         p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr = calibrated_points
 
-        self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur, **kwargs)
-        self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr, **kwargs)
-        self.lower_left = openmc.Plane.from_points(-p1_ur, -p2_ur, -p3_ur,  **kwargs)
-        self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr, **kwargs)
+        self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
+                                                    **kwargs)
+        self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr,
+                                                    **kwargs)
+        self.lower_left = openmc.Plane.from_points(-p1_ur, -p2_ur, -p3_ur,
+                                                   **kwargs)
+        self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr,
+                                                   **kwargs)
 
 
     def __neg__(self):

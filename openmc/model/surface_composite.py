@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from copy import copy
 
 import openmc
+from math import sin, cos, sqrt
 from openmc.checkvalue import check_greater_than, check_value
 
 
@@ -168,22 +169,24 @@ class RectangularParallelepiped(CompositeSurface):
 class CylinderSector(CompositeSurface):
     """Infinite cylindrical sector composite surface
 
-    This class
-    acts as a proper surface, meaning that unary `+` and `-` operators applied
-    to it will produce a half-space. The negative side is defined to be the
-    region inside of the octogonal prism.
+    This class acts as a proper surface, meaning that unary `+` and `-`
+    operators applied to it will produce a half-space. The negative
+    side is defined to be the region inside of the cylinder sector.
 
     Parameters
     ----------
-    center_axis : 2-tuple
-         (x,y), (x,z), or (y,z) coordiante of cylinders' central axes.
-         Defaults to (0,0)
+    center : iterable of float
+         Coordinate for central axes of cylinders in the (y, z), (x,z), or
+         (x, y) basis. Defaults to (0,0)
     r1, r2 : float
         Inner and outer cylinder radii
-    alpha1, alpha2 : float
-        Angular segmentation in degrees relative to the x-, x-, or y-axis.
+    theta0 : float
+        Angular offset of the sector in degrees relative to the primary basis
+        axis (+y or +x).
+    theta : float
+        Angular width of the sector in degrees.
     axis : {'z', 'y', 'x'}
-        Axes of the cylinders
+        Central axis of the cylinders. Defaults to z
     **kwargs
         Keyword arguments passed to underlying plane classes
 
@@ -193,67 +196,67 @@ class CylinderSector(CompositeSurface):
         Outer cylinder surface
     inner : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
         Inner cylinder surface
-    plane_1 : openmc.Plane
-        Segment plane corresponding to :attr:`alpha1`
-    plane_2 : openmc.Plane
-        Segmenting plane correspodning to :attr:`alpha2`
+    plane0 : openmc.Plane
+        Plane at angle :math:`\theta_0` relative to the first basis axis
+    plane1 : openmc.Plane
+        Plane at angle :math:`\theta_0 + \theta` relative to the first
+        basis axis.
 
     """
 
     _surface_names = ('outer','inner',
-                      'plane_a', 'plane_b')
+                      'plane0', 'plane1')
 
-    def __init__(self, center, r1, r2, alpha1, alpha2, **kwargs):
+    def __init__(self, center, r1, r2, theta0, theta, axis='z', **kwargs):
 
-        alpha1 = np.pi / 180 * alpha1
-        alpha2 = np.pi / 180 * alpha2
+        theta0 = np.pi / 180 * theta0
+        theta = np.pi / 180 * theta
+        theta1 = theta0 + theta
+
         # Coords for axis-perpendicular planes
-        p1 = np.array([0,0,1])
+        p1 = np.array([0,0])
 
-        p2_plane1 = np.array([r1 * np.cos(alpha1), -r1 * np.sin(alpha1), 0])
-        p3_plane1 = np.array([r2 * np.cos(alpha1), -r2 * np.sin(alpha1), 0])
+        p2_plane0 = np.array([r1 * cos(theta0), r1 * sin(theta0)])
+        p3_plane0 = np.array([r2 * cos(theta0), r2 * sin(theta0)])
 
-        p2_plane2 = np.array([r1 * np.cos(alpha2), r1 * np.sin(alpha2), 0])
-        p3_plane2 = np.array([r2 * np.cos(alpha2), r2 * np.sin(alpha2), 0])
+        p2_plane1 = np.array([r1 * cos(theta1), r1 * sin(theta1)])
+        p3_plane1 = np.array([r2 * cos(theta1), r2 * sin(theta1)])
 
-        points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
+        points = [p2_plane0, p3_plane0, p2_plane1, p3_plane1]
         if axis == 'x':
-            self.inner = openmc.XCylinder(*center_axis, r=r1, **kwargs)
-            self.outer = openmc.XCylinder(*center_axis, r=r2, **kwargs)
-            coord_map = [2,0,1]
+            self.inner = openmc.XCylinder(*center, r=r1, **kwargs)
+            self.outer = openmc.XCylinder(*center, r=r2, **kwargs)
+            axis_idx = 0
          elif axis == 'y':
-            self.inner = openmc.YCylinder(*center_axis, r=r1, **kwargs)
-            self.outer = openmc.YCylinder(*center_axis, r=r2, **kwargs)
-            coord_map = [0,2,1]
+            self.inner = openmc.YCylinder(*center, r=r1, **kwargs)
+            self.outer = openmc.YCylinder(*center, r=r2, **kwargs)
+            axis_idx = 1
          elif axis == 'z':
-            self.inner = openmc.ZCylinder(*center_axis, r=r1, **kwargs)
-            self.outer = openmc.ZCylinder(*center_axis, r=r2, **kwargs)
-            coord_map = [0,1,2]
+            self.inner = openmc.ZCylinder(*center, r=r1, **kwargs)
+            self.outer = openmc.ZCylinder(*center, r=r2, **kwargs)
+            axis_idx = 3
 
         calibrated_points = []
         for p in points:
             p_temp = []
             for i in coord_map:
-                p_temp += [p[i]]
-            calibrated_points += [np.array(p_temp)]
+            calibrated_points += [np.insert(p, axis_idx, 0)]
 
-        p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2 = calibrated_points
+        p2_plane0, p3_plane0, p2_plane1, p3_plane1 = calibrated_points
+        p1 = np.insert(p1, axis_idx, 1)
 
-        plane1_params = _plane_from_points(p1, p2_plane1, p3_plane1)
-        plane2_params = _plane_from_points(p1, p2_plane2, p3_plane2)
-
+        self.plane0 = openmc.Plane.from_points(p1, p2_plane0, p3_plane0, **kwargs)
+        self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1, **kwargs)
         self.inner = openmc.ZCylinder(x0=x0, y0=y0, r=r1, **kwargs)
         self.outer = openmc.ZCylinder(x0=x0, y0=y0, r=r2, **kwargs)
-        self.plane1 = openmc.Plane(*plane1_params, **kwargs)
-        self.plane2 = openmc.Plane(*plane2_params, **kwargs)
 
 
     def __neg__(self):
-        return -self.outer & +self.inner & -self.plane1 &  +self.plane2
+        return -self.outer & +self.inner & -self.plane0 &  +self.plane1
 
 
     def __pos__(self):
-        return +self.outer | -self.inner | +self.plane1 | -self.plane2
+        return +self.outer | -self.inner | +self.plane0 | -self.plane1
 
 class XConeOneSided(CompositeSurface):
     """One-sided cone parallel the x-axis

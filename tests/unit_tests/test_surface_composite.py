@@ -150,3 +150,59 @@ def test_cone_one_sided(axis, point_pos, point_neg, ll_true):
 
     # Make sure repr works
     repr(s)
+
+@pytest.mark.parametrize(
+    "axis, indices", [
+        ("X", [0, 1, 2]),
+        ("Y", [1, 2, 0]),
+        ("Z", [2, 0, 1]),
+    ]
+)
+def test_cylinder_sector(axis, indices):
+    center = [0., 0.]
+    r1, r2 = 0.5, 1.5
+    d = (r2 - r1) / 2
+    theta0 = -60.
+    theta = 120.
+    s = openmc.model.CylinderSector(center, r1, r2, theta0, theta,
+                                    axis=axis.lower())
+    assert isinstance(s.outer_cyl, getattr(openmc, axis + "Cylinder"))
+    assert isinstance(s.inner_cyl, getattr(openmc, axis + "Cylinder"))
+    assert isinstance(s.plane0, openmc.Plane)
+    assert isinstance(s.plane1, openmc.Plane)
+
+    # Make sure boundary condition propagates
+    s.boundary_type = 'reflective'
+    assert s.boundary_type == 'reflective'
+    assert s.outer_cyl.boundary_type == 'reflective'
+    assert s.inner_cyl.boundary_type == 'reflective'
+    assert s.plane0.boundary_type == 'reflective'
+    assert s.plane1.boundary_type == 'reflective'
+
+    # Check bounding box
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert ll == pytest.approx(np.roll([-np.inf, -r2, -r2], indices[0]))
+    assert ur == pytest.approx(np.roll([np.inf, r2, r2], indices[0]))
+
+    # __contains__ on associated half-spaces
+    point_pos = np.roll([0, r2 + 1, 0], indices[0])
+    assert point_pos in +s
+    assert point_pos not in -s
+    point_neg = np.roll([0, r1 + d/2, r1 + d/2], indices[0])
+    assert point_neg in -s
+    assert point_neg not in +s
+
+    # translate method
+    t = uniform(-5.0, 5.0)
+    s_t = s.translate((t, t, t))
+    ll_t, ur_t = (-s_t).bounding_box
+    assert ur_t == pytest.approx(ur + t)
+    assert ll_t == pytest.approx(ll + t)
+
+    # Make sure repr works
+    repr(s)
+
+

@@ -150,3 +150,75 @@ def test_cone_one_sided(axis, point_pos, point_neg, ll_true):
 
     # Make sure repr works
     repr(s)
+
+
+@pytest.mark.parametrize(
+    "axis, plane_tb, plane_lr, axis_idx", [
+        ("x", "Z", "Y", 0),
+        ("y", "Z", "X", 1),
+        ("z", "Y", "X", 2),
+    ]
+)
+def test_octagon(axis, plane_tb, plane_lr, axis_idx):
+    center = np.array([0.,0.])
+    point_pos = np.array([0.8,0.8])
+    point_neg = np.array([0.7,0.7])
+    r1 = 1.
+    r2 = 1.
+    plane_top_bottom = getattr(openmc, plane_tb + "Plane")
+    plane_left_right = getattr(openmc, plane_lr + "Plane")
+    s = openmc.model.Octagon(center, r1, r2, axis=axis)
+    assert isinstance(s.top, plane_top_bottom)
+    assert isinstance(s.bottom, plane_top_bottom)
+    assert isinstance(s.right, plane_left_right)
+    assert isinstance(s.left, plane_left_right)
+    assert isinstance(s.upper_right, openmc.Plane)
+    assert isinstance(s.lower_right, openmc.Plane)
+    assert isinstance(s.upper_left, openmc.Plane)
+    assert isinstance(s.lower_left, openmc.Plane)
+
+    # Make sure boundary condition propagates
+    s.boundary_type = 'reflective'
+    assert s.boundary_type == 'reflective'
+    assert s.top.boundary_type == 'reflective'
+    assert s.bottom.boundary_type == 'reflective'
+    assert s.right.boundary_type == 'reflective'
+    assert s.left.boundary_type == 'reflective'
+    assert s.upper_right.boundary_type == 'reflective'
+    assert s.lower_right.boundary_type == 'reflective'
+    assert s.lower_left.boundary_type == 'reflective'
+    assert s.upper_left.boundary_type == 'reflective'
+
+    # Check bounding box
+    center = np.insert(center, axis_idx, np.inf)
+    xmax,ymax,zmax = center + r1
+    coord_min = center - r1
+    coord_min[axis_idx] *= -1
+    xmin,ymin,zmin = coord_min
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert ur == pytest.approx((xmax, ymax, zmax))
+    assert ll == pytest.approx((xmin, ymin, zmin))
+
+    # __contains__ on associated half-spaces
+    point_pos = np.insert(point_pos, axis_idx, 0)
+    point_neg = np.insert(point_neg, axis_idx, 0)
+    assert point_pos in +s
+    assert point_pos not in -s
+    assert point_neg in -s
+    assert point_neg not in +s
+
+    # translate method
+    t = uniform(-5.0, 5.0)
+    s_t = s.translate((t, t, t))
+    ll_t, ur_t = (-s_t).bounding_box
+    assert ur_t == pytest.approx(ur + t)
+    assert ll_t == pytest.approx(ll + t)
+
+    # Make sure repr works
+    repr(s)
+
+
+

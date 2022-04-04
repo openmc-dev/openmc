@@ -257,6 +257,7 @@ class CylinderSector(CompositeSurface):
     def __pos__(self):
         return +self.outer | -self.inner | +self.plane0 | -self.plane1
 
+
 class XConeOneSided(CompositeSurface):
     """One-sided cone parallel the x-axis
 

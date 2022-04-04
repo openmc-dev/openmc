@@ -3,7 +3,6 @@ from copy import copy
 
 import openmc
 from openmc.checkvalue import check_greater_than, check_value
-import openmc.Plane.from_points as plane_from_points
 from numpy import sqrt
 
 class CompositeSurface(ABC):
@@ -51,12 +50,15 @@ class CompositeSurface(ABC):
     def __neg__(self):
         """Return the negative half-space of the composite surface."""
 
-class Octagon(CompositeSurface):
-    """Infinite octogonal prism composite surface
+class IsogonalOctagon(CompositeSurface):
+    """Infinite isogonal octagon composite surface
 
-    An octagonal prism is composed of eight planar surfaces. The prism is
-    parallel to the x, y, or z axis; two pars of surfaces are perpendicular to
-    the y and z, x and z, or x and y axes, respectively.
+    An isogonal octagon is composed of eight planar surfaces. The prism is
+    parallel to the x, y, or z axis. The remaining two axes (y and z, x and z,
+    or x and y) serve as a basis for constructing the surfaces. Two surfaces
+    are parallel to the first basis axis, two surfaces are parallel
+    to the second basis axis, and the remaining four surfaces intersect both
+    basis axes at 45 degree angles.
 
     This class acts as a proper surface, meaning that unary `+` and `-`
     operators applied to it will produce a half-space. The negative side is
@@ -65,16 +67,18 @@ class Octagon(CompositeSurface):
     Parameters
     ----------
     center : iterable of float
-        (q1,q2) coordinate for the central axis of the octagon. (q1,q2) pairs
-        are (y,z), (x,z), or (x,y).
+        Coordinate for the central axis of the octagon in the
+        (y, z), (x, z), or (x, y) basis.
     r1 : float
-        Half-width of octagon across axis-pendicular sides
+        Half-width of octagon across its basis axis-parallel sides in units
+        of cm
     r2 : float
-        Half-width of octagon across off-axis sides
+        Half-width of octagon across its basis axis intersecting sides in
+        units of cm. Must be less than :math:`\sqrt{2} r_1`.
     axis : {'x', 'y', 'z'}
         Central axis of octagon. Defaults to 'z'
     **kwargs
-        Keyword arguments passed to underlying cylinder and plane classes
+        Keyword arguments passed to underlying plane classes
 
     Attributes
     ----------
@@ -114,6 +118,9 @@ class Octagon(CompositeSurface):
         cleft = q2c-r1
 
         # Side lengths
+        if (r2 > r1 * sqrt(2)):
+            raise ValueError(f'r2 must be less than {sqrt(2) * r1}')
+
         L_perp_ax1 = (r2 * sqrt(2) - r1) * 2
         L_perp_ax2 = (r1 * sqrt(2) - r2) * 2
 
@@ -158,10 +165,14 @@ class Octagon(CompositeSurface):
 
         p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr = calibrated_points
 
-        self.upper_right = plane_from_points(p1_ur, p2_ur, p3_ur, **kwargs)
-        self.lower_right = plane_from_points(p1_lr, p2_lr, p3_lr, **kwargs)
-        self.lower_left = plane_from_points(-p1_ur, -p2_ur, -p3_ur, **kwargs)
-        self.upper_left = plane_from_points(-p1_lr, -p2_lr, -p3_lr, **kwargs)
+        self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
+                                                    **kwargs)
+        self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr,
+                                                    **kwargs)
+        self.lower_left = openmc.Plane.from_points(-p1_ur, -p2_ur, -p3_ur,
+                                                   **kwargs)
+        self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr,
+                                                   **kwargs)
 
 
     def __neg__(self):

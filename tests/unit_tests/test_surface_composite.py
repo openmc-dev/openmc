@@ -159,7 +159,7 @@ def test_cone_one_sided(axis, point_pos, point_neg, ll_true):
         ("z", "Y", "X", 2),
     ]
 )
-def test_octagon(axis, plane_tb, plane_lr, axis_idx):
+def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
     center = np.array([0.,0.])
     point_pos = np.array([0.8,0.8])
     point_neg = np.array([0.7,0.7])
@@ -167,7 +167,7 @@ def test_octagon(axis, plane_tb, plane_lr, axis_idx):
     r2 = 1.
     plane_top_bottom = getattr(openmc, plane_tb + "Plane")
     plane_left_right = getattr(openmc, plane_lr + "Plane")
-    s = openmc.model.Octagon(center, r1, r2, axis=axis)
+    s = openmc.model.IsogonalOctagon(center, r1, r2, axis=axis)
     assert isinstance(s.top, plane_top_bottom)
     assert isinstance(s.bottom, plane_top_bottom)
     assert isinstance(s.right, plane_left_right)

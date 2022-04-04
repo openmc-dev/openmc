@@ -205,11 +205,12 @@ class CylinderSector(CompositeSurface):
 
     """
 
-    _surface_names = ('outer','inner',
+    _surface_names = ('outer_cyl','inner_cyl',
                       'plane0', 'plane1')
 
     def __init__(self, center, r1, r2, theta0, theta, axis='z', **kwargs):
 
+        self._axis = axis
         theta0 = pi / 180 * theta0
         theta = pi / 180 * theta
         theta1 = theta0 + theta
@@ -226,17 +227,16 @@ class CylinderSector(CompositeSurface):
         points = [p1, p2_plane0, p3_plane0, p2_plane1, p3_plane1]
         if axis == 'z':
             coord_map = [0,1,2]
-            self.inner = openmc.ZCylinder(*center, r=r1, **kwargs)
-            self.outer = openmc.ZCylinder(*center, r=r2, **kwargs)
-
+            self.inner_cyl = openmc.ZCylinder(*center, r=r1, **kwargs)
+            self.outer_cyl = openmc.ZCylinder(*center, r=r2, **kwargs)
         elif axis == 'y':
-             coord_map = [0,2,1]
-            self.inner = openmc.YCylinder(*center, r=r1, **kwargs)
-            self.outer = openmc.YCylinder(*center, r=r2, **kwargs)
+            coord_map = [0,2,1]
+            self.inner_cyl = openmc.YCylinder(*center, r=r1, **kwargs)
+            self.outer_cyl = openmc.YCylinder(*center, r=r2, **kwargs)
         elif axis == 'x':
             coord_map = [2,0,1]
-            self.inner = openmc.XCylinder(*center, r=r1, **kwargs)
-            self.outer = openmc.XCylinder(*center, r=r2, **kwargs)
+            self.inner_cyl = openmc.XCylinder(*center, r=r1, **kwargs)
+            self.outer_cyl = openmc.XCylinder(*center, r=r2, **kwargs)
 
         calibrated_points = []
         for p in points:
@@ -246,16 +246,20 @@ class CylinderSector(CompositeSurface):
 
         self.plane0 = openmc.Plane.from_points(p1, p2_plane0, p3_plane0, **kwargs)
         self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1, **kwargs)
-        self.inner = openmc.ZCylinder(x0=x0, y0=y0, r=r1, **kwargs)
-        self.outer = openmc.ZCylinder(x0=x0, y0=y0, r=r2, **kwargs)
 
 
     def __neg__(self):
-        return -self.outer & +self.inner & -self.plane0 &  +self.plane1
+        if self._axis == 'y':
+            return -self.outer_cyl & +self.inner_cyl & +self.plane0 &  -self.plane1
+        else:
+            return -self.outer_cyl & +self.inner_cyl & -self.plane0 &  +self.plane1
 
 
     def __pos__(self):
-        return +self.outer | -self.inner | +self.plane0 | -self.plane1
+        if self._axis == 'y':
+            return +self.outer_cyl | -self.inner_cyl | -self.plane0 | +self.plane1
+        else:
+            return +self.outer_cyl | -self.inner_cyl | +self.plane0 | -self.plane1
 
 
 class XConeOneSided(CompositeSurface):

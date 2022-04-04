@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from copy import copy
+from math import sqrt
+from numpy import array
 
 import openmc
 from openmc.checkvalue import check_greater_than, check_value
-from numpy import sqrt, array
 
 class CompositeSurface(ABC):
     """Multiple primitive surfaces combined into a composite surface"""
@@ -74,7 +75,7 @@ class IsogonalOctagon(CompositeSurface):
         of cm
     r2 : float
         Half-width of octagon across its basis axis intersecting sides in
-        units of cm. Must be less than :math:`\sqrt{2} r_1`.
+        units of cm. Assumed to be less than :math:`r_1\sqrt{2}`.
     axis : {'x', 'y', 'z'}
         Central axis of octagon. Defaults to 'z'
     **kwargs
@@ -87,7 +88,7 @@ class IsogonalOctagon(CompositeSurface):
     bottom : openmc.ZPlane or openmc.YPlane
         Bottom planar surface of octagon
     right: openmc.YPlane or openmc.XPlane
-        Right planaer surface of octagon
+        Right planar surface of octagon
     left: openmc.YPlane or openmc.XPlane
         Left planar surface of octagon
     upper_right : openmc.Plane
@@ -119,7 +120,8 @@ class IsogonalOctagon(CompositeSurface):
 
         # Side lengths
         if (r2 > r1 * sqrt(2)):
-            raise ValueError(f'r2 must be less than {sqrt(2) * r1}')
+            raise Warning(f'r2 is greater than {sqrt(2) * r1}. Octagon may'
+                          'be erroneous.')
 
         L_perp_ax1 = (r2 * sqrt(2) - r1) * 2
         L_perp_ax2 = (r1 * sqrt(2) - r2) * 2

@@ -25,6 +25,7 @@ Composite Surfaces
    :nosignatures:
    :template: myclass.rst
 
+   openmc.model.CylinderSector
    openmc.model.RectangularParallelepiped
    openmc.model.RightCircularCylinder
    openmc.model.XConeOneSided

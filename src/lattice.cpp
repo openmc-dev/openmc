@@ -1229,16 +1229,13 @@ std::pair<double, array<int, 3>> StackLattice::distance(
   }
 
   // Top and bottom sides
-  if (is_3d_) {
-    double z0 {copysign(0.5 * pitch_[2], u.z)};
-    if ((std::abs(c - c0) > FP_PRECISION) && u_c != 0) {
-      double this_d = (c0 - c) / u_c;
-      if (this_d < d) {
-        d = this_d;
-        if (u_c <= 0) {
-          lattice_trans[orientation_idx_] = -1;
-        } 
-      }
+  if ((std::abs(c - c0) > FP_PRECISION) && u_c != 0) {
+    double this_d = (c0 - c) / u_c;
+    if (this_d < d) {
+      d = this_d;
+      if (u_c <= 0) {
+        lattice_trans[orientation_idx_] = -1;
+      } 
     }
   }
 

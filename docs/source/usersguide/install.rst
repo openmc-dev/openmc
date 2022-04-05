@@ -387,20 +387,11 @@ Example of configuring for Debug mode:
 Compiling with MPI
 ++++++++++++++++++
 
-To compile with MPI, set the :envvar:`CXX` environment variable to the path to
-the MPI C++ wrapper. For example, in a bash shell:
+To compile with MPI, use the `-DOPENMC_USE_MPI=on` cmake flag. For example, in a bash shell:
 
 .. code-block:: sh
 
-    export CXX=mpicxx
-    cmake /path/to/openmc
-
-Note that in many shells, environment variables can be set for a single command,
-i.e.
-
-.. code-block:: sh
-
-    CXX=mpicxx cmake /path/to/openmc
+    cmake -DOPENMC_USE_MPI=on /path/to/openmc
 
 Selecting HDF5 Installation
 +++++++++++++++++++++++++++

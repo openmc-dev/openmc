@@ -53,6 +53,90 @@ class CompositeSurface(ABC):
         """Return the negative half-space of the composite surface."""
 
 
+class CylinderSector(CompositeSurface):
+    """Infinite cylindrical sector composite surface
+
+    This class acts as a proper surface, meaning that unary `+` and `-`
+    operators applied to it will produce a half-space. The negative
+    side is defined to be the region inside of the cylinder sector.
+
+    Parameters
+    ----------
+    center : iterable of float
+         Coordinate for central axes of cylinders in the (y, z), (z, x), or
+         (x, y) basis. Defaults to (0,0)
+    r1, r2 : float
+        Inner and outer cylinder radii
+    theta0 : float
+        Angular offset of the sector in degrees relative to the primary basis
+        axis (+y, +z, or +x).
+    theta : float
+        Angular width of the sector in degrees.
+    axis : {'z', 'y', 'x'}
+        Central axis of the cylinders. Defaults to z
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    outer : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+        Outer cylinder surface
+    inner : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+        Inner cylinder surface
+    plane0 : openmc.Plane
+        Plane at angle :math:`\theta_0` relative to the first basis axis
+    plane1 : openmc.Plane
+        Plane at angle :math:`\theta_0 + \theta` relative to the first
+        basis axis.
+
+    """
+
+    _surface_names = ('outer_cyl','inner_cyl',
+                      'plane0', 'plane1')
+
+    def __init__(self, center, r1, r2, theta0, theta, axis='z', **kwargs):
+        theta0 = pi / 180 * theta0
+        theta = pi / 180 * theta
+        theta1 = theta0 + theta
+
+        # Coords for axis-perpendicular planes
+        p1 = array([0.,0.,1.])
+
+        p2_plane0 = array([r1 * cos(theta0), r1 * sin(theta0), 0.])
+        p3_plane0 = array([r2 * cos(theta0), r2 * sin(theta0), 0.])
+
+        p2_plane1 = array([r1 * cos(theta1), r1 * sin(theta1), 0.])
+        p3_plane1 = array([r2 * cos(theta1), r2 * sin(theta1), 0.])
+
+        points = [p1, p2_plane0, p3_plane0, p2_plane1, p3_plane1]
+        if axis == 'z':
+            coord_map = [0,1,2]
+            self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
+            self.outer_cyl = openmc.ZCylinder(*center, r2, **kwargs)
+        elif axis == 'y':
+            coord_map = [1,2,0]
+            self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
+            self.outer_cyl = openmc.YCylinder(*center, r2, **kwargs)
+        elif axis == 'x':
+            coord_map = [2,0,1]
+            self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
+            self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
+
+        for p in points:
+            p[:] = p[coord_map]
+
+        self.plane0 = openmc.Plane.from_points(p1, p2_plane0, p3_plane0,
+                                               **kwargs)
+        self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1,
+                                               **kwargs)
+
+    def __neg__(self):
+        return -self.outer_cyl & +self.inner_cyl & -self.plane0 &  +self.plane1
+
+    def __pos__(self):
+        return +self.outer_cyl | -self.inner_cyl | +self.plane0 | -self.plane1
+
+
 class RightCircularCylinder(CompositeSurface):
     """Right circular cylinder composite surface
 
@@ -166,100 +250,6 @@ class RectangularParallelepiped(CompositeSurface):
 
     def __pos__(self):
         return -self.xmin | +self.xmax | -self.ymin | +self.ymax | -self.zmin | +self.zmax
-
-class CylinderSector(CompositeSurface):
-    """Infinite cylindrical sector composite surface
-
-    This class acts as a proper surface, meaning that unary `+` and `-`
-    operators applied to it will produce a half-space. The negative
-    side is defined to be the region inside of the cylinder sector.
-
-    Parameters
-    ----------
-    center : iterable of float
-         Coordinate for central axes of cylinders in the (y, z), (x,z), or
-         (x, y) basis. Defaults to (0,0)
-    r1, r2 : float
-        Inner and outer cylinder radii
-    theta0 : float
-        Angular offset of the sector in degrees relative to the primary basis
-        axis (+y or +x).
-    theta : float
-        Angular width of the sector in degrees.
-    axis : {'z', 'y', 'x'}
-        Central axis of the cylinders. Defaults to z
-    **kwargs
-        Keyword arguments passed to underlying plane classes
-
-    Attributes
-    ----------
-    outer : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
-        Outer cylinder surface
-    inner : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
-        Inner cylinder surface
-    plane0 : openmc.Plane
-        Plane at angle :math:`\theta_0` relative to the first basis axis
-    plane1 : openmc.Plane
-        Plane at angle :math:`\theta_0 + \theta` relative to the first
-        basis axis.
-
-    """
-
-    _surface_names = ('outer_cyl','inner_cyl',
-                      'plane0', 'plane1')
-
-    def __init__(self, center, r1, r2, theta0, theta, axis='z', **kwargs):
-
-        self._axis = axis
-        theta0 = pi / 180 * theta0
-        theta = pi / 180 * theta
-        theta1 = theta0 + theta
-
-        # Coords for axis-perpendicular planes
-        p1 = array([0.,0.,1.])
-
-        p2_plane0 = array([r1 * cos(theta0), r1 * sin(theta0), 0.])
-        p3_plane0 = array([r2 * cos(theta0), r2 * sin(theta0), 0.])
-
-        p2_plane1 = array([r1 * cos(theta1), r1 * sin(theta1), 0.])
-        p3_plane1 = array([r2 * cos(theta1), r2 * sin(theta1), 0.])
-
-        points = [p1, p2_plane0, p3_plane0, p2_plane1, p3_plane1]
-        if axis == 'z':
-            coord_map = [0,1,2]
-            self.inner_cyl = openmc.ZCylinder(*center, r=r1, **kwargs)
-            self.outer_cyl = openmc.ZCylinder(*center, r=r2, **kwargs)
-        elif axis == 'y':
-            coord_map = [0,2,1]
-            self.inner_cyl = openmc.YCylinder(*center, r=r1, **kwargs)
-            self.outer_cyl = openmc.YCylinder(*center, r=r2, **kwargs)
-        elif axis == 'x':
-            coord_map = [2,0,1]
-            self.inner_cyl = openmc.XCylinder(*center, r=r1, **kwargs)
-            self.outer_cyl = openmc.XCylinder(*center, r=r2, **kwargs)
-
-        calibrated_points = []
-        for p in points:
-            calibrated_points += [p[coord_map]]
-
-        p1, p2_plane0, p3_plane0, p2_plane1, p3_plane1 = calibrated_points
-
-        self.plane0 = openmc.Plane.from_points(p1, p2_plane0, p3_plane0, **kwargs)
-        self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1, **kwargs)
-
-
-    def __neg__(self):
-        if self._axis == 'y':
-            return -self.outer_cyl & +self.inner_cyl & +self.plane0 &  -self.plane1
-        else:
-            return -self.outer_cyl & +self.inner_cyl & -self.plane0 &  +self.plane1
-
-
-    def __pos__(self):
-        if self._axis == 'y':
-            return +self.outer_cyl | -self.inner_cyl | -self.plane0 | +self.plane1
-        else:
-            return +self.outer_cyl | -self.inner_cyl | +self.plane0 | -self.plane1
 
 
 class XConeOneSided(CompositeSurface):

@@ -1328,12 +1328,9 @@ Position StackLattice::get_local_position(
 
 //==============================================================================
 
-//TO IMPLEMENT
 int32_t& StackLattice::offset(int map, array<int, 3> const& i_xyz)
 {
-  return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
-                  n_cells_[0] * n_cells_[1] * i_xyz[2] +
-                  n_cells_[0] * i_xyz[1] + i_xyz[0]];
+  return offsets_[n_levels_ * map + i_xyz[oriendation_idx_]];
 }
 
 //==============================================================================

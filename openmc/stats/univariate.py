@@ -133,20 +133,19 @@ class Discrete(Univariate):
             cv.check_greater_than('discrete probability', pk, 0.0, True)
         self._p = p
 
+    def cdf(self):
+        return np.insert(np.cumsum(self.p), 0, 0.0)
+
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
 
         if len(self.x) == 1:
             return np.full((n_samples), self.x[0])
 
-        out = np.zeros((n_samples,))
-        for i, xi in enumerate(np.random.rand(n_samples)):
-            c = 0.0
-            for j, prob in enumerate(self.p):
-                c += prob
-                if (xi < c):
-                    out[i] = self.x[j]
-                    break
+        xi = np.random.rand(n_samples)
+        out = np.zeros_like(xi)
+        for i, c in enumerate(self.cdf()[:-1]):
+            out[xi >= c] = self.x[i]
         return out
 
     def normalize(self):
@@ -1085,6 +1084,27 @@ class Mixture(Univariate):
         cv.check_type('mixture distribution components', distribution,
                       Iterable, Univariate)
         self._distribution = distribution
+
+    def cdf(self):
+        return np.insert(np.cumsum(self.probability), 0, 0.0)
+
+    def sample(self, n_samples=1, seed=None):
+        np.random.seed(seed)
+        xi = np.random.rand(n_samples)
+        idx = np.zeros_like(xi, dtype=int)
+        for i, c in enumerate(self.cdf()[:-1]):
+            idx[xi >= c] = i
+
+        out = np.zeros_like(xi)
+        for i in np.unique(idx):
+            n_dist_samples = np.count_nonzero(idx == i)
+            samples = self.distribution[i].sample(n_dist_samples)
+            out[idx == i] = samples
+        return out
+
+    def normalize(self):
+        norm = sum(self.probability)
+        self.probability = [val / norm for val in self.probability]
 
     def to_xml_element(self, element_name):
         """Return XML representation of the mixture distribution

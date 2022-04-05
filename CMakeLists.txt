@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 project(openmc C CXX)
 
 # Set version numbers
@@ -30,6 +30,7 @@ option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                    
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
+option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 
 #===============================================================================
 # Set a default build configuration if not explicitly specified
@@ -44,10 +45,9 @@ endif()
 # MPI for distributed-memory parallelism
 #===============================================================================
 
-set(MPI_ENABLED FALSE)
-if(${CMAKE_CXX_COMPILER} MATCHES "(mpi[^/]*|CC)$")
-  message(STATUS "Detected MPI wrapper: ${CMAKE_CXX_COMPILER}")
-  set(MPI_ENABLED TRUE)
+if(OPENMC_USE_MPI)
+  find_package(MPI REQUIRED)
+  include_directories(${MPI_CXX_INCLUDE_DIRS})
 endif()
 
 #===============================================================================
@@ -108,7 +108,7 @@ endif()
 
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 if(HDF5_IS_PARALLEL)
-  if(NOT MPI_ENABLED)
+  if(NOT OPENMC_USE_MPI)
     message(FATAL_ERROR "Parallel HDF5 was detected, but the detected compiler,\
      ${CMAKE_CXX_COMPILER}, does not support MPI. An MPI-capable compiler must \
      be used with parallel HDF5.")
@@ -141,9 +141,15 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if(OPENMC_USE_MPI)
+  list(APPEND cxxflags ${MPI_CXX_COMPILE_FLAGS})
+  list(APPEND ldflags  ${MPI_CXX_LINK_FLAGS})
+endif()
+
 if(OPENMC_ENABLE_PROFILE)
   list(APPEND cxxflags -g -fno-omit-frame-pointer)
 endif()
+
 if(OPENMC_ENABLE_COVERAGE)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
@@ -398,7 +404,7 @@ target_include_directories(libopenmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
 endif()
-if (MPI_ENABLED)
+if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
 endif()
 
@@ -438,6 +444,10 @@ endif()
 if (PNG_FOUND)
   target_compile_definitions(libopenmc PRIVATE USE_LIBPNG)
   target_link_libraries(libopenmc PNG::PNG)
+endif()
+
+if (OPENMC_USE_MPI)
+  target_link_libraries(libopenmc MPI::MPI_CXX)
 endif()
 
 #===============================================================================

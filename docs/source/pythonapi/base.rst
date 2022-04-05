@@ -92,6 +92,7 @@ Building geometry
    openmc.DAGMCUniverse
    openmc.RectLattice
    openmc.HexLattice
+   openmc.StackLattice
    openmc.Geometry
 
 Many of the above classes are derived from several abstract classes:

@@ -27,6 +27,29 @@ def test_discrete():
     assert len(d2) == 1
 
 
+def test_merge_discrete():
+    x1 = [0.0, 1.0, 10.0]
+    p1 = [0.3, 0.2, 0.5]
+    d1 = openmc.stats.Discrete(x1, p1)
+
+    x2 = [0.5, 1.0, 5.0]
+    p2 = [0.4, 0.5, 0.1]
+    d2 = openmc.stats.Discrete(x2, p2)
+
+    # Merged distribution should have x values sorted and probabilities
+    # appropriately combined. Duplicate x values should appear once.
+    merged = openmc.stats.Discrete.merge([d1, d2], [0.6, 0.4])
+    assert merged.x == pytest.approx([0.0, 0.5, 1.0, 5.0, 10.0])
+    assert merged.p == pytest.approx(
+        [0.6*0.3, 0.4*0.4, 0.6*0.2 + 0.4*0.5, 0.4*0.1, 0.6*0.5])
+
+    # Probabilities add up but are not normalized
+    d1 = openmc.stats.Discrete([3.0], [1.0])
+    triple = openmc.stats.Discrete.merge([d1, d1, d1], [1.0, 2.0, 3.0])
+    assert triple.x == pytest.approx([3.0])
+    assert triple.p == pytest.approx([6.0])
+
+
 def test_uniform():
     a, b = 10.0, 20.0
     d = openmc.stats.Uniform(a, b)

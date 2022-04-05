@@ -61,7 +61,21 @@ class Univariate(EqualityMixin, ABC):
             return Mixture.from_xml_element(elem)
 
     @abstractmethod
-    def sample(p, seed=None):
+    def sample(n_samples=1, seed=None):
+        """Sample the univariate distribution
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of sampled values to generate
+        seed : int or None
+            Initial random number seed.
+
+        Returns
+        -------
+        numpy.ndarray
+            A 1-D array of sampled values
+        """
         pass
 
 
@@ -867,15 +881,17 @@ class Tabular(Univariate):
         self._interpolation = interpolation
 
     def cdf(self):
-        if self.interpolation not in ('histogram', 'linear-linear'):
+        if not self.interpolation in ('histogram', 'linear-linear'):
             raise NotImplementedError('Can only generate CDFs for tabular '
                                       'distributions using histogram or '
                                       'linear-linear interpolation')
-        c = np.zeros_like((len(self.x),))
+        c = np.zeros_like(self.x)
+        x = np.asarray(self.x)
+        p = np.asarray(self.p)
         if self.interpolation == 'histogram':
-            c[1:] = self.p * np.diff(self.x)
+            c[1:] = p * np.diff(x)
         elif self.interpolation == 'linear-linear':
-            c[1:] = 0.5 * np.diff(self.p) * np.diff(self.x)
+            c[1:] = 0.5 * (p[0:-1] + p[1:]) * np.diff(x)
         return np.cumsum(c)
 
     def sample(self, n_samples=1, seed=None):
@@ -886,7 +902,7 @@ class Tabular(Univariate):
         # get CDF bins that are above the
         # sampled values
         c_i = np.full(n_samples, cdf[0])
-        cdf_idx = np.zeros_like(n_samples)
+        cdf_idx = np.zeros((n_samples,), dtype=int)
         for i, val in enumerate(cdf):
             mask = xi > val
             c_i[mask] = val
@@ -903,7 +919,7 @@ class Tabular(Univariate):
             pos_mask = p_i > 0.0
             p_i[pos_mask] = x_i[pos_mask] + (xi[pos_mask] - c_i[pos_mask]) \
                            / p_i[pos_mask]
-            neg_mask = not pos_mask
+            neg_mask = np.invert(pos_mask)
             p_i[neg_mask] = x_i[neg_mask]
             return p_i
         elif self.interpolation == 'linear-linear':
@@ -917,8 +933,8 @@ class Tabular(Univariate):
             zero = m == 0.0
             m[zero] = x_i[zero] + (xi[zero] - c_i[zero]) / p_i[zero]
             # set values for non-zero slope
-            non_zero = not zero
-            quad = np.pow(p_i[non_zero]**2) + 2. * m[non_zero] * (xi[non_zero] - c_i[non_zero])
+            non_zero = np.invert(zero)
+            quad = np.power(p_i[non_zero], 2) + 2. * m[non_zero] * (xi[non_zero] - c_i[non_zero])
             quad[quad < 0.0] = 0.0
             m[non_zero] = x_i[non_zero] +  (np.sqrt(quad) - p_i) / m[non_zero]
             return m

@@ -155,7 +155,7 @@ def test_cone_one_sided(axis, point_pos, point_neg, ll_true):
 @pytest.mark.parametrize(
     "axis, plane_tb, plane_lr, axis_idx", [
         ("x", "Z", "Y", 0),
-        ("y", "Z", "X", 1),
+        ("y", "X", "Z", 1),
         ("z", "Y", "X", 2),
     ]
 )

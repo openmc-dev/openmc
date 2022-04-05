@@ -403,9 +403,9 @@ BoundaryInfo distance_to_boundary(Particle& p)
         r_hex.z = coord.r.z;
         lattice_distance = lat.distance(r_hex, u, coord.lattice_i);
         break;
-      case LatticeType::stack:
-        lattice_distance = lat.distance(r, u, coord.lattice_i);
-        break;
+      //case LatticeType::stack:
+      //  lattice_distance = lat.distance(r, u, coord.lattice_i);
+      //  break;
       }
 
       d_lat = lattice_distance.first;

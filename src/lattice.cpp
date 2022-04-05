@@ -1108,19 +1108,20 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   std::string n_levels_str {get_node_value(lat_node, "num_levels")};
   vector<std::string> n_levels_words {split(n_levels_str)};
   if (n_levels_words.size() == 1) {
-    if (orientation_ == Orientaion::z) {
+    if (orientation_ == Orientation::z) {
       n_levels_ = std::stoi(n_levels_words[0]);
-      orientation_idx_ = 3
+      orientation_idx_ = 2;
     } else if (orientation_ == Orientation::y) {
       n_levels_ = std::stoi(n_levels_words[0]);
-      orientation_idx_ = 2
+      orientation_idx_ = 1;
     } else {
       n_levels_ = std::stoi(n_levels_words[0]);
-      orientation_idx = 1
+      orientation_idx_ = 0;
     }
   } else {
     fatal_error("Stack lattice must be one dimensional.");
   }
+  
 
   // Read the lattice central-axis location.
   std::string ca_str {get_node_value(lat_node, "central_axis")};
@@ -1132,28 +1133,31 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   central_axis_[1] = stod(ca_words[1]);
 
   // Read the lattice base coordinate 
-  std::string base_coord_str {get_node_value(lat_node, "base_coordinate")};
+  std::string base_coord_str {get_node_value(lat_node, "base_cooardinate")};
   vector <std::string> base_coord_words {split(base_coord_str)};
   if (base_coord_words.size() != 1) {
-    fatal_error("Number of entries on <base_coordinate> must be 1.")
+    fatal_error("Number of entries on <base_coordinate> must be 1.");
   }
-  base_coordinate_ = stod(base_coord_words);
+  base_coordinate_ = stod(base_coord_words[0]);
+
+  //Initialize levels_, pitch_
+  levels_ = new double[n_levels_ + 1];
+  pitch_ = new double[n_levels_];
 
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
   vector<std::string> pitch_words {split(pitch_str)};
-  is_uniform = false;
+  is_uniform_ = false;
   if (pitch_words.size() == 1) {
     pitch_[0] = stod(pitch_words[0]);
     is_uniform_ = true;
-  }
-  else if (pitch_words.size() != n_levels_) {
+  } else if (pitch_words.size() != n_levels_) {
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <num_levels>.");
   }
 
   // Levels helper attribute
-  levels[0] = base_coordinate_
+  levels_[0] = base_coordinate_;
   if (is_uniform_) {
     for (int i = 1; i < n_levels_; i++) {
       levels_[i] = levels_[i-1] + pitch_[0];
@@ -1162,9 +1166,10 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
     pitch_[0] = stod(pitch_words[0]);
     for (int i = 1; i < n_levels_words.size(); i++) {
       pitch_[i] = stod(pitch_words[i]);
-      levels_[i] = pitch_[i-1] + levels_[i-1] 
+      levels_[i] = pitch_[i-1] + levels_[i-1];
     }
   }
+  levels_[n_levels_] = pitch_[n_levels_ - 1] + levels_[n_levels_ - 1];
   
 
   // Read the universes and make sure the correct number was specified.
@@ -1197,16 +1202,18 @@ int32_t const& StackLattice::operator[](array<int, 3> const& i_xyz)
 
 bool StackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 {
+  bool is_valid;
   if (orientation_ == Orientation::x) {
-    return ((i_xyz[0] >= 0) && (i_xyz[0] < n_levels_) && (i_xyz[1] == 0) &&
+    is_valid = ((i_xyz[0] >= 0) && (i_xyz[0] < n_levels_) && (i_xyz[1] == 0) &&
             (i_xyz[2] == 0));
-  } else if (orienation_ == Orientation::y) {
-    return ((i_xyz[0] == 0) && (i_xyz[1] >= 0) && (i_xyz[1] < n_levels_) &&
+  } else if (orientation_ == Orientation::y) {
+    is_valid = ((i_xyz[0] == 0) && (i_xyz[1] >= 0) && (i_xyz[1] < n_levels_) &&
             (i_xyz[2] == 0));
   } else {
-    return ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (i_xyz[2] >= 0) &&
+    is_valid = ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (i_xyz[2] >= 0) &&
             (i_xyz[2] < n_levels_));
   }
+  return is_valid;
 }
 
 //==============================================================================
@@ -1215,27 +1222,30 @@ std::pair<double, array<int, 3>> StackLattice::distance(
   Position r, Direction u, const array<int, 3>& i_xyz) const
 {
 
-  double c0, c;
+  double c0, u_c, c;
   array<int, 3> lattice_trans;
 
   // Determine the oncoming edge.
   if (orientation_ == Orientation::x) {
+    u_c = u.x;
     c0 = u.x;
     c = r.x;
     lattice_trans = {1, 0, 0};
   } else if (orientation_ == Orientation::y) {
+    u_c = u.y;
     c0 = u.y;
     c = r.y;
     lattice_trans = {0, 1, 0};
   } else {
+    u_c = u.z;
     c0 = u.z;
     c = r.z;
     lattice_trans = {0, 0, 1};
   }
   if (is_uniform_) {
-    c0 = copysign(0.5 * pitch_[0], c0)
+    c0 = copysign(0.5 * pitch_[0], c0);
   } else { 
-    c0 = copysign(0.5 * pitch_[i_xyz[orientation_idx_]], c0)
+    c0 = copysign(0.5 * pitch_[i_xyz[orientation_idx_]], c0);
   }
 
   // Top and bottom sides
@@ -1263,7 +1273,7 @@ void StackLattice::get_indices(
     u_c = u.x;
     result[1] = 0;
     result[2] = 0;
-  } else if (orienation_ == Orientation::y) {
+  } else if (orientation_ == Orientation::y) {
     r_c = r.y;
     u_c = u.y;
     result[0] = 0;
@@ -1287,7 +1297,7 @@ void StackLattice::get_indices(
       ic_ = n_levels_;
     } else {
       ic_ = 0;
-      while !((r_c >= levels_[ic_]) and (r_c <= levels_[ic_ + 1])) {
+      while (!((r_c >= levels_[ic_]) and (r_c <= levels_[ic_ + 1]))) {
         ic_ += 1;
       }
     } 
@@ -1330,7 +1340,7 @@ Position StackLattice::get_local_position(
 
 int32_t& StackLattice::offset(int map, array<int, 3> const& i_xyz)
 {
-  return offsets_[n_levels_ * map + i_xyz[oriendation_idx_]];
+  return offsets_[n_levels_ * map + i_xyz[orientation_idx_]];
 }
 
 //==============================================================================
@@ -1361,11 +1371,11 @@ void StackLattice::to_hdf5_inner(hid_t lat_group) const
 
   // Write lattice orientation
   if (orientation_ == Orientation::x) {
-    write_dataset(lat_group, "orientation", 'x')
+    write_dataset(lat_group, "orientation", 'x');
   } else if (orientation_ == Orientation::y) {
-    write_dataset(lat_group, "orientation", 'y')
+    write_dataset(lat_group, "orientation", 'y');
   } else {
-    write_dataset(lat_group, "orientation", 'z')
+    write_dataset(lat_group, "orientation", 'z');
   }
 
   // Write the universe ids. The convention here is that 
@@ -1399,7 +1409,7 @@ void read_lattices(pugi::xml_node node)
     model::lattices.push_back(make_unique<HexLattice>(lat_node));
   }
   for (pugi::xml_node lat_node : node.children("stack_lattice")) {
-      model::lattice.push_back(make_unique<StackLattice>(lat_node));
+      model::lattices.push_back(make_unique<StackLattice>(lat_node));
   }
 
   // Fill the lattice map.

@@ -291,9 +291,9 @@ class StackLattice : public Lattice {
 public:
   explicit StackLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](int const& i);
+  int32_t const& operator[](array<int, 3> const& i_xyz);
 
-  bool are_valid_indices(int const& i) const;
+  bool are_valid_indices(array<int, 3> const& i_xyz) const;
 
   std::pair<double, array<int, 3>> distance(
     Position r, Direction u, const array<int, 3>& i_xyz) const;
@@ -327,9 +327,9 @@ private:
   int n_levels_;            //!< Number of radial tile positions
   Orientation orientation_; //!< Orientation of lattice
   Position central_axis_;   //!< Axial center of lattice
-  float base_coordiante_;   //!< Coordinate of base level of lattice
-  double **pitch_;          //!< Lattice tile width and height
-  array<double, n_levels_> levels_;         //!< Coordinates of lattice tile boundaries
+  float base_coordinate_;   //!< Coordinate of base level of lattice
+  double *pitch_;          //!< Lattice tile width and height. Actual size set at runtime
+  double *levels_;         //!< Coordinates of lattice tile boundaries
 };
 
 

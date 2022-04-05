@@ -248,7 +248,8 @@ class Lattice(IDManagerMixin, ABC):
             hexagonal lattices, they are given in the :math:`x,\alpha` or
             :math:`x,\alpha,z` coordinate systems for "y" orientations and
             :math:`\alpha,y` or :math:`\alpha,y,z` coordinate systems for "x"
-            orientations.
+            orientations. For stack lattices, they are given in the coordinate
+            corresponding to the orientation axis.
 
         Returns
         -------
@@ -257,6 +258,8 @@ class Lattice(IDManagerMixin, ABC):
 
         """
         idx_u = self.get_universe_index(idx)
+        if self.ndim == 1:
+            return self.universes[idx_u]
         if self.ndim == 2:
             return self.universes[idx_u[0]][idx_u[1]]
         else:
@@ -328,7 +331,11 @@ class Lattice(IDManagerMixin, ABC):
                     clone.universes[i] = self.universes[i].clone(
                          clone_materials, clone_regions, memo)
                 else:
-                    if self.ndim == 2:
+                    if self.ndim == 1:
+                        clone.universes[i] = \
+                            self.universes[i].clone(clone_materials,
+                                 clone_regions,memo)
+                    elif self.ndim == 2:
                         clone.universes[i[0]][i[1]] = \
                             self.universes[i[0]][i[1]].clone(clone_materials,
                                  clone_regions, memo)
@@ -2273,6 +2280,7 @@ class StackLattice(Lattice):
 
     def __init__(self, lattice_id=None, name=''):
         super().__init__(lattice_id, name)
+        self.ndim = 1
 
         # Initalize Lattice class attributes
         self._central_axis = None

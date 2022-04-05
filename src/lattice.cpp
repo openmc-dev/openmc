@@ -1205,56 +1205,40 @@ bool StackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 std::pair<double, array<int, 3>> StackLattice::distance(
   Position r, Direction u, const array<int, 3>& i_xyz) const
 {
-  if (orientation_ == Orientation::x) {
-  } else if (orienation_ == Orientation::y) {
-  } else {
-  }
-  // Get short aliases to the coordinates.
-  double x = r.x;
-  double y = r.y;
-  double z = r.z;
+
+  double c0, c;
+  array<int, 3> lattice_trans;
 
   // Determine the oncoming edge.
-  double x0 {copysign(0.5 * pitch_[0], u.x)};
-  double y0 {copysign(0.5 * pitch_[1], u.y)};
-
-  // Left and right sides
-  double d {INFTY};
-  array<int, 3> lattice_trans;
-  if ((std::abs(x - x0) > FP_PRECISION) && u.x != 0) {
-    d = (x0 - x) / u.x;
-    if (u.x > 0) {
-      lattice_trans = {1, 0, 0};
-    } else {
-      lattice_trans = {-1, 0, 0};
-    }
+  if (orientation_ == Orientation::x) {
+    c0 = u.x;
+    c = r.x;
+    lattice_trans = {1, 0, 0};
+  } else if (orientation_ == Orientation::y) {
+    c0 = u.y;
+    c = r.y;
+    lattice_trans = {0, 1, 0};
+  } else {
+    c0 = u.z;
+    c = r.z;
+    lattice_trans = {0, 0, 1};
   }
-
-  // Front and back sides
-  if ((std::abs(y - y0) > FP_PRECISION) && u.y != 0) {
-    double this_d = (y0 - y) / u.y;
-    if (this_d < d) {
-      d = this_d;
-      if (u.y > 0) {
-        lattice_trans = {0, 1, 0};
-      } else {
-        lattice_trans = {0, -1, 0};
-      }
-    }
+  if (is_uniform_) {
+    c0 = copysign(0.5 * pitch_[orientation_idx_], c0)
+  } else { 
+    c0 = copysign(0.5 * pitch_[i_xyz[orientation_idx_]], c0)
   }
 
   // Top and bottom sides
   if (is_3d_) {
     double z0 {copysign(0.5 * pitch_[2], u.z)};
-    if ((std::abs(z - z0) > FP_PRECISION) && u.z != 0) {
-      double this_d = (z0 - z) / u.z;
+    if ((std::abs(c - c0) > FP_PRECISION) && u_c != 0) {
+      double this_d = (c0 - c) / u_c;
       if (this_d < d) {
         d = this_d;
-        if (u.z > 0) {
-          lattice_trans = {0, 0, 1};
-        } else {
-          lattice_trans = {0, 0, -1};
-        }
+        if (u_c <= 0) {
+          lattice_trans[orientation_idx_] = -1;
+        } 
       }
     }
   }

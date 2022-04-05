@@ -19,7 +19,6 @@ extern vector<unique_ptr<Universe>> universes;
 
 } // namespace model
 
-
 //==============================================================================
 //! A geometry primitive that fills all space and contains cells.
 //==============================================================================

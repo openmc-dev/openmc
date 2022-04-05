@@ -57,7 +57,7 @@ class IsogonalOctagon(CompositeSurface):
     """Infinite isogonal octagon composite surface
 
     An isogonal octagon is composed of eight planar surfaces. The prism is
-    parallel to the x, y, or z axis. The remaining two axes (y and z, x and z,
+    parallel to the x, y, or z axis. The remaining two axes (y and z, z and x,
     or x and y) serve as a basis for constructing the surfaces. Two surfaces
     are parallel to the first basis axis, two surfaces are parallel
     to the second basis axis, and the remaining four surfaces intersect both
@@ -71,7 +71,7 @@ class IsogonalOctagon(CompositeSurface):
     ----------
     center : iterable of float
         Coordinate for the central axis of the octagon in the
-        (y, z), (x, z), or (x, y) basis.
+        (y, z), (z, x), or (x, y) basis.
     r1 : float
         Half-width of octagon across its basis axis-parallel sides in units
         of cm. Assumed to be less than :math:`r_2\sqrt{2}`.
@@ -85,13 +85,13 @@ class IsogonalOctagon(CompositeSurface):
 
     Attributes
     ----------
-    top : openmc.ZPlane or openmc.YPlane
+    top : openmc.ZPlane, openmc.XPlane, or openmc.YPlane
         Top planar surface of octagon
-    bottom : openmc.ZPlane or openmc.YPlane
+    bottom : openmc.ZPlane, openmc.XPlane, or openmc.YPlane
         Bottom planar surface of octagon
-    right: openmc.YPlane or openmc.XPlane
+    right: openmc.YPlane, openmc.ZPlane, or openmc.XPlane
         Right planar surface of octagon
-    left: openmc.YPlane or openmc.XPlane
+    left: openmc.YPlane, openmc.ZPlane, or openmc.XPlane
         Left planar surface of octagon
     upper_right : openmc.Plane
         Upper right planar surface of octagon
@@ -150,11 +150,11 @@ class IsogonalOctagon(CompositeSurface):
             self.right = openmc.XPlane(cright, **kwargs)
             self.left = openmc.XPlane(cleft, **kwargs)
         elif axis == 'y':
-            coord_map = [0, 2, 1]
-            self.top = openmc.ZPlane(ctop, **kwargs)
-            self.bottom = openmc.ZPlane(cbottom, **kwargs)
-            self.right = openmc.XPlane(cright, **kwargs)
-            self.left = openmc.XPlane(cleft, **kwargs)
+            coord_map = [1, 2, 0]
+            self.top = openmc.XPlane(ctop, **kwargs)
+            self.bottom = openmc.XPlane(cbottom, **kwargs)
+            self.right = openmc.ZPlane(cright, **kwargs)
+            self.left = openmc.ZPlane(cleft, **kwargs)
         elif axis == 'x':
             coord_map = [2, 0, 1]
             self.top = openmc.ZPlane(ctop, **kwargs)
@@ -178,26 +178,14 @@ class IsogonalOctagon(CompositeSurface):
                                                    **kwargs)
 
     def __neg__(self):
-        region1 = -self.top & +self.bottom & -self.right & +self.left
-        if self._axis == 'y':
-            region2 = -self.upper_right & -self.lower_right & \
-                +self.lower_left & +self.upper_left
-        else:
-            region2 = +self.upper_right & +self.lower_right & \
-                -self.lower_left & -self.upper_left
-
-        return region1 & region2
+        return -self.top & +self.bottom & -self.right & +self.left & \
+            +self.upper_right & +self.lower_right & -self.lower_left & \
+            -self.upper_left
 
     def __pos__(self):
-        region1 = +self.top | -self.bottom | +self.right | -self.left
-        if self._axis == 'y':
-            region2 = +self.upper_right | +self.lower_right | \
-                -self.lower_left | -self.upper_left
-        else:
-            region2 = -self.upper_right | -self.lower_right | \
-                +self.lower_left | +self.upper_left
-
-        return region1 | region2
+        return +self.top | -self.bottom | +self.right | -self.left | \
+            -self.upper_right | -self.lower_right | +self.lower_left | \
+            +self.upper_left
 
 
 class RightCircularCylinder(CompositeSurface):

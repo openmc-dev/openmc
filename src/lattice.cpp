@@ -1201,7 +1201,6 @@ bool StackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 
 //==============================================================================
 
-//TO IMPLEMENT
 std::pair<double, array<int, 3>> StackLattice::distance(
   Position r, Direction u, const array<int, 3>& i_xyz) const
 {
@@ -1224,7 +1223,7 @@ std::pair<double, array<int, 3>> StackLattice::distance(
     lattice_trans = {0, 0, 1};
   }
   if (is_uniform_) {
-    c0 = copysign(0.5 * pitch_[orientation_idx_], c0)
+    c0 = copysign(0.5 * pitch_[0], c0)
   } else { 
     c0 = copysign(0.5 * pitch_[i_xyz[orientation_idx_]], c0)
   }
@@ -1248,42 +1247,41 @@ std::pair<double, array<int, 3>> StackLattice::distance(
 
 //==============================================================================
 
-//TO IMPLEMENT
 void StackLattice::get_indices(
   Position r, Direction u, array<int, 3>& result) const
 {
+  double r_c, u_c;
   if (orientation_ == Orientation::x) {
+    r_c = r.x;
+    u_c = u.x;
+    result[1] = 0;
+    result[2] = 0;
   } else if (orienation_ == Orientation::y) {
+    r_c = r.y;
+    u_c = u.y;
+    result[0] = 0;
+    result[2] = 0;
   } else {
+    r_c = r.z;
+    u_c = u.z;
+    result[0] = 0;
+    result[1] = 0;
   }
-  // Determine x index, accounting for coincidence
-  double ix_ {(r.x - lower_left_.x) / pitch_.x};
-  long ix_close {std::lround(ix_)};
+
+  // Determine axis index, accounting for coincidence
+  double ic_ = r_c - base_coordinate_;
+  if (is_uniform_) {
+    ic /= pitch_[0];
+  } else {
+    // nonuniform cacse
+    ic /= ...;
+  }
+
+  long ic_close {std::lround(ic_)};
   if (coincident(ix_, ix_close)) {
-    result[0] = (u.x > 0) ? ix_close : ix_close - 1;
+    result[orientation_idx_] = (u_c > 0) ? ic_close : ic_close - 1;
   } else {
-    result[0] = std::floor(ix_);
-  }
-
-  // Determine y index, accounting for coincidence
-  double iy_ {(r.y - lower_left_.y) / pitch_.y};
-  long iy_close {std::lround(iy_)};
-  if (coincident(iy_, iy_close)) {
-    result[1] = (u.y > 0) ? iy_close : iy_close - 1;
-  } else {
-    result[1] = std::floor(iy_);
-  }
-
-  // Determine z index, accounting for coincidence
-  result[2] = 0;
-  if (is_3d_) {
-    double iz_ {(r.z - lower_left_.z) / pitch_.z};
-    long iz_close {std::lround(iz_)};
-    if (coincident(iz_, iz_close)) {
-      result[2] = (u.z > 0) ? iz_close : iz_close - 1;
-    } else {
-      result[2] = std::floor(iz_);
-    }
+    result[orientation_idx_] = std::floor(ic_);
   }
 }
 

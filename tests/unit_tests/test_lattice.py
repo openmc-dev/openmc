@@ -360,7 +360,7 @@ def test_show_indices():
         lines = openmc.HexLattice.show_indices(i).split('\n')
         assert len(lines) == 4*i - 3
         lines_x = openmc.HexLattice.show_indices(i, 'x').split('\n')
-        assert len(lines) == 4*i - 3
+        assert len(lines_x) == 4*i - 3
 
 
 def test_unset_universes():

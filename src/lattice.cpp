@@ -1140,16 +1140,12 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   }
   base_coordinate_ = stod(base_coord_words[0]);
 
-  //Initialize levels_, pitch_
-  levels_ = new double[n_levels_ + 1];
-  pitch_ = new double[n_levels_];
-
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
   vector<std::string> pitch_words {split(pitch_str)};
   is_uniform_ = false;
   if (pitch_words.size() == 1) {
-    pitch_[0] = stod(pitch_words[0]);
+    pitch_.push_back(stod(pitch_words[0]));
     is_uniform_ = true;
   } else if (pitch_words.size() != n_levels_) {
     fatal_error("Number of entries on <pitch> must be the same as the "
@@ -1157,19 +1153,22 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   }
 
   // Levels helper attribute
-  levels_[0] = base_coordinate_;
+  levels_.push_back(base_coordinate_);
   if (is_uniform_) {
     for (int i = 1; i < n_levels_; i++) {
-      levels_[i] = levels_[i-1] + pitch_[0];
+      levels_.push_back(levels_[i-1] + pitch_[0]);
     }
   } else {
-    pitch_[0] = stod(pitch_words[0]);
-    for (int i = 1; i < n_levels_words.size(); i++) {
-      pitch_[i] = stod(pitch_words[i]);
-      levels_[i] = pitch_[i-1] + levels_[i-1];
+    pitch_.push_back(stod(pitch_words[0]));
+    for (int i = 1; i < n_levels_; i++) {
+      pitch_.push_back(stod(pitch_words[i]));
+      levels_.push_back(pitch_[i-1] + levels_[i-1]);
     }
   }
-  levels_[n_levels_] = pitch_[n_levels_ - 1] + levels_[n_levels_ - 1];
+  levels_.push_back(pitch_[n_levels_ - 1] + levels_[n_levels_ - 1]);
+
+  // Reinitialize the vectors
+
   
 
   // Read the universes and make sure the correct number was specified.
@@ -1249,6 +1248,7 @@ std::pair<double, array<int, 3>> StackLattice::distance(
   }
 
   // Top and bottom sides
+  double d {INFTY};
   if ((std::abs(c - c0) > FP_PRECISION) && u_c != 0) {
     double this_d = (c0 - c) / u_c;
     if (this_d < d) {
@@ -1382,15 +1382,22 @@ void StackLattice::to_hdf5_inner(hid_t lat_group) const
   // the lower-indexed universes are closer to the base coordinate
   hsize_t nc {static_cast<hsize_t>(n_levels_)};
   vector<int> out(nc * 1 * 1);
+  hsize_t dims[3];
   for (int j = 0; j < nc; j++) {
     out[j] = model::universes[universes_[j]]->id_;
   }
   if (orientation_ == Orientation::x) {
-    hsize_t dims[3] {nc, 1, 1};
+    dims[0] = nc;
+    dims[1] = 1;
+    dims[2] = 1;
   } else if (orientation_ == Orientation::y) {
-    hsize_t dims[3] {1, nc, 1};
+    dims[0] = 1;
+    dims[1] = nc;
+    dims[2] = 1;
   } else {
-    hsize_t dims[3] {1, 1, nc};
+    dims[0] = 1;
+    dims[1] = 1;
+    dims[2] = nc;
   }
 
   write_int(lat_group, 3, dims, "universes", out.data(), false);

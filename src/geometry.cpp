@@ -391,21 +391,27 @@ BoundaryInfo distance_to_boundary(Particle& p)
       std::pair<double, array<int, 3>> lattice_distance;
       switch (lat.type_) {
       case LatticeType::rect:
-        lattice_distance = lat.distance(r, u, coord.lattice_i);
-        break;
+        {
+          lattice_distance = lat.distance(r, u, coord.lattice_i);
+          break;
+        }  
       case LatticeType::hex:
-        auto& cell_above {model::cells[p.coord(i - 1).cell]};
-        Position r_hex {p.coord(i - 1).r};
-        r_hex -= cell_above->translation_;
-        if (coord.rotated) {
-          r_hex = r_hex.rotate(cell_above->rotation_);
+        {
+          auto& cell_above {model::cells[p.coord(i - 1).cell]};
+          Position r_hex {p.coord(i - 1).r};
+          r_hex -= cell_above->translation_;
+          if (coord.rotated) {
+            r_hex = r_hex.rotate(cell_above->rotation_);
+          }
+          r_hex.z = coord.r.z;
+          lattice_distance = lat.distance(r_hex, u, coord.lattice_i);
+          break;
         }
-        r_hex.z = coord.r.z;
-        lattice_distance = lat.distance(r_hex, u, coord.lattice_i);
-        break;
-      //case LatticeType::stack:
-      //  lattice_distance = lat.distance(r, u, coord.lattice_i);
-      //  break;
+      case LatticeType::stack:
+        {
+          lattice_distance = lat.distance(r, u, coord.lattice_i);
+          break;
+        }
       }
 
       d_lat = lattice_distance.first;

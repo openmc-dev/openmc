@@ -304,8 +304,6 @@ public:
 
   Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
 
-  bool is_valid_index(int indx) const;
-
   int32_t& offset(int map, array<int, 3> const& i_xyz);
 
   int32_t offset(int map, int indx) const;
@@ -328,8 +326,8 @@ private:
   Orientation orientation_; //!< Orientation of lattice
   Position central_axis_;   //!< Axial center of lattice
   float base_coordinate_;   //!< Coordinate of base level of lattice
-  double *pitch_;          //!< Lattice tile width and height. Actual size set at runtime
-  double *levels_;         //!< Coordinates of lattice tile boundaries
+  vector<double> pitch_;    //!< Lattice tile width and height.
+  vector<double> levels_;   //!< Coordinates of lattice tile boundaries
 };
 
 

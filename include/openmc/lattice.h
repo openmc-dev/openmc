@@ -329,6 +329,7 @@ private:
   Position central_axis_;   //!< Axial center of lattice
   float base_coordiante_;   //!< Coordinate of base level of lattice
   double **pitch_;          //!< Lattice tile width and height
+  array<double, n_levels_> levels_;         //!< Coordinates of lattice tile boundaries
 };
 
 

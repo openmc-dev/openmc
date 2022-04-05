@@ -1151,11 +1151,21 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <num_levels>.");
   }
-  if (!is_uniform_) {
-    for (int i = 0; i < n_levels_words.size(); i++) {
+
+  // Levels helper attribute
+  levels[0] = base_coordinate_
+  if (is_uniform_) {
+    for (int i = 1; i < n_levels_; i++) {
+      levels_[i] = levels_[i-1] + pitch_[0];
+    }
+  } else {
+    pitch_[0] = stod(pitch_words[0]);
+    for (int i = 1; i < n_levels_words.size(); i++) {
       pitch_[i] = stod(pitch_words[i]);
+      levels_[i] = pitch_[i-1] + levels_[i-1] 
     }
   }
+  
 
   // Read the universes and make sure the correct number was specified.
   std::string univ_str {get_node_value(lat_node, "universes")};
@@ -1268,14 +1278,22 @@ void StackLattice::get_indices(
   // Determine axis index, accounting for coincidence
   double ic_ = r_c - base_coordinate_;
   if (is_uniform_) {
-    ic /= pitch_[0];
+    ic_ /= pitch_[0];
   } else {
     // nonuniform cacse
-    ic /= ...;
+    if (r_c < base_coordinate_) {
+      ic_ = -1;
+    } else if (r_c > levels_[n_levels_ - 1]) {
+      ic_ = n_levels_;
+    } else {
+      ic_ = 0;
+      while !((r_c >= levels_[ic_]) and (r_c <= levels_[ic_ + 1])) {
+        ic_ += 1;
+      }
+    } 
   }
-
   long ic_close {std::lround(ic_)};
-  if (coincident(ix_, ix_close)) {
+  if (coincident(ic_, ic_close)) {
     result[orientation_idx_] = (u_c > 0) ? ic_close : ic_close - 1;
   } else {
     result[orientation_idx_] = std::floor(ic_);

@@ -300,7 +300,7 @@ public:
 
   void get_indices(Position r, Direction u, array<int, 3>& result) const;
 
-  int get_flat_index(const arrat<int, 3>& i_xyz) const;
+  int get_flat_index(const array<int, 3>& i_xyz) const;
 
   Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
 
@@ -328,7 +328,7 @@ private:
   Orientation orientation_; //!< Orientation of lattice
   Position central_axis_;   //!< Axial center of lattice
   float base_coordiante_;   //!< Coordinate of base level of lattice
-  **double pitch_;          //!< Lattice tile width and height
+  double **pitch_;          //!< Lattice tile width and height
 };
 
 

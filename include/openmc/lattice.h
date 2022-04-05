@@ -321,7 +321,7 @@ private:
     x  //!< Central axis of lattice parallel to x-axis
   };
 
-  bool is_uniform_ //!< Mark if latttice is uniform or not
+  bool is_uniform_; //!< Mark if latttice is uniform or not
 
   int orientation_idx_;     //!< Index to select x,y, or z based on orientation
   int n_levels_;            //!< Number of radial tile positions

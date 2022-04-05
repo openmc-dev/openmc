@@ -9,7 +9,9 @@ from uncertainties import ufloat, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+from openmc.stats import Discrete, Tabular
 from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
+from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
 
 
@@ -495,3 +497,43 @@ class Decay(EqualityMixin):
 
         """
         return cls(ev_or_filename)
+
+    def get_sources(self):
+        sources = {}
+        name = self.nuclide['name']
+        for particle, spectra in self.spectra.items():
+            # Only handle gammas for now
+            if particle not in ('gamma', 'xray'):
+                continue
+
+            # Create distribution for discrete
+            distributions = []
+            if spectra['continuous_flag'] in ('discrete', 'both'):
+                energies = []
+                intensities = []
+                for discrete_data in spectra['discrete']:
+                    energies.append(discrete_data['energy'].n)
+                    intensities.append(discrete_data['intensity'].n)
+                energies = np.array(energies)
+                intensities = np.array(intensities)
+                dist_discrete = Discrete(energies, intensities)  # <-- not normalized yet
+                dist_discrete._normalization = spectra['discrete_normalization'].n
+                distributions.append(dist_discrete)
+
+            # Create distribution for continuous
+            if spectra['continuous_flag'] in ('continuous', 'both'):
+                f = spectra['continuous']['probability']
+                if len(f.interpolation) > 1:
+                    raise NotImplementedError("Multiple interpolation regions: {name}, {particle}")
+                interpolation = INTERPOLATION_SCHEME[f.interpolation[0]]
+                if interpolation not in ('histogram', 'linear-linear'):
+                    raise NotImplementedError("Continuous spectra with {interpolation} interpolation ({name}, {particle}) not supported")
+
+                dist_continuous = Tabular(f.x, f.y, interpolation)
+                dist_continuous._intensity = spectra['continuous_normalization'].n
+                distributions.append(dist_continuous)
+
+            # Combine distribution for discrete and continuous
+            sources[particle] = distributions
+
+        return sources

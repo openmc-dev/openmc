@@ -109,7 +109,6 @@ class IsogonalOctagon(CompositeSurface):
                       'lower_right', 'upper_left')
 
     def __init__(self, center, r1, r2, axis='z', **kwargs):
-        self._axis = axis
         c1, c2 = center
 
         # Coords for axis-perpendicular planes

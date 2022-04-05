@@ -9,7 +9,7 @@ from uncertainties import ufloat, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from openmc.stats import Discrete, Tabular
+from openmc.stats import Discrete, Tabular, Mixture
 from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
 from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
@@ -499,15 +499,27 @@ class Decay(EqualityMixin):
         return cls(ev_or_filename)
 
     def get_sources(self):
+        """Get radioactive decay source distributions
+
+        Returns
+        -------
+        sources : dict
+            Dictionary mapping particle types (e.g., 'photon') to instances of
+            :class:`openmc.stats.Univariate`
+
+        """
         sources = {}
         name = self.nuclide['name']
         for particle, spectra in self.spectra.items():
             # Only handle gammas for now
             if particle not in ('gamma', 'xray'):
                 continue
+            # TODO: Set particle type based on 'particle' above
+            particle_type = 'photon'
+            if particle_type not in sources:
+                sources[particle_type] = []
 
             # Create distribution for discrete
-            distributions = []
             if spectra['continuous_flag'] in ('discrete', 'both'):
                 energies = []
                 intensities = []
@@ -516,9 +528,10 @@ class Decay(EqualityMixin):
                     intensities.append(discrete_data['intensity'].n)
                 energies = np.array(energies)
                 intensities = np.array(intensities)
+                intensities *= spectra['discrete_normalization'].n
                 dist_discrete = Discrete(energies, intensities)  # <-- not normalized yet
-                dist_discrete._normalization = spectra['discrete_normalization'].n
-                distributions.append(dist_discrete)
+                dist_discrete._intensity = intensities.sum()
+                sources[particle_type].append(dist_discrete)
 
             # Create distribution for continuous
             if spectra['continuous_flag'] in ('continuous', 'both'):
@@ -531,9 +544,28 @@ class Decay(EqualityMixin):
 
                 dist_continuous = Tabular(f.x, f.y, interpolation)
                 dist_continuous._intensity = spectra['continuous_normalization'].n
-                distributions.append(dist_continuous)
+                sources[particle_type].append(dist_continuous)
 
-            # Combine distribution for discrete and continuous
-            sources[particle] = distributions
+        # Combine discrete distributions
+        for dist_list in sources.values():
+            # Get list of discrete distributions
+            discrete_index = [i for i, d in enumerate(dist_list) if isinstance(d, Discrete)]
+            dist_discrete = [dist_list[i] for i in discrete_index]
 
+            if len(dist_discrete) > 1:
+                # Create combined discrete distribution
+                probs = [1.0] * len(dist_discrete)
+                combined_dist = Discrete.merge(dist_discrete, probs)
+                combined_dist._intensity = np.sum(combined_dist.p)
+
+                for idx in reversed(discrete_index):
+                    dist_list.pop(idx)
+                dist_list.append(combined_dist)
+
+            # Combine discrete and continuous if present
+            if len(dist_list) > 1:
+                probs = [d._intensity for d in dist_list]
+                dist_list[:] = Mixture(probs, dist_list.copy())
+
+        sources = {k: (v[0] if v else None) for k, v in sources.items()}
         return sources

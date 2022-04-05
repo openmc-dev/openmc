@@ -2254,9 +2254,9 @@ class StackLattice(Lattice):
     name : str
         Name of the lattice
     pitch : float or Iterable of float
-        Height of the bottom of each lattice elemnent x, y, or z directions
-        (depending on the :attr:`orientation`) in cm. If a single float,
-        the distance between lattice elements is the same.
+        Distance bewteen the bottoms of adjacent lattice elements  x, y,
+        or z directions (depending on the :attr:`orientation`) in cm. If
+        a single float, the distance between lattice elements is the same.
     outer : openmc.Universe
         A universe to fill all space outside the lattice
     universes : Iterable of openmc.Universe
@@ -2362,7 +2362,7 @@ class StackLattice(Lattice):
 
     @base_coordinate.setter
     def base_coordinate(self, base_coordinate):
-        cv.check_type('lattice base_level_coordinate', base_coordiante, Real)
+        cv.check_type('lattice base_level_coordinate', base_coordinate, Real)
         self._base_coordinate = base_coordinate
 
     @orientation.setter
@@ -2373,7 +2373,7 @@ class StackLattice(Lattice):
             self._orientation_idx = 0
         elif orientation == 'y':
             self._orientation_idx = 1
-        else
+        else:
             self._orientation_idx = 2
         self._orientation = orientation.lower()
 
@@ -2382,14 +2382,18 @@ class StackLattice(Lattice):
     def pitch(self, pitch):
         try:
             cv.check_type('lattice pitch', pitch, Real)
-            self._levels = pitch * np.arange(1, self.num_levels + 1)
+            _levels = pitch * np.arange(1, self.num_levels + 1)
         except TypeError:
             cv.check_type('lattice pitch', pitch, Iterable, Real)
             cv.check_length('lattice pitch', pitch, self.num_levels)
             self._uniform = False
-            self._levels = pitch
+            _levels = [pitch[0]]
+            for p in pitch[1:]:
+                _levels += [_levels[-1] + p]
+            _levels = np.asarray(_levels)
 
-        self._levels += self._base_coordinate
+        _levels += self._base_coordinate
+        self._levels = np.insert(_levels, 0, self._base_coordinate)
         self._pitch = pitch
 
 
@@ -2422,7 +2426,7 @@ class StackLattice(Lattice):
 
         """
         # find the level:
-        p = point(self._orientation_idx)
+        p = point[self._orientation_idx]
         idx = 0
         if self._uniform:
             while not(p >= self._levels[idx] and p <= self._levels[idx + 1]):
@@ -2556,7 +2560,7 @@ class StackLattice(Lattice):
         central_axis.text = ' '.join(map(str, self._central_axis))
 
         # Export Lattice base coordinate
-        base_coordiante = ET.SubElement(lattice_subelement, "base_coordinate")
+        base_coordinate = ET.SubElement(lattice_subelement, "base_coordinate")
         base_coordinate.text = ' '.join(str(self._base_coordinate))
 
         # Export the Lattice nested Universe IDs - column major for Fortran

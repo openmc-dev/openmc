@@ -1302,13 +1302,7 @@ void StackLattice::get_indices(
 
 int StackLattice::get_flat_index(const array<int, 3>& i_xyz) const
 {
-  if (orientation_ == Orienation::x) {
-    return i_xyz[0];
-  } else if (orienation_ == Orientation::y) {
-    return i_xyz[1];
-  } else {
-    return i_xyz[2];
-  }
+  return i_xyz[orientation_idx_];
 }
 
 //==============================================================================
@@ -1316,25 +1310,18 @@ int StackLattice::get_flat_index(const array<int, 3>& i_xyz) const
 Position StackLattice::get_local_position(
   Position r, const array<int, 3>& i_xyz) const
 {
-  float orientation_sub_;
-  if (is_uniform) {
-    orientation_sub_ = base_coordinate_ + \
-                         (pitch_[orientation_idx_] * i_xyz[orentation_idx_]);
-  } else {
-    orientation_sub_ = base_coordinate_ + pitch_[i_xyz[orientation_idx_]];
-  }
   if (orientation_ == Orientation::x) {
-    r.x -= orientation_sub_;
+    r.x -= levels_[i_xyz[0]];
     r.y -= central_axis_[0];
     r.z -= central_axis_[1];
   } else if (orientation_ == Orientation::y) {
     r.x -= central_axis_[0];
-    r.y -= orientation_sub_;
+    r.y -= levels_[i_xyz[1]];
     r.z -= central_axis_[1];
   } else {
     r.x -= central_axis_[0];
     r.y -= central_axis_[1];
-    r.z -= orientation_sub_;
+    r.z -= levels_[i_xyz[2]];
   }
   return r;
 }

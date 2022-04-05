@@ -2221,10 +2221,9 @@ class HexLattice(Lattice):
 
 
 class StackLattice(Lattice):
-    """A lattice consisting of universes stacked nonuniformly along a central
-    axis.
+    """A lattice consisting of universes stacked along a central axis.
 
-    To completley define a nonuniform stack lattice, the
+    To completley define a stack lattice, the
     :attr:`StackLattice.central_axis`, :attr:`StackLattice.base_coordinate`,
     :attr:`StackLattice.pitch`, :attr:`StackLattice.outer`,
     and :attr:`StackLattice.universes` properties need to be set.
@@ -2232,7 +2231,7 @@ class StackLattice(Lattice):
     Most methods for this class use a natural indexing scheme wherein elements
     are assigned an index corresponding to their position relative to the
     :math:`x`, :math:`y`, or :math:`z` bases, depending on the lattice
-    orientation, as described fully in :ref:`stack_indexing`, i.e., an index of
+    orientation, i.e., an index of
     (0) in the lattice oriented to the :math:`z` basis gives the element whose
     `z` coordinate is the smallest. However, note that when universes are
     assigned to lattice elements using the
@@ -2256,7 +2255,7 @@ class StackLattice(Lattice):
     pitch : float or Iterable of float
         Distance bewteen the bottoms of adjacent lattice elements  x, y,
         or z directions (depending on the :attr:`orientation`) in cm. If
-        a single float, the distance between lattice elements is the same.
+        a single float, the distance between all lattice elements is the same.
     outer : openmc.Universe
         A universe to fill all space outside the lattice
     universes : Iterable of openmc.Universe
@@ -2429,12 +2428,15 @@ class StackLattice(Lattice):
         p = point[self._orientation_idx]
         idx = 0
         if self._uniform:
-            while not(p >= self._levels[idx] and p <= self._levels[idx + 1]):
-                idx += 1
+            idx = floor((p - self.base_coordinate)/self.pitch)
         else:
-            while not(p >= self._levels[idx] and p <= self._levels[idx + 1]):
-                idx += 1
-
+            if (p < self.base_coordiante):
+                idx = -1
+            elif (p > _levels[-1]):
+                idx = num_levels + 1
+            else:
+                while not(p >= self._levels[idx] and p <= self._levels[idx + 1]):
+                    idx += 1
 
         return idx, self.get_local_coordinates(point, idx)
 

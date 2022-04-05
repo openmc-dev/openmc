@@ -452,13 +452,13 @@ class Maxwell(Univariate):
 
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
-        self.sample_maxwell(self.theta, n_samples)
+        return self.sample_maxwell(self.theta, n_samples)
 
     @staticmethod
     def sample_maxwell(t, n_samples):
         r1, r2, r3 = np.random.rand(3, n_samples)
         c = np.power(np.cos(0.5 * np.pi * r3), 2)
-        return t * (np.log(r1) + np.log(r2) * c)
+        return -t * (np.log(r1) + np.log(r2) * c)
 
     def to_xml_element(self, element_name):
         """Return XML representation of the Maxwellian distribution

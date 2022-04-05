@@ -1108,14 +1108,15 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   std::string n_levels_str {get_node_value(lat_node, "num_levels")};
   vector<std::string> n_levels_words {split(n_levels_str)};
   if (n_levels_words.size() == 1) {
-    if (orientation_ == Orientaion::z:) {
+    if (orientation_ == Orientaion::z) {
       n_levels_ = std::stoi(n_levels_words[0]);
-    }
-    else if (orientation_ == Orientation::y:) {
+      orientation_idx_ = 3
+    } else if (orientation_ == Orientation::y) {
       n_levels_ = std::stoi(n_levels_words[0]);
-    }
-    else {
+      orientation_idx_ = 2
+    } else {
       n_levels_ = std::stoi(n_levels_words[0]);
+      orientation_idx = 1
     }
   } else {
     fatal_error("Stack lattice must be one dimensional.");
@@ -1186,15 +1187,13 @@ int32_t const& StackLattice::operator[](array<int, 3> const& i_xyz)
 
 bool StackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 {
-  if (orientation_ == Orienation::x) {
+  if (orientation_ == Orientation::x) {
     return ((i_xyz[0] >= 0) && (i_xyz[0] < n_levels_) && (i_xyz[1] == 0) &&
             (i_xyz[2] == 0));
-  }
-  else if (orienation_ == Orientation::y) {
+  } else if (orienation_ == Orientation::y) {
     return ((i_xyz[0] == 0) && (i_xyz[1] >= 0) && (i_xyz[1] < n_levels_) &&
             (i_xyz[2] == 0));
-  }
-  else {
+  } else {
     return ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (i_xyz[2] >= 0) &&
             (i_xyz[2] < n_levels_));
   }
@@ -1202,14 +1201,13 @@ bool StackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 
 //==============================================================================
 
+//TO IMPLEMENT
 std::pair<double, array<int, 3>> StackLattice::distance(
   Position r, Direction u, const array<int, 3>& i_xyz) const
 {
-  if (orientation_ == Orienation::x) {
-  }
-  else if (orienation_ == Orientation::y) {
-  }
-  else {
+  if (orientation_ == Orientation::x) {
+  } else if (orienation_ == Orientation::y) {
+  } else {
   }
   // Get short aliases to the coordinates.
   double x = r.x;
@@ -1266,14 +1264,13 @@ std::pair<double, array<int, 3>> StackLattice::distance(
 
 //==============================================================================
 
+//TO IMPLEMENT
 void StackLattice::get_indices(
   Position r, Direction u, array<int, 3>& result) const
 {
-  if (orientation_ == Orienation::x) {
-  }
-  else if (orienation_ == Orientation::y) {
-  }
-  else {
+  if (orientation_ == Orientation::x) {
+  } else if (orienation_ == Orientation::y) {
+  } else {
   }
   // Determine x index, accounting for coincidence
   double ix_ {(r.x - lower_left_.x) / pitch_.x};
@@ -1309,13 +1306,12 @@ void StackLattice::get_indices(
 int StackLattice::get_flat_index(const array<int, 3>& i_xyz) const
 {
   if (orientation_ == Orienation::x) {
+    return i_xyz[0];
+  } else if (orienation_ == Orientation::y) {
+    return i_xyz[1];
+  } else {
+    return i_xyz[2];
   }
-  else if (orienation_ == Orientation::y) {
-  }
-  else {
-  }
-  return n_cells_[0] * n_cells_[1] * i_xyz[2] + n_cells_[0] * i_xyz[1] +
-         i_xyz[0];
 }
 
 //==============================================================================
@@ -1323,26 +1319,32 @@ int StackLattice::get_flat_index(const array<int, 3>& i_xyz) const
 Position StackLattice::get_local_position(
   Position r, const array<int, 3>& i_xyz) const
 {
-    if (orientation_ == Orienation::x) {
-      r.x -= base_coordinate_ + pitch_[i_xyz[0]];
-      r.y -= central_axis_[0];
-      r.z -= central_axis_[1];
-    }
-    else if (orienation_ == Orientation::y) {
-      r.x -= central_axis_[0];
-      r.y -= base_coordinate_ + pitch_[i_xyz[1]];
-      r.z -= central_axis_[1];
-    }
-    else {
-      r.x -= central_axis_[0];
-      r.y -= central_axis_[1];
-      r.z -= base_coordinate_ + pitch_[i_xyz[2]];
-    }
+  float orientation_sub_;
+  if (is_uniform) {
+    orientation_sub_ = base_coordinate_ + \
+                         (pitch_[orientation_idx_] * i_xyz[orentation_idx_]);
+  } else {
+    orientation_sub_ = base_coordinate_ + pitch_[i_xyz[orientation_idx_]];
+  }
+  if (orientation_ == Orientation::x) {
+    r.x -= orientation_sub_;
+    r.y -= central_axis_[0];
+    r.z -= central_axis_[1];
+  } else if (orientation_ == Orientation::y) {
+    r.x -= central_axis_[0];
+    r.y -= orientation_sub_;
+    r.z -= central_axis_[1];
+  } else {
+    r.x -= central_axis_[0];
+    r.y -= central_axis_[1];
+    r.z -= orientation_sub_;
+  }
   return r;
 }
 
 //==============================================================================
 
+//TO IMPLEMENT
 int32_t& StackLattice::offset(int map, array<int, 3> const& i_xyz)
 {
   return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
@@ -1352,6 +1354,7 @@ int32_t& StackLattice::offset(int map, array<int, 3> const& i_xyz)
 
 //==============================================================================
 
+//TOIMPLEMENT
 int32_t StackLattice::offset(int map, int indx) const
 {
   return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map + indx];
@@ -1367,6 +1370,7 @@ std::string StackLattice::index_to_string(int indx) const
 
 //==============================================================================
 
+//TO IMPLEMENT
 void StackLattice::to_hdf5_inner(hid_t lat_group) const
 {
   // Write basic lattice information.

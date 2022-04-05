@@ -218,4 +218,4 @@ const vector<int32_t>& UniversePartitioner::get_cells(
   }
 }
 
-}
+} // namespace openmc

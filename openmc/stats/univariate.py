@@ -889,7 +889,7 @@ class Tabular(Univariate):
         x = np.asarray(self.x)
         p = np.asarray(self.p)
         if self.interpolation == 'histogram':
-            c[1:] = p * np.diff(x)
+            c[1:] = p[:-1] * np.diff(x)
         elif self.interpolation == 'linear-linear':
             c[1:] = 0.5 * (p[0:-1] + p[1:]) * np.diff(x)
         return np.cumsum(c)

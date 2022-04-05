@@ -2457,7 +2457,7 @@ class StackLattice(Lattice):
         """
         x,y,z = point
         c1, c2 = self.central_axis
-        if self.oriention == 'x':
+        if self.orientation == 'x':
             x -= self._levels[idx]
             y -= c1
             z -= c2

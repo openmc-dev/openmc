@@ -4,7 +4,6 @@ from math import sqrt
 from numpy import array
 
 import openmc
-import warnings
 from openmc.checkvalue import check_greater_than, check_value
 
 class CompositeSurface(ABC):
@@ -74,10 +73,10 @@ class IsogonalOctagon(CompositeSurface):
         (y, z), (z, x), or (x, y) basis.
     r1 : float
         Half-width of octagon across its basis axis-parallel sides in units
-        of cm. Assumed to be less than :math:`r_2\sqrt{2}`.
+        of cm. Must be less than :math:`r_2\sqrt{2}`.
     r2 : float
         Half-width of octagon across its basis axis intersecting sides in
-        units of cm. Assumed to be less than :math:`r_1\sqrt{2}`.
+        units of cm. Must be less than than :math:`r_1\sqrt{2}`.
     axis : {'x', 'y', 'z'}
         Central axis of octagon. Defaults to 'z'
     **kwargs
@@ -122,11 +121,11 @@ class IsogonalOctagon(CompositeSurface):
 
         # Side lengths
         if r2 > r1 * sqrt(2):
-            warnings.warn(f'r2 is greater than sqrt(2) * r1. Octagon may' + \
-                          ' be erroneous.')
+            raise ValueError(f'r2 is greater than sqrt(2) * r1. Octagon' + \
+                             ' may be erroneous.')
         if r1 > r2 * sqrt(2):
-            warnings.warn(f'r1 is greater than sqrt(2) * r2. Octagon may' + \
-                          ' be erroneous.')
+            raise ValueError(f'r1 is greater than sqrt(2) * r2. Octagon' + \
+                             ' may be erroneous.')
 
         L_perp_ax1 = (r2 * sqrt(2) - r1) * 2
         L_perp_ax2 = (r1 * sqrt(2) - r2) * 2
@@ -165,8 +164,6 @@ class IsogonalOctagon(CompositeSurface):
         # Put our coordinates in (x,y,z) order
         for p in points:
             p[:] = p[coord_map]
-
-        #p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr = calibrated_points
 
         self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
                                                     **kwargs)

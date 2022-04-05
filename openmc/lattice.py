@@ -2218,7 +2218,7 @@ class StackLattice(Lattice):
     axis.
 
     To completley define a nonuniform stack lattice, the
-    :attr:`StackLattice.central_axis`,
+    :attr:`StackLattice.central_axis`, :attr:`StackLattice.base_coordinate`,
     :attr:`StackLattice.pitch`, :attr:`StackLattice.outer`,
     and :attr:`StackLattice.universes` properties need to be set.
 
@@ -2259,6 +2259,8 @@ class StackLattice(Lattice):
     central_axis : Iterable of float
         The :math:`(y,z)`, :math:`(x,z)`, or :math:`(x,y)` coordinates of the central
         axis of the lattice, depending on the lattice orientation
+    base_coordinate : float
+        The coordinate of the base level of the lattice
     indices : list of tuple
         A list of all possible lattice element indices. These
         indices correspond to indices in the
@@ -2285,6 +2287,8 @@ class StackLattice(Lattice):
                                             self._orientation)
         string += '{0: <16}{1}{2}\n'.format('\t# Levels', '=\t', self.num_levels)
         string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self.pitch)
+        string += '{0: <16}{1}{2}\n'.format('\tbase_coordinate', '=\t',
+                                            self._base_coordinate)
         string += '{0: <16}{1}{2}\n'.format('\tcentral_axis', '=\t',
                                             self._central_axis)
         if self._outer is not None:
@@ -2318,6 +2322,9 @@ class StackLattice(Lattice):
     def central_axis(self):
         return self._central_axis
 
+    @property
+    def base_coordinate(self):
+        return self._base_coordinate
 
     @property
     def orientation(self):
@@ -2345,11 +2352,22 @@ class StackLattice(Lattice):
         cv.check_length('lattice central_axis', central_axis, 2)
         self._central_axis = central_axis
 
+    @base_coordinate.setter
+    def base_coordinate(self, base_coordinate):
+        cv.check_type('lattice base_level_coordinate', base_coordiante, Real)
+        self._base_coordinate = base_coordinate
 
     @orientation.setter
     def orientation(self, orientation):
         cv.check_value('orientation', orientation.lower(), ('x','y','z'))
-        self._oreientation = orientation.lower()
+
+        if orientation == 'x':
+            self._orientation_idx = 0
+        elif orientation == 'y':
+            self._orientation_idx = 1
+        else
+            self._orientation_idx = 2
+        self._orientation = orientation.lower()
 
 
     @Lattice.pitch.setter
@@ -2363,6 +2381,7 @@ class StackLattice(Lattice):
             self._uniform = False
             self._levels = pitch
 
+        self._levels += self._base_coordinate
         self._pitch = pitch
 
 
@@ -2394,15 +2413,8 @@ class StackLattice(Lattice):
             element coordinate system
 
         """
-        if self.oriention == 'x':
-            _idx = 0
-        elif self.orientation == 'y':
-            _idx = 1
-        else:
-            _idx = 2
-
         # find the level:
-        p = point(_idx)
+        p = point(self._orientation_idx)
         idx = 0
         if self._uniform:
             while not(p >= self._levels[idx] and p <= self._levels[idx + 1]):
@@ -2535,6 +2547,10 @@ class StackLattice(Lattice):
         central_axis = ET.SubElement(lattice_subelement, "central_axis")
         central_axis.text = ' '.join(map(str, self._central_axis))
 
+        # Export Lattice base coordinate
+        base_coordiante = ET.SubElement(lattice_subelement, "base_coordinate")
+        base_coordinate.text = ' '.join(str(self._base_coordinate))
+
         # Export the Lattice nested Universe IDs - column major for Fortran
         universe_ids = '\n'
 
@@ -2577,9 +2593,12 @@ class StackLattice(Lattice):
         """
         lat_id = int(get_text(elem, 'id'))
         name = get_text(elem, 'name')
+        orientation = get_text(elem, 'orientation')
         lat = cls(lat_id, name)
+        lat.orientation = orientation
         lat.central_axis = [float(i)
                           for i in get_text(elem, 'central_axis').split()]
+        lat.base_coordinate = float(get_text(eleme, 'base_coordinate'))
         lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
         if len(lat.pitch) == 1:
             lat.pitch = lat.pitch[0]
@@ -2616,16 +2635,24 @@ class StackLattice(Lattice):
 
         num_levels = group['num_levels'][...]
         central_axis = group['central_axis'][...]
+        base_coordinate = group['base_coordinate'][...]
         pitch = group['pitch'][...]
         outer = group['outer'][()]
         universe_ids = group['universes'][...]
+
+        if 'orientation' in group:
+            orientation = group['orientation'][()].decode()
+        else:
+            orientation = "z"
 
         # Create the Lattice
         lattice_id = int(group.name.split('/')[-1].lstrip('lattice '))
         name = group['name'][()].decode() if 'name' in group else ''
         lattice = cls(lattice_id, name)
         lattice.central_axis = central_axis
+        lattice.base_coordinate = base_coordinate
         lattice.pitch = pitch
+        lattice.orientation = orientation
 
         # If the Universe specified outer the Lattice is not void
         if outer >= 0:

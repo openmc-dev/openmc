@@ -52,6 +52,7 @@ class CompositeSurface(ABC):
     def __neg__(self):
         """Return the negative half-space of the composite surface."""
 
+
 class IsogonalOctagon(CompositeSurface):
     """Infinite isogonal octagon composite surface
 
@@ -143,30 +144,29 @@ class IsogonalOctagon(CompositeSurface):
 
         # Orientation specific variables
         if axis == 'z':
-            coord_map = [0,1,2]
-            self.top = openmc.YPlane(y0=ctop, **kwargs)
-            self.bottom = openmc.YPlane(y0=cbottom, **kwargs)
-            self.right = openmc.XPlane(x0=cright, **kwargs)
-            self.left = openmc.XPlane(x0=cleft, **kwargs)
+            coord_map = [0, 1, 2]
+            self.top = openmc.YPlane(ctop, **kwargs)
+            self.bottom = openmc.YPlane(cbottom, **kwargs)
+            self.right = openmc.XPlane(cright, **kwargs)
+            self.left = openmc.XPlane(cleft, **kwargs)
         elif axis == 'y':
-            coord_map = [0,2,1]
-            self.top = openmc.ZPlane(z0=ctop, **kwargs)
-            self.bottom = openmc.ZPlane(z0=cbottom, **kwargs)
-            self.right = openmc.XPlane(x0=cright, **kwargs)
-            self.left = openmc.XPlane(x0=cleft, **kwargs)
+            coord_map = [0, 2, 1]
+            self.top = openmc.ZPlane(ctop, **kwargs)
+            self.bottom = openmc.ZPlane(cbottom, **kwargs)
+            self.right = openmc.XPlane(cright, **kwargs)
+            self.left = openmc.XPlane(cleft, **kwargs)
         elif axis == 'x':
-            coord_map = [2,0,1]
-            self.top = openmc.ZPlane(z0=ctop, **kwargs)
-            self.bottom = openmc.ZPlane(z0=cbottom, **kwargs)
-            self.right = openmc.YPlane(y0=cright, **kwargs)
-            self.left = openmc.YPlane(y0=cleft, **kwargs)
+            coord_map = [2, 0, 1]
+            self.top = openmc.ZPlane(ctop, **kwargs)
+            self.bottom = openmc.ZPlane(cbottom, **kwargs)
+            self.right = openmc.YPlane(cright, **kwargs)
+            self.left = openmc.YPlane(cleft, **kwargs)
 
         # Put our coordinates in (x,y,z) order
-        calibrated_points = []
         for p in points:
-            calibrated_points += [p[coord_map]]
+            p[:] = p[coord_map]
 
-        p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr = calibrated_points
+        #p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr = calibrated_points
 
         self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
                                                     **kwargs)
@@ -176,7 +176,6 @@ class IsogonalOctagon(CompositeSurface):
                                                    **kwargs)
         self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr,
                                                    **kwargs)
-
 
     def __neg__(self):
         region1 = -self.top & +self.bottom & -self.right & +self.left
@@ -188,7 +187,6 @@ class IsogonalOctagon(CompositeSurface):
                 -self.lower_left & -self.upper_left
 
         return region1 & region2
-
 
     def __pos__(self):
         region1 = +self.top | -self.bottom | +self.right | -self.left

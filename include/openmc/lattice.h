@@ -321,17 +321,9 @@ private:
     x  //!< Central axis of lattice parallel to x-axis
   };
 
-  //! Fill universes_ vector for 'y' orientation
-  void fill_lattice_y(const vector<std::string>& univ_words);
-
-  //! Fill universes_ vector for 'x' orientation
-  void fill_lattice_x(const vector<std::string>& univ_words);
-
-  //! Fill universes_ vector for 'z' orientation
-  void fill_lattice_z(const vector<std::string>& univ_words);
-
   bool is_uniform_ //!< Mark if latttice is uniform or not
 
+  int orientation_idx_;     //!< Index to select x,y, or z based on orientation
   int n_levels_;            //!< Number of radial tile positions
   Orientation orientation_; //!< Orientation of lattice
   Position central_axis_;   //!< Axial center of lattice

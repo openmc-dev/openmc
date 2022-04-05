@@ -1354,7 +1354,7 @@ int32_t& StackLattice::offset(int map, array<int, 3> const& i_xyz)
 
 //==============================================================================
 
-//TOIMPLEMENT
+//TO IMPLEMENT
 int32_t StackLattice::offset(int map, int indx) const
 {
   return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map + indx];

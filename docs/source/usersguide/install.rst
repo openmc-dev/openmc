@@ -387,7 +387,7 @@ Example of configuring for Debug mode:
 Compiling with MPI
 ++++++++++++++++++
 
-To compile with MPI, use the `-DOPENMC_USE_MPI=on` cmake flag. For example, in a bash shell:
+To compile with MPI, use the `-DOPENMC_USE_MPI=on` cmake option. For example, in a bash shell:
 
 .. code-block:: sh
 

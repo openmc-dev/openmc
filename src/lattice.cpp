@@ -1147,7 +1147,7 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
     pitch_[0] = stod(pitch_words[0]);
     is_uniform_ = true;
   }
-  else if (pitch_words.size() != n_levels_words.size()) {
+  else if (pitch_words.size() != n_levels_) {
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <num_levels>.");
   }
@@ -1338,10 +1338,9 @@ int32_t& StackLattice::offset(int map, array<int, 3> const& i_xyz)
 
 //==============================================================================
 
-//TO IMPLEMENT
 int32_t StackLattice::offset(int map, int indx) const
 {
-  return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map + indx];
+  return offsets_[n_levels_ * map + indx];
 }
 
 //==============================================================================
@@ -1354,61 +1353,40 @@ std::string StackLattice::index_to_string(int indx) const
 
 //==============================================================================
 
-//TO IMPLEMENT
 void StackLattice::to_hdf5_inner(hid_t lat_group) const
 {
   // Write basic lattice information.
   write_string(lat_group, "type", "stack", false);
-  if (is_3d_) {
-    write_dataset(lat_group, "pitch", pitch_);
-    write_dataset(lat_group, "central_axis", central_axis_);
-    write_dataset(lat_group, "num_levels", n_cells_);
+  write_dataset(lat_group, "pitch", pitch_);
+  write_dataset(lat_group, "central_axis", central_axis_);
+  write_dataset(lat_group, "base_coordinate", base_coordinate_);
+  write_dataset(lat_group, "num_levels", n_levels_);
+
+  // Write lattice orientation
+  if (orientation_ == Orientation::x) {
+    write_dataset(lat_group, "orientation", 'x')
+  } else if (orientation_ == Orientation::y) {
+    write_dataset(lat_group, "orientation", 'y')
   } else {
-    array<double, 2> pitch_short {{pitch_[0], pitch_[1]}};
-    write_dataset(lat_group, "pitch", pitch_short);
-    array<double, 2> ll_short {{lower_left_[0], lower_left_[1]}};
-    write_dataset(lat_group, "lower_left", ll_short);
-    array<int, 2> nc_short {{n_cells_[0], n_cells_[1]}};
-    write_dataset(lat_group, "dimension", nc_short);
+    write_dataset(lat_group, "orientation", 'z')
   }
 
-  // Write the universe ids.  The convention here is to switch the ordering on
-  // the y-axis to match the way universes are input in a text file.
-  if (is_3d_) {
-    hsize_t nx {static_cast<hsize_t>(n_cells_[0])};
-    hsize_t ny {static_cast<hsize_t>(n_cells_[1])};
-    hsize_t nz {static_cast<hsize_t>(n_cells_[2])};
-    vector<int> out(nx * ny * nz);
-
-    for (int m = 0; m < nz; m++) {
-      for (int k = 0; k < ny; k++) {
-        for (int j = 0; j < nx; j++) {
-          int indx1 = nx * ny * m + nx * k + j;
-          int indx2 = nx * ny * m + nx * (ny - k - 1) + j;
-          out[indx2] = model::universes[universes_[indx1]]->id_;
-        }
-      }
-    }
-
-    hsize_t dims[3] {nz, ny, nx};
-    write_int(lat_group, 3, dims, "universes", out.data(), false);
-
-  } else {
-    hsize_t nx {static_cast<hsize_t>(n_cells_[0])};
-    hsize_t ny {static_cast<hsize_t>(n_cells_[1])};
-    vector<int> out(nx * ny);
-
-    for (int k = 0; k < ny; k++) {
-      for (int j = 0; j < nx; j++) {
-        int indx1 = nx * k + j;
-        int indx2 = nx * (ny - k - 1) + j;
-        out[indx2] = model::universes[universes_[indx1]]->id_;
-      }
-    }
-
-    hsize_t dims[3] {1, ny, nx};
-    write_int(lat_group, 3, dims, "universes", out.data(), false);
+  // Write the universe ids. The convention here is that 
+  // the lower-indexed universes are closer to the base coordinate
+  hsize_t nc {static_cast<hsize_t>(n_levels_)};
+  vector<int> out(nc * 1 * 1);
+  for (int j = 0; j < nc; j++) {
+    out[j] = model::universes[universes_[j]]->id_;
   }
+  if (orientation_ == Orientation::x) {
+    hsize_t dims[3] {nc, 1, 1};
+  } else if (orientation_ == Orientation::y) {
+    hsize_t dims[3] {1, nc, 1};
+  } else {
+    hsize_t dims[3] {1, 1, nc};
+  }
+
+  write_int(lat_group, 3, dims, "universes", out.data(), false);
 }
 
 //==============================================================================

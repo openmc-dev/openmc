@@ -65,6 +65,7 @@ def test_uniform():
     assert t.p == [1/(b-a), 1/(b-a)]
     assert t.interpolation == 'histogram'
 
+
 def test_powerlaw():
     a, b, n = 10.0, 20.0, 2.0
     d = openmc.stats.PowerLaw(a, b, n)
@@ -75,6 +76,7 @@ def test_powerlaw():
     assert d.b == b
     assert d.n == n
     assert len(d) == 3
+
 
 def test_maxwell():
     theta = 1.2895e6
@@ -263,6 +265,18 @@ def test_normal():
     assert d.mean_value == pytest.approx(mean)
     assert d.std_dev == pytest.approx(std_dev)
     assert len(d) == 2
+
+    # sample normal distribution
+    n_samples = 10000
+    samples = d.sample(n_samples, seed=100)
+    samples = np.abs(samples - mean)
+    within_1_sigma = np.count_nonzero(samples < std_dev)
+    assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(samples < 2*std_dev)
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(samples < 3*std_dev)
+    assert within_3_sigma / n_samples >= 0.99
+
 
 def test_muir():
     mean = 10.0

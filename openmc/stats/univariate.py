@@ -764,11 +764,14 @@ class Muir(Univariate):
         cv.check_greater_than('Muir kt', kt, 0.0)
         self._kt = kt
 
+    @property
+    def std_dev(self):
+        return np.sqrt(4.*self.e0*self.kt/self.m_rat)
+
     def sample(self, n_samples=1, seed=None):
         # https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
         np.random.seed(seed)
-        sigma = np.sqrt(4.*self.e0*self.kt/self.m_rat)
-        return np.random.normal(self.e0, sigma, n_samples)
+        return np.random.normal(self.e0, self.std_dev, n_samples)
 
     def to_xml_element(self, element_name):
         """Return XML representation of the Watt distribution

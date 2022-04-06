@@ -292,3 +292,14 @@ def test_muir():
     assert d.m_rat == pytest.approx(mass)
     assert d.kt == pytest.approx(temp)
     assert len(d) == 3
+
+    # sample normal distribution
+    n_samples = 10000
+    samples = d.sample(n_samples, seed=100)
+    samples = np.abs(samples - mean)
+    within_1_sigma = np.count_nonzero(samples < d.std_dev)
+    assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(samples < 2*d.std_dev)
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(samples < 3*d.std_dev)
+    assert within_3_sigma / n_samples >= 0.99

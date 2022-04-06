@@ -47,7 +47,6 @@ endif()
 
 if(OPENMC_USE_MPI)
   find_package(MPI REQUIRED)
-  include_directories(${MPI_CXX_INCLUDE_DIRS})
 endif()
 
 #===============================================================================
@@ -140,11 +139,6 @@ if(OPENMC_USE_OPENMP)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-if(OPENMC_USE_MPI)
-  list(APPEND cxxflags ${MPI_CXX_COMPILE_FLAGS})
-  list(APPEND ldflags  ${MPI_CXX_LINK_FLAGS})
-endif()
 
 if(OPENMC_ENABLE_PROFILE)
   list(APPEND cxxflags -g -fno-omit-frame-pointer)

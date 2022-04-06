@@ -464,7 +464,7 @@ def test_xml_hex(hlat2, hlat3):
 
 def test_xml_stack(slatU, slatNU):
     for lat in (slatU, slatNU):
-        geom = ET.Element('geonetry')
+        geom = ET.Element('geometry')
         lat.create_xml_subelement(geom)
         elem = geom.find('stack_lattice')
         assert elem.tag == 'stack_lattice'

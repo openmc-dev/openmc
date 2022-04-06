@@ -1133,7 +1133,7 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   central_axis_[1] = stod(ca_words[1]);
 
   // Read the lattice base coordinate 
-  std::string base_coord_str {get_node_value(lat_node, "base_cooardinate")};
+  std::string base_coord_str {get_node_value(lat_node, "base_coordinate")};
   vector <std::string> base_coord_words {split(base_coord_str)};
   if (base_coord_words.size() != 1) {
     fatal_error("Number of entries on <base_coordinate> must be 1.");
@@ -1290,7 +1290,7 @@ void StackLattice::get_indices(
   if (is_uniform_) {
     ic_ /= pitch_[0];
   } else {
-    // nonuniform cacse
+    // nonuniform case
     if (r_c < base_coordinate_) {
       ic_ = -1;
     } else if (r_c > levels_[n_levels_ - 1]) {

@@ -421,7 +421,7 @@ A stack lattice defines a one-dimensional array of universes that are filled int
 
 The position of the central axis and coordinate of the base level of the stack
 in must be specified (:attr:`StackLattice.central_axis` and
-:attr:`StackLattice.base_coordinate`, respecitvely). Additionally,
+:attr:`StackLattice.base_coordinate`, respectively). Additionally,
 :attr:`universes` must be set before :attr:`pitch`.
 
 For a uniform stack lattice, a single value for the pitch should be specified.
@@ -433,7 +433,7 @@ The lattice orientation is by default in the :math:`z`-direction, but this can
 be changed using the :attr:`StackLattice.orientation` attribute to :attr:`x` or
 :attr:`y`. :attr:`StackLattice.central_axis` assumes that the coordinates are
 in the :math:`(x,y)`, :math:`(x,z)`, or :math:`(y,z)` basis for
-:attr:`orientation` of :attr:`z`, :attr:`y`, or :attr:`x`, respectivley.
+:attr:`orientation` of :attr:`z`, :attr:`y`, or :attr:`x`, respectively.
 
 
 

@@ -2223,7 +2223,7 @@ class HexLattice(Lattice):
 class StackLattice(Lattice):
     """A lattice consisting of universes stacked along a central axis.
 
-    To completley define a stack lattice, the
+    To completely define a stack lattice, the
     :attr:`StackLattice.central_axis`, :attr:`StackLattice.base_coordinate`,
     :attr:`StackLattice.pitch`, :attr:`StackLattice.outer`,
     and :attr:`StackLattice.universes` properties need to be set.
@@ -2252,8 +2252,8 @@ class StackLattice(Lattice):
         Unique identifier for the lattice
     name : str
         Name of the lattice
-    pitch : float or Iterable of float
-        Distance bewteen the bottoms of adjacent lattice elements  x, y,
+    pitch : float or iterable of float
+        Distance between the bottoms of adjacent lattice elements  x, y,
         or z directions (depending on the :attr:`orientation`) in cm. If
         a single float, the distance between all lattice elements is the same.
     outer : openmc.Universe
@@ -2281,7 +2281,7 @@ class StackLattice(Lattice):
         super().__init__(lattice_id, name)
         self.ndim = 1
 
-        # Initalize Lattice class attributes
+        # Initialize Lattice class attributes
         self._central_axis = None
         self._uniform = True
         self._orientation = 'z'
@@ -2420,7 +2420,7 @@ class StackLattice(Lattice):
         int
             The corresponding lattice element index
         3-tuple of float
-            Carestian coordinates of the point in the corresponding lattice
+            Cartesian coordinates of the point in the corresponding lattice
             element coordinate system
 
         """

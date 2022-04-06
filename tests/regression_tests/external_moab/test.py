@@ -56,7 +56,7 @@ def cpp_driver(request):
     try:
         print("Building driver")
         # Run cmake/make to build the shared libary
-        subprocess.run(['cmake', os.path.pardir, '-DOPENMC_USE_MPI=' + mpi_arg], check=True)
+        subprocess.run(['cmake', os.path.pardir, f'-DOPENMC_USE_MPI={mpi_arg}'], check=True)
         subprocess.run(['make'], check=True)
         os.chdir(os.path.pardir)
 

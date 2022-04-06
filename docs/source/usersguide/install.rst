@@ -386,7 +386,7 @@ Example of configuring for Debug mode:
 
 .. code-block:: sh
 
-    cmake -DCMAKE_BUILD_TYPE=Debug /path/to/openmcß
+    cmake -DCMAKE_BUILD_TYPE=Debug /path/to/openmc
 
 Selecting HDF5 Installation
 +++++++++++++++++++++++++++

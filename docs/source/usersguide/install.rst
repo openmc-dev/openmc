@@ -352,8 +352,12 @@ OPENMC_ENABLE_COVERAGE
   Compile and link code instrumented for coverage analysis. This is typically
   used in conjunction with gcov_. (Default: off)
 
+OPENMC_USE_MPI
+  Turns on compiling with MPI (default: off). For further information on MPI options,
+  please see the `FindMPI.cmake documentation <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
+
 To set any of these options (e.g., turning on profiling), the following form
-should be used:
+should be used:ß
 
 .. code-block:: sh
 
@@ -382,16 +386,7 @@ Example of configuring for Debug mode:
 
 .. code-block:: sh
 
-    cmake -DCMAKE_BUILD_TYPE=Debug /path/to/openmc
-
-Compiling with MPI
-++++++++++++++++++
-
-To compile with MPI, use the `-DOPENMC_USE_MPI=on` cmake option. For example, in a bash shell:
-
-.. code-block:: sh
-
-    cmake -DOPENMC_USE_MPI=on /path/to/openmc
+    cmake -DCMAKE_BUILD_TYPE=Debug /path/to/openmcß
 
 Selecting HDF5 Installation
 +++++++++++++++++++++++++++

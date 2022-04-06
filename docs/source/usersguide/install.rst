@@ -357,7 +357,7 @@ OPENMC_USE_MPI
   please see the `FindMPI.cmake documentation <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
 To set any of these options (e.g., turning on profiling), the following form
-should be used:ß
+should be used:
 
 .. code-block:: sh
 

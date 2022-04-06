@@ -49,12 +49,14 @@ def cpp_driver(request):
     os.chdir(str(local_builddir))
 
     if config['mpi']:
-        os.environ['CXX'] = 'mpicxx'
+        mpi_arg = "On"
+    else:
+        mpi_arg = "Off"
 
     try:
         print("Building driver")
         # Run cmake/make to build the shared libary
-        subprocess.run(['cmake', os.path.pardir], check=True)
+        subprocess.run(['cmake', os.path.pardir, '-DOPENMC_USE_MPI=' + mpi_arg], check=True)
         subprocess.run(['make'], check=True)
         os.chdir(os.path.pardir)
 

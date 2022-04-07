@@ -2341,7 +2341,7 @@ class StackLattice(Lattice):
 
     @property
     def indices(self):
-        return list(np.broadcast(*np.ogrid[:self.num_layers]))
+        return list(np.ogrid[:self.num_layers])
 
 
     @property
@@ -2431,9 +2431,9 @@ class StackLattice(Lattice):
         if self._uniform:
             idx = floor((p - self.base_coordinate)/self.pitch)
         else:
-            if (p < self.base_coordiante):
+            if (p < self.base_coordinate):
                 idx = -1
-            elif (p > _layer_boundaries[-1]):
+            elif (p > self._layer_boundaries[-1]):
                 idx = num_layers + 1
             else:
                 while not(p >= self._layer_boundaries[idx] and p <= self._layer_boundaries[idx + 1]):
@@ -2541,7 +2541,7 @@ class StackLattice(Lattice):
         # Export the Lattice cell pitch
         pitch = ET.SubElement(lattice_subelement, "pitch")
         if self._uniform:
-            pitch.text = ' '.join(str, self._pitch)
+            pitch.text = str(self._pitch)
         else:
             pitch.text = ' '.join(map(str, self._pitch))
 

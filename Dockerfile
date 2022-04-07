@@ -59,8 +59,7 @@ ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 ENV NJOY_REPO='https://github.com/njoy/NJOY2016'
 
 # Setup environment variables for Docker image
-ENV CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \
-    LD_LIBRARY_PATH=${DAGMC_INSTALL_DIR}/lib:$LD_LIBRARY_PATH \
+ENV LD_LIBRARY_PATH=${DAGMC_INSTALL_DIR}/lib:$LD_LIBRARY_PATH \
     OPENMC_CROSS_SECTIONS=/root/nndc_hdf5/cross_sections.xml \
     OPENMC_ENDF_DATA=/root/endf-b-vii.1 \
     DEBIAN_FRONTEND=noninteractive
@@ -179,6 +178,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && mkdir build && cd build ; \
     if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "on" ]; then \
         cmake ../openmc \
+            -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on \
             -DOPENMC_USE_DAGMC=on \
             -DOPENMC_USE_LIBMESH=on \
@@ -186,18 +186,21 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     fi ; \
     if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "off" ]; then \
         cmake ../openmc \
+            -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on \
             -DOPENMC_USE_DAGMC=ON \
             -DCMAKE_PREFIX_PATH=${DAGMC_INSTALL_DIR} ; \
     fi ; \
     if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "on" ]; then \
         cmake ../openmc \
+            -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on \
             -DOPENMC_USE_LIBMESH=on \
             -DCMAKE_PREFIX_PATH=${LIBMESH_INSTALL_DIR} ; \
     fi ; \
     if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "off" ]; then \
         cmake ../openmc \
+            -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on ; \
     fi ; \
     make 2>/dev/null -j${compile_cores} install \

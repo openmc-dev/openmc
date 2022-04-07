@@ -34,7 +34,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
 
     # Use MPI wrappers when building in parallel
     if mpi:
-        os.environ['CXX'] = 'mpicxx'
+        cmake_cmd.append('-DOPENMC_USE_MPI=on')
 
     # Tell CMake to prefer parallel HDF5 if specified
     if phdf5:

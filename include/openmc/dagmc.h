@@ -22,6 +22,7 @@ void check_dagmc_root_univ();
 #ifdef DAGMC
 
 #include "DagMC.hpp"
+#include "dagmcmetadata.hpp"
 
 #include "openmc/cell.h"
 #include "openmc/particle.h"
@@ -139,10 +140,13 @@ public:
   bool has_graveyard() const { return has_graveyard_; }
 
 private:
+  void init_dagmc();
+
   std::string
     filename_; //!< Name of the DAGMC file used to create this universe
   std::shared_ptr<UWUW>
     uwuw_;                   //!< Pointer to the UWUW instance for this universe
+  std::unique_ptr<dagmcMetaData> dmd_ptr; //! Pointer to DAGMC metadata object
   bool adjust_geometry_ids_; //!< Indicates whether or not to automatically
                              //!< generate new cell and surface IDs for the
                              //!< universe

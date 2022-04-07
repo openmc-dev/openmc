@@ -12,7 +12,6 @@
 #include "openmc/string_utils.h"
 
 #ifdef DAGMC
-#include "dagmcmetadata.hpp"
 #include "uwuw.hpp"
 #endif
 #include <fmt/core.h>
@@ -89,7 +88,7 @@ DAGUniverse::DAGUniverse(
 void DAGUniverse::initialize()
 {
   geom_type() = GeometryType::DAG;
-
+  
   // determine the next cell id
   int32_t next_cell_id = 0;
   for (const auto& c : model::cells) {
@@ -108,45 +107,10 @@ void DAGUniverse::initialize()
   surf_idx_offset_ = model::surfaces.size();
   next_surf_id++;
 
-  // create a new DAGMC instance
-  dagmc_instance_ = std::make_shared<moab::DagMC>();
-
-  // --- Materials ---
-
-  // read any UWUW materials from the file
-  read_uwuw_materials();
-
-  // check for uwuw material definitions
-  bool using_uwuw = uses_uwuw();
-
-  // notify user if UWUW materials are going to be used
-  if (using_uwuw) {
-    write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
-  }
-
-  // load the DAGMC geometry
-  filename_ = settings::path_input + filename_;
-  if (!file_exists(filename_)) {
-    fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
-  }
-  moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
-  MB_CHK_ERR_CONT(rval);
-
-  // initialize acceleration data structures
-  rval = dagmc_instance_->init_OBBTree();
-  MB_CHK_ERR_CONT(rval);
-
-  // parse model metadata
-  dagmcMetaData DMD(dagmc_instance_.get(), false, false);
-  DMD.load_property_data();
-
-  std::vector<std::string> keywords {"temp"};
-  std::map<std::string, std::string> dum;
-  std::string delimiters = ":/";
-  rval = dagmc_instance_->parse_properties(keywords, dum, delimiters.c_str());
-  MB_CHK_ERR_CONT(rval);
+  init_dagmc();
 
   // --- Cells (Volumes) ---
+  moab::ErrorCode rval;
 
   // initialize cell objects
   int n_cells = dagmc_instance_->num_entities(3);
@@ -175,7 +139,7 @@ void DAGUniverse::initialize()
     // --- Materials ---
 
     // determine volume material assignment
-    std::string mat_str = DMD.get_volume_property("material", vol_handle);
+    std::string mat_str = dmd_ptr->get_volume_property("material", vol_handle);
 
     if (mat_str.empty()) {
       fatal_error(fmt::format("Volume {} has no material assignment.", c->id_));
@@ -191,9 +155,9 @@ void DAGUniverse::initialize()
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
-      if (using_uwuw) {
+      if (uses_uwuw()) {
         // lookup material in uwuw if present
-        std::string uwuw_mat = DMD.volume_material_property_data_eh[vol_handle];
+        std::string uwuw_mat = dmd_ptr->volume_material_property_data_eh[vol_handle];
         if (uwuw_->material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW
           int mat_number = uwuw_->material_library.get_material(uwuw_mat)
@@ -256,7 +220,7 @@ void DAGUniverse::initialize()
                                   : dagmc_instance_->id_by_index(2, i + 1);
 
     // set BCs
-    std::string bc_value = DMD.get_surface_property("boundary", surf_handle);
+    std::string bc_value = dmd_ptr->get_surface_property("boundary", surf_handle);
     to_lower(bc_value);
     if (bc_value.empty() || bc_value == "transmit" ||
         bc_value == "transmission") {
@@ -300,6 +264,48 @@ void DAGUniverse::initialize()
 
     model::surfaces.emplace_back(std::move(s));
   } // end surface loop
+}
+
+void DAGUniverse::init_dagmc()
+{
+
+  // create a new DAGMC instance
+  dagmc_instance_ = std::make_shared<moab::DagMC>();
+
+  // --- Materials ---
+
+  // read any UWUW materials from the file
+  read_uwuw_materials();
+
+  // check for uwuw material definitions
+  bool using_uwuw = uses_uwuw();
+
+  // notify user if UWUW materials are going to be used
+  if (using_uwuw) {
+    write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
+  }
+
+  // load the DAGMC geometry
+  filename_ = settings::path_input + filename_;
+  if (!file_exists(filename_)) {
+    fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
+  }
+  moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
+  MB_CHK_ERR_CONT(rval);
+
+  // initialize acceleration data structures
+  rval = dagmc_instance_->init_OBBTree();
+  MB_CHK_ERR_CONT(rval);
+
+  // parse model metadata
+  dmd_ptr = std::make_unique<dagmcMetaData>(dagmc_instance_.get(), false, false);
+  dmd_ptr->load_property_data();
+
+  std::vector<std::string> keywords {"temp"};
+  std::map<std::string, std::string> dum;
+  std::string delimiters = ":/";
+  rval = dagmc_instance_->parse_properties(keywords, dum, delimiters.c_str());
+  MB_CHK_ERR_CONT(rval);
 }
 
 std::string DAGUniverse::dagmc_ids_for_dim(int dim) const

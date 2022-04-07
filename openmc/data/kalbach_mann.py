@@ -43,11 +43,17 @@ class AtomicRepresentation(EqualityMixin):
 
     """
     def __init__(self, z, a):
-        self._consistency_check(z, a)
+        # Sanity checks on values
+        cv.check_type('z', z, Integral)
+        cv.check_greater_than('z', z, 0, equality=True)
+        cv.check_type('a', a, Integral)
+        cv.check_greater_than('a', a, 0, equality=True)
+        if z > a:
+            raise ValueError(f"Number of protons ({z}) must be less than or "
+                             f"equal to number of nucleons ({a}).")
+
         self._z = z
         self._a = a
-        self.z = self._z
-        self.a = self._a
 
     def __add__(self, other):
         """Adds two AtomicRepresentations.
@@ -67,12 +73,10 @@ class AtomicRepresentation(EqualityMixin):
 
     @property
     def a(self):
-        self._consistency_check(self._z, self._a)
         return self._a
 
     @property
     def z(self):
-        self._consistency_check(self._z, self._a)
         return self._z
 
     @property
@@ -82,44 +86,6 @@ class AtomicRepresentation(EqualityMixin):
     @property
     def za(self):
         return self.z * 1000 + self.a
-
-    @a.setter
-    def a(self, an):
-        cv.check_type('a', an, Integral)
-        cv.check_greater_than('a', an, 0, equality=True)
-        self._consistency_check(self._z, an)
-        self._a = an
-
-    @z.setter
-    def z(self, zn):
-        cv.check_type('z', zn, Integral)
-        cv.check_greater_than('z', zn, 0, equality=True)
-        self._consistency_check(zn, self._a)
-        self._z = zn
-
-    @staticmethod
-    def _consistency_check(z, a):
-        """Simple consistency check.
-
-        Parameters
-        ----------
-        z : int
-            Number of protons (atomic number)
-        a : int
-            Number of nucleons (mass number)
-
-        Raises
-        ------
-        IOError:
-            When the number of protons (z) declared is higher than the number
-            of nucleons (a)
-
-        """
-        if z > a:
-            raise IOError(
-                "Number of protons (%i) incompatible with number of "
-                "nucleons (%i)" % (z, a)
-            )
 
     @classmethod
     def from_za(cls, za):

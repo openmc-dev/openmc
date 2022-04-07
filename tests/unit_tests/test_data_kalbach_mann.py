@@ -75,15 +75,15 @@ def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
     assert triton.za == 1003
 
     # Test instanciation errors
-    with pytest.raises(IOError):
+    with pytest.raises(ValueError):
         AtomicRepresentation(z=5, a=1)
     with pytest.raises(ValueError):
         AtomicRepresentation(z=-1, a=1)
-    with pytest.raises(IOError):
+    with pytest.raises(ValueError):
         AtomicRepresentation(z=5, a=0)
-    with pytest.raises(IOError):
+    with pytest.raises(ValueError):
         AtomicRepresentation(z=5, a=-2)
-    with pytest.raises(OSError):
+    with pytest.raises(ValueError):
         neutron - triton
 
 

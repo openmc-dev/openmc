@@ -2553,7 +2553,7 @@ class StackLattice(Lattice):
 
         # Export numer of Lattice layers
         num_layers = ET.SubElement(lattice_subelement, "num_layers")
-        num_layers.text = ' '.join(str(self.num_layers))
+        num_layers.text = str(self.num_layers)
 
         # Export lattice orientation
         lattice_subelement.set("orientation", self._orientation)
@@ -2564,7 +2564,7 @@ class StackLattice(Lattice):
 
         # Export Lattice base coordinate
         base_coordinate = ET.SubElement(lattice_subelement, "base_coordinate")
-        base_coordinate.text = ' '.join(str(self._base_coordinate))
+        base_coordinate.text = str(self._base_coordinate)
 
         # Export the Lattice nested Universe IDs - column major for Fortran
         universe_ids = '\n'

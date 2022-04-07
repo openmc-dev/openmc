@@ -100,13 +100,13 @@ class CylinderSector(CompositeSurface):
         theta1 = theta0 + theta
 
         # Coords for axis-perpendicular planes
-        p1 = array([0., 0., 1.])
+        p1 = np.array([0., 0., 1.])
 
-        p2_plane0 = array([r1 * cos(theta0), r1 * sin(theta0), 0.])
-        p3_plane0 = array([r2 * cos(theta0), r2 * sin(theta0), 0.])
+        p2_plane0 = np.array([r1 * cos(theta0), r1 * sin(theta0), 0.])
+        p3_plane0 = np.array([r2 * cos(theta0), r2 * sin(theta0), 0.])
 
-        p2_plane1 = array([r1 * cos(theta1), r1 * sin(theta1), 0.])
-        p3_plane1 = array([r2 * cos(theta1), r2 * sin(theta1), 0.])
+        p2_plane1 = np.array([r1 * cos(theta1), r1 * sin(theta1), 0.])
+        p3_plane1 = np.array([r2 * cos(theta1), r2 * sin(theta1), 0.])
 
         points = [p1, p2_plane0, p3_plane0, p2_plane1, p3_plane1]
         if axis == 'z':

@@ -514,7 +514,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   if (univ_words.size() != n_univ) {
     fatal_error(fmt::format(
       "Expected {} universes for a hexagonal lattice with {} rings and {} "
-      "axial levels but {} were specified.",
+      "axial layers but {} were specified.",
       n_univ, n_rings_, n_axial_, univ_words.size()));
   }
 
@@ -1105,17 +1105,17 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   }
 
   // Read the number of lattice cells along its axis.
-  std::string n_levels_str {get_node_value(lat_node, "num_levels")};
-  vector<std::string> n_levels_words {split(n_levels_str)};
-  if (n_levels_words.size() == 1) {
+  std::string n_layers_str {get_node_value(lat_node, "num_layers")};
+  vector<std::string> n_layers_words {split(n_layers_str)};
+  if (n_layers_words.size() == 1) {
     if (orientation_ == Orientation::z) {
-      n_levels_ = std::stoi(n_levels_words[0]);
+      n_layers_ = std::stoi(n_layers_words[0]);
       orientation_idx_ = 2;
     } else if (orientation_ == Orientation::y) {
-      n_levels_ = std::stoi(n_levels_words[0]);
+      n_layers_ = std::stoi(n_layers_words[0]);
       orientation_idx_ = 1;
     } else {
-      n_levels_ = std::stoi(n_levels_words[0]);
+      n_layers_ = std::stoi(n_layers_words[0]);
       orientation_idx_ = 0;
     }
   } else {
@@ -1147,25 +1147,25 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   if (pitch_words.size() == 1) {
     pitch_.push_back(stod(pitch_words[0]));
     is_uniform_ = true;
-  } else if (pitch_words.size() != n_levels_) {
+  } else if (pitch_words.size() != n_layers_) {
     fatal_error("Number of entries on <pitch> must be the same as the "
-                "number of entries on <num_levels>.");
+                "number of entries on <num_layers>.");
   }
 
   // Levels helper attribute
-  levels_.push_back(base_coordinate_);
+  layer_boundaries_.push_back(base_coordinate_);
   if (is_uniform_) {
-    for (int i = 1; i < n_levels_; i++) {
-      levels_.push_back(levels_[i-1] + pitch_[0]);
+    for (int i = 1; i < n_layers_; i++) {
+      layer_boundaries_.push_back(layer_boundaries_[i-1] + pitch_[0]);
     }
   } else {
     pitch_.push_back(stod(pitch_words[0]));
-    for (int i = 1; i < n_levels_; i++) {
+    for (int i = 1; i < n_layers_; i++) {
       pitch_.push_back(stod(pitch_words[i]));
-      levels_.push_back(pitch_[i-1] + levels_[i-1]);
+      layer_boundaries_.push_back(pitch_[i-1] + layer_boundaries_[i-1]);
     }
   }
-  levels_.push_back(pitch_[n_levels_ - 1] + levels_[n_levels_ - 1]);
+  layer_boundaries_.push_back(pitch_[n_layers_ - 1] + layer_boundaries_[n_layers_ - 1]);
 
   // Reinitialize the vectors
 
@@ -1174,18 +1174,18 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   // Read the universes and make sure the correct number was specified.
   std::string univ_str {get_node_value(lat_node, "universes")};
   vector<std::string> univ_words {split(univ_str)};
-  if (univ_words.size() != n_levels_) {
+  if (univ_words.size() != n_layers_) {
     fatal_error(fmt::format(
       "Expected {} universes for a stack lattice of size {} but {} "
       "were specified.",
-      n_levels_, n_levels_, univ_words.size()));
+      n_layers_, n_layers_, univ_words.size()));
   }
 
   // Parse the universes.
   // leaving this as is for now; may remove these for loops
   // later since we only really need a 1D array
-  universes_.resize(n_levels_, C_NONE);
-  for (int i = 0; i < n_levels_; i++) {
+  universes_.resize(n_layers_, C_NONE);
+  for (int i = 0; i < n_layers_; i++) {
         universes_[i] = std::stoi(univ_words[i]);
   }
 }
@@ -1203,14 +1203,14 @@ bool StackLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 {
   bool is_valid;
   if (orientation_ == Orientation::x) {
-    is_valid = ((i_xyz[0] >= 0) && (i_xyz[0] < n_levels_) && (i_xyz[1] == 0) &&
+    is_valid = ((i_xyz[0] >= 0) && (i_xyz[0] < n_layers_) && (i_xyz[1] == 0) &&
             (i_xyz[2] == 0));
   } else if (orientation_ == Orientation::y) {
-    is_valid = ((i_xyz[0] == 0) && (i_xyz[1] >= 0) && (i_xyz[1] < n_levels_) &&
+    is_valid = ((i_xyz[0] == 0) && (i_xyz[1] >= 0) && (i_xyz[1] < n_layers_) &&
             (i_xyz[2] == 0));
   } else {
     is_valid = ((i_xyz[0] == 0) && (i_xyz[1] == 0) && (i_xyz[2] >= 0) &&
-            (i_xyz[2] < n_levels_));
+            (i_xyz[2] < n_layers_));
   }
   return is_valid;
 }
@@ -1293,11 +1293,11 @@ void StackLattice::get_indices(
     // nonuniform case
     if (r_c < base_coordinate_) {
       ic_ = -1;
-    } else if (r_c > levels_[n_levels_ - 1]) {
-      ic_ = n_levels_;
+    } else if (r_c > layer_boundaries_[n_layers_ - 1]) {
+      ic_ = n_layers_;
     } else {
       ic_ = 0;
-      while (!((r_c >= levels_[ic_]) and (r_c <= levels_[ic_ + 1]))) {
+      while (!((r_c >= layer_boundaries_[ic_]) and (r_c <= layer_boundaries_[ic_ + 1]))) {
         ic_ += 1;
       }
     } 
@@ -1321,17 +1321,17 @@ Position StackLattice::get_local_position(
   Position r, const array<int, 3>& i_xyz) const
 {
   if (orientation_ == Orientation::x) {
-    r.x -= levels_[i_xyz[0]];
+    r.x -= layer_boundaries_[i_xyz[0]];
     r.y -= central_axis_[0];
     r.z -= central_axis_[1];
   } else if (orientation_ == Orientation::y) {
     r.x -= central_axis_[0];
-    r.y -= levels_[i_xyz[1]];
+    r.y -= layer_boundaries_[i_xyz[1]];
     r.z -= central_axis_[1];
   } else {
     r.x -= central_axis_[0];
     r.y -= central_axis_[1];
-    r.z -= levels_[i_xyz[2]];
+    r.z -= layer_boundaries_[i_xyz[2]];
   }
   return r;
 }
@@ -1340,14 +1340,14 @@ Position StackLattice::get_local_position(
 
 int32_t& StackLattice::offset(int map, array<int, 3> const& i_xyz)
 {
-  return offsets_[n_levels_ * map + i_xyz[orientation_idx_]];
+  return offsets_[n_layers_ * map + i_xyz[orientation_idx_]];
 }
 
 //==============================================================================
 
 int32_t StackLattice::offset(int map, int indx) const
 {
-  return offsets_[n_levels_ * map + indx];
+  return offsets_[n_layers_ * map + indx];
 }
 
 //==============================================================================
@@ -1367,7 +1367,7 @@ void StackLattice::to_hdf5_inner(hid_t lat_group) const
   write_dataset(lat_group, "pitch", pitch_);
   write_dataset(lat_group, "central_axis", central_axis_);
   write_dataset(lat_group, "base_coordinate", base_coordinate_);
-  write_dataset(lat_group, "num_levels", n_levels_);
+  write_dataset(lat_group, "num_layers", n_layers_);
 
   // Write lattice orientation
   if (orientation_ == Orientation::x) {
@@ -1380,7 +1380,7 @@ void StackLattice::to_hdf5_inner(hid_t lat_group) const
 
   // Write the universe ids. The convention here is that 
   // the lower-indexed universes are closer to the base coordinate
-  hsize_t nc {static_cast<hsize_t>(n_levels_)};
+  hsize_t nc {static_cast<hsize_t>(n_layers_)};
   vector<int> out(nc * 1 * 1);
   hsize_t dims[3];
   for (int j = 0; j < nc; j++) {

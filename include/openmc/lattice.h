@@ -322,12 +322,12 @@ private:
   bool is_uniform_;         //!< Mark if lattice is uniform or not
 
   int orientation_idx_;     //!< Index to select x,y, or z based on orientation
-  int n_levels_;            //!< Number of radial tile positions
+  int n_layers_;            //!< Number of layer positions
   Orientation orientation_; //!< Orientation of lattice
   Position central_axis_;   //!< Axial center of lattice
-  float base_coordinate_;   //!< Coordinate of base level of lattice
-  vector<double> pitch_;    //!< Lattice tile width and height.
-  vector<double> levels_;   //!< Coordinates of lattice tile boundaries
+  float base_coordinate_;   //!< Coordinate of base layer of lattice
+  vector<double> pitch_;    //!< Lattice layer width.
+  vector<double> layer_boundaries_;   //!< Coordinates of lattice tile boundaries
 };
 
 

@@ -2221,7 +2221,7 @@ class HexLattice(Lattice):
 
 
 class StackLattice(Lattice):
-    """A lattice consisting of universes stacked along a central axis.
+    """A lattice consisting of universes stacked in layers in one dimension.
 
     To completely define a stack lattice, the
     :attr:`StackLattice.central_axis`, :attr:`StackLattice.base_coordinate`,
@@ -2252,28 +2252,29 @@ class StackLattice(Lattice):
         Unique identifier for the lattice
     name : str
         Name of the lattice
+    orientation : {'x', 'y', 'z'}
+        Lattice central axis. Defaults to 'z'.
     pitch : float or iterable of float
-        Distance between the bottoms of adjacent lattice elements  x, y,
-        or z directions (depending on the :attr:`orientation`) in cm. If
-        a single float, the distance between all lattice elements is the same.
+        Pitch of the lattice in cm. If an iterable of float, then the ith entry
+        of the iterable is the width of the ith lattice element in cm.
     outer : openmc.Universe
         A universe to fill all space outside the lattice
     universes : Iterable of openmc.Universe
-        A one-dimensional list/array of universes filling each element
-        of the lattice. The first dimension corresponds to the
-        :attr:`orientation`-direction
+        A one-dimensional list/array of universes filling each element of the
+        lattice
     central_axis : Iterable of float
-        The :math:`(y,z)`, :math:`(x,z)`, or :math:`(x,y)` coordinates of the central
-        axis of the lattice, depending on the lattice orientation
+        The :math:`(y,z)`, :math:`(x,z)`, or :math:`(x,y)` coordinates of the
+        central axis of the lattice, depending on the lattice orientation
     base_coordinate : float
-        The coordinate of the base level of the lattice
+        The coordinate of the base layer of the lattice. Subsequent layers
+        are stacked towards the positive side of the orientation axis.
     indices : list of tuple
         A list of all possible lattice element indices. These
         indices correspond to indices in the
         :attr:`StackLattice.universes`property.
-    num_levels : int
+    num_layers : int
         An integer representing the number of lattice
-        cells along the orientation axis.
+        layers along the orientation axis.
 
     """
 
@@ -2292,7 +2293,7 @@ class StackLattice(Lattice):
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t',
                                             self._orientation)
-        string += '{0: <16}{1}{2}\n'.format('\t# Levels', '=\t', self.num_levels)
+        string += '{0: <16}{1}{2}\n'.format('\t# Layers', '=\t', self.num_layers)
         string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self.pitch)
         string += '{0: <16}{1}{2}\n'.format('\tbase_coordinate', '=\t',
                                             self._base_coordinate)
@@ -2309,7 +2310,7 @@ class StackLattice(Lattice):
 
         for i, universe in enumerate(np.ravel(self._universes)):
             if self._uniform:
-                string += f'{universe._id}, {self._levels[i]}'
+                string += f'{universe._id}, {self._layer_boundaries[i]}'
             string += '\n'
 
         string = string.rstrip('\n')
@@ -2318,11 +2319,11 @@ class StackLattice(Lattice):
 
 
     @property
-    def num_levels(self):
+    def num_layers(self):
         if self.universes is not None:
             return len(self.universes)
         else:
-            raise ValueError('Number of levels cannot be determined until '
+            raise ValueError('Number of layers cannot be determined until '
                              'the universes has been set.')
 
     @property
@@ -2340,7 +2341,7 @@ class StackLattice(Lattice):
 
     @property
     def indices(self):
-        return list(np.broadcast(*np.ogrid[:self.num_levels]))
+        return list(np.broadcast(*np.ogrid[:self.num_layers]))
 
 
     @property
@@ -2348,7 +2349,7 @@ class StackLattice(Lattice):
         """Iterate over all possible lattice element indices.
 
         """
-        n = self.num_levels
+        n = self.num_layers
         for i in range(n):
             yield i
 
@@ -2361,7 +2362,7 @@ class StackLattice(Lattice):
 
     @base_coordinate.setter
     def base_coordinate(self, base_coordinate):
-        cv.check_type('lattice base_level_coordinate', base_coordinate, Real)
+        cv.check_type('lattice base_layer_coordinate', base_coordinate, Real)
         self._base_coordinate = base_coordinate
 
     @orientation.setter
@@ -2381,18 +2382,18 @@ class StackLattice(Lattice):
     def pitch(self, pitch):
         try:
             cv.check_type('lattice pitch', pitch, Real)
-            _levels = pitch * np.arange(1, self.num_levels + 1)
+            _layer_boundaries = pitch * np.arange(1, self.num_layers + 1)
         except TypeError:
             cv.check_type('lattice pitch', pitch, Iterable, Real)
-            cv.check_length('lattice pitch', pitch, self.num_levels)
+            cv.check_length('lattice pitch', pitch, self.num_layers)
             self._uniform = False
-            _levels = [pitch[0]]
+            _layer_boundaries = [pitch[0]]
             for p in pitch[1:]:
-                _levels += [_levels[-1] + p]
-            _levels = np.asarray(_levels)
+                _layer_boundaries += [_layer_boundaries[-1] + p]
+            _layer_boundaries = np.asarray(_layer_boundaries)
 
-        _levels += self._base_coordinate
-        self._levels = np.insert(_levels, 0, self._base_coordinate)
+        _layer_boundaries += self._base_coordinate
+        self._layer_boundaries = np.insert(_layer_boundaries, 0, self._base_coordinate)
         self._pitch = pitch
 
 
@@ -2404,7 +2405,7 @@ class StackLattice(Lattice):
             universes = np.as_array(universes)
 
         self._universes = universes
-        cv.check_length('lattice universes', universes, self.num_levels)
+        cv.check_length('lattice universes', universes, self.num_layers)
 
 
     def find_element(self, point):
@@ -2432,10 +2433,10 @@ class StackLattice(Lattice):
         else:
             if (p < self.base_coordiante):
                 idx = -1
-            elif (p > _levels[-1]):
-                idx = num_levels + 1
+            elif (p > _layer_boundaries[-1]):
+                idx = num_layers + 1
             else:
-                while not(p >= self._levels[idx] and p <= self._levels[idx + 1]):
+                while not(p >= self._layer_boundaries[idx] and p <= self._layer_boundaries[idx + 1]):
                     idx += 1
 
         return idx, self.get_local_coordinates(point, idx)
@@ -2460,17 +2461,17 @@ class StackLattice(Lattice):
         x,y,z = point
         c1, c2 = self.central_axis
         if self.orientation == 'x':
-            x -= self._levels[idx]
+            x -= self._layer_boundaries[idx]
             y -= c1
             z -= c2
         elif self.orientation == 'y':
             x -= c1
-            y -= self._levels[idx]
+            y -= self._layer_boundaries[idx]
             z -= c2
         else:
             x -= c1
             y -= c2
-            z -= self._levels[idx]
+            z -= self._layer_boundaries[idx]
 
         return (x,y,z)
 
@@ -2507,7 +2508,7 @@ class StackLattice(Lattice):
             Whether index is valid
 
         """
-        return (0 <= idx < self.num_levels)
+        return (0 <= idx < self.num_layers)
 
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the lattice xml representation to an incoming xml element
@@ -2550,9 +2551,9 @@ class StackLattice(Lattice):
             outer.text = str(self._outer._id)
             self._outer.create_xml_subelement(xml_element, memo)
 
-        # Export Lattice cell levels
-        num_levels = ET.SubElement(lattice_subelement, "num_levels")
-        num_levels.text = ' '.join(str(self.num_levels))
+        # Export numer of Lattice layers
+        num_layers = ET.SubElement(lattice_subelement, "num_layers")
+        num_layers.text = ' '.join(str(self.num_layers))
 
         # Export lattice orientation
         lattice_subelement.set("orientation", self._orientation)
@@ -2569,7 +2570,7 @@ class StackLattice(Lattice):
         universe_ids = '\n'
 
         # 1D stack
-        for l in range(self.num_levels):
+        for l in range(self.num_layers):
             universe = self._universes[l]
             # Append Universe ID to the Lattice XML subelement
             universe_ids += f'{universe._id} '
@@ -2621,10 +2622,10 @@ class StackLattice(Lattice):
             lat.outer = get_universe(int(outer))
 
         # Get array of universes
-        num_levels = get_text(elem, 'num_levels')
+        num_layers = get_text(elem, 'num_layers')
         uarray = np.array([get_universe(int(i)) for i in
                            get_text(elem, 'universes').split()])
-        uarray.shape = int(num_levels)
+        uarray.shape = int(num_layers)
         lat.universes = uarray
         return lat
 
@@ -2647,7 +2648,7 @@ class StackLattice(Lattice):
 
         """
 
-        num_levels = group['num_levels'][...]
+        num_layers = group['num_layers'][...]
         central_axis = group['central_axis'][...]
         base_coordinate = group['base_coordinate'][...]
         pitch = group['pitch'][...]

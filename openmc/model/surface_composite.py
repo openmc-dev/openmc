@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from copy import copy
 from math import sqrt, pi, sin, cos
-from numpy import array
+import numpy as np
 
 import openmc
 from openmc.checkvalue import check_greater_than, check_value
@@ -72,16 +72,16 @@ class CylinderSector(CompositeSurface):
         axis (+y, +z, or +x).
     theta : float
         Angular width of the sector in degrees.
-    axis : {'z', 'y', 'x'}
-        Central axis of the cylinders. Defaults to z
+    axis : {'x', 'y', 'z'}
+        Central axis of the cylinders. Defaults to 'z'.
     **kwargs
-        Keyword arguments passed to underlying plane classes
+        Keyword arguments passed to underlying plane classes.
 
     Attributes
     ----------
-    outer : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+    outer_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
         Outer cylinder surface
-    inner : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+    inner_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
         Inner cylinder surface
     plane0 : openmc.Plane
         Plane at angle :math:`\theta_0` relative to the first basis axis
@@ -100,7 +100,7 @@ class CylinderSector(CompositeSurface):
         theta1 = theta0 + theta
 
         # Coords for axis-perpendicular planes
-        p1 = array([0.,0.,1.])
+        p1 = array([0., 0., 1.])
 
         p2_plane0 = array([r1 * cos(theta0), r1 * sin(theta0), 0.])
         p3_plane0 = array([r2 * cos(theta0), r2 * sin(theta0), 0.])
@@ -110,15 +110,15 @@ class CylinderSector(CompositeSurface):
 
         points = [p1, p2_plane0, p3_plane0, p2_plane1, p3_plane1]
         if axis == 'z':
-            coord_map = [0,1,2]
+            coord_map = [0, 1, 2]
             self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.ZCylinder(*center, r2, **kwargs)
         elif axis == 'y':
-            coord_map = [1,2,0]
+            coord_map = [1, 2, 0]
             self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.YCylinder(*center, r2, **kwargs)
         elif axis == 'x':
-            coord_map = [2,0,1]
+            coord_map = [2, 0, 1]
             self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
 

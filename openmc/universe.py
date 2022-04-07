@@ -297,7 +297,7 @@ class Universe(UniverseBase):
         seed : int
             Seed for the random number generator
         openmc_exec : str
-            Path to OpenMC executable
+            Path to OpenMC executable.
 
             .. versionadded:: 0.13.1
         **kwargs

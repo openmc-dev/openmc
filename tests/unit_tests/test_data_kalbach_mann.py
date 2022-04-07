@@ -173,7 +173,7 @@ def test_comparison_slope_hdf5(hdf5_filename, endf_type, endf_filename):
         np.testing.assert_array_almost_equal(
             endf_distribution.slope[i].y,
             hdf5_slope.y,
-            decimal=6
+            decimal=5
         )
 
 
@@ -227,5 +227,5 @@ def test_comparison_slope_njoy(endf_type, endf_filename):
         np.testing.assert_array_almost_equal(
             endf_distribution.slope[i].y,
             njoy_slope.y,
-            decimal=6
+            decimal=5
         )

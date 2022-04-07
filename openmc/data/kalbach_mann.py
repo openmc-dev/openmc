@@ -299,9 +299,7 @@ def kalbach_slope(energy_projectile, energy_emitted, iza_projectile,
     r_3 = min(e_a, 41.)
     x_1 = r_1 * e_b / e_a
     x_3 = r_3 * e_b / e_a
-    slope = 0.04 * x_1 + 1.8e-6 * x_1**3 + 6.7e-7 * M * m * x_3**4
-
-    return float("%7e" % slope)
+    return 0.04 * x_1 + 1.8e-6 * x_1**3 + 6.7e-7 * M * m * x_3**4
 
 
 class KalbachMann(AngleEnergy):

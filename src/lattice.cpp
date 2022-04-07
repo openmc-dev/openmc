@@ -1297,7 +1297,7 @@ void StackLattice::get_indices(
       ic_ = n_layers_;
     } else {
       ic_ = 0;
-      while (!((r_c >= layer_boundaries_[ic_]) and (r_c <= layer_boundaries_[ic_ + 1]))) {
+      while (!((r_c >= layer_boundaries_[ic_]) and (r_c < layer_boundaries_[ic_ + 1]))) {
         ic_ += 1;
       }
     } 

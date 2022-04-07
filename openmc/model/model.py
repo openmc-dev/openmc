@@ -395,7 +395,7 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.'):
+    def export_to_xml(self, directory='.', remove_surfs=False):
         """Export model to XML files.
 
         Parameters
@@ -403,7 +403,11 @@ class Model:
         directory : str
             Directory to write XML files to. If it doesn't exist already, it
             will be created.
+        remove_surfs : bool
+            Whether or not to remove redundant surfaces from the geometry when
+            exporting.
 
+            .. versionadded:: 0.13.1
         """
         # Create directory if required
         d = Path(directory)
@@ -411,7 +415,7 @@ class Model:
             d.mkdir(parents=True)
 
         self.settings.export_to_xml(d)
-        self.geometry.export_to_xml(d)
+        self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
 
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build

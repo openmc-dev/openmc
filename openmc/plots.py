@@ -164,16 +164,16 @@ _SVG_COLORS = {
 }
 
 
-def _get_plot_image(plot):
+def _get_plot_image(plot, cwd):
     from IPython.display import Image
 
     # Make sure .png file was created
     stem = plot.filename if plot.filename is not None else f'plot_{plot.id}'
-    png_file = f'{stem}.png'
-    if not Path(png_file).exists():
+    png_file = Path(cwd) / f'{stem}.png'
+    if not png_file.exists():
         raise FileNotFoundError(f"Could not find .png image for plot {plot.id}")
 
-    return Image(png_file)
+    return Image(str(png_file))
 
 
 class Plot(IDManagerMixin):
@@ -784,13 +784,13 @@ class Plot(IDManagerMixin):
 
         """
         # Create plots.xml
-        Plots([self]).export_to_xml()
+        Plots([self]).export_to_xml(cwd)
 
         # Run OpenMC in geometry plotting mode
         openmc.plot_geometry(False, openmc_exec, cwd)
 
         # Return produced image
-        return _get_plot_image(self)
+        return _get_plot_image(self, cwd)
 
 
 class Plots(cv.CheckedList):

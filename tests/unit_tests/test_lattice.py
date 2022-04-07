@@ -157,11 +157,11 @@ def hlat3(pincell1, pincell2, uo2, water, zr):
 
 def test_get_nuclides(rlat2, rlat3, hlat2, hlat3):
     for lat in (rlat2, hlat2):
-        nucs = rlat2.get_nuclides()
+        nucs = lat.get_nuclides()
         assert sorted(nucs) == ['H1', 'O16', 'U235',
                                 'Zr90', 'Zr91', 'Zr92', 'Zr94', 'Zr96']
     for lat in (rlat3, hlat3):
-        nucs = rlat3.get_nuclides()
+        nucs = lat.get_nuclides()
         assert sorted(nucs) == ['H1', 'H2', 'O16', 'U235',
                                 'Zr90', 'Zr91', 'Zr92', 'Zr94', 'Zr96']
 
@@ -360,7 +360,7 @@ def test_show_indices():
         lines = openmc.HexLattice.show_indices(i).split('\n')
         assert len(lines) == 4*i - 3
         lines_x = openmc.HexLattice.show_indices(i, 'x').split('\n')
-        assert len(lines) == 4*i - 3
+        assert len(lines_x) == 4*i - 3
 
 
 def test_unset_universes():

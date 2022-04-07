@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
-from copy import copy, deepcopy
+from copy import deepcopy
 from numbers import Real
-import random
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -267,12 +268,8 @@ class Universe(UniverseBase):
 
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             **kwargs):
+             openmc_exec='openmc', **kwargs):
         """Display a slice plot of the universe.
-
-        To display or save the plot, call :func:`matplotlib.pyplot.show` or
-        :func:`matplotlib.pyplot.savefig`. In a Jupyter notebook, enabling the
-        matplotlib inline backend will show the plot inline.
 
         Parameters
         ----------
@@ -297,14 +294,14 @@ class Universe(UniverseBase):
                # Make water blue
                water = openmc.Cell(fill=h2o)
                universe.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
 
-        seed : hashable object or None
-            Hashable object which is used to seed the random number generator
-            used to select colors. If None, the generator is seeded from the
-            current time.
+            .. versionadded:: 0.13.1
         **kwargs
-            All keyword arguments are passed to
-            :func:`matplotlib.pyplot.imshow`.
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
         Returns
         -------
@@ -312,83 +309,54 @@ class Universe(UniverseBase):
             Resulting image
 
         """
+        import matplotlib.image as mpimg
         import matplotlib.pyplot as plt
 
-        # Seed the random number generator
-        if seed is not None:
-            random.seed(seed)
-
-        if colors is None:
-            # Create default dictionary if none supplied
-            colors = {}
-        else:
-            # Convert to RGBA if necessary
-            colors = copy(colors)
-            for obj, color in colors.items():
-                if isinstance(color, str):
-                    if color.lower() not in _SVG_COLORS:
-                        raise ValueError(f"'{color}' is not a valid color.")
-                    colors[obj] = [x/255 for x in
-                                   _SVG_COLORS[color.lower()]] + [1.0]
-                elif len(color) == 3:
-                    colors[obj] = list(color) + [1.0]
-
+        # Determine extents of plot
         if basis == 'xy':
-            x_min = origin[0] - 0.5*width[0]
-            x_max = origin[0] + 0.5*width[0]
-            y_min = origin[1] - 0.5*width[1]
-            y_max = origin[1] + 0.5*width[1]
+            x, y = 0, 1
         elif basis == 'yz':
-            # The x-axis will correspond to physical y and the y-axis will
-            # correspond to physical z
-            x_min = origin[1] - 0.5*width[0]
-            x_max = origin[1] + 0.5*width[0]
-            y_min = origin[2] - 0.5*width[1]
-            y_max = origin[2] + 0.5*width[1]
+            x, y = 1, 2
         elif basis == 'xz':
-            # The y-axis will correspond to physical z
-            x_min = origin[0] - 0.5*width[0]
-            x_max = origin[0] + 0.5*width[0]
-            y_min = origin[2] - 0.5*width[1]
-            y_max = origin[2] + 0.5*width[1]
+            x, y = 0, 2
+        x_min = origin[x] - 0.5*width[0]
+        x_max = origin[x] + 0.5*width[0]
+        y_min = origin[y] - 0.5*width[1]
+        y_max = origin[y] + 0.5*width[1]
 
-        # Determine locations to determine cells at
-        x_coords = np.linspace(x_min, x_max, pixels[0], endpoint=False) + \
-                   0.5*(x_max - x_min)/pixels[0]
-        y_coords = np.linspace(y_max, y_min, pixels[1], endpoint=False) - \
-                   0.5*(y_max - y_min)/pixels[1]
+        with TemporaryDirectory() as tmpdir:
+            model = openmc.Model()
+            model.geometry = openmc.Geometry(self)
+            if seed is not None:
+                model.settings.seed = seed
 
-        # Initialize output image in RGBA format.  Flip the pixels from
-        # traditional (x, y) to (y, x) used in graphics.
-        img = np.zeros((pixels[1], pixels[0], 4))
-        for i, x in enumerate(x_coords):
-            for j, y in enumerate(y_coords):
-                if basis == 'xy':
-                    path = self.find((x, y, origin[2]))
-                elif basis == 'yz':
-                    path = self.find((origin[0], x, y))
-                elif basis == 'xz':
-                    path = self.find((x, origin[1], y))
+            # Create plot object matching passed arguments
+            plot = openmc.Plot()
+            plot.origin = origin
+            plot.width = width
+            plot.pixels = pixels
+            plot.basis = basis
+            plot.color_by = color_by
+            plot.colors = colors
+            model.plots.append(plot)
 
-                if len(path) > 0:
-                    try:
-                        if color_by == 'cell':
-                            obj = path[-1]
-                        elif color_by == 'material':
-                            if path[-1].fill_type == 'material':
-                                obj = path[-1].fill
-                            else:
-                                continue
-                    except AttributeError:
-                        continue
-                    if obj not in colors:
-                        colors[obj] = (random.random(), random.random(),
-                                       random.random(), 1.0)
-                    img[j, i, :] = colors[obj]
+            # Run OpenMC in geometry plotting mode
+            model.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
 
-        # Display image
-        return plt.imshow(img, extent=(x_min, x_max, y_min, y_max),
-                          interpolation='nearest', **kwargs)
+            # Read image from file
+            img = mpimg.imread(Path(tmpdir) / f'plot_{plot.id}.png')
+
+            # Create a figure sized such that the size of the axes within
+            # exactly matches the number of pixels specified
+            px = 1/plt.rcParams['figure.dpi']
+            fig, ax = plt.subplots()
+            params = fig.subplotpars
+            width = pixels[0]*px/(params.right - params.left)
+            height = pixels[0]*px/(params.top - params.bottom)
+            fig.set_size_inches(width, height)
+
+            # Plot image and return the axes
+            return ax.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
     def add_cell(self, cell):
         """Add a cell to the universe.

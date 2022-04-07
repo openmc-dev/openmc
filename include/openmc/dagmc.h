@@ -141,6 +141,8 @@ public:
 
 private:
   void init_dagmc();
+  void init_cells();
+  void init_surfaces();
 
   std::string
     filename_; //!< Name of the DAGMC file used to create this universe
@@ -154,6 +156,7 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
+  moab::EntityHandle graveyard; //! MOAB index for graveyard
 };
 
 //==============================================================================

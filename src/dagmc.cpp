@@ -88,7 +88,60 @@ DAGUniverse::DAGUniverse(
 void DAGUniverse::initialize()
 {
   geom_type() = GeometryType::DAG;
-  
+
+  init_dagmc();
+
+  init_cells();
+
+  init_surfaces();
+}
+
+void DAGUniverse::init_dagmc()
+{
+
+  // create a new DAGMC instance
+  dagmc_instance_ = std::make_shared<moab::DagMC>();
+
+  // --- Materials ---
+
+  // read any UWUW materials from the file
+  read_uwuw_materials();
+
+  // check for uwuw material definitions
+  bool using_uwuw = uses_uwuw();
+
+  // notify user if UWUW materials are going to be used
+  if (using_uwuw) {
+    write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
+  }
+
+  // load the DAGMC geometry
+  filename_ = settings::path_input + filename_;
+  if (!file_exists(filename_)) {
+    fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
+  }
+  moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
+  MB_CHK_ERR_CONT(rval);
+
+  // initialize acceleration data structures
+  rval = dagmc_instance_->init_OBBTree();
+  MB_CHK_ERR_CONT(rval);
+
+  // parse model metadata
+  dmd_ptr = std::make_unique<dagmcMetaData>(dagmc_instance_.get(), false, false);
+  dmd_ptr->load_property_data();
+
+  std::vector<std::string> keywords {"temp"};
+  std::map<std::string, std::string> dum;
+  std::string delimiters = ":/";
+  rval = dagmc_instance_->parse_properties(keywords, dum, delimiters.c_str());
+  MB_CHK_ERR_CONT(rval);
+}
+
+void DAGUniverse::init_cells()
+{
+  moab::ErrorCode rval;
+
   // determine the next cell id
   int32_t next_cell_id = 0;
   for (const auto& c : model::cells) {
@@ -98,23 +151,9 @@ void DAGUniverse::initialize()
   cell_idx_offset_ = model::cells.size();
   next_cell_id++;
 
-  // determine the next surface id
-  int32_t next_surf_id = 0;
-  for (const auto& s : model::surfaces) {
-    if (s->id_ > next_surf_id)
-      next_surf_id = s->id_;
-  }
-  surf_idx_offset_ = model::surfaces.size();
-  next_surf_id++;
-
-  init_dagmc();
-
-  // --- Cells (Volumes) ---
-  moab::ErrorCode rval;
-
   // initialize cell objects
   int n_cells = dagmc_instance_->num_entities(3);
-  moab::EntityHandle graveyard = 0;
+  graveyard = 0;
   for (int i = 0; i < n_cells; i++) {
     moab::EntityHandle vol_handle = dagmc_instance_->entity_by_index(3, i + 1);
 
@@ -207,7 +246,20 @@ void DAGUniverse::initialize()
 
   has_graveyard_ = graveyard;
 
-  // --- Surfaces ---
+}
+
+void DAGUniverse::init_surfaces()
+{
+  moab::ErrorCode rval;
+
+  // determine the next surface id
+  int32_t next_surf_id = 0;
+  for (const auto& s : model::surfaces) {
+    if (s->id_ > next_surf_id)
+      next_surf_id = s->id_;
+  }
+  surf_idx_offset_ = model::surfaces.size();
+  next_surf_id++;
 
   // initialize surface objects
   int n_surfaces = dagmc_instance_->num_entities(2);
@@ -264,49 +316,9 @@ void DAGUniverse::initialize()
 
     model::surfaces.emplace_back(std::move(s));
   } // end surface loop
+
 }
 
-void DAGUniverse::init_dagmc()
-{
-
-  // create a new DAGMC instance
-  dagmc_instance_ = std::make_shared<moab::DagMC>();
-
-  // --- Materials ---
-
-  // read any UWUW materials from the file
-  read_uwuw_materials();
-
-  // check for uwuw material definitions
-  bool using_uwuw = uses_uwuw();
-
-  // notify user if UWUW materials are going to be used
-  if (using_uwuw) {
-    write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
-  }
-
-  // load the DAGMC geometry
-  filename_ = settings::path_input + filename_;
-  if (!file_exists(filename_)) {
-    fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
-  }
-  moab::ErrorCode rval = dagmc_instance_->load_file(filename_.c_str());
-  MB_CHK_ERR_CONT(rval);
-
-  // initialize acceleration data structures
-  rval = dagmc_instance_->init_OBBTree();
-  MB_CHK_ERR_CONT(rval);
-
-  // parse model metadata
-  dmd_ptr = std::make_unique<dagmcMetaData>(dagmc_instance_.get(), false, false);
-  dmd_ptr->load_property_data();
-
-  std::vector<std::string> keywords {"temp"};
-  std::map<std::string, std::string> dum;
-  std::string delimiters = ":/";
-  rval = dagmc_instance_->parse_properties(keywords, dum, delimiters.c_str());
-  MB_CHK_ERR_CONT(rval);
-}
 
 std::string DAGUniverse::dagmc_ids_for_dim(int dim) const
 {

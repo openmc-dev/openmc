@@ -52,8 +52,8 @@ def na23():
 
 def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
     """Test the AtomicRepresentation class."""
-    # Test instanciation from_iza
-    assert b10 == AtomicRepresentation.from_iza(5010)
+    # Test instantiation from_za
+    assert b10 == AtomicRepresentation.from_za(5010)
 
     # Test addition
     assert c13 + b10 == na23
@@ -66,13 +66,13 @@ def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
     assert c13.a == 13
     assert c13.z == 6
     assert c13.n == 7
-    assert c13.iza == 6013
+    assert c13.za == 6013
 
     # Test properties when information for Kalbach-Mann are given
     assert triton.a == 3
     assert triton.z == 1
     assert triton.n == 2
-    assert triton.iza == 1003
+    assert triton.za == 1003
 
     # Test instanciation errors
     with pytest.raises(IOError):
@@ -107,17 +107,17 @@ def test_kalbach_slope():
         kalbach_slope(
             energy_projectile=energy_projectile,
             energy_emitted=energy_emitted,
-            iza_projectile=1000,
-            iza_emitted=1,
-            iza_target=6012
+            za_projectile=1000,
+            za_emitted=1,
+            za_target=6012
         )
 
     assert kalbach_slope(
         energy_projectile=energy_projectile,
         energy_emitted=energy_emitted,
-        iza_projectile=1,
-        iza_emitted=1003,
-        iza_target=6012
+        za_projectile=1,
+        za_emitted=1003,
+        za_target=6012
     ) == pytest.approx(0.8409921475)
 
 

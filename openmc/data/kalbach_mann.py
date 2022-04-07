@@ -18,36 +18,28 @@ class AtomicRepresentation(EqualityMixin):
 
     Parameters
     ----------
-    z: int
+    z : int
         Number of protons (atomic number)
-    a: int
+    a : int
         Number of nucleons (mass number)
 
     Raises
     ------
-    IOError:
+    IOError
         When the number of protons (z) declared is higher than the number
         of nucleons (a)
 
     Attributes
     ----------
-    z: int
+    z : int
         Number of protons (atomic number)
-    a: int
+    a : int
         Number of nucleons (mass number)
-    n: int
+    n : int
         Number of neutrons
-    breaking_energy: float
-        Energy required to break the isotope or particle into their
-        constituent nucleons from tabulated values
-    M: float
-        Kalbach-Mann M coefficient
-    m: float
-        Kalbach-Mann m coefficient
-    iza: int
-        ZA identifier defined as:
-        iza = Z x 1000 + A,
-        where Z is the number of protons and A the number of nucleons
+    za : int
+        ZA identifier, 1000*Z + A, where Z is the atomic number and A the mass
+        number
 
     """
     def __init__(self, z, a):
@@ -88,9 +80,8 @@ class AtomicRepresentation(EqualityMixin):
         return self.a - self.z
 
     @property
-    def iza(self):
-        iza = self.z * 1000 + self.a
-        return iza
+    def za(self):
+        return self.z * 1000 + self.a
 
     @a.setter
     def a(self, an):
@@ -112,9 +103,9 @@ class AtomicRepresentation(EqualityMixin):
 
         Parameters
         ----------
-        z: int
+        z : int
             Number of protons (atomic number)
-        a: int
+        a : int
             Number of nucleons (mass number)
 
         Raises
@@ -131,17 +122,14 @@ class AtomicRepresentation(EqualityMixin):
             )
 
     @classmethod
-    def from_iza(cls, iza):
+    def from_za(cls, za):
         """Instantiates an AtomicRepresentation from a ZA identifier.
-
-        The ZA identifier is defined as:
-        iza = Z x 1000 + A,
-        where Z is the number of protons and A the number of nucleons.
 
         Parameters
         ----------
-        iza: int
-            ZA identifier
+        za : int
+            ZA identifier, 1000*Z + A, where Z is the atomic number and A the
+            mass number
 
         Returns
         -------
@@ -149,7 +137,7 @@ class AtomicRepresentation(EqualityMixin):
             Atomic representation of the isotope/particle
 
         """
-        z, a = divmod(iza, 1000)
+        z, a = divmod(za, 1000)
         return cls(z, a)
 
 
@@ -184,7 +172,7 @@ def _separation_energy(compound, nucleus, particle):
 
     # Determine breakup energy of incident particle (ENDF-6 Formats Manual,
     # Appendix H, Table 3)
-    iza_to_breaking_energy = {
+    za_to_breaking_energy = {
         1: 0.0,
         1001: 0.0,
         1002: 2.224566,
@@ -192,7 +180,7 @@ def _separation_energy(compound, nucleus, particle):
         2003: 7.718043,
         2004: 28.29566
     }
-    I_b = iza_to_breaking_energy[particle.iza]
+    I_b = za_to_breaking_energy[particle.za]
 
     # Eq. 4 in in doi:10.1103/PhysRevC.37.2350 or ENDF-6 Formats Manual section
     # 6.2.3.2
@@ -207,8 +195,8 @@ def _separation_energy(compound, nucleus, particle):
     )
 
 
-def kalbach_slope(energy_projectile, energy_emitted, iza_projectile,
-                  iza_emitted, iza_target):
+def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
+                  za_emitted, za_target):
     """Returns Kalbach-Mann slope from calculations.
 
     The associated reaction is defined as:
@@ -222,10 +210,6 @@ def kalbach_slope(energy_projectile, energy_emitted, iza_projectile,
     - B is the residual nucleus,
     - b is the emitted particle.
 
-    This function uses the concept of ZA identifier defined as:
-    iza = Z x 1000 + A,
-    where Z is the number of protons and A the number of nucleons.
-
     The Kalbach-Mann slope calculation is done as defined in ENDF-6 manual
     BNL-203218-2018-INRE, Revision 215, File 6 description for LAW=1 and
     LANG=2. One exception to this, is that the entrance and emission channel
@@ -234,45 +218,44 @@ def kalbach_slope(energy_projectile, energy_emitted, iza_projectile,
 
     Parameters
     ----------
-    energy_projectile: float
+    energy_projectile : float
         Energy of the projectile in the laboratory system in eV
-    energy_emitted: float
+    energy_emitted : float
         Energy of the emitted particle in the center of mass system in eV
-    iza_projectile: int
+    za_projectile : int
         ZA identifier of the projectile
-    iza_emitted: int
+    za_emitted : int
         ZA identifier of the emitted particle
-    iza_target: int
+    za_target : int
         ZA identifier of the targeted nucleus
 
     Raises
     ------
-    NotImplementedError:
-        When the ZA identifier of the projectile is not equal to 1
-        (ie. other than a neutron).
+    NotImplementedError
+        When the projectile is not a neutron
 
     Returns
     -------
-    slope: float
+    slope : float
         Kalbach-Mann slope given with the same format as ACE file.
 
     """
     # TODO: develop for photons as projectile
     # TODO: test for other particles than neutron
-    if iza_projectile != 1:
+    if za_projectile != 1:
         raise NotImplementedError(
             "Developed and tested for neutron projectile only."
         )
 
     # Special handling of elemental carbon
-    if iza_emitted == 6000:
-        iza_emitted = 6012
-    if iza_target == 6000:
-        iza_target = 6012
+    if za_emitted == 6000:
+        za_emitted = 6012
+    if za_target == 6000:
+        za_target = 6012
 
-    projectile = AtomicRepresentation.from_iza(iza_projectile)
-    emitted = AtomicRepresentation.from_iza(iza_emitted)
-    target = AtomicRepresentation.from_iza(iza_target)
+    projectile = AtomicRepresentation.from_za(za_projectile)
+    emitted = AtomicRepresentation.from_za(za_emitted)
+    target = AtomicRepresentation.from_za(za_target)
     compound = projectile + target
     residual = compound - emitted
 
@@ -289,10 +272,10 @@ def kalbach_slope(energy_projectile, energy_emitted, iza_projectile,
 
     # See Eq. 10 in doi:10.1103/PhysRevC.37.2350 or section 6.2.3.2 in the
     # ENDF-6 Formats Manual
-    iza_to_M = {1: 1.0, 1001: 1.0, 1002: 1.0, 2004: 0.0}
-    iza_to_m = {1: 0.5, 1001: 1.0, 1002: 1.0, 1003: 1.0, 2003: 1.0, 2004: 2.0}
-    M = iza_to_M[projectile.iza]
-    m = iza_to_m[emitted.iza]
+    za_to_M = {1: 1.0, 1001: 1.0, 1002: 1.0, 2004: 0.0}
+    za_to_m = {1: 0.5, 1001: 1.0, 1002: 1.0, 1003: 1.0, 2003: 1.0, 2004: 2.0}
+    M = za_to_M[projectile.za]
+    m = za_to_m[emitted.za]
     e_a = epsilon_a + s_a
     e_b = epsilon_b + s_b
     r_1 = min(e_a, 130.)
@@ -642,7 +625,7 @@ class KalbachMann(AngleEnergy):
         return cls(breakpoints, interpolation, energy, energy_out, km_r, km_a)
 
     @classmethod
-    def from_endf(cls, file_obj, iza_emitted, iza_target, projectile_mass):
+    def from_endf(cls, file_obj, za_emitted, za_target, projectile_mass):
         """Generate Kalbach-Mann distribution from an ENDF evaluation.
 
         If the projectile is a neutron, the slope is calculated when it is
@@ -652,11 +635,11 @@ class KalbachMann(AngleEnergy):
         ----------
         file_obj : file-like object
             ENDF file positioned at the start of the Kalbach-Mann distribution
-        iza_emitted : int
+        za_emitted : int
             ZA identifier of the emitted particle
-        iza_target : int
+        za_target : int
             ZA identifier of the target
-        projectile_mass: float
+        projectile_mass : float
             Mass of the projectile
 
         Warns
@@ -714,13 +697,13 @@ class KalbachMann(AngleEnergy):
                     calculated_slope.append(False)
 
                 else:
-                    # TODO: retrieve IZA of the projectile
-                    iza_projectile = 1
+                    # TODO: retrieve ZA of the projectile
+                    za_projectile = 1
                     a_i = [kalbach_slope(energy_projectile=energy[i],
                                          energy_emitted=e,
-                                         iza_projectile=iza_projectile,
-                                         iza_emitted=iza_emitted,
-                                         iza_target=iza_target)
+                                         za_projectile=za_projectile,
+                                         za_emitted=za_emitted,
+                                         za_target=za_target)
                            for e in eout_i]
                     calculated_slope.append(True)
 

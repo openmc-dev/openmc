@@ -217,6 +217,12 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
     assert ur_t == pytest.approx(ur + t)
     assert ll_t == pytest.approx(ll + t)
 
+    # Check invalid r1, r2 combinations
+    with pytest.raises(ValueError):
+        openmc.model.IsogonalOctagon(center, r1=1.0, r2=10.)
+    with pytest.rasies(ValueError):
+        openmc.model.IsogonalOctagon(center, r1=10., r2=1.)
+
     # Make sure repr works
     repr(s)
 

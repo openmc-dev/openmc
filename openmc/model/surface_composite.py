@@ -126,16 +126,16 @@ class IsogonalOctagon(CompositeSurface):
             raise ValueError(f'r1 is greater than sqrt(2) * r2. Octagon' + \
                              ' may be erroneous.')
 
-        L_perp_ax1 = (r2 * sqrt(2) - r1)
+        L_basis_ax = (r2 * sqrt(2) - r1)
 
         # Coords for quadrant planes
-        p1_ur = np.array([L_perp_ax1, r1, 0.])
-        p2_ur = np.array([r1, L_perp_ax1, 0.])
-        p3_ur = np.array([r1, L_perp_ax1, 1.])
+        p1_ur = np.array([L_basis_ax, r1, 0.])
+        p2_ur = np.array([r1, L_basis_ax, 0.])
+        p3_ur = np.array([r1, L_basis_ax, 1.])
 
-        p1_lr = np.array([r1, -L_perp_ax1, 0.])
-        p2_lr = np.array([L_perp_ax1, -r1, 0.])
-        p3_lr = np.array([L_perp_ax1, -r1, 1.])
+        p1_lr = np.array([r1, -L_basis_ax, 0.])
+        p2_lr = np.array([L_basis_ax, -r1, 0.])
+        p3_lr = np.array([L_basis_ax, -r1, 1.])
 
         points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr]
 

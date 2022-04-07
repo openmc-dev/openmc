@@ -220,7 +220,7 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
     # Check invalid r1, r2 combinations
     with pytest.raises(ValueError):
         openmc.model.IsogonalOctagon(center, r1=1.0, r2=10.)
-    with pytest.rasies(ValueError):
+    with pytest.raises(ValueError):
         openmc.model.IsogonalOctagon(center, r1=10., r2=1.)
 
     # Make sure repr works

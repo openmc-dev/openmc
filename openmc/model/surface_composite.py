@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from copy import copy
 from math import sqrt
-from numpy import array
+import numpy as np
 
 import openmc
 from openmc.checkvalue import check_greater_than, check_value
@@ -88,9 +88,9 @@ class IsogonalOctagon(CompositeSurface):
         Top planar surface of octagon
     bottom : openmc.ZPlane, openmc.XPlane, or openmc.YPlane
         Bottom planar surface of octagon
-    right: openmc.YPlane, openmc.ZPlane, or openmc.XPlane
+    right : openmc.YPlane, openmc.ZPlane, or openmc.XPlane
         Right planar surface of octagon
-    left: openmc.YPlane, openmc.ZPlane, or openmc.XPlane
+    left : openmc.YPlane, openmc.ZPlane, or openmc.XPlane
         Left planar surface of octagon
     upper_right : openmc.Plane
         Upper right planar surface of octagon
@@ -126,17 +126,16 @@ class IsogonalOctagon(CompositeSurface):
             raise ValueError(f'r1 is greater than sqrt(2) * r2. Octagon' + \
                              ' may be erroneous.')
 
-        L_perp_ax1 = (r2 * sqrt(2) - r1) * 2
-        L_perp_ax2 = (r1 * sqrt(2) - r2) * 2
+        L_perp_ax1 = (r2 * sqrt(2) - r1)
 
         # Coords for quadrant planes
-        p1_ur = array([L_perp_ax1/2, r1, 0.])
-        p2_ur = array([r1, L_perp_ax1/2, 0.])
-        p3_ur = array([r1, L_perp_ax1/2, 1.])
+        p1_ur = np.array([L_perp_ax1, r1, 0.])
+        p2_ur = np.array([r1, L_perp_ax1, 0.])
+        p3_ur = np.array([r1, L_perp_ax1, 1.])
 
-        p1_lr = array([r1, -L_perp_ax1/2, 0.])
-        p2_lr = array([L_perp_ax1/2, -r1, 0.])
-        p3_lr = array([L_perp_ax1/2, -r1, 1.])
+        p1_lr = np.array([r1, -L_perp_ax1, 0.])
+        p2_lr = np.array([L_perp_ax1, -r1, 0.])
+        p3_lr = np.array([L_perp_ax1, -r1, 1.])
 
         points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr]
 

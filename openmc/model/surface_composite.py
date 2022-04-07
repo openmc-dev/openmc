@@ -65,8 +65,10 @@ class CylinderSector(CompositeSurface):
     center : iterable of float
          Coordinate for central axes of cylinders in the (y, z), (z, x), or
          (x, y) basis. Defaults to (0,0)
-    r1, r2 : float
-        Inner and outer cylinder radii
+    r1 : float
+        Inner cylinder radii
+    r2 : float
+        Outer cylinder radii
     theta0 : float
         Angular offset of the sector in degrees relative to the primary basis
         axis (+y, +z, or +x).
@@ -84,9 +86,9 @@ class CylinderSector(CompositeSurface):
     inner_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
         Inner cylinder surface
     plane0 : openmc.Plane
-        Plane at angle :math:`\theta_0` relative to the first basis axis
+        Plane at angle :math:`\\theta_0` relative to the first basis axis
     plane1 : openmc.Plane
-        Plane at angle :math:`\theta_0 + \theta` relative to the first
+        Plane at angle :math:`\\theta_0 + \\theta` relative to the first
         basis axis.
 
     """

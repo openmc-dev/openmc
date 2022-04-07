@@ -405,7 +405,7 @@ class Model:
             will be created.
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
-            exporting
+            exporting.
 
             .. versionadded:: 0.13.1
         """

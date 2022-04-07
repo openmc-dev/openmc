@@ -442,7 +442,7 @@ class Decay(EqualityMixin):
                     # Read continuous spectrum
                     ci = {}
                     params, ci['probability'] = get_tab1_record(file_obj)
-                    ci['type'] = get_decay_modes(params[0])
+                    ci['from_mode'] = get_decay_modes(params[0])
 
                     # Read covariance (Ek, Fk) table
                     LCOV = params[3]

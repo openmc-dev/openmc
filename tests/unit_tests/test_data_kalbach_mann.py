@@ -7,14 +7,8 @@ import numpy as np
 
 from openmc.data import IncidentNeutron
 from openmc.data import AtomicRepresentation
-from openmc.data.kalbach_mann import _BREAKING_ENERGY_TRITON
-from openmc.data.kalbach_mann import _M_TRITON
-from openmc.data.kalbach_mann import _SM_TRITON
-from openmc.data.kalbach_mann import _calculate_separation_energy
-from openmc.data.kalbach_mann import _return_emission_channel_energy
-from openmc.data.kalbach_mann import _return_entrance_channel_energy
-from openmc.data.kalbach_mann import _calculate_kalbach_slope
-from openmc.data import return_kalbach_slope
+from openmc.data.kalbach_mann import _separation_energy
+from openmc.data import kalbach_slope
 from openmc.data import KalbachMann
 
 from . import needs_njoy
@@ -61,9 +55,6 @@ def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
     # Test instanciation from_iza
     assert b10 == AtomicRepresentation.from_iza(5010)
 
-    # Test instanciation from_iza using IZA translation
-    assert c12 == AtomicRepresentation.from_iza(6000)
-
     # Test addition
     assert c13 + b10 == na23
 
@@ -75,18 +66,12 @@ def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
     assert c13.a == 13
     assert c13.z == 6
     assert c13.n == 7
-    assert c13.breaking_energy is None
-    assert c13.M is None
-    assert c13.m is None
     assert c13.iza == 6013
 
     # Test properties when information for Kalbach-Mann are given
     assert triton.a == 3
     assert triton.z == 1
     assert triton.n == 2
-    assert triton.breaking_energy == _BREAKING_ENERGY_TRITON
-    assert triton.M == _M_TRITON
-    assert triton.m == _SM_TRITON
     assert triton.iza == 1003
 
     # Test instanciation errors
@@ -102,50 +87,16 @@ def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
         neutron - triton
 
 
-def test__calculate_separation_energy(triton, b10, c13):
+def test_separation_energy(triton, b10, c13):
     """Comparison to hand-calculations on a simple example."""
-    assert _calculate_separation_energy(
+    assert _separation_energy(
         compound=c13,
         nucleus=b10,
         particle=triton
     ) == pytest.approx(18.6880713)
 
 
-def test__return_entrance_channel_energy():
-    """Comparison to hand-calculations on a simple example."""
-    assert _return_entrance_channel_energy(
-        e_p=5.2,
-        awr_t=13.7,
-        awr_p=7.2
-    ) == pytest.approx(3.4086124)
-
-
-def test__return_emission_channel_energy():
-    """Comparison to hand-calculations on a simple example."""
-    assert _return_emission_channel_energy(
-        e_e=6.8,
-        awr_r=49.2,
-        awr_e=5.4
-    ) == pytest.approx(7.5463415)
-
-
-def test__calculate_kalbach_slope(neutron, triton, b10, c12, c13):
-    """Comparison to hand-calculations for n + c12 -> c13 -> triton + b10."""
-    energy_projectile = 10.2  # [eV]
-    energy_emitted = 5.4  # [eV]
-
-    assert _calculate_kalbach_slope(
-        energy_projectile=energy_projectile,
-        energy_emitted=energy_emitted,
-        projectile=neutron,
-        target=c12,
-        compound=c13,
-        emitted=triton,
-        residual=b10
-    ) == pytest.approx(0.8409921475)
-
-
-def test_return_kalbach_slope():
+def test_kalbach_slope():
     """Comparison to hand-calculations for n + c12 -> c13 -> triton + b10."""
     energy_projectile = 10.2  # [eV]
     energy_emitted = 5.4  # [eV]
@@ -153,7 +104,7 @@ def test_return_kalbach_slope():
     # Check that NotImplementedError is raised if the projectile is not
     # a neutron
     with pytest.raises(NotImplementedError):
-        return_kalbach_slope(
+        kalbach_slope(
             energy_projectile=energy_projectile,
             energy_emitted=energy_emitted,
             iza_projectile=1000,
@@ -161,7 +112,7 @@ def test_return_kalbach_slope():
             iza_target=6012
         )
 
-    assert return_kalbach_slope(
+    assert kalbach_slope(
         energy_projectile=energy_projectile,
         energy_emitted=energy_emitted,
         iza_projectile=1,

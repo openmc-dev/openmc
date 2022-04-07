@@ -325,7 +325,7 @@ private:
   int n_layers_;            //!< Number of layer positions
   Orientation orientation_; //!< Orientation of lattice
   Position central_axis_;   //!< Axial center of lattice
-  float base_coordinate_;   //!< Coordinate of base layer of lattice
+  double base_coordinate_;   //!< Coordinate of base layer of lattice
   vector<double> pitch_;    //!< Lattice layer width.
   vector<double> layer_boundaries_;   //!< Coordinates of lattice tile boundaries
 };

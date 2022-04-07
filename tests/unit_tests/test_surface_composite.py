@@ -191,10 +191,10 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
 
     # Check bounding box
     center = np.insert(center, axis_idx, np.inf)
-    xmax,ymax,zmax = center + r1
+    xmax, ymax, zmax = center + r1
     coord_min = center - r1
     coord_min[axis_idx] *= -1
-    xmin,ymin,zmin = coord_min
+    xmin, ymin, zmin = coord_min
     ll, ur = (+s).bounding_box
     assert np.all(np.isinf(ll))
     assert np.all(np.isinf(ur))

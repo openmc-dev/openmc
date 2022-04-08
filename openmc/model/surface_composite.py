@@ -6,6 +6,7 @@ import numpy as np
 import openmc
 from openmc.checkvalue import check_greater_than, check_value
 
+
 class CompositeSurface(ABC):
     """Multiple primitive surfaces combined into a composite surface"""
 
@@ -92,7 +93,7 @@ class CylinderSector(CompositeSurface):
 
     """
 
-    _surface_names = ('outer_cyl','inner_cyl',
+    _surface_names = ('outer_cyl', 'inner_cyl',
                       'plane0', 'plane1')
 
     def __init__(self, center, r1, r2, theta0, theta, axis='z', **kwargs):
@@ -132,7 +133,7 @@ class CylinderSector(CompositeSurface):
                                                **kwargs)
 
     def __neg__(self):
-        return -self.outer_cyl & +self.inner_cyl & -self.plane0 &  +self.plane1
+        return -self.outer_cyl & +self.inner_cyl & -self.plane0 & +self.plane1
 
     def __pos__(self):
         return +self.outer_cyl | -self.inner_cyl | +self.plane0 | -self.plane1
@@ -206,10 +207,10 @@ class IsogonalOctagon(CompositeSurface):
 
         # Side lengths
         if r2 > r1 * sqrt(2):
-            raise ValueError(f'r2 is greater than sqrt(2) * r1. Octagon' + \
+            raise ValueError(f'r2 is greater than sqrt(2) * r1. Octagon' +
                              ' may be erroneous.')
         if r1 > r2 * sqrt(2):
-            raise ValueError(f'r1 is greater than sqrt(2) * r2. Octagon' + \
+            raise ValueError(f'r1 is greater than sqrt(2) * r2. Octagon' +
                              ' may be erroneous.')
 
         L_basis_ax = (r2 * sqrt(2) - r1)

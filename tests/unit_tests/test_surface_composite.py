@@ -12,7 +12,8 @@ def test_rectangular_parallelepiped():
     ymax = ymin + uniform(0., 5.)
     zmin = uniform(-5., 5.)
     zmax = zmin + uniform(0., 5.)
-    s = openmc.model.RectangularParallelepiped(xmin, xmax, ymin, ymax, zmin, zmax)
+    s = openmc.model.RectangularParallelepiped(
+        xmin, xmax, ymin, ymax, zmin, zmax)
     assert isinstance(s.xmin, openmc.XPlane)
     assert isinstance(s.xmax, openmc.XPlane)
     assert isinstance(s.ymin, openmc.YPlane)
@@ -286,5 +287,3 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
 
     # Make sure repr works
     repr(s)
-
-

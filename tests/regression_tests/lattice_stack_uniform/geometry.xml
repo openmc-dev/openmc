@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1 -2 3" universe="1" />
+  <cell id="2" material="2" region="1 -2 3" universe="1" />
+  <cell id="3" material="2" region="-5 | 4" universe="3" />
+  <cell fill="2" id="4" universe="3" />
+  <cell fill="3" id="5" region="6 -7 8 -9 10 -11" universe="4" />
+  <stack_lattice id="2" orientation="z">
+    <pitch>1.5</pitch>
+    <num_layers>5</num_layers>
+    <central_axis>0.0 0.0</central_axis>
+    <base_coordinate>0.0</base_coordinate>
+    <universes>
+1 1 1 1 1 </universes>
+  </stack_lattice>
+  <surface coeffs="0.0 0.0 0.4" id="1" type="z-cylinder" />
+  <surface coeffs="1.5" id="2" type="z-plane" />
+  <surface coeffs="0.0" id="3" type="z-plane" />
+  <surface coeffs="7.5" id="4" type="z-plane" />
+  <surface coeffs="0.0" id="5" type="z-plane" />
+  <surface boundary="reflective" coeffs="-0.6000000000000001" id="6" type="x-plane" />
+  <surface boundary="reflective" coeffs="0.6000000000000001" id="7" type="x-plane" />
+  <surface boundary="reflective" coeffs="-0.6000000000000001" id="8" type="y-plane" />
+  <surface boundary="reflective" coeffs="0.6000000000000001" id="9" type="y-plane" />
+  <surface boundary="reflective" coeffs="-0.6000000000000001" id="10" type="z-plane" />
+  <surface boundary="reflective" coeffs="8.1" id="11" type="z-plane" />
+</geometry>

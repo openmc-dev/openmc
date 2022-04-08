@@ -71,6 +71,13 @@ DAGUniverse::DAGUniverse(
   : filename_(filename), adjust_geometry_ids_(auto_geom_ids),
     adjust_material_ids_(auto_mat_ids)
 {
+  set_id();
+
+  initialize();
+}
+
+void DAGUniverse::set_id()
+{
   // determine the next universe id
   int32_t next_univ_id = 0;
   for (const auto& u : model::universes) {
@@ -81,8 +88,6 @@ DAGUniverse::DAGUniverse(
 
   // set the universe id
   id_ = next_univ_id;
-
-  initialize();
 }
 
 void DAGUniverse::initialize()
@@ -90,6 +95,8 @@ void DAGUniverse::initialize()
   geom_type() = GeometryType::DAG;
 
   init_dagmc();
+
+  read_uwuw_materials();
 
   init_cells();
 
@@ -101,19 +108,6 @@ void DAGUniverse::init_dagmc()
 
   // create a new DAGMC instance
   dagmc_instance_ = std::make_shared<moab::DagMC>();
-
-  // --- Materials ---
-
-  // read any UWUW materials from the file
-  read_uwuw_materials();
-
-  // check for uwuw material definitions
-  bool using_uwuw = uses_uwuw();
-
-  // notify user if UWUW materials are going to be used
-  if (using_uwuw) {
-    write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
-  }
 
   // load the DAGMC geometry
   filename_ = settings::path_input + filename_;
@@ -513,6 +507,9 @@ void DAGUniverse::read_uwuw_materials()
   const auto& mat_lib = uwuw_->material_library;
   if (mat_lib.size() == 0)
     return;
+
+  // notify user if UWUW materials are going to be used
+  write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
 
   // if we're using automatic IDs, update the UWUW material metadata
   if (adjust_material_ids_) {

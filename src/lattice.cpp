@@ -1108,14 +1108,12 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   std::string n_layers_str {get_node_value(lat_node, "num_layers")};
   vector<std::string> n_layers_words {split(n_layers_str)};
   if (n_layers_words.size() == 1) {
+    n_layers_ = std::stoi(n_layers_words[0]);
     if (orientation_ == Orientation::z) {
-      n_layers_ = std::stoi(n_layers_words[0]);
       orientation_idx_ = 2;
     } else if (orientation_ == Orientation::y) {
-      n_layers_ = std::stoi(n_layers_words[0]);
       orientation_idx_ = 1;
     } else {
-      n_layers_ = std::stoi(n_layers_words[0]);
       orientation_idx_ = 0;
     }
   } else {
@@ -1152,7 +1150,7 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
                 "number of entries on <num_layers>.");
   }
 
-  // Levels helper attribute
+  // Layers helper attribute
   layer_boundaries_.push_back(base_coordinate_);
   if (is_uniform_) {
     for (int i = 1; i < n_layers_; i++) {
@@ -1165,11 +1163,8 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
       layer_boundaries_.push_back(pitch_[i-1] + layer_boundaries_[i-1]);
     }
   }
-  layer_boundaries_.push_back(pitch_[n_layers_ - 1] + layer_boundaries_[n_layers_ - 1]);
-
-  // Reinitialize the vectors
-
-  
+  layer_boundaries_.push_back(pitch_[n_layers_ - 1] + /
+          layer_boundaries_[n_layers_ - 1]);
 
   // Read the universes and make sure the correct number was specified.
   std::string univ_str {get_node_value(lat_node, "universes")};
@@ -1182,8 +1177,6 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   }
 
   // Parse the universes.
-  // leaving this as is for now; may remove these for loops
-  // later since we only really need a 1D array
   universes_.resize(n_layers_, C_NONE);
   for (int i = 0; i < n_layers_; i++) {
         universes_[i] = std::stoi(univ_words[i]);
@@ -1248,6 +1241,9 @@ std::pair<double, array<int, 3>> StackLattice::distance(
   double d {INFTY};
   if ((std::abs(c - c0) > FP_PRECISION) && u_c != 0) {
     d = (c0 - c) / u_c;
+    if (d < 0) {
+      int i = 1;
+    }
     if (u_c <= 0) {
       lattice_trans[orientation_idx_] = -1;
     } 

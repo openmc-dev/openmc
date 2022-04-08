@@ -88,6 +88,11 @@ public:
   explicit DAGUniverse(const std::string& filename, bool auto_geom_ids = false,
     bool auto_mat_ids = false);
 
+  //! Alternative DAGMC universe constructor for external DAGMC
+  explicit DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
+                       bool auto_geom_ids = false,
+                       bool auto_mat_ids = false);
+
   //! Initialize the DAGMC accel. data structures, indices, material
   //! assignments, etc.
   void initialize();

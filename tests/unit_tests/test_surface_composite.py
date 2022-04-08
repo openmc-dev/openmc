@@ -171,7 +171,7 @@ def test_cylinder_sector(axis, indices):
     assert isinstance(s.inner_cyl, getattr(openmc, axis + "Cylinder"))
     assert isinstance(s.plane0, openmc.Plane)
     assert isinstance(s.plane1, openmc.Plane)
-    
+
     # Make sure boundary condition propagates
     s.boundary_type = 'reflective'
     assert s.boundary_type == 'reflective'
@@ -179,7 +179,7 @@ def test_cylinder_sector(axis, indices):
     assert s.inner_cyl.boundary_type == 'reflective'
     assert s.plane0.boundary_type == 'reflective'
     assert s.plane1.boundary_type == 'reflective'
-    
+
     # Check bounding box
     ll, ur = (+s).bounding_box
     assert np.all(np.isinf(ll))
@@ -237,7 +237,7 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
     assert isinstance(s.lower_right, openmc.Plane)
     assert isinstance(s.upper_left, openmc.Plane)
     assert isinstance(s.lower_left, openmc.Plane)
-    
+
     # Make sure boundary condition propagates
     s.boundary_type = 'reflective'
     assert s.boundary_type == 'reflective'
@@ -286,3 +286,5 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
 
     # Make sure repr works
     repr(s)
+
+

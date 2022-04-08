@@ -58,10 +58,10 @@ class CylinderSector(CompositeSurface):
     This class acts as a proper surface, meaning that unary `+` and `-`
     operators applied to it will produce a half-space. The negative
     side is defined to be the region inside of the cylinder sector.
-     
+
     Parameters
     ----------
-    center : iterable of float   
+    center : iterable of float
        Coordinate for central axes of cylinders in the (y, z), (z, x), or
          (x, y) basis. Defaults to (0,0)
     r1 : float
@@ -136,8 +136,8 @@ class CylinderSector(CompositeSurface):
 
     def __pos__(self):
         return +self.outer_cyl | -self.inner_cyl | +self.plane0 | -self.plane1
-      
-      
+
+
 class IsogonalOctagon(CompositeSurface):
     """Infinite isogonal octagon composite surface
 
@@ -155,7 +155,6 @@ class IsogonalOctagon(CompositeSurface):
     Parameters
     ----------
     center : iterable of float
-
         Coordinate for the central axis of the octagon in the
         (y, z), (z, x), or (x, y) basis.
     r1 : float

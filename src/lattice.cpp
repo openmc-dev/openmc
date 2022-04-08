@@ -1227,36 +1227,30 @@ std::pair<double, array<int, 3>> StackLattice::distance(
   // Determine the oncoming edge.
   if (orientation_ == Orientation::x) {
     u_c = u.x;
-    c0 = u.x;
     c = r.x;
     lattice_trans = {1, 0, 0};
   } else if (orientation_ == Orientation::y) {
     u_c = u.y;
-    c0 = u.y;
     c = r.y;
     lattice_trans = {0, 1, 0};
   } else {
     u_c = u.z;
-    c0 = u.z;
     c = r.z;
     lattice_trans = {0, 0, 1};
   }
   if (is_uniform_) {
-    c0 = copysign(0.5 * pitch_[0], c0);
+    c0 = copysign(0.5 * pitch_[0], u_c);
   } else { 
-    c0 = copysign(0.5 * pitch_[i_xyz[orientation_idx_]], c0);
+    c0 = copysign(0.5 * pitch_[i_xyz[orientation_idx_]], u_c);
   }
 
   // Top and bottom sides
   double d {INFTY};
   if ((std::abs(c - c0) > FP_PRECISION) && u_c != 0) {
-    double this_d = (c0 - c) / u_c;
-    if (this_d < d) {
-      d = this_d;
-      if (u_c <= 0) {
-        lattice_trans[orientation_idx_] = -1;
-      } 
-    }
+    d = (c0 - c) / u_c;
+    if (u_c <= 0) {
+      lattice_trans[orientation_idx_] = -1;
+    } 
   }
 
   return {d, lattice_trans};

@@ -1156,16 +1156,19 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
     for (int i = 1; i < n_layers_; i++) {
       layer_boundaries_.push_back(layer_boundaries_[i-1] + pitch_[0]);
     }
+    layer_boundaries_.push_back(pitch_[0] +
+          layer_boundaries_[n_layers_ - 1]);
+
   } else {
     pitch_.push_back(stod(pitch_words[0]));
     for (int i = 1; i < n_layers_; i++) {
       pitch_.push_back(stod(pitch_words[i]));
       layer_boundaries_.push_back(pitch_[i-1] + layer_boundaries_[i-1]);
     }
+    layer_boundaries_.push_back(pitch_[n_layers_ - 1] + 
+            layer_boundaries_[n_layers_ - 1]);
   }
-  layer_boundaries_.push_back(pitch_[n_layers_ - 1] +
-          layer_boundaries_[n_layers_ - 1]);
-
+  
   // Read the universes and make sure the correct number was specified.
   std::string univ_str {get_node_value(lat_node, "universes")};
   vector<std::string> univ_words {split(univ_str)};

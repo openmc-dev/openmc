@@ -1163,7 +1163,7 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
       layer_boundaries_.push_back(pitch_[i-1] + layer_boundaries_[i-1]);
     }
   }
-  layer_boundaries_.push_back(pitch_[n_layers_ - 1] + /
+  layer_boundaries_.push_back(pitch_[n_layers_ - 1] +
           layer_boundaries_[n_layers_ - 1]);
 
   // Read the universes and make sure the correct number was specified.

@@ -1163,7 +1163,7 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
       layer_boundaries_.push_back(pitch_[i-1] + layer_boundaries_[i-1]);
     }
   }
-  layer_boundaries_.push_back(pitch_[n_layers_ - 1] + /
+  layer_boundaries_.push_back(pitch_[n_layers_ - 1] + 
           layer_boundaries_[n_layers_ - 1]);
 
   // Read the universes and make sure the correct number was specified.
@@ -1240,7 +1240,7 @@ std::pair<double, array<int, 3>> StackLattice::distance(
   // Top and bottom sides
   double d {INFTY};
   if ((std::abs(c - c0) > FP_PRECISION) && u_c != 0) {
-    d = (c0 - c) / u_c;
+    d = (c0 - c) / copysign(1.0, u_c);
     if (d < 0) {
       int i = 1;
     }

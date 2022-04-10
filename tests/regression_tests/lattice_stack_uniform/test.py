@@ -32,7 +32,7 @@ def model():
     water_reflector = openmc.Cell(fill=water, region=water_slice)
     layer = openmc.Universe(cells=[fuel, water_reflector])
 
-    n_pellets = 5
+    n_pellets = 200
 
     top = openmc.ZPlane(z0 = n_pellets * h)
     bot = openmc.ZPlane(z0=0.)

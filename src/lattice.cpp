@@ -1364,11 +1364,11 @@ void StackLattice::to_hdf5_inner(hid_t lat_group) const
 
   // Write lattice orientation
   if (orientation_ == Orientation::x) {
-    write_string(lat_group, "orientation", 'x');
+    write_string(lat_group, "orientation", "x", false);
   } else if (orientation_ == Orientation::y) {
-    write_string(lat_group, "orientation", 'y');
+    write_string(lat_group, "orientation", "y", false);
   } else {
-    write_string(lat_group, "orientation", 'z');
+    write_string(lat_group, "orientation", "z", false);
   }
 
   // Write the universe ids. The convention here is that 

@@ -2648,12 +2648,14 @@ class StackLattice(Lattice):
 
         """
 
-        num_layers = group['num_layers'][...]
+        num_layers = group['num_layers'][()]
         central_axis = group['central_axis'][...]
-        base_coordinate = group['base_coordinate'][...]
+        base_coordinate = group['base_coordinate'][()]
         pitch = group['pitch'][...]
+        if len(pitch) == 1:
+            pitch = pitch[0]
         outer = group['outer'][()]
-        universe_ids = group['universes'][...]
+        universe_ids = group['universes'][...].flatten()
 
         if 'orientation' in group:
             orientation = group['orientation'][()].decode()
@@ -2666,7 +2668,6 @@ class StackLattice(Lattice):
         lattice = cls(lattice_id, name)
         lattice.central_axis = central_axis
         lattice.base_coordinate = base_coordinate
-        lattice.pitch = pitch
         lattice.orientation = orientation
 
         # If the Universe specified outer the Lattice is not void
@@ -2676,10 +2677,11 @@ class StackLattice(Lattice):
         # Build array of Universe pointers for the Lattice
         uarray = np.empty(universe_ids.shape, dtype=openmc.Universe)
 
-        for l in range(universe_ids.shape[0]):
+        for l in range(num_layers):
             uarray[l] = universes[universe_ids[l]]
 
         # Set the universes for the lattice
         lattice.universes = uarray
+        lattice.pitch = pitch
 
         return lattice

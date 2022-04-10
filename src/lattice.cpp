@@ -1235,9 +1235,9 @@ std::pair<double, array<int, 3>> StackLattice::distance(
     lattice_trans = {0, 0, 1};
   }
   if (is_uniform_) {
-    c0 = copysign(0.5 * pitch_[0], u_c);
+    c0 = copysign(pitch_[0], u_c);
   } else { 
-    c0 = copysign(0.5 * pitch_[i_xyz[orientation_idx_]], u_c);
+    c0 = copysign(pitch_[i_xyz[orientation_idx_]], u_c);
   }
 
   // Top and bottom sides
@@ -1364,11 +1364,11 @@ void StackLattice::to_hdf5_inner(hid_t lat_group) const
 
   // Write lattice orientation
   if (orientation_ == Orientation::x) {
-    write_dataset(lat_group, "orientation", 'x');
+    write_string(lat_group, "orientation", 'x');
   } else if (orientation_ == Orientation::y) {
-    write_dataset(lat_group, "orientation", 'y');
+    write_string(lat_group, "orientation", 'y');
   } else {
-    write_dataset(lat_group, "orientation", 'z');
+    write_string(lat_group, "orientation", 'z');
   }
 
   // Write the universe ids. The convention here is that 

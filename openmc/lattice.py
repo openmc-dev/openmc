@@ -2285,7 +2285,7 @@ class StackLattice(Lattice):
         # Initialize Lattice class attributes
         self._central_axis = None
         self._uniform = True
-        self._orientation = 'z'
+        self.orientation = 'z'
 
     def __repr__(self):
         string = 'StackLattice\n'
@@ -2306,11 +2306,11 @@ class StackLattice(Lattice):
             string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
                                                 self._outer)
 
-        string += '{: <16}\n'.format('\tUniverses, z-coord')
+        string += '{: <16}\n'.format('\tUniverses, ' +
+                                     f'{self.orientation}-coord')
 
         for i, universe in enumerate(np.ravel(self._universes)):
-            if self._uniform:
-                string += f'{universe._id}, {self._layer_boundaries[i]}'
+            string += f'{universe._id}, {self._layer_boundaries[i]}'
             string += '\n'
 
         string = string.rstrip('\n')

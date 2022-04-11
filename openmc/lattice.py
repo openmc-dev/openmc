@@ -2434,7 +2434,7 @@ class StackLattice(Lattice):
             if (p < self.base_coordinate):
                 idx = -1
             elif (p > self._layer_boundaries[-1]):
-                idx = num_layers + 1
+                idx = self.num_layers + 1
             else:
                 while not(p >= self._layer_boundaries[idx] and p <= self._layer_boundaries[idx + 1]):
                     idx += 1

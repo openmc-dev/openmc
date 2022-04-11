@@ -2385,7 +2385,7 @@ class StackLattice(Lattice):
             _layer_boundaries = pitch * np.arange(1, self.num_layers + 1)
         except TypeError:
             cv.check_type('lattice pitch', pitch, Iterable, Real)
-            cv.check_length('lattice pitch', pitch, self.num_layers)
+            cv.check_length('lattice pitch', pitch, self.num_layers, self.num_layers)
             self._uniform = False
             _layer_boundaries = [pitch[0]]
             for p in pitch[1:]:

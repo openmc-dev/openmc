@@ -19,14 +19,14 @@
   <surface coeffs="1.0" id="2" type="z-plane" />
   <surface coeffs="2.0" id="3" type="z-plane" />
   <surface coeffs="0.0" id="4" type="z-plane" />
-  <surface coeffs="100.0" id="5" type="z-plane" />
+  <surface coeffs="300.0" id="5" type="z-plane" />
   <surface coeffs="0.0" id="6" type="z-plane" />
   <surface boundary="reflective" coeffs="-0.6000000000000001" id="7" type="x-plane" />
   <surface boundary="reflective" coeffs="0.6000000000000001" id="8" type="x-plane" />
   <surface boundary="reflective" coeffs="-0.6000000000000001" id="9" type="y-plane" />
   <surface boundary="reflective" coeffs="0.6000000000000001" id="10" type="y-plane" />
   <surface boundary="reflective" coeffs="-0.6000000000000001" id="11" type="z-plane" />
-  <surface boundary="reflective" coeffs="100.6" id="12" type="z-plane" />
+  <surface boundary="reflective" coeffs="300.6" id="12" type="z-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>

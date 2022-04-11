@@ -372,7 +372,7 @@ class CartesianIndependent(Spatial):
 
 
 class SphericalIndependent(Spatial):
-    r"""Spatial distribution represented in spherical coordinates.
+    """Spatial distribution represented in spherical coordinates.
 
     This distribution allows one to specify coordinates whose :math:`r`,
     :math:`\theta`, and :math:`\phi` components are sampled independently from
@@ -612,6 +612,95 @@ class CylindricalIndependent(Spatial):
         z = Univariate.from_xml_element(elem.find('z'))
         origin = [float(x) for x in elem.get('origin').split()]
         return cls(r, phi, z, origin=origin)
+
+
+class SphericalShell(Spatial):
+    """Uniform distribution of coordinates in a spherical shell.
+
+    Parameters
+    ----------
+    radii : Iterable of float
+        inner and out radius of the spheres
+    upper_right : Iterable of float
+        center
+    only_fissionable : bool, optional
+        Whether spatial sites should only be accepted if they occur in
+        fissionable materials
+
+    Attributes
+    ----------
+    radii : Iterable of float
+        inner and out radius of the spheres
+    upper_right : Iterable of float
+        center
+    only_fissionable : bool, optional
+        Whether spatial sites should only be accepted if they occur in
+        fissionable materials
+
+    """
+    
+    def __init__(self, radii, xyz):
+        self.radii = radii
+        self.xyz = xyz
+
+    @property
+    def radii(self):
+        return self._radii
+
+    @property
+    def xyz(self):
+        return self._xyz
+
+    @radii.setter
+    def radii(self, radii):
+        cv.check_type('radii', radii, Iterable, Real)
+        cv.check_length('radii', radii, 2)
+        self._radii = radii
+
+    @xyz.setter
+    def xyz(self, xyz):
+        cv.check_type('xyz', xyz, Iterable, Real)
+        cv.check_length('xyz', xyz, 3)
+        self._xyz = xyz
+
+    def to_xml_element(self):
+        """Return XML representation of the box distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing box distribution data
+
+        """
+        element = ET.Element('space')
+        element.set("type", "sphericalshell")
+        params = ET.SubElement(element, "parameters")
+        params.text = ' '.join(map(str, self.radii)) + ' ' + \
+                      ' '.join(map(str, self.xyz))
+        
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate box distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.SphericalShell
+            Box distribution generated from XML element
+
+        """
+        params = [float(x) for x in get_text(elem, 'parameters').split()]
+        radii = params[:len(params)//2]
+        xyz = params[len(params)//2:]
+        return cls(radii, xyz)
+
 
 
 class Box(Spatial):

@@ -94,6 +94,8 @@ IndependentSource::IndependentSource(pugi::xml_node node)
         space_ = UPtrSpace {new SphericalIndependent(node_space)};
       } else if (type == "box") {
         space_ = UPtrSpace {new SpatialBox(node_space)};
+      } else if (type == "sphericalshell") {
+        space_ = UPtrSpace {new SpatialSphericalShell(node_space)};
       } else if (type == "fission") {
         space_ = UPtrSpace {new SpatialBox(node_space, true)};
       } else if (type == "point") {

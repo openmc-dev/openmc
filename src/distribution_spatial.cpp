@@ -203,6 +203,40 @@ Position SpatialBox::sample(uint64_t* seed) const
 }
 
 //==============================================================================
+// SphericalShell implementation
+//==============================================================================
+
+SpatialSphericalShell::SpatialSphericalShell(pugi::xml_node node)
+{
+  // Read lower-right/upper-left coordinates
+  auto params = get_node_array<double>(node, "parameters");
+  if (params.size() != 5)
+    openmc::fatal_error("SphericalShell spatial source must have five "
+                        "parameters specified.");
+
+  radii_inner_ = double {params[0]};
+  radii_outer_ = double {params[1]};
+  xyz_ = Position {params[2], params[3], params[4]};
+}
+
+Position SpatialSphericalShell::sample(uint64_t* seed) const
+{
+
+  double theta = openmc::prn(seed) * 2 * M_PI;
+  double z_zero = 2 * (openmc::prn(seed) - 0.5);
+  double x_zero = std::pow(1 - std::pow(z_zero, 2), 0.5) * std::cos(theta);
+  double y_zero = std::pow(1 - std::pow(z_zero, 2), 0.5) * std::sin(theta);
+
+  double t = openmc::prn(seed) *
+               (std::pow(radii_outer_, 3) - std::pow(radii_inner_, 3)) +
+             std::pow(radii_inner_, 3);
+  double r = std::cbrt(t);
+
+  Position xi {r * x_zero, r * y_zero, r * z_zero};
+  return xi + xyz_;
+}
+
+//==============================================================================
 // SpatialPoint implementation
 //==============================================================================
 

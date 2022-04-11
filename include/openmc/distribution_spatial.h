@@ -119,6 +119,30 @@ private:
 };
 
 //==============================================================================
+//! Distribution of a Spherical Shell
+//==============================================================================
+
+class SpatialSphericalShell : public SpatialDistribution {
+public:
+  explicit SpatialSphericalShell(pugi::xml_node node);
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const;
+
+  // Properties
+  Position xyz() const { return xyz_; }
+  double radii_inner() const { return radii_inner_; }
+  double radii_outer() const { return radii_outer_; }
+
+private:
+  Position xyz_; //!< Single position at which sites are generated
+  double radii_inner_;
+  double radii_outer_;
+};
+
+//==============================================================================
 //! Distribution at a single point
 //==============================================================================
 

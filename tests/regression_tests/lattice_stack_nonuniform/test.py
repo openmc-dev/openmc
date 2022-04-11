@@ -21,38 +21,46 @@ def model():
     model.materials.extend([uo2, water])
 
     rc = 0.4
-    h = 1.5
+    h1 = 1.0
+    h2 = 2.0
     cyl = openmc.ZCylinder(r=rc)
-    top = openmc.ZPlane(z0=h)
+    top1 = openmc.ZPlane(z0=h1)
+    top2 = openmc.ZPlane(z0=h2)
     bottom = openmc.ZPlane(z0=0.)
-    pellet = -cyl & -top & +bottom
-    water_slice = +cyl & -top & +bottom
+    pellet1 = -cyl & -top1 & +bottom
+    pellet2 = -cyl & -top2 & +bottom
+    water_slice1 = +cyl & -top1 & +bottom
+    water_slice2 = +cyl & -top2 & +bottom
 
-    fuel = openmc.Cell(fill=uo2, region=pellet)
-    water_reflector = openmc.Cell(fill=water, region=water_slice)
-    layer = openmc.Universe(cells=[fuel, water_reflector])
+    fuel1 = openmc.Cell(fill=uo2, region=pellet1)
+    fuel2 = openmc.Cell(fill=uo2, region=pellet2)
+    water_reflector1 = openmc.Cell(fill=water, region=water_slice1)
+    water_reflector2 = openmc.Cell(fill=water, region=water_slice2)
+    layer1 = openmc.Universe(cells=[fuel1, water_reflector1])
+    layer2 = openmc.Universe(cells=[fuel2, water_reflector2])
+
 
     n_pellets = 200
 
-    top = openmc.ZPlane(z0 = n_pellets * h)
+    top = openmc.ZPlane(z0 = n_pellets * (h2 - h1) / 2)
     bot = openmc.ZPlane(z0=0.)
     tb_refl = openmc.Cell(fill=water, region=-bot | +top)
 
-    univs = [layer] * n_pellets
+    univs = [layer1, layer2] * int(n_pellets / 2)
     pellet_stack = openmc.StackLattice()
     pellet_stack.central_axis = (0., 0.)
     pellet_stack.base_coordinate = 0.
     pellet_stack.universes = univs
-    pellet_stack.pitch = h
+    pellet_stack.pitch = [h1, h2] * int(n_pellets / 2)
 
     stack_cell = openmc.Cell(fill=pellet_stack)
 
     pin_univ = openmc.Universe(cells=[stack_cell, tb_refl])
 
     d = 1.5 * rc
-    box = -openmc.model.RectangularParallelepiped(-d, d, -d, d,
-                                                 0. - d, n_pellets * h + d,
-                                                 boundary_type='reflective')
+    box = -openmc.model.RectangularParallelepiped(-d, d, -d, d, 0. - d,
+                                                  n_pellets * (h2 - h1) / 2 + d,
+                                                  boundary_type='reflective')
 
     main_cell = openmc.Cell(fill=pin_univ, region=box)
     model.geometry = openmc.Geometry([main_cell])

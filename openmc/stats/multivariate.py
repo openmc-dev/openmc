@@ -272,6 +272,8 @@ class Spatial(ABC):
             return SphericalIndependent.from_xml_element(elem)
         elif distribution == 'box' or distribution == 'fission':
             return Box.from_xml_element(elem)
+        elif distribution == 'sphericalshell':
+             return SphericalShell.from_xml_element(elem)
         elif distribution == 'point':
             return Point.from_xml_element(elem)
 

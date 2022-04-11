@@ -29,6 +29,8 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
+// new
+#include "openmc/weight_windows.h"
 
 #ifdef DAGMC
 #include "DagMC.hpp"
@@ -80,6 +82,15 @@ void Particle::create_secondary(
   bank.time = time();
 
   n_bank_second() += 1;
+  
+  // new in LVR
+  // copy the father particle crossed mesh, but assign 0 to the corresponding weight to make sure not count the weight twice
+  if (settings::weight_windows_on && variance_reduction::local_on) {
+    for (int i = 0; i < this->crossed_mesh_size(); ++i) {
+      bank.crossed_mesh.push_back(this->crossed_mesh_value(i));
+      bank.crossed_weight.push_back(0.);
+    }
+  }
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -113,6 +124,13 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
   time() = src->time;
   time_last() = src->time;
+  
+  // new in LVR
+  // copy the particle crossed mesh
+  if (settings::weight_windows_on && variance_reduction::local_on) {
+    this->reset_crossed_mesh();
+    this->reset_crossed_weight();
+  }
 }
 
 void Particle::event_calculate_xs()

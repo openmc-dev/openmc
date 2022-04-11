@@ -103,43 +103,43 @@ class Settings:
         self._max_splits = None
 
     @property
-    def run_mode(self):
+    def run_mode(self) -> str:
         """{'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
         The type of calculation to perform (default is 'eigenvalue')"""
         return self._run_mode.value
 
     @property
-    def batches(self):
+    def batches(self) -> int:
         """Number of batches to simulate"""
         return self._batches
 
     @property
-    def generations_per_batch(self):
+    def generations_per_batch(self) -> int:
         """Number of generations per batch"""
         return self._generations_per_batch
 
     @property
-    def inactive(self):
+    def inactive(self) -> int:
         """Number of inactive batches"""
         return self._inactive
 
     @property
-    def max_lost_particles(self):
+    def max_lost_particles(self) -> int:
         """Maximum number of lost particles"""
         return self._max_lost_particles
 
     @property
-    def rel_max_lost_particles(self):
+    def rel_max_lost_particles(self) -> int:
         """Maximum number of lost particles, relative to the total number of particles"""
         return self._rel_max_lost_particles
 
     @property
-    def particles(self):
+    def particles(self) -> int:
         """Number of particles per generation"""
         return self._particles
 
     @property
-    def keff_trigger(self):
+    def keff_trigger(self) -> dict:
         """Dictionary defining a trigger on eigenvalue. The dictionary must have
         two keys, 'type' and 'threshold'. Acceptable values corresponding to
         type are 'variance', 'std_dev', and 'rel_err'. The threshold value
@@ -148,23 +148,23 @@ class Settings:
         return self._keff_trigger
 
     @property
-    def energy_mode(self):
+    def energy_mode(self) -> str:
         """Set whether the calculation should be 'continuous-energy' or
         'multi-group'."""
         return self._energy_mode
 
     @property
-    def max_order(self):
+    def max_order(self) -> int:
         """Maximum scattering order to apply globally when in multi-group mode."""
         return self._max_order
 
     @property
-    def source(self):
+    def source(self) -> Union[Source, typing.Iterable[Source]]:
         """Distribution of source sites in space, angle, and energy"""
         return self._source
 
     @property
-    def confidence_intervals(self):
+    def confidence_intervals(self) -> bool:
         """If True, uncertainties on tally results will be reported as the
         half-width of the 95% two-sided confidence interval. If False,
         uncertainties on tally results will be reported as the sample standard
@@ -172,57 +172,57 @@ class Settings:
         return self._confidence_intervals
 
     @property
-    def electron_treatment(self):
+    def electron_treatment(self)  -> str:
         """Whether to deposit all energy from electrons locally ('led') or create
         secondary bremsstrahlung photons ('ttb')."""
         return self._electron_treatment
 
     @property
-    def ptables(self):
+    def ptables(self) -> bool:
         """Determine whether probability tables are used."""
         return self._ptables
 
     @property
-    def photon_transport(self):
+    def photon_transport(self) -> bool:
         """Whether to use photon transport."""
         return self._photon_transport
 
     @property
-    def seed(self):
+    def seed(self) -> int:
         """Seed for the linear congruential pseudorandom number generator"""
         return self._seed
 
     @property
-    def survival_biasing(self):
+    def survival_biasing(self) -> bool:
         """Indicate whether survival biasing is to be used"""
         return self._survival_biasing
 
     @property
-    def entropy_mesh(self):
+    def entropy_mesh(self) -> RegularMesh:
         """Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
         not specified, OpenMC assigns a mesh such that 20 source sites per mesh
         cell are to be expected on average."""
         return self._entropy_mesh
 
     @property
-    def trigger_active(self):
+    def trigger_active(self) -> bool:
         """Indicate whether tally triggers are used"""
         return self._trigger_active
 
     @property
-    def trigger_max_batches(self):
+    def trigger_max_batches(self) -> int:
         """Maximum number of batches simulated. If this is set, the number of
         batches specified via ``batches`` is interpreted as the minimum number
         of batches"""
         return self._trigger_max_batches
 
     @property
-    def trigger_batch_interval(self):
+    def trigger_batch_interval(self) -> int:
         """"Number of batches in between convergence checks"""
         return self._trigger_batch_interval
 
     @property
-    def output(self):
+    def output(self) -> dict:
         """Dictionary indicating what files to output. Acceptable keys are:
         :path: String indicating a directory where output files should be 
         written,
@@ -231,7 +231,7 @@ class Settings:
         return self._output
 
     @property
-    def sourcepoint(self):
+    def sourcepoint(self) -> dict:
         """Options for writing source points. Acceptable keys are:
         :batches: list of batches at which to write source,
         :overwrite: bool indicating whether to overwrite,
@@ -241,19 +241,19 @@ class Settings:
         return self._sourcepoint
 
     @property
-    def statepoint(self):
+    def statepoint(self) -> dict:
         """Options for writing state points. Acceptable keys are:
         :batches: list of batches at which to write source"""
         return self._statepoint
 
     @property
-    def surf_source_read(self):
+    def surf_source_read(self) -> dict:
         """Options for reading surface source points. Acceptable keys are:
         :path: Path to surface source file (str)."""
         return self._surf_source_read
 
     @property
-    def surf_source_write(self):
+    def surf_source_write(self) -> dict:
         """Options for writing surface source points. Acceptable keys are:
         :surface_ids: List of surface ids at which crossing particles are to be
         banked (int)
@@ -262,19 +262,19 @@ class Settings:
         return self._surf_source_write
 
     @property
-    def no_reduce(self):
+    def no_reduce(self) -> bool:
         """Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation."""
         return self._no_reduce
 
     @property
-    def verbosity(self):
+    def verbosity(self) -> int:
         """Verbosity during simulation between 1 and 10. Verbosity levels are
         described in :ref:`verbosity`."""
         return self._verbosity
 
     @property
-    def tabular_legendre(self):
+    def tabular_legendre(self) -> dict:
         """Determines if a multi-group scattering moment kernel expanded via
         Legendre polynomials is to be converted to a tabular distribution or
         not. Accepted keys are 'enable' and 'num_points'. The value for
@@ -284,7 +284,7 @@ class Settings:
         return self._tabular_legendre
 
     @property
-    def temperature(self):
+    def temperature(self) -> dict:
         """Defines a default temperature and method for treating intermediate
         temperatures at which nuclear data doesn't exist. Accepted keys are
         'default', 'method', 'range', 'tolerance', and 'multipole'. The value
@@ -300,20 +300,20 @@ class Settings:
         return self._temperature
 
     @property
-    def trace(self):
+    def trace(self) -> Iterable:
         """Show detailed information about a single particle, indicated by three
         integers: the batch number, generation number, and particle number"""
         return self._trace
 
     @property
-    def track(self):
+    def track(self) -> typing.Iterable[int]:
         """Specify particles for which track files should be written. Each particle
         is identified by a triplet with the batch number, generation number, and
         particle number."""
         return self._track
 
     @property
-    def cutoff(self):
+    def cutoff(self) -> dict:
         """Dictionary defining weight cutoff and energy cutoff. The dictionary may
         have six keys, 'weight', 'weight_avg', 'energy_neutron', 'energy_photon',
         'energy_electron', and 'energy_positron'. Value for 'weight'
@@ -325,13 +325,13 @@ class Settings:
         return self._cutoff
 
     @property
-    def ufs_mesh(self):
+    def ufs_mesh(self) -> RegularMesh:
         """Mesh to be used for redistributing source sites via the uniform
         fission site (UFS) method."""
         return self._ufs_mesh
 
     @property
-    def resonance_scattering(self):
+    def resonance_scattering(self) -> dict:
         """Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
         'nuclides' (list). The 'method' can be set to 'dbrc' (Doppler broadening
@@ -345,62 +345,62 @@ class Settings:
         return self._resonance_scattering
 
     @property
-    def volume_calculations(self):
+    def volume_calculations(self) -> Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]:
         """Stochastic volume calculation specifications"""
         return self._volume_calculations
 
     @property
-    def create_fission_neutrons(self):
+    def create_fission_neutrons(self) -> bool:
         """Indicate whether fission neutrons should be created or not."""
         return self._create_fission_neutrons
 
     @property
-    def delayed_photon_scaling(self):
+    def delayed_photon_scaling(self) -> bool:
         """Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
         release of delayed photons."""
         return self._delayed_photon_scaling
 
     @property
-    def material_cell_offsets(self):
+    def material_cell_offsets(self) -> bool:
         """Generate an "offset table" for material cells by default. These tables
         are necessary when a particular instance of a cell needs to be tallied."""
         return self._material_cell_offsets
 
     @property
-    def log_grid_bins(self):
+    def log_grid_bins(self) -> int:
         """Number of bins for logarithmic energy grid search"""
         return self._log_grid_bins
 
     @property
-    def event_based(self):
+    def event_based(self) -> bool:
         """Indicate whether to use event-based parallelism instead of the default
         history-based parallelism."""
         return self._event_based
 
     @property
-    def max_particles_in_flight(self):
+    def max_particles_in_flight(self) -> int:
         """Number of neutrons to run concurrently when using event-based
         parallelism."""
         return self._max_particles_in_flight
 
     @property
-    def write_initial_source(self):
+    def write_initial_source(self) -> bool:
         """Indicate whether to write the initial source distribution to file"""
         return self._write_initial_source
 
     @property
-    def weight_windows(self):
+    def weight_windows(self) -> Union[WeightWindows, typing.Iterable[WeightWindows]]:
         """Weight windows to use for variance reduction"""
         return self._weight_windows
 
     @property
-    def weight_windows_on(self):
+    def weight_windows_on(self) -> bool:
         """Whether weight windows are enabled"""
         return self._weight_windows_on
 
     @property
-    def max_splits(self):
+    def max_splits(self) -> int:
         """Maximum number of times a particle can split during a history"""
         return self._max_splits
 

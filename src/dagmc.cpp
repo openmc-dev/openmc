@@ -77,8 +77,9 @@ DAGUniverse::DAGUniverse(
 }
 
 DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
+                         const std::string& filename,
                          bool auto_geom_ids, bool auto_mat_ids)
-  : dagmc_instance_(external_dagmc_ptr), filename_(""),
+  : dagmc_instance_(external_dagmc_ptr), filename_(filename),
       adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
 {
   set_id();
@@ -104,6 +105,10 @@ void DAGUniverse::initialize()
 
   init_dagmc();
 
+  init_metadata();
+
+  init_uwuw();
+
   read_uwuw_materials();
 
   init_cells();
@@ -128,7 +133,10 @@ void DAGUniverse::init_dagmc()
   // initialize acceleration data structures
   rval = dagmc_instance_->init_OBBTree();
   MB_CHK_ERR_CONT(rval);
+}
 
+void DAGUniverse::init_metadata()
+{
   // parse model metadata
   dmd_ptr = std::make_unique<dagmcMetaData>(dagmc_instance_.get(), false, false);
   dmd_ptr->load_property_data();
@@ -136,6 +144,7 @@ void DAGUniverse::init_dagmc()
   std::vector<std::string> keywords {"temp"};
   std::map<std::string, std::string> dum;
   std::string delimiters = ":/";
+  moab::ErrorCode rval;
   rval = dagmc_instance_->parse_properties(keywords, dum, delimiters.c_str());
   MB_CHK_ERR_CONT(rval);
 }
@@ -502,38 +511,33 @@ void DAGUniverse::legacy_assign_material(
   }
 }
 
+void DAGUniverse::init_uwuw()
+{
+  uwuw_ = std::make_shared<UWUW>(filename_.c_str());
+}
+
 void DAGUniverse::read_uwuw_materials()
 {
-
-  int32_t next_material_id = 0;
-  for (const auto& m : model::materials) {
-    next_material_id = std::max(m->id_, next_material_id);
-  }
-  next_material_id++;
-
-  uwuw_ = std::make_shared<UWUW>(filename_.c_str());
-  const auto& mat_lib = uwuw_->material_library;
-  if (mat_lib.size() == 0)
+  if (!uses_uwuw())
     return;
 
-  // notify user if UWUW materials are going to be used
+  // Notify user if UWUW materials are going to be used
   write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
 
   // if we're using automatic IDs, update the UWUW material metadata
   if (adjust_material_ids_) {
+    int32_t next_material_id = 0;
+    for (const auto& m : model::materials) {
+      next_material_id = std::max(m->id_, next_material_id);
+    }
+    next_material_id++;
+
     for (auto& mat : uwuw_->material_library) {
       mat.second->metadata["mat_number"] = next_material_id++;
     }
   }
 
-  std::stringstream ss;
-  ss << "<?xml version=\"1.0\"?>\n";
-  ss << "<materials>\n";
-  for (auto mat : mat_lib) {
-    ss << mat.second->openmc("atom");
-  }
-  ss << "</materials>";
-  std::string mat_xml_string = ss.str();
+  std::string mat_xml_string = get_uwuw_materials_xml();
 
   // create a pugi XML document from this string
   pugi::xml_document doc;

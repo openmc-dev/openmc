@@ -90,12 +90,20 @@ public:
 
   //! Alternative DAGMC universe constructor for external DAGMC
   explicit DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
+                       const std::string& filename,
                        bool auto_geom_ids = false,
                        bool auto_mat_ids = false);
 
   //! Initialize the DAGMC accel. data structures, indices, material
   //! assignments, etc.
   void initialize();
+
+  //! When providing an external DAGMC instance, the user will need to call
+  //! these methods manually
+  void init_metadata();      //!< Create and initialise dagmcMetaData pointer
+  void init_uwuw();          //!< Create UWUW pointer
+  void init_cells();         //!< Create cells from DAGMC volumes
+  void init_surfaces();      //!< Create surfaces from DAGMC surfaces
 
   //! Reads UWUW materials and returns an ID map
   void read_uwuw_materials();
@@ -147,8 +155,6 @@ public:
 private:
   void set_id();             //!< Deduce the universe id from model::universes
   void init_dagmc();         //!< Create and initialise DAGMC pointer
-  void init_cells();         //!< Create cells from DAGMC volumes
-  void init_surfaces();      //!< Create surfaces from DAGMC surfaces
 
   std::string
     filename_; //!< Name of the DAGMC file used to create this universe

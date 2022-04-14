@@ -83,6 +83,7 @@ DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
       adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
 {
   set_id();
+  uwuw_disabled = (filename=="");
 }
 
 void DAGUniverse::set_id()
@@ -102,6 +103,7 @@ void DAGUniverse::set_id()
 void DAGUniverse::initialize()
 {
   geom_type() = GeometryType::DAG;
+  uwuw_disabled = false;
 
   init_dagmc();
 
@@ -424,7 +426,8 @@ void DAGUniverse::to_hdf5(hid_t universes_group) const
 
 bool DAGUniverse::uses_uwuw() const
 {
-  return !uwuw_->material_library.empty();
+  if (uwuw_disabled) return false;
+  else return !uwuw_->material_library.empty();
 }
 
 std::string DAGUniverse::get_uwuw_materials_xml() const
@@ -513,6 +516,7 @@ void DAGUniverse::legacy_assign_material(
 
 void DAGUniverse::init_uwuw()
 {
+  if (uwuw_disabled) return;
   uwuw_ = std::make_shared<UWUW>(filename_.c_str());
 }
 

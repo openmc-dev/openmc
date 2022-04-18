@@ -42,6 +42,13 @@ namespace variance_reduction {
 
 extern std::unordered_map<int32_t, int32_t> ww_map;
 extern vector<unique_ptr<WeightWindows>> weight_windows;
+//new in LVR
+extern bool local_on;                     //!< are LVR are enabled?
+extern vector<double> target_lower_left;  //!< lower left point of the target 
+extern vector<double> target_upper_right; //!< upper right point of the target
+extern vector<double> total_weight;       //!< total weight for each mesh bin 
+extern vector<double> total_score;        //!< total score for each mesh bin
+extern double score_in_target;            //!< total score in the target region
 
 } // namespace variance_reduction
 
@@ -95,6 +102,10 @@ public:
   // Accessors
   int32_t id() const { return id_; }
   const Mesh& mesh() const { return *model::meshes[mesh_idx_]; }
+  
+  // new in LVR
+  int get_energy_bin(double E);
+  int get_energy_size() {return energy_bounds_.size()-1;}
 
 private:
   // Data members

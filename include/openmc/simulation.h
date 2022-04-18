@@ -99,6 +99,10 @@ void transport_history_based();
 
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
+  
+//new in LVR
+void add_weight(Particle& p);  //!< add weight for the mesh cell that current particle crossed
+void add_score(Particle& p);   //!< add score for the mesh cell that scored particle crossed
 
 } // namespace openmc
 

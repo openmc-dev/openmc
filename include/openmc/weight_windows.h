@@ -42,6 +42,13 @@ namespace variance_reduction {
 
 extern std::unordered_map<int32_t, int32_t> ww_map;
 extern vector<unique_ptr<WeightWindows>> weight_windows;
+// new in GVR
+extern bool global_on;             //!< are GVR are enabled?
+extern vector<double> iteration;   //!< iteration during WW generation
+extern int32_t tally_idx;          //!< index in tallies vector
+extern int source_space;       //!< S vaule in the PS-GVR method
+extern int n_statistics;   //!< n_statistics vaule in the PS-GVR method
+extern int64_t nps_backup;
 
 } // namespace variance_reduction
 
@@ -95,6 +102,9 @@ public:
   // Accessors
   int32_t id() const { return id_; }
   const Mesh& mesh() const { return *model::meshes[mesh_idx_]; }
+  
+  // new in GVR
+  void calculate_WW();
 
 private:
   // Data members

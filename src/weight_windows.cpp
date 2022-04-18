@@ -345,6 +345,20 @@ void WeightWindows::to_hdf5(hid_t group) const
   close_group(ww_group);
 }
   
+// new in GVR
+//==============================================================================
+
+std::pair<double, double> mean_stdev_GVR(const double* x, int n)
+{
+  double mean = x[static_cast<int>(TallyResult::SUM)] / n;
+  double stdev =
+    n > 1 ? std::sqrt(std::max(0.0,
+              (x[static_cast<int>(TallyResult::SUM_SQ)] / n - mean * mean) /
+                (n - 1)))
+          : 0.0;
+  return {mean, stdev};
+}
+  
 void WeightWindows::calculate_WW() 
 {
   // parameters for WW calculation

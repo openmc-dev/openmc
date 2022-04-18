@@ -54,6 +54,10 @@ struct SourceSite {
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
+  
+  //new in LVR
+  std::vector<int> crossed_mesh;
+  std::vector<double> crossed_weight;
 };
 
 //! Saved ("banked") state of a particle, for nu-fission tallying
@@ -496,7 +500,6 @@ public:
       d = 0;
     }
   }
-};
   
   // new in LVR
   // add value
@@ -510,6 +513,7 @@ public:
   // reset vector
   void reset_crossed_mesh() { crossed_mesh.clear(); }
   void reset_crossed_weight() { crossed_weight.clear(); }
+};
 
 } // namespace openmc
 

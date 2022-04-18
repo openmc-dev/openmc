@@ -22,6 +22,14 @@ namespace variance_reduction {
 
 std::unordered_map<int32_t, int32_t> ww_map;
 openmc::vector<unique_ptr<WeightWindows>> weight_windows;
+// new in LVR
+bool local_on {false};
+vector<double> target_lower_left;
+vector<double> target_upper_right;
+vector<double> total_weight;
+vector<double> total_score;
+double score_in_target {0.};
+//
 
 } // namespace variance_reduction
 
@@ -110,7 +118,7 @@ void free_memory_weight_windows()
 
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
-
+  using namespace pugi;
   // check if LVR is used
   if (check_for_node(node, "local")) {
     // turn on the flag

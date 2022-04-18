@@ -2284,7 +2284,7 @@ class StackLattice(Lattice):
 
         # Initialize Lattice class attributes
         self._central_axis = None
-        self._uniform = True
+        self._uniform = None
         self.orientation = 'z'
 
     def __repr__(self):
@@ -2380,10 +2380,11 @@ class StackLattice(Lattice):
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        try:
+        if np.all(self.universes[0] == self.universes):
             cv.check_type('lattice pitch', pitch, Real)
             _layer_boundaries = pitch * np.arange(1, self.num_layers + 1)
-        except TypeError:
+            self._uniform = True
+        else:
             cv.check_type('lattice pitch', pitch, Iterable, Real)
             cv.check_length('lattice pitch', pitch, self.num_layers, self.num_layers)
             self._uniform = False
@@ -2400,9 +2401,9 @@ class StackLattice(Lattice):
     @Lattice.universes.setter
     def universes(self, universes):
         cv.check_iterable_type('lattice universes', universes, openmc.UniverseBase, min_depth=1, max_depth=1)
+        universes = np.asarray(universes)
         if len(np.shape(universes)) > 1:
-            raise SyntaxWarning("StackLattice universe array should be 1 dimensional. Flattening array...")
-            universes = np.as_array(universes)
+            raise SyntaxWarning("StackLattice universe array should be 1 dimensional.")
 
         self._universes = universes
         cv.check_length('lattice universes', universes, self.num_layers)

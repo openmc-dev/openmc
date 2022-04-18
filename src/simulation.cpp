@@ -39,6 +39,12 @@
 #include <cmath>
 #include <string>
 
+// for output the WWM in LVR
+#include <ios>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
 //==============================================================================
 // C API functions
 //==============================================================================

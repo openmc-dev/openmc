@@ -99,6 +99,10 @@ void transport_history_based();
 
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
+  
+//new in GVR
+void openmc_generate_WW();
+void update_WW();
 
 } // namespace openmc
 

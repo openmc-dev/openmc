@@ -46,6 +46,9 @@ extern const RegularMesh* ufs_mesh;
 
 extern vector<double> k_generation;
 extern vector<int64_t> work_index;
+  
+// asynchronous
+extern vector<int64_t> work_per_task;
 
 } // namespace simulation
 
@@ -99,6 +102,13 @@ void transport_history_based();
 
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
+  
+// asynchronous
+void asynchronous_scheduling();
+//! Full initialization of a particle history in asynchronous scheduling
+void initialize_history_asynchronous(Particle& p, int64_t index_source, int Part);
+//! Simulate all particle histories using history-based parallelism
+void transport_history_based_asynchronous(int Part);
 
 } // namespace openmc
 

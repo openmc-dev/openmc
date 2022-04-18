@@ -11,6 +11,9 @@
 
 #include <fmt/core.h>
 #include <gsl/gsl-lite.hpp>
+// new 
+#include "openmc/tallies/tally.h"
+#include "openmc/math_functions.h"
 
 namespace openmc {
 
@@ -118,6 +121,7 @@ void free_memory_weight_windows()
 
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
+  using namespace pugi;
   // check if GVR is used 
   if (check_for_node(node, "global")) {
     // turn on the flag

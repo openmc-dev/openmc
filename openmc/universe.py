@@ -337,7 +337,8 @@ class Universe(UniverseBase):
             plot.pixels = pixels
             plot.basis = basis
             plot.color_by = color_by
-            plot.colors = colors
+            if colors is not None:
+                plot.colors = colors
             model.plots.append(plot)
 
             # Run OpenMC in geometry plotting mode

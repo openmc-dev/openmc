@@ -83,7 +83,9 @@ DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
       adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
 {
   set_id();
-  uwuw_disabled = (filename=="");
+  init_metadata();
+  read_uwuw_materials();
+  init_geometry();
 }
 
 void DAGUniverse::set_id()
@@ -103,19 +105,14 @@ void DAGUniverse::set_id()
 void DAGUniverse::initialize()
 {
   geom_type() = GeometryType::DAG;
-  uwuw_disabled = false;
 
   init_dagmc();
 
   init_metadata();
 
-  init_uwuw();
-
   read_uwuw_materials();
 
-  init_cells();
-
-  init_surfaces();
+  init_geometry();
 }
 
 void DAGUniverse::init_dagmc()
@@ -151,7 +148,7 @@ void DAGUniverse::init_metadata()
   MB_CHK_ERR_CONT(rval);
 }
 
-void DAGUniverse::init_cells()
+void DAGUniverse::init_geometry()
 {
   moab::ErrorCode rval;
 
@@ -166,7 +163,7 @@ void DAGUniverse::init_cells()
 
   // initialize cell objects
   int n_cells = dagmc_instance_->num_entities(3);
-  graveyard = 0;
+  moab::EntityHandle graveyard = 0;
   for (int i = 0; i < n_cells; i++) {
     moab::EntityHandle vol_handle = dagmc_instance_->entity_by_index(3, i + 1);
 
@@ -258,12 +255,6 @@ void DAGUniverse::init_cells()
   }
 
   has_graveyard_ = graveyard;
-
-}
-
-void DAGUniverse::init_surfaces()
-{
-  moab::ErrorCode rval;
 
   // determine the next surface id
   int32_t next_surf_id = 0;
@@ -514,14 +505,14 @@ void DAGUniverse::legacy_assign_material(
   }
 }
 
-void DAGUniverse::init_uwuw()
-{
-  if (uwuw_disabled) return;
-  uwuw_ = std::make_shared<UWUW>(filename_.c_str());
-}
-
 void DAGUniverse::read_uwuw_materials()
 {
+  // If no filename was provided, disable read UWUW materials
+  uwuw_disabled = (filename_=="");
+
+  if (uwuw_disabled) return;
+  uwuw_ = std::make_shared<UWUW>(filename_.c_str());
+
   if (!uses_uwuw())
     return;
 

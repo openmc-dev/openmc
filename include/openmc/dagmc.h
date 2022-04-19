@@ -98,13 +98,6 @@ public:
   //! assignments, etc.
   void initialize();
 
-  //! When providing an external DAGMC instance, the user will need to call
-  //! these methods manually
-  void init_metadata();      //!< Create and initialise dagmcMetaData pointer
-  void init_uwuw();          //!< Create UWUW pointer
-  void init_cells();         //!< Create cells from DAGMC volumes
-  void init_surfaces();      //!< Create surfaces from DAGMC surfaces
-
   //! Reads UWUW materials and returns an ID map
   void read_uwuw_materials();
   //! Indicates whether or not UWUW materials are present
@@ -155,6 +148,8 @@ public:
 private:
   void set_id();             //!< Deduce the universe id from model::universes
   void init_dagmc();         //!< Create and initialise DAGMC pointer
+  void init_metadata();      //!< Create and initialise dagmcMetaData pointer
+  void init_geometry();      //!< Create cells and surfaces from DAGMC entities
 
   std::string
     filename_; //!< Name of the DAGMC file used to create this universe
@@ -169,7 +164,6 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
-  moab::EntityHandle graveyard; //!< MOAB index for graveyard
 };
 
 //==============================================================================

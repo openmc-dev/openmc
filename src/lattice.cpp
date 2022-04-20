@@ -4,11 +4,13 @@
 #include <string>
 
 #include <fmt/core.h>
+#include <fmt/ostream.h>
 
 #include "openmc/cell.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/settings.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/string_utils.h"
 #include "openmc/vector.h"
@@ -1138,13 +1140,19 @@ StackLattice::StackLattice(pugi::xml_node lat_node) : Lattice {lat_node}
   }
   base_coordinate_ = stod(base_coord_words[0]);
 
+  // Read if the lattice is uniform
+  std::string is_uniform_str {get_node_value(lat_node, "is_uniform")};
+  if (is_uniform_str == "true") {
+      is_uniform_ = true;
+  } else {
+      is_uniform_ = false;
+  }
+
   // Read the lattice pitches.
   std::string pitch_str {get_node_value(lat_node, "pitch")};
   vector<std::string> pitch_words {split(pitch_str)};
-  is_uniform_ = false;
-  if (pitch_words.size() == 1) {
+  if (pitch_words.size() == 1 && is_uniform_) {
     pitch_.push_back(stod(pitch_words[0]));
-    is_uniform_ = true;
   } else if (pitch_words.size() != n_layers_) {
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <num_layers>.");
@@ -1280,20 +1288,27 @@ void StackLattice::get_indices(
 
   // Determine axis index, accounting for coincidence
   double ic_ = r_c - base_coordinate_;
-  if (is_uniform_) {
+  
+  if (is_uniform_ || (r_c < base_coordinate_)) {
     ic_ /= pitch_[0];
   } else {
     // nonuniform case
-    if (r_c < base_coordinate_) {
-      ic_ = -1;
-    } else if (r_c > layer_boundaries_[n_layers_ - 1]) {
-      ic_ = n_layers_;
+    if (r_c >= layer_boundaries_[n_layers_]) {
+      ic_ = n_layers_ + ((r_c - layer_boundaries_[n_layers_]) / pitch_[n_layers_ - 1]);
     } else {
       ic_ = 0;
       while (!((r_c >= layer_boundaries_[ic_]) and (r_c < layer_boundaries_[ic_ + 1]))) {
         ic_ += 1;
       }
+      ic_ = (double)ic_ + ((r_c - layer_boundaries_[ic_]) / pitch_[ic_]);
     } 
+  }
+  if (settings::verbosity >= 10) {
+    write_message(
+      fmt::format("    Lattice index {} in lattice {}. Current position r={}, u={}", ic_,
+        id_,
+        r, u),
+      1);
   }
   long ic_close {std::lround(ic_)};
   if (coincident(ic_, ic_close)) {
@@ -1313,18 +1328,27 @@ int StackLattice::get_flat_index(const array<int, 3>& i_xyz) const
 Position StackLattice::get_local_position(
   Position r, const array<int, 3>& i_xyz) const
 {
+  double* c;
   if (orientation_ == Orientation::x) {
-    r.x -= layer_boundaries_[i_xyz[0]];
     r.y -= central_axis_[0];
     r.z -= central_axis_[1];
+    c = &r.x;
   } else if (orientation_ == Orientation::y) {
     r.x -= central_axis_[0];
-    r.y -= layer_boundaries_[i_xyz[1]];
     r.z -= central_axis_[1];
+    c = &r.y;
   } else {
     r.x -= central_axis_[0];
     r.y -= central_axis_[1];
-    r.z -= layer_boundaries_[i_xyz[2]];
+    c = &r.z;
+  }
+
+  if (i_xyz[orientation_idx_] < 0) {
+      *c -= layer_boundaries_[0];
+  } else if (i_xyz[orientation_idx_] >= n_layers_) {
+      *c -= layer_boundaries_[n_layers_ - 2];
+  } else {
+      *c -= layer_boundaries_[i_xyz[orientation_idx_]];
   }
   return r;
 }
@@ -1357,6 +1381,7 @@ void StackLattice::to_hdf5_inner(hid_t lat_group) const
 {
   // Write basic lattice information.
   write_string(lat_group, "type", "stack", false);
+  write_string(lat_group, "is_uniform", std::to_string(is_uniform_), false);
   write_dataset(lat_group, "pitch", pitch_);
   write_dataset(lat_group, "central_axis", central_axis_);
   write_dataset(lat_group, "base_coordinate", base_coordinate_);

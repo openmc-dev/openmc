@@ -2254,6 +2254,8 @@ class StackLattice(Lattice):
         Name of the lattice
     orientation : {'x', 'y', 'z'}
         Lattice central axis. Defaults to 'z'.
+    is_uniform : bool
+        Marks if the lattice is uniform or not. Defaults to True.
     pitch : float or iterable of float
         Pitch of the lattice in cm. If an iterable of float, then the ith entry
         of the iterable is the width of the ith lattice element in cm.
@@ -2284,7 +2286,7 @@ class StackLattice(Lattice):
 
         # Initialize Lattice class attributes
         self._central_axis = None
-        self._uniform = None
+        self._is_uniform = True
         self.orientation = 'z'
 
     def __repr__(self):
@@ -2294,6 +2296,7 @@ class StackLattice(Lattice):
         string += '{0: <16}{1}{2}\n'.format('\tOrientation', '=\t',
                                             self._orientation)
         string += '{0: <16}{1}{2}\n'.format('\t# Layers', '=\t', self.num_layers)
+        string += '{0: <16}{1}{2}\n'.format('\tUniform', '=\t', self._is_uniform)
         string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self.pitch)
         string += '{0: <16}{1}{2}\n'.format('\tbase_coordinate', '=\t',
                                             self._base_coordinate)
@@ -2338,6 +2341,9 @@ class StackLattice(Lattice):
     def orientation(self):
         return self._orientation
 
+    @property
+    def is_uniform(self):
+        return self._is_uniform
 
     @property
     def indices(self):
@@ -2377,17 +2383,19 @@ class StackLattice(Lattice):
             self._orientation_idx = 2
         self._orientation = orientation.lower()
 
+    @is_uniform.setter
+    def is_uniform(self, is_uniform):
+        cv.check_type('is_uniform', is_uniform, bool)
+        self._is_uniform = is_uniform
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
-        if np.all(self.universes[0] == self.universes):
+        if np.all(self.universes[0] == self.universes) and self._is_uniform:
             cv.check_type('lattice pitch', pitch, Real)
             _layer_boundaries = pitch * np.arange(1, self.num_layers + 1)
-            self._uniform = True
         else:
             cv.check_type('lattice pitch', pitch, Iterable, Real)
             cv.check_length('lattice pitch', pitch, self.num_layers, self.num_layers)
-            self._uniform = False
             _layer_boundaries = [pitch[0]]
             for p in pitch[1:]:
                 _layer_boundaries += [_layer_boundaries[-1] + p]
@@ -2429,15 +2437,15 @@ class StackLattice(Lattice):
         # find the level:
         p = point[self._orientation_idx]
         idx = 0
-        if self._uniform:
+        if self._is_uniform:
             idx = floor((p - self.base_coordinate)/self.pitch)
         else:
             if (p < self.base_coordinate):
-                idx = -1
-            elif (p > self._layer_boundaries[-1]):
+                idx = -1 # -1 index, not the last index
+            elif (p >= self._layer_boundaries[-1]):
                 idx = self.num_layers
             else:
-                while not(p >= self._layer_boundaries[idx] and p <= self._layer_boundaries[idx + 1]):
+                while not(p >= self._layer_boundaries[idx] and p < self._layer_boundaries[idx + 1]):
                     idx += 1
 
         return idx, self.get_local_coordinates(point, idx)
@@ -2461,20 +2469,26 @@ class StackLattice(Lattice):
         """
         x,y,z = point
         c1, c2 = self.central_axis
+
         if self.orientation == 'x':
-            x -= self._layer_boundaries[idx]
             y -= c1
             z -= c2
         elif self.orientation == 'y':
             x -= c1
-            y -= self._layer_boundaries[idx]
             z -= c2
         else:
             x -= c1
             y -= c2
-            z -= self._layer_boundaries[idx]
 
-        return (x,y,z)
+        local_point = [x,y,z]
+        if idx < 0:
+            local_point[self._orientation_idx] -= self._base_coordinate
+        elif idx >= self.num_layers:
+            local_point[self._orientation_idx] -= self._layer_boundaries[-2]
+        else:
+            local_point[self._orientation_idx] -= self._layer_boundaries[idx]
+
+        return tuple(local_point)
 
 
     def get_universe_index(self, idx):
@@ -2541,10 +2555,14 @@ class StackLattice(Lattice):
 
         # Export the Lattice cell pitch
         pitch = ET.SubElement(lattice_subelement, "pitch")
-        if self._uniform:
+        if self._is_uniform:
             pitch.text = str(self._pitch)
         else:
             pitch.text = ' '.join(map(str, self._pitch))
+
+        # Export Lattice Uniformity
+        uniform = ET.SubElement(lattice_subelement, "is_uniform")
+        uniform.text = str(self._is_uniform).lower()
 
         # Export the Lattice outer Universe (if specified)
         if self._outer is not None:
@@ -2614,7 +2632,8 @@ class StackLattice(Lattice):
         lat.orientation = orientation
         lat.central_axis = [float(i)
                           for i in get_text(elem, 'central_axis').split()]
-        lat.base_coordinate = float(get_text(eleme, 'base_coordinate'))
+        lat.base_coordinate = float(get_text(elem, 'base_coordinate'))
+        lat.is_uniform = bool(get_text(elem, 'is_uniform'))
         lat.pitch = [float(i) for i in get_text(elem, 'pitch').split()]
         if len(lat.pitch) == 1:
             lat.pitch = lat.pitch[0]
@@ -2652,6 +2671,7 @@ class StackLattice(Lattice):
         num_layers = group['num_layers'][()]
         central_axis = group['central_axis'][...]
         base_coordinate = group['base_coordinate'][()]
+        is_uniform = group['is_uniform]'][()]
         pitch = group['pitch'][...]
         if len(pitch) == 1:
             pitch = pitch[0]
@@ -2670,6 +2690,7 @@ class StackLattice(Lattice):
         lattice.central_axis = central_axis
         lattice.base_coordinate = base_coordinate
         lattice.orientation = orientation
+        lattice.is_uniform = is_uniform
 
         # If the Universe specified outer the Lattice is not void
         if outer >= 0:

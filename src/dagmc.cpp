@@ -77,10 +77,9 @@ DAGUniverse::DAGUniverse(
 }
 
 DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
-                         const std::string& filename,
-                         bool auto_geom_ids, bool auto_mat_ids)
+  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
   : dagmc_instance_(external_dagmc_ptr), filename_(filename),
-      adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
+    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
 {
   set_id();
   init_metadata();
@@ -137,7 +136,8 @@ void DAGUniverse::init_dagmc()
 void DAGUniverse::init_metadata()
 {
   // parse model metadata
-  dmd_ptr = std::make_unique<dagmcMetaData>(dagmc_instance_.get(), false, false);
+  dmd_ptr =
+    std::make_unique<dagmcMetaData>(dagmc_instance_.get(), false, false);
   dmd_ptr->load_property_data();
 
   std::vector<std::string> keywords {"temp"};
@@ -206,7 +206,8 @@ void DAGUniverse::init_geometry()
     } else {
       if (uses_uwuw()) {
         // lookup material in uwuw if present
-        std::string uwuw_mat = dmd_ptr->volume_material_property_data_eh[vol_handle];
+        std::string uwuw_mat =
+          dmd_ptr->volume_material_property_data_eh[vol_handle];
         if (uwuw_->material_library.count(uwuw_mat) != 0) {
           // Note: material numbers are set by UWUW
           int mat_number = uwuw_->material_library.get_material(uwuw_mat)
@@ -276,7 +277,8 @@ void DAGUniverse::init_geometry()
                                   : dagmc_instance_->id_by_index(2, i + 1);
 
     // set BCs
-    std::string bc_value = dmd_ptr->get_surface_property("boundary", surf_handle);
+    std::string bc_value =
+      dmd_ptr->get_surface_property("boundary", surf_handle);
     to_lower(bc_value);
     if (bc_value.empty() || bc_value == "transmit" ||
         bc_value == "transmission") {
@@ -320,9 +322,7 @@ void DAGUniverse::init_geometry()
 
     model::surfaces.emplace_back(std::move(s));
   } // end surface loop
-
 }
-
 
 std::string DAGUniverse::dagmc_ids_for_dim(int dim) const
 {
@@ -417,8 +417,10 @@ void DAGUniverse::to_hdf5(hid_t universes_group) const
 
 bool DAGUniverse::uses_uwuw() const
 {
-  if (uwuw_disabled) return false;
-  else return !uwuw_->material_library.empty();
+  if (uwuw_disabled)
+    return false;
+  else
+    return !uwuw_->material_library.empty();
 }
 
 std::string DAGUniverse::get_uwuw_materials_xml() const
@@ -508,9 +510,10 @@ void DAGUniverse::legacy_assign_material(
 void DAGUniverse::read_uwuw_materials()
 {
   // If no filename was provided, disable read UWUW materials
-  uwuw_disabled = (filename_=="");
+  uwuw_disabled = (filename_ == "");
 
-  if (uwuw_disabled) return;
+  if (uwuw_disabled)
+    return;
   uwuw_ = std::make_shared<UWUW>(filename_.c_str());
 
   if (!uses_uwuw())

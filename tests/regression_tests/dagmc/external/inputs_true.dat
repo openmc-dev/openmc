@@ -26,6 +26,7 @@
       <parameters>-4 -4 -4 4 4 4</parameters>
     </space>
   </source>
+  <temperature_default>293</temperature_default>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>

@@ -64,7 +64,7 @@ def cpp_driver(request):
         shutil.rmtree('build')
         os.remove('CMakeLists.txt')
 
-@pytest.fixture    
+@pytest.fixture
 def model():
     model = openmc.model.Model()
 
@@ -76,7 +76,7 @@ def model():
                                   [ 4,  4,  4])
     source = openmc.Source(space=source_box)
     model.settings.source = source
-    #model.settings.dagmc = True
+    model.settings.temperature['default'] = 293
 
     # Geometry
     dag_univ = openmc.DAGMCUniverse("dagmc.h5m")
@@ -103,7 +103,7 @@ def model():
     model.materials = mats
 
     return model
-    
+
 class ExternalDAGMCTest(PyAPITestHarness):
     def __init__(self, executable, statepoint_name, model):
         super().__init__(statepoint_name, model)

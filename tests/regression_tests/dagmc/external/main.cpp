@@ -4,6 +4,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include <iostream>
 
@@ -65,6 +66,14 @@ int main(int argc, char* argv[])
 
   // Finalize cross sections having assigned temperatures
   openmc::finalize_cross_sections();
+
+  // Check that we correctly assigned cell temperatures with non-void fill
+  for (auto& cell_ptr : openmc::model::cells) {
+    if (cell_ptr->material_.front() != openmc::C_NONE &&
+        cell_ptr->temperature() != 300) {
+      fatal_error("Failed to set cell temperature");
+    }
+  }
 
   // Run OpenMC
   openmc_err = openmc_run();

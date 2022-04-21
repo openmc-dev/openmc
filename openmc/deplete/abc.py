@@ -851,7 +851,7 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
-    def integrate(self, final_step=True):
+    def integrate(self, final_step=True, output=True):
         """Perform the entire depletion process across all steps
 
         Parameters
@@ -861,12 +861,18 @@ class Integrator(ABC):
             of the last timestep.
 
             .. versionadded:: 0.12.1
+        output : bool, optional
+            Indicate whether to display information about progress
 
+            .. versionadded:: 0.13.1
         """
         with self.operator as conc:
             t, self._i_res = self._get_start_data()
 
             for i, (dt, source_rate) in enumerate(self):
+                if output:
+                    print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
+
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
                     conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
@@ -892,6 +898,8 @@ class Integrator(ABC):
             # source rate is passed to the transport operator (which knows to
             # just return zero reaction rates without actually doing a transport
             # solve)
+            if output and final_step:
+                print(f"[openmc.deplete] t={t} (final operator evaluation)")
             res_list = [self.operator(conc, source_rate if final_step else 0.0)]
             Results.save(self.operator, [conc], res_list, [t, t],
                          source_rate, self._i_res + len(self), proc_time)
@@ -1004,12 +1012,23 @@ class SIIntegrator(Integrator):
             self.operator.settings.particles //= self.n_steps
         return inherited
 
-    def integrate(self):
-        """Perform the entire depletion process across all steps"""
+    def integrate(self, output=True):
+        """Perform the entire depletion process across all steps
+
+        Parameters
+        ----------
+        output : bool, optional
+            Indicate whether to display information about progress
+
+            .. versionadded:: 0.13.1
+        """
         with self.operator as conc:
             t, self._i_res = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
+                if output:
+                    print(f"[openmc.deplete] t={t} s, dt={dt} s, source={p}")
+
                 if i == 0:
                     if self.operator.prev_res is None:
                         conc, res = self._get_bos_data_from_operator(i, p, conc)

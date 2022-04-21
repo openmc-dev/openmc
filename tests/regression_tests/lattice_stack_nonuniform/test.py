@@ -4,6 +4,7 @@ import numpy as np
 import openmc
 import pytest
 
+
 def nonuniform_stack_lattice_model():
     model = openmc.model.Model()
 
@@ -38,10 +39,9 @@ def nonuniform_stack_lattice_model():
     layer1 = openmc.Universe(cells=[fuel1, water_reflector1])
     layer2 = openmc.Universe(cells=[fuel2, water_reflector2])
 
-
     n_pellets = 200
 
-    top = openmc.ZPlane(z0 = n_pellets * h_avg)
+    top = openmc.ZPlane(z0=n_pellets * h_avg)
     tb_refl = openmc.Cell(fill=water, region=-bottom | +top)
 
     d = 1.5 * rc

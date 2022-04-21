@@ -45,7 +45,7 @@ def rlat2(pincell1, pincell2, uo2, water, zr):
     n = 3
     u1, u2 = pincell1, pincell2
     lattice = openmc.RectLattice()
-    lattice.lower_left = (-pitch*n/2, -pitch*n/2)
+    lattice.lower_left = (-pitch * n / 2, -pitch * n / 2)
     lattice.pitch = (pitch, pitch)
     lattice.outer = openmc.Universe(cells=[all_zr])
     lattice.universes = [
@@ -77,7 +77,7 @@ def rlat3(pincell1, pincell2, uo2, water, zr):
     n = 3
     u1, u2 = pincell1, pincell2
     lattice = openmc.RectLattice()
-    lattice.lower_left = (-pitch*n/2, -pitch*n/2, -10.0)
+    lattice.lower_left = (-pitch * n / 2, -pitch * n / 2, -10.0)
     lattice.pitch = (pitch, pitch, 10.0)
     lattice.outer = openmc.Universe(cells=[all_zr])
     lattice.universes = [
@@ -154,6 +154,7 @@ def hlat3(pincell1, pincell2, uo2, water, zr):
     lattice.univs = [u1, u2, u3, lattice.outer]
     return lattice
 
+
 @pytest.fixture(scope='module')
 def slatU(pincell1, pincell2, uo2, water, zr):
     """Uniform Stack lattice for testing."""
@@ -175,6 +176,7 @@ def slatU(pincell1, pincell2, uo2, water, zr):
     lattice.univs = [u1, u2, lattice.outer]
     return lattice
 
+
 @pytest.fixture(scope='module')
 def slatNU(pincell1, pincell2, uo2, water, zr):
     """Nonuniform Stack lattice for testing."""
@@ -187,7 +189,7 @@ def slatNU(pincell1, pincell2, uo2, water, zr):
     lattice.central_axis = (0., 0.)
     lattice.base_coordinate = 0.
     lattice.universes = [u1, u2, u1, u2]
-    lattice.pitch = [pitch, 1.5*pitch, pitch, 1.5*pitch]
+    lattice.pitch = [pitch, 1.5 * pitch, pitch, 1.5 * pitch]
     lattice.outer = openmc.Universe(cells=[all_zr])
 
     # Add extra attributes for comparison purpose
@@ -195,7 +197,6 @@ def slatNU(pincell1, pincell2, uo2, water, zr):
     lattice.mats = [uo2, water, zr]
     lattice.univs = [u1, u2, lattice.outer]
     return lattice
-
 
 
 def test_get_nuclides(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
@@ -285,7 +286,7 @@ def test_find(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     assert seq[-1] == rlat2.cells[2]
     seq = rlat2.find((0., -pitch, 0.))
     assert seq[-1] == rlat2.cells[0]
-    seq = rlat2.find((pitch*100, 0., 0.))
+    seq = rlat2.find((pitch * 100, 0., 0.))
     assert seq[-1] == rlat2.cells[-1]
     seq = rlat3.find((-pitch, pitch, 5.0))
     assert seq[-1] == rlat3.cells[-2]
@@ -295,7 +296,7 @@ def test_find(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     assert seq[-1] == hlat2.cells[2]
     seq = hlat2.find((0.5, 0., 0.))
     assert seq[-1] == hlat2.cells[3]
-    seq = hlat2.find((sqrt(3)*pitch, 0., 0.))
+    seq = hlat2.find((sqrt(3) * pitch, 0., 0.))
     assert seq[-1] == hlat2.cells[0]
     seq = hlat2.find((0., pitch, 0.))
     assert seq[-1] == hlat2.cells[2]
@@ -307,7 +308,7 @@ def test_find(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     assert seq[-1] == hlat3.cells[2]
     seq = hlat3.find((0., -pitch, -5.))
     assert seq[-1] == hlat3.cells[0]
-    seq = hlat3.find((sqrt(3)*pitch, 0., -5.))
+    seq = hlat3.find((sqrt(3) * pitch, 0., -5.))
     assert seq[-1] == hlat3.cells[0]
 
     # top of 3D lattice
@@ -317,20 +318,18 @@ def test_find(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     assert seq[-1] == hlat3.cells[0]
     seq = hlat3.find((0., -pitch, 5.))
     assert seq[-1] == hlat3.cells[-2]
-    seq = hlat3.find((sqrt(3)*pitch, 0., 5.))
+    seq = hlat3.find((sqrt(3) * pitch, 0., 5.))
     assert seq[-1] == hlat3.cells[0]
-
 
     pitch = slatU.pitch
     seq = slatU.find((0., 0., 0.))
     assert seq[-1] == slatU.cells[0]
     seq = slatU.find((0., 0., pitch))
     assert seq[-1] == slatU.cells[2]
-    seq = slatU.find((0., 0., 2*pitch))
+    seq = slatU.find((0., 0., 2 * pitch))
     assert seq[-1] == slatU.cells[0]
-    seq = slatU.find((0., 0., 3*pitch))
+    seq = slatU.find((0., 0., 3 * pitch))
     assert seq[-1] == slatU.cells[2]
-
 
     seq = slatNU.find((0., 0., 0.))
     assert seq[-1] == slatNU.cells[0]
@@ -426,8 +425,8 @@ def test_indices_hex(hlat2, hlat3):
 
 
 def test_indices_stack(slatU, slatNU):
-    assert slatU.indices == [0, 1, 2 ,3]
-    assert slatNU.indices == [0, 1, 2 ,3]
+    assert slatU.indices == [0, 1, 2, 3]
+    assert slatNU.indices == [0, 1, 2, 3]
     slatU.orientation = 'x'
     slatNU.orientation = 'x'
     assert slatU.indices == [0, 1, 2, 3]
@@ -481,9 +480,9 @@ def test_xml_stack(slatU, slatNU):
 def test_show_indices():
     for i in range(1, 11):
         lines = openmc.HexLattice.show_indices(i).split('\n')
-        assert len(lines) == 4*i - 3
+        assert len(lines) == 4 * i - 3
         lines_x = openmc.HexLattice.show_indices(i, 'x').split('\n')
-        assert len(lines_x) == 4*i - 3
+        assert len(lines_x) == 4 * i - 3
 
 
 def test_unset_pitch():
@@ -511,5 +510,3 @@ def test_unset_universes():
     hex_lattice.pitch = (1.,)
     with pytest.raises(ValueError):
         hex_lattice.create_xml_subelement(elem)
-
-

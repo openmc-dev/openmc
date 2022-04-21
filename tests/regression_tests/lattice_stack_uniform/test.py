@@ -33,7 +33,7 @@ def uniform_stack_lattice_model():
 
     n_pellets = 200
 
-    top = openmc.ZPlane(z0 = n_pellets * h)
+    top = openmc.ZPlane(z0=n_pellets * h)
     tb_refl = openmc.Cell(fill=water, region=-bottom | +top)
 
     univs = [layer] * n_pellets

@@ -319,17 +319,16 @@ private:
     x  //!< Central axis of lattice parallel to x-axis
   };
 
-  bool is_uniform_;         //!< Mark if lattice is uniform or not
+  bool is_uniform_; //!< Mark if lattice is uniform or not
 
   int orientation_idx_;     //!< Index to select x,y, or z based on orientation
   int n_layers_;            //!< Number of layer positions
   Orientation orientation_; //!< Orientation of lattice
   Position central_axis_;   //!< Axial center of lattice
-  double base_coordinate_;   //!< Coordinate of base layer of lattice
+  double base_coordinate_;  //!< Coordinate of base layer of lattice
   vector<double> pitch_;    //!< Lattice layer width.
-  vector<double> layer_boundaries_;   //!< Coordinates of lattice tile boundaries
+  vector<double> layer_boundaries_; //!< Coordinates of lattice tile boundaries
 };
-
 
 //==============================================================================
 // Non-member functions

@@ -654,8 +654,8 @@ void write_bool(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
 
 void write_bool(hid_t group_id, const char* name, const bool b, bool indep)
 {
-    const hbool_t hb = (hbool_t)b;
-    write_bool(group_id, 0, nullptr, name, &hb, indep);
+  const hbool_t hb = (hbool_t)b;
+  write_bool(group_id, 0, nullptr, name, &hb, indep);
 }
 
 void write_llong(hid_t group_id, int ndim, const hsize_t* dims,

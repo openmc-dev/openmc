@@ -124,13 +124,13 @@ class CF4Integrator(Integrator):
 
     .. math::
         \begin{aligned}
-        \mathbf{A}_1 &= h\mathbf{A}(\mathbf{n}_0) \\
-        \hat{\mathbf{n}}_1 &= \exp \left ( \frac{\mathbf{A}_1}{2} \right ) \\
+        \mathbf{A}_1 &= h\mathbf{A}(\mathbf{n}_i) \\
+        \hat{\mathbf{n}}_1 &= \exp \left ( \frac{\mathbf{A}_1}{2} \right ) \mathbf{n}_i \\
         \mathbf{A}_2 &= h\mathbf{A}(\hat{\mathbf{n}}_1) \\
-        \hat{\mathbf{n}}_2 &= \exp \left ( \frac{\mathbf{A}_2}{2} \right ) \\
+        \hat{\mathbf{n}}_2 &= \exp \left ( \frac{\mathbf{A}_2}{2} \right ) \mathbf{n}_i \\
         \mathbf{A}_3 &= h \mathbf{A}(\hat{\mathbf{n}}_2) \\
         \hat{\mathbf{n}}_3 &= \exp \left ( -\frac{\mathbf{A}_1}{2} + \mathbf{A}_3
-            \right ) \\
+            \right ) \hat{\mathbf{n}}_1 \\
         \mathbf{A}_4 &= h\mathbf{A}(\hat{\mathbf{n}}_3) \\
         \mathbf{n}_{i+1} &= \exp \left ( \frac{\mathbf{A}_1}{4} + \frac{\mathbf{A}_2}{6}
             + \frac{\mathbf{A}_3}{6} - \frac{\mathbf{A}_4}{12} \right )
@@ -207,7 +207,8 @@ class CELIIntegrator(Integrator):
 
     .. math::
         \begin{aligned}
-        \mathbf{n}_{i+1}^p &= \exp \left ( h \mathbf{A}(\mathbf{n}_i ) \right ) \\
+        \mathbf{n}_{i+1}^p &= \exp \left ( h \mathbf{A}(\mathbf{n}_i ) \right )
+        \mathbf{n}_i \\
         \mathbf{n}_{i+1} &= \exp \left( \frac{h}{12} \mathbf{A}(\mathbf{n}_i) +
             \frac{5h}{12} \mathbf{A}(\mathbf{n}_{i+1}^p) \right)
         \exp \left( \frac{5h}{12} \mathbf{A}(\mathbf{n}_i) +
@@ -268,12 +269,12 @@ class EPCRK4Integrator(Integrator):
 
     .. math::
         \begin{aligned}
-        \mathbf{A}_1 &= h\mathbf{A}(\mathbf{n}_0) \\
-        \hat{\mathbf{n}}_1 &= \exp \left ( \frac{\mathbf{A}_1}{2} \right ) \\
+        \mathbf{A}_1 &= h\mathbf{A}(\mathbf{n}_i) \\
+        \hat{\mathbf{n}}_1 &= \exp \left ( \frac{\mathbf{A}_1}{2} \right ) \mathbf{n}_i \\
         \mathbf{A}_2 &= h\mathbf{A}(\hat{\mathbf{n}}_1) \\
-        \hat{\mathbf{n}}_2 &= \exp \left ( \frac{\mathbf{A}_2}{2} \right ) \\
+        \hat{\mathbf{n}}_2 &= \exp \left ( \frac{\mathbf{A}_2}{2} \right ) \mathbf{n}_i \\
         \mathbf{A}_3 &= h \mathbf{A}(\hat{\mathbf{n}}_2) \\
-        \hat{\mathbf{n}}_3 &= \exp \left ( \mathbf{A}_3 \right ) \\
+        \hat{\mathbf{n}}_3 &= \exp \left ( \mathbf{A}_3 \right ) \mathbf{n}_i \\
         \mathbf{A}_4 &= h\mathbf{A}(\hat{\mathbf{n}}_3) \\
         \mathbf{n}_{i+1} &= \exp \left ( \frac{\mathbf{A}_1}{6} + \frac{\mathbf{A}_2}{3}
         + \frac{\mathbf{A}_3}{3} + \frac{\mathbf{A}_4}{6} \right ) \mathbf{n}_i.

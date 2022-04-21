@@ -1,12 +1,10 @@
+from tests.testing_harness import PyAPITestHarness
+
 import numpy as np
 import openmc
 import pytest
 
-from tests.testing_harness import PyAPITestHarness
-
-
-@pytest.fixture
-def model():
+def nonuniform_stack_lattice_model():
     model = openmc.model.Model()
 
     uo2 = openmc.Material(name='UO2')
@@ -56,7 +54,7 @@ def model():
     pellet_stack.central_axis = (0., 0.)
     pellet_stack.base_coordinate = 0.
     pellet_stack.universes = univs
-    pellet_stack.is_uniform = True
+    pellet_stack.is_uniform = False
     pellet_stack.pitch = [h1, h2] * int(n_pellets / 2)
 
     stack_cell = openmc.Cell(fill=pellet_stack)
@@ -73,6 +71,7 @@ def model():
     return model
 
 
-def test_lattice_multiple(model):
+def test_lattice_stack_nonuniform():
+    model = nonuniform_stack_lattice_model()
     harness = PyAPITestHarness('statepoint.10.h5', model)
     harness.main()

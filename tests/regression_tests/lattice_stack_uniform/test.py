@@ -5,8 +5,7 @@ import pytest
 from tests.testing_harness import PyAPITestHarness
 
 
-@pytest.fixture
-def model():
+def uniform_stack_lattice_model():
     model = openmc.model.Model()
 
     uo2 = openmc.Material(name='UO2')
@@ -64,6 +63,7 @@ def model():
     return model
 
 
-def test_lattice_multiple(model):
+def test_lattice_stack_uniform():
+    model = uniform_stack_lattice_model()
     harness = PyAPITestHarness('statepoint.10.h5', model)
     harness.main()

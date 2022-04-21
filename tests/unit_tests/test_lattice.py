@@ -161,19 +161,20 @@ def slatU(pincell1, pincell2, uo2, water, zr):
 
     all_zr = openmc.Cell(fill=zr)
     pitch = 1.2
-    u1, u2 = pincell1, pincell2
+    u1 = pincell1
     lattice = openmc.StackLattice()
     lattice.orientation = 'z'
     lattice.central_axis = (0., 0.)
     lattice.base_coordinate = 0.
-    lattice.universes = [u1, u2, u1, u2]
+    lattice.is_uniform = True
+    lattice.universes = [u1, u1, u1, u1]
     lattice.pitch = pitch
     lattice.outer = openmc.Universe(cells=[all_zr])
 
     # Add extra attributes for comparison purpose
-    lattice.cells = [u1.fuel, u1.moderator, u2.fuel, u2.moderator, all_zr]
+    lattice.cells = [u1.fuel, u1.moderator, all_zr]
     lattice.mats = [uo2, water, zr]
-    lattice.univs = [u1, u2, lattice.outer]
+    lattice.univs = [u1, lattice.outer]
     return lattice
 
 
@@ -188,6 +189,7 @@ def slatNU(pincell1, pincell2, uo2, water, zr):
     lattice.orientation = 'z'
     lattice.central_axis = (0., 0.)
     lattice.base_coordinate = 0.
+    lattice.is_uniform = False
     lattice.universes = [u1, u2, u1, u2]
     lattice.pitch = [pitch, 1.5 * pitch, pitch, 1.5 * pitch]
     lattice.outer = openmc.Universe(cells=[all_zr])
@@ -265,11 +267,11 @@ def test_get_universe(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     assert hlat3.get_universe((0, -2, 0)) == u1
     assert hlat3.get_universe((0, -2, 1)) == u3
 
-    u1, u2, outer = slatU.univs
+    u1, outer = slatU.univs
     assert slatU.get_universe(0) == u1
-    assert slatU.get_universe(1) == u2
+    assert slatU.get_universe(1) == u1
     assert slatU.get_universe(2) == u1
-    assert slatU.get_universe(3) == u2
+    assert slatU.get_universe(3) == u1
 
     u1, u2, outer = slatNU.univs
     assert slatNU.get_universe(0) == u1
@@ -325,19 +327,19 @@ def test_find(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     seq = slatU.find((0., 0., 0.))
     assert seq[-1] == slatU.cells[0]
     seq = slatU.find((0., 0., pitch))
-    assert seq[-1] == slatU.cells[2]
+    assert seq[-1] == slatU.cells[0]
     seq = slatU.find((0., 0., 2 * pitch))
     assert seq[-1] == slatU.cells[0]
     seq = slatU.find((0., 0., 3 * pitch))
-    assert seq[-1] == slatU.cells[2]
+    assert seq[-1] == slatU.cells[0]
 
     seq = slatNU.find((0., 0., 0.))
     assert seq[-1] == slatNU.cells[0]
-    seq = slatNU.find((0., 0., 3.))
+    seq = slatNU.find((0., 0., 2.9))
     assert seq[-1] == slatNU.cells[2]
-    seq = slatNU.find((0., 0., 4.2))
+    seq = slatNU.find((0., 0., 4.1))
     assert seq[-1] == slatNU.cells[0]
-    seq = slatNU.find((0., 0., 6))
+    seq = slatNU.find((0., 0., 5.9))
     assert seq[-1] == slatNU.cells[2]
 
 
@@ -470,7 +472,7 @@ def test_xml_stack(slatU, slatNU):
         elem = geom.find('stack_lattice')
         assert elem.tag == 'stack_lattice'
         assert elem.get('id') == str(lat.id)
-        if lat._uniform:
+        if lat.is_uniform:
             assert len(elem.find('pitch').text.split()) == 1
         else:
             assert len(elem.find('pitch').text.split()) == lat.num_layers

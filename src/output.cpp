@@ -545,7 +545,7 @@ void print_results()
     fmt::print(" Leakage Fraction           = {:.5f}\n",
       gt(GlobalTally::LEAKAGE, TallyResult::SUM) / n);
   }
-  fmt::print("\n");
+  std::cout << std::endl;
 }
 
 //==============================================================================

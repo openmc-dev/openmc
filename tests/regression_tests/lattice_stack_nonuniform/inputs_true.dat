@@ -4,11 +4,12 @@
   <cell id="2" material="1" region="-1 -3 4" universe="2" />
   <cell id="3" material="2" region="1 -2 4" universe="1" />
   <cell id="4" material="2" region="1 -3 4" universe="2" />
-  <cell id="5" material="2" region="-6 | 5" universe="4" />
+  <cell id="5" material="2" region="-4 | 5" universe="4" />
   <cell fill="3" id="6" universe="4" />
-  <cell fill="4" id="7" region="7 -8 9 -10 11 -12" universe="5" />
+  <cell fill="4" id="7" region="6 -7 8 -9 10 -11" universe="5" />
   <stack_lattice id="3" orientation="z">
     <pitch>1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0 1.0 2.0</pitch>
+    <is_uniform>false</is_uniform>
     <num_layers>200</num_layers>
     <central_axis>0.0 0.0</central_axis>
     <base_coordinate>0.0</base_coordinate>
@@ -20,13 +21,12 @@
   <surface coeffs="2.0" id="3" type="z-plane" />
   <surface coeffs="0.0" id="4" type="z-plane" />
   <surface coeffs="300.0" id="5" type="z-plane" />
-  <surface coeffs="0.0" id="6" type="z-plane" />
-  <surface boundary="reflective" coeffs="-0.6000000000000001" id="7" type="x-plane" />
-  <surface boundary="reflective" coeffs="0.6000000000000001" id="8" type="x-plane" />
-  <surface boundary="reflective" coeffs="-0.6000000000000001" id="9" type="y-plane" />
-  <surface boundary="reflective" coeffs="0.6000000000000001" id="10" type="y-plane" />
-  <surface boundary="reflective" coeffs="-0.6000000000000001" id="11" type="z-plane" />
-  <surface boundary="reflective" coeffs="300.6" id="12" type="z-plane" />
+  <surface boundary="reflective" coeffs="-0.6000000000000001" id="6" type="x-plane" />
+  <surface boundary="reflective" coeffs="0.6000000000000001" id="7" type="x-plane" />
+  <surface boundary="reflective" coeffs="-0.6000000000000001" id="8" type="y-plane" />
+  <surface boundary="reflective" coeffs="0.6000000000000001" id="9" type="y-plane" />
+  <surface boundary="reflective" coeffs="-0.6000000000000001" id="10" type="z-plane" />
+  <surface boundary="reflective" coeffs="300.6" id="11" type="z-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>

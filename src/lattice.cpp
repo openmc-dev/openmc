@@ -1381,7 +1381,7 @@ void StackLattice::to_hdf5_inner(hid_t lat_group) const
 {
   // Write basic lattice information.
   write_string(lat_group, "type", "stack", false);
-  write_string(lat_group, "is_uniform", std::to_string(is_uniform_), false);
+  write_bool(lat_group, "is_uniform", is_uniform_, false);
   write_dataset(lat_group, "pitch", pitch_);
   write_dataset(lat_group, "central_axis", central_axis_);
   write_dataset(lat_group, "base_coordinate", base_coordinate_);

@@ -35,14 +35,14 @@ def model():
     n_pellets = 200
 
     top = openmc.ZPlane(z0 = n_pellets * h)
-    bot = openmc.ZPlane(z0=0.)
-    tb_refl = openmc.Cell(fill=water, region=-bot | +top)
+    tb_refl = openmc.Cell(fill=water, region=-bottom | +top)
 
     univs = [layer] * n_pellets
     pellet_stack = openmc.StackLattice()
     pellet_stack.central_axis = (0., 0.)
     pellet_stack.base_coordinate = 0.
     pellet_stack.universes = univs
+    pellet_stack.is_uniform = True
     pellet_stack.pitch = h
 
     stack_cell = openmc.Cell(fill=pellet_stack)
@@ -50,11 +50,11 @@ def model():
     pin_univ = openmc.Universe(cells=[stack_cell, tb_refl])
 
     d = 1.5 * rc
-    box = -openmc.model.RectangularParallelepiped(-d, d, -d, d,
+    box = openmc.model.RectangularParallelepiped(-d, d, -d, d,
                                                  0. - d, n_pellets * h + d,
                                                  boundary_type='reflective')
 
-    main_cell = openmc.Cell(fill=pin_univ, region=box)
+    main_cell = openmc.Cell(fill=pin_univ, region=-box)
     model.geometry = openmc.Geometry([main_cell])
 
     model.settings.batches = 10

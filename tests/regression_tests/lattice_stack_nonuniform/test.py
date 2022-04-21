@@ -44,22 +44,20 @@ def model():
     n_pellets = 200
 
     top = openmc.ZPlane(z0 = n_pellets * h_avg)
-    bot = openmc.ZPlane(z0=0.)
-    tb_refl = openmc.Cell(fill=water, region=-bot | +top)
+    tb_refl = openmc.Cell(fill=water, region=-bottom | +top)
 
     d = 1.5 * rc
     box = openmc.model.RectangularParallelepiped(-d, d, -d, d, 0. - d,
                                                  n_pellets * h_avg + d,
                                                  boundary_type='reflective')
-    #outer_cell = openmc.Cell(fill=water, region=+box)
 
     univs = [layer1, layer2] * int(n_pellets / 2)
     pellet_stack = openmc.StackLattice()
     pellet_stack.central_axis = (0., 0.)
     pellet_stack.base_coordinate = 0.
     pellet_stack.universes = univs
+    pellet_stack.is_uniform = True
     pellet_stack.pitch = [h1, h2] * int(n_pellets / 2)
-    #pellet_stack.outer = openmc.Universe(cells=[outer_cell])
 
     stack_cell = openmc.Cell(fill=pellet_stack)
 

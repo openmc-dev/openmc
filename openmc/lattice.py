@@ -2671,7 +2671,7 @@ class StackLattice(Lattice):
         num_layers = group['num_layers'][()]
         central_axis = group['central_axis'][...]
         base_coordinate = group['base_coordinate'][()]
-        is_uniform = group['is_uniform]'][()]
+        is_uniform = bool(group['is_uniform'][...])
         pitch = group['pitch'][...]
         if len(pitch) == 1:
             pitch = pitch[0]

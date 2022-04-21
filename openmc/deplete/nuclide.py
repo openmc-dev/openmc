@@ -123,6 +123,11 @@ class Nuclide:
         # Neutron fission yields, if present
         self._yield_data = None
 
+    def __repr__(self):
+        return "<Nuclide: {} ({} modes, {} reactions)>".format(
+            self.name, self.n_decay_modes, self.n_reaction_paths
+        )
+
     @property
     def n_decay_modes(self):
         return len(self.decay_modes)

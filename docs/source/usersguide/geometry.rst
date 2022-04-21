@@ -422,7 +422,7 @@ A stack lattice defines a one-dimensional array of universes that are filled int
 The position of the central axis and coordinate of the base level of the stack
 in must be specified (:attr:`StackLattice.central_axis` and
 :attr:`StackLattice.base_coordinate`, respectively). Additionally,
-:attr:`universes` must be set before :attr:`pitch`.
+:attr:`universes` must be set before :attr:`pitch`. For nonuniform lattices, the :attr:`is_uniform` attribute must be set to ``False`` before setting :attr:`pitch`.
 
 For a uniform stack lattice, a single value for the pitch should be specified.
 It should not be a list. For a nonuniform stack lattice, an iterable of values

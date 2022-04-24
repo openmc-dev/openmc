@@ -84,11 +84,11 @@ class Operator(TransportOperator):
 
     .. versionchanged:: 0.13.0
         The geometry and settings parameters have been replaced with a
-        model parameter that takes an openmc.Model object
+        model parameter that takes a :class:`~openmc.model.Model` object
 
     Parameters
     ----------
-    model : openmc.Model
+    model : openmc.model.Model
         OpenMC model object
     chain_file : str, optional
         Path to the depletion chain XML file.  Defaults to the file
@@ -163,7 +163,7 @@ class Operator(TransportOperator):
 
     Attributes
     ----------
-    model : openmc.Model
+    model : openmc.model.Model
         OpenMC model object
     geometry : openmc.Geometry
         OpenMC geometry object
@@ -195,8 +195,6 @@ class Operator(TransportOperator):
     prev_res : ResultsList or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
-    diff_burnable_mats : bool
-        Whether to differentiate burnable materials with multiple instances
     cleanup_when_done : bool
         Whether to finalize and clear the shared library memory when the
         depletion operation is complete. Defaults to clearing the library.
@@ -248,7 +246,6 @@ class Operator(TransportOperator):
             )
         self.materials = model.materials
 
-        self.diff_burnable_mats = diff_burnable_mats
         self.cleanup_when_done = True
 
         # Reduce the chain before we create more materials
@@ -262,8 +259,11 @@ class Operator(TransportOperator):
             self.chain = self.chain.reduce(all_isotopes, reduce_chain_level)
 
         # Differentiate burnable materials with multiple instances
-        if self.diff_burnable_mats:
+        if diff_burnable_mats:
             self._differentiate_burnable_mats()
+            self.materials = openmc.Materials(
+                model.geometry.get_all_materials().values()
+            )
 
         # Clear out OpenMC, create task lists, distribute
         openmc.reset_auto_ids()

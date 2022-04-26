@@ -454,11 +454,9 @@ target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
 
-# Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
-# be done is using the cxx_std_14 compiler feature.
-set_target_properties(
-    openmc libopenmc
-    PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
+# Ensure C++14 standard is used
+target_compile_features(openmc PUBLIC cxx_std_14)
+target_compile_features(libopenmc PUBLIC cxx_std_14)
 
 #===============================================================================
 # Python package

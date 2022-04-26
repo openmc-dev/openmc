@@ -164,22 +164,22 @@ def test_cylinder_sector(axis, indices):
     center = [0., 0.]
     r1, r2 = 0.5, 1.5
     d = (r2 - r1) / 2
-    theta0 = -60.
-    theta = 120.
-    s = openmc.model.CylinderSector(center, r1, r2, theta0, theta,
+    central_angle = 120.
+    alpha = -60.
+    s = openmc.model.CylinderSector(center, r1, r2, central_angle, alpha,
                                     axis=axis.lower())
     assert isinstance(s.outer_cyl, getattr(openmc, axis + "Cylinder"))
     assert isinstance(s.inner_cyl, getattr(openmc, axis + "Cylinder"))
-    assert isinstance(s.plane0, openmc.Plane)
     assert isinstance(s.plane1, openmc.Plane)
+    assert isinstance(s.plane2, openmc.Plane)
 
     # Make sure boundary condition propagates
     s.boundary_type = 'reflective'
     assert s.boundary_type == 'reflective'
     assert s.outer_cyl.boundary_type == 'reflective'
     assert s.inner_cyl.boundary_type == 'reflective'
-    assert s.plane0.boundary_type == 'reflective'
     assert s.plane1.boundary_type == 'reflective'
+    assert s.plane2.boundary_type == 'reflective'
 
     # Check bounding box
     ll, ur = (+s).bounding_box
@@ -193,7 +193,7 @@ def test_cylinder_sector(axis, indices):
     point_pos = np.roll([0, r2 + 1, 0], indices[0])
     assert point_pos in +s
     assert point_pos not in -s
-    point_neg = np.roll([0, r1 + d/2, r1 + d/2], indices[0])
+    point_neg = np.roll([0, r1 + d, r1 + d], indices[0])
     assert point_neg in -s
     assert point_neg not in +s
 
@@ -206,9 +206,13 @@ def test_cylinder_sector(axis, indices):
 
     # Check invalid r1, r2 combinations
     with pytest.raises(ValueError):
-        openmc.model.IsogonalOctagon(center, r1=1.0, r2=10.)
+        openmc.model.CylinderSector(center, 10., 1., central_angle, alpha)
+
+    # Check invalid sector width
     with pytest.raises(ValueError):
-        openmc.model.IsogonalOctagon(center, r1=10., r2=1.)
+        openmc.model.CylinderSector(center, 1., 10., 360, alpha)
+    with pytest.raises(ValueError):
+        openmc.model.CylinderSector(center, 1., 10., -1, alpha)
 
     # Make sure repr works
     repr(s)

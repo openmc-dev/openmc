@@ -54,7 +54,7 @@ class CompositeSurface(ABC):
 
 
 class CylinderSector(CompositeSurface):
-    """Infinite cylindrical sector composite surface
+    """Infinite cylindrical sector composite surface.
 
     A cylinder sector is composed of two cylindrical and two planar surfaces.
     The cylindrical surfaces are concentric, and the planar surfaces intersect
@@ -68,7 +68,7 @@ class CylinderSector(CompositeSurface):
     ----------
     center : iterable of float
        Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
-       basis. Defaults to (0,0)
+       basis. Defaults to (0,0).
     r1 : float
         Inner radius of sector. Must be less than r2.
     r2 : float
@@ -90,11 +90,11 @@ class CylinderSector(CompositeSurface):
     Attributes
     ----------
     outer_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
-        Outer cylinder surface
+        Outer cylinder surface.
     inner_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
-        Inner cylinder surface
+        Inner cylinder surface.
     plane1 : openmc.Plane
-        Plane at angle :math:`\\phi_1 = \\alpha` relative to the first basis axis
+        Plane at angle :math:`\\phi_1 = \\alpha` relative to the first basis axis.
     plane2 : openmc.Plane
         Plane at angle :math:`\\phi_2 = \\alpha + \\theta` relative to the first
         basis axis.

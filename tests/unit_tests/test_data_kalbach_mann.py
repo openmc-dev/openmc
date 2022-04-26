@@ -6,8 +6,7 @@ import pytest
 import numpy as np
 
 from openmc.data import IncidentNeutron
-from openmc.data import AtomicRepresentation
-from openmc.data.kalbach_mann import _separation_energy
+from openmc.data.kalbach_mann import _separation_energy, _AtomicRepresentation
 from openmc.data import kalbach_slope
 from openmc.data import KalbachMann
 
@@ -17,43 +16,43 @@ from . import needs_njoy
 @pytest.fixture(scope='module')
 def neutron():
     """Neutron AtomicRepresentation."""
-    return AtomicRepresentation(z=0, a=1)
+    return _AtomicRepresentation(z=0, a=1)
 
 
 @pytest.fixture(scope='module')
 def triton():
     """Triton AtomicRepresentation."""
-    return AtomicRepresentation(z=1, a=3)
+    return _AtomicRepresentation(z=1, a=3)
 
 
 @pytest.fixture(scope='module')
 def b10():
     """B10 AtomicRepresentation."""
-    return AtomicRepresentation(z=5, a=10)
+    return _AtomicRepresentation(z=5, a=10)
 
 
 @pytest.fixture(scope='module')
 def c12():
     """C12 AtomicRepresentation."""
-    return AtomicRepresentation(z=6, a=12)
+    return _AtomicRepresentation(z=6, a=12)
 
 
 @pytest.fixture(scope='module')
 def c13():
     """C13 AtomicRepresentation."""
-    return AtomicRepresentation(z=6, a=13)
+    return _AtomicRepresentation(z=6, a=13)
 
 
 @pytest.fixture(scope='module')
 def na23():
     """Na23 AtomicRepresentation."""
-    return AtomicRepresentation(z=11, a=23)
+    return _AtomicRepresentation(z=11, a=23)
 
 
 def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
     """Test the AtomicRepresentation class."""
     # Test instantiation from_za
-    assert b10 == AtomicRepresentation.from_za(5010)
+    assert b10 == _AtomicRepresentation.from_za(5010)
 
     # Test addition
     assert c13 + b10 == na23
@@ -76,13 +75,13 @@ def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
 
     # Test instanciation errors
     with pytest.raises(ValueError):
-        AtomicRepresentation(z=5, a=1)
+        _AtomicRepresentation(z=5, a=1)
     with pytest.raises(ValueError):
-        AtomicRepresentation(z=-1, a=1)
+        _AtomicRepresentation(z=-1, a=1)
     with pytest.raises(ValueError):
-        AtomicRepresentation(z=5, a=0)
+        _AtomicRepresentation(z=5, a=0)
     with pytest.raises(ValueError):
-        AtomicRepresentation(z=5, a=-2)
+        _AtomicRepresentation(z=5, a=-2)
     with pytest.raises(ValueError):
         neutron - triton
 

@@ -24,7 +24,6 @@ and product yields.
     FissionProductYields
     WindowedMultipole
     ProbabilityTables
-    AtomicRepresentation
 
 The following classes are used for storing atomic data (incident photon cross
 sections, atomic relaxation):
@@ -65,11 +64,11 @@ Core Functions
     dose_coefficients
     gnd_name
     isotopes
+    kalbach_slope
     linearize
     thin
     water_density
     zam
-    return_kalbach_slope
 
 One-dimensional Functions
 -------------------------

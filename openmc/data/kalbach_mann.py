@@ -13,7 +13,7 @@ from .data import EV_PER_MEV
 from .endf import get_list_record, get_tab2_record
 
 
-class AtomicRepresentation(EqualityMixin):
+class _AtomicRepresentation(EqualityMixin):
     """Atomic representation of an isotope or a particle.
 
     Parameters
@@ -56,20 +56,20 @@ class AtomicRepresentation(EqualityMixin):
         self._a = a
 
     def __add__(self, other):
-        """Adds two AtomicRepresentations.
+        """Adds two _AtomicRepresentations.
 
         """
         z = self.z + other.z
         a = self.a + other.a
-        return AtomicRepresentation(z=z, a=a)
+        return _AtomicRepresentation(z=z, a=a)
 
     def __sub__(self, other):
-        """Substracts two AtomicRepresentations.
+        """Substracts two _AtomicRepresentations.
 
         """
         z = self.z - other.z
         a = self.a - other.a
-        return AtomicRepresentation(z=z, a=a)
+        return _AtomicRepresentation(z=z, a=a)
 
     @property
     def a(self):
@@ -89,7 +89,7 @@ class AtomicRepresentation(EqualityMixin):
 
     @classmethod
     def from_za(cls, za):
-        """Instantiates an AtomicRepresentation from a ZA identifier.
+        """Instantiate an _AtomicRepresentation from a ZA identifier.
 
         Parameters
         ----------
@@ -99,7 +99,7 @@ class AtomicRepresentation(EqualityMixin):
 
         Returns
         -------
-        AtomicRepresentation
+        _AtomicRepresentation
             Atomic representation of the isotope/particle
 
         """
@@ -115,11 +115,11 @@ def _separation_energy(compound, nucleus, particle):
 
     Parameters
     ----------
-    compound : AtomicRepresentation
+    compound : _AtomicRepresentation
         Atomic representation of the compound (C)
-    nucleus : AtomicRepresentation
+    nucleus : _AtomicRepresentation
         Atomic representation of the nucleus (A or B)
-    particle : AtomicRepresentation
+    particle : _AtomicRepresentation
         Atomic representation of the particle (a or b)
 
     Returns
@@ -219,9 +219,9 @@ def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
     if za_target == 6000:
         za_target = 6012
 
-    projectile = AtomicRepresentation.from_za(za_projectile)
-    emitted = AtomicRepresentation.from_za(za_emitted)
-    target = AtomicRepresentation.from_za(za_target)
+    projectile = _AtomicRepresentation.from_za(za_projectile)
+    emitted = _AtomicRepresentation.from_za(za_emitted)
+    target = _AtomicRepresentation.from_za(za_target)
     compound = projectile + target
     residual = compound - emitted
 

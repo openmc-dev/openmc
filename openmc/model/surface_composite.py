@@ -73,7 +73,7 @@ class CylinderSector(CompositeSurface):
         Central angle, :math:`\\theta`, of the sector in degrees. Must be greater
         that 0 and less than 360.
     alpha : float
-        Angular offset of the clockwise-most side of the sector in degrees
+        Angular offset, :math:`\\alpha`, of the clockwise-most side of the sector in degrees
         relative to the primary basis axis (+y, +z, or +x).
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces

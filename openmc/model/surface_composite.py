@@ -74,7 +74,7 @@ class CylinderSector(CompositeSurface):
         that 0 and less than 360.
     alpha : float
         Angular offset, :math:`\\alpha`, of the clockwise-most side of the sector in degrees
-        relative to the primary basis axis (+y, +z, or +x).
+        relative to the first basis axis (+y, +z, or +x).
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces
         of the sector. Defaults to 'z'.

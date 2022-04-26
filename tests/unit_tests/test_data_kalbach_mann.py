@@ -2,7 +2,9 @@
 retrieved from ENDF files."""
 
 import os
+from pathlib import Path
 import pytest
+
 import numpy as np
 
 from openmc.data import IncidentNeutron
@@ -50,7 +52,7 @@ def na23():
 
 
 def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
-    """Test the AtomicRepresentation class."""
+    """Test the _AtomicRepresentation class."""
     # Test instantiation from_za
     assert b10 == _AtomicRepresentation.from_za(5010)
 
@@ -121,10 +123,10 @@ def test_kalbach_slope():
 
 
 @pytest.mark.parametrize(
-    "hdf5_filename, endf_type, endf_filename", [
-        ('O16.h5', 'neutrons', 'n-008_O_016.endf'),
-        ('Ca46.h5', 'neutrons', 'n-020_Ca_046.endf'),
-        ('Hg204.h5', 'neutrons', 'n-080_Hg_204.endf')
+    "hdf5_filename, endf_filename", [
+        ('O16.h5', 'n-008_O_016.endf'),
+        ('Ca46.h5', 'n-020_Ca_046.endf'),
+        ('Hg204.h5', 'n-080_Hg_204.endf')
     ]
 )
 def test_comparison_slope_hdf5(hdf5_filename, endf_type, endf_filename):
@@ -132,7 +134,7 @@ def test_comparison_slope_hdf5(hdf5_filename, endf_type, endf_filename):
     by comparing it to HDF5 data. The test is based on the first product
     of MT=5 (neutron). The isotopes tested have been selected because the
     corresponding products in ENDF/B-VII.1 are described using MF=6, LAW=1,
-    LANG=2 (ie. Kalbach-Mann systematics) and the slope is not given
+    LANG=2 (i.e., Kalbach-Mann systematics) and the slope is not given
     explicitly.
 
     If an error occurs during the "validity check", this means that
@@ -145,15 +147,14 @@ def test_comparison_slope_hdf5(hdf5_filename, endf_type, endf_filename):
 
     """
     # HDF5 data
-    hdf5_directory = os.path.dirname(os.environ['OPENMC_CROSS_SECTIONS'])
-    hdf5_path = os.path.join(hdf5_directory, hdf5_filename)
-    hdf5_data = IncidentNeutron.from_hdf5(hdf5_path)
+    hdf5_directory = Path(os.environ['OPENMC_CROSS_SECTIONS']).parent
+    hdf5_data = IncidentNeutron.from_hdf5(hdf5_directory / hdf5_filename)
     hdf5_product = hdf5_data[5].products[0]
     hdf5_distribution = hdf5_product.distribution[0]
 
     # ENDF data
-    endf_directory = os.environ['OPENMC_ENDF_DATA']
-    endf_path = os.path.join(endf_directory, endf_type, endf_filename)
+    endf_directory = Path(os.environ['OPENMC_ENDF_DATA'])
+    endf_path = endf_directory / 'neutrons' / endf_filename
     endf_data = IncidentNeutron.from_endf(endf_path)
     endf_product = endf_data[5].products[0]
     endf_distribution = endf_product.distribution[0]
@@ -166,65 +167,10 @@ def test_comparison_slope_hdf5(hdf5_filename, endf_type, endf_filename):
 
     # Results check
     for i, hdf5_slope in enumerate(hdf5_distribution.slope):
-
-        assert endf_distribution._calculated_slope[i] is True
+        assert endf_distribution._calculated_slope[i]
 
         np.testing.assert_array_almost_equal(
             endf_distribution.slope[i].y,
             hdf5_slope.y,
-            decimal=5
-        )
-
-
-@needs_njoy
-@pytest.mark.parametrize(
-    "endf_type, endf_filename", [
-        ('neutrons', 'n-008_O_016.endf'),
-        ('neutrons', 'n-020_Ca_046.endf'),
-        ('neutrons', 'n-080_Hg_204.endf')
-    ]
-)
-def test_comparison_slope_njoy(endf_type, endf_filename):
-    """Test the calculation of the Kalbach-Mann slope done by OpenMC
-    by comparing it to an NJOY calculation. The test is based on
-    the first product of MT=5 (neutron). The isotopes tested have
-    been selected because the corresponding products in ENDF/B-VII.1
-    are described using MF=6, LAW=1, LANG=2 (ie. Kalbach-Mann
-    systematics) and the slope is not given explicitly.
-
-    If an error occurs during the "validity check", this means that
-    the nuclear data evaluation has evolved and the distribution might
-    no longer be described using Kalbach-Mann systematics. Another
-    isotope needs to be identified and tested.
-
-    """
-    endf_directory = os.environ['OPENMC_ENDF_DATA']
-    endf_path = os.path.join(endf_directory, endf_type, endf_filename)
-
-    # ENDF data
-    endf_data = IncidentNeutron.from_endf(endf_path)
-    endf_product = endf_data[5].products[0]
-    endf_distribution = endf_product.distribution[0]
-
-    # NJOY data
-    njoy_data = IncidentNeutron.from_njoy(endf_path, heatr=False, gaspr=False,
-                                          purr=False, smoothing=False)
-    njoy_product = njoy_data[5].products[0]
-    njoy_distribution = njoy_product.distribution[0]
-
-    # Validity check
-    assert isinstance(endf_distribution, KalbachMann)
-    assert isinstance(njoy_distribution, KalbachMann)
-    assert endf_product.particle == njoy_product.particle
-    assert len(endf_distribution.slope) == len(njoy_distribution.slope)
-
-    # Results check
-    for i, njoy_slope in enumerate(njoy_distribution.slope):
-
-        assert endf_distribution._calculated_slope[i] is True
-
-        np.testing.assert_array_almost_equal(
-            endf_distribution.slope[i].y,
-            njoy_slope.y,
             decimal=5
         )

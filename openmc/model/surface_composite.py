@@ -67,8 +67,8 @@ class CylinderSector(CompositeSurface):
     Parameters
     ----------
     center : iterable of float
-       Coordinate for central axes of cylinders in the (y, z), (z, x), or
-         (x, y) basis. Defaults to (0,0)
+       Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+       basis. Defaults to (0,0)
     r1 : float
         Inner radius of sector. Must be less than r2.
     r2 : float
@@ -77,13 +77,13 @@ class CylinderSector(CompositeSurface):
         Central angle, :math:`\\theta`, of the sector in degrees. Must be
         greater that 0 and less than 360.
     ccw_offset : float
-        Angular offset, :math:`\\alpha`, in the counter-clockwise direction
-        with respect to the first basis axis (+y, +z, or +x) of the
-        clockwise-most side of the sector in degrees. Note that negative values
-        translate to a clockwise offset.
+        Angular offset, :math:`\\alpha`, of the clockwise-most side of the
+        sector in degrees. The offset is in the counter-clockwise direction
+        with respect to the first basis axis (+y, +z, or +x). Note that
+        negative values translate to an offset in the clockwise direction.
     axis : {'x', 'y', 'z'}
-        Central axis of the cylinders defining the inner and outer surfaces
-        of the sector. Defaults to 'z'.
+        Central axis of the cylinders defining the inner and outer surfaces of
+        the sector. Defaults to 'z'.
     **kwargs
         Keyword arguments passed to underlying plane classes.
 

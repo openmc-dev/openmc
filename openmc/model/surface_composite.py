@@ -66,16 +66,18 @@ class CylinderSector(CompositeSurface):
        Coordinate for central axes of cylinders in the (y, z), (z, x), or
          (x, y) basis. Defaults to (0,0)
     r1 : float
-        Inner cylinder radii
+        Inner radius of sector. Must be less than r2.
     r2 : float
-        Outer cylinder radii
-    theta0 : float
-        Angular offset of the sector in degrees relative to the primary basis
-        axis (+y, +z, or +x).
-    theta : float
-        Angular width of the sector in degrees.
+        Outer radius of sector. Must be greater than r1.
+    central_angle : float
+        Central angle, :math:`\\theta`, of the sector in degrees. Must be greater
+        that 0 and less than 360.
+    alpha : float
+        Angular offset of the clockwise-most side of the sector in degrees
+        relative to the primary basis axis (+y, +z, or +x).
     axis : {'x', 'y', 'z'}
-        Central axis of the cylinders. Defaults to 'z'.
+        Central axis of the cylinders defining the inner and outer surfaces
+        of the sector. Defaults to 'z'.
     **kwargs
         Keyword arguments passed to underlying plane classes.
 
@@ -85,32 +87,37 @@ class CylinderSector(CompositeSurface):
         Outer cylinder surface
     inner_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
         Inner cylinder surface
-    plane0 : openmc.Plane
-        Plane at angle :math:`\\theta_0` relative to the first basis axis
     plane1 : openmc.Plane
-        Plane at angle :math:`\\theta_0 + \\theta` relative to the first
+        Plane at angle :math:`\\phi_1 = \\alpha` relative to the first basis axis
+    plane2 : openmc.Plane
+        Plane at angle :math:`\\phi_2 = \\alpha + \\theta` relative to the first
         basis axis.
 
     """
 
-    _surface_names = ('outer_cyl', 'inner_cyl',
-                      'plane0', 'plane1')
+    _surface_names = ('outer_cyl', 'inner_cyl', 'plane1', 'plane2')
 
-    def __init__(self, center, r1, r2, theta0, theta, axis='z', **kwargs):
-        theta0 = pi / 180 * theta0
-        theta = pi / 180 * theta
-        theta1 = theta0 + theta
+    def __init__(self, center, r1, r2, central_angle, alpha, axis='z', **kwargs):
+
+        if r2 <= r1 * sqrt(2):
+            raise ValueError(f'r2 must be greater than r1.')
+
+        if central_angle >= 360. or central_angle <= 0:
+            raise ValueError(f'theta must be less than 360.')
+
+        phi1 = pi / 180 * alpha
+        phi2 = pi / 180 * (alpha + central_angle)
 
         # Coords for axis-perpendicular planes
         p1 = np.array([0., 0., 1.])
 
-        p2_plane0 = np.array([r1 * cos(theta0), r1 * sin(theta0), 0.])
-        p3_plane0 = np.array([r2 * cos(theta0), r2 * sin(theta0), 0.])
+        p2_plane1 = np.array([r1 * cos(phi1), r1 * sin(phi1), 0.])
+        p3_plane1 = np.array([r2 * cos(phi1), r2 * sin(phi1), 0.])
 
-        p2_plane1 = np.array([r1 * cos(theta1), r1 * sin(theta1), 0.])
-        p3_plane1 = np.array([r2 * cos(theta1), r2 * sin(theta1), 0.])
+        p2_plane2 = np.array([r1 * cos(phi2), r1 * sin(phi2), 0.])
+        p3_plane2 = np.array([r2 * cos(phi2), r2 * sin(phi2), 0.])
 
-        points = [p1, p2_plane0, p3_plane0, p2_plane1, p3_plane1]
+        points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
         if axis == 'z':
             coord_map = [0, 1, 2]
             self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
@@ -127,16 +134,16 @@ class CylinderSector(CompositeSurface):
         for p in points:
             p[:] = p[coord_map]
 
-        self.plane0 = openmc.Plane.from_points(p1, p2_plane0, p3_plane0,
-                                               **kwargs)
         self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1,
+                                               **kwargs)
+        self.plane2 = openmc.Plane.from_points(p1, p2_plane2, p3_plane2,
                                                **kwargs)
 
     def __neg__(self):
-        return -self.outer_cyl & +self.inner_cyl & -self.plane0 & +self.plane1
+        return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
 
     def __pos__(self):
-        return +self.outer_cyl | -self.inner_cyl | +self.plane0 | -self.plane1
+        return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
 
 
 class IsogonalOctagon(CompositeSurface):

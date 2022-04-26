@@ -56,6 +56,10 @@ class CompositeSurface(ABC):
 class CylinderSector(CompositeSurface):
     """Infinite cylindrical sector composite surface
 
+    A cylinder sector is composed of two cylindrical and two planar surfaces.
+    The cylindrical surfaces are concentric, and the planar surfaces intersect
+    the central axis of the cylindrical surfaces.
+
     This class acts as a proper surface, meaning that unary `+` and `-`
     operators applied to it will produce a half-space. The negative
     side is defined to be the region inside of the cylinder sector.

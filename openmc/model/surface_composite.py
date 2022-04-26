@@ -74,11 +74,13 @@ class CylinderSector(CompositeSurface):
     r2 : float
         Outer radius of sector. Must be greater than r1.
     central_angle : float
-        Central angle, :math:`\\theta`, of the sector in degrees. Must be greater
-        that 0 and less than 360.
-    alpha : float
-        Angular offset, :math:`\\alpha`, of the clockwise-most side of the sector in degrees
-        relative to the first basis axis (+y, +z, or +x).
+        Central angle, :math:`\\theta`, of the sector in degrees. Must be
+        greater that 0 and less than 360.
+    ccw_offset : float
+        Angular offset, :math:`\\alpha`, in the counter-clockwise direction
+        with respect to the first basis axis (+y, +z, or +x) of the
+        clockwise-most side of the sector in degrees. Note that negative values
+        translate to a clockwise offset.
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces
         of the sector. Defaults to 'z'.
@@ -101,7 +103,14 @@ class CylinderSector(CompositeSurface):
 
     _surface_names = ('outer_cyl', 'inner_cyl', 'plane1', 'plane2')
 
-    def __init__(self, center, r1, r2, central_angle, alpha, axis='z', **kwargs):
+    def __init__(self,
+                 center,
+                 r1,
+                 r2,
+                 central_angle,
+                 ccw_offset,
+                 axis='z',
+                 **kwargs):
 
         if r2 <= r1 * sqrt(2):
             raise ValueError(f'r2 must be greater than r1.')
@@ -109,8 +118,8 @@ class CylinderSector(CompositeSurface):
         if central_angle >= 360. or central_angle <= 0:
             raise ValueError(f'theta must be less than 360.')
 
-        phi1 = pi / 180 * alpha
-        phi2 = pi / 180 * (alpha + central_angle)
+        phi1 = pi / 180 * ccw_offset
+        phi2 = pi / 180 * (ccw_offset + central_angle)
 
         # Coords for axis-perpendicular planes
         p1 = np.array([0., 0., 1.])

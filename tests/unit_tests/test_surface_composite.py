@@ -165,8 +165,8 @@ def test_cylinder_sector(axis, indices):
     r1, r2 = 0.5, 1.5
     d = (r2 - r1) / 2
     central_angle = 120.
-    alpha = -60.
-    s = openmc.model.CylinderSector(center, r1, r2, central_angle, alpha,
+    ccw_offset = -60.
+    s = openmc.model.CylinderSector(center, r1, r2, central_angle, ccw_offset,
                                     axis=axis.lower())
     assert isinstance(s.outer_cyl, getattr(openmc, axis + "Cylinder"))
     assert isinstance(s.inner_cyl, getattr(openmc, axis + "Cylinder"))
@@ -206,13 +206,13 @@ def test_cylinder_sector(axis, indices):
 
     # Check invalid r1, r2 combinations
     with pytest.raises(ValueError):
-        openmc.model.CylinderSector(center, 10., 1., central_angle, alpha)
+        openmc.model.CylinderSector(center, 10., 1., central_angle, ccw_offset)
 
     # Check invalid sector width
     with pytest.raises(ValueError):
-        openmc.model.CylinderSector(center, 1., 10., 360, alpha)
+        openmc.model.CylinderSector(center, 1., 10., 360, ccw_offset)
     with pytest.raises(ValueError):
-        openmc.model.CylinderSector(center, 1., 10., -1, alpha)
+        openmc.model.CylinderSector(center, 1., 10., -1, ccw_offset)
 
     # Make sure repr works
     repr(s)

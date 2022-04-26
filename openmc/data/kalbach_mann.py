@@ -25,7 +25,7 @@ class _AtomicRepresentation(EqualityMixin):
 
     Raises
     ------
-    IOError
+    ValueError
         When the number of protons (z) declared is higher than the number
         of nucleons (a)
 
@@ -56,17 +56,13 @@ class _AtomicRepresentation(EqualityMixin):
         self._a = a
 
     def __add__(self, other):
-        """Adds two _AtomicRepresentations.
-
-        """
+        """Add two _AtomicRepresentations"""
         z = self.z + other.z
         a = self.a + other.a
         return _AtomicRepresentation(z=z, a=a)
 
     def __sub__(self, other):
-        """Substracts two _AtomicRepresentations.
-
-        """
+        """Substract two _AtomicRepresentations"""
         z = self.z - other.z
         a = self.a - other.a
         return _AtomicRepresentation(z=z, a=a)

@@ -13,10 +13,12 @@ GROUP_STRUCTURES = {}
 - "XMAS-172_" designed for LWR analysis ([SAR1990]_, [SAN2004]_)
 - "SHEM-361_" designed for LWR analysis to eliminate self-shielding calculations
   of thermal resonances ([HFA2005]_, [SAN2007]_, [HEB2008]_)
+- "SCALE-44" designed for criticality analysis ([ZAL1999]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
   "TRIPOLI-315", "CCFE-709_" and "UKAEA-1102_"
 
 .. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
+.. _SCALE: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm
 .. _SHEM-361: https://www.polymtl.ca/merlin/downloads/FP214.pdf
 .. _activation: https://fispact.ukaea.uk/wiki/Keyword:GETXS
@@ -41,6 +43,8 @@ GROUP_STRUCTURES = {}
 .. [HEB2008] Hébert, Alain & Santamarina, Alain. (2008). Refinement of the
    Santamarina-Hfaiedh energy mesh between 22.5 eV and 11.4 keV. International
    Conference on the Physics of Reactors 2008, PHYSOR 08. 2. 929-938.
+.. [ZAL1999] K. Záleský and L. Marková (1999), Assessment of Nuclear Data Needs
+   for Broad-Group SCALE Library Related to VVER Spent Fuel Applications, IAEA.
 """
 
 GROUP_STRUCTURES['CASMO-2'] = np.array([
@@ -67,7 +71,12 @@ GROUP_STRUCTURES['VITAMIN-J-42'] = np.array([
     0.2e6, 0.3e6, 0.4e6, 0.45e6, 0.51e6, 0.512e6, 0.6e6, 0.7e6, 0.8e6, 1.e6,
     1.33e6, 1.34e6, 1.5e6, 1.66e6, 2.e6, 2.5e6, 3.e6, 3.5e6, 4.e6, 4.5e6, 5.e6,
     5.5e6, 6.e6, 6.5e6, 7.e6, 7.5e6, 8.e6, 10.e6, 12.e6, 14.e6, 20.e6, 30.e6,
-    50.e6])
+    50.e6]),
+GROUP_STRUCTURES['SCALE-44'] = np.array([3.e-3, 7.5e-3, 1.e-2, 2.53e-2, 3.e-2,
+    4.e-2, 5e-2, 7.e-2, 1.e-1, 1.5e-1, 2.e-1, 2.25e-1, 2.5e-1, 2.75e-1,
+    3.25e-1, 3.5e-1, 3.75e-1, 4.e-1, 6.25e-1, 1., 1.77, 3., 4.75, 6., 8.1,
+    1.e1, 3.e1, 1.e2, 5.5e2, 3.e3, 1.7e4, 2.5e4, 1.e5, 4.e5, 9.e5, 1.4e6,
+    1.85e6, 2.354e6, 2.479e6, 3.e6, 4.8e6, 6.434e6, 8.1873e6, 2.e7]),
 GROUP_STRUCTURES['CASMO-70'] = np.array([
     0., 5.e-3, 1.e-2, 1.5e-2, 2.e-2, 2.5e-2, 3.e-2, 3.5e-2, 4.2e-2,
     5.e-2, 5.8e-2, 6.7e-2, 8.e-2, 1.e-1, 1.4e-1, 1.8e-1, 2.2e-1,

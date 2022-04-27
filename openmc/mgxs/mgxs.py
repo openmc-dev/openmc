@@ -237,8 +237,16 @@ class MGXS:
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -266,7 +274,7 @@ class MGXS:
         self._sparse = False
         self._loaded_sp = False
         self._derived = False
-        self._hdf5_key = None
+        self._mgxs_type = None
         self._valid_estimators = ESTIMATOR_TYPES
 
         self.name = name
@@ -305,7 +313,7 @@ class MGXS:
         clone._sparse = self.sparse
         clone._loaded_sp = self._loaded_sp
         clone._derived = self.derived
-        clone._hdf5_key = self._hdf5_key
+        clone._mgxs_type = self._mgxs_type
 
         clone._tallies = OrderedDict()
         for tally_type, tally in self.tallies.items():
@@ -609,11 +617,19 @@ class MGXS:
         return self._derived
 
     @property
-    def hdf5_key(self):
-        if self._hdf5_key is not None:
-            return self._hdf5_key
+    def mgxs_type(self):
+        if self._mgxs_type is not None:
+            return self._mgxs_type
         else:
             return self._rxn_type
+
+    @property
+    def hdf5_key(self):
+        warnings.warn(
+            f'The {type(self).__name__}.hdf5_key attribute will be removed '
+            f'in the future! Use {type(self).__name__}.mgxs_type instead',
+            DeprecationWarning)
+        return self.mgxs_type
 
     @name.setter
     def name(self, name):
@@ -1725,7 +1741,7 @@ class MGXS:
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.hdf5_key)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -1912,7 +1928,7 @@ class MGXS:
                 subdomain_group = domain_group
 
             # Create a separate HDF5 group for this cross section
-            rxn_group = subdomain_group.require_group(self.hdf5_key)
+            rxn_group = subdomain_group.require_group(self.mgxs_type)
 
             # Create a separate HDF5 group for each nuclide
             for j, nuclide in enumerate(nuclides):
@@ -2238,8 +2254,16 @@ class MatrixMGXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
     @property
@@ -2534,7 +2558,7 @@ class MatrixMGXS(MGXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.hdf5_key)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -2732,8 +2756,16 @@ class TotalXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -2870,8 +2902,16 @@ class TransportXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -3108,8 +3148,16 @@ class DiffusionCoefficient(TransportXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -3291,8 +3339,16 @@ class AbsorptionXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -3417,8 +3473,16 @@ class CaptureXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -3570,8 +3634,16 @@ class FissionXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -3738,8 +3810,16 @@ class KappaFissionXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -3869,8 +3949,16 @@ class ScatterXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -4013,8 +4101,16 @@ class ArbitraryXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -4145,8 +4241,16 @@ class ArbitraryMatrixXS(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -4347,8 +4451,16 @@ class ScatterMatrixXS(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -4705,17 +4817,17 @@ class ScatterMatrixXS(MatrixMGXS):
         if self.formulation == 'simple':
             if not nu:
                 self._rxn_type = 'scatter'
-                self._hdf5_key = 'scatter matrix'
+                self._mgxs_type = 'scatter matrix'
             else:
                 self._rxn_type = 'nu-scatter'
-                self._hdf5_key = 'nu-scatter matrix'
+                self._mgxs_type = 'nu-scatter matrix'
         else:
             if not nu:
                 self._rxn_type = 'scatter'
-                self._hdf5_key = 'consistent scatter matrix'
+                self._mgxs_type = 'consistent scatter matrix'
             else:
                 self._rxn_type = 'nu-scatter'
-                self._hdf5_key = 'consistent nu-scatter matrix'
+                self._mgxs_type = 'consistent nu-scatter matrix'
 
     @formulation.setter
     def formulation(self, formulation):
@@ -4725,15 +4837,15 @@ class ScatterMatrixXS(MatrixMGXS):
         if self.formulation == 'simple':
             self._valid_estimators = ['analog']
             if not self.nu:
-                self._hdf5_key = 'scatter matrix'
+                self._mgxs_type = 'scatter matrix'
             else:
-                self._hdf5_key = 'nu-scatter matrix'
+                self._mgxs_type = 'nu-scatter matrix'
         else:
             self._valid_estimators = ['tracklength']
             if not self.nu:
-                self._hdf5_key = 'consistent scatter matrix'
+                self._mgxs_type = 'consistent scatter matrix'
             else:
-                self._hdf5_key = 'consistent nu-scatter matrix'
+                self._mgxs_type = 'consistent nu-scatter matrix'
 
     @correction.setter
     def correction(self, correction):
@@ -5195,9 +5307,9 @@ class ScatterMatrixXS(MatrixMGXS):
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if self.correction != 'P0' and self.scatter_format == SCATTER_LEGENDRE:
-            rxn_type = '{0} (P{1})'.format(self.hdf5_key, moment)
+            rxn_type = '{0} (P{1})'.format(self.mgxs_type, moment)
         else:
-            rxn_type = self.hdf5_key
+            rxn_type = self.mgxs_type
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
@@ -5434,8 +5546,16 @@ class MultiplicityMatrixXS(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -5607,8 +5727,16 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -5622,7 +5750,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         super().__init__(domain, domain_type, groups, by_nuclide,
                          name, num_polar, num_azimuthal)
         self._rxn_type = 'scatter'
-        self._hdf5_key = 'scatter probability matrix'
+        self._mgxs_type = 'scatter probability matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
 
@@ -5780,8 +5908,16 @@ class NuFissionMatrixXS(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -5792,10 +5928,10 @@ class NuFissionMatrixXS(MatrixMGXS):
                          num_polar, num_azimuthal)
         if not prompt:
             self._rxn_type = 'nu-fission'
-            self._hdf5_key = 'nu-fission matrix'
+            self._mgxs_type = 'nu-fission matrix'
         else:
             self._rxn_type = 'prompt-nu-fission'
-            self._hdf5_key = 'prompt-nu-fission matrix'
+            self._mgxs_type = 'prompt-nu-fission matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
         self.prompt = prompt
@@ -5938,8 +6074,16 @@ class Chi(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -6028,10 +6172,10 @@ class Chi(MGXS):
         self._prompt = prompt
         if not self.prompt:
             self._rxn_type = 'chi'
-            self._hdf5_key = 'chi'
+            self._mgxs_type = 'chi'
         else:
             self._rxn_type = 'chi-prompt'
-            self._hdf5_key = 'chi-prompt'
+            self._mgxs_type = 'chi-prompt'
 
     def get_homogenized_mgxs(self, other_mgxs):
         """Construct a homogenized mgxs with other MGXS objects.
@@ -6461,8 +6605,16 @@ class InverseVelocity(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
 
     """
 
@@ -6580,8 +6732,16 @@ class MeshSurfaceMGXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
@@ -6966,8 +7126,16 @@ class Current(MeshSurfaceMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.14
     hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+        The key used to index multi-group cross sections in an HDF5 data store.
+        This will be replaced by mgxs_type in the future.
+
+        .. deprecated:: 0.13.0
     """
 
     def __init__(self, domain=None, domain_type=None,

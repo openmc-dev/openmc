@@ -161,12 +161,11 @@ def test_cone_one_sided(axis, point_pos, point_neg, ll_true):
     ]
 )
 def test_cylinder_sector(axis, indices):
-    center = [0., 0.]
     r1, r2 = 0.5, 1.5
     d = (r2 - r1) / 2
-    central_angle = 120.
-    ccw_offset = -60.
-    s = openmc.model.CylinderSector(center, r1, r2, central_angle, ccw_offset,
+    phi1 = -60.
+    phi2 = 60
+    s = openmc.model.CylinderSector(r1, r2, phi1, phi2,
                                     axis=axis.lower())
     assert isinstance(s.outer_cyl, getattr(openmc, axis + "Cylinder"))
     assert isinstance(s.inner_cyl, getattr(openmc, axis + "Cylinder"))
@@ -206,16 +205,35 @@ def test_cylinder_sector(axis, indices):
 
     # Check invalid r1, r2 combinations
     with pytest.raises(ValueError):
-        openmc.model.CylinderSector(center, 10., 1., central_angle, ccw_offset)
+        openmc.model.CylinderSector(r2, r1, phi1, phi2)
 
-    # Check invalid sector width
+    # Check invalid angles
     with pytest.raises(ValueError):
-        openmc.model.CylinderSector(center, 1., 10., 360, ccw_offset)
-    with pytest.raises(ValueError):
-        openmc.model.CylinderSector(center, 1., 10., -1, ccw_offset)
+        openmc.model.CylinderSector(r1, r2, phi2, phi1)
 
     # Make sure repr works
     repr(s)
+
+
+def test_cylinder_sector_from_theta_alpha():
+    r1, r2 = 0.5, 1.5
+    d = (r2 - r1) / 2
+    theta = 120.
+    alpha = -60.
+    s = openmc.model.CylinderSector.from_theta_alpha(r1,
+                                                     r2,
+                                                     theta,
+                                                     alpha)
+
+    # Check that the angles are correct
+    assert s._theta1 == alpha
+    assert s._theta2 == alpha + theta
+
+    # Check invalid sector width
+    with pytest.raises(ValueError):
+        openmc.model.CylinderSector.from_theta_alpha(r1, r2, 360, alpha)
+    with pytest.raises(ValueError):
+        openmc.model.CylinderSector.from_theta_alpha(r1, r2, -1, alpha)
 
 
 @pytest.mark.parametrize(

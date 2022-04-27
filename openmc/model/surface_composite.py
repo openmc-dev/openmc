@@ -66,26 +66,27 @@ class CylinderSector(CompositeSurface):
 
     Parameters
     ----------
-    center : iterable of float
-       Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
-       basis. Defaults to (0,0).
     r1 : float
         Inner radius of sector. Must be less than r2.
     r2 : float
         Outer radius of sector. Must be greater than r1.
-    central_angle : float
-        Central angle, :math:`\\theta`, of the sector in degrees. Must be
-        greater that 0 and less than 360.
-    ccw_offset : float
-        Angular offset, :math:`\\alpha`, of the clockwise-most side of the
-        sector in degrees. The offset is in the counter-clockwise direction
-        with respect to the first basis axis (+y, +z, or +x). Note that
-        negative values translate to an offset in the clockwise direction.
+    theta1 : float
+        Clockwise-most bound of sector in degrees. Assumed to be in the
+        counterclockwise direction with respect to the first basis axis
+        (+y, +z, or +x). Must be less than :attr:`theta2`.
+    theta2 : float
+        Counterclockwise-most bound of sector in degrees. Assumed to be in the
+        counterclockwise direction with respect to the first basis axis
+        (+y, +z, or +x). Must be greater than :attr:`theta1`.
+    center : iterable of float
+       Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+       basis. Defaults to (0,0).
+
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces of
         the sector. Defaults to 'z'.
-    **kwargs
-        Keyword arguments passed to underlying plane classes.
+    kwargs : dict
+            Keyword arguments passed to the :class:`Cylinder` and :class:`Plane` constructors.
 
     Attributes
     ----------
@@ -94,32 +95,34 @@ class CylinderSector(CompositeSurface):
     inner_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
         Inner cylinder surface.
     plane1 : openmc.Plane
-        Plane at angle :math:`\\phi_1 = \\alpha` relative to the first basis axis.
+        Plane at angle :math:`\\theta_1` relative to the first basis axis.
     plane2 : openmc.Plane
-        Plane at angle :math:`\\phi_2 = \\alpha + \\theta` relative to the first
-        basis axis.
+        Plane at angle :math:`\\theta_2` relative to the first basis axis.
 
     """
 
     _surface_names = ('outer_cyl', 'inner_cyl', 'plane1', 'plane2')
 
     def __init__(self,
-                 center,
                  r1,
                  r2,
-                 central_angle,
-                 ccw_offset,
+                 theta1,
+                 theta2,
+                 center=(0.,0.),
                  axis='z',
                  **kwargs):
 
         if r2 <= r1 * sqrt(2):
             raise ValueError(f'r2 must be greater than r1.')
 
-        if central_angle >= 360. or central_angle <= 0:
-            raise ValueError(f'theta must be less than 360.')
+        if theta2 <= theta1:
+            raise ValueError(f'theta2 must be greater than theta1.')
 
-        phi1 = pi / 180 * ccw_offset
-        phi2 = pi / 180 * (ccw_offset + central_angle)
+        self._theta1 = theta1
+        self._theta2 = theta2
+
+        phi1 = pi / 180 * theta1
+        phi2 = pi / 180 * theta2
 
         # Coords for axis-perpendicular planes
         p1 = np.array([0., 0., 1.])
@@ -151,6 +154,59 @@ class CylinderSector(CompositeSurface):
                                                **kwargs)
         self.plane2 = openmc.Plane.from_points(p1, p2_plane2, p3_plane2,
                                                **kwargs)
+
+    @classmethod
+    def from_theta_alpha(cls,
+                         r1,
+                         r2,
+                         theta,
+                         alpha,
+                         center = (0.,0.),
+                         axis='z',
+                         **kwargs):
+        """Alternate constructor for :attr:`CylinderSector`. Returns an
+        :attr:`CylinderSector` object based on a central angle :math:`\\theta`
+        and an angular offset :math:`\\alpha`. Note that
+        :math:`\\theta_1 = \\alpha` and :math:`\\theta_2 = \\alpha + \\theta`.
+
+        Parameters
+        ----------
+        r1 : float
+            Inner radius of sector. Must be less than r2.
+        r2 : float
+            Outer radius of sector. Must be greater than r1.
+        theta : float
+            Central angle, :math:`\\theta`, of the sector in degrees. Must be
+            greater that 0 and less than 360.
+        alpha : float
+            Angular offset, :math:`\\alpha`, of sector in degrees.
+            The offset is in the counter-clockwise direction
+            with respect to the first basis axis (+y, +z, or +x). Note that
+            negative values translate to an offset in the clockwise direction.
+        center : iterable of float
+            Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+            basis. Defaults to (0,0).
+
+        axis : {'x', 'y', 'z'}
+            Central axis of the cylinders defining the inner and outer surfaces of
+            the sector. Defaults to 'z'.
+
+        kwargs : dict
+            Keyword arguments passed to the :class:`Cylinder` and :class:`Plane` constructors.
+
+        Returns
+        -------
+        CylinderSector
+            CylinderSector with the given central angle at the given
+            offset.
+        """
+        if theta >= 360. or theta <= 0:
+            raise ValueError(f'theta must be less than 360 and greater than 0.')
+
+        theta1 = alpha
+        theta2 = alpha + theta
+
+        return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
 
     def __neg__(self):
         return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2

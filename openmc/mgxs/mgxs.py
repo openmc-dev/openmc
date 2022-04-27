@@ -1725,7 +1725,7 @@ class MGXS:
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.hdf5_key)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -2534,7 +2534,7 @@ class MatrixMGXS(MGXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.hdf5_key)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -5195,9 +5195,9 @@ class ScatterMatrixXS(MatrixMGXS):
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if self.correction != 'P0' and self.scatter_format == SCATTER_LEGENDRE:
-            rxn_type = '{0} (P{1})'.format(self.rxn_type, moment)
+            rxn_type = '{0} (P{1})'.format(self.hdf5_key, moment)
         else:
-            rxn_type = self.rxn_type
+            rxn_type = self.hdf5_key
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
@@ -5953,10 +5953,6 @@ class Chi(MGXS):
                  num_azimuthal=1):
         super().__init__(domain, domain_type, groups, by_nuclide, name,
                          num_polar, num_azimuthal)
-        if not prompt:
-            self._rxn_type = 'chi'
-        else:
-            self._rxn_type = 'chi-prompt'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
         self.prompt = prompt
@@ -6031,10 +6027,10 @@ class Chi(MGXS):
         cv.check_type('prompt', prompt, bool)
         self._prompt = prompt
         if not self.prompt:
-            self._rxn_type = 'nu-fission'
+            self._rxn_type = 'chi'
             self._hdf5_key = 'chi'
         else:
-            self._rxn_type = 'prompt-nu-fission'
+            self._rxn_type = 'chi-prompt'
             self._hdf5_key = 'chi-prompt'
 
     def get_homogenized_mgxs(self, other_mgxs):

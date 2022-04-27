@@ -605,7 +605,7 @@ class MDGXS(MGXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Delayed-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.hdf5_key)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -2477,7 +2477,7 @@ class MatrixMDGXS(MDGXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Delayed-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.hdf5_key)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 

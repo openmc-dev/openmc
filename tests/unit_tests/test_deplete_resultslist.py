@@ -58,12 +58,14 @@ def test_get_reaction_rate(res):
 def test_get_eigenvalue(res):
     """Tests evaluating eigenvalue."""
     t, k = res.get_eigenvalue()
+    t_min, k = res.get_eigenvalue(time_units='min')
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
     k_ref = [1.21409662, 1.16518654, 1.25357797, 1.22611968]
     u_ref = [0.0278795195, 0.0233141097, 0.0167899218, 0.0246734716]
 
     np.testing.assert_allclose(t, t_ref)
+    np.testing.assert_allclose(t_min * 60, t_ref)
     np.testing.assert_allclose(k[:, 0], k_ref)
     np.testing.assert_allclose(k[:, 1], u_ref)
 

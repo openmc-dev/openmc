@@ -6,7 +6,7 @@ from warnings import warn
 import h5py
 import numpy as np
 
-from .results import StepResult, VERSION_RESULTS
+from .stepresult import StepResult, VERSION_RESULTS
 import openmc.checkvalue as cv
 from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials

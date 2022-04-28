@@ -101,7 +101,7 @@ integrator.integrate()
 ###############################################################################
 
 # Open results file
-results = openmc.deplete.ResultsList.from_hdf5("depletion_results.h5")
+results = openmc.deplete.ResultsList("depletion_results.h5")
 
 # Obtain K_eff as a function of time
 time, keff = results.get_keff(time_units='d')

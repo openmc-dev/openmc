@@ -842,7 +842,7 @@ class Integrator(ABC):
         k = ufloat(res.k[0, 0], res.k[0, 1])
 
         # Scale reaction rates by ratio of source rates
-        rates *= source_rate / res.source_rate[0]
+        rates *= source_rate / res.source_rate
         return bos_conc, OperatorResult(k, rates)
 
     def _get_start_data(self):

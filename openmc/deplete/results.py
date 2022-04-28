@@ -69,6 +69,11 @@ class Results:
 
         self.data = None
 
+    def __repr__(self):
+        t = self.time[0]
+        dt = self.time[1] - self.time[0]
+        return f"<Results: t={t}, dt={dt}, source={self.source_rate}>"
+
     def __getitem__(self, pos):
         """Retrieves an item from results.
 
@@ -406,7 +411,7 @@ class Results:
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
-        results.source_rate = source_rate_dset[step, :]
+        results.source_rate = source_rate_dset[step, 0]
 
         if "depletion time" in handle:
             proc_time_dset = handle["/depletion time"]

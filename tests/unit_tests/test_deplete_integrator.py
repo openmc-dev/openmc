@@ -103,7 +103,7 @@ def test_results_save(run_in_tmpdir):
     Results.save(op, x2, op_result2, t2, 0, 1)
 
     # Load the files
-    res = ResultsList.from_hdf5("depletion_results.h5")
+    res = ResultsList("depletion_results.h5")
 
     for i in range(stages):
         for mat_i, mat in enumerate(burn_list):
@@ -176,8 +176,7 @@ def test_integrator(run_in_tmpdir, scheme):
 
     # get expected results
 
-    res = ResultsList.from_hdf5(
-        operator.output_dir / "depletion_results.h5")
+    res = ResultsList(operator.output_dir / "depletion_results.h5")
 
     t1, y1 = res.get_atoms("1", "1")
     t2, y2 = res.get_atoms("1", "2")

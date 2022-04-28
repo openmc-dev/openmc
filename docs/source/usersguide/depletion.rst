@@ -53,7 +53,7 @@ The coupled transport-depletion problem is executed, and once it is done a
 easy retrieval of k-effective, nuclide concentrations, and reaction rates over
 time::
 
-    results = openmc.deplete.ResultsList.from_hdf5("depletion_results.h5")
+    results = openmc.deplete.ResultsList("depletion_results.h5")
     time, keff = results.get_keff()
 
 Note that the coupling between the transport solver and the transmutation solver

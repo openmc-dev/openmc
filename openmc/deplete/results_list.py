@@ -29,9 +29,24 @@ def _get_time_as(seconds, units):
 class ResultsList(list):
     """A list of openmc.deplete.Results objects
 
-    It is recommended to use :meth:`from_hdf5` over
-    direct creation.
+    Parameters
+    ----------
+    filename : str
+        Path to depletion result file
+
     """
+    def __init__(self, filename):
+        with h5py.File(str(filename), "r") as fh:
+            cv.check_filetype_version(fh, 'depletion results', VERSION_RESULTS[0])
+            data = []
+
+            # Get number of results stored
+            n = fh["number"][...].shape[0]
+
+            for i in range(n):
+                data.append(Results.from_hdf5(fh, i))
+        super().__init__(data)
+
 
     @classmethod
     def from_hdf5(cls, filename):
@@ -46,17 +61,14 @@ class ResultsList(list):
         -------
         new : ResultsList
             New instance of depletion results
+
         """
-        with h5py.File(str(filename), "r") as fh:
-            cv.check_filetype_version(fh, 'depletion results', VERSION_RESULTS[0])
-            new = cls()
-
-            # Get number of results stored
-            n = fh["number"][...].shape[0]
-
-            for i in range(n):
-                new.append(Results.from_hdf5(fh, i))
-        return new
+        warn(
+            "The from_hdf5(...) method is no longer necessary and will be removed "
+            "in a future version of OpenMC. Use ResultsList(...) instead.",
+            FutureWarning
+        )
+        return cls(filename)
 
     def get_atoms(self, mat, nuc, nuc_units="atoms", time_units="s"):
         """Get number of nuclides over time from a single material

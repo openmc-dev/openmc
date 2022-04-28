@@ -12,7 +12,7 @@ from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
 from openmc.exceptions import DataError, InvalidArgumentError
 
-__all__ = ["ResultsList"]
+__all__ = ["Results"]
 
 
 def _get_time_as(seconds, units):
@@ -26,10 +26,10 @@ def _get_time_as(seconds, units):
         return seconds
 
 
-class ResultsList(list):
+class Results(list):
     """Results from a depletion simulation
 
-    The :class:`ResultsList` class acts as a list that stores the results from
+    The :class:`Results` class acts as a list that stores the results from
     each depletion step and provides extra methods for interrogating these
     results.
 
@@ -63,13 +63,13 @@ class ResultsList(list):
 
         Returns
         -------
-        ResultsList
+        Results
             New instance of depletion results
 
         """
         warn(
             "The from_hdf5(...) method is no longer necessary and will be removed "
-            "in a future version of OpenMC. Use ResultsList(...) instead.",
+            "in a future version of OpenMC. Use Results(...) instead.",
             FutureWarning
         )
         return cls(filename)

@@ -24,7 +24,7 @@ from openmc.checkvalue import check_type, check_greater_than
 from openmc.mpi import comm
 from .results import StepResult
 from .chain import Chain
-from .results_list import ResultsList
+from .results_list import Results
 from .pool import deplete
 
 
@@ -79,7 +79,7 @@ class TransportOperator(ABC):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
-    prev_results : ResultsList, optional
+    prev_results : Results, optional
         Results from a previous depletion calculation.
 
     Attributes
@@ -88,7 +88,7 @@ class TransportOperator(ABC):
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
-    prev_res : ResultsList or None
+    prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
     """
@@ -102,7 +102,7 @@ class TransportOperator(ABC):
         if prev_results is None:
             self.prev_res = None
         else:
-            check_type("previous results", prev_results, ResultsList)
+            check_type("previous results", prev_results, Results)
             self.prev_res = prev_results
 
     @property

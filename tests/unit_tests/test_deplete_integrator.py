@@ -16,7 +16,7 @@ import pytest
 
 from openmc.mpi import comm
 from openmc.deplete import (
-    ReactionRates, StepResult, ResultsList, OperatorResult, PredictorIntegrator,
+    ReactionRates, StepResult, Results, OperatorResult, PredictorIntegrator,
     CECMIntegrator, CF4Integrator, CELIIntegrator, EPCRK4Integrator,
     LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator, cram)
 
@@ -103,7 +103,7 @@ def test_results_save(run_in_tmpdir):
     StepResult.save(op, x2, op_result2, t2, 0, 1)
 
     # Load the files
-    res = ResultsList("depletion_results.h5")
+    res = Results("depletion_results.h5")
 
     for i in range(stages):
         for mat_i, mat in enumerate(burn_list):
@@ -176,7 +176,7 @@ def test_integrator(run_in_tmpdir, scheme):
 
     # get expected results
 
-    res = ResultsList(operator.output_dir / "depletion_results.h5")
+    res = Results(operator.output_dir / "depletion_results.h5")
 
     t1, y1 = res.get_atoms("1", "1")
     t2, y2 = res.get_atoms("1", "2")

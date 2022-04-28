@@ -49,11 +49,11 @@ one of these functions along with the timesteps and power level::
 
 The coupled transport-depletion problem is executed, and once it is done a
 ``depletion_results.h5`` file is written. The results can be analyzed using the
-:class:`openmc.deplete.ResultsList` class. This class has methods that allow for
+:class:`openmc.deplete.Results` class. This class has methods that allow for
 easy retrieval of k-effective, nuclide concentrations, and reaction rates over
 time::
 
-    results = openmc.deplete.ResultsList("depletion_results.h5")
+    results = openmc.deplete.Results("depletion_results.h5")
     time, keff = results.get_keff()
 
 Note that the coupling between the transport solver and the transmutation solver

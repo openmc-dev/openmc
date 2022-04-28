@@ -24,7 +24,7 @@ def test_restart_predictor_cecm(run_in_tmpdir):
     openmc.deplete.PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.Results(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -50,7 +50,7 @@ def test_restart_cecm_predictor(run_in_tmpdir):
     cecm.integrate()
 
     # Load the files
-    prev_res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.Results(op.output_dir / "depletion_results.h5")
 
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
@@ -73,7 +73,7 @@ def test_restart(run_in_tmpdir, scheme):
     bundle.solver(operator, [0.75], 1.0).integrate()
 
     # restart
-    prev_res = openmc.deplete.ResultsList(
+    prev_res = openmc.deplete.Results(
         operator.output_dir / "depletion_results.h5")
     operator = dummy_operator.DummyOperator(prev_res)
 
@@ -82,7 +82,7 @@ def test_restart(run_in_tmpdir, scheme):
 
     # compare results
 
-    results = openmc.deplete.ResultsList(
+    results = openmc.deplete.Results(
         operator.output_dir / "depletion_results.h5")
 
     _t, y1 = results.get_atoms("1", "1")

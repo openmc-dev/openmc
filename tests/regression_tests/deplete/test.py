@@ -77,8 +77,8 @@ def test_full(run_in_tmpdir, problem, multiproc):
         return
 
     # Load the reference/test results
-    res_test = openmc.deplete.ResultsList(path_test)
-    res_ref = openmc.deplete.ResultsList(path_reference)
+    res_test = openmc.deplete.Results(path_test)
+    res_ref = openmc.deplete.Results(path_reference)
 
     # Assert same mats
     for mat in res_ref[0].mat_to_ind:
@@ -139,7 +139,7 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
     """Checks openmc.Materials objects can be created from depletion results"""
     # Load the reference/test results
     path_reference = Path(__file__).with_name('test_reference.h5')
-    res_ref = openmc.deplete.ResultsList(path_reference)
+    res_ref = openmc.deplete.Results(path_reference)
 
     # Firstly need to export materials.xml file for the initial simulation state
     geometry, lower_left, upper_right = problem

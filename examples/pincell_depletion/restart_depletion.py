@@ -12,7 +12,7 @@ with openmc.StatePoint(statepoint) as sp:
     geometry = sp.summary.geometry
 
 # Load previous depletion results
-previous_results = openmc.deplete.ResultsList("depletion_results.h5")
+previous_results = openmc.deplete.Results("depletion_results.h5")
 
 ###############################################################################
 #                      Transport calculation settings
@@ -56,7 +56,7 @@ integrator.integrate()
 ###############################################################################
 
 # Open results file
-results = openmc.deplete.ResultsList("depletion_results.h5")
+results = openmc.deplete.Results("depletion_results.h5")
 
 # Obtain K_eff as a function of time
 time, keff = results.get_keff(time_units='d')

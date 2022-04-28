@@ -133,7 +133,7 @@ data, such as number densities and reaction rates for each material.
    AtomNumber
    OperatorResult
    ReactionRates
-   ResultsList
+   Results
    StepResult
 
 The following class and functions are used to solve the depletion equations,

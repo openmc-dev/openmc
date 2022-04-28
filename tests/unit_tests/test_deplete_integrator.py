@@ -16,7 +16,7 @@ import pytest
 
 from openmc.mpi import comm
 from openmc.deplete import (
-    ReactionRates, Results, ResultsList, OperatorResult, PredictorIntegrator,
+    ReactionRates, StepResult, ResultsList, OperatorResult, PredictorIntegrator,
     CECMIntegrator, CF4Integrator, CELIIntegrator, EPCRK4Integrator,
     LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator, cram)
 
@@ -99,8 +99,8 @@ def test_results_save(run_in_tmpdir):
                   for k, rates in zip(eigvl1, rate1)]
     op_result2 = [OperatorResult(ufloat(*k), rates)
                   for k, rates in zip(eigvl2, rate2)]
-    Results.save(op, x1, op_result1, t1, 0, 0)
-    Results.save(op, x2, op_result2, t2, 0, 1)
+    StepResult.save(op, x1, op_result1, t1, 0, 0)
+    StepResult.save(op, x2, op_result2, t2, 0, 1)
 
     # Load the files
     res = ResultsList("depletion_results.h5")

@@ -87,7 +87,7 @@ def test_get_steps(unit):
         conversion_to_seconds = 1
 
     for ix in range(times.size):
-        res = openmc.deplete.Results()
+        res = openmc.deplete.StepResult()
         res.time = times[ix:ix + 1] * conversion_to_seconds
         results.append(res)
 

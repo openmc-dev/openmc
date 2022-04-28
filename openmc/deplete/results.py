@@ -16,10 +16,10 @@ from .reaction_rates import ReactionRates
 VERSION_RESULTS = (1, 1)
 
 
-__all__ = ["Results"]
+__all__ = ["StepResult"]
 
 
-class Results:
+class StepResult:
     """Output of a depletion run
 
     Attributes
@@ -72,7 +72,7 @@ class Results:
     def __repr__(self):
         t = self.time[0]
         dt = self.time[1] - self.time[0]
-        return f"<Results: t={t}, dt={dt}, source={self.source_rate}>"
+        return f"<StepResult: t={t}, dt={dt}, source={self.source_rate}>"
 
     def __getitem__(self, pos):
         """Retrieves an item from results.
@@ -139,7 +139,7 @@ class Results:
         return self.data.shape[0]
 
     def allocate(self, volume, nuc_list, burn_list, full_burn_list, stages):
-        """Allocates memory of Results.
+        """Allocate memory for depletion step data
 
         Parameters
         ----------
@@ -177,10 +177,10 @@ class Results:
 
         Returns
         -------
-        Results
+        StepResult
             New results object
         """
-        new = Results()
+        new = StepResult()
         new.volume = {lm: self.volume[lm] for lm in local_materials}
         new.mat_to_ind = {mat: idx for (idx, mat) in enumerate(local_materials)}
 
@@ -485,7 +485,7 @@ class Results:
         stages = len(x)
 
         # Create results
-        results = Results()
+        results = StepResult()
         results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages)
 
         n_mat = len(burn_list)

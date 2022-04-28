@@ -22,7 +22,7 @@ from uncertainties import ufloat
 from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.mpi import comm
-from .results import Results
+from .results import StepResult
 from .chain import Chain
 from .results_list import ResultsList
 from .pool import deplete
@@ -889,7 +889,7 @@ class Integrator(ABC):
                 # Remove actual EOS concentration for next step
                 conc = conc_list.pop()
 
-                Results.save(self.operator, conc_list, res_list, [t, t + dt],
+                StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
                              source_rate, self._i_res + i, proc_time)
 
                 t += dt
@@ -901,7 +901,7 @@ class Integrator(ABC):
             if output and final_step:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             res_list = [self.operator(conc, source_rate if final_step else 0.0)]
-            Results.save(self.operator, [conc], res_list, [t, t],
+            StepResult.save(self.operator, [conc], res_list, [t, t],
                          source_rate, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(len(self) + self._i_res)
 
@@ -1048,13 +1048,13 @@ class SIIntegrator(Integrator):
                 # Remove actual EOS concentration for next step
                 conc = conc_list.pop()
 
-                Results.save(self.operator, conc_list, res_list, [t, t + dt],
+                StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
                              p, self._i_res + i, proc_time)
 
                 t += dt
 
             # No final simulation for SIE, use last iteration results
-            Results.save(self.operator, [conc], [res_list[-1]], [t, t],
+            StepResult.save(self.operator, [conc], [res_list[-1]], [t, t],
                          p, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(self._i_res + len(self))
 

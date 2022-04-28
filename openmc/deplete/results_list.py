@@ -6,7 +6,7 @@ from warnings import warn
 import h5py
 import numpy as np
 
-from .results import Results, VERSION_RESULTS
+from .results import StepResult, VERSION_RESULTS
 import openmc.checkvalue as cv
 from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
@@ -27,7 +27,11 @@ def _get_time_as(seconds, units):
 
 
 class ResultsList(list):
-    """A list of openmc.deplete.Results objects
+    """Results from a depletion simulation
+
+    The :class:`ResultsList` class acts as a list that stores the results from
+    each depletion step and provides extra methods for interrogating these
+    results.
 
     Parameters
     ----------
@@ -44,7 +48,7 @@ class ResultsList(list):
             n = fh["number"][...].shape[0]
 
             for i in range(n):
-                data.append(Results.from_hdf5(fh, i))
+                data.append(StepResult.from_hdf5(fh, i))
         super().__init__(data)
 
 
@@ -59,7 +63,7 @@ class ResultsList(list):
 
         Returns
         -------
-        new : ResultsList
+        ResultsList
             New instance of depletion results
 
         """

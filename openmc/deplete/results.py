@@ -50,7 +50,7 @@ class Results:
         Number of stages in simulation.
     data : numpy.ndarray
         Atom quantity, stored by stage, mat, then by nuclide.
-    proc_time: int
+    proc_time : int
         Average time spent depleting a material across all
         materials and processes
 

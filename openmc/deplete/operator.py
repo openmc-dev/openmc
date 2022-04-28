@@ -725,7 +725,7 @@ class Operator(TransportOperator):
         rates.fill(0.0)
 
         # Get k and uncertainty
-        k_combined = ufloat(*openmc.lib.keff())
+        keff = ufloat(*openmc.lib.keff())
 
         # Extract tally bins
         nuclides = self._rate_helper.nuclides
@@ -779,7 +779,7 @@ class Operator(TransportOperator):
         # Store new fission yields on the chain
         self.chain.fission_yields = fission_yields
 
-        return OperatorResult(k_combined, rates)
+        return OperatorResult(keff, rates)
 
     def _get_nuclides_with_data(self, cross_sections):
         """Loads cross_sections.xml file to find nuclides with neutron data"""

@@ -1,6 +1,7 @@
 import numbers
 import bisect
 import math
+from warnings import warn
 
 import h5py
 import numpy as np
@@ -165,7 +166,7 @@ class ResultsList(list):
 
         return times, rates
 
-    def get_eigenvalue(self, time_units='s'):
+    def get_keff(self, time_units='s'):
         """Evaluates the eigenvalue from a results list.
 
         Parameters
@@ -197,14 +198,19 @@ class ResultsList(list):
         times = _get_time_as(times, time_units)
         return times, eigenvalues
 
+    def get_eigenvalue(self, time_units='s'):
+        warn("The get_eigenvalue(...) function has been renamed get_keff and "
+             "will be removed in a future version of OpenMC.", FutureWarning)
+        return self.get_keff(time_units)
+
+
     def get_depletion_time(self):
         """Return an array of the average time to deplete a material
 
         .. note::
-
-            Will have one fewer row than number of other methods,
-            like :meth:`get_eigenvalues`, because no depletion
-            is performed at the final transport stage
+            The return value will have one fewer values than several other
+            methods, such as :meth:`get_keff`, because no depletion is performed
+            at the final transport stage.
 
         Returns
         -------

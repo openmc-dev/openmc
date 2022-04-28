@@ -55,10 +55,10 @@ def test_get_reaction_rate(res):
     np.testing.assert_allclose(r, np.array(n_ref) * xs_ref)
 
 
-def test_get_eigenvalue(res):
-    """Tests evaluating eigenvalue."""
-    t, k = res.get_eigenvalue()
-    t_min, k = res.get_eigenvalue(time_units='min')
+def test_get_keff(res):
+    """Tests evaluating keff."""
+    t, k = res.get_keff()
+    t_min, k = res.get_keff(time_units='min')
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
     k_ref = [1.21409662, 1.16518654, 1.25357797, 1.22611968]

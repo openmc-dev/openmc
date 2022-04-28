@@ -112,14 +112,11 @@ class CylinderSector(CompositeSurface):
                  axis='z',
                  **kwargs):
 
-        if r2 <= r1 * sqrt(2):
+        if r2 <= r1:
             raise ValueError(f'r2 must be greater than r1.')
 
         if theta2 <= theta1:
             raise ValueError(f'theta2 must be greater than theta1.')
-
-        self._theta1 = theta1
-        self._theta2 = theta2
 
         phi1 = pi / 180 * theta1
         phi2 = pi / 180 * theta2
@@ -164,10 +161,10 @@ class CylinderSector(CompositeSurface):
                          center = (0.,0.),
                          axis='z',
                          **kwargs):
-        """Alternate constructor for :attr:`CylinderSector`. Returns an
-        :attr:`CylinderSector` object based on a central angle :math:`\\theta`
-        and an angular offset :math:`\\alpha`. Note that
-        :math:`\\theta_1 = \\alpha` and :math:`\\theta_2 = \\alpha + \\theta`.
+        r"""Alternate constructor for :class:`CylinderSector`. Returns a
+        :class:`CylinderSector` object based on a central angle :math:`\theta`
+        and an angular offset :math:`\alpha`. Note that
+        :math:`\theta_1 = \alpha` and :math:`\theta_2 = \alpha + \theta`.
 
         Parameters
         ----------
@@ -176,22 +173,20 @@ class CylinderSector(CompositeSurface):
         r2 : float
             Outer radius of sector. Must be greater than r1.
         theta : float
-            Central angle, :math:`\\theta`, of the sector in degrees. Must be
+            Central angle, :math:`\theta`, of the sector in degrees. Must be
             greater that 0 and less than 360.
         alpha : float
-            Angular offset, :math:`\\alpha`, of sector in degrees.
+            Angular offset, :math:`\alpha`, of sector in degrees.
             The offset is in the counter-clockwise direction
             with respect to the first basis axis (+y, +z, or +x). Note that
             negative values translate to an offset in the clockwise direction.
         center : iterable of float
             Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
             basis. Defaults to (0,0).
-
         axis : {'x', 'y', 'z'}
             Central axis of the cylinders defining the inner and outer surfaces of
             the sector. Defaults to 'z'.
-
-        kwargs : dict
+        **kwargs : dict
             Keyword arguments passed to the :class:`Cylinder` and :class:`Plane` constructors.
 
         Returns

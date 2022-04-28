@@ -220,14 +220,19 @@ def test_cylinder_sector_from_theta_alpha():
     d = (r2 - r1) / 2
     theta = 120.
     alpha = -60.
-    s = openmc.model.CylinderSector.from_theta_alpha(r1,
+    theta1 = alpha
+    theta2 = alpha + theta
+    s = openmc.model.CylinderSector(r1, r2, theta1, theta2)
+    s_alt = openmc.model.CylinderSector.from_theta_alpha(r1,
                                                      r2,
                                                      theta,
                                                      alpha)
 
     # Check that the angles are correct
-    assert s._theta1 == alpha
-    assert s._theta2 == alpha + theta
+    assert s.plane1.coefficients == s_alt.plane1.coefficients
+    assert s.plane2.coefficients == s_alt.plane2.coefficients
+    assert s.inner_cyl.coefficients == s_alt.inner_cyl.coefficients
+    assert s.outer_cyl.coefficients == s_alt.outer_cyl.coefficients
 
     # Check invalid sector width
     with pytest.raises(ValueError):

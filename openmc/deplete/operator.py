@@ -25,7 +25,7 @@ from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .chain import _find_chain_file
 from .reaction_rates import ReactionRates
-from .results_list import Results
+from .results import Results
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
     FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,

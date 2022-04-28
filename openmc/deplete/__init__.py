@@ -11,7 +11,7 @@ from .operator import *
 from .reaction_rates import *
 from .atom_number import *
 from .stepresult import *
-from .results_list import *
+from .results import *
 from .integrators import *
 from . import abc
 from . import cram

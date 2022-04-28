@@ -24,7 +24,7 @@ from openmc.checkvalue import check_type, check_greater_than
 from openmc.mpi import comm
 from .stepresult import StepResult
 from .chain import Chain
-from .results_list import Results
+from .results import Results
 from .pool import deplete
 
 

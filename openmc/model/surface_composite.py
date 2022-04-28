@@ -81,12 +81,12 @@ class CylinderSector(CompositeSurface):
     center : iterable of float
        Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
        basis. Defaults to (0,0).
-
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces of
         the sector. Defaults to 'z'.
-    kwargs : dict
-            Keyword arguments passed to the :class:`Cylinder` and :class:`Plane` constructors.
+    **kwargs : dict
+        Keyword arguments passed to the :class:`Cylinder` and
+        :class:`Plane` constructors.
 
     Attributes
     ----------
@@ -184,10 +184,11 @@ class CylinderSector(CompositeSurface):
             Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
             basis. Defaults to (0,0).
         axis : {'x', 'y', 'z'}
-            Central axis of the cylinders defining the inner and outer surfaces of
-            the sector. Defaults to 'z'.
+            Central axis of the cylinders defining the inner and outer surfaces
+            of the sector. Defaults to 'z'.
         **kwargs : dict
-            Keyword arguments passed to the :class:`Cylinder` and :class:`Plane` constructors.
+            Keyword arguments passed to the :class:`Cylinder` and
+            :class:`Plane` constructors.
 
         Returns
         -------

@@ -58,6 +58,7 @@ def test_from_geometry():
         plot = openmc.Plot.from_geometry(geom, basis)
         assert plot.origin == pytest.approx((0., 0., 0.))
         assert plot.width == pytest.approx((width, width))
+        assert plot.basis == basis
 
 
 def test_highlight_domains():

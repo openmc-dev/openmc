@@ -512,6 +512,7 @@ class Plot(IDManagerMixin):
         plot.origin = np.insert((lower_left + upper_right)/2,
                                 slice_index, slice_coord)
         plot.width = upper_right - lower_left
+        plot.basis = basis
         return plot
 
     def colorize(self, geometry, seed=1):

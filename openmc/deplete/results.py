@@ -10,9 +10,9 @@ from .stepresult import StepResult, VERSION_RESULTS
 import openmc.checkvalue as cv
 from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
-from openmc.exceptions import DataError, InvalidArgumentError
+from openmc.exceptions import DataError
 
-__all__ = ["Results"]
+__all__ = ["Results", "ResultsList"]
 
 
 def _get_time_as(seconds, units):
@@ -68,8 +68,8 @@ class Results(list):
 
         """
         warn(
-            "The from_hdf5(...) method is no longer necessary and will be removed "
-            "in a future version of OpenMC. Use Results(...) instead.",
+            "The ResultsList.from_hdf5(...) method is no longer necessary and will "
+            "be removed in a future version of OpenMC. Use Results(...) instead.",
             FutureWarning
         )
         return cls(filename)
@@ -410,3 +410,7 @@ class Results(list):
                         mat.add_nuclide(nuc, atoms_per_barn_cm)
 
         return mat_file
+
+
+# Retain deprecated name for the time being
+ResultsList = Results

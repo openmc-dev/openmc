@@ -877,7 +877,7 @@ class IncidentNeutron(EqualityMixin):
 
                 if f is not None:
                     # Replace fission KERMA with (EFR + EB)*sigma_f
-                    fission = data.reactions[18].xs[temp]
+                    fission = data[18].xs[temp]
                     kerma_fission = get_file3_xs(ev, 318, E)
                     kerma.y = kerma.y - kerma_fission + (
                         f.fragments(E) + f.betas(E)) * fission(E)

@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import pi
 from numbers import Real, Integral
@@ -61,6 +61,7 @@ class MeshBase(IDManagerMixin, ABC):
         pass
 
     @property
+    @abstractmethod
     def vertices(self):
         """Return coordinates of mesh vertices.
 
@@ -74,6 +75,7 @@ class MeshBase(IDManagerMixin, ABC):
         return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
 
     @property
+    @abstractmethod
     def centroids(self):
         """Return coordinates of mesh element centroids.
 
@@ -84,7 +86,7 @@ class MeshBase(IDManagerMixin, ABC):
             coordinates with a shape equal to (dim1, ..., dimn, ndim).
 
         """
-        ndim = len(self.dimension)
+        ndim = self.n_dimension
         vertices = self.vertices
         s0 = (slice(0, -1),)*ndim + (slice(None),)
         s1 = (slice(1, None),)*ndim + (slice(None),)
@@ -105,7 +107,7 @@ class MeshBase(IDManagerMixin, ABC):
         return string
 
     def _volume_dim_check(self):
-        if len(self.dimension) != 3 or \
+        if self.n_dimension != 3 or \
            any([d == 0 for d in self.dimension]):
             raise RuntimeError(f'Mesh {self.id} is not 3D. '
                                'Volumes cannot be provided.')
@@ -509,7 +511,7 @@ class RegularMesh(MeshBase):
         for entry in bc:
             cv.check_value('bc', entry, _BOUNDARY_TYPES)
 
-        n_dim = len(self.dimension)
+        n_dim = self.n_dimension
 
         # Build the cell which will contain the lattice
         xplanes = [openmc.XPlane(self.lower_left[0], boundary_type=bc[0]),
@@ -1227,7 +1229,7 @@ class UnstructuredMesh(MeshBase):
         (1.0, 1.0, 1.0), ...]
     """
     def __init__(self, filename, library, mesh_id=None, name='',
-                        length_multiplier=1.0):
+                 length_multiplier=1.0):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
@@ -1321,6 +1323,19 @@ class UnstructuredMesh(MeshBase):
                       length_multiplier,
                       Real)
         self._length_multiplier = length_multiplier
+
+    @property
+    def dimension(self):
+        return self.n_elements
+
+    @property
+    def n_dimension(self):
+        return 3
+
+    @property
+    def vertices(self):
+        raise NotImplementedError("Vertices for UnstructuredMesh objects are "
+                                  "not yet available")
 
     def __repr__(self):
         string = super().__repr__()
@@ -1452,7 +1467,7 @@ class UnstructuredMesh(MeshBase):
         subelement.text = self.filename
 
         if self._length_multiplier != 1.0:
-          element.set("length_multiplier", str(self.length_multiplier))
+            element.set("length_multiplier", str(self.length_multiplier))
 
         return element
 

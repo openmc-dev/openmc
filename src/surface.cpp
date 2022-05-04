@@ -1026,9 +1026,11 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
   double c1p = 2 * four_A2 * (u1 * x1 + u2 * x2);
   double c0p = four_A2 * (x1 * x1 + x2 * x2);
 
-  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
+  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0. If the point
+  // is coincident, the 'e' coefficient should be zero. Explicitly setting it to
+  // zero helps avoid numerical issues below with root finding.
   double coeff[5];
-  coeff[0] = c0 * c0 - c0p;
+  coeff[0] = coincident ? 0.0 : c0 * c0 - c0p;
   coeff[1] = 2 * c0 * c1 - c1p;
   coeff[2] = c1 * c1 + 2 * c0 * c2 - c2p;
   coeff[3] = 2 * c1 * c2;

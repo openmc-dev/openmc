@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
-from functools import reduce
 from numbers import Real
 from xml.etree import ElementTree as ET
 

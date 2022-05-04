@@ -61,7 +61,6 @@ class MeshBase(IDManagerMixin, ABC):
         pass
 
     @property
-    @abstractmethod
     def vertices(self):
         """Return coordinates of mesh vertices.
 
@@ -75,7 +74,6 @@ class MeshBase(IDManagerMixin, ABC):
         return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
 
     @property
-    @abstractmethod
     def centroids(self):
         """Return coordinates of mesh element centroids.
 

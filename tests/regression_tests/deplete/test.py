@@ -115,16 +115,16 @@ def test_full(run_in_tmpdir, problem, multiproc):
 
     # Compare statepoint files with depletion results
 
-    t_test, k_test = res_test.get_eigenvalue()
-    t_ref, k_ref = res_ref.get_eigenvalue()
+    t_test, k_test = res_test.get_keff()
+    t_ref, k_ref = res_ref.get_keff()
     k_state = np.empty_like(k_ref)
 
     n_tallies = np.empty(N + 1, dtype=int)
 
     # Get statepoint files for all BOS points and EOL
     for n in range(N + 1):
-        statepoint = openmc.StatePoint("openmc_simulation_n{}.h5".format(n))
-        k_n = statepoint.k_combined
+        statepoint = openmc.StatePoint(f"openmc_simulation_n{n}.h5")
+        k_n = statepoint.keff
         k_state[n] = [k_n.nominal_value, k_n.std_dev]
         n_tallies[n] = len(statepoint.tallies)
     # Look for exact match pulling from statepoint and depletion_results

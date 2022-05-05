@@ -293,14 +293,14 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # C API execution modes and ensuring they give the same result.
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
-        cli_keff = sp.k_combined
+        cli_keff = sp.keff
         cli_flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
         cli_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 
     test_model.init_lib(output=False, intracomm=mpi_intracomm)
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
-        lib_keff = sp.k_combined
+        lib_keff = sp.keff
         lib_flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
         lib_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 

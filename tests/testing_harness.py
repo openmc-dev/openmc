@@ -92,7 +92,7 @@ class TestHarness:
                 # Write out k-combined.
                 outstr += 'k-combined:\n'
                 form = '{0:12.6E} {1:12.6E}\n'
-                outstr += form.format(sp.k_combined.n, sp.k_combined.s)
+                outstr += form.format(sp.keff.n, sp.keff.s)
 
             # Write out tally data.
             for i, tally_ind in enumerate(sp.tallies):

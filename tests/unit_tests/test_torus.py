@@ -24,7 +24,7 @@ def get_torus_keff(cls, R, r, center=(0, 0, 0)):
 
     sp_path = model.run()
     with openmc.StatePoint(sp_path) as sp:
-        return sp.k_combined
+        return sp.keff
 
 
 @pytest.mark.parametrize("R,r", [(2.1, 2.0), (3.0, 1.0)])

@@ -147,7 +147,7 @@ def test_interpolation(model, method, temperature, fission_expected):
         assert abs(nu_fission_mean - nu*fission_expected) < 3*nu_fission_unc
 
         # Check that k-effective value matches expected
-        k = sp.k_combined
+        k = sp.keff
         if isnan(k.s):
             assert k.n == pytest.approx(nu*fission_expected)
         else:

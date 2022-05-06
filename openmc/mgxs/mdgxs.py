@@ -124,12 +124,12 @@ class MDGXS(MGXS):
         The name of this MGXS type, to be used when printing and
         indexing in an HDF5 data store
 
-        .. versionadded:: 0.14
+        .. versionadded:: 0.13.1
     hdf5_key : str
         The key used to index multi-group cross sections in an HDF5 data store.
         This will be replaced by mgxs_type in the future.
 
-        .. deprecated:: 0.13.0
+        .. deprecated:: 0.13.1
 
     """
 
@@ -1012,12 +1012,12 @@ class ChiDelayed(MDGXS):
         The name of this MGXS type, to be used when printing and
         indexing in an HDF5 data store
 
-        .. versionadded:: 0.14
+        .. versionadded:: 0.13.1
     hdf5_key : str
         The key used to index multi-group cross sections in an HDF5 data store.
         This will be replaced by mgxs_type in the future.
 
-        .. deprecated:: 0.13.0
+        .. deprecated:: 0.13.1
 
     """
 
@@ -1536,12 +1536,12 @@ class DelayedNuFissionXS(MDGXS):
         The name of this MGXS type, to be used when printing and
         indexing in an HDF5 data store
 
-        .. versionadded:: 0.14
+        .. versionadded:: 0.13.1
     hdf5_key : str
         The key used to index multi-group cross sections in an HDF5 data store.
         This will be replaced by mgxs_type in the future.
 
-        .. deprecated:: 0.13.0
+        .. deprecated:: 0.13.1
 
     """
 
@@ -1680,12 +1680,12 @@ class Beta(MDGXS):
         The name of this MGXS type, to be used when printing and
         indexing in an HDF5 data store
 
-        .. versionadded:: 0.14
+        .. versionadded:: 0.13.1
     hdf5_key : str
         The key used to index multi-group cross sections in an HDF5 data store.
         This will be replaced by mgxs_type in the future.
 
-        .. deprecated:: 0.13.0
+        .. deprecated:: 0.13.1
 
     """
 
@@ -1878,12 +1878,12 @@ class DecayRate(MDGXS):
         The name of this MGXS type, to be used when printing and
         indexing in an HDF5 data store
 
-        .. versionadded:: 0.14
+        .. versionadded:: 0.13.1
     hdf5_key : str
         The key used to index multi-group cross sections in an HDF5 data store.
         This will be replaced by mgxs_type in the future.
 
-        .. deprecated:: 0.13.0
+        .. deprecated:: 0.13.1
 
     """
 
@@ -2196,12 +2196,12 @@ class MatrixMDGXS(MDGXS):
         The name of this MGXS type, to be used when printing and
         indexing in an HDF5 data store
 
-        .. versionadded:: 0.14
+        .. versionadded:: 0.13.1
     hdf5_key : str
         The key used to index multi-group cross sections in an HDF5 data store.
         This will be replaced by mgxs_type in the future.
 
-        .. deprecated:: 0.13.0
+        .. deprecated:: 0.13.1
 
     """
 
@@ -2800,12 +2800,12 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         The name of this MGXS type, to be used when printing and
         indexing in an HDF5 data store
 
-        .. versionadded:: 0.14
+        .. versionadded:: 0.13.1
     hdf5_key : str
         The key used to index multi-group cross sections in an HDF5 data store.
         This will be replaced by mgxs_type in the future.
 
-        .. deprecated:: 0.13.0
+        .. deprecated:: 0.13.1
 
     """
 
@@ -2815,6 +2815,6 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         super().__init__(domain, domain_type, energy_groups, delayed_groups,
                          by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'delayed-nu-fission'
-        self._hdf5_key = 'delayed-nu-fission matrix'
+        self._mgxs_type = 'delayed-nu-fission matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']

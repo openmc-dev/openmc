@@ -39,16 +39,17 @@ class Results(list):
         Path to depletion result file
 
     """
-    def __init__(self, filename):
-        with h5py.File(str(filename), "r") as fh:
-            cv.check_filetype_version(fh, 'depletion results', VERSION_RESULTS[0])
-            data = []
+    def __init__(self, filename=None):
+        data = []
+        if filename is not None:
+            with h5py.File(str(filename), "r") as fh:
+                cv.check_filetype_version(fh, 'depletion results', VERSION_RESULTS[0])
 
-            # Get number of results stored
-            n = fh["number"][...].shape[0]
+                # Get number of results stored
+                n = fh["number"][...].shape[0]
 
-            for i in range(n):
-                data.append(StepResult.from_hdf5(fh, i))
+                for i in range(n):
+                    data.append(StepResult.from_hdf5(fh, i))
         super().__init__(data)
 
 

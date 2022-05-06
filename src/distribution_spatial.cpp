@@ -172,10 +172,14 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 {
   double r = r_->sample(seed);
   double theta = theta_->sample(seed);
+  // To distribute the points uniformly in the sphere, we must ensure that
+  // cos(theta) and not theta is uniformly distributed.
+  // This is done with theta_cos.
+  double theta_cos = std::acos((theta / (0.5 * PI)) - 1);
   double phi = phi_->sample(seed);
-  double x = r * sin(theta) * cos(phi) + origin_.x;
-  double y = r * sin(theta) * sin(phi) + origin_.y;
-  double z = r * cos(theta) + origin_.z;
+  double x = r * sin(theta_cos) * cos(phi) + origin_.x;
+  double y = r * sin(theta_cos) * sin(phi) + origin_.y;
+  double z = r * cos(theta_cos) + origin_.z;
   return {x, y, z};
 }
 

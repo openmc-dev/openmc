@@ -51,6 +51,7 @@ src/CMakeFiles/
 src/bin/
 src/cmake_install.cmake
 src/install_manifest.txt
+include/openmc/version.h
 
 # Nuclear data
 scripts/nndc

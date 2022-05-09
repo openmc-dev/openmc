@@ -375,8 +375,8 @@ class SphericalIndependent(Spatial):
     r"""Spatial distribution represented in spherical coordinates.
 
     This distribution allows one to specify coordinates whose :math:`r`,
-    :math:`\theta`, and :math:`\phi` components are sampled independently from
-    one another and centered on the coordinates (x0, y0, z0).
+    :math:`\cos_theta`, and :math:`\phi` components are sampled independently
+    from one another and centered on the coordinates (x0, y0, z0).
 
     .. versionadded: 0.12
 
@@ -385,9 +385,9 @@ class SphericalIndependent(Spatial):
     r : openmc.stats.Univariate
         Distribution of r-coordinates in a reference frame specified by
         the origin parameter
-    theta : openmc.stats.Univariate
-        Distribution of theta-coordinates (angle relative to the z-axis) in a
-        reference frame specified by the origin parameter
+    cos_theta : openmc.stats.Univariate
+        Distribution of the cosinus of the theta-coordinates (angle relative to
+        the z-axis) in a reference frame specified by the origin parameter
     phi : openmc.stats.Univariate
         Distribution of phi-coordinates (azimuthal angle) in a reference frame
         specified by the origin parameter
@@ -487,10 +487,10 @@ class SphericalIndependent(Spatial):
 
         """
         r = Univariate.from_xml_element(elem.find('r'))
-        theta = Univariate.from_xml_element(elem.find('theta'))
+        cos_theta = Univariate.from_xml_element(elem.find('cos_theta'))
         phi = Univariate.from_xml_element(elem.find('phi'))
         origin = [float(x) for x in elem.get('origin').split()]
-        return cls(r, theta, phi, origin=origin)
+        return cls(r, cos_theta, phi, origin=origin)
 
 
 class CylindricalIndependent(Spatial):

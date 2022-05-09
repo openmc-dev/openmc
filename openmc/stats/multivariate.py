@@ -399,9 +399,9 @@ class SphericalIndependent(Spatial):
     ----------
     r : openmc.stats.Univariate
         Distribution of r-coordinates in the local reference frame
-    theta : openmc.stats.Univariate
-        Distribution of theta-coordinates (angle relative to the z-axis) in the
-        local reference frame
+    cos_theta : openmc.stats.Univariate
+        Distribution of the cosinus of the theta-coordinates (angle relative to
+        the z-axis) in the local reference frame
     phi : openmc.stats.Univariate
         Distribution of phi-coordinates (azimuthal angle) in the local
         reference frame
@@ -411,9 +411,9 @@ class SphericalIndependent(Spatial):
 
     """
 
-    def __init__(self, r, theta, phi, origin=(0.0, 0.0, 0.0)):
+    def __init__(self, r, cos_theta, phi, origin=(0.0, 0.0, 0.0)):
         self.r = r
-        self.theta = theta
+        self.cos_theta = cos_theta
         self.phi = phi
         self.origin = origin
 
@@ -422,8 +422,8 @@ class SphericalIndependent(Spatial):
         return self._r
 
     @property
-    def theta(self):
-        return self._theta
+    def cos_theta(self):
+        return self._cos_theta
 
     @property
     def phi(self):
@@ -438,10 +438,10 @@ class SphericalIndependent(Spatial):
         cv.check_type('r coordinate', r, Univariate)
         self._r = r
 
-    @theta.setter
-    def theta(self, theta):
-        cv.check_type('theta coordinate', theta, Univariate)
-        self._theta = theta
+    @cos_theta.setter
+    def cos_theta(self, cos_theta):
+        cv.check_type('cos_theta coordinate', cos_theta, Univariate)
+        self._cos_theta = cos_theta
 
     @phi.setter
     def phi(self, phi):
@@ -466,7 +466,7 @@ class SphericalIndependent(Spatial):
         element = ET.Element('space')
         element.set('type', 'spherical')
         element.append(self.r.to_xml_element('r'))
-        element.append(self.theta.to_xml_element('theta'))
+        element.append(self.cos_theta.to_xml_element('cos_theta'))
         element.append(self.phi.to_xml_element('phi'))
         element.set("origin", ' '.join(map(str, self.origin)))
         return element

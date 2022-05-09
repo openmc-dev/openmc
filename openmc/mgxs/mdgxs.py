@@ -125,11 +125,6 @@ class MDGXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -1013,11 +1008,6 @@ class ChiDelayed(MDGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -1537,11 +1527,6 @@ class DelayedNuFissionXS(MDGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -1681,11 +1666,6 @@ class Beta(MDGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -1879,11 +1859,6 @@ class DecayRate(MDGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -2197,11 +2172,6 @@ class MatrixMDGXS(MDGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -2801,11 +2771,6 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 

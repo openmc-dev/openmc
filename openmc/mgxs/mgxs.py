@@ -242,11 +242,6 @@ class MGXS:
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -622,14 +617,6 @@ class MGXS:
             return self._mgxs_type
         else:
             return self._rxn_type
-
-    @property
-    def hdf5_key(self):
-        warnings.warn(
-            f'The {type(self).__name__}.hdf5_key attribute will be removed '
-            f'in the future! Use {type(self).__name__}.mgxs_type instead',
-            FutureWarning)
-        return self.mgxs_type
 
     @name.setter
     def name(self, name):
@@ -2259,11 +2246,6 @@ class MatrixMGXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
     @property
@@ -2761,11 +2743,6 @@ class TotalXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -2907,11 +2884,6 @@ class TransportXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -3153,11 +3125,6 @@ class DiffusionCoefficient(TransportXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -3344,11 +3311,6 @@ class AbsorptionXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -3478,11 +3440,6 @@ class CaptureXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -3639,11 +3596,6 @@ class FissionXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -3815,11 +3767,6 @@ class KappaFissionXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -3954,11 +3901,6 @@ class ScatterXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -4106,11 +4048,6 @@ class ArbitraryXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -4246,11 +4183,6 @@ class ArbitraryMatrixXS(MatrixMGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -4456,11 +4388,6 @@ class ScatterMatrixXS(MatrixMGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -5551,11 +5478,6 @@ class MultiplicityMatrixXS(MatrixMGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -5732,11 +5654,6 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -5913,11 +5830,6 @@ class NuFissionMatrixXS(MatrixMGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -6079,11 +5991,6 @@ class Chi(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -6610,11 +6517,6 @@ class InverseVelocity(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
 
     """
 
@@ -6737,11 +6639,6 @@ class MeshSurfaceMGXS(MGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
@@ -7131,11 +7028,6 @@ class Current(MeshSurfaceMGXS):
         indexing in an HDF5 data store
 
         .. versionadded:: 0.13.1
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store.
-        This will be replaced by mgxs_type in the future.
-
-        .. deprecated:: 0.13.1
     """
 
     def __init__(self, domain=None, domain_type=None,

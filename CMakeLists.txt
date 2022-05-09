@@ -394,7 +394,8 @@ target_include_directories(libopenmc
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
 # Add include directory for configured version file
-target_include_directories(libopenmc PRIVATE ${CMAKE_BINARY_DIR}/include)
+target_include_directories(libopenmc
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)

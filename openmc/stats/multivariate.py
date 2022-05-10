@@ -386,7 +386,7 @@ class SphericalIndependent(Spatial):
         Distribution of r-coordinates in a reference frame specified by
         the origin parameter
     cos_theta : openmc.stats.Univariate
-        Distribution of the cosinus of the theta-coordinates (angle relative to
+        Distribution of the cosine of the theta-coordinates (angle relative to
         the z-axis) in a reference frame specified by the origin parameter
     phi : openmc.stats.Univariate
         Distribution of phi-coordinates (azimuthal angle) in a reference frame

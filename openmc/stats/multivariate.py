@@ -208,7 +208,6 @@ class Monodirectional(UnitSphere):
 
     """
 
-
     def __init__(self, reference_uvw=[1., 0., 0.]):
         super().__init__(reference_uvw)
 
@@ -272,6 +271,8 @@ class Spatial(ABC):
             return SphericalIndependent.from_xml_element(elem)
         elif distribution == 'box' or distribution == 'fission':
             return Box.from_xml_element(elem)
+        elif distribution == 'sphericalshell':
+            return SphericalShell.from_xml_element(elem)
         elif distribution == 'point':
             return Point.from_xml_element(elem)
 
@@ -375,7 +376,7 @@ class SphericalIndependent(Spatial):
     r"""Spatial distribution represented in spherical coordinates.
 
     This distribution allows one to specify coordinates whose :math:`r`,
-    :math:`\theta`, and :math:`\phi` components are sampled independently
+    :math:`\cos_theta`, and :math:`\phi` components are sampled independently
     from one another and centered on the coordinates (x0, y0, z0).
 
     .. versionadded: 0.12
@@ -640,7 +641,6 @@ class Box(Spatial):
 
     """
 
-
     def __init__(self, lower_left, upper_right, only_fissionable=False):
         self.lower_left = lower_left
         self.upper_right = upper_right
@@ -779,3 +779,136 @@ class Point(Spatial):
         """
         xyz = [float(x) for x in get_text(elem, 'parameters').split()]
         return cls(xyz)
+
+
+class SphericalShell(Spatial):
+    r"""Spatial distribution for points in a spherical shell.
+
+    This distribution is a helper that creates points uniformly distributed in
+    a spherical shell using the class SphericalIndependent.
+
+    It allows one to sample points independly in a spherical shell, specified
+    by (r1, r2), (theta1, theta2), (phi1, phi2) centered on the coordinates
+    (x0, y0, z0).
+
+    .. versionadded: 0.13
+
+    Parameters
+    ----------
+    radii : Iterable of float
+        Inner radius r1 and outer radius r2 of the spherical shell.
+    thetas : Iterable of float
+        Start theta1 and end theta2 of the theta-coordinates (angle relative to
+        the z-axis) in a reference frame specified by the origin parameter
+    phis : Iterable of float
+        Start phi1 and end phi2 of the phi-coordinates (azimuthal angle) in a
+        reference frame specified by the origin parameter
+    origin: Iterable of float, optional
+        coordinates (x0, y0, z0) of the center of the spherical reference frame
+        for the source. Defaults to (0.0, 0.0, 0.0)
+
+    Attributes
+    ----------
+    radii : Iterable of float
+        Inner radius r1 and outer radius r2 of the spherical shell.
+    thetas : Iterable of float
+        Start theta1 and end theta2 of the theta-coordinates (angle relative to
+        the z-axis) in a reference frame specified by the origin parameter
+    phis : Iterable of float
+        Start phi1 and end phi2 of the phi-coordinates (azimuthal angle) in a
+        reference frame specified by the origin parameter
+    origin: Iterable of float, optional
+        coordinates (x0, y0, z0) of the center of the spherical reference frame
+        for the source. Defaults to (0.0, 0.0, 0.0)
+
+    """
+
+    def __init__(self, radii, thetas, phis, origin=(0.0, 0.0, 0.0)):
+        self.radii = radii
+        self.thetas = thetas
+        self.phis = phis
+        self.origin = origin
+
+    @property
+    def radii(self):
+        return self._radii
+
+    @property
+    def thetas(self):
+        return self._thetas
+
+    @property
+    def phis(self):
+        return self._phis
+
+    @property
+    def origin(self):
+        return self._origin
+
+    @radii.setter
+    def radii(self, radii):
+        cv.check_type('radii values', radii, Iterable, Real)
+        self._radii = radii
+
+    @thetas.setter
+    def thetas(self, thetas):
+        cv.check_type('thetas values', thetas, Iterable, Real)
+        self._thetas = thetas
+
+    @phis.setter
+    def phis(self, phis):
+        cv.check_type('phis values', phis, Iterable, Real)
+        self._phis = phis
+
+    @origin.setter
+    def origin(self, origin):
+        cv.check_type('origin coordinates', origin, Iterable, Real)
+        origin = np.asarray(origin)
+        self._origin = origin
+
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing spatial distribution data
+
+        """
+        element = ET.Element('space')
+        element.set('type', 'spherical')
+        sub_element_radii = ET.SubElement(element, 'r')
+        # the 2.0 is necessary to define the radius in the power law
+        sub_element_radii.set('parameters', ' '.join(map(str, self.radii))+' 2.0')
+        sub_element_radii.set('type', 'powerlaw')
+        sub_element_thetas = ET.SubElement(element, 'cos_theta')
+        # the sphericalIndependent class takes the arccos of theta
+        cos_thetas = np.cos(self.thetas)
+        sub_element_thetas.set('parameters', ' '.join(map(str, cos_thetas)))
+        sub_element_thetas.set('type', 'uniform')
+        sub_element_phis = ET.SubElement(element, 'phi')
+        sub_element_phis.set('parameters', ' '.join(map(str, self.phis)))
+        sub_element_phis.set('type', 'uniform')
+        element.set('origin', ' '.join(map(str, self.origin)))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate spatial distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.SphericalIndependent
+            Spatial distribution generated from XML element
+
+        """
+        r = Univariate.from_xml_element(elem.find('r'))
+        cos_theta = Univariate.from_xml_element(elem.find('cos_theta'))
+        phi = Univariate.from_xml_element(elem.find('phi'))
+        origin = [float(x) for x in elem.get('origin').split()]
+        return cls(r, cos_theta, phi, origin=origin)

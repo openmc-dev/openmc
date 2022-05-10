@@ -174,8 +174,8 @@ Position SphericalIndependent::sample(uint64_t* seed) const
   double cos_theta = cos_theta_->sample(seed);
   double phi = phi_->sample(seed);
   // sin(theta) by sin**2 + cos**2 = 1
-  double x = r * std::pow(1 - std::pow(cos_theta, 2.0), 0.5) * cos(phi) + origin_.x;
-  double y = r * std::pow(1 - std::pow(cos_theta, 2.0), 0.5) * sin(phi) + origin_.y;
+  double x = r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x;
+  double y = r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y;
   double z = r * cos_theta + origin_.z;
   return {x, y, z};
 }

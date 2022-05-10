@@ -19,9 +19,10 @@
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/secondary_uncorrelated.h"
+#include "openmc/geometry.h"
 #include <typeinfo>
 #include <string>
-
+int ghost_counter=0;
 namespace openmc {
 
 //==============================================================================
@@ -2362,6 +2363,7 @@ void score_tracklength_tally(Particle& p, double distance)
 
 void score_collision_tally(Particle& p)
 {
+  fmt::print("------------------------collison happened------------------------\n");
   // Determine the collision estimate of the flux
   double flux = 0.0;
 
@@ -2385,16 +2387,53 @@ void score_collision_tally(Particle& p)
   double vel = std::sqrt(p.E_last());
   double theta_pdf = d_->angle().get_pdf_value(p.E_last(),mu_COM,p.current_seed());
   double E_ghost = p.E_last()*(1+awr*awr+2*awr*mu_COM)/(1+awr)/(1+awr);
+  if(ghost_counter<5){
   Particle ghost_particle=Particle();
   ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);
   ghost_particle.event_calculate_xs();
+  ghost_counter++;
+  fmt::print("---------------------ghost particel created---------------------\n");
+  fmt::print("ghost_particle E = {}\n",ghost_particle.E());
 
-  //fmt::print("collison happened\n");
+  fmt::print("pos = {0} , {1} , {2}\n",ghost_particle.r().x,ghost_particle.r().y,ghost_particle.r().z);
+  fmt::print("ghost_particle u = {0} , {1} , {2}\n",ghost_particle.u().x,ghost_particle.u().y,ghost_particle.u().z);
+  //calculate shilding
+  double total_MFP = 0;
+  ghost_particle.boundary() = distance_to_boundary(ghost_particle);
+  double advance_distance = ghost_particle.boundary().distance;
+  fmt::print("advane distance 1 ={} \n",advance_distance);
+  fmt::print("advane XS 1= {}\n",ghost_particle.macro_xs().total);
+  total_MFP += advance_distance*ghost_particle.macro_xs().total;
+  
+  // Advance particle in space and time
+  for (int j = 0; j < ghost_particle.n_coord(); ++j) {
+    ghost_particle.coord(j).r += advance_distance * ghost_particle.coord(j).u;
+  }
+
+  fmt::print("ghost particle speed= {}\n",ghost_particle.speed());
+  ghost_particle.time() += advance_distance / ghost_particle.speed();
+  
+  ghost_particle.event_cross_surface();
+  fmt::print("pos = {0} , {1} , {2}\n",ghost_particle.r().x,ghost_particle.r().y,ghost_particle.r().z);
+
+
+  ghost_particle.event_calculate_xs();
+  ghost_particle.boundary() = distance_to_boundary(ghost_particle);
+  advance_distance = ghost_particle.boundary().distance;
+  fmt::print("advane distance 2 ={} \n",advance_distance);
+  fmt::print("advane XS 2= {}\n",ghost_particle.macro_xs().total);
+  }
+
+  //ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);
+  //ghost_particle.event_calculate_xs();
+
+
+
   if(p.E_last()>2e5)
   {
-  fmt::print("pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
-  fmt::print("u_last = {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
-  fmt::print("u_lab = {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
+  //fmt::print("pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
+  //fmt::print("u_last = {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  //fmt::print("u_lab = {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
 
 
   if(cos_lab > 1)
@@ -2403,20 +2442,20 @@ void score_collision_tally(Particle& p)
   if(cos_lab>1.0001)
   fmt::print("-----------------------error cos_lab = {}-----------------------\n",cos_lab);
   }
-  fmt::print("cos_lab = {}\n",cos_lab);
-  fmt::print("awr = {}\n",awr);
+  //fmt::print("cos_lab = {}\n",cos_lab);
+  //fmt::print("awr = {}\n",awr);
 
 
-  fmt::print("mu_COM = {}\n",mu_COM);
+  //fmt::print("mu_COM = {}\n",mu_COM);
   
 
-  fmt::print("theta pdf = {}\n",theta_pdf);
+  //fmt::print("theta pdf = {}\n",theta_pdf);
   
 
-  fmt::print("ghost_particle E = {}\n",ghost_particle.E());
-  fmt::print("ghost_particle u = {0} , {1} , {2}\n",ghost_particle.u().x,ghost_particle.u().y,ghost_particle.u().z);
+  //fmt::print("ghost_particle E = {}\n",ghost_particle.E());
+  //fmt::print("ghost_particle u = {0} , {1} , {2}\n",ghost_particle.u().x,ghost_particle.u().y,ghost_particle.u().z);
 
-  fmt::print("ghost_particle XS = {}\n",ghost_particle.macro_xs().total);
+  //fmt::print("ghost_particle XS = {}\n",ghost_particle.macro_xs().total);
   
   }
 
@@ -2425,7 +2464,7 @@ void score_collision_tally(Particle& p)
     flux = 0;//p.wgt_last() / p.macro_xs().total;
     if(p.event_mt() == 2)
     {
-      flux = 0.5*ghost_particle.wgt()*exp(-(distance-1)*ghost_particle.macro_xs().total)/(2*3.14*distance*distance);
+      flux = 0;//0.5*ghost_particle.wgt()*exp(-(distance-1)*ghost_particle.macro_xs().total)/(2*3.14*distance*distance);
     }
   }
 

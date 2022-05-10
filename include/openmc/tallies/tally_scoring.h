@@ -50,6 +50,7 @@ private:
   void compute_index_weight();
 
   const Tally& tally_;
+  Particle ghost_particle();
 };
 
 //==============================================================================

@@ -2367,43 +2367,68 @@ void score_collision_tally(Particle& p)
 
   double distance;
   distance = p.r().x*p.r().x+p.r().y*p.r().y+p.r().z*p.r().z;
-  //fmt::print("collison happened\n");
-  if(p.E_last()>2e5)
-  {
-  //fmt::print("post energy = {0} pre energy = {1}\n",p.E(),p.E_last());
-  //fmt::print("event mt = {}\n",p.event_mt());
-  //fmt::print("post weight = {0} pre weight = {1}\n",p.wgt(),p.wgt_last());
-  //fmt::print("pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
-  //fmt::print("u = {0} , {1} , {2}\n",p.u().x,p.u().y,p.u().z);
-  //fmt::print("u_last = {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
-  //fmt::print("distance = {}\n",distance);
-  //fmt::print("xs = {}\n",p.macro_xs().total);
-
   const auto& mat {model::materials[p.material()]};
   int n = mat->nuclide_.size();
   const auto& nuc {data::nuclides[0]};
-  const auto& nuc2 {data::nuclides[1]};
-  //fmt::print("number of nuclear = {}\n",n);
-  //fmt::print("name of 1# nuclicde = {}\n",nuc->name_);
-  //fmt::print("name of 2# nuclicde = {}\n",nuc2->name_);
-  int i_nuclide=0;
+  double awr = nuc->awr_;
   const auto& rx {nuc->reactions_[0]};
-  //fmt::print("reaction MT = {}\n",rx->mt_);
+
   auto& d = rx->products_[0].distribution_[0];
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-  //fmt::print("d type = {}\n",typeid(d.get()).name());
-  //fmt::print("energy distribution at 0 {}\n",d_->angle().get_energy(0));
-  //fmt::print("energy distribution at 1 {}\n",d_->angle().get_energy(1));
+
+  Direction u_lab {0-p.r().x,0-p.r().y,0-p.r().z};
+  u_lab = u_lab/u_lab.norm();
+  double cos_lab = u_lab.dot(p.u_last());
+  double theta_lab = std::acos(cos_lab);
+  double sin_lab = std::sin(theta_lab);
+  double mu_COM = (std::sqrt(awr*awr - sin_lab*sin_lab)*cos_lab - sin_lab*sin_lab)/awr;
+  double vel = std::sqrt(p.E_last());
+  double theta_pdf = d_->angle().get_pdf_value(p.E_last(),mu_COM,p.current_seed());
+  double E_ghost = p.E_last()*(1+awr*awr+2*awr*mu_COM)/(1+awr)/(1+awr);
+  Particle ghost_particle=Particle();
+  ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);
+  ghost_particle.event_calculate_xs();
+
+  //fmt::print("collison happened\n");
+  if(p.E_last()>2e5)
+  {
+  fmt::print("pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
+  fmt::print("u_last = {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  fmt::print("u_lab = {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
+
+
+  if(cos_lab > 1)
+  {
+  cos_lab = 1;
+  if(cos_lab>1.0001)
+  fmt::print("-----------------------error cos_lab = {}-----------------------\n",cos_lab);
   }
-  //fmt::print("post energy = {}\n",p.E);
-  //fmt::print(p.E);
+  fmt::print("cos_lab = {}\n",cos_lab);
+  fmt::print("awr = {}\n",awr);
+
+
+  fmt::print("mu_COM = {}\n",mu_COM);
+  
+
+  fmt::print("theta pdf = {}\n",theta_pdf);
+  
+
+  fmt::print("ghost_particle E = {}\n",ghost_particle.E());
+  fmt::print("ghost_particle u = {0} , {1} , {2}\n",ghost_particle.u().x,ghost_particle.u().y,ghost_particle.u().z);
+
+  fmt::print("ghost_particle XS = {}\n",ghost_particle.macro_xs().total);
+  
+  }
+
+
   if (p.type() == ParticleType::neutron || p.type() == ParticleType::photon) {
     flux = 0;//p.wgt_last() / p.macro_xs().total;
     if(p.event_mt() == 2)
     {
-      flux = 0.5*p.wgt()*exp(-(distance-1)*p.macro_xs().total)/(2*3.14*distance*distance);
+      flux = 0.5*ghost_particle.wgt()*exp(-(distance-1)*ghost_particle.macro_xs().total)/(2*3.14*distance*distance);
     }
   }
+
 
   for (auto i_tally : model::active_collision_tallies) {
     const Tally& tally {*model::tallies[i_tally]};

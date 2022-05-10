@@ -375,7 +375,7 @@ class SphericalIndependent(Spatial):
     r"""Spatial distribution represented in spherical coordinates.
 
     This distribution allows one to specify coordinates whose :math:`r`,
-    :math:`\cos_theta`, and :math:`\phi` components are sampled independently
+    :math:`\theta`, and :math:`\phi` components are sampled independently
     from one another and centered on the coordinates (x0, y0, z0).
 
     .. versionadded: 0.12

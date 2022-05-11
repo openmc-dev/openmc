@@ -174,6 +174,9 @@ class Discrete(Univariate):
             Combined discrete distribution
 
         """
+        if len(dists) != len(probs):
+            raise ValueError("Number of distributions and probabilities must match.")
+
         # Combine distributions accounting for duplicate x values
         x_merged = set()
         p_merged = defaultdict(float)

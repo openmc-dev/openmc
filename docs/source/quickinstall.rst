@@ -8,19 +8,27 @@ This quick install guide outlines the basic steps needed to install OpenMC on
 your computer. For more detailed instructions on configuring and installing
 OpenMC, see :ref:`usersguide_install` in the User's Manual.
 
-----------------------------------------
-Installing on Linux/Mac with conda-forge
-----------------------------------------
+--------------------------------------------------
+Installing on Linux/Mac with Mamba and conda-forge
+--------------------------------------------------
 
-`Conda <https://conda.io/en/latest/>`_ is an open source package management
-system and environment management system for installing multiple versions of
-software packages and their dependencies and switching easily between them. If
+`Conda <https://conda.io/en/latest/>`_ and `Mamba <https://mamba.readthedocs.io/en/latest/>`_
+are an open source package management systems and environments management
+system for installing multiple versions of software packages and their
+dependencies and switching easily between them.
+All conda packages can be installed with  If
 you have `conda` installed on your system, OpenMC can be installed via the
 `conda-forge` channel. First, add the `conda-forge` channel with:
 
 .. code-block:: sh
 
     conda config --add channels conda-forge
+
+Then install `mamba`, which will later be used to install OpenMC in the conda environment.
+
+.. code-block:: sh
+
+    conda install mamba
 
 To list the versions of OpenMC that are available on the `conda-forge` channel,
 in your terminal window or an Anaconda Prompt run:
@@ -33,7 +41,7 @@ OpenMC can then be installed with:
 
 .. code-block:: sh
 
-    conda create -n openmc-env openmc
+    mamba create -n openmc-env openmc
 
 This will install OpenMC in a conda environment called `openmc-env`. To activate
 the environment, run:
@@ -41,6 +49,10 @@ the environment, run:
 .. code-block:: sh
 
     conda activate openmc-env
+
+.. note:: If you are already familiar with conda for package management,
+          please note that OpenMC is currently only supported to be installed
+          with `mamba` and not `conda` (ie, `conda install openmc` may not work).
 
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker

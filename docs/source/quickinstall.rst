@@ -15,9 +15,8 @@ Installing on Linux/Mac with Mamba and conda-forge
 `Conda <https://conda.io/en/latest/>`_ and `Mamba <https://mamba.readthedocs.io/en/latest/>`_
 are an open source package management systems and environments management
 system for installing multiple versions of software packages and their
-dependencies and switching easily between them.
-All conda packages can be installed with  If
-you have `conda` installed on your system, OpenMC can be installed via the
+dependencies and switching easily between them. If you have `conda` installed
+on your system, OpenMC can be installed via the
 `conda-forge` channel. First, add the `conda-forge` channel with:
 
 .. code-block:: sh

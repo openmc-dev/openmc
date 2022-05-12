@@ -30,7 +30,7 @@ void add_particle_track(Particle& p)
 
 void write_particle_track(Particle& p)
 {
-  p.tracks().back().push_back(p.r());
+  p.tracks().back().push_back(p.get_track_state());
 }
 
 void finalize_particle_track(Particle& p)
@@ -57,9 +57,9 @@ void finalize_particle_track(Particle& p)
       size_t n = t.size();
       xt::xtensor<double, 2> data({n, 3});
       for (int j = 0; j < n; ++j) {
-        data(j, 0) = t[j].x;
-        data(j, 1) = t[j].y;
-        data(j, 2) = t[j].z;
+        data(j, 0) = t[j].r.x;
+        data(j, 1) = t[j].r.y;
+        data(j, 2) = t[j].r.z;
       }
       std::string name = fmt::format("coordinates_{}", i);
       write_dataset(file_id, name.c_str(), data);

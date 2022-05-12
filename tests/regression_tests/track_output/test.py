@@ -1,7 +1,6 @@
 import glob
 import os
 from subprocess import call
-import shutil
 
 import pytest
 

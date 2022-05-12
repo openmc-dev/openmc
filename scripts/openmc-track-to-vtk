@@ -4,9 +4,7 @@
 
 """
 
-import os
 import argparse
-import struct
 
 import h5py
 import vtk
@@ -38,28 +36,24 @@ def main():
     # Initialize data arrays and offset.
     points = vtk.vtkPoints()
     cells = vtk.vtkCellArray()
-    point_offset = 0
     for fname in args.input:
         # Write coordinate values to points array.
         track = h5py.File(fname)
-        n_particles = track.attrs['n_particles']
-        n_coords = track.attrs['n_coords']
-        coords = []
-        for i in range(n_particles):
-            coords.append(track['coordinates_' + str(i + 1)][()])
-            for j in range(n_coords[i]):
-                points.InsertNextPoint(coords[i][j,:])
+        offsets = track.attrs['offsets']
+        for start, end in zip(offsets[:-1], offsets[1:]):
+            tracks = track['tracks'][start:end]
+            for arr in tracks:
+                points.InsertNextPoint(arr['r'])
 
-        for i in range(n_particles):
+        for start, end in zip(offsets[:-1], offsets[1:]):
             # Create VTK line and assign points to line.
             line = vtk.vtkPolyLine()
-            line.GetPointIds().SetNumberOfIds(n_coords[i])
-            for j in range(n_coords[i]):
-                line.GetPointIds().SetId(j, point_offset + j)
+            line.GetPointIds().SetNumberOfIds(end - start)
+            for j in range(end - start):
+                line.GetPointIds().SetId(j, start + j)
 
             # Add line to cell array
             cells.InsertNextCell(line)
-            point_offset += n_coords[i]
 
     data = vtk.vtkPolyData()
     data.SetPoints(points)

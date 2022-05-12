@@ -34,20 +34,22 @@ in your terminal window or an Anaconda Prompt run:
 
 .. code-block:: sh
 
-    conda search openmc
+    mamba search openmc
+
+First create and activate a new conda enviroment called `openmc-env` in which to install OpenMC.
+
+.. code-block:: sh
+
+    conda create -n openmc-env
+    conda activate openmc-env
 
 OpenMC can then be installed with:
 
 .. code-block:: sh
 
-    mamba create -n openmc-env openmc
+    mamba install openmc
 
-This will install OpenMC in a conda environment called `openmc-env`. To activate
-the environment, run:
-
-.. code-block:: sh
-
-    conda activate openmc-env
+You are now in a conda environment called `openmc-env` that has OpenMC installed.
 
 .. note:: If you are already familiar with conda for package management,
           please note that OpenMC is currently only supported to be installed

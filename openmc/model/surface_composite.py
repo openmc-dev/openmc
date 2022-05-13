@@ -212,7 +212,7 @@ class CylinderSector(CompositeSurface):
 
 
 class IsogonalOctagon(CompositeSurface):
-    """Infinite isogonal octagon composite surface
+    r"""Infinite isogonal octagon composite surface
 
     An isogonal octagon is composed of eight planar surfaces. The prism is
     parallel to the x, y, or z axis. The remaining two axes (y and z, z and x,

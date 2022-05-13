@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from collections.abc import Iterable
 from numbers import Real
 from xml.etree import ElementTree as ET
@@ -156,6 +157,38 @@ class Discrete(Univariate):
         p = params[len(params)//2:]
         return cls(x, p)
 
+    @classmethod
+    def merge(cls, dists, probs):
+        """Merge multiple discrete distributions into a single distribution
+
+        Parameters
+        ----------
+        dists : iterable of openmc.stats.Discrete
+            Discrete distributions to combine
+        probs : iterable of float
+            Probability of each distribution
+
+        Returns
+        -------
+        openmc.stats.Discrete
+            Combined discrete distribution
+
+        """
+        if len(dists) != len(probs):
+            raise ValueError("Number of distributions and probabilities must match.")
+
+        # Combine distributions accounting for duplicate x values
+        x_merged = set()
+        p_merged = defaultdict(float)
+        for dist, p_dist in zip(dists, probs):
+            for x, p in zip(dist.x, dist.p):
+                x_merged.add(x)
+                p_merged[x] += p*p_dist
+
+        # Create values and probabilities as arrays
+        x_arr = np.array(sorted(x_merged))
+        p_arr = np.array([p_merged[x] for x in x_arr])
+        return cls(x_arr, p_arr)
 
 class Uniform(Univariate):
     """Distribution with constant probability over a finite interval [a,b]

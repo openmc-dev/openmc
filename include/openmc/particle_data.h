@@ -65,7 +65,12 @@ struct TrackState {
   double wgt {1.0};
   int cell_id;
   int material_id {-1};
+};
+
+//! Full history of a single particle's track states
+struct TrackStateHistory {
   ParticleType particle;
+  std::vector<TrackState> states;
 };
 
 //! Saved ("banked") state of a particle, for nu-fission tallying
@@ -302,7 +307,7 @@ private:
 
   vector<FilterMatch> filter_matches_; // tally filter matches
 
-  vector<vector<TrackState>> tracks_; // tracks for outputting to file
+  vector<TrackStateHistory> tracks_; // tracks for outputting to file
 
   vector<NuBank> nu_bank_; // bank of most recently fissioned particles
 

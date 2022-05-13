@@ -26,11 +26,12 @@ namespace openmc {
 void add_particle_track(Particle& p)
 {
   p.tracks().emplace_back();
+  p.tracks().back().particle = p.type();
 }
 
 void write_particle_track(Particle& p)
 {
-  p.tracks().back().push_back(p.get_track_state());
+  p.tracks().back().states.push_back(p.get_track_state());
 }
 
 hid_t trackstate_type()
@@ -51,8 +52,6 @@ hid_t trackstate_type()
   H5Tinsert(tracktype, "cell_id", HOFFSET(TrackState, cell_id), H5T_NATIVE_INT);
   H5Tinsert(
     tracktype, "material_id", HOFFSET(TrackState, material_id), H5T_NATIVE_INT);
-  H5Tinsert(
-    tracktype, "particle", HOFFSET(TrackState, particle), H5T_NATIVE_INT);
 
   H5Tclose(postype);
   return tracktype;
@@ -66,12 +65,14 @@ void finalize_particle_track(Particle& p)
 
   // Determine number of coordinates for each particle
   vector<int> offsets;
+  vector<int> particles;
   vector<TrackState> tracks;
   int offset = 0;
   for (auto& track_i : p.tracks()) {
     offsets.push_back(offset);
-    offset += track_i.size();
-    tracks.insert(tracks.end(), track_i.begin(), track_i.end());
+    particles.push_back(static_cast<int>(track_i.particle));
+    offset += track_i.states.size();
+    tracks.insert(tracks.end(), track_i.states.begin(), track_i.states.end());
   }
   offsets.push_back(offset);
 
@@ -82,6 +83,7 @@ void finalize_particle_track(Particle& p)
     write_attribute(file_id, "version", VERSION_TRACK);
     write_attribute(file_id, "n_particles", p.tracks().size());
     write_attribute(file_id, "offsets", offsets);
+    write_attribute(file_id, "particles", particles);
 
     // Create HDF5 datatype for TrackState
     hid_t track_type = trackstate_type();

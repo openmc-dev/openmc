@@ -67,7 +67,6 @@ TrackState ParticleData::get_track_state() const
   if (this->material() != MATERIAL_VOID) {
     state.material_id = model::materials[material()]->id_;
   }
-  state.particle = this->type();
   return state;
 }
 

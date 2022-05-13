@@ -802,6 +802,12 @@ void read_settings_xml()
   }
   if (check_for_node(root, "temperature_multipole")) {
     temperature_multipole = get_node_value_bool(root, "temperature_multipole");
+
+    // Multipole currently doesn't work with photon transport
+    if (temperature_multipole && photon_transport) {
+      fatal_error("Multipole data cannot currently be used in conjunction with "
+                  "photon transport.");
+    }
   }
   if (check_for_node(root, "temperature_range")) {
     auto range = get_node_array<double>(root, "temperature_range");

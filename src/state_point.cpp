@@ -462,9 +462,8 @@ void load_state_point()
           tally->writable_ = false;
         } else {
 
-          auto& results = tally->results_;
-          read_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.data());
+          read_tally_results(tally_group, tally->results_shape()[0],
+            tally->results_shape()[1], tally->results_);
           read_dataset(tally_group, "n_realizations", tally->n_realizations_);
           close_group(tally_group);
         }
@@ -811,12 +810,12 @@ void write_unstructured_mesh_results() {
 
           // construct result vectors
           std::vector<double> mean_vec, std_dev_vec;
-          for (int j = 0; j < tally->results_.shape()[0]; j++) {
+          for (int j = 0; j < tally->results_shape()[0]; j++) {
             // mean
-            double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
+            double mean = *tally->results(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
             mean_vec.push_back(mean);
             // std. dev.
-            double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
+            double sum_sq = *tally->results(j , nuc_score_idx, TallyResult::SUM_SQ);
             if (n_realizations > 1) {
               double std_dev = sum_sq/n_realizations - mean*mean;
               std_dev = std::sqrt(std_dev / (n_realizations - 1));

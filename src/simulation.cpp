@@ -689,14 +689,12 @@ void broadcast_results() {
     // Create a new datatype that consists of all values for a given filter
     // bin and then use that to broadcast. This is done to minimize the
     // chance of the 'count' argument of MPI_BCAST exceeding 2**31
-    auto& results = t->results_;
-
-    auto shape = results.shape();
+    auto shape = t->results_shape();
     int count_per_filter = shape[1] * shape[2];
     MPI_Datatype result_block;
     MPI_Type_contiguous(count_per_filter, MPI_DOUBLE, &result_block);
     MPI_Type_commit(&result_block);
-    MPI_Bcast(results.data(), shape[0], result_block, 0, mpi::intracomm);
+    MPI_Bcast(t->results_, shape[0], result_block, 0, mpi::intracomm);
     MPI_Type_free(&result_block);
   }
 

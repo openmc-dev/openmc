@@ -260,7 +260,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index,
 
   // Update the tally result
   #pragma omp atomic
-  tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
+  *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
 
   // Reset the original delayed group bin
   dg_match.bins_[i_bin] = original_bin;
@@ -494,7 +494,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 
       // Update tally results
       #pragma omp atomic
-      tally.results_(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
+      *tally.results(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
 
     } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
 
@@ -540,7 +540,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 
         // Update tally results
         #pragma omp atomic
-        tally.results_(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
+        *tally.results(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
       }
     }
   }
@@ -941,7 +941,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
     case SCORE_EVENTS:
       // Simply count the number of scoring events
       #pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      *tally.results(filter_index, score_index, TallyResult::VALUE) += 1.0;
       continue;
 
     case ELASTIC:
@@ -1106,7 +1106,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
+    *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 
@@ -1506,7 +1506,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
     case SCORE_EVENTS:
       // Simply count the number of scoring events
       #pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      *tally.results(filter_index, score_index, TallyResult::VALUE) += 1.0;
       continue;
 
 
@@ -1630,7 +1630,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
 
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
+    *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 
@@ -2255,7 +2255,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
     case SCORE_EVENTS:
       // Simply count the number of scoring events
       #pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      *tally.results(filter_index, score_index, TallyResult::VALUE) += 1.0;
       continue;
 
 
@@ -2265,7 +2265,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
 
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
+    *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 
@@ -2526,7 +2526,7 @@ score_surface_tally(Particle& p, const std::vector<int>& tallies)
       for (auto score_index = 0; score_index < tally.scores_.size();
            ++score_index) {
         #pragma omp atomic
-        tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
+        *tally.results(filter_index, score_index, TallyResult::VALUE) += score;
       }
     }
 

@@ -32,8 +32,8 @@ get_tally_uncertainty(int i_tally, int score_index, int filter_index)
 {
   const auto& tally {model::tallies[i_tally]};
 
-  auto sum = tally->results_(filter_index, score_index, TallyResult::SUM);
-  auto sum_sq = tally->results_(filter_index, score_index, TallyResult::SUM_SQ);
+  auto sum = *tally->results(filter_index, score_index, TallyResult::SUM);
+  auto sum_sq = *tally->results(filter_index, score_index, TallyResult::SUM_SQ);
 
   int n = tally->n_realizations_;
   auto mean = sum / n;
@@ -64,10 +64,9 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
       // Skip trigger if it is not active
       if (trigger.metric == TriggerMetric::not_active) continue;
 
-      const auto& results = t.results_;
-      for (auto filter_index = 0; filter_index < results.shape()[0];
+      for (auto filter_index = 0; filter_index < results_shape()[0];
            ++filter_index) {
-        for (auto score_index = 0; score_index < results.shape()[1];
+        for (auto score_index = 0; score_index < results_shape()[1];
              ++score_index) {
           // Compute the tally uncertainty metrics.
           auto uncert_pair = get_tally_uncertainty(i_tally, score_index,

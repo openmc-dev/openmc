@@ -337,6 +337,11 @@ void Particle::event_revive_from_secondary()
 
   // Check for secondary particles if this particle is dead
   if (!alive()) {
+    // Write final position for this particle
+    if (write_track()) {
+      write_particle_track(*this);
+    }
+
     // If no secondary particles, break out of event loop
     if (secondary_bank().empty())
       return;
@@ -359,7 +364,6 @@ void Particle::event_death()
 
   // Finish particle track output.
   if (write_track()) {
-    write_particle_track(*this);
     finalize_particle_track(*this);
   }
 

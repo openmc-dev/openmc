@@ -791,17 +791,24 @@ def spherical_uniform(r_outer, r_inner=0.0, thetas=(0., pi), phis=(0., 2*pi),
 
     Parameters
     ----------
-    radii : Iterable of float
-        Inner radius r1 and outer radius r2 of the spherical shell.
-    thetas : Iterable of float
-        Start theta1 and end theta2 of the theta-coordinates (angle relative to
-        the z-axis) in a reference frame specified by the origin parameter
-    phis : Iterable of float
-        Start phi1 and end phi2 of the phi-coordinates (azimuthal angle) in a
-        reference frame specified by the origin parameter
-    origin: Iterable of float, optional
-        coordinates (x0, y0, z0) of the center of the spherical reference frame
-        for the source. Defaults to (0.0, 0.0, 0.0)
+    r_outer : float
+        Outer radius of the spherical shell in [cm]
+    r_inner : float, optional
+        Inner radius of the spherical shell in [cm]
+    thetas : iterable of float, optional
+        Starting and ending theta coordinates (angle relative to
+        the z-axis) in radius in a reference frame centered at `origin`
+    phis : iterable of float, optional
+        Starting and ending phi coordinates (azimuthal angle) in
+        radians in a reference frame centered at `origin`
+    origin: iterable of float, optional
+        Coordinates (x0, y0, z0) of the center of the spherical
+        reference frame for the distribution.
+
+    Returns
+    -------
+    openmc.stats.SphericalIndependent
+        Uniform distribution over the spherical shell
     """
 
     r_dist = PowerLaw(r_inner, r_outer, 2)

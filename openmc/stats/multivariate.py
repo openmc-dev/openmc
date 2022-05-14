@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from math import pi
+from math import pi, cos
 from numbers import Real
 from xml.etree import ElementTree as ET
 

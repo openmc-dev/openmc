@@ -781,15 +781,13 @@ class Point(Spatial):
 
 def spherical_uniform(r_outer, r_inner=0.0, thetas=(0., pi), phis=(0., 2*pi),
                       origin=(0., 0., 0.)):
-    r"""
-    This function is a helper that makes it easier to create points uniformly
-    distributed in a spherical shell using the class SphericalIndependent.
+    """Return a uniform spatial distribution over a spherical shell.
 
-    It allows one to sample points independly in a spherical shell, specified
-    by (r1, r2), (theta1, theta2), (phi1, phi2) centered on the coordinates
-    (x0, y0, z0).
+    This function provides a uniform spatial distribution over a spherical
+    shell between `r_inner` and `r_outer`. Optionally, the range of angles
+    can be restricted by the `thetas` and `phis` arguments.
 
-    .. versionadded: 0.13
+    .. versionadded: 0.13.1
 
     Parameters
     ----------

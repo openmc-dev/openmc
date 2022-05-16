@@ -812,7 +812,7 @@ def spherical_uniform(r_outer, r_inner=0.0, thetas=(0., pi), phis=(0., 2*pi),
     """
 
     r_dist = PowerLaw(r_inner, r_outer, 2)
-    cos_thetas_dist = Uniform(np.cos(thetas[0]), np.cos(thetas[1]))
+    cos_thetas_dist = Uniform(cos(thetas[1]), cos(thetas[0]))
     phis_dist = Uniform(phis[0], phis[1])
 
     return SphericalIndependent(r_dist, cos_thetas_dist, phis_dist, origin)

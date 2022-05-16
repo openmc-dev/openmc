@@ -50,6 +50,9 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
+    if (!file_exists(filename_)) {
+      fatal_error(fmt::format("DAGMC file '{}' could not be found", filename_));
+    }
   } else {
     fatal_error("Must specify a file for the DAGMC universe");
   }

@@ -9,6 +9,7 @@
 
 #include "xtensor/xtensor.hpp"
 #include <fmt/core.h>
+#include <hdf5.h>
 
 #include <cstddef> // for size_t
 #include <string>
@@ -18,6 +19,9 @@ namespace openmc {
 //==============================================================================
 // Global variables
 //==============================================================================
+
+hid_t track_file;  //! HDF5 identifier for track file
+hid_t track_dtype; //! HDF5 identifier for track datatype
 
 //==============================================================================
 // Non-member functions
@@ -34,8 +38,14 @@ void write_particle_track(Particle& p)
   p.tracks().back().states.push_back(p.get_track_state());
 }
 
-hid_t trackstate_type()
+void open_track_file()
 {
+  // Open file and write filetype/version
+  std::string filename = fmt::format("{}tracks.h5", settings::path_output);
+  track_file = file_open(filename, 'w');
+  write_attribute(track_file, "filetype", "track");
+  write_attribute(track_file, "version", VERSION_TRACK);
+
   // Create compound type for Position
   hid_t postype = H5Tcreate(H5T_COMPOUND, sizeof(struct Position));
   H5Tinsert(postype, "x", HOFFSET(Position, x), H5T_NATIVE_DOUBLE);
@@ -43,26 +53,27 @@ hid_t trackstate_type()
   H5Tinsert(postype, "z", HOFFSET(Position, z), H5T_NATIVE_DOUBLE);
 
   // Create compound type for TrackState
-  hid_t tracktype = H5Tcreate(H5T_COMPOUND, sizeof(struct TrackState));
-  H5Tinsert(tracktype, "r", HOFFSET(TrackState, r), postype);
-  H5Tinsert(tracktype, "u", HOFFSET(TrackState, u), postype);
-  H5Tinsert(tracktype, "E", HOFFSET(TrackState, E), H5T_NATIVE_DOUBLE);
-  H5Tinsert(tracktype, "time", HOFFSET(TrackState, time), H5T_NATIVE_DOUBLE);
-  H5Tinsert(tracktype, "wgt", HOFFSET(TrackState, wgt), H5T_NATIVE_DOUBLE);
-  H5Tinsert(tracktype, "cell_id", HOFFSET(TrackState, cell_id), H5T_NATIVE_INT);
+  track_dtype = H5Tcreate(H5T_COMPOUND, sizeof(struct TrackState));
+  H5Tinsert(track_dtype, "r", HOFFSET(TrackState, r), postype);
+  H5Tinsert(track_dtype, "u", HOFFSET(TrackState, u), postype);
+  H5Tinsert(track_dtype, "E", HOFFSET(TrackState, E), H5T_NATIVE_DOUBLE);
+  H5Tinsert(track_dtype, "time", HOFFSET(TrackState, time), H5T_NATIVE_DOUBLE);
+  H5Tinsert(track_dtype, "wgt", HOFFSET(TrackState, wgt), H5T_NATIVE_DOUBLE);
   H5Tinsert(
-    tracktype, "material_id", HOFFSET(TrackState, material_id), H5T_NATIVE_INT);
-
+    track_dtype, "cell_id", HOFFSET(TrackState, cell_id), H5T_NATIVE_INT);
+  H5Tinsert(track_dtype, "material_id", HOFFSET(TrackState, material_id),
+    H5T_NATIVE_INT);
   H5Tclose(postype);
-  return tracktype;
+}
+
+void close_track_file()
+{
+  H5Tclose(track_dtype);
+  file_close(track_file);
 }
 
 void finalize_particle_track(Particle& p)
 {
-  std::string filename =
-    fmt::format("{}track_{}_{}_{}.h5", settings::path_output,
-      simulation::current_batch, simulation::current_gen, p.id());
-
   // Determine number of coordinates for each particle
   vector<int> offsets;
   vector<int> particles;
@@ -78,28 +89,25 @@ void finalize_particle_track(Particle& p)
 
 #pragma omp critical(FinalizeParticleTrack)
   {
-    hid_t file_id = file_open(filename, 'w');
-    write_attribute(file_id, "filetype", "track");
-    write_attribute(file_id, "version", VERSION_TRACK);
-    write_attribute(file_id, "n_particles", p.tracks().size());
-    write_attribute(file_id, "offsets", offsets);
-    write_attribute(file_id, "particles", particles);
-
-    // Create HDF5 datatype for TrackState
-    hid_t track_type = trackstate_type();
+    // Create name for dataset
+    std::string dset_name = fmt::format("track_{}_{}_{}",
+      simulation::current_batch, simulation::current_gen, p.id());
 
     // Write array of TrackState to file
     hsize_t dims[] {static_cast<hsize_t>(tracks.size())};
     hid_t dspace = H5Screate_simple(1, dims, nullptr);
-    hid_t dset = H5Dcreate(file_id, "tracks", track_type, dspace, H5P_DEFAULT,
-      H5P_DEFAULT, H5P_DEFAULT);
-    H5Dwrite(dset, track_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, tracks.data());
+    hid_t dset = H5Dcreate(track_file, dset_name.c_str(), track_dtype, dspace,
+      H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Dwrite(dset, track_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, tracks.data());
+
+    // Write attributes
+    write_attribute(dset, "n_particles", p.tracks().size());
+    write_attribute(dset, "offsets", offsets);
+    write_attribute(dset, "particles", particles);
 
     // Free resources
     H5Dclose(dset);
     H5Sclose(dspace);
-    H5Tclose(track_type);
-    file_close(file_id);
   }
 
   // Clear particle tracks

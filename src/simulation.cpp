@@ -82,6 +82,11 @@ int openmc_simulation_init()
   // Allocate source, fission and surface source banks.
   allocate_banks();
 
+  // Create track file if needed
+  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+    open_track_file();
+  }
+
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
   if (settings::event_based) {
@@ -150,6 +155,11 @@ int openmc_simulation_finalize()
   // Clear material nuclide mapping
   for (auto& mat : model::materials) {
     mat->mat_nuclide_index_.clear();
+  }
+
+  // Close track file if open
+  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+    close_track_file();
   }
 
   // Increment total number of generations

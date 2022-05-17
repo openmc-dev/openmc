@@ -50,18 +50,33 @@ class Track:
     def __repr__(self):
         return f'<Track {self.identifier}: {len(self.particles)} particles>'
 
-    def plot(self):
-        """Produce a 3D plot of particle tracks"""
+    def plot(self, axes=None):
+        """Produce a 3D plot of particle tracks
+
+        Parameters
+        ----------
+        axes : matplotlib.pyplot.Axes, optional
+            Axes for plot
+        """
         import matplotlib.pyplot as plt
-        fig = plt.figure()
-        ax = plt.axes(projection='3d')
+
+        # Setup axes is one wasn't passed
+        if axes is None:
+            fig = plt.figure()
+            ax = plt.axes(projection='3d')
+            ax.set_xlabel('x [cm]')
+            ax.set_ylabel('y [cm]')
+            ax.set_zlabel('z [cm]')
+        else:
+            ax = axes
+
+        # Plot each particle track
         for _, states in self.particles:
             r = states['r']
             ax.plot3D(r['x'], r['y'], r['z'])
-        ax.set_xlabel('x [cm]')
-        ax.set_ylabel('y [cm]')
-        ax.set_zlabel('z [cm]')
-        plt.show()
+
+        if axes is None:
+            plt.show()
 
     @property
     def sources(self):
@@ -101,3 +116,11 @@ class TrackFile(list):
             for dset_name in sorted(fh, key=_identifier):
                 dset = fh[dset_name]
                 self.append(Track(dset))
+
+    def plot(self):
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+        for track in self:
+            track.plot(ax)
+        plt.show()

@@ -2,6 +2,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/message_passing.h"
 #include "openmc/position.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -40,8 +41,18 @@ void write_particle_track(Particle& p)
 
 void open_track_file()
 {
-  // Open file and write filetype/version
+  // Open file and write filetype/version -- when MPI is enabled and there is
+  // more than one rank, each rank writes its own file
+#ifdef OPENMC_MPI
+  std::string filename;
+  if (mpi::n_procs > 1) {
+    filename = fmt::format("{}tracks_p{}.h5", settings::path_output, mpi::rank);
+  } else {
+    filename = fmt::format("{}tracks.h5", settings::path_output);
+  }
+#else
   std::string filename = fmt::format("{}tracks.h5", settings::path_output);
+#endif
   track_file = file_open(filename, 'w');
   write_attribute(track_file, "filetype", "track");
   write_attribute(track_file, "version", VERSION_TRACK);

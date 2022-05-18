@@ -114,6 +114,17 @@ tallies. The path to the statepoint file can be provided as an optional arugment
 
 .. _scripts_track:
 
+------------------------
+``openmc-track-combine``
+------------------------
+
+This script combines multiple HDF5 :ref:`particle track files
+<usersguide_track>` into a single HDF5 particle track file. The filenames of the
+particle track files should be given as posititional arguments. The output
+filename can also be changed with the ``-o`` flag:
+
+-o OUT, --out OUT    Output HDF5 particle track file
+
 -----------------------
 ``openmc-track-to-vtk``
 -----------------------

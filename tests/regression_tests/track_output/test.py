@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from subprocess import call
 
+import numpy as np
+import openmc
 import pytest
 
 from tests.testing_harness import TestHarness, config
@@ -20,16 +22,19 @@ class TrackTestHarness(TestHarness):
             assert Path('tracks.h5').is_file()
 
     def _get_results(self):
-        """Digest info in the statepoint and return as a string."""
-        # Run the track-to-vtk conversion script.
-        call(['../../../scripts/openmc-track-to-vtk', '-o', 'poly'] +
-             glob.glob('tracks*.h5'))
+        """Get data from track file and return as a string."""
 
-        # Make sure the vtk file was created then return it's contents.
-        assert Path('poly.pvtp').is_file(), 'poly.pvtp file not found.'
+        # For MPI mode, combine track files
+        if config['mpi']:
+            call(['../../../scripts/openmc-track-combine', '-o', 'tracks.h5'] +
+                 glob.glob('tracks_p*.h5'))
 
-        with open('poly.pvtp', 'r') as fin:
-            outstr = fin.read()
+        # Get string of track file information
+        outstr = ''
+        tracks = openmc.TrackFile('tracks.h5')
+        for track in tracks:
+            with np.printoptions(formatter={'float_kind': '{:.6e}'.format}):
+                outstr += str(track.particles) + '\n'
 
         return outstr
 

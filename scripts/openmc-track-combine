@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
-"""Combine multiple HDF5 particle track files.
-
-"""
+"""Combine multiple HDF5 particle track files."""
 
 import argparse
 
-import h5py
+import openmc
 
 
 def main():
@@ -19,18 +17,7 @@ def main():
                         help='Output HDF5 particle track file.')
 
     args = parser.parse_args()
-
-    with h5py.File(args.out, 'w') as h5_out:
-        for i, fname in enumerate(args.input):
-            with h5py.File(fname, 'r') as h5_in:
-                # Copy file attributes for first file
-                if i == 0:
-                    h5_out.attrs['filetype'] = h5_in.attrs['filetype']
-                    h5_out.attrs['version'] = h5_in.attrs['version']
-
-                # Copy each 'track_*' dataset from input file
-                for dset in h5_in:
-                    h5_in.copy(dset, h5_out)
+    openmc.TrackFile.combine(args.input, args.out)
 
 
 if __name__ == '__main__':

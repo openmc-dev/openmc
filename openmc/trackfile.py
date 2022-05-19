@@ -130,3 +130,27 @@ class TrackFile(list):
         for track in self:
             track.plot(ax)
         plt.show()
+
+    @staticmethod
+    def combine(track_files, path='tracks.h5'):
+        """Combine multiple track files into a single track file
+
+        Parameters
+        ----------
+        track_files : list of path-like
+            Paths to track files to combine
+        path : path-like
+            Path of combined track file to create
+
+        """
+        with h5py.File(path, 'w') as h5_out:
+            for i, fname in enumerate(track_files):
+                with h5py.File(fname, 'r') as h5_in:
+                    # Copy file attributes for first file
+                    if i == 0:
+                        h5_out.attrs['filetype'] = h5_in.attrs['filetype']
+                        h5_out.attrs['version'] = h5_in.attrs['version']
+
+                    # Copy each 'track_*' dataset from input file
+                    for dset in h5_in:
+                        h5_in.copy(dset, h5_out)

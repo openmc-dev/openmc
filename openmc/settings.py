@@ -2,6 +2,7 @@ import os
 import typing  # imported separately as py3.8 requires typing.Iterable
 from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
+import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
@@ -187,7 +188,7 @@ class Settings:
         integers: the batch number, generation number, and particle number
     track : tuple or list
         Specify particles for which track files should be written. Each particle
-        is identified by a triplet with the batch number, generation number, and
+        is identified by a tuple with the batch number, generation number, and
         particle number.
     trigger_active : bool
         Indicate whether tally triggers are used
@@ -776,16 +777,15 @@ class Settings:
         self._trace = trace
 
     @track.setter
-    def track(self, track: typing.Iterable[int]):
-        cv.check_type('track', track, Iterable, Integral)
-        if len(track) % 3 != 0:
-            msg = f'Unable to set the track to "{track}" since its length is ' \
-                  'not a multiple of 3'
-            raise ValueError(msg)
-        for t in zip(track[::3], track[1::3], track[2::3]):
+    def track(self, track: typing.Iterable[typing.Iterable[int]]):
+        cv.check_type('track', track, Iterable)
+        for t in track:
+            if len(t) != 3:
+                msg = f'Unable to set the track to "{t}" since its length is not 3'
+                raise ValueError(msg)
             cv.check_greater_than('track batch', t[0], 0)
-            cv.check_greater_than('track generation', t[0], 0)
-            cv.check_greater_than('track particle', t[0], 0)
+            cv.check_greater_than('track generation', t[1], 0)
+            cv.check_greater_than('track particle', t[2], 0)
         self._track = track
 
     @ufs_mesh.setter
@@ -1110,7 +1110,7 @@ class Settings:
     def _create_track_subelement(self, root):
         if self._track is not None:
             element = ET.SubElement(root, "track")
-            element.text = ' '.join(map(str, self._track))
+            element.text = ' '.join(map(str, itertools.chain(*self._track)))
 
     def _create_ufs_mesh_subelement(self, root):
         if self.ufs_mesh is not None:
@@ -1424,7 +1424,8 @@ class Settings:
     def _track_from_xml_element(self, root):
         text = get_text(root, 'track')
         if text is not None:
-            self.track = [int(x) for x in text.split()]
+            values = [int(x) for x in text.split()]
+            self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
     def _ufs_mesh_from_xml_element(self, root):
         text = get_text(root, 'ufs_mesh')

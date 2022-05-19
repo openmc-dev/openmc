@@ -42,7 +42,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.temperature = {'default': 293.6, 'method': 'interpolation',
                      'multipole': True, 'range': (200., 1000.)}
     s.trace = (10, 1, 20)
-    s.track = [1, 1, 1, 2, 1, 1]
+    s.track = [(1, 1, 1), (2, 1, 1)]
     s.ufs_mesh = mesh
     s.resonance_scattering = {'enable': True, 'method': 'rvs',
                               'energy_min': 1.0, 'energy_max': 1000.0,
@@ -99,7 +99,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.temperature == {'default': 293.6, 'method': 'interpolation',
                              'multipole': True, 'range': [200., 1000.]}
     assert s.trace == [10, 1, 20]
-    assert s.track == [1, 1, 1, 2, 1, 1]
+    assert s.track == [(1, 1, 1), (2, 1, 1)]
     assert isinstance(s.ufs_mesh, openmc.RegularMesh)
     assert s.ufs_mesh.lower_left == [-10., -10., -10.]
     assert s.ufs_mesh.upper_right == [10., 10., 10.]

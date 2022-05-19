@@ -84,9 +84,9 @@ class Track:
     @property
     def sources(self):
         sources = []
-        for track_history in self.tracks:
-            particle_type = ParticleType(track_history.particle)
-            state = track_history.states[0]
+        for particle_track in self.particles:
+            particle_type = ParticleType(particle_track.particle)
+            state = particle_track.states[0]
             sources.append(
                 SourceParticle(
                     r=state['r'], u=state['u'], E=state['E'],

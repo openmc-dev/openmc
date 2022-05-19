@@ -2,10 +2,13 @@ from collections import namedtuple
 
 import h5py
 
+from .checkvalue import check_filetype_version
 from .source import SourceParticle, ParticleType
 
 
 ParticleTrack = namedtuple('ParticleTrack', ['particle', 'states'])
+
+_VERSION_TRACK = 3
 
 
 def _identifier(dset_name):
@@ -112,12 +115,15 @@ class TrackFile(list):
     def __init__(self, filepath):
         # Read data from track file
         with h5py.File(filepath, 'r') as fh:
+            # Check filetype and version
+            check_filetype_version(fh, 'track', _VERSION_TRACK)
 
             for dset_name in sorted(fh, key=_identifier):
                 dset = fh[dset_name]
                 self.append(Track(dset))
 
     def plot(self):
+        """Produce a 3D plot of particle tracks"""
         import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = plt.axes(projection='3d')

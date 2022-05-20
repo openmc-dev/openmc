@@ -589,3 +589,13 @@ The full list of fields is as follows:
   :wgt: Weight
   :cell_id: Cell ID
   :material_id: Material ID
+
+.. note:: If you are using an MPI-enabled install of OpenMC and run a simulation
+          with more than one process, a separate track file will be written for
+          each MPI process with the filename ``tracks_p#.h5`` where # is the
+          rank of the corresponding process. Multiple track files can be
+          combined with the :ref:`scripts_track_combine` script:
+
+          .. code-block:: sh
+
+            openmc-track-combine tracks_p*.h5 --out tracks.h5

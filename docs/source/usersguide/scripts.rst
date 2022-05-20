@@ -112,7 +112,7 @@ otherwise.
 tallies. The path to the statepoint file can be provided as an optional arugment
 (if omitted, a file dialog will be presented).
 
-.. _scripts_track:
+.. _scripts_track_combine:
 
 ------------------------
 ``openmc-track-combine``
@@ -124,6 +124,8 @@ particle track files should be given as posititional arguments. The output
 filename can also be changed with the ``-o`` flag:
 
 -o OUT, --out OUT    Output HDF5 particle track file
+
+.. _scripts_track:
 
 -----------------------
 ``openmc-track-to-vtk``

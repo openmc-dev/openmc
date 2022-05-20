@@ -514,4 +514,78 @@ As an example, to write a statepoint file every five batches::
   settings.batches = n
   settings.statepoint = {'batches': range(5, n + 5, 5)}
 
-.. _NIST ESTAR database: https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html
+Particle Track Files
+--------------------
+
+OpenMC can generate a particle track file that contains track information
+(position, direction, energy, time, weight, cell ID, and material ID) for each
+state along a particle's history. There are two ways to indicate which particles
+and/or how many particles should have their tracks written. First, you can
+identify specific source particles by their batch, generation, and particle ID
+numbers::
+
+  settings.tracks = [
+    (1, 1, 50),
+    (2, 1, 30),
+    (5, 1, 75)
+  ]
+
+In this example, track information would be written for the 50th particle in the
+1st generation of batch 1, the 30th particle in the first generation of batch 2,
+and the 75th particle in the 1st generation of batch 5. Unless you are using
+more than one generation per batch (see :ref:`usersguide_particles`), the
+generation number should be 1. Alternatively, you can run OpenMC in a mode where
+track information is written for *all* particles, up to a user-specified limit::
+
+  openmc.run(tracks=True)
+
+In this case, you can control the maximum number of source particles for which
+tracks will be written as follows::
+
+  settings.max_tracks = 1000
+
+Particle track information is written to the ``tracks.h5`` file, which can be
+analyzed using the :class:`~openmc.TrackFile` class::
+
+  >>> tracks = openmc.TrackFile('tracks.h5')
+  >>> tracks
+  [<Track (1, 1, 50): 151 particles>,
+   <Track (2, 1, 30): 191 particles>,
+   <Track (5, 1, 75): 81 particles>]
+
+Each :class:`~openmc.Track` object stores a list of track information for every
+primary/secondary particle. In the above example, the first source particle
+produced 150 secondary particles for a total of 151 particles. Information for
+each primary/secondary particle can be accessed using the
+:attr:`~openmc.Track.particles` attribute::
+
+  >>> first_track = tracks[0]
+  >>> len(first_track.particles)
+  151
+  >>> photon = first_track.particles[10]
+  ParticleTrack(particle=<ParticleType.PHOTON: 1>, states=array([...]))
+
+The :class:`~openmc.ParticleTrack` class is a named tuple indicating the particle
+type and then a NumPy array of the "states". The states array is a compound type
+with a field for each physical quantity (position, direction, energy, time,
+weight, cell ID, and material ID). For example, to get the position for the
+above particle track::
+
+  >>> photon.states['r']
+  array([(-11.92987939, -12.28467295, 0.67837495),
+         (-11.95213726, -12.2682    , 0.68783964),
+         (-12.2682    , -12.03428339, 0.82223855),
+         (-12.5913778 , -11.79510096, 0.95966298),
+         (-12.6622572 , -11.74264344, 0.98980293),
+         (-12.6907775 , -11.7215357 , 1.00193058)],
+        dtype=[('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
+
+The full list of fields is as follows:
+
+  :r: Position (each direction in [cm])
+  :u: Direction
+  :E: Energy in [eV]
+  :time: Time in [s]
+  :wgt: Weight
+  :cell_id: Cell ID
+  :material_id: Material ID

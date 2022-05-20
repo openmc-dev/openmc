@@ -7,6 +7,20 @@ from .source import SourceParticle, ParticleType
 
 
 ParticleTrack = namedtuple('ParticleTrack', ['particle', 'states'])
+ParticleTrack.__doc__ = """\
+Particle track information
+
+Parameters
+----------
+particle : openmc.ParticleType
+    Type of the particle
+states : numpy.ndarray
+    Structured array containing each state of the particle. The structured array
+    contains the following fields: ``r`` (position; each direction in [cm]),
+    ``u`` (direction), ``E`` (energy in [eV]), ``time`` (time in [s]), ``wgt``
+    (weight), ``cell_id`` (cell ID) , and ``material_id`` (material ID).
+
+"""
 
 _VERSION_TRACK = 3
 
@@ -58,7 +72,7 @@ class Track:
 
         Parameters
         ----------
-        axes : matplotlib.pyplot.Axes, optional
+        axes : matplotlib.axes.Axes, optional
             Axes for plot
         """
         import matplotlib.pyplot as plt
@@ -100,15 +114,13 @@ class Track:
 class TrackFile(list):
     """Collection of particle tracks
 
+    This class behaves like a list and can be indexed using the normal subscript
+    notation. Each element in the list is a :class:`openmc.Track` object.
+
     Parameters
     ----------
     filepath : str or pathlib.Path
         Path of file to load
-
-    Attributes
-    ----------
-    tracks : list
-        List of :class:`Track` objects
 
     """
 

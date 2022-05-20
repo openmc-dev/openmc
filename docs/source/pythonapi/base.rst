@@ -185,6 +185,7 @@ Post-processing
    :template: myclass.rst
 
    openmc.Particle
+   openmc.ParticleTrack
    openmc.StatePoint
    openmc.Summary
    openmc.Track

@@ -9,6 +9,7 @@ from tests.testing_harness import config
 
 @pytest.fixture
 def sphere_model():
+    openmc.reset_auto_ids()
     mat = openmc.Material()
     mat.add_nuclide('Zr90', 1.0)
     mat.set_density('g/cm3', 1.0)

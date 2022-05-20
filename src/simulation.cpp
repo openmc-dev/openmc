@@ -517,18 +517,7 @@ void initialize_history(Particle& p, int64_t index_source)
     p.trace() = true;
 
   // Set particle track.
-  p.write_track() = false;
-  if (settings::write_all_tracks) {
-    p.write_track() = true;
-  } else if (settings::track_identifiers.size() > 0) {
-    for (const auto& t : settings::track_identifiers) {
-      if (simulation::current_batch == t[0] &&
-          simulation::current_gen == t[1] && p.id() == t[2]) {
-        p.write_track() = true;
-        break;
-      }
-    }
-  }
+  p.write_track() = check_track_criteria(p);
 
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {

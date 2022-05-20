@@ -15,6 +15,12 @@ void open_track_file();
 //! Close HDF5 resources for track file
 void close_track_file();
 
+//! Determine whether a given particle should collect/write track information
+//
+//! \param[in] p  Current particle
+//! \return Whether to collect/write track information
+bool check_track_criteria(const Particle& p);
+
 //! Create a new track state history for a primary/secondary particle
 //
 //! \param[in] p  Current particle

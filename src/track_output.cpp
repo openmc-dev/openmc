@@ -21,8 +21,9 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-hid_t track_file;  //! HDF5 identifier for track file
-hid_t track_dtype; //! HDF5 identifier for track datatype
+hid_t track_file;     //! HDF5 identifier for track file
+hid_t track_dtype;    //! HDF5 identifier for track datatype
+int n_tracks_written; //! Number of tracks written
 
 //==============================================================================
 // Non-member functions
@@ -81,6 +82,33 @@ void close_track_file()
 {
   H5Tclose(track_dtype);
   file_close(track_file);
+
+  // Reset number of tracks written
+  n_tracks_written = 0;
+}
+
+bool check_track_criteria(const Particle& p)
+{
+  if (settings::write_all_tracks) {
+    // Increment number of tracks written and get previous value
+    int n;
+#pragma omp atomic capture
+    n = n_tracks_written++;
+
+    // Indicate that track should be written for this particle
+    return n < settings::max_tracks;
+  }
+
+  // Check for match from explicit track identifiers
+  if (settings::track_identifiers.size() > 0) {
+    for (const auto& t : settings::track_identifiers) {
+      if (simulation::current_batch == t[0] &&
+          simulation::current_gen == t[1] && p.id() == t[2]) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 void finalize_particle_track(Particle& p)

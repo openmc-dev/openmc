@@ -105,6 +105,10 @@ class Settings:
         Maximum number of times a particle can split during a history
 
         .. versionadded:: 0.13
+    max_tracks : int
+        Maximum number of tracks written to a track file (per MPI process).
+
+        .. versionadded:: 0.13.1
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
@@ -291,6 +295,7 @@ class Settings:
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
         self._weight_windows_on = None
         self._max_splits = None
+        self._max_tracks = None
 
     @property
     def run_mode(self):
@@ -475,6 +480,10 @@ class Settings:
     @property
     def max_splits(self):
         return self._max_splits
+
+    @property
+    def max_tracks(self):
+        return self._max_tracks
 
     @run_mode.setter
     def run_mode(self, run_mode: str):
@@ -881,8 +890,14 @@ class Settings:
     @max_splits.setter
     def max_splits(self, value: int):
         cv.check_type('maximum particle splits', value, Integral)
-        cv.check_greater_than('max particles in flight', value, 0)
+        cv.check_greater_than('max particle splits', value, 0)
         self._max_splits = value
+
+    @max_tracks.setter
+    def max_tracks(self, value: int):
+        cv.check_type('maximum particle tracks', value, Integral)
+        cv.check_greater_than('maximum particle tracks', value, 0, True)
+        self._max_tracks = value
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1196,6 +1211,11 @@ class Settings:
             elem = ET.SubElement(root, "max_splits")
             elem.text = str(self._max_splits)
 
+    def _create_max_tracks_subelement(self, root):
+        if self._max_tracks is not None:
+            elem = ET.SubElement(root, "max_tracks")
+            elem.text = str(self._max_tracks)
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -1499,6 +1519,11 @@ class Settings:
         if text is not None:
             self.max_splits = int(text)
 
+    def _max_tracks_from_xml_element(self, root):
+        text = get_text(root, 'max_tracks')
+        if text is not None:
+            self.max_tracks = int(text)
+
     def export_to_xml(self, path: Union[str, os.PathLike] = 'settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1555,6 +1580,7 @@ class Settings:
         self._create_write_initial_source_subelement(root_element)
         self._create_weight_windows_subelement(root_element)
         self._create_max_splits_subelement(root_element)
+        self._create_max_tracks_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
@@ -1634,6 +1660,7 @@ class Settings:
         settings._write_initial_source_from_xml_element(root)
         settings._weight_windows_from_xml_element(root)
         settings._max_splits_from_xml_element(root)
+        settings._max_tracks_from_xml_element(root)
 
         # TODO: Get volume calculations
 

@@ -14,6 +14,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
     s.energy_mode = 'continuous-energy'
     s.max_order = 5
+    s.max_tracks = 1234
     s.source = openmc.Source(space=openmc.stats.Point())
     s.output = {'summary': True, 'tallies': False, 'path': 'here'}
     s.verbosity = 7
@@ -71,6 +72,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.keff_trigger == {'type': 'std_dev', 'threshold': 0.001}
     assert s.energy_mode == 'continuous-energy'
     assert s.max_order == 5
+    assert s.max_tracks == 1234
     assert isinstance(s.source[0], openmc.Source)
     assert isinstance(s.source[0].space, openmc.stats.Point)
     assert s.output == {'summary': True, 'tallies': False, 'path': 'here'}

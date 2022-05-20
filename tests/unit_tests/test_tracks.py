@@ -21,17 +21,16 @@ def sphere_model():
     model.settings.run_mode = 'fixed source'
     model.settings.batches = 1
     model.settings.particles = 100
-    model.settings.track = [(1, 1, 1), (1, 1, 10), (1, 1, 75)]
 
     return model
 
 
-def test_tracks(sphere_model, run_in_tmpdir):
+def generate_track_file(model, **kwargs):
     # If running in MPI mode, setup proper keyword arguments for run()
-    kwargs = {'openmc_exec': config['exe']}
+    kwargs.setdefault('openmc_exec', config['exe'])
     if config['mpi']:
         kwargs['mpi_args'] = [config['mpiexec'], '-n', config['mpi_np']]
-    sphere_model.run(**kwargs)
+    model.run(**kwargs)
 
     if config['mpi'] and int(config['mpi_np']) > 1:
         # With MPI, we need to combine track files
@@ -40,6 +39,14 @@ def test_tracks(sphere_model, run_in_tmpdir):
     else:
         track_file = Path('tracks.h5')
         assert track_file.is_file()
+
+
+def test_tracks(sphere_model, run_in_tmpdir):
+    # Set track identifiers
+    sphere_model.settings.track = [(1, 1, 1), (1, 1, 10), (1, 1, 75)]
+
+    # Run OpenMC to generate tracks.h5 file
+    generate_track_file(sphere_model)
 
     # Open track file and make sure we have correct number of tracks
     tracks = openmc.TrackFile('tracks.h5')
@@ -79,3 +86,17 @@ def test_tracks(sphere_model, run_in_tmpdir):
         assert x.time == state['time']
         assert x.wgt == state['wgt']
         assert x.particle == particle_track.particle
+
+
+def test_max_tracks(sphere_model, run_in_tmpdir):
+    # Set maximum number of tracks per process to write
+    sphere_model.settings.max_tracks = expected_num_tracks = 10
+    if config['mpi']:
+        expected_num_tracks *= int(config['mpi_np'])
+
+    # Run OpenMC to generate tracks.h5 file
+    generate_track_file(sphere_model, tracks=True)
+
+    # Open track file and make sure we have correct number of tracks
+    tracks = openmc.TrackFile('tracks.h5')
+    assert len(tracks) == expected_num_tracks

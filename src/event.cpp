@@ -12,7 +12,10 @@
 #define printf(fmt, ...) (0)
 #endif
 
+
 namespace openmc {
+
+  void device_sort_event_queue_item(EventQueueItem* begin, EventQueueItem* end);
 
 //==============================================================================
 // Global variables
@@ -33,6 +36,8 @@ Particle*  device_particles;
 int sort_counter{0};
 int64_t current_source_offset;
 
+EventQueueItem* begin {NULL};
+
 } // namespace simulation
 
 //==============================================================================
@@ -43,10 +48,32 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_sort.start();
 
+  if(simulation::begin == NULL )
+  {
+    uintptr_t ptr;
+    #pragma omp target map(from:ptr)
+    {
+      ptr = (uintptr_t) &queue[0];
+    }
+    simulation::begin = (EventQueueItem*) ptr;
+  }
+
+  /*
+  EventQueueItem *data_host = queue.data();
+  EventQueueItem *data = NULL;
+  #pragma omp target data use_device_ptr(data_host)
+  {
+     data = data_host;
+  }
+  */
+
   if (queue.size() > settings::minimum_sort_items)
   {
     simulation::sort_counter++;
 
+    device_sort_event_queue_item(simulation::begin, simulation::begin + queue.size());
+    //device_sort_event_queue_item(data, data + queue.size());
+    /*
     // Transfer queue information to the host
     #pragma omp target update from(queue.data_[:queue.size()])
 
@@ -58,6 +85,7 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 
     // Transfer queue information back to the device
     #pragma omp target update to(queue.data_[:queue.size()])
+    */
   }
 
   simulation::time_event_sort.stop();

@@ -177,6 +177,27 @@ def _get_plot_image(plot, cwd):
 
     return Image(str(png_file))
 
+def get_tuple(elem, name, dtype=int):
+    '''Helper function to get a tuple of values
+
+    Parameters
+    ----------
+    elem : xml.etree.ElementTree.Element
+        XML element that should contain a tuple
+    name : str
+        Name of the subelement to obtain tuple from
+    dtype : data-type
+        The type of each element in the tuple
+
+    Returns
+    -------
+    tuple of dtype
+        Data read from the tuple
+    '''
+    subelem = elem.find(name)
+    if subelem is not None:
+        return tuple([dtype(x) for x in subelem.text.split()])
+
 
 class PlotBase(IDManagerMixin):
     """
@@ -733,12 +754,6 @@ class Plot(PlotBase):
         plot.type = elem.get("type")
         plot.basis = elem.get("basis")
 
-        # Helper function to get a tuple of values
-        def get_tuple(elem, name, dtype=int):
-            subelem = elem.find(name)
-            if subelem is not None:
-                return tuple([dtype(x) for x in subelem.text.split()])
-
         plot.origin = get_tuple(elem, "origin", float)
         plot.width = get_tuple(elem, "width", float)
         plot.pixels = get_tuple(elem, "pixels")
@@ -955,7 +970,7 @@ class ProjectionPlot(PlotBase):
 
     @wireframe_thickness.setter
     def wireframe_thickness(self, wireframe_thickness):
-        cv.check_type('plot orthographic width', wireframe_thickness, Integral)
+        cv.check_type('plot wireframe thickness', wireframe_thickness, Integral)
         assert wireframe_thickness >= 0
         self._wireframe_thickness = wireframe_thickness
 
@@ -1075,7 +1090,69 @@ class ProjectionPlot(PlotBase):
                 subelement.set("rgb", ' '.join(str(x) for x in color))
                 subelement.set("xs", str(self._xs[domain]))
 
+        if self._level is not None:
+            subelement = ET.SubElement(element, "level")
+            subelement.text = str(self._level)
+
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate plot object from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.ProjectionPlot
+            ProjectionPlot object
+
+        """
+        plot_id = int(elem.get("id"))
+        plot = cls(plot_id)
+        if "filename" in elem.keys():
+            plot.filename = elem.get("filename")
+        plot.color_by = elem.get("color_by")
+        plot.type = "projection"
+
+        plot.pixels = get_tuple(elem, "pixels")
+        plot.camera_position = get_tuple(elem, "camera_position", float)
+        plot.look_at = get_tuple(elem, "look_at", float)
+
+        # Attempt to get wireframe thickness. May not be present
+        wireframe_thickness = elem.get("wireframe_thickness")
+        if wireframe_thickness:
+            plot.wireframe_thickness = int(wireframe_thickness)
+        wireframe_color = elem.get("wireframe_color")
+        if wireframe_color:
+            plot.wireframe_color = [int(item) for item in wireframe_color]
+
+        # Set plot colors
+        colors = {}
+        xs = {}
+        for color_elem in elem.findall("color"):
+            uid = color_elem.get("id")
+            colors[uid] = get_tuple(color_elem, "rgb")
+            xs[uid] = float(color_elem.get("xs"))
+
+        # Set masking information
+        mask_elem = elem.find("mask")
+        if mask_elem is not None:
+            mask_components = [int(x) for x in mask_elem.get("components").split()]
+            # TODO: set mask components (needs geometry information)
+            background = mask_elem.get("background")
+            if background is not None:
+                plot.mask_background = tuple([int(x) for x in background.split()])
+
+        # Set universe level
+        level = elem.find("level")
+        if level is not None:
+            plot.level = int(level.text)
+
+        return plot
 
 class Plots(cv.CheckedList):
     """Collection of Plots used for an OpenMC simulation.
@@ -1241,7 +1318,11 @@ class Plots(cv.CheckedList):
         # Generate each plot
         plots = cls()
         for e in elem.findall('plot'):
-            plots.append(Plot.from_xml_element(e))
+            plot_type = elem.get('type')
+            if plot_type == 'projection':
+                plots.append(ProjectionPlot.from_xml_element(elem))
+            else:
+                plots.append(Plot.from_xml_element(elem))
         return plots
 
     @classmethod
@@ -1262,5 +1343,3 @@ class Plots(cv.CheckedList):
         tree = ET.parse(path)
         root = tree.getroot()
         return cls.from_xml_element(root)
-
-

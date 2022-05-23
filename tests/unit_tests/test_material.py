@@ -294,6 +294,16 @@ def test_get_nuclide_atom_densities(uo2):
         assert density > 0
 
 
+def test_get_nuclide_atoms():
+    mat = openmc.Material()
+    mat.add_nuclide('Li6', 1.0)
+    mat.set_density('atom/cm3', 3.26e20)
+    mat.volume = 100.0
+
+    atoms = mat.get_nuclide_atoms()
+    assert atoms['Li6'] == pytest.approx(mat.density * mat.volume)
+
+
 def test_mass():
     m = openmc.Material()
     m.add_nuclide('Zr90', 1.0, 'wo')

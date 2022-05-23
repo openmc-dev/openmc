@@ -858,6 +858,25 @@ class Material(IDManagerMixin):
 
         return nuclides
 
+    def get_nuclide_atoms(self):
+        """Return number of atoms of each nuclide in the material
+
+        .. versionadded:: 0.13.1
+
+        Returns
+        -------
+        dict
+            Dictionary whose keys are nuclide names and values are number of
+            atoms present in the material.
+
+        """
+        if self.volume is None:
+            raise ValueError("Volume must be set in order to determine atoms.")
+        atoms = {}
+        for nuclide, atom_per_bcm in self.get_nuclide_atom_densities().items():
+            atoms[nuclide] = 1.0e24 * atom_per_bcm * self.volume
+        return atoms
+
     def get_mass_density(self, nuclide=None):
         """Return mass density of one or all nuclides
 

@@ -145,6 +145,7 @@ int openmc_simulation_init()
     }
   }
 
+  MPI_Barrier( mpi::intracomm );
 
   // Set flag indicating initialization is done
   simulation::initialized = true;
@@ -796,6 +797,7 @@ void transport_history_based()
 
 void transport_event_based()
 {
+  MPI_Barrier( mpi::intracomm );
   // The fuel lookup bias is the increases the number of particles required before
   // selecting this event to execute.
   // E.g., if we had 100 particles in flight, and fuel xs queue had 45 particles
@@ -896,6 +898,7 @@ void transport_event_based()
 
   // Copy back fission bank to host
   simulation::fission_bank.copy_device_to_host();
+  MPI_Barrier( mpi::intracomm );
 }
 
 } // namespace openmc

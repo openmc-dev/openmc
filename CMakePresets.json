@@ -79,6 +79,17 @@
             }
          },
         {
+            "name": "llvm_a100_mpi",
+            "displayName": "LLVM Clang A100",
+            "binaryDir": "${sourceDir}/build/llvm_a100",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "mpicc",
+                "CMAKE_CXX_COMPILER": "mpic++",
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
+            }
+         },
+        {
             "name": "llvm_a100_lto",
             "displayName": "LLVM Clang A100",
             "binaryDir": "${sourceDir}/build/llvm_a100",

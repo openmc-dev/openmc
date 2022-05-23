@@ -95,6 +95,10 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Initialized(&flag);
   if (!flag) MPI_Init(nullptr, nullptr);
 
+  #pragma omp target
+  {}
+  MPI_Barrier( mpi::intracomm );
+
   // Determine number of processes and rank for each
   MPI_Comm_size(intracomm, &mpi::n_procs);
   MPI_Comm_rank(intracomm, &mpi::rank);

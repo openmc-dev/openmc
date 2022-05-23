@@ -92,7 +92,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
 
     w = model.geometry.get_materials_by_name('tungsten')[0]
     atom_densities = w.get_nuclide_atom_densities()
-    atom_per_cc = 1e24 * atom_densities['W186'][1]  # Density in atom/cm^3
+    atom_per_cc = 1e24 * atom_densities['W186']  # Density in atom/cm^3
     n0 = atom_per_cc * w.volume  # Absolute number of atoms
 
     # Pick a random irradiation time and then determine necessary source rate to

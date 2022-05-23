@@ -542,15 +542,11 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
 
     if isinstance(this, openmc.Material):
         # Expand elements in to nuclides with atomic densities
-        nuclides = this.get_nuclide_atom_densities()
-        # For ease of processing split out the nuclide and its fraction
-        nuc_fractions = {nuclide[1][0]: nuclide[1][1]
-                         for nuclide in nuclides.items()}
+        nuc_fractions = this.get_nuclide_atom_densities()
         # Create a dict of [nuclide name] = nuclide object to carry forward
         # with a common nuclides format between openmc.Material and
         # openmc.Element objects
-        nuclides = {nuclide[1][0]: nuclide[1][0]
-                    for nuclide in nuclides.items()}
+        nuclides = {nuclide: nuclide for nuclide in nuc_fractions}
     else:
         # Expand elements in to nuclides with atomic densities
         nuclides = this.expand(1., 'ao', enrichment=enrichment,
@@ -885,13 +881,13 @@ def _calculate_mgxs_elem_mat(this, types, library, orders=None,
         # Check to see if we have nuclides/elements or a macroscopic object
         if this._macroscopic is not None:
             # We have macroscopics
-            nuclides = {this._macroscopic: (this._macroscopic, this.density)}
+            nuclides = {this._macroscopic: this.density}
         else:
             # Expand elements in to nuclides with atomic densities
             nuclides = this.get_nuclide_atom_densities()
 
         # For ease of processing split out nuc and nuc_density
-        nuc_fraction = [nuclide[1][1] for nuclide in nuclides.items()]
+        nuc_fraction = list(nuclides.values())
     else:
         T = temperature
         # Expand elements in to nuclides with atomic densities

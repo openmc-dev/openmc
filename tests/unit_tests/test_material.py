@@ -100,7 +100,7 @@ def test_add_elements_by_formula():
     m.add_elements_from_formula('Li4SiO4')
     # checking the ratio of elements is 4:1:4 for Li:Si:O
     elem = defaultdict(float)
-    for nuclide, adens in m.get_nuclide_atom_densities().values():
+    for nuclide, adens in m.get_nuclide_atom_densities().items():
         if nuclide.startswith("Li"):
             elem["Li"] += adens
         if nuclide.startswith("Si"):
@@ -117,7 +117,7 @@ def test_add_elements_by_formula():
                 'O16': 0.443386, 'O17': 0.000168}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing the correct nuclides are added to the Material when enriched
     m = openmc.Material()
@@ -129,7 +129,7 @@ def test_add_elements_by_formula():
                 'O16': 0.443386, 'O17': 0.000168}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing the use of brackets
     m = openmc.Material()
@@ -137,7 +137,7 @@ def test_add_elements_by_formula():
 
     # checking the ratio of elements is 2:2:6 for Mg:N:O
     elem = defaultdict(float)
-    for nuclide, adens in m.get_nuclide_atom_densities().values():
+    for nuclide, adens in m.get_nuclide_atom_densities().items():
         if nuclide.startswith("Mg"):
             elem["Mg"] += adens
         if nuclide.startswith("N"):
@@ -155,7 +155,7 @@ def test_add_elements_by_formula():
                 'O16': 0.599772, 'O17': 0.000227}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing non integer multiplier results in a value error
     m = openmc.Material()
@@ -289,8 +289,7 @@ def test_get_nuclide_densities(uo2):
 
 
 def test_get_nuclide_atom_densities(uo2):
-    nucs = uo2.get_nuclide_atom_densities()
-    for nuc, density in nucs.values():
+    for nuc, density in uo2.get_nuclide_atom_densities().items():
         assert nuc in ('U235', 'O16')
         assert density > 0
 
@@ -341,7 +340,7 @@ def test_borated_water():
                 'O16':2.4672e-02}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
     assert m.id == 50
 
     # Test the Celsius conversion.

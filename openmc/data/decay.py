@@ -511,11 +511,21 @@ class Decay(EqualityMixin):
         sources = {}
         name = self.nuclide['name']
         for particle, spectra in self.spectra.items():
-            # Only handle gammas for now
-            if particle not in ('gamma', 'xray'):
-                continue
-            # TODO: Set particle type based on 'particle' above
-            particle_type = 'photon'
+            # Set particle type based on 'particle' above
+            particle_type = {
+                'gamma': 'photon',
+                'beta-': 'electron',
+                'ec/beta+': 'positron',
+                'alpha': 'alpha',
+                'n': 'neutron',
+                'sf': 'fragment',
+                'p': 'proton',
+                'e-': 'electron',
+                'xray': 'photon',
+                'anti-neutrino': 'anti-neutrino',
+                'neutrino': 'neutrino',
+            }[particle]
+
             if particle_type not in sources:
                 sources[particle_type] = []
 

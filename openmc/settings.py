@@ -795,6 +795,9 @@ class Settings:
             cv.check_greater_than('track batch', t[0], 0)
             cv.check_greater_than('track generation', t[1], 0)
             cv.check_greater_than('track particle', t[2], 0)
+            cv.check_type('track batch', t[0], Integral)
+            cv.check_type('track generation', t[1], Integral)
+            cv.check_type('track particle', t[2], Integral)
         self._track = track
 
     @ufs_mesh.setter

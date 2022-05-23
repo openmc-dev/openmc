@@ -20,8 +20,8 @@ def sphere_model():
     model.geometry = openmc.Geometry([cell])
 
     model.settings.run_mode = 'fixed source'
-    model.settings.batches = 1
-    model.settings.particles = 100
+    model.settings.batches = 2
+    model.settings.particles = 50
 
     return model
 
@@ -42,9 +42,13 @@ def generate_track_file(model, **kwargs):
         assert track_file.is_file()
 
 
-def test_tracks(sphere_model, run_in_tmpdir):
+@pytest.mark.parametrize("particle", ["neutron", "photon"])
+def test_tracks(sphere_model, particle, run_in_tmpdir):
     # Set track identifiers
-    sphere_model.settings.track = [(1, 1, 1), (1, 1, 10), (1, 1, 75)]
+    sphere_model.settings.track = [(1, 1, 1), (1, 1, 10), (2, 1, 15)]
+
+    # Set source particle
+    sphere_model.settings.source = openmc.Source(particle=particle)
 
     # Run OpenMC to generate tracks.h5 file
     generate_track_file(sphere_model)
@@ -58,12 +62,14 @@ def test_tracks(sphere_model, run_in_tmpdir):
         assert isinstance(track, openmc.Track)
         assert track.identifier == identifier
         assert isinstance(track.particles, list)
-        assert len(track.particles) == 1
+        if particle == 'neutron':
+            assert len(track.particles) == 1
 
         # Check attributes on ParticleTrack object
         particle_track = track.particles[0]
         assert isinstance(particle_track, openmc.ParticleTrack)
-        assert particle_track.particle == openmc.ParticleType.NEUTRON
+
+        assert particle_track.particle.name.lower() == particle
         assert isinstance(particle_track.states, np.ndarray)
 
         # Sanity checks on actual data
@@ -78,7 +84,7 @@ def test_tracks(sphere_model, run_in_tmpdir):
 
         # Checks on 'sources' property
         sources = track.sources
-        assert len(sources) == 1
+        assert len(sources) == len(track.particles)
         x = sources[0]
         state = particle_track.states[0]
         assert x.r == (*state['r'],)

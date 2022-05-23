@@ -19,12 +19,18 @@ The current revision of the particle track file format is 3.0.
              ``E``, ``time``, ``wgt``, ``cell_id``, and ``material_id``, which
              represent the position (each coordinate in [cm]), direction, energy
              in [eV], time in [s], weight, cell ID, and material ID,
-             respectively.
+             respectively. When the particle is present in a cell with no
+             material assigned, the material ID is given as -1. Note that this
+             array contains information for one or more primary/secondary
+             particles originating. The starting index for each
+             primary/secondary particle is given by the ``offsets`` attribute.
 
              :Attributes: - **n_particles** (*int*) -- Number of
                             primary/secondary particles for the source history.
-                          - **offsets** (*int[]*) Offset into the array for each
-                            primary/secondary particle.
+                          - **offsets** (*int[]*) Offset (starting index) into
+                            the array for each primary/secondary particle. The
+                            last offset should match the total size of the
+                            array.
                           - **particles** (*int[]*) -- Particle type for each
                             primary/secondary particle (0=neutron, 1=photon,
                             2=electron, 3=positron).

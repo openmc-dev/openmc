@@ -74,6 +74,12 @@ class Track:
         ----------
         axes : matplotlib.axes.Axes, optional
             Axes for plot
+
+        Returns
+        -------
+        axes : matplotlib.axes.Axes
+            Axes for plot
+
         """
         import matplotlib.pyplot as plt
 
@@ -92,8 +98,7 @@ class Track:
             r = states['r']
             ax.plot3D(r['x'], r['y'], r['z'])
 
-        if axes is None:
-            plt.show()
+        return ax
 
     @property
     def sources(self):
@@ -135,13 +140,23 @@ class TrackFile(list):
                 self.append(Track(dset))
 
     def plot(self):
-        """Produce a 3D plot of particle tracks"""
+        """Produce a 3D plot of particle tracks
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes for plot
+
+        """
         import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = plt.axes(projection='3d')
+        ax.set_xlabel('x [cm]')
+        ax.set_ylabel('y [cm]')
+        ax.set_zlabel('z [cm]')
         for track in self:
             track.plot(ax)
-        plt.show()
+        return ax
 
     @staticmethod
     def combine(track_files, path='tracks.h5'):

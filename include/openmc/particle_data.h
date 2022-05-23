@@ -58,13 +58,13 @@ struct SourceSite {
 
 //! State of a particle used for particle track files
 struct TrackState {
-  Position r;
-  Direction u;
-  double E;
-  double time {0.0};
-  double wgt {1.0};
-  int cell_id;
-  int material_id {-1};
+  Position r;           //!< Position in [cm]
+  Direction u;          //!< Direction
+  double E;             //!< Energy in [eV]
+  double time {0.0};    //!< Time in [s]
+  double wgt {1.0};     //!< Weight
+  int cell_id;          //!< Cell ID
+  int material_id {-1}; //!< Material ID (default value indicates void)
 };
 
 //! Full history of a single particle's track states

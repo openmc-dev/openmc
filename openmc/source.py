@@ -300,7 +300,7 @@ class SourceParticle:
 
     def __repr__(self):
         name = self.particle.name.lower()
-        return f'<SourceParticle: {name} at E={self.E:.3e} eV>'
+        return f'<SourceParticle: {name} at E={self.E:.6e} eV>'
 
     def to_tuple(self):
         """Return source particle attributes as a tuple

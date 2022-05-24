@@ -45,51 +45,6 @@ class MeshBase(IDManagerMixin, ABC):
     def name(self):
         return self._name
 
-    @property
-    @abstractmethod
-    def dimension(self):
-        pass
-
-    @property
-    @abstractmethod
-    def n_dimension(self):
-        pass
-
-    @property
-    @abstractmethod
-    def _grids(self):
-        pass
-
-    @property
-    def vertices(self):
-        """Return coordinates of mesh vertices.
-
-        Returns
-        -------
-        vertices : numpy.ndarray
-            Returns a numpy.ndarray representing the coordinates of the mesh
-            vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim).
-
-        """
-        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
-
-    @property
-    def centroids(self):
-        """Return coordinates of mesh element centroids.
-
-        Returns
-        -------
-        centroids : numpy.ndarray
-            Returns a numpy.ndarray representing the mesh element centroid
-            coordinates with a shape equal to (dim1, ..., dimn, ndim).
-
-        """
-        ndim = self.n_dimension
-        vertices = self.vertices
-        s0 = (slice(0, -1),)*ndim + (slice(None),)
-        s1 = (slice(1, None),)*ndim + (slice(None),)
-        return (vertices[s0] + vertices[s1]) / 2
-
     @name.setter
     def name(self, name):
         if name is not None:
@@ -171,7 +126,76 @@ class MeshBase(IDManagerMixin, ABC):
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
 
 
-class RegularMesh(MeshBase):
+class StructuredMesh(ABC):
+    """A mixin for structured mesh functionality
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @property
+    @abstractmethod
+    def dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def n_dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def _grids(self):
+        pass
+
+    @property
+    def vertices(self):
+        """Return coordinates of mesh vertices.
+
+        Returns
+        -------
+        vertices : numpy.ndarray
+            Returns a numpy.ndarray representing the coordinates of the mesh
+            vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim).
+
+        """
+        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
+
+    @property
+    def centroids(self):
+        """Return coordinates of mesh element centroids.
+
+        Returns
+        -------
+        centroids : numpy.ndarray
+            Returns a numpy.ndarray representing the mesh element centroid
+            coordinates with a shape equal to (dim1, ..., dimn, ndim).
+
+        """
+        ndim = self.n_dimension
+        vertices = self.vertices
+        s0 = (slice(0, -1),)*ndim + (slice(None),)
+        s1 = (slice(1, None),)*ndim + (slice(None),)
+        return (vertices[s0] + vertices[s1]) / 2
+
+
+
+class RegularMesh(StructuredMesh, MeshBase):
     """A regular Cartesian mesh in one, two, or three dimensions
 
     Parameters

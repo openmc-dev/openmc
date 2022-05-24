@@ -465,11 +465,10 @@ class Decay(EqualityMixin):
 
     @property
     def decay_constant(self):
-        if hasattr(self.half_life, 'n'):
-            return log(2.)/self.half_life
-        else:
-            mu, sigma = self.half_life
-            return ufloat(log(2.)/mu, log(2.)/mu**2*sigma)
+        if self.half_life.n == 0.0:
+            name = self.nuclide['name']
+            raise ValueError(f"{name} is listed as unstable but has a zero half-life.")
+        return log(2.)/self.half_life
 
     @property
     def decay_energy(self):

@@ -511,6 +511,7 @@ class Decay(EqualityMixin):
         """
         sources = {}
         name = self.nuclide['name']
+        decay_constant = self.decay_constant.n
         for particle, spectra in self.spectra.items():
             # Set particle type based on 'particle' above
             particle_type = {
@@ -538,10 +539,9 @@ class Decay(EqualityMixin):
                     energies.append(discrete_data['energy'].n)
                     intensities.append(discrete_data['intensity'].n)
                 energies = np.array(energies)
-                intensities = np.array(intensities)
-                intensities *= spectra['discrete_normalization'].n
-                dist_discrete = Discrete(energies, intensities)  # <-- not normalized yet
-                dist_discrete._intensity = intensities.sum()
+                intensity = spectra['discrete_normalization'].n
+                rates = decay_constant * intensity * np.array(intensities)
+                dist_discrete = Discrete(energies, rates)
                 sources[particle_type].append(dist_discrete)
 
             # Create distribution for continuous
@@ -553,9 +553,9 @@ class Decay(EqualityMixin):
                 if interpolation not in ('histogram', 'linear-linear'):
                     raise NotImplementedError("Continuous spectra with {interpolation} interpolation ({name}, {particle}) not supported")
 
-                # TODO: work normalization into tabular itself
-                dist_continuous = Tabular(f.x, f.y, interpolation)
-                dist_continuous._intensity = spectra['continuous_normalization'].n
+                intensity = spectra['continuous_normalization'].n
+                rates = decay_constant * intensity * f.y
+                dist_continuous = Tabular(f.x, rates, interpolation)
                 sources[particle_type].append(dist_continuous)
 
         # Combine discrete distributions
@@ -595,14 +595,12 @@ def combine_distributions(dists, probs):
     for i in cont_index:
         dist = dist_list[i]
         dist.p *= probs[i]
-        dist._intensity *= probs[i]
 
     if discrete_index:
         # Create combined discrete distribution
         dist_discrete = [dist_list[i] for i in discrete_index]
         discrete_probs = [probs[i] for i in discrete_index]
         combined_dist = Discrete.merge(dist_discrete, discrete_probs)
-        combined_dist._intensity = np.sum(combined_dist.p)
 
         # Replace multiple discrete distributions with merged
         for idx in reversed(discrete_index):
@@ -611,8 +609,7 @@ def combine_distributions(dists, probs):
 
     # Combine discrete and continuous if present
     if len(dist_list) > 1:
-        probs = [d._intensity for d in dist_list]
+        probs = [d.integral() for d in dist_list]
         dist_list[:] = [Mixture(probs, dist_list.copy())]
-        dist_list[0]._intensity = sum(probs)
 
     return dist_list[0]

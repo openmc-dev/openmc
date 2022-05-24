@@ -220,6 +220,16 @@ class Discrete(Univariate):
         p_arr = np.array([p_merged[x] for x in x_arr])
         return cls(x_arr, p_arr)
 
+    def integral(self):
+        """Return integral of distribution
+
+        Returns
+        -------
+        float
+            Integral of discrete distribution
+        """
+        return np.sum(self.p)
+
 class Uniform(Univariate):
     """Distribution with constant probability over a finite interval [a,b]
 
@@ -1027,6 +1037,22 @@ class Tabular(Univariate):
         p = params[len(params)//2:]
         return cls(x, p, interpolation)
 
+    def integral(self):
+        """Return integral of distribution
+
+        Returns
+        -------
+        float
+            Integral of tabular distrbution
+        """
+        if self.interpolation == 'histogram':
+            return np.sum(np.diff(self.x) * self.p[:-1])
+        elif self.interpolation == 'linear-linear':
+            return np.trapz(self.p, self.x)
+        else:
+            raise NotImplementedError(
+                f'integral() not supported for {self.inteprolation} interpolation')
+
 
 class Legendre(Univariate):
     r"""Probability density given by a Legendre polynomial expansion
@@ -1199,3 +1225,16 @@ class Mixture(Univariate):
             distribution.append(Univariate.from_xml_element(pair.find("dist")))
 
         return cls(probability, distribution)
+
+    def integral(self):
+        """Return integral of the distribution
+
+        Returns
+        -------
+        float
+            Integral of the distribution
+        """
+        return sum([
+            p*dist.integral()
+            for p, dist in zip(self.probability, self.distribution)
+        ])

@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from copy import deepcopy
 from io import StringIO
 from math import log
 import re
@@ -552,30 +553,66 @@ class Decay(EqualityMixin):
                 if interpolation not in ('histogram', 'linear-linear'):
                     raise NotImplementedError("Continuous spectra with {interpolation} interpolation ({name}, {particle}) not supported")
 
+                # TODO: work normalization into tabular itself
                 dist_continuous = Tabular(f.x, f.y, interpolation)
                 dist_continuous._intensity = spectra['continuous_normalization'].n
                 sources[particle_type].append(dist_continuous)
 
         # Combine discrete distributions
-        for dist_list in sources.values():
-            # Get list of discrete distributions
-            discrete_index = [i for i, d in enumerate(dist_list) if isinstance(d, Discrete)]
-            dist_discrete = [dist_list[i] for i in discrete_index]
+        merged_sources = {}
+        for particle_type, dist_list in sources.items():
+            merged_sources[particle_type] = combine_distributions(
+                dist_list, [1.0]*len(dist_list))
 
-            if len(dist_discrete) > 1:
-                # Create combined discrete distribution
-                probs = [1.0] * len(dist_discrete)
-                combined_dist = Discrete.merge(dist_discrete, probs)
-                combined_dist._intensity = np.sum(combined_dist.p)
+        return merged_sources
 
-                for idx in reversed(discrete_index):
-                    dist_list.pop(idx)
-                dist_list.append(combined_dist)
 
-            # Combine discrete and continuous if present
-            if len(dist_list) > 1:
-                probs = [d._intensity for d in dist_list]
-                dist_list[:] = Mixture(probs, dist_list.copy())
+def combine_distributions(dists, probs):
+    """Combine distributions with specified probabilities
 
-        sources = {k: (v[0] if v else None) for k, v in sources.items()}
-        return sources
+    This function can be used to combine multiple instances of
+    :class:`~openmc.stats.Discrete` and `~openmc.stats.Tabular` into a single
+    distribution. Multiple discrete distributions are merged into a single
+    distribution and the remainder of the distributions are put into a
+    :class:`~openmc.stats.Mixture` distribution.
+
+    Parameters
+    ----------
+    dists : iterable of openmc.stats.Univariate
+        Distributions to combine
+    probs : iterable of float
+        Probability (or intensity) of each distribution
+
+    """
+    # Get copy of distribution list so as not to modify the argument
+    dist_list = deepcopy(dists)
+
+    # Get list of discrete/continuous distribution indices
+    discrete_index = [i for i, d in enumerate(dist_list) if isinstance(d, Discrete)]
+    cont_index = [i for i, d in enumerate(dist_list) if isinstance(d, Tabular)]
+
+    # Apply probabilites to continuous distributions
+    for i in cont_index:
+        dist = dist_list[i]
+        dist.p *= probs[i]
+        dist._intensity *= probs[i]
+
+    if discrete_index:
+        # Create combined discrete distribution
+        dist_discrete = [dist_list[i] for i in discrete_index]
+        discrete_probs = [probs[i] for i in discrete_index]
+        combined_dist = Discrete.merge(dist_discrete, discrete_probs)
+        combined_dist._intensity = np.sum(combined_dist.p)
+
+        # Replace multiple discrete distributions with merged
+        for idx in reversed(discrete_index):
+            dist_list.pop(idx)
+        dist_list.append(combined_dist)
+
+    # Combine discrete and continuous if present
+    if len(dist_list) > 1:
+        probs = [d._intensity for d in dist_list]
+        dist_list[:] = [Mixture(probs, dist_list.copy())]
+        dist_list[0]._intensity = sum(probs)
+
+    return dist_list[0]

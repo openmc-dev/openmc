@@ -62,6 +62,14 @@ double Particle::speed() const
 
 void Particle::initilze_ghost_particle(Particle& p,Direction u_new, double E_new)
 {
+  clear();
+  surface() = 0;
+  cell_born() = C_NONE;
+  material() = C_NONE;
+  n_collision() = 0;
+  fission() = false;
+  zero_flux_derivs();
+
   type() = p.type();
   wgt() = p.wgt_last();
   wgt_last() = p.wgt_last();

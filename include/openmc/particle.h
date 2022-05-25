@@ -18,6 +18,7 @@
 
 namespace openmc {
 
+
 // Forward declare the Surface class for use in Particle::cross_vacuum_bc, etc.
 class Surface;
 
@@ -34,7 +35,7 @@ public:
   // Constructors
 
   Particle() = default;
-
+  //virtual ~Particle() = default;
   double speed() const;
 
   //! create a secondary particle

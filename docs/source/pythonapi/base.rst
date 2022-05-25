@@ -189,7 +189,7 @@ Post-processing
    openmc.StatePoint
    openmc.Summary
    openmc.Track
-   openmc.TrackFile
+   openmc.Tracks
 
 The following classes and functions are used for functional expansion reconstruction.
 

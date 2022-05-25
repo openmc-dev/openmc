@@ -36,7 +36,7 @@ def generate_track_file(model, **kwargs):
     if config['mpi'] and int(config['mpi_np']) > 1:
         # With MPI, we need to combine track files
         track_files = Path.cwd().glob('tracks_p*.h5')
-        openmc.TrackFile.combine(track_files, 'tracks.h5')
+        openmc.Tracks.combine(track_files, 'tracks.h5')
     else:
         track_file = Path('tracks.h5')
         assert track_file.is_file()
@@ -54,7 +54,7 @@ def test_tracks(sphere_model, particle, run_in_tmpdir):
     generate_track_file(sphere_model)
 
     # Open track file and make sure we have correct number of tracks
-    tracks = openmc.TrackFile('tracks.h5')
+    tracks = openmc.Tracks('tracks.h5')
     assert len(tracks) == len(sphere_model.settings.track)
 
     for track, identifier in zip(tracks, sphere_model.settings.track):
@@ -105,7 +105,7 @@ def test_max_tracks(sphere_model, run_in_tmpdir):
     generate_track_file(sphere_model, tracks=True)
 
     # Open track file and make sure we have correct number of tracks
-    tracks = openmc.TrackFile('tracks.h5')
+    tracks = openmc.Tracks('tracks.h5')
     assert len(tracks) == expected_num_tracks
 
 
@@ -117,7 +117,7 @@ def test_filter(sphere_model, run_in_tmpdir):
     # Run OpenMC to generate tracks.h5 file
     generate_track_file(sphere_model, tracks=True)
 
-    tracks = openmc.TrackFile('tracks.h5')
+    tracks = openmc.Tracks('tracks.h5')
     for track in tracks:
         # Test filtering by particle
         matches = track.filter(particle='photon')
@@ -132,7 +132,7 @@ def test_filter(sphere_model, run_in_tmpdir):
         matches = track.filter(state_filter=lambda s: s['E'] < 0.0)
         assert matches == []
 
-    # Test filter method on TrackFile
+    # Test filter method on Tracks
     matches = tracks.filter(particle='neutron')
     assert matches == tracks
     matches = tracks.filter(state_filter=lambda s: s['E'] > 0.0)

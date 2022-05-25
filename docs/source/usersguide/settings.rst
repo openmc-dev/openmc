@@ -545,9 +545,9 @@ tracks will be written as follows::
   settings.max_tracks = 1000
 
 Particle track information is written to the ``tracks.h5`` file, which can be
-analyzed using the :class:`~openmc.TrackFile` class::
+analyzed using the :class:`~openmc.Tracks` class::
 
-  >>> tracks = openmc.TrackFile('tracks.h5')
+  >>> tracks = openmc.Tracks('tracks.h5')
   >>> tracks
   [<Track (1, 1, 50): 151 particles>,
    <Track (2, 1, 30): 191 particles>,
@@ -557,19 +557,25 @@ Each :class:`~openmc.Track` object stores a list of track information for every
 primary/secondary particle. In the above example, the first source particle
 produced 150 secondary particles for a total of 151 particles. Information for
 each primary/secondary particle can be accessed using the
-:attr:`~openmc.Track.particles` attribute::
+:attr:`~openmc.Track.particle_tracks` attribute::
 
   >>> first_track = tracks[0]
-  >>> len(first_track.particles)
-  151
-  >>> photon = first_track.particles[10]
-  ParticleTrack(particle=<ParticleType.PHOTON: 1>, states=array([...]))
+  >>> first_track.particle_tracks
+  [<ParticleTrack: neutron, 120 states>,
+   <ParticleTrack: photon, 6 states>,
+   <ParticleTrack: electron, 2 states>,
+   <ParticleTrack: electron, 2 states>,
+   <ParticleTrack: electron, 2 states>,
+   ...
+   <ParticleTrack: electron, 2 states>,
+   <ParticleTrack: electron, 2 states>]
+  >>> photon = first_track.particle_tracks[1]
 
-The :class:`~openmc.ParticleTrack` class is a named tuple indicating the particle
-type and then a NumPy array of the "states". The states array is a compound type
-with a field for each physical quantity (position, direction, energy, time,
-weight, cell ID, and material ID). For example, to get the position for the
-above particle track::
+The :class:`~openmc.ParticleTrack` class is a named tuple indicating the
+particle type and then a NumPy array of the "states". The states array is a
+compound type with a field for each physical quantity (position, direction,
+energy, time, weight, cell ID, and material ID). For example, to get the
+position for the above particle track::
 
   >>> photon.states['r']
   array([(-11.92987939, -12.28467295, 0.67837495),

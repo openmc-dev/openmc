@@ -17,7 +17,7 @@ def main():
                         help='Output HDF5 particle track file.')
 
     args = parser.parse_args()
-    openmc.TrackFile.combine(args.input, args.out)
+    openmc.Tracks.combine(args.input, args.out)
 
 
 if __name__ == '__main__':

@@ -39,7 +39,7 @@ def main():
     point_offset = 0
     for fname in args.input:
         # Write coordinate values to points array.
-        track_file = openmc.TrackFile(fname)
+        track_file = openmc.Tracks(fname)
         for track in track_file:
             for particle in track.particles:
                 for state in particle.states:

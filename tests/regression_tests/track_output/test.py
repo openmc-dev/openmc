@@ -31,7 +31,7 @@ class TrackTestHarness(TestHarness):
 
         # Get string of track file information
         outstr = ''
-        tracks = openmc.TrackFile('tracks.h5')
+        tracks = openmc.Tracks('tracks.h5')
         for track in tracks:
             with np.printoptions(formatter={'float_kind': '{:.6e}'.format}):
                 for ptrack in track:

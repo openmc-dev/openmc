@@ -189,7 +189,7 @@ class Track(Sequence):
         return sources
 
 
-class TrackFile(list):
+class Tracks(list):
     """Collection of particle tracks
 
     This class behaves like a list and can be indexed using the normal subscript
@@ -202,7 +202,7 @@ class TrackFile(list):
 
     """
 
-    def __init__(self, filepath):
+    def __init__(self, filepath='tracks.h5'):
         # Read data from track file
         with h5py.File(filepath, 'r') as fh:
             # Check filetype and version

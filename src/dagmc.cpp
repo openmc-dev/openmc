@@ -416,10 +416,7 @@ void DAGUniverse::to_hdf5(hid_t universes_group) const
 
 bool DAGUniverse::uses_uwuw() const
 {
-  if (uwuw_disabled)
-    return false;
-  else
-    return !uwuw_->material_library.empty();
+  return uwuw_ && !uwuw_->material_library.empty();
 }
 
 std::string DAGUniverse::get_uwuw_materials_xml() const
@@ -508,11 +505,10 @@ void DAGUniverse::legacy_assign_material(
 
 void DAGUniverse::read_uwuw_materials()
 {
-  // If no filename was provided, disable read UWUW materials
-  uwuw_disabled = (filename_ == "");
-
-  if (uwuw_disabled)
+  // If no filename was provided, don't read UWUW materials
+  if (filename_ == "")
     return;
+
   uwuw_ = std::make_shared<UWUW>(filename_.c_str());
 
   if (!uses_uwuw())

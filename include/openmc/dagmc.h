@@ -155,7 +155,6 @@ private:
   std::shared_ptr<UWUW>
     uwuw_; //!< Pointer to the UWUW instance for this universe
   std::unique_ptr<dagmcMetaData> dmd_ptr; //! Pointer to DAGMC metadata object
-  bool uwuw_disabled;                     //!< Switch to disable UWUW materials
   bool adjust_geometry_ids_; //!< Indicates whether or not to automatically
                              //!< generate new cell and surface IDs for the
                              //!< universe

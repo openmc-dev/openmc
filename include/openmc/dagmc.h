@@ -88,7 +88,7 @@ public:
   explicit DAGUniverse(const std::string& filename, bool auto_geom_ids = false,
     bool auto_mat_ids = false);
 
-  //! Alternative DAGMC universe constructor for external DAGMC
+  //! Alternative DAGMC universe constructor for external DAGMC instance
   explicit DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
     const std::string& filename, bool auto_geom_ids = false,
     bool auto_mat_ids = false);

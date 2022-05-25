@@ -72,13 +72,12 @@ DAGUniverse::DAGUniverse(
     adjust_material_ids_(auto_mat_ids)
 {
   set_id();
-
   initialize();
 }
 
-DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
+DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
   const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
-  : dagmc_instance_(external_dagmc_ptr), filename_(filename),
+  : dagmc_instance_(dagmc_ptr), filename_(filename),
     adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
 {
   set_id();

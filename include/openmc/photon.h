@@ -36,7 +36,6 @@ public:
   int threshold;
   double n_electrons;
   double binding_energy;
-  xt::xtensor<double, 1> cross_section;
   vector<Transition> transitions;
 };
 
@@ -82,6 +81,7 @@ public:
 
   // Photoionization and atomic relaxation data
   vector<ElectronSubshell> shells_;
+  xt::xtensor<double, 2> cross_sections_;
 
   // Compton profile data
   xt::xtensor<double, 2> profile_pdf_;

@@ -358,9 +358,9 @@ void sample_photon_reaction(Particle& p)
         continue;
 
       // Evaluation subshell photoionization cross section
-      double xs = std::exp(shell.cross_section(i_grid - i_start) +
-                           f * (shell.cross_section(i_grid + 1 - i_start) -
-                                 shell.cross_section(i_grid - i_start)));
+      double xs = std::exp(element.cross_sections_(i_grid - i_start) +
+                           f * (element.cross_sections_(i_grid + 1 - i_start) -
+                                 element.cross_sections_(i_grid - i_start)));
 
       prob += xs;
       if (prob > cutoff) {

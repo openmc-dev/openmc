@@ -14,11 +14,11 @@
 #include "openmc/settings.h"
 
 #include "xtensor/xbuilder.hpp"
-#include "xtensor/xoperation.hpp"
-#include "xtensor/xview.hpp"
 #include "xtensor/xmath.hpp"
+#include "xtensor/xoperation.hpp"
 #include "xtensor/xslice.hpp"
 #include "xtensor/xtensor_forward.hpp"
+#include "xtensor/xview.hpp"
 
 #include <cmath>
 #include <fmt/core.h>
@@ -165,7 +165,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     close_dataset(dset);
     read_dataset(tgroup, "xs", xs);
 
-    auto cross_section = xt::view(cross_sections_, xt::range(shell.threshold, shell.threshold + xs.size()), i);
+    auto cross_section = xt::view(cross_sections_,
+      xt::range(shell.threshold, shell.threshold + xs.size()), i);
     cross_section = xt::where(xs > 0.0, xt::log(xs), -500.0);
 
     if (object_exists(tgroup, "transitions")) {

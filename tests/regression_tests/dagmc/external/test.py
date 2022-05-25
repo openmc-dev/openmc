@@ -2,14 +2,10 @@ from pathlib import Path
 import os
 import shutil
 import subprocess
-from subprocess import CalledProcessError
 import textwrap
-import glob
-from itertools import product
 
 import openmc
 import openmc.lib
-import numpy as np
 import pytest
 
 from tests.regression_tests import config
@@ -18,8 +14,6 @@ from tests.testing_harness import PyAPITestHarness
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
     reason="DAGMC is not enabled.")
-
-TETS_PER_VOXEL = 12
 
 # Test that an external DAGMC instance can be passed in through the C API
 
@@ -36,8 +30,7 @@ def cpp_driver(request):
             add_executable(main main.cpp)
             find_package(OpenMC REQUIRED HINTS {})
             target_link_libraries(main OpenMC::libopenmc)
-            set_target_properties(main PROPERTIES CXX_STANDARD
-            14 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+            target_compile_features(main PUBLIC cxx_std_14)
             set(CMAKE_CXX_FLAGS "-pedantic-errors")
             add_compile_definitions(DAGMC=1)
             """.format(openmc_dir)))
@@ -45,15 +38,13 @@ def cpp_driver(request):
     # Create temporary build directory and change to there
     local_builddir = Path('build')
     local_builddir.mkdir(exist_ok=True)
-    os.chdir(str(local_builddir))
+    os.chdir(local_builddir)
 
-    if config['mpi']:
-        os.environ['CXX'] = 'mpicxx'
+    mpi_arg = "On" if config['mpi'] else "Off"
 
     try:
-        print("Building driver")
         # Run cmake/make to build the shared libary
-        subprocess.run(['cmake', os.path.pardir], check=True)
+        subprocess.run(['cmake', os.path.pardir, f'-DOPENMC_USE_MPI={mpi_arg}'], check=True)
         subprocess.run(['make'], check=True)
         os.chdir(os.path.pardir)
 
@@ -123,5 +114,5 @@ class ExternalDAGMCTest(PyAPITestHarness):
                        event_based=config['event'])
 
 def test_external_dagmc(cpp_driver, model):
-    harness = ExternalDAGMCTest(cpp_driver,'statepoint.5.h5',model)
+    harness = ExternalDAGMCTest(cpp_driver, 'statepoint.5.h5', model)
     harness.main()

@@ -48,6 +48,11 @@ int main(int argc, char* argv[])
   openmc::model::universes.clear();
   openmc::model::universe_map.clear();
 
+  // Update materials (emulate an external program)
+  for (auto& mat_ptr : openmc::model::materials) {
+    mat_ptr->set_temperature(300);
+  }
+
   // Create new DAGMC universe
   openmc::model::universes.push_back(
     std::make_unique<openmc::DAGUniverse>(dag_ptr));

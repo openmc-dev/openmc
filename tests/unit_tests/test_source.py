@@ -1,6 +1,6 @@
 import openmc
 import openmc.stats
-from math import pi, cos
+from math import pi
 
 def test_source():
     space = openmc.stats.Point()

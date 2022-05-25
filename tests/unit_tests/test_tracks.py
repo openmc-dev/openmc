@@ -107,3 +107,35 @@ def test_max_tracks(sphere_model, run_in_tmpdir):
     # Open track file and make sure we have correct number of tracks
     tracks = openmc.TrackFile('tracks.h5')
     assert len(tracks) == expected_num_tracks
+
+
+def test_filter(sphere_model, run_in_tmpdir):
+    # Set maximum number of tracks per process to write
+    sphere_model.settings.max_tracks = 25
+    sphere_model.settings.photon_transport = True
+
+    # Run OpenMC to generate tracks.h5 file
+    generate_track_file(sphere_model, tracks=True)
+
+    tracks = openmc.TrackFile('tracks.h5')
+    for track in tracks:
+        # Test filtering by particle
+        matches = track.filter(particle='photon')
+        for x in matches:
+            assert x.particle == openmc.ParticleType.PHOTON
+
+        # Test general state filter
+        matches = track.filter(state_filter=lambda s: s['cell_id'] == 1)
+        assert matches == track.particle_tracks
+        matches = track.filter(state_filter=lambda s: s['cell_id'] == 2)
+        assert matches == []
+        matches = track.filter(state_filter=lambda s: s['E'] < 0.0)
+        assert matches == []
+
+    # Test filter method on TrackFile
+    matches = tracks.filter(particle='neutron')
+    assert matches == tracks
+    matches = tracks.filter(state_filter=lambda s: s['E'] > 0.0)
+    assert matches == tracks
+    matches = tracks.filter(particle='bunnytron')
+    assert matches == []

@@ -84,6 +84,62 @@ class Track(Sequence):
     def __len__(self):
         return len(self.particle_tracks)
 
+    def filter(self, particle=None, state_filter=None):
+        """Filter particle tracks by given criteria
+
+        Parameters
+        ----------
+        particle : {'neutron', 'photon', 'electron', 'positron'}
+            Matching particle type
+        state_filter : function
+            Function that takes a state (structured datatype) and returns a bool
+            depending on some criteria.
+
+        Returns
+        -------
+        list
+            List of :class:`openmc.ParticleTrack` objects
+
+        Examples
+        --------
+        Get all particle tracks for photons:
+
+        >>> track.filter(particle='photon')
+
+        Get all particle tracks that entered cell with ID=15:
+
+        >>> track.filter(state_filter=lambda s: s['cell_id'] == 15)
+
+        Get all particle tracks in entered material with ID=2:
+
+        >>> track.filter(state_filter=lambda s: s['material_id'] == 2)
+
+        See Also
+        --------
+        openmc.ParticleTrack
+
+        """
+        matching = []
+        for t in self:
+            # Check for matching particle
+            if particle is not None:
+                if t.particle.name.lower() != particle:
+                    continue
+
+            # Apply arbitrary state filter
+            match = True
+            if state_filter is not None:
+                for state in t.states:
+                    if state_filter(state):
+                        break
+                else:
+                    match = False
+
+            if match:
+                matching.append(t)
+
+        return matching
+
     def plot(self, axes=None):
         """Produce a 3D plot of particle tracks
 
@@ -155,6 +211,33 @@ class TrackFile(list):
             for dset_name in sorted(fh, key=_identifier):
                 dset = fh[dset_name]
                 self.append(Track(dset))
+
+    def filter(self, particle=None, state_filter=None):
+        """Filter tracks by given criteria
+
+        Parameters
+        ----------
+        particle : {'neutron', 'photon', 'electron', 'positron'}
+            Matching particle type
+        state_filter : function
+            Function that takes a state (structured datatype) and returns a bool
+            depending on some criteria.
+
+        Returns
+        -------
+        list
+            List of :class:`openmc.Track` objects
+
+        See Also
+        --------
+        openmc.Track.filter
+
+        """
+        matching = []
+        for track in self:
+            if track.filter(particle, state_filter):
+                matching.append(track)
+        return matching
 
     def plot(self):
         """Produce a 3D plot of particle tracks

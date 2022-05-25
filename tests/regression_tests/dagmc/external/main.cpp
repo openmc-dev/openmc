@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
 
   // Create new DAGMC universe
   openmc::model::universes.push_back(
-    std::make_unique<openmc::DAGUniverse>(dag_ptr, ""));
+    std::make_unique<openmc::DAGUniverse>(dag_ptr));
   model::universe_map[model::universes.back()->id_] =
     model::universes.size() - 1;
 

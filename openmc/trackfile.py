@@ -1,4 +1,5 @@
 from collections import namedtuple
+from collections.abc import Sequence
 
 import h5py
 
@@ -21,6 +22,11 @@ states : numpy.ndarray
     (weight), ``cell_id`` (cell ID) , and ``material_id`` (material ID).
 
 """
+def _particle_track_repr(self):
+    name = self.particle.name.lower()
+    return f"<ParticleTrack: {name}, {len(self.states)} states>"
+ParticleTrack.__repr__ = _particle_track_repr
+
 
 _VERSION_TRACK = 3
 
@@ -31,8 +37,13 @@ def _identifier(dset_name):
     return (int(batch), int(gen), int(particle))
 
 
-class Track:
+class Track(Sequence):
     """Tracks resulting from a single source particle
+
+    This class stores information for all tracks resulting from a primary source
+    particle and any secondary particles that it created. The track for each
+    primary/secondary particle is stored in the :attr:`particle_tracks`
+    attribute.
 
     Parameters
     ----------
@@ -43,7 +54,7 @@ class Track:
     ----------
     identifier : tuple
         Tuple of (batch, generation, particle number)
-    particles : list
+    particle_tracks : list
         List of tuples containing (particle type, array of track states)
     sources : list
         List of :class:`SourceParticle` representing each primary/secondary
@@ -62,10 +73,16 @@ class Track:
         for particle, start, end in zip(particles, offsets[:-1], offsets[1:]):
             ptype = ParticleType(particle)
             tracks_list.append(ParticleTrack(ptype, tracks[start:end]))
-        self.particles = tracks_list
+        self.particle_tracks = tracks_list
 
     def __repr__(self):
-        return f'<Track {self.identifier}: {len(self.particles)} particles>'
+        return f'<Track {self.identifier}: {len(self.particle_tracks)} particles>'
+
+    def __getitem__(self, index):
+        return self.particle_tracks[index]
+
+    def __len__(self):
+        return len(self.particle_tracks)
 
     def plot(self, axes=None):
         """Produce a 3D plot of particle tracks
@@ -94,7 +111,7 @@ class Track:
             ax = axes
 
         # Plot each particle track
-        for _, states in self.particles:
+        for _, states in self:
             r = states['r']
             ax.plot3D(r['x'], r['y'], r['z'])
 
@@ -103,7 +120,7 @@ class Track:
     @property
     def sources(self):
         sources = []
-        for particle_track in self.particles:
+        for particle_track in self:
             particle_type = ParticleType(particle_track.particle)
             state = particle_track.states[0]
             sources.append(

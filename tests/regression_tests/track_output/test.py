@@ -34,7 +34,8 @@ class TrackTestHarness(TestHarness):
         tracks = openmc.TrackFile('tracks.h5')
         for track in tracks:
             with np.printoptions(formatter={'float_kind': '{:.6e}'.format}):
-                outstr += str(track.particles) + '\n'
+                for ptrack in track:
+                    outstr += f"{ptrack.particle} {ptrack.states}\n"
 
         return outstr
 

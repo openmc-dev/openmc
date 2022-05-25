@@ -61,12 +61,12 @@ def test_tracks(sphere_model, particle, run_in_tmpdir):
         # Check attributes on Track object
         assert isinstance(track, openmc.Track)
         assert track.identifier == identifier
-        assert isinstance(track.particles, list)
+        assert isinstance(track.particle_tracks, list)
         if particle == 'neutron':
-            assert len(track.particles) == 1
+            assert len(track.particle_tracks) == 1
 
         # Check attributes on ParticleTrack object
-        particle_track = track.particles[0]
+        particle_track = track.particle_tracks[0]
         assert isinstance(particle_track, openmc.ParticleTrack)
 
         assert particle_track.particle.name.lower() == particle
@@ -84,7 +84,7 @@ def test_tracks(sphere_model, particle, run_in_tmpdir):
 
         # Checks on 'sources' property
         sources = track.sources
-        assert len(sources) == len(track.particles)
+        assert len(sources) == len(track.particle_tracks)
         x = sources[0]
         state = particle_track.states[0]
         assert x.r == (*state['r'],)

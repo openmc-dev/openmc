@@ -13,7 +13,7 @@ Installing on Linux/Mac with Mamba and conda-forge
 --------------------------------------------------
 
 `Conda <https://conda.io/en/latest/>`_ is an open source package management
-systems and environments management system for installing multiple versions of
+system and environments management system for installing multiple versions of
 software packages and their dependencies and switching easily between them.
 `Mamba <https://mamba.readthedocs.io/en/latest/>`_ is a cross-platform package
 manager and is compatible with `conda` packages.

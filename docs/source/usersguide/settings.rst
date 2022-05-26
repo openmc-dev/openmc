@@ -596,6 +596,19 @@ The full list of fields is as follows:
   :cell_id: Cell ID
   :material_id: Material ID
 
+Both the :class:`~openmc.Tracks` and :class:`~openmc.Track` classes have a
+``filter`` method that allows you to get a subset of tracks that meet a given
+criteria. For example, to get all tracks that involved a photon::
+
+  >>> tracks.filter(particle='photon')
+  [<Track (1, 1, 50): 151 particles>,
+   <Track (2, 1, 30): 191 particles>,
+   <Track (5, 1, 75): 81 particles>]
+
+The :meth:`openmc.Tracks.filter` method returns a new :class:`~openmc.Tracks`
+instance, whereas the :meth:`openmc.Track.filter` method returns a new
+:class:`~openmc.Track` instance.
+
 .. note:: If you are using an MPI-enabled install of OpenMC and run a simulation
           with more than one process, a separate track file will be written for
           each MPI process with the filename ``tracks_p#.h5`` where # is the

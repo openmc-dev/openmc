@@ -126,14 +126,16 @@ def test_filter(sphere_model, run_in_tmpdir):
 
         # Test general state filter
         matches = track.filter(state_filter=lambda s: s['cell_id'] == 1)
-        assert matches == track.particle_tracks
+        assert isinstance(matches, openmc.Track)
+        assert matches.particle_tracks == track.particle_tracks
         matches = track.filter(state_filter=lambda s: s['cell_id'] == 2)
-        assert matches == []
+        assert matches.particle_tracks == []
         matches = track.filter(state_filter=lambda s: s['E'] < 0.0)
-        assert matches == []
+        assert matches.particle_tracks == []
 
     # Test filter method on Tracks
     matches = tracks.filter(particle='neutron')
+    assert isinstance(matches, openmc.Tracks)
     assert matches == tracks
     matches = tracks.filter(state_filter=lambda s: s['E'] > 0.0)
     assert matches == tracks

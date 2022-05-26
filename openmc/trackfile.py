@@ -97,8 +97,8 @@ class Track(Sequence):
 
         Returns
         -------
-        list
-            List of :class:`openmc.ParticleTrack` objects
+        Track
+            New instance with only matching :class:`openmc.ParticleTrack` objects
 
         Examples
         --------
@@ -138,7 +138,11 @@ class Track(Sequence):
             if match:
                 matching.append(t)
 
-        return matching
+        # Return new Track instance with only matching particle tracks
+        track = type(self).__new__(type(self))
+        track.identifier = self.identifier
+        track.particle_tracks = matching
+        return track
 
     def plot(self, axes=None):
         """Produce a 3D plot of particle tracks
@@ -225,7 +229,7 @@ class Tracks(list):
 
         Returns
         -------
-        list
+        Tracks
             List of :class:`openmc.Track` objects
 
         See Also
@@ -233,7 +237,10 @@ class Tracks(list):
         openmc.Track.filter
 
         """
-        matching = []
+        # Create a new Tracks instance but avoid call to __init__
+        matching = type(self).__new__(type(self))
+
+        # Append matching Track objects
         for track in self:
             if track.filter(particle, state_filter):
                 matching.append(track)

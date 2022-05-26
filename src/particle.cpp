@@ -454,9 +454,7 @@ void Particle::cross_surface()
   // ==========================================================================
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
-  // Remove lower coordinate levels and assignment of surface
-  auto surface_index = surface();
-  surface() = 0;
+  // Remove lower coordinate levels
   n_coord() = 1;
   bool found = exhaustive_find_cell(*this);
 
@@ -466,6 +464,7 @@ void Particle::cross_surface()
     // the particle is really traveling tangent to a surface, if we move it
     // forward a tiny bit it should fix the problem.
 
+    surface() = 0;
     n_coord() = 1;
     r() += TINY_BIT * u();
 
@@ -479,9 +478,6 @@ void Particle::cross_surface()
       return;
     }
   }
-
-  // Reassign surface to avoid tracking errors
-  surface() = surface_index;
 }
 
 void Particle::cross_vacuum_bc(const Surface& surf)

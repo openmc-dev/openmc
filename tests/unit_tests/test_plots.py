@@ -93,6 +93,7 @@ def test_plots(run_in_tmpdir):
     p1 = openmc.Plot(name='plot1')
     p1.origin = (5., 5., 5.)
     p1.colors = {10: (255, 100, 0)}
+    p1.mask_components = [2, 4, 6]
     p2 = openmc.Plot(name='plot2')
     p2.origin = (-3., -3., -3.)
     plots = openmc.Plots([p1, p2])
@@ -109,4 +110,5 @@ def test_plots(run_in_tmpdir):
     assert len(plots)
     assert plots[0].origin == p1.origin
     assert plots[0].colors == p1.colors
+    assert plots[0].mask_components == p1.mask_components
     assert plots[1].origin == p2.origin

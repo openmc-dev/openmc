@@ -637,9 +637,10 @@ class Plot(IDManagerMixin):
                 color = _SVG_COLORS[color.lower()]
             subelement.text = ' '.join(str(x) for x in color)
 
-        # Helper function to handle either int or Cell/Material
+        # Helper function that returns the domain ID given either a
+        # Cell/Material object or the domain ID itself
         def get_id(domain):
-            return getattr(domain, 'id', domain)
+            return domain if isinstance(domain, Integral) else domain.id
 
         if self._colors:
             for domain, color in sorted(self._colors.items(),

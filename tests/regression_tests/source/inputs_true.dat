@@ -53,9 +53,9 @@
   <source strength="0.1">
     <space origin="1.0 1.0 0.0" type="spherical">
       <r parameters="2.0 3.0" type="uniform" />
-      <theta type="discrete">
-        <parameters>0.7853981633974483 1.5707963267948966 2.356194490192345 0.3 0.4 0.3</parameters>
-      </theta>
+      <cos_theta type="discrete">
+        <parameters>0.7071067811865476 0.0 -0.7071067811865475 0.3 0.4 0.3</parameters>
+      </cos_theta>
       <phi parameters="0.0 6.283185307179586" type="uniform" />
     </space>
     <angle type="isotropic" />
@@ -102,9 +102,9 @@
   <source strength="0.1">
     <space origin="1.0 1.0 0.0" type="spherical">
       <r parameters="2.0 3.0 2.0" type="powerlaw" />
-      <theta type="discrete">
-        <parameters>0.7853981633974483 1.5707963267948966 2.356194490192345 0.3 0.4 0.3</parameters>
-      </theta>
+      <cos_theta type="discrete">
+        <parameters>0.7071067811865476 0.0 -0.7071067811865475 0.3 0.4 0.3</parameters>
+      </cos_theta>
       <phi parameters="0.0 6.283185307179586" type="uniform" />
     </space>
     <angle type="isotropic" />

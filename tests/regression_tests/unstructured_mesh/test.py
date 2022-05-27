@@ -228,10 +228,10 @@ def test_unstructured_mesh(test_opts):
 
     # source setup
     r = openmc.stats.Uniform(a=0.0, b=0.0)
-    theta = openmc.stats.Discrete(x=[0.0], p=[1.0])
+    cos_theta = openmc.stats.Discrete(x=[1.0], p=[1.0])
     phi = openmc.stats.Discrete(x=[0.0], p=[1.0])
 
-    space = openmc.stats.SphericalIndependent(r, theta, phi)
+    space = openmc.stats.SphericalIndependent(r, cos_theta, phi)
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy)
     settings.source = source

@@ -1,6 +1,6 @@
 import openmc
 import openmc.stats
-
+from math import pi
 
 def test_source():
     space = openmc.stats.Point()
@@ -26,6 +26,22 @@ def test_source():
     assert src.strength == 1.0
 
 
+def test_spherical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    thetas = (0.0, pi/2)
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    sph_indep_function = openmc.stats.spherical_uniform(r_outer,
+                                                        r_inner,
+                                                        thetas,
+                                                        phis,
+                                                        origin)
+
+    assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent) 
+    
+
 def test_source_file():
     filename = 'source.h5'
     src = openmc.Source(filename=filename)
@@ -34,6 +50,7 @@ def test_source_file():
     elem = src.to_xml_element()
     assert 'strength' in elem.attrib
     assert 'file' in elem.attrib
+
 
 def test_source_dlopen():
     library = './libsource.so'

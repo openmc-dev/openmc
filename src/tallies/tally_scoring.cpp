@@ -25,9 +25,6 @@
 int ghost_counter=0;
 namespace openmc {
 
-namespace ghost {
-vector<Particle> ghost_particles;
-}
 
 //==============================================================================
 // FilterBinIter implementation
@@ -1553,6 +1550,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
   int filter_index, double filter_weight, int i_nuclide, double atom_density,
   double flux)
 {
+
   auto& tally {*model::tallies[i_tally]};
 
   // Set the direction and group to use with get_xs
@@ -2367,94 +2365,12 @@ void score_tracklength_tally(Particle& p, double distance)
 
 void score_collision_tally(Particle& p)
 {
-  fmt::print("------------------------collison happened------------------------\n");
+  fmt::print("collision tally called\n");
   // Determine the collision estimate of the flux
   double flux = 0.0;
-
-  double distance;
-  distance = p.r().x*p.r().x+p.r().y*p.r().y+p.r().z*p.r().z;
-  const auto& mat {model::materials[p.material()]};
-  int n = mat->nuclide_.size();
-  const auto& nuc {data::nuclides[0]};
-  double awr = nuc->awr_;
-  const auto& rx {nuc->reactions_[0]};
-
-  auto& d = rx->products_[0].distribution_[0];
-  auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-
-  Direction u_lab {0-p.r().x,0-p.r().y,0-p.r().z};
-  u_lab = u_lab/u_lab.norm();
-  double cos_lab = u_lab.dot(p.u_last());
-  double theta_lab = std::acos(cos_lab);
-  double sin_lab = std::sin(theta_lab);
-  fmt::print("awr = {}\n",awr);
-  fmt::print("sin_lab = {}\n",sin_lab);
-  fmt::print("cos_lab = {}\n",cos_lab);
-  double mu_COM = (std::sqrt(awr*awr - sin_lab*sin_lab)*cos_lab - sin_lab*sin_lab)/awr;
-  double vel = std::sqrt(p.E_last());
-  double theta_pdf = d_->angle().get_pdf_value(p.E_last(),mu_COM,p.current_seed());
-  fmt::print("particle E = {}\n",p.E_last());
-  fmt::print("particle mu_COM = {}\n",mu_COM);
-  double E_ghost = p.E_last()*(1+awr*awr+2*awr*mu_COM)/(1+awr)/(1+awr);
-  fmt::print("u_lab = {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
-  fmt::print("mu_COM is {}\n",std::isnan(mu_COM));
-  if(!std::isnan(mu_COM))
-  {
-  fmt::print("try to create ghost particle\n",ghost_counter);
-  Particle ghost_particle=Particle();
-  ghost::ghost_particles.resize(1);
-  ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);
-  fmt::print("---------------------ghost particle created {}---------------------\n",ghost_counter);
-
-  fmt::print("ghost_particle E = {}\n",E_ghost);
-  fmt::print("ghost_particle vector E = {}\n",ghost_particle.E());
-
-  ghost_particle.event_calculate_xs();
-  ghost_counter++;
-
-  fmt::print("pos = {0} , {1} , {2}\n",ghost_particle.r().x,ghost_particle.r().y,ghost_particle.r().z);
-  fmt::print("ghost_particle u = {0} , {1} , {2}\n",ghost_particle.u().x,ghost_particle.u().y,ghost_particle.u().z);
-  //calculate shilding
-  double total_MFP = 0;
-  ghost_particle.boundary() = distance_to_boundary(ghost_particle);
-  double advance_distance = ghost_particle.boundary().distance;
-  fmt::print("advane distance 1 ={} \n",advance_distance);
-  fmt::print("advane XS 1= {}\n",ghost_particle.macro_xs().total);
-  total_MFP += advance_distance*ghost_particle.macro_xs().total;
-  
-  //Advance particle in space and time
-  for (int j = 0; j < ghost_particle.n_coord(); ++j) {
-    ghost_particle.coord(j).r += advance_distance * ghost_particle.coord(j).u;
+  if (p.type() == ParticleType::neutron || p.type() == ParticleType::photon) {
+    flux = p.wgt_last() / p.macro_xs().total;
   }
-
-  fmt::print("ghost particle speed= {}\n",ghost_particle.speed());
-  ghost_particle.time() += advance_distance / ghost_particle.speed();
-  
-  ghost_particle.event_cross_surface();
-  fmt::print("pos = {0} , {1} , {2}\n",ghost_particle.r().x,ghost_particle.r().y,ghost_particle.r().z);
-
-
-  ghost_particle.event_calculate_xs();
-  ghost_particle.boundary() = distance_to_boundary(ghost_particle);
-  advance_distance = ghost_particle.boundary().distance;
-  fmt::print("advane distance 2 ={} \n",advance_distance);
-  fmt::print("advane XS 2= {}\n",ghost_particle.macro_xs().total);
-
-  // kill patricle
-  ghost::ghost_particles[0].event_death();
-  ghost::ghost_particles.resize(0);
-
-  flux = 0.5*ghost_particle.wgt()*exp(-(distance-1)*ghost_particle.macro_xs().total)/(2*3.14*distance*distance);
-  }
-
-
-  if (p.type() != ParticleType::neutron) {
-    if(p.event_mt() != 2)
-    {
-      flux = 0;
-    }
-  }
-
 
   for (auto i_tally : model::active_collision_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
@@ -2485,6 +2401,141 @@ void score_collision_tally(Particle& p)
           atom_density = model::materials[p.material()]->atom_density_(j);
         }
 
+        // TODO: consider replacing this "if" with pointers or templates
+        if (settings::run_CE) {
+          score_general_ce_nonanalog(p, i_tally, i * tally.scores_.size(),
+            filter_index, filter_weight, i_nuclide, atom_density, flux);
+        } else {
+          score_general_mg(p, i_tally, i * tally.scores_.size(), filter_index,
+            filter_weight, i_nuclide, atom_density, flux);
+        }
+      }
+    }
+
+    // If the user has specified that we can assume all tallies are spatially
+    // separate, this implies that once a tally has been scored to, we needn't
+    // check the others. This cuts down on overhead when there are many
+    // tallies specified
+    if (settings::assume_separate)
+      break;
+  }
+
+  // Reset all the filter matches for the next tally event.
+  for (auto& match : p.filter_matches())
+    match.bins_present_ = false;
+}
+
+void score_point_tally(Particle& p)
+{
+  fmt::print("------------------------collison happened------------------------\n");
+
+  // Determine the collision estimate of the flux
+  double flux = 0.0;
+  const auto& nuc {data::nuclides[p.event_nuclide()]};
+  double awr = nuc->awr_;
+  const auto& rx {nuc->reactions_[0]};
+  auto& d = rx->products_[0].distribution_[0];
+  auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
+  Direction u_lab {0-p.r().x,0-p.r().y,0-p.r().z};
+  u_lab = u_lab/u_lab.norm();
+  double cos_lab = u_lab.dot(p.u_last());
+  double theta_lab = std::acos(cos_lab);
+  double sin_lab = std::sin(theta_lab);
+  double mu_COM = (std::sqrt(awr*awr - sin_lab*sin_lab)*cos_lab - sin_lab*sin_lab)/awr;
+  double theta_pdf = d_->angle().get_pdf_value(p.E_last(),mu_COM,p.current_seed());
+  double E_ghost = p.E_last()*(1+awr*awr+2*awr*mu_COM)/(1+awr)/(1+awr);
+  if(!std::isnan(mu_COM))
+  {
+  Particle ghost_particle=Particle();
+  ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);
+  ghost_counter++;
+  //fmt::print("---------------------ghost particle created {}---------------------\n",ghost_counter);
+
+
+
+  //calculate shilding
+  double total_distance = std::sqrt(p.r().x*p.r().x+p.r().y*p.r().y+p.r().z*p.r().z);
+  double remaining_distance = std::sqrt(p.r().x*p.r().x+p.r().y*p.r().y+p.r().z*p.r().z);
+  double total_MFP = 0;
+  ghost_particle.event_calculate_xs();
+  ghost_particle.boundary() = distance_to_boundary(ghost_particle);
+  double advance_distance = ghost_particle.boundary().distance;
+  while(advance_distance<remaining_distance)
+  {
+    total_MFP += advance_distance*ghost_particle.macro_xs().total;
+      //Advance particle in space and time
+    for (int j = 0; j < ghost_particle.n_coord(); ++j) {
+      ghost_particle.coord(j).r += advance_distance * ghost_particle.coord(j).u;
+    }
+      remaining_distance-=advance_distance;
+      //fmt::print("advane distance 1 ={} \n",advance_distance);
+      //fmt::print("advane XS 1= {}\n",ghost_particle.macro_xs().total);
+      //fmt::print("ghost particle speed= {}\n",ghost_particle.speed());
+      ghost_particle.time() += advance_distance / ghost_particle.speed();
+      ghost_particle.event_cross_surface();
+      //fmt::print("pos = {0} , {1} , {2}\n",ghost_particle.r().x,ghost_particle.r().y,ghost_particle.r().z);
+      ghost_particle.event_calculate_xs();
+      ghost_particle.boundary() = distance_to_boundary(ghost_particle);
+      advance_distance = ghost_particle.boundary().distance;
+      //fmt::print("advane distance 2 ={} \n",advance_distance);
+      //fmt::print("advane XS 2= {}\n",ghost_particle.macro_xs().total);
+
+  }
+  
+  //// kill patricle
+  //ghost::ghost_particles[0].event_death();
+  //ghost::ghost_particles.resize(0);
+
+  flux = 0.5*ghost_particle.wgt()*exp(-total_MFP)/(2*3.14*total_distance*total_distance);
+  flux = flux*2;
+  if(flux>1e-10)
+  {
+    fmt::print("parent particle pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
+    fmt::print("parent particle u = {0} , {1} , {2}\n",p.u().x,p.u().y,p.u().z);
+    fmt::print("parent particle E = {}\n",p.E_last());
+    fmt::print("ghost particle E = {}\n",ghost_particle.E());
+    fmt::print("ghost particle u = {0} , {1} , {2}\n",ghost_particle.u().x,ghost_particle.u().y,ghost_particle.u().z);
+    fmt::print("ghost particle Mu COM = {}\n",mu_COM);
+    fmt::print("flux = {}\n",flux);
+  }
+  }
+
+  if (p.type() != ParticleType::neutron) {
+    if(p.event_mt() != 2)
+    {
+      flux = 0;
+    }
+  }
+
+
+  for (auto i_tally : model::active_point_tallies) {
+    const Tally& tally {*model::tallies[i_tally]};
+
+    // Initialize an iterator over valid filter bin combinations.  If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    if (filter_iter == end)
+      continue;
+
+    // Loop over filter bins.
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+      auto filter_weight = filter_iter.weight_;
+
+      // Loop over nuclide bins.
+      for (auto i = 0; i < tally.nuclides_.size(); ++i) {
+        auto i_nuclide = tally.nuclides_[i];
+
+        double atom_density = 0.;
+        if (i_nuclide >= 0) {
+          auto j =
+            model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
+          if (j == C_NONE)
+            continue;
+          atom_density = model::materials[p.material()]->atom_density_(j);
+        }
         // TODO: consider replacing this "if" with pointers or templates
         if (settings::run_CE) {
           score_general_ce_nonanalog(p, i_tally, i * tally.scores_.size(),

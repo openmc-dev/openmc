@@ -101,14 +101,14 @@ class ExternalDAGMCTest(PyAPITestHarness):
         self.executable = executable
 
     def _run_openmc(self):
-    """
-    Just test if results generated with the external C++ API are
-    self-consistent with the internal python API.
-    We generate the "truth" results with the python API but
-    the main test produces the results file by running the
-    executable compiled from main.cpp. This future-proofs
-    the test - we only care that the two routes are equivalent.
-    """
+        """
+        Just test if results generated with the external C++ API are
+        self-consistent with the internal python API.
+        We generate the "truth" results with the python API but
+        the main test produces the results file by running the
+        executable compiled from main.cpp. This future-proofs
+        the test - we only care that the two routes are equivalent.
+        """
         if config['update']:
             # Generate the results file with internal python API
             openmc.run(openmc_exec=config['exe'], event_based=config['event'])

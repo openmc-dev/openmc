@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import pi
 from numbers import Real, Integral
@@ -60,7 +60,7 @@ class MeshBase(IDManagerMixin, ABC):
         return string
 
     def _volume_dim_check(self):
-        if len(self.dimension) != 3 or \
+        if self.n_dimension != 3 or \
            any([d == 0 for d in self.dimension]):
             raise RuntimeError(f'Mesh {self.id} is not 3D. '
                                'Volumes cannot be provided.')
@@ -126,7 +126,75 @@ class MeshBase(IDManagerMixin, ABC):
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
 
 
-class RegularMesh(MeshBase):
+class StructuredMesh(MeshBase):
+    """A base class for structured mesh functionality
+
+    Parameters
+    ----------
+    mesh_id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the mesh
+    name : str
+        Name of the mesh
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @property
+    @abstractmethod
+    def dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def n_dimension(self):
+        pass
+
+    @property
+    @abstractmethod
+    def _grids(self):
+        pass
+
+    @property
+    def vertices(self):
+        """Return coordinates of mesh vertices.
+
+        Returns
+        -------
+        vertices : numpy.ndarray
+            Returns a numpy.ndarray representing the coordinates of the mesh
+            vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim).
+
+        """
+        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
+
+    @property
+    def centroids(self):
+        """Return coordinates of mesh element centroids.
+
+        Returns
+        -------
+        centroids : numpy.ndarray
+            Returns a numpy.ndarray representing the mesh element centroid
+            coordinates with a shape equal to (dim1, ..., dimn, ndim).
+
+        """
+        ndim = self.n_dimension
+        vertices = self.vertices
+        s0 = (slice(0, -1),)*ndim + (slice(None),)
+        s1 = (slice(1, None),)*ndim + (slice(None),)
+        return (vertices[s0] + vertices[s1]) / 2
+
+
+class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
 
     Parameters
@@ -243,6 +311,30 @@ class RegularMesh(MeshBase):
         else:
             nx, = self.dimension
             return ((x,) for x in range(1, nx + 1))
+
+    @property
+    def _grids(self):
+        ndim = len(self._dimension)
+        if ndim == 3:
+            x0, y0, z0 = self.lower_left
+            x1, y1, z1 = self.upper_right
+            nx, ny, nz = self.dimension
+            xarr = np.linspace(x0, x1, nx + 1)
+            yarr = np.linspace(y0, y1, ny + 1)
+            zarr = np.linspace(z0, z1, nz + 1)
+            return (xarr, yarr, zarr)
+        elif ndim == 2:
+            x0, y0 = self.lower_left
+            x1, y1 = self.upper_right
+            nx, ny = self.dimension
+            xarr = np.linspace(x0, x1, nx + 1)
+            yarr = np.linspace(y0, y1, ny + 1)
+            return (xarr, yarr)
+        else:
+            nx, = self.dimension
+            x0, = self.lower_left
+            x1, = self.upper_right
+            return (np.linspace(x0, x1, nx + 1),)
 
     @dimension.setter
     def dimension(self, dimension):
@@ -440,7 +532,7 @@ class RegularMesh(MeshBase):
         for entry in bc:
             cv.check_value('bc', entry, _BOUNDARY_TYPES)
 
-        n_dim = len(self.dimension)
+        n_dim = self.n_dimension
 
         # Build the cell which will contain the lattice
         xplanes = [openmc.XPlane(self.lower_left[0], boundary_type=bc[0]),
@@ -537,7 +629,7 @@ def Mesh(*args, **kwargs):
     return RegularMesh(*args, **kwargs)
 
 
-class RectilinearMesh(MeshBase):
+class RectilinearMesh(StructuredMesh):
     """A 3D rectilinear Cartesian mesh
 
     Parameters
@@ -597,6 +689,10 @@ class RectilinearMesh(MeshBase):
     @property
     def z_grid(self):
         return self._z_grid
+
+    @property
+    def _grids(self):
+        return (self.x_grid, self.y_grid, self.z_grid)
 
     @property
     def volumes(self):
@@ -726,7 +822,7 @@ class RectilinearMesh(MeshBase):
         return element
 
 
-class CylindricalMesh(MeshBase):
+class CylindricalMesh(StructuredMesh):
     """A 3D cylindrical mesh
 
     Parameters
@@ -788,6 +884,10 @@ class CylindricalMesh(MeshBase):
     @property
     def z_grid(self):
         return self._z_grid
+
+    @property
+    def _grids(self):
+        return (self.r_grid, self.phi_grid, self.z_grid)
 
     @property
     def indices(self):
@@ -913,7 +1013,7 @@ class CylindricalMesh(MeshBase):
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
 
-class SphericalMesh(MeshBase):
+class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
 
     Parameters
@@ -976,6 +1076,10 @@ class SphericalMesh(MeshBase):
     @property
     def phi_grid(self):
         return self._phi_grid
+
+    @property
+    def _grids(self):
+        return (self.r_grid, self.theta_grid, self.phi_grid)
 
     @property
     def indices(self):
@@ -1146,7 +1250,7 @@ class UnstructuredMesh(MeshBase):
         (1.0, 1.0, 1.0), ...]
     """
     def __init__(self, filename, library, mesh_id=None, name='',
-                        length_multiplier=1.0):
+                 length_multiplier=1.0):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
@@ -1240,6 +1344,19 @@ class UnstructuredMesh(MeshBase):
                       length_multiplier,
                       Real)
         self._length_multiplier = length_multiplier
+
+    @property
+    def dimension(self):
+        return self.n_elements
+
+    @property
+    def n_dimension(self):
+        return 3
+
+    @property
+    def vertices(self):
+        raise NotImplementedError("Vertices for UnstructuredMesh objects are "
+                                  "not yet available")
 
     def __repr__(self):
         string = super().__repr__()
@@ -1371,7 +1488,7 @@ class UnstructuredMesh(MeshBase):
         subelement.text = self.filename
 
         if self._length_multiplier != 1.0:
-          element.set("length_multiplier", str(self.length_multiplier))
+            element.set("length_multiplier", str(self.length_multiplier))
 
         return element
 

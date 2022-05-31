@@ -41,7 +41,7 @@ def main():
         # Write coordinate values to points array.
         track_file = openmc.Tracks(fname)
         for track in track_file:
-            for particle in track.particles:
+            for particle in track:
                 for state in particle.states:
                     points.InsertNextPoint(state['r'])
 

@@ -846,6 +846,20 @@ void read_cells(pugi::xml_node node)
 
   read_dagmc_universes(node);
 
+  populate_universes();
+
+  // Allocate the cell overlap count if necessary.
+  if (settings::check_overlaps) {
+    model::overlap_check_count.resize(model::cells.size(), 0);
+  }
+
+  if (model::cells.size() == 0) {
+    fatal_error("No cells were found in the geometry.xml file");
+  }
+}
+
+void populate_universes()
+{
   // Populate the Universe vector and map.
   for (int i = 0; i < model::cells.size(); i++) {
     int32_t uid = model::cells[i]->universe_;
@@ -860,15 +874,6 @@ void read_cells(pugi::xml_node node)
     }
   }
   model::universes.shrink_to_fit();
-
-  // Allocate the cell overlap count if necessary.
-  if (settings::check_overlaps) {
-    model::overlap_check_count.resize(model::cells.size(), 0);
-  }
-
-  if (model::cells.size() == 0) {
-    fatal_error("No cells were found in the geometry.xml file");
-  }
 }
 
 //==============================================================================

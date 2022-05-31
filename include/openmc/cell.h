@@ -300,5 +300,8 @@ struct CellInstanceHash {
 
 void read_cells(pugi::xml_node node);
 
+//!  Add cells to universes
+void populate_universes();
+
 } // namespace openmc
 #endif // OPENMC_CELL_H

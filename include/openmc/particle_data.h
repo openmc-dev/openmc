@@ -64,6 +64,7 @@ struct TrackState {
   double time {0.0};    //!< Time in [s]
   double wgt {1.0};     //!< Weight
   int cell_id;          //!< Cell ID
+  int cell_instance;    //!< Cell instance
   int material_id {-1}; //!< Material ID (default value indicates void)
 };
 

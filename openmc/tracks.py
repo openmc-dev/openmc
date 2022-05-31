@@ -19,7 +19,8 @@ states : numpy.ndarray
     Structured array containing each state of the particle. The structured array
     contains the following fields: ``r`` (position; each direction in [cm]),
     ``u`` (direction), ``E`` (energy in [eV]), ``time`` (time in [s]), ``wgt``
-    (weight), ``cell_id`` (cell ID) , and ``material_id`` (material ID).
+    (weight), ``cell_id`` (cell ID) , ``cell_instance`` (cell instance), and
+    ``material_id`` (material ID).
 
 """
 def _particle_track_repr(self):

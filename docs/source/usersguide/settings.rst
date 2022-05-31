@@ -594,6 +594,7 @@ The full list of fields is as follows:
   :time: Time in [s]
   :wgt: Weight
   :cell_id: Cell ID
+  :cell_instance: Cell instance
   :material_id: Material ID
 
 Both the :class:`~openmc.Tracks` and :class:`~openmc.Track` classes have a

@@ -73,6 +73,8 @@ void open_track_file()
   H5Tinsert(track_dtype, "wgt", HOFFSET(TrackState, wgt), H5T_NATIVE_DOUBLE);
   H5Tinsert(
     track_dtype, "cell_id", HOFFSET(TrackState, cell_id), H5T_NATIVE_INT);
+  H5Tinsert(track_dtype, "cell_instance", HOFFSET(TrackState, cell_instance),
+    H5T_NATIVE_INT);
   H5Tinsert(track_dtype, "material_id", HOFFSET(TrackState, material_id),
     H5T_NATIVE_INT);
   H5Tclose(postype);

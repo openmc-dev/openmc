@@ -64,6 +64,7 @@ TrackState ParticleData::get_track_state() const
   state.time = this->time();
   state.wgt = this->wgt();
   state.cell_id = model::cells[this->lowest_coord().cell]->id_;
+  state.cell_instance = this->cell_instance();
   if (this->material() != MATERIAL_VOID) {
     state.material_id = model::materials[material()]->id_;
   }

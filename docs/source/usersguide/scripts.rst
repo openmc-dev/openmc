@@ -47,7 +47,7 @@ flags:
 -r, --restart file     Restart a previous run from a state point or a particle
                        restart file
 -s, --threads N        Run with *N* OpenMP threads
--t, --track            Write tracks for all particles
+-t, --track            Write tracks for all particles (up to max_tracks)
 -v, --version          Show version information
 -h, --help             Show help message
 

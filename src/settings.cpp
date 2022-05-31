@@ -95,7 +95,7 @@ int n_log_bins {8000};
 int n_batches;
 int n_max_batches;
 int max_splits {1000};
-int max_tracks {std::numeric_limits<int>::max()};
+int max_tracks {1000};
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};

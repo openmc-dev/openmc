@@ -126,8 +126,8 @@ class MeshBase(IDManagerMixin, ABC):
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
 
 
-class StructuredMesh(ABC):
-    """A mixin for structured mesh functionality
+class StructuredMesh(MeshBase):
+    """A base class for structured mesh functionality
 
     Parameters
     ----------
@@ -194,8 +194,7 @@ class StructuredMesh(ABC):
         return (vertices[s0] + vertices[s1]) / 2
 
 
-
-class RegularMesh(StructuredMesh, MeshBase):
+class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
 
     Parameters
@@ -630,7 +629,7 @@ def Mesh(*args, **kwargs):
     return RegularMesh(*args, **kwargs)
 
 
-class RectilinearMesh(MeshBase):
+class RectilinearMesh(StructuredMesh):
     """A 3D rectilinear Cartesian mesh
 
     Parameters
@@ -823,7 +822,7 @@ class RectilinearMesh(MeshBase):
         return element
 
 
-class CylindricalMesh(MeshBase):
+class CylindricalMesh(StructuredMesh):
     """A 3D cylindrical mesh
 
     Parameters
@@ -1014,7 +1013,7 @@ class CylindricalMesh(MeshBase):
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
 
-class SphericalMesh(MeshBase):
+class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
 
     Parameters

@@ -3,6 +3,7 @@
 
 #include <algorithm> // for copy, fill
 #include <cstdlib> // for malloc
+#include <initializer_list>
 #include <iterator> // for reverse_iterator
 #include <utility> // for swap
 
@@ -30,6 +31,7 @@ public:
   vector() : data_(nullptr), size_(0), capacity_(0) { }
   vector(size_type n) : vector() { this->resize(n); }
   vector(const_iterator begin, const_iterator end);
+  vector(std::initializer_list<T> init);
 
   // Copy/move constructors/assignments
   vector(const vector& other);
@@ -218,6 +220,13 @@ vector<T>::vector(vector<T>::const_iterator first, vector<T>::const_iterator las
   : vector(last - first)
 {
   std::copy(first, last, this->begin());
+}
+
+template<typename T>
+vector<T>::vector(std::initializer_list<T> init)
+  : vector(init.size())
+{
+  std::copy(init.begin(), init.end(), this->begin());
 }
 
 template<typename T>

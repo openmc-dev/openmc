@@ -9,7 +9,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -mllvm -vpo-paropt-atomic-free-reduction=false"
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -mllvm -vpo-paropt-atomic-free-reduction=false"
             }
         },
         {
@@ -20,7 +20,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4 -internal_options -ze-opt-large-register-file\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -mllvm -vpo-paropt-atomic-free-reduction=false"
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4 -internal_options -ze-opt-large-register-file\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -mllvm -vpo-paropt-atomic-free-reduction=false"
             }
         },
         {
@@ -31,31 +31,9 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only"
+                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
             }
         },
-        {
-            "name": "intel_cpu",
-            "displayName": "Intel CPU Offloading",
-            "binaryDir": "${sourceDir}/build/intel_cpu",
-            "generator": "Unix Makefiles",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "icc",
-                "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -gline-tables-only -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
-            }
-        },
-        {
-            "name": "llvm_cpu",
-            "displayName": "LLVM Clang CPU Offloading",
-            "binaryDir": "${sourceDir}/build/llvm_cpu",
-            "generator": "Unix Makefiles",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-target-new-runtime -fopenmp-cuda-mode"
-            }
-         },
         {
             "name": "llvm_v100",
             "displayName": "LLVM Clang V100",
@@ -64,7 +42,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode"
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
             }
          },
         {
@@ -75,7 +53,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode"
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
             }
          },
         {
@@ -86,7 +64,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -Rpass-missed=openmp-opt -fopenmp-new-driver -foffload-lto -fopenmp-target-debug=5"
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode -foffload-lto"
             }
          },
         {
@@ -97,7 +75,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx908 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode"
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx908 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
             }
          },
         {

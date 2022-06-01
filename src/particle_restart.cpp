@@ -73,7 +73,7 @@ void run_particle_restart()
 {
   // Set verbosity high
   settings::verbosity = 10;
-  
+
   // Move read on data to device, if running on device
   move_read_only_data_to_device();
 
@@ -91,7 +91,7 @@ void run_particle_restart()
   if (settings::write_all_tracks) p.write_track_ = true;
 
   // Set all tallies to 0 for now (just tracking errors)
-  model::tallies.clear();
+  model::tallies_size = 0;
 
   // Compute random number seed
   int64_t particle_seed;

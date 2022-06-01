@@ -608,15 +608,15 @@ const std::unordered_map<int, const char*> score_names = {
 void
 write_tallies()
 {
-  if (model::tallies.empty()) return;
+  if (model::tallies_size == 0) return;
 
   // Open the tallies.out file.
   std::ofstream tallies_out;
   tallies_out.open("tallies.out", std::ios::out | std::ios::trunc);
 
   // Loop over each tally.
-  for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
-    const auto& tally {*model::tallies[i_tally]};
+  for (auto i_tally = 0; i_tally < model::tallies_size; ++i_tally) {
+    const auto& tally {model::tallies[i_tally]};
 
     // Write header block.
     std::string tally_header("TALLY " + std::to_string(tally.id_));
@@ -709,7 +709,7 @@ write_tallies()
             : score_names.at(score);
           double mean, stdev;
           std::tie(mean, stdev) = mean_stdev(
-            tally.results(filter_index, score_index, 0), tally.n_realizations_);
+            tally.results(filter_index, score_index, TallyResult::VALUE), tally.n_realizations_);
           fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n",
             "", indent + 1, score_name, mean, t_value * stdev);
           score_index += 1;

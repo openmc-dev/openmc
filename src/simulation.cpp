@@ -103,8 +103,8 @@ int openmc_simulation_init()
 
 
   // Allocate tally results arrays if they're not allocated yet
-  for (auto& t : model::tallies) {
-    t->init_results();
+  for (int i = 0; i < model::tallies_size; ++i) {
+    model::tallies[i].init_results();
   }
 
   // Set up material nuclide index mapping
@@ -186,8 +186,8 @@ int openmc_simulation_finalize()
   if (settings::output_tallies && mpi::master) write_tallies();
 
   // Deactivate all tallies
-  for (auto& t : model::tallies) {
-    t->active_ = false;
+  for (int i = 0; i < model::tallies_size; ++i) {
+    model::tallies[i].active_ = false;
   }
 
   // Stop timers and show timing statistics
@@ -363,8 +363,8 @@ void initialize_batch()
   } else if (first_active) {
     simulation::time_inactive.stop();
     simulation::time_active.start();
-    for (auto& t : model::tallies) {
-      t->active_ = true;
+    for (int i = 0; i < model::tallies_size; ++i) {
+      model::tallies[i].active_ = true;
     }
   }
 

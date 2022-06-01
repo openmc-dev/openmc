@@ -111,7 +111,8 @@ public:
   size_t results_size_ {0};
   size_t n_scores_;
 
-  double* results(gsl::index i, gsl::index j, gsl::index k);
+  const double* results(gsl::index i, gsl::index j, TallyResult k) const;
+  double* results(gsl::index i, gsl::index j, TallyResult k);
   std::array<size_t, 3> results_shape() const;
 
   //! True if this tally should be written to statepoint files

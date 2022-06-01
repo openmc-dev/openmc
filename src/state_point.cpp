@@ -161,13 +161,13 @@ openmc_statepoint_write(const char* filename, bool* write_source)
     close_group(filters_group);
 
     // Write information for tallies
-    write_attribute(tallies_group, "n_tallies", model::tallies.size());
-    if (!model::tallies.empty()) {
+    write_attribute(tallies_group, "n_tallies", model::tallies_size);
+    if (model::tallies_size > 0) {
       // Write tally IDs
       std::vector<int32_t> tally_ids;
-      tally_ids.reserve(model::tallies.size());
-      for (const auto& tally : model::tallies)
-        tally_ids.push_back(tally->id_);
+      tally_ids.reserve(model::tallies_size);
+      for (int i = 0; i < model::tallies_size; ++i)
+        tally_ids.push_back(model::tallies[i].id_);
       write_attribute(tallies_group, "ids", tally_ids);
 
 #ifdef DAGMC
@@ -176,7 +176,8 @@ openmc_statepoint_write(const char* filename, bool* write_source)
 #endif
 
       // Write all tally information except results
-      for (const auto& tally : model::tallies) {
+      for (int i = 0; i < model::tallies_size; ++i) {
+        const auto& tally = &model::tallies[i];
         hid_t tally_group = create_group(tallies_group,
           "tally " + std::to_string(tally->id_));
 
@@ -249,14 +250,15 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         write_attribute(file_id, "tallies_present", 1);
 
         // Write all tally results
-        for (const auto& tally : model::tallies) {
+        for (int i = 0; i < model::tallies_size; ++i) {
+          const auto& tally = &model::tallies[i];
           if (!tally->writable_) continue;
           // Write sum and sum_sq for each bin
           std::string name = "tally " + std::to_string(tally->id_);
           hid_t tally_group = open_group(tallies_group, name.c_str());
-          auto& results = tally->results_;
-          write_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.data());
+          auto results_shape = tally->results_shape();
+          write_tally_results(tally_group, results_shape[0],
+            results_shape[1], tally->results_);
           close_group(tally_group);
         }
       } else {
@@ -449,9 +451,10 @@ void load_state_point()
     if (present) {
       hid_t tallies_group = open_group(file_id, "tallies");
 
-      for (auto& tally : model::tallies) {
+      for (int i = 0; i < model::tallies_size; ++i) {
+        auto& tally = model::tallies[i];
         // Read sum, sum_sq, and N for each bin
-        std::string name = "tally " + std::to_string(tally->id_);
+        std::string name = "tally " + std::to_string(tally.id_);
         hid_t tally_group = open_group(tallies_group, name.c_str());
 
         int internal=0;
@@ -459,12 +462,12 @@ void load_state_point()
           read_attribute(tally_group, "internal", internal);
         }
         if (internal) {
-          tally->writable_ = false;
+          tally.writable_ = false;
         } else {
 
-          read_tally_results(tally_group, tally->results_shape()[0],
-            tally->results_shape()[1], tally->results_);
-          read_dataset(tally_group, "n_realizations", tally->n_realizations_);
+          read_tally_results(tally_group, tally.results_shape()[0],
+            tally.results_shape()[1], tally.results_);
+          read_dataset(tally_group, "n_realizations", tally.n_realizations_);
           close_group(tally_group);
         }
       }
@@ -891,7 +894,8 @@ void write_tally_results_nr(hid_t file_id)
     write_dataset(file_id, "global_tallies", gt);
   }
 
-  for (const auto& t : model::tallies) {
+  for (int i = 0; i < model::tallies_size; ++i) {
+    const auto& t = &model::tallies[i];
     // Skip any tallies that are not active
     if (!t->active_) continue;
     if (!t->writable_) continue;
@@ -901,7 +905,10 @@ void write_tally_results_nr(hid_t file_id)
     }
 
     // Get view of accumulated tally values
-    auto values_view = xt::view(t->results_, xt::all(), xt::all(),
+    auto adapted_array = xt::adapt(t->results_, t->results_size_,
+      xt::no_ownership(), t->results_shape());
+
+    auto values_view = xt::view(adapted_array, xt::all(), xt::all(),
       xt::range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1));
 
     // Make copy of tally values in contiguous array
@@ -927,7 +934,7 @@ void write_tally_results_nr(hid_t file_id)
       }
 
       // Put in temporary tally result
-      xt::xtensor<double, 3> results_copy = xt::zeros_like(t->results_);
+      xt::xtensor<double, 3> results_copy = xt::zeros<double>(t->results_shape());
       auto copy_view = xt::view(results_copy, xt::all(), xt::all(),
         xt::range(static_cast<int>(TallyResult::SUM), static_cast<int>(TallyResult::SUM_SQ) + 1));
       copy_view = values;

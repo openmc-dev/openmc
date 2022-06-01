@@ -30,7 +30,7 @@ namespace settings {
 std::pair<double, double>
 get_tally_uncertainty(int i_tally, int score_index, int filter_index)
 {
-  const auto& tally {model::tallies[i_tally]};
+  const auto& tally {&model::tallies[i_tally]};
 
   auto sum = *tally->results(filter_index, score_index, TallyResult::SUM);
   auto sum_sq = *tally->results(filter_index, score_index, TallyResult::SUM_SQ);
@@ -54,8 +54,8 @@ void
 check_tally_triggers(double& ratio, int& tally_id, int& score)
 {
   ratio = 0.;
-  for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
-    const Tally& t {*model::tallies[i_tally]};
+  for (auto i_tally = 0; i_tally < model::tallies_size; ++i_tally) {
+    const Tally& t {model::tallies[i_tally]};
 
     // Ignore tallies with less than two realizations.
     if (t.n_realizations_ < 2) continue;
@@ -64,9 +64,9 @@ check_tally_triggers(double& ratio, int& tally_id, int& score)
       // Skip trigger if it is not active
       if (trigger.metric == TriggerMetric::not_active) continue;
 
-      for (auto filter_index = 0; filter_index < results_shape()[0];
+      for (auto filter_index = 0; filter_index < t.results_shape()[0];
            ++filter_index) {
-        for (auto score_index = 0; score_index < results_shape()[1];
+        for (auto score_index = 0; score_index < t.results_shape()[1];
              ++score_index) {
           // Compute the tally uncertainty metrics.
           auto uncert_pair = get_tally_uncertainty(i_tally, score_index,

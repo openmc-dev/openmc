@@ -307,7 +307,7 @@ Tally::set_id(int32_t id)
   if (id == C_NONE) {
     id = 0;
     for (int i = 0; i < model::tallies_size; ++i) {
-      id = std::max(id, model::tallies[i]->id_);
+      id = std::max(id, model::tallies[i].id_);
     }
     ++id;
   }
@@ -657,24 +657,29 @@ void Tally::copy_to_device()
 {
   scores_.copy_to_device();
   nuclides_.copy_to_device();
-  #pragma omp target enter data map(to: results_[:results_size])
+  #pragma omp target enter data map(to: results_[:results_size_])
 }
 
 void Tally::release_from_device()
 {
   scores_.release_device();
   nuclides_.release_device();
-  #pragma omp target exit data map(release: results_[:results_size])
+  #pragma omp target exit data map(release: results_[:results_size_])
 }
 
-double* Tally::results(gsl::index i, gsl::index j, gsl::index k)
+const double* Tally::results(gsl::index i, gsl::index j, TallyResult k) const
 {
-  return results_ + (i * n_filter_bins_ + j) * n_scores_ + k;
+  return results_ + (i * n_filter_bins_ + j) * n_scores_ + static_cast<int>(k);
+}
+
+double* Tally::results(gsl::index i, gsl::index j, TallyResult k)
+{
+  return results_ + (i * n_filter_bins_ + j) * n_scores_ + static_cast<int>(k);
 }
 
 std::array<size_t, 3> Tally::results_shape() const
 {
-  return {n_filter_bins_, n_scores_, 3};
+  return {static_cast<size_t>(n_filter_bins_), n_scores_, 3};
 }
 
 //==============================================================================
@@ -853,7 +858,7 @@ accumulate_tallies()
   // Accumulate results for each tally
   for (int i_tally : model::active_tallies) {
     auto& tally {model::tallies[i_tally]};
-    tally->accumulate();
+    tally.accumulate();
   }
 }
 
@@ -867,7 +872,7 @@ setup_active_tallies()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
 
-  for (auto i = 0; i < model::tallies.size(); ++i) {
+  for (auto i = 0; i < model::tallies_size; ++i) {
     const auto& tally {model::tallies[i]};
 
     if (tally.active_) {
@@ -966,7 +971,7 @@ openmc_get_tally_next_id(int32_t* id)
 {
   int32_t largest_tally_id = 0;
   for (int i = 0; i < model::tallies_size; ++i) {
-    largest_tally_id = std::max(largest_tally_id, model::tallies[i]->id_);
+    largest_tally_id = std::max(largest_tally_id, model::tallies[i].id_);
   }
   *id = largest_tally_id + 1;
 }
@@ -979,7 +984,7 @@ openmc_tally_get_estimator(int32_t index, int* estimator)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *estimator = static_cast<int>(model::tallies[index]->estimator_);
+  *estimator = static_cast<int>(model::tallies[index].estimator_);
   return 0;
 }
 
@@ -995,11 +1000,11 @@ openmc_tally_set_estimator(int32_t index, const char* estimator)
 
   std::string est = estimator;
   if (est == "analog") {
-    t->estimator_ = TallyEstimator::ANALOG;
+    t.estimator_ = TallyEstimator::ANALOG;
   } else if (est == "collision") {
-    t->estimator_ = TallyEstimator::COLLISION;
+    t.estimator_ = TallyEstimator::COLLISION;
   } else if (est == "tracklength") {
-    t->estimator_ = TallyEstimator::TRACKLENGTH;
+    t.estimator_ = TallyEstimator::TRACKLENGTH;
   } else {
     set_errmsg("Unknown tally estimator: " + est);
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1015,7 +1020,7 @@ openmc_tally_get_id(int32_t index, int32_t* id)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *id = model::tallies[index]->id_;
+  *id = model::tallies[index].id_;
   return 0;
 }
 
@@ -1027,7 +1032,7 @@ openmc_tally_set_id(int32_t index, int32_t id)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  model::tallies[index]->set_id(id);
+  model::tallies[index].set_id(id);
   return 0;
 }
 
@@ -1038,7 +1043,7 @@ openmc_tally_get_type(int32_t index, int32_t* type)
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *type = static_cast<int>(model::tallies[index]->type_);
+  *type = static_cast<int>(model::tallies[index].type_);
 
   return 0;
 }
@@ -1051,11 +1056,11 @@ openmc_tally_set_type(int32_t index, const char* type)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   if (strcmp(type, "volume") == 0) {
-    model::tallies[index]->type_ = TallyType::VOLUME;
+    model::tallies[index].type_ = TallyType::VOLUME;
   } else if (strcmp(type, "mesh-surface") == 0) {
-    model::tallies[index]->type_ = TallyType::MESH_SURFACE;
+    model::tallies[index].type_ = TallyType::MESH_SURFACE;
   } else if (strcmp(type, "surface") == 0) {
-    model::tallies[index]->type_ = TallyType::SURFACE;
+    model::tallies[index].type_ = TallyType::SURFACE;
   } else {
     set_errmsg(fmt::format("Unknown tally type: {}", type));
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1071,7 +1076,7 @@ openmc_tally_get_active(int32_t index, bool* active)
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *active = model::tallies[index]->active_;
+  *active = model::tallies[index].active_;
 
   return 0;
 }
@@ -1083,7 +1088,7 @@ openmc_tally_set_active(int32_t index, bool active)
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  model::tallies[index]->active_ = active;
+  model::tallies[index].active_ = active;
 
   return 0;
 }
@@ -1095,7 +1100,7 @@ openmc_tally_get_writable(int32_t index, bool* writable)
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *writable = model::tallies[index]->writable();
+  *writable = model::tallies[index].writable();
 
   return 0;
 }
@@ -1107,7 +1112,7 @@ openmc_tally_set_writable(int32_t index, bool writable)
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  model::tallies[index]->set_writable(writable);
+  model::tallies[index].set_writable(writable);
 
   return 0;
 }
@@ -1120,8 +1125,8 @@ openmc_tally_get_scores(int32_t index, int** scores, int* n)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *scores = model::tallies[index]->scores_.data();
-  *n = model::tallies[index]->scores_.size();
+  *scores = model::tallies[index].scores_.data();
+  *n = model::tallies[index].scores_.size();
   return 0;
 }
 
@@ -1135,7 +1140,7 @@ openmc_tally_set_scores(int32_t index, int n, const char** scores)
 
   std::vector<std::string> scores_str(scores, scores+n);
   try {
-    model::tallies[index]->set_scores(scores_str);
+    model::tallies[index].set_scores(scores_str);
   } catch (const std::invalid_argument& ex) {
     set_errmsg(ex.what());
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1153,8 +1158,8 @@ openmc_tally_get_nuclides(int32_t index, int** nuclides, int* n)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *n = model::tallies[index]->nuclides_.size();
-  *nuclides = model::tallies[index]->nuclides_.data();
+  *n = model::tallies[index].nuclides_.size();
+  *nuclides = model::tallies[index].nuclides_.data();
 
   return 0;
 }
@@ -1169,7 +1174,7 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
   }
 
   std::vector<std::string> words(nuclides, nuclides+n);
-  std::vector<int> nucs;
+  vector<int> nucs;
   for (auto word : words){
     if (word == "total") {
       nucs.push_back(-1);
@@ -1183,7 +1188,7 @@ openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides)
     }
   }
 
-  model::tallies[index]->nuclides_ = nucs;
+  model::tallies[index].nuclides_ = nucs;
 
   return 0;
 }
@@ -1196,8 +1201,8 @@ openmc_tally_get_filters(int32_t index, const int32_t** indices, size_t* n)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *indices = model::tallies[index]->filters().data();
-  *n = model::tallies[index]->filters().size();
+  *indices = model::tallies[index].filters().data();
+  *n = model::tallies[index].filters().size();
   return 0;
 }
 
@@ -1218,7 +1223,7 @@ openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices)
       int32_t i_filt = indices[i];
       filters.push_back(&model::tally_filters[i_filt]);
     }
-    model::tallies[index]->set_filters(filters);
+    model::tallies[index].set_filters(filters);
   } catch (const std::out_of_range& ex) {
     set_errmsg("Index in tally filter array out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1237,7 +1242,7 @@ openmc_tally_reset(int32_t index)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  model::tallies[index]->reset();
+  model::tallies[index].reset();
   return 0;
 }
 
@@ -1250,7 +1255,7 @@ openmc_tally_get_n_realizations(int32_t index, int32_t* n)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  *n = model::tallies[index]->n_realizations_;
+  *n = model::tallies[index].n_realizations_;
   return 0;
 }
 
@@ -1266,14 +1271,14 @@ openmc_tally_results(int32_t index, double** results, size_t* shape)
   }
 
   const auto& t {model::tallies[index]};
-  if (t->results_size_ == 0) {
+  if (t.results_size_ == 0) {
     set_errmsg("Tally results have not been allocated yet.");
     return OPENMC_E_ALLOCATE;
   }
 
   // Set pointer to results and copy shape
-  *results = t->results_;
-  auto s = t->results_shape();
+  *results = t.results_;
+  auto s = t.results_shape();
   shape[0] = s[0];
   shape[1] = s[1];
   shape[2] = s[2];

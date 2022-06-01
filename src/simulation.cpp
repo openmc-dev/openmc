@@ -208,10 +208,23 @@ int openmc_next_batch(int* status)
     simulation::time_transport.start();
 
     // Transport loop
-    if (settings::event_based) {
-      transport_event_based();
-    } else {
-      transport_history_based();
+    if (settings::asynchronous_on) {
+#ifdef OPENMC_MPI
+      asynchronous_scheduling();
+#else
+      if (settings::event_based) {
+        transport_event_based();
+      } else {
+        transport_history_based();
+      }      
+#endif
+    }
+    else {
+      if (settings::event_based) {
+        transport_event_based();
+      } else {
+        transport_history_based();
+      }
     }
 
     // Accumulate time for transport
@@ -276,7 +289,8 @@ const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
 vector<int64_t> work_index;
-
+// asynchronous
+vector<int64_t> work_per_task;
 } // namespace simulation
 
 //==============================================================================
@@ -762,4 +776,209 @@ void transport_event_based()
   }
 }
 
+#ifdef OPENMC_MPI
+void asynchronous_scheduling() 
+{
+  // Determine number of tasks
+  int number_of_task = 2 * mpi::n_procs;
+  int task_on_rank;
+  if (settings::n_particles/number_of_task > variance_reduction::max_nps_per_task) {
+    number_of_task = settings::n_particles / variance_reduction::max_nps_per_task;
+  }
+  if (mpi::master) {
+    std::cout<<"Asynchronous scheduling: Total "<<number_of_task<<" tasks in this simulation."<<std::endl;
+  }
+
+  // Determine minimum amount of particles to simulate on each task
+  int64_t min_work = settings::n_particles / number_of_task;
+
+  // Determine number of processors that have one extra particle
+  int64_t remainder = settings::n_particles % number_of_task;
+
+  int64_t i_bank = 0;
+  simulation::work_index.clear();
+  simulation::work_index.resize(number_of_task + 1);
+  simulation::work_index[0] = 0;
+  simulation::work_per_task.clear();
+  simulation::work_per_task.resize(number_of_task);
+  for (int i = 0; i < number_of_task; ++i) {
+    // Number of particles for task i
+    int64_t work_i = i < remainder ? min_work + 1 : min_work;
+
+    // Set nps of task i
+    simulation::work_per_task[i] = work_i;
+
+    // Set index into source bank for task i
+    i_bank += work_i;
+    simulation::work_index[i+1] = i_bank;
+  }
+  if (mpi::master) {
+    std::cout<<"Asynchronous scheduling: Tasks have been devided."<<std::endl;
+  }
+
+  // ---
+  // asynchronous scheduling
+  const int data_tag = 0;
+  const int result_tag = 1;
+  const int terminate_tag = 2;
+
+  int count; // count for the running processes
+  int Part;  // task number to dispatch
+  int finish_flag; // flag indicates the finished task on process
+  MPI_Status stat;
+
+  if (mpi::master) { // dispatch task in the master process
+    count = 0;
+    Part = 0;
+    finish_flag = 0;
+
+    // dispatch the first task for other processes
+    for (int i = 1; i < mpi::n_procs; i++) { 
+      MPI_Send(&Part,1,MPI_INT,i,data_tag,mpi::intracomm);
+      count++;
+      Part++;
+    }
+
+    do {
+      // dispatch task after any process have finished task
+      MPI_Recv(&finish_flag,1,MPI_INT,MPI_ANY_SOURCE,result_tag,mpi::intracomm,&stat);
+      --count;
+
+      if (Part < number_of_task) {
+        // if not all task has been dispatched, dispatch the next task to process
+        MPI_Send(&Part,1,MPI_INT,stat.MPI_SOURCE,data_tag,mpi::intracomm);
+        count++;
+        Part++;
+      } else {
+        // if all task has been dispatched, send the singal to terminate the simulation on process
+        MPI_Send(&Part,1,MPI_INT,stat.MPI_SOURCE,terminate_tag,mpi::intracomm);
+      }
+
+    } while (count > 0);
+
+  } else { // simulation in other process
+    // receive the first task
+    finish_flag = 0;
+    task_on_rank = 0;
+    MPI_Recv(&Part,1,MPI_INT,0,MPI_ANY_TAG,mpi::intracomm,&stat);
+
+    while (stat.MPI_TAG == data_tag) {
+      task_on_rank++;
+
+      // simulation task
+      simulation::work_per_rank = simulation::work_per_task[Part];
+      
+      // Start timer for transport
+      simulation::time_transport.start();
+
+      // Transport loop
+      if (settings::event_based) {
+        transport_event_based();
+      } else {
+        transport_history_based_asynchronous(Part);
+      }
+
+      // Accumulate time for transport
+      simulation::time_transport.stop();
+
+      // Send task-finished singal to master process and receive the next task
+      finish_flag = Part;
+      MPI_Send(&finish_flag,1,MPI_INT,0,result_tag,mpi::intracomm);
+      MPI_Recv(&Part,1,MPI_INT,0,MPI_ANY_TAG,mpi::intracomm,&stat);
+    }
+    std::cout<<"** Total "<<task_on_rank<<" task in rank "<<mpi::rank<<". Current time: "<<time_stamp()<<std::endl; 
+  }
+  // ---
+}
+#endif
+
+void initialize_history_asynchronous(Particle& p, int64_t index_source, int Part)
+{
+  // set defaults
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // set defaults for eigenvalue simulations from primary bank
+    p.from_source(&simulation::source_bank[index_source - 1]);
+  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    // initialize random number seed
+    int64_t id = (simulation::total_gen + overall_generation() - 1) *
+                   settings::n_particles +
+                 simulation::work_index[Part] + index_source;
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
+    // sample from external source distribution or custom library then set
+    auto site = sample_external_source(&seed);
+    p.from_source(&site);
+  }
+  p.current_work() = index_source;
+
+  // set identifier for particle
+  p.id() = simulation::work_index[Part] + index_source;
+
+  // set progeny count to zero
+  p.n_progeny() = 0;
+
+  // Reset particle event counter
+  p.n_event() = 0;
+
+  // Reset split counter
+  p.n_split() = 0;
+
+  // Reset weight window ratio
+  p.ww_factor() = 0.0;
+
+  // set random number seed
+  int64_t particle_seed =
+    (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
+    p.id();
+  init_particle_seeds(particle_seed, p.seeds());
+
+  // set particle trace
+  p.trace() = false;
+  if (simulation::current_batch == settings::trace_batch &&
+      simulation::current_gen == settings::trace_gen &&
+      p.id() == settings::trace_particle)
+    p.trace() = true;
+
+  // Set particle track.
+  p.write_track() = false;
+  if (settings::write_all_tracks) {
+    p.write_track() = true;
+  } else if (settings::track_identifiers.size() > 0) {
+    for (const auto& t : settings::track_identifiers) {
+      if (simulation::current_batch == t[0] &&
+          simulation::current_gen == t[1] && p.id() == t[2]) {
+        p.write_track() = true;
+        break;
+      }
+    }
+  }
+
+  // Display message if high verbosity or trace is on
+  if (settings::verbosity >= 9 || p.trace()) {
+    write_message("Simulating Particle {}", p.id());
+  }
+
+// Add paricle's starting weight to count for normalizing tallies later
+#pragma omp atomic
+  simulation::total_weight += p.wgt();
+
+  // Force calculation of cross-sections by setting last energy to zero
+  if (settings::run_CE) {
+    p.invalidate_neutron_xs();
+  }
+
+  // Prepare to write out particle track.
+  if (p.write_track())
+    add_particle_track(p);
+}
+
+void transport_history_based_asynchronous(int Part) 
+{
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+    Particle p;
+    initialize_history_asynchronous(p, i_work, Part);
+    transport_history_based_single_particle(p);
+  }
+}
+  
 } // namespace openmc

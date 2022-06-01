@@ -877,6 +877,12 @@ void read_settings_xml()
   if (check_for_node(root, "max_splits")) {
     settings::max_splits = std::stoi(get_node_value(root, "max_splits"));
   }
+  
+  // asynchronous
+  if (chekc_for_node(root, "max_nps_per_task")) {
+    settings::asynchronous_on = true;
+    settings::max_nps_per_task = std::stoi(get_node_value(root, "max_nps_per_task"));
+  }  
 }
 
 void free_memory_settings()

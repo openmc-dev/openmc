@@ -20,6 +20,7 @@
 #include "openmc/distribution_multi.h"
 #include "openmc/secondary_uncorrelated.h"
 #include "openmc/geometry.h"
+#include "/home/open_mc/openmc/src/tallies/MyCalcs.cpp"
 #include <typeinfo>
 #include <string>
 int ghost_counter=0;
@@ -2444,6 +2445,9 @@ void score_point_tally(Particle& p)
   double mu_COM = (std::sqrt(awr*awr - sin_lab*sin_lab)*cos_lab - sin_lab*sin_lab)/awr;
   double theta_pdf = d_->angle().get_pdf_value(p.E_last(),mu_COM,p.current_seed());
   double E_ghost = p.E_last()*(1+awr*awr+2*awr*mu_COM)/(1+awr)/(1+awr);
+  getMu_lab(0,0,0,p.r,awr,1);
+
+
   if(!std::isnan(mu_COM))
   {
   Particle ghost_particle=Particle();

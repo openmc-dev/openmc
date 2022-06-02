@@ -2,6 +2,7 @@ import os
 import typing  # imported separately as py3.8 requires typing.Iterable
 from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
+import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
@@ -104,6 +105,10 @@ class Settings:
         Maximum number of times a particle can split during a history
 
         .. versionadded:: 0.13
+    max_tracks : int
+        Maximum number of tracks written to a track file (per MPI process).
+
+        .. versionadded:: 0.13.1
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
@@ -187,7 +192,7 @@ class Settings:
         integers: the batch number, generation number, and particle number
     track : tuple or list
         Specify particles for which track files should be written. Each particle
-        is identified by a triplet with the batch number, generation number, and
+        is identified by a tuple with the batch number, generation number, and
         particle number.
     trigger_active : bool
         Indicate whether tally triggers are used
@@ -290,6 +295,7 @@ class Settings:
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
         self._weight_windows_on = None
         self._max_splits = None
+        self._max_tracks = None
 
     @property
     def run_mode(self):
@@ -474,6 +480,10 @@ class Settings:
     @property
     def max_splits(self):
         return self._max_splits
+
+    @property
+    def max_tracks(self):
+        return self._max_tracks
 
     @run_mode.setter
     def run_mode(self, run_mode: str):
@@ -776,16 +786,18 @@ class Settings:
         self._trace = trace
 
     @track.setter
-    def track(self, track: typing.Iterable[int]):
-        cv.check_type('track', track, Iterable, Integral)
-        if len(track) % 3 != 0:
-            msg = f'Unable to set the track to "{track}" since its length is ' \
-                  'not a multiple of 3'
-            raise ValueError(msg)
-        for t in zip(track[::3], track[1::3], track[2::3]):
+    def track(self, track: typing.Iterable[typing.Iterable[int]]):
+        cv.check_type('track', track, Iterable)
+        for t in track:
+            if len(t) != 3:
+                msg = f'Unable to set the track to "{t}" since its length is not 3'
+                raise ValueError(msg)
             cv.check_greater_than('track batch', t[0], 0)
-            cv.check_greater_than('track generation', t[0], 0)
-            cv.check_greater_than('track particle', t[0], 0)
+            cv.check_greater_than('track generation', t[1], 0)
+            cv.check_greater_than('track particle', t[2], 0)
+            cv.check_type('track batch', t[0], Integral)
+            cv.check_type('track generation', t[1], Integral)
+            cv.check_type('track particle', t[2], Integral)
         self._track = track
 
     @ufs_mesh.setter
@@ -881,8 +893,14 @@ class Settings:
     @max_splits.setter
     def max_splits(self, value: int):
         cv.check_type('maximum particle splits', value, Integral)
-        cv.check_greater_than('max particles in flight', value, 0)
+        cv.check_greater_than('max particle splits', value, 0)
         self._max_splits = value
+
+    @max_tracks.setter
+    def max_tracks(self, value: int):
+        cv.check_type('maximum particle tracks', value, Integral)
+        cv.check_greater_than('maximum particle tracks', value, 0, True)
+        self._max_tracks = value
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1110,7 +1128,7 @@ class Settings:
     def _create_track_subelement(self, root):
         if self._track is not None:
             element = ET.SubElement(root, "track")
-            element.text = ' '.join(map(str, self._track))
+            element.text = ' '.join(map(str, itertools.chain(*self._track)))
 
     def _create_ufs_mesh_subelement(self, root):
         if self.ufs_mesh is not None:
@@ -1195,6 +1213,11 @@ class Settings:
         if self._max_splits is not None:
             elem = ET.SubElement(root, "max_splits")
             elem.text = str(self._max_splits)
+
+    def _create_max_tracks_subelement(self, root):
+        if self._max_tracks is not None:
+            elem = ET.SubElement(root, "max_tracks")
+            elem.text = str(self._max_tracks)
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1424,7 +1447,8 @@ class Settings:
     def _track_from_xml_element(self, root):
         text = get_text(root, 'track')
         if text is not None:
-            self.track = [int(x) for x in text.split()]
+            values = [int(x) for x in text.split()]
+            self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
     def _ufs_mesh_from_xml_element(self, root):
         text = get_text(root, 'ufs_mesh')
@@ -1498,6 +1522,11 @@ class Settings:
         if text is not None:
             self.max_splits = int(text)
 
+    def _max_tracks_from_xml_element(self, root):
+        text = get_text(root, 'max_tracks')
+        if text is not None:
+            self.max_tracks = int(text)
+
     def export_to_xml(self, path: Union[str, os.PathLike] = 'settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1554,6 +1583,7 @@ class Settings:
         self._create_write_initial_source_subelement(root_element)
         self._create_weight_windows_subelement(root_element)
         self._create_max_splits_subelement(root_element)
+        self._create_max_tracks_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
@@ -1633,6 +1663,7 @@ class Settings:
         settings._write_initial_source_from_xml_element(root)
         settings._weight_windows_from_xml_element(root)
         settings._max_splits_from_xml_element(root)
+        settings._max_tracks_from_xml_element(root)
 
         # TODO: Get volume calculations
 

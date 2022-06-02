@@ -318,7 +318,8 @@ void print_usage()
       "  -r, --restart          Restart a previous run from a state point\n"
       "                         or a particle restart file\n"
       "  -s, --threads          Number of OpenMP threads\n"
-      "  -t, --track            Write tracks for all particles\n"
+      "  -t, --track            Write tracks for all particles (up to "
+      "max_tracks)\n"
       "  -e, --event            Run using event-based parallelism\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n");

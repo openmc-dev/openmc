@@ -26,7 +26,7 @@ constexpr int HDF5_VERSION[] {3, 0};
 // Version numbers for binary files
 constexpr array<int, 2> VERSION_STATEPOINT {17, 0};
 constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
-constexpr array<int, 2> VERSION_TRACK {2, 0};
+constexpr array<int, 2> VERSION_TRACK {3, 0};
 constexpr array<int, 2> VERSION_SUMMARY {6, 0};
 constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};

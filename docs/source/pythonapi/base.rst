@@ -185,8 +185,11 @@ Post-processing
    :template: myclass.rst
 
    openmc.Particle
+   openmc.ParticleTrack
    openmc.StatePoint
    openmc.Summary
+   openmc.Track
+   openmc.Tracks
 
 The following classes and functions are used for functional expansion reconstruction.
 

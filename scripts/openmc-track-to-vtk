@@ -4,18 +4,16 @@
 
 """
 
-import os
 import argparse
-import struct
 
-import h5py
+import openmc
 import vtk
 
 
 def _parse_args():
     # Create argument parser.
     parser = argparse.ArgumentParser(
-        description='Convert particle track file to a .pvtp file.')
+        description='Convert particle track file(s) to a .pvtp file.')
     parser.add_argument('input', metavar='IN', type=str, nargs='+',
                         help='Input particle track data filename(s).')
     parser.add_argument('-o', '--out', metavar='OUT', type=str, dest='out',
@@ -41,25 +39,22 @@ def main():
     point_offset = 0
     for fname in args.input:
         # Write coordinate values to points array.
-        track = h5py.File(fname)
-        n_particles = track.attrs['n_particles']
-        n_coords = track.attrs['n_coords']
-        coords = []
-        for i in range(n_particles):
-            coords.append(track['coordinates_' + str(i + 1)][()])
-            for j in range(n_coords[i]):
-                points.InsertNextPoint(coords[i][j,:])
+        track_file = openmc.Tracks(fname)
+        for track in track_file:
+            for particle in track:
+                for state in particle.states:
+                    points.InsertNextPoint(state['r'])
 
-        for i in range(n_particles):
-            # Create VTK line and assign points to line.
-            line = vtk.vtkPolyLine()
-            line.GetPointIds().SetNumberOfIds(n_coords[i])
-            for j in range(n_coords[i]):
-                line.GetPointIds().SetId(j, point_offset + j)
+                # Create VTK line and assign points to line.
+                n = particle.states.size
+                line = vtk.vtkPolyLine()
+                line.GetPointIds().SetNumberOfIds(n)
+                for i in range(n):
+                    line.GetPointIds().SetId(i, point_offset + i)
+                point_offset += n
 
-            # Add line to cell array
-            cells.InsertNextCell(line)
-            point_offset += n_coords[i]
+                # Add line to cell array
+                cells.InsertNextCell(line)
 
     data = vtk.vtkPolyData()
     data.SetPoints(points)

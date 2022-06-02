@@ -963,7 +963,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         score = score_neutron_heating(
           p, tally, flux, HEATING, i_nuclide, atom_density);
       } else {
-        if (i_nuclide < 0 || i_nuclide == p.event_nuclide()) {
+        if (i_nuclide == -1 || i_nuclide == p.event_nuclide()) {
           // The energy deposited is the difference between the pre-collision
           // and post-collision energy...
           score = E - p.E();

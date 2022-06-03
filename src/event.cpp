@@ -12,10 +12,10 @@
 #define printf(fmt, ...) (0)
 #endif
 
-
 namespace openmc {
 
-  void device_sort_event_queue_item(EventQueueItem* begin, EventQueueItem* end);
+void device_sort_event_queue_item(EventQueueItem* begin, EventQueueItem* end);
+void sort_queue_SYCL(EventQueueItem* sycl_data, int length);
 
 //==============================================================================
 // Global variables
@@ -46,6 +46,7 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_sort.start();
 
+  #if defined CUDA_THRUST_SORT || defined SYCL_SORT
   if(simulation::begin == NULL )
   {
     uintptr_t ptr;
@@ -55,35 +56,26 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
     }
     simulation::begin = (EventQueueItem*) ptr;
   }
-
-  /*
-  EventQueueItem *data_host = queue.data();
-  EventQueueItem *data = NULL;
-  #pragma omp target data use_device_ptr(data_host)
-  {
-     data = data_host;
-  }
-  */
+  #endif
 
   if (queue.size() > settings::minimum_sort_items)
   {
     simulation::sort_counter++;
 
+    #ifdef CUDA_THRUST_SORT
     device_sort_event_queue_item(simulation::begin, simulation::begin + queue.size());
-    //device_sort_event_queue_item(data, data + queue.size());
-    /*
+    #elif SYCL_SORT
+    sort_queue_SYCL(simulation::begin, queue.size());
+    #else
     // Transfer queue information to the host
     #pragma omp target update from(queue.data_[:queue.size()])
 
     // Sort queue via OpenMP parallel sort implementation
     quickSort_parallel(queue.data(), queue.size());
 
-    // (For debugging, if needed) Sort queue via STL serial sort
-    //std::sort(queue.data(), queue.data() + queue.size());
-
     // Transfer queue information back to the device
     #pragma omp target update to(queue.data_[:queue.size()])
-    */
+    #endif
   }
 
   simulation::time_event_sort.stop();

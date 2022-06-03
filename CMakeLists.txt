@@ -152,6 +152,10 @@ if(coverage)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
 endif()
+if(sycl_sort)
+  list(APPEND cxxflags -fsycl -D_GLIBCXX_USE_TBB_PAR_BACKEND=0)
+  list(APPEND ldflags -fsycl -D_GLIBCXX_USE_TBB_PAR_BACKEND=0)
+endif()
 
 # Show flags being used
 message(STATUS "OpenMC C++ flags: ${cxxflags}")
@@ -347,6 +351,7 @@ list(APPEND libopenmc_SOURCES
   src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp
+  src/sycl_sort.cpp
   src/tallies/derivative.cpp
   src/tallies/filter.cpp
   src/tallies/filter_azimuthal.cpp

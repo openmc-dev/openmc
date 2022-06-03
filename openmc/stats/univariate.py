@@ -897,6 +897,10 @@ class Tabular(Univariate):
         return np.cumsum(c)
 
     def sample(self, n_samples=1, seed=None):
+        if not self.interpolation in ('histogram', 'linear-linear'):
+            raise NotImplementedError('Can only sample tabular distributions '
+                                      'using histogram or '
+                                      'linear-linear interpolation')
         np.random.seed(seed)
         xi = np.random.rand(n_samples)
         cdf = self.cdf()
@@ -905,7 +909,7 @@ class Tabular(Univariate):
         # sampled values
         c_i = np.full(n_samples, cdf[0])
         cdf_idx = np.zeros((n_samples,), dtype=int)
-        for i, val in enumerate(cdf):
+        for i, val in enumerate(cdf[:-1]):
             mask = xi > val
             c_i[mask] = val
             cdf_idx[mask] = i
@@ -916,13 +920,17 @@ class Tabular(Univariate):
         x_i = np.array([self.x[i] for i in cdf_idx])
         p_i = np.array([self.p[i] for i in cdf_idx])
 
+        # TODO: check that probability doesn't exceed the last value
+
         if self.interpolation == 'histogram':
-            # mask where probability
+            # mask where probability is greater than zero
             pos_mask = p_i > 0.0
+            # probabilities greater than zero are set proportional to the
+            # position of the random numebers in relation to the cdf value
             p_i[pos_mask] = x_i[pos_mask] + (xi[pos_mask] - c_i[pos_mask]) \
                            / p_i[pos_mask]
-            neg_mask = np.invert(pos_mask)
-            p_i[neg_mask] = x_i[neg_mask]
+            # probabilities smaller than zero are set to the random number value
+            p_i[~pos_mask] = x_i[~pos_mask]
             return p_i
         elif self.interpolation == 'linear-linear':
             # get variable and probability values for the
@@ -935,10 +943,10 @@ class Tabular(Univariate):
             zero = m == 0.0
             m[zero] = x_i[zero] + (xi[zero] - c_i[zero]) / p_i[zero]
             # set values for non-zero slope
-            non_zero = np.invert(zero)
+            non_zero = ~zero
             quad = np.power(p_i[non_zero], 2) + 2. * m[non_zero] * (xi[non_zero] - c_i[non_zero])
             quad[quad < 0.0] = 0.0
-            m[non_zero] = x_i[non_zero] +  (np.sqrt(quad) - p_i) / m[non_zero]
+            m[non_zero] = x_i[non_zero] +  (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
             return m
 
     def to_xml_element(self, element_name):

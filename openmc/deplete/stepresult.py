@@ -20,7 +20,7 @@ __all__ = ["StepResult"]
 
 
 class StepResult:
-    """Output of a depletion run
+    """Result of a single depletion timestep
 
     Attributes
     ----------

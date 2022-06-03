@@ -719,6 +719,9 @@ class Integrator(ABC):
             elif unit.lower() == 'mwd/kg':
                 watt_days_per_kg = 1e6*timestep
                 kilograms = 1e-3*operator.heavy_metal
+                if rate == 0.0:
+                    raise ValueError("Cannot specify a timestep in [MWd/kg] when"
+                                     " the power is zero.")
                 days = watt_days_per_kg * kilograms / rate
                 seconds.append(days*_SECONDS_PER_DAY)
             else:

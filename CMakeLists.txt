@@ -291,6 +291,7 @@ endif()
 #===============================================================================
 
 list(APPEND libopenmc_SOURCES
+  src/sycl_sort.cpp
   src/bank.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
@@ -351,7 +352,6 @@ list(APPEND libopenmc_SOURCES
   src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp
-  src/sycl_sort.cpp
   src/tallies/derivative.cpp
   src/tallies/filter.cpp
   src/tallies/filter_azimuthal.cpp

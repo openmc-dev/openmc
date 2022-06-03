@@ -1,5 +1,4 @@
 #ifdef SYCL_SORT
-#include "openmc/event.h"
 #include <oneapi/dpl/execution>
 #include <oneapi/dpl/algorithm>
 #include <sycl/sycl.hpp>
@@ -89,6 +88,11 @@ namespace simulation{
 sycl::queue sycl_command_queue;
 
 } // end namespace simulation
+} // end namespace openmc
+
+
+#include "openmc/event.h"
+namespace openmc{
 
 void sort_queue_SYCL(EventQueueItem* sycl_data, int length)
 {
@@ -117,7 +121,7 @@ void sort_queue_SYCL(EventQueueItem* sycl_data, int length)
   //std::sort( oneapi::dpl::execution::make_device_policy(q), sycl_data, sycl_data + n_particles);
   std::sort( oneapi::dpl::execution::make_device_policy(simulation::sycl_command_queue), sycl_data, sycl_data + length);
 }
-
 } // end namespace openmc
+
 
 #endif

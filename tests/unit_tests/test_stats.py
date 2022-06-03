@@ -253,6 +253,88 @@ def test_point():
     d = openmc.stats.Point.from_xml_element(elem)
     assert d.xyz == pytest.approx(p)
 
+
+def test_discrete():
+
+    vals = np.array([1.0, 2.0, 3.0])
+    probs = np.array([0.1, 0.7, 0.2])
+
+    exp_mean = (vals * probs).sum()
+
+    d = openmc.stats.Discrete(vals, probs)
+
+    # sample discrete distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    # check that the mean of the samples is close to the true mean
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+
+
+def test_uniform():
+
+    lower = 1.1
+    upper = 23.3
+
+    exp_mean = 0.5 * (lower + upper)
+
+    d = openmc.stats.Uniform(lower, upper)
+
+    # sample the uniform distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+
+
+def test_power_law():
+
+    lower = 0.0
+    upper = 1.0
+    exponent = 2.0
+
+    d = openmc.stats.PowerLaw(lower, upper, exponent)
+
+    exp_mean = (exponent + 1) / (exponent + 2)
+
+    # sample power law distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+
+
+def test_maxwell():
+    theta = 1000
+
+    exp_mean = 0
+
+    d = openmc.stats.Maxwell(theta)
+
+    exp_mean = 3/2 * theta
+
+    # sample maxwell distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+
+def test_watt():
+
+    a = 10
+    b = 20
+
+    d = openmc.stats.Watt(a, b)
+
+    # mean value form adapted from
+    # "Prompt-fission-neutron average energy for 238U(n, f ) from
+    # threshold to 200 MeV" Ethvignot et. al.
+    # https://doi.org/10.1016/j.physletb.2003.09.048
+    exp_mean = 3/2 * a + a**2 * b / 4
+
+    # sample Watt distribution
+    n_samples = 100_000
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+
+
+
 def test_normal():
     mean = 10.0
     std_dev = 2.0
@@ -293,7 +375,7 @@ def test_muir():
     assert d.kt == pytest.approx(temp)
     assert len(d) == 3
 
-    # sample normal distribution
+    # sample muir distribution
     n_samples = 10000
     samples = d.sample(n_samples, seed=100)
     samples = np.abs(samples - mean)

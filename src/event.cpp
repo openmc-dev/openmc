@@ -30,11 +30,9 @@ SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 SharedArray<EventQueueItem> revival_queue;
 
-std::vector<Particle>  particles;
-Particle*  device_particles;
+int64_t current_source_offset;
 
 int sort_counter{0};
-int64_t current_source_offset;
 
 EventQueueItem* begin {NULL};
 
@@ -153,13 +151,13 @@ void dispatch_xs_event(int buffer_idx)
   if (needs_lookup) {
     // If a lookup is needed, dispatch to fuel vs. non-fuel lookup queue
     if (!model::materials[p.material_].fissionable_) {
-      simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
+      simulation::calculate_nonfuel_xs_queue.thread_safe_append({p.E_, buffer_idx});
     } else {
-      simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
+      simulation::calculate_fuel_xs_queue.thread_safe_append({p.E_, buffer_idx});
     }
   } else {
     // Otherwise, particle can move directly to the advance particle queue
-    simulation::advance_particle_queue.thread_safe_append({p, buffer_idx});
+    simulation::advance_particle_queue.thread_safe_append({p.E_, buffer_idx});
   }
 }
 
@@ -268,9 +266,9 @@ void process_advance_particle_events()
     p.event_advance_tally();
 
     if (p.collision_distance_ > p.boundary_.distance) {
-      simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
+      simulation::surface_crossing_queue.thread_safe_append({p.E_, buffer_idx});
     } else {
-      simulation::collision_queue.thread_safe_append({p, buffer_idx});
+      simulation::collision_queue.thread_safe_append({p.E_, buffer_idx});
     }
   }
   simulation::surface_crossing_queue.sync_size_device_to_host();
@@ -292,7 +290,7 @@ void process_surface_crossing_events()
     if (p.alive())
       dispatch_xs_event(buffer_idx);
     else
-      simulation::revival_queue.thread_safe_append({p, buffer_idx});
+      simulation::revival_queue.thread_safe_append({p.E_, buffer_idx});
   }
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
@@ -316,7 +314,7 @@ void process_collision_events()
     if (p.alive())
       dispatch_xs_event(buffer_idx);
     else
-      simulation::revival_queue.thread_safe_append({p, buffer_idx});
+      simulation::revival_queue.thread_safe_append({p.E_, buffer_idx});
   }
 
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();

@@ -56,6 +56,13 @@ extern std::vector<int64_t> work_index;
 extern int64_t* device_work_index;
 #pragma omp end declare target
 
+// Particle buffer
+extern std::vector<Particle>  particles;
+#pragma omp declare target
+extern Particle* device_particles;
+#pragma omp end declare target
+
+
 } // namespace simulation
 
 //==============================================================================

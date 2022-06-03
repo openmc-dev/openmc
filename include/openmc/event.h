@@ -4,9 +4,7 @@
 //! \file event.h
 //! \brief Event-based data structures and methods
 
-#include "openmc/particle.h"
 #include "openmc/shared_array.h"
-
 
 namespace openmc {
 
@@ -33,8 +31,8 @@ struct EventQueueItem{
 
   // Constructors
   EventQueueItem() = default;
-  EventQueueItem(const Particle& p, int buffer_idx) :
-    idx(buffer_idx), E(static_cast<float>(p.E_)) {}
+  EventQueueItem(double energy, int buffer_idx) :
+    idx(buffer_idx), E(static_cast<float>(energy)) {}
 
   // Compare by particle type, then by material type (4.5% fuel/7.0% fuel/cladding/etc),
   // then by energy.
@@ -43,6 +41,9 @@ struct EventQueueItem{
   // like to be able to just sort by general material type, regardless of densities.
   // A more general material type ID may be added in the future, in which case we
   // can update the material field of this struct to contain the more general id.
+  #ifdef COMPILE_CUDA_COMPARATOR
+  __host__ __device__
+  #endif
   bool operator<(const EventQueueItem& rhs) const
   {
     //return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
@@ -77,16 +78,11 @@ extern SharedArray<EventQueueItem> advance_particle_queue;
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
 extern SharedArray<EventQueueItem> revival_queue;
+
+extern int64_t current_source_offset;
 #pragma omp end declare target
 
 extern int sort_counter;
-
-// Particle buffer
-extern std::vector<Particle>  particles;
-#pragma omp declare target
-extern Particle* device_particles;
-extern int64_t current_source_offset;
-#pragma omp end declare target
 
 } // namespace simulation
 

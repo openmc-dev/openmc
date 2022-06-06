@@ -84,7 +84,8 @@ double rel_max_lost_particles {1.0e-6};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
-int64_t max_particles_in_flight {675000};
+int64_t max_particles_in_flight {1000000};
+bool max_particles_in_flight_was_set_from_CLI {false};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
@@ -138,9 +139,12 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 
   // Get maximum number of in flight particles for event-based mode
-  if (check_for_node(node_base, "max_particles_in_flight")) {
-    max_particles_in_flight = std::stoll(get_node_value(node_base,
-      "max_particles_in_flight"));
+  // if it wasn't specified as a command-line argument
+  if (!max_particles_in_flight_was_set_from_CLI) {
+    if (check_for_node(node_base, "max_particles_in_flight")) {
+      max_particles_in_flight = std::stoll(get_node_value(node_base,
+        "max_particles_in_flight"));
+    }
   }
 
   // Get number of basic batches
@@ -369,6 +373,8 @@ void read_settings_xml()
       fatal_error("Number of inactive batches must be non-negative.");
     } else if (n_particles <= 0) {
       fatal_error("Number of particles must be greater than zero.");
+    } else if (max_particles_in_flight <= 0) {
+      fatal_error("Number of particles in-flight must be greater than zero.");
     } else if (max_lost_particles <= 0) {
       fatal_error("Number of max lost particles must be greater than zero.");
     } else if (rel_max_lost_particles <= 0.0 || rel_max_lost_particles >= 1.0) {

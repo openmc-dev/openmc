@@ -68,6 +68,17 @@
             }
          },
         {
+            "name": "llvm_v100_mpi",
+            "displayName": "LLVM Clang A100",
+            "binaryDir": "${sourceDir}/build/llvm_a100",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "mpicc",
+                "CMAKE_CXX_COMPILER": "mpic++",
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
+            }
+         },
+        {
             "name": "llvm_a100",
             "displayName": "LLVM Clang A100",
             "binaryDir": "${sourceDir}/build/llvm_a100",
@@ -109,6 +120,17 @@
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
                 "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx908 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -gline-tables-only -fopenmp-cuda-mode"
+            }
+         },
+        {
+            "name": "llvm_mi100_mpi",
+            "displayName": "LLVM Clang MI100",
+            "binaryDir": "${sourceDir}/build/llvm_mi100",
+            "generator": "Unix Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx908 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
             }
          },
         {

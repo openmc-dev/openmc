@@ -153,6 +153,7 @@ parse_command_line(int argc, char* argv[])
       } else if (arg == "-i" || arg == "--inflight") {
         i += 1;
         settings::max_particles_in_flight = std::stoll(argv[i]);
+        settings::max_particles_in_flight_was_set_from_CLI = true;
 
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;

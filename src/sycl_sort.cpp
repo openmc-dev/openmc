@@ -85,32 +85,24 @@ const struct syclDeviceInfo xomp_get_device_info(const int n) {
   return xomp_get_infos_devices()[n];
 }
 
-namespace openmc{
-namespace simulation{
-
-sycl::queue sycl_command_queue;
-
-} // end namespace simulation
-} // end namespace openmc
-
-
 #include "openmc/event.h"
 namespace openmc{
 
 void sort_queue_SYCL(EventQueueItem* begin, EventQueueItem* end)
 {
   static bool first {true};
+  static sycl::queue sycl_command_queue;
   // Create a SYCL Queue for the device
   if (first) {
     int D = omp_get_default_device();
-    simulation::sycl_command_queue = sycl::queue(xomp_get_device_info(D).sycl_context, xomp_get_device_info(D).sycl_device);
+    sycl_command_queue = sycl::queue(xomp_get_device_info(D).sycl_context, xomp_get_device_info(D).sycl_device);
     first = false;
   }
 
-  // Use it to do the sort
-  std::sort( oneapi::dpl::execution::make_device_policy(simulation::sycl_command_queue), begin, end);
+  // Perform the sort on-device
+  std::sort( oneapi::dpl::execution::make_device_policy(sycl_command_queue), begin, end);
 }
-} // end namespace openmc
 
+} // end namespace openmc
 
 #endif

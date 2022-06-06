@@ -6,6 +6,9 @@
 #include <map>
 #include <iostream>
 
+// All code in this file (except for the last function) is boilerplate and
+// was provided by Thomas Applencourt.
+
 namespace sycl = cl::sycl;
 
 struct syclDeviceInfo {
@@ -94,32 +97,18 @@ sycl::queue sycl_command_queue;
 #include "openmc/event.h"
 namespace openmc{
 
-void sort_queue_SYCL(EventQueueItem* sycl_data, int length)
+void sort_queue_SYCL(EventQueueItem* begin, EventQueueItem* end)
 {
-  int D = omp_get_num_devices() -1;
-  /*
-  EventQueueItem *sycl_data = queue;
-  int D = omp_get_num_devices() -1;
-  #pragma omp target data use_device_ptr(queue)
-  {
-    sycl_data = queue;
-  }
-  */
-
-  static bool first = true;
-  if( first)
-  {
-
-    // Now create a SYCL Q who is targetting this Device
-    //sycl::queue q = sycl::queue(xomp_get_device_info(D).sycl_context, xomp_get_device_info(D).sycl_device);
-    //q = sycl::queue(xomp_get_device_info(D).sycl_context, xomp_get_device_info(D).sycl_device);
+  static bool first {true};
+  // Create a SYCL Queue for the device
+  if (first) {
+    int D = omp_get_default_device();
     simulation::sycl_command_queue = sycl::queue(xomp_get_device_info(D).sycl_context, xomp_get_device_info(D).sycl_device);
     first = false;
   }
 
   // Use it to do the sort
-  //std::sort( oneapi::dpl::execution::make_device_policy(q), sycl_data, sycl_data + n_particles);
-  std::sort( oneapi::dpl::execution::make_device_policy(simulation::sycl_command_queue), sycl_data, sycl_data + length);
+  std::sort( oneapi::dpl::execution::make_device_policy(simulation::sycl_command_queue), begin, end);
 }
 } // end namespace openmc
 

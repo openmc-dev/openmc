@@ -15,7 +15,7 @@
 namespace openmc {
 
 void device_sort_event_queue_item(EventQueueItem* begin, EventQueueItem* end);
-void sort_queue_SYCL(EventQueueItem* sycl_data, int length);
+void sort_queue_SYCL(EventQueueItem* begin, EventQueueItem* end);
 
 //==============================================================================
 // Global variables
@@ -34,8 +34,6 @@ int64_t current_source_offset;
 
 int sort_counter{0};
 
-EventQueueItem* begin {NULL};
-
 } // namespace simulation
 
 //==============================================================================
@@ -46,26 +44,14 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_sort.start();
 
-  #if defined CUDA_THRUST_SORT || defined SYCL_SORT
-  if(simulation::begin == NULL )
-  {
-    uintptr_t ptr;
-    #pragma omp target map(from:ptr)
-    {
-      ptr = (uintptr_t) &queue[0];
-    }
-    simulation::begin = (EventQueueItem*) ptr;
-  }
-  #endif
-
   if (queue.size() > settings::minimum_sort_items)
   {
     simulation::sort_counter++;
 
     #ifdef CUDA_THRUST_SORT
-    device_sort_event_queue_item(simulation::begin, simulation::begin + queue.size());
+    device_sort_event_queue_item(queue.device_data(), queue.device_data() + queue.size());
     #elif SYCL_SORT
-    sort_queue_SYCL(simulation::begin, queue.size());
+    sort_queue_SYCL(queue.device_data(), queue.device_data() + queue.size());
     #else
     // Transfer queue information to the host
     #pragma omp target update from(queue.data_[:queue.size()])

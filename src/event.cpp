@@ -14,9 +14,6 @@
 
 namespace openmc {
 
-void device_sort_event_queue_item(EventQueueItem* begin, EventQueueItem* end);
-void sort_queue_SYCL(EventQueueItem* begin, EventQueueItem* end);
-
 //==============================================================================
 // Global variables
 //==============================================================================

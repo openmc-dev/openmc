@@ -58,6 +58,7 @@ struct EventQueueItem{
   }
 };
 
+
 //==============================================================================
 // Global variable declarations
 //==============================================================================
@@ -131,6 +132,22 @@ void process_death_events(int64_t n_particles);
 
 //! Execute the revival event for all particles in this event's buffer
 void process_revival_events();
+
+#ifdef CUDA_THRUST_SORT
+//! Sort a queue on-device using CUDA Thrust
+//
+//! \param begin A pointer to the beginning of the queue
+//! \param end A pointer to the end of the queue
+void device_sort_event_queue_item(EventQueueItem* begin, EventQueueItem* end);
+#endif
+
+#ifdef SYCL_SORT
+//! Sort a queue on-device using Intel OneAPI DPL via SYCL interop
+//
+//! \param begin A pointer to the beginning of the queue
+//! \param end A pointer to the end of the queue
+void sort_queue_SYCL(EventQueueItem* begin, EventQueueItem* end);
+#endif
 
 } // namespace openmc
 

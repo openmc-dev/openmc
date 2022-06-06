@@ -239,7 +239,6 @@ target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPA
 
 # Define header location variable
 set(OPENMC_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include )
-#set(OPENMC_VERSION_HEADER_DIR ${CMAKE_BINARY_DIR}/include )
 if(cuda_thrust_sort)
   add_subdirectory(cuda_thrust_sort)
 endif()

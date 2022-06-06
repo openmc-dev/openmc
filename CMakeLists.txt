@@ -290,6 +290,10 @@ endif()
 # libopenmc
 #===============================================================================
 
+# NOTE: sycl_sort.cpp must be first due to poor namespace usage in the OneAPI
+# DPL library (they have a namespace called "data" that clashes with OpenMC when
+# using a unity build).
+
 list(APPEND libopenmc_SOURCES
   src/sycl_sort.cpp
   src/bank.cpp
@@ -400,11 +404,6 @@ else()
   add_library(libopenmc SHARED ${libopenmc_SOURCES})
 endif()
 
-#find_library(SORT_LIB libopenmc_thrust_sort)
-#add_library( libopenmc_thrust_sort SHARED IMPORTED )
-#set_target_properties( libopenmc_thrust_sort PROPERTIES IMPORTED_LOCATION /home/jtramm/openmc_thrust_sort/build/libopenmc_thrust_sort.so )
-#target_link_libraries(openmc SHARED "${SORT_LIB}")
-
 # Avoid vs error lnk1149 :output filename matches input filename
 if(NOT MSVC)
   set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
@@ -485,14 +484,12 @@ endif()
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
-#target_link_libraries(openmc libopenmc_thrust_sort)
 target_link_libraries(openmc libopenmc)
 
 # Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
 # be done is using the cxx_std_14 compiler feature.
 set_target_properties(
   #openmc libopenmc faddeeva
-  #openmc libopenmc libopenmc_thrust_sort
     openmc libopenmc
     PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
 

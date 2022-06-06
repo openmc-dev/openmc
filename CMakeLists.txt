@@ -25,16 +25,16 @@ endif()
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"   ON)
 option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
-option(new_w    "Use Ben Forget's Rational Fraction Approximation of Faddeeva W(z) (MIT is default)" OFF)
+option(new_w    "Use Ben Forget's Rational Fraction Approximation of Faddeeva W(z)" ON)
 option(device_history "Enable history-based transport on device" OFF)
-option(device_printf  "Enable printf statements on device"       OFF)
-option(disable_xs_cache "Disable Micro XS cache"       OFF)
+
+option(device_printf  "Enable printf statements on device"       ON)
+option(disable_xs_cache "Disable Micro XS cache"       ON)
 option(cuda_thrust_sort "Enable on-device sorting via CUDA Thrust (NVIDIA devices only)"       OFF)
 option(sycl_sort "Enable on-device sorting via SYCL OneAPI DPL (Intel devices only)"       OFF)
 
@@ -114,32 +114,11 @@ endif()
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
 
-if(openmp)
-  # Requires CMake 3.1+
-  find_package(OpenMP)
-  if(OPENMP_FOUND)
-    # Generic
-
-    #list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
-    #list(APPEND ldflags ${OpenMP_CXX_FLAGS})
-
-    # Intel
-
-    #list(APPEND cxxflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
-    #list(APPEND ldflags -fiopenmp -fopenmp-targets=spir64 -fexceptions)
-
-    # LLVM Targeting V100
-    #list(APPEND cxxflags -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -fexceptions)
-    #list(APPEND ldflags -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -fexceptions)
-  endif()
-endif()
-
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 list(APPEND cxxflags -O2)
 if(debug)
-  list(REMOVE_ITEM cxxflags -O2)
-  list(APPEND cxxflags -g -O0)
+  list(APPEND cxxflags -gline-tables-only)
 endif()
 if(profile)
   list(APPEND cxxflags -g -fno-omit-frame-pointer)

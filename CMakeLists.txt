@@ -32,7 +32,6 @@ option(coverage "Compile with coverage analysis flags"           OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 option(new_w    "Use Ben Forget's Rational Fraction Approximation of Faddeeva W(z)" ON)
 option(device_history "Enable history-based transport on device" OFF)
-
 option(device_printf  "Enable printf statements on device"       ON)
 option(disable_xs_cache "Disable Micro XS cache"       ON)
 option(cuda_thrust_sort "Enable on-device sorting via CUDA Thrust (NVIDIA devices only)"       OFF)

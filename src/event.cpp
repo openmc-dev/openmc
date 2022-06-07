@@ -93,6 +93,7 @@ void init_event_queues(int n_particles)
   #ifdef QUEUELESS
   simulation::queue.reserve(n_particles);
   simulation::queue.allocate_on_device();
+  simulation::queue.resize(n_particles);
   #else
   simulation::calculate_fuel_xs_queue.reserve(n_particles);
   simulation::calculate_nonfuel_xs_queue.reserve(n_particles);
@@ -148,7 +149,7 @@ void dispatch_xs_event(int queue_idx, int particle_buffer_idx)
   } else {
     simulation::queue[queue_idx].event = EVENT_ADVANCE;
   }
-  simulation::queue[queue_idx].idx = particle_idx;
+  simulation::queue[queue_idx].idx = particle_buffer_idx;
   simulation::queue[queue_idx].E = p.E_;
 
   #else
@@ -186,15 +187,17 @@ void process_init_events(int n_particles)
   for (int i = 0; i < n_particles; i++) {
     total_weight += simulation::device_particles[i].wgt_;
   }
-  simulation::time_event_init.stop();
 
   // Write total weight to global variable
   simulation::total_weight = total_weight;
 
+  #ifndef QUEUELESS
   simulation::calculate_fuel_xs_queue.sync_size_device_to_host();
   simulation::calculate_nonfuel_xs_queue.sync_size_device_to_host();
   simulation::advance_particle_queue.sync_size_device_to_host();
-
+  #endif
+  
+  simulation::time_event_init.stop();
 }
 
 void process_calculate_xs_events_nonfuel(int n_particles)
@@ -237,11 +240,13 @@ void process_calculate_xs_events_nonfuel(int n_particles)
 void process_calculate_xs_events_fuel(int n_particles)
 {
   // Sort fuel lookup queue (by comparator defined in event.h)
+  #ifdef QUEUELESS
+  sort_queue(simulation::queue);
+  //assert(is_sorted(simulation::queue)); // Note: slow, but useful for debugging
+  #else
   sort_queue(simulation::calculate_fuel_xs_queue);
-
-  // The below line can be used to check if the queue has actually been sorted.
-  // May be useful for debugging future on-device sorting strategies.
-  //assert(is_sorted(simulation::calculate_fuel_xs_queue));
+  //assert(is_sorted(simulation::calculate_fuel_xs_queue)); // Note: slow, but useful for debugging
+  #endif
 
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_fuel.start();

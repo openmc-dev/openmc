@@ -45,7 +45,9 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_sort.start();
 
+  #ifndef QUEUELESS
   if (queue.size() > settings::minimum_sort_items)
+  #endif
   {
     simulation::sort_counter++;
 
@@ -71,7 +73,9 @@ void sort_queue(SharedArray<EventQueueItem>& queue)
 bool is_sorted(SharedArray<EventQueueItem>& queue)
 {
   int not_sorted = 0;
+  #ifndef QUEUELESS
   if( queue.size() > settings::minimum_sort_items )
+  #endif
   {
     #pragma omp target teams distribute parallel for reduction(+:not_sorted)
     for( int i = 1; i < queue.size(); i++ )
@@ -455,7 +459,7 @@ void process_death_events(int n_particles)
 
 }
 
-int process_revival_events(int n_particles)
+int process_revival_events(int n_particles, int& n_empty_in_flight_slots)
 {
   simulation::time_event_revival.start();
 
@@ -464,10 +468,11 @@ int process_revival_events(int n_particles)
   
   // Number of retired particles (for queueless mode)
   int n_retired = 0;
+  int n_dead = 0;
 
   #ifdef QUEUELESS
 
-  #pragma omp target teams distribute parallel for reduction(+:extra_weight, n_retired)
+  #pragma omp target teams distribute parallel for reduction(+:extra_weight, n_retired, n_dead)
   for (int i = 0; i < n_particles; i++) {
     if (simulation::queue[i].event == EVENT_REVIVAL) {
       int buffer_idx = simulation::queue[i].idx;
@@ -502,9 +507,18 @@ int process_revival_events(int n_particles)
       if (p.alive())
         dispatch_xs_event(i,buffer_idx);
       else
+      {
         simulation::queue[i].event = EVENT_DEATH;
+        n_dead++;
+      }
     }
   }
+  
+  // Sort to move dead particles to the end of the queue
+  if (n_dead > 0) {
+    sort_queue(simulation::queue);
+  }
+  n_empty_in_flight_slots += n_dead;
 
   #else
 

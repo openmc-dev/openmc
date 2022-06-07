@@ -830,6 +830,8 @@ void transport_event_based()
 
   int event = 0;
   int n_retired = 0;
+  int n_empty_in_flight_slots = 0;
+  int n_alive = n_particles;
 
   #ifdef QUEUELESS
   
@@ -839,13 +841,15 @@ void transport_event_based()
   // Event-based transport loop
   while (n_retired < simulation::work_per_rank) {
     if (event % fuel_lookup_bias == 0) // Bias fuel XS event to be less often
-      process_calculate_xs_events_fuel(n_particles);
-    process_calculate_xs_events_nonfuel(n_particles);
-    process_advance_particle_events(n_particles);
-    process_surface_crossing_events(n_particles);
-    process_collision_events(n_particles);
+      process_calculate_xs_events_fuel(n_alive);
+    process_calculate_xs_events_nonfuel(n_alive);
+    process_advance_particle_events(n_alive);
+    process_surface_crossing_events(n_alive);
+    process_collision_events(n_alive);
     if (event % revival_period == 0 ) // Bias Revival event to be less often
-      n_retired += process_revival_events(n_particles);
+      n_retired += process_revival_events(n_alive, n_empty_in_flight_slots);
+
+    n_alive = n_particles - n_empty_in_flight_slots;
 
     event++;
 

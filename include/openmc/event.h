@@ -147,7 +147,7 @@ void process_collision_events(int n_particles);
 void process_death_events(int n_particles);
 
 //! Execute the revival event for all particles in this event's buffer
-int process_revival_events(int n_particles);
+int process_revival_events(int n_particles, int& n_empty_in_flight_slots);
 
 #ifdef CUDA_THRUST_SORT
 //! Sort a queue on-device using CUDA Thrust

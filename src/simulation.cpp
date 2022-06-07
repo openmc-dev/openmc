@@ -492,7 +492,7 @@ void finalize_generation()
   }
 }
 
-double initialize_history(Particle& p, int64_t index_source)
+double initialize_history(Particle& p, int index_source)
 {
   // set defaults
   if (settings::run_mode == RunMode::EIGENVALUE) {

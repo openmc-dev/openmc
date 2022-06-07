@@ -721,6 +721,15 @@ void free_memory_simulation()
   simulation::entropy.clear();
 }
 
+void check_for_lost_particles(void)
+{
+  #pragma omp target update from(simulation::n_lost_particles)
+  if (simulation::n_lost_particles >= settings::max_lost_particles &&
+      simulation::n_lost_particles >= settings::rel_max_lost_particles * simulation::work_per_rank * simulation::current_batch * settings::gen_per_batch) {
+    fatal_error("Too many particles have been lost.");
+  }
+}
+
 void transport_history_based_single_particle(Particle& p, double& absorption, double& collision, double& tracklength, double& leakage)
 {
   while (true) {
@@ -799,39 +808,12 @@ void transport_history_based()
   global_tally_leakage     = leakage;
   simulation::total_weight = total_weight;
 }
-
+    
 void transport_event_based()
 {
   #ifdef OPENMC_MPI
   MPI_Barrier( mpi::intracomm );
   #endif
-  // The fuel lookup bias is the increases the number of particles required before
-  // selecting this event to execute.
-  // E.g., if we had 100 particles in flight, and fuel xs queue had 45 particles
-  // and the next fullest queue had 30 particles, we would usually select the fuel
-  // lookup event to execute. With a bias factor of 2, in this example, since the next
-  // fullest queue has 30 particles, we would not select the fuel lookup event
-  // unless it had 30 * 2 = 60 particles present.
-  //
-  // In practice, this has a several percent improvement in performance, as the fuel lookup
-  // event runs more efficiently with more particles in comparison to other events (due to
-  // the energy sort for the fuel lookup event which is not used for other events).
-  const int64_t fuel_lookup_bias = 2;
-
-  // The max revival period forces particles to be revived (if there are any in the revival queue)
-  // every nth iteration rather than waiting for this queue to be the largest. While the kernel itself
-  // is not very efficient if executing with only a few particles, it is important to revive particles
-  // promptly so as to reduce the length of the tail of particle deaths at the end of each power iteration.
-  // Basically, to reduce the overall number of events run, we want to make sure we start all particles
-  // at the lowest event # possible. The pathological case is if we have a single particle waiting to be
-  // revived, and that event would not normally be selected until all (or nearly all) other particles have
-  // died off. In this case, we would essentially need to launch tens or hundreds of events just to process
-  // that last particle in serial. Introduction of a maximum period for the revival event ensures that such
-  // a particle is revived while there are still many particles in-flight.
-  //
-  // In practice, this optimization has a few percent improvement in performance. Improvements are largest
-  // when # particles per iteration <= max # particles in flight.
-  const int64_t max_revival_period = 100;
 
   // Transfer source/fission bank to device
   #pragma omp target update to(simulation::device_source_bank[:simulation::source_bank.size()])
@@ -841,17 +823,44 @@ void transport_event_based()
   // Figure out # of particles to initialize. If # of particles required per batch for this rank
   // is greater than what is allowed in-flight at once, then the particles will be refilled
   // on-the-fly via the revival event.
-  int64_t n_particles = std::min(simulation::work_per_rank, settings::max_particles_in_flight);
+  int n_particles = static_cast<int>(std::min(simulation::work_per_rank, settings::max_particles_in_flight));
 
   // Initialize in-flight particles
   process_init_events(n_particles);
 
   int event = 0;
+  int n_retired = 0;
+
+  #ifdef QUEUELESS
+  
+  const int fuel_lookup_bias = 5;
+  const int revival_period = 20;
+
+  // Event-based transport loop
+  while (n_retired < simulation::work_per_rank) {
+    if (event % fuel_lookup_bias == 0) // Bias fuel XS event to be less often
+      process_calculate_xs_events_fuel(n_particles);
+    process_calculate_xs_events_nonfuel(n_particles);
+    process_advance_particle_events(n_particles);
+    process_surface_crossing_events(n_particles);
+    process_collision_events(n_particles);
+    if (event % revival_period == 0 ) // Bias Revival event to be less often
+      n_retired += process_revival_events(n_particles);
+
+    event++;
+
+    //check_for_lost_particles(); // Note: expensive, but can be useful for debugging
+  }
+
+  #else
+
+  const int fuel_lookup_bias = 2;
+  const int max_revival_period = 100;
 
   // Event-based transport loop
   while (true) {
     // Determine which event kernel has the longest queue
-    int64_t max = std::max({
+    int max = std::max({
       simulation::calculate_fuel_xs_queue.size(),
       simulation::calculate_nonfuel_xs_queue.size(),
       simulation::advance_particle_queue.size(),
@@ -860,7 +869,7 @@ void transport_event_based()
       simulation::collision_queue.size()});
 
     // Determine which event kernel has the longest queue (not including the fuel XS lookup queue)
-    int64_t max_other_than_fuel_xs = std::max({
+    int max_other_than_fuel_xs = std::max({
       simulation::calculate_nonfuel_xs_queue.size(),
       simulation::advance_particle_queue.size(),
       simulation::surface_crossing_queue.size(),
@@ -877,30 +886,25 @@ void transport_event_based()
     if (max == 0) {
       break;
     } else if (max == simulation::revival_queue.size() || ( simulation::revival_queue.size() > 0 && event % max_revival_period == 0 )) {
-      process_revival_events();
+      process_revival_events(n_particles);
     } else if (max == simulation::calculate_fuel_xs_queue.size()) {
-      process_calculate_xs_events_fuel();
+      process_calculate_xs_events_fuel(n_particles);
     } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
-      process_calculate_xs_events_nonfuel();
+      process_calculate_xs_events_nonfuel(n_particles);
     } else if (max == simulation::advance_particle_queue.size()) {
-      process_advance_particle_events();
+      process_advance_particle_events(n_particles);
     } else if (max == simulation::surface_crossing_queue.size()) {
-      process_surface_crossing_events();
+      process_surface_crossing_events(n_particles);
     } else if (max == simulation::collision_queue.size()) {
-      process_collision_events();
+      process_collision_events(n_particles);
     }
 
     event++;
 
-    /*
-    // Check if the maximum number of lost particles has been reached
-    #pragma omp target update from(simulation::n_lost_particles)
-    if (simulation::n_lost_particles >= settings::max_lost_particles &&
-        simulation::n_lost_particles >= settings::rel_max_lost_particles * simulation::work_per_rank * simulation::current_batch * settings::gen_per_batch) {
-      fatal_error("Too many particles have been lost.");
-    }
-    */
+    //check_for_lost_particles(); // Note: expensive, but can be useful for debugging
   }
+  
+  #endif
 
   // Execute death event for all particles
   process_death_events(n_particles);

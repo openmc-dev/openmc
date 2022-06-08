@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
+import math
 import re
 import warnings
 from xml.etree import ElementTree as ET
@@ -714,7 +715,7 @@ class Material(IDManagerMixin):
         for key, value in atoms_per_barn_cm2.items():
             if key in openmc.data.HALF_LIFE.keys():
                 atoms = value[1] * self.volume * 1e24
-                activity = 0.693 * atoms / openmc.data.HALF_LIFE[key]
+                activity = math.log(2) * atoms / openmc.data.HALF_LIFE[key]
                 print('activity', activity)
                 total_activity += activity
 

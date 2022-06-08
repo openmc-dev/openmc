@@ -716,7 +716,6 @@ class Material(IDManagerMixin):
             if key in openmc.data.HALF_LIFE.keys():
                 atoms = value[1] * self.volume * 1e24
                 activity = math.log(2) * atoms / openmc.data.HALF_LIFE[key]
-                print('activity', activity)
                 total_activity += activity
 
         return total_activity

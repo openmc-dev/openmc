@@ -890,7 +890,7 @@ void transport_event_based()
     if (max == 0) {
       break;
     } else if (max == simulation::revival_queue.size() || ( simulation::revival_queue.size() > 0 && event % max_revival_period == 0 )) {
-      process_revival_events(n_particles);
+      process_revival_events(n_particles, n_empty_in_flight_slots);
     } else if (max == simulation::calculate_fuel_xs_queue.size()) {
       process_calculate_xs_events_fuel(n_particles);
     } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {

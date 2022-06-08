@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
+import math
 import re
 import warnings
 from xml.etree import ElementTree as ET
@@ -704,6 +705,21 @@ class Material(IDManagerMixin):
 
     def make_isotropic_in_lab(self):
         self.isotropic = [x.name for x in self._nuclides]
+
+
+    def get_activity(self):
+        """Returns the total activity of the material in Becquerels."""
+
+        atoms_per_barn_cm2 = self.get_nuclide_atom_densities()
+        total_activity = 0
+        for key, value in atoms_per_barn_cm2.items():
+            if key in openmc.data.HALF_LIFE.keys():
+                atoms = value[1] * self.volume * 1e24
+                activity = 0.693 * atoms / openmc.data.HALF_LIFE[key]
+                print('activity', activity)
+                total_activity += activity
+
+        return total_activity
 
     def get_elements(self):
         """Returns all elements in the material

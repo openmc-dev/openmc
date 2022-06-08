@@ -319,6 +319,7 @@ public:
   #pragma omp end declare target
 
   // Coarse-grained particle events
+  void event_advance_tally_prologue();
   #pragma omp declare target
   void event_advance_tally();
   void event_calculate_xs();

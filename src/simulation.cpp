@@ -735,7 +735,8 @@ void transport_history_based_single_particle(Particle& p, double& absorption, do
   while (true) {
     p.event_calculate_xs();
     p.event_advance();
-    p.event_advance_tally();
+    //p.event_advance_tally();
+    //p.event_advance_tally_prologue();
     if (p.collision_distance_ > p.boundary_.distance) {
       p.event_cross_surface();
     } else {

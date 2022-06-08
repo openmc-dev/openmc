@@ -319,7 +319,7 @@ void process_advance_particle_events(int n_particles)
     int buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();
-    p.event_advance_tally();
+    //p.event_advance_tally();
 
     if (p.collision_distance_ > p.boundary_.distance) {
       simulation::surface_crossing_queue.thread_safe_append({p.E_, buffer_idx});
@@ -329,6 +329,19 @@ void process_advance_particle_events(int n_particles)
   }
   simulation::surface_crossing_queue.sync_size_device_to_host();
   simulation::collision_queue.sync_size_device_to_host();
+
+  // Perform tallying on host
+  simulation::advance_particle_queue.copy_device_to_host();
+  #pragma omp target update from(simulation::device_particles[:n_particles])
+  #pragma omp parallel for
+  for (int i = 0; i < simulation::advance_particle_queue.size(); i++) {
+    int buffer_idx = simulation::advance_particle_queue[i].idx;
+    Particle& p = simulation::device_particles[buffer_idx];
+    //p.event_advance_tally_prologue();
+  }
+  //simulation::advance_particle_queue.copy_host_to_device();
+  #pragma omp target update to(simulation::device_particles[:n_particles])
+
   simulation::advance_particle_queue.resize(0);
   
   #endif

@@ -3,7 +3,6 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
-import math
 import re
 import warnings
 from xml.etree import ElementTree as ET

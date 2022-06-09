@@ -6,6 +6,7 @@
 #include "openmc/endf.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
@@ -626,10 +627,29 @@ double Nuclide::elastic_xs_0K(double E) const
   return (1.0 - f)*elastic_0K_[i_grid] + f*elastic_0K_[i_grid + 1];
 }
 
-MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p, bool write_cache)
+MicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool write_cache)
 {
   double E = p.E_;
   double sqrtkT = p.sqrtkT_;
+  
+  // CHECK FOR S(A,B) TABLE
+
+  int i_sab = C_NONE;
+  double sab_frac = 0.0;
+
+  const auto& mat = model::materials[p.material_];
+  for (int s = 0; s < mat.thermal_tables_.size(); s++) {
+    const auto& sab {mat.thermal_tables_[s]};
+    if (index_ == sab.index_nuclide) {
+      // Get index in sab_tables
+      i_sab = sab.index_table;
+      sab_frac = sab.fraction;
+
+      // If particle energy is greater than the highest energy for the
+      // S(a,b) table, then don't use the S(a,b) table
+      if (p.E_ > data::device_thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
+    }
+  }
 
   #ifndef NO_MICRO_XS_CACHE
   {
@@ -878,15 +898,6 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   // SAB BEGIN
   // ======================================================================
 
-  /*
-  Material& mat = model::materials[p.material_];
-  int i_sab = C_NONE;
-  double sab_frac = 0.0;
-
-  for (int sab = 0; sab < mat.thermal_tables_.size(); sab++) {
-
-  }
-  */
 
   // If there is S(a,b) data for this nuclide, we need to set the sab_scatter
   // and sab_elastic cross sections and correct the total and elastic cross

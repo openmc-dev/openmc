@@ -775,25 +775,6 @@ void Material::calculate_neutron_xs(Particle& p) const
     int i_nuclide = nuclide_[i];
 
     // ======================================================================
-    // CHECK FOR S(A,B) TABLE
-
-    int i_sab = C_NONE;
-    double sab_frac = 0.0;
-
-    for (int s = 0; s < thermal_tables_.size(); s++) {
-      const auto& sab {thermal_tables_[s]};
-      if (i_nuclide == sab.index_nuclide) {
-        // Get index in sab_tables
-        i_sab = sab.index_table;
-        sab_frac = sab.fraction;
-
-        // If particle energy is greater than the highest energy for the
-        // S(a,b) table, then don't use the S(a,b) table
-        if (p.E_ > data::device_thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
-      }
-    }
-
-    // ======================================================================
     // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine if we need to save the micro XS data or not
@@ -804,7 +785,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     #endif
 
     // Perform microscopic XS lookup
-    MicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, write_cache);
+    MicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, write_cache);
 
     // Copy atom density of nuclide in material
     double atom_density = device_atom_density_[i];

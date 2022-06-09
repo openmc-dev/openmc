@@ -204,3 +204,7 @@ def test_from_expression(reset):
     # Make sure ")(" is handled correctly
     r = openmc.Region.from_expression('(-1|2)(2|-3)', surfs)
     assert str(r) == '((-1 | 2) (2 | -3))'
+
+    # Opening parenthesis immediately after halfspace
+    r = openmc.Region.from_expression('1(2|-3)', surfs)
+    assert str(r) == '(1 (2 | -3))'

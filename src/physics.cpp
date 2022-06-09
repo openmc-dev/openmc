@@ -488,9 +488,6 @@ int sample_nuclide(Particle& p)
     int i_nuclide = mat.nuclide_[i];
     double atom_density = mat.device_atom_density_[i];
 
-    // CHECK FOR S(A,B) TABLE FINISHED
-    // ======================================================================
-
     // Lookup micro XS or retrieve from XS cache
     double total;
     bool cache_micro = false;

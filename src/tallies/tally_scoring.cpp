@@ -617,6 +617,11 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
   return 0.0;
 }
 
+void not_supported()
+{
+  printf("Tally Score type not supported on-device\n");
+}
+
 //! Update tally results for continuous-energy tallies with a tracklength or
 //! collision estimator
 
@@ -729,6 +734,8 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
           .nu(E, ReactionProduct::EmissionMode::prompt)
           * atom_density * flux;
       } else {
+        not_supported();
+        /*
         score = 0.;
         // Add up contributions from each nuclide in the material.
         if (p.material_ != MATERIAL_VOID) {
@@ -742,6 +749,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
               * atom_density * flux;
           }
         }
+        */
       }
       break;
 
@@ -773,6 +781,8 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             * atom_density * flux;
         }
       } else {
+        not_supported();
+        /*
         // Need to add up contributions for each nuclide
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
@@ -811,6 +821,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             }
           }
         }
+        */
       }
       break;
 
@@ -856,6 +867,8 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
           }
         }
       } else {
+        not_supported();
+        /*
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
           const DelayedGroupFilter& filt
@@ -914,6 +927,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             }
           }
         }
+        */
       }
       break;
 
@@ -930,6 +944,8 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             * atom_density * flux;
         }
       } else if (p.material_ != MATERIAL_VOID) {
+        not_supported();
+        /*
         const Material& material {model::materials[p.material_]};
         for (auto i = 0; i < material.nuclide_.size(); ++i) {
           auto j_nuclide = material.nuclide_[i];
@@ -941,6 +957,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
               * atom_density * flux;
           }
         }
+        */
       }
       break;
 
@@ -960,6 +977,8 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       } else {
         score = 0.;
         if (p.material_ != MATERIAL_VOID) {
+          not_supported();
+          /*
           const Material& material {model::materials[p.material_]};
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto j_nuclide = material.nuclide_[i];
@@ -970,6 +989,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             score += micro.elastic * atom_density
               * flux;
           }
+          */
         }
       }
       break;
@@ -1008,6 +1028,8 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       } else {
         score = 0.;
         if (p.material_ != MATERIAL_VOID) {
+          not_supported();
+          /*
           const Material& material {model::materials[p.material_]};
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto j_nuclide = material.nuclide_[i];
@@ -1015,6 +1037,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             score += p.neutron_xs_[j_nuclide].reaction[m]
               * atom_density * flux;
           }
+          */
         }
       }
       break;
@@ -1045,8 +1068,11 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
     case HEATING:
       if (p.type_ == Type::neutron) {
+        not_supported();
+        /*
         score = score_neutron_heating(p, tally, flux, HEATING,
             i_nuclide, atom_density);
+            */
       } else {
         // The energy deposited is the difference between the pre-collision and
         // post-collision energy...
@@ -1079,12 +1105,15 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (i_nuclide >= 0) {
         score = get_nuclide_xs(p, i_nuclide, score_bin) * atom_density * flux;
       } else if (p.material_ != MATERIAL_VOID) {
+        not_supported();
+        /*
         const Material& material {model::materials[p.material_]};
         for (auto i = 0; i < material.nuclide_.size(); ++i) {
           auto j_nuclide = material.nuclide_[i];
           auto atom_density = material.atom_density_(i);
           score += get_nuclide_xs(p, j_nuclide, score_bin) * atom_density * flux;
         }
+        */
       }
     }
 

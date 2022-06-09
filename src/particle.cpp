@@ -337,6 +337,11 @@ void Particle::event_revive_from_secondary()
 
   // Check for secondary particles if this particle is dead
   if (!alive()) {
+    // Write final position for this particle
+    if (write_track()) {
+      write_particle_track(*this);
+    }
+
     // If no secondary particles, break out of event loop
     if (secondary_bank().empty())
       return;
@@ -359,7 +364,6 @@ void Particle::event_death()
 
   // Finish particle track output.
   if (write_track()) {
-    write_particle_track(*this);
     finalize_particle_track(*this);
   }
 
@@ -454,8 +458,7 @@ void Particle::cross_surface()
   // ==========================================================================
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
-  // Remove lower coordinate levels and assignment of surface
-  surface() = 0;
+  // Remove lower coordinate levels
   n_coord() = 1;
   bool found = exhaustive_find_cell(*this);
 
@@ -465,6 +468,7 @@ void Particle::cross_surface()
     // the particle is really traveling tangent to a surface, if we move it
     // forward a tiny bit it should fix the problem.
 
+    surface() = 0;
     n_coord() = 1;
     r() += TINY_BIT * u();
 

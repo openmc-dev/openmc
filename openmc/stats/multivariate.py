@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from math import pi
+from math import pi, cos
 from numbers import Real
 from xml.etree import ElementTree as ET
 
@@ -8,7 +8,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from .._xml import get_text
-from .univariate import Univariate, Uniform
+from .univariate import Univariate, Uniform, PowerLaw
 
 
 class UnitSphere(ABC):
@@ -208,7 +208,6 @@ class Monodirectional(UnitSphere):
 
     """
 
-
     def __init__(self, reference_uvw=[1., 0., 0.]):
         super().__init__(reference_uvw)
 
@@ -375,8 +374,8 @@ class SphericalIndependent(Spatial):
     r"""Spatial distribution represented in spherical coordinates.
 
     This distribution allows one to specify coordinates whose :math:`r`,
-    :math:`\theta`, and :math:`\phi` components are sampled independently from
-    one another and centered on the coordinates (x0, y0, z0).
+    :math:`\theta`, and :math:`\phi` components are sampled independently
+    from one another and centered on the coordinates (x0, y0, z0).
 
     .. versionadded: 0.12
 
@@ -385,9 +384,9 @@ class SphericalIndependent(Spatial):
     r : openmc.stats.Univariate
         Distribution of r-coordinates in a reference frame specified by
         the origin parameter
-    theta : openmc.stats.Univariate
-        Distribution of theta-coordinates (angle relative to the z-axis) in a
-        reference frame specified by the origin parameter
+    cos_theta : openmc.stats.Univariate
+        Distribution of the cosine of the theta-coordinates (angle relative to
+        the z-axis) in a reference frame specified by the origin parameter
     phi : openmc.stats.Univariate
         Distribution of phi-coordinates (azimuthal angle) in a reference frame
         specified by the origin parameter
@@ -399,9 +398,9 @@ class SphericalIndependent(Spatial):
     ----------
     r : openmc.stats.Univariate
         Distribution of r-coordinates in the local reference frame
-    theta : openmc.stats.Univariate
-        Distribution of theta-coordinates (angle relative to the z-axis) in the
-        local reference frame
+    cos_theta : openmc.stats.Univariate
+        Distribution of the cosine of the theta-coordinates (angle relative to
+        the z-axis) in the local reference frame
     phi : openmc.stats.Univariate
         Distribution of phi-coordinates (azimuthal angle) in the local
         reference frame
@@ -411,9 +410,9 @@ class SphericalIndependent(Spatial):
 
     """
 
-    def __init__(self, r, theta, phi, origin=(0.0, 0.0, 0.0)):
+    def __init__(self, r, cos_theta, phi, origin=(0.0, 0.0, 0.0)):
         self.r = r
-        self.theta = theta
+        self.cos_theta = cos_theta
         self.phi = phi
         self.origin = origin
 
@@ -422,8 +421,8 @@ class SphericalIndependent(Spatial):
         return self._r
 
     @property
-    def theta(self):
-        return self._theta
+    def cos_theta(self):
+        return self._cos_theta
 
     @property
     def phi(self):
@@ -438,10 +437,10 @@ class SphericalIndependent(Spatial):
         cv.check_type('r coordinate', r, Univariate)
         self._r = r
 
-    @theta.setter
-    def theta(self, theta):
-        cv.check_type('theta coordinate', theta, Univariate)
-        self._theta = theta
+    @cos_theta.setter
+    def cos_theta(self, cos_theta):
+        cv.check_type('cos_theta coordinate', cos_theta, Univariate)
+        self._cos_theta = cos_theta
 
     @phi.setter
     def phi(self, phi):
@@ -466,7 +465,7 @@ class SphericalIndependent(Spatial):
         element = ET.Element('space')
         element.set('type', 'spherical')
         element.append(self.r.to_xml_element('r'))
-        element.append(self.theta.to_xml_element('theta'))
+        element.append(self.cos_theta.to_xml_element('cos_theta'))
         element.append(self.phi.to_xml_element('phi'))
         element.set("origin", ' '.join(map(str, self.origin)))
         return element
@@ -487,10 +486,10 @@ class SphericalIndependent(Spatial):
 
         """
         r = Univariate.from_xml_element(elem.find('r'))
-        theta = Univariate.from_xml_element(elem.find('theta'))
+        cos_theta = Univariate.from_xml_element(elem.find('cos_theta'))
         phi = Univariate.from_xml_element(elem.find('phi'))
         origin = [float(x) for x in elem.get('origin').split()]
-        return cls(r, theta, phi, origin=origin)
+        return cls(r, cos_theta, phi, origin=origin)
 
 
 class CylindricalIndependent(Spatial):
@@ -640,7 +639,6 @@ class Box(Spatial):
 
     """
 
-
     def __init__(self, lower_left, upper_right, only_fissionable=False):
         self.lower_left = lower_left
         self.upper_right = upper_right
@@ -779,3 +777,42 @@ class Point(Spatial):
         """
         xyz = [float(x) for x in get_text(elem, 'parameters').split()]
         return cls(xyz)
+
+
+def spherical_uniform(r_outer, r_inner=0.0, thetas=(0., pi), phis=(0., 2*pi),
+                      origin=(0., 0., 0.)):
+    """Return a uniform spatial distribution over a spherical shell.
+
+    This function provides a uniform spatial distribution over a spherical
+    shell between `r_inner` and `r_outer`. Optionally, the range of angles
+    can be restricted by the `thetas` and `phis` arguments.
+
+    .. versionadded: 0.13.1
+
+    Parameters
+    ----------
+    r_outer : float
+        Outer radius of the spherical shell in [cm]
+    r_inner : float, optional
+        Inner radius of the spherical shell in [cm]
+    thetas : iterable of float, optional
+        Starting and ending theta coordinates (angle relative to
+        the z-axis) in radius in a reference frame centered at `origin`
+    phis : iterable of float, optional
+        Starting and ending phi coordinates (azimuthal angle) in
+        radians in a reference frame centered at `origin`
+    origin: iterable of float, optional
+        Coordinates (x0, y0, z0) of the center of the spherical
+        reference frame for the distribution.
+
+    Returns
+    -------
+    openmc.stats.SphericalIndependent
+        Uniform distribution over the spherical shell
+    """
+
+    r_dist = PowerLaw(r_inner, r_outer, 2)
+    cos_thetas_dist = Uniform(cos(thetas[1]), cos(thetas[0]))
+    phis_dist = Uniform(phis[0], phis[1])
+
+    return SphericalIndependent(r_dist, cos_thetas_dist, phis_dist, origin)

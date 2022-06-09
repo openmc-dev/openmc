@@ -963,18 +963,23 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         score = score_neutron_heating(
           p, tally, flux, HEATING, i_nuclide, atom_density);
       } else {
-        // The energy deposited is the difference between the pre-collision and
-        // post-collision energy...
-        score = E - p.E();
+        if (i_nuclide == -1 || i_nuclide == p.event_nuclide()) {
+          // The energy deposited is the difference between the pre-collision
+          // and post-collision energy...
+          score = E - p.E();
 
-        // ...less the energy of any secondary particles since they will be
-        // transported individually later
-        const auto& bank = p.secondary_bank();
-        for (auto it = bank.end() - p.n_bank_second(); it < bank.end(); ++it) {
-          score -= it->E;
+          // ...less the energy of any secondary particles since they will be
+          // transported individually later
+          const auto& bank = p.secondary_bank();
+          for (auto it = bank.end() - p.n_bank_second(); it < bank.end();
+               ++it) {
+            score -= it->E;
+          }
+
+          score *= p.wgt_last();
+        } else {
+          score = 0.0;
         }
-
-        score *= p.wgt_last();
       }
       break;
 

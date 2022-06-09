@@ -490,9 +490,10 @@ attributes/sub-elements:
       independent distributions of r-, phi-, and z-coordinates where phi is the
       azimuthal angle and the origin for the cylindrical coordinate system is
       specified by origin. A "spherical" spatial distribution specifies
-      independent distributions of r-, theta-, and phi-coordinates where theta
-      is the angle with respect to the z-axis, phi is the azimuthal angle, and
-      the sphere is centered on the coordinate (x0,y0,z0).
+      independent distributions of r-, cos_theta-, and phi-coordinates where
+      cos_theta is the cosine of the angle with respect to the z-axis, phi is
+      the azimuthal angle, and the sphere is centered on the coordinate
+      (x0,y0,z0).
 
       *Default*: None
 

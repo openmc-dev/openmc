@@ -14,6 +14,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
     s.energy_mode = 'continuous-energy'
     s.max_order = 5
+    s.max_tracks = 1234
     s.source = openmc.Source(space=openmc.stats.Point())
     s.output = {'summary': True, 'tallies': False, 'path': 'here'}
     s.verbosity = 7
@@ -42,7 +43,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.temperature = {'default': 293.6, 'method': 'interpolation',
                      'multipole': True, 'range': (200., 1000.)}
     s.trace = (10, 1, 20)
-    s.track = [1, 1, 1, 2, 1, 1]
+    s.track = [(1, 1, 1), (2, 1, 1)]
     s.ufs_mesh = mesh
     s.resonance_scattering = {'enable': True, 'method': 'rvs',
                               'energy_min': 1.0, 'energy_max': 1000.0,
@@ -71,6 +72,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.keff_trigger == {'type': 'std_dev', 'threshold': 0.001}
     assert s.energy_mode == 'continuous-energy'
     assert s.max_order == 5
+    assert s.max_tracks == 1234
     assert isinstance(s.source[0], openmc.Source)
     assert isinstance(s.source[0].space, openmc.stats.Point)
     assert s.output == {'summary': True, 'tallies': False, 'path': 'here'}
@@ -99,7 +101,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.temperature == {'default': 293.6, 'method': 'interpolation',
                              'multipole': True, 'range': [200., 1000.]}
     assert s.trace == [10, 1, 20]
-    assert s.track == [1, 1, 1, 2, 1, 1]
+    assert s.track == [(1, 1, 1), (2, 1, 1)]
     assert isinstance(s.ufs_mesh, openmc.RegularMesh)
     assert s.ufs_mesh.lower_left == [-10., -10., -10.]
     assert s.ufs_mesh.upper_right == [10., 10., 10.]

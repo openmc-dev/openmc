@@ -760,7 +760,7 @@ class XPlane(PlaneMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        Location of the plane. Defaults to 0.
+        Location of the plane in [cm]. Defaults to 0.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -775,7 +775,7 @@ class XPlane(PlaneMixin, Surface):
     Attributes
     ----------
     x0 : float
-        Location of the plane
+        Location of the plane in [cm]
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -819,7 +819,7 @@ class YPlane(PlaneMixin, Surface):
     Parameters
     ----------
     y0 : float, optional
-        Location of the plane
+        Location of the plane in [cm]
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -834,7 +834,7 @@ class YPlane(PlaneMixin, Surface):
     Attributes
     ----------
     y0 : float
-        Location of the plane
+        Location of the plane in [cm]
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -878,7 +878,7 @@ class ZPlane(PlaneMixin, Surface):
     Parameters
     ----------
     z0 : float, optional
-        Location of the plane. Defaults to 0.
+        Location of the plane in [cm]. Defaults to 0.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -893,7 +893,7 @@ class ZPlane(PlaneMixin, Surface):
     Attributes
     ----------
     z0 : float
-        Location of the plane
+        Location of the plane in [cm]
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -991,8 +991,8 @@ class QuadricMixin:
         Parameters
         ----------
         point : 3-tuple of float
-            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
-            equation should be evaluated.
+            The Cartesian coordinates, :math:`(x',y',z')`, in [cm] at which the
+            surface equation should be evaluated.
 
         Returns
         -------
@@ -1106,13 +1106,13 @@ class Cylinder(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate for the origin of the Cylinder. Defaults to 0
+        x-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     y0 : float, optional
-        y-coordinate for the origin of the Cylinder. Defaults to 0
+        y-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     z0 : float, optional
-        z-coordinate for the origin of the Cylinder. Defaults to 0
+        z-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     r : float, optional
-        Radius of the cylinder. Defaults to 1.
+        Radius of the cylinder in [cm]. Defaults to 1.
     dx : float, optional
         x-component of the vector representing the axis of the cylinder.
         Defaults to 0.
@@ -1136,13 +1136,13 @@ class Cylinder(QuadricMixin, Surface):
     Attributes
     ----------
     x0 : float
-        x-coordinate for the origin of the Cylinder
+        x-coordinate for the origin of the Cylinder in [cm]
     y0 : float
-        y-coordinate for the origin of the Cylinder
+        y-coordinate for the origin of the Cylinder in [cm]
     z0 : float
-        z-coordinate for the origin of the Cylinder
+        z-coordinate for the origin of the Cylinder in [cm]
     r : float
-        Radius of the cylinder
+        Radius of the cylinder in [cm]
     dx : float
         x-component of the vector representing the axis of the cylinder
     dy : float
@@ -1243,7 +1243,7 @@ class Cylinder(QuadricMixin, Surface):
         p1, p2 : 3-tuples
             Points that pass through the plane, p1 will be used as (x0, y0, z0)
         r : float, optional
-            Radius of the cylinder. Defaults to 1.
+            Radius of the cylinder in [cm]. Defaults to 1.
         kwargs : dict
             Keyword arguments passed to the :class:`Cylinder` constructor
 
@@ -1288,11 +1288,11 @@ class XCylinder(QuadricMixin, Surface):
     Parameters
     ----------
     y0 : float, optional
-        y-coordinate for the origin of the Cylinder. Defaults to 0
+        y-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     z0 : float, optional
-        z-coordinate for the origin of the Cylinder. Defaults to 0
+        z-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     r : float, optional
-        Radius of the cylinder. Defaults to 1.
+        Radius of the cylinder in [cm]. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -1307,11 +1307,11 @@ class XCylinder(QuadricMixin, Surface):
     Attributes
     ----------
     y0 : float
-        y-coordinate for the origin of the Cylinder
+        y-coordinate for the origin of the Cylinder in [cm]
     z0 : float
-        z-coordinate for the origin of the Cylinder
+        z-coordinate for the origin of the Cylinder in [cm]
     r : float
-        Radius of the cylinder
+        Radius of the cylinder in [cm]
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -1379,11 +1379,11 @@ class YCylinder(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate for the origin of the Cylinder. Defaults to 0
+        x-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     z0 : float, optional
-        z-coordinate for the origin of the Cylinder. Defaults to 0
+        z-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     r : float, optional
-        Radius of the cylinder. Defaults to 1.
+        Radius of the cylinder in [cm]. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -1398,11 +1398,11 @@ class YCylinder(QuadricMixin, Surface):
     Attributes
     ----------
     x0 : float
-        x-coordinate for the origin of the Cylinder
+        x-coordinate for the origin of the Cylinder in [cm]
     z0 : float
-        z-coordinate for the origin of the Cylinder
+        z-coordinate for the origin of the Cylinder in [cm]
     r : float
-        Radius of the cylinder
+        Radius of the cylinder in [cm]
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -1470,11 +1470,11 @@ class ZCylinder(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate for the origin of the Cylinder. Defaults to 0
+        x-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     y0 : float, optional
-        y-coordinate for the origin of the Cylinder. Defaults to 0
+        y-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     r : float, optional
-        Radius of the cylinder. Defaults to 1.
+        Radius of the cylinder in [cm]. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -1489,11 +1489,11 @@ class ZCylinder(QuadricMixin, Surface):
     Attributes
     ----------
     x0 : float
-        x-coordinate for the origin of the Cylinder
+        x-coordinate for the origin of the Cylinder in [cm]
     y0 : float
-        y-coordinate for the origin of the Cylinder
+        y-coordinate for the origin of the Cylinder in [cm]
     r : float
-        Radius of the cylinder
+        Radius of the cylinder in [cm]
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -1560,13 +1560,13 @@ class Sphere(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the center of the sphere. Defaults to 0.
+        x-coordinate of the center of the sphere in [cm]. Defaults to 0.
     y0 : float, optional
-        y-coordinate of the center of the sphere. Defaults to 0.
+        y-coordinate of the center of the sphere in [cm]. Defaults to 0.
     z0 : float, optional
-        z-coordinate of the center of the sphere. Defaults to 0.
+        z-coordinate of the center of the sphere in [cm]. Defaults to 0.
     r : float, optional
-        Radius of the sphere. Defaults to 1.
+        Radius of the sphere in [cm]. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -1580,13 +1580,13 @@ class Sphere(QuadricMixin, Surface):
     Attributes
     ----------
     x0 : float
-        x-coordinate of the center of the sphere
+        x-coordinate of the center of the sphere in [cm]
     y0 : float
-        y-coordinate of the center of the sphere
+        y-coordinate of the center of the sphere in [cm]
     z0 : float
-        z-coordinate of the center of the sphere
+        z-coordinate of the center of the sphere in [cm]
     r : float
-        Radius of the sphere
+        Radius of the sphere in [cm]
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -1653,11 +1653,11 @@ class Cone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm]. Defaults to 0.
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm]. Defaults to 0.
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
     dx : float, optional
@@ -1682,11 +1682,11 @@ class Cone(QuadricMixin, Surface):
     Attributes
     ----------
     x0 : float
-        x-coordinate of the apex
+        x-coordinate of the apex in [cm]
     y0 : float
-        y-coordinate of the apex
+        y-coordinate of the apex in [cm]
     z0 : float
-        z-coordinate of the apex
+        z-coordinate of the apex in [cm]
     r2 : float
         Parameter related to the aperature
     dx : float
@@ -1796,11 +1796,11 @@ class XCone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm]. Defaults to 0.
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm]. Defaults to 0.
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
@@ -1816,11 +1816,11 @@ class XCone(QuadricMixin, Surface):
     Attributes
     ----------
     x0 : float
-        x-coordinate of the apex
+        x-coordinate of the apex in [cm]
     y0 : float
-        y-coordinate of the apex
+        y-coordinate of the apex in [cm]
     z0 : float
-        z-coordinate of the apex
+        z-coordinate of the apex in [cm]
     r2 : float
         Parameter related to the aperature
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
@@ -1885,11 +1885,11 @@ class YCone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm]. Defaults to 0.
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm]. Defaults to 0.
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
@@ -1905,11 +1905,11 @@ class YCone(QuadricMixin, Surface):
     Attributes
     ----------
     x0 : float
-        x-coordinate of the apex
+        x-coordinate of the apex in [cm]
     y0 : float
-        y-coordinate of the apex
+        y-coordinate of the apex in [cm]
     z0 : float
-        z-coordinate of the apex
+        z-coordinate of the apex in [cm]
     r2 : float
         Parameter related to the aperature
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
@@ -1974,11 +1974,11 @@ class ZCone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm]. Defaults to 0.
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm]. Defaults to 0.
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperature. Defaults to 1.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
@@ -1994,11 +1994,11 @@ class ZCone(QuadricMixin, Surface):
     Attributes
     ----------
     x0 : float
-        x-coordinate of the apex
+        x-coordinate of the apex in [cm]
     y0 : float
-        y-coordinate of the apex
+        y-coordinate of the apex in [cm]
     z0 : float
-        z-coordinate of the apex
+        z-coordinate of the apex in [cm]
     r2 : float
         Parameter related to the aperature
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
@@ -2198,34 +2198,34 @@ class XTorus(TorusMixin, Surface):
     Parameters
     ----------
     x0 : float
-        x-coordinate of the center of the axis of revolution
+        x-coordinate of the center of the axis of revolution in [cm]
     y0 : float
-        y-coordinate of the center of the axis of revolution
+        y-coordinate of the center of the axis of revolution in [cm]
     z0 : float
-        z-coordinate of the center of the axis of revolution
+        z-coordinate of the center of the axis of revolution in [cm]
     a : float
-        Major radius of the torus
+        Major radius of the torus in [cm]
     b : float
-        Minor radius of the torus (parallel to axis of revolution)
+        Minor radius of the torus in [cm] (parallel to axis of revolution)
     c : float
-        Minor radius of the torus (perpendicular to axis of revolution)
+        Minor radius of the torus in [cm] (perpendicular to axis of revolution)
     kwargs : dict
         Keyword arguments passed to the :class:`Surface` constructor
 
     Attributes
     ----------
     x0 : float
-        x-coordinate of the center of the axis of revolution
+        x-coordinate of the center of the axis of revolution in [cm]
     y0 : float
-        y-coordinate of the center of the axis of revolution
+        y-coordinate of the center of the axis of revolution in [cm]
     z0 : float
-        z-coordinate of the center of the axis of revolution
+        z-coordinate of the center of the axis of revolution in [cm]
     a : float
-        Major radius of the torus
+        Major radius of the torus in [cm]
     b : float
-        Minor radius of the torus (parallel to axis of revolution)
+        Minor radius of the torus in [cm] (parallel to axis of revolution)
     c : float
-        Minor radius of the torus (perpendicular to axis of revolution)
+        Minor radius of the torus in [cm] (perpendicular to axis of revolution)
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -2269,32 +2269,32 @@ class YTorus(TorusMixin, Surface):
     Parameters
     ----------
     x0 : float
-        x-coordinate of the center of the axis of revolution
+        x-coordinate of the center of the axis of revolution in [cm]
     y0 : float
-        y-coordinate of the center of the axis of revolution
+        y-coordinate of the center of the axis of revolution in [cm]
     z0 : float
-        z-coordinate of the center of the axis of revolution
+        z-coordinate of the center of the axis of revolution in [cm]
     a : float
-        Major radius of the torus
+        Major radius of the torus in [cm]
     b : float
-        Minor radius of the torus (parallel to axis of revolution)
+        Minor radius of the torus in [cm] (parallel to axis of revolution)
     c : float
-        Minor radius of the torus (perpendicular to axis of revolution)
+        Minor radius of the torus in [cm] (perpendicular to axis of revolution)
     kwargs : dict
         Keyword arguments passed to the :class:`Surface` constructor
 
     Attributes
     ----------
     x0 : float
-        x-coordinate of the center of the axis of revolution
+        x-coordinate of the center of the axis of revolution in [cm]
     y0 : float
-        y-coordinate of the center of the axis of revolution
+        y-coordinate of the center of the axis of revolution in [cm]
     z0 : float
-        z-coordinate of the center of the axis of revolution
+        z-coordinate of the center of the axis of revolution in [cm]
     a : float
-        Major radius of the torus
+        Major radius of the torus in [cm]
     b : float
-        Minor radius of the torus (parallel to axis of revolution)
+        Minor radius of the torus in [cm] (parallel to axis of revolution)
     c : float
         Minor radius of the torus (perpendicular to axis of revolution)
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
@@ -2340,34 +2340,34 @@ class ZTorus(TorusMixin, Surface):
     Parameters
     ----------
     x0 : float
-        x-coordinate of the center of the axis of revolution
+        x-coordinate of the center of the axis of revolution in [cm]
     y0 : float
-        y-coordinate of the center of the axis of revolution
+        y-coordinate of the center of the axis of revolution in [cm]
     z0 : float
-        z-coordinate of the center of the axis of revolution
+        z-coordinate of the center of the axis of revolution in [cm]
     a : float
-        Major radius of the torus
+        Major radius of the torus in [cm]
     b : float
-        Minor radius of the torus (parallel to axis of revolution)
+        Minor radius of the torus in [cm] (parallel to axis of revolution)
     c : float
-        Minor radius of the torus (perpendicular to axis of revolution)
+        Minor radius of the torus in [cm] (perpendicular to axis of revolution)
     kwargs : dict
         Keyword arguments passed to the :class:`Surface` constructor
 
     Attributes
     ----------
     x0 : float
-        x-coordinate of the center of the axis of revolution
+        x-coordinate of the center of the axis of revolution in [cm]
     y0 : float
-        y-coordinate of the center of the axis of revolution
+        y-coordinate of the center of the axis of revolution in [cm]
     z0 : float
-        z-coordinate of the center of the axis of revolution
+        z-coordinate of the center of the axis of revolution in [cm]
     a : float
-        Major radius of the torus
+        Major radius of the torus in [cm]
     b : float
-        Minor radius of the torus (parallel to axis of revolution)
+        Minor radius of the torus in [cm] (parallel to axis of revolution)
     c : float
-        Minor radius of the torus (perpendicular to axis of revolution)
+        Minor radius of the torus in [cm] (perpendicular to axis of revolution)
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.

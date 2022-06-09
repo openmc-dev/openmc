@@ -95,6 +95,7 @@ int n_log_bins {8000};
 int n_batches;
 int n_max_batches;
 int max_splits {1000};
+int max_tracks {1000};
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
@@ -802,6 +803,12 @@ void read_settings_xml()
   }
   if (check_for_node(root, "temperature_multipole")) {
     temperature_multipole = get_node_value_bool(root, "temperature_multipole");
+
+    // Multipole currently doesn't work with photon transport
+    if (temperature_multipole && photon_transport) {
+      fatal_error("Multipole data cannot currently be used in conjunction with "
+                  "photon transport.");
+    }
   }
   if (check_for_node(root, "temperature_range")) {
     auto range = get_node_array<double>(root, "temperature_range");
@@ -870,6 +877,10 @@ void read_settings_xml()
 
   if (check_for_node(root, "max_splits")) {
     settings::max_splits = std::stoi(get_node_value(root, "max_splits"));
+  }
+
+  if (check_for_node(root, "max_tracks")) {
+    settings::max_tracks = std::stoi(get_node_value(root, "max_tracks"));
   }
 }
 

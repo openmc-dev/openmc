@@ -82,6 +82,11 @@ int openmc_simulation_init()
   // Allocate source, fission and surface source banks.
   allocate_banks();
 
+  // Create track file if needed
+  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+    open_track_file();
+  }
+
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
   if (settings::event_based) {
@@ -150,6 +155,11 @@ int openmc_simulation_finalize()
   // Clear material nuclide mapping
   for (auto& mat : model::materials) {
     mat->mat_nuclide_index_.clear();
+  }
+
+  // Close track file if open
+  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+    close_track_file();
   }
 
   // Increment total number of generations
@@ -507,18 +517,7 @@ void initialize_history(Particle& p, int64_t index_source)
     p.trace() = true;
 
   // Set particle track.
-  p.write_track() = false;
-  if (settings::write_all_tracks) {
-    p.write_track() = true;
-  } else if (settings::track_identifiers.size() > 0) {
-    for (const auto& t : settings::track_identifiers) {
-      if (simulation::current_batch == t[0] &&
-          simulation::current_gen == t[1] && p.id() == t[2]) {
-        p.write_track() = true;
-        break;
-      }
-    }
-  }
+  p.write_track() = check_track_criteria(p);
 
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {

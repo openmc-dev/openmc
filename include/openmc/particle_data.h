@@ -56,6 +56,24 @@ struct SourceSite {
   int64_t progeny_id;
 };
 
+//! State of a particle used for particle track files
+struct TrackState {
+  Position r;           //!< Position in [cm]
+  Direction u;          //!< Direction
+  double E;             //!< Energy in [eV]
+  double time {0.0};    //!< Time in [s]
+  double wgt {1.0};     //!< Weight
+  int cell_id;          //!< Cell ID
+  int cell_instance;    //!< Cell instance
+  int material_id {-1}; //!< Material ID (default value indicates void)
+};
+
+//! Full history of a single particle's track states
+struct TrackStateHistory {
+  ParticleType particle;
+  std::vector<TrackState> states;
+};
+
 //! Saved ("banked") state of a particle, for nu-fission tallying
 struct NuBank {
   double E;          //!< particle energy
@@ -290,7 +308,7 @@ private:
 
   vector<FilterMatch> filter_matches_; // tally filter matches
 
-  vector<vector<Position>> tracks_; // tracks for outputting to file
+  vector<TrackStateHistory> tracks_; // tracks for outputting to file
 
   vector<NuBank> nu_bank_; // bank of most recently fissioned particles
 
@@ -342,6 +360,9 @@ public:
   const LocalCoord& coord(int i) const { return coord_[i]; }
   const vector<LocalCoord>& coord() const { return coord_; }
 
+  LocalCoord& lowest_coord() { return coord_[n_coord_ - 1]; }
+  const LocalCoord& lowest_coord() const { return coord_[n_coord_ - 1]; }
+
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
   int& cell_last(int i) { return cell_last_[i]; }
@@ -357,6 +378,7 @@ public:
   const int& g_last() const { return g_last_; }
 
   double& wgt() { return wgt_; }
+  double wgt() const { return wgt_; }
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
   double& time() { return time_; }
@@ -478,6 +500,9 @@ public:
       level.reset();
     n_coord_ = 1;
   }
+
+  //! Get track information based on particle's current state
+  TrackState get_track_state() const;
 
   void zero_delayed_bank()
   {

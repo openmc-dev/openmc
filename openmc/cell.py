@@ -690,7 +690,10 @@ class Cell(IDManagerMixin):
         for key in ('temperature', 'rotation', 'translation'):
             value = get_text(elem, key)
             if value is not None:
-                setattr(c, key, [float(x) for x in value.split()])
+                values = [float(x) for x in value.split()]
+                if key == 'rotation' and len(values) == 9:
+                    values = np.array(values).reshape(3, 3)
+                setattr(c, key, values)
 
         # Add this cell to appropriate universe
         univ_id = int(get_text(elem, 'universe', 0))

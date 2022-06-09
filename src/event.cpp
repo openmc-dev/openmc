@@ -337,7 +337,7 @@ void process_advance_particle_events(int n_particles)
   for (int i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
-    //p.event_advance_tally_prologue();
+    p.event_advance_tally_prologue();
   }
   //simulation::advance_particle_queue.copy_host_to_device();
   #pragma omp target update to(simulation::device_particles[:n_particles])

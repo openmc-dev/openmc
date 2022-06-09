@@ -132,8 +132,6 @@ def test_watt():
     assert d.b == b
     assert len(d) == 2
 
-    d = openmc.stats.Watt(a, b)
-
     # mean value form adapted from
     # "Prompt-fission-neutron average energy for 238U(n, f ) from
     # threshold to 200 MeV" Ethvignot et. al.

@@ -30,9 +30,9 @@ class Material(IDManagerMixin):
 
     To create a material, one should create an instance of this class, add
     nuclides or elements with :meth:`Material.add_nuclide` or
-    `Material.add_element`, respectively, and set the total material density
-    with `Material.set_density()`. The material can then be assigned to a cell
-    using the :attr:`Cell.fill` attribute.
+    :meth:`Material.add_element`, respectively, and set the total material
+    density with :meth:`Material.set_density()`. The material can then be
+    assigned to a cell using the :attr:`Cell.fill` attribute.
 
     Parameters
     ----------
@@ -141,6 +141,23 @@ class Material(IDManagerMixin):
             string += '{: <16}'.format('\t{}'.format(self._macroscopic))
 
         return string
+
+
+    @property
+    def activity(self):
+        """Returns the total activity of the material in Becquerels."""
+
+        atoms_per_barn_cm2 = self.get_nuclide_atom_densities()
+        total_activity = 0
+        for key, value in atoms_per_barn_cm2.items():
+            half_life = openmc.data.half_life(key)
+            print('half_life', half_life)
+            if half_life:
+                atoms = value[1] * self.volume * 1e24
+                activity = math.log(2) * atoms / half_life
+                total_activity += activity
+
+        return total_activity
 
     @property
     def name(self):
@@ -706,19 +723,6 @@ class Material(IDManagerMixin):
     def make_isotropic_in_lab(self):
         self.isotropic = [x.name for x in self._nuclides]
 
-
-    def get_activity(self):
-        """Returns the total activity of the material in Becquerels."""
-
-        atoms_per_barn_cm2 = self.get_nuclide_atom_densities()
-        total_activity = 0
-        for key, value in atoms_per_barn_cm2.items():
-            if key in openmc.data.HALF_LIFE.keys():
-                atoms = value[1] * self.volume * 1e24
-                activity = math.log(2) * atoms / openmc.data.HALF_LIFE[key]
-                total_activity += activity
-
-        return total_activity
 
     def get_elements(self):
         """Returns all elements in the material

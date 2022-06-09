@@ -878,6 +878,15 @@ MicroXS Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Parti
   // SAB BEGIN
   // ======================================================================
 
+  /*
+  Material& mat = model::materials[p.material_];
+  int i_sab = C_NONE;
+  double sab_frac = 0.0;
+
+  for (int sab = 0; sab < mat.thermal_tables_.size(); sab++) {
+
+  }
+  */
 
   // If there is S(a,b) data for this nuclide, we need to set the sab_scatter
   // and sab_elastic cross sections and correct the total and elastic cross

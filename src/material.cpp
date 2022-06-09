@@ -435,7 +435,7 @@ void Material::init_thermal()
     for (int j = 0; j < nuclide_.size(); ++j) {
       const auto& name {data::nuclides[nuclide_[j]].name_};
       if (contains(data::thermal_scatt[table.index_table].nuclides_, name)) {
-        tables.push_back({table.index_table, j, table.fraction});
+        tables.push_back({table.index_table, nuclide_[j], table.fraction});
         found = true;
       }
     }
@@ -452,7 +452,7 @@ void Material::init_thermal()
   for (int j = 0; j < tables.size(); ++j) {
     for (int k = j+1; k < tables.size(); ++k) {
       if (tables[j].index_nuclide == tables[k].index_nuclide) {
-        int index = nuclide_[tables[j].index_nuclide];
+        int index = tables[j].index_nuclide;
         auto name = data::nuclides[index].name_;
         fatal_error(name + " in material " + std::to_string(id_) + " was found "
           "in multiple thermal scattering tables. Each nuclide can appear in "
@@ -765,28 +765,24 @@ void Material::calculate_neutron_xs(Particle& p) const
   int neutron = static_cast<int>(Particle::Type::neutron);
   int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
 
-  // Determine if this material has S(a,b) tables
-  bool check_sab = (thermal_tables_.size() > 0);
-
-  // Initialize position in i_sab_nuclides
-  int j = 0;
-
   // Local macro XS accumulator
   MacroXS macro = {};
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
+
+    // Determine microscopic cross sections for this nuclide
+    int i_nuclide = nuclide_[i];
+
     // ======================================================================
     // CHECK FOR S(A,B) TABLE
 
     int i_sab = C_NONE;
     double sab_frac = 0.0;
 
-    // Check if this nuclide matches one of the S(a,b) tables specified.
-    // This relies on thermal_tables_ being sorted by .index_nuclide
-    if (check_sab) {
-      const auto& sab {thermal_tables_[j]};
-      if (i == sab.index_nuclide) {
+    for (int s = 0; s < thermal_tables_.size(); s++) {
+      const auto& sab {thermal_tables_[s]};
+      if (i_nuclide == sab.index_nuclide) {
         // Get index in sab_tables
         i_sab = sab.index_table;
         sab_frac = sab.fraction;
@@ -794,20 +790,11 @@ void Material::calculate_neutron_xs(Particle& p) const
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
         if (p.E_ > data::device_thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
-
-        // Increment position in thermal_tables_
-        ++j;
-
-        // Don't check for S(a,b) tables if there are no more left
-        if (j == thermal_tables_.size()) check_sab = false;
       }
     }
 
     // ======================================================================
     // CALCULATE MICROSCOPIC CROSS SECTION
-
-    // Determine microscopic cross sections for this nuclide
-    int i_nuclide = nuclide_[i];
 
     // Determine if we need to save the micro XS data or not
     #ifdef NO_MICRO_XS_CACHE

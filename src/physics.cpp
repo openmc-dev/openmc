@@ -494,7 +494,7 @@ int sample_nuclide(Particle& p)
     // Lookup micro XS or retrieve from XS cache
     double total;
     bool cache_micro = false;
-    MicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_grid, p, cache_micro);
+    NuclideMicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_grid, p, cache_micro);
     total = xs.total;
 
     // Increment probability to compare to cutoff

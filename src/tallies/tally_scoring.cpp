@@ -622,7 +622,7 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
 
 void
 score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter_index,
-  double filter_weight, int i_nuclide, double atom_density, double flux)
+  double filter_weight, int i_nuclide, double atom_density, double flux, NuclideMicroXS& micro)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -644,7 +644,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
     case SCORE_TOTAL:
       if (i_nuclide >= 0) {
         if (p.type_ == Type::neutron) {
-          score = p.neutron_xs_[i_nuclide].total * atom_density * flux;
+          score = micro.total * atom_density * flux;
         } else if (p.type_ == Type::photon) {
           score = p.photon_xs_[i_nuclide].total * atom_density * flux;
         }
@@ -665,11 +665,10 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
       if (i_nuclide >= 0) {
         if (p.type_ == Type::neutron) {
-          const auto& micro = p.neutron_xs_[i_nuclide];
           score = (micro.total - micro.absorption) * atom_density * flux;
         } else {
-          const auto& micro = p.photon_xs_[i_nuclide];
-          score = (micro.coherent + micro.incoherent) * atom_density * flux;
+          const auto& micro_p = p.photon_xs_[i_nuclide];
+          score = (micro_p.coherent + micro_p.incoherent) * atom_density * flux;
         }
       } else {
         if (p.type_ == Type::neutron) {
@@ -685,7 +684,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
       if (i_nuclide >= 0) {
         if (p.type_ == Type::neutron) {
-          score = p.neutron_xs_[i_nuclide].absorption * atom_density * flux;
+          score = micro.absorption * atom_density * flux;
         } else {
           const auto& xs = p.photon_xs_[i_nuclide];
           score = (xs.total - xs.coherent - xs.incoherent) * atom_density * flux;
@@ -704,7 +703,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.macro_xs_.fission == 0) continue;
 
       if (i_nuclide >= 0) {
-        score = p.neutron_xs_[i_nuclide].fission * atom_density * flux;
+        score = micro.fission * atom_density * flux;
       } else {
         score = p.macro_xs_.fission * flux;
       }
@@ -714,7 +713,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.macro_xs_.fission == 0) continue;
 
       if (i_nuclide >= 0) {
-        score = p.neutron_xs_[i_nuclide].nu_fission * atom_density
+        score = micro.nu_fission * atom_density
           * flux;
       } else {
         score = p.macro_xs_.nu_fission * flux;
@@ -725,7 +724,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.macro_xs_.fission == 0) continue;
 
       if (i_nuclide >= 0) {
-        score = p.neutron_xs_[i_nuclide].fission
+        score = micro.fission
           * data::nuclides[i_nuclide]
           .nu(E, ReactionProduct::EmissionMode::prompt)
           * atom_density * flux;
@@ -760,7 +759,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             auto d = filt.groups()[d_bin];
             auto yield = data::nuclides[i_nuclide]
               .nu(E, ReactionProduct::EmissionMode::delayed, d);
-            score = p.neutron_xs_[i_nuclide].fission * yield
+            score = micro.fission * yield
               * atom_density * flux;
             score_fission_delayed_dg(i_tally, d_bin, score, score_index, p.filter_matches_);
           }
@@ -768,7 +767,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
         } else {
           // If the delayed group filter is not present, compute the score
           // by multiplying the delayed-nu-fission macro xs by the flux
-          score = p.neutron_xs_[i_nuclide].fission
+          score = micro.fission
             * data::nuclides[i_nuclide]
             .nu(E, ReactionProduct::EmissionMode::delayed)
             * atom_density * flux;
@@ -833,7 +832,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             auto yield
               = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
             auto rate = rx.products(d).decay_rate();
-            score = p.neutron_xs_[i_nuclide].fission * yield * flux
+            score = micro.fission * yield * flux
               * atom_density * rate;
             score_fission_delayed_dg(i_tally, d_bin, score, score_index, p.filter_matches_);
           }
@@ -852,7 +851,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
             auto yield = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
             auto rate = product.decay_rate();
-            score += p.neutron_xs_[i_nuclide].fission * flux
+            score += micro.fission * flux
               * yield * atom_density * rate;
           }
         }
@@ -927,7 +926,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
         const auto& nuc {data::nuclides[i_nuclide]};
         if (nuc.fissionable_) {
           const auto& rx {nuc.fission_rx_[0]->obj()};
-          score = rx.q_value() * p.neutron_xs_[i_nuclide].fission
+          score = rx.q_value() * micro.fission
             * atom_density * flux;
         }
       } else if (p.material_ != MATERIAL_VOID) {
@@ -955,13 +954,11 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.type_ != Type::neutron) continue;
 
       if (i_nuclide >= 0) {
-        auto& micro {p.neutron_xs_[i_nuclide]};
         if (micro.elastic == CACHE_INVALID)
           micro.elastic = data::nuclides[i_nuclide].calculate_elastic_xs(micro.index_temp, micro.index_grid, micro.interp_factor);
         score = micro.elastic * atom_density * flux;
       } else {
         score = 0.;
-        auto& micro {p.neutron_xs_[i_nuclide]};
         if (p.material_ != MATERIAL_VOID) {
           const Material& material {model::materials[p.material_]};
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
@@ -1006,7 +1003,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       case N_4N: m = 5; break;
       }
       if (i_nuclide >= 0) {
-        score = p.neutron_xs_[i_nuclide].reaction[m] * atom_density
+        score = micro.reaction[m] * atom_density
           * flux;
       } else {
         score = 0.;
@@ -2399,23 +2396,33 @@ score_tracklength_tally(Particle& p, double distance)
       auto filter_index = filter_iter.index_;
       auto filter_weight = filter_iter.weight_;
 
+      int i_grid = std::log(p.E_/data::energy_min[static_cast<int>(p.type_)])/simulation::log_spacing;
+
       // Loop over nuclide bins.
       for (auto i = 0; i < tally.nuclides_.size(); ++i) {
         auto i_nuclide = tally.nuclides_[i];
 
         double atom_density = 0.;
+        NuclideMicroXS micro;
         if (i_nuclide >= 0) {
           if (p.material_ != MATERIAL_VOID) {
             auto j = model::materials[p.material_].mat_nuclide_index_[i_nuclide];
             if (j == C_NONE) continue;
             atom_density = model::materials[p.material_].atom_density_(j);
+
+            // TODO: We can probably just pass along the microXS value here so as to
+            // keep it on the stack and avoid all the referencing in the score_general_ce_nonanalog
+            bool cache_micro = false;
+            micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, cache_micro);
           }
         }
+
+        // ======================================================================
 
         //TODO: consider replacing this "if" with pointers or templates
         if (settings::run_CE) {
           score_general_ce_nonanalog(p, i_tally, i*tally.scores_.size(), filter_index,
-            filter_weight, i_nuclide, atom_density, flux);
+            filter_weight, i_nuclide, atom_density, flux, micro);
         } else {
           score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
             filter_weight, i_nuclide, atom_density, flux);
@@ -2470,10 +2477,13 @@ void score_collision_tally(Particle& p)
           atom_density = model::materials[p.material_].atom_density_(j);
         }
 
+        // TODO:
+        NuclideMicroXS micro;
+
         //TODO: consider replacing this "if" with pointers or templates
         if (settings::run_CE) {
           score_general_ce_nonanalog(p, i_tally, i*tally.scores_.size(), filter_index,
-            filter_weight, i_nuclide, atom_density, flux);
+            filter_weight, i_nuclide, atom_density, flux, micro);
         } else {
           score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
             filter_weight, i_nuclide, atom_density, flux);

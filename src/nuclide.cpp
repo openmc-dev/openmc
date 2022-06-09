@@ -627,7 +627,7 @@ double Nuclide::elastic_xs_0K(double E) const
   return (1.0 - f)*elastic_0K_[i_grid] + f*elastic_0K_[i_grid + 1];
 }
 
-MicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool write_cache)
+NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool write_cache)
 {
   double E = p.E_;
   double sqrtkT = p.sqrtkT_;
@@ -1104,13 +1104,34 @@ MicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool write_cache)
   // ======================================================================
   // Return MicroXS
   // ======================================================================
+  /*
   MicroXS xs;
   xs.total = total;
   xs.absorption = absorption;
   xs.fission    = fission;
   xs.nu_fission = nu_fission;
+  */
 
-  return xs;
+  NuclideMicroXS micro;
+    micro.elastic = elastic;
+    micro.thermal_elastic = thermal_elastic;
+    micro.thermal = thermal;
+    micro.index_sab = index_sab;
+    micro.sab_frac = sab_frac;
+    micro.use_ptable = use_ptable;
+    micro.last_E = E;
+    micro.last_sqrtkT = sqrtkT;
+    micro.index_temp    = i_temp;
+    micro.index_grid    = i_grid;
+    micro.interp_factor = f;
+    micro.total         = total;
+    micro.absorption    = absorption;
+    micro.fission       = fission;
+    micro.nu_fission    = nu_fission;
+    micro.photon_prod   = photon_prod;
+    micro.index_temp_sab = index_temp_sab;
+
+  return micro;
 }
 
 std::pair<gsl::index, double> Nuclide::find_temperature(double T) const

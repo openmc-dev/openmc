@@ -785,7 +785,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     #endif
 
     // Perform microscopic XS lookup
-    MicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, write_cache);
+    NuclideMicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, write_cache);
 
     // Copy atom density of nuclide in material
     double atom_density = device_atom_density_[i];

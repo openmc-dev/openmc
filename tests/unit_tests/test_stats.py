@@ -26,6 +26,20 @@ def test_discrete():
     assert d2.p == [1.0]
     assert len(d2) == 1
 
+    vals = np.array([1.0, 2.0, 3.0])
+    probs = np.array([0.1, 0.7, 0.2])
+
+    exp_mean = (vals * probs).sum()
+
+    d3 = openmc.stats.Discrete(vals, probs)
+
+    # sample discrete distribution
+    n_samples = 1_000_000
+    samples = d3.sample(n_samples, seed=100)
+    # check that the mean of the samples is close to the true mean
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+
+
 
 def test_merge_discrete():
     x1 = [0.0, 1.0, 10.0]
@@ -65,9 +79,14 @@ def test_uniform():
     assert t.p == [1/(b-a), 1/(b-a)]
     assert t.interpolation == 'histogram'
 
+    exp_mean = 0.5 * (a + b)
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+
 
 def test_powerlaw():
-    a, b, n = 10.0, 20.0, 2.0
+    a, b, n = 10.0, 100.0, 2.0
     d = openmc.stats.PowerLaw(a, b, n)
     elem = d.to_xml_element('distribution')
 
@@ -76,6 +95,13 @@ def test_powerlaw():
     assert d.b == b
     assert d.n == n
     assert len(d) == 3
+
+    exp_mean = 100.0 * (n+1) / (n+2)
+
+    # sample power law distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
 
 
 def test_maxwell():
@@ -86,6 +112,14 @@ def test_maxwell():
     d = openmc.stats.Maxwell.from_xml_element(elem)
     assert d.theta == theta
     assert len(d) == 1
+
+    exp_mean = 3/2 * theta
+
+    # sample maxwell distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+
 
 
 def test_watt():
@@ -98,18 +132,67 @@ def test_watt():
     assert d.b == b
     assert len(d) == 2
 
+    d = openmc.stats.Watt(a, b)
+
+    # mean value form adapted from
+    # "Prompt-fission-neutron average energy for 238U(n, f ) from
+    # threshold to 200 MeV" Ethvignot et. al.
+    # https://doi.org/10.1016/j.physletb.2003.09.048
+    exp_mean = 3/2 * a + a**2 * b / 4
+
+    # sample Watt distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(exp_mean, rel=1e-03)
+
 
 def test_tabular():
-    x = [0.0, 5.0, 7.0]
-    p = [0.1, 0.2, 0.05]
+    x = np.array([0.0, 5.0, 7.0])
+    p = np.array([0.1, 0.2, 0.05])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     elem = d.to_xml_element('distribution')
 
     d = openmc.stats.Tabular.from_xml_element(elem)
-    assert d.x == x
-    assert d.p == p
+    assert all(d.x == x)
+    assert all(d.p == p)
     assert d.interpolation == 'linear-linear'
     assert len(d) == len(x)
+
+    # test linear-lienar sampling
+    d = openmc.stats.Tabular(x, p)
+
+    # compute the expected value (mean) of the
+    # piecewise pdf
+    mean = 0.0
+    d.normalize()
+    for i in range(1, len(x)):
+        y_min = d.p[i-1]
+        y_max = d.p[i]
+        x_min = d.x[i-1]
+        x_max = d.x[i]
+
+        m = (y_max - y_min) / (x_max - x_min)
+
+        exp_val = (1./3.) * m * (x_max**3 - x_min**3)
+        exp_val += 0.5 * m * x_min * (x_min**2 - x_max**2)
+        exp_val += 0.5 * y_min * (x_max**2 - x_min**2)
+
+        mean += exp_val
+
+    n_samples = 100_000
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(mean, rel=1e-03)
+
+    # test histogram sampling
+    d = openmc.stats.Tabular(x, p, interpolation='histogram')
+    d.normalize()
+
+    mean = 0.5 * (x[:-1] + x[1:])
+    mean *= np.diff(d.cdf())
+    mean = sum(mean)
+
+    samples = d.sample(n_samples, seed=100)
+    assert samples.mean() == pytest.approx(mean, rel=1e-03)
 
 
 def test_legendre():
@@ -252,87 +335,6 @@ def test_point():
 
     d = openmc.stats.Point.from_xml_element(elem)
     assert d.xyz == pytest.approx(p)
-
-
-def test_discrete():
-
-    vals = np.array([1.0, 2.0, 3.0])
-    probs = np.array([0.1, 0.7, 0.2])
-
-    exp_mean = (vals * probs).sum()
-
-    d = openmc.stats.Discrete(vals, probs)
-
-    # sample discrete distribution
-    n_samples = 1_000_000
-    samples = d.sample(n_samples, seed=100)
-    # check that the mean of the samples is close to the true mean
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
-
-
-def test_uniform():
-
-    lower = 1.1
-    upper = 23.3
-
-    exp_mean = 0.5 * (lower + upper)
-
-    d = openmc.stats.Uniform(lower, upper)
-
-    # sample the uniform distribution
-    n_samples = 1_000_000
-    samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
-
-
-def test_power_law():
-
-    lower = 0.0
-    upper = 1.0
-    exponent = 2.0
-
-    d = openmc.stats.PowerLaw(lower, upper, exponent)
-
-    exp_mean = (exponent + 1) / (exponent + 2)
-
-    # sample power law distribution
-    n_samples = 1_000_000
-    samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
-
-
-def test_maxwell():
-    theta = 1000
-
-    exp_mean = 0
-
-    d = openmc.stats.Maxwell(theta)
-
-    exp_mean = 3/2 * theta
-
-    # sample maxwell distribution
-    n_samples = 1_000_000
-    samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
-
-def test_watt():
-
-    a = 10
-    b = 20
-
-    d = openmc.stats.Watt(a, b)
-
-    # mean value form adapted from
-    # "Prompt-fission-neutron average energy for 238U(n, f ) from
-    # threshold to 200 MeV" Ethvignot et. al.
-    # https://doi.org/10.1016/j.physletb.2003.09.048
-    exp_mean = 3/2 * a + a**2 * b / 4
-
-    # sample Watt distribution
-    n_samples = 100_000
-    samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
-
 
 
 def test_normal():

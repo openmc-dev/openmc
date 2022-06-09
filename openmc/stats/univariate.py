@@ -566,7 +566,7 @@ class Watt(Univariate):
         w = Maxwell.sample_maxwell(self.a, n_samples)
         u = np.random.uniform(-1., 1., n_samples)
         aab = self.a * self.a * self.b
-        return w + 0.25*aab + u * np.sqrt(aab*w)
+        return w + 0.25*aab + u*np.sqrt(aab*w)
 
     def to_xml_element(self, element_name):
         """Return XML representation of the Watt distribution
@@ -769,7 +769,7 @@ class Muir(Univariate):
         return np.sqrt(4.*self.e0*self.kt/self.m_rat)
 
     def sample(self, n_samples=1, seed=None):
-        # https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
+        # Based on LANL report LA-05411-MS
         np.random.seed(seed)
         return np.random.normal(self.e0, self.std_dev, n_samples)
 
@@ -899,7 +899,7 @@ class Tabular(Univariate):
         return np.cumsum(c)
 
     def normalize(self):
-        self.p = self.p / self.cdf().max()
+        self.p = np.asarray(self.p) / self.cdf().max()
 
     def sample(self, n_samples=1, seed=None):
         if not self.interpolation in ('histogram', 'linear-linear'):

@@ -295,7 +295,6 @@ def half_life(isotope):
     """
     global _HALF_LIFE
     if not _HALF_LIFE:
-        print('reading json file')
         # Load data from AME2016 file
         half_life_filename = os.path.join(os.path.dirname(__file__), 'half_life.json')
         with open(half_life_filename, 'r') as f:

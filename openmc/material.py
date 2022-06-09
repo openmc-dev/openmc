@@ -151,7 +151,6 @@ class Material(IDManagerMixin):
         total_activity = 0
         for key, value in atoms_per_barn_cm2.items():
             half_life = openmc.data.half_life(key)
-            print('half_life', half_life)
             if half_life:
                 atoms = value[1] * self.volume * 1e24
                 activity = math.log(2) * atoms / half_life
@@ -722,7 +721,6 @@ class Material(IDManagerMixin):
 
     def make_isotropic_in_lab(self):
         self.isotropic = [x.name for x in self._nuclides]
-
 
     def get_elements(self):
         """Returns all elements in the material

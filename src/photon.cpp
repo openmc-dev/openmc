@@ -128,7 +128,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
 
   shells_.resize(n_shell);
-  cross_sections_.resize({energy_.size(), n_shell});
+  cross_sections_ = xt::zeros<double>({energy_.size(), n_shell});
 
   // Create mapping from designator to index
   std::unordered_map<int, int> shell_map;
@@ -166,8 +166,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     read_dataset(tgroup, "xs", xs);
 
     auto cross_section = xt::view(cross_sections_,
-      xt::range(shell.threshold, shell.threshold + xs.size()), i);
-    cross_section = xt::where(xs > 0.0, xt::log(xs), -500.0);
+      xt::range(shell.threshold, xt::placeholders::_), i);
+    cross_section = xt::where(xs > 0, xt::log(xs), 0);
 
     if (object_exists(tgroup, "transitions")) {
       // Determine dimensions of transitions
@@ -571,10 +571,13 @@ void PhotonInteraction::calculate_xs(Particle& p) const
     incoherent_(i_grid) + f * (incoherent_(i_grid + 1) - incoherent_(i_grid)));
 
   // Calculate microscopic photoelectric cross section
-  const auto& xs_upper = xt::row(cross_sections_, i_grid);
-  const auto& xs_lower = xt::row(cross_sections_, i_grid + 1);
+  xs.photoelectric = 0.0;
+  const auto& xs_lower = xt::row(cross_sections_, i_grid);
+  const auto& xs_upper = xt::row(cross_sections_, i_grid + 1);
 
-  xs.photoelectric = xt::sum(xt::exp(xs_upper + f * (xs_upper - xs_lower)))[0];
+  for (int i = 0; i < xs_upper.size(); ++i)
+    if (xs_lower(i) != 0)
+      xs.photoelectric += std::exp(xs_lower(i) + f * (xs_upper(i) - xs_lower(i)));
 
   // Calculate microscopic pair production cross section
   xs.pair_production = std::exp(

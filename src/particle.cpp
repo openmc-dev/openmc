@@ -433,13 +433,7 @@ void Particle::cross_surface()
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type_ == GeometryType::DAG) {
-    auto surfp = dynamic_cast<DAGSurface*>(surf);
-    auto cellp =
-      dynamic_cast<DAGCell*>(model::cells[cell_last(n_coord() - 1)].get());
-    auto univp = static_cast<DAGUniverse*>(
-      model::universes[coord(n_coord() - 1).universe].get());
-    // determine the next cell for this crossing
-    int32_t i_cell = next_cell(univp, cellp, surfp) - 1;
+    int32_t i_cell = next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) - 1;
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();

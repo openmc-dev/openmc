@@ -728,19 +728,21 @@ void check_dagmc_root_univ()
   }
 }
 
-int32_t next_cell(
-  DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed)
-{
-  moab::EntityHandle surf =
-    surf_xed->dagmc_ptr()->entity_by_index(2, surf_xed->dag_index());
-  moab::EntityHandle vol =
-    cur_cell->dagmc_ptr()->entity_by_index(3, cur_cell->dag_index());
+int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ) {
+  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf - 1].get());
+  auto cellp = dynamic_cast<DAGCell*>(model::cells[curr_cell].get());
+  auto univp = static_cast<DAGUniverse*>(model::universes[univ].get());
+
+  moab::EntityHandle surf_handle =
+    surfp->dagmc_ptr()->entity_by_index(2, surfp->dag_index());
+  moab::EntityHandle curr_vol =
+    cellp->dagmc_ptr()->entity_by_index(3, cellp->dag_index());
 
   moab::EntityHandle new_vol;
-  cur_cell->dagmc_ptr()->next_vol(surf, vol, new_vol);
+  cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
 
-  return cur_cell->dagmc_ptr()->index_by_handle(new_vol) +
-         dag_univ->cell_idx_offset_;
+  return cellp->dagmc_ptr()->index_by_handle(new_vol) +
+         univp->cell_idx_offset_;
 }
 
 } // namespace openmc
@@ -756,7 +758,10 @@ void read_dagmc_universes(pugi::xml_node node)
                 "with DAGMC");
   }
 };
+
 void check_dagmc_root_univ() {};
+
+int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 

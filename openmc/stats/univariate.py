@@ -890,11 +890,16 @@ class Tabular(Univariate):
         c = np.zeros_like(self.x)
         x = np.asarray(self.x)
         p = np.asarray(self.p)
+
         if self.interpolation == 'histogram':
             c[1:] = p[:-1] * np.diff(x)
         elif self.interpolation == 'linear-linear':
             c[1:] = 0.5 * (p[0:-1] + p[1:]) * np.diff(x)
+
         return np.cumsum(c)
+
+    def normalize(self):
+        self.p = self.p / self.cdf().max()
 
     def sample(self, n_samples=1, seed=None):
         if not self.interpolation in ('histogram', 'linear-linear'):
@@ -904,6 +909,9 @@ class Tabular(Univariate):
         np.random.seed(seed)
         xi = np.random.rand(n_samples)
         cdf = self.cdf()
+        cdf /= cdf.max()
+        # always use normalized probabilities when sampling
+        p = self.p / cdf.max()
 
         # get CDF bins that are above the
         # sampled values
@@ -918,7 +926,7 @@ class Tabular(Univariate):
         # the random number is less than the next cdf
         # entry
         x_i = np.array([self.x[i] for i in cdf_idx])
-        p_i = np.array([self.p[i] for i in cdf_idx])
+        p_i = np.array([p[i] for i in cdf_idx])
 
         # TODO: check that probability doesn't exceed the last value
 
@@ -936,7 +944,7 @@ class Tabular(Univariate):
             # get variable and probability values for the
             # next entry
             x_i1 = np.array([self.x[i+1] for i in cdf_idx])
-            p_i1 = np.array([self.p[i+1] for i in cdf_idx])
+            p_i1 = np.array([p[i+1] for i in cdf_idx])
             # compute slope between entries
             m = (p_i1 - p_i) / (x_i1 - x_i)
             # set values for zero slope
@@ -944,9 +952,9 @@ class Tabular(Univariate):
             m[zero] = x_i[zero] + (xi[zero] - c_i[zero]) / p_i[zero]
             # set values for non-zero slope
             non_zero = ~zero
-            quad = np.power(p_i[non_zero], 2) + 2. * m[non_zero] * (xi[non_zero] - c_i[non_zero])
+            quad = np.power(p_i[non_zero], 2) + 2.0 * m[non_zero] * (xi[non_zero] - c_i[non_zero])
             quad[quad < 0.0] = 0.0
-            m[non_zero] = x_i[non_zero] +  (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
+            m[non_zero] = x_i[non_zero] + (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
             return m
 
     def to_xml_element(self, element_name):

@@ -2453,8 +2453,9 @@ score_tracklength_tally(Particle& p, double distance)
           score_general_ce_nonanalog(p, i_tally, i*tally.scores_.size(), filter_index,
             filter_weight, i_nuclide, atom_density, flux, micro);
         } else {
-          score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
-            filter_weight, i_nuclide, atom_density, flux);
+          not_supported();
+          //score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
+          //  filter_weight, i_nuclide, atom_density, flux);
         }
       }
     }

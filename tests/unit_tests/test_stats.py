@@ -120,6 +120,11 @@ def test_maxwell():
     samples = d.sample(n_samples, seed=100)
     assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
 
+    # A second sample with a different seed
+    samples_2 = d.sample(n_samples, seed=200)
+    assert samples_2.mean() == pytest.approx(exp_mean, rel=1e-02)
+    assert samples_2.mean() != samples.mean()
+
 
 
 def test_watt():

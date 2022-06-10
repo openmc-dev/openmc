@@ -165,8 +165,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     close_dataset(dset);
     read_dataset(tgroup, "xs", xs);
 
-    auto cross_section = xt::view(cross_sections_,
-      xt::range(shell.threshold, xt::placeholders::_), i);
+    auto cross_section = xt::view(
+      cross_sections_, xt::range(shell.threshold, xt::placeholders::_), i);
     cross_section = xt::where(xs > 0, xt::log(xs), 0);
 
     if (object_exists(tgroup, "transitions")) {
@@ -577,7 +577,8 @@ void PhotonInteraction::calculate_xs(Particle& p) const
 
   for (int i = 0; i < xs_upper.size(); ++i)
     if (xs_lower(i) != 0)
-      xs.photoelectric += std::exp(xs_lower(i) + f * (xs_upper(i) - xs_lower(i)));
+      xs.photoelectric +=
+        std::exp(xs_lower(i) + f * (xs_upper(i) - xs_lower(i)));
 
   // Calculate microscopic pair production cross section
   xs.pair_production = std::exp(

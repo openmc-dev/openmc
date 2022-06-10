@@ -361,9 +361,8 @@ void sample_photon_reaction(Particle& p)
         continue;
 
       //  Evaluation subshell photoionization cross section
-      prob += std::exp(xs_lower(i_shell) +
-                       f * (xs_upper(i_shell) -
-                             xs_lower(i_shell)));
+      prob += std::exp(
+        xs_lower(i_shell) + f * (xs_upper(i_shell) - xs_lower(i_shell)));
 
       if (prob > cutoff) {
         double E_electron = p.E() - shell.binding_energy;

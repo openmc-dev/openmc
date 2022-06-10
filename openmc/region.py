@@ -106,6 +106,11 @@ class Region(ABC):
                 # If special character appears immediately after a non-operator,
                 # create a token with the appropriate half-space
                 if i_start >= 0:
+                    # When an opening parenthesis appears after a non-operator,
+                    # there's an implicit intersection operator between them
+                    if expression[i] == '(':
+                        tokens.append(' ')
+
                     j = int(expression[i_start:i])
                     if j < 0:
                         tokens.append(-surfaces[abs(j)])

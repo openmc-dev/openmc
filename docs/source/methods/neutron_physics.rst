@@ -1403,7 +1403,7 @@ given analytically by
 .. math::
     :label: coherent-elastic-angle
 
-    \mu = 1 - \frac{E_i}{E}
+    \mu = 1 - \frac{2E_i}{E}
 
 where :math:`E_i` is the energy of the Bragg edge that scattered the neutron.
 

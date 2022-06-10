@@ -195,6 +195,37 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   }
 }
 
+// Sample barycentric coordinates given a seed and the vertex positions and return the sampled position
+Position UnstructuredMesh::sample_tet(std::array<Position, 4> coords, uint64_t* seed) const {
+  // Uniform distribution
+  double s = prn(seed);
+  double t = prn(seed);
+  double u = prn(seed);
+
+  // From PyNE implementation of moab tet sampling
+  // C. Rocchini and P. Cignoni, “Generating Random Points in a Tetrahedron,”
+  if (s + t > 1) {
+      s = 1.0 - s;
+      t = 1.0 - t;
+  }
+  if (s + t + u > 1) {
+    if (t + u > 1) {
+      double old_t = t;
+      t = 1.0 - u;
+      u = 1.0 - s - old_t;
+    }else if (t + u <= 1) {
+      double old_s = s;
+      s = 1.0 - t - u;
+      u = old_s + t + u - 1;
+    }
+  }
+  return s*(coords[1]-coords[0]) 
+    + t*(coords[2]-coords[0]) 
+    + u*(coords[3]-coords[0]) 
+    + coords[0];
+
+}
+
 const std::string UnstructuredMesh::mesh_type = "unstructured";
 
 std::string UnstructuredMesh::get_mesh_type() const
@@ -325,6 +356,10 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
     ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
   }
   return ijk;
+}
+
+Position StructuredMesh::sample(uint64_t* seed) const {
+  fatal_error("Position sampling on structured meshes is not yet implemented");
 }
 
 int StructuredMesh::get_bin(Position r) const
@@ -2049,6 +2084,36 @@ std::string MOABMesh::library() const
   return mesh_lib_type;
 }
 
+// Sample position within a tet for MOAB type tets
+Position MOABMesh::sample(uint64_t* seed) const {
+  // Get bin # assuming equal weights, IMP weigh by activity
+  int64_t tet_bin = round(n_bins()*prn(seed));
+
+  moab::EntityHandle tet_ent = get_ent_handle_from_bin(tet_bin);
+
+  // Get vertex coordinates for MOAB tet
+  vector<moab::EntityHandle> conn1;
+  moab::ErrorCode rval = mbi_->get_connectivity(&tet_ent, 1, conn1);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get tet connectivity");
+  }
+  moab::CartVect p[4];
+  rval = mbi_->get_coords(conn1.data(), conn1.size(), p[0].array());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get tet coords");
+  }
+
+  std::array<Position, 4> tet_verts;
+  for (int i = 0; i < 4; i++) {
+    tet_verts[i] =  {p[i][0], p[i][1], p[i][2]};
+  }
+  // Samples position within tet using Barycentric stuff  
+  Position r = this->sample_tet(tet_verts, seed);
+
+  return r;
+}
+
+
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
 {
   vector<moab::EntityHandle> conn;
@@ -2499,6 +2564,25 @@ void LibMesh::initialize()
 
   // bounding box for the mesh for quick rejection checks
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
+}
+
+// Sample position within a tet for LibMesh type tets
+Position LibMesh::sample(uint64_t* seed) const {
+  // Get bin # assuming equal weights, IMP weigh by activity
+  int64_t tet_xi = round(n_bins()*prn(seed));
+
+  const auto& elem = get_element_from_bin(tet_xi);
+
+  // Get tet vertex coordinates from LibMesh
+  std::array<Position, 4> tet_verts;
+  for (int i = 0; i < elem.n_nodes(); i++) {
+    auto node_ref = elem.node_ref(i);
+    tet_verts[i] =  {node_ref(0), node_ref(1), node_ref(2)};
+  }
+  // Samples position within tet using Barycentric coordinates  
+  Position r = this->sample_tet(tet_verts, seed);
+
+  return r;
 }
 
 Position LibMesh::centroid(int bin) const

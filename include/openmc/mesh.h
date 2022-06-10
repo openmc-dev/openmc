@@ -75,6 +75,12 @@ public:
 
   // Methods
 
+  //! Sample a mesh volume using a certain seed
+  //
+  //! \param[in] seed Seed to use for random sampling
+  //! \param[out] r Position within tet
+  virtual Position sample(uint64_t* seed) const=0;
+
   //! Determine which bins were crossed by a particle
   //
   //! \param[in] r0 Previous position of the particle
@@ -159,6 +165,8 @@ public:
       return distance < o.distance;
     }
   };
+
+  Position sample(uint64_t* seed) const override;
 
   int get_bin(Position r) const override;
 
@@ -460,7 +468,12 @@ public:
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;
 
+  //! Sample a tetrahedron for an unstructured mesh
+  virtual Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
+
   // Overridden Methods
+  // TODO Position sample(uint64_t* seed) const=0;
+
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
@@ -551,6 +564,8 @@ public:
   static const std::string mesh_lib_type;
 
   // Overridden Methods
+
+  Position sample(uint64_t* seed) const override;
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
@@ -713,6 +728,8 @@ public:
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
+
+  Position sample(uint64_t* seed) const override;
 
   int get_bin(Position r) const override;
 

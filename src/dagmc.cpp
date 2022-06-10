@@ -739,7 +739,8 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ) {
     cellp->dagmc_ptr()->entity_by_index(3, cellp->dag_index());
 
   moab::EntityHandle new_vol;
-  cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
+  moab::ErrorCode rval = cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
+  if (rval != moab::MB_SUCCESS) return -1;
 
   return cellp->dagmc_ptr()->index_by_handle(new_vol) +
          univp->cell_idx_offset_;

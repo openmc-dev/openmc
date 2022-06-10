@@ -14,6 +14,7 @@
 #endif
 
 #include "openmc/constants.h"
+#include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry.h"
@@ -1300,7 +1301,16 @@ void ProjectionPlot::create_output() const
             -1; // surface first passed when entering the model
           bool first_inside_model = true; // false after entering the model
           while (intersection_found) {
-            bool inside_cell = exhaustive_find_cell(p);
+            bool inside_cell = false;
+
+            int32_t i_surface = std::abs(p.surface()) - 1;
+            if (i_surface > 0 && model::surfaces[i_surface]->geom_type_ == GeometryType::DAG) {
+              int32_t i_cell = next_cell(i_surface, p.cell_last(p.n_coord() - 1), p.lowest_coord().universe);
+              inside_cell = i_cell >= 0;
+            } else {
+              inside_cell = exhaustive_find_cell(p);
+            }
+
             if (inside_cell) {
 
               // This allows drawing wireframes with surface intersection

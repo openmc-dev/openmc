@@ -4,8 +4,6 @@ project(openmc_thrust_sort
   DESCRIPTION "Sort EventQueueItem arrays in OpenMC on NVIDIA devices with Thrust"
     LANGUAGES CXX CUDA)
 
-include(FindCUDA) 
-
 list(APPEND openmc_thrust_sort_SOURCES
   src/openmc_thrust_sort.cu)
 

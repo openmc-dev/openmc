@@ -81,9 +81,9 @@ class Results(list):
         .. note::
             Initial values for some isotopes that do not appear in
             initial concentrations may be non-zero, depending on the
-            value of :class:`openmc.deplete.Operator` ``dilute_initial``.
-            The :class:`openmc.deplete.Operator` adds isotopes according
-            to this setting, which can be set to zero.
+            value of the :attr:`openmc.deplete.Operator.dilute_initial`
+            attribute. The :class:`openmc.deplete.Operator` class adds isotopes
+            according to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -186,6 +186,8 @@ class Results(list):
     def get_keff(self, time_units='s'):
         """Evaluates the eigenvalue from a results list.
 
+        .. versionadded:: 0.13.1
+
         Parameters
         ----------
         time_units : {"s", "d", "h", "min"}, optional
@@ -220,7 +222,6 @@ class Results(list):
              "will be removed in a future version of OpenMC.", FutureWarning)
         return self.get_keff(time_units)
 
-
     def get_depletion_time(self):
         """Return an array of the average time to deplete a material
 
@@ -251,7 +252,6 @@ class Results(list):
 
     def get_times(self, time_units="d") -> np.ndarray:
         """Return the points in time that define the depletion schedule
-
 
         .. versionadded:: 0.12.1
 
@@ -289,7 +289,6 @@ class Results(list):
 
         Passing ``atol=math.inf`` and ``rtol=math.inf`` will return
         the closest index to the requested point.
-
 
         .. versionadded:: 0.12.1
 

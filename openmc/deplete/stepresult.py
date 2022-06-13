@@ -1,6 +1,7 @@
-"""The results module.
+"""The stepresult module.
 
-Contains results generation and saving capabilities.
+Contains capabilities for generating and saving results of a single depletion
+timestep.
 """
 
 from collections import OrderedDict

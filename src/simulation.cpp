@@ -145,6 +145,9 @@ int openmc_simulation_init()
     }
   }
 
+  #ifdef OPENMC_MPI
+  MPI_Barrier( mpi::intracomm );
+  #endif
 
   // Set flag indicating initialization is done
   simulation::initialized = true;
@@ -300,6 +303,9 @@ const RegularMesh* ufs_mesh {nullptr};
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 int64_t* device_work_index;
+
+std::vector<Particle>  particles;
+Particle*  device_particles;
 
 
 } // namespace simulation
@@ -796,6 +802,9 @@ void transport_history_based()
 
 void transport_event_based()
 {
+  #ifdef OPENMC_MPI
+  MPI_Barrier( mpi::intracomm );
+  #endif
   // The fuel lookup bias is the increases the number of particles required before
   // selecting this event to execute.
   // E.g., if we had 100 particles in flight, and fuel xs queue had 45 particles
@@ -898,6 +907,10 @@ void transport_event_based()
 
   // Copy back fission bank to host
   simulation::fission_bank.copy_device_to_host();
+
+  #ifdef OPENMC_MPI
+  MPI_Barrier( mpi::intracomm );
+  #endif
 }
 
 } // namespace openmc

@@ -32,8 +32,11 @@ option(coverage "Compile with coverage analysis flags"           OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
 option(new_w    "Use Ben Forget's Rational Fraction Approximation of Faddeeva W(z)" ON)
 option(device_history "Enable history-based transport on device" OFF)
+
 option(device_printf  "Enable printf statements on device"       ON)
 option(disable_xs_cache "Disable Micro XS cache"       ON)
+option(cuda_thrust_sort "Enable on-device sorting via CUDA Thrust (NVIDIA devices only)"       OFF)
+option(sycl_sort "Enable on-device sorting via SYCL OneAPI DPL (Intel devices only)"       OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -128,6 +131,10 @@ if(coverage)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
 endif()
+if(sycl_sort)
+  list(APPEND cxxflags -fsycl -D_GLIBCXX_USE_TBB_PAR_BACKEND=0)
+  list(APPEND ldflags -fsycl -D_GLIBCXX_USE_TBB_PAR_BACKEND=0)
+endif()
 
 # Show flags being used
 message(STATUS "OpenMC C++ flags: ${cxxflags}")
@@ -206,6 +213,17 @@ add_subdirectory(vendor/gsl-lite)
 target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
 
 #===============================================================================
+# CUDA Thrust sorting library
+#===============================================================================
+
+# Define header location variable
+set(OPENMC_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include )
+if(cuda_thrust_sort)
+  add_subdirectory(cuda_thrust_sort)
+endif()
+
+
+#===============================================================================
 # RPATH information
 #===============================================================================
 
@@ -250,7 +268,12 @@ endif()
 # libopenmc
 #===============================================================================
 
+# NOTE: sycl_sort.cpp must be first due to poor namespace usage in the OneAPI
+# DPL library (they have a namespace called "data" that clashes with OpenMC when
+# using a unity build).
+
 list(APPEND libopenmc_SOURCES
+  src/sycl_sort.cpp
   src/bank.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
@@ -346,6 +369,7 @@ list(APPEND libopenmc_SOURCES
   src/xml_interface.cpp
   src/xsdata.cpp)
 
+
 # For Visual Studio compilers
 if(MSVC)
   # Use static library (otherwise explicit symbol portings are needed)
@@ -395,15 +419,25 @@ if(GIT_FOUND)
   endif()
 endif()
 
+
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      pugixml xtensor gsl-lite-v1 fmt::fmt)
+  pugixml xtensor gsl-lite-v1 fmt::fmt)
                     #pugixml faddeeva xtensor gsl-lite-v1 fmt::fmt)
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc dagmc-shared uwuw-shared)
+endif()
+
+if(cuda_thrust_sort)
+  target_compile_definitions(libopenmc PRIVATE CUDA_THRUST_SORT)
+  target_link_libraries(libopenmc openmc_thrust_sort)
+endif()
+
+if(sycl_sort)
+  target_compile_definitions(libopenmc PRIVATE SYCL_SORT)
 endif()
 
 if(new_w)
@@ -456,12 +490,21 @@ configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FI
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 #install(TARGETS openmc libopenmc faddeeva
+if(cuda_thrust_sort)
+install(TARGETS openmc libopenmc openmc_thrust_sort
+  EXPORT openmc-targets
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+else()
 install(TARGETS openmc libopenmc
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+endif()
 install(EXPORT openmc-targets
   FILE OpenMCTargets.cmake
   NAMESPACE OpenMC::

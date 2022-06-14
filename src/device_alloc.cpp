@@ -228,6 +228,10 @@ void move_read_only_data_to_device()
 
   simulation::device_progeny_per_particle = simulation::progeny_per_particle.data();
   #pragma omp target enter data map(alloc: simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
+
+  #ifdef OPENMC_MPI
+  MPI_Barrier( mpi::intracomm );
+  #endif
 }
 
 

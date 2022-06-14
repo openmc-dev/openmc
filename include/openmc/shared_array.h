@@ -154,12 +154,27 @@ public:
   //! Return pointer to the underlying array serving as element storage.
   T* data() {return data_;}
   const T* data() const {return data_;}
+  
+  //! Return data pointer to the underlying array serving as element storage.
+  T* device_data() {return device_data_;}
+  const T* device_data() const {return device_data_;}
 
+  //! Map data pointer to device but do not copy data from host to device
   void allocate_on_device()
   {
     #pragma omp target update to(size_)
     #pragma omp target update to(capacity_)
     #pragma omp target enter data map(alloc: data_[:capacity_])
+    
+    // Determine mapped device pointer
+    // May be useful for device library interop (e.g., sorting via Thrust)
+    #pragma omp target data use_device_ptr(data_)
+    {
+      device_data_ = data_;
+    }
+    
+    // If OpenMP 5.1 is fully supported, we can more simply just do:
+    //device_data_ = static_cast<T*>(omp_get_mapped_ptr(data_, omp_get_default_device()));
   }
 
   void copy_host_to_device()
@@ -180,6 +195,7 @@ public:
   //private: 
 
   T* data_ {NULL}; //!< An RAII handle to the elements
+  T* device_data_ {NULL}; //!< Device pointer for interop with device libraries
   int64_t size_ {0}; //!< The current number of elements 
   int64_t capacity_ {0}; //!< The total space allocated for elements
 }; 

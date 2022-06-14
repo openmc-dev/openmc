@@ -1,4 +1,4 @@
-"""Tests the ResultsList class"""
+"""Tests the Results class"""
 
 from pathlib import Path
 from math import inf
@@ -13,7 +13,7 @@ def res():
     """Load the reference results"""
     filename = (Path(__file__).parents[1] / 'regression_tests' / 'deplete'
                 / 'test_reference.h5')
-    return openmc.deplete.ResultsList.from_hdf5(filename)
+    return openmc.deplete.Results(filename)
 
 
 def test_get_atoms(res):
@@ -72,9 +72,9 @@ def test_get_keff(res):
 
 @pytest.mark.parametrize("unit", ("s", "d", "min", "h"))
 def test_get_steps(unit):
-    # Make a ResultsList full of near-empty Result instances
+    # Make a Results full of near-empty Result instances
     # Just fill out a time schedule
-    results = openmc.deplete.ResultsList()
+    results = openmc.deplete.Results()
     # Time in units of unit
     times = np.linspace(0, 100, num=5)
     if unit == "d":
@@ -87,7 +87,7 @@ def test_get_steps(unit):
         conversion_to_seconds = 1
 
     for ix in range(times.size):
-        res = openmc.deplete.Results()
+        res = openmc.deplete.StepResult()
         res.time = times[ix:ix + 1] * conversion_to_seconds
         results.append(res)
 

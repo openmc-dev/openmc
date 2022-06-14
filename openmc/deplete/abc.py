@@ -22,9 +22,9 @@ from uncertainties import ufloat
 from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.mpi import comm
-from .results import Results
+from .stepresult import StepResult
 from .chain import Chain
-from .results_list import ResultsList
+from .results import Results
 from .pool import deplete
 
 
@@ -79,7 +79,7 @@ class TransportOperator(ABC):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
-    prev_results : ResultsList, optional
+    prev_results : Results, optional
         Results from a previous depletion calculation.
 
     Attributes
@@ -88,7 +88,7 @@ class TransportOperator(ABC):
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
-    prev_res : ResultsList or None
+    prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
     """
@@ -102,7 +102,7 @@ class TransportOperator(ABC):
         if prev_results is None:
             self.prev_res = None
         else:
-            check_type("previous results", prev_results, ResultsList)
+            check_type("previous results", prev_results, Results)
             self.prev_res = prev_results
 
     @property
@@ -719,6 +719,9 @@ class Integrator(ABC):
             elif unit.lower() == 'mwd/kg':
                 watt_days_per_kg = 1e6*timestep
                 kilograms = 1e-3*operator.heavy_metal
+                if rate == 0.0:
+                    raise ValueError("Cannot specify a timestep in [MWd/kg] when"
+                                     " the power is zero.")
                 days = watt_days_per_kg * kilograms / rate
                 seconds.append(days*_SECONDS_PER_DAY)
             else:
@@ -842,7 +845,7 @@ class Integrator(ABC):
         k = ufloat(res.k[0, 0], res.k[0, 1])
 
         # Scale reaction rates by ratio of source rates
-        rates *= source_rate / res.source_rate[0]
+        rates *= source_rate / res.source_rate
         return bos_conc, OperatorResult(k, rates)
 
     def _get_start_data(self):
@@ -889,7 +892,7 @@ class Integrator(ABC):
                 # Remove actual EOS concentration for next step
                 conc = conc_list.pop()
 
-                Results.save(self.operator, conc_list, res_list, [t, t + dt],
+                StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
                              source_rate, self._i_res + i, proc_time)
 
                 t += dt
@@ -901,7 +904,7 @@ class Integrator(ABC):
             if output and final_step:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             res_list = [self.operator(conc, source_rate if final_step else 0.0)]
-            Results.save(self.operator, [conc], res_list, [t, t],
+            StepResult.save(self.operator, [conc], res_list, [t, t],
                          source_rate, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(len(self) + self._i_res)
 
@@ -1048,13 +1051,13 @@ class SIIntegrator(Integrator):
                 # Remove actual EOS concentration for next step
                 conc = conc_list.pop()
 
-                Results.save(self.operator, conc_list, res_list, [t, t + dt],
+                StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
                              p, self._i_res + i, proc_time)
 
                 t += dt
 
             # No final simulation for SIE, use last iteration results
-            Results.save(self.operator, [conc], [res_list[-1]], [t, t],
+            StepResult.save(self.operator, [conc], [res_list[-1]], [t, t],
                          p, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(self._i_res + len(self))
 

@@ -80,7 +80,7 @@ extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
 extern SharedArray<EventQueueItem> revival_queue;
 
-extern int64_t current_source_offset;
+extern int current_source_offset;
 #pragma omp end declare target
 
 extern int sort_counter;
@@ -94,7 +94,7 @@ extern int sort_counter;
 //! Allocate space for the event queues and particle buffer
 //
 //! \param n_particles The number of particles in the particle buffer
-void init_event_queues(int64_t n_particles);
+void init_event_queues(int n_particles);
 
 //! Free the event queues and particle buffer
 void free_event_queues(void);
@@ -107,7 +107,7 @@ void dispatch_xs_event(int buffer_idx);
 //! Execute the initialization event for all particles
 //
 //! \param n_particles The number of particles in the particle buffer
-void process_init_events(int64_t n_particles);
+void process_init_events(int n_particles);
 
 //! Execute the calculate XS event for all particles in this event's buffer
 //
@@ -129,7 +129,7 @@ void process_collision_events();
 //! Execute the death event for all particles
 //
 //! \param n_particles The number of particles in the particle buffer
-void process_death_events(int64_t n_particles);
+void process_death_events(int n_particles);
 
 //! Execute the revival event for all particles in this event's buffer
 void process_revival_events();

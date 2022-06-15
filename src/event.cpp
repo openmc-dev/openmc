@@ -204,10 +204,24 @@ void process_init_events(int n_particles)
   simulation::time_event_init.stop();
 }
 
+bool depletion_rx_check()
+{
+  if (!model::active_tracklength_tallies.empty()
+      &&
+      (simulation::need_depletion_rx || simulation::depletion_scores_present) )
+  {
+    return true;
+  }
+  return false;
+}
+
+
 void process_calculate_xs_events_nonfuel(int n_particles)
 {
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_nonfuel.start();
+  
+  bool need_depletion_rx = depletion_rx_check();
 
   #ifdef QUEUELESS
 
@@ -216,7 +230,7 @@ void process_calculate_xs_events_nonfuel(int n_particles)
     if (simulation::queue[i].event == EVENT_XS_NONFUEL) {
       int buffer_idx = simulation::queue[i].idx;
       Particle& p = simulation::device_particles[buffer_idx];
-      p.event_calculate_xs_execute();
+      p.event_calculate_xs_execute(need_depletion_rx);
       simulation::queue[i].event = EVENT_ADVANCE;
     }
   }
@@ -229,7 +243,7 @@ void process_calculate_xs_events_nonfuel(int n_particles)
   for (int i = 0; i < simulation::calculate_nonfuel_xs_queue.size(); i++) {
     int buffer_idx = simulation::calculate_nonfuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
-    p.event_calculate_xs_execute();
+    p.event_calculate_xs_execute(need_depletion_rx);
     simulation::advance_particle_queue[offset + i] = simulation::calculate_nonfuel_xs_queue[i];
   }
 
@@ -254,6 +268,8 @@ void process_calculate_xs_events_fuel(int n_particles)
 
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_fuel.start();
+  
+  bool need_depletion_rx = depletion_rx_check();
 
   #ifdef QUEUELESS
 
@@ -262,7 +278,7 @@ void process_calculate_xs_events_fuel(int n_particles)
     if (simulation::queue[i].event == EVENT_XS_FUEL) {
       int buffer_idx = simulation::queue[i].idx;
       Particle& p = simulation::device_particles[buffer_idx];
-      p.event_calculate_xs_execute();
+      p.event_calculate_xs_execute(need_depletion_rx);
       simulation::queue[i].event = EVENT_ADVANCE;
     }
   }
@@ -275,7 +291,7 @@ void process_calculate_xs_events_fuel(int n_particles)
   for (int i = 0; i < simulation::calculate_fuel_xs_queue.size(); i++) {
     int buffer_idx = simulation::calculate_fuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
-    p.event_calculate_xs_execute();
+    p.event_calculate_xs_execute(need_depletion_rx);
     simulation::advance_particle_queue[offset + i] = simulation::calculate_fuel_xs_queue[i];
   }
 
@@ -330,19 +346,22 @@ void process_advance_particle_events(int n_particles)
   simulation::surface_crossing_queue.sync_size_device_to_host();
   simulation::collision_queue.sync_size_device_to_host();
 
+  /*
   // Perform tallying on host, if needed
   if (!model::active_tracklength_tallies.empty()) {
+    bool need_depletion_rx = depletion_rx_check();
     simulation::advance_particle_queue.copy_device_to_host();
     #pragma omp target update from(simulation::device_particles[:n_particles])
     #pragma omp parallel for
     for (int i = 0; i < simulation::advance_particle_queue.size(); i++) {
       int buffer_idx = simulation::advance_particle_queue[i].idx;
       Particle& p = simulation::device_particles[buffer_idx];
-      p.event_advance_tally_prologue();
+      p.event_advance_tally_prologue(need_depletion_rx);
     }
     //simulation::advance_particle_queue.copy_host_to_device();
     #pragma omp target update to(simulation::device_particles[:n_particles])
   }
+  */
 
   simulation::advance_particle_queue.resize(0);
   

@@ -1009,7 +1009,12 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       // This case block only works if cross sections for these reactions have
       // been precalculated. When they are not, we revert to the default case,
       // which looks up cross sections
-      if (!simulation::need_depletion_rx) goto default_case;
+      
+      
+      // Note: the below problem no longer applies. We now check if any
+      // of these scores are present at tally initialization and do the lookups
+      // when tallies are active
+      //if (!simulation::need_depletion_rx) goto default_case;
 
       if (p.type_ != Type::neutron) continue;
 
@@ -1028,7 +1033,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       } else {
         score = 0.;
         if (p.material_ != MATERIAL_VOID) {
-          not_supported();
+          score += p.macro_xs_.reaction[m] * flux;
           /*
           const Material& material {model::materials[p.material_]};
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
@@ -2404,7 +2409,7 @@ void score_analog_tally_mg(Particle& p)
 }
 
 void
-score_tracklength_tally(Particle& p, double distance)
+score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
 {
   // Determine the tracklength estimate of the flux
   double flux = p.wgt_ * distance;
@@ -2438,11 +2443,7 @@ score_tracklength_tally(Particle& p, double distance)
             auto j = model::materials[p.material_].mat_nuclide_index_[i_nuclide];
             if (j == C_NONE) continue;
             atom_density = model::materials[p.material_].atom_density_(j);
-
-            // TODO: We can probably just pass along the microXS value here so as to
-            // keep it on the stack and avoid all the referencing in the score_general_ce_nonanalog
-            bool cache_micro = false;
-            micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, cache_micro);
+            micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
           }
         }
 

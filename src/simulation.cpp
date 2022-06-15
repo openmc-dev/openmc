@@ -291,6 +291,7 @@ double k_abs_tra {0.0};
 double log_spacing;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
+bool depletion_scores_present {false};
 int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
@@ -730,13 +731,13 @@ void check_for_lost_particles(void)
   }
 }
 
-void transport_history_based_single_particle(Particle& p, double& absorption, double& collision, double& tracklength, double& leakage)
+void transport_history_based_single_particle(Particle& p, double& absorption, double& collision, double& tracklength, double& leakage, bool need_depletion_rx)
 {
   while (true) {
-    p.event_calculate_xs();
+    p.event_calculate_xs(need_depletion_rx);
     p.event_advance();
     //p.event_advance_tally();
-    p.event_advance_tally_prologue();
+    //p.event_advance_tally_prologue();
     if (p.collision_distance_ > p.boundary_.distance) {
       p.event_cross_surface();
     } else {
@@ -765,12 +766,14 @@ void transport_history_based_device()
   double tracklength = 0.0;
   double leakage = 0.0;
   double total_weight = 0.0;
+  
+  bool need_depletion_rx = depletion_rx_check();
 
   #pragma omp target teams distribute parallel for reduction(+:total_weight,absorption, collision, tracklength, leakage)
   for (int64_t i_work = 1; i_work <= work_amount; i_work++) {
     Particle p;
     total_weight += initialize_history(p, i_work);
-    transport_history_based_single_particle(p, absorption, collision, tracklength, leakage);
+    transport_history_based_single_particle(p, absorption, collision, tracklength, leakage, need_depletion_rx);
   }
 
   simulation::total_weight = total_weight;
@@ -796,11 +799,12 @@ void transport_history_based()
   double collision = 0.0;
   double tracklength = 0.0;
   double leakage = 0.0;
+  bool need_depletion_rx = depletion_rx_check();
   #pragma omp parallel for reduction(+:total_weight,absorption, collision, tracklength, leakage)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     total_weight += initialize_history(p, i_work);
-    transport_history_based_single_particle(p, absorption, collision, tracklength, leakage);
+    transport_history_based_single_particle(p, absorption, collision, tracklength, leakage, need_depletion_rx);
   }
   // Write local reduction results to global values
   global_tally_absorption  = absorption;

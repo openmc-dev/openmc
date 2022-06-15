@@ -494,6 +494,19 @@ Tally::set_scores(const std::vector<std::string>& scores)
       fatal_error("Cannot tally other scores in the same tally as surface "
         "currents");
   }
+
+  // Check if there are any depletion-related scores
+  for (auto sc : scores_) {
+    if ( sc == N_2N ||
+         sc == N_3N ||
+         sc == N_4N ||
+         sc == N_GAMMA ||
+         sc == N_P ||
+         sc == N_A )
+    {
+      simulation::depletion_scores_present = true;
+    }
+  }
 }
 
 void

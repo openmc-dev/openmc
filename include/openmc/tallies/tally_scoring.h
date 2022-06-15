@@ -95,7 +95,7 @@ void score_analog_tally_mg(Particle& p);
 //
 //! \param p The particle being tracked
 //! \param distance The distance in [cm] traveled by the particle
-void score_tracklength_tally(Particle& p, double distance);
+void score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx);
 
 //! Score surface or mesh-surface tallies for particle currents.
 //

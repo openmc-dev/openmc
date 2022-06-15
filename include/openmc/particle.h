@@ -192,6 +192,9 @@ struct MacroXS {
   double fission;       //!< macroscopic fission xs
   double nu_fission;    //!< macroscopic production xs
   double photon_prod;   //!< macroscopic photon production xs
+  
+  // Cross sections for depletion reactions
+  double reaction[DEPLETION_RX_SIZE];
 
   // Photon cross sections
   double coherent;        //!< macroscopic coherent xs
@@ -319,12 +322,12 @@ public:
   #pragma omp end declare target
 
   // Coarse-grained particle events
-  void event_advance_tally_prologue();
+  void event_advance_tally_prologue(bool need_depletion_rx);
   #pragma omp declare target
   void event_advance_tally();
-  void event_calculate_xs();
+  void event_calculate_xs(bool need_depletion_rx);
   bool event_calculate_xs_dispatch();
-  void event_calculate_xs_execute();
+  void event_calculate_xs_execute(bool need_depletion_rx);
   void event_collide();
   void event_advance();
   void event_cross_surface();

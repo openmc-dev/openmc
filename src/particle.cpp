@@ -213,17 +213,17 @@ Particle::event_calculate_xs_dispatch()
 }
 
 void
-Particle::event_calculate_xs_execute()
+Particle::event_calculate_xs_execute(bool need_depletion_rx)
 {
-  model::materials[material_].calculate_xs(*this);
+  model::materials[material_].calculate_xs(*this, need_depletion_rx);
 }
 
 void
-Particle::event_calculate_xs()
+Particle::event_calculate_xs(bool need_depletion_rx)
 {
   bool needs_lookup = this->event_calculate_xs_dispatch();
   if (needs_lookup)
-    this->event_calculate_xs_execute();
+    this->event_calculate_xs_execute(need_depletion_rx);
 }
 
 void
@@ -272,13 +272,15 @@ Particle::event_advance()
   }
 }
 
-void Particle::event_advance_tally_prologue()
+/*
+void Particle::event_advance_tally_prologue(bool need_depletion_rx)
 {
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
-    score_tracklength_tally(*this, advance_distance_);
+    score_tracklength_tally(*this, advance_distance_, need_depletion_rx);
   }
 }
+*/
 
 void
 Particle::event_advance_tally()

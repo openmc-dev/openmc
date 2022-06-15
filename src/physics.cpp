@@ -484,23 +484,21 @@ int sample_nuclide(Particle& p)
 
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
-    // Get atom density
     int i_nuclide = mat.nuclide_[i];
-    double atom_density = mat.device_atom_density_[i];
 
     // Lookup micro XS or retrieve from XS cache
-    double total;
-    bool cache_micro = false;
-    NuclideMicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_grid, p, cache_micro);
-    total = xs.total;
+    bool need_depletion_rx = false;
+    NuclideMicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
+    
+    // Get atom density
+    double atom_density = mat.device_atom_density_[i];
 
     // Increment probability to compare to cutoff
-    prob += atom_density * total;
+    prob += atom_density * xs.total;
     if (prob >= cutoff) {
       // If no micro XS cache is being used, we need to store this nuclide's micro XS data
       // in the particle for other collision physics kernels to utilize.
-      cache_micro = true;
-      data::nuclides[i_nuclide].calculate_xs(i_grid, p, cache_micro);
+      p.neutron_xs_[0] = xs;
       return i_nuclide;
     }
   }

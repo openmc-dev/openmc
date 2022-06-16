@@ -272,7 +272,6 @@ Particle::event_advance()
   }
 }
 
-/*
 void Particle::event_advance_tally_prologue(bool need_depletion_rx)
 {
   // Score track-length tallies
@@ -280,7 +279,6 @@ void Particle::event_advance_tally_prologue(bool need_depletion_rx)
     score_tracklength_tally(*this, advance_distance_, need_depletion_rx);
   }
 }
-*/
 
 void
 Particle::event_advance_tally()

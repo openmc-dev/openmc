@@ -346,7 +346,6 @@ void process_advance_particle_events(int n_particles)
   simulation::surface_crossing_queue.sync_size_device_to_host();
   simulation::collision_queue.sync_size_device_to_host();
 
-  /*
   // Perform tallying on host, if needed
   if (!model::active_tracklength_tallies.empty()) {
     bool need_depletion_rx = depletion_rx_check();
@@ -361,7 +360,6 @@ void process_advance_particle_events(int n_particles)
     //simulation::advance_particle_queue.copy_host_to_device();
     #pragma omp target update to(simulation::device_particles[:n_particles])
   }
-  */
 
   simulation::advance_particle_queue.resize(0);
   

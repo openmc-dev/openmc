@@ -774,18 +774,15 @@ void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
     // Determine microscopic cross sections for this nuclide
     int i_nuclide = nuclide_[i];
 
-    // ======================================================================
-    // CALCULATE MICROSCOPIC CROSS SECTION
-
     // Perform microscopic XS lookup
     NuclideMicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
     
-    // If using a micro XS cache, save the result to the particle's cache
+    // If using a micro XS cache, store the result to the particle's cache
     #ifndef NO_MICRO_XS_CACHE
     p.neutron_xs_[i_nuclide] = nuclide_micro;
     #endif
 
-    // Copy atom density of nuclide in material
+    // Get atom density of nuclide in material
     double atom_density = device_atom_density_[i];
 
     // Accumulate this nuclide's contribution to the local macro XS variable

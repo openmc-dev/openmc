@@ -632,7 +632,9 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
   double E = p.E_;
   double sqrtkT = p.sqrtkT_;
   
-  // CHECK FOR S(A,B) TABLE
+  // ======================================================================
+  // CHECK FOR SAB TABLE BEGIN
+  // ======================================================================
 
   int i_sab = C_NONE;
   double sab_frac = 0.0;
@@ -650,6 +652,10 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
       if (p.E_ > data::device_thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
     }
   }
+  
+  // ======================================================================
+  // CHECK FOR SAB TABLE END
+  // ======================================================================
 
   #ifndef NO_MICRO_XS_CACHE
   {
@@ -836,12 +842,6 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
 
     // Depletion-related reactions
     if (need_depletion_rx) {
-      //printf("Depletion-related reactions not yet implemented!\n");
-      // Initialize all reaction cross sections to zero
-      //for (double& xs_i : reaction) {
-      //  xs_i = 0.0;
-      //}
-
       for (int j = 0; j < DEPLETION_RX.size(); ++j) {
         // If reaction is present and energy is greater than threshold, set the
         // reaction xs appropriately
@@ -880,11 +880,9 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
   double thermal_elastic = 0.0;
   int index_temp_sab;
 
-
   // ======================================================================
   // SAB BEGIN
   // ======================================================================
-
 
   // If there is S(a,b) data for this nuclide, we need to set the sab_scatter
   // and sab_elastic cross sections and correct the total and elastic cross
@@ -922,13 +920,11 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
   // SAB END
   // ======================================================================
 
-
   bool use_ptable = false;
 
   // ======================================================================
   // URR BEGIN
   // ======================================================================
-
 
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table

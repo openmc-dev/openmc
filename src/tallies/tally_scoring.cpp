@@ -2430,7 +2430,11 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
       auto filter_index = filter_iter.index_;
       auto filter_weight = filter_iter.weight_;
 
-      int i_grid = std::log(p.E_/data::energy_min[static_cast<int>(p.type_)])/simulation::log_spacing;
+      #ifdef NO_MICRO_XS_CACHE
+      // Find energy index on energy grid
+      int neutron = static_cast<int>(Particle::Type::neutron);
+      int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
+      #endif
 
       // Loop over nuclide bins.
       for (auto i = 0; i < tally.nuclides_.size(); ++i) {
@@ -2443,11 +2447,13 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
             auto j = model::materials[p.material_].mat_nuclide_index_[i_nuclide];
             if (j == C_NONE) continue;
             atom_density = model::materials[p.material_].atom_density_(j);
+            #ifdef NO_MICRO_XS_CACHE
             micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
+            #else
+            micro = p.neutron_xs_[i_nuclide];
+            #endif
           }
         }
-
-        // ======================================================================
 
         //TODO: consider replacing this "if" with pointers or templates
         if (settings::run_CE) {

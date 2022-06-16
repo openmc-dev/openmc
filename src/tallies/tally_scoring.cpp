@@ -34,8 +34,6 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
   for (auto i_filt : tally_.filters()) {
     auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
-      //match.bins_.clear();
-      //match.weights_.clear();
       match.bins_weights_length_ = 0;
       model::tally_filters[i_filt]->get_all_bins(p, tally_.estimator_, match);
       match.bins_present_ = true;
@@ -43,7 +41,6 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
 
     // If there are no valid bins for this filter, then there are no valid
     // filter bin combinations so all iterators are end iterators.
-    //if (match.bins_.size() == 0) {
     if (match.bins_weights_length_ == 0) {
       index_ = -1;
       return;
@@ -58,7 +55,6 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
 }
 
 FilterBinIter::FilterBinIter(const Tally& tally, bool end,
-    //std::vector<FilterMatch>* particle_filter_matches)
     FilterMatch* particle_filter_matches)
   : filter_matches_{particle_filter_matches}, tally_{tally}
 {
@@ -71,16 +67,10 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
   for (auto i_filt : tally_.filters()) {
     auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
-      //match.bins_.clear();
-      //match.weights_.clear();
       match.bins_weights_length_ = 0;
       for (auto i = 0; i < model::tally_filters[i_filt]->n_bins(); ++i) {
-        //if(match.bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE)
-        //  std::cout << "Loop size = " << model::tally_filters[i_filt]->n_bins() << std::endl;
         assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
-        //match.bins_.push_back(i);
         match.bins_[match.bins_weights_length_] = i;
-        //match.weights_.push_back(1.0);
         match.weights_[match.bins_weights_length_] = 1.0;
         match.bins_weights_length_++;
       }
@@ -100,8 +90,10 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
   this->compute_index_weight();
 }
 
+// Note: This method is only used when outputting tallies
+// at end of program, so does not need to run on the device
 FilterBinIter::FilterBinIter(const Tally& tally, bool end,
-    std::vector<BigFilterMatch>* particle_filter_matches)
+    vector<BigFilterMatch>* particle_filter_matches)
   : big_filter_matches_{particle_filter_matches}, tally_{tally}
 {
   is_big_ = true;
@@ -116,22 +108,14 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
     if (!match.bins_present_) {
       match.bins_.clear();
       match.weights_.clear();
-      //match.bins_weights_length_ = 0;
       for (auto i = 0; i < model::tally_filters[i_filt]->n_bins(); ++i) {
-        //if(match.bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE)
-        //  std::cout << "Loop size = " << model::tally_filters[i_filt]->n_bins() << std::endl;
-        //assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
         match.bins_.push_back(i);
-        //match.bins_[match.bins_weights_length_] = i;
         match.weights_.push_back(1.0);
-        //match.weights_[match.bins_weights_length_] = 1.0;
-        //match.bins_weights_length_++;
       }
       match.bins_present_ = true;
     }
 
     if (match.bins_.size() == 0) {
-    //if (match.bins_weights_length_ == 0) {
       index_ = -1;
       return;
     }
@@ -146,8 +130,10 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
 FilterBinIter&
 FilterBinIter::operator++()
 {
-  // TODO: This function works but needs to be cleaned up and brought in line with
-  // develop
+  // The "Big" type of FilterBinIter uses a dynamically sized vector to store
+  // the filter_matches_ instead of a static array. This is required for outputting
+  // tallies on the host at the end, as the vectors can get quite large compared
+  // to the typically modest needs when doing tallies on device.
   if( is_big_ )
   {
     // Find the next valid combination of filter bins.  To do this, we search
@@ -213,7 +199,6 @@ FilterBinIter::operator++()
     }
   }
   return *this;
-
 }
 
 void

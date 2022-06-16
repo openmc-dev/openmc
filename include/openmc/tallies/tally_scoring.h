@@ -4,6 +4,7 @@
 #include "openmc/particle.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -29,11 +30,15 @@ public:
   //
   //! \param end if true, the returned iterator indicates the end of a loop.
   FilterBinIter(const Tally& tally, bool end,
-      //std::vector<FilterMatch>* particle_filter_matches);
       FilterMatch* particle_filter_matches);
   
+  //! Construct an iterator over all filter bin combinations.
+  //
+  //! \param end if true, the returned iterator indicates the end of a loop.
+  // Note: This method is only used when outputting tallies
+  // at end of program, so does not need to run on the device
   FilterBinIter(const Tally& tally, bool end,
-      std::vector<BigFilterMatch>* particle_filter_matches);
+      vector<BigFilterMatch>* particle_filter_matches);
 
   bool operator==(const FilterBinIter& other) const
   {return index_ == other.index_;}
@@ -46,9 +51,13 @@ public:
   int index_ {1};
   double weight_ {1.};
   
-  //std::vector<FilterMatch>& filter_matches_;
+  // The filter_matches_ field is for typical usage when tallying
+  // and will work on device
   FilterMatch* filter_matches_;
-  std::vector<BigFilterMatch>* big_filter_matches_;
+
+  // The "Big" type of FilterBinIter (as indicated by the is_big_ flag)
+  // is only used when outputting tallies as it can be very large
+  vector<BigFilterMatch>* big_filter_matches_;
 
   bool is_big_ {false};
 

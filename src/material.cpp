@@ -782,7 +782,7 @@ void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
     
     // If using a micro XS cache, save the result to the particle's cache
     #ifndef NO_MICRO_XS_CACHE
-    p.nuclide_xs[i_nuclide] = nuclide_micro;
+    p.neutron_xs_[i_nuclide] = nuclide_micro;
     #endif
 
     // Copy atom density of nuclide in material

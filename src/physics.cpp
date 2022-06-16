@@ -486,7 +486,7 @@ int sample_nuclide(Particle& p)
   for (int i = 0; i < n; ++i) {
     int i_nuclide = mat.nuclide_[i];
 
-    // Lookup micro XS or retrieve from XS cache
+    // Lookup micro XS (no depletion XS data is needed for collisions)
     bool need_depletion_rx = false;
     NuclideMicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
     

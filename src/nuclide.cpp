@@ -662,14 +662,7 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
           && sab_frac  == micro.sab_frac
        )
     {
-
-      MicroXS xs;
-      xs.total      = micro.total;
-      xs.absorption = micro.absorption;
-      xs.fission    = micro.fission;
-      xs.nu_fission = micro.nu_fission;
-
-      return xs;
+      return micro;
     }
   }
   #endif

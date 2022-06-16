@@ -117,7 +117,7 @@ void process_calculate_xs_events_fuel();
 void process_calculate_xs_events_nonfuel();
 
 //! Execute the advance particle event for all particles in this event's buffer
-void process_advance_particle_events();
+void process_advance_particle_events(int n_particles);
 bool depletion_rx_check();
 
 //! Execute the surface crossing event for all particles in this event's buffer

@@ -722,7 +722,6 @@ void free_memory_simulation()
   simulation::entropy.clear();
 }
 
-<<<<<<< HEAD
 void check_for_lost_particles(void)
 {
   #pragma omp target update from(simulation::n_lost_particles)
@@ -898,7 +897,7 @@ void transport_event_based()
     } else if (max == simulation::calculate_nonfuel_xs_queue.size()) {
       process_calculate_xs_events_nonfuel();
     } else if (max == simulation::advance_particle_queue.size()) {
-      process_advance_particle_events();
+      process_advance_particle_events(n_particles);
     } else if (max == simulation::surface_crossing_queue.size()) {
       process_surface_crossing_events();
     } else if (max == simulation::collision_queue.size()) {

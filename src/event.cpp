@@ -168,7 +168,6 @@ void process_init_events(int n_particles)
 
 }
 
-<<<<<<< HEAD
 bool depletion_rx_check()
 {
   if (!model::active_tracklength_tallies.empty()
@@ -179,7 +178,6 @@ bool depletion_rx_check()
   }
   return false;
 }
-
 
 void process_calculate_xs_events_nonfuel()
 {
@@ -242,8 +240,7 @@ void process_calculate_xs_events_fuel()
   simulation::time_event_calculate_xs_fuel.stop();
 }
 
-
-void process_advance_particle_events()
+void process_advance_particle_events(int n_particles)
 {
   simulation::time_event_advance_particle.start();
 

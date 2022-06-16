@@ -12,15 +12,6 @@ namespace openmc {
 // Structs
 //==============================================================================
 
-// Event type macros for queueless mode
-#define EVENT_XS_FUEL 0
-#define EVENT_XS_NONFUEL 1
-#define EVENT_ADVANCE 2
-#define EVENT_SURFACE 3
-#define EVENT_COLLISION 4
-#define EVENT_REVIVAL 5
-#define EVENT_DEATH 6
-
 // In the event-based model, instead of moving or sorting the particles
 // themselves based on which event they need, a queue is used to store the
 // index (and other useful info) for each event type.
@@ -31,45 +22,42 @@ namespace openmc {
 // result in any benefits if not enough particles are present for them to achieve
 // consistent locality improvements. 
 struct EventQueueItem{
-  int idx;     //!< particle index in event-based particle buffer
-  float E;     //!< particle energy
-  #ifdef QUEUELESS
-  int event;   //!< particle next event type
-  #endif
+  int idx;         //!< particle index in event-based particle buffer
+  //Particle::Type type; //!< particle type
+  //int64_t material;    //!< material that particle is in
+  //double E;            //!< particle energy
+  float E;            //!< particle energy
+  //int64_t id;
 
   // Constructors
   EventQueueItem() = default;
   EventQueueItem(double energy, int buffer_idx) :
     idx(buffer_idx), E(static_cast<float>(energy)) {}
 
+  // Compare by particle type, then by material type (4.5% fuel/7.0% fuel/cladding/etc),
+  // then by energy.
+  // TODO: Currently in OpenMC, the material ID corresponds not only to a general
+  // type, but also specific isotopic densities. Ideally we would
+  // like to be able to just sort by general material type, regardless of densities.
+  // A more general material type ID may be added in the future, in which case we
+  // can update the material field of this struct to contain the more general id.
   #ifdef COMPILE_CUDA_COMPARATOR
   __host__ __device__
   #endif
   bool operator<(const EventQueueItem& rhs) const
   {
-    #ifdef QUEUELESS
-    if ( event == rhs.event )
-      return E < rhs.E;
-    else
-      return event < rhs.event;
-    #else
+    //return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
     return E < rhs.E;
-    #endif
   }
   
   // This is needed by the implementation of parallel quicksort
   bool operator>(const EventQueueItem& rhs) const
   {
-    #ifdef QUEUELESS
-    if ( event == rhs.event )
-      return E > rhs.E;
-    else
-      return event > rhs.event;
-    #else
+    //return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
     return E > rhs.E;
-    #endif
   }
 };
+
 
 //==============================================================================
 // Global variable declarations
@@ -85,18 +73,14 @@ namespace simulation {
 // Note: we only need to declare the xs queues as global items as the rest
 // are only used within the lexical scope of a target construct. 
 #pragma omp declare target
-#ifdef QUEUELESS
-extern SharedArray<EventQueueItem> queue;
-#else
 extern SharedArray<EventQueueItem> calculate_fuel_xs_queue;
 extern SharedArray<EventQueueItem> calculate_nonfuel_xs_queue;
 extern SharedArray<EventQueueItem> advance_particle_queue;
 extern SharedArray<EventQueueItem> surface_crossing_queue;
 extern SharedArray<EventQueueItem> collision_queue;
 extern SharedArray<EventQueueItem> revival_queue;
-#endif
 
-extern int current_source_offset;
+extern int64_t current_source_offset;
 #pragma omp end declare target
 
 extern int sort_counter;
@@ -110,7 +94,7 @@ extern int sort_counter;
 //! Allocate space for the event queues and particle buffer
 //
 //! \param n_particles The number of particles in the particle buffer
-void init_event_queues(int n_particles);
+void init_event_queues(int64_t n_particles);
 
 //! Free the event queues and particle buffer
 void free_event_queues(void);
@@ -118,37 +102,37 @@ void free_event_queues(void);
 //! Enqueue a particle based on if it is in fuel or a non-fuel material
 //
 //! \param buffer_idx The particle's actual index in the particle buffer
-void dispatch_xs_event(int queue_idx, int particle_buffer_idx);
+void dispatch_xs_event(int buffer_idx);
 
 //! Execute the initialization event for all particles
 //
 //! \param n_particles The number of particles in the particle buffer
-void process_init_events(int n_particles);
+void process_init_events(int64_t n_particles);
 
 //! Execute the calculate XS event for all particles in this event's buffer
 //
 //! \param queue A reference to the desired XS lookup queue
 //void process_calculate_xs_events(SharedArray<EventQueueItem>& queue);
-void process_calculate_xs_events_fuel(int n_particles);
-void process_calculate_xs_events_nonfuel(int n_particles);
+void process_calculate_xs_events_fuel();
+void process_calculate_xs_events_nonfuel();
 
 //! Execute the advance particle event for all particles in this event's buffer
-void process_advance_particle_events(int n_particles);
+void process_advance_particle_events();
 bool depletion_rx_check();
 
 //! Execute the surface crossing event for all particles in this event's buffer
-void process_surface_crossing_events(int n_particles);
+void process_surface_crossing_events();
 
 //! Execute the collision event for all particles in this event's buffer
-void process_collision_events(int n_particles);
+void process_collision_events();
 
 //! Execute the death event for all particles
 //
 //! \param n_particles The number of particles in the particle buffer
-void process_death_events(int n_particles);
+void process_death_events(int64_t n_particles);
 
 //! Execute the revival event for all particles in this event's buffer
-int process_revival_events(int n_particles, int& n_empty_in_flight_slots);
+void process_revival_events();
 
 #ifdef CUDA_THRUST_SORT
 //! Sort a queue on-device using CUDA Thrust

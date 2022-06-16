@@ -53,7 +53,7 @@ public:
   //
   //! \param capacity The number of elements for the container to allocate
   //! space for
-  SharedArray(int capacity) : capacity_(capacity)
+  SharedArray(int64_t capacity) : capacity_(capacity)
   {
     data_ = new T[capacity];
   }
@@ -63,14 +63,14 @@ public:
 
   //! Return a reference to the element at specified location i. No bounds
   //! checking is performed.
-  T& operator[](int i) {return data_[i];}
-  const T& operator[](int i) const { return data_[i]; }
+  T& operator[](int64_t i) {return data_[i];}
+  const T& operator[](int64_t i) const { return data_[i]; }
 
   //! Allocate space in the container for the specified number of elements.
   //! reserve() does not change the size of the container.
   //
   //! \param capacity The number of elements to allocate in the container
-  void reserve(int capacity)
+  void reserve(int64_t capacity)
   {
     data_ = new T[capacity];
     capacity_ = capacity;
@@ -86,10 +86,10 @@ public:
   //! \return The index in the array written to. In the event that this
   //! index would be greater than what was allocated for the container,
   //! return -1.
-  int thread_safe_append(const T& value)
+  int64_t thread_safe_append(const T& value)
   {
     // Atomically capture the index we want to write to
-    int idx;
+    int64_t idx;
     // NOTE: The seq_cst is required for correctness but is not yet
     // well supported on device
     #pragma omp atomic capture //seq_cst
@@ -124,7 +124,7 @@ public:
   }
 
   //! Return the number of elements in the container
-  int size() {return size_;}
+  int64_t size() {return size_;}
   
   void sync_size_host_to_device()
   {
@@ -141,7 +141,7 @@ public:
   //! where the internal size of the array needs to be manually updated.
   //
   //! \param size The new size of the container
-  void resize(int size)
+  void resize(int64_t size)
   {
     size_ = size;
     sync_size_host_to_device();
@@ -149,7 +149,7 @@ public:
 
   //! Return the number of elements that the container has currently allocated
   //! space for.
-  int capacity() {return capacity_;}
+  int64_t capacity() {return capacity_;}
 
   //! Return pointer to the underlying array serving as element storage.
   T* data() {return data_;}
@@ -196,8 +196,8 @@ public:
 
   T* data_ {NULL}; //!< An RAII handle to the elements
   T* device_data_ {NULL}; //!< Device pointer for interop with device libraries
-  int size_ {0}; //!< The current number of elements 
-  int capacity_ {0}; //!< The total space allocated for elements
+  int64_t size_ {0}; //!< The current number of elements 
+  int64_t capacity_ {0}; //!< The total space allocated for elements
 }; 
 
 } // namespace openmc

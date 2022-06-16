@@ -13,10 +13,6 @@ add_library(openmc_thrust_sort SHARED ${openmc_thrust_sort_SOURCES})
   
 target_compile_definitions(openmc_thrust_sort PRIVATE CUDA_THRUST_SORT)
 
-if(queueless)
-  target_compile_definitions(openmc_thrust_sort PRIVATE QUEUELESS)
-endif()
-
 target_include_directories(openmc_thrust_sort PRIVATE ${OPENMC_HEADER_DIR})
 
 set_target_properties(

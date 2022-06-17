@@ -85,29 +85,29 @@ public:
   //! Uses an XML input to fill the filter's data fields.
   void from_xml(pugi::xml_node node);
 
-  void AzimuthalFilter_from_xml(node);
-  void CellFilter_from_xml(node);
-  void CellInstanceFilter_from_xml(node);
-  void CellbornFilter_from_xml(node);
-  void CellFromFilter_from_xml(node);
-  void DelayedGroupFilter_from_xml(node);
-  void DistribcellFilter_from_xml(node);
-  void EnergyFilter_from_xml(node);
-  void EnergyoutFilter_from_xml(node);
-  void EnergyFunctionFilter_from_xml(node);
-  void LegendreFilter_from_xml(node);
-  void MaterialFilter_from_xml(node);
-  void MeshFilter_from_xml(node);
-  void MeshSurfaceFilter_from_xml(node);
-  void MuFilter_from_xml(node);
-  void ParticleFilter_from_xml(node);
-  void PolarFilter_from_xml(node);
-  void SphericalHarmonicsFilter_from_xml(node);
-  void SpatialLegendreFilter_from_xml(node);
-  void SurfaceFilter_from_xml(node);
-  void UniverseFilter_from_xml(node);
-  void ZernikeFilter_from_xml(node);
-  void ZernikeRadialFilter_from_xml(node);
+  void AzimuthalFilter_from_xml(pugi::xml_node node);
+  void CellFilter_from_xml(pugi::xml_node node);
+  void CellInstanceFilter_from_xml(pugi::xml_node node);
+  void CellbornFilter_from_xml(pugi::xml_node node);
+  void CellFromFilter_from_xml(pugi::xml_node node);
+  void DelayedGroupFilter_from_xml(pugi::xml_node node);
+  void DistribcellFilter_from_xml(pugi::xml_node node);
+  void EnergyFilter_from_xml(pugi::xml_node node);
+  void EnergyoutFilter_from_xml(pugi::xml_node node);
+  void EnergyFunctionFilter_from_xml(pugi::xml_node node);
+  void LegendreFilter_from_xml(pugi::xml_node node);
+  void MaterialFilter_from_xml(pugi::xml_node node);
+  void MeshFilter_from_xml(pugi::xml_node node);
+  void MeshSurfaceFilter_from_xml(pugi::xml_node node);
+  void MuFilter_from_xml(pugi::xml_node node);
+  void ParticleFilter_from_xml(pugi::xml_node node);
+  void PolarFilter_from_xml(pugi::xml_node node);
+  void SphericalHarmonicsFilter_from_xml(pugi::xml_node node);
+  void SpatialLegendreFilter_from_xml(pugi::xml_node node);
+  void SurfaceFilter_from_xml(pugi::xml_node node);
+  void UniverseFilter_from_xml(pugi::xml_node node);
+  void ZernikeFilter_from_xml(pugi::xml_node node);
+  void ZernikeRadialFilter_from_xml(pugi::xml_node node);
 
   //----------------------------------------------------------------------------
   // Methods

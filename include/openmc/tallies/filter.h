@@ -26,6 +26,10 @@ enum class LegendreAxis {
   x, y, z
 };
 
+enum class SphericalHarmonicsCosine {
+  scatter, particle
+};
+
 class Filter
 {
 public:
@@ -39,6 +43,7 @@ public:
     DelayedGroupFilter,
     DistribcellFilter,
     EnergyFilter,
+    EnergyoutFilter,
     EnergyFunctionFilter,
     LegendreFilter,
     MaterialFilter,
@@ -73,7 +78,7 @@ public:
   //----------------------------------------------------------------------------
   // Constructors, destructors, factory functions
   
-  ~Filter() = default;
+  ~Filter();
 
   Filter();
 
@@ -187,7 +192,8 @@ private:
 namespace model {
   extern "C" int32_t n_filters;
   extern std::unordered_map<int, int> filter_map;
-  extern std::vector<std::unique_ptr<Filter>> tally_filters;
+  extern Filter* tally_filters;
+  extern int32_t n_tally_filters;
 }
 
 //==============================================================================

@@ -22,14 +22,60 @@ namespace openmc {
 //! Modifies tally score events.
 //==============================================================================
 
+enum class LegendreAxis {
+  x, y, z
+};
+
 class Filter
 {
 public:
+  // Types of Filter
+  enum class FilterType {
+    AzimuthalFilter,
+    CellFilter,
+    CellInstanceFilter,
+    CellbornFilter,
+    CellFromFilter,
+    DelayedGroupFilter,
+    DistribcellFilter,
+    EnergyFilter,
+    EnergyFunctionFilter,
+    LegendreFilter,
+    MaterialFilter,
+    MeshFilter,
+    MeshSurfaceFilter,
+    MuFilter,
+    ParticleFilter,
+    PolarFilter,
+    SphericalHarmonicsFilter,
+    SpatialLegendreFilter,
+    SurfaceFilter,
+    UniverseFilter,
+    ZernikeFilter,
+    ZernikeRadialFilter
+  };
+
+    enum class MeshDir {
+    OUT_LEFT,  // x min
+    IN_LEFT,  // x min
+    OUT_RIGHT,  // x max
+    IN_RIGHT,  // x max
+    OUT_BACK,  // y min
+    IN_BACK,  // y min
+    OUT_FRONT,  // y max
+    IN_FRONT,  // y max
+    OUT_BOTTOM,  // z min
+    IN_BOTTOM, // z min
+    OUT_TOP, // z max
+    IN_TOP // z max
+  };
+
   //----------------------------------------------------------------------------
   // Constructors, destructors, factory functions
+  
+  ~Filter() = default;
 
   Filter();
-  virtual ~Filter();
 
   //! Create a new tally filter
   //
@@ -106,11 +152,32 @@ public:
   //----------------------------------------------------------------------------
   // Data members
 
-protected:
-  int n_bins_;
 private:
+  int n_bins_;
   int32_t id_ {C_NONE};
   gsl::index index_;
+  std::vector<double> bins_;
+  std::vector<int32_t> cells_;
+  std::unordered_map<int32_t, int> map_;
+  std::vector<CellInstance> cell_instances_;
+  std::unordered_map<CellInstance, gsl::index, CellInstanceHash> map_;
+  std::vector<int> groups_;
+  int32_t cell_;
+  bool matches_transport_groups_ {false};
+  std::vector<double> energy_;
+  double x_;
+  std::vector<double> y_; //TODO: There is a collision here. ZernikeFilter has it as a scalar double, EnergyFunctionFilter has it as a vector
+  double r_;
+  int order_;
+  std::vector<int32_t> materials_;
+  int32_t mesh_;
+  std::vector<Particle::Type> particles_;
+  SphericalHarmonicsCosine cosine_ {SphericalHarmonicsCosine::particle};
+  LegendreAxis axis_;
+  double min_;
+  double max_;
+  std::vector<int32_t> surfaces_;
+  std::vector<int32_t> universes_;
 };
 
 //==============================================================================

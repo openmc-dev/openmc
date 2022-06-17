@@ -19,7 +19,7 @@ namespace openmc {
 //==============================================================================
 
 void
-ZernikeFilter::from_xml(pugi::xml_node node)
+ZernikeFilter_from_xml(pugi::xml_node node)
 {
   set_order(std::stoi(get_node_value(node, "order")));
   x_ = std::stod(get_node_value(node, "x"));

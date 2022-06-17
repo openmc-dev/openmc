@@ -13,7 +13,7 @@
 namespace openmc {
 
 void
-SphericalHarmonicsFilter::from_xml(pugi::xml_node node)
+SphericalHarmonicsFilter_from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
   if (check_for_node(node, "cosine")) {

@@ -12,7 +12,7 @@
 namespace openmc {
 
 void
-AzimuthalFilter::from_xml(pugi::xml_node node)
+AzimuthalFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
 

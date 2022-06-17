@@ -10,7 +10,7 @@
 namespace openmc {
 
 void
-EnergyFunctionFilter::from_xml(pugi::xml_node node)
+EnergyFunctionFilter_from_xml(pugi::xml_node node)
 {
   if (!settings::run_CE)
     fatal_error("EnergyFunction filters are only supported for "

@@ -12,7 +12,7 @@
 namespace openmc {
 
 void
-MeshFilter::from_xml(pugi::xml_node node)
+MeshFilter_from_xml(pugi::xml_node node)
 {
   auto bins_ = get_node_array<int32_t>(node, "bins");
   if (bins_.size() != 1) {

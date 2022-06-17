@@ -10,7 +10,7 @@
 namespace openmc {
 
 void
-PolarFilter::from_xml(pugi::xml_node node)
+PolarFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
 

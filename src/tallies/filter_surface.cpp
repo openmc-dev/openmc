@@ -9,7 +9,7 @@
 namespace openmc {
 
 void
-SurfaceFilter::from_xml(pugi::xml_node node)
+SurfaceFilter_from_xml(pugi::xml_node node)
 {
   auto surfaces = get_node_array<int32_t>(node, "bins");
 

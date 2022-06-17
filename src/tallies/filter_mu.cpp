@@ -9,7 +9,7 @@
 namespace openmc {
 
 void
-MuFilter::from_xml(pugi::xml_node node)
+MuFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
 

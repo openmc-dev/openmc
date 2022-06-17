@@ -6,7 +6,7 @@
 namespace openmc {
 
 void
-DelayedGroupFilter::from_xml(pugi::xml_node node)
+DelayedGroupFilter_from_xml(pugi::xml_node node)
 {
   auto groups = get_node_array<int>(node, "bins");
   this->set_groups(groups);

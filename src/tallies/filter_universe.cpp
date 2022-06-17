@@ -9,7 +9,7 @@
 namespace openmc {
 
 void
-UniverseFilter::from_xml(pugi::xml_node node)
+UniverseFilter_from_xml(pugi::xml_node node)
 {
   // Get material IDs and convert to indices in the global materials vector
   auto universes = get_node_array<int32_t>(node, "bins");

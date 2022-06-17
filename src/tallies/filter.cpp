@@ -135,7 +135,7 @@ Filter::Filter(pugi::xml_node node)
   this->from_xml(node);
 }
 
-void Filter::from_xml(pugi::xml_node node)
+void Filter_from_xml(pugi::xml_node node)
 {
   switch(type_){
     case FilterType::AzimuthalFilter          :return    AzimuthalFilter_from_xml(node); break;

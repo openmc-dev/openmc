@@ -16,7 +16,7 @@ namespace openmc {
 //==============================================================================
 
 void
-EnergyFilter::from_xml(pugi::xml_node node)
+EnergyFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
   this->set_bins(bins);

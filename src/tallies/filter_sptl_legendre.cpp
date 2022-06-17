@@ -12,7 +12,7 @@
 namespace openmc {
 
 void
-SpatialLegendreFilter::from_xml(pugi::xml_node node)
+SpatialLegendreFilter_from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
 

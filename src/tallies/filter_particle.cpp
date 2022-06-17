@@ -7,7 +7,7 @@
 namespace openmc {
 
 void
-ParticleFilter::from_xml(pugi::xml_node node)
+ParticleFilter_from_xml(pugi::xml_node node)
 {
   auto particles = get_node_array<std::string>(node, "bins");
 

@@ -17,7 +17,7 @@ CellInstanceFilter::CellInstanceFilter(gsl::span<CellInstance> instances)
 }
 
 void
-CellInstanceFilter::from_xml(pugi::xml_node node)
+CellInstanceFilter_from_xml(pugi::xml_node node)
 {
   // Get cell IDs/instances
   auto cells = get_node_array<int32_t>(node, "bins");

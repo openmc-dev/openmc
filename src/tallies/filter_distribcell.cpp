@@ -11,7 +11,7 @@
 namespace openmc {
 
 void
-DistribcellFilter::from_xml(pugi::xml_node node)
+DistribcellFilter_from_xml(pugi::xml_node node)
 {
   auto cells = get_node_array<int32_t>(node, "bins");
   if (cells.size() != 1) {

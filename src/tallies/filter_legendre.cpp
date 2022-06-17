@@ -8,7 +8,7 @@
 namespace openmc {
 
 void
-LegendreFilter::from_xml(pugi::xml_node node)
+LegendreFilter_from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
 }

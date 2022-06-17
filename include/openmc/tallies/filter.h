@@ -158,6 +158,7 @@ public:
   // Data members
 
 private:
+  FilterType type_;
   int n_bins_;
   int32_t id_ {C_NONE};
   gsl::index index_;

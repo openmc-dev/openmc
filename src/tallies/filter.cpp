@@ -60,104 +60,84 @@ extern "C" size_t tally_filters_size()
 // Filter implementation
 //==============================================================================
 
-Filter::Filter()
+FilterType get_filter_type(const std::string& type)
+{
+  if (type == "azimuthal") {
+    return FilterType::AzimuthalFilter;
+  } else if (type == "cell") {
+    return FilterType::CellFilter;
+  } else if (type == "cellborn") {
+    return FilterType::CellbornFilter;
+  } else if (type == "cellfrom") {
+    return FilterType::CellFromFilter;
+  } else if (type == "cellinstance") {
+    return FilterType::CellInstanceFilter;
+  } else if (type == "distribcell") {
+    return FilterType::DistribcellFilter;
+  } else if (type == "delayedgroup") {
+    return FilterType::DelayedGroupFilter;
+  } else if (type == "energyfunction") {
+    return FilterType::EnergyFunctionFilter;
+  } else if (type == "energy") {
+    return FilterType::EnergyFilter;
+  } else if (type == "energyout") {
+    return FilterType::EnergyoutFilter;
+  } else if (type == "legendre") {
+    return FilterType::LegendreFilter;
+  } else if (type == "material") {
+    return FilterType::MaterialFilter;
+  } else if (type == "mesh") {
+    return FilterType::MeshFilter;
+  } else if (type == "meshsurface") {
+    return FilterType::MeshSurfaceFilter;
+  } else if (type == "mu") {
+    return FilterType::MuFilter;
+  } else if (type == "particle") {
+    return FilterType::ParticleFilter;
+  } else if (type == "polar") {
+    return FilterType::PolarFilter;
+  } else if (type == "surface") {
+    return FilterType::SurfaceFilter;
+  } else if (type == "spatiallegendre") {
+    return FilterType::SpatialLegendreFilter;
+  } else if (type == "sphericalharmonics") {
+    return FilterType::SphericalHarmonicsFilter;
+  } else if (type == "universe") {
+    return FilterType::UniverseFilter;
+  } else if (type == "zernike") {
+    return FilterType::ZernikeFilter;
+  } else if (type == "zernikeradial") {
+    return FilterType::ZernikeRadialFilter;
+  } else {
+    throw std::runtime_error{fmt::format("Unknown filter type: {}", type)};
+    return FilterType::AzimuthalFilter;
+  }
+}
+
+Filter::Filter(pugi::xml_node node)
 {
   index_ = model::tally_filters.size(); // Avoids warning about narrowing
-}
 
-Filter::~Filter()
-{
-  model::filter_map.erase(id_);
-}
-
-template<typename T>
-T* Filter::create(int32_t id) {
-  static_assert(std::is_base_of<Filter, T>::value,
-                "Type specified is not derived from openmc::Filter");
-  // Create filter and add to filters vector
-  auto filter = std::make_unique<T>();
-  auto ptr_out = filter.get();
-  model::tally_filters.emplace_back(std::move(filter));
-  // Assign ID
-  model::tally_filters.back()->set_id(id);
-
-  return ptr_out;
-}
-
-Filter* Filter::create(pugi::xml_node node)
-{
   // Copy filter id
   if (!check_for_node(node, "id")) {
     fatal_error("Must specify id for filter in tally XML file.");
   }
-  int filter_id = std::stoi(get_node_value(node, "id"));
-
+  id_ = std::stoi(get_node_value(node, "id"));
+  
   // Convert filter type to lower case
   std::string s;
   if (check_for_node(node, "type")) {
     s = get_node_value(node, "type", true);
   }
 
-  // Allocate according to the filter type
-  auto f = Filter::create(s, filter_id);
+  type_ = get_filter_type(s);
 
-  // Read filter data from XML
-  f->from_xml(node);
-  return f;
+  this->from_xml(node);
 }
 
-Filter* Filter::create(const std::string& type, int32_t id)
+Filter::~Filter()
 {
-  if (type == "azimuthal") {
-    return Filter::create<AzimuthalFilter>(id);
-  } else if (type == "cell") {
-    return Filter::create<CellFilter>(id);
-  } else if (type == "cellborn") {
-    return Filter::create<CellbornFilter>(id);
-  } else if (type == "cellfrom") {
-    return Filter::create<CellFromFilter>(id);
-  } else if (type == "cellinstance") {
-    return Filter::create<CellInstanceFilter>(id);
-  } else if (type == "distribcell") {
-    return Filter::create<DistribcellFilter>(id);
-  } else if (type == "delayedgroup") {
-    return Filter::create<DelayedGroupFilter>(id);
-  } else if (type == "energyfunction") {
-    return Filter::create<EnergyFunctionFilter>(id);
-  } else if (type == "energy") {
-    return Filter::create<EnergyFilter>(id);
-  } else if (type == "energyout") {
-    return Filter::create<EnergyoutFilter>(id);
-  } else if (type == "legendre") {
-    return Filter::create<LegendreFilter>(id);
-  } else if (type == "material") {
-    return Filter::create<MaterialFilter>(id);
-  } else if (type == "mesh") {
-    return Filter::create<MeshFilter>(id);
-  } else if (type == "meshsurface") {
-    return Filter::create<MeshSurfaceFilter>(id);
-  } else if (type == "mu") {
-    return Filter::create<MuFilter>(id);
-  } else if (type == "particle") {
-    return Filter::create<ParticleFilter>(id);
-  } else if (type == "polar") {
-    return Filter::create<PolarFilter>(id);
-  } else if (type == "surface") {
-    return Filter::create<SurfaceFilter>(id);
-  } else if (type == "spatiallegendre") {
-    return Filter::create<SpatialLegendreFilter>(id);
-  } else if (type == "sphericalharmonics") {
-    return Filter::create<SphericalHarmonicsFilter>(id);
-  } else if (type == "universe") {
-    return Filter::create<UniverseFilter>(id);
-  } else if (type == "zernike") {
-    return Filter::create<ZernikeFilter>(id);
-  } else if (type == "zernikeradial") {
-    return Filter::create<ZernikeRadialFilter>(id);
-  } else {
-    throw std::runtime_error{fmt::format("Unknown filter type: {}", type)};
-  }
-  return nullptr;
+  model::filter_map.erase(id_);
 }
 
 void Filter::set_id(int32_t id)

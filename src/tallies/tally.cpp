@@ -696,10 +696,19 @@ void read_tallies_xml()
 
   // ==========================================================================
   // READ FILTER DATA
+  
+  // Determine number of filters
+  model::n_tally_filters = std::distance(root.children("filter").begin(), root.children("filter").end());
+  
+  if (model::n_tally_filters > 0 ) {
+    // Allocate the filter array
+    model::tally_filters = static_cast<Filter*>(malloc(model::n_tally_filters * sizeof(Filter)));
 
-  // Check for user filters and allocate
-  for (auto node_filt : root.children("filter")) {
-    auto f = Filter::create(node_filt);
+    // Initialize User Filters
+    int i = 0;
+    for (auto node_filt : root.children("filter")) {
+      new (model::tally_filters + i++) Filter(node_filt);
+    }
   }
 
   // ==========================================================================

@@ -135,6 +135,35 @@ Filter::Filter(pugi::xml_node node)
   this->from_xml(node);
 }
 
+void Filter::from_xml(pugi::xml_node node)
+{
+  switch(type_){
+    case FilterType::AzimuthalFilter          :return    AzimuthalFilter_from_xml(node); break;
+    case FilterType::CellFilter               :return    CellFilter_from_xml(node); break;
+    case FilterType::CellInstanceFilter       :return    CellInstanceFilter_from_xml(node); break;
+    case FilterType::CellbornFilter           :return    CellbornFilter_from_xml(node); break;
+    case FilterType::CellFromFilter           :return    CellFromFilter_from_xml(node); break;
+    case FilterType::DelayedGroupFilter       :return    DelayedGroupFilter_from_xml(node); break;
+    case FilterType::DistribcellFilter        :return    DistribcellFilter_from_xml(node); break;
+    case FilterType::EnergyFilter             :return    EnergyFilter_from_xml(node); break;
+    case FilterType::EnergyoutFilter          :return    EnergyoutFilter_from_xml(node); break;
+    case FilterType::EnergyFunctionFilter     :return    EnergyFunctionFilter_from_xml(node); break;
+    case FilterType::LegendreFilter           :return    LegendreFilter_from_xml(node); break;
+    case FilterType::MaterialFilter           :return    MaterialFilter_from_xml(node); break;
+    case FilterType::MeshFilter               :return    MeshFilter_from_xml(node); break;
+    case FilterType::MeshSurfaceFilter        :return    MeshSurfaceFilter_from_xml(node); break;
+    case FilterType::MuFilter                 :return    MuFilter_from_xml(node); break;
+    case FilterType::ParticleFilter           :return    ParticleFilter_from_xml(node); break;
+    case FilterType::PolarFilter              :return    PolarFilter_from_xml(node); break;
+    case FilterType::SphericalHarmonicsFilter :return    SphericalHarmonicsFilter_from_xml(node); break;
+    case FilterType::SpatialLegendreFilter    :return    SpatialLegendreFilter_from_xml(node); break;
+    case FilterType::SurfaceFilter            :return    SurfaceFilter_from_xml(node); break;
+    case FilterType::UniverseFilter           :return    UniverseFilter_from_xml(node); break;
+    case FilterType::ZernikeFilter            :return    ZernikeFilter_from_xml(node); break;
+    case FilterType::ZernikeRadialFilter      :return    ZernikeRadialFilter_from_xml(node); break;
+  }
+}
+
 Filter::~Filter()
 {
   model::filter_map.erase(id_);

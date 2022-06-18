@@ -47,13 +47,13 @@ Filter::SpatialLegendreFilter_set_order(int order)
 }
 
 void
-SpatialLegendreFilter::set_axis(LegendreAxis axis)
+Filter::set_axis(LegendreAxis axis)
 {
   axis_ = axis;
 }
 
 void
-SpatialLegendreFilter::set_minmax(double min, double max)
+Filter::set_minmax(double min, double max)
 {
   if (max <= min) {
     throw std::invalid_argument{"Maximum value must be greater than minimum value"};

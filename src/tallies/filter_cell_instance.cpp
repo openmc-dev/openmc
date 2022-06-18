@@ -11,10 +11,12 @@
 
 namespace openmc {
 
+  /*
 CellInstanceFilter::CellInstanceFilter(gsl::span<CellInstance> instances)
 {
   this->set_cell_instances(instances);
 }
+*/
 
 void
 Filter::CellInstanceFilter_from_xml(pugi::xml_node node)
@@ -41,7 +43,7 @@ Filter::CellInstanceFilter_from_xml(pugi::xml_node node)
 }
 
 void
-CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
+Filter::set_cell_instances(gsl::span<CellInstance> instances)
 {
   // Clear existing cells
   cell_instances_.clear();

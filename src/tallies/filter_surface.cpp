@@ -28,7 +28,7 @@ Filter::SurfaceFilter_from_xml(pugi::xml_node node)
 }
 
 void
-SurfaceFilter::set_surfaces(gsl::span<int32_t> surfaces)
+Filter::set_surfaces(gsl::span<int32_t> surfaces)
 {
   // Clear existing surfaces
   surfaces_.clear();

@@ -26,7 +26,7 @@ Filter::UniverseFilter_from_xml(pugi::xml_node node)
 }
 
 void
-UniverseFilter::set_universes(gsl::span<int32_t> universes)
+Filter::set_universes(gsl::span<int32_t> universes)
 {
   // Clear existing universes
   universes_.clear();

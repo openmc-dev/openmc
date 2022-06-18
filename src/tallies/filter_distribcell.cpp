@@ -29,7 +29,7 @@ Filter::DistribcellFilter_from_xml(pugi::xml_node node)
 }
 
 void
-DistribcellFilter::set_cell(int32_t cell)
+Filter::set_cell(int32_t cell)
 {
   Expects(cell >= 0);
   Expects(cell < model::cells.size());

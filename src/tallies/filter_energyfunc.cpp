@@ -31,7 +31,7 @@ Filter::EnergyFunctionFilter_from_xml(pugi::xml_node node)
 }
 
 void
-EnergyFunctionFilter::set_data(gsl::span<const double> energy,
+Filter::set_data(gsl::span<const double> energy,
                                gsl::span<const double> y)
 {
   // Check for consistent sizes with new data

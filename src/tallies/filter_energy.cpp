@@ -128,7 +128,7 @@ Filter::EnergyoutFilter_get_all_bins(const Particle& p, TallyEstimator estimator
 }
 
 std::string
-EnergyoutFilter_text_label(int bin) const
+Filter::EnergyoutFilter_text_label(int bin) const
 {
   return fmt::format("Outgoing Energy [{}, {})", bins_.at(bin), bins_.at(bin+1));
 }

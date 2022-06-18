@@ -62,13 +62,6 @@ Filter::MeshFilter_text_label(int bin) const
   return mesh.bin_label(bin);
 }
 
-void
-MeshFilter::set_mesh(int32_t mesh)
-{
-  mesh_ = mesh;
-  n_bins_ = model::meshes[mesh_]->n_bins();
-}
-
 //==============================================================================
 // C-API functions
 //==============================================================================

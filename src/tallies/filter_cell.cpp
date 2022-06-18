@@ -27,7 +27,7 @@ Filter::CellFilter_from_xml(pugi::xml_node node)
 }
 
 void
-CellFilter::set_cells(gsl::span<int32_t> cells)
+Filter::set_cells(gsl::span<int32_t> cells)
 {
   // Clear existing cells
   cells_.clear();

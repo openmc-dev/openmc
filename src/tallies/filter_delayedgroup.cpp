@@ -13,7 +13,7 @@ Filter::DelayedGroupFilter_from_xml(pugi::xml_node node)
 }
 
 void
-DelayedGroupFilter::set_groups(gsl::span<int> groups)
+Filter::set_groups(gsl::span<int> groups)
 {
   // Clear existing groups
   groups_.clear();

@@ -26,7 +26,7 @@ Filter::MaterialFilter_from_xml(pugi::xml_node node)
 }
 
 void
-MaterialFilter::set_materials(gsl::span<const int32_t> materials)
+Filter::set_materials(gsl::span<const int32_t> materials)
 {
   // Clear existing materials
   materials_.clear();

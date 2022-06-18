@@ -32,7 +32,7 @@ Filter::SphericalHarmonicsFilter_set_order(int order)
 }
 
 void
-SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
+Filter::set_cosine(gsl::cstring_span cosine)
 {
   if (cosine == "scatter") {
     cosine_ = SphericalHarmonicsCosine::scatter;

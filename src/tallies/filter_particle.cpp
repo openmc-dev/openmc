@@ -20,7 +20,7 @@ Filter::ParticleFilter_from_xml(pugi::xml_node node)
 }
 
 void
-ParticleFilter::set_particles(gsl::span<Particle::Type> particles)
+Filter::set_particles(gsl::span<Particle::Type> particles)
 {
   // Clear existing particles
   particles_.clear();

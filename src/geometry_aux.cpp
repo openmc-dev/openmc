@@ -19,8 +19,6 @@
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/filter.h"
-#include "openmc/tallies/filter_cell_instance.h"
-#include "openmc/tallies/filter_distribcell.h"
 
 
 namespace openmc {

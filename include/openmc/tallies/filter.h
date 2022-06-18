@@ -303,7 +303,7 @@ private:
   std::vector<int32_t> cells_;
   std::unordered_map<int32_t, int> map_;
   std::vector<CellInstance> cell_instances_;
-  std::unordered_map<CellInstance, gsl::index, CellInstanceHash> map_;
+  std::unordered_map<CellInstance, gsl::index, CellInstanceHash> imap_;
   std::vector<int> groups_;
   int32_t cell_;
   bool matches_transport_groups_ {false};

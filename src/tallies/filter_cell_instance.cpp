@@ -48,7 +48,7 @@ Filter::set_cell_instances(gsl::span<CellInstance> instances)
   // Clear existing cells
   cell_instances_.clear();
   cell_instances_.reserve(instances.size());
-  map_.clear();
+  imap_.clear();
 
   // Update cells and mapping
   for (auto& x : instances) {
@@ -61,7 +61,7 @@ Filter::set_cell_instances(gsl::span<CellInstance> instances)
         "used in a cell instance filter.", c.id_)};
     }
     cell_instances_.push_back(x);
-    map_[x] = cell_instances_.size() - 1;
+    imap_[x] = cell_instances_.size() - 1;
   }
 
   n_bins_ = cell_instances_.size();
@@ -73,8 +73,8 @@ Filter::CellInstanceFilter_get_all_bins(const Particle& p, TallyEstimator estima
 {
   gsl::index index_cell = p.coord_[p.n_coord_ - 1].cell;
   gsl::index instance = p.cell_instance_;
-  auto search = map_.find({index_cell, instance});
-  if (search != map_.end()) {
+  auto search = imap_.find({index_cell, instance});
+  if (search != imap_.end()) {
     //match.bins_.push_back(search->second);
     //match.weights_.push_back(1.0);
     match.bins_[match.bins_weights_length_] = search->second;

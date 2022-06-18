@@ -15,8 +15,7 @@
 #include "openmc/capi.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
-#include "openmc/tallies/filter_energy.h"
-#include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 
 namespace openmc {

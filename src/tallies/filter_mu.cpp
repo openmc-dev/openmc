@@ -70,7 +70,7 @@ MuFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-MuFilter::text_label(int bin) const
+MuFilter_text_label(int bin) const
 {
   return fmt::format("Change-in-Angle [{}, {})", bins_[bin], bins_[bin+1]);
 }

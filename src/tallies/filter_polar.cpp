@@ -74,7 +74,7 @@ PolarFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-PolarFilter::text_label(int bin) const
+PolarFilter_text_label(int bin) const
 {
   return fmt::format("Polar Angle [{}, {})", bins_[bin], bins_[bin+1]);
 }

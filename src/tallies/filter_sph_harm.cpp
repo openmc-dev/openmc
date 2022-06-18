@@ -92,7 +92,7 @@ SphericalHarmonicsFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-SphericalHarmonicsFilter::text_label(int bin) const
+SphericalHarmonicsFilter_text_label(int bin) const
 {
   Expects(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_ + 1; n++) {

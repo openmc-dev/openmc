@@ -110,7 +110,7 @@ SpatialLegendreFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-SpatialLegendreFilter::text_label(int bin) const
+SpatialLegendreFilter_text_label(int bin) const
 {
   if (axis_ == LegendreAxis::x) {
     return fmt::format("Legendre expansion, x axis, P{}", bin);

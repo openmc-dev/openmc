@@ -81,7 +81,7 @@ EnergyFunctionFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-EnergyFunctionFilter::text_label(int bin) const
+EnergyFunctionFilter_text_label(int bin) const
 {
   return fmt::format(
     "Energy Function f([{:.1e}, ..., {:.1e}]) = [{:.1e}, ..., {:.1e}]",

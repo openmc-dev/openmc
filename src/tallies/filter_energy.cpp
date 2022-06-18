@@ -96,7 +96,7 @@ EnergyFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-EnergyFilter::text_label(int bin) const
+EnergyFilter_text_label(int bin) const
 {
   return fmt::format("Incoming Energy [{}, {})", bins_[bin], bins_[bin+1]);
 }
@@ -129,7 +129,7 @@ EnergyoutFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 std::string
-EnergyoutFilter::text_label(int bin) const
+EnergyoutFilter_text_label(int bin) const
 {
   return fmt::format("Outgoing Energy [{}, {})", bins_.at(bin), bins_.at(bin+1));
 }

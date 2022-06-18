@@ -96,7 +96,7 @@ CellInstanceFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-CellInstanceFilter::text_label(int bin) const
+CellInstanceFilter_text_label(int bin) const
 {
   const auto& x = cell_instances_[bin];
   auto cell_id = model::cells[x.index_cell].id_;

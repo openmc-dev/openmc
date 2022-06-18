@@ -22,7 +22,7 @@ MeshSurfaceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 std::string
-MeshSurfaceFilter::text_label(int bin) const
+MeshSurfaceFilter_text_label(int bin) const
 {
   auto& mesh = *model::meshes[mesh_];
   int n_dim = mesh.n_dimension_;
@@ -32,7 +32,7 @@ MeshSurfaceFilter::text_label(int bin) const
   MeshDir surf_dir = static_cast<MeshDir>(bin % (4 * n_dim));
 
   // Get mesh index part of label.
-  std::string out = MeshFilter::text_label(i_mesh);
+  std::string out = MeshFilter_text_label(i_mesh);
 
   // Get surface part of label.
   switch (surf_dir) {

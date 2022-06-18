@@ -60,7 +60,7 @@ ParticleFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-ParticleFilter::text_label(int bin) const
+ParticleFilter_text_label(int bin) const
 {
   const auto& p = particles_.at(bin);
   return fmt::format("Particle: {}", particle_type_to_str(p));

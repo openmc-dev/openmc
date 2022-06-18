@@ -55,7 +55,7 @@ DelayedGroupFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-DelayedGroupFilter::text_label(int bin) const
+DelayedGroupFilter_text_label(int bin) const
 {
   return "Delayed Group " + std::to_string(groups_[bin]);
 }

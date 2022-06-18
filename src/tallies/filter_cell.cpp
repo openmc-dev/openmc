@@ -71,7 +71,7 @@ CellFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-CellFilter::text_label(int bin) const
+CellFilter_text_label(int bin) const
 {
   return fmt::format("Cell {}", model::cells[cells_[bin]].id_);
 }

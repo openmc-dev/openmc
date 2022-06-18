@@ -68,7 +68,7 @@ MaterialFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-MaterialFilter::text_label(int bin) const
+MaterialFilter_text_label(int bin) const
 {
   return fmt::format("Material {}", model::materials[materials_[bin]].id_);
 }

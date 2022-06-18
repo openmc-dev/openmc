@@ -75,7 +75,7 @@ DistribcellFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-DistribcellFilter::text_label(int bin) const
+DistribcellFilter_text_label(int bin) const
 {
   auto map = model::cells[cell_].distribcell_index_;
   auto path = distribcell_path(cell_, map, bin);

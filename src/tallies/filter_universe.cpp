@@ -70,7 +70,7 @@ UniverseFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-UniverseFilter::text_label(int bin) const
+UniverseFilter_text_label(int bin) const
 {
   return fmt::format("Universe {}", model::universes[universes_[bin]].id_);
 }

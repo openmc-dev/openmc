@@ -62,7 +62,7 @@ ZernikeFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-ZernikeFilter::text_label(int bin) const
+ZernikeFilter_text_label(int bin) const
 {
   Expects(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_+1; n++) {
@@ -114,7 +114,7 @@ ZernikeRadialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 std::string
-ZernikeRadialFilter::text_label(int bin) const
+ZernikeRadialFilter_text_label(int bin) const
 {
   return "Zernike expansion, Z" + std::to_string(2*bin) + ",0";
 }

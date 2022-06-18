@@ -57,7 +57,7 @@ MeshFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-MeshFilter::text_label(int bin) const
+MeshFilter_text_label(int bin) const
 {
   auto& mesh = *model::meshes.at(mesh_);
   return mesh.bin_label(bin);

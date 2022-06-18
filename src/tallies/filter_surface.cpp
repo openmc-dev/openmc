@@ -75,7 +75,7 @@ SurfaceFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-SurfaceFilter::text_label(int bin) const
+SurfaceFilter_text_label(int bin) const
 {
   return fmt::format("Surface {}", model::surfaces[surfaces_[bin]].id_);
 }

@@ -75,7 +75,7 @@ AzimuthalFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-AzimuthalFilter::text_label(int bin) const
+AzimuthalFilter_text_label(int bin) const
 {
   return fmt::format("Azimuthal Angle [{}, {})", bins_.at(bin), bins_.at(bin+1));
 }

@@ -223,24 +223,20 @@ public:
   gsl::index index() const { return index_; }
 
   // Superset of type specific accessors
+  
+  // Defined in header
+  
   const std::vector<int32_t>& cells() const { return cells_; }
-  void set_cells(gsl::span<int32_t> cells);
   const std::vector<CellInstance>& cell_instances() const { return cell_instances_; }
-  void set_cell_instances(gsl::span<CellInstance> instances);
   const std::vector<int>& groups() const { return groups_; }
-  void set_groups(gsl::span<int> groups);
   int32_t cell() const { return cell_; }
-  void set_cell(int32_t cell);
   const std::vector<double>& energy() const { return energy_; }
   const std::vector<double>& y() const { return y_; }
-  void set_data(gsl::span<const double> energy, gsl::span<const double> y);
   const std::vector<double>& bins() const { return bins_; }
-  void set_bins(gsl::span<const double> bins);
   bool matches_transport_groups() const { return matches_transport_groups_; }
   int order() const { return order_; }
   std::vector<int32_t>& materials() { return materials_; }
   const std::vector<int32_t>& materials() const { return materials_; }
-  void set_materials(gsl::span<const int32_t> materials);
   int32_t mesh() const {return mesh_;}
   void set_mesh(int32_t mesh){
     mesh_ = mesh;
@@ -250,22 +246,35 @@ public:
       n_bins_ = model::meshes[mesh_]->n_surface_bins();
   }
   const std::vector<Particle::Type>& particles() const { return particles_; }
-  void set_particles(gsl::span<Particle::Type> particles);
   SphericalHarmonicsCosine cosine() const { return cosine_; }
-  void set_cosine(gsl::cstring_span cosine);
   LegendreAxis axis() const { return axis_; }
-  void set_axis(LegendreAxis axis);
   double min() const { return min_; }
   double max() const { return max_; }
-  void set_minmax(double min, double max);
-  void set_surfaces(gsl::span<int32_t> surfaces);
-  void set_universes(gsl::span<int32_t> universes);
   double x() const { return x_; }
   void set_x(double x) { x_ = x; }
   double y() const { return yy_; }
   void set_y(double y) { yy_ = y; }
   double r() const { return r_; }
   void set_r(double r) { r_ = r; }
+
+  // Defined once
+  
+  void set_cells(gsl::span<int32_t> cells);
+  void set_cell_instances(gsl::span<CellInstance> instances);
+  void set_cell(int32_t cell);
+  void set_groups(gsl::span<int> groups);
+  void set_data(gsl::span<const double> energy, gsl::span<const double> y);
+  void set_materials(gsl::span<const int32_t> materials);
+  void set_particles(gsl::span<Particle::Type> particles);
+  void set_cosine(gsl::cstring_span cosine);
+  void set_axis(LegendreAxis axis);
+  void set_minmax(double min, double max);
+  void set_surfaces(gsl::span<int32_t> surfaces);
+  void set_universes(gsl::span<int32_t> universes);
+
+  // Defined by class (need dispatching)
+  
+  void set_bins(gsl::span<const double> bins);
 
   void set_order(int order);
 

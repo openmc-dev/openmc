@@ -22,7 +22,7 @@ SphericalHarmonicsFilter_from_xml(pugi::xml_node node)
 }
 
 void
-SphericalHarmonicsFilter::set_order(int order)
+SphericalHarmonicsFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Spherical harmonics order must be non-negative."};

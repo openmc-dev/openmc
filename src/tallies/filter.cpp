@@ -318,7 +318,7 @@ void Filter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMat
   }
 }
 
-void set_order(int order)
+void Filter::set_order(int order)
 {
   switch(type_){
     case FilterType::LegendreFilter           : LegendreFilter_set_order(order); break;

@@ -14,7 +14,7 @@ LegendreFilter_from_xml(pugi::xml_node node)
 }
 
 void
-LegendreFilter::set_order(int order)
+LegendreFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Legendre order must be non-negative."};

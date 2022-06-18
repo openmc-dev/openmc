@@ -96,7 +96,6 @@ SpatialLegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 void
 SpatialLegendreFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter_to_statepoint(filter_group);
   write_dataset(filter_group, "order", order_);
   if (axis_ == LegendreAxis::x) {
     write_dataset(filter_group, "axis", "x");

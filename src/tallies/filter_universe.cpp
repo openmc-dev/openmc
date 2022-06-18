@@ -63,7 +63,6 @@ UniverseFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 void
 UniverseFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter_to_statepoint(filter_group);
   std::vector<int32_t> universe_ids;
   for (auto u : universes_) universe_ids.push_back(model::universes[u].id_);
   write_dataset(filter_group, "bins", universe_ids);

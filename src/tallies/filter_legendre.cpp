@@ -41,7 +41,6 @@ LegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 void
 LegendreFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter_to_statepoint(filter_group);
   write_dataset(filter_group, "order", order_);
 }
 

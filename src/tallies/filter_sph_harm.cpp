@@ -82,7 +82,6 @@ SphericalHarmonicsFilter::get_all_bins(const Particle& p, TallyEstimator estimat
 void
 SphericalHarmonicsFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter_to_statepoint(filter_group);
   write_dataset(filter_group, "order", order_);
   if (cosine_ == SphericalHarmonicsCosine::scatter) {
     write_dataset(filter_group, "cosine", "scatter");

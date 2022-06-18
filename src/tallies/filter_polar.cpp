@@ -69,7 +69,6 @@ const
 void
 PolarFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter_to_statepoint(filter_group);
   write_dataset(filter_group, "bins", bins_);
 }
 

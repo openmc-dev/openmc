@@ -84,7 +84,6 @@ CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 void
 CellInstanceFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter_to_statepoint(filter_group);
   size_t n = cell_instances_.size();
   xt::xtensor<size_t, 2> data({n, 2});
   for (gsl::index i = 0; i < n; ++i) {

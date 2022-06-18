@@ -276,6 +276,11 @@ public:
   
   void set_bins(gsl::span<const double> bins);
 
+  void AzimuthalFilter_set_bins(gsl::span<const double> bins);
+  void EnergyFilter_set_bins(gsl::span<const double> bins);
+  void MuFilter_set_bins(gsl::span<const double> bins);
+  void PolarFilter_set_bins(gsl::span<const double> bins);
+
   void set_order(int order);
 
   void LegendreFilter_set_order(int order);

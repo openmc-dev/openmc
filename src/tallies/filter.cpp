@@ -328,6 +328,17 @@ void Filter::set_order(int order)
     case FilterType::ZernikeRadialFilter      : ZernikeRadialFilter_set_order(order); break;
   }
 }
+  
+void set_bins(gsl::span<const double> bins)
+{
+  switch(type_){
+    case FilterType::AzimuthalFilter          :   AzimuthalFilter_set_bins(bins); break;
+    case FilterType::EnergyFilter             :   EnergyFilter_set_bins(bins); break;
+    case FilterType::EnergyoutFilter          :   EnergyFilter_set_bins(bins); break; // Note we map derived type to parent type
+    case FilterType::MuFilter                 :   MuFilter_set_bins(bins); break;
+    case FilterType::PolarFilter              :   PolarFilter_set_bins(bins); break;
+  }
+}
 
 //==============================================================================
 // C API functions

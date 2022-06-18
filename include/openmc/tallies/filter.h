@@ -254,7 +254,7 @@ public:
   double max() const { return max_; }
   double x() const { return x_; }
   void set_x(double x) { x_ = x; }
-  double y() const { return yy_; }
+  double yy() const { return yy_; }
   void set_y(double y) { yy_ = y; }
   double r() const { return r_; }
   void set_r(double r) { r_ = r; }

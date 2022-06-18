@@ -177,7 +177,7 @@ openmc_zernike_filter_get_params(int32_t index, double* x, double* y,
 
   // Output the params.
   *x = filt->x();
-  *y = filt->y();
+  *y = filt->yy();
   *r = filt->r();
   return 0;
 }
@@ -208,7 +208,7 @@ openmc_zernike_filter_set_params(int32_t index, const double* x,
 
   // Update the filter.
   if (x) filt->set_x(*x);
-  if (y) filt->set_y(*y);
+  if (y) filt->set_yy(*y);
   if (r) filt->set_r(*r);
   return 0;
 }

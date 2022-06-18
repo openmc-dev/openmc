@@ -263,29 +263,58 @@ void Filter::to_statepoint(hid_t filter_group) const;
   write_dataset(filter_group, "type", type());
   write_dataset(filter_group, "n_bins", n_bins_);
   switch(type_){
-    case FilterType::AzimuthalFilter          : return AzimuthalFilter_to_statepoint(filter_group); break;
-    case FilterType::CellFilter               : return CellFilter_to_statepoint(filter_group); break;
-    case FilterType::CellInstanceFilter       : return CellInstanceFilter_to_statepoint(filter_group); break;
-    case FilterType::CellbornFilter           : return CellbornFilter_to_statepoint(filter_group); break;
-    case FilterType::CellFromFilter           : return CellFromFilter_to_statepoint(filter_group); break;
-    case FilterType::DelayedGroupFilter       : return DelayedGroupFilter_to_statepoint(filter_group); break;
-    case FilterType::DistribcellFilter        : return DistribcellFilter_to_statepoint(filter_group); break;
-    case FilterType::EnergyFilter             : return EnergyFilter_to_statepoint(filter_group); break;
-    case FilterType::EnergyoutFilter          : return EnergyoutFilter_to_statepoint(filter_group); break;
-    case FilterType::EnergyFunctionFilter     : return EnergyFunctionFilter_to_statepoint(filter_group); break;
-    case FilterType::LegendreFilter           : return LegendreFilter_to_statepoint(filter_group); break;
-    case FilterType::MaterialFilter           : return MaterialFilter_to_statepoint(filter_group); break;
-    case FilterType::MeshFilter               : return MeshFilter_to_statepoint(filter_group); break;
-    case FilterType::MeshSurfaceFilter        : return MeshSurfaceFilter_to_statepoint(filter_group); break;
-    case FilterType::MuFilter                 : return MuFilter_to_statepoint(filter_group); break;
-    case FilterType::ParticleFilter           : return ParticleFilter_to_statepoint(filter_group); break;
-    case FilterType::PolarFilter              : return PolarFilter_to_statepoint(filter_group); break;
-    case FilterType::SphericalHarmonicsFilter : return SphericalHarmonicsFilter_to_statepoint(filter_group); break;
-    case FilterType::SpatialLegendreFilter    : return SpatialLegendreFilter_to_statepoint(filter_group); break;
-    case FilterType::SurfaceFilter            : return SurfaceFilter_to_statepoint(filter_group); break;
-    case FilterType::UniverseFilter           : return UniverseFilter_to_statepoint(filter_group); break;
-    case FilterType::ZernikeFilter            : return ZernikeFilter_to_statepoint(filter_group); break;
-    case FilterType::ZernikeRadialFilter      : return ZernikeRadialFilter_to_statepoint(filter_group); break;
+    case FilterType::AzimuthalFilter          : AzimuthalFilter_to_statepoint(filter_group); break;
+    case FilterType::CellFilter               : CellFilter_to_statepoint(filter_group); break;
+    case FilterType::CellInstanceFilter       : CellInstanceFilter_to_statepoint(filter_group); break;
+    case FilterType::CellbornFilter           : CellbornFilter_to_statepoint(filter_group); break;
+    case FilterType::CellFromFilter           : CellFromFilter_to_statepoint(filter_group); break;
+    case FilterType::DelayedGroupFilter       : DelayedGroupFilter_to_statepoint(filter_group); break;
+    case FilterType::DistribcellFilter        : DistribcellFilter_to_statepoint(filter_group); break;
+    case FilterType::EnergyFilter             : EnergyFilter_to_statepoint(filter_group); break;
+    case FilterType::EnergyoutFilter          : EnergyoutFilter_to_statepoint(filter_group); break;
+    case FilterType::EnergyFunctionFilter     : EnergyFunctionFilter_to_statepoint(filter_group); break;
+    case FilterType::LegendreFilter           : LegendreFilter_to_statepoint(filter_group); break;
+    case FilterType::MaterialFilter           : MaterialFilter_to_statepoint(filter_group); break;
+    case FilterType::MeshFilter               : MeshFilter_to_statepoint(filter_group); break;
+    case FilterType::MeshSurfaceFilter        : MeshSurfaceFilter_to_statepoint(filter_group); break;
+    case FilterType::MuFilter                 : MuFilter_to_statepoint(filter_group); break;
+    case FilterType::ParticleFilter           : ParticleFilter_to_statepoint(filter_group); break;
+    case FilterType::PolarFilter              : PolarFilter_to_statepoint(filter_group); break;
+    case FilterType::SphericalHarmonicsFilter : SphericalHarmonicsFilter_to_statepoint(filter_group); break;
+    case FilterType::SpatialLegendreFilter    : SpatialLegendreFilter_to_statepoint(filter_group); break;
+    case FilterType::SurfaceFilter            : SurfaceFilter_to_statepoint(filter_group); break;
+    case FilterType::UniverseFilter           : UniverseFilter_to_statepoint(filter_group); break;
+    case FilterType::ZernikeFilter            : ZernikeFilter_to_statepoint(filter_group); break;
+    case FilterType::ZernikeRadialFilter      : ZernikeRadialFilter_to_statepoint(filter_group); break;
+  }
+}
+
+void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+{
+  switch(type_){
+    case FilterType::AzimuthalFilter          : AzimuthalFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::CellFilter               : CellFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::CellInstanceFilter       : CellInstanceFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::CellbornFilter           : CellbornFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::CellFromFilter           : CellFromFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::DelayedGroupFilter       : DelayedGroupFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::DistribcellFilter        : DistribcellFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::EnergyFilter             : EnergyFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::EnergyoutFilter          : EnergyoutFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::EnergyFunctionFilter     : EnergyFunctionFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::LegendreFilter           : LegendreFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::MaterialFilter           : MaterialFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::MeshFilter               : MeshFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::MeshSurfaceFilter        : MeshSurfaceFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::MuFilter                 : MuFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::ParticleFilter           : ParticleFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::PolarFilter              : PolarFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::SphericalHarmonicsFilter : SphericalHarmonicsFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::SpatialLegendreFilter    : SpatialLegendreFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::SurfaceFilter            : SurfaceFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::UniverseFilter           : UniverseFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::ZernikeFilter            : ZernikeFilter_get_all_bins(p, estimator, match); break;
+    case FilterType::ZernikeRadialFilter      : ZernikeRadialFilter_get_all_bins(p, estimator, match); break;
   }
 }
 

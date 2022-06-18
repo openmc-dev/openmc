@@ -141,17 +141,17 @@ void Filter::from_xml(pugi::xml_node node)
     case FilterType::AzimuthalFilter          : return AzimuthalFilter_from_xml(node); break;
     case FilterType::CellFilter               : return CellFilter_from_xml(node); break;
     case FilterType::CellInstanceFilter       : return CellInstanceFilter_from_xml(node); break;
-    case FilterType::CellbornFilter           : return CellbornFilter_from_xml(node); break;
-    case FilterType::CellFromFilter           : return CellFromFilter_from_xml(node); break;
+    case FilterType::CellbornFilter           : return CellFilter_from_xml(node); break; // Note - type uses parent
+    case FilterType::CellFromFilter           : return CellFilter_from_xml(node); break; // Note - type uses parent
     case FilterType::DelayedGroupFilter       : return DelayedGroupFilter_from_xml(node); break;
     case FilterType::DistribcellFilter        : return DistribcellFilter_from_xml(node); break;
     case FilterType::EnergyFilter             : return EnergyFilter_from_xml(node); break;
-    case FilterType::EnergyoutFilter          : return EnergyoutFilter_from_xml(node); break;
+    case FilterType::EnergyoutFilter          : return EnergyFilter_from_xml(node); break; // Note - type uses parent
     case FilterType::EnergyFunctionFilter     : return EnergyFunctionFilter_from_xml(node); break;
     case FilterType::LegendreFilter           : return LegendreFilter_from_xml(node); break;
     case FilterType::MaterialFilter           : return MaterialFilter_from_xml(node); break;
     case FilterType::MeshFilter               : return MeshFilter_from_xml(node); break;
-    case FilterType::MeshSurfaceFilter        : return MeshSurfaceFilter_from_xml(node); break;
+    case FilterType::MeshSurfaceFilter        : return MeshFilter_from_xml(node); break; // Note -- type uses parent
     case FilterType::MuFilter                 : return MuFilter_from_xml(node); break;
     case FilterType::ParticleFilter           : return ParticleFilter_from_xml(node); break;
     case FilterType::PolarFilter              : return PolarFilter_from_xml(node); break;
@@ -160,7 +160,7 @@ void Filter::from_xml(pugi::xml_node node)
     case FilterType::SurfaceFilter            : return SurfaceFilter_from_xml(node); break;
     case FilterType::UniverseFilter           : return UniverseFilter_from_xml(node); break;
     case FilterType::ZernikeFilter            : return ZernikeFilter_from_xml(node); break;
-    case FilterType::ZernikeRadialFilter      : return ZernikeRadialFilter_from_xml(node); break;
+    case FilterType::ZernikeRadialFilter      : return ZernikeFilter_from_xml(node); break; // Note -- type uses parent
   }
 }
 

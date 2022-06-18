@@ -58,7 +58,7 @@ EnergyFilter::set_bins(gsl::span<const double> bins)
 }
 
 void
-EnergyFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
+EnergyFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   if (p.g_ != F90_NONE && matches_transport_groups_) {
@@ -105,7 +105,7 @@ EnergyFilter_text_label(int bin) const
 //==============================================================================
 
 void
-EnergyoutFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+EnergyoutFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
   if (p.g_ != F90_NONE && matches_transport_groups_) {

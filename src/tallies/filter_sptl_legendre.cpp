@@ -63,7 +63,7 @@ SpatialLegendreFilter::set_minmax(double min, double max)
 }
 
 void
-SpatialLegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+SpatialLegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                     FilterMatch& match) const
 {
   // Get the coordinate along the axis of interest.

@@ -31,7 +31,7 @@ MeshFilter_from_xml(pugi::xml_node node)
 }
 
 void
-MeshFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
+MeshFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   if (estimator != TallyEstimator::TRACKLENGTH) {

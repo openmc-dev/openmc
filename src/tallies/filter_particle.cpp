@@ -34,7 +34,7 @@ ParticleFilter::set_particles(gsl::span<Particle::Type> particles)
 }
 
 void
-ParticleFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+ParticleFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   for (auto i = 0; i < particles_.size(); i++) {

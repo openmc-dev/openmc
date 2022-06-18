@@ -289,7 +289,7 @@ void Filter::to_statepoint(hid_t filter_group) const;
   }
 }
 
-void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+void Filter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   switch(type_){
     case FilterType::AzimuthalFilter          : AzimuthalFilter_get_all_bins(p, estimator, match); break;

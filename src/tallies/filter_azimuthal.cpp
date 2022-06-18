@@ -51,7 +51,7 @@ void AzimuthalFilter::set_bins(gsl::span<double> bins)
 }
 
 void
-AzimuthalFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+AzimuthalFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
   Direction u = (estimator == TallyEstimator::TRACKLENGTH) ? p.u() : p.u_last_;

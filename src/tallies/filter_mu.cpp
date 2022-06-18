@@ -49,7 +49,7 @@ MuFilter::set_bins(gsl::span<double> bins)
 }
 
 void
-MuFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
+MuFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   if (p.mu_ >= bins_.front() && p.mu_ <= bins_.back()) {

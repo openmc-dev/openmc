@@ -5,7 +5,7 @@
 namespace openmc {
 
 void
-CellbornFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::CellbornFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   auto search = map_.find(p.cell_born_);
@@ -19,7 +19,7 @@ CellbornFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 std::string
-CellbornFilter_text_label(int bin) const
+Filter::CellbornFilter_text_label(int bin) const
 {
   return "Birth Cell " + std::to_string(model::cells[cells_[bin]].id_);
 }

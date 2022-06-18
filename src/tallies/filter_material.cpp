@@ -9,7 +9,7 @@
 namespace openmc {
 
 void
-MaterialFilter_from_xml(pugi::xml_node node)
+Filter::MaterialFilter_from_xml(pugi::xml_node node)
 {
   // Get material IDs and convert to indices in the global materials vector
   auto mats = get_node_array<int32_t>(node, "bins");
@@ -45,7 +45,7 @@ MaterialFilter::set_materials(gsl::span<const int32_t> materials)
 }
 
 void
-MaterialFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::MaterialFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   auto search = map_.find(p.material_);
@@ -59,7 +59,7 @@ MaterialFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-MaterialFilter_to_statepoint(hid_t filter_group) const
+Filter::MaterialFilter_to_statepoint(hid_t filter_group) const
 {
   std::vector<int32_t> material_ids;
   for (auto c : materials_) material_ids.push_back(model::materials[c].id_);
@@ -67,7 +67,7 @@ MaterialFilter_to_statepoint(hid_t filter_group) const
 }
 
 std::string
-MaterialFilter_text_label(int bin) const
+Filter::MaterialFilter_text_label(int bin) const
 {
   return fmt::format("Material {}", model::materials[materials_[bin]].id_);
 }

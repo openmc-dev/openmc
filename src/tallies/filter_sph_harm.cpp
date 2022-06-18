@@ -13,7 +13,7 @@
 namespace openmc {
 
 void
-SphericalHarmonicsFilter_from_xml(pugi::xml_node node)
+Filter::SphericalHarmonicsFilter_from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
   if (check_for_node(node, "cosine")) {
@@ -22,7 +22,7 @@ SphericalHarmonicsFilter_from_xml(pugi::xml_node node)
 }
 
 void
-SphericalHarmonicsFilter_set_order(int order)
+Filter::SphericalHarmonicsFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Spherical harmonics order must be non-negative."};
@@ -45,7 +45,7 @@ SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
 }
 
 void
-SphericalHarmonicsFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::SphericalHarmonicsFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                        FilterMatch& match) const
 {
   // Determine cosine term for scatter expansion if necessary
@@ -80,7 +80,7 @@ SphericalHarmonicsFilter_get_all_bins(const Particle& p, TallyEstimator estimato
 }
 
 void
-SphericalHarmonicsFilter_to_statepoint(hid_t filter_group) const
+Filter::SphericalHarmonicsFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "order", order_);
   if (cosine_ == SphericalHarmonicsCosine::scatter) {
@@ -91,7 +91,7 @@ SphericalHarmonicsFilter_to_statepoint(hid_t filter_group) const
 }
 
 std::string
-SphericalHarmonicsFilter_text_label(int bin) const
+Filter::SphericalHarmonicsFilter_text_label(int bin) const
 {
   Expects(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_ + 1; n++) {

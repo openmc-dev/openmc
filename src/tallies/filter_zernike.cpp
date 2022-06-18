@@ -19,7 +19,7 @@ namespace openmc {
 //==============================================================================
 
 void
-ZernikeFilter_from_xml(pugi::xml_node node)
+Filter::ZernikeFilter_from_xml(pugi::xml_node node)
 {
   set_order(std::stoi(get_node_value(node, "order")));
   x_ = std::stod(get_node_value(node, "x"));
@@ -28,7 +28,7 @@ ZernikeFilter_from_xml(pugi::xml_node node)
 }
 
 void
-ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                             FilterMatch& match) const
 {
   // Determine the normalized (r,theta) coordinates.
@@ -52,7 +52,7 @@ ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-ZernikeFilter_to_statepoint(hid_t filter_group) const
+Filter::ZernikeFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "order", order_);
   write_dataset(filter_group, "x", x_);
@@ -61,7 +61,7 @@ ZernikeFilter_to_statepoint(hid_t filter_group) const
 }
 
 std::string
-ZernikeFilter_text_label(int bin) const
+Filter::ZernikeFilter_text_label(int bin) const
 {
   Expects(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_+1; n++) {
@@ -76,7 +76,7 @@ ZernikeFilter_text_label(int bin) const
 }
 
 void
-ZernikeFilter_set_order(int order)
+Filter::ZernikeFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Zernike order must be non-negative."};
@@ -90,7 +90,7 @@ ZernikeFilter_set_order(int order)
 //==============================================================================
 
 void
-ZernikeRadialFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::ZernikeRadialFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                   FilterMatch& match) const
 {
   // Determine the normalized radius coordinate.
@@ -113,15 +113,15 @@ ZernikeRadialFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 std::string
-ZernikeRadialFilter_text_label(int bin) const
+Filter::ZernikeRadialFilter_text_label(int bin) const
 {
   return "Zernike expansion, Z" + std::to_string(2*bin) + ",0";
 }
 
 void
-ZernikeRadialFilter_set_order(int order)
+Filter::ZernikeRadialFilter_set_order(int order)
 {
-  ZernikeFilter_set_order(order);
+  Filter::ZernikeFilter_set_order(order);
   n_bins_ = order / 2 + 1;
 }
 

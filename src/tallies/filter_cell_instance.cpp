@@ -17,7 +17,7 @@ CellInstanceFilter::CellInstanceFilter(gsl::span<CellInstance> instances)
 }
 
 void
-CellInstanceFilter_from_xml(pugi::xml_node node)
+Filter::CellInstanceFilter_from_xml(pugi::xml_node node)
 {
   // Get cell IDs/instances
   auto cells = get_node_array<int32_t>(node, "bins");
@@ -66,7 +66,7 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
 }
 
 void
-CellInstanceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::CellInstanceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                          FilterMatch& match) const
 {
   gsl::index index_cell = p.coord_[p.n_coord_ - 1].cell;
@@ -82,7 +82,7 @@ CellInstanceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-CellInstanceFilter_to_statepoint(hid_t filter_group) const
+Filter::CellInstanceFilter_to_statepoint(hid_t filter_group) const
 {
   size_t n = cell_instances_.size();
   xt::xtensor<size_t, 2> data({n, 2});
@@ -95,7 +95,7 @@ CellInstanceFilter_to_statepoint(hid_t filter_group) const
 }
 
 std::string
-CellInstanceFilter_text_label(int bin) const
+Filter::CellInstanceFilter_text_label(int bin) const
 {
   const auto& x = cell_instances_[bin];
   auto cell_id = model::cells[x.index_cell].id_;

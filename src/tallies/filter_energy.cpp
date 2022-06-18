@@ -16,14 +16,14 @@ namespace openmc {
 //==============================================================================
 
 void
-EnergyFilter_from_xml(pugi::xml_node node)
+Filter::EnergyFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
   this->set_bins(bins);
 }
 
 void
-EnergyFilter_set_bins(gsl::span<const double> bins)
+Filter::EnergyFilter_set_bins(gsl::span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -58,7 +58,7 @@ EnergyFilter_set_bins(gsl::span<const double> bins)
 }
 
 void
-EnergyFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
+Filter::EnergyFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   if (p.g_ != F90_NONE && matches_transport_groups_) {
@@ -89,13 +89,13 @@ const
 }
 
 void
-EnergyFilter_to_statepoint(hid_t filter_group) const
+Filter::EnergyFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "bins", bins_);
 }
 
 std::string
-EnergyFilter_text_label(int bin) const
+Filter::EnergyFilter_text_label(int bin) const
 {
   return fmt::format("Incoming Energy [{}, {})", bins_[bin], bins_[bin+1]);
 }
@@ -105,7 +105,7 @@ EnergyFilter_text_label(int bin) const
 //==============================================================================
 
 void
-EnergyoutFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::EnergyoutFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
   if (p.g_ != F90_NONE && matches_transport_groups_) {

@@ -9,7 +9,7 @@
 namespace openmc {
 
 void
-UniverseFilter_from_xml(pugi::xml_node node)
+Filter::UniverseFilter_from_xml(pugi::xml_node node)
 {
   // Get material IDs and convert to indices in the global materials vector
   auto universes = get_node_array<int32_t>(node, "bins");
@@ -45,7 +45,7 @@ UniverseFilter::set_universes(gsl::span<int32_t> universes)
 }
 
 void
-UniverseFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::UniverseFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   for (int i = 0; i < p.n_coord_; i++) {
@@ -61,7 +61,7 @@ UniverseFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-UniverseFilter_to_statepoint(hid_t filter_group) const
+Filter::UniverseFilter_to_statepoint(hid_t filter_group) const
 {
   std::vector<int32_t> universe_ids;
   for (auto u : universes_) universe_ids.push_back(model::universes[u].id_);
@@ -69,7 +69,7 @@ UniverseFilter_to_statepoint(hid_t filter_group) const
 }
 
 std::string
-UniverseFilter_text_label(int bin) const
+Filter::UniverseFilter_text_label(int bin) const
 {
   return fmt::format("Universe {}", model::universes[universes_[bin]].id_);
 }

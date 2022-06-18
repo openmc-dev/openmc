@@ -10,7 +10,7 @@
 namespace openmc {
 
 void
-EnergyFunctionFilter_from_xml(pugi::xml_node node)
+Filter::EnergyFunctionFilter_from_xml(pugi::xml_node node)
 {
   n_bins_ = 1;
   if (!settings::run_CE)
@@ -54,7 +54,7 @@ EnergyFunctionFilter::set_data(gsl::span<const double> energy,
 }
 
 void
-EnergyFunctionFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::EnergyFunctionFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                    FilterMatch& match) const
 {
   if (p.E_last_ >= energy_.front() && p.E_last_ <= energy_.back()) {
@@ -74,14 +74,14 @@ EnergyFunctionFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-EnergyFunctionFilter_to_statepoint(hid_t filter_group) const
+Filter::EnergyFunctionFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "energy", energy_);
   write_dataset(filter_group, "y", y_);
 }
 
 std::string
-EnergyFunctionFilter_text_label(int bin) const
+Filter::EnergyFunctionFilter_text_label(int bin) const
 {
   return fmt::format(
     "Energy Function f([{:.1e}, ..., {:.1e}]) = [{:.1e}, ..., {:.1e}]",

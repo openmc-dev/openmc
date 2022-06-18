@@ -9,7 +9,7 @@
 namespace openmc {
 
 void
-SurfaceFilter_from_xml(pugi::xml_node node)
+Filter::SurfaceFilter_from_xml(pugi::xml_node node)
 {
   auto surfaces = get_node_array<int32_t>(node, "bins");
 
@@ -47,7 +47,7 @@ SurfaceFilter::set_surfaces(gsl::span<int32_t> surfaces)
 }
 
 void
-SurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::SurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                             FilterMatch& match) const
 {
   auto search = map_.find(std::abs(p.surface_)-1);
@@ -66,7 +66,7 @@ SurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-SurfaceFilter_to_statepoint(hid_t filter_group) const
+Filter::SurfaceFilter_to_statepoint(hid_t filter_group) const
 {
   std::vector<int32_t> surface_ids;
   for (auto c : surfaces_) surface_ids.push_back(model::surfaces[c].id_);
@@ -74,7 +74,7 @@ SurfaceFilter_to_statepoint(hid_t filter_group) const
 }
 
 std::string
-SurfaceFilter_text_label(int bin) const
+Filter::SurfaceFilter_text_label(int bin) const
 {
   return fmt::format("Surface {}", model::surfaces[surfaces_[bin]].id_);
 }

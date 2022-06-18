@@ -8,13 +8,13 @@
 namespace openmc {
 
 void
-LegendreFilter_from_xml(pugi::xml_node node)
+Filter::LegendreFilter_from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
 }
 
 void
-LegendreFilter_set_order(int order)
+Filter::LegendreFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Legendre order must be non-negative."};
@@ -24,7 +24,7 @@ LegendreFilter_set_order(int order)
 }
 
 void
-LegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::LegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   std::vector<double> wgt(n_bins_);
@@ -39,13 +39,13 @@ LegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-LegendreFilter_to_statepoint(hid_t filter_group) const
+Filter::LegendreFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "order", order_);
 }
 
 std::string
-LegendreFilter_text_label(int bin) const
+Filter::LegendreFilter_text_label(int bin) const
 {
   return "Legendre expansion, P" + std::to_string(bin);
 }

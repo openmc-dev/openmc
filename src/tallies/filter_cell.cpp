@@ -10,7 +10,7 @@
 namespace openmc {
 
 void
-CellFilter_from_xml(pugi::xml_node node)
+Filter::CellFilter_from_xml(pugi::xml_node node)
 {
   // Get cell IDs and convert to indices into the global cells vector
   auto cells = get_node_array<int32_t>(node, "bins");
@@ -46,7 +46,7 @@ CellFilter::set_cells(gsl::span<int32_t> cells)
 }
 
 void
-CellFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::CellFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                          FilterMatch& match) const
 {
   for (int i = 0; i < p.n_coord_; i++) {
@@ -62,7 +62,7 @@ CellFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-CellFilter_to_statepoint(hid_t filter_group) const
+Filter::CellFilter_to_statepoint(hid_t filter_group) const
 {
   std::vector<int32_t> cell_ids;
   for (auto c : cells_) cell_ids.push_back(model::cells[c].id_);
@@ -70,7 +70,7 @@ CellFilter_to_statepoint(hid_t filter_group) const
 }
 
 std::string
-CellFilter_text_label(int bin) const
+Filter::CellFilter_text_label(int bin) const
 {
   return fmt::format("Cell {}", model::cells[cells_[bin]].id_);
 }

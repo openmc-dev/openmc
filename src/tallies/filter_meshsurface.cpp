@@ -8,7 +8,7 @@
 namespace openmc {
 
 void
-MeshSurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::MeshSurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
   int starting_length = match.bins_weights_length_;
@@ -22,7 +22,7 @@ MeshSurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 std::string
-MeshSurfaceFilter_text_label(int bin) const
+Filter::MeshSurfaceFilter_text_label(int bin) const
 {
   auto& mesh = *model::meshes[mesh_];
   int n_dim = mesh.n_dimension_;

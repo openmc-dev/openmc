@@ -11,7 +11,7 @@
 namespace openmc {
 
 void
-DistribcellFilter_from_xml(pugi::xml_node node)
+Filter::DistribcellFilter_from_xml(pugi::xml_node node)
 {
   auto cells = get_node_array<int32_t>(node, "bins");
   if (cells.size() != 1) {
@@ -38,7 +38,7 @@ DistribcellFilter::set_cell(int32_t cell)
 }
 
 void
-DistribcellFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::DistribcellFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
   int offset = 0;
@@ -68,13 +68,13 @@ DistribcellFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-DistribcellFilter_to_statepoint(hid_t filter_group) const
+Filter::DistribcellFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "bins", model::cells[cell_].id_);
 }
 
 std::string
-DistribcellFilter_text_label(int bin) const
+Filter::DistribcellFilter_text_label(int bin) const
 {
   auto map = model::cells[cell_].distribcell_index_;
   auto path = distribcell_path(cell_, map, bin);

@@ -12,7 +12,7 @@
 namespace openmc {
 
 void
-MeshFilter_from_xml(pugi::xml_node node)
+Filter::MeshFilter_from_xml(pugi::xml_node node)
 {
   auto bins_ = get_node_array<int32_t>(node, "bins");
   if (bins_.size() != 1) {
@@ -31,7 +31,7 @@ MeshFilter_from_xml(pugi::xml_node node)
 }
 
 void
-MeshFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
+Filter::MeshFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   if (estimator != TallyEstimator::TRACKLENGTH) {
@@ -50,13 +50,13 @@ const
 }
 
 void
-MeshFilter_to_statepoint(hid_t filter_group) const
+Filter::MeshFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
 }
 
 std::string
-MeshFilter_text_label(int bin) const
+Filter::MeshFilter_text_label(int bin) const
 {
   auto& mesh = *model::meshes.at(mesh_);
   return mesh.bin_label(bin);

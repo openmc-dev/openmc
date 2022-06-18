@@ -10,7 +10,7 @@
 namespace openmc {
 
 void
-PolarFilter_from_xml(pugi::xml_node node)
+Filter::PolarFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
 
@@ -32,7 +32,7 @@ PolarFilter_from_xml(pugi::xml_node node)
 }
 
 void
-PolarFilter_set_bins(gsl::span<double> bins)
+Filter::PolarFilter_set_bins(gsl::span<double> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -50,7 +50,7 @@ PolarFilter_set_bins(gsl::span<double> bins)
 }
 
 void
-PolarFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
+Filter::PolarFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   double z = (estimator == TallyEstimator::TRACKLENGTH) ? p.u().z : p.u_last_.z;
@@ -67,13 +67,13 @@ const
 }
 
 void
-PolarFilter_to_statepoint(hid_t filter_group) const
+Filter::PolarFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "bins", bins_);
 }
 
 std::string
-PolarFilter_text_label(int bin) const
+Filter::PolarFilter_text_label(int bin) const
 {
   return fmt::format("Polar Angle [{}, {})", bins_[bin], bins_[bin+1]);
 }

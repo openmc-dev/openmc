@@ -12,7 +12,7 @@
 namespace openmc {
 
 void
-SpatialLegendreFilter_from_xml(pugi::xml_node node)
+Filter::SpatialLegendreFilter_from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
 
@@ -37,7 +37,7 @@ SpatialLegendreFilter_from_xml(pugi::xml_node node)
 }
 
 void
-SpatialLegendreFilter_set_order(int order)
+Filter::SpatialLegendreFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Legendre order must be non-negative."};
@@ -63,7 +63,7 @@ SpatialLegendreFilter::set_minmax(double min, double max)
 }
 
 void
-SpatialLegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::SpatialLegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                     FilterMatch& match) const
 {
   // Get the coordinate along the axis of interest.
@@ -94,7 +94,7 @@ SpatialLegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-SpatialLegendreFilter_to_statepoint(hid_t filter_group) const
+Filter::SpatialLegendreFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "order", order_);
   if (axis_ == LegendreAxis::x) {
@@ -109,7 +109,7 @@ SpatialLegendreFilter_to_statepoint(hid_t filter_group) const
 }
 
 std::string
-SpatialLegendreFilter_text_label(int bin) const
+Filter::SpatialLegendreFilter_text_label(int bin) const
 {
   if (axis_ == LegendreAxis::x) {
     return fmt::format("Legendre expansion, x axis, P{}", bin);

@@ -12,7 +12,7 @@
 namespace openmc {
 
 void
-AzimuthalFilter_from_xml(pugi::xml_node node)
+Filter::AzimuthalFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
 
@@ -33,7 +33,7 @@ AzimuthalFilter_from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void AzimuthalFilter_set_bins(gsl::span<double> bins)
+void Filter::AzimuthalFilter_set_bins(gsl::span<double> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -51,7 +51,7 @@ void AzimuthalFilter_set_bins(gsl::span<double> bins)
 }
 
 void
-AzimuthalFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::AzimuthalFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
   Direction u = (estimator == TallyEstimator::TRACKLENGTH) ? p.u() : p.u_last_;
@@ -68,13 +68,13 @@ AzimuthalFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-AzimuthalFilter_to_statepoint(hid_t filter_group) const
+Filter::AzimuthalFilter_to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "bins", bins_);
 }
 
 std::string
-AzimuthalFilter_text_label(int bin) const
+Filter::AzimuthalFilter_text_label(int bin) const
 {
   return fmt::format("Azimuthal Angle [{}, {})", bins_.at(bin), bins_.at(bin+1));
 }

@@ -704,10 +704,11 @@ void read_tallies_xml()
     // Allocate the filter array
     model::tally_filters = static_cast<Filter*>(malloc(model::n_tally_filters * sizeof(Filter)));
 
-    // Initialize User Filters
+    // Initialize user filters with placement new operator
     int i = 0;
     for (auto node_filt : root.children("filter")) {
-      new (model::tally_filters + i++) Filter(node_filt);
+      new (model::tally_filters + i) Filter(node_filt, i);
+      i++;
     }
   }
 

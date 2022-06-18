@@ -114,15 +114,13 @@ FilterType get_filter_type(const std::string& type)
   }
 }
 
-Filter::Filter(pugi::xml_node node)
+Filter::Filter(pugi::xml_node node, int32_t index) : index_(index)
 {
-  index_ = model::tally_filters.size(); // Avoids warning about narrowing
-
   // Copy filter id
   if (!check_for_node(node, "id")) {
     fatal_error("Must specify id for filter in tally XML file.");
   }
-  id_ = std::stoi(get_node_value(node, "id"));
+  int32_t id = std::stoi(get_node_value(node, "id"));
   
   // Convert filter type to lower case
   std::string s;
@@ -131,6 +129,8 @@ Filter::Filter(pugi::xml_node node)
   }
 
   type_ = get_filter_type(s);
+
+  this->set_id(id);
 
   this->from_xml(node);
 }

@@ -197,6 +197,36 @@ void Filter::set_id(int32_t id)
   id_ = id;
   model::filter_map[id] = index_;
 }
+  
+std::string Filter::type() const 
+{
+  switch(type_){
+    case FilterType::AzimuthalFilter          : return "azimuthal";
+    case FilterType::CellFilter               : return "cell";
+    case FilterType::CellInstanceFilter       : return "cellborn";
+    case FilterType::CellbornFilter           : return "cellfrom";
+    case FilterType::CellFromFilter           : return "cellinstance";
+    case FilterType::DelayedGroupFilter       : return "distribcell";
+    case FilterType::DistribcellFilter        : return "delayedgroup";
+    case FilterType::EnergyFilter             : return "energyfunction";
+    case FilterType::EnergyoutFilter          : return "energy";
+    case FilterType::EnergyFunctionFilter     : return "energyout";
+    case FilterType::LegendreFilter           : return "legendre";
+    case FilterType::MaterialFilter           : return "material";
+    case FilterType::MeshFilter               : return "mesh";
+    case FilterType::MeshSurfaceFilter        : return "meshsurface";
+    case FilterType::MuFilter                 : return "mu";
+    case FilterType::ParticleFilter           : return "particle";
+    case FilterType::PolarFilter              : return "polar";
+    case FilterType::SphericalHarmonicsFilter : return "surface";
+    case FilterType::SpatialLegendreFilter    : return "spatiallegendre";
+    case FilterType::SurfaceFilter            : return "sphericalharmonics";
+    case FilterType::UniverseFilter           : return "universe";
+    case FilterType::ZernikeFilter            : return "zernike";
+    case FilterType::ZernikeRadialFilter      : return "zernikeradial";
+  }
+  return "undefined filter type";
+}
 
 //==============================================================================
 // C API functions

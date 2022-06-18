@@ -112,7 +112,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  virtual std::string type() const = 0;
+  std::string type() const;
 
   //! Matches a tally event to a set of filter bins and weights.
   //!

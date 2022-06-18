@@ -15,8 +15,6 @@
 #include "openmc/string_utils.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
-#include "openmc/tallies/filter_delayedgroup.h"
-#include "openmc/tallies/filter_energy.h"
 
 #include <string>
 

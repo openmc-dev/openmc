@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 #include <gsl/gsl>

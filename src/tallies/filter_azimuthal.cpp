@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_azimuthal.h"
+#include "openmc/tallies/filter.h"
 
 #include <cmath>
 

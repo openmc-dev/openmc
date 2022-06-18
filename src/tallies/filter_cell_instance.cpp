@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_cell_instance.h"
+#include "openmc/tallies/filter.h"
 
 #include <string>
 

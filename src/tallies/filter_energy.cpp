@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_energy.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 

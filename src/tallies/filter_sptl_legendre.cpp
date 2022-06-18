@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_sptl_legendre.h"
+#include "openmc/tallies/filter.h"
 
 #include <utility>  // For pair
 

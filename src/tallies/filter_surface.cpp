@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 

@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_sph_harm.h"
+#include "openmc/tallies/filter.h"
 
 #include <utility>  // For pair
 

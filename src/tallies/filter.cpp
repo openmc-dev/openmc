@@ -10,27 +10,6 @@
 #include "openmc/constants.h"  // for MAX_LINE_LEN;
 #include "openmc/error.h"
 #include "openmc/xml_interface.h"
-#include "openmc/tallies/filter_azimuthal.h"
-#include "openmc/tallies/filter_cell.h"
-#include "openmc/tallies/filter_cellborn.h"
-#include "openmc/tallies/filter_cellfrom.h"
-#include "openmc/tallies/filter_cell_instance.h"
-#include "openmc/tallies/filter_delayedgroup.h"
-#include "openmc/tallies/filter_distribcell.h"
-#include "openmc/tallies/filter_energyfunc.h"
-#include "openmc/tallies/filter_energy.h"
-#include "openmc/tallies/filter_legendre.h"
-#include "openmc/tallies/filter_material.h"
-#include "openmc/tallies/filter_mesh.h"
-#include "openmc/tallies/filter_meshsurface.h"
-#include "openmc/tallies/filter_mu.h"
-#include "openmc/tallies/filter_particle.h"
-#include "openmc/tallies/filter_polar.h"
-#include "openmc/tallies/filter_sph_harm.h"
-#include "openmc/tallies/filter_sptl_legendre.h"
-#include "openmc/tallies/filter_surface.h"
-#include "openmc/tallies/filter_universe.h"
-#include "openmc/tallies/filter_zernike.h"
 
 // explicit template instantiation definition
 template class std::vector<openmc::FilterMatch>;
@@ -53,7 +32,7 @@ namespace model {
 
 extern "C" size_t tally_filters_size()
 {
-  return model::tally_filters.size();
+  return model::n_tally_filters;
 }
 
 //==============================================================================

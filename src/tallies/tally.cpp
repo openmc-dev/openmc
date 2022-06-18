@@ -16,16 +16,6 @@
 #include "openmc/source.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
-#include "openmc/tallies/filter_cell.h"
-#include "openmc/tallies/filter_cellfrom.h"
-#include "openmc/tallies/filter_delayedgroup.h"
-#include "openmc/tallies/filter_energy.h"
-#include "openmc/tallies/filter_legendre.h"
-#include "openmc/tallies/filter_mesh.h"
-#include "openmc/tallies/filter_meshsurface.h"
-#include "openmc/tallies/filter_particle.h"
-#include "openmc/tallies/filter_sph_harm.h"
-#include "openmc/tallies/filter_surface.h"
 #include "openmc/xml_interface.h"
 
 #include <fmt/core.h>

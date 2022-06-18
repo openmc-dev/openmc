@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_cellborn.h"
+#include "openmc/tallies/filter.h"
 
 #include "openmc/cell.h"
 

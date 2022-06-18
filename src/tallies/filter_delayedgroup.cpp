@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_delayedgroup.h"
+#include "openmc/tallies/filter.h"
 
 #include "openmc/error.h"
 #include "openmc/xml_interface.h"

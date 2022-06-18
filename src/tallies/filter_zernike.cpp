@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_zernike.h"
+#include "openmc/tallies/filter.h"
 
 #include <cmath>
 #include <sstream>

@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_legendre.h"
+#include "openmc/tallies/filter.h"
 
 #include "openmc/capi.h"
 #include "openmc/error.h"

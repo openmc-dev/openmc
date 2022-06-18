@@ -23,7 +23,7 @@ EnergyFilter_from_xml(pugi::xml_node node)
 }
 
 void
-EnergyFilter::set_bins(gsl::span<const double> bins)
+EnergyFilter_set_bins(gsl::span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();

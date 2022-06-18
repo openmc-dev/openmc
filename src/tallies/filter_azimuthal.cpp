@@ -33,7 +33,7 @@ AzimuthalFilter_from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void AzimuthalFilter::set_bins(gsl::span<double> bins)
+void AzimuthalFilter_set_bins(gsl::span<double> bins)
 {
   // Clear existing bins
   bins_.clear();

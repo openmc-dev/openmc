@@ -32,7 +32,7 @@ PolarFilter_from_xml(pugi::xml_node node)
 }
 
 void
-PolarFilter::set_bins(gsl::span<double> bins)
+PolarFilter_set_bins(gsl::span<double> bins)
 {
   // Clear existing bins
   bins_.clear();

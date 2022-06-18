@@ -329,7 +329,7 @@ void Filter::set_order(int order)
   }
 }
   
-void set_bins(gsl::span<const double> bins)
+void Filter::set_bins(gsl::span<const double> bins)
 {
   switch(type_){
     case FilterType::AzimuthalFilter          :   AzimuthalFilter_set_bins(bins); break;

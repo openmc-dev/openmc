@@ -31,7 +31,7 @@ MuFilter_from_xml(pugi::xml_node node)
 }
 
 void
-MuFilter::set_bins(gsl::span<double> bins)
+MuFilter_set_bins(gsl::span<double> bins)
 {
   // Clear existing bins
   bins_.clear();

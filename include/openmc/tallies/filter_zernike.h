@@ -42,8 +42,8 @@ public:
   double x() const { return x_; }
   void set_x(double x) { x_ = x; }
 
-  double y() const { return y_; }
-  void set_y(double y) { y_ = y; }
+  double y() const { return yy_; }
+  void set_y(double y) { yy_ = y; }
 
   double r() const { return r_; }
   void set_r(double r) { r_ = r; }
@@ -56,7 +56,7 @@ protected:
   double x_;
 
   //! Cartesian y coordinate for the origin of this expansion.
-  double y_;
+  double yy_;
 
   //! Maximum radius from the origin covered by this expansion.
   double r_;

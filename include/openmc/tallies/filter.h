@@ -240,7 +240,9 @@ private:
   bool matches_transport_groups_ {false};
   std::vector<double> energy_;
   double x_;
-  std::vector<double> y_; //TODO: There is a collision here. ZernikeFilter has it as a scalar double, EnergyFunctionFilter has it as a vector
+  // Note: there was a collision between EnergyFunction (vector y_) and Zernike (scalar y_), so Zernike uses yy_
+  std::vector<double> y_;
+  double yy_;
   double r_;
   int order_;
   std::vector<int32_t> materials_;

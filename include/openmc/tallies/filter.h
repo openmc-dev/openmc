@@ -1,6 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_H
 #define OPENMC_TALLIES_FILTER_H
 
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -9,6 +10,7 @@
 
 #include <gsl/gsl>
 
+#include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"

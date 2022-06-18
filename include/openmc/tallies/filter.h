@@ -222,21 +222,35 @@ public:
 
   gsl::index index() const { return index_; }
 
+  // Superset of type specific accessors
   const std::vector<int32_t>& cells() const { return cells_; }
-
   void set_cells(gsl::span<int32_t> cells);
-  
   const std::vector<CellInstance>& cell_instances() const { return cell_instances_; }
-
   void set_cell_instances(gsl::span<CellInstance> instances);
-  
   const std::vector<int>& groups() const { return groups_; }
-
   void set_groups(gsl::span<int> groups);
-  
   int32_t cell() const { return cell_; }
-
   void set_cell(int32_t cell);
+  const std::vector<double>& energy() const { return energy_; }
+  const std::vector<double>& y() const { return y_; }
+  void set_data(gsl::span<const double> energy, gsl::span<const double> y);
+  const std::vector<double>& bins() const { return bins_; }
+  void set_bins(gsl::span<const double> bins);
+  bool matches_transport_groups() const { return matches_transport_groups_; }
+  int order() const { return order_; }
+  void set_order(int order);
+  std::vector<int32_t>& materials() { return materials_; }
+  const std::vector<int32_t>& materials() const { return materials_; }
+  void set_materials(gsl::span<const int32_t> materials);
+  int32_t mesh() const {return mesh_;}
+
+  void set_mesh(int32_t mesh){
+    mesh_ = mesh;
+    if (type_ == FilterType::MeshFilter)
+      n_bins_ = model::meshes[mesh_]->n_bins();
+    if (type_ == FilterType::MeshSurfaceFilter)
+      n_bins_ = model::meshes[mesh_]->n_surface_bins();
+  }
 
   //----------------------------------------------------------------------------
   // Data members

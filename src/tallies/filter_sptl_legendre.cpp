@@ -124,6 +124,7 @@ Filter::SpatialLegendreFilter_text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+/*
 std::pair<int, SpatialLegendreFilter*>
 check_sptl_legendre_filter(int32_t index)
 {
@@ -205,5 +206,6 @@ openmc_spatial_legendre_filter_set_params(int32_t index, const int* axis,
   if (min && max) filt->set_minmax(*min, *max);
   return 0;
 }
+*/
 
 } // namespace openmc

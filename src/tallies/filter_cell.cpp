@@ -84,15 +84,14 @@ openmc_cell_filter_get_bins(int32_t index, const int32_t** cells, int32_t* n)
 {
   if (int err = verify_filter(index)) return err;
 
-  const auto& filt = model::tally_filters[index].get();
-  if (filt->type() != "cell") {
+  Filter& filt = model::tally_filters[index];
+  if (filt.type() != "cell") {
     set_errmsg("Tried to get cells from a non-cell filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
-  auto cell_filt = static_cast<CellFilter*>(filt);
-  *cells = cell_filt->cells().data();
-  *n = cell_filt->cells().size();
+  *cells = filt.cells().data();
+  *n = filt.cells().size();
   return 0;
 }
 

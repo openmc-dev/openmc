@@ -76,6 +76,8 @@ Filter::MaterialFilter_text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+/*
+
 extern "C" int
 openmc_material_filter_get_bins(int32_t index, const int32_t** bins, size_t* n)
 {
@@ -118,5 +120,6 @@ openmc_material_filter_set_bins(int32_t index, size_t n, const int32_t* bins)
   filt->set_materials({bins, n});
   return 0;
 }
+*/
 
 } // namespace openmc

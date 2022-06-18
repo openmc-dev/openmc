@@ -129,6 +129,7 @@ Filter::ZernikeRadialFilter_set_order(int order)
 // C-API functions
 //==============================================================================
 
+/*
 std::pair<int, ZernikeFilter*>
 check_zernike_filter(int32_t index)
 {
@@ -211,5 +212,6 @@ openmc_zernike_filter_set_params(int32_t index, const double* x,
   if (r) filt->set_r(*r);
   return 0;
 }
+*/
 
 } // namespace openmc

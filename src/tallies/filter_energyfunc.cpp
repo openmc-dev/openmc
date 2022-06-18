@@ -92,6 +92,7 @@ Filter::EnergyFunctionFilter_text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+/*
 extern "C" int
 openmc_energyfunc_filter_set_data(int32_t index, size_t n, const double* energy,
                                   const double* y)
@@ -155,5 +156,6 @@ openmc_energyfunc_filter_get_y(int32_t index, size_t *n, const double** y)
   *n = filt->y().size();
   return 0;
 }
+*/
 
 } // namespace openmc

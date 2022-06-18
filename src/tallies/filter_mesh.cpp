@@ -66,6 +66,7 @@ Filter::MeshFilter_text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+/*
 extern "C" int
 openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
 {
@@ -118,5 +119,6 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
   filt->set_mesh(index_mesh);
   return 0;
 }
+*/
 
 } // namespace openmc

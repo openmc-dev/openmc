@@ -346,7 +346,7 @@ void Filter::set_bins(gsl::span<const double> bins)
 
 int verify_filter(int32_t index)
 {
-  if (index < 0 || index >= model::tally_filters.size()) {
+  if (index < 0 || index >= model::n_tally_filters) {
     set_errmsg("Filter index is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -358,7 +358,7 @@ openmc_filter_get_id(int32_t index, int32_t* id)
 {
   if (int err = verify_filter(index)) return err;
 
-  *id = model::tally_filters[index]->id();
+  *id = model::tally_filters[index].id();
   return 0;
 }
 
@@ -367,7 +367,7 @@ openmc_filter_set_id(int32_t index, int32_t id)
 {
   if (int err = verify_filter(index)) return err;
 
-  model::tally_filters[index]->set_id(id);
+  model::tally_filters[index].set_id(id);
   return 0;
 }
 
@@ -376,7 +376,7 @@ openmc_filter_get_type(int32_t index, char* type)
 {
   if (int err = verify_filter(index)) return err;
 
-  std::strcpy(type, model::tally_filters[index]->type().c_str());
+  std::strcpy(type, model::tally_filters[index].type().c_str());
   return 0;
 }
 
@@ -397,7 +397,8 @@ extern "C" void
 openmc_get_filter_next_id(int32_t* id)
 {
   int32_t largest_filter_id = 0;
-  for (const auto& t : model::tally_filters) {
+  for (int i = 0; i < model::n_tally_filters; i++) {
+    Filter& t = model::tally_filters[i];
     largest_filter_id = std::max(largest_filter_id, t->id());
   }
   *id = largest_filter_id + 1;
@@ -406,8 +407,12 @@ openmc_get_filter_next_id(int32_t* id)
 extern "C" int
 openmc_new_filter(const char* type, int32_t* index)
 {
+  printf("Error: creation of filters from C API not currently supported!\n");
+  exit(1);
+  /*
   *index = model::tally_filters.size();
   Filter::create(type);
+  */
   return 0;
 }
 

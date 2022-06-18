@@ -54,6 +54,8 @@ Filter::LegendreFilter_text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+/*
+
 extern "C" int
 openmc_legendre_filter_get_order(int32_t index, int* order)
 {
@@ -95,5 +97,6 @@ openmc_legendre_filter_set_order(int32_t index, int order)
   filt->set_order(order);
   return 0;
 }
+*/
 
 } // namespace openmc

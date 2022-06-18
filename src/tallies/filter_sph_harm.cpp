@@ -107,6 +107,8 @@ Filter::SphericalHarmonicsFilter_text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+/*
+
 std::pair<int, SphericalHarmonicsFilter*>
 check_sphharm_filter(int32_t index)
 {
@@ -192,5 +194,6 @@ openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[])
   }
   return 0;
 }
+*/
 
 } // namespace openmc

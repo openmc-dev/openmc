@@ -144,18 +144,20 @@ openmc_energy_filter_get_bins(int32_t index, const double** energies, size_t* n)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index].get();
-  auto* filt = dynamic_cast<EnergyFilter*>(filt_base);
+  Filter& filt = model::tally_filters[index];
 
   // Check the filter type.
+  // TODO: Replace this with logic checking type_ field
+  /*
   if (!filt) {
     set_errmsg("Tried to get energy bins on a non-energy filter.");
     return OPENMC_E_INVALID_TYPE;
   }
+  */
 
   // Output the bins.
-  *energies = filt->bins().data();
-  *n = filt->bins().size();
+  *energies = filt.bins().data();
+  *n = filt.bins().size();
   return 0;
 }
 
@@ -166,17 +168,19 @@ openmc_energy_filter_set_bins(int32_t index, size_t n, const double* energies)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index].get();
-  auto* filt = dynamic_cast<EnergyFilter*>(filt_base);
+  Filter& filt = model::tally_filters[index];
 
   // Check the filter type.
+  // TODO: Replace this with logic checking type_ field
+  /*
   if (!filt) {
-    set_errmsg("Tried to set energy bins on a non-energy filter.");
+    set_errmsg("Tried to get energy bins on a non-energy filter.");
     return OPENMC_E_INVALID_TYPE;
   }
+  */
 
   // Update the filter.
-  filt->set_bins({energies, n});
+  filt.set_bins({energies, n});
   return 0;
 }
 

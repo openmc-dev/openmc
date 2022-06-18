@@ -318,6 +318,17 @@ void Filter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMat
   }
 }
 
+void set_order(int order)
+{
+  switch(type_){
+    case FilterType::LegendreFilter           : LegendreFilter_set_order(order); break;
+    case FilterType::SphericalHarmonicsFilter : SphericalHarmonicsFilter_set_order(order); break;
+    case FilterType::SpatialLegendreFilter    : SpatialLegendreFilter_set_order(order); break;
+    case FilterType::ZernikeFilter            : ZernikeFilter_set_order(order); break;
+    case FilterType::ZernikeRadialFilter      : ZernikeRadialFilter_set_order(order); break;
+  }
+}
+
 //==============================================================================
 // C API functions
 //==============================================================================

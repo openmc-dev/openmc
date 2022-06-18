@@ -50,9 +50,9 @@ const
 }
 
 void
-MeshFilter::to_statepoint(hid_t filter_group) const
+MeshFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
+  Filter_to_statepoint(filter_group);
   write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
 }
 

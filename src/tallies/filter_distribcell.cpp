@@ -68,9 +68,9 @@ DistribcellFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-DistribcellFilter::to_statepoint(hid_t filter_group) const
+DistribcellFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
+  Filter_to_statepoint(filter_group);
   write_dataset(filter_group, "bins", model::cells[cell_].id_);
 }
 

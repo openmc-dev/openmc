@@ -63,9 +63,9 @@ const
 }
 
 void
-MuFilter::to_statepoint(hid_t filter_group) const
+MuFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
+  Filter_to_statepoint(filter_group);
   write_dataset(filter_group, "bins", bins_);
 }
 

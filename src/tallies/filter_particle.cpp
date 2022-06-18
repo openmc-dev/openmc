@@ -49,9 +49,9 @@ ParticleFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-ParticleFilter::to_statepoint(hid_t filter_group) const
+ParticleFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
+  Filter_to_statepoint(filter_group);
   std::vector<std::string> particles;
   for (auto p : particles_) {
     particles.push_back(particle_type_to_str(p));

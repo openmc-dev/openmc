@@ -124,12 +124,31 @@ public:
   get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const = 0;
 
   //! Writes data describing this filter to an HDF5 statepoint group.
-  virtual void
-  to_statepoint(hid_t filter_group) const
-  {
-    write_dataset(filter_group, "type", type());
-    write_dataset(filter_group, "n_bins", n_bins_);
-  }
+  void to_statepoint(hid_t filter_group) const;
+
+  void AzimuthalFilter_to_statepoint(hid_t filter_group) const;
+  void CellFilter_to_statepoint(hid_t filter_group) const;
+  void CellInstanceFilter_to_statepoint(hid_t filter_group) const;
+  void CellbornFilter_to_statepoint(hid_t filter_group) const;
+  void CellFromFilter_to_statepoint(hid_t filter_group) const;
+  void DelayedGroupFilter_to_statepoint(hid_t filter_group) const;
+  void DistribcellFilter_to_statepoint(hid_t filter_group) const;
+  void EnergyFilter_to_statepoint(hid_t filter_group) const;
+  void EnergyoutFilter_to_statepoint(hid_t filter_group) const;
+  void EnergyFunctionFilter_to_statepoint(hid_t filter_group) const;
+  void LegendreFilter_to_statepoint(hid_t filter_group) const;
+  void MaterialFilter_to_statepoint(hid_t filter_group) const;
+  void MeshFilter_to_statepoint(hid_t filter_group) const;
+  void MeshSurfaceFilter_to_statepoint(hid_t filter_group) const;
+  void MuFilter_to_statepoint(hid_t filter_group) const;
+  void ParticleFilter_to_statepoint(hid_t filter_group) const;
+  void PolarFilter_to_statepoint(hid_t filter_group) const;
+  void SphericalHarmonicsFilter_to_statepoint(hid_t filter_group) const;
+  void SpatialLegendreFilter_to_statepoint(hid_t filter_group) const;
+  void SurfaceFilter_to_statepoint(hid_t filter_group) const;
+  void UniverseFilter_to_statepoint(hid_t filter_group) const;
+  void ZernikeFilter_to_statepoint(hid_t filter_group) const;
+  void ZernikeRadialFilter_to_statepoint(hid_t filter_group) const;
 
   //! Return a string describing a filter bin for the tallies.out file.
   //

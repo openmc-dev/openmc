@@ -222,6 +222,22 @@ public:
 
   gsl::index index() const { return index_; }
 
+  const std::vector<int32_t>& cells() const { return cells_; }
+
+  void set_cells(gsl::span<int32_t> cells);
+  
+  const std::vector<CellInstance>& cell_instances() const { return cell_instances_; }
+
+  void set_cell_instances(gsl::span<CellInstance> instances);
+  
+  const std::vector<int>& groups() const { return groups_; }
+
+  void set_groups(gsl::span<int> groups);
+  
+  int32_t cell() const { return cell_; }
+
+  void set_cell(int32_t cell);
+
   //----------------------------------------------------------------------------
   // Data members
 

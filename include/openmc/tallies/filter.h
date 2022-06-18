@@ -135,7 +135,31 @@ public:
   //
   //! For example, an `EnergyFilter` might return the string
   //! "Incoming Energy [0.625E-6, 20.0)".
-  virtual std::string text_label(int bin) const = 0;
+  std::string text_label(int bin) const;
+
+  std::string AzimuthalFilter_text_label(int bin) const;
+  std::string CellFilter_text_label(int bin) const;
+  std::string CellInstanceFilter_text_label(int bin) const;
+  std::string CellbornFilter_text_label(int bin) const;
+  std::string CellFromFilter_text_label(int bin) const;
+  std::string DelayedGroupFilter_text_label(int bin) const;
+  std::string DistribcellFilter_text_label(int bin) const;
+  std::string EnergyFilter_text_label(int bin) const;
+  std::string EnergyoutFilter_text_label(int bin) const;
+  std::string EnergyFunctionFilter_text_label(int bin) const;
+  std::string LegendreFilter_text_label(int bin) const;
+  std::string MaterialFilter_text_label(int bin) const;
+  std::string MeshFilter_text_label(int bin) const;
+  std::string MeshSurfaceFilter_text_label(int bin) const;
+  std::string MuFilter_text_label(int bin) const;
+  std::string ParticleFilter_text_label(int bin) const;
+  std::string PolarFilter_text_label(int bin) const;
+  std::string SphericalHarmonicsFilter_text_label(int bin) const;
+  std::string SpatialLegendreFilter_text_label(int bin) const;
+  std::string SurfaceFilter_text_label(int bin) const;
+  std::string UniverseFilter_text_label(int bin) const;
+  std::string ZernikeFilter_text_label(int bin) const;
+  std::string ZernikeRadialFilter_text_label(int bin) const;
 
   //----------------------------------------------------------------------------
   // Accessors

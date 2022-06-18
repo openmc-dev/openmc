@@ -135,7 +135,7 @@ Filter::Filter(pugi::xml_node node, int32_t index) : index_(index)
   this->from_xml(node);
 }
 
-void Filter_from_xml(pugi::xml_node node)
+void Filter::from_xml(pugi::xml_node node)
 {
   switch(type_){
     case FilterType::AzimuthalFilter          : return AzimuthalFilter_from_xml(node); break;
@@ -224,6 +224,36 @@ std::string Filter::type() const
     case FilterType::UniverseFilter           : return "universe";
     case FilterType::ZernikeFilter            : return "zernike";
     case FilterType::ZernikeRadialFilter      : return "zernikeradial";
+  }
+  return "undefined filter type";
+}
+  
+std::string Filter::text_label(int bin) const
+{
+  switch(type_){
+    case FilterType::AzimuthalFilter          : return AzimuthalFilter_text_label(bin); break;
+    case FilterType::CellFilter               : return CellFilter_text_label(bin); break;
+    case FilterType::CellInstanceFilter       : return CellInstanceFilter_text_label(bin); break;
+    case FilterType::CellbornFilter           : return CellbornFilter_text_label(bin); break;
+    case FilterType::CellFromFilter           : return CellFromFilter_text_label(bin); break;
+    case FilterType::DelayedGroupFilter       : return DelayedGroupFilter_text_label(bin); break;
+    case FilterType::DistribcellFilter        : return DistribcellFilter_text_label(bin); break;
+    case FilterType::EnergyFilter             : return EnergyFilter_text_label(bin); break;
+    case FilterType::EnergyoutFilter          : return EnergyoutFilter_text_label(bin); break;
+    case FilterType::EnergyFunctionFilter     : return EnergyFunctionFilter_text_label(bin); break;
+    case FilterType::LegendreFilter           : return LegendreFilter_text_label(bin); break;
+    case FilterType::MaterialFilter           : return MaterialFilter_text_label(bin); break;
+    case FilterType::MeshFilter               : return MeshFilter_text_label(bin); break;
+    case FilterType::MeshSurfaceFilter        : return MeshSurfaceFilter_text_label(bin); break;
+    case FilterType::MuFilter                 : return MuFilter_text_label(bin); break;
+    case FilterType::ParticleFilter           : return ParticleFilter_text_label(bin); break;
+    case FilterType::PolarFilter              : return PolarFilter_text_label(bin); break;
+    case FilterType::SphericalHarmonicsFilter : return SphericalHarmonicsFilter_text_label(bin); break;
+    case FilterType::SpatialLegendreFilter    : return SpatialLegendreFilter_text_label(bin); break;
+    case FilterType::SurfaceFilter            : return SurfaceFilter_text_label(bin); break;
+    case FilterType::UniverseFilter           : return UniverseFilter_text_label(bin); break;
+    case FilterType::ZernikeFilter            : return ZernikeFilter_text_label(bin); break;
+    case FilterType::ZernikeRadialFilter      : return ZernikeRadialFilter_text_label(bin); break;
   }
   return "undefined filter type";
 }

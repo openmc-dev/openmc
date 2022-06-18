@@ -266,17 +266,17 @@ void Filter::to_statepoint(hid_t filter_group) const;
     case FilterType::AzimuthalFilter          : AzimuthalFilter_to_statepoint(filter_group); break;
     case FilterType::CellFilter               : CellFilter_to_statepoint(filter_group); break;
     case FilterType::CellInstanceFilter       : CellInstanceFilter_to_statepoint(filter_group); break;
-    case FilterType::CellbornFilter           : CellbornFilter_to_statepoint(filter_group); break;
-    case FilterType::CellFromFilter           : CellFromFilter_to_statepoint(filter_group); break;
+    case FilterType::CellbornFilter           : CellFilter_to_statepoint(filter_group); break; // Note - uses parent type
+    case FilterType::CellFromFilter           : CellFilter_to_statepoint(filter_group); break; // Note - uses parent type
     case FilterType::DelayedGroupFilter       : DelayedGroupFilter_to_statepoint(filter_group); break;
     case FilterType::DistribcellFilter        : DistribcellFilter_to_statepoint(filter_group); break;
     case FilterType::EnergyFilter             : EnergyFilter_to_statepoint(filter_group); break;
-    case FilterType::EnergyoutFilter          : EnergyoutFilter_to_statepoint(filter_group); break;
+    case FilterType::EnergyoutFilter          : EnergyFilter_to_statepoint(filter_group); break; // Note - uses parent type
     case FilterType::EnergyFunctionFilter     : EnergyFunctionFilter_to_statepoint(filter_group); break;
     case FilterType::LegendreFilter           : LegendreFilter_to_statepoint(filter_group); break;
     case FilterType::MaterialFilter           : MaterialFilter_to_statepoint(filter_group); break;
     case FilterType::MeshFilter               : MeshFilter_to_statepoint(filter_group); break;
-    case FilterType::MeshSurfaceFilter        : MeshSurfaceFilter_to_statepoint(filter_group); break;
+    case FilterType::MeshSurfaceFilter        : MeshFilter_to_statepoint(filter_group); break; // Note - uses parent type
     case FilterType::MuFilter                 : MuFilter_to_statepoint(filter_group); break;
     case FilterType::ParticleFilter           : ParticleFilter_to_statepoint(filter_group); break;
     case FilterType::PolarFilter              : PolarFilter_to_statepoint(filter_group); break;
@@ -285,7 +285,7 @@ void Filter::to_statepoint(hid_t filter_group) const;
     case FilterType::SurfaceFilter            : SurfaceFilter_to_statepoint(filter_group); break;
     case FilterType::UniverseFilter           : UniverseFilter_to_statepoint(filter_group); break;
     case FilterType::ZernikeFilter            : ZernikeFilter_to_statepoint(filter_group); break;
-    case FilterType::ZernikeRadialFilter      : ZernikeRadialFilter_to_statepoint(filter_group); break;
+    case FilterType::ZernikeRadialFilter      : ZernikeFilter_to_statepoint(filter_group); break; // Note - uses parent type
   }
 }
 

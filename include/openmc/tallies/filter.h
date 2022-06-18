@@ -153,17 +153,17 @@ public:
   void AzimuthalFilter_to_statepoint(hid_t filter_group) const;
   void CellFilter_to_statepoint(hid_t filter_group) const;
   void CellInstanceFilter_to_statepoint(hid_t filter_group) const;
-  void CellbornFilter_to_statepoint(hid_t filter_group) const;
-  void CellFromFilter_to_statepoint(hid_t filter_group) const;
+  //void CellbornFilter_to_statepoint(hid_t filter_group) const;
+  //void CellFromFilter_to_statepoint(hid_t filter_group) const;
   void DelayedGroupFilter_to_statepoint(hid_t filter_group) const;
   void DistribcellFilter_to_statepoint(hid_t filter_group) const;
   void EnergyFilter_to_statepoint(hid_t filter_group) const;
-  void EnergyoutFilter_to_statepoint(hid_t filter_group) const;
+  //void EnergyoutFilter_to_statepoint(hid_t filter_group) const;
   void EnergyFunctionFilter_to_statepoint(hid_t filter_group) const;
   void LegendreFilter_to_statepoint(hid_t filter_group) const;
   void MaterialFilter_to_statepoint(hid_t filter_group) const;
   void MeshFilter_to_statepoint(hid_t filter_group) const;
-  void MeshSurfaceFilter_to_statepoint(hid_t filter_group) const;
+  //void MeshSurfaceFilter_to_statepoint(hid_t filter_group) const;
   void MuFilter_to_statepoint(hid_t filter_group) const;
   void ParticleFilter_to_statepoint(hid_t filter_group) const;
   void PolarFilter_to_statepoint(hid_t filter_group) const;
@@ -172,7 +172,7 @@ public:
   void SurfaceFilter_to_statepoint(hid_t filter_group) const;
   void UniverseFilter_to_statepoint(hid_t filter_group) const;
   void ZernikeFilter_to_statepoint(hid_t filter_group) const;
-  void ZernikeRadialFilter_to_statepoint(hid_t filter_group) const;
+  //void ZernikeRadialFilter_to_statepoint(hid_t filter_group) const;
 
   //! Return a string describing a filter bin for the tallies.out file.
   //

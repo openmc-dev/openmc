@@ -122,6 +122,31 @@ public:
   //!   weights; note that there may be zero matching bins
   void get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
 
+  void AzimuthalFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void CellFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void CellInstanceFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void CellbornFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void CellFromFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void DelayedGroupFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void DistribcellFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void EnergyFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void EnergyoutFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void EnergyFunctionFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void LegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void MaterialFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void MeshFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void MeshSurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void MuFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void ParticleFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void PolarFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void SphericalHarmonicsFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void SpatialLegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void SurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void UniverseFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+  void ZernikeRadialFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
+
+
   //! Writes data describing this filter to an HDF5 statepoint group.
   void to_statepoint(hid_t filter_group) const;
 

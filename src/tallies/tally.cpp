@@ -330,9 +330,9 @@ Tally::set_filters(gsl::span<Filter*> filters)
     filters_.push_back(model::filter_map.at(f->id()));
 
     // Keep track of indices for special filters.
-    if (f->get_type() == FilterType::EnergyoutFilter) {
+    if (f->get_type() == Filter::FilterType::EnergyoutFilter) {
       energyout_filter_ = i;
-    } else if (f->get_type() == FilterType::DelayedGroupFilter) {
+    } else if (f->get_type() == Filter::FilterType::DelayedGroupFilter) {
       delayedgroup_filter_ = i;
     }
   }
@@ -375,15 +375,15 @@ Tally::set_scores(const std::vector<std::string>& scores)
   bool meshsurface_present = false;
   for (auto i_filt : filters_) {
     Filter& filt {model::tally_filters[i_filt]};
-    if (filt.get_type() ==  FilterType::LegendreFilter) {
+    if (filt.get_type() ==  Filter::FilterType::LegendreFilter) {
       legendre_present = true;
-    } else if (filt.get_type() == FilterType::CellFromFilter) {
+    } else if (filt.get_type() == Filter::FilterType::CellFromFilter) {
       cellfrom_present = true;
-    } else if (filt.get_type() == FilterType::CellFilter) {
+    } else if (filt.get_type() == Filter::FilterType::CellFilter) {
       cell_present = true;
-    } else if (filt.get_type() == FilterType::SurfaceFilter) {
+    } else if (filt.get_type() == Filter::FilterType::SurfaceFilter) {
       surface_present = true;
-    } else if (filt.get_type() == FilterType::MeshSurfaceFilter) {
+    } else if (filt.get_type() == Filter::FilterType::MeshSurfaceFilter) {
       meshsurface_present = true;
     }
   }

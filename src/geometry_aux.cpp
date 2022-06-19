@@ -320,7 +320,7 @@ prepare_distribcell()
   std::unordered_set<int32_t> distribcells;
   for (int i = 0; i < model::n_tally_filters; i++) {
     Filter& distrib_filt = model::tally_filters[i];
-    if (distrib_filt.get_type() == FilterType::DistribcellFilter) {
+    if (distrib_filt.get_type() == Filter::FilterType::DistribcellFilter) {
       distribcells.insert(distrib_filt.cell());
     }
   }

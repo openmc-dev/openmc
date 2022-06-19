@@ -121,7 +121,7 @@ Tally::Tally(pugi::xml_node node)
     int i_filter = filters_[j];
     Filter& f = model::tally_filters[i_filter];
 
-    if (f.get_type() == ParticleFilter) particle_filter_index = i_filter;
+    if (f.get_type() == Filter::FilterType::ParticleFilter) particle_filter_index = i_filter;
 
     // Change the tally estimator if a filter demands it
     std::string filt_type = f.type();

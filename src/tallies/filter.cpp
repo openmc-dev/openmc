@@ -39,7 +39,7 @@ extern "C" size_t tally_filters_size()
 // Filter implementation
 //==============================================================================
 
-FilterType get_filter_type(const std::string& type)
+Filter::FilterType Filter::get_filter_type(const std::string& type)
 {
   if (type == "azimuthal") {
     return FilterType::AzimuthalFilter;
@@ -238,7 +238,7 @@ std::string Filter::text_label(int bin) const
   return "undefined filter type";
 }
   
-void Filter::to_statepoint(hid_t filter_group) const;
+void Filter::to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "type", type());
   write_dataset(filter_group, "n_bins", n_bins_);
@@ -379,7 +379,7 @@ openmc_get_filter_next_id(int32_t* id)
   int32_t largest_filter_id = 0;
   for (int i = 0; i < model::n_tally_filters; i++) {
     Filter& t = model::tally_filters[i];
-    largest_filter_id = std::max(largest_filter_id, t->id());
+    largest_filter_id = std::max(largest_filter_id, t.id());
   }
   *id = largest_filter_id + 1;
 }

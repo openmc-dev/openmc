@@ -33,7 +33,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
     auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
       match.bins_weights_length_ = 0;
-      model::tally_filters[i_filt]->get_all_bins(p, tally_.estimator_, match);
+      model::tally_filters[i_filt].get_all_bins(p, tally_.estimator_, match);
       match.bins_present_ = true;
     }
 
@@ -1989,9 +1989,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
           if (abs_xs > 0.) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-              const DelayedGroupFilter& filt
-                {*dynamic_cast<DelayedGroupFilter*>(
-                model::tally_filters[i_dg_filt].get())};
+              const Filter& filt {model::tally_filters[i_dg_filt]};
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                 auto d = filt.groups()[d_bin] - 1;

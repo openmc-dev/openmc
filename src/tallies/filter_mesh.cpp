@@ -66,10 +66,10 @@ Filter::MeshFilter_text_label(int bin) const
 // C-API functions
 //==============================================================================
 
-/*
 extern "C" int
 openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
 {
+  /*
   if (!index_mesh) {
     set_errmsg("Mesh index argument is a null pointer.");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -90,8 +90,10 @@ openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
 
   // Output the mesh.
   *index_mesh = filt->mesh();
+  */
   return 0;
 }
+/*
 
 extern "C" int
 openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)

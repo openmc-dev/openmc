@@ -138,7 +138,6 @@ class Discrete(Univariate):
 
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
-
         return np.random.choice(self.x, n_samples, p=self.p)
 
     def normalize(self):
@@ -891,6 +890,35 @@ class Tabular(Univariate):
             c[1:] = 0.5 * (p[:-1] + p[1:]) * np.diff(x)
 
         return np.cumsum(c)
+
+    def mean(self):
+        """Compute the mean of the tabular distribution"""
+        if not self.interpolation in ('histogram', 'linear-linear'):
+            raise NotImplementedError('Can only compute mean for tabular '
+                                      'distributions using histogram '
+                                      'or linear-linear interpolation.')
+        if self.interpolation == 'linear-linear':
+            mean = 0.0
+            self.normalize()
+            for i in range(1, len(self.x)):
+                y_min = self.p[i-1]
+                y_max = self.p[i]
+                x_min = self.x[i-1]
+                x_max = self.x[i]
+
+                m = (y_max - y_min) / (x_max - x_min)
+
+                exp_val = (1./3.) * m * (x_max**3 - x_min**3)
+                exp_val += 0.5 * m * x_min * (x_min**2 - x_max**2)
+                exp_val += 0.5 * y_min * (x_max**2 - x_min**2)
+                mean += exp_val
+
+        elif self.interpolation == 'histogram':
+            mean = 0.5 * (self.x[:-1] + self.x[1:])
+            mean *= np.diff(self.cdf())
+            mean = sum(mean)
+
+        return mean
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""

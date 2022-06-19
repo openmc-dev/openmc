@@ -40,7 +40,6 @@ def test_discrete():
     assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
 
 
-
 def test_merge_discrete():
     x1 = [0.0, 1.0, 10.0]
     p1 = [0.3, 0.2, 0.5]
@@ -164,38 +163,16 @@ def test_tabular():
     # test linear-linear sampling
     d = openmc.stats.Tabular(x, p)
 
-    # compute the expected value (mean) of the
-    # piecewise pdf
-    mean = 0.0
-    d.normalize()
-    for i in range(1, len(x)):
-        y_min = d.p[i-1]
-        y_max = d.p[i]
-        x_min = d.x[i-1]
-        x_max = d.x[i]
-
-        m = (y_max - y_min) / (x_max - x_min)
-
-        exp_val = (1./3.) * m * (x_max**3 - x_min**3)
-        exp_val += 0.5 * m * x_min * (x_min**2 - x_max**2)
-        exp_val += 0.5 * y_min * (x_max**2 - x_min**2)
-
-        mean += exp_val
-
     n_samples = 100_000
     samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(mean, rel=1e-03)
+    assert samples.mean() == pytest.approx(d.mean(), rel=1e-03)
 
     # test histogram sampling
     d = openmc.stats.Tabular(x, p, interpolation='histogram')
     d.normalize()
 
-    mean = 0.5 * (x[:-1] + x[1:])
-    mean *= np.diff(d.cdf())
-    mean = sum(mean)
-
     samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(mean, rel=1e-03)
+    assert samples.mean() == pytest.approx(d.mean(), rel=1e-03)
 
 
 def test_legendre():

@@ -226,9 +226,8 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
 
   // Get energy bins from energy index, otherwise use default
   if (energy_index != -1) {
-    auto efilt_base = model::tally_filters[energy_index].get();
-    auto* efilt = dynamic_cast<EnergyFilter*>(efilt_base);
-    cmfd::egrid = efilt->bins();
+    Filter& efilt = model::tally_filters[energy_index];
+    cmfd::egrid = efilt.bins();
   } else {
     cmfd::egrid = {0.0, INFTY};
   }

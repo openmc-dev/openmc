@@ -108,7 +108,7 @@ Tally::Tally(pugi::xml_node node)
     }
 
     // Store the index of the filter
-    filters.push_back(model::tally_filters[it->second].get());
+    filters.push_back(&model::tally_filters[it->second]);
   }
 
   // Set the filters
@@ -119,18 +119,16 @@ Tally::Tally(pugi::xml_node node)
   int particle_filter_index = C_NONE;
   for (gsl::index j = 0; j < filters_.size(); ++j) {
     int i_filter = filters_[j];
-    const auto& f = model::tally_filters[i_filter].get();
+    Filter& f = model::tally_filters[i_filter];
 
-    auto pf = dynamic_cast<ParticleFilter*>(f);
-    if (pf) particle_filter_index = i_filter;
+    if (f.get_type() == ParticleFilter) particle_filter_index = i_filter;
 
     // Change the tally estimator if a filter demands it
-    std::string filt_type = f->type();
+    std::string filt_type = f.type();
     if (filt_type == "energyout" || filt_type == "legendre") {
       estimator_ = TallyEstimator::ANALOG;
     } else if (filt_type == "sphericalharmonics") {
-      auto sf = dynamic_cast<SphericalHarmonicsFilter*>(f);
-      if (sf->cosine() == SphericalHarmonicsCosine::scatter) {
+      if (f.cosine() == SphericalHarmonicsCosine::scatter) {
         estimator_ = TallyEstimator::ANALOG;
       }
     } else if (filt_type == "spatiallegendre" || filt_type == "zernike"
@@ -182,9 +180,8 @@ Tally::Tally(pugi::xml_node node)
     }
   } else {
     if (particle_filter_index >= 0) {
-      const auto& f = model::tally_filters[particle_filter_index].get();
-      auto pf = dynamic_cast<ParticleFilter*>(f);
-      for (auto p : pf->particles()) {
+      Filter& pf = model::tally_filters[particle_filter_index];
+      for (auto p : pf.particles()) {
         if (p != Particle::Type::neutron) {
           warning(fmt::format("Particle filter other than NEUTRON used with "
             "photon transport turned off. All tallies for particle type {}"
@@ -333,9 +330,9 @@ Tally::set_filters(gsl::span<Filter*> filters)
     filters_.push_back(model::filter_map.at(f->id()));
 
     // Keep track of indices for special filters.
-    if (dynamic_cast<const EnergyoutFilter*>(f)) {
+    if (f->get_type() == FilterType::EnergyoutFilter) {
       energyout_filter_ = i;
-    } else if (dynamic_cast<const DelayedGroupFilter*>(f)) {
+    } else if (f->get_type() == FilterType::DelayedGroupFilter) {
       delayedgroup_filter_ = i;
     }
   }
@@ -347,7 +344,7 @@ Tally::set_filters(gsl::span<Filter*> filters)
   int stride = 1;
   for (int i = n-1; i >= 0; --i) {
     strides_[i] = stride;
-    stride *= model::tally_filters[filters_[i]]->n_bins();
+    stride *= model::tally_filters[filters_[i]].n_bins();
   }
   n_filter_bins_ = stride;
 }
@@ -377,16 +374,16 @@ Tally::set_scores(const std::vector<std::string>& scores)
   bool surface_present = false;
   bool meshsurface_present = false;
   for (auto i_filt : filters_) {
-    const auto* filt {model::tally_filters[i_filt].get()};
-    if (dynamic_cast<const LegendreFilter*>(filt)) {
+    Filter& filt {model::tally_filters[i_filt]};
+    if (filt.get_type() ==  FilterType::LegendreFilter) {
       legendre_present = true;
-    } else if (dynamic_cast<const CellFromFilter*>(filt)) {
+    } else if (filt.get_type() == FilterType::CellFromFilter) {
       cellfrom_present = true;
-    } else if (dynamic_cast<const CellFilter*>(filt)) {
+    } else if (filt.get_type() == FilterType::CellFilter) {
       cell_present = true;
-    } else if (dynamic_cast<const SurfaceFilter*>(filt)) {
+    } else if (filt.get_type() == FilterType::SurfaceFilter) {
       surface_present = true;
-    } else if (dynamic_cast<const MeshSurfaceFilter*>(filt)) {
+    } else if (filt.get_type() == FilterType::MeshSurfaceFilter) {
       meshsurface_present = true;
     }
   }
@@ -688,17 +685,22 @@ void read_tallies_xml()
   // READ FILTER DATA
   
   // Determine number of filters
-  model::n_tally_filters = std::distance(root.children("filter").begin(), root.children("filter").end());
+  int n_tally_filters = std::distance(root.children("filter").begin(), root.children("filter").end());
   
-  if (model::n_tally_filters > 0 ) {
+  if (n_tally_filters > 0 ) {
     // Allocate the filter array
-    model::tally_filters = static_cast<Filter*>(malloc(model::n_tally_filters * sizeof(Filter)));
+    model::tally_filters = static_cast<Filter*>(malloc(n_tally_filters * sizeof(Filter)));
 
     // Initialize user filters with placement new operator
     int i = 0;
     for (auto node_filt : root.children("filter")) {
       new (model::tally_filters + i) Filter(node_filt, i);
       i++;
+
+      // The number of tally filters gets updated here, rather than at the end,
+      // as the Filter constructor loops through
+      // all filters so far created to check if the given id_ is unique or not
+      model::n_tally_filters = i;
     }
   }
 
@@ -867,7 +869,9 @@ free_memory_tally()
   model::tally_derivs.clear();
   model::tally_deriv_map.clear();
 
-  model::tally_filters.clear();
+  //model::tally_filters.clear();
+  free(model::tally_filters);
+  model::n_tally_filters = 0;
   model::filter_map.clear();
 
   model::tallies.clear();
@@ -1165,7 +1169,7 @@ openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices)
     std::vector<Filter*> filters;
     for (gsl::index i = 0; i < n; ++i) {
       int32_t i_filt = indices[i];
-      filters.push_back(model::tally_filters.at(i_filt).get());
+      filters.push_back(&model::tally_filters[i_filt]);
     }
     model::tallies[index]->set_filters(filters);
   } catch (const std::out_of_range& ex) {

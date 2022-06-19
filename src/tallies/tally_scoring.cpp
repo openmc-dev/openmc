@@ -66,7 +66,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
     auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
       match.bins_weights_length_ = 0;
-      for (auto i = 0; i < model::tally_filters[i_filt]->n_bins(); ++i) {
+      for (auto i = 0; i < model::tally_filters[i_filt].n_bins(); ++i) {
         assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
         match.bins_[match.bins_weights_length_] = i;
         match.weights_[match.bins_weights_length_] = 1.0;
@@ -106,7 +106,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
     if (!match.bins_present_) {
       match.bins_.clear();
       match.weights_.clear();
-      for (auto i = 0; i < model::tally_filters[i_filt]->n_bins(); ++i) {
+      for (auto i = 0; i < model::tally_filters[i_filt].n_bins(); ++i) {
         match.bins_.push_back(i);
         match.weights_.push_back(1.0);
       }
@@ -422,8 +422,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
   auto i_bin = p.filter_matches_[i_eout_filt].i_bin_;
   auto bin_energyout = p.filter_matches_[i_eout_filt].bins_[i_bin];
 
-  const EnergyoutFilter& eo_filt
-    {*dynamic_cast<EnergyoutFilter*>(model::tally_filters[i_eout_filt].get())};
+  const Filter& eo_filt {model::tally_filters[i_eout_filt]};
 
   // Note that the score below is weighted by keff. Since the creation of
   // fission sites is weighted such that it is expected to create n_particles
@@ -506,8 +505,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
         // Get the index of the delayed group filter
         auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
 
-        const DelayedGroupFilter& dg_filt {*dynamic_cast<DelayedGroupFilter*>(
-          model::tally_filters[i_dg_filt].get())};
+        const Filter& dg_filt {model::tally_filters[i_dg_filt]};
 
         // Loop over delayed group bins until the corresponding bin is found
         for (auto d_bin = 0; d_bin < dg_filt.n_bins(); ++d_bin) {
@@ -742,9 +740,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (i_nuclide >= 0) {
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt{model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin];
@@ -817,9 +813,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
         const auto& rx {nuc.fission_rx_[0]->obj()};
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt{model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin];
@@ -1334,9 +1328,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
           && data::nuclides[p.event_nuclide_].fissionable_) {
           if (tally.delayedgroup_filter_ != C_NONE) {
             auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-            const DelayedGroupFilter& filt
-              {*dynamic_cast<DelayedGroupFilter*>(
-              model::tally_filters[i_dg_filt].get())};
+            const Filter& filt{model::tally_filters[i_dg_filt]};
             // Tally each delayed group bin individually
             for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
               auto dg = filt.groups()[d_bin];
@@ -1372,9 +1364,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
         // contribution to the fission bank to the score.
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt {model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin];
@@ -1404,9 +1394,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
           const auto& rx {nuc.fission_rx_[0]->obj()};
           if (tally.delayedgroup_filter_ != C_NONE) {
             auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-            const DelayedGroupFilter& filt
-              {*dynamic_cast<DelayedGroupFilter*>(
-              model::tally_filters[i_dg_filt].get())};
+            const Filter& filt {model::tally_filters[i_dg_filt]};
             // Tally each delayed group bin individually
             for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
               auto d = filt.groups()[d_bin];
@@ -1467,9 +1455,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
             score += simulation::keff * bank.wgt * rate * flux;
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-              const DelayedGroupFilter& filt
-                {*dynamic_cast<DelayedGroupFilter*>(
-                model::tally_filters[i_dg_filt].get())};
+              const Filter& filt {model::tally_filters[i_dg_filt]};
               // Find the corresponding filter bin and then score
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                 auto d = filt.groups()[d_bin];
@@ -2048,9 +2034,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
           // contribution to the fission bank to the score.
           if (tally.delayedgroup_filter_ != C_NONE) {
             auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-            const DelayedGroupFilter& filt
-              {*dynamic_cast<DelayedGroupFilter*>(
-              model::tally_filters[i_dg_filt].get())};
+            const Filter& filt {model::tally_filters[i_dg_filt]};
             // Tally each delayed group bin individually
             for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
               auto d = filt.groups()[d_bin];
@@ -2078,9 +2062,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
       } else {
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt {model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin] - 1;
@@ -2116,9 +2098,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
           if (abs_xs > 0) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-              const DelayedGroupFilter& filt
-                {*dynamic_cast<DelayedGroupFilter*>(
-                model::tally_filters[i_dg_filt].get())};
+              const Filter& filt {model::tally_filters[i_dg_filt]};
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                 auto d = filt.groups()[d_bin] - 1;
@@ -2186,9 +2166,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
               }
               if (tally.delayedgroup_filter_ != C_NONE) {
                 auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-                const DelayedGroupFilter& filt
-                  {*dynamic_cast<DelayedGroupFilter*>(
-                  model::tally_filters[i_dg_filt].get())};
+                const Filter& filt {model::tally_filters[i_dg_filt]};
                 // Find the corresponding filter bin and then score
                 for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                   auto dg = filt.groups()[d_bin];
@@ -2205,9 +2183,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
       } else {
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt {model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin] - 1;

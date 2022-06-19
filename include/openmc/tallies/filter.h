@@ -115,6 +115,7 @@ public:
   // Methods
 
   std::string type() const;
+  FilterType get_type() const {return type_};
 
   //! Matches a tally event to a set of filter bins and weights.
   //!

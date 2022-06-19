@@ -166,8 +166,9 @@ void Filter::set_id(int32_t id)
   // If no ID specified, auto-assign next ID in sequence
   if (id == C_NONE) {
     id = 0;
-    for (const auto& f : model::tally_filters) {
-      id = std::max(id, f->id_);
+    for (int i = 0; i < model::n_tally_filters; i++) {
+      Filter& f = model::tally_filters[i];
+      id = std::max(id, f.id_);
     }
     ++id;
   }

@@ -161,7 +161,7 @@ def test_tabular():
     assert d.interpolation == 'linear-linear'
     assert len(d) == len(x)
 
-    # test linear-lienar sampling
+    # test linear-linear sampling
     d = openmc.stats.Tabular(x, p)
 
     # compute the expected value (mean) of the

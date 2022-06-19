@@ -381,7 +381,7 @@ class PowerLaw(Univariate):
         pwr = self.n + 1
         offset = self.a**pwr
         span = self.b**pwr - offset
-        return np.power(offset + xi * span, (1/pwr))
+        return np.power(offset + xi * span, 1/pwr)
 
     def to_xml_element(self, element_name):
         """Return XML representation of the power law distribution
@@ -463,8 +463,8 @@ class Maxwell(Univariate):
     @staticmethod
     def sample_maxwell(t, n_samples):
         r1, r2, r3 = np.random.rand(3, n_samples)
-        c = np.power(np.cos(0.5 * np.pi * r3), 2)
-        return -t * (np.log(r1) + np.log(r2) * c)
+        c = np.cos(0.5 * np.pi * r3)
+        return -t * (np.log(r1) + np.log(r2) * c * c)
 
     def to_xml_element(self, element_name):
         """Return XML representation of the Maxwellian distribution
@@ -887,7 +887,7 @@ class Tabular(Univariate):
         if self.interpolation == 'histogram':
             c[1:] = p[:-1] * np.diff(x)
         elif self.interpolation == 'linear-linear':
-            c[1:] = 0.5 * (p[0:-1] + p[1:]) * np.diff(x)
+            c[1:] = 0.5 * (p[:-1] + p[1:]) * np.diff(x)
 
         return np.cumsum(c)
 
@@ -909,7 +909,7 @@ class Tabular(Univariate):
         # get CDF bins that are above the
         # sampled values
         c_i = np.full(n_samples, cdf[0])
-        cdf_idx = np.zeros((n_samples,), dtype=int)
+        cdf_idx = np.zeros(n_samples, dtype=int)
         for i, val in enumerate(cdf[:-1]):
             mask = xi > val
             c_i[mask] = val
@@ -918,8 +918,8 @@ class Tabular(Univariate):
         # get table values at each index where
         # the random number is less than the next cdf
         # entry
-        x_i = np.array([self.x[i] for i in cdf_idx])
-        p_i = np.array([p[i] for i in cdf_idx])
+        x_i = self.x[cdf_idx]
+        p_i = self.p[cdf_idx]
 
         # TODO: check that probability doesn't exceed the last value
 
@@ -936,8 +936,8 @@ class Tabular(Univariate):
         elif self.interpolation == 'linear-linear':
             # get variable and probability values for the
             # next entry
-            x_i1 = np.array([self.x[i+1] for i in cdf_idx])
-            p_i1 = np.array([p[i+1] for i in cdf_idx])
+            x_i1 = self.x[cdf_idx + 1]
+            p_i1 = self.p[cdf_idx + 1]
             # compute slope between entries
             m = (p_i1 - p_i) / (x_i1 - x_i)
             # set values for zero slope

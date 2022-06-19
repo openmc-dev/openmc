@@ -923,8 +923,6 @@ class Tabular(Univariate):
         x_i = self.x[cdf_idx]
         p_i = self.p[cdf_idx]
 
-        # TODO: check that probability doesn't exceed the last value
-
         if self.interpolation == 'histogram':
             # mask where probability is greater than zero
             pos_mask = p_i > 0.0
@@ -934,7 +932,9 @@ class Tabular(Univariate):
                            / p_i[pos_mask]
             # probabilities smaller than zero are set to the random number value
             p_i[~pos_mask] = x_i[~pos_mask]
-            return p_i
+
+            samples_out = p_i
+
         elif self.interpolation == 'linear-linear':
             # get variable and probability values for the
             # next entry
@@ -950,7 +950,10 @@ class Tabular(Univariate):
             quad = np.power(p_i[non_zero], 2) + 2.0 * m[non_zero] * (xi[non_zero] - c_i[non_zero])
             quad[quad < 0.0] = 0.0
             m[non_zero] = x_i[non_zero] + (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
-            return m
+            samples_out = m
+
+        assert all(samples_out < self.x[-1])
+        return samples_out
 
     def to_xml_element(self, element_name):
         """Return XML representation of the tabular distribution

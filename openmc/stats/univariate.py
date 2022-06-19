@@ -139,14 +139,7 @@ class Discrete(Univariate):
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
 
-        if len(self.x) == 1:
-            return np.full((n_samples), self.x[0])
-
-        xi = np.random.rand(n_samples)
-        out = np.zeros_like(xi)
-        for i, c in enumerate(self.cdf()[:-1]):
-            out[xi >= c] = self.x[i]
-        return out
+        return np.random.choice(self.x, n_samples, p=self.p)
 
     def normalize(self):
         norm = sum(self.p)

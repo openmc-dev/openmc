@@ -142,6 +142,7 @@ class Discrete(Univariate):
         return np.random.choice(self.x, n_samples, p=self.p)
 
     def normalize(self):
+        """Normalize the probabilities stored on the distribution"""
         norm = sum(self.p)
         self.p = [val / norm for val in self.p]
 
@@ -892,6 +893,7 @@ class Tabular(Univariate):
         return np.cumsum(c)
 
     def normalize(self):
+        """Normalize the probabilities stored on the distribution"""
         self.p = np.asarray(self.p) / self.cdf().max()
 
     def sample(self, n_samples=1, seed=None):
@@ -1115,6 +1117,7 @@ class Mixture(Univariate):
         return out
 
     def normalize(self):
+        """Normalize the probabilities stored on the distribution"""
         norm = sum(self.probability)
         self.probability = [val / norm for val in self.probability]
 

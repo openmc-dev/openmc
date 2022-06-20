@@ -40,6 +40,24 @@ extern "C" size_t tally_filters_size()
 // Filter implementation
 //==============================================================================
 
+void Filter::copy_to_device()
+{
+  //TODO: Need to Map the unordered map fields to device
+  //map_.copy_to_device();
+  //imap_.copy_to_device();
+  
+  bins_.copy_to_device();
+  cells_.copy_to_device();
+  cell_instances_.copy_to_device();
+  groups_.copy_to_device();
+  energy_.copy_to_device();
+  y_.copy_to_device();
+  materials_.copy_to_device();
+  particles_.copy_to_device();
+  surfaces_.copy_to_device();
+  universes_.copy_to_device();
+}
+
 Filter::FilterType Filter::get_filter_type(const std::string& type)
 {
   if (type == "azimuthal") {

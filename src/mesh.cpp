@@ -71,6 +71,14 @@ inline bool check_intersection_point(double x1, double x0, double y1,
 // Mesh implementation
 //==============================================================================
 
+void Mesh::copy_to_device()
+{
+  lower_left_.copy_to_device();
+  upper_right_.copy_to_device();
+  shape_.copy_to_device();
+  width_.copy_to_device();
+}
+
 Mesh::Mesh(pugi::xml_node node)
 {
   // Copy mesh id

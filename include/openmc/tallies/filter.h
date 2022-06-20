@@ -292,6 +292,8 @@ public:
   void SpatialLegendreFilter_set_order(int order);
   void ZernikeFilter_set_order(int order);
   void ZernikeRadialFilter_set_order(int order);
+  
+  void copy_to_device();
 
   //----------------------------------------------------------------------------
   // Data members
@@ -333,9 +335,12 @@ private:
 
 namespace model {
   extern "C" int32_t n_filters;
+  // TODO: Need to declare the filter_map as target
   extern std::unordered_map<int, int> filter_map;
+  #pragma omp declare target
   extern Filter* tally_filters;
   extern int32_t n_tally_filters;
+  #pragma omp end declare target
 }
 
 //==============================================================================

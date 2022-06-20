@@ -33,9 +33,12 @@ class Mesh;
 
 namespace model {
 
+// TODO: Need to declare the mesh_map as target
 extern std::unordered_map<int32_t, int32_t> mesh_map;
+#pragma omp declare target
 extern Mesh* meshes;
 extern int32_t meshes_size;
+#pragma omp end declare target
 
 } // namespace model
 
@@ -155,6 +158,8 @@ public:
   bool intersects_1d(Position& r0, Position r1, int* ijk) const;
   bool intersects_2d(Position& r0, Position r1, int* ijk) const;
   bool intersects_3d(Position& r0, Position r1, int* ijk) const;
+ 
+  void copy_to_device();
 
   // Data members
   int id_ {-1};  //!< User-specified ID

@@ -5,7 +5,6 @@
 #define OPENMC_MESH_H
 
 #include <memory> // for unique_ptr
-#include <vector>
 #include <unordered_map>
 
 #include "hdf5.h"
@@ -15,6 +14,7 @@
 
 #include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/vector.h"
 
 #ifdef DAGMC
 #include "moab/Core.hpp"
@@ -152,21 +152,21 @@ public:
   //! \param[in] i Direction index
   double negative_grid_boundary(int* ijk, int i) const;
   
-  virtual bool intersects_1d(Position& r0, Position r1, int* ijk) const;
-  virtual bool intersects_2d(Position& r0, Position r1, int* ijk) const;
-  virtual bool intersects_3d(Position& r0, Position r1, int* ijk) const;
+  bool intersects_1d(Position& r0, Position r1, int* ijk) const;
+  bool intersects_2d(Position& r0, Position r1, int* ijk) const;
+  bool intersects_3d(Position& r0, Position r1, int* ijk) const;
 
   // Data members
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
   
   // Data members
-  xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
-  xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
+  vector<double> lower_left_; //!< Lower-left coordinates of mesh
+  vector<double> upper_right_; //!< Upper-right coordinates of mesh
+  vector<int> shape_; //!< Number of mesh elements in each dimension
   
   double volume_frac_; //!< Volume fraction of each mesh element
-  xt::xtensor<double, 1> width_; //!< Width of each mesh element
+  vector<double> width_; //!< Width of each mesh element
 };
 
 

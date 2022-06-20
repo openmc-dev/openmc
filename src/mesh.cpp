@@ -89,22 +89,22 @@ Mesh::Mesh(pugi::xml_node node)
     fatal_error("Must specify <dimension> on a regular mesh.");
   }
 
-  shape_ = get_node_xarray<int>(node, "dimension");
+  shape_ = get_node_array_ov<int>(node, "dimension");
   int n = n_dimension_ = shape_.size();
   if (n != 1 && n != 2 && n != 3) {
     fatal_error("Mesh must be one, two, or three dimensions.");
   }
 
   // Check that dimensions are all greater than zero
-  if (xt::any(shape_ <= 0)) {
-    fatal_error("All entries on the <dimension> element for a tally "
-      "mesh must be positive.");
-  }
+  //if (xt::any(shape_ <= 0)) {
+  //  fatal_error("All entries on the <dimension> element for a tally "
+  //    "mesh must be positive.");
+  //}
 
   // Check for lower-left coordinates
   if (check_for_node(node, "lower_left")) {
     // Read mesh lower-left corner location
-    lower_left_ = get_node_xarray<double>(node, "lower_left");
+    lower_left_ = get_node_array_ov<double>(node, "lower_left");
   } else {
     fatal_error("Must specify <lower_left> on a mesh.");
   }
@@ -121,7 +121,7 @@ Mesh::Mesh(pugi::xml_node node)
       fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
     }
 
-    width_ = get_node_xarray<double>(node, "width");
+    width_ = get_node_array_ov<double>(node, "width");
 
     // Check to ensure width has same dimensions
     auto n = width_.size();
@@ -131,15 +131,16 @@ Mesh::Mesh(pugi::xml_node node)
     }
 
     // Check for negative widths
-    if (xt::any(width_ < 0.0)) {
-      fatal_error("Cannot have a negative <width> on a tally mesh.");
-    }
+    //if (xt::any(width_ < 0.0)) {
+    //  fatal_error("Cannot have a negative <width> on a tally mesh.");
+    //}
 
     // Set width and upper right coordinate
-    upper_right_ = xt::eval(lower_left_ + shape_ * width_);
-
+    for (int i = 0; i < lower_left_.size(); i++) {
+      upper_right_.push_back(lower_left_[i] + shape_[i] * width_[i]);
+    }
   } else if (check_for_node(node, "upper_right")) {
-    upper_right_ = get_node_xarray<double>(node, "upper_right");
+    upper_right_ = get_node_array_ov<double>(node, "upper_right");
 
     // Check to ensure width has same dimensions
     auto n = upper_right_.size();
@@ -149,19 +150,25 @@ Mesh::Mesh(pugi::xml_node node)
     }
 
     // Check that upper-right is above lower-left
-    if (xt::any(upper_right_ < lower_left_)) {
-      fatal_error("The <upper_right> coordinates must be greater than "
-        "the <lower_left> coordinates on a tally mesh.");
-    }
+    //if (xt::any(upper_right_ < lower_left_)) {
+    //  fatal_error("The <upper_right> coordinates must be greater than "
+    //    "the <lower_left> coordinates on a tally mesh.");
+    //}
 
     // Set width
-    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    for (int i = 0; i < upper_right_.size(); i++) {
+      width_.push_back((upper_right_[i] - lower_left_[i]) / shape_[i]);
+    }
   } else {
     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
   }
 
   // Set volume fraction
-  volume_frac_ = 1.0/xt::prod(shape_)();
+  int prod = shape_[0];
+  for (int i = 1; i < shape_.size(); i++) {
+    prod *= shape_[i]; 
+  }
+  volume_frac_ = 1.0/prod;
 }
 
 //==============================================================================
@@ -234,7 +241,11 @@ int Mesh::get_bin(Position r) const
 
 int Mesh::n_bins() const
 {
-  return xt::prod(shape_)();
+  int prod = shape_[0];
+  for (int i = 1; i < shape_.size(); i++) {
+    prod *= shape_[i]; 
+  }
+  return prod;
 }
 
 int Mesh::n_surface_bins() const
@@ -1294,8 +1305,11 @@ openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims)
   Mesh* mesh = &model::meshes[index];
 
   // Copy dimension
-  std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
-  mesh->shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
+  vector<int> shape;
+  for (int i = 0; i < n; i++) {
+    shape.push_back(dims[i]);
+  }
+  mesh->shape_ = shape;
   mesh->n_dimension_ = mesh->shape_.size();
   return 0;
 }
@@ -1308,7 +1322,7 @@ openmc_regular_mesh_get_params(int32_t index, double** ll, double** ur,
   if (int err = check_mesh_type<Mesh>(index)) return err;
   Mesh* m = &model::meshes[index];
 
-  if (m->lower_left_.dimension() == 0) {
+  if (m->lower_left_.size() == 0) {
     set_errmsg("Mesh parameters have not been set.");
     return OPENMC_E_ALLOCATE;
   }
@@ -1325,6 +1339,8 @@ extern "C" int
 openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
                                const double* ur, const double* width)
 {
+  fatal_error("setting regular mesh params from C interface not supported on device.");
+  /*
   if (int err = check_mesh_type<Mesh>(index)) return err;
   Mesh* m = &model::meshes[index];
 
@@ -1345,6 +1361,7 @@ openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+  */
 
   return 0;
 }

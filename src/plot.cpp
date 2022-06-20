@@ -475,7 +475,7 @@ Plot::set_meshlines(pugi::xml_node plot_node)
         } else {
           for (int i = 0; i < model::meshes.size(); ++i) {
             if (const auto* m
-                = dynamic_cast<const RegularMesh*>(model::meshes[i].get())) {
+                = model::meshes[i].get()) {
               if (m == simulation::ufs_mesh) {
                 index_meshlines_mesh_ = i;
               }
@@ -490,7 +490,7 @@ Plot::set_meshlines(pugi::xml_node plot_node)
         } else {
           for (int i = 0; i < model::meshes.size(); ++i) {
             if (const auto* m
-                = dynamic_cast<const RegularMesh*>(model::meshes[i].get())) {
+                = model::meshes[i].get()) {
               if (m == simulation::entropy_mesh) {
                 index_meshlines_mesh_ = i;
               }

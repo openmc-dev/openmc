@@ -48,8 +48,8 @@ extern double total_weight;  //!< Total source weight in a batch
 extern int64_t work_per_rank;         //!< number of particles per MPI rank
 #pragma omp end declare target
 
-extern const RegularMesh* entropy_mesh;
-extern const RegularMesh* ufs_mesh;
+extern const Mesh* entropy_mesh;
+extern const Mesh* ufs_mesh;
 
 extern std::vector<double> k_generation;
 extern std::vector<int64_t> work_index;

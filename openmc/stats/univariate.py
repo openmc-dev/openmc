@@ -1135,12 +1135,9 @@ class Mixture(Univariate):
 
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
-        xi = np.random.rand(n_samples)
-        idx = np.zeros_like(xi, dtype=int)
-        for i, c in enumerate(self.cdf()[:-1]):
-            idx[xi >= c] = i
+        idx = np.random.choice(self.distribution, n_samples, p=self.probability)
 
-        out = np.zeros_like(xi)
+        out = np.zeros_like(idx)
         for i in np.unique(idx):
             n_dist_samples = np.count_nonzero(idx == i)
             samples = self.distribution[i].sample(n_dist_samples)

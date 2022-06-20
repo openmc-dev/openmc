@@ -230,17 +230,17 @@ public:
   
   // Defined in header
   
-  const std::vector<int32_t>& cells() const { return cells_; }
-  const std::vector<CellInstance>& cell_instances() const { return cell_instances_; }
-  const std::vector<int>& groups() const { return groups_; }
+  const vector<int32_t>& cells() const { return cells_; }
+  const vector<CellInstance>& cell_instances() const { return cell_instances_; }
+  const vector<int>& groups() const { return groups_; }
   int32_t cell() const { return cell_; }
-  const std::vector<double>& energy() const { return energy_; }
-  const std::vector<double>& y() const { return y_; }
-  const std::vector<double>& bins() const { return bins_; }
+  const vector<double>& energy() const { return energy_; }
+  const vector<double>& y() const { return y_; }
+  const vector<double>& bins() const { return bins_; }
   bool matches_transport_groups() const { return matches_transport_groups_; }
   int order() const { return order_; }
-  std::vector<int32_t>& materials() { return materials_; }
-  const std::vector<int32_t>& materials() const { return materials_; }
+  vector<int32_t>& materials() { return materials_; }
+  const vector<int32_t>& materials() const { return materials_; }
   int32_t mesh() const {return mesh_;}
   void set_mesh(int32_t mesh){
     mesh_ = mesh;
@@ -249,7 +249,7 @@ public:
     if (type_ == FilterType::MeshSurfaceFilter)
       n_bins_ = model::meshes[mesh_].n_surface_bins();
   }
-  const std::vector<Particle::Type>& particles() const { return particles_; }
+  const vector<Particle::Type>& particles() const { return particles_; }
   SphericalHarmonicsCosine cosine() const { return cosine_; }
   LegendreAxis axis() const { return axis_; }
   double min() const { return min_; }
@@ -301,30 +301,30 @@ private:
   int n_bins_;
   int32_t id_ {C_NONE};
   gsl::index index_;
-  std::vector<double> bins_;
-  std::vector<int32_t> cells_;
+  vector<double> bins_;
+  vector<int32_t> cells_;
   std::unordered_map<int32_t, int> map_;
-  std::vector<CellInstance> cell_instances_;
+  vector<CellInstance> cell_instances_;
   std::unordered_map<CellInstance, gsl::index, CellInstanceHash> imap_;
-  std::vector<int> groups_;
+  vector<int> groups_;
   int32_t cell_;
   bool matches_transport_groups_ {false};
-  std::vector<double> energy_;
+  vector<double> energy_;
   double x_;
   // Note: there was a collision between EnergyFunction (vector y_) and Zernike (scalar y_), so Zernike uses yy_
-  std::vector<double> y_;
+  vector<double> y_;
   double yy_;
   double r_;
   int order_;
-  std::vector<int32_t> materials_;
+  vector<int32_t> materials_;
   int32_t mesh_;
-  std::vector<Particle::Type> particles_;
+  vector<Particle::Type> particles_;
   SphericalHarmonicsCosine cosine_ {SphericalHarmonicsCosine::particle};
   LegendreAxis axis_;
   double min_;
   double max_;
-  std::vector<int32_t> surfaces_;
-  std::vector<int32_t> universes_;
+  vector<int32_t> surfaces_;
+  vector<int32_t> universes_;
 };
 
 //==============================================================================

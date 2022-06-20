@@ -17,6 +17,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -42,7 +43,7 @@ int use_all_threads;
 
 Mesh* mesh;
 
-std::vector<double> egrid;
+vector<double> egrid;
 
 double norm;
 
@@ -229,7 +230,8 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
     Filter& efilt = model::tally_filters[energy_index];
     cmfd::egrid = efilt.bins();
   } else {
-    cmfd::egrid = {0.0, INFTY};
+    cmfd::egrid.push_back(0);
+    cmfd::egrid.push_back(INFTY);
   }
 }
 

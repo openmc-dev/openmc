@@ -13,6 +13,7 @@
 
 // explicit template instantiation definition
 template class std::vector<openmc::FilterMatch>;
+template class openmc::vector<openmc::FilterMatch>;
 
 namespace openmc {
 

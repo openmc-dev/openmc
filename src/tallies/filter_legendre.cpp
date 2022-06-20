@@ -27,8 +27,8 @@ void
 Filter::LegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
-  std::vector<double> wgt(n_bins_);
-  calc_pn_c(order_, p.mu_, wgt.data());
+  double wgt[FILTERMATCH_BINS_WEIGHTS_SIZE];
+  calc_pn_c(order_, p.mu_, wgt);
   for (int i = 0; i < n_bins_; i++) {
     //match.bins_.push_back(i);
     //match.weights_.push_back(wgt[i]);

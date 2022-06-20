@@ -13,7 +13,7 @@ Filter::MeshSurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimat
 {
   int starting_length = match.bins_weights_length_;
   //model::meshes[mesh_]->surface_bins_crossed(p, match.bins_);
-  model::meshes[mesh_]->surface_bins_crossed(p, match);
+  model::meshes[mesh_].surface_bins_crossed(p, match);
   int ending_length = match.bins_weights_length_;
   //for (auto b : match.bins_) match.weights_.push_back(1.0);
     //match.weights_.push_back(1.0);
@@ -24,7 +24,7 @@ Filter::MeshSurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimat
 std::string
 Filter::MeshSurfaceFilter_text_label(int bin) const
 {
-  auto& mesh = *model::meshes[mesh_];
+  auto& mesh = model::meshes[mesh_];
   int n_dim = mesh.n_dimension_;
 
   // Get flattend mesh index and surface index.

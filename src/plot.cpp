@@ -473,9 +473,9 @@ Plot::set_meshlines(pugi::xml_node plot_node)
         if (!simulation::ufs_mesh) {
           fatal_error(fmt::format("No UFS mesh for meshlines on plot {}", id_));
         } else {
-          for (int i = 0; i < model::meshes.size(); ++i) {
+          for (int i = 0; i < model::meshes_size; ++i) {
             if (const auto* m
-                = model::meshes[i].get()) {
+                = &model::meshes[i]) {
               if (m == simulation::ufs_mesh) {
                 index_meshlines_mesh_ = i;
               }
@@ -488,9 +488,9 @@ Plot::set_meshlines(pugi::xml_node plot_node)
         if (!simulation::entropy_mesh) {
           fatal_error(fmt::format("No entropy mesh for meshlines on plot {}", id_));
         } else {
-          for (int i = 0; i < model::meshes.size(); ++i) {
+          for (int i = 0; i < model::meshes_size; ++i) {
             if (const auto* m
-                = model::meshes[i].get()) {
+                = &model::meshes[i]) {
               if (m == simulation::entropy_mesh) {
                 index_meshlines_mesh_ = i;
               }
@@ -703,7 +703,7 @@ void draw_mesh_lines(Plot const& pl, ImageData& data)
 
   // Find the (axis-aligned) lines of the mesh that intersect this plot.
   auto axis_lines = model::meshes[pl.index_meshlines_mesh_]
-    ->plot(ll_plot, ur_plot);
+    .plot(ll_plot, ur_plot);
 
   // Find the bounds along the second axis (accounting for low-D meshes).
   int ax2_min, ax2_max;

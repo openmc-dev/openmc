@@ -245,9 +245,9 @@ public:
   void set_mesh(int32_t mesh){
     mesh_ = mesh;
     if (type_ == FilterType::MeshFilter)
-      n_bins_ = model::meshes[mesh_]->n_bins();
+      n_bins_ = model::meshes[mesh_].n_bins();
     if (type_ == FilterType::MeshSurfaceFilter)
-      n_bins_ = model::meshes[mesh_]->n_surface_bins();
+      n_bins_ = model::meshes[mesh_].n_surface_bins();
   }
   const std::vector<Particle::Type>& particles() const { return particles_; }
   SphericalHarmonicsCosine cosine() const { return cosine_; }

@@ -34,7 +34,8 @@ class Mesh;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> mesh_map;
-extern std::vector<std::unique_ptr<Mesh>> meshes;
+extern Mesh* meshes;
+extern int32_t meshes_size;
 
 } // namespace model
 
@@ -45,7 +46,7 @@ public:
   // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);
-  virtual ~Mesh() = default;
+  ~Mesh() = default;
 
   // Methods
 
@@ -74,15 +75,15 @@ public:
   int get_bin(Position r) const;
 
   //! Get the number of mesh cells.
-  virtual int n_bins() const;
+  int n_bins() const;
 
   //! Get the number of mesh cell surfaces.
-  virtual int n_surface_bins() const;
+  int n_surface_bins() const;
 
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
-  virtual void to_hdf5(hid_t group) const;
+  void to_hdf5(hid_t group) const;
 
   //! Find the mesh lines that intersect an axis-aligned slice plot
   //

@@ -870,6 +870,9 @@ free_memory_tally()
   model::tally_deriv_map.clear();
 
   //model::tally_filters.clear();
+  for (int i = 0; i < model::n_tally_filters; i++) {
+    model::tally_filters[i].~Filter();
+  }
   free(model::tally_filters);
   model::n_tally_filters = 0;
   model::filter_map.clear();

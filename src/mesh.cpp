@@ -36,7 +36,8 @@ namespace openmc {
 namespace model {
 
 std::unordered_map<int32_t, int32_t> mesh_map;
-std::vector<std::unique_ptr<Mesh>> meshes;
+Mesh* meshes;
+int32_t meshes_size;
 
 } // namespace model
 
@@ -1170,7 +1171,7 @@ void RectilinearMesh::to_hdf5(hid_t group) const
 int
 check_mesh(int32_t index)
 {
-  if (index < 0 || index >= model::meshes.size()) {
+  if (index < 0 || index >= model::meshes_size) {
     set_errmsg("Index in meshes array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -1183,7 +1184,7 @@ check_mesh_type(int32_t index)
 {
   if (int err = check_mesh(index)) return err;
 
-  T* mesh = dynamic_cast<T*>(model::meshes[index].get());
+  T* mesh = dynamic_cast<T*>(&model::meshes[index]);
   if (!mesh) {
     set_errmsg("This function is not valid for input mesh.");
     return OPENMC_E_INVALID_TYPE;
@@ -1221,7 +1222,9 @@ extern "C" int
 openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
                      int32_t* index_end)
 {
-  if (index_start) *index_start = model::meshes.size();
+      fatal_error("Extending Meshes Not Yet Supported On Device!");
+      /*
+  if (index_start) *index_start = model::meshes_size;
   std::string mesh_type;
 
   for (int i = 0; i < n; ++i) {
@@ -1236,6 +1239,7 @@ openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
   }
   if (index_end) *index_end = model::meshes.size() - 1;
 
+  */
   return 0;
 }
 
@@ -1257,7 +1261,7 @@ extern "C" int
 openmc_mesh_get_id(int32_t index, int32_t* id)
 {
   if (int err = check_mesh(index)) return err;
-  *id = model::meshes[index]->id_;
+  *id = model::meshes[index].id_;
   return 0;
 }
 
@@ -1266,7 +1270,7 @@ extern "C" int
 openmc_mesh_set_id(int32_t index, int32_t id)
 {
   if (int err = check_mesh(index)) return err;
-  model::meshes[index]->id_ = id;
+  model::meshes[index].id_ = id;
   model::mesh_map[id] = index;
   return 0;
 }
@@ -1276,7 +1280,7 @@ extern "C" int
 openmc_regular_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
   if (int err = check_mesh_type<Mesh>(index)) return err;
-  Mesh* mesh = model::meshes[index].get();
+  Mesh* mesh = &model::meshes[index];
   *dims = mesh->shape_.data();
   *n = mesh->n_dimension_;
   return 0;
@@ -1287,7 +1291,7 @@ extern "C" int
 openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
   if (int err = check_mesh_type<Mesh>(index)) return err;
-  Mesh* mesh = model::meshes[index].get();
+  Mesh* mesh = &model::meshes[index];
 
   // Copy dimension
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
@@ -1302,7 +1306,7 @@ openmc_regular_mesh_get_params(int32_t index, double** ll, double** ur,
                                double** width, int* n)
 {
   if (int err = check_mesh_type<Mesh>(index)) return err;
-  Mesh* m = model::meshes[index].get();
+  Mesh* m = &model::meshes[index];
 
   if (m->lower_left_.dimension() == 0) {
     set_errmsg("Mesh parameters have not been set.");
@@ -1322,7 +1326,7 @@ openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
                                const double* ur, const double* width)
 {
   if (int err = check_mesh_type<Mesh>(index)) return err;
-  Mesh* m = model::meshes[index].get();
+  Mesh* m = &model::meshes[index];
 
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
@@ -1989,6 +1993,13 @@ UnstructuredMesh::write(std::string base_filename) const {
 
 void read_meshes(pugi::xml_node root)
 {
+  // Count the number of materials
+  model::meshes_size = std::distance(root.children("mesh").begin(), root.children("mesh").end());
+  
+  // Resize the mesh array
+  model::meshes = static_cast<Mesh*>(malloc(model::meshes_size * sizeof(Mesh)));
+
+  int i = 0;
   for (auto node : root.children("mesh")) {
     std::string mesh_type;
     if (check_for_node(node, "type")) {
@@ -1999,7 +2010,7 @@ void read_meshes(pugi::xml_node root)
 
     // Read mesh and add to vector
     if (mesh_type == "regular") {
-      model::meshes.push_back(std::make_unique<Mesh>(node));
+      new (model::meshes + i) Mesh(node);
     } else if (mesh_type == "rectilinear") {
       fatal_error("Rectilinear Meshes Not Yet Supported On Device!");
       //model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
@@ -2015,7 +2026,8 @@ void read_meshes(pugi::xml_node root)
     }
 
     // Map ID to position in vector
-    model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
+    model::mesh_map[model::meshes[i].id_] = i;
+    i++;
   }
 }
 
@@ -2023,15 +2035,16 @@ void meshes_to_hdf5(hid_t group)
 {
   // Write number of meshes
   hid_t meshes_group = create_group(group, "meshes");
-  int32_t n_meshes = model::meshes.size();
+  int32_t n_meshes = model::meshes_size;
   write_attribute(meshes_group, "n_meshes", n_meshes);
 
   if (n_meshes > 0) {
     // Write IDs of meshes
     std::vector<int> ids;
-    for (const auto& m : model::meshes) {
-      m->to_hdf5(meshes_group);
-      ids.push_back(m->id_);
+    for (int32_t i = 0; i < model::meshes_size; i++) {
+      Mesh& m = model::meshes[i];
+      m.to_hdf5(meshes_group);
+      ids.push_back(m.id_);
     }
     write_attribute(meshes_group, "ids", ids);
   }
@@ -2041,10 +2054,14 @@ void meshes_to_hdf5(hid_t group)
 
 void free_memory_mesh()
 {
-  model::meshes.clear();
+  for (int i = 0; i < model::meshes_size; i++) {
+    model::meshes[i].~Mesh();
+  }
+  free(model::meshes);
+  model::meshes_size = 0;
   model::mesh_map.clear();
 }
 
-extern "C" int n_meshes() { return model::meshes.size(); }
+extern "C" int n_meshes() { return model::meshes_size; }
 
 } // namespace openmc

@@ -222,7 +222,7 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
   openmc_mesh_filter_get_mesh(meshfilter_index, &mesh_index);
 
   // Get mesh from mesh index
-  cmfd::mesh = model::meshes[mesh_index].get();
+  cmfd::mesh = &model::meshes[mesh_index];
 
   // Get energy bins from energy index, otherwise use default
   if (energy_index != -1) {

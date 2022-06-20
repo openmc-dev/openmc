@@ -35,7 +35,7 @@ Filter::MeshFilter_get_all_bins(const Particle& p, TallyEstimator estimator, Fil
 const
 {
   if (estimator != TallyEstimator::TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(p.r());
+    auto bin = model::meshes[mesh_].get_bin(p.r());
     if (bin >= 0) {
       //match.bins_.push_back(bin);
       //match.weights_.push_back(1.0);
@@ -45,20 +45,20 @@ const
     }
   } else {
     //model::meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
-    model::meshes[mesh_]->bins_crossed(p, match);
+    model::meshes[mesh_].bins_crossed(p, match);
   }
 }
 
 void
 Filter::MeshFilter_to_statepoint(hid_t filter_group) const
 {
-  write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
+  write_dataset(filter_group, "bins", model::meshes[mesh_].id_);
 }
 
 std::string
 Filter::MeshFilter_text_label(int bin) const
 {
-  auto& mesh = *model::meshes.at(mesh_);
+  auto& mesh = model::meshes[mesh_];
   return mesh.bin_label(bin);
 }
 

@@ -38,6 +38,17 @@ def test_remove_nuclide():
     assert m.nuclides[1].percent == 2.0
 
 
+def test_remove_elements():
+    """Test removing elements."""
+    m = openmc.Material()
+    for elem, percent in [('Li', 1.0), ('Be', 1.0)]:
+        m.add_element(elem, percent)
+    m.remove_nuclide('Li')
+    assert len(m.nuclides) == 1
+    assert m.nuclides == ['Be9']
+    assert m.nuclides[0].percent == 1.0
+
+
 def test_elements():
     """Test adding elements."""
     m = openmc.Material()

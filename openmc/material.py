@@ -152,9 +152,10 @@ class Material(IDManagerMixin):
         for key, value in atoms_per_barn_cm2.items():
             half_life = openmc.data.half_life(key)
             if half_life:
-                atoms = value[1] * self.volume * 1e24
-                activity = math.log(2) * atoms / half_life
+                atoms = value[1] * self.volume
+                activity = atoms / half_life
                 total_activity += activity
+        total_activity = math.log(2) * total_activity * 1e24
 
         return total_activity
 

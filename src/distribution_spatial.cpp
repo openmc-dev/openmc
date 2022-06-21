@@ -181,6 +181,31 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 }
 
 //==============================================================================
+// MeshIndependent implementation
+//==============================================================================
+
+// Loosely adapted Patrick's code shown here
+MeshIndependent::MeshIndependent(pugi::xml_node node)
+{
+  // No in-tet distributions implemented, could include distributions for the barycentric coords
+  
+  int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
+  const auto& mesh_ptr = model::meshes[mesh_id];
+
+  // line from Patrick code, unsure of use
+  // int bin = mesh_ptr->get_bin();
+  const UnstructuredMesh* umesh_ptr_ = dynamic_cast<UnstructuredMesh*>(mesh_ptr.get());
+  if (!umesh_ptr_) {fatal_error("Mesh passed to spatial distribution is not an unstructured mesh object"); }
+}
+
+Position MeshIndependent::sample(uint64_t* seed) const
+{ 
+  Position sampled_ = umesh_ptr_->sample(seed);
+  return sampled_;
+}
+
+
+//==============================================================================
 // SpatialBox implementation
 //==============================================================================
 

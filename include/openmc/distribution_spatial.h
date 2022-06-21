@@ -5,6 +5,7 @@
 
 #include "openmc/distribution.h"
 #include "openmc/position.h"
+#include "openmc/mesh.h"
 
 namespace openmc {
 
@@ -92,6 +93,24 @@ private:
   UPtrDist cos_theta_; //!< Distribution of cos_theta coordinates
   UPtrDist phi_;       //!< Distribution of phi coordinates
   Position origin_;    //!< Cartesian coordinates of the sphere center
+};
+
+//==============================================================================
+//! Distribution of points within a mesh
+//==============================================================================
+
+class MeshIndependent : public SpatialDistribution {
+public:
+  explicit MeshIndependent(pugi::xml_node node);
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const;
+
+private:
+  UnstructuredMesh* umesh_ptr_;
+  Position sampled_;
 };
 
 //==============================================================================

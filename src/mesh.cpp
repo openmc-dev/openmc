@@ -2087,7 +2087,8 @@ std::string MOABMesh::library() const
 // Sample position within a tet for MOAB type tets
 Position MOABMesh::sample(uint64_t* seed) const {
   // Get bin # assuming equal weights, IMP weigh by activity
-  int64_t tet_bin = round(n_bins()*prn(seed));
+  // This may underweigh first and last bins
+  int64_t tet_bin = trunc(n_bins()*prn(seed));
 
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(tet_bin);
 
@@ -2569,7 +2570,8 @@ void LibMesh::initialize()
 // Sample position within a tet for LibMesh type tets
 Position LibMesh::sample(uint64_t* seed) const {
   // Get bin # assuming equal weights, IMP weigh by activity
-  int64_t tet_xi = round(n_bins()*prn(seed));
+  // This may underweight first and last bin by 1/2 TODO
+  int64_t tet_xi = trunc(n_bins()*prn(seed));
 
   const auto& elem = get_element_from_bin(tet_xi);
 

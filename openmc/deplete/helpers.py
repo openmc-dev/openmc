@@ -2,6 +2,7 @@
 Class for normalizing fission energy deposition
 """
 import bisect
+from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
 from itertools import product
@@ -17,13 +18,106 @@ from openmc.lib import (
     Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
 import openmc.lib
 from .abc import (
-    ReactionRateHelper, NormalizationHelper, FissionYieldHelper,
-    TalliedFissionYieldHelper)
+    ReactionRateHelper, NormalizationHelper, FissionYieldHelper)
 
 __all__ = (
     "DirectReactionRateHelper", "ChainFissionHelper", "EnergyScoreHelper"
-    "SourceRateHelper", "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
+    "SourceRateHelper", "TalliedFissionYieldHelper",
+    "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
     "AveragedFissionYieldHelper", "FluxCollapseHelper")
+
+class TalliedFissionYieldHelper(FissionYieldHelper):
+    """Abstract class for computing fission yields with tallies
+
+    Generates a basic fission rate tally in all burnable materials with
+    :meth:`generate_tallies`, and set nuclides to be tallied with
+    :meth:`update_tally_nuclides`. Subclasses will need to implement
+    :meth:`unpack` and :meth:`weighted_yields`.
+
+    Parameters
+    ----------
+    chain_nuclides : iterable of openmc.deplete.Nuclide
+        Nuclides tracked in the depletion chain. Not necessary
+        that all have yield data.
+
+    Attributes
+    ----------
+    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
+        Fission yields for all nuclides that only have one set of
+        fission yield data. Can be accessed as ``{parent: {product: yield}}``
+    results : None or numpy.ndarray
+        Tally results shaped in a manner useful to this helper.
+    """
+
+    _upper_energy = 20.0e6  # upper energy for tallies
+
+    def __init__(self, chain_nuclides):
+        super().__init__(chain_nuclides)
+        self._local_indexes = None
+        self._fission_rate_tally = None
+        self._tally_nucs = []
+        self.results = None
+
+    def generate_tallies(self, materials, mat_indexes):
+        """Construct the fission rate tally
+
+        Parameters
+        ----------
+        materials : iterable of :class:`openmc.lib.Material`
+            Materials to be used in :class:`openmc.lib.MaterialFilter`
+        mat_indexes : iterable of int
+            Indices of tallied materials that will have their fission
+            yields computed by this helper. Necessary as the
+            :class:`openmc.deplete.Operator` that uses this helper
+            may only burn a subset of all materials when running
+            in parallel mode.
+        """
+        self._local_indexes = asarray(mat_indexes)
+
+        # Tally group-wise fission reaction rates
+        self._fission_rate_tally = Tally()
+        self._fission_rate_tally.writable = False
+        self._fission_rate_tally.scores = ['fission']
+        self._fission_rate_tally.filters = [MaterialFilter(materials)]
+
+    def update_tally_nuclides(self, nuclides):
+        """Tally nuclides with non-zero density and multiple yields
+
+        Must be run after :meth:`generate_tallies`.
+
+        Parameters
+        ----------
+        nuclides : iterable of str
+            Potential nuclides to be tallied, such as those with
+            non-zero density at this stage.
+
+        Returns
+        -------
+        nuclides : list of str
+            Union of input nuclides and those that have multiple sets
+            of yield data.  Sorted by nuclide name
+
+        Raises
+        ------
+        AttributeError
+            If tallies not generated
+        """
+        assert self._fission_rate_tally is not None, (
+                "Run generate_tallies first")
+        overlap = set(self._chain_nuclides).intersection(set(nuclides))
+        nuclides = sorted(overlap)
+        self._tally_nucs = [self._chain_nuclides[n] for n in nuclides]
+        self._fission_rate_tally.nuclides = nuclides
+        return nuclides
+
+    @abstractmethod
+    def unpack(self):
+        """Unpack tallies after a transport run.
+
+        Abstract because each subclass will need to arrange its
+        tally data.
+        """
+
 
 # -------------------------------------
 # Helpers for generating reaction rates

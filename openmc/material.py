@@ -308,7 +308,7 @@ class Material(IDManagerMixin):
 
         return material
 
-    def add_volume_information(self, volume_calc: openmc.VolumeCalculation):
+    def add_volume_information(self, volume_calc):
         """Add volume information to a material.
 
         Parameters
@@ -472,9 +472,9 @@ class Material(IDManagerMixin):
             self._macroscopic = None
 
     def add_element(self, element: str, percent: float, percent_type: str='ao',
-                   enrichment: Optional[float]=None,
-                   enrichment_target: Optional[str]=None,
-                   enrichment_type: Optional[str]=None):
+                    enrichment: Optional[float]=None,
+                    enrichment_target: Optional[str]=None,
+                    enrichment_type: Optional[str]=None):
         """Add a natural element to the material
 
         Parameters
@@ -996,9 +996,8 @@ class Material(IDManagerMixin):
         return element
 
     @classmethod
-    def mix_materials(cls, materials: typing.Iterable[openmc.Material],
-                      fracs: typing.Iterable[float], percent_type: str='ao',
-                      name: Optional[str]=None):
+    def mix_materials(cls, materials, fracs: typing.Iterable[float],
+                      percent_type: str='ao', name: Optional[str]=None):
         """Mix materials together based on atom, weight, or volume fractions
 
         .. versionadded:: 0.12
@@ -1199,7 +1198,7 @@ class Materials(cv.CheckedList):
         if cross_sections is not None:
             self._cross_sections = Path(cross_sections)
 
-    def append(self, material: openmc.Material):
+    def append(self, material):
         """Append material to collection
 
         Parameters
@@ -1210,7 +1209,7 @@ class Materials(cv.CheckedList):
         """
         super().append(material)
 
-    def insert(self, index: int, material: openmc.Material):
+    def insert(self, index: int, material):
         """Insert material before index
 
         Parameters

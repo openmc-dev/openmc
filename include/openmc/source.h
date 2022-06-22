@@ -111,6 +111,25 @@ private:
 };
 
 //==============================================================================
+// MCPL-file input source
+//==============================================================================
+class MCPLFileSource : public Source {
+public:
+  // Constructors, destructors
+  MCPLFileSource(std::string path);
+  ~MCPLFileSource();
+
+  // Defer implementation to custom source library
+  SourceSite sample(uint64_t* seed) const override
+
+private:
+  vector <SourceSite> sites_; //!<source sites from an MCPL-file
+};
+
+
+
+
+//==============================================================================
 //! Wrapper for custom sources that manages opening/closing shared library
 //==============================================================================
 

@@ -378,6 +378,27 @@ CustomSourceWrapper::~CustomSourceWrapper()
 #endif
 }
 
+//===========================================================================
+// Read an MCPL-file
+//===========================================================================
+MCPLFileSource::MCPLFileSource(std::string path)
+{
+  // Check if source file exists
+  if (!file_exists(path)) {
+    fatal_error(fmt::format("Source file '{}' does not exist.", path));
+  }
+   
+  // Read the source from a binary file instead of sampling from some
+  // assumed source distribution
+  write_message(6, "Reading source file from {}...", path);
+
+  // Open the mcpl file
+  id_t file_id = mcpl_open(path.c_str)
+  
+
+}
+
+
 //==============================================================================
 // Non-member functions
 //==============================================================================

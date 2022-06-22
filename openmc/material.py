@@ -407,6 +407,23 @@ class Material(IDManagerMixin):
             if nuclide == nuc.name:
                 self.nuclides.remove(nuc)
 
+    def remove_element(self, element):
+        """Remove an element from the material
+
+        Parameters
+        ----------
+        element : str
+            Element to remove
+
+        """
+        cv.check_type('element', element, str)
+
+        # If the Material contains the element, delete it
+        for nuc in reversed(self.nuclides):
+            element_name = re.split(r'(\d+)', nuc)
+            if nuc == element_name:
+                self.nuclides.remove(nuc)
+
     def add_macroscopic(self, macroscopic):
         """Add a macroscopic to the material.  This will also set the
         density of the material to 1.0, unless it has been otherwise set,

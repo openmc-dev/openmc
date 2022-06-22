@@ -43,7 +43,7 @@ def test_remove_elements():
     m = openmc.Material()
     for elem, percent in [('Li', 1.0), ('Be', 1.0)]:
         m.add_element(elem, percent)
-    m.remove_nuclide('Li')
+    m.remove_element('Li')
     assert len(m.nuclides) == 1
     assert m.nuclides == ['Be9']
     assert m.nuclides[0].percent == 1.0

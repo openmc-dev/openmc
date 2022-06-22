@@ -45,7 +45,7 @@ def test_remove_elements():
         m.add_element(elem, percent)
     m.remove_element('Li')
     assert len(m.nuclides) == 1
-    assert m.nuclides == ['Be9']
+    assert m.nuclides[0].name == 'Be9'
     assert m.nuclides[0].percent == 1.0
 
 

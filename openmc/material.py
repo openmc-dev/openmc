@@ -420,8 +420,9 @@ class Material(IDManagerMixin):
 
         # If the Material contains the element, delete it
         for nuc in reversed(self.nuclides):
-            element_name = re.split(r'(\d+)', nuc)
-            if nuc == element_name:
+            element_name = re.split(r'(\d+)', nuc.name)[0]
+            print(element_name, element)
+            if element_name == element:
                 self.nuclides.remove(nuc)
 
     def add_macroscopic(self, macroscopic):

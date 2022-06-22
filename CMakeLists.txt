@@ -17,8 +17,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
 # Allow user to specify <project>_ROOT variables
-if (NOT (CMAKE_VERSION VERSION_LESS 3.12))
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
   cmake_policy(SET CMP0074 NEW)
+endif()
+
+# Enable correct usage of CXX_EXTENSIONS
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
+  cmake_policy(SET CMP0128 NEW)
 endif()
 
 #===============================================================================
@@ -118,7 +123,7 @@ endif()
 # Version 1.12 of HDF5 deprecates the H5Oget_info_by_idx() interface.
 # Thus, we give these flags to allow usage of the old interface in newer
 # versions of HDF5.
-if(NOT (${HDF5_VERSION} VERSION_LESS 1.12.0))
+if(${HDF5_VERSION} VERSION_GREATER_EQUAL 1.12.0)
   list(APPEND cxxflags -DH5Oget_info_by_idx_vers=1 -DH5O_info_t_vers=1)
 endif()
 
@@ -205,7 +210,7 @@ endif()
 #===============================================================================
 
 # CMake 3.13+ will complain about policy CMP0079 unless it is set explicitly
-if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
   cmake_policy(SET CMP0079 NEW)
 endif()
 

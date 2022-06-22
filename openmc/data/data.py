@@ -300,7 +300,7 @@ def half_life(isotope):
         half_life_path = Path(__file__).with_name('half_life.json')
         _HALF_LIFE = json.loads(half_life_path.read_text())
 
-    return _HALF_LIFE.get(isotope.title())
+    return _HALF_LIFE.get(isotope.lower())
 
 def water_density(temperature, pressure=0.1013):
     """Return the density of liquid water at a given temperature and pressure.

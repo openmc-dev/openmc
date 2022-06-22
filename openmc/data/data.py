@@ -298,12 +298,9 @@ def half_life(isotope):
     if not _HALF_LIFE:
         # Load ENDF/B-VIII.0 data from JSON file
         half_life_path = Path(__file__).with_name('half_life.json')
-        _HALF_LIFE = json.load(half_life_path.read_text())
+        _HALF_LIFE = json.loads(half_life_path.read_text())
 
-    if isotope.title() not in _HALF_LIFE.keys():
-        return None
-
-    return _HALF_LIFE[isotope.title()]
+    return _HALF_LIFE.get(isotope.title())
 
 def water_density(temperature, pressure=0.1013):
     """Return the density of liquid water at a given temperature and pressure.

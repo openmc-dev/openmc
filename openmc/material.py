@@ -147,9 +147,9 @@ class Material(IDManagerMixin):
     def activity(self):
         """Returns the total activity of the material in Becquerels."""
 
-        atoms_per_barn_cm2 = self.get_nuclide_atom_densities()
+        atoms_per_barn_cm = self.get_nuclide_atom_densities()
         total_activity = 0
-        for key, value in atoms_per_barn_cm2.items():
+        for key, value in atoms_per_barn_cm.items():
             half_life = openmc.data.half_life(key)
             if half_life:
                 atoms = value[1] * self.volume

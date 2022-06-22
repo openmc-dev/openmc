@@ -278,9 +278,9 @@ def atomic_weight(element):
 
 
 def half_life(isotope):
-    """Return half-life of isotope in seconds. Returns None if isotope is stable
+    """Return half-life of isotope in seconds or None if isotope is stable
 
-    Half-life values are from `ENDF/B VIII.0 Decay Reaction Sublibrary
+    Half-life values are from the `ENDF/B-VIII.0 decay sublibrary
     <https://www.nndc.bnl.gov/endf-b8.0/download.html>`_.
 
     Parameters
@@ -291,15 +291,14 @@ def half_life(isotope):
     Returns
     -------
     float
-        Half-life of isotope in [seconds]
+        Half-life of isotope in [s]
 
     """
     global _HALF_LIFE
     if not _HALF_LIFE:
-        # Load data from AME2016 file
-        half_life_filename = os.path.join(os.path.dirname(__file__), 'half_life.json')
-        with open(half_life_filename, 'r') as f:
-            _HALF_LIFE = json.load(f)
+        # Load ENDF/B-VIII.0 data from JSON file
+        half_life_path = Path(__file__).with_name('half_life.json')
+        _HALF_LIFE = json.load(half_life_path.read_text())
 
     if isotope.title() not in _HALF_LIFE.keys():
         return None

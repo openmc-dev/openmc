@@ -420,8 +420,7 @@ class Material(IDManagerMixin):
 
         # If the Material contains the element, delete it
         for nuc in reversed(self.nuclides):
-            element_name = re.split(r'(\d+)', nuc.name)[0]
-            print(element_name, element)
+            element_name = re.split(r'\d+', nuc.name)[0]
             if element_name == element:
                 self.nuclides.remove(nuc)
 

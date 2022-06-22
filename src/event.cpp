@@ -27,7 +27,7 @@ SharedArray<EventQueueItem> surface_crossing_queue;
 SharedArray<EventQueueItem> collision_queue;
 SharedArray<EventQueueItem> revival_queue;
 
-int64_t current_source_offset;
+int current_source_offset;
 
 int sort_counter{0};
 
@@ -82,7 +82,7 @@ bool is_sorted(SharedArray<EventQueueItem>& queue)
     return false;
 }
 
-void init_event_queues(int64_t n_particles)
+void init_event_queues(int n_particles)
 {
   simulation::calculate_fuel_xs_queue.reserve(n_particles);
   simulation::calculate_nonfuel_xs_queue.reserve(n_particles);
@@ -136,7 +136,7 @@ void dispatch_xs_event(int buffer_idx)
   }
 }
 
-void process_init_events(int64_t n_particles)
+void process_init_events(int n_particles)
 {
   simulation::time_event_init.start();
 
@@ -146,7 +146,7 @@ void process_init_events(int64_t n_particles)
   double total_weight = 0.0;
 
   #pragma omp target teams distribute parallel for
-  for (int64_t i = 0; i < n_particles; i++) {
+  for (int i = 0; i < n_particles; i++) {
     initialize_history(simulation::device_particles[i], i + 1);
     dispatch_xs_event(i);
   }
@@ -154,7 +154,7 @@ void process_init_events(int64_t n_particles)
   // The loop below can in theory be combined with the one above,
   // but is present here as a compiler bug workaround
   #pragma omp target teams distribute parallel for reduction(+:total_weight)
-  for (int64_t i = 0; i < n_particles; i++) {
+  for (int i = 0; i < n_particles; i++) {
     total_weight += simulation::device_particles[i].wgt_;
   }
   simulation::time_event_init.stop();
@@ -176,10 +176,10 @@ void process_calculate_xs_events_nonfuel()
   // The sort here makes less sense, as there are a lot of other various material types, so sorting becomes less powerful
   //sort_queue(simulation::calculate_nonfuel_xs_queue);
 
-  int64_t offset = simulation::advance_particle_queue.size();;
+  int offset = simulation::advance_particle_queue.size();;
 
   #pragma omp target teams distribute parallel for
-  for (int64_t i = 0; i < simulation::calculate_nonfuel_xs_queue.size(); i++) {
+  for (int i = 0; i < simulation::calculate_nonfuel_xs_queue.size(); i++) {
     int buffer_idx = simulation::calculate_nonfuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_calculate_xs_execute();
@@ -208,10 +208,10 @@ void process_calculate_xs_events_fuel()
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_fuel.start();
 
-  int64_t offset = simulation::advance_particle_queue.size();;
+  int offset = simulation::advance_particle_queue.size();;
 
   #pragma omp target teams distribute parallel for
-  for (int64_t i = 0; i < simulation::calculate_fuel_xs_queue.size(); i++) {
+  for (int i = 0; i < simulation::calculate_fuel_xs_queue.size(); i++) {
     int buffer_idx = simulation::calculate_fuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_calculate_xs_execute();
@@ -234,7 +234,7 @@ void process_advance_particle_events()
   simulation::time_event_advance_particle.start();
 
   #pragma omp target teams distribute parallel for
-  for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
+  for (int i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();
@@ -258,7 +258,7 @@ void process_surface_crossing_events()
   simulation::time_event_surface_crossing.start();
 
   #pragma omp target teams distribute parallel for
-  for (int64_t i = 0; i < simulation::surface_crossing_queue.size(); i++) {
+  for (int i = 0; i < simulation::surface_crossing_queue.size(); i++) {
     int buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_cross_surface();
@@ -282,7 +282,7 @@ void process_collision_events()
   simulation::time_event_collision.start();
 
   #pragma omp target teams distribute parallel for
-  for (int64_t i = 0; i < simulation::collision_queue.size(); i++) {
+  for (int i = 0; i < simulation::collision_queue.size(); i++) {
     int buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_collide();
@@ -302,7 +302,7 @@ void process_collision_events()
 }
 
 
-void process_death_events(int64_t n_particles)
+void process_death_events(int n_particles)
 {
   simulation::time_event_death.start();
 
@@ -314,7 +314,7 @@ void process_death_events(int64_t n_particles)
   double leakage = 0.0;
 
   #pragma omp target teams distribute parallel for reduction(+:absorption, collision, tracklength, leakage)
-  for (int64_t i = 0; i < n_particles; i++) {
+  for (int i = 0; i < n_particles; i++) {
     Particle& p = simulation::device_particles[i];
     p.accumulate_keff_tallies_local(absorption, collision, tracklength, leakage);
   }
@@ -340,7 +340,7 @@ void process_revival_events()
   double extra_weight = 0;
 
   #pragma omp target teams distribute parallel for reduction(+:extra_weight)
-  for (int64_t i = 0; i < simulation::revival_queue.size(); i++) {
+  for (int i = 0; i < simulation::revival_queue.size(); i++) {
     int buffer_idx = simulation::revival_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
 
@@ -354,7 +354,7 @@ void process_revival_events()
       p.event_death();
 
       // Atomically retrieve source offset for new particle
-      int64_t source_offset_idx;
+      int source_offset_idx;
       #pragma omp atomic capture //seq_cst
       source_offset_idx = simulation::current_source_offset++;
 

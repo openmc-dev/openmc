@@ -63,6 +63,7 @@ Core Functions
     atomic_weight
     dose_coefficients
     gnd_name
+    half_life
     isotopes
     linearize
     thin

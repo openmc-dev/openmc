@@ -84,8 +84,7 @@ double rel_max_lost_particles {1.0e-6};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
-int64_t max_particles_in_flight {1000000};
-bool max_particles_in_flight_was_set_from_CLI {false};
+int64_t max_particles_in_flight {-1};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
@@ -139,11 +138,14 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 
   // Get maximum number of in flight particles for event-based mode
-  // if it wasn't specified as a command-line argument
-  if (!max_particles_in_flight_was_set_from_CLI) {
+  // if it wasn't specified as a command-line argument. If it wasn't
+  // set by the user anywhere, set it to a reasonable default value.
+  if (max_particles_in_flight == -1) {
     if (check_for_node(node_base, "max_particles_in_flight")) {
       max_particles_in_flight = std::stoll(get_node_value(node_base,
         "max_particles_in_flight"));
+    } else {
+      max_particles_in_flight = 1000000;
     }
   }
 

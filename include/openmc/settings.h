@@ -84,9 +84,7 @@ extern "C" int32_t gen_per_batch;            //!< number of generations per batc
 extern "C" int64_t n_particles;              //!< number of particles per generation
 #pragma omp end declare target
 
-
 extern int64_t max_particles_in_flight; //!< Max num. event-based particles in flight
-extern bool max_particles_in_flight_was_set_from_CLI;
 
 #pragma omp declare target
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons

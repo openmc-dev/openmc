@@ -95,6 +95,8 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Initialized(&flag);
   if (!flag) MPI_Init(nullptr, nullptr);
 
+  // Empty target region + MPI barrier ensures that variable JIT compile
+  // times do not cause timing differences between MPI ranks
   #pragma omp target
   {}
   MPI_Barrier( mpi::intracomm );
@@ -153,7 +155,6 @@ parse_command_line(int argc, char* argv[])
       } else if (arg == "-i" || arg == "--inflight") {
         i += 1;
         settings::max_particles_in_flight = std::stoll(argv[i]);
-        settings::max_particles_in_flight_was_set_from_CLI = true;
 
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;

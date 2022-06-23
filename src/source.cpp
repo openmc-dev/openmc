@@ -383,7 +383,7 @@ CustomSourceWrapper::~CustomSourceWrapper()
 }
 
 //===========================================================================
-// Read an MCPL-file
+// Read particles from an MCPL-file
 //===========================================================================
 MCPLFileSource::MCPLFileSource(std::string path)
 {
@@ -394,12 +394,55 @@ MCPLFileSource::MCPLFileSource(std::string path)
    
   // Read the source from a binary file instead of sampling from some
   // assumed source distribution
-  write_message(6, "Reading source file from {}...", path);
+  write_message(6, "Reading mcpl source file from {}",path);
 
   // Open the mcpl file
-  id_t file_id = mcpl_open(path.c_str)
-  
+  mcpl_file = mcpl_open(path.c_str);
 
+  //do checks on the mcpl_file to see if particles are many enough.
+  // should model this on the example source shown in the docs.
+  uint64_t nparticles=mcpl_hdr_nparticles(mcpl_file);
+
+}
+
+MCPLFileSource::~MCPLFilsSource(){
+  mcpl_close_file(mcpl_file);
+}
+
+SourceSite MCPLFileSource::sample(uint64_t *seed){
+  SourceSite omc_particle;
+  mcpl_particle *mcpl_particle;
+  //extract particle from mcpl-file
+  mcpl_particle=mcpl_reazd(mcplfile);
+  // check if it is  a neutron or a photon. otherwise skip
+  while ( mcpl_particle->pdgcode!=2112 && mcpl_particle->pdgcode!=22 )
+  {
+    mcpl_particle(mcpl_read(mcplfile);
+    //check for file exhaustion
+  }
+
+  if(mcpl_particle->pdgcode=2112) {
+    omc_particle_=ParticleType::neutron;
+  } else {
+    omc_particle_=Particletype::photon;
+  }
+
+  //particle is good, convert to openmc-formalism
+  omc_particle.r.x=mcpl_particle.x;
+  omc_particle.r.y=mcpl_particle.y;
+  omc_particle.r.z=mcpl_particle.z;
+
+  omc_particle.u.x=mcpl_particle->direction[0];
+  omc_particle.u.y=mcpl_particle->direction[1];
+  omc_particle.u.z=mcpl_particle->direction[2];
+
+  //mcpl stores particles in MeV
+  omc_particle.E=mcpl_particle->ekin*1e6;
+
+  omc_particle.t=mcpl_particle->time*1e-3;
+  omc_particle.wgt=mcpl_particle->weight;
+  omc_particle.delayed_group=0;
+  return omc_particle;
 }
 
 

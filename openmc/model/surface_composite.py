@@ -645,6 +645,53 @@ class RectangularParallelepiped(CompositeSurface):
         return +self.xmax | -self.xmin | +self.ymax | -self.ymin | +self.zmax | -self.zmin
 
 
+class Box(CompositeSurface):
+    _surface_names = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
+
+    def __init__(self, v, a1, a2, a3, **kwargs):
+        vx, vy, vz = v
+        a1x, a1y, a1z = a1
+        a2x, a2y, a2z = a2
+        a3x, a3y, a3z = a3
+
+        # Only support boxes with axis-aligned vectors
+        if any(x != 0.0 for x in (a1y, a1z, a2x, a2z, a3x, a3y)):
+            raise NotImplementedError('Box composite surface with non-axis-aligned '
+                                      'vector not supported.')
+
+        # Determine each side of the box
+        if a1x > 0:
+            xmin, xmax = vx, vx + a1x
+        else:
+            xmin, xmax = vx + a1x, vx
+        if a2y > 0:
+            ymin, ymax = vy, vy + a2y
+        else:
+            ymin, ymax = vy + a2y, vy
+        if a3z > 0:
+            zmin, zmax = vz, vz + a3z
+        else:
+            zmin, zmax = vz + a3z, vz
+
+        # Create surfaces
+        self.xmin = openmc.XPlane(xmin, **kwargs)
+        self.xmax = openmc.XPlane(xmax, **kwargs)
+        self.ymin = openmc.YPlane(ymin, **kwargs)
+        self.ymax = openmc.YPlane(ymax, **kwargs)
+        self.zmin = openmc.ZPlane(zmin, **kwargs)
+        self.zmax = openmc.ZPlane(zmax, **kwargs)
+
+    def __neg__(self):
+        return (+self.xmin & -self.xmax &
+                +self.ymin & -self.ymax &
+                +self.zmin & -self.zmax)
+
+    def __pos__(self):
+        return (-self.xmin | +self.xmax |
+                -self.ymin | +self.ymax |
+                -self.zmin | +self.zmax)
+
+
 class XConeOneSided(CompositeSurface):
     """One-sided cone parallel the x-axis
 

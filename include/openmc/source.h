@@ -119,11 +119,20 @@ public:
   MCPLFileSource(std::string path);
   ~MCPLFileSource();
 
-  // Defer implementation to custom source library
-  SourceSite sample(uint64_t* seed) const override
+  // Properties
+  ParticleType particle_type() const { return particle_; }
+
+  //! Sample from the external source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Site read from MCPL-file
+  SourceSite sample(uint64_t* seed) const override;
 
 private:
+  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
   vector <SourceSite> sites_; //!<source sites from an MCPL-file
+  mcpl_file_t mcpl_file;
+
+  uint64_t read_particles;
 };
 
 

@@ -33,6 +33,10 @@
 #include "openmc/state_point.h"
 #include "openmc/xml_interface.h"
 
+#ifdef HAS_MCPL
+#include <mcpl.h>
+#endif
+
 namespace openmc {
 
 //==============================================================================

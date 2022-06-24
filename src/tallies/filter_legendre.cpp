@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_legendre.h"
+#include "openmc/tallies/filter.h"
 
 #include "openmc/capi.h"
 #include "openmc/error.h"
@@ -8,13 +8,13 @@
 namespace openmc {
 
 void
-LegendreFilter::from_xml(pugi::xml_node node)
+Filter::LegendreFilter_from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
 }
 
 void
-LegendreFilter::set_order(int order)
+Filter::LegendreFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Legendre order must be non-negative."};
@@ -24,11 +24,11 @@ LegendreFilter::set_order(int order)
 }
 
 void
-LegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::LegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
-  std::vector<double> wgt(n_bins_);
-  calc_pn_c(order_, p.mu_, wgt.data());
+  double wgt[FILTERMATCH_BINS_WEIGHTS_SIZE];
+  calc_pn_c(order_, p.mu_, wgt);
   for (int i = 0; i < n_bins_; i++) {
     //match.bins_.push_back(i);
     //match.weights_.push_back(wgt[i]);
@@ -39,14 +39,13 @@ LegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-LegendreFilter::to_statepoint(hid_t filter_group) const
+Filter::LegendreFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "order", order_);
 }
 
 std::string
-LegendreFilter::text_label(int bin) const
+Filter::LegendreFilter_text_label(int bin) const
 {
   return "Legendre expansion, P" + std::to_string(bin);
 }
@@ -54,6 +53,8 @@ LegendreFilter::text_label(int bin) const
 //==============================================================================
 // C-API functions
 //==============================================================================
+
+/*
 
 extern "C" int
 openmc_legendre_filter_get_order(int32_t index, int* order)
@@ -96,5 +97,6 @@ openmc_legendre_filter_set_order(int32_t index, int order)
   filt->set_order(order);
   return 0;
 }
+*/
 
 } // namespace openmc

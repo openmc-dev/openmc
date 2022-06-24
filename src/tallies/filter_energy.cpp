@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_energy.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 
@@ -16,14 +16,14 @@ namespace openmc {
 //==============================================================================
 
 void
-EnergyFilter::from_xml(pugi::xml_node node)
+Filter::EnergyFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
   this->set_bins(bins);
 }
 
 void
-EnergyFilter::set_bins(gsl::span<const double> bins)
+Filter::EnergyFilter_set_bins(gsl::span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -58,7 +58,7 @@ EnergyFilter::set_bins(gsl::span<const double> bins)
 }
 
 void
-EnergyFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
+Filter::EnergyFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   if (p.g_ != F90_NONE && matches_transport_groups_) {
@@ -89,14 +89,13 @@ const
 }
 
 void
-EnergyFilter::to_statepoint(hid_t filter_group) const
+Filter::EnergyFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", bins_);
 }
 
 std::string
-EnergyFilter::text_label(int bin) const
+Filter::EnergyFilter_text_label(int bin) const
 {
   return fmt::format("Incoming Energy [{}, {})", bins_[bin], bins_[bin+1]);
 }
@@ -106,7 +105,7 @@ EnergyFilter::text_label(int bin) const
 //==============================================================================
 
 void
-EnergyoutFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::EnergyoutFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
   if (p.g_ != F90_NONE && matches_transport_groups_) {
@@ -129,7 +128,7 @@ EnergyoutFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 std::string
-EnergyoutFilter::text_label(int bin) const
+Filter::EnergyoutFilter_text_label(int bin) const
 {
   return fmt::format("Outgoing Energy [{}, {})", bins_.at(bin), bins_.at(bin+1));
 }
@@ -145,18 +144,20 @@ openmc_energy_filter_get_bins(int32_t index, const double** energies, size_t* n)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index].get();
-  auto* filt = dynamic_cast<EnergyFilter*>(filt_base);
+  Filter& filt = model::tally_filters[index];
 
   // Check the filter type.
+  // TODO: Replace this with logic checking type_ field
+  /*
   if (!filt) {
     set_errmsg("Tried to get energy bins on a non-energy filter.");
     return OPENMC_E_INVALID_TYPE;
   }
+  */
 
   // Output the bins.
-  *energies = filt->bins().data();
-  *n = filt->bins().size();
+  *energies = filt.bins().data();
+  *n = filt.bins().size();
   return 0;
 }
 
@@ -167,17 +168,19 @@ openmc_energy_filter_set_bins(int32_t index, size_t n, const double* energies)
   if (int err = verify_filter(index)) return err;
 
   // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index].get();
-  auto* filt = dynamic_cast<EnergyFilter*>(filt_base);
+  Filter& filt = model::tally_filters[index];
 
   // Check the filter type.
+  // TODO: Replace this with logic checking type_ field
+  /*
   if (!filt) {
-    set_errmsg("Tried to set energy bins on a non-energy filter.");
+    set_errmsg("Tried to get energy bins on a non-energy filter.");
     return OPENMC_E_INVALID_TYPE;
   }
+  */
 
   // Update the filter.
-  filt->set_bins({energies, n});
+  filt.set_bins({energies, n});
   return 0;
 }
 

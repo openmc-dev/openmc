@@ -21,6 +21,8 @@ namespace openmc {
 
 void enforce_assumptions()
 {
+  // TODO: These first two assumptions don't do anything, as no tallies are active at beginning of simulation
+
   // Notably, I have commented this capability out of particle::cross_vacuum_bc and particle::cross_reflective_bc
   assert(model::active_meshsurf_tallies.empty() && "Mesh surface tallies not yet supported.");
 
@@ -29,17 +31,12 @@ void enforce_assumptions()
 
   // Assertions made when initializing particles
   assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
-  assert(model::tally_filters.size() <= FILTER_MATCHES_SIZE);
+  assert(model::n_tally_filters <= FILTER_MATCHES_SIZE);
   assert(model::n_coord_levels <= COORD_SIZE);
   #ifndef NO_MICRO_XS_CACHE
   assert(data::nuclides_size <= NEUTRON_XS_SIZE);
   #endif
   assert(data::elements_size <= PHOTON_XS_SIZE);
-
-  assert(model::active_tracklength_tallies.empty() && "Tracklength tallies not yet supported.");
-  assert(model::active_tallies.empty() && "Tallies not yet supported.");
-    
-  assert(!simulation::need_depletion_rx && "Depletion-related reactions not yet implemented.");
 }
 
 void move_settings_to_device()
@@ -228,6 +225,24 @@ void move_read_only_data_to_device()
 
   simulation::device_progeny_per_particle = simulation::progeny_per_particle.data();
   #pragma omp target enter data map(alloc: simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
+
+  // Filters ////////////////////////////////////////////////////////////////
+  
+  std::cout << "Moving " << model::n_tally_filters << " tally filters to device..." << std::endl;
+  #pragma omp target update to(model::n_tally_filters)
+  #pragma omp target enter data map(to: model::tally_filters[:model::n_tally_filters])
+  for (int i = 0; i < model::n_tally_filters; i++) {
+    model::tally_filters[i].copy_to_device();
+  }
+  
+  // Meshes ////////////////////////////////////////////////////////////////
+  
+  std::cout << "Moving " << model::meshes_size << " meshes to device..." << std::endl;
+  #pragma omp target update to(model::meshes_size)
+  #pragma omp target enter data map(to: model::meshes[:model::meshes_size])
+  for (int i = 0; i < model::meshes_size; i++) {
+    model::meshes[i].copy_to_device();
+  }
 
   #ifdef OPENMC_MPI
   MPI_Barrier( mpi::intracomm );

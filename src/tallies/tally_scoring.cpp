@@ -15,8 +15,6 @@
 #include "openmc/string_utils.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
-#include "openmc/tallies/filter_delayedgroup.h"
-#include "openmc/tallies/filter_energy.h"
 
 #include <string>
 
@@ -34,16 +32,13 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
   for (auto i_filt : tally_.filters()) {
     auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
-      //match.bins_.clear();
-      //match.weights_.clear();
       match.bins_weights_length_ = 0;
-      model::tally_filters[i_filt]->get_all_bins(p, tally_.estimator_, match);
+      model::tally_filters[i_filt].get_all_bins(p, tally_.estimator_, match);
       match.bins_present_ = true;
     }
 
     // If there are no valid bins for this filter, then there are no valid
     // filter bin combinations so all iterators are end iterators.
-    //if (match.bins_.size() == 0) {
     if (match.bins_weights_length_ == 0) {
       index_ = -1;
       return;
@@ -58,7 +53,6 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
 }
 
 FilterBinIter::FilterBinIter(const Tally& tally, bool end,
-    //std::vector<FilterMatch>* particle_filter_matches)
     FilterMatch* particle_filter_matches)
   : filter_matches_{particle_filter_matches}, tally_{tally}
 {
@@ -71,16 +65,10 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
   for (auto i_filt : tally_.filters()) {
     auto& match {filter_matches_[i_filt]};
     if (!match.bins_present_) {
-      //match.bins_.clear();
-      //match.weights_.clear();
       match.bins_weights_length_ = 0;
-      for (auto i = 0; i < model::tally_filters[i_filt]->n_bins(); ++i) {
-        //if(match.bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE)
-        //  std::cout << "Loop size = " << model::tally_filters[i_filt]->n_bins() << std::endl;
+      for (auto i = 0; i < model::tally_filters[i_filt].n_bins(); ++i) {
         assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
-        //match.bins_.push_back(i);
         match.bins_[match.bins_weights_length_] = i;
-        //match.weights_.push_back(1.0);
         match.weights_[match.bins_weights_length_] = 1.0;
         match.bins_weights_length_++;
       }
@@ -100,8 +88,10 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
   this->compute_index_weight();
 }
 
+// Note: This method is only used when outputting tallies
+// at end of program, so does not need to run on the device
 FilterBinIter::FilterBinIter(const Tally& tally, bool end,
-    std::vector<BigFilterMatch>* particle_filter_matches)
+    vector<BigFilterMatch>* particle_filter_matches)
   : big_filter_matches_{particle_filter_matches}, tally_{tally}
 {
   is_big_ = true;
@@ -116,22 +106,14 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
     if (!match.bins_present_) {
       match.bins_.clear();
       match.weights_.clear();
-      //match.bins_weights_length_ = 0;
-      for (auto i = 0; i < model::tally_filters[i_filt]->n_bins(); ++i) {
-        //if(match.bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE)
-        //  std::cout << "Loop size = " << model::tally_filters[i_filt]->n_bins() << std::endl;
-        //assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
+      for (auto i = 0; i < model::tally_filters[i_filt].n_bins(); ++i) {
         match.bins_.push_back(i);
-        //match.bins_[match.bins_weights_length_] = i;
         match.weights_.push_back(1.0);
-        //match.weights_[match.bins_weights_length_] = 1.0;
-        //match.bins_weights_length_++;
       }
       match.bins_present_ = true;
     }
 
     if (match.bins_.size() == 0) {
-    //if (match.bins_weights_length_ == 0) {
       index_ = -1;
       return;
     }
@@ -146,8 +128,10 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
 FilterBinIter&
 FilterBinIter::operator++()
 {
-  // TODO: This function works but needs to be cleaned up and brought in line with
-  // develop
+  // The "Big" type of FilterBinIter uses a dynamically sized vector to store
+  // the filter_matches_ instead of a static array. This is required for outputting
+  // tallies on the host at the end, as the vectors can get quite large compared
+  // to the typically modest needs when doing tallies on device.
   if( is_big_ )
   {
     // Find the next valid combination of filter bins.  To do this, we search
@@ -213,7 +197,6 @@ FilterBinIter::operator++()
     }
   }
   return *this;
-
 }
 
 void
@@ -439,8 +422,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
   auto i_bin = p.filter_matches_[i_eout_filt].i_bin_;
   auto bin_energyout = p.filter_matches_[i_eout_filt].bins_[i_bin];
 
-  const EnergyoutFilter& eo_filt
-    {*dynamic_cast<EnergyoutFilter*>(model::tally_filters[i_eout_filt].get())};
+  const Filter& eo_filt {model::tally_filters[i_eout_filt]};
 
   // Note that the score below is weighted by keff. Since the creation of
   // fission sites is weighted such that it is expected to create n_particles
@@ -523,8 +505,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
         // Get the index of the delayed group filter
         auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
 
-        const DelayedGroupFilter& dg_filt {*dynamic_cast<DelayedGroupFilter*>(
-          model::tally_filters[i_dg_filt].get())};
+        const Filter& dg_filt {model::tally_filters[i_dg_filt]};
 
         // Loop over delayed group bins until the corresponding bin is found
         for (auto d_bin = 0; d_bin < dg_filt.n_bins(); ++d_bin) {
@@ -617,12 +598,17 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
   return 0.0;
 }
 
+void not_supported()
+{
+  printf("Tally Score type not supported on-device\n");
+}
+
 //! Update tally results for continuous-energy tallies with a tracklength or
 //! collision estimator
 
 void
 score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter_index,
-  double filter_weight, int i_nuclide, double atom_density, double flux)
+  double filter_weight, int i_nuclide, double atom_density, double flux, NuclideMicroXS& micro)
 {
   Tally& tally {*model::tallies[i_tally]};
 
@@ -644,7 +630,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
     case SCORE_TOTAL:
       if (i_nuclide >= 0) {
         if (p.type_ == Type::neutron) {
-          score = p.neutron_xs_[i_nuclide].total * atom_density * flux;
+          score = micro.total * atom_density * flux;
         } else if (p.type_ == Type::photon) {
           score = p.photon_xs_[i_nuclide].total * atom_density * flux;
         }
@@ -665,11 +651,10 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
       if (i_nuclide >= 0) {
         if (p.type_ == Type::neutron) {
-          const auto& micro = p.neutron_xs_[i_nuclide];
           score = (micro.total - micro.absorption) * atom_density * flux;
         } else {
-          const auto& micro = p.photon_xs_[i_nuclide];
-          score = (micro.coherent + micro.incoherent) * atom_density * flux;
+          const auto& micro_p = p.photon_xs_[i_nuclide];
+          score = (micro_p.coherent + micro_p.incoherent) * atom_density * flux;
         }
       } else {
         if (p.type_ == Type::neutron) {
@@ -685,7 +670,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
       if (i_nuclide >= 0) {
         if (p.type_ == Type::neutron) {
-          score = p.neutron_xs_[i_nuclide].absorption * atom_density * flux;
+          score = micro.absorption * atom_density * flux;
         } else {
           const auto& xs = p.photon_xs_[i_nuclide];
           score = (xs.total - xs.coherent - xs.incoherent) * atom_density * flux;
@@ -704,7 +689,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.macro_xs_.fission == 0) continue;
 
       if (i_nuclide >= 0) {
-        score = p.neutron_xs_[i_nuclide].fission * atom_density * flux;
+        score = micro.fission * atom_density * flux;
       } else {
         score = p.macro_xs_.fission * flux;
       }
@@ -714,7 +699,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.macro_xs_.fission == 0) continue;
 
       if (i_nuclide >= 0) {
-        score = p.neutron_xs_[i_nuclide].nu_fission * atom_density
+        score = micro.nu_fission * atom_density
           * flux;
       } else {
         score = p.macro_xs_.nu_fission * flux;
@@ -725,11 +710,13 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.macro_xs_.fission == 0) continue;
 
       if (i_nuclide >= 0) {
-        score = p.neutron_xs_[i_nuclide].fission
+        score = micro.fission
           * data::nuclides[i_nuclide]
           .nu(E, ReactionProduct::EmissionMode::prompt)
           * atom_density * flux;
       } else {
+        not_supported();
+        /*
         score = 0.;
         // Add up contributions from each nuclide in the material.
         if (p.material_ != MATERIAL_VOID) {
@@ -743,6 +730,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
               * atom_density * flux;
           }
         }
+        */
       }
       break;
 
@@ -752,15 +740,13 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (i_nuclide >= 0) {
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt{model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin];
             auto yield = data::nuclides[i_nuclide]
               .nu(E, ReactionProduct::EmissionMode::delayed, d);
-            score = p.neutron_xs_[i_nuclide].fission * yield
+            score = micro.fission * yield
               * atom_density * flux;
             score_fission_delayed_dg(i_tally, d_bin, score, score_index, p.filter_matches_);
           }
@@ -768,12 +754,14 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
         } else {
           // If the delayed group filter is not present, compute the score
           // by multiplying the delayed-nu-fission macro xs by the flux
-          score = p.neutron_xs_[i_nuclide].fission
+          score = micro.fission
             * data::nuclides[i_nuclide]
             .nu(E, ReactionProduct::EmissionMode::delayed)
             * atom_density * flux;
         }
       } else {
+        not_supported();
+        /*
         // Need to add up contributions for each nuclide
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
@@ -812,6 +800,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             }
           }
         }
+        */
       }
       break;
 
@@ -824,16 +813,14 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
         const auto& rx {nuc.fission_rx_[0]->obj()};
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt{model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin];
             auto yield
               = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
             auto rate = rx.products(d).decay_rate();
-            score = p.neutron_xs_[i_nuclide].fission * yield * flux
+            score = micro.fission * yield * flux
               * atom_density * rate;
             score_fission_delayed_dg(i_tally, d_bin, score, score_index, p.filter_matches_);
           }
@@ -852,11 +839,13 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
             auto yield = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
             auto rate = product.decay_rate();
-            score += p.neutron_xs_[i_nuclide].fission * flux
+            score += micro.fission * flux
               * yield * atom_density * rate;
           }
         }
       } else {
+        not_supported();
+        /*
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
           const DelayedGroupFilter& filt
@@ -915,6 +904,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             }
           }
         }
+        */
       }
       break;
 
@@ -927,10 +917,12 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
         const auto& nuc {data::nuclides[i_nuclide]};
         if (nuc.fissionable_) {
           const auto& rx {nuc.fission_rx_[0]->obj()};
-          score = rx.q_value() * p.neutron_xs_[i_nuclide].fission
+          score = rx.q_value() * micro.fission
             * atom_density * flux;
         }
       } else if (p.material_ != MATERIAL_VOID) {
+        not_supported();
+        /*
         const Material& material {model::materials[p.material_]};
         for (auto i = 0; i < material.nuclide_.size(); ++i) {
           auto j_nuclide = material.nuclide_[i];
@@ -942,6 +934,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
               * atom_density * flux;
           }
         }
+        */
       }
       break;
 
@@ -955,14 +948,14 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.type_ != Type::neutron) continue;
 
       if (i_nuclide >= 0) {
-        auto& micro {p.neutron_xs_[i_nuclide]};
         if (micro.elastic == CACHE_INVALID)
           micro.elastic = data::nuclides[i_nuclide].calculate_elastic_xs(micro.index_temp, micro.index_grid, micro.interp_factor);
         score = micro.elastic * atom_density * flux;
       } else {
         score = 0.;
-        auto& micro {p.neutron_xs_[i_nuclide]};
         if (p.material_ != MATERIAL_VOID) {
+          not_supported();
+          /*
           const Material& material {model::materials[p.material_]};
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto j_nuclide = material.nuclide_[i];
@@ -973,6 +966,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             score += micro.elastic * atom_density
               * flux;
           }
+          */
         }
       }
       break;
@@ -992,7 +986,12 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       // This case block only works if cross sections for these reactions have
       // been precalculated. When they are not, we revert to the default case,
       // which looks up cross sections
-      if (!simulation::need_depletion_rx) goto default_case;
+      
+      
+      // Note: the below problem no longer applies. We now check if any
+      // of these scores are present at tally initialization and do the lookups
+      // when tallies are active
+      //if (!simulation::need_depletion_rx) goto default_case;
 
       if (p.type_ != Type::neutron) continue;
 
@@ -1006,11 +1005,13 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       case N_4N: m = 5; break;
       }
       if (i_nuclide >= 0) {
-        score = p.neutron_xs_[i_nuclide].reaction[m] * atom_density
+        score = micro.reaction[m] * atom_density
           * flux;
       } else {
         score = 0.;
         if (p.material_ != MATERIAL_VOID) {
+          score += p.macro_xs_.reaction[m] * flux;
+          /*
           const Material& material {model::materials[p.material_]};
           for (auto i = 0; i < material.nuclide_.size(); ++i) {
             auto j_nuclide = material.nuclide_[i];
@@ -1018,6 +1019,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
             score += p.neutron_xs_[j_nuclide].reaction[m]
               * atom_density * flux;
           }
+          */
         }
       }
       break;
@@ -1048,8 +1050,11 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
     case HEATING:
       if (p.type_ == Type::neutron) {
+        not_supported();
+        /*
         score = score_neutron_heating(p, tally, flux, HEATING,
             i_nuclide, atom_density);
+            */
       } else {
         // The energy deposited is the difference between the pre-collision and
         // post-collision energy...
@@ -1082,12 +1087,15 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (i_nuclide >= 0) {
         score = get_nuclide_xs(p, i_nuclide, score_bin) * atom_density * flux;
       } else if (p.material_ != MATERIAL_VOID) {
+        not_supported();
+        /*
         const Material& material {model::materials[p.material_]};
         for (auto i = 0; i < material.nuclide_.size(); ++i) {
           auto j_nuclide = material.nuclide_[i];
           auto atom_density = material.atom_density_(i);
           score += get_nuclide_xs(p, j_nuclide, score_bin) * atom_density * flux;
         }
+        */
       }
     }
 
@@ -1320,9 +1328,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
           && data::nuclides[p.event_nuclide_].fissionable_) {
           if (tally.delayedgroup_filter_ != C_NONE) {
             auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-            const DelayedGroupFilter& filt
-              {*dynamic_cast<DelayedGroupFilter*>(
-              model::tally_filters[i_dg_filt].get())};
+            const Filter& filt{model::tally_filters[i_dg_filt]};
             // Tally each delayed group bin individually
             for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
               auto dg = filt.groups()[d_bin];
@@ -1358,9 +1364,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
         // contribution to the fission bank to the score.
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt {model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin];
@@ -1390,9 +1394,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
           const auto& rx {nuc.fission_rx_[0]->obj()};
           if (tally.delayedgroup_filter_ != C_NONE) {
             auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-            const DelayedGroupFilter& filt
-              {*dynamic_cast<DelayedGroupFilter*>(
-              model::tally_filters[i_dg_filt].get())};
+            const Filter& filt {model::tally_filters[i_dg_filt]};
             // Tally each delayed group bin individually
             for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
               auto d = filt.groups()[d_bin];
@@ -1453,9 +1455,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
             score += simulation::keff * bank.wgt * rate * flux;
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-              const DelayedGroupFilter& filt
-                {*dynamic_cast<DelayedGroupFilter*>(
-                model::tally_filters[i_dg_filt].get())};
+              const Filter& filt {model::tally_filters[i_dg_filt]};
               // Find the corresponding filter bin and then score
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                 auto d = filt.groups()[d_bin];
@@ -1989,9 +1989,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
           if (abs_xs > 0.) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-              const DelayedGroupFilter& filt
-                {*dynamic_cast<DelayedGroupFilter*>(
-                model::tally_filters[i_dg_filt].get())};
+              const Filter& filt {model::tally_filters[i_dg_filt]};
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                 auto d = filt.groups()[d_bin] - 1;
@@ -2034,9 +2032,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
           // contribution to the fission bank to the score.
           if (tally.delayedgroup_filter_ != C_NONE) {
             auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-            const DelayedGroupFilter& filt
-              {*dynamic_cast<DelayedGroupFilter*>(
-              model::tally_filters[i_dg_filt].get())};
+            const Filter& filt {model::tally_filters[i_dg_filt]};
             // Tally each delayed group bin individually
             for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
               auto d = filt.groups()[d_bin];
@@ -2064,9 +2060,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
       } else {
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt {model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin] - 1;
@@ -2102,9 +2096,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
           if (abs_xs > 0) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-              const DelayedGroupFilter& filt
-                {*dynamic_cast<DelayedGroupFilter*>(
-                model::tally_filters[i_dg_filt].get())};
+              const Filter& filt {model::tally_filters[i_dg_filt]};
               // Tally each delayed group bin individually
               for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                 auto d = filt.groups()[d_bin] - 1;
@@ -2172,9 +2164,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
               }
               if (tally.delayedgroup_filter_ != C_NONE) {
                 auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-                const DelayedGroupFilter& filt
-                  {*dynamic_cast<DelayedGroupFilter*>(
-                  model::tally_filters[i_dg_filt].get())};
+                const Filter& filt {model::tally_filters[i_dg_filt]};
                 // Find the corresponding filter bin and then score
                 for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
                   auto dg = filt.groups()[d_bin];
@@ -2191,9 +2181,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
       } else {
         if (tally.delayedgroup_filter_ != C_NONE) {
           auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-          const DelayedGroupFilter& filt
-            {*dynamic_cast<DelayedGroupFilter*>(
-            model::tally_filters[i_dg_filt].get())};
+          const Filter& filt {model::tally_filters[i_dg_filt]};
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin] - 1;
@@ -2378,7 +2366,7 @@ void score_analog_tally_mg(Particle& p)
 }
 
 void
-score_tracklength_tally(Particle& p, double distance)
+score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
 {
   // Determine the tracklength estimate of the flux
   double flux = p.wgt_ * distance;
@@ -2399,26 +2387,39 @@ score_tracklength_tally(Particle& p, double distance)
       auto filter_index = filter_iter.index_;
       auto filter_weight = filter_iter.weight_;
 
+      #ifdef NO_MICRO_XS_CACHE
+      // Find energy index on energy grid
+      int neutron = static_cast<int>(Particle::Type::neutron);
+      int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
+      #endif
+
       // Loop over nuclide bins.
       for (auto i = 0; i < tally.nuclides_.size(); ++i) {
         auto i_nuclide = tally.nuclides_[i];
 
         double atom_density = 0.;
+        NuclideMicroXS micro;
         if (i_nuclide >= 0) {
           if (p.material_ != MATERIAL_VOID) {
             auto j = model::materials[p.material_].mat_nuclide_index_[i_nuclide];
             if (j == C_NONE) continue;
             atom_density = model::materials[p.material_].atom_density_(j);
+            #ifdef NO_MICRO_XS_CACHE
+            micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
+            #else
+            micro = p.neutron_xs_[i_nuclide];
+            #endif
           }
         }
 
         //TODO: consider replacing this "if" with pointers or templates
         if (settings::run_CE) {
           score_general_ce_nonanalog(p, i_tally, i*tally.scores_.size(), filter_index,
-            filter_weight, i_nuclide, atom_density, flux);
+            filter_weight, i_nuclide, atom_density, flux, micro);
         } else {
-          score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
-            filter_weight, i_nuclide, atom_density, flux);
+          not_supported();
+          //score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
+          //  filter_weight, i_nuclide, atom_density, flux);
         }
       }
     }
@@ -2470,10 +2471,13 @@ void score_collision_tally(Particle& p)
           atom_density = model::materials[p.material_].atom_density_(j);
         }
 
+        // TODO:
+        NuclideMicroXS micro;
+
         //TODO: consider replacing this "if" with pointers or templates
         if (settings::run_CE) {
           score_general_ce_nonanalog(p, i_tally, i*tally.scores_.size(), filter_index,
-            filter_weight, i_nuclide, atom_density, flux);
+            filter_weight, i_nuclide, atom_density, flux, micro);
         } else {
           score_general_mg(p, i_tally, i*tally.scores_.size(), filter_index,
             filter_weight, i_nuclide, atom_density, flux);

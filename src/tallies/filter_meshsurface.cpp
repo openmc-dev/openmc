@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_meshsurface.h"
+#include "openmc/tallies/filter.h"
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -8,12 +8,12 @@
 namespace openmc {
 
 void
-MeshSurfaceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::MeshSurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                 FilterMatch& match) const
 {
   int starting_length = match.bins_weights_length_;
   //model::meshes[mesh_]->surface_bins_crossed(p, match.bins_);
-  model::meshes[mesh_]->surface_bins_crossed(p, match);
+  model::meshes[mesh_].surface_bins_crossed(p, match);
   int ending_length = match.bins_weights_length_;
   //for (auto b : match.bins_) match.weights_.push_back(1.0);
     //match.weights_.push_back(1.0);
@@ -22,9 +22,9 @@ MeshSurfaceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 std::string
-MeshSurfaceFilter::text_label(int bin) const
+Filter::MeshSurfaceFilter_text_label(int bin) const
 {
-  auto& mesh = *model::meshes[mesh_];
+  auto& mesh = model::meshes[mesh_];
   int n_dim = mesh.n_dimension_;
 
   // Get flattend mesh index and surface index.
@@ -32,7 +32,7 @@ MeshSurfaceFilter::text_label(int bin) const
   MeshDir surf_dir = static_cast<MeshDir>(bin % (4 * n_dim));
 
   // Get mesh index part of label.
-  std::string out = MeshFilter::text_label(i_mesh);
+  std::string out = MeshFilter_text_label(i_mesh);
 
   // Get surface part of label.
   switch (surf_dir) {
@@ -77,17 +77,11 @@ MeshSurfaceFilter::text_label(int bin) const
   return out;
 }
 
-void
-MeshSurfaceFilter::set_mesh(int32_t mesh)
-{
-  mesh_ = mesh;
-  n_bins_ = model::meshes[mesh_]->n_surface_bins();
-}
-
 //==============================================================================
 // C-API functions
 //==============================================================================
 
+/*
 extern"C" int
 openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh)
 {return openmc_mesh_filter_get_mesh(index, index_mesh);}
@@ -95,5 +89,6 @@ openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh)
 extern"C" int
 openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh)
 {return openmc_mesh_filter_set_mesh(index, index_mesh);}
+*/
 
 } // namespace openmc

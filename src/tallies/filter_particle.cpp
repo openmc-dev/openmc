@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 
@@ -7,7 +7,7 @@
 namespace openmc {
 
 void
-ParticleFilter::from_xml(pugi::xml_node node)
+Filter::ParticleFilter_from_xml(pugi::xml_node node)
 {
   auto particles = get_node_array<std::string>(node, "bins");
 
@@ -20,7 +20,7 @@ ParticleFilter::from_xml(pugi::xml_node node)
 }
 
 void
-ParticleFilter::set_particles(gsl::span<Particle::Type> particles)
+Filter::set_particles(gsl::span<Particle::Type> particles)
 {
   // Clear existing particles
   particles_.clear();
@@ -34,7 +34,7 @@ ParticleFilter::set_particles(gsl::span<Particle::Type> particles)
 }
 
 void
-ParticleFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::ParticleFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   for (auto i = 0; i < particles_.size(); i++) {
@@ -49,9 +49,8 @@ ParticleFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-ParticleFilter::to_statepoint(hid_t filter_group) const
+Filter::ParticleFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   std::vector<std::string> particles;
   for (auto p : particles_) {
     particles.push_back(particle_type_to_str(p));
@@ -60,7 +59,7 @@ ParticleFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-ParticleFilter::text_label(int bin) const
+Filter::ParticleFilter_text_label(int bin) const
 {
   const auto& p = particles_.at(bin);
   return fmt::format("Particle: {}", particle_type_to_str(p));

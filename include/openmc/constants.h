@@ -256,7 +256,9 @@ enum ReactionType {
 };
 
 #define DEPLETION_RX_SIZE 6
+#pragma omp declare target
 constexpr std::array<int, DEPLETION_RX_SIZE> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
+#pragma omp end declare target
 
 enum class URRTableParam {
   CUM_PROB,

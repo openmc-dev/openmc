@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_mu.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 
@@ -9,7 +9,7 @@
 namespace openmc {
 
 void
-MuFilter::from_xml(pugi::xml_node node)
+Filter::MuFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
 
@@ -31,7 +31,7 @@ MuFilter::from_xml(pugi::xml_node node)
 }
 
 void
-MuFilter::set_bins(gsl::span<double> bins)
+Filter::MuFilter_set_bins(gsl::span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -49,7 +49,7 @@ MuFilter::set_bins(gsl::span<double> bins)
 }
 
 void
-MuFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
+Filter::MuFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   if (p.mu_ >= bins_.front() && p.mu_ <= bins_.back()) {
@@ -63,14 +63,13 @@ const
 }
 
 void
-MuFilter::to_statepoint(hid_t filter_group) const
+Filter::MuFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", bins_);
 }
 
 std::string
-MuFilter::text_label(int bin) const
+Filter::MuFilter_text_label(int bin) const
 {
   return fmt::format("Change-in-Angle [{}, {})", bins_[bin], bins_[bin+1]);
 }

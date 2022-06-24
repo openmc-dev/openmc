@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_zernike.h"
+#include "openmc/tallies/filter.h"
 
 #include <cmath>
 #include <sstream>
@@ -19,28 +19,28 @@ namespace openmc {
 //==============================================================================
 
 void
-ZernikeFilter::from_xml(pugi::xml_node node)
+Filter::ZernikeFilter_from_xml(pugi::xml_node node)
 {
   set_order(std::stoi(get_node_value(node, "order")));
   x_ = std::stod(get_node_value(node, "x"));
-  y_ = std::stod(get_node_value(node, "y"));
+  yy_ = std::stod(get_node_value(node, "y"));
   r_ = std::stod(get_node_value(node, "r"));
 }
 
 void
-ZernikeFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                             FilterMatch& match) const
 {
   // Determine the normalized (r,theta) coordinates.
   double x = p.r().x - x_;
-  double y = p.r().y - y_;
+  double y = p.r().y - yy_;
   double r = std::sqrt(x*x + y*y) / r_;
   double theta = std::atan2(y, x);
 
   if (r <= 1.0) {
     // Compute and return the Zernike weights.
-    std::vector<double> zn(n_bins_);
-    calc_zn(order_, r, theta, zn.data());
+    double zn[FILTERMATCH_BINS_WEIGHTS_SIZE];
+    calc_zn(order_, r, theta, zn);
     for (int i = 0; i < n_bins_; i++) {
       //match.bins_.push_back(i);
       //match.weights_.push_back(zn[i]);
@@ -52,17 +52,16 @@ ZernikeFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-ZernikeFilter::to_statepoint(hid_t filter_group) const
+Filter::ZernikeFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "order", order_);
   write_dataset(filter_group, "x", x_);
-  write_dataset(filter_group, "y", y_);
+  write_dataset(filter_group, "y", yy_);
   write_dataset(filter_group, "r", r_);
 }
 
 std::string
-ZernikeFilter::text_label(int bin) const
+Filter::ZernikeFilter_text_label(int bin) const
 {
   Expects(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_+1; n++) {
@@ -77,7 +76,7 @@ ZernikeFilter::text_label(int bin) const
 }
 
 void
-ZernikeFilter::set_order(int order)
+Filter::ZernikeFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Zernike order must be non-negative."};
@@ -91,18 +90,18 @@ ZernikeFilter::set_order(int order)
 //==============================================================================
 
 void
-ZernikeRadialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::ZernikeRadialFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                   FilterMatch& match) const
 {
   // Determine the normalized radius coordinate.
   double x = p.r().x - x_;
-  double y = p.r().y - y_;
+  double y = p.r().y - yy_;
   double r = std::sqrt(x*x + y*y) / r_;
 
   if (r <= 1.0) {
     // Compute and return the Zernike weights.
-    std::vector<double> zn(n_bins_);
-    calc_zn_rad(order_, r, zn.data());
+    double zn[FILTERMATCH_BINS_WEIGHTS_SIZE];
+    calc_zn_rad(order_, r, zn);
     for (int i = 0; i < n_bins_; i++) {
       //match.bins_.push_back(i);
       //match.weights_.push_back(zn[i]);
@@ -114,15 +113,15 @@ ZernikeRadialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 std::string
-ZernikeRadialFilter::text_label(int bin) const
+Filter::ZernikeRadialFilter_text_label(int bin) const
 {
   return "Zernike expansion, Z" + std::to_string(2*bin) + ",0";
 }
 
 void
-ZernikeRadialFilter::set_order(int order)
+Filter::ZernikeRadialFilter_set_order(int order)
 {
-  ZernikeFilter::set_order(order);
+  Filter::ZernikeFilter_set_order(order);
   n_bins_ = order / 2 + 1;
 }
 
@@ -130,6 +129,7 @@ ZernikeRadialFilter::set_order(int order)
 // C-API functions
 //==============================================================================
 
+/*
 std::pair<int, ZernikeFilter*>
 check_zernike_filter(int32_t index)
 {
@@ -177,7 +177,7 @@ openmc_zernike_filter_get_params(int32_t index, double* x, double* y,
 
   // Output the params.
   *x = filt->x();
-  *y = filt->y();
+  *y = filt->yy();
   *r = filt->r();
   return 0;
 }
@@ -208,9 +208,10 @@ openmc_zernike_filter_set_params(int32_t index, const double* x,
 
   // Update the filter.
   if (x) filt->set_x(*x);
-  if (y) filt->set_y(*y);
+  if (y) filt->set_yy(*y);
   if (r) filt->set_r(*r);
   return 0;
 }
+*/
 
 } // namespace openmc

@@ -523,6 +523,14 @@ write_dataset(hid_t obj_id, const char* name, const std::vector<T>& buffer)
                          H5S_ALL, false, buffer.data());
 }
 
+template<typename T> inline void
+write_dataset(hid_t obj_id, const char* name, const openmc::vector<T>& buffer)
+{
+  hsize_t dims[] {buffer.size()};
+  write_dataset_lowlevel(obj_id, 1, dims, name, H5TypeMap<T>::type_id,
+                         H5S_ALL, false, buffer.data());
+}
+
 // Template for xarray, xtensor, etc.
 template<typename D> inline void
 write_dataset(hid_t obj_id, const char* name, const xt::xcontainer<D>& arr)

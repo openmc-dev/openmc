@@ -482,61 +482,23 @@ int sample_nuclide(Particle& p)
   int neutron = static_cast<int>(Particle::Type::neutron);
   int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
 
-  // Determine if this material has S(a,b) tables
-  bool check_sab = (mat.thermal_tables_.size() > 0);
-
-  // Initialize position in i_sab_nuclides
-  int j = 0;
-
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
-    // Get atom density
     int i_nuclide = mat.nuclide_[i];
+
+    // Lookup micro XS (no depletion XS data is needed for collisions)
+    bool need_depletion_rx = false;
+    NuclideMicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
+    
+    // Get atom density
     double atom_density = mat.device_atom_density_[i];
 
-    // ======================================================================
-    // CHECK FOR S(A,B) TABLE
-
-    int i_sab = C_NONE;
-    double sab_frac = 0.0;
-
-    // Check if this nuclide matches one of the S(a,b) tables specified.
-    // This relies on thermal_tables_ being sorted by .index_nuclide
-    if (check_sab) {
-      const auto& sab {mat.thermal_tables_[j]};
-      if (i == sab.index_nuclide) {
-        // Get index in sab_tables
-        i_sab = sab.index_table;
-        sab_frac = sab.fraction;
-
-        // If particle energy is greater than the highest energy for the
-        // S(a,b) table, then don't use the S(a,b) table
-        if (p.E_ > data::device_thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
-
-        // Increment position in thermal_tables_
-        ++j;
-
-        // Don't check for S(a,b) tables if there are no more left
-        if (j == mat.thermal_tables_.size()) check_sab = false;
-      }
-    }
-
-    // CHECK FOR S(A,B) TABLE FINISHED
-    // ======================================================================
-
-    // Lookup micro XS or retrieve from XS cache
-    double total;
-    bool cache_micro = false;
-    MicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, cache_micro);
-    total = xs.total;
-
     // Increment probability to compare to cutoff
-    prob += atom_density * total;
+    prob += atom_density * xs.total;
     if (prob >= cutoff) {
       // If no micro XS cache is being used, we need to store this nuclide's micro XS data
       // in the particle for other collision physics kernels to utilize.
-      cache_micro = true;
-      data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, cache_micro);
+      p.neutron_xs_[0] = xs;
       return i_nuclide;
     }
   }

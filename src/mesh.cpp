@@ -36,7 +36,8 @@ namespace openmc {
 namespace model {
 
 std::unordered_map<int32_t, int32_t> mesh_map;
-std::vector<std::unique_ptr<Mesh>> meshes;
+Mesh* meshes;
+int32_t meshes_size;
 
 } // namespace model
 
@@ -70,6 +71,14 @@ inline bool check_intersection_point(double x1, double x0, double y1,
 // Mesh implementation
 //==============================================================================
 
+void Mesh::copy_to_device()
+{
+  lower_left_.copy_to_device();
+  upper_right_.copy_to_device();
+  shape_.copy_to_device();
+  width_.copy_to_device();
+}
+
 Mesh::Mesh(pugi::xml_node node)
 {
   // Copy mesh id
@@ -82,6 +91,92 @@ Mesh::Mesh(pugi::xml_node node)
         std::to_string(id_));
     }
   }
+  
+  // Determine number of dimensions for mesh
+  if (!check_for_node(node, "dimension")) {
+    fatal_error("Must specify <dimension> on a regular mesh.");
+  }
+
+  shape_ = get_node_array_ov<int>(node, "dimension");
+  int n = n_dimension_ = shape_.size();
+  if (n != 1 && n != 2 && n != 3) {
+    fatal_error("Mesh must be one, two, or three dimensions.");
+  }
+
+  // Check that dimensions are all greater than zero
+  //if (xt::any(shape_ <= 0)) {
+  //  fatal_error("All entries on the <dimension> element for a tally "
+  //    "mesh must be positive.");
+  //}
+
+  // Check for lower-left coordinates
+  if (check_for_node(node, "lower_left")) {
+    // Read mesh lower-left corner location
+    lower_left_ = get_node_array_ov<double>(node, "lower_left");
+  } else {
+    fatal_error("Must specify <lower_left> on a mesh.");
+  }
+
+  // Make sure lower_left and dimension match
+  if (shape_.size() != lower_left_.size()) {
+    fatal_error("Number of entries on <lower_left> must be the same "
+      "as the number of entries on <dimension>.");
+  }
+
+  if (check_for_node(node, "width")) {
+    // Make sure both upper-right or width were specified
+    if (check_for_node(node, "upper_right")) {
+      fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
+    }
+
+    width_ = get_node_array_ov<double>(node, "width");
+
+    // Check to ensure width has same dimensions
+    auto n = width_.size();
+    if (n != lower_left_.size()) {
+      fatal_error("Number of entries on <width> must be the same as "
+        "the number of entries on <lower_left>.");
+    }
+
+    // Check for negative widths
+    //if (xt::any(width_ < 0.0)) {
+    //  fatal_error("Cannot have a negative <width> on a tally mesh.");
+    //}
+
+    // Set width and upper right coordinate
+    for (int i = 0; i < lower_left_.size(); i++) {
+      upper_right_.push_back(lower_left_[i] + shape_[i] * width_[i]);
+    }
+  } else if (check_for_node(node, "upper_right")) {
+    upper_right_ = get_node_array_ov<double>(node, "upper_right");
+
+    // Check to ensure width has same dimensions
+    auto n = upper_right_.size();
+    if (n != lower_left_.size()) {
+      fatal_error("Number of entries on <upper_right> must be the "
+        "same as the number of entries on <lower_left>.");
+    }
+
+    // Check that upper-right is above lower-left
+    //if (xt::any(upper_right_ < lower_left_)) {
+    //  fatal_error("The <upper_right> coordinates must be greater than "
+    //    "the <lower_left> coordinates on a tally mesh.");
+    //}
+
+    // Set width
+    for (int i = 0; i < upper_right_.size(); i++) {
+      width_.push_back((upper_right_[i] - lower_left_[i]) / shape_[i]);
+    }
+  } else {
+    fatal_error("Must specify either <upper_right> and <width> on a mesh.");
+  }
+
+  // Set volume fraction
+  int prod = shape_[0];
+  for (int i = 1; i < shape_.size(); i++) {
+    prod *= shape_[i]; 
+  }
+  volume_frac_ = 1.0/prod;
 }
 
 //==============================================================================
@@ -89,7 +184,7 @@ Mesh::Mesh(pugi::xml_node node)
 //==============================================================================
 
 std::string
-StructuredMesh::bin_label(int bin) const {
+Mesh::bin_label(int bin) const {
   std::vector<int> ijk(n_dimension_);
   get_indices_from_bin(bin, ijk.data());
 
@@ -102,7 +197,7 @@ StructuredMesh::bin_label(int bin) const {
   }
 }
 
-void StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
+void Mesh::get_indices(Position r, int* ijk, bool* in_mesh) const
 {
   *in_mesh = true;
   for (int i = 0; i < n_dimension_; ++i) {
@@ -112,7 +207,7 @@ void StructuredMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
   }
 }
 
-int StructuredMesh::get_bin_from_indices(const int* ijk) const
+int Mesh::get_bin_from_indices(const int* ijk) const
 {
   switch (n_dimension_) {
   case 1:
@@ -126,7 +221,7 @@ int StructuredMesh::get_bin_from_indices(const int* ijk) const
   }
 }
 
-void StructuredMesh::get_indices_from_bin(int bin, int* ijk) const
+void Mesh::get_indices_from_bin(int bin, int* ijk) const
 {
   if (n_dimension_ == 1) {
     ijk[0] = bin + 1;
@@ -140,7 +235,7 @@ void StructuredMesh::get_indices_from_bin(int bin, int* ijk) const
   }
 }
 
-int StructuredMesh::get_bin(Position r) const
+int Mesh::get_bin(Position r) const
 {
   // Determine indices
   std::vector<int> ijk(n_dimension_);
@@ -152,18 +247,22 @@ int StructuredMesh::get_bin(Position r) const
   return get_bin_from_indices(ijk.data());
 }
 
-int StructuredMesh::n_bins() const
+int Mesh::n_bins() const
 {
-  return xt::prod(shape_)();
+  int prod = shape_[0];
+  for (int i = 1; i < shape_.size(); i++) {
+    prod *= shape_[i]; 
+  }
+  return prod;
 }
 
-int StructuredMesh::n_surface_bins() const
+int Mesh::n_surface_bins() const
 {
   return 4 * n_dimension_ * n_bins();
 }
 
 xt::xtensor<double, 1>
-StructuredMesh::count_sites(const Particle::Bank* bank,
+Mesh::count_sites(const Particle::Bank* bank,
                             int64_t length,
                             bool* outside) const
 {
@@ -218,7 +317,7 @@ StructuredMesh::count_sites(const Particle::Bank* bank,
   return counts;
 }
 
-bool StructuredMesh::intersects(Position& r0, Position r1, int* ijk) const
+bool Mesh::intersects(Position& r0, Position r1, int* ijk) const
 {
   switch(n_dimension_) {
   case 1:
@@ -232,7 +331,7 @@ bool StructuredMesh::intersects(Position& r0, Position r1, int* ijk) const
   }
 }
 
-bool StructuredMesh::intersects_1d(Position& r0, Position r1, int* ijk) const
+bool Mesh::intersects_1d(Position& r0, Position r1, int* ijk) const
 {
   // Copy coordinates of starting point
   double x0 = r0.x;
@@ -273,7 +372,7 @@ bool StructuredMesh::intersects_1d(Position& r0, Position r1, int* ijk) const
   return min_dist < INFTY;
 }
 
-bool StructuredMesh::intersects_2d(Position& r0, Position r1, int* ijk) const
+bool Mesh::intersects_2d(Position& r0, Position r1, int* ijk) const
 {
   // Copy coordinates of starting point
   double x0 = r0.x;
@@ -350,7 +449,7 @@ bool StructuredMesh::intersects_2d(Position& r0, Position r1, int* ijk) const
   return min_dist < INFTY;
 }
 
-bool StructuredMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
+bool Mesh::intersects_3d(Position& r0, Position r1, int* ijk) const
 {
   // Copy coordinates of starting point
   double x0 = r0.x;
@@ -464,7 +563,7 @@ bool StructuredMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
 //void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 //                               std::vector<double>& lengths) const
 //void RegularMesh::bins_crossed(const Particle& p, FilterMatch& match) const
-void StructuredMesh::bins_crossed(const Particle& p, FilterMatch& match) const
+void Mesh::bins_crossed(const Particle& p, FilterMatch& match) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
@@ -584,108 +683,24 @@ void StructuredMesh::bins_crossed(const Particle& p, FilterMatch& match) const
 // RegularMesh implementation
 //==============================================================================
 
-RegularMesh::RegularMesh(pugi::xml_node node)
-  : StructuredMesh {node}
-{
-  // Determine number of dimensions for mesh
-  if (!check_for_node(node, "dimension")) {
-    fatal_error("Must specify <dimension> on a regular mesh.");
-  }
-
-
-  shape_ = get_node_xarray<int>(node, "dimension");
-  int n = n_dimension_ = shape_.size();
-  if (n != 1 && n != 2 && n != 3) {
-    fatal_error("Mesh must be one, two, or three dimensions.");
-  }
-
-  // Check that dimensions are all greater than zero
-  if (xt::any(shape_ <= 0)) {
-    fatal_error("All entries on the <dimension> element for a tally "
-      "mesh must be positive.");
-  }
-
-  // Check for lower-left coordinates
-  if (check_for_node(node, "lower_left")) {
-    // Read mesh lower-left corner location
-    lower_left_ = get_node_xarray<double>(node, "lower_left");
-  } else {
-    fatal_error("Must specify <lower_left> on a mesh.");
-  }
-
-  // Make sure lower_left and dimension match
-  if (shape_.size() != lower_left_.size()) {
-    fatal_error("Number of entries on <lower_left> must be the same "
-      "as the number of entries on <dimension>.");
-  }
-
-  if (check_for_node(node, "width")) {
-    // Make sure both upper-right or width were specified
-    if (check_for_node(node, "upper_right")) {
-      fatal_error("Cannot specify both <upper_right> and <width> on a mesh.");
-    }
-
-    width_ = get_node_xarray<double>(node, "width");
-
-    // Check to ensure width has same dimensions
-    auto n = width_.size();
-    if (n != lower_left_.size()) {
-      fatal_error("Number of entries on <width> must be the same as "
-        "the number of entries on <lower_left>.");
-    }
-
-    // Check for negative widths
-    if (xt::any(width_ < 0.0)) {
-      fatal_error("Cannot have a negative <width> on a tally mesh.");
-    }
-
-    // Set width and upper right coordinate
-    upper_right_ = xt::eval(lower_left_ + shape_ * width_);
-
-  } else if (check_for_node(node, "upper_right")) {
-    upper_right_ = get_node_xarray<double>(node, "upper_right");
-
-    // Check to ensure width has same dimensions
-    auto n = upper_right_.size();
-    if (n != lower_left_.size()) {
-      fatal_error("Number of entries on <upper_right> must be the "
-        "same as the number of entries on <lower_left>.");
-    }
-
-    // Check that upper-right is above lower-left
-    if (xt::any(upper_right_ < lower_left_)) {
-      fatal_error("The <upper_right> coordinates must be greater than "
-        "the <lower_left> coordinates on a tally mesh.");
-    }
-
-    // Set width
-    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
-  } else {
-    fatal_error("Must specify either <upper_right> and <width> on a mesh.");
-  }
-
-  // Set volume fraction
-  volume_frac_ = 1.0/xt::prod(shape_)();
-}
-
-int RegularMesh::get_index_in_direction(double r, int i) const
+int Mesh::get_index_in_direction(double r, int i) const
 {
   return std::ceil((r - lower_left_[i]) / width_[i]);
 }
 
-double RegularMesh::positive_grid_boundary(int* ijk, int i) const
+double Mesh::positive_grid_boundary(int* ijk, int i) const
 {
   return lower_left_[i] + ijk[i] * width_[i];
 }
 
-double RegularMesh::negative_grid_boundary(int* ijk, int i) const
+double Mesh::negative_grid_boundary(int* ijk, int i) const
 {
   return lower_left_[i] + (ijk[i] - 1) * width_[i];
 }
 
-//void RegularMesh::surface_bins_crossed(const Particle& p,
+//void Mesh::surface_bins_crossed(const Particle& p,
 //                                       std::vector<int>& bins) const
-void RegularMesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
+void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
 {
   // ========================================================================
   // Determine if the track intersects the tally mesh.
@@ -838,7 +853,7 @@ void RegularMesh::surface_bins_crossed(const Particle& p, FilterMatch& match) co
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-RegularMesh::plot(Position plot_ll, Position plot_ur) const
+Mesh::plot(Position plot_ll, Position plot_ur) const
 {
   // Figure out which axes lie in the plane of the plot.
   std::array<int, 2> axes {-1, -1};
@@ -873,7 +888,7 @@ RegularMesh::plot(Position plot_ll, Position plot_ur) const
   return {axis_lines[0], axis_lines[1]};
 }
 
-void RegularMesh::to_hdf5(hid_t group) const
+void Mesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
@@ -889,6 +904,8 @@ void RegularMesh::to_hdf5(hid_t group) const
 //==============================================================================
 // RectilinearMesh implementation
 //==============================================================================
+
+/*
 
 RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   : StructuredMesh {node}
@@ -1164,6 +1181,8 @@ void RectilinearMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
+*/
+
 //==============================================================================
 // Helper functions for the C API
 //==============================================================================
@@ -1171,7 +1190,7 @@ void RectilinearMesh::to_hdf5(hid_t group) const
 int
 check_mesh(int32_t index)
 {
-  if (index < 0 || index >= model::meshes.size()) {
+  if (index < 0 || index >= model::meshes_size) {
     set_errmsg("Index in meshes array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -1184,7 +1203,7 @@ check_mesh_type(int32_t index)
 {
   if (int err = check_mesh(index)) return err;
 
-  T* mesh = dynamic_cast<T*>(model::meshes[index].get());
+  T* mesh = dynamic_cast<T*>(&model::meshes[index]);
   if (!mesh) {
     set_errmsg("This function is not valid for input mesh.");
     return OPENMC_E_INVALID_TYPE;
@@ -1202,6 +1221,7 @@ openmc_mesh_get_type(int32_t index, char* type)
 {
   if (int err = check_mesh(index)) return err;
 
+  /*
   RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
   if (mesh) {
     std::strcpy(type, "regular");
@@ -1211,6 +1231,8 @@ openmc_mesh_get_type(int32_t index, char* type)
       std::strcpy(type, "rectilinear");
     }
   }
+  */
+    std::strcpy(type, "regular");
   return 0;
 }
 
@@ -1219,20 +1241,24 @@ extern "C" int
 openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
                      int32_t* index_end)
 {
-  if (index_start) *index_start = model::meshes.size();
+      fatal_error("Extending Meshes Not Yet Supported On Device!");
+      /*
+  if (index_start) *index_start = model::meshes_size;
   std::string mesh_type;
 
   for (int i = 0; i < n; ++i) {
     if (std::strcmp(type, "regular") == 0) {
-      model::meshes.push_back(std::make_unique<RegularMesh>());
+      model::meshes.push_back(std::make_unique<Mesh>());
     } else if (std::strcmp(type, "rectilinear") == 0) {
-      model::meshes.push_back(std::make_unique<RectilinearMesh>());
+      fatal_error("Rectilinear Meshes Not Yet Supported On Device!");
+      //model::meshes.push_back(std::make_unique<RectilinearMesh>());
     } else {
       throw std::runtime_error{"Unknown mesh type: " + std::string(type)};
     }
   }
   if (index_end) *index_end = model::meshes.size() - 1;
 
+  */
   return 0;
 }
 
@@ -1254,7 +1280,7 @@ extern "C" int
 openmc_mesh_get_id(int32_t index, int32_t* id)
 {
   if (int err = check_mesh(index)) return err;
-  *id = model::meshes[index]->id_;
+  *id = model::meshes[index].id_;
   return 0;
 }
 
@@ -1263,7 +1289,7 @@ extern "C" int
 openmc_mesh_set_id(int32_t index, int32_t id)
 {
   if (int err = check_mesh(index)) return err;
-  model::meshes[index]->id_ = id;
+  model::meshes[index].id_ = id;
   model::mesh_map[id] = index;
   return 0;
 }
@@ -1272,8 +1298,8 @@ openmc_mesh_set_id(int32_t index, int32_t id)
 extern "C" int
 openmc_regular_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
-  if (int err = check_mesh_type<RegularMesh>(index)) return err;
-  RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
+  if (int err = check_mesh_type<Mesh>(index)) return err;
+  Mesh* mesh = &model::meshes[index];
   *dims = mesh->shape_.data();
   *n = mesh->n_dimension_;
   return 0;
@@ -1283,12 +1309,15 @@ openmc_regular_mesh_get_dimension(int32_t index, int** dims, int* n)
 extern "C" int
 openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
-  if (int err = check_mesh_type<RegularMesh>(index)) return err;
-  RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
+  if (int err = check_mesh_type<Mesh>(index)) return err;
+  Mesh* mesh = &model::meshes[index];
 
   // Copy dimension
-  std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
-  mesh->shape_ = xt::adapt(dims, n, xt::no_ownership(), shape);
+  vector<int> shape;
+  for (int i = 0; i < n; i++) {
+    shape.push_back(dims[i]);
+  }
+  mesh->shape_ = shape;
   mesh->n_dimension_ = mesh->shape_.size();
   return 0;
 }
@@ -1298,10 +1327,10 @@ extern "C" int
 openmc_regular_mesh_get_params(int32_t index, double** ll, double** ur,
                                double** width, int* n)
 {
-  if (int err = check_mesh_type<RegularMesh>(index)) return err;
-  RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
+  if (int err = check_mesh_type<Mesh>(index)) return err;
+  Mesh* m = &model::meshes[index];
 
-  if (m->lower_left_.dimension() == 0) {
+  if (m->lower_left_.size() == 0) {
     set_errmsg("Mesh parameters have not been set.");
     return OPENMC_E_ALLOCATE;
   }
@@ -1318,8 +1347,10 @@ extern "C" int
 openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
                                const double* ur, const double* width)
 {
-  if (int err = check_mesh_type<RegularMesh>(index)) return err;
-  RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
+  fatal_error("setting regular mesh params from C interface not supported on device.");
+  /*
+  if (int err = check_mesh_type<Mesh>(index)) return err;
+  Mesh* m = &model::meshes[index];
 
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
@@ -1338,6 +1369,7 @@ openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+  */
 
   return 0;
 }
@@ -1347,6 +1379,8 @@ extern "C" int
 openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
                        double** grid_y, int* ny, double** grid_z, int* nz)
 {
+      fatal_error("Rectilinear Meshes Not Yet Supported On Device!");
+      /*
   if (int err = check_mesh_type<RectilinearMesh>(index)) return err;
   RectilinearMesh* m = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
 
@@ -1361,6 +1395,7 @@ openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
   *ny = m->grid_[1].size();
   *grid_z = m->grid_[2].data();
   *nz = m->grid_[2].size();
+  */
 
   return 0;
 }
@@ -1371,6 +1406,8 @@ openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
                        const int nx, const double* grid_y, const int ny,
                        const double* grid_z, const int nz)
 {
+      fatal_error("Rectilinear Meshes Not Yet Supported On Device!");
+      /*
   if (int err = check_mesh_type<RectilinearMesh>(index)) return err;
   RectilinearMesh* m = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
 
@@ -1389,6 +1426,8 @@ openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
 
   int err = m->set_grid();
   return err;
+  */
+      return 0;
 }
 
 #ifdef DAGMC
@@ -1979,6 +2018,13 @@ UnstructuredMesh::write(std::string base_filename) const {
 
 void read_meshes(pugi::xml_node root)
 {
+  // Count the number of materials
+  model::meshes_size = std::distance(root.children("mesh").begin(), root.children("mesh").end());
+  
+  // Resize the mesh array
+  model::meshes = static_cast<Mesh*>(malloc(model::meshes_size * sizeof(Mesh)));
+
+  int i = 0;
   for (auto node : root.children("mesh")) {
     std::string mesh_type;
     if (check_for_node(node, "type")) {
@@ -1989,9 +2035,10 @@ void read_meshes(pugi::xml_node root)
 
     // Read mesh and add to vector
     if (mesh_type == "regular") {
-      model::meshes.push_back(std::make_unique<RegularMesh>(node));
+      new (model::meshes + i) Mesh(node);
     } else if (mesh_type == "rectilinear") {
-      model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
+      fatal_error("Rectilinear Meshes Not Yet Supported On Device!");
+      //model::meshes.push_back(std::make_unique<RectilinearMesh>(node));
 #ifdef DAGMC
     } else if (mesh_type == "unstructured") {
       model::meshes.push_back(std::make_unique<UnstructuredMesh>(node));
@@ -2004,7 +2051,8 @@ void read_meshes(pugi::xml_node root)
     }
 
     // Map ID to position in vector
-    model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
+    model::mesh_map[model::meshes[i].id_] = i;
+    i++;
   }
 }
 
@@ -2012,15 +2060,16 @@ void meshes_to_hdf5(hid_t group)
 {
   // Write number of meshes
   hid_t meshes_group = create_group(group, "meshes");
-  int32_t n_meshes = model::meshes.size();
+  int32_t n_meshes = model::meshes_size;
   write_attribute(meshes_group, "n_meshes", n_meshes);
 
   if (n_meshes > 0) {
     // Write IDs of meshes
     std::vector<int> ids;
-    for (const auto& m : model::meshes) {
-      m->to_hdf5(meshes_group);
-      ids.push_back(m->id_);
+    for (int32_t i = 0; i < model::meshes_size; i++) {
+      Mesh& m = model::meshes[i];
+      m.to_hdf5(meshes_group);
+      ids.push_back(m.id_);
     }
     write_attribute(meshes_group, "ids", ids);
   }
@@ -2030,10 +2079,14 @@ void meshes_to_hdf5(hid_t group)
 
 void free_memory_mesh()
 {
-  model::meshes.clear();
+  for (int i = 0; i < model::meshes_size; i++) {
+    model::meshes[i].~Mesh();
+  }
+  free(model::meshes);
+  model::meshes_size = 0;
   model::mesh_map.clear();
 }
 
-extern "C" int n_meshes() { return model::meshes.size(); }
+extern "C" int n_meshes() { return model::meshes_size; }
 
 } // namespace openmc

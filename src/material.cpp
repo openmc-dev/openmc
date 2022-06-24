@@ -435,7 +435,7 @@ void Material::init_thermal()
     for (int j = 0; j < nuclide_.size(); ++j) {
       const auto& name {data::nuclides[nuclide_[j]].name_};
       if (contains(data::thermal_scatt[table.index_table].nuclides_, name)) {
-        tables.push_back({table.index_table, j, table.fraction});
+        tables.push_back({table.index_table, nuclide_[j], table.fraction});
         found = true;
       }
     }
@@ -452,7 +452,7 @@ void Material::init_thermal()
   for (int j = 0; j < tables.size(); ++j) {
     for (int k = j+1; k < tables.size(); ++k) {
       if (tables[j].index_nuclide == tables[k].index_nuclide) {
-        int index = nuclide_[tables[j].index_nuclide];
+        int index = tables[j].index_nuclide;
         auto name = data::nuclides[index].name_;
         fatal_error(name + " in material " + std::to_string(id_) + " was found "
           "in multiple thermal scattering tables. Each nuclide can appear in "
@@ -750,76 +750,39 @@ void Material::init_nuclide_index()
   }
 }
 
-void Material::calculate_xs(Particle& p) const
+void Material::calculate_xs(Particle& p, bool need_depletion_rx) const
 {
   if (p.type_ == Particle::Type::neutron) {
-    this->calculate_neutron_xs(p);
+    this->calculate_neutron_xs(p, need_depletion_rx);
   } else if (p.type_ == Particle::Type::photon) {
     this->calculate_photon_xs(p);
   }
 }
 
-void Material::calculate_neutron_xs(Particle& p) const
+void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
 {
   // Find energy index on energy grid
   int neutron = static_cast<int>(Particle::Type::neutron);
   int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
-
-  // Determine if this material has S(a,b) tables
-  bool check_sab = (thermal_tables_.size() > 0);
-
-  // Initialize position in i_sab_nuclides
-  int j = 0;
 
   // Local macro XS accumulator
   MacroXS macro = {};
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
-    // ======================================================================
-    // CHECK FOR S(A,B) TABLE
-
-    int i_sab = C_NONE;
-    double sab_frac = 0.0;
-
-    // Check if this nuclide matches one of the S(a,b) tables specified.
-    // This relies on thermal_tables_ being sorted by .index_nuclide
-    if (check_sab) {
-      const auto& sab {thermal_tables_[j]};
-      if (i == sab.index_nuclide) {
-        // Get index in sab_tables
-        i_sab = sab.index_table;
-        sab_frac = sab.fraction;
-
-        // If particle energy is greater than the highest energy for the
-        // S(a,b) table, then don't use the S(a,b) table
-        if (p.E_ > data::device_thermal_scatt[i_sab].energy_max_) i_sab = C_NONE;
-
-        // Increment position in thermal_tables_
-        ++j;
-
-        // Don't check for S(a,b) tables if there are no more left
-        if (j == thermal_tables_.size()) check_sab = false;
-      }
-    }
-
-    // ======================================================================
-    // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine microscopic cross sections for this nuclide
     int i_nuclide = nuclide_[i];
 
-    // Determine if we need to save the micro XS data or not
-    #ifdef NO_MICRO_XS_CACHE
-    bool write_cache = false;
-    #else
-    bool write_cache = true;
+    // Perform microscopic XS lookup
+    NuclideMicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
+    
+    // If using a micro XS cache, store the result to the particle's cache
+    #ifndef NO_MICRO_XS_CACHE
+    p.neutron_xs_[i_nuclide] = nuclide_micro;
     #endif
 
-    // Perform microscopic XS lookup
-    MicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_sab, i_grid, sab_frac, p, write_cache);
-
-    // Copy atom density of nuclide in material
+    // Get atom density of nuclide in material
     double atom_density = device_atom_density_[i];
 
     // Accumulate this nuclide's contribution to the local macro XS variable
@@ -827,13 +790,12 @@ void Material::calculate_neutron_xs(Particle& p) const
     macro.absorption += atom_density * nuclide_micro.absorption;
     macro.fission    += atom_density * nuclide_micro.fission;
     macro.nu_fission += atom_density * nuclide_micro.nu_fission;
+    for (int r = 0; r < DEPLETION_RX_SIZE; r++) 
+      macro.reaction[r] += atom_density * nuclide_micro.reaction[r];
   }
 
   // Store accumulated macro XS to particle
-  p.macro_xs_.total      = macro.total;
-  p.macro_xs_.absorption = macro.absorption;
-  p.macro_xs_.fission    = macro.fission;
-  p.macro_xs_.nu_fission = macro.nu_fission;
+  p.macro_xs_ = macro;
 }
 
 void Material::calculate_photon_xs(Particle& p) const

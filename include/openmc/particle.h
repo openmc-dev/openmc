@@ -49,7 +49,7 @@
 //#define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define SECONDARY_BANK_SIZE 5 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define FLUX_DERIVS_SIZE 1 // This is the min required to pass regression tests (diff_tally is limiter)
-#define FILTER_MATCHES_SIZE 1 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
+#define FILTER_MATCHES_SIZE 2 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
 //#define FILTER_MATCHES_SIZE 140 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
 #define NU_BANK_SIZE 16 // infinite_cell regression test
 
@@ -192,6 +192,9 @@ struct MacroXS {
   double fission;       //!< macroscopic fission xs
   double nu_fission;    //!< macroscopic production xs
   double photon_prod;   //!< macroscopic photon production xs
+  
+  // Cross sections for depletion reactions
+  double reaction[DEPLETION_RX_SIZE];
 
   // Photon cross sections
   double coherent;        //!< macroscopic coherent xs
@@ -319,11 +322,11 @@ public:
   #pragma omp end declare target
 
   // Coarse-grained particle events
+  void event_tracklength_tally(bool need_depletion_rx);
   #pragma omp declare target
-  void event_advance_tally();
-  void event_calculate_xs();
+  void event_calculate_xs(bool need_depletion_rx);
   bool event_calculate_xs_dispatch();
-  void event_calculate_xs_execute();
+  void event_calculate_xs_execute(bool need_depletion_rx);
   void event_collide();
   void event_advance();
   void event_cross_surface();

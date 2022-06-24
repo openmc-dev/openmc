@@ -213,17 +213,17 @@ Particle::event_calculate_xs_dispatch()
 }
 
 void
-Particle::event_calculate_xs_execute()
+Particle::event_calculate_xs_execute(bool need_depletion_rx)
 {
-  model::materials[material_].calculate_xs(*this);
+  model::materials[material_].calculate_xs(*this, need_depletion_rx);
 }
 
 void
-Particle::event_calculate_xs()
+Particle::event_calculate_xs(bool need_depletion_rx)
 {
   bool needs_lookup = this->event_calculate_xs_dispatch();
   if (needs_lookup)
-    this->event_calculate_xs_execute();
+    this->event_calculate_xs_execute(need_depletion_rx);
 }
 
 void
@@ -264,24 +264,21 @@ Particle::event_advance()
      printf("device particle %ld material: %ld\n", 0, material_);
   }
   */
-}
-
-void
-Particle::event_advance_tally()
-{
-  // Score track-length tallies
-  /*
-  if (!model::active_tracklength_tallies.empty()) {
-    score_tracklength_tally(*this, advance_distance_);
-  }
-  */
 
   // Score track-length estimate of k-eff
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type_ == Particle::Type::neutron) {
     keff_tally_tracklength_ += wgt_ * advance_distance_ * macro_xs_.nu_fission;
   }
+}
 
+void Particle::event_tracklength_tally(bool need_depletion_rx)
+{
+  // Score track-length tallies
+  if (!model::active_tracklength_tallies.empty()) {
+    score_tracklength_tally(*this, advance_distance_, need_depletion_rx);
+  }
+  
   // Score flux derivative accumulators for differential tallies.
   /*
   if (!model::active_tallies.empty()) {

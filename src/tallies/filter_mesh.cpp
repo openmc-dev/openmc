@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 #include <gsl/gsl>
@@ -12,7 +12,7 @@
 namespace openmc {
 
 void
-MeshFilter::from_xml(pugi::xml_node node)
+Filter::MeshFilter_from_xml(pugi::xml_node node)
 {
   auto bins_ = get_node_array<int32_t>(node, "bins");
   if (bins_.size() != 1) {
@@ -31,11 +31,11 @@ MeshFilter::from_xml(pugi::xml_node node)
 }
 
 void
-MeshFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
+Filter::MeshFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
   if (estimator != TallyEstimator::TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(p.r());
+    auto bin = model::meshes[mesh_].get_bin(p.r());
     if (bin >= 0) {
       //match.bins_.push_back(bin);
       //match.weights_.push_back(1.0);
@@ -45,29 +45,21 @@ const
     }
   } else {
     //model::meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
-    model::meshes[mesh_]->bins_crossed(p, match);
+    model::meshes[mesh_].bins_crossed(p, match);
   }
 }
 
 void
-MeshFilter::to_statepoint(hid_t filter_group) const
+Filter::MeshFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
-  write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
+  write_dataset(filter_group, "bins", model::meshes[mesh_].id_);
 }
 
 std::string
-MeshFilter::text_label(int bin) const
+Filter::MeshFilter_text_label(int bin) const
 {
-  auto& mesh = *model::meshes.at(mesh_);
+  auto& mesh = model::meshes[mesh_];
   return mesh.bin_label(bin);
-}
-
-void
-MeshFilter::set_mesh(int32_t mesh)
-{
-  mesh_ = mesh;
-  n_bins_ = model::meshes[mesh_]->n_bins();
 }
 
 //==============================================================================
@@ -77,6 +69,7 @@ MeshFilter::set_mesh(int32_t mesh)
 extern "C" int
 openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
 {
+  /*
   if (!index_mesh) {
     set_errmsg("Mesh index argument is a null pointer.");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -97,8 +90,10 @@ openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
 
   // Output the mesh.
   *index_mesh = filt->mesh();
+  */
   return 0;
 }
+/*
 
 extern "C" int
 openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
@@ -126,5 +121,6 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
   filt->set_mesh(index_mesh);
   return 0;
 }
+*/
 
 } // namespace openmc

@@ -25,7 +25,6 @@
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
-#include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/timer.h"
 
@@ -139,20 +138,23 @@ openmc_statepoint_write(const char* filename, bool* write_source)
 
     // Write information for filters
     hid_t filters_group = create_group(tallies_group, "filters");
-    write_attribute(filters_group, "n_filters", model::tally_filters.size());
-    if (!model::tally_filters.empty()) {
+    write_attribute(filters_group, "n_filters", model::n_tally_filters);
+    if (model::n_tally_filters > 0) {
       // Write filter IDs
       std::vector<int32_t> filter_ids;
-      filter_ids.reserve(model::tally_filters.size());
-      for (const auto& filt : model::tally_filters)
-        filter_ids.push_back(filt->id());
+      filter_ids.reserve(model::n_tally_filters);
+      for (int fidx = 0; fidx < model::n_tally_filters; fidx++) {
+        Filter& filt = model::tally_filters[fidx];
+        filter_ids.push_back(filt.id());
+      }
       write_attribute(filters_group, "ids", filter_ids);
 
       // Write info for each filter
-      for (const auto& filt : model::tally_filters) {
+      for (int fidx = 0; fidx < model::n_tally_filters; fidx++) {
+        Filter& filt = model::tally_filters[fidx];
         hid_t filter_group = create_group(filters_group,
-          "filter " + std::to_string(filt->id()));
-        filt->to_statepoint(filter_group);
+          "filter " + std::to_string(filt.id()));
+        filt.to_statepoint(filter_group);
         close_group(filter_group);
       }
     }
@@ -204,7 +206,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
           std::vector<int32_t> filter_ids;
           filter_ids.reserve(tally->filters().size());
           for (auto i_filt : tally->filters())
-            filter_ids.push_back(model::tally_filters[i_filt]->id());
+            filter_ids.push_back(model::tally_filters[i_filt].id());
           write_dataset(tally_group, "filters", filter_ids);
         }
 
@@ -773,6 +775,7 @@ void read_source_bank(hid_t group_id, std::vector<Particle::Bank>& sites, bool d
 
 #ifdef DAGMC
 void write_unstructured_mesh_results() {
+  /*
 
   for (auto& tally : model::tallies) {
 
@@ -849,6 +852,7 @@ void write_unstructured_mesh_results() {
       for (const auto& score : tally_scores) { umesh->remove_score(score); }
     }
   }
+*/
 }
 #endif
 

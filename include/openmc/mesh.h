@@ -5,7 +5,6 @@
 #define OPENMC_MESH_H
 
 #include <memory> // for unique_ptr
-#include <vector>
 #include <unordered_map>
 
 #include "hdf5.h"
@@ -15,6 +14,7 @@
 
 #include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/vector.h"
 
 #ifdef DAGMC
 #include "moab/Core.hpp"
@@ -33,8 +33,12 @@ class Mesh;
 
 namespace model {
 
+// TODO: Need to declare the mesh_map as target
 extern std::unordered_map<int32_t, int32_t> mesh_map;
-extern std::vector<std::unique_ptr<Mesh>> meshes;
+#pragma omp declare target
+extern Mesh* meshes;
+extern int32_t meshes_size;
+#pragma omp end declare target
 
 } // namespace model
 
@@ -45,7 +49,7 @@ public:
   // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);
-  virtual ~Mesh() = default;
+  ~Mesh() = default;
 
   // Methods
 
@@ -56,7 +60,7 @@ public:
   //! \param[out] lengths Fraction of tracklength in each bin
   //virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
                             //std::vector<double>& lengths) const = 0;
-  virtual void bins_crossed(const Particle& p, FilterMatch& match) const = 0;
+  void bins_crossed(const Particle& p, FilterMatch& match) const;
 
   //! Determine which surface bins were crossed by a particle
   //
@@ -64,25 +68,25 @@ public:
   //! \param[out] bins Surface bins that were crossed
   //virtual void
   //surface_bins_crossed(const Particle* p, std::vector<int>& bins) const = 0;
-  virtual void
-  surface_bins_crossed(const Particle& p, FilterMatch& match) const = 0;
+  void
+  surface_bins_crossed(const Particle& p, FilterMatch& match) const;
 
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
   //! \return Mesh bin
-  virtual int get_bin(Position r) const = 0;
+  int get_bin(Position r) const;
 
   //! Get the number of mesh cells.
-  virtual int n_bins() const = 0;
+  int n_bins() const;
 
   //! Get the number of mesh cell surfaces.
-  virtual int n_surface_bins() const = 0;
+  int n_surface_bins() const;
 
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
-  virtual void to_hdf5(hid_t group) const = 0;
+  void to_hdf5(hid_t group) const;
 
   //! Find the mesh lines that intersect an axis-aligned slice plot
   //
@@ -92,17 +96,86 @@ public:
   //!   of the plot's axes.  For example an xy-slice plot will get back a vector
   //!   of x-coordinates and another of y-coordinates.  These vectors may be
   //!   empty for low-dimensional meshes.
-  virtual std::pair<std::vector<double>, std::vector<double>>
-  plot(Position plot_ll, Position plot_ur) const = 0;
+  std::pair<std::vector<double>, std::vector<double>>
+  plot(Position plot_ll, Position plot_ur) const;
 
   //! Get a label for the mesh bin
-  virtual std::string bin_label(int bin) const = 0;
+  std::string bin_label(int bin) const;
+  
+  //! Count number of bank sites in each mesh bin / energy bin
+  //
+  //! \param[in] Pointer to bank sites
+  //! \param[in] Number of bank sites
+  //! \param[out] Whether any bank sites are outside the mesh
+  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
+                                     int64_t length, bool* outside) const;
+  
+  //! Get bin given mesh indices
+  //
+  //! \param[in] Array of mesh indices
+  //! \return Mesh bin
+  int get_bin_from_indices(const int* ijk) const;
+
+  //! Get mesh indices given a position
+  //
+  //! \param[in] r Position to get indices for
+  //! \param[out] ijk Array of mesh indices
+  //! \param[out] in_mesh Whether position is in mesh
+  void get_indices(Position r, int* ijk, bool* in_mesh) const;
+
+  //! Get mesh indices corresponding to a mesh bin
+  //
+  //! \param[in] bin Mesh bin
+  //! \param[out] ijk Mesh indices
+  void get_indices_from_bin(int bin, int* ijk) const;
+
+  //! Get mesh index in a particular direction
+  //!
+  //! \param[in] r Coordinate to get index for
+  //! \param[in] i Direction index
+  int get_index_in_direction(double r, int i) const;
+
+  //! Check where a line segment intersects the mesh and if it intersects at all
+  //
+  //! \param[in,out] r0 In: starting position, out: intersection point
+  //! \param[in] r1 Ending position
+  //! \param[out] ijk Indices of the mesh bin containing the intersection point
+  //! \return Whether the line segment connecting r0 and r1 intersects mesh
+  bool intersects(Position& r0, Position r1, int* ijk) const;
+
+  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  double positive_grid_boundary(int* ijk, int i) const;
+
+  //! Get the coordinate for the mesh grid boundary in the negative direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  double negative_grid_boundary(int* ijk, int i) const;
+  
+  bool intersects_1d(Position& r0, Position r1, int* ijk) const;
+  bool intersects_2d(Position& r0, Position r1, int* ijk) const;
+  bool intersects_3d(Position& r0, Position r1, int* ijk) const;
+ 
+  void copy_to_device();
 
   // Data members
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
+  
+  // Data members
+  vector<double> lower_left_; //!< Lower-left coordinates of mesh
+  vector<double> upper_right_; //!< Upper-right coordinates of mesh
+  vector<int> shape_; //!< Number of mesh elements in each dimension
+  
+  double volume_frac_; //!< Volume fraction of each mesh element
+  vector<double> width_; //!< Width of each mesh element
 };
 
+
+/*
 class StructuredMesh : public Mesh {
 public:
   StructuredMesh() = default;
@@ -428,6 +501,7 @@ private:
 };
 
 #endif
+*/
 
 //==============================================================================
 // Non-member functions

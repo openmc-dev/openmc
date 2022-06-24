@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_cell_instance.h"
+#include "openmc/tallies/filter.h"
 
 #include <string>
 
@@ -11,13 +11,15 @@
 
 namespace openmc {
 
+  /*
 CellInstanceFilter::CellInstanceFilter(gsl::span<CellInstance> instances)
 {
   this->set_cell_instances(instances);
 }
+*/
 
 void
-CellInstanceFilter::from_xml(pugi::xml_node node)
+Filter::CellInstanceFilter_from_xml(pugi::xml_node node)
 {
   // Get cell IDs/instances
   auto cells = get_node_array<int32_t>(node, "bins");
@@ -41,12 +43,12 @@ CellInstanceFilter::from_xml(pugi::xml_node node)
 }
 
 void
-CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
+Filter::set_cell_instances(gsl::span<CellInstance> instances)
 {
   // Clear existing cells
   cell_instances_.clear();
   cell_instances_.reserve(instances.size());
-  map_.clear();
+  imap_.clear();
 
   // Update cells and mapping
   for (auto& x : instances) {
@@ -59,20 +61,20 @@ CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
         "used in a cell instance filter.", c.id_)};
     }
     cell_instances_.push_back(x);
-    map_[x] = cell_instances_.size() - 1;
+    imap_[x] = cell_instances_.size() - 1;
   }
 
   n_bins_ = cell_instances_.size();
 }
 
 void
-CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::CellInstanceFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                          FilterMatch& match) const
 {
   gsl::index index_cell = p.coord_[p.n_coord_ - 1].cell;
   gsl::index instance = p.cell_instance_;
-  auto search = map_.find({index_cell, instance});
-  if (search != map_.end()) {
+  auto search = imap_.find({index_cell, instance});
+  if (search != imap_.end()) {
     //match.bins_.push_back(search->second);
     //match.weights_.push_back(1.0);
     match.bins_[match.bins_weights_length_] = search->second;
@@ -82,9 +84,8 @@ CellInstanceFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-CellInstanceFilter::to_statepoint(hid_t filter_group) const
+Filter::CellInstanceFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   size_t n = cell_instances_.size();
   xt::xtensor<size_t, 2> data({n, 2});
   for (gsl::index i = 0; i < n; ++i) {
@@ -96,7 +97,7 @@ CellInstanceFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-CellInstanceFilter::text_label(int bin) const
+Filter::CellInstanceFilter_text_label(int bin) const
 {
   const auto& x = cell_instances_[bin];
   auto cell_id = model::cells[x.index_cell].id_;

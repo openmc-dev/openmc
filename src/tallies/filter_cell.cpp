@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_cell.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 
@@ -10,7 +10,7 @@
 namespace openmc {
 
 void
-CellFilter::from_xml(pugi::xml_node node)
+Filter::CellFilter_from_xml(pugi::xml_node node)
 {
   // Get cell IDs and convert to indices into the global cells vector
   auto cells = get_node_array<int32_t>(node, "bins");
@@ -27,7 +27,7 @@ CellFilter::from_xml(pugi::xml_node node)
 }
 
 void
-CellFilter::set_cells(gsl::span<int32_t> cells)
+Filter::set_cells(gsl::span<int32_t> cells)
 {
   // Clear existing cells
   cells_.clear();
@@ -46,7 +46,7 @@ CellFilter::set_cells(gsl::span<int32_t> cells)
 }
 
 void
-CellFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::CellFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                          FilterMatch& match) const
 {
   for (int i = 0; i < p.n_coord_; i++) {
@@ -62,16 +62,15 @@ CellFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-CellFilter::to_statepoint(hid_t filter_group) const
+Filter::CellFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   std::vector<int32_t> cell_ids;
   for (auto c : cells_) cell_ids.push_back(model::cells[c].id_);
   write_dataset(filter_group, "bins", cell_ids);
 }
 
 std::string
-CellFilter::text_label(int bin) const
+Filter::CellFilter_text_label(int bin) const
 {
   return fmt::format("Cell {}", model::cells[cells_[bin]].id_);
 }
@@ -85,15 +84,14 @@ openmc_cell_filter_get_bins(int32_t index, const int32_t** cells, int32_t* n)
 {
   if (int err = verify_filter(index)) return err;
 
-  const auto& filt = model::tally_filters[index].get();
-  if (filt->type() != "cell") {
+  Filter& filt = model::tally_filters[index];
+  if (filt.type() != "cell") {
     set_errmsg("Tried to get cells from a non-cell filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
-  auto cell_filt = static_cast<CellFilter*>(filt);
-  *cells = cell_filt->cells().data();
-  *n = cell_filt->cells().size();
+  *cells = filt.cells().data();
+  *n = filt.cells().size();
   return 0;
 }
 

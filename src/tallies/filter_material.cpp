@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_material.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 
@@ -9,7 +9,7 @@
 namespace openmc {
 
 void
-MaterialFilter::from_xml(pugi::xml_node node)
+Filter::MaterialFilter_from_xml(pugi::xml_node node)
 {
   // Get material IDs and convert to indices in the global materials vector
   auto mats = get_node_array<int32_t>(node, "bins");
@@ -26,7 +26,7 @@ MaterialFilter::from_xml(pugi::xml_node node)
 }
 
 void
-MaterialFilter::set_materials(gsl::span<const int32_t> materials)
+Filter::set_materials(gsl::span<const int32_t> materials)
 {
   // Clear existing materials
   materials_.clear();
@@ -45,7 +45,7 @@ MaterialFilter::set_materials(gsl::span<const int32_t> materials)
 }
 
 void
-MaterialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::MaterialFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                              FilterMatch& match) const
 {
   auto search = map_.find(p.material_);
@@ -59,16 +59,15 @@ MaterialFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-MaterialFilter::to_statepoint(hid_t filter_group) const
+Filter::MaterialFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   std::vector<int32_t> material_ids;
   for (auto c : materials_) material_ids.push_back(model::materials[c].id_);
   write_dataset(filter_group, "bins", material_ids);
 }
 
 std::string
-MaterialFilter::text_label(int bin) const
+Filter::MaterialFilter_text_label(int bin) const
 {
   return fmt::format("Material {}", model::materials[materials_[bin]].id_);
 }
@@ -76,6 +75,8 @@ MaterialFilter::text_label(int bin) const
 //==============================================================================
 // C-API functions
 //==============================================================================
+
+/*
 
 extern "C" int
 openmc_material_filter_get_bins(int32_t index, const int32_t** bins, size_t* n)
@@ -119,5 +120,6 @@ openmc_material_filter_set_bins(int32_t index, size_t n, const int32_t* bins)
   filt->set_materials({bins, n});
   return 0;
 }
+*/
 
 } // namespace openmc

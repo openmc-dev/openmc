@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_azimuthal.h"
+#include "openmc/tallies/filter.h"
 
 #include <cmath>
 
@@ -12,7 +12,7 @@
 namespace openmc {
 
 void
-AzimuthalFilter::from_xml(pugi::xml_node node)
+Filter::AzimuthalFilter_from_xml(pugi::xml_node node)
 {
   auto bins = get_node_array<double>(node, "bins");
 
@@ -33,7 +33,7 @@ AzimuthalFilter::from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void AzimuthalFilter::set_bins(gsl::span<double> bins)
+void Filter::AzimuthalFilter_set_bins(gsl::span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -51,7 +51,7 @@ void AzimuthalFilter::set_bins(gsl::span<double> bins)
 }
 
 void
-AzimuthalFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::AzimuthalFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
   Direction u = (estimator == TallyEstimator::TRACKLENGTH) ? p.u() : p.u_last_;
@@ -68,14 +68,13 @@ AzimuthalFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-AzimuthalFilter::to_statepoint(hid_t filter_group) const
+Filter::AzimuthalFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", bins_);
 }
 
 std::string
-AzimuthalFilter::text_label(int bin) const
+Filter::AzimuthalFilter_text_label(int bin) const
 {
   return fmt::format("Azimuthal Angle [{}, {})", bins_.at(bin), bins_.at(bin+1));
 }

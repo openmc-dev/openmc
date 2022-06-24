@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_sptl_legendre.h"
+#include "openmc/tallies/filter.h"
 
 #include <utility>  // For pair
 
@@ -12,7 +12,7 @@
 namespace openmc {
 
 void
-SpatialLegendreFilter::from_xml(pugi::xml_node node)
+Filter::SpatialLegendreFilter_from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
 
@@ -37,7 +37,7 @@ SpatialLegendreFilter::from_xml(pugi::xml_node node)
 }
 
 void
-SpatialLegendreFilter::set_order(int order)
+Filter::SpatialLegendreFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Legendre order must be non-negative."};
@@ -47,13 +47,13 @@ SpatialLegendreFilter::set_order(int order)
 }
 
 void
-SpatialLegendreFilter::set_axis(LegendreAxis axis)
+Filter::set_axis(LegendreAxis axis)
 {
   axis_ = axis;
 }
 
 void
-SpatialLegendreFilter::set_minmax(double min, double max)
+Filter::set_minmax(double min, double max)
 {
   if (max <= min) {
     throw std::invalid_argument{"Maximum value must be greater than minimum value"};
@@ -63,7 +63,7 @@ SpatialLegendreFilter::set_minmax(double min, double max)
 }
 
 void
-SpatialLegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::SpatialLegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                     FilterMatch& match) const
 {
   // Get the coordinate along the axis of interest.
@@ -81,8 +81,8 @@ SpatialLegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
     double x_norm = 2.0*(x - min_) / (max_ - min_) - 1.0;
 
     // Compute and return the Legendre weights.
-    std::vector<double> wgt(order_ + 1);
-    calc_pn_c(order_, x_norm, wgt.data());
+    double wgt[FILTERMATCH_BINS_WEIGHTS_SIZE];
+    calc_pn_c(order_, x_norm, wgt);
     for (int i = 0; i < order_ + 1; i++) {
       //match.bins_.push_back(i);
       //match.weights_.push_back(wgt[i]);
@@ -94,9 +94,8 @@ SpatialLegendreFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-SpatialLegendreFilter::to_statepoint(hid_t filter_group) const
+Filter::SpatialLegendreFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "order", order_);
   if (axis_ == LegendreAxis::x) {
     write_dataset(filter_group, "axis", "x");
@@ -110,7 +109,7 @@ SpatialLegendreFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-SpatialLegendreFilter::text_label(int bin) const
+Filter::SpatialLegendreFilter_text_label(int bin) const
 {
   if (axis_ == LegendreAxis::x) {
     return fmt::format("Legendre expansion, x axis, P{}", bin);
@@ -125,6 +124,7 @@ SpatialLegendreFilter::text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+/*
 std::pair<int, SpatialLegendreFilter*>
 check_sptl_legendre_filter(int32_t index)
 {
@@ -206,5 +206,6 @@ openmc_spatial_legendre_filter_set_params(int32_t index, const int* axis,
   if (min && max) filt->set_minmax(*min, *max);
   return 0;
 }
+*/
 
 } // namespace openmc

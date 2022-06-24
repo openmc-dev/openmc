@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_delayedgroup.h"
+#include "openmc/tallies/filter.h"
 
 #include "openmc/error.h"
 #include "openmc/xml_interface.h"
@@ -6,14 +6,14 @@
 namespace openmc {
 
 void
-DelayedGroupFilter::from_xml(pugi::xml_node node)
+Filter::DelayedGroupFilter_from_xml(pugi::xml_node node)
 {
   auto groups = get_node_array<int>(node, "bins");
   this->set_groups(groups);
 }
 
 void
-DelayedGroupFilter::set_groups(gsl::span<int> groups)
+Filter::set_groups(gsl::span<int> groups)
 {
   // Clear existing groups
   groups_.clear();
@@ -37,7 +37,7 @@ DelayedGroupFilter::set_groups(gsl::span<int> groups)
 }
 
 void
-DelayedGroupFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::DelayedGroupFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                  FilterMatch& match) const
 {
   //match.bins_.push_back(0);
@@ -48,14 +48,13 @@ DelayedGroupFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-DelayedGroupFilter::to_statepoint(hid_t filter_group) const
+Filter::DelayedGroupFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", groups_);
 }
 
 std::string
-DelayedGroupFilter::text_label(int bin) const
+Filter::DelayedGroupFilter_text_label(int bin) const
 {
   return "Delayed Group " + std::to_string(groups_[bin]);
 }

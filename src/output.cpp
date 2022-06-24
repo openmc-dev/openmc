@@ -40,6 +40,7 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -657,9 +658,9 @@ write_tallies()
     }
 
     // Initialize Filter Matches Object
-    std::vector<BigFilterMatch> filter_matches;
+    vector<BigFilterMatch> filter_matches;
     // Allocate space for tally filter matches
-    filter_matches.resize(model::tally_filters.size());
+    filter_matches.resize(model::n_tally_filters);
 
     //FilterMatch filter_matches[FILTER_MATCHES_SIZE];
 
@@ -677,7 +678,7 @@ write_tallies()
       for (auto i = 0; i < tally.filters().size(); ++i) {
         if (filter_index % tally.strides(i) == 0) {
           auto i_filt = tally.filters(i);
-          const auto& filt {*model::tally_filters[i_filt]};
+          const auto& filt {model::tally_filters[i_filt]};
           auto& match {filter_matches[i_filt]};
           fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,
             filt.text_label(match.i_bin_));

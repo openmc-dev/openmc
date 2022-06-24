@@ -15,9 +15,9 @@
 #include "openmc/capi.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
-#include "openmc/tallies/filter_energy.h"
-#include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -41,9 +41,9 @@ xt::xtensor<int, 2> indexmap;
 
 int use_all_threads;
 
-StructuredMesh* mesh;
+Mesh* mesh;
 
-std::vector<double> egrid;
+vector<double> egrid;
 
 double norm;
 
@@ -223,15 +223,15 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
   openmc_mesh_filter_get_mesh(meshfilter_index, &mesh_index);
 
   // Get mesh from mesh index
-  cmfd::mesh = dynamic_cast<StructuredMesh*>(model::meshes[mesh_index].get());
+  cmfd::mesh = &model::meshes[mesh_index];
 
   // Get energy bins from energy index, otherwise use default
   if (energy_index != -1) {
-    auto efilt_base = model::tally_filters[energy_index].get();
-    auto* efilt = dynamic_cast<EnergyFilter*>(efilt_base);
-    cmfd::egrid = efilt->bins();
+    Filter& efilt = model::tally_filters[energy_index];
+    cmfd::egrid = efilt.bins();
   } else {
-    cmfd::egrid = {0.0, INFTY};
+    cmfd::egrid.push_back(0);
+    cmfd::egrid.push_back(INFTY);
   }
 }
 

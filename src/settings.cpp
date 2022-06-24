@@ -556,8 +556,8 @@ void read_settings_xml()
         "Mesh {} specified for Shannon entropy does not exist.", temp));
     }
 
-    auto* m = dynamic_cast<RegularMesh*>(
-      model::meshes[model::mesh_map.at(temp)].get());
+    auto* m = 
+      &model::meshes[model::mesh_map.at(temp)];
     if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
     simulation::entropy_mesh = m;
 
@@ -578,7 +578,7 @@ void read_settings_xml()
         "method does not exist.", temp));
     }
 
-    auto* m = dynamic_cast<RegularMesh*>(model::meshes[model::mesh_map.at(temp)].get());
+    auto* m = &model::meshes[model::mesh_map.at(temp)];
     if (!m) fatal_error("Only regular meshes can be used as a UFS mesh");
     simulation::ufs_mesh = m;
 

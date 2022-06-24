@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_energyfunc.h"
+#include "openmc/tallies/filter.h"
 
 #include <fmt/core.h>
 
@@ -10,8 +10,9 @@
 namespace openmc {
 
 void
-EnergyFunctionFilter::from_xml(pugi::xml_node node)
+Filter::EnergyFunctionFilter_from_xml(pugi::xml_node node)
 {
+  n_bins_ = 1;
   if (!settings::run_CE)
     fatal_error("EnergyFunction filters are only supported for "
                 "continuous-energy transport calculations");
@@ -30,7 +31,7 @@ EnergyFunctionFilter::from_xml(pugi::xml_node node)
 }
 
 void
-EnergyFunctionFilter::set_data(gsl::span<const double> energy,
+Filter::set_data(gsl::span<const double> energy,
                                gsl::span<const double> y)
 {
   // Check for consistent sizes with new data
@@ -53,7 +54,7 @@ EnergyFunctionFilter::set_data(gsl::span<const double> energy,
 }
 
 void
-EnergyFunctionFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::EnergyFunctionFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                    FilterMatch& match) const
 {
   if (p.E_last_ >= energy_.front() && p.E_last_ <= energy_.back()) {
@@ -73,15 +74,14 @@ EnergyFunctionFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
 }
 
 void
-EnergyFunctionFilter::to_statepoint(hid_t filter_group) const
+Filter::EnergyFunctionFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "energy", energy_);
   write_dataset(filter_group, "y", y_);
 }
 
 std::string
-EnergyFunctionFilter::text_label(int bin) const
+Filter::EnergyFunctionFilter_text_label(int bin) const
 {
   return fmt::format(
     "Energy Function f([{:.1e}, ..., {:.1e}]) = [{:.1e}, ..., {:.1e}]",
@@ -92,6 +92,7 @@ EnergyFunctionFilter::text_label(int bin) const
 // C-API functions
 //==============================================================================
 
+/*
 extern "C" int
 openmc_energyfunc_filter_set_data(int32_t index, size_t n, const double* energy,
                                   const double* y)
@@ -155,5 +156,6 @@ openmc_energyfunc_filter_get_y(int32_t index, size_t *n, const double** y)
   *n = filt->y().size();
   return 0;
 }
+*/
 
 } // namespace openmc

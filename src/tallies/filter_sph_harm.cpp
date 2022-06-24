@@ -1,4 +1,4 @@
-#include "openmc/tallies/filter_sph_harm.h"
+#include "openmc/tallies/filter.h"
 
 #include <utility>  // For pair
 
@@ -13,7 +13,7 @@
 namespace openmc {
 
 void
-SphericalHarmonicsFilter::from_xml(pugi::xml_node node)
+Filter::SphericalHarmonicsFilter_from_xml(pugi::xml_node node)
 {
   this->set_order(std::stoi(get_node_value(node, "order")));
   if (check_for_node(node, "cosine")) {
@@ -22,7 +22,7 @@ SphericalHarmonicsFilter::from_xml(pugi::xml_node node)
 }
 
 void
-SphericalHarmonicsFilter::set_order(int order)
+Filter::SphericalHarmonicsFilter_set_order(int order)
 {
   if (order < 0) {
     throw std::invalid_argument{"Spherical harmonics order must be non-negative."};
@@ -32,7 +32,7 @@ SphericalHarmonicsFilter::set_order(int order)
 }
 
 void
-SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
+Filter::set_cosine(gsl::cstring_span cosine)
 {
   if (cosine == "scatter") {
     cosine_ = SphericalHarmonicsCosine::scatter;
@@ -45,13 +45,13 @@ SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
 }
 
 void
-SphericalHarmonicsFilter::get_all_bins(const Particle& p, TallyEstimator estimator,
+Filter::SphericalHarmonicsFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                                        FilterMatch& match) const
 {
   // Determine cosine term for scatter expansion if necessary
-  std::vector<double> wgt(order_ + 1);
+  double wgt[FILTERMATCH_BINS_WEIGHTS_SIZE];
   if (cosine_ == SphericalHarmonicsCosine::scatter) {
-    calc_pn_c(order_, p.mu_, wgt.data());
+    calc_pn_c(order_, p.mu_, wgt);
   } else {
     for (int i = 0; i < order_ + 1; i++) {
       wgt[i] = 1;
@@ -59,8 +59,8 @@ SphericalHarmonicsFilter::get_all_bins(const Particle& p, TallyEstimator estimat
   }
 
   // Find the Rn,m values
-  std::vector<double> rn(n_bins_);
-  calc_rn(order_, p.u_last_, rn.data());
+  double rn[FILTERMATCH_BINS_WEIGHTS_SIZE];
+  calc_rn(order_, p.u_last_, rn);
 
   int j = 0;
   for (int n = 0; n < order_ + 1; n++) {
@@ -80,9 +80,8 @@ SphericalHarmonicsFilter::get_all_bins(const Particle& p, TallyEstimator estimat
 }
 
 void
-SphericalHarmonicsFilter::to_statepoint(hid_t filter_group) const
+Filter::SphericalHarmonicsFilter_to_statepoint(hid_t filter_group) const
 {
-  Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "order", order_);
   if (cosine_ == SphericalHarmonicsCosine::scatter) {
     write_dataset(filter_group, "cosine", "scatter");
@@ -92,7 +91,7 @@ SphericalHarmonicsFilter::to_statepoint(hid_t filter_group) const
 }
 
 std::string
-SphericalHarmonicsFilter::text_label(int bin) const
+Filter::SphericalHarmonicsFilter_text_label(int bin) const
 {
   Expects(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_ + 1; n++) {
@@ -107,6 +106,8 @@ SphericalHarmonicsFilter::text_label(int bin) const
 //==============================================================================
 // C-API functions
 //==============================================================================
+
+/*
 
 std::pair<int, SphericalHarmonicsFilter*>
 check_sphharm_filter(int32_t index)
@@ -193,5 +194,6 @@ openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[])
   }
   return 0;
 }
+*/
 
 } // namespace openmc

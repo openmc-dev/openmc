@@ -768,50 +768,100 @@ bool CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 bool CSGCell::contains_complex(
   Position r, Direction u, int32_t on_surface) const
 {
-  // Make a stack of booleans.  We don't know how big it needs to be, but we do
-  // know that rpn.size() is an upper-bound.
-  vector<bool> stack(rpn_.size());
-  int i_stack = -1;
+  // Initialize a stack for operators and the in cell boolean
+  vector<int32_t> op_stack;
+  bool in_cell = false;
 
-  for (int32_t token : rpn_) {
-    // If the token is a binary operator (intersection/union), apply it to
-    // the last two items on the stack. If the token is a unary operator
-    // (complement), apply it to the last item on the stack.
-    if (token == OP_UNION) {
-      stack[i_stack - 1] = stack[i_stack - 1] || stack[i_stack];
-      i_stack--;
-    } else if (token == OP_INTERSECTION) {
-      stack[i_stack - 1] = stack[i_stack - 1] && stack[i_stack];
-      i_stack--;
-    } else if (token == OP_COMPLEMENT) {
-      stack[i_stack] = !stack[i_stack];
-    } else {
-      // If the token is not an operator, evaluate the sense of particle with
-      // respect to the surface and see if the token matches the sense. If the
-      // particle's surface attribute is set and matches the token, that
-      // overrides the determination based on sense().
-      i_stack++;
+  // For each token in rpn in reverse order
+  for (auto it = rpn_.rbegin(); it != rpn_.rend(); it++) {
+    // Dereference current iterator
+    int32_t token = *it;
+
+    // If the token is a surface
+    if (token < OP_UNION) {
+      // Evaluate the sense of the particle with respect to the surface and see
+      // if the token matches the sense. If the particle's surface attribute is
+      // set and matches the token, that overrides the determination based on
+      // sense.
       if (token == on_surface) {
-        stack[i_stack] = true;
+        in_cell = true;
       } else if (-token == on_surface) {
-        stack[i_stack] = false;
+        in_cell = false;
       } else {
         // Note the off-by-one indexing
         bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
-        stack[i_stack] = (sense == (token > 0));
+        in_cell = (sense == (token > 0));
       }
+
+      // While the operator stack is populated
+      while (op_stack.size() > 0) {
+        // Extract the top operator
+        int32_t op = op_stack.back();
+        op_stack.pop_back();
+
+        // If the operator is a union and the particle is in the cell or the
+        // the operator is an intersection and the particle is not in the cell
+        if ((op == OP_UNION && in_cell == true) ||
+            (op == OP_INTERSECTION && in_cell == false)) {
+          // Fetch next token
+          int32_t next_token = *(it + 1);
+
+          // If the next token is a surface skip its iterator and get the next
+          if (next_token < OP_UNION) {
+            it++;
+            next_token = *(it + 1);
+
+          // If the stack size is greater than zero
+          } else if (op_stack.size() > 0) {
+            // Get the size of the stack
+            int number_of_operators = op_stack.size();
+
+            // While the number of operators "in" the stack is greater than the
+            // original stack size of while the next token is the same as the 
+            // original operator
+            while (number_of_operators > op_stack.size() || next_token == op) {
+              // If the next token is a surface "remove" an operator from the 
+              // stack, if it is an operator "add" one to the stack
+              if (next_token < OP_UNION) {
+                number_of_operators--;
+              } else {
+                number_of_operators++;
+              }
+
+              // Skip the current iterator and fetch the next
+              it++;
+              next_token = *(it + 1);
+            }
+            // Skip next iterator
+            it++;
+          }
+
+        // If the operator is a complement
+        } else if (op == OP_COMPLEMENT) {
+          // Set the current cell boolean to the opposite
+          in_cell = !in_cell;
+
+        // If none of the above are true, break
+        } else {
+          break;
+        }
+
+        // If one of the above was true and the size of the operator
+        // stack is zero return the current cell boolean
+        if (op_stack.size() == 0) {
+          return in_cell;
+        }
+      }
+
+    // If the token is an operator
+    } else {
+      // Add it to the operator stack
+      op_stack.push_back(token);
     }
   }
 
-  if (i_stack == 0) {
-    // The one remaining bool on the stack indicates whether the particle is
-    // in the cell.
-    return stack[i_stack];
-  } else {
-    // This case occurs if there is no region specification since i_stack will
-    // still be -1.
-    return true;
-  }
+  // Return the cell boolean
+  return in_cell;
 }
 
 //==============================================================================

@@ -165,14 +165,26 @@ def test_tabular():
 
     n_samples = 100_000
     samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(d.mean(), rel=1e-03)
+    diff = np.abs(samples - d.mean())
+    # within_1_sigma = np.count_nonzero(diff < samples.std())
+    # assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(diff < 2*samples.std())
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(diff < 3*samples.std())
+    assert within_3_sigma / n_samples >= 0.99
 
     # test histogram sampling
     d = openmc.stats.Tabular(x, p, interpolation='histogram')
     d.normalize()
 
     samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(d.mean(), rel=1e-03)
+    diff = np.abs(samples - d.mean())
+    # within_1_sigma = np.count_nonzero(diff < samples.std())
+    # assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(diff < 2*samples.std())
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(diff < 3*samples.std())
+    assert within_3_sigma / n_samples >= 0.99
 
 
 def test_legendre():

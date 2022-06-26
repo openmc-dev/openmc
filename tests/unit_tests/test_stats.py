@@ -36,8 +36,10 @@ def test_discrete():
     # sample discrete distribution
     n_samples = 1_000_000
     samples = d3.sample(n_samples, seed=100)
-    # check that the mean of the samples is close to the true mean
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
 
 
 def test_merge_discrete():
@@ -81,7 +83,10 @@ def test_uniform():
     exp_mean = 0.5 * (a + b)
     n_samples = 1_000_000
     samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
 
 
 def test_powerlaw():
@@ -100,7 +105,10 @@ def test_powerlaw():
     # sample power law distribution
     n_samples = 1_000_000
     samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
 
 
 def test_maxwell():
@@ -117,13 +125,19 @@ def test_maxwell():
     # sample maxwell distribution
     n_samples = 1_000_000
     samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-02)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
 
     # A second sample with a different seed
     samples_2 = d.sample(n_samples, seed=200)
-    assert samples_2.mean() == pytest.approx(exp_mean, rel=1e-02)
-    assert samples_2.mean() != samples.mean()
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples_2.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples_2.mean()) < 3*std_dev
 
+    assert samples_2.mean() != samples.mean()
 
 
 def test_watt():
@@ -145,7 +159,10 @@ def test_watt():
     # sample Watt distribution
     n_samples = 1_000_000
     samples = d.sample(n_samples, seed=100)
-    assert samples.mean() == pytest.approx(exp_mean, rel=1e-03)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
 
 
 def test_tabular():

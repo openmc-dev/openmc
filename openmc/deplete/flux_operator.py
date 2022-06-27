@@ -12,6 +12,7 @@ import os
 from warnings import warn
 
 import numpy as np
+import pandas as pd
 from uncertainties import ufloat
 
 import openmc
@@ -49,8 +50,8 @@ class FluxSpectraDepletionOperator(TransportOperator):
     micro_xs : pandas.DataFrame
         DataFrame with nuclides names as index and microscopic cross section
         data in the columns.
-    flux_spectra : ???
-        Flux spectrum
+    flux_spectra : float
+        Flux spectrum [n cm^-2 s^-1]
     chain_file : str
         Path to the depletion chain XML file.
     fission_q : dict, optional
@@ -85,13 +86,8 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
     def __init__(self, nuclides, micro_xs, flux_spectra, chain_file, fission_q=None, dilute_initial=1.0e3,
                  prev_results=None, reduce_chain=False, reduce_chain_level=None):
-
-
-        # TODO : validate nuclides and micro-xs parameters
-
         super.__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
-
         self.flux_spectra = flux_spectra
 
         # Reduce the chain
@@ -100,6 +96,10 @@ class FluxSpectraDepletionOperator(TransportOperator):
             for nuclide_name in nuclides.keys():
                 all_isotopes.add(nuclide_name)
             self.chain = self.chain.reduce(all_nuclides, reduce_chain_level)
+
+        # Validate nuclides and micro-xs parameters
+        check_value('nuclides', nuclides, dict, str)
+        check_type('micro_xs', micro_xs, pd.DataFrame)
 
         # Clear out OpenMC, create task lists, distribute
         #self.burnable_mats, volume, nuclides = self.get_burnable_mats()
@@ -113,6 +113,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
                                if nuc.name in self.nuclides_with_data]
 
+        # TODO : implement _extract_number
         # Extract number densities from the geometry / previous depletion run
         self._extract_number('0', volume, list(nuclides.keys()), self.prev_res)
 
@@ -121,10 +122,10 @@ class FluxSpectraDepletionOperator(TransportOperator):
             '0', self._burnable_nucs, self.chain.reactions)
 
         # Initialize normalization helper
-        if normalization_mode == "fission-q":
-            self._normalization_helper = ChainFissionHelper()
-        else:
-            self._normalization_helper = SourceRateHelper()
+        #if normalization_mode == "fission-q":
+        #    self._normalization_helper = ChainFissionHelper()
+        #else:
+        #    self._normalization_helper = SourceRateHelper()
 
         # Select and create fission yield helper
         fission_helper = ConstantFissionYieldHelper
@@ -202,8 +203,8 @@ class FluxSpectraDepletionOperator(TransportOperator):
         fission_yields.append(self._yield_helper.weighted_yields(0))
 
         # Accumulate energy from fission
-        if fission_ind is not None:
-            self._normalization_helper.update(rxn_rates[:, fission_ind])
+        #if fission_ind is not None:
+        #    self._normalization_helper.update(rxn_rates[:, fission_ind])
 
         ## These don't seem relevant so I'm commenting them out for now
         ## will delete if they are indeed not useful
@@ -229,8 +230,8 @@ class FluxSpectraDepletionOperator(TransportOperator):
             Total density for initial conditions.
         """
 
-        self._normalization_helper.prepare(
-            self.chain.nuclides, self.reaction_rates.index_nuc)
+        #self._normalization_helper.prepare(
+        #    self.chain.nuclides, self.reaction_rates.index_nuc)
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))

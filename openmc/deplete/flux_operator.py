@@ -110,7 +110,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
                                if nuc.name in self.nuclides_with_data]
 
         # Extract number densities from the geometry / previous depletion run
-        self._extract_number('0', volume, nuclides, self.prev_res)
+        self._extract_number('0', volume, list(nuclides.keys()), self.prev_res)
 
         # Create reaction rates array
         self.reaction_rates = ReactionRates(
@@ -164,10 +164,15 @@ class FluxSpectraDepletionOperator(TransportOperator):
         # numbers, zeroed out in material iteration
         number = np.empty(rates.n_nuc)
 
-        # Extract results
-        for i, mat in enumerate(...):
-            # Get tally index
-            mat_index = self._mat_index_map[mat]
+        # Zero out reaction rates and nuclide numbers
+         number.fill(0.0)
+
+        # Get new number densities
+        for nuc, i_nuc_results in zip(nuclides, nuc_ind):
+            number[i_nuc_results] = self.number['0', nuc]
+
+
+
 
             # TODO : add machinery to multiply
             # each cross section by the corresponding flux

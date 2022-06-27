@@ -25,7 +25,8 @@ from .chain import _find_chain_file
 from .reaction_rates import ReactionRates
 from .results import Results
 from .helpers import (
-    DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper)
+    FluxReactionRateHelper, ChainFissionHelper, SourceRateHelper,
+    ConstantFissionYieldHelper)
 
 
 
@@ -150,26 +151,34 @@ class FluxSpectraDepletionOperator(TransportOperator):
         self.number.set_density(vec)
         self._update_materials()
 
-        # Update tally nuclides data in preparation for transport solve
-        nuclides = self._get_tally_nuclides()
+        # Update nuclides data in preparation for transport solve
+        nuclides = self._get_reaction_nuclides()
         self._rate_helper.nuclides = nuclides
-        self._normalization_helper.nuclides = nuclides
         self._yield_helper.update_tally_nuclides(nuclides)
-
 
         rates = self.reaction_rates
         rates.fill(0.0)
 
         # Get k and uncertainty
         # TODO : add functionality to get this from the transport solver
+        keff = ...
 
         # Form fast map
         nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
         react_ind = [rates.index_rx[react] for react in self.chain.reactions]
 
+        # Keep track of energy produced from all reactions in eV per source
+        # particle
+        self._normalization_helper.reset()
+
+        # Store fission yield dictionaries
+        fission_yields = []
+
         # Create arrays to store fission Q values, reaction rates, and nuclide
         # numbers, zeroed out in material iteration
         number = np.empty(rates.n_nuc)
+
+        fission_ind = rates.index_rx.get("fission")
 
         # Zero out reaction rates and nuclide numbers
         number.fill(0.0)
@@ -178,18 +187,20 @@ class FluxSpectraDepletionOperator(TransportOperator):
         for nuc, i_nuc_results in zip(nuclides, nuc_ind):
             number[i_nuc_results] = self.number['0', nuc]
 
+        # TODO : implement rate helper for flux and xs inputs
+        reaction_rates = self._rate_helper.get_material_rates(
+                0, nuc_ind, react_ind)
+
         # Compute fission yields for this material
-        fission_yields.append(self._yield_helper.weighted_yields(i))
+        fission_yields.append(self._yield_helper.weighted_yields(0))
 
+        # Accumulate energy from fission
+        if fission_ind is not None:
+            self._normalization_helper.update(reaction_rates[:, fission_ind])
 
-            # TODO : add machinery to multiply
-            # each cross section by the corresponding flux
+        # Divide by total number and store
+        rates[0] = self._rate_helper.divide_by_adens(number)
 
-            ...
-
-
-        # TODO: add flow control to determine if we need to scale
-        # the reaction rates
         # Scale reaction rates to obtain units of reactions/sec
         rates *= self._normalization_helper.factor(source_rate)
 
@@ -210,16 +221,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         # TODO : implement these functions so they can store the
         # cross section data
-        materials = [openmc.lib.materials[int(i)]
-                     for i in self.burnable_mats]
         self._rate_helper.generate_tallies(materials, self.chain.reactions)
-        self._normalization_helper.prepare(
-            self.chain.nuclides, self.reaction_rates.index_nuc)
-        # Tell fission yield helper what materials this process is
-        # responsible for
-        self._yield_helper.generate_tallies(
-            materials, tuple(sorted(self._mat_index_map.values())))
-
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
@@ -275,3 +277,48 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
                 #TODO Update densities on the Python side, otherwise the
                 # summary.h5 file contains densities at the first time step
+
+    def _get_reaction_nuclides(self):
+        """Determine nuclides that should be tallied for reaction rates.
+
+        This method returns a list of all nuclides that have neutron data and
+        are listed in the depletion chain. Technically, we should tally nuclides
+        that may not appear in the depletion chain because we still need to get
+        the fission reaction rate for these nuclides in order to normalize
+        power, but that is left as a future exercise.
+
+        Returns
+        -------
+        list of str
+            Tally nuclides
+
+        """
+        nuc_set = set()
+
+        # Create the set of all nuclides in the decay chain in materials marked
+        # for burning in which the number density is greater than zero.
+        for nuc in self.number.nuclides:
+            if nuc in self.nuclides_with_data:
+                if np.sum(self.number[:, nuc]) > 0.0:
+                    nuc_set.add(nuc)
+
+        # Communicate which nuclides have nonzeros to rank 0
+        if comm.rank == 0:
+            for i in range(1, comm.size):
+                nuc_newset = comm.recv(source=i, tag=i)
+                nuc_set |= nuc_newset
+        else:
+            comm.send(nuc_set, dest=0, tag=comm.rank)
+
+        if comm.rank == 0:
+            # Sort nuclides in the same order as self.number
+            nuc_list = [nuc for nuc in self.number.nuclides
+                        if nuc in nuc_set]
+        else:
+            nuc_list = None
+
+        # Store list of tally nuclides on each process
+        nuc_list = comm.bcast(nuc_list)
+        return [nuc for nuc in nuc_list if nuc in self.chain]
+
+

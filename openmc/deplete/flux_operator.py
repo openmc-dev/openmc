@@ -41,10 +41,10 @@ class FluxSpectraDepletionOperator(TransportOperator, Operator):
 
     Parameters
     ----------
-    model : openmc.model.Model
-       OpenMC Model object. Must contain geometry and materials information.
+    nuclides : pandas.DataFrame
+        DataFrame contaning nuclide concentration as well as cross section data.
     flux_spectra : ???
-        Unnormalized flux spectrum.
+        Flux spectrum
     chain_file : str
         Path to the depletion chain XML file.
     fission_q : dict, optional
@@ -77,25 +77,17 @@ class FluxSpectraDepletionOperator(TransportOperator, Operator):
         results are to be used.
     """
 
-    def __init__(self, model, flux_spectra, chain_file, fission_q=None, dilute_initial=1.0e3,
+    def __init__(self, nuclides, flux_spectra, chain_file, fission_q=None, dilute_initial=1.0e3,
                  prev_results=None, reduce_chain=False, reduce_chain_level=None):
 
         # Determine cross sections / depletion chain
         # TODO : add support for mg cross sections to _find_cross_sections
-        cross_sections = _find_cross_sections(model)
         if chain_file is None:
             chain_file = _find_chain_file(cross_sections)
 
         TransportOperator.__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
-        self.geometry = model.geometry
 
-        # determine set of materials in the model
-        if not model.materials:
-            model.materials = openmc.Materials(
-                model.geometry.get_all_materials().values()
-            )
-        self.materials = model.materials
         self.flux_spectra = flux_spectra
 
         # Reduce the chain before we create more materials

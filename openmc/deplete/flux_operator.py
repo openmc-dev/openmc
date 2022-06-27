@@ -89,7 +89,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         # TODO : validate nuclides and micro-xs parameters
 
-        TransportOperator.__init__(chain_file, fission_q, dilute_initial, prev_results)
+        super.__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
 
         self.flux_spectra = flux_spectra
@@ -120,6 +120,12 @@ class FluxSpectraDepletionOperator(TransportOperator):
         self.reaction_rates = ReactionRates(
             '0', self._burnable_nucs, self.chain.reactions)
 
+        # Initialize normalization helper
+        if normalization_mode == "fission-q":
+            self._normalization_helper = ChainFissionHelper()
+        else:
+            self._normalization_helper = SourceRateHelper()
+
         # Select and create fission yield helper
         fission_helper = ConstantFissionYieldHelper
         fission_yield_opts = (
@@ -145,15 +151,12 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         """
 
-
-
         # Update the number densities regardless of the source rate
         self.number.set_density(vec)
         self._update_materials()
 
         # Update nuclides data in preparation for transport solve
         nuclides = self._get_reaction_nuclides()
-        self._rate_helper.nuclides = nuclides
         self._yield_helper.update_tally_nuclides(nuclides)
 
         rates = self.reaction_rates
@@ -185,24 +188,31 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         # Get new number densities
         for nuc, i_nuc_results in zip(nuclides, nuc_ind):
-            number[i_nuc_results] = self.number['0', nuc]
+            number[i_nuc_results] = self.number[0, nuc]
 
-        # TODO : implement rate helper for flux and xs inputs
-        reaction_rates = self._rate_helper.get_material_rates(
-                0, nuc_ind, react_ind)
+        # Store microscopic cross sections in rates array
+        for nuc in nuclides:
+            for rxn in self.chain.reactions:
+                rates.set('0', nuc, rxn, self.micro_xs[rxn].loc[nuc])
+
+        # Get reaction rate in reactions/sec
+        rates *= self.flux_spectra
 
         # Compute fission yields for this material
         fission_yields.append(self._yield_helper.weighted_yields(0))
 
         # Accumulate energy from fission
         if fission_ind is not None:
-            self._normalization_helper.update(reaction_rates[:, fission_ind])
+            self._normalization_helper.update(rxn_rates[:, fission_ind])
 
+        ## These don't seem relevant so I'm commenting them out for now
+        ## will delete if they are indeed not useful
         # Divide by total number and store
-        rates[0] = self._rate_helper.divide_by_adens(number)
+        #rates[0] = self._rate_helper.divide_by_adens(number)
 
         # Scale reaction rates to obtain units of reactions/sec
-        rates *= self._normalization_helper.factor(source_rate)
+        #rates *= self._normalization_helper.factor(source_rate)
+        ##
 
         # Store new fission yields on the chain
         self.chain.fission_yields = fission_yields
@@ -219,9 +229,8 @@ class FluxSpectraDepletionOperator(TransportOperator):
             Total density for initial conditions.
         """
 
-        # TODO : implement these functions so they can store the
-        # cross section data
-        self._rate_helper.generate_tallies(materials, self.chain.reactions)
+        self._normalization_helper.prepare(
+            self.chain.nuclides, self.reaction_rates.index_nuc)
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))

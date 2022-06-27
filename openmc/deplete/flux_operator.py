@@ -98,12 +98,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
             self.chain = self.chain.reduce(all_nuclides, reduce_chain_level)
 
         # Clear out OpenMC, create task lists, distribute
-        self.burnable_mats, volume, nuclides = self.get_burnable_mats()
-        self.local_mats = _distribute(self.burnable_mats)
-
-        # Generate map from local materials => material index
-        self._mat_index_map = {
-            lm: self.burnable_mats.index(lm) for lm in self.local_mats}
+        #self.burnable_mats, volume, nuclides = self.get_burnable_mats()
 
         # TODO: add support for loading previous results
 
@@ -115,11 +110,11 @@ class FluxSpectraDepletionOperator(TransportOperator):
                                if nuc.name in self.nuclides_with_data]
 
         # Extract number densities from the geometry / previous depletion run
-        self._extract_number(self.local_mats, volume, nuclides, self.prev_res)
+        self._extract_number('0', volume, nuclides, self.prev_res)
 
         # Create reaction rates array
         self.reaction_rates = ReactionRates(
-            self.local_mats, self._burnable_nucs, self.chain.reactions)
+            '0', self._burnable_nucs, self.chain.reactions)
 
         # TODO : set up rate, yield, and normalization helper objects
 
@@ -170,7 +165,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         number = np.empty(rates.n_nuc)
 
         # Extract results
-        for i, mat in enumerate(self.local_mats):
+        for i, mat in enumerate(...):
             # Get tally index
             mat_index = self._mat_index_map[mat]
 

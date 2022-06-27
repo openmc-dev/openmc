@@ -170,9 +170,12 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         # Update the number densities regardless of the source rate
         self.number.set_density(vec)
+        ## TODO : make sure this function works w the current structure.
         self._update_materials()
 
         # Update nuclides data in preparation for transport solve
+
+        ## TODO : make sure this function works w the current structure.
         nuclides = self._get_reaction_nuclides()
         self._yield_helper.update_tally_nuclides(nuclides)
 

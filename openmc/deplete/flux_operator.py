@@ -80,6 +80,9 @@ class FluxSpectraDepletionOperator(TransportOperator, Operator):
     def __init__(self, nuclides, flux_spectra, chain_file, fission_q=None, dilute_initial=1.0e3,
                  prev_results=None, reduce_chain=False, reduce_chain_level=None):
 
+
+        # TODO : validate nuclides parameter
+
         # Determine cross sections / depletion chain
         # TODO : add support for mg cross sections to _find_cross_sections
         if chain_file is None:
@@ -90,15 +93,12 @@ class FluxSpectraDepletionOperator(TransportOperator, Operator):
 
         self.flux_spectra = flux_spectra
 
-        # Reduce the chain before we create more materials
+        # Reduce the chain
         if reduce_chain:
-            all_isotopes = set()
-            for material in self.materials:
-                if not material.depletable:
-                    continue
-                for name, _dens_percent, _dens_type in material.nuclides:
-                    all_isotopes.add(name)
-            self.chain = self.chain.reduce(all_isotopes, reduce_chain_level)
+            all_nuclides = set()
+            for nuclide_name in nuclides.index:
+                all_isotopes.add(nuclide_name)
+            self.chain = self.chain.reduce(all_nuclides, reduce_chain_level)
 
         # Clear out OpenMC, create task lists, distribute
         self.burnable_mats, volume, nuclides = Operator._get_burnable_mats()

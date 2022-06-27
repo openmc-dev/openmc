@@ -40,8 +40,11 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
     Parameters
     ----------
-    nuclides : pandas.DataFrame
-        DataFrame contaning nuclide concentration as well as cross section data.
+    nuclides : dict of str to float
+        Dictionary with nuclides names as keys and concentration as values.
+    micro_xs : pandas.DataFrame
+        DataFrame with nuclides names as index and microscopic cross section
+        data in the columns.
     flux_spectra : ???
         Flux spectrum
     chain_file : str
@@ -76,16 +79,11 @@ class FluxSpectraDepletionOperator(TransportOperator):
         results are to be used.
     """
 
-    def __init__(self, nuclides, flux_spectra, chain_file, fission_q=None, dilute_initial=1.0e3,
+    def __init__(self, nuclides, micro_xs, flux_spectra, chain_file, fission_q=None, dilute_initial=1.0e3,
                  prev_results=None, reduce_chain=False, reduce_chain_level=None):
 
 
-        # TODO : validate nuclides parameter
-
-        # Determine cross sections / depletion chain
-        # TODO : add support for mg cross sections to _find_cross_sections
-        if chain_file is None:
-            chain_file = _find_chain_file(cross_sections)
+        # TODO : validate nuclides and micro-xs parameters
 
         TransportOperator.__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
@@ -95,7 +93,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         # Reduce the chain
         if reduce_chain:
             all_nuclides = set()
-            for nuclide_name in nuclides.index:
+            for nuclide_name in nuclides.keys():
                 all_isotopes.add(nuclide_name)
             self.chain = self.chain.reduce(all_nuclides, reduce_chain_level)
 

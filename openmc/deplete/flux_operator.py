@@ -24,6 +24,9 @@ from .atom_number import AtomNumber
 from .chain import _find_chain_file
 from .reaction_rates import ReactionRates
 from .results import Results
+from .helpers import (
+    DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper)
+
 
 
 
@@ -116,7 +119,12 @@ class FluxSpectraDepletionOperator(TransportOperator):
         self.reaction_rates = ReactionRates(
             '0', self._burnable_nucs, self.chain.reactions)
 
-        # TODO : set up rate, yield, and normalization helper objects
+        # Select and create fission yield helper
+        fission_helper = ConstantFissionYieldHelper
+        fission_yield_opts = (
+            {} if fission_yield_opts is None else fission_yield_opts)
+        self._yield_helper = fission_helper.from_operator(
+            self, **fission_yield_opts)
 
 
     def __call__(self, vec, source_rate):
@@ -143,11 +151,10 @@ class FluxSpectraDepletionOperator(TransportOperator):
         self._update_materials()
 
         # Update tally nuclides data in preparation for transport solve
-        nuclides = self.._get_tally_nuclides()
+        nuclides = self._get_tally_nuclides()
         self._rate_helper.nuclides = nuclides
         self._normalization_helper.nuclides = nuclides
         self._yield_helper.update_tally_nuclides(nuclides)
-
 
 
         rates = self.reaction_rates
@@ -165,13 +172,14 @@ class FluxSpectraDepletionOperator(TransportOperator):
         number = np.empty(rates.n_nuc)
 
         # Zero out reaction rates and nuclide numbers
-         number.fill(0.0)
+        number.fill(0.0)
 
         # Get new number densities
         for nuc, i_nuc_results in zip(nuclides, nuc_ind):
             number[i_nuc_results] = self.number['0', nuc]
 
-
+        # Compute fission yields for this material
+        fission_yields.append(self._yield_helper.weighted_yields(i))
 
 
             # TODO : add machinery to multiply

@@ -404,3 +404,30 @@ def test_mix_materials():
     assert m3.density == pytest.approx(dens3)
     assert m4.density == pytest.approx(dens4)
     assert m5.density == pytest.approx(dens5)
+
+
+def test_activity_of_stable():
+    """Creates a material with stable isotopes to checks the activity is 0"""
+    m1 = openmc.Material()
+    m1.add_element("Fe", 1)
+    m1.set_density('g/cm3', 1)
+    m1.volume = 1
+    assert m1.activity == 0
+
+
+def test_activity_of_tritium():
+    """Checks that 1g of tritium has the correct activity"""
+    m1 = openmc.Material()
+    m1.add_nuclide("H3", 1)
+    m1.set_density('g/cm3', 1)
+    m1.volume = 1
+    assert pytest.approx(m1.activity) == 3.559778e14 
+
+
+def test_activity_of_metastable():
+    """Checks that 1 mol of a Tc99_m1 nuclides has the correct activity"""
+    m1 = openmc.Material()
+    m1.add_nuclide("Tc99_m1", 1)
+    m1.set_density('g/cm3', 1)
+    m1.volume = 98.9
+    assert pytest.approx(m1.activity, rel=0.001) == 1.93e19

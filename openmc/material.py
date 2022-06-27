@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
+import math
 import re
 import warnings
 from xml.etree import ElementTree as ET
@@ -140,6 +141,21 @@ class Material(IDManagerMixin):
             string += '{: <16}'.format('\t{}'.format(self._macroscopic))
 
         return string
+
+
+    @property
+    def activity(self):
+        """Returns the total activity of the material in Becquerels."""
+
+        atoms_per_barn_cm = self.get_nuclide_atom_densities()
+        total_activity = 0
+        for key, value in atoms_per_barn_cm.items():
+            half_life = openmc.data.half_life(key)
+            if half_life:
+                total_activity += value[1] / half_life
+        total_activity *= math.log(2) * 1e24 * self.volume
+
+        return total_activity
 
     @property
     def name(self):

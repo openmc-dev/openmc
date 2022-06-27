@@ -596,8 +596,12 @@ std::pair<double, int32_t> DAGCell::distance(
     dist = INFINITY;
     if (!dagmc_ptr_->is_implicit_complement(vol) ||
         model::universe_map[dag_univ->id_] == model::root_universe) {
+      std::string material_id = p->material() == MATERIAL_VOID
+                              ? "-1 (VOID)"
+                              : std::to_string(model::materials[p->material()]->id());
       p->mark_as_lost(
-        fmt::format("No intersection found with DAGMC cell {}", id_));
+        fmt::format("No intersection found with DAGMC cell {}, material {}",
+          id_, material_id));
     }
   }
 

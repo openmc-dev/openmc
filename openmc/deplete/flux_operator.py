@@ -45,6 +45,8 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
     Parameters
     ----------
+    volume : float
+        Volume of the material being depleted in cm^3
     nuclides : dict of str to float
         Dictionary with nuclides names as keys and concentration as values.
     micro_xs : pandas.DataFrame
@@ -82,9 +84,22 @@ class FluxSpectraDepletionOperator(TransportOperator):
     prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
+    number : openmc.deplete.AtomNumber
+        Total number of atoms in simulation.
+    nuclides_with_data : set of str
+        A set listing all unique nuclides available from cross_sections.xml.
+    chain : openmc.deplete.Chain
+        The depletion chain information necessary to form matrices and tallies.
+    reaction_rates : openmc.deplete.ReactionRates
+        Reaction rates from the last operator step.
+    heavy_metal : float
+        Initial heavy metal inventory [g]
+    prev_res : Results or None
+        Results from a previous depletion calculation. ``None`` if no
+        results are to be used.
     """
 
-    def __init__(self, nuclides, micro_xs, flux_spectra, chain_file, fission_q=None, dilute_initial=1.0e3,
+    def __init__(self, volume, nuclides, micro_xs, flux_spectra, chain_file, fission_q=None, dilute_initial=1.0e3,
                  prev_results=None, reduce_chain=False, reduce_chain_level=None):
         super.__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
@@ -101,12 +116,13 @@ class FluxSpectraDepletionOperator(TransportOperator):
         check_value('nuclides', nuclides, dict, str)
         check_type('micro_xs', micro_xs, pd.DataFrame)
 
-        # Clear out OpenMC, create task lists, distribute
-        #self.burnable_mats, volume, nuclides = self.get_burnable_mats()
+        self._micro_xs = micro_xs
+
+        nuclides = self._get_all_depletion_nuclides(volume, nuclides)
 
         # TODO: add support for loading previous results
 
-        # TODO : Determine which nuclides have incident neutron data
+        # Determine which nuclides have cross section data
         self.nuclides_with_data = self._get_nuclides_with_data()
 
         # Select nuclides with data that are also in the chain
@@ -115,7 +131,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         # TODO : implement _extract_number
         # Extract number densities from the geometry / previous depletion run
-        self._extract_number('0', volume, list(nuclides.keys()), self.prev_res)
+        self._extract_number('0', volume, nuclides, self.prev_res)
 
         # Create reaction rates array
         self.reaction_rates = ReactionRates(
@@ -194,7 +210,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         # Store microscopic cross sections in rates array
         for nuc in nuclides:
             for rxn in self.chain.reactions:
-                rates.set('0', nuc, rxn, self.micro_xs[rxn].loc[nuc])
+                rates.set('0', nuc, rxn, self._micro_xs[rxn].loc[nuc])
 
         # Get reaction rate in reactions/sec
         rates *= self.flux_spectra
@@ -330,5 +346,52 @@ class FluxSpectraDepletionOperator(TransportOperator):
         # Store list of tally nuclides on each process
         nuc_list = comm.bcast(nuc_list)
         return [nuc for nuc in nuc_list if nuc in self.chain]
+
+    def _get_all_depletion_nuclides(self, volume, nuclides):
+        """Determine nuclides that will show up in simulation
+
+        Parameters
+        ----------
+        volume : float
+            Volume of material in cm^3
+
+        Returns
+        -------
+        nuclides : list of str
+            Nuclides in order of how they'll appear in the simulation.
+
+        """
+
+        model_nuclides = set()
+
+        self.heavy_metal = 0.0
+
+        bu_mat = openmc.Material()
+        bu_mat.volume = volume
+        for n, conc in nuclides:
+            bu_mat.add_nuclides(n,conc)
+            model_nuclides.add(n)
+
+        self.heavy_metal = bu_mat.fissionable_mass
+
+        # Sort the sets
+        model_nuclides = sorted(model_nuclides)
+
+        # Construct a global nuclide dictionary, burned first
+        nuclides = list(self.chain.nuclide_dict)
+        for nuc in model_nuclides:
+            if nuc not in nuclides:
+                nuclides.append(nuc)
+
+        return nuclides
+
+    def _get_nuclides_with_data(self):
+        """Finds nuclides with cross section data"""
+        nuclides = set()
+        for name in self._micro_xs.index:
+            if name not in nuclides:
+                nuclides.add(name)
+
+        return nuclides
 
 

@@ -19,7 +19,6 @@ from openmc.checkvalue import check_value
 from openmc.data import DataLibrary
 from openmc.exceptions import DataError
 from openmc.mpi import comm
-from .operator import Operator, _distribute, _find_cross_sections
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .chain import _find_chain_file
@@ -28,7 +27,7 @@ from .results import Results
 
 
 
-class FluxSpectraDepletionOperator(TransportOperator, Operator):
+class FluxSpectraDepletionOperator(TransportOperator):
     """Depletion operator that uses a user provided flux spectrum to
     calculate reaction rates. The flux provided must match the type of cross
     section library in use (contunuous flux for continuous energy library,
@@ -101,7 +100,7 @@ class FluxSpectraDepletionOperator(TransportOperator, Operator):
             self.chain = self.chain.reduce(all_nuclides, reduce_chain_level)
 
         # Clear out OpenMC, create task lists, distribute
-        self.burnable_mats, volume, nuclides = Operator._get_burnable_mats()
+        self.burnable_mats, volume, nuclides = self.get_burnable_mats()
         self.local_mats = _distribute(self.burnable_mats)
 
         # Generate map from local materials => material index
@@ -110,16 +109,15 @@ class FluxSpectraDepletionOperator(TransportOperator, Operator):
 
         # TODO: add support for loading previous results
 
-        # Determine which nuclides have incident neutron data
-        # TODO : add support for mg cross sections to Operator._get_nuclides_with_data
-        self.nuclides_with_data = Operator._get_nuclides_with_data(mg_cross_sections)
+        # TODO : Determine which nuclides have incident neutron data
+        self.nuclides_with_data = self._get_nuclides_with_data()
 
         # Select nuclides with data that are also in the chain
         self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
                                if nuc.name in self.nuclides_with_data]
 
         # Extract number densities from the geometry / previous depletion run
-        Operator._extract_number(self.local_mats, volume, nuclides, self.prev_res)
+        self._extract_number(self.local_mats, volume, nuclides, self.prev_res)
 
         # Create reaction rates array
         self.reaction_rates = ReactionRates(
@@ -152,7 +150,7 @@ class FluxSpectraDepletionOperator(TransportOperator, Operator):
         self._update_materials()
 
         # Update tally nuclides data in preparation for transport solve
-        nuclides = Operator._get_tally_nuclides()
+        nuclides = self.._get_tally_nuclides()
         self._rate_helper.nuclides = nuclides
         self._normalization_helper.nuclides = nuclides
         self._yield_helper.update_tally_nuclides(nuclides)

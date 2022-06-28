@@ -60,6 +60,24 @@ class Univariate(EqualityMixin, ABC):
         elif distribution == 'mixture':
             return Mixture.from_xml_element(elem)
 
+    @abstractmethod
+    def sample(n_samples=1, seed=None):
+        """Sample the univariate distribution
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of sampled values to generate
+        seed : int or None
+            Initial random number seed.
+
+        Returns
+        -------
+        numpy.ndarray
+            A 1-D array of sampled values
+        """
+        pass
+
 
 class Discrete(Univariate):
     """Distribution characterized by a probability mass function.
@@ -114,6 +132,18 @@ class Discrete(Univariate):
         for pk in p:
             cv.check_greater_than('discrete probability', pk, 0.0, True)
         self._p = p
+
+    def cdf(self):
+        return np.insert(np.cumsum(self.p), 0, 0.0)
+
+    def sample(self, n_samples=1, seed=None):
+        np.random.seed(seed)
+        return np.random.choice(self.x, n_samples, p=self.p)
+
+    def normalize(self):
+        """Normalize the probabilities stored on the distribution"""
+        norm = sum(self.p)
+        self.p = [val / norm for val in self.p]
 
     def to_xml_element(self, element_name):
         """Return XML representation of the discrete distribution
@@ -240,6 +270,10 @@ class Uniform(Univariate):
         t.c = [0., 1.]
         return t
 
+    def sample(self, n_samples=1, seed=None):
+        np.random.seed(seed)
+        return np.random.uniform(self.a, self.b, n_samples)
+
     def to_xml_element(self, element_name):
         """Return XML representation of the uniform distribution
 
@@ -341,6 +375,14 @@ class PowerLaw(Univariate):
         cv.check_type('power law exponent', n, Real)
         self._n = n
 
+    def sample(self, n_samples=1, seed=None):
+        np.random.seed(seed)
+        xi = np.random.rand(n_samples)
+        pwr = self.n + 1
+        offset = self.a**pwr
+        span = self.b**pwr - offset
+        return np.power(offset + xi * span, 1/pwr)
+
     def to_xml_element(self, element_name):
         """Return XML representation of the power law distribution
 
@@ -413,6 +455,16 @@ class Maxwell(Univariate):
         cv.check_type('Maxwell temperature', theta, Real)
         cv.check_greater_than('Maxwell temperature', theta, 0.0)
         self._theta = theta
+
+    def sample(self, n_samples=1, seed=None):
+        np.random.seed(seed)
+        return self.sample_maxwell(self.theta, n_samples)
+
+    @staticmethod
+    def sample_maxwell(t, n_samples):
+        r1, r2, r3 = np.random.rand(3, n_samples)
+        c = np.cos(0.5 * np.pi * r3)
+        return -t * (np.log(r1) + np.log(r2) * c * c)
 
     def to_xml_element(self, element_name):
         """Return XML representation of the Maxwellian distribution
@@ -502,6 +554,13 @@ class Watt(Univariate):
         cv.check_greater_than('Watt b', b, 0.0)
         self._b = b
 
+    def sample(self, n_samples=1, seed=None):
+        np.random.seed(seed)
+        w = Maxwell.sample_maxwell(self.a, n_samples)
+        u = np.random.uniform(-1., 1., n_samples)
+        aab = self.a * self.a * self.b
+        return w + 0.25*aab + u*np.sqrt(aab*w)
+
     def to_xml_element(self, element_name):
         """Return XML representation of the Watt distribution
 
@@ -587,6 +646,10 @@ class Normal(Univariate):
         cv.check_type('Normal std_dev', std_dev, Real)
         cv.check_greater_than('Normal std_dev', std_dev, 0.0)
         self._std_dev = std_dev
+
+    def sample(self, n_samples=1, seed=None):
+        np.random.seed(seed)
+        return np.random.normal(self.mean_value, self.std_dev, n_samples)
 
     def to_xml_element(self, element_name):
         """Return XML representation of the Normal distribution
@@ -693,6 +756,15 @@ class Muir(Univariate):
         cv.check_type('Muir kt', kt, Real)
         cv.check_greater_than('Muir kt', kt, 0.0)
         self._kt = kt
+
+    @property
+    def std_dev(self):
+        return np.sqrt(4.*self.e0*self.kt/self.m_rat)
+
+    def sample(self, n_samples=1, seed=None):
+        # Based on LANL report LA-05411-MS
+        np.random.seed(seed)
+        return np.random.normal(self.e0, self.std_dev, n_samples)
 
     def to_xml_element(self, element_name):
         """Return XML representation of the Watt distribution
@@ -803,6 +875,114 @@ class Tabular(Univariate):
         cv.check_value('interpolation', interpolation, _INTERPOLATION_SCHEMES)
         self._interpolation = interpolation
 
+    def cdf(self):
+        if not self.interpolation in ('histogram', 'linear-linear'):
+            raise NotImplementedError('Can only generate CDFs for tabular '
+                                      'distributions using histogram or '
+                                      'linear-linear interpolation')
+        c = np.zeros_like(self.x)
+        x = np.asarray(self.x)
+        p = np.asarray(self.p)
+
+        if self.interpolation == 'histogram':
+            c[1:] = p[:-1] * np.diff(x)
+        elif self.interpolation == 'linear-linear':
+            c[1:] = 0.5 * (p[:-1] + p[1:]) * np.diff(x)
+
+        return np.cumsum(c)
+
+    def mean(self):
+        """Compute the mean of the tabular distribution"""
+        if not self.interpolation in ('histogram', 'linear-linear'):
+            raise NotImplementedError('Can only compute mean for tabular '
+                                      'distributions using histogram '
+                                      'or linear-linear interpolation.')
+        if self.interpolation == 'linear-linear':
+            mean = 0.0
+            self.normalize()
+            for i in range(1, len(self.x)):
+                y_min = self.p[i-1]
+                y_max = self.p[i]
+                x_min = self.x[i-1]
+                x_max = self.x[i]
+
+                m = (y_max - y_min) / (x_max - x_min)
+
+                exp_val = (1./3.) * m * (x_max**3 - x_min**3)
+                exp_val += 0.5 * m * x_min * (x_min**2 - x_max**2)
+                exp_val += 0.5 * y_min * (x_max**2 - x_min**2)
+                mean += exp_val
+
+        elif self.interpolation == 'histogram':
+            mean = 0.5 * (self.x[:-1] + self.x[1:])
+            mean *= np.diff(self.cdf())
+            mean = sum(mean)
+
+        return mean
+
+    def normalize(self):
+        """Normalize the probabilities stored on the distribution"""
+        self.p = np.asarray(self.p) / self.cdf().max()
+
+    def sample(self, n_samples=1, seed=None):
+        if not self.interpolation in ('histogram', 'linear-linear'):
+            raise NotImplementedError('Can only sample tabular distributions '
+                                      'using histogram or '
+                                      'linear-linear interpolation')
+        np.random.seed(seed)
+        xi = np.random.rand(n_samples)
+        cdf = self.cdf()
+        cdf /= cdf.max()
+        # always use normalized probabilities when sampling
+        p = self.p / cdf.max()
+
+        # get CDF bins that are above the
+        # sampled values
+        c_i = np.full(n_samples, cdf[0])
+        cdf_idx = np.zeros(n_samples, dtype=int)
+        for i, val in enumerate(cdf[:-1]):
+            mask = xi > val
+            c_i[mask] = val
+            cdf_idx[mask] = i
+
+        # get table values at each index where
+        # the random number is less than the next cdf
+        # entry
+        x_i = self.x[cdf_idx]
+        p_i = self.p[cdf_idx]
+
+        if self.interpolation == 'histogram':
+            # mask where probability is greater than zero
+            pos_mask = p_i > 0.0
+            # probabilities greater than zero are set proportional to the
+            # position of the random numebers in relation to the cdf value
+            p_i[pos_mask] = x_i[pos_mask] + (xi[pos_mask] - c_i[pos_mask]) \
+                           / p_i[pos_mask]
+            # probabilities smaller than zero are set to the random number value
+            p_i[~pos_mask] = x_i[~pos_mask]
+
+            samples_out = p_i
+
+        elif self.interpolation == 'linear-linear':
+            # get variable and probability values for the
+            # next entry
+            x_i1 = self.x[cdf_idx + 1]
+            p_i1 = self.p[cdf_idx + 1]
+            # compute slope between entries
+            m = (p_i1 - p_i) / (x_i1 - x_i)
+            # set values for zero slope
+            zero = m == 0.0
+            m[zero] = x_i[zero] + (xi[zero] - c_i[zero]) / p_i[zero]
+            # set values for non-zero slope
+            non_zero = ~zero
+            quad = np.power(p_i[non_zero], 2) + 2.0 * m[non_zero] * (xi[non_zero] - c_i[non_zero])
+            quad[quad < 0.0] = 0.0
+            m[non_zero] = x_i[non_zero] + (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
+            samples_out = m
+
+        assert all(samples_out < self.x[-1])
+        return samples_out
+
     def to_xml_element(self, element_name):
         """Return XML representation of the tabular distribution
 
@@ -890,6 +1070,9 @@ class Legendre(Univariate):
     def coefficients(self, coefficients):
         self._coefficients = np.asarray(coefficients)
 
+    def sample(self, n_samples=1, seed=None):
+        raise NotImplementedError
+
     def to_xml_element(self, element_name):
         raise NotImplementedError
 
@@ -946,6 +1129,25 @@ class Mixture(Univariate):
         cv.check_type('mixture distribution components', distribution,
                       Iterable, Univariate)
         self._distribution = distribution
+
+    def cdf(self):
+        return np.insert(np.cumsum(self.probability), 0, 0.0)
+
+    def sample(self, n_samples=1, seed=None):
+        np.random.seed(seed)
+        idx = np.random.choice(self.distribution, n_samples, p=self.probability)
+
+        out = np.zeros_like(idx)
+        for i in np.unique(idx):
+            n_dist_samples = np.count_nonzero(idx == i)
+            samples = self.distribution[i].sample(n_dist_samples)
+            out[idx == i] = samples
+        return out
+
+    def normalize(self):
+        """Normalize the probabilities stored on the distribution"""
+        norm = sum(self.probability)
+        self.probability = [val / norm for val in self.probability]
 
     def to_xml_element(self, element_name):
         """Return XML representation of the mixture distribution

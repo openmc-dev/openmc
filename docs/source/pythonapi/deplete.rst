@@ -134,7 +134,7 @@ data, such as number densities and reaction rates for each material.
    OperatorResult
    ReactionRates
    Results
-   ResultsList
+   StepResult
 
 The following class and functions are used to solve the depletion equations,
 with :func:`cram.CRAM48` being the default.

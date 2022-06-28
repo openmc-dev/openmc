@@ -107,7 +107,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
     integrator.integrate()
 
     # Get resulting number of atoms
-    results = openmc.deplete.ResultsList.from_hdf5('depletion_results.h5')
+    results = openmc.deplete.Results('depletion_results.h5')
     _, atoms = results.get_atoms(w, "W186")
 
     assert atoms[0] == pytest.approx(n0)
@@ -155,7 +155,7 @@ def test_decay(run_in_tmpdir):
     integrator.integrate()
 
     # Get resulting number of atoms
-    results = openmc.deplete.ResultsList.from_hdf5('depletion_results.h5')
+    results = openmc.deplete.Results('depletion_results.h5')
     _, atoms = results.get_atoms(mat, "Sr89")
 
     # Ensure density goes down by a factor of 2 after each half-life

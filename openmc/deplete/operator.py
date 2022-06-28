@@ -25,7 +25,7 @@ from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .chain import _find_chain_file
 from .reaction_rates import ReactionRates
-from .results_list import ResultsList
+from .results import Results
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
     FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,
@@ -94,7 +94,7 @@ class Operator(TransportOperator):
         Path to the depletion chain XML file.  Defaults to the file
         listed under ``depletion_chain`` in
         :envvar:`OPENMC_CROSS_SECTIONS` environment variable.
-    prev_results : ResultsList, optional
+    prev_results : Results, optional
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state
         in the previous results.
@@ -192,7 +192,7 @@ class Operator(TransportOperator):
         Initial heavy metal inventory [g]
     local_mats : list of str
         All burnable material IDs being managed by a single process
-    prev_res : ResultsList or None
+    prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
     cleanup_when_done : bool
@@ -284,7 +284,7 @@ class Operator(TransportOperator):
             if comm.size == 1:
                 self.prev_res = prev_results
             else:
-                self.prev_res = ResultsList()
+                self.prev_res = Results()
                 mat_indexes = _distribute(range(len(self.burnable_mats)))
                 for res_obj in prev_results:
                     new_res = res_obj.distribute(self.local_mats, mat_indexes)
@@ -494,7 +494,7 @@ class Operator(TransportOperator):
             Volumes for the above materials in [cm^3]
         nuclides : list of str
             Nuclides to be used in the simulation.
-        prev_res : ResultsList, optional
+        prev_res : Results, optional
             Results from a previous depletion calculation
 
         """
@@ -543,7 +543,7 @@ class Operator(TransportOperator):
         ----------
         mat : openmc.Material
             The material to read from
-        prev_res : ResultsList
+        prev_res : Results
             Results from a previous depletion calculation
 
         """

@@ -1,9 +1,10 @@
 import itertools
-from math import sqrt
+import json
 import os
 import re
+from pathlib import Path
+from math import sqrt
 from warnings import warn
-
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
@@ -199,6 +200,9 @@ _ATOMIC_MASS = {}
 # Regex for GND nuclide names (used in zam function)
 _GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
+# Used in half_life function as a cache
+_HALF_LIFE = {}
+
 
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
@@ -272,6 +276,31 @@ def atomic_weight(element):
         raise ValueError("No naturally-occurring isotopes for element '{}'."
                          .format(element))
 
+
+def half_life(isotope):
+    """Return half-life of isotope in seconds or None if isotope is stable
+
+    Half-life values are from the `ENDF/B-VIII.0 decay sublibrary
+    <https://www.nndc.bnl.gov/endf-b8.0/download.html>`_.
+
+    Parameters
+    ----------
+    isotope : str
+        Name of isotope, e.g., 'Pu239'
+
+    Returns
+    -------
+    float
+        Half-life of isotope in [s]
+
+    """
+    global _HALF_LIFE
+    if not _HALF_LIFE:
+        # Load ENDF/B-VIII.0 data from JSON file
+        half_life_path = Path(__file__).with_name('half_life.json')
+        _HALF_LIFE = json.loads(half_life_path.read_text())
+
+    return _HALF_LIFE.get(isotope.lower())
 
 def water_density(temperature, pressure=0.1013):
     """Return the density of liquid water at a given temperature and pressure.

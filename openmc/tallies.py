@@ -460,6 +460,7 @@ class Tally(IDManagerMixin):
             self._sparse = False
 
     def write_to_vtk(self, filename):
+        # check that tally has a MeshFilter
         mesh = None
         for f in self.filters:
             if isinstance(f, openmc.MeshFilter):
@@ -511,6 +512,8 @@ class Tally(IDManagerMixin):
                 std_dev=self.std_dev,
                 cylindrical=True,
             )
+        
+        # write the .vtk file
         writer = vtk.vtkStructuredGridWriter()
         writer.SetFileName(filename)
         writer.SetInputData(vtk_grid)
@@ -3291,36 +3294,32 @@ class Tallies(cv.CheckedList):
 
 
 def voxels_to_vtk(x_vals, y_vals, z_vals, mean, std_dev, cylindrical=True):
-    vtk_box = vtk.vtkStructuredGrid()
+    vtk_grid = vtk.vtkStructuredGrid()
 
-    vtk_box.SetDimensions(len(x_vals), len(y_vals), len(z_vals))
+    vtk_grid.SetDimensions(len(x_vals), len(y_vals), len(z_vals))
 
-    # points
+    # create points
     points = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
-    if cylindrical:
+    if cylindrical:  # transform points to cartesian coordinates
         points_cartesian = np.copy(points)
-        r = points[:, 0]
-        phi = points[:, 1]
-        z = points[:, 2]
+        r, phi, z = points[:, 0], points[:, 1], points[:, 2]
         points_cartesian[:, 0] = r * np.cos(phi)
         points_cartesian[:, 1] = r * np.sin(phi)
         points_cartesian[:, 2] = z
 
     vtkPts = vtk.vtkPoints()
     vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
+    vtk_grid.SetPoints(vtkPts)
 
-    vtk_box.SetPoints(vtkPts)
-
-    # # data
+    # add mean and std dev data
     mean_array = vtk.vtkDoubleArray()
     mean_array.SetName("mean")
     mean_array.SetArray(mean, mean.size, True)
+    vtk_grid.GetCellData().AddArray(mean_array)
 
     std_dev_array = vtk.vtkDoubleArray()
     std_dev_array.SetName("std_dev")
     std_dev_array.SetArray(std_dev, std_dev.size, True)
+    vtk_grid.GetCellData().AddArray(std_dev_array)
 
-    vtk_box.GetCellData().AddArray(mean_array)
-    vtk_box.GetCellData().AddArray(std_dev_array)
-
-    return vtk_box
+    return vtk_grid

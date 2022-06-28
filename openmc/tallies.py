@@ -460,6 +460,15 @@ class Tally(IDManagerMixin):
             self._sparse = False
 
     def write_to_vtk(self, filename):
+        """Writes the tally to a vtk file
+
+        Args:
+            filename (str): the filename (must end with .vtk)
+
+        Raises:
+            ValueError: if no MeshFilter with appropriate mesh was found 
+                (SphericalMesh not supported)
+        """
         # check that tally has a MeshFilter
         mesh = None
         for f in self.filters:
@@ -512,7 +521,7 @@ class Tally(IDManagerMixin):
                 std_dev=self.std_dev,
                 cylindrical=True,
             )
-        
+
         # write the .vtk file
         writer = vtk.vtkStructuredGridWriter()
         writer.SetFileName(filename)
@@ -3294,6 +3303,20 @@ class Tallies(cv.CheckedList):
 
 
 def voxels_to_vtk(x_vals, y_vals, z_vals, mean, std_dev, cylindrical=True):
+    """Creates a vtk object from a list of X, Y, Z values and mean/std_dev data.
+
+    Args:
+        x_vals (list): X values.
+        y_vals (list): Y values.
+        z_vals (list): Z values.
+        mean (np.array): the tally mean.
+        std_dev (np.array): the tally standard deviation.
+        cylindrical (bool, optional): If set to True, cylindrical coordinates
+            (r, phi, z) are assumed. Defaults to True.
+
+    Returns:
+        vtkStructuredGrid: a vtk object containing tally data on the appropriate grid
+    """
     vtk_grid = vtk.vtkStructuredGrid()
 
     vtk_grid.SetDimensions(len(x_vals), len(y_vals), len(z_vals))

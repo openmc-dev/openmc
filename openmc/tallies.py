@@ -8,8 +8,6 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import h5py
-import vtk
-import vtk.util.numpy_support as nps
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
@@ -470,6 +468,12 @@ class Tally(IDManagerMixin):
                 (SphericalMesh not supported)
         """
         # check that tally has a MeshFilter
+        try:
+            import vtk
+            import vtk.util.numpy_support as nps
+        except ImportError:
+            msg = 'Python package vtk was not found, please install vtk to use Tally.write_to_vtk.'
+            raise ImportError(msg)
         mesh = None
         for f in self.filters:
             if isinstance(f, openmc.MeshFilter):

@@ -8,6 +8,7 @@ A depletion front-end tool.
 from .nuclide import *
 from .chain import *
 from .operator import *
+from .flux_operator import *
 from .reaction_rates import *
 from .atom_number import *
 from .stepresult import *

@@ -33,10 +33,8 @@ from .helpers import (
 
 
 class FluxSpectraDepletionOperator(TransportOperator):
-    """Depletion operator that uses a user provided flux spectrum to
-    calculate reaction rates. The flux provided must match the type of cross
-    section library in use (contunuous flux for continuous energy library,
-    multi-group flux for multi-group library)
+    """Depletion operator that uses a user provided flux spectrum and one-group
+    cross sections calculate reaction rates.
 
     Instances of this class can be used to perform depletion using one group
     cross sections and constant flux. Normally, a user needn't call methods of
@@ -49,6 +47,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         Volume of the material being depleted in cm^3
     nuclides : dict of str to float
         Dictionary with nuclides names as keys and concentration as values.
+        Nuclide concentration is assumed to be in [units?]
     micro_xs : pandas.DataFrame
         DataFrame with nuclides names as index and microscopic cross section
         data in the columns.
@@ -56,6 +55,9 @@ class FluxSpectraDepletionOperator(TransportOperator):
         Flux spectrum [n cm^-2 s^-1]
     chain_file : str
         Path to the depletion chain XML file.
+    keff : 2-tuple of float, optional
+       keff eigenvalue and uncertainty from transport calculation.
+       Defualt is None.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
@@ -99,7 +101,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         results are to be used.
     """
 
-    def __init__(self, volume, nuclides, micro_xs, flux_spectra, chain_file, fission_q=None, dilute_initial=1.0e3,
+    def __init__(self, volume, nuclides, micro_xs, flux_spectra, chain_file, keff=None, fission_q=None, dilute_initial=1.0e3,
                  prev_results=None, reduce_chain=False, reduce_chain_level=None):
         super.__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
@@ -117,6 +119,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         check_type('micro_xs', micro_xs, pd.DataFrame)
 
         self._micro_xs = micro_xs
+        self._keff = keff
 
         nuclides = self._get_all_depletion_nuclides(volume, nuclides)
 
@@ -131,17 +134,12 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         # TODO : implement _extract_number
         # Extract number densities from the geometry / previous depletion run
+        #!!! consider removing this and just using the nuclides dict...
         self._extract_number('0', volume, nuclides, self.prev_res)
 
         # Create reaction rates array
         self.reaction_rates = ReactionRates(
             '0', self._burnable_nucs, self.chain.reactions)
-
-        # Initialize normalization helper
-        #if normalization_mode == "fission-q":
-        #    self._normalization_helper = ChainFissionHelper()
-        #else:
-        #    self._normalization_helper = SourceRateHelper()
 
         # Select and create fission yield helper
         fission_helper = ConstantFissionYieldHelper
@@ -169,6 +167,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         """
 
         # Update the number densities regardless of the source rate
+        #!!! See previous excamation point comment
         self.number.set_density(vec)
         ## TODO : make sure this function works w the current structure.
         self._update_materials()
@@ -176,23 +175,17 @@ class FluxSpectraDepletionOperator(TransportOperator):
         # Update nuclides data in preparation for transport solve
 
         ## TODO : make sure this function works w the current structure.
+        # this nuclides varibale is all the nuclides that will show up via depletion
+        # that have xs data
         nuclides = self._get_reaction_nuclides()
         self._yield_helper.update_tally_nuclides(nuclides)
 
         rates = self.reaction_rates
         rates.fill(0.0)
 
-        # Get k and uncertainty
-        # TODO : add functionality to get this from the transport solver
-        keff = ...
-
         # Form fast map
         nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
         react_ind = [rates.index_rx[react] for react in self.chain.reactions]
-
-        # Keep track of energy produced from all reactions in eV per source
-        # particle
-        self._normalization_helper.reset()
 
         # Store fission yield dictionaries
         fission_yields = []
@@ -210,10 +203,11 @@ class FluxSpectraDepletionOperator(TransportOperator):
         for nuc, i_nuc_results in zip(nuclides, nuc_ind):
             number[i_nuc_results] = self.number[0, nuc]
 
-        # Store microscopic cross sections in rates array
+        # Calculate macroscopic cross sections and store them in rates array
         for nuc in nuclides:
+            density = number.get_atom_density('0', nuc)
             for rxn in self.chain.reactions:
-                rates.set('0', nuc, rxn, self._micro_xs[rxn].loc[nuc])
+                rates.set('0', nuc, rxn, self._micro_xs[rxn].loc[nuc] * density)
 
         # Get reaction rate in reactions/sec
         rates *= self.flux_spectra
@@ -225,10 +219,15 @@ class FluxSpectraDepletionOperator(TransportOperator):
         #if fission_ind is not None:
         #    self._normalization_helper.update(rxn_rates[:, fission_ind])
 
-        ## These don't seem relevant so I'm commenting them out for now
-        ## will delete if they are indeed not useful
         # Divide by total number and store
-        #rates[0] = self._rate_helper.divide_by_adens(number)
+        # the reason we do this is bc in the equation, we multiply the depletion matrix
+        # by the nuclide vector. Since what we want is the depletion matrix, we need to
+        # divide the reaction rates by the number of atoms to get the right units.
+        mask = nonzero(number)
+        results = rates[0]
+        for col in range(results.shape[1]):
+            results[mask, col] /= number[mask]
+        rates[0] = results
 
         # Scale reaction rates to obtain units of reactions/sec
         #rates *= self._normalization_helper.factor(source_rate)
@@ -237,7 +236,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         # Store new fission yields on the chain
         self.chain.fission_yields = fission_yields
 
-        return OperatorResult(keff, rates)
+        return OperatorResult(self._keff, rates)
 
 
     def initial_condition(self):
@@ -396,5 +395,54 @@ class FluxSpectraDepletionOperator(TransportOperator):
                 nuclides.add(name)
 
         return nuclides
+
+    def _extract_number(self, local_mats, volume, nuclides, prev_res=None):
+        """Construct AtomNumber using geometry
+
+        Parameters
+        ----------
+        local_mats : list of str
+            Material IDs to be managed by this process
+        volume : OrderedDict of str to float
+            Volumes for the above materials in [cm^3]
+        nuclides : list of str
+            Nuclides to be used in the simulation.
+        prev_res : Results, optional
+            Results from a previous depletion calculation
+
+        """
+        self.number = AtomNumber(local_mats, nuclides, volume, len(self.chain))
+
+        if self.dilute_initial != 0.0:
+            for nuc in self._burnable_nucs:
+                self.number.set_atom_density(np.s_[:], nuc, self.dilute_initial)
+
+        # Now extract and store the number densities
+        # From the geometry if no previous depletion results
+        if prev_res is None:
+            for mat in self.materials:
+                if str(mat.id) in local_mats:
+                    self._set_number_from_mat(mat)
+
+        # Else from previous depletion results
+        else:
+            for mat in self.materials:
+                if str(mat.id) in local_mats:
+                    self._set_number_from_results(mat, prev_res)
+
+    def _set_number_from_mat(self, mat):
+        """Extracts material and number densities from openmc.Material
+
+        Parameters
+        ----------
+        mat : openmc.Material
+            The material to read from
+
+        """
+        mat_id = str(mat.id)
+
+        for nuclide, density in mat.get_nuclide_atom_densities().values():
+            number = density * 1.0e24
+            self.number.set_atom_density(mat_id, nuclide, number)
 
 

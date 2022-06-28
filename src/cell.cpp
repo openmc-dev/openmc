@@ -824,7 +824,7 @@ bool CSGCell::contains_complex(
               // stack, if it is an operator "add" one to the stack
               if (next_token < OP_UNION) {
                 number_of_operators--;
-              } else {
+              } else if (next_token != OP_COMPLEMENT) {
                 number_of_operators++;
               }
 

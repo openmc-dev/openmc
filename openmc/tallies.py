@@ -3341,11 +3341,23 @@ def voxels_to_vtk(x_vals, y_vals, z_vals, mean, std_dev, cylindrical=True):
     # add mean and std dev data
     mean_array = vtk.vtkDoubleArray()
     mean_array.SetName("mean")
+    if mean is None:
+        mean = np.zeros(
+            (len(x_vals) - 1)
+            * (len(y_vals) - 1)
+            * (len(z_vals) - 1)
+        )
     mean_array.SetArray(mean, mean.size, True)
     vtk_grid.GetCellData().AddArray(mean_array)
 
     std_dev_array = vtk.vtkDoubleArray()
     std_dev_array.SetName("std_dev")
+    if std_dev is None:
+        std_dev = np.zeros(
+            (len(x_vals) - 1)
+            * (len(y_vals) - 1)
+            * (len(z_vals) - 1)
+        )
     std_dev_array.SetArray(std_dev, std_dev.size, True)
     vtk_grid.GetCellData().AddArray(std_dev_array)
 

@@ -105,6 +105,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         self.round_number = False
         self.flux_spectra = flux_spectra
         self._init_nuclides = nuclides
+        self._volume = volume
 
         # Reduce the chain
         if reduce_chain:
@@ -268,6 +269,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         """
         ...
 
+
     def get_results_info(self):
         """Returns volume list, cell lists, and nuc lists.
 
@@ -283,7 +285,16 @@ class FluxSpectraDepletionOperator(TransportOperator):
         full_burn_list : list of int
             All burnable materials in the geometry.
         """
+        nuc_list = self.number.burnable_nuclides
+        burn_list = ['0']
 
+        volume = {'0': self._volume}
+
+        # Combine volume dictionaries across processes
+        volume_list = comm.allgather(volume)
+        volume = {k: v for d in volume_list for k, v in d.items()}
+
+        return volume, nuc_list, burn_list, burn_list
 
 
     def _update_materials(self):

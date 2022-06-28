@@ -8,6 +8,8 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import h5py
+import vtk
+import vtk.util.numpy_support as nps
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
@@ -456,6 +458,54 @@ class Tally(IDManagerMixin):
             if self._std_dev is not None:
                 self._std_dev = np.reshape(self._std_dev.toarray(), self.shape)
             self._sparse = False
+
+    def write_to_vtk(self, filename):
+        mesh = None
+        for f in self.filters:
+            if isinstance(f, openmc.MeshFilter):
+                if isinstance(f.mesh, (openmc.RegularMesh, openmc.CylindricalMesh)):
+                    mesh = f.mesh
+                    break
+
+        if not mesh:
+            raise ValueError(
+                "write_to_vtk only works with openmc.RegularMesh, openmc.CylindricalMesh"
+            )
+
+        if isinstance(mesh, openmc.RegularMesh):
+            vtk_grid = voxels_to_vtk(
+                x_vals=np.linspace(
+                    mesh.lower_left[0],
+                    mesh.upper_right[0],
+                    num=mesh.dimension[0] + 1,
+                ),
+                y_vals=np.linspace(
+                    mesh.lower_left[1],
+                    mesh.upper_right[1],
+                    num=mesh.dimension[1] + 1,
+                ),
+                z_vals=np.linspace(
+                    mesh.lower_left[2],
+                    mesh.upper_right[2],
+                    num=mesh.dimension[2] + 1,
+                ),
+                mean=self.mean,
+                std_dev=self.std_dev,
+                cylindrical=False,
+            )
+        elif isinstance(mesh, openmc.CylindricalMesh):
+            vtk_grid = voxels_to_vtk(
+                x_vals=mesh.r_grid,
+                y_vals=mesh.phi_grid,
+                z_vals=mesh.z_grid,
+                mean=self.mean,
+                std_dev=self.std_dev,
+                cylindrical=True,
+            )
+        writer = vtk.vtkStructuredGridWriter()
+        writer.SetFileName(filename)
+        writer.SetInputData(vtk_grid)
+        writer.Write()
 
     def remove_score(self, score):
         """Remove a score from the tally
@@ -3229,3 +3279,39 @@ class Tallies(cv.CheckedList):
             tallies.append(tally)
 
         return cls(tallies)
+
+
+def voxels_to_vtk(x_vals, y_vals, z_vals, mean, std_dev, cylindrical=True):
+    vtk_box = vtk.vtkStructuredGrid()
+
+    vtk_box.SetDimensions(len(x_vals), len(y_vals), len(z_vals))
+
+    # points
+    points = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
+    if cylindrical:
+        points_cartesian = np.copy(points)
+        r = points[:, 0]
+        phi = points[:, 1]
+        z = points[:, 2]
+        points_cartesian[:, 0] = r * np.cos(phi)
+        points_cartesian[:, 1] = r * np.sin(phi)
+        points_cartesian[:, 2] = z
+
+    vtkPts = vtk.vtkPoints()
+    vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
+
+    vtk_box.SetPoints(vtkPts)
+
+    # # data
+    mean_array = vtk.vtkDoubleArray()
+    mean_array.SetName("mean")
+    mean_array.SetArray(mean, mean.size, True)
+
+    std_dev_array = vtk.vtkDoubleArray()
+    std_dev_array.SetName("std_dev")
+    std_dev_array.SetArray(std_dev, std_dev.size, True)
+
+    vtk_box.GetCellData().AddArray(mean_array)
+    vtk_box.GetCellData().AddArray(std_dev_array)
+
+    return vtk_box

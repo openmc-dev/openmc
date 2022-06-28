@@ -3317,6 +3317,9 @@ def voxels_to_vtk(x_vals, y_vals, z_vals, mean, std_dev, cylindrical=True):
     Returns:
         vtkStructuredGrid: a vtk object containing tally data on the appropriate grid
     """
+
+    # TODO: should this be a method of Tally?
+
     vtk_grid = vtk.vtkStructuredGrid()
 
     vtk_grid.SetDimensions(len(x_vals), len(y_vals), len(z_vals))

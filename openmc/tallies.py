@@ -463,13 +463,13 @@ class Tally(IDManagerMixin):
         mesh = None
         for f in self.filters:
             if isinstance(f, openmc.MeshFilter):
-                if isinstance(f.mesh, (openmc.RegularMesh, openmc.CylindricalMesh)):
+                if isinstance(f.mesh, (openmc.RegularMesh, openmc.RectilinearMesh, openmc.CylindricalMesh)):
                     mesh = f.mesh
                     break
 
         if not mesh:
             raise ValueError(
-                "write_to_vtk only works with openmc.RegularMesh, openmc.CylindricalMesh"
+                "write_to_vtk only works with openmc.RegularMesh, openmc.RectilinearMesh, openmc.CylindricalMesh"
             )
 
         if isinstance(mesh, openmc.RegularMesh):
@@ -489,6 +489,15 @@ class Tally(IDManagerMixin):
                     mesh.upper_right[2],
                     num=mesh.dimension[2] + 1,
                 ),
+                mean=self.mean,
+                std_dev=self.std_dev,
+                cylindrical=False,
+            )
+        if isinstance(mesh, openmc.RectilinearMesh):
+            vtk_grid = voxels_to_vtk(
+                x_vals=mesh.x_grid,
+                y_vals=mesh.y_grid,
+                z_vals=mesh.z_grid,
                 mean=self.mean,
                 std_dev=self.std_dev,
                 cylindrical=False,

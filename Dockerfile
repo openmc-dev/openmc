@@ -172,7 +172,7 @@ RUN if [ "$build_libmesh" = "on" ]; then \
         && rm -rf ${LIBMESH_INSTALL_DIR}/build ${LIBMESH_INSTALL_DIR}/libmesh ; \
     fi
 
-FROM dependencies as build
+FROM dependencies AS build
 
 # clone and install openmc
 RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
@@ -209,7 +209,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && cd ../openmc && pip install .[test,depletion-mpi] \
     && python -c "import openmc"
 
-FROM build as release
+FROM build AS release
 
 # Download cross sections (NNDC and WMP) and ENDF data needed by test suite
 RUN ${HOME}/OpenMC/openmc/tools/ci/download-xs.sh

@@ -3332,6 +3332,7 @@ def voxels_to_vtk(x_vals, y_vals, z_vals, mean, std_dev, cylindrical=True):
         points_cartesian[:, 0] = r * np.cos(phi)
         points_cartesian[:, 1] = r * np.sin(phi)
         points_cartesian[:, 2] = z
+        points = points_cartesian
 
     vtkPts = vtk.vtkPoints()
     vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))

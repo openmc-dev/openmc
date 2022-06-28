@@ -83,7 +83,7 @@ void Vcros(double A[4],double B[4],double C[4]);
 void Vunit(double A[4] ,double B[4]);
 
 
-void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , double awr , double incoming_mass, double ReturnArray[],int diff_mode,double dl );
+void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , double awr , double ReturnArray[],int diff_mode,double dl );
 
 //! Analog tallies are triggered at every collision, not every event.
 //

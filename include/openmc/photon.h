@@ -79,7 +79,9 @@ public:
   Tabulated1D coherent_anomalous_real_;
   Tabulated1D coherent_anomalous_imag_;
 
-  // Photoionization and atomic relaxation data
+  // Photoionization and atomic relaxation data. Subshell cross sections are
+  // stored separately to improve memory access pattern when calculating the
+  // total cross section
   vector<ElectronSubshell> shells_;
   xt::xtensor<double, 2> cross_sections_;
 

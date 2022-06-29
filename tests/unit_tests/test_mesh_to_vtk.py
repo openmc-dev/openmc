@@ -1,6 +1,8 @@
 import numpy as np
 from os.path import exists
 import pytest
+import vtk
+from vtk.util import numpy_support as nps
 
 import openmc
 
@@ -27,9 +29,30 @@ spherical_mesh.theta_grid = np.linspace(0, np.pi / 2, num=30)
 
 @pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
 def test_write_data_to_vtk(mesh, tmpdir):
+    # BUILD
     filename = tmpdir / "out.vtk"
 
     data = np.random.random(mesh.dimension[0]*mesh.dimension[1]*mesh.dimension[2])
 
-    mesh.write_data_to_vtk(filename=filename, datasets={"label": data})
+    # RUN
+    mesh.write_data_to_vtk(filename=filename, datasets={"label1": data, "label2": data})
+
+    # TEST
     assert exists(filename)
+
+    # read file
+    reader = vtk.vtkStructuredGridReader()
+    reader.SetFileName(filename)
+    reader.Update()
+
+    # check name of datasets
+    vtk_grid = reader.GetOutput()
+    array1 = vtk_grid.GetCellData().GetArray(0)
+    array2 = vtk_grid.GetCellData().GetArray(1)
+
+    assert array1.GetName() == "label1"
+    assert array2.GetName() == "label2"
+
+    # check size of datasets
+    assert nps.vtk_to_numpy(array1).size == data.size
+    assert nps.vtk_to_numpy(array2).size == data.size

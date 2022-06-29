@@ -464,61 +464,29 @@ class Tally(IDManagerMixin):
             filename (str): the filename (must end with .vtk)
 
         Raises:
-            ValueError: if no MeshFilter with appropriate mesh was found 
-                (SphericalMesh not supported)
+            ValueError: if no MeshFilter was found
         """
+        try:
+            import vtk
+        except ModuleNotFoundError:
+            msg = 'Python package vtk was not found, please install vtk to use Tally.write_to_vtk.'
+            raise ModuleNotFoundError(msg)
+        except ImportError as err:
+            raise err
+
         # check that tally has a MeshFilter
         mesh = None
         for f in self.filters:
             if isinstance(f, openmc.MeshFilter):
-                if isinstance(f.mesh, (openmc.RegularMesh, openmc.RectilinearMesh, openmc.CylindricalMesh)):
-                    mesh = f.mesh
-                    break
+                mesh = f.mesh
+                break
 
         if not mesh:
             raise ValueError(
-                "write_to_vtk only works with openmc.RegularMesh, openmc.RectilinearMesh, openmc.CylindricalMesh"
+                "write_to_vtk requires a MeshFilter in the tally filters"
             )
 
-        if isinstance(mesh, openmc.RegularMesh):
-            vtk_grid = voxels_to_vtk(
-                x_vals=np.linspace(
-                    mesh.lower_left[0],
-                    mesh.upper_right[0],
-                    num=mesh.dimension[0] + 1,
-                ),
-                y_vals=np.linspace(
-                    mesh.lower_left[1],
-                    mesh.upper_right[1],
-                    num=mesh.dimension[1] + 1,
-                ),
-                z_vals=np.linspace(
-                    mesh.lower_left[2],
-                    mesh.upper_right[2],
-                    num=mesh.dimension[2] + 1,
-                ),
-                mean=self.mean,
-                std_dev=self.std_dev,
-                cylindrical=False,
-            )
-        if isinstance(mesh, openmc.RectilinearMesh):
-            vtk_grid = voxels_to_vtk(
-                x_vals=mesh.x_grid,
-                y_vals=mesh.y_grid,
-                z_vals=mesh.z_grid,
-                mean=self.mean,
-                std_dev=self.std_dev,
-                cylindrical=False,
-            )
-        elif isinstance(mesh, openmc.CylindricalMesh):
-            vtk_grid = voxels_to_vtk(
-                x_vals=mesh.r_grid,
-                y_vals=mesh.phi_grid,
-                z_vals=mesh.z_grid,
-                mean=self.mean,
-                std_dev=self.std_dev,
-                cylindrical=True,
-            )
+        vtk_grid = voxels_to_vtk(mesh, self.mean, self.std_dev)
 
         # write the .vtk file
         writer = vtk.vtkStructuredGridWriter()
@@ -3300,20 +3268,20 @@ class Tallies(cv.CheckedList):
         return cls(tallies)
 
 
-def voxels_to_vtk(x_vals, y_vals, z_vals, mean, std_dev, cylindrical=True):
+def voxels_to_vtk(mesh, mean, std_dev):
     """Creates a vtk object from a list of X, Y, Z values and mean/std_dev data.
 
     Args:
-        x_vals (list): X values.
-        y_vals (list): Y values.
-        z_vals (list): Z values.
+        mesh (openmc.StructuredMesh): The tallied mesh (SphericalMesh is not yet supported).
         mean (np.array): the tally mean.
         std_dev (np.array): the tally standard deviation.
-        cylindrical (bool, optional): If set to True, cylindrical coordinates
-            (r, phi, z) are assumed. Defaults to True.
 
     Returns:
         vtkStructuredGrid: a vtk object containing tally data on the appropriate grid
+
+    Raises:
+        ValueError: if mesh is not openmc.RegularMesh, openmc.RectilinearMesh or
+            openmc.CylindricalMesh
     """
     try:
         import vtk
@@ -3325,13 +3293,46 @@ def voxels_to_vtk(x_vals, y_vals, z_vals, mean, std_dev, cylindrical=True):
         raise err
     # TODO: should this be a method of Tally?
 
+    system_of_coordinates = "cartesian"
+
+    if isinstance(mesh, openmc.RegularMesh):
+        print('coucou')
+        x_vals = np.linspace(
+            mesh.lower_left[0],
+            mesh.upper_right[0],
+            num=mesh.dimension[0] + 1,
+        )
+        y_vals = np.linspace(
+            mesh.lower_left[1],
+            mesh.upper_right[1],
+            num=mesh.dimension[1] + 1,
+        )
+        z_vals = np.linspace(
+            mesh.lower_left[2],
+            mesh.upper_right[2],
+            num=mesh.dimension[2] + 1,
+        )
+    elif isinstance(mesh, openmc.RectilinearMesh):
+        x_vals = mesh.x_grid
+        y_vals = mesh.y_grid
+        z_vals = mesh.z_grid
+    elif isinstance(mesh, openmc.CylindricalMesh):
+        x_vals = mesh.r_grid
+        y_vals = mesh.phi_grid
+        z_vals = mesh.z_grid
+        system_of_coordinates = "cylindrical"
+    else:
+        print(type(mesh))
+        raise ValueError(
+                "voxels_to_vtk only works with openmc.RegularMesh, openmc.RectilinearMesh, openmc.CylindricalMesh"
+            )
     vtk_grid = vtk.vtkStructuredGrid()
 
     vtk_grid.SetDimensions(len(x_vals), len(y_vals), len(z_vals))
 
     # create points
     points = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
-    if cylindrical:  # transform points to cartesian coordinates
+    if system_of_coordinates == "cylindrical":  # transform points to cartesian coordinates
         points_cartesian = np.copy(points)
         r, phi, z = points[:, 0], points[:, 1], points[:, 2]
         points_cartesian[:, 0] = r * np.cos(phi)

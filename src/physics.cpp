@@ -347,7 +347,8 @@ void sample_photon_reaction(Particle& p)
   double prob_after = prob + micro.photoelectric;
 
   if (prob_after > cutoff) {
-
+    // Get grid index, interpolation factor, and bounding subshell
+    // cross sections
     int i_grid = micro.index_grid;
     double f = micro.interp_factor;
     const auto& xs_lower = xt::row(element.cross_sections_, i_grid);

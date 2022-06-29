@@ -46,6 +46,8 @@ vector<unique_ptr<PhotonInteraction>> elements;
 
 PhotonInteraction::PhotonInteraction(hid_t group)
 {
+  using namespace xt::placeholders;
+
   // Set index of element in global vector
   index_ = data::elements.size();
 
@@ -164,8 +166,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     close_dataset(dset);
     read_dataset(tgroup, "xs", xs);
 
-    auto cross_section = xt::view(
-      cross_sections_, xt::range(shell.threshold, xt::placeholders::_), i);
+    auto cross_section =
+      xt::view(cross_sections_, xt::range(shell.threshold, _), i);
     cross_section = xt::where(xs > 0, xt::log(xs), 0);
 
     if (object_exists(tgroup, "transitions")) {

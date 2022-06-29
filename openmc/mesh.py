@@ -1108,15 +1108,12 @@ class CylindricalMesh(StructuredMesh):
         import vtk
         from vtk.util import numpy_support as nps
 
-        r_vals = self.r_grid
-        phi_vals = self.phi_grid
-        z_vals = self.z_grid
         vtk_grid = vtk.vtkStructuredGrid()
 
-        vtk_grid.SetDimensions(len(r_vals), len(phi_vals), len(z_vals))
+        vtk_grid.SetDimensions(len(self.r_grid), len(self.phi_grid), len(self.z_grid))
 
         # create points
-        pts_cylindrical = np.array([[r, phi, z] for z in z_vals for phi in phi_vals for r in r_vals])
+        pts_cylindrical = np.array([[r, phi, z] for z in self.z_grid for phi in self.phi_grid for r in self.r_grid])
         pts_cartesian = np.copy(pts_cylindrical)
         r, phi, z = pts_cylindrical[:, 0], pts_cylindrical[:, 1], pts_cylindrical[:, 2]
         pts_cartesian[:, 0] = r * np.cos(phi)

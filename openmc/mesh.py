@@ -623,6 +623,15 @@ class RegularMesh(StructuredMesh):
         return root_cell, cells
     
     def vtk_grid(self, filename=None):
+        """Creates a VTK object of the mesh
+
+        Args:
+            filename (str, optional): Name of the vtk file to write =
+                (must end with .vtk). Defaults to None.
+
+        Returns:
+            vtk.vtkStructuredGrid: the VTK object
+        """
         import vtk
         from vtk.util import numpy_support as nps
 
@@ -860,6 +869,15 @@ class RectilinearMesh(StructuredMesh):
         return element
 
     def vtk_grid(self, filename=None):
+        """Creates a VTK object of the mesh
+
+        Args:
+            filename (str, optional): Name of the vtk file to write =
+                (must end with .vtk). Defaults to None.
+
+        Returns:
+            vtk.vtkStructuredGrid: the VTK object
+        """
         import vtk
         from vtk.util import numpy_support as nps
 
@@ -1078,6 +1096,15 @@ class CylindricalMesh(StructuredMesh):
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
     def vtk_grid(self, filename=None):
+        """Creates a VTK object of the mesh
+
+        Args:
+            filename (str, optional): Name of the vtk file to write =
+                (must end with .vtk). Defaults to None.
+
+        Returns:
+            vtk.vtkStructuredGrid: the VTK object
+        """
         import vtk
         from vtk.util import numpy_support as nps
 
@@ -1301,6 +1328,16 @@ class SphericalMesh(StructuredMesh):
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
     def vtk_grid(self, filename=None):
+        """Creates a VTK object of the mesh
+
+        Args:
+            filename (str, optional): Name of the vtk file to write =
+                (must end with .vtk). Defaults to None.
+
+        Returns:
+            vtk.vtkStructuredGrid: the VTK object
+        """
+        # FIXME
         raise NotImplementedError("vtk_grid not implemented for SphericalMesh")
 
 

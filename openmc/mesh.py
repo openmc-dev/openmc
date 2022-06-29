@@ -1334,8 +1334,33 @@ class SphericalMesh(StructuredMesh):
         Returns:
             vtk.vtkStructuredGrid: the VTK object
         """
-        # FIXME
-        raise NotImplementedError("vtk_grid not implemented for SphericalMesh")
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        vtk_grid = vtk.vtkStructuredGrid()
+
+        vtk_grid.SetDimensions(len(self.r_grid), len(self.theta_grid), len(self.phi_grid))
+
+        # create points
+        pts_cylindrical = np.array([[r, theta, phi] for phi in self.phi_grid for theta in self.theta_grid for r in self.r_grid])
+        pts_cartesian = np.copy(pts_cylindrical)
+        r, theta, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1], pts_cylindrical[:, 2]
+        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
+        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)
+        pts_cartesian[:, 2] = r * np.cos(phi)
+
+        vtkPts = vtk.vtkPoints()
+        vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))
+        vtk_grid.SetPoints(vtkPts)
+
+        if filename:
+            # write the .vtk file
+            writer = vtk.vtkStructuredGridWriter()
+            writer.SetFileName(filename)
+            writer.SetInputData(vtk_grid)
+            writer.Write()
+
+        return vtk_grid
 
 
 class UnstructuredMesh(MeshBase):

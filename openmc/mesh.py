@@ -635,16 +635,22 @@ class RegularMesh(StructuredMesh):
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
+        
+        Raises:
+            RuntimeError: when the size of a dataset doesn't match the number of cells 
         """
         import vtk
         from vtk.util import numpy_support as nps
 
         # check that the data sets are appropriately sized
+        errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
             if isinstance(dataset, np.ndarray):
-                assert dataset.size == self.dimension[0] * self.dimension[1] * self.dimension[2]
+                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
             else:
-                assert len(dataset) == self.dimension[0] * self.dimension[1] * self.dimension[2]
+                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
             cv.check_type('label', label, str)
 
         x_vals = np.linspace(
@@ -907,16 +913,22 @@ class RectilinearMesh(StructuredMesh):
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
+
+        Raises:
+            RuntimeError: when the size of a dataset doesn't match the number of cells 
         """
         import vtk
         from vtk.util import numpy_support as nps
 
         # check that the data sets are appropriately sized
+        errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
             if isinstance(dataset, np.ndarray):
-                assert dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]
+                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
             else:
-                assert len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]
+                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
             cv.check_type('label', label, str)
 
         x_vals = self.x_grid
@@ -1160,16 +1172,22 @@ class CylindricalMesh(StructuredMesh):
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
+
+        Raises:
+            RuntimeError: when the size of a dataset doesn't match the number of cells 
         """
         import vtk
         from vtk.util import numpy_support as nps
 
         # check that the data sets are appropriately sized
+        errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
             if isinstance(dataset, np.ndarray):
-                assert dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]
+                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
             else:
-                assert len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]
+                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
             cv.check_type('label', label, str)
 
         vtk_grid = vtk.vtkStructuredGrid()
@@ -1414,16 +1432,23 @@ class SphericalMesh(StructuredMesh):
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
+
+        Raises:
+            RuntimeError: when the size of a dataset doesn't match the number of cells 
         """
         import vtk
         from vtk.util import numpy_support as nps
 
         # check that the data sets are appropriately sized
+        errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
             if isinstance(dataset, np.ndarray):
-                assert dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]
+                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
             else:
-                assert len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]
+                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
+
             cv.check_type('label', label, str)
 
         vtk_grid = vtk.vtkStructuredGrid()
@@ -1642,6 +1667,11 @@ class UnstructuredMesh(MeshBase):
         volume_normalization : bool
             Whether or not to normalize the data by the
             volume of the mesh elements
+
+        Raises
+        ------
+            RuntimeError
+                when the size of a dataset doesn't match the number of cells 
         """
 
         import vtk
@@ -1658,11 +1688,14 @@ class UnstructuredMesh(MeshBase):
                                " mesh information from a statepoint file.")
 
         # check that the data sets are appropriately sized
+        errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
             if isinstance(dataset, np.ndarray):
-                assert dataset.size == self.n_elements
+                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
             else:
-                assert len(dataset) == self.n_elements
+                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
             cv.check_type('label', label, str)
 
         # create data arrays for the cells/points

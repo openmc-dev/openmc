@@ -57,3 +57,18 @@ def test_write_data_to_vtk(mesh, tmpdir):
     # check size of datasets
     assert nps.vtk_to_numpy(array1).size == data.size
     assert nps.vtk_to_numpy(array2).size == data.size
+
+@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
+def test_write_data_to_vtk_size_mismatch(mesh):
+    """Checks that an error is raised when the size of the dataset
+    doesn't match the mesh number of cells
+
+    Args:
+        mesh (openmc.StructuredMesh): the mesh to test
+    """
+    right_size = mesh.dimension[0]*mesh.dimension[1]*mesh.dimension[2]
+    data = np.random.random(right_size + 1)
+
+    expected_error_msg = "The size of the dataset label should be equal to the number of cells"
+    with pytest.raises(RuntimeError, match=expected_error_msg):
+        mesh.write_data_to_vtk(filename="out.vtk", datasets={"label": data})

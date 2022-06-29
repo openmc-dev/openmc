@@ -31,7 +31,7 @@ spherical_mesh.theta_grid = np.linspace(0, np.pi / 2, num=30)
 @pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
 def test_write_data_to_vtk(mesh, tmpdir):
     # BUILD
-    filename = tmpdir / "out.vtk"
+    filename = Path(tmpdir) / "out.vtk"
 
     data = np.random.random(mesh.num_mesh_cells)
 
@@ -39,7 +39,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
     mesh.write_data_to_vtk(filename=filename, datasets={"label1": data, "label2": data})
 
     # TEST
-    assert exists(filename)
+    assert filename.is_file()
 
     # read file
     reader = vtk.vtkStructuredGridReader()

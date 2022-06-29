@@ -633,20 +633,11 @@ class RegularMesh(StructuredMesh):
                 normalize the data by the volume of the mesh elements.
                 Defaults to True.
 
-        Raises:
-            RuntimeError: when no volume data is found and volume_normalisation
-                is required
-
         Returns:
             vtk.vtkStructuredGrid: the VTK object
         """
         import vtk
         from vtk.util import numpy_support as nps
-
-        if self.volumes is None and volume_normalization:
-            raise RuntimeError("No volume data is present on this "
-                               "unstructured mesh. Please load the "
-                               " mesh information from a statepoint file.")
 
         # check that the data sets are appropriately sized
         for label, dataset in datasets.items():
@@ -914,20 +905,11 @@ class RectilinearMesh(StructuredMesh):
                 normalize the data by the volume of the mesh elements.
                 Defaults to True.
 
-        Raises:
-            RuntimeError: when no volume data is found and volume_normalisation
-                is required
-
         Returns:
             vtk.vtkStructuredGrid: the VTK object
         """
         import vtk
         from vtk.util import numpy_support as nps
-
-        if self.volumes is None and volume_normalization:
-            raise RuntimeError("No volume data is present on this "
-                               "unstructured mesh. Please load the "
-                               " mesh information from a statepoint file.")
 
         # check that the data sets are appropriately sized
         for label, dataset in datasets.items():
@@ -1176,20 +1158,11 @@ class CylindricalMesh(StructuredMesh):
                 normalize the data by the volume of the mesh elements.
                 Defaults to True.
 
-        Raises:
-            RuntimeError: when no volume data is found and volume_normalisation
-                is required
-
         Returns:
             vtk.vtkStructuredGrid: the VTK object
         """
         import vtk
         from vtk.util import numpy_support as nps
-
-        if self.volumes is None and volume_normalization:
-            raise RuntimeError("No volume data is present on this "
-                               "unstructured mesh. Please load the "
-                               " mesh information from a statepoint file.")
 
         # check that the data sets are appropriately sized
         for label, dataset in datasets.items():
@@ -1440,20 +1413,11 @@ class SphericalMesh(StructuredMesh):
                 normalize the data by the volume of the mesh elements.
                 Defaults to True.
 
-        Raises:
-            RuntimeError: when no volume data is found and volume_normalisation
-                is required
-
         Returns:
             vtk.vtkStructuredGrid: the VTK object
         """
         import vtk
         from vtk.util import numpy_support as nps
-
-        if self.volumes is None and volume_normalization:
-            raise RuntimeError("No volume data is present on this "
-                               "unstructured mesh. Please load the "
-                               " mesh information from a statepoint file.")
 
         # check that the data sets are appropriately sized
         for label, dataset in datasets.items():

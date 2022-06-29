@@ -843,6 +843,10 @@ class RectilinearMesh(StructuredMesh):
                 for y in range(1, ny + 1)
                 for x in range(1, nx + 1))
 
+    @property
+    def num_mesh_cells(self):
+        return np.prod(self.dimension)
+
     @x_grid.setter
     def x_grid(self, grid):
         cv.check_type('mesh x_grid', grid, Iterable, Real)
@@ -1046,6 +1050,10 @@ class CylindricalMesh(StructuredMesh):
                 for z in range(1, nz + 1)
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
+
+    @property
+    def num_mesh_cells(self):
+        return np.prod(self.dimension)
 
     @r_grid.setter
     def r_grid(self, grid):
@@ -1271,6 +1279,10 @@ class SphericalMesh(StructuredMesh):
                 for p in range(1, np + 1)
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
+
+    @property
+    def num_mesh_cells(self):
+        return np.prod(self.dimension)
 
     @r_grid.setter
     def r_grid(self, grid):

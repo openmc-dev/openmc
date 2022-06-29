@@ -1179,10 +1179,9 @@ class CylindricalMesh(StructuredMesh):
         # create points
         pts_cylindrical = np.array([[r, phi, z] for z in self.z_grid for phi in self.phi_grid for r in self.r_grid])
         pts_cartesian = np.copy(pts_cylindrical)
-        r, phi, z = pts_cylindrical[:, 0], pts_cylindrical[:, 1], pts_cylindrical[:, 2]
+        r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
         pts_cartesian[:, 0] = r * np.cos(phi)
         pts_cartesian[:, 1] = r * np.sin(phi)
-        pts_cartesian[:, 2] = z
 
         vtkPts = vtk.vtkPoints()
         vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))

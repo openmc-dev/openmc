@@ -471,9 +471,12 @@ class Tally(IDManagerMixin):
         try:
             import vtk
             import vtk.util.numpy_support as nps
-        except ImportError:
+        except ModuleNotFoundError:
             msg = 'Python package vtk was not found, please install vtk to use Tally.write_to_vtk.'
-            raise ImportError(msg)
+            raise ModuleNotFoundError(msg)
+        except ImportError as err:
+            raise err
+
         mesh = None
         for f in self.filters:
             if isinstance(f, openmc.MeshFilter):

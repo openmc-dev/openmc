@@ -45,7 +45,7 @@ void Filter::copy_to_device()
   //TODO: Need to Map the unordered map fields to device
   //map_.copy_to_device();
   //imap_.copy_to_device();
-  
+
   bins_.copy_to_device();
   cells_.copy_to_device();
   cell_instances_.copy_to_device();
@@ -108,7 +108,6 @@ Filter::FilterType Filter::get_filter_type(const std::string& type)
     return FilterType::ZernikeRadialFilter;
   } else {
     throw std::runtime_error{fmt::format("Unknown filter type: {}", type)};
-    return FilterType::AzimuthalFilter;
   }
 }
 
@@ -119,7 +118,7 @@ Filter::Filter(pugi::xml_node node, int32_t index) : index_(index)
     fatal_error("Must specify id for filter in tally XML file.");
   }
   int32_t id = std::stoi(get_node_value(node, "id"));
-  
+
   // Convert filter type to lower case
   std::string s;
   if (check_for_node(node, "type")) {
@@ -136,29 +135,29 @@ Filter::Filter(pugi::xml_node node, int32_t index) : index_(index)
 void Filter::from_xml(pugi::xml_node node)
 {
   switch(type_){
-    case FilterType::AzimuthalFilter          : return AzimuthalFilter_from_xml(node); break;
-    case FilterType::CellFilter               : return CellFilter_from_xml(node); break;
-    case FilterType::CellInstanceFilter       : return CellInstanceFilter_from_xml(node); break;
-    case FilterType::CellbornFilter           : return CellFilter_from_xml(node); break; // Note - type uses parent
-    case FilterType::CellFromFilter           : return CellFilter_from_xml(node); break; // Note - type uses parent
-    case FilterType::DelayedGroupFilter       : return DelayedGroupFilter_from_xml(node); break;
-    case FilterType::DistribcellFilter        : return DistribcellFilter_from_xml(node); break;
-    case FilterType::EnergyFilter             : return EnergyFilter_from_xml(node); break;
-    case FilterType::EnergyoutFilter          : return EnergyFilter_from_xml(node); break; // Note - type uses parent
-    case FilterType::EnergyFunctionFilter     : return EnergyFunctionFilter_from_xml(node); break;
-    case FilterType::LegendreFilter           : return LegendreFilter_from_xml(node); break;
-    case FilterType::MaterialFilter           : return MaterialFilter_from_xml(node); break;
-    case FilterType::MeshFilter               : return MeshFilter_from_xml(node); break;
-    case FilterType::MeshSurfaceFilter        : return MeshFilter_from_xml(node); break; // Note -- type uses parent
-    case FilterType::MuFilter                 : return MuFilter_from_xml(node); break;
-    case FilterType::ParticleFilter           : return ParticleFilter_from_xml(node); break;
-    case FilterType::PolarFilter              : return PolarFilter_from_xml(node); break;
-    case FilterType::SphericalHarmonicsFilter : return SphericalHarmonicsFilter_from_xml(node); break;
-    case FilterType::SpatialLegendreFilter    : return SpatialLegendreFilter_from_xml(node); break;
-    case FilterType::SurfaceFilter            : return SurfaceFilter_from_xml(node); break;
-    case FilterType::UniverseFilter           : return UniverseFilter_from_xml(node); break;
-    case FilterType::ZernikeFilter            : return ZernikeFilter_from_xml(node); break;
-    case FilterType::ZernikeRadialFilter      : return ZernikeFilter_from_xml(node); break; // Note -- type uses parent
+    case FilterType::AzimuthalFilter          : AzimuthalFilter_from_xml(node); break;
+    case FilterType::CellFilter               : CellFilter_from_xml(node); break;
+    case FilterType::CellInstanceFilter       : CellInstanceFilter_from_xml(node); break;
+    case FilterType::CellbornFilter           : CellFilter_from_xml(node); break; // Note - type uses parent
+    case FilterType::CellFromFilter           : CellFilter_from_xml(node); break; // Note - type uses parent
+    case FilterType::DelayedGroupFilter       : DelayedGroupFilter_from_xml(node); break;
+    case FilterType::DistribcellFilter        : DistribcellFilter_from_xml(node); break;
+    case FilterType::EnergyFilter             : EnergyFilter_from_xml(node); break;
+    case FilterType::EnergyoutFilter          : EnergyFilter_from_xml(node); break; // Note - type uses parent
+    case FilterType::EnergyFunctionFilter     : EnergyFunctionFilter_from_xml(node); break;
+    case FilterType::LegendreFilter           : LegendreFilter_from_xml(node); break;
+    case FilterType::MaterialFilter           : MaterialFilter_from_xml(node); break;
+    case FilterType::MeshFilter               : MeshFilter_from_xml(node); break;
+    case FilterType::MeshSurfaceFilter        : MeshFilter_from_xml(node); break; // Note -- type uses parent
+    case FilterType::MuFilter                 : MuFilter_from_xml(node); break;
+    case FilterType::ParticleFilter           : ParticleFilter_from_xml(node); break;
+    case FilterType::PolarFilter              : PolarFilter_from_xml(node); break;
+    case FilterType::SphericalHarmonicsFilter : SphericalHarmonicsFilter_from_xml(node); break;
+    case FilterType::SpatialLegendreFilter    : SpatialLegendreFilter_from_xml(node); break;
+    case FilterType::SurfaceFilter            : SurfaceFilter_from_xml(node); break;
+    case FilterType::UniverseFilter           : UniverseFilter_from_xml(node); break;
+    case FilterType::ZernikeFilter            : ZernikeFilter_from_xml(node); break;
+    case FilterType::ZernikeRadialFilter      : ZernikeFilter_from_xml(node); break; // Note -- type uses parent
   }
 }
 
@@ -196,8 +195,8 @@ void Filter::set_id(int32_t id)
   id_ = id;
   model::filter_map[id] = index_;
 }
-  
-std::string Filter::type() const 
+
+std::string Filter::type() const
 {
   switch(type_){
     case FilterType::AzimuthalFilter          : return "azimuthal";
@@ -226,7 +225,7 @@ std::string Filter::type() const
   }
   return "undefined filter type";
 }
-  
+
 std::string Filter::text_label(int bin) const
 {
   switch(type_){
@@ -256,7 +255,7 @@ std::string Filter::text_label(int bin) const
   }
   return "undefined filter type";
 }
-  
+
 void Filter::to_statepoint(hid_t filter_group) const
 {
   write_dataset(filter_group, "type", type());
@@ -327,7 +326,7 @@ void Filter::set_order(int order)
     case FilterType::ZernikeRadialFilter      : ZernikeRadialFilter_set_order(order); break;
   }
 }
-  
+
 void Filter::set_bins(gsl::span<const double> bins)
 {
   switch(type_){

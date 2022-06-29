@@ -70,15 +70,15 @@ public:
   //!
   //! The bounds of the cell are detemined by a logical expression involving
   //! surface half-spaces. At initialization, the expression was converted
-  //! to RPN notation.
+  //! to PN notation.
   //!
   //! The function is split into two cases, one for simple cells (those
   //! involving only the intersection of half-spaces) and one for complex cells.
   //! Simple cells can be evaluated with short circuit evaluation, i.e., as soon
   //! as we know that one half-space is not satisfied, we can exit. This
   //! provides a performance benefit for the common case. In
-  //! contains_complex, we evaluate the RPN expression using a stack, similar to
-  //! how a RPN calculator would work.
+  //! contains_complex, we evaluate the PN expression using a stack, similar to
+  //! how a PN calculator would work.
   //! \param r The 3D Cartesian coordinate to check.
   //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.
@@ -203,7 +203,7 @@ public:
   //! Definition of spatial region as Boolean expression of half-spaces
   vector<std::int32_t> region_;
   //! Reverse Polish notation for region expression
-  vector<std::int32_t> rpn_;
+  vector<std::int32_t> pn_;
   bool simple_; //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
@@ -248,25 +248,25 @@ protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   BoundingBox bounding_box_simple() const;
-  static BoundingBox bounding_box_complex(vector<int32_t> rpn);
+  static BoundingBox bounding_box_complex(vector<int32_t> pn);
 
-  //! Applies DeMorgan's laws to a section of the RPN
+  //! Applies DeMorgan's laws to a section of the PN
   //! \param start Starting point for token modification
   //! \param stop Stopping point for token modification
   static void apply_demorgan(
     vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
 
-  //! Removes complement operators from the RPN
-  //! \param rpn The rpn to remove complement operators from.
-  static void remove_complement_ops(vector<int32_t>& rpn);
+  //! Removes complement operators from the PN
+  //! \param pn The pn to remove complement operators from.
+  static void remove_complement_ops(vector<int32_t>& pn);
 
   //! Returns the beginning position of a parenthesis block (immediately before
-  //! two surface tokens) in the RPN given a starting position at the end of
+  //! two surface tokens) in the PN given a starting position at the end of
   //! that block (immediately after two surface tokens)
   //! \param start Starting position of the search
-  //! \param rpn The rpn being searched
+  //! \param pn The pn being searched
   static vector<int32_t>::iterator find_left_parenthesis(
-    vector<int32_t>::iterator start, const vector<int32_t>& rpn);
+    vector<int32_t>::iterator start, const vector<int32_t>& pn);
 };
 
 //==============================================================================

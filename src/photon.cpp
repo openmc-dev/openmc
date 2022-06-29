@@ -17,7 +17,6 @@
 #include "xtensor/xmath.hpp"
 #include "xtensor/xoperation.hpp"
 #include "xtensor/xslice.hpp"
-#include "xtensor/xtensor_forward.hpp"
 #include "xtensor/xview.hpp"
 
 #include <cmath>

@@ -196,20 +196,29 @@ class StructuredMesh(MeshBase):
     def write_data_to_vtk(self, points, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
-        Args:
-            points (list or np.array): List of (X,Y,Y) tuples.
-            filename (str): Name of the VTK file to write.
-            datasets (dict): Dictionary whose keys are the data labels
-                and values are the data sets.
-            volume_normalization (bool, optional): Whether or not to
-                normalize the data by the volume of the mesh elements.
-                Defaults to True.
+        Parameters
+        ----------
+        points : list or np.array
+            List of (X,Y,Y) tuples.
+        filename : str
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+            Defaults to True.
 
-        Raises:
-            RuntimeError: when the size of a dataset doesn't match the number of cells
+        Raises
+        ------
+        RuntimeError
+            When the size of a dataset doesn't match the number of cells
 
-        Returns:
-            vtk.vtkStructuredGrid: the VTK object
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
         """
 
         import vtk
@@ -688,16 +697,22 @@ class RegularMesh(StructuredMesh):
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
-        Args:
-            filename (str): Name of the VTK file to write.
-            datasets (dict): Dictionary whose keys are the data labels
-                and values are the data sets.
-            volume_normalization (bool, optional): Whether or not to
-                normalize the data by the volume of the mesh elements.
-                Defaults to True.
+        Parameters
+        ----------
+        filename : str
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+            Defaults to True.
 
-        Returns:
-            vtk.vtkStructuredGrid: the VTK object
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
         """
 
         x_vals = np.linspace(
@@ -927,16 +942,22 @@ class RectilinearMesh(StructuredMesh):
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
-        Args:
-            filename (str): Name of the VTK file to write.
-            datasets (dict): Dictionary whose keys are the data labels
-                and values are the data sets.
-            volume_normalization (bool, optional): Whether or not to
-                normalize the data by the volume of the mesh elements.
-                Defaults to True.
+        Parameters
+        ----------
+        filename : str
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+            Defaults to True.
 
-        Returns:
-            vtk.vtkStructuredGrid: the VTK object
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
         """
         # create points
         pts_cartesian = np.array([[x, y, z] for z in self.z_grid for y in self.y_grid for x in self.x_grid])
@@ -1142,16 +1163,22 @@ class CylindricalMesh(StructuredMesh):
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
-        Args:
-            filename (str): Name of the VTK file to write.
-            datasets (dict): Dictionary whose keys are the data labels
-                and values are the data sets.
-            volume_normalization (bool, optional): Whether or not to
-                normalize the data by the volume of the mesh elements.
-                Defaults to True.
+        Parameters
+        ----------
+        filename : str
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+            Defaults to True.
 
-        Returns:
-            vtk.vtkStructuredGrid: the VTK object
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
         """
         # create points
         pts_cylindrical = np.array([[r, phi, z] for z in self.z_grid for phi in self.phi_grid for r in self.r_grid])
@@ -1361,16 +1388,22 @@ class SphericalMesh(StructuredMesh):
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
-        Args:
-            filename (str): Name of the VTK file to write.
-            datasets (dict): Dictionary whose keys are the data labels
-                and values are the data sets.
-            volume_normalization (bool, optional): Whether or not to
-                normalize the data by the volume of the mesh elements.
-                Defaults to True.
+        Parameters
+        ----------
+        filename : str
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+            Defaults to True.
 
-        Returns:
-            vtk.vtkStructuredGrid: the VTK object
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
         """
 
         # create points

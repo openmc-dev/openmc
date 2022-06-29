@@ -8,12 +8,21 @@
                 "CMAKE_CXX_FLAGS": "$env{PRESET_CXX_FLAGS} $env{INTEL_CXX_FLAGS} $env{LLVM_CXX_FLAGS} $env{COMMON_CXX_FLAGS}"
             },
             "environment": {
-                "COMMON_CXX_FLAGS": "-Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
+                "COMMON_CXX_FLAGS": "-Dgsl_CONFIG_CONTRACT_CHECKING_OFF -Wno-tautological-constant-compare -Wno-openmp-mapping"
+            }
+        },
+        {
+            "name": "unity",
+            "inherits": ["base"],
+            "cacheVariables": {
+                "CMAKE_UNITY_BUILD": "ON",
+                "CMAKE_UNITY_BUILD_MODE": "BATCH",
+                "CMAKE_UNITY_BUILD_BATCH_SIZE": "1000"
             }
         },
         {
             "name": "intel",
-            "inherits": ["base"],
+            "inherits": ["unity"],
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
                 "CMAKE_CXX_COMPILER": "icpx"
@@ -24,7 +33,7 @@
         },
         {
             "name": "llvm",
-            "inherits": ["base"],
+            "inherits": ["unity"],
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++"

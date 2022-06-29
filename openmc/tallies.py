@@ -467,15 +467,6 @@ class Tally(IDManagerMixin):
             ValueError: if no MeshFilter with appropriate mesh was found 
                 (SphericalMesh not supported)
         """
-        try:
-            import vtk
-            import vtk.util.numpy_support as nps
-        except ModuleNotFoundError:
-            msg = 'Python package vtk was not found, please install vtk to use Tally.write_to_vtk.'
-            raise ModuleNotFoundError(msg)
-        except ImportError as err:
-            raise err
-
         # check that tally has a MeshFilter
         mesh = None
         for f in self.filters:
@@ -3324,7 +3315,14 @@ def voxels_to_vtk(x_vals, y_vals, z_vals, mean, std_dev, cylindrical=True):
     Returns:
         vtkStructuredGrid: a vtk object containing tally data on the appropriate grid
     """
-
+    try:
+        import vtk
+        import vtk.util.numpy_support as nps
+    except ModuleNotFoundError:
+        msg = 'Python package vtk was not found, please install vtk to use Tally.write_to_vtk.'
+        raise ModuleNotFoundError(msg)
+    except ImportError as err:
+        raise err
     # TODO: should this be a method of Tally?
 
     vtk_grid = vtk.vtkStructuredGrid()

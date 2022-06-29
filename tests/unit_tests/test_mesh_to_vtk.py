@@ -38,7 +38,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
     mesh.write_data_to_vtk(filename=filename, datasets={"label1": data, "label2": data})
 
     # TEST
-    assert exists(filename)
+    assert filename.is_file()
 
     # read file
     reader = vtk.vtkStructuredGridReader()

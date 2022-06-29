@@ -626,8 +626,16 @@ class RegularMesh(StructuredMesh):
         """Creates a VTK object of the mesh
 
         Args:
-            filename (str, optional): Name of the vtk file to write =
-                (must end with .vtk). Defaults to None.
+            filename (str): Name of the VTK file to write.
+            datasets (dict): Dictionary whose keys are the data labels
+                and values are the data sets.
+            volume_normalization (bool, optional): Whether or not to
+                normalize the data by the volume of the mesh elements.
+                Defaults to True.
+
+        Raises:
+            RuntimeError: when no volume data is found and volume_normalisation
+                is required
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
@@ -899,8 +907,16 @@ class RectilinearMesh(StructuredMesh):
         """Creates a VTK object of the mesh
 
         Args:
-            filename (str, optional): Name of the vtk file to write =
-                (must end with .vtk). Defaults to None.
+            filename (str): Name of the VTK file to write.
+            datasets (dict): Dictionary whose keys are the data labels
+                and values are the data sets.
+            volume_normalization (bool, optional): Whether or not to
+                normalize the data by the volume of the mesh elements.
+                Defaults to True.
+
+        Raises:
+            RuntimeError: when no volume data is found and volume_normalisation
+                is required
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
@@ -1153,8 +1169,16 @@ class CylindricalMesh(StructuredMesh):
         """Creates a VTK object of the mesh
 
         Args:
-            filename (str, optional): Name of the vtk file to write =
-                (must end with .vtk). Defaults to None.
+            filename (str): Name of the VTK file to write.
+            datasets (dict): Dictionary whose keys are the data labels
+                and values are the data sets.
+            volume_normalization (bool, optional): Whether or not to
+                normalize the data by the volume of the mesh elements.
+                Defaults to True.
+
+        Raises:
+            RuntimeError: when no volume data is found and volume_normalisation
+                is required
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
@@ -1409,8 +1433,16 @@ class SphericalMesh(StructuredMesh):
         """Creates a VTK object of the mesh
 
         Args:
-            filename (str, optional): Name of the vtk file to write =
-                (must end with .vtk). Defaults to None.
+            filename (str): Name of the VTK file to write.
+            datasets (dict): Dictionary whose keys are the data labels
+                and values are the data sets.
+            volume_normalization (bool, optional): Whether or not to
+                normalize the data by the volume of the mesh elements.
+                Defaults to True.
+
+        Raises:
+            RuntimeError: when no volume data is found and volume_normalisation
+                is required
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object

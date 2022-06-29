@@ -76,7 +76,12 @@ rectilinear_mesh.x_grid = np.linspace(0, 1)
 rectilinear_mesh.y_grid = np.linspace(0, 1)
 rectilinear_mesh.z_grid = np.linspace(0, 1)
 
-@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh])
+spherical_mesh = openmc.SphericalMesh()
+spherical_mesh.r_grid = np.linspace(1, 2)
+spherical_mesh.phi_grid = np.linspace(1, 2)
+spherical_mesh.theta_grid = np.linspace(1, 2)
+
+@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
 def test_write_to_vtk(mesh, tmpdir):
     # build
     tally = openmc.Tally()
@@ -96,18 +101,4 @@ def test_write_to_vtk_raises_error_when_no_meshfilter():
     # test
     expected_err_msg = "write_to_vtk requires a MeshFilter in the tally filters"
     with pytest.raises(ValueError, match=expected_err_msg):
-        tally.write_to_vtk("out.vtk")
-
-
-def test_voxel_to_vtk_raises_error_with_wrong_mesh():
-    # build
-    tally = openmc.Tally()
-    spherical_mesh = openmc.SphericalMesh()
-    spherical_mesh.r_grid = np.linspace(1, 2)
-    spherical_mesh.phi_grid = np.linspace(1, 2)
-    spherical_mesh.theta_grid = np.linspace(1, 2)
-    tally.filters = [openmc.MeshFilter(spherical_mesh)]
-    # test
-    expected_err_msg = "vtk_grid not implemented for SphericalMesh"
-    with pytest.raises(NotImplementedError, match=expected_err_msg):
         tally.write_to_vtk("out.vtk")

@@ -193,6 +193,51 @@ class StructuredMesh(MeshBase):
         s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
 
+    def write_data_to_vtk(self, points, filename, datasets, volume_normalization=True):
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        # check that the data sets are appropriately sized
+        errmsg = "The size of the dataset {} should be equal to the number of cells"
+        for label, dataset in datasets.items():
+            if isinstance(dataset, np.ndarray):
+                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
+            else:
+                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
+            cv.check_type('label', label, str)
+
+        vtk_grid = vtk.vtkStructuredGrid()
+
+        vtk_grid.SetDimensions(*self.dimension)
+
+        vtkPts = vtk.vtkPoints()
+        vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
+        vtk_grid.SetPoints(vtkPts)
+
+        # create VTK arrays for each of
+        # the data sets
+        for label, dataset in datasets.items():
+            dataset = np.asarray(dataset).flatten()
+
+            if volume_normalization:
+                dataset /= self.volumes.flatten()
+
+            dataset_array = vtk.vtkDoubleArray()
+            dataset_array.SetName(label)
+            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
+                           dataset.size,
+                           True)
+            vtk_grid.GetCellData().AddArray(dataset_array)
+
+        # write the .vtk file
+        writer = vtk.vtkStructuredGridWriter()
+        writer.SetFileName(str(filename))
+        writer.SetInputData(vtk_grid)
+        writer.Write()
+
+        return vtk_grid
 
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
@@ -635,23 +680,7 @@ class RegularMesh(StructuredMesh):
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
-        
-        Raises:
-            RuntimeError: when the size of a dataset doesn't match the number of cells 
         """
-        import vtk
-        from vtk.util import numpy_support as nps
-
-        # check that the data sets are appropriately sized
-        errmsg = "The size of the dataset {} should be equal to the number of cells"
-        for label, dataset in datasets.items():
-            if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
-            else:
-                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
-            cv.check_type('label', label, str)
 
         x_vals = np.linspace(
             self.lower_left[0],
@@ -668,39 +697,16 @@ class RegularMesh(StructuredMesh):
             self.upper_right[2],
             num=self.dimension[2] + 1,
         )
-        vtk_grid = vtk.vtkStructuredGrid()
-
-        vtk_grid.SetDimensions(len(x_vals), len(y_vals), len(z_vals))
 
         # create points
         pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
 
-        vtkPts = vtk.vtkPoints()
-        vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))
-        vtk_grid.SetPoints(vtkPts)
-
-        # create VTK arrays for each of
-        # the data sets
-        for label, dataset in datasets.items():
-            dataset = np.asarray(dataset).flatten()
-
-            if volume_normalization:
-                dataset /= self.volumes.flatten()
-
-            dataset_array = vtk.vtkDoubleArray()
-            dataset_array.SetName(label)
-            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                           dataset.size,
-                           True)
-            vtk_grid.GetCellData().AddArray(dataset_array)
-
-        # write the .vtk file
-        writer = vtk.vtkStructuredGridWriter()
-        writer.SetFileName(str(filename))
-        writer.SetInputData(vtk_grid)
-        writer.Write()
-
-        return vtk_grid
+        return super().write_data_to_vtk(
+            points=pts_cartesian,
+            filename=filename,
+            datasets=datasets,
+            volume_normalization=volume_normalization
+        )
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
@@ -913,60 +919,16 @@ class RectilinearMesh(StructuredMesh):
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
-
-        Raises:
-            RuntimeError: when the size of a dataset doesn't match the number of cells 
         """
-        import vtk
-        from vtk.util import numpy_support as nps
-
-        # check that the data sets are appropriately sized
-        errmsg = "The size of the dataset {} should be equal to the number of cells"
-        for label, dataset in datasets.items():
-            if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
-            else:
-                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
-            cv.check_type('label', label, str)
-
-        x_vals = self.x_grid
-        y_vals = self.y_grid
-        z_vals = self.z_grid
-        vtk_grid = vtk.vtkStructuredGrid()
-
-        vtk_grid.SetDimensions(len(x_vals), len(y_vals), len(z_vals))
-
         # create points
-        pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
+        pts_cartesian = np.array([[x, y, z] for z in self.z_grid for y in self.y_grid for x in self.x_grid])
 
-        vtkPts = vtk.vtkPoints()
-        vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))
-        vtk_grid.SetPoints(vtkPts)
-
-        # create VTK arrays for each of
-        # the data sets
-        for label, dataset in datasets.items():
-            dataset = np.asarray(dataset).flatten()
-
-            if volume_normalization:
-                dataset /= self.volumes.flatten()
-
-            dataset_array = vtk.vtkDoubleArray()
-            dataset_array.SetName(label)
-            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                           dataset.size,
-                           True)
-            vtk_grid.GetCellData().AddArray(dataset_array)
-
-        # write the .vtk file
-        writer = vtk.vtkStructuredGridWriter()
-        writer.SetFileName(filename)
-        writer.SetInputData(vtk_grid)
-        writer.Write()
-
-        return vtk_grid
+        return super().write_data_to_vtk(
+            points=pts_cartesian,
+            filename=filename,
+            datasets=datasets,
+            volume_normalization=volume_normalization
+        )
 
 
 class CylindricalMesh(StructuredMesh):
@@ -1172,28 +1134,7 @@ class CylindricalMesh(StructuredMesh):
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
-
-        Raises:
-            RuntimeError: when the size of a dataset doesn't match the number of cells 
         """
-        import vtk
-        from vtk.util import numpy_support as nps
-
-        # check that the data sets are appropriately sized
-        errmsg = "The size of the dataset {} should be equal to the number of cells"
-        for label, dataset in datasets.items():
-            if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
-            else:
-                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
-            cv.check_type('label', label, str)
-
-        vtk_grid = vtk.vtkStructuredGrid()
-
-        vtk_grid.SetDimensions(len(self.r_grid), len(self.phi_grid), len(self.z_grid))
-
         # create points
         pts_cylindrical = np.array([[r, phi, z] for z in self.z_grid for phi in self.phi_grid for r in self.r_grid])
         pts_cartesian = np.copy(pts_cylindrical)
@@ -1201,32 +1142,12 @@ class CylindricalMesh(StructuredMesh):
         pts_cartesian[:, 0] = r * np.cos(phi)
         pts_cartesian[:, 1] = r * np.sin(phi)
 
-        vtkPts = vtk.vtkPoints()
-        vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))
-        vtk_grid.SetPoints(vtkPts)
-
-        # create VTK arrays for each of
-        # the data sets
-        for label, dataset in datasets.items():
-            dataset = np.asarray(dataset).flatten()
-
-            if volume_normalization:
-                dataset /= self.volumes.flatten()
-
-            dataset_array = vtk.vtkDoubleArray()
-            dataset_array.SetName(label)
-            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                           dataset.size,
-                           True)
-            vtk_grid.GetCellData().AddArray(dataset_array)
-
-
-        writer = vtk.vtkStructuredGridWriter()
-        writer.SetFileName(filename)
-        writer.SetInputData(vtk_grid)
-        writer.Write()
-
-        return vtk_grid
+        return super().write_data_to_vtk(
+            points=pts_cartesian,
+            filename=filename,
+            datasets=datasets,
+            volume_normalization=volume_normalization
+        )
 
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
@@ -1432,28 +1353,7 @@ class SphericalMesh(StructuredMesh):
 
         Returns:
             vtk.vtkStructuredGrid: the VTK object
-
-        Raises:
-            RuntimeError: when the size of a dataset doesn't match the number of cells 
         """
-        import vtk
-        from vtk.util import numpy_support as nps
-
-        # check that the data sets are appropriately sized
-        errmsg = "The size of the dataset {} should be equal to the number of cells"
-        for label, dataset in datasets.items():
-            if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
-            else:
-                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
-
-            cv.check_type('label', label, str)
-
-        vtk_grid = vtk.vtkStructuredGrid()
-
-        vtk_grid.SetDimensions(len(self.r_grid), len(self.theta_grid), len(self.phi_grid))
 
         # create points
         pts_spherical = np.array([[r, theta, phi] for phi in self.phi_grid for theta in self.theta_grid for r in self.r_grid])
@@ -1463,32 +1363,12 @@ class SphericalMesh(StructuredMesh):
         pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)
         pts_cartesian[:, 2] = r * np.cos(phi)
 
-        vtkPts = vtk.vtkPoints()
-        vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))
-        vtk_grid.SetPoints(vtkPts)
-
-        # create VTK arrays for each of
-        # the data sets
-        for label, dataset in datasets.items():
-            dataset = np.asarray(dataset).flatten()
-
-            if volume_normalization:
-                dataset /= self.volumes.flatten()
-
-            dataset_array = vtk.vtkDoubleArray()
-            dataset_array.SetName(label)
-            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                           dataset.size,
-                           True)
-            vtk_grid.GetCellData().AddArray(dataset_array)
-
-        # write the .vtk file
-        writer = vtk.vtkStructuredGridWriter()
-        writer.SetFileName(filename)
-        writer.SetInputData(vtk_grid)
-        writer.Write()
-
-        return vtk_grid
+        return super().write_data_to_vtk(
+            points=pts_cartesian,
+            filename=filename,
+            datasets=datasets,
+            volume_normalization=volume_normalization
+        )
 
 
 class UnstructuredMesh(MeshBase):

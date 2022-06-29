@@ -1,5 +1,6 @@
 import numpy as np
 from os.path import exists
+from pathlib import Path
 import pytest
 import vtk
 from vtk.util import numpy_support as nps

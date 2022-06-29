@@ -3296,7 +3296,6 @@ def voxels_to_vtk(mesh, mean, std_dev):
     system_of_coordinates = "cartesian"
 
     if isinstance(mesh, openmc.RegularMesh):
-        print('coucou')
         x_vals = np.linspace(
             mesh.lower_left[0],
             mesh.upper_right[0],

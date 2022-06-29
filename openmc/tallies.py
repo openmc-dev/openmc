@@ -467,7 +467,6 @@ class Tally(IDManagerMixin):
             ValueError: if no MeshFilter with appropriate mesh was found 
                 (SphericalMesh not supported)
         """
-        # check that tally has a MeshFilter
         try:
             import vtk
             import vtk.util.numpy_support as nps
@@ -477,6 +476,7 @@ class Tally(IDManagerMixin):
         except ImportError as err:
             raise err
 
+        # check that tally has a MeshFilter
         mesh = None
         for f in self.filters:
             if isinstance(f, openmc.MeshFilter):

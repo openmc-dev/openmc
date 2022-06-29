@@ -194,6 +194,24 @@ class StructuredMesh(MeshBase):
         return (vertices[s0] + vertices[s1]) / 2
 
     def write_data_to_vtk(self, points, filename, datasets, volume_normalization=True):
+        """Creates a VTK object of the mesh
+
+        Args:
+            points (list or np.array): List of (X,Y,Y) tuples.
+            filename (str): Name of the VTK file to write.
+            datasets (dict): Dictionary whose keys are the data labels
+                and values are the data sets.
+            volume_normalization (bool, optional): Whether or not to
+                normalize the data by the volume of the mesh elements.
+                Defaults to True.
+
+        Raises:
+            RuntimeError: when the size of a dataset doesn't match the number of cells
+
+        Returns:
+            vtk.vtkStructuredGrid: the VTK object
+        """
+
         import vtk
         from vtk.util import numpy_support as nps
 

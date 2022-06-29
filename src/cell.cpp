@@ -803,37 +803,25 @@ bool CSGCell::contains_complex(
         // the operator is an intersection and the particle is not in the cell
         if ((op == OP_UNION && in_cell == true) ||
             (op == OP_INTERSECTION && in_cell == false)) {
-          // Fetch next token
-          int32_t next_token = *(it + 1);
+          // Initialize counters for proceeding surfaces and operators
+          int number_of_operators = 0;
+          int number_of_surfaces = 0;
 
-          // If the next token is a surface skip its iterator and get the next
-          if (next_token < OP_UNION) {
+          // While the counter for surfaces is not one more than the
+          // number of operators
+          while (number_of_surfaces != number_of_operators + 1) {
+            // Move iterator forward and fetch next token
             it++;
-            next_token = *(it + 1);
+            int32_t next_token = *it;
 
-          // If the stack size is greater than zero
-          } else if (op_stack.size() > 0) {
-            // Get the size of the stack
-            int number_of_operators = op_stack.size();
-
-            // While the number of operators "in" the stack is greater than the
-            // original stack size of while the next token is the same as the 
-            // original operator
-            while (number_of_operators > op_stack.size() || next_token == op) {
-              // If the next token is a surface "remove" an operator from the 
-              // stack, if it is an operator "add" one to the stack
-              if (next_token < OP_UNION) {
-                number_of_operators--;
-              } else if (next_token != OP_COMPLEMENT) {
-                number_of_operators++;
-              }
-
-              // Skip the current iterator and fetch the next
-              it++;
-              next_token = *(it + 1);
+            // If the next token is a surface add to the surface counter, 
+            // if the next token is either an intersection or a union
+            // add to the operator counter
+            if (next_token < OP_UNION) {
+              number_of_surfaces++;
+            } else if (next_token < OP_COMPLEMENT) {
+              number_of_operators++;
             }
-            // Skip next iterator
-            it++;
           }
 
         // If the operator is a complement

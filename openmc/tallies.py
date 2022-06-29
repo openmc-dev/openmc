@@ -3321,7 +3321,6 @@ def voxels_to_vtk(mesh, mean, std_dev):
         z_vals = mesh.z_grid
         system_of_coordinates = "cylindrical"
     else:
-        print(type(mesh))
         raise ValueError(
                 "voxels_to_vtk only works with openmc.RegularMesh, openmc.RectilinearMesh, openmc.CylindricalMesh"
             )

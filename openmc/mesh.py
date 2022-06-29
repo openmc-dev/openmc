@@ -228,10 +228,10 @@ class StructuredMesh(MeshBase):
         errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
             if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                if not dataset.size == self.num_mesh_cells:
                     raise RuntimeError(errmsg.format(label))
             else:
-                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                if len(dataset) == self.num_mesh_cells:
                     raise RuntimeError(errmsg.format(label))
             cv.check_type('label', label, str)
 

@@ -22,7 +22,7 @@ from openmc.exceptions import DataError
 from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
-from .chain import _find_chain_file
+from .chain import _find_chain_file, REACTIONS
 from .reaction_rates import ReactionRates
 from .results import Results
 from .helpers import ConstantFissionYieldHelper
@@ -286,6 +286,75 @@ class FluxSpectraDepletionOperator(TransportOperator):
         volume = {k: v for d in volume_list for k, v in d.items()}
 
         return volume, nuc_list, burn_list, burn_list
+
+
+    @staticmethod
+    def create_micro_xs_from_data_array(nuclides, reactions, data, units='barn'):
+        """
+        Creates a ``micro_xs`` parameter from a dictionary.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            List of nuclide symbols for that have data for at least one
+            reaction.
+        reactions : list of str
+            List of reactions. All reactions must match those in ``chain.REACTONS``
+        data : ndarray of floats
+            Array containing one-group microscopic cross section information for each
+            nuclide and reaction.
+        units : {'barn', 'cm^2'}, optional
+            Units for microscopic cross section data. Defaults to ``barn``.
+
+        Returns
+        -------
+        micro_xs : pandas.DataFrame
+            A DataFrame object correctly formatted for use in ``FluxOperator``
+        """
+
+        # Validate inputs
+        try:
+            assert data.shape == (len(nuclides), len(reactions))
+        except AssertionError:
+            raise SyntaxError('Nuclides list of length {len(nuclides)} and
+                              reactions array of length {len(reactions)} do not
+                              match dimensions of data array of shape {data.shape}')
+
+        check_iterable_type('nuclides', nuclides, str)
+        check_iterable_type('reactions', reactions, str)
+        check_type('data', data, float, expected_iter_type=np.array)
+        check_value('reactions', reactions, chain.REACTIONS)
+
+        if units == 'barn':
+            data /= 1e24
+
+        return pd.DataFrame(index=nuclides, columns=reactions, data=data)
+
+
+    @staticmethod
+    def create_micro_xs_from_csv(csv_file, units='barn'):
+        """
+        Create the ``micro_xs`` parameter from a ``.csv`` file.
+
+        Parameters
+        ----------
+        csv_file : str
+            Relative path to csv-file containing microscopic cross section
+            data.
+        units : {'barn', 'cm^2'}, optional
+            Units for microscopic cross section data. Defaults to ``barn``.
+
+        Returns
+        -------
+        micro_xs : pandas.DataFrame
+            A DataFrame object correctly formatted for use in ``FluxOperator``
+
+        """
+        micro_xs = pd.DataFrame.read_csv(csv_file)
+        if units == 'barn':
+            micro_xs /= 1e24
+
+        return micro_xs
 
 
     def _update_materials(self):

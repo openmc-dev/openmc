@@ -621,7 +621,54 @@ class RegularMesh(StructuredMesh):
         root_cell.fill = lattice
 
         return root_cell, cells
+    
+    def vtk_grid(self, filename=None):
+        """Creates a VTK object of the mesh
 
+        Args:
+            filename (str, optional): Name of the vtk file to write =
+                (must end with .vtk). Defaults to None.
+
+        Returns:
+            vtk.vtkStructuredGrid: the VTK object
+        """
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        x_vals = np.linspace(
+            self.lower_left[0],
+            self.upper_right[0],
+            num=self.dimension[0] + 1,
+        )
+        y_vals = np.linspace(
+            self.lower_left[1],
+            self.upper_right[1],
+            num=self.dimension[1] + 1,
+        )
+        z_vals = np.linspace(
+            self.lower_left[2],
+            self.upper_right[2],
+            num=self.dimension[2] + 1,
+        )
+        vtk_grid = vtk.vtkStructuredGrid()
+
+        vtk_grid.SetDimensions(len(x_vals), len(y_vals), len(z_vals))
+
+        # create points
+        pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
+
+        vtkPts = vtk.vtkPoints()
+        vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))
+        vtk_grid.SetPoints(vtkPts)
+
+        if filename:
+            # write the .vtk file
+            writer = vtk.vtkStructuredGridWriter()
+            writer.SetFileName(filename)
+            writer.SetInputData(vtk_grid)
+            writer.Write()
+
+        return vtk_grid
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
@@ -821,6 +868,42 @@ class RectilinearMesh(StructuredMesh):
 
         return element
 
+    def vtk_grid(self, filename=None):
+        """Creates a VTK object of the mesh
+
+        Args:
+            filename (str, optional): Name of the vtk file to write =
+                (must end with .vtk). Defaults to None.
+
+        Returns:
+            vtk.vtkStructuredGrid: the VTK object
+        """
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        x_vals = self.x_grid
+        y_vals = self.y_grid
+        z_vals = self.z_grid
+        vtk_grid = vtk.vtkStructuredGrid()
+
+        vtk_grid.SetDimensions(len(x_vals), len(y_vals), len(z_vals))
+
+        # create points
+        pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
+
+        vtkPts = vtk.vtkPoints()
+        vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))
+        vtk_grid.SetPoints(vtkPts)
+
+        if filename:
+            # write the .vtk file
+            writer = vtk.vtkStructuredGridWriter()
+            writer.SetFileName(filename)
+            writer.SetInputData(vtk_grid)
+            writer.Write()
+
+        return vtk_grid
+
 
 class CylindricalMesh(StructuredMesh):
     """A 3D cylindrical mesh
@@ -1012,6 +1095,46 @@ class CylindricalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
+    def vtk_grid(self, filename=None):
+        """Creates a VTK object of the mesh
+
+        Args:
+            filename (str, optional): Name of the vtk file to write =
+                (must end with .vtk). Defaults to None.
+
+        Returns:
+            vtk.vtkStructuredGrid: the VTK object
+        """
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        r_vals = self.r_grid
+        phi_vals = self.phi_grid
+        z_vals = self.z_grid
+        vtk_grid = vtk.vtkStructuredGrid()
+
+        vtk_grid.SetDimensions(len(r_vals), len(phi_vals), len(z_vals))
+
+        # create points
+        pts_cylindrical = np.array([[r, phi, z] for z in z_vals for phi in phi_vals for r in r_vals])
+        pts_cartesian = np.copy(pts_cylindrical)
+        r, phi, z = pts_cylindrical[:, 0], pts_cylindrical[:, 1], pts_cylindrical[:, 2]
+        pts_cartesian[:, 0] = r * np.cos(phi)
+        pts_cartesian[:, 1] = r * np.sin(phi)
+        pts_cartesian[:, 2] = z
+
+        vtkPts = vtk.vtkPoints()
+        vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))
+        vtk_grid.SetPoints(vtkPts)
+
+        if filename:
+            # write the .vtk file
+            writer = vtk.vtkStructuredGridWriter()
+            writer.SetFileName(filename)
+            writer.SetInputData(vtk_grid)
+            writer.Write()
+
+        return vtk_grid
 
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
@@ -1203,6 +1326,19 @@ class SphericalMesh(StructuredMesh):
         V_p = np.diff(self.phi_grid)
 
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
+
+    def vtk_grid(self, filename=None):
+        """Creates a VTK object of the mesh
+
+        Args:
+            filename (str, optional): Name of the vtk file to write =
+                (must end with .vtk). Defaults to None.
+
+        Returns:
+            vtk.vtkStructuredGrid: the VTK object
+        """
+        # FIXME
+        raise NotImplementedError("vtk_grid not implemented for SphericalMesh")
 
 
 class UnstructuredMesh(MeshBase):

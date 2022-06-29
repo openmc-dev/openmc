@@ -43,6 +43,23 @@ def test_xml_roundtrip(run_in_tmpdir):
     assert new_tally.triggers[0].threshold == tally.triggers[0].threshold
     assert new_tally.triggers[0].scores == tally.triggers[0].scores
 
+def run_dummy_sim(tally):
+    mat = openmc.Material()
+    mat.add_nuclide('Zr90', 1.0)
+    mat.set_density('g/cm3', 1.0)
+
+    model = openmc.Model()
+    sph = openmc.Sphere(r=25.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sph)
+    model.geometry = openmc.Geometry([cell])
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 2
+    model.settings.particles = 50
+
+    model.tallies = openmc.Tallies([tally])
+
+    model.run()
 
 cylinder_mesh = openmc.CylindricalMesh()
 cylinder_mesh.r_grid = np.linspace(1, 2, num=30)
@@ -59,19 +76,13 @@ rectilinear_mesh.x_grid = np.linspace(0, 1)
 rectilinear_mesh.y_grid = np.linspace(0, 1)
 rectilinear_mesh.z_grid = np.linspace(0, 1)
 
-
-@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh])
-def test_voxels_to_vtk(mesh):
-    vtk_grid = openmc.voxels_to_vtk(mesh, mean=None, std_dev=None)
-    assert isinstance(vtk_grid, vtk.vtkStructuredGrid)
-
-
 @pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh])
 def test_write_to_vtk(mesh, tmpdir):
     # build
     tally = openmc.Tally()
     tally.filters = [openmc.MeshFilter(mesh)]
     filename = tmpdir / "out.vtk"
+    run_dummy_sim(tally)
     # run
     tally.write_to_vtk(filename)
     # test
@@ -97,6 +108,6 @@ def test_voxel_to_vtk_raises_error_with_wrong_mesh():
     spherical_mesh.theta_grid = np.linspace(1, 2)
     tally.filters = [openmc.MeshFilter(spherical_mesh)]
     # test
-    expected_err_msg = "voxels_to_vtk only works with openmc.RegularMesh, openmc.RectilinearMesh, openmc.CylindricalMesh"
-    with pytest.raises(ValueError, match=expected_err_msg):
+    expected_err_msg = "vtk_grid not implemented for SphericalMesh"
+    with pytest.raises(NotImplementedError, match=expected_err_msg):
         tally.write_to_vtk("out.vtk")

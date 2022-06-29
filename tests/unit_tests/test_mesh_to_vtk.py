@@ -32,7 +32,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
     # BUILD
     filename = Path(tmpdir) / "out.vtk"
 
-    data = np.random.random(mesh.num_mesh_cells)
+    data = np.random.random(mesh.dimension[0]*mesh.dimension[1]*mesh.dimension[2])
 
     # RUN
     mesh.write_data_to_vtk(filename=filename, datasets={"label1": data, "label2": data})

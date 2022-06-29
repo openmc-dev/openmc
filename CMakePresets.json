@@ -1,137 +1,161 @@
 {
-    "version": 2,
+    "version": 3,
     "configurePresets": [
         {
-            "name": "spirv",
-            "displayName": "Intel GPUs",
-            "binaryDir": "${sourceDir}/build/spirv",
+            "name": "base",
             "generator": "Unix Makefiles",
             "cacheVariables": {
+                "CMAKE_CXX_FLAGS": "$env{PRESET_CXX_FLAGS} $env{INTEL_CXX_FLAGS} $env{LLVM_CXX_FLAGS} $env{COMMON_CXX_FLAGS}"
+            },
+            "environment": {
+                "COMMON_CXX_FLAGS": "-Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
+            }
+        },
+        {
+            "name": "intel",
+            "inherits": ["base"],
+            "cacheVariables": {
                 "CMAKE_C_COMPILER": "icc",
-                "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -mllvm -vpo-paropt-atomic-free-reduction=false"
+                "CMAKE_CXX_COMPILER": "icpx"
+            },
+            "environment": {
+                "INTEL_CXX_FLAGS": "-fiopenmp"
+            }
+        },
+        {
+            "name": "llvm",
+            "inherits": ["base"],
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            },
+            "environment": {
+                "LLVM_CXX_FLAGS": "-fopenmp -fopenmp-cuda-mode"
+            }
+        },
+        {
+            "name": "spirv",
+            "inherits": ["intel"],
+            "displayName": "Intel GPUs",
+            "binaryDir": "${sourceDir}/build/spirv",
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=spir64 -mllvm -vpo-paropt-atomic-free-reduction=false"
             }
         },
         {
             "name": "spirv_aot",
+            "inherits": ["intel"],
             "displayName": "Intel GPUs w/Ahead of Time (AOT) Compilation",
             "binaryDir": "${sourceDir}/build/spirv_aot",
-            "generator": "Unix Makefiles",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "icc",
-                "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4 -internal_options -ze-opt-large-register-file\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -mllvm -vpo-paropt-atomic-free-reduction=false"
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4 -internal_options -ze-opt-large-register-file\" -mllvm -vpo-paropt-atomic-free-reduction=false"
             }
         },
         {
             "name": "spirv_aot_no_workarounds",
+            "inherits": ["intel"],
             "displayName": "Intel GPUs w/Ahead of Time (AOT) Compilation",
             "binaryDir": "${sourceDir}/build/spirv_aot_no_workarounds",
-            "generator": "Unix Makefiles",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "icc",
-                "CMAKE_CXX_COMPILER": "icpx",
-                "CMAKE_CXX_FLAGS": "-fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4\" -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=spir64_gen -Xopenmp-target-backend \"-device xehp -revision_id 4\""
             }
         },
         {
             "name": "llvm_v100",
+            "inherits": ["llvm"],
             "displayName": "LLVM Clang V100",
             "binaryDir": "${sourceDir}/build/llvm_v100",
-            "generator": "Unix Makefiles",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_70"
             }
-         },
+        },
         {
             "name": "llvm_v100_mpi",
+            "inherits": ["llvm"],
             "displayName": "LLVM Clang A100",
             "binaryDir": "${sourceDir}/build/llvm_a100",
-            "generator": "Unix Makefiles",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "mpicc",
-                "CMAKE_CXX_COMPILER": "mpic++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
+                "CMAKE_CXX_COMPILER": "mpic++"
+            },
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_70"
             }
-         },
+        },
         {
             "name": "llvm_a100",
+            "inherits": ["llvm"],
             "displayName": "LLVM Clang A100",
             "binaryDir": "${sourceDir}/build/llvm_a100",
-            "generator": "Unix Makefiles",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80"
             }
-         },
+        },
         {
             "name": "llvm_a100_mpi",
+            "inherits": ["llvm"],
             "displayName": "LLVM Clang A100",
             "binaryDir": "${sourceDir}/build/llvm_a100",
-            "generator": "Unix Makefiles",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "mpicc",
-                "CMAKE_CXX_COMPILER": "mpic++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
+                "CMAKE_CXX_COMPILER": "mpic++"
+            },
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80"
             }
-         },
+        },
         {
             "name": "llvm_a100_lto",
+            "inherits": ["llvm"],
             "displayName": "LLVM Clang A100",
             "binaryDir": "${sourceDir}/build/llvm_a100",
-            "generator": "Unix Makefiles",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode -foffload-lto"
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -foffload-lto"
             }
-         },
+        },
         {
             "name": "llvm_mi100",
+            "inherits": ["llvm"],
             "displayName": "LLVM Clang MI100",
             "binaryDir": "${sourceDir}/build/llvm_mi100",
-            "generator": "Unix Makefiles",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx908 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx908"
             }
-         },
+        },
         {
             "name": "llvm_mi100_mpi",
+            "inherits": ["llvm"],
             "displayName": "LLVM Clang MI100",
             "binaryDir": "${sourceDir}/build/llvm_mi100",
-            "generator": "Unix Makefiles",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx908 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF -fopenmp-cuda-mode"
+            "environment": {
+                "PRESET_CXX_FLAGS": "-fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx908"
             }
-         },
+        },
         {
             "name": "nvhpc_v100",
+            "inherits": ["base"],
             "displayName": "NVIDIA NVHPC V100",
             "binaryDir": "${sourceDir}/build/nvhpc_v100",
-            "generator": "Unix Makefiles",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "nvc",
-                "CMAKE_CXX_COMPILER": "nvc++",
-                "CMAKE_CXX_FLAGS": "-mp=gpu -Minfo=mp -gpu=cc70 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
+                "CMAKE_CXX_COMPILER": "nvc++"
+            },
+            "environment": {
+                "PRESET_CXX_FLAGS": "-mp=gpu -Minfo=mp -gpu=cc70"
             }
-         },
+        },
         {
             "name": "nvhpc_a100",
+            "inherits": ["base"],
             "displayName": "NVIDIA NVHPC A100",
             "binaryDir": "${sourceDir}/build/nvhpc_a100",
-            "generator": "Unix Makefiles",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "nvc",
-                "CMAKE_CXX_COMPILER": "nvc++",
-                "CMAKE_CXX_FLAGS": "-mp=gpu -Minfo=mp -gpu=cc80 -Dgsl_CONFIG_CONTRACT_CHECKING_OFF"
+                "CMAKE_CXX_COMPILER": "nvc++"
+            },
+            "environment": {
+                "PRESET_CXX_FLAGS": "-mp=gpu -Minfo=mp -gpu=cc80"
             }
-         }
+        }
     ]
 }

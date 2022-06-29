@@ -28,8 +28,6 @@ from .results import Results
 from .helpers import ConstantFissionYieldHelper
 
 
-
-
 class FluxSpectraDepletionOperator(TransportOperator):
     """Depletion operator that uses a user provided flux spectrum and one-group
     cross sections calculate reaction rates.
@@ -44,11 +42,11 @@ class FluxSpectraDepletionOperator(TransportOperator):
     volume : float
         Volume of the material being depleted in cm^3
     nuclides : dict of str to float
-        Dictionary with nuclides names as keys and concentration as values.
-        Nuclide concentration is assumed to be in [at/cm^3]
+        Dictionary with nuclide names as keys and nuclide concentrations as
+        values. Nuclide concentration units are [at/cm^3].
     micro_xs : pandas.DataFrame
         DataFrame with nuclides names as index and microscopic cross section
-        data in the columns.
+        data in the columns. Cross section units are [cm^-2].
     flux_spectra : float
         Flux spectrum [n cm^-2 s^-1]
     chain_file : str
@@ -99,20 +97,28 @@ class FluxSpectraDepletionOperator(TransportOperator):
         results are to be used.
     """
 
-    def __init__(self, volume, nuclides, micro_xs, flux_spectra, chain_file, keff=None, fission_q=None, dilute_initial=1.0e3,
-                 prev_results=None, reduce_chain=False, reduce_chain_level=None, fission_yield_opts=None):
+    def __init__(self,
+                 volume,
+                 nuclides,
+                 micro_xs,
+                 flux_spectra,
+                 chain_file,
+                 keff=None,
+                 fission_q=None,
+                 dilute_initial=1.0e3,
+                 prev_results=None,
+                 reduce_chain=False,
+                 reduce_chain_level=None,
+                 fission_yield_opts=None):
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
-        self.round_number = False
         self.flux_spectra = flux_spectra
         self._init_nuclides = nuclides
         self._volume = volume
 
-        # Reduce the chain
+        # Reduce the chain to only those nuclides present
         if reduce_chain:
-            all_nuclides = set()
-            for nuclide_name in nuclides.keys():
-                all_isotopes.add(nuclide_name)
-            self.chain = self.chain.reduce(all_nuclides, reduce_chain_level)
+            init_nuc_names = set(nuclides.keys())
+            self.chain = self.chain.reduce(init_nuc_names, reduce_chain_level)
 
         # Validate nuclides and micro-xs parameters
         check_type('nuclides', nuclides, dict, str)
@@ -121,21 +127,24 @@ class FluxSpectraDepletionOperator(TransportOperator):
         self._micro_xs = micro_xs
         self._keff = keff
 
-        nuclides = self._get_all_depletion_nuclides(nuclides)
+        self._all_nuclides = self._get_all_nuclides_in_simulation()
 
         # TODO: add support for loading previous results
 
         # Determine which nuclides have cross section data
+        # This nuclides variables contains every nuclides
+        # for which there is an entry in the micro_xs parameter
         self.nuclides_with_data = self._get_nuclides_with_data()
 
         # Select nuclides with data that are also in the chain
         self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
                                if nuc.name in self.nuclides_with_data]
 
-        # TODO : implement _extract_number
         # Extract number densities from the geometry / previous depletion run
-        #!!! consider removing this and just using the nuclides dict...
-        self._extract_number(['0'], {'0': volume}, nuclides, self.prev_res)
+        self._extract_number(['0'],
+                             {'0': volume},
+                             self._all_nuclides,
+                             self.prev_res)
 
         # Create reaction rates array
         self.reaction_rates = ReactionRates(
@@ -167,7 +176,6 @@ class FluxSpectraDepletionOperator(TransportOperator):
         """
 
         # Update the number densities regardless of the source rate
-        #!!! See previous excamation point comment
         self.number.set_density(vec)
         ## TODO : make sure this function works w the current structure.
         self._update_materials()
@@ -175,16 +183,15 @@ class FluxSpectraDepletionOperator(TransportOperator):
         # Update nuclides data in preparation for transport solve
 
         ## TODO : make sure this function works w the current structure.
-        # this nuclides varibale is all the nuclides that will show up via depletion
+        # this nuclides varibale contains all the nuclides that will show up via depletion
         # that have xs data
-        nuclides = self._get_reaction_nuclides()
-        self._yield_helper.update_tally_nuclides(nuclides)
+        rxn_nuclides = self._get_reaction_nuclides()
 
         rates = self.reaction_rates
         rates.fill(0.0)
 
         # Form fast map
-        nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
+        nuc_ind = [rates.index_nuc[nuc] for nuc in rxn_nuclides]
         react_ind = [rates.index_rx[react] for react in self.chain.reactions]
 
         # Store fission yield dictionaries
@@ -267,7 +274,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         step : int
             Current depletion step including restarts
         """
-        ...
+        pass
 
 
     def get_results_info(self):
@@ -334,10 +341,10 @@ class FluxSpectraDepletionOperator(TransportOperator):
                 # summary.h5 file contains densities at the first time step
 
     def _get_reaction_nuclides(self):
-        """Determine nuclides that should be tallied for reaction rates.
+        """Determine nuclides that should have reation rates
 
         This method returns a list of all nuclides that have neutron data and
-        are listed in the depletion chain. Technically, we should tally nuclides
+        are listed in the depletion chain. Technically, we should list nuclides
         that may not appear in the depletion chain because we still need to get
         the fission reaction rate for these nuclides in order to normalize
         power, but that is left as a future exercise.
@@ -345,17 +352,15 @@ class FluxSpectraDepletionOperator(TransportOperator):
         Returns
         -------
         list of str
-            Tally nuclides
+            nuclides with reaction rates
 
         """
-        nuc_set = set()
-
         # Create the set of all nuclides in the decay chain in materials marked
         # for burning in which the number density is greater than zero.
-        for nuc in self.number.nuclides:
-            if nuc in self.nuclides_with_data:
-                if np.sum(self.number[:, nuc]) > 0.0:
-                    nuc_set.add(nuc)
+        nuc_set = set(self._all_nuclides).intersection(self.nuclides_with_data)
+        for nuc in nuc_set:
+            if not np.sum(self.number[:, nuc]) > 0.0:
+                nuc_set.remove(nuc)
 
         # Communicate which nuclides have nonzeros to rank 0
         if comm.rank == 0:
@@ -376,51 +381,33 @@ class FluxSpectraDepletionOperator(TransportOperator):
         nuc_list = comm.bcast(nuc_list)
         return [nuc for nuc in nuc_list if nuc in self.chain]
 
-    def _get_all_depletion_nuclides(self, nuclides):
-        """Determine nuclides that will show up in simulation
-
-        Parameters
-        ----------
-        nuclides : dict
-            dict whose keys are nuclide symbols as strings,
-            and whose values are nuclide concentrations in at/cm^3
+    def _get_all_nuclides_in_simulation(self):
+        """Determine nuclides that will show up in simulation.
+        This is the union of the nuclides provided by the user and
+        the nuclides present in the depletion chain.
 
         Returns
         -------
-        nuclides : list of str
+        all_nuclides : list of str
             Nuclides in order of how they'll appear in the simulation.
 
         """
 
-        model_nuclides = set()
-
-        #self.heavy_metal = 0.0
-
-        #bu_mat = openmc.Material()
-        #bu_mat.volume = volume
-        for n in nuclides:
-            model_nuclides.add(n)
-
-        #self.heavy_metal = bu_mat.fissionable_mass
-
-        # Sort the sets
-        model_nuclides = sorted(model_nuclides)
+        init_nuclides = sorted(self._init_nuclides.keys())
 
         # Construct a global nuclide dictionary, burned first
-        nuclides = list(self.chain.nuclide_dict)
-        for nuc in model_nuclides:
-            if nuc not in nuclides:
-                nuclides.append(nuc)
+        all_nuclides = list(self.chain.nuclide_dict)
+        for nuc in init_nuclides:
+            if nuc not in all_nuclides:
+                all_nuclides.append(nuc)
 
-        return nuclides
+        return all_nuclides
 
     def _get_nuclides_with_data(self):
         """Finds nuclides with cross section data"""
-        nuclides = set()
-        for name in self._micro_xs.index:
-            nuclides.add(name)
+        nuclides_with_data = set(self._micro_xs.index)
 
-        return nuclides
+        return nuclides_with_data
 
     def _extract_number(self, local_mats, volume, nuclides, prev_res=None):
         """Construct AtomNumber using geometry

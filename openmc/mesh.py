@@ -690,7 +690,7 @@ class RegularMesh(StructuredMesh):
 
         # write the .vtk file
         writer = vtk.vtkStructuredGridWriter()
-        writer.SetFileName(filename)
+        writer.SetFileName(str(filename))
         writer.SetInputData(vtk_grid)
         writer.Write()
 

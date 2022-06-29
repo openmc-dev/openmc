@@ -457,43 +457,6 @@ class Tally(IDManagerMixin):
                 self._std_dev = np.reshape(self._std_dev.toarray(), self.shape)
             self._sparse = False
 
-    def write_to_vtk(self, filename):
-        """Writes the tally to a vtk file
-
-        Args:
-            filename (str): the filename (must end with .vtk)
-
-        Raises:
-            ValueError: if no MeshFilter was found
-        """
-        try:
-            import vtk
-        except ModuleNotFoundError:
-            msg = 'Python package vtk was not found, please install vtk to use Tally.write_to_vtk.'
-            raise ModuleNotFoundError(msg)
-        except ImportError as err:
-            raise err
-
-        # check that tally has a MeshFilter
-        mesh = None
-        for f in self.filters:
-            if isinstance(f, openmc.MeshFilter):
-                mesh = f.mesh
-                break
-
-        if not mesh:
-            raise ValueError(
-                "write_to_vtk requires a MeshFilter in the tally filters"
-            )
-
-        vtk_grid = voxels_to_vtk(mesh, self.mean, self.std_dev)
-
-        # write the .vtk file
-        writer = vtk.vtkStructuredGridWriter()
-        writer.SetFileName(filename)
-        writer.SetInputData(vtk_grid)
-        writer.Write()
-
     def remove_score(self, score):
         """Remove a score from the tally
 
@@ -3049,6 +3012,43 @@ class Tally(IDManagerMixin):
         # If original tally was sparse, sparsify the diagonalized tally
         new_tally.sparse = self.sparse
         return new_tally
+
+    def write_to_vtk(self, filename):
+        """Writes the tally to a vtk file
+
+        Args:
+            filename (str): the filename (must end with .vtk)
+
+        Raises:
+            ValueError: if no MeshFilter was found
+        """
+        try:
+            import vtk
+        except ModuleNotFoundError:
+            msg = 'Python package vtk was not found, please install vtk to use Tally.write_to_vtk.'
+            raise ModuleNotFoundError(msg)
+        except ImportError as err:
+            raise err
+
+        # check that tally has a MeshFilter
+        mesh = None
+        for f in self.filters:
+            if isinstance(f, openmc.MeshFilter):
+                mesh = f.mesh
+                break
+
+        if not mesh:
+            raise ValueError(
+                "write_to_vtk requires a MeshFilter in the tally filters"
+            )
+
+        vtk_grid = voxels_to_vtk(mesh, self.mean, self.std_dev)
+
+        # write the .vtk file
+        writer = vtk.vtkStructuredGridWriter()
+        writer.SetFileName(filename)
+        writer.SetInputData(vtk_grid)
+        writer.Write()
 
 
 class Tallies(cv.CheckedList):

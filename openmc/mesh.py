@@ -1355,9 +1355,9 @@ class SphericalMesh(StructuredMesh):
         vtk_grid.SetDimensions(len(self.r_grid), len(self.theta_grid), len(self.phi_grid))
 
         # create points
-        pts_cylindrical = np.array([[r, theta, phi] for phi in self.phi_grid for theta in self.theta_grid for r in self.r_grid])
-        pts_cartesian = np.copy(pts_cylindrical)
-        r, theta, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1], pts_cylindrical[:, 2]
+        pts_spherical = np.array([[r, theta, phi] for phi in self.phi_grid for theta in self.theta_grid for r in self.r_grid])
+        pts_cartesian = np.copy(pts_spherical)
+        r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
         pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
         pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)
         pts_cartesian[:, 2] = r * np.cos(phi)

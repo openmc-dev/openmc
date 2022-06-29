@@ -3013,54 +3013,6 @@ class Tally(IDManagerMixin):
         new_tally.sparse = self.sparse
         return new_tally
 
-    def write_to_vtk(self, filename):
-        """Writes the tally to a vtk file
-
-        Args:
-            filename (str): the filename (must end with .vtk)
-
-        Raises:
-            ValueError: if no MeshFilter was found
-        """
-        try:
-            import vtk
-        except ModuleNotFoundError:
-            msg = 'Python package vtk was not found, please install vtk to use Tally.write_to_vtk.'
-            raise ModuleNotFoundError(msg)
-        except ImportError as err:
-            raise err
-
-        # check that tally has a MeshFilter
-        mesh = None
-        for f in self.filters:
-            if isinstance(f, openmc.MeshFilter):
-                mesh = f.mesh
-                break
-
-        if not mesh:
-            raise ValueError(
-                "write_to_vtk requires a MeshFilter in the tally filters"
-            )
-
-        vtk_grid = mesh.vtk_grid()
-
-        # add mean and std dev data
-        mean_array = vtk.vtkDoubleArray()
-        mean_array.SetName("mean")
-        mean_array.SetArray(self.mean, self.mean.size, True)
-        vtk_grid.GetCellData().AddArray(mean_array)
-
-        std_dev_array = vtk.vtkDoubleArray()
-        std_dev_array.SetName("std_dev")
-        std_dev_array.SetArray(self.std_dev, self.std_dev.size, True)
-        vtk_grid.GetCellData().AddArray(std_dev_array)
-
-        # write the .vtk file
-        writer = vtk.vtkStructuredGridWriter()
-        writer.SetFileName(filename)
-        writer.SetInputData(vtk_grid)
-        writer.Write()
-
 
 class Tallies(cv.CheckedList):
     """Collection of Tallies used for an OpenMC simulation.

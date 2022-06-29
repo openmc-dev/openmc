@@ -208,7 +208,6 @@ class StructuredMesh(MeshBase):
         volume_normalization : bool, optional
             Whether or not to normalize the data by
             the volume of the mesh elements.
-            Defaults to True.
 
         Raises
         ------

@@ -316,9 +316,9 @@ class FluxSpectraDepletionOperator(TransportOperator):
         try:
             assert data.shape == (len(nuclides), len(reactions))
         except AssertionError:
-            raise SyntaxError('Nuclides list of length {len(nuclides)} and
-                              reactions array of length {len(reactions)} do not
-                              match dimensions of data array of shape {data.shape}')
+            raise SyntaxError('Nuclides list of length {len(nuclides)} and'
+                              'reactions array of length {len(reactions)} do not'
+                              'match dimensions of data array of shape {data.shape}')
 
         check_iterable_type('nuclides', nuclides, str)
         check_iterable_type('reactions', reactions, str)

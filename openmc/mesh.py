@@ -1095,7 +1095,7 @@ class CylindricalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
-    def vtk_grid(self, filename=None):
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
         Args:
@@ -1107,6 +1107,19 @@ class CylindricalMesh(StructuredMesh):
         """
         import vtk
         from vtk.util import numpy_support as nps
+
+        if self.volumes is None and volume_normalization:
+            raise RuntimeError("No volume data is present on this "
+                               "unstructured mesh. Please load the "
+                               " mesh information from a statepoint file.")
+
+        # check that the data sets are appropriately sized
+        for label, dataset in datasets.items():
+            if isinstance(dataset, np.ndarray):
+                assert dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]
+            else:
+                assert len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]
+            cv.check_type('label', label, str)
 
         vtk_grid = vtk.vtkStructuredGrid()
 
@@ -1124,12 +1137,26 @@ class CylindricalMesh(StructuredMesh):
         vtkPts.SetData(nps.numpy_to_vtk(pts_cartesian, deep=True))
         vtk_grid.SetPoints(vtkPts)
 
-        if filename:
-            # write the .vtk file
-            writer = vtk.vtkStructuredGridWriter()
-            writer.SetFileName(filename)
-            writer.SetInputData(vtk_grid)
-            writer.Write()
+        # create VTK arrays for each of
+        # the data sets
+        for label, dataset in datasets.items():
+            dataset = np.asarray(dataset).flatten()
+
+            if volume_normalization:
+                dataset /= self.volumes.flatten()
+
+            dataset_array = vtk.vtkDoubleArray()
+            dataset_array.SetName(label)
+            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
+                           dataset.size,
+                           True)
+            vtk_grid.GetCellData().AddArray(dataset_array)
+
+
+        writer = vtk.vtkStructuredGridWriter()
+        writer.SetFileName(filename)
+        writer.SetInputData(vtk_grid)
+        writer.Write()
 
         return vtk_grid
 

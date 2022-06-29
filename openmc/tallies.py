@@ -3042,7 +3042,18 @@ class Tally(IDManagerMixin):
                 "write_to_vtk requires a MeshFilter in the tally filters"
             )
 
-        vtk_grid = voxels_to_vtk(mesh, self.mean, self.std_dev)
+        vtk_grid = mesh.vtk_grid()
+
+        # add mean and std dev data
+        mean_array = vtk.vtkDoubleArray()
+        mean_array.SetName("mean")
+        mean_array.SetArray(self.mean, self.mean.size, True)
+        vtk_grid.GetCellData().AddArray(mean_array)
+
+        std_dev_array = vtk.vtkDoubleArray()
+        std_dev_array.SetName("std_dev")
+        std_dev_array.SetArray(self.std_dev, self.std_dev.size, True)
+        vtk_grid.GetCellData().AddArray(std_dev_array)
 
         # write the .vtk file
         writer = vtk.vtkStructuredGridWriter()
@@ -3266,103 +3277,3 @@ class Tallies(cv.CheckedList):
             tallies.append(tally)
 
         return cls(tallies)
-
-
-def voxels_to_vtk(mesh, mean, std_dev):
-    """Creates a vtk object from a list of X, Y, Z values and mean/std_dev data.
-
-    Args:
-        mesh (openmc.StructuredMesh): The tallied mesh (SphericalMesh is not yet supported).
-        mean (np.array): the tally mean.
-        std_dev (np.array): the tally standard deviation.
-
-    Returns:
-        vtkStructuredGrid: a vtk object containing tally data on the appropriate grid
-
-    Raises:
-        ValueError: if mesh is not openmc.RegularMesh, openmc.RectilinearMesh or
-            openmc.CylindricalMesh
-    """
-    try:
-        import vtk
-        import vtk.util.numpy_support as nps
-    except ModuleNotFoundError:
-        msg = 'Python package vtk was not found, please install vtk to use Tally.write_to_vtk.'
-        raise ModuleNotFoundError(msg)
-    except ImportError as err:
-        raise err
-    # TODO: should this be a method of Tally?
-
-    system_of_coordinates = "cartesian"
-
-    if isinstance(mesh, openmc.RegularMesh):
-        x_vals = np.linspace(
-            mesh.lower_left[0],
-            mesh.upper_right[0],
-            num=mesh.dimension[0] + 1,
-        )
-        y_vals = np.linspace(
-            mesh.lower_left[1],
-            mesh.upper_right[1],
-            num=mesh.dimension[1] + 1,
-        )
-        z_vals = np.linspace(
-            mesh.lower_left[2],
-            mesh.upper_right[2],
-            num=mesh.dimension[2] + 1,
-        )
-    elif isinstance(mesh, openmc.RectilinearMesh):
-        x_vals = mesh.x_grid
-        y_vals = mesh.y_grid
-        z_vals = mesh.z_grid
-    elif isinstance(mesh, openmc.CylindricalMesh):
-        x_vals = mesh.r_grid
-        y_vals = mesh.phi_grid
-        z_vals = mesh.z_grid
-        system_of_coordinates = "cylindrical"
-    else:
-        raise ValueError(
-                "voxels_to_vtk only works with openmc.RegularMesh, openmc.RectilinearMesh, openmc.CylindricalMesh"
-            )
-    vtk_grid = vtk.vtkStructuredGrid()
-
-    vtk_grid.SetDimensions(len(x_vals), len(y_vals), len(z_vals))
-
-    # create points
-    points = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
-    if system_of_coordinates == "cylindrical":  # transform points to cartesian coordinates
-        points_cartesian = np.copy(points)
-        r, phi, z = points[:, 0], points[:, 1], points[:, 2]
-        points_cartesian[:, 0] = r * np.cos(phi)
-        points_cartesian[:, 1] = r * np.sin(phi)
-        points_cartesian[:, 2] = z
-        points = points_cartesian
-
-    vtkPts = vtk.vtkPoints()
-    vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
-    vtk_grid.SetPoints(vtkPts)
-
-    # add mean and std dev data
-    mean_array = vtk.vtkDoubleArray()
-    mean_array.SetName("mean")
-    if mean is None:
-        mean = np.zeros(
-            (len(x_vals) - 1)
-            * (len(y_vals) - 1)
-            * (len(z_vals) - 1)
-        )
-    mean_array.SetArray(mean, mean.size, True)
-    vtk_grid.GetCellData().AddArray(mean_array)
-
-    std_dev_array = vtk.vtkDoubleArray()
-    std_dev_array.SetName("std_dev")
-    if std_dev is None:
-        std_dev = np.zeros(
-            (len(x_vals) - 1)
-            * (len(y_vals) - 1)
-            * (len(z_vals) - 1)
-        )
-    std_dev_array.SetArray(std_dev, std_dev.size, True)
-    vtk_grid.GetCellData().AddArray(std_dev_array)
-
-    return vtk_grid

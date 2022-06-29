@@ -199,7 +199,7 @@ class StructuredMesh(MeshBase):
         Parameters
         ----------
         points : list or np.array
-            List of (X,Y,Y) tuples.
+            List of (X,Y,Z) tuples.
         filename : str
             Name of the VTK file to write.
         datasets : dict

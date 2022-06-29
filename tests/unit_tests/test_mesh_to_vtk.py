@@ -1,7 +1,8 @@
 import numpy as np
 from pathlib import Path
 import pytest
-import vtk
+
+vtk = pytest.importorskip("vtk")
 from vtk.util import numpy_support as nps
 
 import openmc

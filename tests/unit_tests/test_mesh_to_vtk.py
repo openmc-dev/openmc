@@ -63,8 +63,10 @@ def test_write_data_to_vtk_size_mismatch(mesh):
     """Checks that an error is raised when the size of the dataset
     doesn't match the mesh number of cells
 
-    Args:
-        mesh (openmc.StructuredMesh): the mesh to test
+    Parameters
+    ----------
+    mesh : openmc.StructuredMesh
+        The mesh to test
     """
     right_size = mesh.dimension[0]*mesh.dimension[1]*mesh.dimension[2]
     data = np.random.random(right_size + 1)

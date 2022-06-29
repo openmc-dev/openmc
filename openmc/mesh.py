@@ -714,21 +714,10 @@ class RegularMesh(StructuredMesh):
             the VTK object
         """
 
-        x_vals = np.linspace(
-            self.lower_left[0],
-            self.upper_right[0],
-            num=self.dimension[0] + 1,
-        )
-        y_vals = np.linspace(
-            self.lower_left[1],
-            self.upper_right[1],
-            num=self.dimension[1] + 1,
-        )
-        z_vals = np.linspace(
-            self.lower_left[2],
-            self.upper_right[2],
-            num=self.dimension[2] + 1,
-        )
+        ll, ur = self.lower_left, self.upper_right
+        x_vals = np.linspace(ll[0], ur[0], num=self.dimension[0] + 1)
+        y_vals = np.linspace(ll[1], ur[1], num=self.dimension[1] + 1)
+        z_vals = np.linspace(ll[2], ur[2], num=self.dimension[2] + 1)
 
         # create points
         pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])

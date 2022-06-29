@@ -698,7 +698,7 @@ class RegularMesh(StructuredMesh):
 
         Parameters
         ----------
-        filename : str
+        filename : str or pathlib.Path
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -932,7 +932,7 @@ class RectilinearMesh(StructuredMesh):
 
         Parameters
         ----------
-        filename : str
+        filename : str or pathlib.Path
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -1153,7 +1153,7 @@ class CylindricalMesh(StructuredMesh):
 
         Parameters
         ----------
-        filename : str
+        filename : str or pathlib.Path
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -1385,7 +1385,7 @@ class SphericalMesh(StructuredMesh):
 
         Parameters
         ----------
-        filename : str
+        filename : str or pathlib.Path
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -1592,7 +1592,7 @@ class UnstructuredMesh(MeshBase):
 
         Parameters
         ----------
-        filename : str
+        filename : str or pathlib.Path
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels

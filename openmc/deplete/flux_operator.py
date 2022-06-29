@@ -155,7 +155,6 @@ class FluxSpectraDepletionOperator(TransportOperator):
         self._yield_helper = fission_helper.from_operator(
             self, **fission_yield_opts)
 
-
     def __call__(self, vec, source_rate):
         """Obtain the reaction rates
 
@@ -207,7 +206,12 @@ class FluxSpectraDepletionOperator(TransportOperator):
         for nuc in nuclides:
             density = number.get_atom_density('0', nuc)
             for rxn in self.chain.reactions:
-                rates.set('0', nuc, rxn, self._micro_xs[rxn].loc[nuc] * density)
+                rates.set(
+                    '0',
+                    nuc,
+                    rxn,
+                    self._micro_xs[rxn].loc[nuc] *
+                    density)
 
         # Get reaction rate in reactions/sec
         rates *= self.flux_spectra
@@ -219,7 +223,8 @@ class FluxSpectraDepletionOperator(TransportOperator):
         # the reason we do this is based on the mathematical equation;
         # in the equation, we multiply the depletion matrix by the nuclide
         # vector. Since what we want is the depletion matrix, we need to
-        # divide the reaction rates by the number of atoms to get the right units.
+        # divide the reaction rates by the number of atoms to get the right
+        # units.
         mask = nonzero(number)
         results = rates[0]
         for col in range(results.shape[1]):
@@ -230,7 +235,6 @@ class FluxSpectraDepletionOperator(TransportOperator):
         self.chain.fission_yields = fission_yields
 
         return OperatorResult(self._keff, rates)
-
 
     def initial_condition(self):
         """Performs final setup and returns initial condition.
@@ -243,8 +247,6 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
-
-
 
     def write_bos_data(self, step):
         """Document beginning of step data for a given step
@@ -259,7 +261,6 @@ class FluxSpectraDepletionOperator(TransportOperator):
         """
         # Since we aren't running a transport simulation, we simply pass
         pass
-
 
     def get_results_info(self):
         """Returns volume list, cell lists, and nuc lists.
@@ -287,9 +288,9 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         return volume, nuc_list, burn_list, burn_list
 
-
     @staticmethod
-    def create_micro_xs_from_data_array(nuclides, reactions, data, units='barn'):
+    def create_micro_xs_from_data_array(
+            nuclides, reactions, data, units='barn'):
         """
         Creates a ``micro_xs`` parameter from a dictionary.
 
@@ -316,9 +317,10 @@ class FluxSpectraDepletionOperator(TransportOperator):
         try:
             assert data.shape == (len(nuclides), len(reactions))
         except AssertionError:
-            raise SyntaxError('Nuclides list of length {len(nuclides)} and'
-                              'reactions array of length {len(reactions)} do not'
-                              'match dimensions of data array of shape {data.shape}')
+            raise SyntaxError(
+                'Nuclides list of length {len(nuclides)} and'
+                'reactions array of length {len(reactions)} do not'
+                'match dimensions of data array of shape {data.shape}')
 
         check_iterable_type('nuclides', nuclides, str)
         check_iterable_type('reactions', reactions, str)
@@ -329,7 +331,6 @@ class FluxSpectraDepletionOperator(TransportOperator):
             data /= 1e24
 
         return pd.DataFrame(index=nuclides, columns=reactions, data=data)
-
 
     @staticmethod
     def create_micro_xs_from_csv(csv_file, units='barn'):
@@ -355,7 +356,6 @@ class FluxSpectraDepletionOperator(TransportOperator):
             micro_xs /= 1e24
 
         return micro_xs
-
 
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""
@@ -383,14 +383,20 @@ class FluxSpectraDepletionOperator(TransportOperator):
                             densities.append(val)
                         else:
                             # Only output warnings if values are significantly
-                            # negative. CRAM does not guarantee positive values.
+                            # negative. CRAM does not guarantee positive
+                            # values.
                             if val < -1.0e-21:
-                                print("WARNING: nuclide ", nuc, " in material ", mat,
-                                      " is negative (density = ", val, " at/barn-cm)")
+                                print(
+                                    "WARNING: nuclide ",
+                                    nuc,
+                                    " in material ",
+                                    mat,
+                                    " is negative (density = ",
+                                    val,
+                                    " at/barn-cm)")
                             number_i[mat, nuc] = 0.0
 
-
-                #TODO Update densities on the Python side, otherwise the
+                # TODO Update densities on the Python side, otherwise the
                 # summary.h5 file contains densities at the first time step
 
     def _get_reaction_nuclides(self):
@@ -481,17 +487,20 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         if self.dilute_initial != 0.0:
             for nuc in self._burnable_nucs:
-                self.number.set_atom_density(np.s_[:], nuc, self.dilute_initial)
+                self.number.set_atom_density(
+                    np.s_[:], nuc, self.dilute_initial)
 
         # Now extract and store the number densities
         # From the geometry if no previous depletion results
         if prev_res is None:
             for nuclide in nuclides:
                 if nuclide in self._init_nuclides:
-                    self.number.set_atom_density('0', nuclide, self._init_nuclides[nuclide])
+                    self.number.set_atom_density(
+                        '0', nuclide, self._init_nuclides[nuclide])
                 elif nuclide not in self._burnable_nucs:
                     self.number.set_atom_density('0', nuclide, 0)
 
         # Else from previous depletion results
         else:
-           raise RuntimeError("Loading from previous results not yet supported")
+            raise RuntimeError(
+                "Loading from previous results not yet supported")

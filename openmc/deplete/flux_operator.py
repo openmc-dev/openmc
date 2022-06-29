@@ -29,8 +29,8 @@ from .helpers import ConstantFissionYieldHelper
 
 
 class FluxSpectraDepletionOperator(TransportOperator):
-    """Depletion operator that uses a user provided flux spectrum and one-group
-    cross sections calculate reaction rates.
+    """Depletion operator that uses a user-provided flux spectrum and one-group
+    cross sections to calculate reaction rates.
 
     Instances of this class can be used to perform depletion using one group
     cross sections and constant flux. Normally, a user needn't call methods of
@@ -90,8 +90,6 @@ class FluxSpectraDepletionOperator(TransportOperator):
         The depletion chain information necessary to form matrices and tallies.
     reaction_rates : openmc.deplete.ReactionRates
         Reaction rates from the last operator step.
-    heavy_metal : float
-        Initial heavy metal inventory [g]
     prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
@@ -159,7 +157,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
 
     def __call__(self, vec, source_rate):
-        """Runs a simulation.
+        """Obtain the reaction rates
 
         Parameters
         ----------
@@ -177,14 +175,9 @@ class FluxSpectraDepletionOperator(TransportOperator):
 
         # Update the number densities regardless of the source rate
         self.number.set_density(vec)
-        ## TODO : make sure this function works w the current structure.
         self._update_materials()
 
-        # Update nuclides data in preparation for transport solve
-
-        ## TODO : make sure this function works w the current structure.
-        # this nuclides varibale contains all the nuclides that will show up via depletion
-        # that have xs data
+        # Get all nuclides for which we will calculate reaction rates
         rxn_nuclides = self._get_reaction_nuclides()
 
         rates = self.reaction_rates
@@ -222,23 +215,16 @@ class FluxSpectraDepletionOperator(TransportOperator):
         # Compute fission yields for this material
         fission_yields.append(self._yield_helper.weighted_yields(0))
 
-        # Accumulate energy from fission
-        #if fission_ind is not None:
-        #    self._normalization_helper.update(rxn_rates[:, fission_ind])
-
-        # Divide by total number and store
-        # the reason we do this is bc in the equation, we multiply the depletion matrix
-        # by the nuclide vector. Since what we want is the depletion matrix, we need to
+        # Divide by total number of atoms and store
+        # the reason we do this is based on the mathematical equation;
+        # in the equation, we multiply the depletion matrix by the nuclide
+        # vector. Since what we want is the depletion matrix, we need to
         # divide the reaction rates by the number of atoms to get the right units.
         mask = nonzero(number)
         results = rates[0]
         for col in range(results.shape[1]):
             results[mask, col] /= number[mask]
         rates[0] = results
-
-        # Scale reaction rates to obtain units of reactions/sec
-        #rates *= self._normalization_helper.factor(source_rate)
-        ##
 
         # Store new fission yields on the chain
         self.chain.fission_yields = fission_yields
@@ -254,9 +240,6 @@ class FluxSpectraDepletionOperator(TransportOperator):
         list of numpy.ndarray
             Total density for initial conditions.
         """
-
-        #self._normalization_helper.prepare(
-        #    self.chain.nuclides, self.reaction_rates.index_nuc)
 
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
@@ -274,6 +257,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         step : int
             Current depletion step including restarts
         """
+        # Since we aren't running a transport simulation, we simply pass
         pass
 
 
@@ -341,7 +325,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
                 # summary.h5 file contains densities at the first time step
 
     def _get_reaction_nuclides(self):
-        """Determine nuclides that should have reation rates
+        """Determine nuclides that should have reaction rates
 
         This method returns a list of all nuclides that have neutron data and
         are listed in the depletion chain. Technically, we should list nuclides
@@ -382,7 +366,7 @@ class FluxSpectraDepletionOperator(TransportOperator):
         return [nuc for nuc in nuc_list if nuc in self.chain]
 
     def _get_all_nuclides_in_simulation(self):
-        """Determine nuclides that will show up in simulation.
+        """Determine nuclides that will show up in the simulation.
         This is the union of the nuclides provided by the user and
         the nuclides present in the depletion chain.
 

@@ -113,15 +113,15 @@ vector<int32_t> tokenize(const std::string region_spec)
 //! This function uses the shunting-yard algorithm.
 //==============================================================================
 
-vector<int32_t> generate_pn(int32_t cell_id, vector<int32_t> infix)
+vector<int32_t> generate_region_prefix(int32_t cell_id, vector<int32_t> infix)
 {
-  vector<int32_t> pn;
+  vector<int32_t> region_prefix;
   vector<int32_t> stack;
 
   for (int32_t token : infix) {
     if (token < OP_UNION) {
       // If token is not an operator, add it to output
-      pn.push_back(token);
+      region_prefix.push_back(token);
     } else if (token < OP_RIGHT_PAREN) {
       // Regular operators union, intersection, complement
       while (stack.size() > 0) {
@@ -135,7 +135,7 @@ vector<int32_t> generate_pn(int32_t cell_id, vector<int32_t> infix)
           // is less than that of op, move op to the output queue and push the
           // token on to the stack. Note that only complement is
           // right-associative.
-          pn.push_back(op);
+          region_prefix.push_back(op);
           stack.pop_back();
         } else {
           break;
@@ -159,7 +159,7 @@ vector<int32_t> generate_pn(int32_t cell_id, vector<int32_t> infix)
             "Mismatched parentheses in region specification for cell {}",
             cell_id));
         }
-        pn.push_back(stack.back());
+        region_prefix.push_back(stack.back());
         stack.pop_back();
       }
 
@@ -177,15 +177,15 @@ vector<int32_t> generate_pn(int32_t cell_id, vector<int32_t> infix)
         "Mismatched parentheses in region specification for cell {}", cell_id));
     }
 
-    pn.push_back(stack.back());
+    region_prefix.push_back(stack.back());
     stack.pop_back();
   }
 
   // Reverse RPN to PN for short circuiting algorithm,
   // operators are needed in the front
-  std::reverse(pn.begin(), pn.end());
+  std::reverse(region_prefix.begin(), region_prefix.end());
 
-  return pn;
+  return region_prefix;
 }
 
 //==============================================================================
@@ -519,11 +519,11 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   }
 
   // Convert the infix region spec to PN.
-  pn_ = generate_pn(id_, region_);
+  region_prefix_ = generate_region_prefix(id_, region_);
 
   // Check if this is a simple cell.
   simple_ = true;
-  for (int32_t token : pn_) {
+  for (int32_t token : region_prefix_) {
     if ((token == OP_COMPLEMENT) || (token == OP_UNION)) {
       simple_ = false;
       break;
@@ -534,16 +534,16 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   if (simple_) {
     size_t i0 = 0;
     size_t i1 = 0;
-    while (i1 < pn_.size()) {
-      if (pn_[i1] < OP_UNION) {
-        pn_[i0] = pn_[i1];
+    while (i1 < region_prefix_.size()) {
+      if (region_prefix_[i1] < OP_UNION) {
+        region_prefix_[i0] = region_prefix_[i1];
         ++i0;
       }
       ++i1;
     }
-    pn_.resize(i0);
+    region_prefix_.resize(i0);
   }
-  pn_.shrink_to_fit();
+  region_prefix_.shrink_to_fit();
 
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {
@@ -587,7 +587,7 @@ std::pair<double, int32_t> CSGCell::distance(
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
-  for (int32_t token : pn_) {
+  for (int32_t token : region_prefix_) {
     // Ignore this token if it corresponds to an operator rather than a region.
     if (token >= OP_UNION)
       continue;
@@ -642,14 +642,14 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
 BoundingBox CSGCell::bounding_box_simple() const
 {
   BoundingBox bbox;
-  for (int32_t token : pn_) {
+  for (int32_t token : region_prefix_) {
     bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
   }
   return bbox;
 }
 
 void CSGCell::apply_demorgan(
-  vector<int32_t>::iterator start, vector<int32_t>::iterator stop)
+  vector<int32_t>::reverse_iterator start, vector<int32_t>::reverse_iterator stop)
 {
   while (start < stop) {
     if (*start < OP_UNION) {
@@ -663,13 +663,13 @@ void CSGCell::apply_demorgan(
   }
 }
 
-vector<int32_t>::iterator CSGCell::find_left_parenthesis(
-  vector<int32_t>::iterator start, const vector<int32_t>& pn)
+vector<int32_t>::reverse_iterator CSGCell::find_left_parenthesis(
+  vector<int32_t>::reverse_iterator start, const vector<int32_t>& region_prefix)
 {
   // start search at zero
   int parenthesis_level = 0;
   auto it = start;
-  while (it != pn.begin()) {
+  while (it != region_prefix.rbegin()) {
     // look at two tokens at a time
     int32_t one = *it;
     int32_t two = *(it - 1);
@@ -696,33 +696,34 @@ vector<int32_t>::iterator CSGCell::find_left_parenthesis(
   return it;
 }
 
-void CSGCell::remove_complement_ops(vector<int32_t>& pn)
+void CSGCell::remove_complement_ops(vector<int32_t>& region_prefix)
 {
-  auto it = std::find(pn.begin(), pn.end(), OP_COMPLEMENT);
-  while (it != pn.end()) {
+  auto it = std::find(region_prefix.rbegin(), region_prefix.rend(), OP_COMPLEMENT);
+  while (it != region_prefix.rend()) {
     // find the opening parenthesis (if any)
-    auto left = find_left_parenthesis(it, pn);
+    auto left = find_left_parenthesis(it, region_prefix);
     vector<int32_t> tmp(left, it + 1);
 
     // apply DeMorgan's law to any surfaces/operators between these
-    // positions in the pn
+    // positions in the region_prefix
     apply_demorgan(left, it);
     // remove complement operator
-    pn.erase(it);
+    region_prefix.erase((it + 1).base());
     // update iterator position
-    it = std::find(pn.begin(), pn.end(), OP_COMPLEMENT);
+    it = std::find(region_prefix.rbegin(), region_prefix.rend(), OP_COMPLEMENT);
   }
 }
 
-BoundingBox CSGCell::bounding_box_complex(vector<int32_t> pn)
+BoundingBox CSGCell::bounding_box_complex(vector<int32_t> region_prefix)
 {
   // remove complements by adjusting surface signs and operators
-  remove_complement_ops(pn);
+  remove_complement_ops(region_prefix);
 
-  vector<BoundingBox> stack(pn.size());
+  vector<BoundingBox> stack(region_prefix.size());
   int i_stack = -1;
 
-  for (auto& token : pn) {
+  for (auto it = region_prefix.rbegin(); it != region_prefix.rend(); it++) {
+    auto& token = *it;
     if (token == OP_UNION) {
       stack[i_stack - 1] = stack[i_stack - 1] | stack[i_stack];
       i_stack--;
@@ -741,14 +742,14 @@ BoundingBox CSGCell::bounding_box_complex(vector<int32_t> pn)
 
 BoundingBox CSGCell::bounding_box() const
 {
-  return simple_ ? bounding_box_simple() : bounding_box_complex(pn_);
+  return simple_ ? bounding_box_simple() : bounding_box_complex(region_prefix_);
 }
 
 //==============================================================================
 
 bool CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
-  for (int32_t token : pn_) {
+  for (int32_t token : region_prefix_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
     // respect to the surface and see if the token matches the sense. If the
     // particle's surface attribute is set and matches the token, that
@@ -776,8 +777,8 @@ bool CSGCell::contains_complex(
   vector<int32_t> op_stack;
   bool in_cell = false;
 
-  // For each token in pn in reverse order
-  for (auto it = pn_.begin(); it != pn_.end(); it++) {
+  // For each token in prefix
+  for (auto it = region_prefix_.begin(); it != region_prefix_.end(); it++) {
     // Dereference current iterator
     int32_t token = *it;
 

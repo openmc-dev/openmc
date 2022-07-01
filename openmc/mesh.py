@@ -193,6 +193,10 @@ class StructuredMesh(MeshBase):
         s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
 
+    @property
+    def num_mesh_cells(self):
+        return np.prod(self.dimension)
+
     def write_data_to_vtk(self, points, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
@@ -1546,6 +1550,7 @@ class UnstructuredMesh(MeshBase):
             raise RuntimeError("No information about this mesh has "
                                "been loaded from a statepoint file.")
         return len(self._centroids)
+
 
     @centroids.setter
     def centroids(self, centroids):

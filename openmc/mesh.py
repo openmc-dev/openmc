@@ -349,10 +349,6 @@ class RegularMesh(StructuredMesh):
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @property
-    def num_mesh_cells(self):
-        return np.prod(self._dimension)
-
-    @property
     def volumes(self):
         """Return Volumes for every mesh cell
 

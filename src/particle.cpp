@@ -375,12 +375,14 @@ void Particle::event_revive_from_secondary()
     } else {
       material() = c.material_[0];
     }
+    /*
     sqrtkT_last() = sqrtkT();
     if (c.sqrtkT_.size() > 1) {
       sqrtkT() = c.sqrtkT_[cell_instance()];
     } else {
       sqrtkT() = c.sqrtkT_[0];
     }
+    */
 
     // Enter new particle in particle track file
     if (write_track())

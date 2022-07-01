@@ -2327,13 +2327,31 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
-LibMesh::LibMesh(const std::string& filename, double length_multiplier)
+// create the mesh from a pointer to a libMesh Mesh
+LibMesh::LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier)
 {
-  filename_ = filename;
+  m_ = &input_mesh;
   set_length_multiplier(length_multiplier);
   initialize();
 }
 
+// create the mesh from an input file
+LibMesh::LibMesh(const std::string& filename, double length_multiplier)
+{
+  set_mesh_pointer_from_filename(filename);
+  set_length_multiplier(length_multiplier);
+  initialize();
+}
+
+void LibMesh::set_mesh_pointer_from_filename(const std::string& filename)
+{
+  filename_ = filename;
+  unique_m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
+  m_ = unique_m_.get();
+  m_->read(filename_);
+}
+
+// intialize from mesh file
 void LibMesh::initialize()
 {
   if (!settings::libmesh_comm) {
@@ -2344,14 +2362,9 @@ void LibMesh::initialize()
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
 
-  m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
-  m_->read(filename_);
-
   if (specified_length_multiplier_) {
     libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
   }
-
-  m_->prepare_for_use();
 
   // ensure that the loaded mesh is 3 dimensional
   if (m_->mesh_dimension() != n_dimension_) {

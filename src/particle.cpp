@@ -366,6 +366,7 @@ void Particle::event_revive_from_secondary()
     cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
 
     // Set the material and temperature
+    /*
     material_last() = material();
     if (c.material_.size() > 1) {
       material() = c.material_[cell_instance()];
@@ -378,6 +379,7 @@ void Particle::event_revive_from_secondary()
     } else {
       sqrtkT() = c.sqrtkT_[0];
     }
+    */
 
     // Enter new particle in particle track file
     if (write_track())

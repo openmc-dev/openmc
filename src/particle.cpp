@@ -60,8 +60,8 @@ double Particle::speed() const
   return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
 }
 
-void Particle::create_secondary(
-  double wgt, Direction u, double E, ParticleType type)
+void Particle::create_secondary(double wgt, Direction u, double E,
+  ParticleType type, int n_coord, vector<LocalCoord> coord)
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle
@@ -78,6 +78,8 @@ void Particle::create_secondary(
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
+  bank.n_coord = n_coord;
+  bank.coord = coord;
 
   n_bank_second() += 1;
 }
@@ -85,13 +87,22 @@ void Particle::create_secondary(
 void Particle::from_source(const SourceSite* src)
 {
   // Reset some attributes
-  clear();
   surface() = 0;
-  cell_born() = C_NONE;
-  material() = C_NONE;
   n_collision() = 0;
   fission() = false;
   zero_flux_derivs();
+
+  // Check if the src has cell coordinates
+  // and copy attributes or reset
+  if (!src->coord.empty()) {
+    n_coord() = src->n_coord;
+    coord() = src->coord;
+    cell_born() = coord(n_coord() - 1).cell;
+  } else {
+    clear();
+    cell_born() = C_NONE;
+    material() = C_NONE;
+  }
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -349,6 +360,24 @@ void Particle::event_revive_from_secondary()
     from_source(&secondary_bank().back());
     secondary_bank().pop_back();
     n_event() = 0;
+
+    Cell& c {*model::cells[cell_born()]};
+    // Find the distribcell instance number
+    cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
+
+    // Set the material and temperature
+    material_last() = material();
+    if (c.material_.size() > 1) {
+      material() = c.material_[cell_instance()];
+    } else {
+      material() = c.material_[0];
+    }
+    sqrtkT_last() = sqrtkT();
+    if (c.sqrtkT_.size() > 1) {
+      sqrtkT() = c.sqrtkT_[cell_instance()];
+    } else {
+      sqrtkT() = c.sqrtkT_[0];
+    }
 
     // Enter new particle in particle track file
     if (write_track())

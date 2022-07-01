@@ -36,7 +36,7 @@ class MeshBase(IDManagerMixin, ABC):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, mesh_id=None, name=""):
+    def __init__(self, mesh_id=None, name=''):
         # Initialize Mesh class attributes
         self.id = mesh_id
         self.name = name
@@ -51,19 +51,19 @@ class MeshBase(IDManagerMixin, ABC):
             cv.check_type(f'name for mesh ID="{self._id}"', name, str)
             self._name = name
         else:
-            self._name = ""
+            self._name = ''
 
     def __repr__(self):
-        string = type(self).__name__ + "\n"
-        string += "{0: <16}{1}{2}\n".format("\tID", "=\t", self._id)
-        string += "{0: <16}{1}{2}\n".format("\tName", "=\t", self._name)
+        string = type(self).__name__ + '\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         return string
 
     def _volume_dim_check(self):
-        if self.n_dimension != 3 or any([d == 0 for d in self.dimension]):
-            raise RuntimeError(
-                f"Mesh {self.id} is not 3D. " "Volumes cannot be provided."
-            )
+        if self.n_dimension != 3 or \
+           any([d == 0 for d in self.dimension]):
+            raise RuntimeError(f'Mesh {self.id} is not 3D. '
+                               'Volumes cannot be provided.')
 
     @classmethod
     def from_hdf5(cls, group):
@@ -81,16 +81,16 @@ class MeshBase(IDManagerMixin, ABC):
 
         """
 
-        mesh_type = group["type"][()].decode()
-        if mesh_type == "regular":
+        mesh_type = group['type'][()].decode()
+        if mesh_type == 'regular':
             return RegularMesh.from_hdf5(group)
-        elif mesh_type == "rectilinear":
+        elif mesh_type == 'rectilinear':
             return RectilinearMesh.from_hdf5(group)
-        elif mesh_type == "cylindrical":
+        elif mesh_type == 'cylindrical':
             return CylindricalMesh.from_hdf5(group)
-        elif mesh_type == "spherical":
+        elif mesh_type == 'spherical':
             return SphericalMesh.from_hdf5(group)
-        elif mesh_type == "unstructured":
+        elif mesh_type == 'unstructured':
             return UnstructuredMesh.from_hdf5(group)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
@@ -110,17 +110,17 @@ class MeshBase(IDManagerMixin, ABC):
             an openmc mesh object
 
         """
-        mesh_type = get_text(elem, "type")
+        mesh_type = get_text(elem, 'type')
 
-        if mesh_type == "regular" or mesh_type is None:
+        if mesh_type == 'regular' or mesh_type is None:
             return RegularMesh.from_xml_element(elem)
-        elif mesh_type == "rectilinear":
+        elif mesh_type == 'rectilinear':
             return RectilinearMesh.from_xml_element(elem)
-        elif mesh_type == "cylindrical":
+        elif mesh_type == 'cylindrical':
             return CylindricalMesh.from_xml_element(elem)
-        elif mesh_type == "spherical":
+        elif mesh_type == 'spherical':
             return SphericalMesh.from_xml_element(elem)
-        elif mesh_type == "unstructured":
+        elif mesh_type == 'unstructured':
             return UnstructuredMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
@@ -174,7 +174,7 @@ class StructuredMesh(MeshBase):
             vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim).
 
         """
-        return np.stack(np.meshgrid(*self._grids, indexing="ij"), axis=-1)
+        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
 
     @property
     def centroids(self):
@@ -189,8 +189,8 @@ class StructuredMesh(MeshBase):
         """
         ndim = self.n_dimension
         vertices = self.vertices
-        s0 = (slice(0, -1),) * ndim + (slice(None),)
-        s1 = (slice(1, None),) * ndim + (slice(None),)
+        s0 = (slice(0, -1),)*ndim + (slice(None),)
+        s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
 
     def write_data_to_vtk(self, points, filename, datasets, volume_normalization=True):
@@ -199,7 +199,7 @@ class StructuredMesh(MeshBase):
         Parameters
         ----------
         points : list or np.array
-            List of (X,Y,Z) tuples.
+            List of (X,Y,Y) tuples.
         filename : str
             Name of the VTK file to write.
         datasets : dict
@@ -208,6 +208,7 @@ class StructuredMesh(MeshBase):
         volume_normalization : bool, optional
             Whether or not to normalize the data by
             the volume of the mesh elements.
+            Defaults to True.
 
         Raises
         ------
@@ -227,12 +228,12 @@ class StructuredMesh(MeshBase):
         errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
             if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.num_mesh_cells:
+                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
                     raise RuntimeError(errmsg.format(label))
             else:
-                if len(dataset) == self.num_mesh_cells:
+                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
                     raise RuntimeError(errmsg.format(label))
-            cv.check_type("label", label, str)
+            cv.check_type('label', label, str)
 
         vtk_grid = vtk.vtkStructuredGrid()
 
@@ -252,7 +253,9 @@ class StructuredMesh(MeshBase):
 
             dataset_array = vtk.vtkDoubleArray()
             dataset_array.SetName(label)
-            dataset_array.SetArray(nps.numpy_to_vtk(dataset), dataset.size, True)
+            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
+                           dataset.size,
+                           True)
             vtk_grid.GetCellData().AddArray(dataset_array)
 
         # write the .vtk file
@@ -262,7 +265,6 @@ class StructuredMesh(MeshBase):
         writer.Write()
 
         return vtk_grid
-
 
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
@@ -298,7 +300,7 @@ class RegularMesh(StructuredMesh):
 
     """
 
-    def __init__(self, mesh_id=None, name=""):
+    def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
         self._dimension = None
@@ -340,7 +342,7 @@ class RegularMesh(StructuredMesh):
             if self._lower_left is not None and self._dimension is not None:
                 us = self._upper_right
                 ls = self._lower_left
-                dims = self._dimension
+                dims =  self._dimension
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @property
@@ -369,17 +371,17 @@ class RegularMesh(StructuredMesh):
         ndim = len(self._dimension)
         if ndim == 3:
             nx, ny, nz = self.dimension
-            return (
-                (x, y, z)
-                for z in range(1, nz + 1)
-                for y in range(1, ny + 1)
-                for x in range(1, nx + 1)
-            )
+            return ((x, y, z)
+                    for z in range(1, nz + 1)
+                    for y in range(1, ny + 1)
+                    for x in range(1, nx + 1))
         elif ndim == 2:
             nx, ny = self.dimension
-            return ((x, y) for y in range(1, ny + 1) for x in range(1, nx + 1))
+            return ((x, y)
+                    for y in range(1, ny + 1)
+                    for x in range(1, nx + 1))
         else:
-            (nx,) = self.dimension
+            nx, = self.dimension
             return ((x,) for x in range(1, nx + 1))
 
     @property
@@ -401,27 +403,27 @@ class RegularMesh(StructuredMesh):
             yarr = np.linspace(y0, y1, ny + 1)
             return (xarr, yarr)
         else:
-            (nx,) = self.dimension
-            (x0,) = self.lower_left
-            (x1,) = self.upper_right
+            nx, = self.dimension
+            x0, = self.lower_left
+            x1, = self.upper_right
             return (np.linspace(x0, x1, nx + 1),)
 
     @dimension.setter
     def dimension(self, dimension):
-        cv.check_type("mesh dimension", dimension, Iterable, Integral)
-        cv.check_length("mesh dimension", dimension, 1, 3)
+        cv.check_type('mesh dimension', dimension, Iterable, Integral)
+        cv.check_length('mesh dimension', dimension, 1, 3)
         self._dimension = dimension
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        cv.check_type("mesh lower_left", lower_left, Iterable, Real)
-        cv.check_length("mesh lower_left", lower_left, 1, 3)
+        cv.check_type('mesh lower_left', lower_left, Iterable, Real)
+        cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        cv.check_type("mesh upper_right", upper_right, Iterable, Real)
-        cv.check_length("mesh upper_right", upper_right, 1, 3)
+        cv.check_type('mesh upper_right', upper_right, Iterable, Real)
+        cv.check_length('mesh upper_right', upper_right, 1, 3)
         self._upper_right = upper_right
 
         if self._width is not None:
@@ -430,8 +432,8 @@ class RegularMesh(StructuredMesh):
 
     @width.setter
     def width(self, width):
-        cv.check_type("mesh width", width, Iterable, Real)
-        cv.check_length("mesh width", width, 1, 3)
+        cv.check_type('mesh width', width, Iterable, Real)
+        cv.check_length('mesh width', width, 1, 3)
         self._width = width
 
         if self._upper_right is not None:
@@ -440,32 +442,32 @@ class RegularMesh(StructuredMesh):
 
     def __repr__(self):
         string = super().__repr__()
-        string += "{0: <16}{1}{2}\n".format("\tDimensions", "=\t", self.n_dimension)
-        string += "{0: <16}{1}{2}\n".format("\tVoxels", "=\t", self._dimension)
-        string += "{0: <16}{1}{2}\n".format("\tLower left", "=\t", self._lower_left)
-        string += "{0: <16}{1}{2}\n".format("\tUpper Right", "=\t", self._upper_right)
-        string += "{0: <16}{1}{2}\n".format("\tWidth", "=\t", self._width)
+        string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
+        string += '{0: <16}{1}{2}\n'.format('\tVoxels', '=\t', self._dimension)
+        string += '{0: <16}{1}{2}\n'.format('\tLower left', '=\t', self._lower_left)
+        string += '{0: <16}{1}{2}\n'.format('\tUpper Right', '=\t', self._upper_right)
+        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
         return string
 
     @classmethod
     def from_hdf5(cls, group):
-        mesh_id = int(group.name.split("/")[-1].lstrip("mesh "))
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
         mesh = cls(mesh_id)
-        mesh.dimension = group["dimension"][()]
-        mesh.lower_left = group["lower_left"][()]
-        if "width" in group:
-            mesh.width = group["width"][()]
-        elif "upper_right" in group:
-            mesh.upper_right = group["upper_right"][()]
+        mesh.dimension = group['dimension'][()]
+        mesh.lower_left = group['lower_left'][()]
+        if 'width' in group:
+            mesh.width = group['width'][()]
+        elif 'upper_right' in group:
+            mesh.upper_right = group['upper_right'][()]
         else:
             raise IOError('Invalid mesh: must have one of "upper_right" or "width"')
 
         return mesh
 
     @classmethod
-    def from_rect_lattice(cls, lattice, division=1, mesh_id=None, name=""):
+    def from_rect_lattice(cls, lattice, division=1, mesh_id=None, name=''):
         """Create mesh from an existing rectangular lattice
 
         Parameters
@@ -486,15 +488,15 @@ class RegularMesh(StructuredMesh):
             RegularMesh instance
 
         """
-        cv.check_type("rectangular lattice", lattice, openmc.RectLattice)
+        cv.check_type('rectangular lattice', lattice, openmc.RectLattice)
 
         shape = np.array(lattice.shape)
-        width = lattice.pitch * shape
+        width = lattice.pitch*shape
 
         mesh = cls(mesh_id, name)
         mesh.lower_left = lattice.lower_left
         mesh.upper_right = lattice.lower_left + width
-        mesh.dimension = shape * division
+        mesh.dimension = shape*division
 
         return mesh
 
@@ -513,17 +515,17 @@ class RegularMesh(StructuredMesh):
 
         if self._dimension is not None:
             subelement = ET.SubElement(element, "dimension")
-            subelement.text = " ".join(map(str, self._dimension))
+            subelement.text = ' '.join(map(str, self._dimension))
 
         subelement = ET.SubElement(element, "lower_left")
-        subelement.text = " ".join(map(str, self._lower_left))
+        subelement.text = ' '.join(map(str, self._lower_left))
 
         if self._upper_right is not None:
             subelement = ET.SubElement(element, "upper_right")
-            subelement.text = " ".join(map(str, self._upper_right))
+            subelement.text = ' '.join(map(str, self._upper_right))
         if self._width is not None:
             subelement = ET.SubElement(element, "width")
-            subelement.text = " ".join(map(str, self._width))
+            subelement.text = ' '.join(map(str, self._width))
 
         return element
 
@@ -542,26 +544,26 @@ class RegularMesh(StructuredMesh):
             Mesh generated from XML element
 
         """
-        mesh_id = int(get_text(elem, "id"))
+        mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id)
 
-        mesh_type = get_text(elem, "type")
+        mesh_type = get_text(elem, 'type')
         if mesh_type is not None:
             mesh.type = mesh_type
 
-        dimension = get_text(elem, "dimension")
+        dimension = get_text(elem, 'dimension')
         if dimension is not None:
             mesh.dimension = [int(x) for x in dimension.split()]
 
-        lower_left = get_text(elem, "lower_left")
+        lower_left = get_text(elem, 'lower_left')
         if lower_left is not None:
             mesh.lower_left = [float(x) for x in lower_left.split()]
 
-        upper_right = get_text(elem, "upper_right")
+        upper_right = get_text(elem, 'upper_right')
         if upper_right is not None:
             mesh.upper_right = [float(x) for x in upper_right.split()]
 
-        width = get_text(elem, "width")
+        width = get_text(elem, 'width')
         if width is not None:
             mesh.width = [float(x) for x in width.split()]
 
@@ -596,29 +598,23 @@ class RegularMesh(StructuredMesh):
 
         """
         if bc is None:
-            bc = ["reflective"] * 6
+            bc = ['reflective'] * 6
         if len(bc) not in (4, 6):
-            raise ValueError("Boundary condition must be of length 4 or 6")
+            raise ValueError('Boundary condition must be of length 4 or 6')
         for entry in bc:
-            cv.check_value("bc", entry, _BOUNDARY_TYPES)
+            cv.check_value('bc', entry, _BOUNDARY_TYPES)
 
         n_dim = self.n_dimension
 
         # Build the cell which will contain the lattice
-        xplanes = [
-            openmc.XPlane(self.lower_left[0], boundary_type=bc[0]),
-            openmc.XPlane(self.upper_right[0], boundary_type=bc[1]),
-        ]
+        xplanes = [openmc.XPlane(self.lower_left[0], boundary_type=bc[0]),
+                   openmc.XPlane(self.upper_right[0], boundary_type=bc[1])]
         if n_dim == 1:
-            yplanes = [
-                openmc.YPlane(-1e10, boundary_type="reflective"),
-                openmc.YPlane(1e10, boundary_type="reflective"),
-            ]
+            yplanes = [openmc.YPlane(-1e10, boundary_type='reflective'),
+                       openmc.YPlane(1e10, boundary_type='reflective')]
         else:
-            yplanes = [
-                openmc.YPlane(self.lower_left[1], boundary_type=bc[2]),
-                openmc.YPlane(self.upper_right[1], boundary_type=bc[3]),
-            ]
+            yplanes = [openmc.YPlane(self.lower_left[1], boundary_type=bc[2]),
+                       openmc.YPlane(self.upper_right[1], boundary_type=bc[3])]
 
         if n_dim <= 2:
             # Would prefer to have the z ranges be the max supported float, but
@@ -628,21 +624,15 @@ class RegularMesh(StructuredMesh):
             # inconsistency between what numpy uses as the max float and what
             # Fortran expects for a real(8), so this avoids code complication
             # and achieves the same goal.
-            zplanes = [
-                openmc.ZPlane(-1e10, boundary_type="reflective"),
-                openmc.ZPlane(1e10, boundary_type="reflective"),
-            ]
+            zplanes = [openmc.ZPlane(-1e10, boundary_type='reflective'),
+                       openmc.ZPlane(1e10, boundary_type='reflective')]
         else:
-            zplanes = [
-                openmc.ZPlane(self.lower_left[2], boundary_type=bc[4]),
-                openmc.ZPlane(self.upper_right[2], boundary_type=bc[5]),
-            ]
+            zplanes = [openmc.ZPlane(self.lower_left[2], boundary_type=bc[4]),
+                       openmc.ZPlane(self.upper_right[2], boundary_type=bc[5])]
         root_cell = openmc.Cell()
-        root_cell.region = (
-            (+xplanes[0] & -xplanes[1])
-            & (+yplanes[0] & -yplanes[1])
-            & (+zplanes[0] & -zplanes[1])
-        )
+        root_cell.region = ((+xplanes[0] & -xplanes[1]) &
+                            (+yplanes[0] & -yplanes[1]) &
+                            (+zplanes[0] & -zplanes[1]))
 
         # Build the universes which will be used for each of the (i,j,k)
         # locations within the mesh.
@@ -662,14 +652,16 @@ class RegularMesh(StructuredMesh):
         if n_dim == 1:
             universe_array = np.array([universes])
         elif n_dim == 2:
-            universe_array = np.empty(self.dimension[::-1], dtype=openmc.Universe)
+            universe_array = np.empty(self.dimension[::-1],
+                                      dtype=openmc.Universe)
             i = 0
             for y in range(self.dimension[1] - 1, -1, -1):
                 for x in range(self.dimension[0]):
                     universe_array[y][x] = universes[i]
                     i += 1
         else:
-            universe_array = np.empty(self.dimension[::-1], dtype=openmc.Universe)
+            universe_array = np.empty(self.dimension[::-1],
+                                      dtype=openmc.Universe)
             i = 0
             for z in range(self.dimension[2]):
                 for y in range(self.dimension[1] - 1, -1, -1):
@@ -681,29 +673,33 @@ class RegularMesh(StructuredMesh):
         if self.width is not None:
             lattice.pitch = self.width
         else:
-            dx = (self.upper_right[0] - self.lower_left[0]) / self.dimension[0]
+            dx = ((self.upper_right[0] - self.lower_left[0]) /
+                  self.dimension[0])
 
             if n_dim == 1:
                 lattice.pitch = [dx]
             elif n_dim == 2:
-                dy = (self.upper_right[1] - self.lower_left[1]) / self.dimension[1]
+                dy = ((self.upper_right[1] - self.lower_left[1]) /
+                      self.dimension[1])
                 lattice.pitch = [dx, dy]
             else:
-                dy = (self.upper_right[1] - self.lower_left[1]) / self.dimension[1]
-                dz = (self.upper_right[2] - self.lower_left[2]) / self.dimension[2]
+                dy = ((self.upper_right[1] - self.lower_left[1]) /
+                      self.dimension[1])
+                dz = ((self.upper_right[2] - self.lower_left[2]) /
+                      self.dimension[2])
                 lattice.pitch = [dx, dy, dz]
 
         # Fill Cell with the Lattice
         root_cell.fill = lattice
 
         return root_cell, cells
-
+    
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
         Parameters
         ----------
-        filename : str or pathlib.Path
+        filename : str
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -719,29 +715,35 @@ class RegularMesh(StructuredMesh):
             the VTK object
         """
 
-        ll, ur = self.lower_left, self.upper_right
-        x_vals = np.linspace(ll[0], ur[0], num=self.dimension[0] + 1)
-        y_vals = np.linspace(ll[1], ur[1], num=self.dimension[1] + 1)
-        z_vals = np.linspace(ll[2], ur[2], num=self.dimension[2] + 1)
+        x_vals = np.linspace(
+            self.lower_left[0],
+            self.upper_right[0],
+            num=self.dimension[0] + 1,
+        )
+        y_vals = np.linspace(
+            self.lower_left[1],
+            self.upper_right[1],
+            num=self.dimension[1] + 1,
+        )
+        z_vals = np.linspace(
+            self.lower_left[2],
+            self.upper_right[2],
+            num=self.dimension[2] + 1,
+        )
 
         # create points
-        pts_cartesian = np.array(
-            [[x, y, z] for z in z_vals for y in y_vals for x in x_vals]
-        )
+        pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
 
         return super().write_data_to_vtk(
             points=pts_cartesian,
             filename=filename,
             datasets=datasets,
-            volume_normalization=volume_normalization,
+            volume_normalization=volume_normalization
         )
 
-
 def Mesh(*args, **kwargs):
-    warnings.warn(
-        "Mesh has been renamed RegularMesh. Future versions of "
-        "OpenMC will not accept the name Mesh."
-    )
+    warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
+                  "OpenMC will not accept the name Mesh.")
     return RegularMesh(*args, **kwargs)
 
 
@@ -777,7 +779,7 @@ class RectilinearMesh(StructuredMesh):
 
     """
 
-    def __init__(self, mesh_id=None, name=""):
+    def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
         self._x_grid = None
@@ -786,7 +788,9 @@ class RectilinearMesh(StructuredMesh):
 
     @property
     def dimension(self):
-        return (len(self.x_grid) - 1, len(self.y_grid) - 1, len(self.z_grid) - 1)
+        return (len(self.x_grid) - 1,
+                len(self.y_grid) - 1,
+                len(self.z_grid) - 1)
 
     @property
     def n_dimension(self):
@@ -834,12 +838,10 @@ class RectilinearMesh(StructuredMesh):
         nx = len(self.x_grid) - 1
         ny = len(self.y_grid) - 1
         nz = len(self.z_grid) - 1
-        return (
-            (x, y, z)
-            for z in range(1, nz + 1)
-            for y in range(1, ny + 1)
-            for x in range(1, nx + 1)
-        )
+        return ((x, y, z)
+                for z in range(1, nz + 1)
+                for y in range(1, ny + 1)
+                for x in range(1, nx + 1))
 
     @property
     def num_mesh_cells(self):
@@ -847,49 +849,49 @@ class RectilinearMesh(StructuredMesh):
 
     @x_grid.setter
     def x_grid(self, grid):
-        cv.check_type("mesh x_grid", grid, Iterable, Real)
+        cv.check_type('mesh x_grid', grid, Iterable, Real)
         self._x_grid = np.asarray(grid)
 
     @y_grid.setter
     def y_grid(self, grid):
-        cv.check_type("mesh y_grid", grid, Iterable, Real)
+        cv.check_type('mesh y_grid', grid, Iterable, Real)
         self._y_grid = np.asarray(grid)
 
     @z_grid.setter
     def z_grid(self, grid):
-        cv.check_type("mesh z_grid", grid, Iterable, Real)
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
         self._z_grid = np.asarray(grid)
 
     def __repr__(self):
-        fmt = "{0: <16}{1}{2}\n"
+        fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
-        string += fmt.format("\tDimensions", "=\t", self.n_dimension)
+        string += fmt.format('\tDimensions', '=\t', self.n_dimension)
         x_grid_str = str(self._x_grid) if self._x_grid is None else len(self._x_grid)
-        string += fmt.format("\tN X pnts:", "=\t", x_grid_str)
+        string += fmt.format('\tN X pnts:', '=\t', x_grid_str)
         if self._x_grid is not None:
-            string += fmt.format("\tX Min:", "=\t", self._x_grid[0])
-            string += fmt.format("\tX Max:", "=\t", self._x_grid[-1])
+            string += fmt.format('\tX Min:', '=\t', self._x_grid[0])
+            string += fmt.format('\tX Max:', '=\t', self._x_grid[-1])
         y_grid_str = str(self._y_grid) if self._y_grid is None else len(self._y_grid)
-        string += fmt.format("\tN Y pnts:", "=\t", y_grid_str)
+        string += fmt.format('\tN Y pnts:', '=\t', y_grid_str)
         if self._y_grid is not None:
-            string += fmt.format("\tY Min:", "=\t", self._y_grid[0])
-            string += fmt.format("\tY Max:", "=\t", self._y_grid[-1])
+            string += fmt.format('\tY Min:', '=\t', self._y_grid[0])
+            string += fmt.format('\tY Max:', '=\t', self._y_grid[-1])
         z_grid_str = str(self._z_grid) if self._z_grid is None else len(self._z_grid)
-        string += fmt.format("\tN Z pnts:", "=\t", z_grid_str)
+        string += fmt.format('\tN Z pnts:', '=\t', z_grid_str)
         if self._z_grid is not None:
-            string += fmt.format("\tZ Min:", "=\t", self._z_grid[0])
-            string += fmt.format("\tZ Max:", "=\t", self._z_grid[-1])
+            string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
+            string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
 
     @classmethod
     def from_hdf5(cls, group):
-        mesh_id = int(group.name.split("/")[-1].lstrip("mesh "))
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
         mesh = cls(mesh_id)
-        mesh.x_grid = group["x_grid"][()]
-        mesh.y_grid = group["y_grid"][()]
-        mesh.z_grid = group["z_grid"][()]
+        mesh.x_grid = group['x_grid'][()]
+        mesh.y_grid = group['y_grid'][()]
+        mesh.z_grid = group['z_grid'][()]
 
         return mesh
 
@@ -908,11 +910,11 @@ class RectilinearMesh(StructuredMesh):
             Rectilinear mesh object
 
         """
-        id = int(get_text(elem, "id"))
+        id = int(get_text(elem, 'id'))
         mesh = cls(id)
-        mesh.x_grid = [float(x) for x in get_text(elem, "x_grid").split()]
-        mesh.y_grid = [float(y) for y in get_text(elem, "y_grid").split()]
-        mesh.z_grid = [float(z) for z in get_text(elem, "z_grid").split()]
+        mesh.x_grid = [float(x) for x in get_text(elem, 'x_grid').split()]
+        mesh.y_grid = [float(y) for y in get_text(elem, 'y_grid').split()]
+        mesh.z_grid = [float(z) for z in get_text(elem, 'z_grid').split()]
 
         return mesh
 
@@ -931,13 +933,13 @@ class RectilinearMesh(StructuredMesh):
         element.set("type", "rectilinear")
 
         subelement = ET.SubElement(element, "x_grid")
-        subelement.text = " ".join(map(str, self.x_grid))
+        subelement.text = ' '.join(map(str, self.x_grid))
 
         subelement = ET.SubElement(element, "y_grid")
-        subelement.text = " ".join(map(str, self.y_grid))
+        subelement.text = ' '.join(map(str, self.y_grid))
 
         subelement = ET.SubElement(element, "z_grid")
-        subelement.text = " ".join(map(str, self.z_grid))
+        subelement.text = ' '.join(map(str, self.z_grid))
 
         return element
 
@@ -946,7 +948,7 @@ class RectilinearMesh(StructuredMesh):
 
         Parameters
         ----------
-        filename : str or pathlib.Path
+        filename : str
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -962,15 +964,13 @@ class RectilinearMesh(StructuredMesh):
             the VTK object
         """
         # create points
-        pts_cartesian = np.array(
-            [[x, y, z] for z in self.z_grid for y in self.y_grid for x in self.x_grid]
-        )
+        pts_cartesian = np.array([[x, y, z] for z in self.z_grid for y in self.y_grid for x in self.x_grid])
 
         return super().write_data_to_vtk(
             points=pts_cartesian,
             filename=filename,
             datasets=datasets,
-            volume_normalization=volume_normalization,
+            volume_normalization=volume_normalization
         )
 
 
@@ -1008,16 +1008,18 @@ class CylindricalMesh(StructuredMesh):
 
     """
 
-    def __init__(self, mesh_id=None, name=""):
+    def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
         self._r_grid = None
-        self._phi_grid = [0.0, 2 * pi]
+        self._phi_grid = [0.0, 2*pi]
         self._z_grid = None
 
     @property
     def dimension(self):
-        return (len(self.r_grid) - 1, len(self.phi_grid) - 1, len(self.z_grid) - 1)
+        return (len(self.r_grid) - 1,
+                len(self.phi_grid) - 1,
+                len(self.z_grid) - 1)
 
     @property
     def n_dimension(self):
@@ -1044,12 +1046,10 @@ class CylindricalMesh(StructuredMesh):
         nr, np, nz = self.dimension
         np = len(self.phi_grid) - 1
         nz = len(self.z_grid) - 1
-        return (
-            (r, p, z)
-            for z in range(1, nz + 1)
-            for p in range(1, np + 1)
-            for r in range(1, nr + 1)
-        )
+        return ((r, p, z)
+                for z in range(1, nz + 1)
+                for p in range(1, np + 1)
+                for r in range(1, nr + 1))
 
     @property
     def num_mesh_cells(self):
@@ -1057,51 +1057,49 @@ class CylindricalMesh(StructuredMesh):
 
     @r_grid.setter
     def r_grid(self, grid):
-        cv.check_type("mesh r_grid", grid, Iterable, Real)
+        cv.check_type('mesh r_grid', grid, Iterable, Real)
         self._r_grid = np.asarray(grid)
 
     @phi_grid.setter
     def phi_grid(self, grid):
-        cv.check_type("mesh phi_grid", grid, Iterable, Real)
+        cv.check_type('mesh phi_grid', grid, Iterable, Real)
         self._phi_grid = np.asarray(grid)
 
     @z_grid.setter
     def z_grid(self, grid):
-        cv.check_type("mesh z_grid", grid, Iterable, Real)
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
         self._z_grid = np.asarray(grid)
 
     def __repr__(self):
-        fmt = "{0: <16}{1}{2}\n"
+        fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
-        string += fmt.format("\tDimensions", "=\t", self.n_dimension)
+        string += fmt.format('\tDimensions', '=\t', self.n_dimension)
         r_grid_str = str(self._r_grid) if self._r_grid is None else len(self._r_grid)
-        string += fmt.format("\tN R pnts:", "=\t", r_grid_str)
+        string += fmt.format('\tN R pnts:', '=\t', r_grid_str)
         if self._r_grid is not None:
-            string += fmt.format("\tR Min:", "=\t", self._r_grid[0])
-            string += fmt.format("\tR Max:", "=\t", self._r_grid[-1])
-        phi_grid_str = (
-            str(self._phi_grid) if self._phi_grid is None else len(self._phi_grid)
-        )
-        string += fmt.format("\tN Phi pnts:", "=\t", phi_grid_str)
+            string += fmt.format('\tR Min:', '=\t', self._r_grid[0])
+            string += fmt.format('\tR Max:', '=\t', self._r_grid[-1])
+        phi_grid_str = str(self._phi_grid) if self._phi_grid is None else len(self._phi_grid)
+        string += fmt.format('\tN Phi pnts:', '=\t', phi_grid_str)
         if self._phi_grid is not None:
-            string += fmt.format("\tPhi Min:", "=\t", self._phi_grid[0])
-            string += fmt.format("\tPhi Max:", "=\t", self._phi_grid[-1])
+            string += fmt.format('\tPhi Min:', '=\t', self._phi_grid[0])
+            string += fmt.format('\tPhi Max:', '=\t', self._phi_grid[-1])
         z_grid_str = str(self._z_grid) if self._z_grid is None else len(self._z_grid)
-        string += fmt.format("\tN Z pnts:", "=\t", z_grid_str)
+        string += fmt.format('\tN Z pnts:', '=\t', z_grid_str)
         if self._z_grid is not None:
-            string += fmt.format("\tZ Min:", "=\t", self._z_grid[0])
-            string += fmt.format("\tZ Max:", "=\t", self._z_grid[-1])
+            string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
+            string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
 
     @classmethod
     def from_hdf5(cls, group):
-        mesh_id = int(group.name.split("/")[-1].lstrip("mesh "))
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
         mesh = cls(mesh_id)
-        mesh.r_grid = group["r_grid"][()]
-        mesh.phi_grid = group["phi_grid"][()]
-        mesh.z_grid = group["z_grid"][()]
+        mesh.r_grid = group['r_grid'][()]
+        mesh.phi_grid = group['phi_grid'][()]
+        mesh.z_grid = group['z_grid'][()]
 
         return mesh
 
@@ -1120,13 +1118,13 @@ class CylindricalMesh(StructuredMesh):
         element.set("type", "cylindrical")
 
         subelement = ET.SubElement(element, "r_grid")
-        subelement.text = " ".join(map(str, self.r_grid))
+        subelement.text = ' '.join(map(str, self.r_grid))
 
         subelement = ET.SubElement(element, "phi_grid")
-        subelement.text = " ".join(map(str, self.phi_grid))
+        subelement.text = ' '.join(map(str, self.phi_grid))
 
         subelement = ET.SubElement(element, "z_grid")
-        subelement.text = " ".join(map(str, self.z_grid))
+        subelement.text = ' '.join(map(str, self.z_grid))
 
         return element
 
@@ -1146,7 +1144,7 @@ class CylindricalMesh(StructuredMesh):
 
         """
 
-        mesh_id = int(get_text(elem, "id"))
+        mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id)
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
@@ -1164,7 +1162,7 @@ class CylindricalMesh(StructuredMesh):
 
         """
         self._volume_dim_check()
-        V_r = np.diff(np.asarray(self.r_grid) ** 2 / 2)
+        V_r = np.diff(np.asarray(self.r_grid)**2 / 2)
         V_p = np.diff(self.phi_grid)
         V_z = np.diff(self.z_grid)
 
@@ -1175,7 +1173,7 @@ class CylindricalMesh(StructuredMesh):
 
         Parameters
         ----------
-        filename : str or pathlib.Path
+        filename : str
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -1191,14 +1189,7 @@ class CylindricalMesh(StructuredMesh):
             the VTK object
         """
         # create points
-        pts_cylindrical = np.array(
-            [
-                [r, phi, z]
-                for z in self.z_grid
-                for phi in self.phi_grid
-                for r in self.r_grid
-            ]
-        )
+        pts_cylindrical = np.array([[r, phi, z] for z in self.z_grid for phi in self.phi_grid for r in self.r_grid])
         pts_cartesian = np.copy(pts_cylindrical)
         r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
         pts_cartesian[:, 0] = r * np.cos(phi)
@@ -1208,9 +1199,8 @@ class CylindricalMesh(StructuredMesh):
             points=pts_cartesian,
             filename=filename,
             datasets=datasets,
-            volume_normalization=volume_normalization,
+            volume_normalization=volume_normalization
         )
-
 
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
@@ -1247,16 +1237,18 @@ class SphericalMesh(StructuredMesh):
 
     """
 
-    def __init__(self, mesh_id=None, name=""):
+    def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
         self._r_grid = None
         self._theta_grid = [0, pi]
-        self._phi_grid = [0, 2 * pi]
+        self._phi_grid = [0, 2*pi]
 
     @property
     def dimension(self):
-        return (len(self.r_grid) - 1, len(self.theta_grid) - 1, len(self.phi_grid) - 1)
+        return (len(self.r_grid) - 1,
+                len(self.theta_grid) - 1,
+                len(self.phi_grid) - 1)
 
     @property
     def n_dimension(self):
@@ -1283,12 +1275,10 @@ class SphericalMesh(StructuredMesh):
         nr, nt, np = self.dimension
         nt = len(self.theta_grid) - 1
         np = len(self.phi_grid) - 1
-        return (
-            (r, t, p)
-            for p in range(1, np + 1)
-            for t in range(1, nt + 1)
-            for r in range(1, nr + 1)
-        )
+        return ((r, t, p)
+                for p in range(1, np + 1)
+                for t in range(1, nt + 1)
+                for r in range(1, nr + 1))
 
     @property
     def num_mesh_cells(self):
@@ -1296,53 +1286,49 @@ class SphericalMesh(StructuredMesh):
 
     @r_grid.setter
     def r_grid(self, grid):
-        cv.check_type("mesh r_grid", grid, Iterable, Real)
+        cv.check_type('mesh r_grid', grid, Iterable, Real)
         self._r_grid = np.asarray(grid)
 
     @theta_grid.setter
     def theta_grid(self, grid):
-        cv.check_type("mesh theta_grid", grid, Iterable, Real)
+        cv.check_type('mesh theta_grid', grid, Iterable, Real)
         self._theta_grid = np.asarray(grid)
 
     @phi_grid.setter
     def phi_grid(self, grid):
-        cv.check_type("mesh phi_grid", grid, Iterable, Real)
+        cv.check_type('mesh phi_grid', grid, Iterable, Real)
         self._phi_grid = np.asarray(grid)
 
     def __repr__(self):
-        fmt = "{0: <16}{1}{2}\n"
+        fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
-        string += fmt.format("\tDimensions", "=\t", self.n_dimension)
+        string += fmt.format('\tDimensions', '=\t', self.n_dimension)
         r_grid_str = str(self._r_grid) if self._r_grid is None else len(self._r_grid)
-        string += fmt.format("\tN R pnts:", "=\t", r_grid_str)
+        string += fmt.format('\tN R pnts:', '=\t', r_grid_str)
         if self._r_grid is not None:
-            string += fmt.format("\tR Min:", "=\t", self._r_grid[0])
-            string += fmt.format("\tR Max:", "=\t", self._r_grid[-1])
-        theta_grid_str = (
-            str(self._theta_grid) if self._theta_grid is None else len(self._theta_grid)
-        )
-        string += fmt.format("\tN Theta pnts:", "=\t", theta_grid_str)
+            string += fmt.format('\tR Min:', '=\t', self._r_grid[0])
+            string += fmt.format('\tR Max:', '=\t', self._r_grid[-1])
+        theta_grid_str = str(self._theta_grid) if self._theta_grid is None else len(self._theta_grid)
+        string += fmt.format('\tN Theta pnts:', '=\t', theta_grid_str)
         if self._theta_grid is not None:
-            string += fmt.format("\tTheta Min:", "=\t", self._theta_grid[0])
-            string += fmt.format("\tTheta Max:", "=\t", self._theta_grid[-1])
-        phi_grid_str = (
-            str(self._phi_grid) if self._phi_grid is None else len(self._phi_grid)
-        )
-        string += fmt.format("\tN Phi pnts:", "=\t", phi_grid_str)
+            string += fmt.format('\tTheta Min:', '=\t', self._theta_grid[0])
+            string += fmt.format('\tTheta Max:', '=\t', self._theta_grid[-1])
+        phi_grid_str = str(self._phi_grid) if self._phi_grid is None else len(self._phi_grid)
+        string += fmt.format('\tN Phi pnts:', '=\t', phi_grid_str)
         if self._phi_grid is not None:
-            string += fmt.format("\tPhi Min:", "=\t", self._phi_grid[0])
-            string += fmt.format("\tPhi Max:", "=\t", self._phi_grid[-1])
+            string += fmt.format('\tPhi Min:', '=\t', self._phi_grid[0])
+            string += fmt.format('\tPhi Max:', '=\t', self._phi_grid[-1])
         return string
 
     @classmethod
     def from_hdf5(cls, group):
-        mesh_id = int(group.name.split("/")[-1].lstrip("mesh "))
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
         mesh = cls(mesh_id)
-        mesh.r_grid = group["r_grid"][()]
-        mesh.theta_grid = group["theta_grid"][()]
-        mesh.phi_grid = group["phi_grid"][()]
+        mesh.r_grid = group['r_grid'][()]
+        mesh.theta_grid = group['theta_grid'][()]
+        mesh.phi_grid = group['phi_grid'][()]
 
         return mesh
 
@@ -1361,13 +1347,13 @@ class SphericalMesh(StructuredMesh):
         element.set("type", "spherical")
 
         subelement = ET.SubElement(element, "r_grid")
-        subelement.text = " ".join(map(str, self.r_grid))
+        subelement.text = ' '.join(map(str, self.r_grid))
 
         subelement = ET.SubElement(element, "theta_grid")
-        subelement.text = " ".join(map(str, self.theta_grid))
+        subelement.text = ' '.join(map(str, self.theta_grid))
 
         subelement = ET.SubElement(element, "phi_grid")
-        subelement.text = " ".join(map(str, self.phi_grid))
+        subelement.text = ' '.join(map(str, self.phi_grid))
 
         return element
 
@@ -1387,7 +1373,7 @@ class SphericalMesh(StructuredMesh):
 
         """
 
-        mesh_id = int(get_text(elem, "id"))
+        mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id)
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()]
@@ -1405,7 +1391,7 @@ class SphericalMesh(StructuredMesh):
 
         """
         self._volume_dim_check()
-        V_r = np.diff(np.asarray(self.r_grid) ** 3 / 3)
+        V_r = np.diff(np.asarray(self.r_grid)**3 / 3)
         V_t = np.diff(-np.cos(self.theta_grid))
         V_p = np.diff(self.phi_grid)
 
@@ -1416,7 +1402,7 @@ class SphericalMesh(StructuredMesh):
 
         Parameters
         ----------
-        filename : str or pathlib.Path
+        filename : str
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -1433,14 +1419,7 @@ class SphericalMesh(StructuredMesh):
         """
 
         # create points
-        pts_spherical = np.array(
-            [
-                [r, theta, phi]
-                for phi in self.phi_grid
-                for theta in self.theta_grid
-                for r in self.r_grid
-            ]
-        )
+        pts_spherical = np.array([[r, theta, phi] for phi in self.phi_grid for theta in self.theta_grid for r in self.r_grid])
         pts_cartesian = np.copy(pts_spherical)
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
         pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
@@ -1451,7 +1430,7 @@ class SphericalMesh(StructuredMesh):
             points=pts_cartesian,
             filename=filename,
             datasets=datasets,
-            volume_normalization=volume_normalization,
+            volume_normalization=volume_normalization
         )
 
 
@@ -1499,8 +1478,8 @@ class UnstructuredMesh(MeshBase):
         An iterable of element centroid coordinates, e.g. [(0.0, 0.0, 0.0),
         (1.0, 1.0, 1.0), ...]
     """
-
-    def __init__(self, filename, library, mesh_id=None, name="", length_multiplier=1.0):
+    def __init__(self, filename, library, mesh_id=None, name='',
+                 length_multiplier=1.0):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
@@ -1515,7 +1494,7 @@ class UnstructuredMesh(MeshBase):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type("Unstructured Mesh filename", filename, str)
+        cv.check_type('Unstructured Mesh filename', filename, str)
         self._filename = filename
 
     @property
@@ -1524,7 +1503,7 @@ class UnstructuredMesh(MeshBase):
 
     @library.setter
     def library(self, lib):
-        cv.check_value("Unstructured mesh library", lib, ("moab", "libmesh"))
+        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
 
     @property
@@ -1574,15 +1553,14 @@ class UnstructuredMesh(MeshBase):
     @property
     def n_elements(self):
         if self._centroids is None:
-            raise RuntimeError(
-                "No information about this mesh has "
-                "been loaded from a statepoint file."
-            )
+            raise RuntimeError("No information about this mesh has "
+                               "been loaded from a statepoint file.")
         return len(self._centroids)
 
     @centroids.setter
     def centroids(self, centroids):
-        cv.check_type("Unstructured mesh centroids", centroids, Iterable, Real)
+        cv.check_type("Unstructured mesh centroids", centroids,
+                      Iterable, Real)
         self._centroids = centroids
 
     @property
@@ -1591,7 +1569,9 @@ class UnstructuredMesh(MeshBase):
 
     @length_multiplier.setter
     def length_multiplier(self, length_multiplier):
-        cv.check_type("Unstructured mesh length multiplier", length_multiplier, Real)
+        cv.check_type("Unstructured mesh length multiplier",
+                      length_multiplier,
+                      Real)
         self._length_multiplier = length_multiplier
 
     @property
@@ -1604,18 +1584,16 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def vertices(self):
-        raise NotImplementedError(
-            "Vertices for UnstructuredMesh objects are " "not yet available"
-        )
+        raise NotImplementedError("Vertices for UnstructuredMesh objects are "
+                                  "not yet available")
 
     def __repr__(self):
         string = super().__repr__()
-        string += "{: <16}=\t{}\n".format("\tFilename", self.filename)
-        string += "{: <16}=\t{}\n".format("\tMesh Library", self.mesh_lib)
+        string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
+        string += '{: <16}=\t{}\n'.format('\tMesh Library', self.mesh_lib)
         if self.length_multiplier != 1.0:
-            string += "{: <16}=\t{}\n".format(
-                "\tLength multiplier", self.length_multiplier
-            )
+            string += '{: <16}=\t{}\n'.format('\tLength multiplier',
+                                              self.length_multiplier)
         return string
 
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
@@ -1624,7 +1602,7 @@ class UnstructuredMesh(MeshBase):
 
         Parameters
         ----------
-        filename : str or pathlib.Path
+        filename : str
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -1636,42 +1614,32 @@ class UnstructuredMesh(MeshBase):
         Raises
         ------
             RuntimeError
-                when the size of a dataset doesn't match the number of cells
+                when the size of a dataset doesn't match the number of cells 
         """
 
         import vtk
         from vtk.util import numpy_support as vtk_npsup
 
         if self.centroids is None:
-            raise RuntimeError(
-                "No centroid information is present on this "
-                "unstructured mesh. Please load this "
-                "information from a relevant statepoint file."
-            )
+            raise RuntimeError("No centroid information is present on this "
+                               "unstructured mesh. Please load this "
+                               "information from a relevant statepoint file.")
 
         if self.volumes is None and volume_normalization:
-            raise RuntimeError(
-                "No volume data is present on this "
-                "unstructured mesh. Please load the "
-                " mesh information from a statepoint file."
-            )
+            raise RuntimeError("No volume data is present on this "
+                               "unstructured mesh. Please load the "
+                               " mesh information from a statepoint file.")
 
         # check that the data sets are appropriately sized
         errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
             if isinstance(dataset, np.ndarray):
-                if (
-                    not dataset.size
-                    == self.dimension[0] * self.dimension[1] * self.dimension[2]
-                ):
+                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
                     raise RuntimeError(errmsg.format(label))
             else:
-                if (
-                    len(dataset)
-                    == self.dimension[0] * self.dimension[1] * self.dimension[2]
-                ):
+                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
                     raise RuntimeError(errmsg.format(label))
-            cv.check_type("label", label, str)
+            cv.check_type('label', label, str)
 
         # create data arrays for the cells/points
         cell_dim = 1
@@ -1705,7 +1673,9 @@ class UnstructuredMesh(MeshBase):
             array = vtk.vtkDoubleArray()
             array.SetName(label)
             array.SetNumberOfComponents(1)
-            array.SetArray(vtk_npsup.numpy_to_vtk(dataset), dataset.size, True)
+            array.SetArray(vtk_npsup.numpy_to_vtk(dataset),
+                           dataset.size,
+                           True)
 
             data_holder.append(dataset)
             poly_data.GetPointData().AddArray(array)
@@ -1721,19 +1691,19 @@ class UnstructuredMesh(MeshBase):
 
     @classmethod
     def from_hdf5(cls, group):
-        mesh_id = int(group.name.split("/")[-1].lstrip("mesh "))
-        filename = group["filename"][()].decode()
-        library = group["library"][()].decode()
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+        filename = group['filename'][()].decode()
+        library = group['library'][()].decode()
 
         mesh = cls(filename, library, mesh_id=mesh_id)
-        vol_data = group["volumes"][()]
-        centroids = group["centroids"][()]
+        vol_data = group['volumes'][()]
+        centroids = group['centroids'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
         mesh.size = mesh.volumes.size
 
-        if "length_multiplier" in group:
-            mesh.length_multiplier = group["length_multiplier"][()]
+        if 'length_multiplier' in group:
+            mesh.length_multiplier = group['length_multiplier'][()]
 
         return mesh
 
@@ -1773,9 +1743,9 @@ class UnstructuredMesh(MeshBase):
         openmc.UnstructuredMesh
             UnstructuredMesh generated from an XML element
         """
-        mesh_id = int(get_text(elem, "id"))
-        filename = get_text(elem, "filename")
-        library = get_text(elem, "library")
-        length_multiplier = float(get_text(elem, "length_multiplier", 1.0))
+        mesh_id = int(get_text(elem, 'id'))
+        filename = get_text(elem, 'filename')
+        library = get_text(elem, 'library')
+        length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
-        return cls(filename, library, mesh_id, "", length_multiplier)
+        return cls(filename, library, mesh_id, '', length_multiplier)

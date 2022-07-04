@@ -54,20 +54,20 @@ int main(int argc, char **argv){
   int i;
   for (i=0;i<batches*particles; i++){
     if(i%particles==0){
-      printf("batch number %d\n",i/particles);
+      printf("MCPL_test: generating batch number %d\n",i/particles);
     }
     /*generate a point source - i.e. x,y,z are 0*/
     particle->position[0]=0;
     particle->position[1]=0;
     particle->position[2]=0;
-    
+
     /*generate a random direction on unit sphere*/
     double nrm=2.0;
     double vx,vy,vz;
     int iter=0;
     do {
       if(iter>100){
-        printf("warning: exceeed max random vector attempts: at loop %d -> %g   %d\n",i,nrm,iter);
+        printf("Warning: Exceeded max random vector attempts: at loop %d -> %g   %d\n",i,nrm,iter);
       }
       vx=rand01()*2.0-1.0;
       vy=rand01()*2.0-1.0;
@@ -82,9 +82,9 @@ int main(int argc, char **argv){
     particle->direction[1]=vy;
     particle->direction[2]=vz;
 
-    /*generate the kinetic energy (in MeV) of the particle*/ 
+    /*generate the kinetic energy (in MeV) of the particle*/
     particle->ekin=1e-3;
- 
+
     /*set time=0*/
     particle->time=0;
     /*set weight*/
@@ -93,5 +93,5 @@ int main(int argc, char **argv){
     particle->userflags=0;
     mcpl_add_particle(outfile,particle);
   }
-  mcpl_closeandgzip_outfile(outfile);
+  mcpl_close_outfile(outfile);
 }

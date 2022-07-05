@@ -451,3 +451,17 @@ def test_activity_of_metastable():
     m1.set_density('g/cm3', 1)
     m1.volume = 98.9
     assert pytest.approx(m1.activity, rel=0.001) == 1.93e19
+
+
+def test_material_from_library():
+    """Checks that the material is added from the pnnl_v2 library it is assigned
+    the correct nuclides and density"""
+    m1 = openmc.Material()
+    m1.add_from_library(name='Sodium Oxide', library='pnnl_v2')
+    assert m1.density == 2.27
+    assert m1.nuclides == [
+        ('O16', 3.325230E-01, 'ao'),
+        ('O17', 1.266665E-04, 'ao'),
+        ('O18', 6.833327E-04, 'ao'),
+        ('Na23', 6.666670E-01, 'ao')
+    ]

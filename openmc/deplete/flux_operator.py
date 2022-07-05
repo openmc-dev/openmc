@@ -16,7 +16,7 @@ import pandas as pd
 from uncertainties import ufloat
 
 import openmc
-from openmc.checkvalue import check_type
+from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.data import DataLibrary
 from openmc.exceptions import DataError
 from openmc.mpi import comm
@@ -27,8 +27,19 @@ from .reaction_rates import ReactionRates
 from .results import Results
 from .helpers import ConstantFissionYieldHelper
 
+valid_rxns = list(REACTIONS.keys())
+valid_rxns += ['fission']
 
-class FluxSpectraDepletionOperator(TransportOperator):
+# Convenience function for the micro_xs static methods
+def _validate_micro_xs_inputs(nuclides, reactions, data):
+    check_iterable_type('nuclides', nuclides, str)
+    check_iterable_type('reactions', reactions, str)
+    check_type('data', data, np.ndarray, expected_iter_type=float)
+    [check_value('reactions', reaction, valid_rxns) for reaction in reactions]
+
+
+
+class FluxDepletionOperator(TransportOperator):
     """Depletion operator that uses a user-provided flux spectrum and one-group
     cross sections to calculate reaction rates.
 
@@ -318,15 +329,13 @@ class FluxSpectraDepletionOperator(TransportOperator):
             assert data.shape == (len(nuclides), len(reactions))
         except AssertionError:
             raise SyntaxError(
-                'Nuclides list of length {len(nuclides)} and'
-                'reactions array of length {len(reactions)} do not'
-                'match dimensions of data array of shape {data.shape}')
+                f'Nuclides list of length {len(nuclides)} and '
+                f'reactions array of length {len(reactions)} do not '
+                f'match dimensions of data array of shape {data.shape}')
 
-        check_iterable_type('nuclides', nuclides, str)
-        check_iterable_type('reactions', reactions, str)
-        check_type('data', data, float, expected_iter_type=np.array)
-        check_value('reactions', reactions, chain.REACTIONS)
+        _validate_micro_xs_inputs(nuclides, reactions, data)
 
+        # Convert to cm^2
         if units == 'barn':
             data /= 1e24
 
@@ -351,7 +360,12 @@ class FluxSpectraDepletionOperator(TransportOperator):
             A DataFrame object correctly formatted for use in ``FluxOperator``
 
         """
-        micro_xs = pd.DataFrame.read_csv(csv_file)
+        micro_xs = pd.read_csv(csv_file, index_col=0)
+
+        _validate_micro_xs_inputs(list(micro_xs.index),
+                                  list(micro_xs.columns),
+                                  micro_xs.to_numpy())
+
         if units == 'barn':
             micro_xs /= 1e24
 

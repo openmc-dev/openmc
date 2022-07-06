@@ -33,7 +33,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
     # BUILD
     filename = Path(tmpdir) / "out.vtk"
 
-    data = np.random.random(mesh.dimension[0]*mesh.dimension[1]*mesh.dimension[2])
+    data = np.random.random(mesh.num_mesh_cells)
 
     # RUN
     mesh.write_data_to_vtk(filename=filename, datasets={"label1": data, "label2": data})
@@ -68,7 +68,7 @@ def test_write_data_to_vtk_size_mismatch(mesh):
     mesh : openmc.StructuredMesh
         The mesh to test
     """
-    right_size = mesh.dimension[0]*mesh.dimension[1]*mesh.dimension[2]
+    right_size = mesh.num_mesh_cells
     data = np.random.random(right_size + 1)
 
     expected_error_msg = "The size of the dataset label should be equal to the number of cells"

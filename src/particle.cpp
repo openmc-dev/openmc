@@ -91,9 +91,11 @@ void Particle::from_source(const SourceSite* src)
   n_collision() = 0;
   fission() = false;
   zero_flux_derivs();
+  material() = C_NONE;
 
   // Check if the src has cell coordinates
   // and copy attributes or reset
+  /*
   if (src->coord.empty()) {
     clear();
     cell_born() = C_NONE;
@@ -134,18 +136,21 @@ void Particle::from_source(const SourceSite* src)
       material() = C_NONE;
     }
   }
+  */
 
-  /*
   if (!src->coord.empty()) {
     n_coord() = src->n_coord;
     coord() = src->coord;
     cell_born() = coord(n_coord() - 1).cell;
+    Cell& c {*model::cells[cell_born()]};
+    if (c.type_ != Fill::MATERIAL) {
+      clear();
+      cell_born() = C_NONE;
+    }
   } else {
     clear();
     cell_born() = C_NONE;
-    material() = C_NONE;
   }
-  */
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -404,7 +409,6 @@ void Particle::event_revive_from_secondary()
     secondary_bank().pop_back();
     n_event() = 0;
 
-    /*
     Cell& c {*model::cells[cell_born()]};
     // Find the distribcell instance number
     cell_instance() = 0;
@@ -419,7 +423,8 @@ void Particle::event_revive_from_secondary()
     } else {
       material() = c.material_[0];
     }
-    
+   
+    /*
     sqrtkT_last() = sqrtkT();
     if (c.sqrtkT_.size() > 1) {
       sqrtkT() = c.sqrtkT_[cell_instance()];

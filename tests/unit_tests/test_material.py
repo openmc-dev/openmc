@@ -455,9 +455,8 @@ def test_activity_of_metastable():
 
 def test_material_from_library():
     """Checks that the material is added from the pnnl_v2 library it is assigned
-    the correct nuclides and density"""
-    m1 = openmc.Material()
-    m1.add_from_library(name='Sodium Oxide', library='pnnl_v2')
+    the correct nuclides and density and error handling"""
+    m1 = openmc.Material.from_library(name='Sodium Oxide', library='pnnl_v2')
     assert m1.density == 2.27
     assert m1.nuclides == [
         ('O16', 3.325230E-01, 'ao'),
@@ -465,3 +464,7 @@ def test_material_from_library():
         ('O18', 6.833327E-04, 'ao'),
         ('Na23', 6.666670E-01, 'ao')
     ]
+    with pytest.raises(ValueError):
+        openmc.Material.from_library(name='non-existent material')
+    with pytest.raises(ValueError):
+        openmc.Material.from_library(name='Gold', library='non-existent library')

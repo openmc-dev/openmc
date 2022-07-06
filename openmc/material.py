@@ -699,34 +699,6 @@ class Material(IDManagerMixin):
             else:
                 self.add_element(element, percent, percent_type)
 
-    def add_from_library(self, name, library='pnnl_v2'):
-        """Adds a material composition from a predefined library
-
-        Parameters
-        ----------
-        name : str
-            Reference name of the material (case sensitive)
-        library : str
-            The material library to use. Options include: 'pnnl_v2' The Pacific
-            Northwest National Laboratory Compendium of Material Composition
-            Data for Radiation Transport Modeling, available from
-            https://www.pnnl.gov/main/publications/external/technical_reports/PNNL-15870Rev2.pdf
-
-        """
-
-        global MATERIAL_LIBRARIES
-        if not MATERIAL_LIBRARIES:
-            # loads in the available material libraries
-            mat_lib_path = Path(__file__).parent / 'data' / 'material_libraries.json'
-            MATERIAL_LIBRARIES = json.loads(mat_lib_path.read_text())
-
-        material_to_add = MATERIAL_LIBRARIES[library][name]
-
-        for nuclide in material_to_add['nuclides']:
-            self.add_nuclide(**nuclide)
-
-        self.set_density(**material_to_add['density'])
-
     def add_s_alpha_beta(self, name, fraction=1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
 
@@ -1180,6 +1152,52 @@ class Material(IDManagerMixin):
         new_mat.depletable = any(mat.depletable for mat in materials)
 
         return new_mat
+
+    @classmethod
+    def from_library(cls, name, library='pnnl_v2'):
+        """Adds a material composition from a predefined library
+
+        Parameters
+        ----------
+        name : str
+            Reference name of the material (case sensitive)
+        library : str
+            The material library to use. Options include: 'pnnl_v2' The Pacific
+            Northwest National Laboratory Compendium of Material Composition
+            Data for Radiation Transport Modeling, available from
+            https://www.pnnl.gov/main/publications/external/technical_reports/PNNL-15870Rev2.pdf
+
+        """
+
+        global MATERIAL_LIBRARIES
+        if not MATERIAL_LIBRARIES:
+            # loads in the available material libraries
+            mat_lib_path = Path(__file__).parent / 'data' / 'material_libraries.json'
+            MATERIAL_LIBRARIES = json.loads(mat_lib_path.read_text())
+
+        if library not in MATERIAL_LIBRARIES.keys():
+            msg = (
+                    f'library {library} not found in available libraries '
+                    f'{list(MATERIAL_LIBRARIES.keys())}'
+            )
+            raise ValueError(msg)
+
+        if name not in MATERIAL_LIBRARIES[library].keys():
+            msg = (
+                    f'material name {name} not found in the {library} materials '
+                    f'library. Available are {list(MATERIAL_LIBRARIES[library].keys())}'
+            )
+            raise ValueError(msg)
+
+        material_to_add = MATERIAL_LIBRARIES[library][name]
+
+        mat = cls()
+        for nuclide in material_to_add['nuclides']:
+            mat.add_nuclide(**nuclide)
+
+        mat.set_density(**material_to_add['density'])
+
+        return mat
 
     @classmethod
     def from_xml_element(cls, elem):

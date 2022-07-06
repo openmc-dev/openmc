@@ -198,7 +198,7 @@ class Source:
             element.append(self.time.to_xml_element('time'))
         return element
 
-    def plot_energy(self, n_samples=10000, seed=None, axes=None):
+def plot_energy(self, n_samples=10000, seed=None, axes=None,  **kwargs):
         """Produce a histogram plot of source particle energy.
 
         Parameters
@@ -230,7 +230,7 @@ class Source:
         else:
             ax = axes
 
-        ax.hist(energy, bins='auto')
+        ax.hist(energy, bins='auto', **kwargs)
 
         return ax
 

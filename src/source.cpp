@@ -111,7 +111,6 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       // If no spatial distribution specified, make it a point source
       space_ = UPtrSpace {new SpatialPoint()};
     }
-
     // Determine external source angular distribution
     if (check_for_node(node, "angle")) {
       // Get pointer to angular distribution
@@ -131,11 +130,9 @@ IndependentSource::IndependentSource(pugi::xml_node node)
         fatal_error(fmt::format(
           "Invalid angular distribution for external source: {}", type));
       }
-
     } else {
       angle_ = UPtrAngle {new Isotropic()};
     }
-
     // Determine external source energy distribution
     if (check_for_node(node, "energy")) {
       pugi::xml_node node_dist = node.child("energy");
@@ -144,7 +141,6 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       // Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
       energy_ = UPtrDist {new Watt(0.988e6, 2.249e-6)};
     }
-
     // Determine external source time distribution
     if (check_for_node(node, "time")) {
       pugi::xml_node node_dist = node.child("time");

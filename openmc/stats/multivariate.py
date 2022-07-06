@@ -3,12 +3,14 @@ from collections.abc import Iterable
 from math import pi, cos
 from numbers import Real
 from xml.etree import ElementTree as ET
+from xmlrpc.client import boolean
 
 import numpy as np
 
 import openmc.checkvalue as cv
 from .._xml import get_text
 from .univariate import Univariate, Uniform, PowerLaw
+from ..mesh import MeshBase
 
 
 class UnitSphere(ABC):
@@ -269,6 +271,8 @@ class Spatial(ABC):
             return CylindricalIndependent.from_xml_element(elem)
         elif distribution == 'spherical':
             return SphericalIndependent.from_xml_element(elem)
+        elif distribution == 'mesh':
+            return MeshIndependent.from_xml_element(elem)
         elif distribution == 'box' or distribution == 'fission':
             return Box.from_xml_element(elem)
         elif distribution == 'point':
@@ -615,6 +619,120 @@ class CylindricalIndependent(Spatial):
         z = Univariate.from_xml_element(elem.find('z'))
         origin = [float(x) for x in elem.get('origin').split()]
         return cls(r, phi, z, origin=origin)
+
+class MeshIndependent(Spatial):
+    """Spatial distribution for a mesh.
+
+    This distribution allows one to specify a mesh to sample over and the scheme to sample over the entire mesh. 
+
+    .. versionadded:: 0.13
+
+    Parameters
+    ----------
+    elem_weight_scheme : str, optional
+        The scheme for weighting and sampling elements from the mesh. Options are 'file' and 'volume' based weights.
+    mesh : openmc.MeshBase
+        The mesh instance used for sampling, mesh is written into settings.xml, mesh.id is written into the source distribution
+    weights_from_file : Iterable of Real, optional
+        A list of values which represent the weights of each element
+
+
+    Attributes
+    ----------
+    elem_weight_scheme : str, optional
+        Weighting scheme for sampling element from mesh, defaults to volume
+    mesh : openmc.MeshBase
+        The mesh instance used for sampling, mesh is written into settings.xml, mesh.id is written into the source distribution
+    weights_from_file : Iterable of Real, optional
+        A list of values which represent the weights of each element
+
+    """
+
+    def __init__(self, mesh, weights_from_file=None, volume_weighting=False):
+        self.mesh = mesh        
+        self.weights_from_file = weights_from_file
+        self.volume_weighting = volume_weighting
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        if mesh != None:
+            cv.check_type('Unstructured Mesh', mesh, MeshBase)
+        self._mesh = mesh
+
+    @property
+    def volume_weighting(self):
+        return self._volume_weighting
+
+    @volume_weighting.setter
+    def volume_weighting(self, volume_weighting):
+        cv.check_type('Scheme for sampling an element from the mesh', volume_weighting, bool)
+        self._volume_weighting = volume_weighting
+
+    @property
+    def weights_from_file(self):
+        return self._weights_from_file
+
+    @weights_from_file.setter
+    def weights_from_file(self, given_weights):
+        if given_weights is not None:
+            self._weights_from_file = (np.array(given_weights, dtype=float)).flatten()
+        else:
+            self._weights_from_file = None
+
+    @property
+    def num_weight_bins(self):
+        if self.weights_from_file == None:
+            raise ValueError('Weight bins are not set')
+        return self.weights_from_file.size
+                
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing spatial distribution data
+
+        """
+        element = ET.Element('space')
+        element.set('type', 'mesh')
+        element.set("mesh_id", str(self.mesh.id))
+        element.set("volume_weighting", str(self.volume_weighting))
+
+        if self.weights_from_file is not None:
+            subelement = ET.SubElement(element, 'weights_from_file')
+            subelement.text = ' '.join(str(e) for e in self.weights_from_file)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate spatial distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.MeshIndependent
+            Spatial distribution generated from XML element
+
+        """
+
+        mesh_id = int(elem.get('mesh_id'))
+        volume_weighting = elem.get("volume_weighting")
+        volume_weighting = get_text(elem, 'volume_weighting').lower() == 'true'
+        if elem.get('weights_from_file') is not None:
+            weights_from_file = [float(b) for b in get_text(elem, 'weights_from_file').split()]
+        else:
+            weights_from_file = None
+        return cls(volume_weighting, mesh_id, weights_from_file)
 
 
 class Box(Spatial):

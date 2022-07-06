@@ -11,10 +11,12 @@ from typing import Optional
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
+from openmc.stats.multivariate import MeshIndependent
 
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
+from .mesh import MeshBase
 
 
 class RunMode(Enum):
@@ -975,6 +977,8 @@ class Settings:
     def _create_source_subelement(self, root):
         for source in self.source:
             root.append(source.to_xml_element())
+            if isinstance(source.space, MeshIndependent):
+                root.append(source.space.mesh.to_xml_element())
 
     def _create_volume_calcs_subelement(self, root):
         for calc in self.volume_calculations:
@@ -1323,6 +1327,12 @@ class Settings:
     def _source_from_xml_element(self, root):
         for elem in root.findall('source'):
             self.source.append(Source.from_xml_element(elem))
+            if isinstance(Source.from_xml_element(elem), MeshIndependent):
+                mesh_id = int(get_text(elem, 'mesh'))
+                path = f"./mesh[@id='{mesh_id}']"
+                mesh_elem = root.find(path)
+                if mesh_elem is not None:
+                    self.source.space.mesh = MeshBase.from_xml_element(mesh_elem)
 
     def _volume_calcs_from_xml_element(self, root):
         volume_elems = root.findall("volume_calc")

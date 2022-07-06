@@ -16,6 +16,7 @@ from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_text
+from .mesh import MeshBase
 
 
 class Source:

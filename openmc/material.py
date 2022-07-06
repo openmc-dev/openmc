@@ -1169,18 +1169,21 @@ class Material(IDManagerMixin):
 
         """
 
-        global MATERIAL_LIBRARIES
-        if not MATERIAL_LIBRARIES:
-            # loads in the available material libraries
-            mat_lib_path = Path(__file__).parent / 'data' / 'material_libraries.json'
-            MATERIAL_LIBRARIES = json.loads(mat_lib_path.read_text())
+        available_mat_libraries = ['pnnl_v2']
 
-        if library not in MATERIAL_LIBRARIES.keys():
+        if library not in available_mat_libraries:
             msg = (
-                    f'library {library} not found in available libraries '
-                    f'{list(MATERIAL_LIBRARIES.keys())}'
+                    f'library {library} not found in available libraries. '
+                    f'Supported libraries are {available_mat_libraries}'
             )
             raise ValueError(msg)
+
+        global MATERIAL_LIBRARIES
+
+        # loads in the library into the MATERIAL_LIBRARIES if not already loaded
+        if library not in MATERIAL_LIBRARIES.keys():
+            mat_lib_path = Path(__file__).parent / 'data' / f'material_library_{library}.json'
+            MATERIAL_LIBRARIES[library] = json.loads(mat_lib_path.read_text())
 
         if name not in MATERIAL_LIBRARIES[library].keys():
             msg = (

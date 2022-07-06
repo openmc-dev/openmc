@@ -198,6 +198,43 @@ class Source:
             element.append(self.time.to_xml_element('time'))
         return element
 
+    def plot_energy(self, n_samples=10000, seed=None, axes=None):
+        """Produce a histogram plot of source particle energy.
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of sampled values to generate
+        seed : int or None
+            Initial random number seed.
+        axes : matplotlib.axes.Axes, optional
+            Axes for plot
+
+        Returns
+        -------
+        axes : matplotlib.axes.Axes
+            Axes for plot
+
+        """
+
+        energy = self.energy.sample(n_samples=n_samples, seed=seed)
+
+        import matplotlib.pyplot as plt
+
+        # Setup axes is one wasn't passed
+        if axes is None:
+            fig = plt.figure()
+            ax = plt.axes()
+            ax.set_xlabel('Energy [eV]')
+            ax.set_ylabel('Frequency')
+        else:
+            ax = axes
+
+        ax.hist(energy, bins='auto')
+
+        return ax
+
+
     @classmethod
     def from_xml_element(cls, elem):
         """Generate source from an XML element

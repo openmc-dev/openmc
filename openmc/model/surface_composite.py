@@ -646,50 +646,87 @@ class RectangularParallelepiped(CompositeSurface):
 
 
 class Box(CompositeSurface):
-    _surface_names = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
+    """Arbitrarily oriented orthogonal box
+
+    This composite surface is composed of six planar surfaces that form an
+    arbitrarily oriented box when combined.
+
+    Parameters
+    ----------
+    v : iterable of float
+        (x,y,z) coordinates of a corner of the box
+    a1 : iterable of float
+        Vector of first side starting from ``v``
+    a2 : iterable of float
+        Vector of second side starting from ``v``
+    a3 : iterable of float
+        Vector of third side starting from ``v``
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    ax1_min, ax1_max : openmc.Plane
+        Planes representing minimum and maximum along first axis
+    ax2_min, ax2_max : openmc.Plane
+        Planes representing minimum and maximum along second axis
+    ax3_min, ax3_max : openmc.Plane
+        Planes representing minimum and maximum along third axis
+
+    """
+    _surface_names = ('ax1_min', 'ax1_max', 'ax2_min', 'ax2_max', 'ax3_min', 'ax3_max')
 
     def __init__(self, v, a1, a2, a3, **kwargs):
-        vx, vy, vz = v
-        a1x, a1y, a1z = a1
-        a2x, a2y, a2z = a2
-        a3x, a3y, a3z = a3
+        v = np.array(v)
+        a1 = np.array(a1)
+        a2 = np.array(a2)
+        a3 = np.array(a3)
+        # TODO: MCNP allows the box to be infinite in one dimension (omitting a3)
 
-        # Only support boxes with axis-aligned vectors
-        if any(x != 0.0 for x in (a1y, a1z, a2x, a2z, a3x, a3y)):
-            raise NotImplementedError('Box composite surface with non-axis-aligned '
-                                      'vector not supported.')
+        # Generate corners of box
+        p1 = v
+        p2 = v + a1
+        p3 = v + a2
+        p4 = v + a3
+        p5 = v + a1 + a2
+        p6 = v + a2 + a3
+        p7 = v + a1 + a3
 
-        # Determine each side of the box
-        if a1x > 0:
-            xmin, xmax = vx, vx + a1x
-        else:
-            xmin, xmax = vx + a1x, vx
-        if a2y > 0:
-            ymin, ymax = vy, vy + a2y
-        else:
-            ymin, ymax = vy + a2y, vy
-        if a3z > 0:
-            zmin, zmax = vz, vz + a3z
-        else:
-            zmin, zmax = vz + a3z, vz
+        # Generate 6 planes of box
+        self.ax1_min = openmc.Plane.from_points(p1, p3, p4, **kwargs)
+        self.ax1_max = openmc.Plane.from_points(p2, p5, p7, **kwargs)
+        self.ax2_min = openmc.Plane.from_points(p1, p4, p2, **kwargs)
+        self.ax2_max = openmc.Plane.from_points(p3, p6, p5, **kwargs)
+        self.ax3_min = openmc.Plane.from_points(p1, p2, p3, **kwargs)
+        self.ax3_max = openmc.Plane.from_points(p4, p7, p6, **kwargs)
 
-        # Create surfaces
-        self.xmin = openmc.XPlane(xmin, **kwargs)
-        self.xmax = openmc.XPlane(xmax, **kwargs)
-        self.ymin = openmc.YPlane(ymin, **kwargs)
-        self.ymax = openmc.YPlane(ymax, **kwargs)
-        self.zmin = openmc.ZPlane(zmin, **kwargs)
-        self.zmax = openmc.ZPlane(zmax, **kwargs)
+        # Helper function to flip coefficients on Plane surfaces
+        def flip_sense(surf):
+            surf.a = -surf.a
+            surf.b = -surf.b
+            surf.c = -surf.c
+            surf.d = -surf.d
+
+        # Make sure a point inside the box produces the correct senses. If not,
+        # flip the plane coefficients so it does.
+        mid_point = v + (a1 + a2 + a3)/2
+        for num in (1, 2, 3):
+            min_surf = getattr(self, f'ax{num}_min')
+            max_surf = getattr(self, f'ax{num}_max')
+            if mid_point in -min_surf:
+                flip_sense(min_surf)
+            if mid_point in +max_surf:
+                flip_sense(max_surf)
 
     def __neg__(self):
-        return (+self.xmin & -self.xmax &
-                +self.ymin & -self.ymax &
-                +self.zmin & -self.zmax)
+        return (+self.ax1_min & -self.ax1_max &
+                +self.ax2_min & -self.ax2_max &
+                +self.ax3_min & -self.ax3_max)
 
     def __pos__(self):
-        return (-self.xmin | +self.xmax |
-                -self.ymin | +self.ymax |
-                -self.zmin | +self.zmax)
+        return (-self.ax1_min | +self.ax1_max |
+                -self.ax2_min | +self.ax2_max |
+                -self.ax3_min | +self.ax3_max)
 
 
 class XConeOneSided(CompositeSurface):

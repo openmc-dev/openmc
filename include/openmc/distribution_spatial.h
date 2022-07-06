@@ -110,7 +110,13 @@ public:
 
 private:
   UnstructuredMesh* umesh_ptr_;
-  Position sampled_;
+  int32_t mesh_map_idx_;
+  std::string sample_scheme_;
+  double total_weight_;
+  std::vector<double> mesh_CDF_;
+  std::vector<double> mesh_weights_;
+  int64_t tot_bins_;
+  
 };
 
 //==============================================================================

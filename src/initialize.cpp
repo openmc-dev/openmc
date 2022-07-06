@@ -300,7 +300,6 @@ void read_input_xml()
 
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
-
   read_tallies_xml();
 
   // Initialize distribcell_filters

@@ -3,6 +3,11 @@
 #include "openmc/error.h"
 #include "openmc/random_lcg.h"
 #include "openmc/xml_interface.h"
+#include "openmc/mesh.h"
+#include "openmc/search.h"
+
+#include <iostream>
+#include <fstream>
 
 namespace openmc {
 
@@ -184,24 +189,71 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 // MeshIndependent implementation
 //==============================================================================
 
-// Loosely adapted Patrick's code shown here
 MeshIndependent::MeshIndependent(pugi::xml_node node)
 {
   // No in-tet distributions implemented, could include distributions for the barycentric coords
+  // Read in unstructured mesh from mesh_id value
+  int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
+  // Get pointer to spatial distribution
+  mesh_map_idx_ = model::mesh_map.at(mesh_id);
+  const auto& mesh_ptr = model::meshes[mesh_map_idx_];
   
-  int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
-  const auto& mesh_ptr = model::meshes[mesh_id];
-
-  // line from Patrick code, unsure of use
-  // int bin = mesh_ptr->get_bin();
-  const UnstructuredMesh* umesh_ptr_ = dynamic_cast<UnstructuredMesh*>(mesh_ptr.get());
+  // Check whether mesh pointer points to an unstructured mesh
+  umesh_ptr_ = dynamic_cast<UnstructuredMesh*>(mesh_ptr.get());
   if (!umesh_ptr_) {fatal_error("Mesh passed to spatial distribution is not an unstructured mesh object"); }
+
+  // Create CDF based on weighting scheme
+  tot_bins_ = umesh_ptr_->n_bins();
+  std::vector<double> weights = {};
+  weights.resize(tot_bins_);
+  double temp_total_weight = 0.0;
+  mesh_CDF_.resize(tot_bins_+1);
+  mesh_CDF_[0] = {0.0};
+  total_weight_ = 0.0;
+  mesh_weights_.resize(tot_bins_);
+
+  // Create cdfs for sampling for an element over a mesh
+  // Volume scheme is weighted by the volume of each tet
+  // File scheme is weighted by an array given in the xml file
+
+  if (check_for_node(node, "weights_from_file")) {
+    mesh_weights_ = get_node_array<double>(node, "weights_from_file");
+    if (mesh_weights_.size() != tot_bins_){
+      write_message("WARNING: The size of the weights array from the xml file does not equal the number of elements in the mesh.");
+    } if (get_node_value_bool(node, "volume_weighting")){
+      for (int i = 0; i < tot_bins_; i++){
+        weights[i] = mesh_weights_[i]*umesh_ptr_->volume(i);
+      } 
+    } else if (!get_node_value_bool(node, "volume_weighting")){
+      for (int i = 0; i < tot_bins_; i++){
+        weights[i] = mesh_weights_[i];  
+      }
+    }
+  } else if (get_node_value_bool(node, "volume_weighting")){
+    for (int i = 0; i<tot_bins_; i++){
+      weights[i] = umesh_ptr_->volume(i);
+    }
+  } else {
+    for (int i = 0; i<tot_bins_; i++){
+      weights[i] = 1;
+    }
+  }
+  for (int i = 0; i<tot_bins_; i++){
+    temp_total_weight = temp_total_weight + weights[i];
+  }
+  total_weight_ = temp_total_weight;
+  for (int i = 0; i<tot_bins_; i++){
+    mesh_CDF_[i+1] = mesh_CDF_[i] + weights[i]/total_weight_;
+  }
 }
 
 Position MeshIndependent::sample(uint64_t* seed) const
 { 
-  Position sampled_ = umesh_ptr_->sample(seed);
-  return sampled_;
+  // Create random variable for sampling element from mesh
+  float eta = prn(seed);
+  // Sample over the CDF defined in initialization above
+  int32_t tet_bin = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
+  return umesh_ptr_->sample(seed, tet_bin);
 }
 
 

@@ -257,7 +257,6 @@ void read_settings_xml()
       title();
   }
   write_message("Reading settings XML file...", 5);
-
   // Find if a multi-group or continuous-energy simulation is desired
   if (check_for_node(root, "energy_mode")) {
     std::string temp_str = get_node_value(root, "energy_mode", true, true);
@@ -267,6 +266,9 @@ void read_settings_xml()
       run_CE = true;
     }
   }
+
+  // Check for user meshes and allocate
+  read_meshes(root);
 
   // Look for deprecated cross_sections.xml file in settings.xml
   if (check_for_node(root, "cross_sections")) {
@@ -357,7 +359,6 @@ void read_settings_xml()
       }
     }
   }
-
   if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {
     // Read run parameters
     get_run_parameters(node_mode);
@@ -421,7 +422,6 @@ void read_settings_xml()
               "the OMP_NUM_THREADS environment variable to set the number of "
               "threads.");
   }
-
   // ==========================================================================
   // EXTERNAL SOURCE
 
@@ -445,7 +445,6 @@ void read_settings_xml()
       model::external_sources.push_back(make_unique<IndependentSource>(node));
     }
   }
-
   // Check if the user has specified to read surface source
   if (check_for_node(root, "surf_source_read")) {
     surf_source_read = true;
@@ -516,7 +515,6 @@ void read_settings_xml()
         std::stod(get_node_value(node_cutoff, "energy_positron"));
     }
   }
-
   // Particle trace
   if (check_for_node(root, "trace")) {
     auto temp = get_node_array<int64_t>(root, "trace");
@@ -547,9 +545,6 @@ void read_settings_xml()
         {temp[3 * i], temp[3 * i + 1], temp[3 * i + 2]});
     }
   }
-
-  // Read meshes
-  read_meshes(root);
 
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {

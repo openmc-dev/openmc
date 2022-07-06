@@ -72,7 +72,7 @@ public:
   //
   //! \param[in] seed Seed to use for random sampling
   //! \param[out] r Position within tet
-  virtual Position sample(uint64_t* seed) const=0;
+  virtual Position sample(uint64_t* seed, int32_t tet_bin) const=0;
 
   //! Determine which bins were crossed by a particle
   //
@@ -159,7 +159,7 @@ public:
     }
   };
 
-  Position sample(uint64_t* seed) const override;
+  Position sample(uint64_t* seed, int32_t tet_bin) const override;
 
   int get_bin(Position r) const override;
 
@@ -541,7 +541,7 @@ public:
 
   // Overridden Methods
 
-  Position sample(uint64_t* seed) const override;
+  Position sample(uint64_t* seed, int32_t tet_bin) const override;
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
@@ -694,7 +694,7 @@ public:
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
-  Position sample(uint64_t* seed) const override;
+  Position sample(uint64_t* seed, int32_t tet_bin) const override;
 
   int get_bin(Position r) const override;
 

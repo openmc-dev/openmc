@@ -52,7 +52,7 @@ def test_full(run_in_tmpdir, problem, multiproc):
     model = openmc.Model(geometry=geometry, settings=settings)
 
     # Create operator
-    chain_file = Path(__file__).parents[3] / 'chain_simple.xml'
+    chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
     op = openmc.deplete.Operator(model, chain_file)
     op.round_number = True
 

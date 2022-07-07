@@ -43,9 +43,9 @@ def test_full(run_in_tmpdir, vol_nuc, multiproc):
     """
 
     # Create operator
-    micro_xs_file = Path(__file__).parents[3] / 'micro_xs_simple.csv'
+    micro_xs_file = Path(__file__).parents[2] / 'micro_xs_simple.csv'
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(micro_xs_file)
-    chain_file = Path(__file__).parents[3] / 'chain_simple.xml'
+    chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
     flux = 1164719970082145.0 # flux from pincell example
     op = FluxDepletionOperator(vol_nuc[0], vol_nuc[1], micro_xs, flux, chain_file, dilute_initial=0.0)
 

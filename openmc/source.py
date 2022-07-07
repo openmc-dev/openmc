@@ -198,7 +198,7 @@ class Source:
             element.append(self.time.to_xml_element('time'))
         return element
 
-def plot_energy(self, n_samples=10000, seed=None, axes=None,  **kwargs):
+    def plot_energy(self, n_samples=10000, seed=None, axes=None,  **kwargs):
         """Produce a histogram plot of source particle energy.
 
         Parameters
@@ -223,8 +223,7 @@ def plot_energy(self, n_samples=10000, seed=None, axes=None,  **kwargs):
 
         # Setup axes is one wasn't passed
         if axes is None:
-            fig = plt.figure()
-            ax = plt.axes()
+            ax = plt.gca()
             ax.set_xlabel('Energy [eV]')
             ax.set_ylabel('Frequency')
         else:

@@ -90,6 +90,9 @@ class FluxDepletionOperator(TransportOperator):
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
+    round_number : bool
+        Whether or not to round output to OpenMC to 8 digits.
+        Useful in testing, as OpenMC is incredibly sensitive to exact values.
     prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
@@ -120,6 +123,7 @@ class FluxDepletionOperator(TransportOperator):
                  reduce_chain_level=None,
                  fission_yield_opts=None):
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
+        self.round_number = False
         self.flux_spectra = flux_spectra
         self._init_nuclides = nuclides
         self._volume = volume
@@ -134,6 +138,10 @@ class FluxDepletionOperator(TransportOperator):
         check_type('micro_xs', micro_xs, pd.DataFrame)
 
         self._micro_xs = micro_xs
+        if not isinstance(keff, type(None)):
+            check_type('keff', keff, tuple, float)
+            keff = ufloat(keff)
+
         self._keff = keff
 
         self._all_nuclides = self._get_all_nuclides_in_simulation()
@@ -210,12 +218,13 @@ class FluxDepletionOperator(TransportOperator):
         number.fill(0.0)
 
         # Get new number densities
-        for nuc, i_nuc_results in zip(nuclides, nuc_ind):
+        for nuc, i_nuc_results in zip(rxn_nuclides, nuc_ind):
             number[i_nuc_results] = self.number[0, nuc]
 
+
         # Calculate macroscopic cross sections and store them in rates array
-        for nuc in nuclides:
-            density = number.get_atom_density('0', nuc)
+        for nuc in rxn_nuclides:
+            density = self.number.get_atom_density('0', nuc)
             for rxn in self.chain.reactions:
                 rates.set(
                     '0',
@@ -236,7 +245,7 @@ class FluxDepletionOperator(TransportOperator):
         # vector. Since what we want is the depletion matrix, we need to
         # divide the reaction rates by the number of atoms to get the right
         # units.
-        mask = nonzero(number)
+        mask = np.nonzero(number)
         results = rates[0]
         for col in range(results.shape[1]):
             results[mask, col] /= number[mask]

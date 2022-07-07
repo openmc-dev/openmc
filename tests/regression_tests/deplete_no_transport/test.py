@@ -1,4 +1,4 @@
-""" Full system test suite. """
+""" Transport-free depletion test suite """
 
 from math import floor
 import shutil
@@ -34,7 +34,7 @@ def vol_nuc():
 
 
 @pytest.mark.parametrize("multiproc", [True, False])
-def test_full(run_in_tmpdir, vol_nuc, multiproc):
+def test_no_transport(run_in_tmpdir, vol_nuc, multiproc):
     """Transport free system test suite.
 
     Runs an OpenMC transport-free depletion calculation and verifies

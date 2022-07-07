@@ -12,7 +12,7 @@ from openmc.data import JOULE_PER_EV
 import openmc.deplete
 
 from tests.regression_tests import config
-from example_geometry import generate_problem
+from .example_geometry import generate_problem
 
 
 @pytest.fixture(scope="module")

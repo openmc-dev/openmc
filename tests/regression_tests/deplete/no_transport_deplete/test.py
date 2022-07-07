@@ -35,11 +35,10 @@ def vol_nuc():
 
 @pytest.mark.parametrize("multiproc", [True, False])
 def test_full(run_in_tmpdir, vol_nuc, multiproc):
-    """Full system test suite.
+    """Transport free system test suite.
 
-    Runs an OpenMC depletion calculation and verifies
-    that the outputs match a reference file. Sensitive to changes in
-    OpenMC.
+    Runs an OpenMC transport-free depletion calculation and verifies
+    that the outputs match a reference file.
 
     """
 

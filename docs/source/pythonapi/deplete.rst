@@ -40,18 +40,18 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     SICELIIntegrator
     SILEQIIntegrator
 
-Each of these classes expects a "transport operator" to be passed. An operator
-specific to OpenMC is available using the following class:
-
+Each of these classes expects a "transport operator" to be passed.
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: mycallable.rst
 
    Operator
+   FluxDepletionOperator
 
-The :class:`Operator` must also have some knowledge of how nuclides transmute
-and decay. This is handled by the :class:`Chain`.
+The :class:`Operator` and :class:`FluxDepletionOperator` classes must also have
+some knowledge of how nuclides transmute and decay. This is handled by the 
+:class:`Chain`.
 
 Minimal Example
 ---------------

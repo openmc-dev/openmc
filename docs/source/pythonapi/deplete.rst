@@ -41,6 +41,7 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     SILEQIIntegrator
 
 Each of these classes expects a "transport operator" to be passed.
+
 .. autosummary::
    :toctree: generated
    :nosignatures:

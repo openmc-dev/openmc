@@ -84,6 +84,39 @@ void Particle::create_secondary(double wgt, Direction u, double E,
   n_bank_second() += 1;
 }
 
+void Particle::from_fission_source(const SourceSite* src)
+{
+  // Reset some attributes
+  clear();
+  surface() = 0;
+  n_collision() = 0;
+  fission() = false;
+  zero_flux_derivs();
+  material() = C_NONE;
+  cell_born() = C_NONE;
+
+  // Copy attributes from source bank site
+  type() = src->particle;
+  wgt() = src->wgt;
+  wgt_last() = src->wgt;
+  r() = src->r;
+  u() = src->u;
+  r_last_current() = src->r;
+  r_last() = src->r;
+  u_last() = src->u;
+  if (settings::run_CE) {
+    E() = src->E;
+    g() = 0;
+  } else {
+    g() = static_cast<int>(src->E);
+    g_last() = static_cast<int>(src->E);
+    E() = data::mg.energy_bin_avg_[g()];
+  }
+  E_last() = E();
+  time() = src->time;
+  time_last() = src->time;
+}
+
 void Particle::from_source(const SourceSite* src)
 {
   // Reset some attributes

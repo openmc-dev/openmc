@@ -156,7 +156,7 @@ void initialize_mpi(MPI_Comm intracomm)
     disp[i] -= disp[0];
   }
 
-  int vector_bytes = sizeof(std::vector<Sourceopenmc::SourceSite>);
+  int vector_bytes = sizeof(std::vector<openmc::SourceSite>);
 
   int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, vector_bytes};
   MPI_Datatype types[] {

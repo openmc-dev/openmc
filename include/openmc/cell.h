@@ -80,7 +80,7 @@ public:
   //! contains_complex, we evaluate the PN expression using an operator stack
   //! where the sense of the surface is evaluated first and compared to the
   //! short circuiting possibilities. If no short circuiting is possible, we
-  //! continue through the PN expression.
+  //! continue through the prefix expression.
   //! \param r The 3D Cartesian coordinate to check.
   //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.

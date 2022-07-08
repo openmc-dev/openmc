@@ -379,7 +379,7 @@ void StructuredMesh::raytrace_mesh(
   // TODO: when c++-17 is available, use "if constexpr ()" to compile-time
   // enable/disable tally calls for now, T template type needs to provide both
   // surface and track methods, which might be empty. modern optimizing
-  // compilers will (hopefully) eleminate the complete code (including
+  // compilers will (hopefully) eliminate the complete code (including
   // calculation of parameters) but for the future: be explicit
 
   // Compute the length of the entire track.
@@ -957,7 +957,7 @@ double CylindricalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
 
-  if ((shell < 0) || (shell >= shape_[0]))
+  if ((shell < 0) || (shell > shape_[0]))
     return INFTY;
 
   // solve r.x^2 + r.y^2 == r0^2
@@ -1190,7 +1190,7 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
 double SphericalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  if ((shell < 0) || (shell >= shape_[0]))
+  if ((shell < 0) || (shell > shape_[0]))
     return INFTY;
 
   // solve |r+s*u| = r0
@@ -1312,20 +1312,17 @@ StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
 {
 
   if (i == 0) {
-
     return std::min(
       MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
       MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
-
     return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
                       find_theta_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_theta(ijk[i] - 1), false,
         find_theta_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
-
     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
                       find_phi_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
@@ -2567,8 +2564,9 @@ void read_meshes(pugi::xml_node root)
     // Check to make sure multiple meshes in the same file don't share IDs
     int id = std::stoi(get_node_value(node, "id"));
     if (contains(mesh_ids, id)) {
-      fatal_error(
-        fmt::format("Two or more meshes use the same unique ID '{}' in the same input file", id));
+      fatal_error(fmt::format(
+        "Two or more meshes use the same unique ID '{}' in the same input file",
+        id));
     }
     mesh_ids.insert(id);
 

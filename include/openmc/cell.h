@@ -70,7 +70,7 @@ public:
   //!
   //! The bounds of the cell are detemined by a logical expression involving
   //! surface half-spaces. At initialization, the expression was converted
-  //! to PN notation.
+  //! to prefix notation.
   //!
   //! The function is split into two cases, one for simple cells (those
   //! involving only the intersection of half-spaces) and one for complex cells.

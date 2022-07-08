@@ -408,6 +408,7 @@ void Particle::event_revive_from_secondary()
     secondary_bank().pop_back();
     n_event() = 0;
 
+    /*
     Cell& c {*model::cells[cell_born()]};
     // Find the distribcell instance number
     cell_instance() = 0;
@@ -422,6 +423,7 @@ void Particle::event_revive_from_secondary()
     } else {
       material() = c.material_[0];
     }
+    */
    
     /*
     sqrtkT_last() = sqrtkT();

@@ -250,7 +250,7 @@ protected:
   BoundingBox bounding_box_simple() const;
   static BoundingBox bounding_box_complex(vector<int32_t> region_prefix);
 
-  //! Applies DeMorgan's laws to a section of the prefix
+  //! Applies DeMorgan's laws to a section of the prefix expression
   //! \param start Starting point for token modification
   //! \param stop Stopping point for token modification
   static void apply_demorgan(

@@ -77,7 +77,7 @@ public:
   //! Simple cells can be evaluated with short circuit evaluation, i.e., as soon
   //! as we know that one half-space is not satisfied, we can exit. This
   //! provides a performance benefit for the common case. In
-  //! contains_complex, we evaluate the PN expression using an operator stack
+  //! contains_complex, we evaluate the prefix expression using an operator stack
   //! where the sense of the surface is evaluated first and compared to the
   //! short circuiting possibilities. If no short circuiting is possible, we
   //! continue through the prefix expression.

@@ -139,7 +139,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   SourceSite b;
-  MPI_Aint disp[12];
+  MPI_Aint disp[10];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
@@ -150,15 +150,11 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.particle, &disp[7]);
   MPI_Get_address(&b.parent_id, &disp[8]);
   MPI_Get_address(&b.progeny_id, &disp[9]);
-  MPI_Get_address(&b.n_coord, &disp[10]);
-  MPI_Get_address(&b.coord, &disp[11]);
-  for (int i = 11; i >= 0; --i) {
+  for (int i = 9; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int vector_bytes = sizeof(std::vector<openmc::SourceSite>);
-
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, vector_bytes};
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {
     MPI_DOUBLE,
     MPI_DOUBLE,
@@ -169,11 +165,9 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_INT,
     MPI_INT,
     MPI_LONG,
-    MPI_LONG,
-    MPI_INT,
-    MPI_BYTE
+    MPI_LONG
   };
-  MPI_Type_create_struct(12, blocks, disp, types, &mpi::source_site);
+  MPI_Type_create_struct(10, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 }
 #endif // OPENMC_MPI

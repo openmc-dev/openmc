@@ -1,4 +1,5 @@
 #include "openmc/initialize.h"
+#include "openmc/particle_data.h"
 
 #include <cstddef>
 #include <cstdlib> // for getenv
@@ -155,7 +156,9 @@ void initialize_mpi(MPI_Comm intracomm)
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1};
+  int vector_bytes = sizeof(std::vector<Sourceopenmc::SourceSite>);
+
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, vector_bytes};
   MPI_Datatype types[] {
     MPI_DOUBLE,
     MPI_DOUBLE,
@@ -168,8 +171,9 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_LONG,
     MPI_LONG,
     MPI_INT,
+    MPI_BYTE
   };
-  MPI_Type_create_struct(10, blocks, disp, types, &mpi::source_site);
+  MPI_Type_create_struct(12, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 }
 #endif // OPENMC_MPI

@@ -26,8 +26,8 @@ def vol_nuc():
     fuel.volume = np.pi * 0.42 ** 2
 
     nuclides = {}
-    for nuc, t in fuel.get_nuclide_atom_densities().items():
-        nuclides[nuc] = t[1] * 1e24
+    for nuc, dens in fuel.get_nuclide_atom_densities().items():
+        nuclides[nuc] = dens * 1e24
 
     # Load geometry from example
     return (fuel.volume, nuclides)

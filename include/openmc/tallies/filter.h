@@ -13,6 +13,7 @@
 #include "openmc/cell.h"
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/mesh.h"
 #include "openmc/particle.h"
 #include "openmc/tallies/filter_match.h"
 #include "pugixml.hpp"
@@ -79,7 +80,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Constructors, destructors, factory functions
-  
+
   ~Filter();
 
   Filter(pugi::xml_node node, int32_t index);
@@ -227,9 +228,9 @@ public:
   gsl::index index() const { return index_; }
 
   // Superset of type specific accessors
-  
+
   // Defined in header
-  
+
   const vector<int32_t>& cells() const { return cells_; }
   const vector<CellInstance>& cell_instances() const { return cell_instances_; }
   const vector<int>& groups() const { return groups_; }
@@ -262,7 +263,7 @@ public:
   void set_r(double r) { r_ = r; }
 
   // Defined once
-  
+
   void set_cells(gsl::span<int32_t> cells);
   void set_cell_instances(gsl::span<CellInstance> instances);
   void set_cell(int32_t cell);
@@ -277,7 +278,7 @@ public:
   void set_universes(gsl::span<int32_t> universes);
 
   // Defined by class (need dispatching)
-  
+
   void set_bins(gsl::span<const double> bins);
 
   void AzimuthalFilter_set_bins(gsl::span<const double> bins);
@@ -292,7 +293,7 @@ public:
   void SpatialLegendreFilter_set_order(int order);
   void ZernikeFilter_set_order(int order);
   void ZernikeRadialFilter_set_order(int order);
-  
+
   void copy_to_device();
 
   //----------------------------------------------------------------------------

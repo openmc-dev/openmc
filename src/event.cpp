@@ -170,20 +170,15 @@ void process_init_events(int n_particles)
 
 bool depletion_rx_check()
 {
-  if (!model::active_tracklength_tallies.empty()
-      &&
-      (simulation::need_depletion_rx || simulation::depletion_scores_present) )
-  {
-    return true;
-  }
-  return false;
+  return !model::active_tracklength_tallies.empty() &&
+    (simulation::need_depletion_rx || simulation::depletion_scores_present);
 }
 
 void process_calculate_xs_events_nonfuel()
 {
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_nonfuel.start();
-  
+
   bool need_depletion_rx = depletion_rx_check();
 
   int offset = simulation::advance_particle_queue.size();;
@@ -217,7 +212,7 @@ void process_calculate_xs_events_fuel()
 
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_fuel.start();
-  
+
   bool need_depletion_rx = depletion_rx_check();
 
   int offset = simulation::advance_particle_queue.size();;

@@ -804,8 +804,6 @@ bool CSGCell::contains_complex(
         int32_t op = op_stack.back();
         op_stack.pop_back();
 
-        // If the operator is a union and the particle is in the cell or the
-        // the operator is an intersection and the particle is not in the cell
         if ((op == OP_UNION && in_cell == true) ||
             (op == OP_INTERSECTION && in_cell == false)) {
           // Initialize counters for proceeding surfaces and operators

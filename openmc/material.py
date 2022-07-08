@@ -11,6 +11,7 @@ import warnings
 from typing import Optional, Union
 from xml.etree import ElementTree as ET
 
+import h5py
 import numpy as np
 
 import openmc
@@ -270,7 +271,7 @@ class Material(IDManagerMixin):
         return density*self.volume
 
     @classmethod
-    def from_hdf5(cls, group: str):
+    def from_hdf5(cls, group: h5py.Group):
         """Create material from HDF5 group
 
         Parameters

@@ -261,7 +261,7 @@ protected:
   static void remove_complement_ops(vector<int32_t>& region_prefix);
 
   //! Returns the beginning position of a parenthesis block (immediately before
-  //! two surface tokens) in the prefix given a starting position at the end of
+  //! two surface tokens) in the prefix expression given a starting position at the end of
   //! that block (immediately after two surface tokens)
   //! \param start Starting position of the search
   //! \param region_prefix The prefix being searched

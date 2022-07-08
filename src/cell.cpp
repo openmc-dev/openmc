@@ -108,7 +108,7 @@ vector<int32_t> tokenize(const std::string region_spec)
 }
 
 //==============================================================================
-//! Convert infix region specification to Polish Notation (PN)
+//! Convert infix region specification to prefix notation
 //!
 //! This function uses the shunting-yard algorithm.
 //==============================================================================
@@ -181,7 +181,7 @@ vector<int32_t> generate_region_prefix(int32_t cell_id, vector<int32_t> infix)
     stack.pop_back();
   }
 
-  // Reverse RPN to PN for short circuiting algorithm,
+  // Reverse postfix to prefix for short circuiting algorithm,
   // operators are needed in the front
   std::reverse(region_prefix.begin(), region_prefix.end());
 
@@ -518,7 +518,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
   }
 
-  // Convert the infix region spec to PN.
+  // Convert the infix region spec to prefix notation
   region_prefix_ = generate_region_prefix(id_, region_);
 
   // Check if this is a simple cell.
@@ -806,6 +806,13 @@ bool CSGCell::contains_complex(
 
         if ((op == OP_UNION && in_cell == true) ||
             (op == OP_INTERSECTION && in_cell == false)) {
+          // If we've reached here, we can logically "short circuit" the other
+          // operand. To do this, we simply skip over the next branch in the
+          // abstract syntax tree. Since union/intersection are binary
+          // operators, we need to move forward and count nodes/leaves of the
+          // tree until there are one more leaves (surfaces) than nodes
+          // (operators).
+
           // Initialize counters for proceeding surfaces and operators
           int number_of_operators = 0;
           int number_of_surfaces = 0;

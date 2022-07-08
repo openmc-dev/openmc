@@ -17,6 +17,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/particle_data.h"
 #include "openmc/photon.h"
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
@@ -117,7 +118,7 @@ void Particle::from_fission_source(const SourceSite* src)
   time_last() = src->time;
 }
 
-void Particle::from_source(const SourceSite* src)
+void Particle::from_source(const SecondarySourceSite* src)
 {
   // Reset some attributes
   surface() = 0;

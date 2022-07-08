@@ -70,6 +70,19 @@ struct SourceSite {
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
+};
+
+struct SecondarySourceSite {
+  Position r;
+  Direction u;
+  double E;
+  double time {0.0};
+  double wgt {1.0};
+  int delayed_group {0};
+  int surf_id {0};
+  ParticleType particle;
+  int64_t parent_id;
+  int64_t progeny_id;
 
   // Universe data used for secondary particles,
   // does not need to be added to the Bank MPI
@@ -306,7 +319,7 @@ private:
   int stream_;                // current RNG stream
 
   // Secondary particle bank
-  vector<SourceSite> secondary_bank_;
+  vector<SecondarySourceSite> secondary_bank_;
 
   int64_t current_work_; // current work index
 
@@ -670,7 +683,7 @@ public:
     return stream_;
   }
 
-  SourceSite& secondary_bank(int i)
+  SecondarySourceSite& secondary_bank(int i)
   {
     return secondary_bank_[i];
   }

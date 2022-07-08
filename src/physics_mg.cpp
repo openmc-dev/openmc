@@ -172,7 +172,14 @@ void create_fission_sites(Particle& p)
         break;
       }
     } else {
-      p.secondary_bank().push_back(site);
+      SecondarySourceSite secondary_site;
+      secondary_site.particle = site.particle;
+      secondary_site.wgt = site.wgt;
+      secondary_site.r = site.r;
+      secondary_site.u = site.u;
+      secondary_site.E = site.E;
+      secondary_site.time = site.time;
+      p.secondary_bank().push_back(secondary_site);
     }
 
     // Set the delayed group on the particle as well

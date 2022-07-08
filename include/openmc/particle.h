@@ -55,7 +55,7 @@ public:
   //! simply as a secondary particle.
   //! \param src Source site data
   void from_fission_source(const SourceSite* src);
-  void from_source(const SourceSite* src);
+  void from_source(const SecondarySourceSite* src);
 
   // Coarse-grained particle events
   void event_calculate_xs();

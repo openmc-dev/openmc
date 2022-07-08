@@ -95,7 +95,6 @@ void Particle::from_source(const SourceSite* src)
 
   // Check if the src has cell coordinates
   // and copy attributes or reset
-  /*
   if (src->coord.empty()) {
     clear();
     cell_born() = C_NONE;
@@ -103,13 +102,12 @@ void Particle::from_source(const SourceSite* src)
   } else {
     // Get source coordinate bank size and low level cell
     n_coord() = src->n_coord;
+    coord() = src->coord;
     cell_born() = coord(n_coord() - 1).cell;
 
     // Check lowest level cell to make sure it is a material
     Cell& c {*model::cells[cell_born()]};
     if (c.type_ == Fill::MATERIAL) {
-      coord() = src->coord;
-
       // Find the distribcell instance number
       cell_instance() = 0;
       if (c.distribcell_index_ >= 0) {
@@ -136,8 +134,8 @@ void Particle::from_source(const SourceSite* src)
       material() = C_NONE;
     }
   }
-  */
 
+  /*
   if (!src->coord.empty()) {
     n_coord() = src->n_coord;
     coord() = src->coord;
@@ -151,6 +149,7 @@ void Particle::from_source(const SourceSite* src)
     clear();
     cell_born() = C_NONE;
   }
+  */
 
   // Copy attributes from source bank site
   type() = src->particle;

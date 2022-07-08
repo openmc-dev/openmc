@@ -3,7 +3,6 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
-
 import os
 import math
 import re
@@ -345,7 +344,7 @@ class Material(IDManagerMixin):
             raise ValueError('No volume information found for material ID={}.'
                 .format(self.id))
 
-    def set_density(self, units: str, density:Optional[float]=None):
+    def set_density(self, units: str, density: Optional[float] = None):
         """Set the density of the material
 
         Parameters
@@ -377,7 +376,7 @@ class Material(IDManagerMixin):
                           density, Real)
             self._density = density
 
-    def add_nuclide(self, nuclide: str, percent: float, percent_type: str='ao'):
+    def add_nuclide(self, nuclide: str, percent: float, percent_type: str = 'ao'):
         """Add a nuclide to the material
 
         Parameters
@@ -505,10 +504,10 @@ class Material(IDManagerMixin):
         if macroscopic == self._macroscopic:
             self._macroscopic = None
 
-    def add_element(self, element: str, percent: float, percent_type: str='ao',
-                    enrichment: Optional[float]=None,
-                    enrichment_target: Optional[str]=None,
-                    enrichment_type: Optional[str]=None):
+    def add_element(self, element: str, percent: float, percent_type: str = 'ao',
+                    enrichment: Optional[float] = None,
+                    enrichment_target: Optional[str] = None,
+                    enrichment_type: Optional[str] = None):
         """Add a natural element to the material
 
         Parameters
@@ -613,10 +612,10 @@ class Material(IDManagerMixin):
                                       enrichment_type):
             self.add_nuclide(*nuclide)
 
-    def add_elements_from_formula(self, formula: str, percent_type: str='ao',
-                                  enrichment: Optional[float]=None,
-                                  enrichment_target: Optional[float]=None,
-                                  enrichment_type: Optional[str]=None):
+    def add_elements_from_formula(self, formula: str, percent_type: str = 'ao',
+                                  enrichment: Optional[float] = None,
+                                  enrichment_target: Optional[str] = None,
+                                  enrichment_type: Optional[str] = None):
         """Add a elements from a chemical formula to the material.
 
         .. versionadded:: 0.12
@@ -713,7 +712,7 @@ class Material(IDManagerMixin):
             else:
                 self.add_element(element, percent, percent_type)
 
-    def add_s_alpha_beta(self, name: str, fraction: float=1.0):
+    def add_s_alpha_beta(self, name: str, fraction: float = 1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
 
         Parameters
@@ -862,7 +861,7 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_mass_density(self, nuclide: Optional[str]=None):
+    def get_mass_density(self, nuclide: Optional[str] = None):
         """Return mass density of one or all nuclides
 
         Parameters
@@ -885,7 +884,7 @@ class Material(IDManagerMixin):
                 mass_density += density_i
         return mass_density
 
-    def get_mass(self, nuclide: Optional[str]=None):
+    def get_mass(self, nuclide: Optional[str] = None):
         """Return mass of one or all nuclides.
 
         Note that this method requires that the :attr:`Material.volume` has
@@ -907,7 +906,7 @@ class Material(IDManagerMixin):
             raise ValueError("Volume must be set in order to determine mass.")
         return self.volume*self.get_mass_density(nuclide)
 
-    def clone(self, memo: Optional[dict]=None):
+    def clone(self, memo: Optional[dict] = None):
         """Create a copy of this material with a new unique ID.
 
         Parameters
@@ -1031,7 +1030,7 @@ class Material(IDManagerMixin):
 
     @classmethod
     def mix_materials(cls, materials, fracs: typing.Iterable[float],
-                      percent_type: str='ao', name: Optional[str]=None):
+                      percent_type: str = 'ao', name: Optional[str] = None):
         """Mix materials together based on atom, weight, or volume fractions
 
         .. versionadded:: 0.12
@@ -1260,7 +1259,7 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def export_to_xml(self, path: Union[str, os.PathLike]='materials.xml'):
+    def export_to_xml(self, path: Union[str, os.PathLike] = 'materials.xml'):
         """Export material collection to an XML file.
 
         Parameters
@@ -1307,7 +1306,7 @@ class Materials(cv.CheckedList):
             fh.write('</materials>\n')
 
     @classmethod
-    def from_xml(cls, path: Union[str, os.PathLike]='materials.xml'):
+    def from_xml(cls, path: Union[str, os.PathLike] = 'materials.xml'):
         """Generate materials collection from XML file
 
         Parameters

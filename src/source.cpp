@@ -345,7 +345,7 @@ MCPLFileSource::MCPLFileSource(std::string path)
   if (!file_exists(path)) {
     fatal_error(fmt::format("Source file '{}' does not exist.", path));
   }
-   
+
   // Read the source from a binary file instead of sampling from some
   // assumed source distribution
   write_message(6, "Reading mcpl source file from {}",path);
@@ -367,7 +367,7 @@ SourceSite MCPLFileSource::sample(uint64_t *seed){
   SourceSite omc_particle;
   mcpl_particle *mcpl_particle;
   //extract particle from mcpl-file
-  mcpl_particle=mcpl_reazd(mcplfile);
+  mcpl_particle=mcpl_read(mcplfile);
   // check if it is  a neutron or a photon. otherwise skip
   while ( mcpl_particle->pdgcode!=2112 && mcpl_particle->pdgcode!=22 )
   {
@@ -375,9 +375,9 @@ SourceSite MCPLFileSource::sample(uint64_t *seed){
     //check for file exhaustion
   }
 
-  if(mcpl_particle->pdgcode=2112) {
+  if(mcpl_particle->pdgcode==2112) {
     omc_particle_=ParticleType::neutron;
-  } else {
+  } else if (mcpl_particle->pdgcode==22){
     omc_particle_=Particletype::photon;
   }
 

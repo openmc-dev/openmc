@@ -413,7 +413,7 @@ SourceSite MCPLFileSource::sample(uint64_t *seed){
   SourceSite omc_particle;
   mcpl_particle *mcpl_particle;
   //extract particle from mcpl-file
-  mcpl_particle=mcpl_reazd(mcplfile);
+  mcpl_particle=mcpl_read(mcplfile);
   // check if it is  a neutron or a photon. otherwise skip
   while ( mcpl_particle->pdgcode!=2112 && mcpl_particle->pdgcode!=22 )
   {
@@ -421,9 +421,9 @@ SourceSite MCPLFileSource::sample(uint64_t *seed){
     //check for file exhaustion
   }
 
-  if(mcpl_particle->pdgcode=2112) {
+  if(mcpl_particle->pdgcode==2112) {
     omc_particle_=ParticleType::neutron;
-  } else {
+  } else if (mcpl_particle->pdgcode==22){
     omc_particle_=Particletype::photon;
   }
 
@@ -436,9 +436,9 @@ SourceSite MCPLFileSource::sample(uint64_t *seed){
   omc_particle.u.y=mcpl_particle->direction[1];
   omc_particle.u.z=mcpl_particle->direction[2];
 
-  //mcpl stores particles in MeV
+  //mcpl stores kinetic energy in MeV
   omc_particle.E=mcpl_particle->ekin*1e6;
-
+  //mcpl stores time in ms
   omc_particle.t=mcpl_particle->time*1e-3;
   omc_particle.wgt=mcpl_particle->weight;
   omc_particle.delayed_group=0;

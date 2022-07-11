@@ -240,7 +240,7 @@ class StructuredMesh(MeshBase):
 
         vtk_grid = vtk.vtkStructuredGrid()
 
-        vtk_grid.SetDimensions(*self.dimension)
+        vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
 
         vtkPts = vtk.vtkPoints()
         vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))

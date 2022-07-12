@@ -660,8 +660,7 @@ class DAGMCUniverse(UniverseBase):
             coords = dagmc_file['tstt']['nodes']['coordinates'][()]
             lower_left_corner = coords.min(axis=0)
             upper_right_corner = coords.max(axis=0)
-            bounding_box = (lower_left_corner, upper_right_corner)
-            return bounding_box
+            return (lower_left_corner, upper_right_corner)
 
     @property
     def filename(self):

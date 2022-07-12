@@ -15,6 +15,7 @@ class SourceMCPLFileTestHarness(TestHarness):
     """Run OpenMC with the appropriate arguments and check the outputs."""
     try:
       self._create_input()
+      self._test_input_created()
       self._run_openmc()
       self._test_output_created()
       results = self._get_results()
@@ -31,6 +32,7 @@ class SourceMCPLFileTestHarness(TestHarness):
     """Update the results_true using the current version of OpenMC."""
     try:
       self._create_input()
+      self._test_input_created()
       self._run_openmc()
       self._test_output_created()
       results = self._get_results()
@@ -38,6 +40,14 @@ class SourceMCPLFileTestHarness(TestHarness):
       self._overwrite_results()
     finally:
       self._cleanup()
+
+  def _test_input_created(self):
+    """Check that the input mcpl.file was generated as it should"""
+    mcplfile=glob.glob(os.path.join(os.getcwd(),'source.10.mcpl'))
+    assert len(mcplfile) == 1, 'Either multiple or no mcpl files ' \
+      'exist.'
+    assert mcplfile[0].endswith('mcpl'), \
+      'output file does not end with mcpl.'
 
   def _test_output_created(self):
     """Check that the output files were created"""
@@ -55,5 +65,5 @@ class SourceMCPLFileTestHarness(TestHarness):
         os.remove(f)
 
 def test_mcpl_source_file():
-  harness = SourceMCPLFileTestHarness('statepoint.10.h5')
+  harness = SourceMCPLFileTestHarness('source.10.mcpl')
   harness.main()

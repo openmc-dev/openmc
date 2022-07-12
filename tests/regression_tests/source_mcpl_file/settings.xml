@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<settings>
+  <eigenvalue>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <particles>1000</particles>
+  </eigenvalue>
+  <source>
+    <mcpl>source.10.mcpl</mcpl>
+  </source>
+</settings>

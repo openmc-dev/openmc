@@ -52,6 +52,7 @@ int main(int argc, char **argv){
   /*the main particle loop*/
   particle=&Particle;
   int i;
+  srand(1234);
   for (i=0;i<batches*particles; i++){
     if(i%particles==0){
       printf("MCPL_test: generating batch number %d\n",i/particles);

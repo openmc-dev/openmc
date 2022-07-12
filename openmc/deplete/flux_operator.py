@@ -6,36 +6,22 @@ and one-group cross sections.
 """
 
 
-import copy
-from collections import OrderedDict
-import os
 from warnings import warn
 
 import numpy as np
 import pandas as pd
 from uncertainties import ufloat
 
-import openmc
 from openmc.checkvalue import check_type, check_value, check_iterable_type
-from openmc.data import DataLibrary
-from openmc.exceptions import DataError
 from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
-from .chain import _find_chain_file, REACTIONS
+from .chain import REACTIONS
 from .reaction_rates import ReactionRates
-from .results import Results
 from .helpers import ConstantFissionYieldHelper
 
-valid_rxns = list(REACTIONS.keys())
-valid_rxns += ['fission']
-
-# Convenience function for the micro_xs static methods
-def _validate_micro_xs_inputs(nuclides, reactions, data):
-    check_iterable_type('nuclides', nuclides, str)
-    check_iterable_type('reactions', reactions, str)
-    check_type('data', data, np.ndarray, expected_iter_type=float)
-    [check_value('reactions', reaction, valid_rxns) for reaction in reactions]
+valid_rxns = list(REACTIONS)
+valid_rxns.append('fission')
 
 
 
@@ -51,10 +37,10 @@ class FluxDepletionOperator(TransportOperator):
     Parameters
     ----------
     volume : float
-        Volume of the material being depleted in cm^3
+        Volume of the material being depleted in [cm^3]
     nuclides : dict of str to float
         Dictionary with nuclide names as keys and nuclide concentrations as
-        values. Nuclide concentration units are [at/cm^3].
+        values. Nuclide concentration units are [atom/cm^3].
     micro_xs : pandas.DataFrame
         DataFrame with nuclides names as index and microscopic cross section
         data in the columns. Cross section units are [cm^-2].
@@ -64,15 +50,10 @@ class FluxDepletionOperator(TransportOperator):
         Path to the depletion chain XML file.
     keff : 2-tuple of float, optional
        keff eigenvalue and uncertainty from transport calculation.
-       Defualt is None.
+       Default is None.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
-    dilute_initial : float, optional
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
-        Defaults to 1.0e3.
     prev_results : Results, optional
         Results from a previous depletion calculation.
     reduce_chain : bool, optional
@@ -86,10 +67,6 @@ class FluxDepletionOperator(TransportOperator):
 
     Attributes
     ----------
-    dilute_initial : float
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
     round_number : bool
         Whether or not to round output to OpenMC to 8 digits.
         Useful in testing, as OpenMC is incredibly sensitive to exact values.
@@ -117,12 +94,11 @@ class FluxDepletionOperator(TransportOperator):
                  chain_file,
                  keff=None,
                  fission_q=None,
-                 dilute_initial=1.0e3,
                  prev_results=None,
                  reduce_chain=False,
                  reduce_chain_level=None,
                  fission_yield_opts=None):
-        super().__init__(chain_file, fission_q, dilute_initial, prev_results)
+        super().__init__(chain_file, fission_q, 0.0, prev_results)
         self.round_number = False
         self.flux_spectra = flux_spectra
         self._init_nuclides = nuclides
@@ -138,7 +114,7 @@ class FluxDepletionOperator(TransportOperator):
         check_type('micro_xs', micro_xs, pd.DataFrame)
 
         self._micro_xs = micro_xs
-        if not isinstance(keff, type(None)):
+        if keff is not None:
             check_type('keff', keff, tuple, float)
             keff = ufloat(keff)
 
@@ -221,7 +197,6 @@ class FluxDepletionOperator(TransportOperator):
         for nuc, i_nuc_results in zip(rxn_nuclides, nuc_ind):
             number[i_nuc_results] = self.number[0, nuc]
 
-
         # Calculate macroscopic cross sections and store them in rates array
         for nuc in rxn_nuclides:
             density = self.number.get_atom_density('0', nuc)
@@ -230,8 +205,7 @@ class FluxDepletionOperator(TransportOperator):
                     '0',
                     nuc,
                     rxn,
-                    self._micro_xs[rxn].loc[nuc] *
-                    density)
+                    self._micro_xs[rxn, rxn] * density)
 
         # Get reaction rate in reactions/sec
         rates *= self.flux_spectra
@@ -334,15 +308,13 @@ class FluxDepletionOperator(TransportOperator):
         """
 
         # Validate inputs
-        try:
-            assert data.shape == (len(nuclides), len(reactions))
-        except AssertionError:
-            raise SyntaxError(
+        if data.shape != (len(nuclides), len(reactions)):
+            raise ValueError(
                 f'Nuclides list of length {len(nuclides)} and '
                 f'reactions array of length {len(reactions)} do not '
                 f'match dimensions of data array of shape {data.shape}')
 
-        _validate_micro_xs_inputs(nuclides, reactions, data)
+        FluxDepletionOperator._validate_micro_xs_inputs(nuclides, reactions, data)
 
         # Convert to cm^2
         if units == 'barn':
@@ -371,7 +343,7 @@ class FluxDepletionOperator(TransportOperator):
         """
         micro_xs = pd.read_csv(csv_file, index_col=0)
 
-        _validate_micro_xs_inputs(list(micro_xs.index),
+        FluxDepletionOperator._validate_micro_xs_inputs(list(micro_xs.index),
                                   list(micro_xs.columns),
                                   micro_xs.to_numpy())
 
@@ -379,6 +351,16 @@ class FluxDepletionOperator(TransportOperator):
             micro_xs /= 1e24
 
         return micro_xs
+
+    # Convenience function for the micro_xs static methods
+    @staticmethod
+    def _validate_micro_xs_inputs(nuclides, reactions, data):
+        check_iterable_type('nuclides', nuclides, str)
+        check_iterable_type('reactions', reactions, str)
+        check_type('data', data, np.ndarray, expected_iter_type=float)
+        for reaction in reactions:
+            check_value('reactions', reaction, valid_rxns)
+
 
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""
@@ -464,7 +446,7 @@ class FluxDepletionOperator(TransportOperator):
         return [nuc for nuc in nuc_list if nuc in self.chain]
 
     def _get_all_nuclides_in_simulation(self):
-        """Determine nuclides that will show up in the simulation.
+        """Determine nuclides that will show up in the depletion matrix.
         This is the union of the nuclides provided by the user and
         the nuclides present in the depletion chain.
 
@@ -487,9 +469,8 @@ class FluxDepletionOperator(TransportOperator):
 
     def _get_nuclides_with_data(self):
         """Finds nuclides with cross section data"""
-        nuclides_with_data = set(self._micro_xs.index)
+        return set(self._micro_xs.index)
 
-        return nuclides_with_data
 
     def _extract_number(self, local_mats, volume, nuclides, prev_res=None):
         """Construct AtomNumber using geometry
@@ -507,11 +488,6 @@ class FluxDepletionOperator(TransportOperator):
 
         """
         self.number = AtomNumber(local_mats, nuclides, volume, len(self.chain))
-
-        if self.dilute_initial != 0.0:
-            for nuc in self._burnable_nucs:
-                self.number.set_atom_density(
-                    np.s_[:], nuc, self.dilute_initial)
 
         # Now extract and store the number densities
         # From the geometry if no previous depletion results

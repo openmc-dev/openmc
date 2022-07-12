@@ -181,25 +181,25 @@ Transport-independent depletion
 
 .. note::
    
-   This is a brand-new feature and is under heavy development. API changes are
+   This feature is still under heavy development. API changes are
    possible and likely in the near future.
 
-OpenMC also supports transport-independent depletion calculations using the
-:class:`FluxDepletionOperator` class. Rather than taking a
-:class:`openmc.model.Model` object, this class accepts a volume,
+OpenMC supports running depletion calculations independent of the OpenMC
+transport solver using the :class:`FluxDepletionOperator` class. Rather than 
+taking a :class:`openmc.model.Model` object, this class accepts a volume,
 a dictionary of nuclide concentrations, a flux spectra, and one-group
-microscopic cross sections as a pandas dataframe. The class includes
-helper functions to constructe the dataframe from a csv file or from
+microscopic cross sections as a :class:`pandas.DataFrame`. The class includes
+helper functions to construct the dataframe from a csv file or from
 data arrays::
 
     ...
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(micro_xs_path)
-    nuclides = {'U234':8.92e18,
-                'U235':9.98e20,
-                'U238':2.22e22,
-                'U236':4.57e18,
-                'O16':4.64e22,
-                'O17':1.76e19}
+    nuclides = {'U234': 8.92e18,
+                'U235': 9.98e20,
+                'U238': 2.22e22,
+                'U236': 4.57e18,
+                'O16': 4.64e22,
+                'O17': 1.76e19}
     volume = 0.5 
     flux = 1.16e15
 
@@ -207,8 +207,10 @@ data arrays::
 
 
 A user can then define an integrator class as they would for a coupled
-transport-depletion calculation and follow the steps from there.
-present in the depletion chain.
+transport-depletion calculation and follow the same steps from there.
 
-.. note:: Ideally, one-group cross section data should be available for every reaction
-   in the depletion chain.
+.. note:: Ideally, one-group cross section data should be available for every
+   reaction in the depletion chain. If a nuclide that has a reaction 
+   associated with it in the depletion chain is present in the `nuclides` 
+   parameter but not the cross section data, that reaction will not be
+   simulated.

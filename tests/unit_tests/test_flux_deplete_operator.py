@@ -48,7 +48,7 @@ def test_create_micro_xs_from_data_array():
 
     FluxDepletionOperator.create_micro_xs_from_data_array(
         nuclides, reactions, data)
-    with pytest.raises(SyntaxError, match=r'Nuclides list of length \d* and '
+    with pytest.raises(ValueError, match=r'Nuclides list of length \d* and '
                        r'reactions array of length \d* do not '
                        r'match dimensions of data array of shape \(\d*\,d*\)'):
         FluxDepletionOperator.create_micro_xs_from_data_array(

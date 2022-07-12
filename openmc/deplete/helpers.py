@@ -2,6 +2,7 @@
 Class for normalizing fission energy deposition
 """
 import bisect
+import pandas as pd
 from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
@@ -122,6 +123,84 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 # -------------------------------------
 # Helpers for generating reaction rates
 # -------------------------------------
+
+
+class FluxReactionRateHelper(ReactionRateHelper):
+    """Class for generating one-group reaction rates with flux and
+    one-group cross sections.
+
+    This class does not generate tallies, and instead stores cross sections
+    for each nuclides and transmutation reaction relevant for a depletion
+    calculation.
+
+    Parameters
+    ----------
+    n_nucs : int
+        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
+    n_react : int
+        Number of reactions tracked by :class:`openmc.deplete.Operator`
+
+    Attributes
+    ----------
+    flux :
+
+    xs :
+
+
+    """
+    def __init__(self, n_nuc, n_react):
+        super().__init__(n_nuc, n_react)
+        self._flux = None
+        self._micro_xs = None
+
+    def generate_tallies(self, materials, scores):
+        """Unused in this case"""
+
+
+    @property
+    def flux(self):
+        """Flux in n cm^-2 s^-1"""
+        return self._flux
+
+    @flux.setter
+    def flux(self, flux):
+        check_type("flux", flux, float)
+        self._flux = flux
+
+    @property
+    def micro_xs(self):
+        """DataFrame of microscopic cross sections with requested reaction
+        for all nuclides"""
+        return self._micro_xs
+
+    @micro_xs.setter
+    def micro_xs(self, micro_xs):
+        # TODO : validate micro_xs
+        self._micro_xs = micro_xs
+
+    def get_material_rates(self, mat_id, nuc_index, react_index):
+        """Return 2D array of [nuclide, reaction] reaction rates
+
+        Parameters
+        ----------
+        mat_id : int
+            Unique ID for the requested material
+        nuc_index : list of str
+            Ordering of desired nuclides
+        react_index : list of str
+            Ordering of reactions
+        """
+        self._results_cache.fill(0.0)
+        full_tally_res = self._rate_tally.mean[mat_id]
+        for i_tally, (i_nuc, i_react) in enumerate(
+                product(nuc_index, react_index)):
+            self._results_cache[i_nuc, i_react] = full_tally_res[i_tally]
+
+        return self._results_cache
+
+
+
+
 
 
 class DirectReactionRateHelper(ReactionRateHelper):

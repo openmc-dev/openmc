@@ -1,5 +1,12 @@
 {
     "A-150 Tissue-Equivalent Plastic": {
+        "elements": [
+            {
+                "element": "H",
+                "percent": 0.5835629,
+                "percent_type": "ao"
+            }    
+        ],
         "nuclides": [
             {
                 "nuclide": "H1",

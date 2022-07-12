@@ -193,6 +193,10 @@ class StructuredMesh(MeshBase):
         s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
 
+    @property
+    def num_mesh_cells(self):
+        return np.prod(self.dimension)
+
     def write_data_to_vtk(self, points, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
@@ -236,7 +240,7 @@ class StructuredMesh(MeshBase):
 
         vtk_grid = vtk.vtkStructuredGrid()
 
-        vtk_grid.SetDimensions(*self.dimension)
+        vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
 
         vtkPts = vtk.vtkPoints()
         vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
@@ -343,10 +347,6 @@ class RegularMesh(StructuredMesh):
                 ls = self._lower_left
                 dims =  self._dimension
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
-
-    @property
-    def num_mesh_cells(self):
-        return np.prod(self._dimension)
 
     @property
     def volumes(self):
@@ -1546,6 +1546,7 @@ class UnstructuredMesh(MeshBase):
             raise RuntimeError("No information about this mesh has "
                                "been loaded from a statepoint file.")
         return len(self._centroids)
+
 
     @centroids.setter
     def centroids(self, centroids):

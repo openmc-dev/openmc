@@ -10,6 +10,7 @@ from collections.abc import Iterable, Callable
 from copy import deepcopy
 from inspect import signature
 from numbers import Real, Integral
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import sys
@@ -56,6 +57,23 @@ except AttributeError:
     # Can't set __doc__ on properties on Python 3.4
     pass
 
+@contextmanager
+def change_directory(output_dir):
+    """
+    Helper function for managing the current directory.
+
+    Parameters
+    ----------
+    output_dir : pathlib.Path
+        Directory to switch to.
+    """
+    _orig_dir  = os.getcwd()
+    try:
+        output_dir.mkdir(exist_ok=True)
+        os.chdir(output_dir)
+        yield
+    finally:
+        os.chdir(_orig_dir)
 
 class TransportOperator(ABC):
     """Abstract class defining a transport operator
@@ -87,9 +105,14 @@ class TransportOperator(ABC):
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
+    output_dir : pathlib.Path
+        Path to output directory to save results.
     prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
+    chain : openmc.deplete.Chain
+        The depletion chain information necessary to form matrices and tallies.
+
     """
     def __init__(self, chain_file, fission_q=None, dilute_initial=1.0e3,
                  prev_results=None):
@@ -132,18 +155,6 @@ class TransportOperator(ABC):
             Eigenvalue and reaction rates resulting from transport operator
 
         """
-
-    def __enter__(self):
-        # Save current directory and move to specific output directory
-        self._orig_dir = os.getcwd()
-        self.output_dir.mkdir(exist_ok=True)
-        os.chdir(self.output_dir)
-
-        return self.initial_condition()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.finalize()
-        os.chdir(self._orig_dir)
 
     @property
     def output_dir(self):
@@ -775,7 +786,8 @@ class Integrator(ABC):
 
             .. versionadded:: 0.13.1
         """
-        with self.operator as conc:
+        with change_directory(self.operator.output_dir):
+            conc = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
 
             for i, (dt, source_rate) in enumerate(self):
@@ -813,6 +825,8 @@ class Integrator(ABC):
             StepResult.save(self.operator, [conc], res_list, [t, t],
                          source_rate, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(len(self) + self._i_res)
+
+        self.operator.finalize()
 
 
 @add_params
@@ -931,7 +945,8 @@ class SIIntegrator(Integrator):
 
             .. versionadded:: 0.13.1
         """
-        with self.operator as conc:
+        with change_directory(self.operator.output_dir):
+            conc = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
@@ -966,6 +981,8 @@ class SIIntegrator(Integrator):
             StepResult.save(self.operator, [conc], [res_list[-1]], [t, t],
                          p, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(self._i_res + len(self))
+
+        self.operator.finalize()
 
 
 class DepSystemSolver(ABC):

@@ -656,12 +656,12 @@ class DAGMCUniverse(UniverseBase):
 
     @property
     def bounding_box(self):
-        dagmc_file = h5py.File(self.filename)
-        coords = dagmc_file['tstt']['nodes']['coordinates'][()]
-        lower_left_corner = coords.min(axis=0)
-        upper_right_corner = coords.max(axis=0)
-        bounding_box = (lower_left_corner, upper_right_corner)
-        return bounding_box
+        with h5py.File(self.filename) as dagmc_file:
+            coords = dagmc_file['tstt']['nodes']['coordinates'][()]
+            lower_left_corner = coords.min(axis=0)
+            upper_right_corner = coords.max(axis=0)
+            bounding_box = (lower_left_corner, upper_right_corner)
+            return bounding_box
 
     @property
     def filename(self):

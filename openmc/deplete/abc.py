@@ -67,13 +67,14 @@ def change_directory(output_dir):
     output_dir : pathlib.Path
         Directory to switch to.
     """
-    _orig_dir  = os.getcwd()
+    orig_dir  = os.getcwd()
     try:
         output_dir.mkdir(exist_ok=True)
         os.chdir(output_dir)
         yield
     finally:
-        os.chdir(_orig_dir)
+        os.chdir(orig_dir)
+
 
 class TransportOperator(ABC):
     """Abstract class defining a transport operator

@@ -33,7 +33,7 @@
 #include "openmc/state_point.h"
 #include "openmc/xml_interface.h"
 
-#ifdef HAS_MCPL
+#ifdef OPENMC_MCPL
 #include <mcpl.h>
 #endif
 
@@ -382,6 +382,7 @@ CustomSourceWrapper::~CustomSourceWrapper()
 #endif
 }
 
+#ifdef OPENMC_MCPL
 //===========================================================================
 // Read particles from an MCPL-file
 //===========================================================================
@@ -397,54 +398,70 @@ MCPLFileSource::MCPLFileSource(std::string path)
   write_message(6, "Reading mcpl source file from {}",path);
 
   // Open the mcpl file
-  mcpl_file = mcpl_open(path.c_str);
+  mcpl_file = mcpl_open_file(path.c_str());
 
   //do checks on the mcpl_file to see if particles are many enough.
   // should model this on the example source shown in the docs.
-  uint64_t nparticles=mcpl_hdr_nparticles(mcpl_file);
+  n_sites=mcpl_hdr_nparticles(mcpl_file);
 
+  read_source_bank(sites_);
 }
 
-MCPLFileSource::~MCPLFilsSource(){
+MCPLFileSource::~MCPLFileSource(){
   mcpl_close_file(mcpl_file);
 }
 
-SourceSite MCPLFileSource::sample(uint64_t *seed){
-  SourceSite omc_particle;
-  mcpl_particle *mcpl_particle;
+SourceSite MCPLFileSource::sample(uint64_t* seed) const
+{
+  size_t i_site = sites_.size() * prn(seed);
+  return sites_[i_site];
+}
+
+void MCPLFileSource::read_source_bank(vector<SourceSite> &sites_)
+{
+  sites_.resize(n_sites);
+  for (int i=0;i<n_sites;i++){
+    sites_[i]=read_single_particle();
+  }
+}
+
+SourceSite MCPLFileSource::read_single_particle() const
+{
+  SourceSite omc_particle_;
+  const mcpl_particle_t *mcpl_particle;
   //extract particle from mcpl-file
-  mcpl_particle=mcpl_read(mcplfile);
-  // check if it is  a neutron or a photon. otherwise skip
-  while ( mcpl_particle->pdgcode!=2112 && mcpl_particle->pdgcode!=22 )
-  {
-    mcpl_particle(mcpl_read(mcplfile);
-    //check for file exhaustion
+  mcpl_particle=mcpl_read(mcpl_file);
+  // check if it is a neutron or a photon. otherwise skip
+  while ( mcpl_particle->pdgcode!=2112 && mcpl_particle->pdgcode!=22 ) {
+    mcpl_particle=mcpl_read(mcpl_file);
+    //should check for file exhaustion This could happen if particles are other than
+    //neutrons or photons
   }
 
   if(mcpl_particle->pdgcode==2112) {
-    omc_particle_=ParticleType::neutron;
-  } else if (mcpl_particle->pdgcode==22){
-    omc_particle_=Particletype::photon;
+    omc_particle_.particle=ParticleType::neutron;
+  } else if (mcpl_particle->pdgcode==22) {
+    omc_particle_.particle=ParticleType::photon;
   }
 
   //particle is good, convert to openmc-formalism
-  omc_particle.r.x=mcpl_particle.x;
-  omc_particle.r.y=mcpl_particle.y;
-  omc_particle.r.z=mcpl_particle.z;
+  omc_particle_.r.x=mcpl_particle->position[0];
+  omc_particle_.r.y=mcpl_particle->position[1];
+  omc_particle_.r.z=mcpl_particle->position[2];
 
-  omc_particle.u.x=mcpl_particle->direction[0];
-  omc_particle.u.y=mcpl_particle->direction[1];
-  omc_particle.u.z=mcpl_particle->direction[2];
+  omc_particle_.u.x=mcpl_particle->direction[0];
+  omc_particle_.u.y=mcpl_particle->direction[1];
+  omc_particle_.u.z=mcpl_particle->direction[2];
 
   //mcpl stores kinetic energy in MeV
-  omc_particle.E=mcpl_particle->ekin*1e6;
+  omc_particle_.E=mcpl_particle->ekin*1e6;
   //mcpl stores time in ms
-  omc_particle.t=mcpl_particle->time*1e-3;
-  omc_particle.wgt=mcpl_particle->weight;
-  omc_particle.delayed_group=0;
-  return omc_particle;
+  omc_particle_.time=mcpl_particle->time*1e-3;
+  omc_particle_.wgt=mcpl_particle->weight;
+  omc_particle_.delayed_group=0;
+  return omc_particle_;
 }
-
+#endif //OPENMC_MCPL
 
 //==============================================================================
 // Non-member functions

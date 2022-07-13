@@ -36,6 +36,7 @@ option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"            
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
+option(OPENMC_USE_MCPL        "Enable MPCPL"                                         OFF)
 
 #===============================================================================
 # Set a default build configuration if not explicitly specified
@@ -152,6 +153,10 @@ endif()
 if(OPENMC_ENABLE_COVERAGE)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
+endif()
+
+if(OPENMC_USE_MCPL)
+  list(APPEND ldflags -lmcpl)
 endif()
 
 # Show flags being used
@@ -408,6 +413,10 @@ endif()
 if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
 endif()
+if(OPENMC_USE_MCPL)
+  target_compile_definitions(libopenmc PUBLIC -DOPENMC_MCPL)
+endif()
+
 
 # Set git SHA1 hash as a compile definition
 if(GIT_FOUND)

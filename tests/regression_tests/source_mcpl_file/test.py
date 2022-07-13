@@ -1,11 +1,6 @@
-import pathlib as pl
 import os
-import shutil
 import subprocess
-import textwrap
 import glob
-import openmc
-import pytest
 
 from tests.testing_harness import TestHarness
 
@@ -25,7 +20,8 @@ class SourceMCPLFileTestHarness(TestHarness):
       self._cleanup()
 
   def _create_input(self):
-    subprocess.run(['gcc','-o','gen_dummy_mcpl.out','gen_dummy_mcpl.c','-lm','-lmcpl'])
+    compiled=subprocess.run(['gcc','-o','gen_dummy_mcpl.out','gen_dummy_mcpl.c','-lm','-lmcpl'])
+    assert compiled==0, 'Could not compile mcpl-file generator code'
     subprocess.run(['./gen_dummy_mcpl.out'])
 
   def update_results(self):

@@ -46,6 +46,11 @@ class DAGMCUniverseTest(PyAPITestHarness):
         # create the DAGMC universe
         pincell_univ = openmc.DAGMCUniverse(filename='dagmc.h5m', auto_geom_ids=True)
 
+        # checks that the bounding box is calculated correctly
+        bounding_box = pincell_univ.bounding_box
+        assert bounding_box[0].tolist() == [-25., -25., -25.]
+        assert bounding_box[1].tolist() == [25., 25., 25.]
+
         # create a 2 x 2 lattice using the DAGMC pincell
         pitch = np.asarray((24.0, 24.0))
         lattice = openmc.RectLattice()

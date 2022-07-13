@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
 
+import h5py
 import numpy as np
 
 import openmc
@@ -630,6 +631,9 @@ class DAGMCUniverse(UniverseBase):
     auto_mat_ids : bool
         Set IDs automatically on initialization (True)  or report overlaps
         in ID space between OpenMC and UWUW materials (False)
+    bounding_box : 2-tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        of the universe.
     """
 
     def __init__(self,
@@ -649,6 +653,14 @@ class DAGMCUniverse(UniverseBase):
         string += '{: <16}=\t{}\n'.format('\tGeom', 'DAGMC')
         string += '{: <16}=\t{}\n'.format('\tFile', self.filename)
         return string
+
+    @property
+    def bounding_box(self):
+        with h5py.File(self.filename) as dagmc_file:
+            coords = dagmc_file['tstt']['nodes']['coordinates'][()]
+            lower_left_corner = coords.min(axis=0)
+            upper_right_corner = coords.max(axis=0)
+            return (lower_left_corner, upper_right_corner)
 
     @property
     def filename(self):

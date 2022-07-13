@@ -38,6 +38,17 @@ def test_remove_nuclide():
     assert m.nuclides[1].percent == 2.0
 
 
+def test_remove_elements():
+    """Test removing elements."""
+    m = openmc.Material()
+    for elem, percent in [('Li', 1.0), ('Be', 1.0)]:
+        m.add_element(elem, percent)
+    m.remove_element('Li')
+    assert len(m.nuclides) == 1
+    assert m.nuclides[0].name == 'Be9'
+    assert m.nuclides[0].percent == 1.0
+
+
 def test_elements():
     """Test adding elements."""
     m = openmc.Material()
@@ -89,7 +100,7 @@ def test_add_elements_by_formula():
     m.add_elements_from_formula('Li4SiO4')
     # checking the ratio of elements is 4:1:4 for Li:Si:O
     elem = defaultdict(float)
-    for nuclide, adens in m.get_nuclide_atom_densities().values():
+    for nuclide, adens in m.get_nuclide_atom_densities().items():
         if nuclide.startswith("Li"):
             elem["Li"] += adens
         if nuclide.startswith("Si"):
@@ -106,7 +117,7 @@ def test_add_elements_by_formula():
                 'O16': 0.443386, 'O17': 0.000168}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing the correct nuclides are added to the Material when enriched
     m = openmc.Material()
@@ -118,7 +129,7 @@ def test_add_elements_by_formula():
                 'O16': 0.443386, 'O17': 0.000168}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing the use of brackets
     m = openmc.Material()
@@ -126,7 +137,7 @@ def test_add_elements_by_formula():
 
     # checking the ratio of elements is 2:2:6 for Mg:N:O
     elem = defaultdict(float)
-    for nuclide, adens in m.get_nuclide_atom_densities().values():
+    for nuclide, adens in m.get_nuclide_atom_densities().items():
         if nuclide.startswith("Mg"):
             elem["Mg"] += adens
         if nuclide.startswith("N"):
@@ -144,7 +155,7 @@ def test_add_elements_by_formula():
                 'O16': 0.599772, 'O17': 0.000227}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing non integer multiplier results in a value error
     m = openmc.Material()
@@ -278,10 +289,19 @@ def test_get_nuclide_densities(uo2):
 
 
 def test_get_nuclide_atom_densities(uo2):
-    nucs = uo2.get_nuclide_atom_densities()
-    for nuc, density in nucs.values():
+    for nuc, density in uo2.get_nuclide_atom_densities().items():
         assert nuc in ('U235', 'O16')
         assert density > 0
+
+
+def test_get_nuclide_atoms():
+    mat = openmc.Material()
+    mat.add_nuclide('Li6', 1.0)
+    mat.set_density('atom/cm3', 3.26e20)
+    mat.volume = 100.0
+
+    atoms = mat.get_nuclide_atoms()
+    assert atoms['Li6'] == pytest.approx(mat.density * mat.volume)
 
 
 def test_mass():
@@ -330,7 +350,7 @@ def test_borated_water():
                 'O16':2.4672e-02}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
     assert m.id == 50
 
     # Test the Celsius conversion.
@@ -404,3 +424,30 @@ def test_mix_materials():
     assert m3.density == pytest.approx(dens3)
     assert m4.density == pytest.approx(dens4)
     assert m5.density == pytest.approx(dens5)
+
+
+def test_activity_of_stable():
+    """Creates a material with stable isotopes to checks the activity is 0"""
+    m1 = openmc.Material()
+    m1.add_element("Fe", 1)
+    m1.set_density('g/cm3', 1)
+    m1.volume = 1
+    assert m1.activity == 0
+
+
+def test_activity_of_tritium():
+    """Checks that 1g of tritium has the correct activity"""
+    m1 = openmc.Material()
+    m1.add_nuclide("H3", 1)
+    m1.set_density('g/cm3', 1)
+    m1.volume = 1
+    assert pytest.approx(m1.activity) == 3.559778e14 
+
+
+def test_activity_of_metastable():
+    """Checks that 1 mol of a Tc99_m1 nuclides has the correct activity"""
+    m1 = openmc.Material()
+    m1.add_nuclide("Tc99_m1", 1)
+    m1.set_density('g/cm3', 1)
+    m1.volume = 98.9
+    assert pytest.approx(m1.activity, rel=0.001) == 1.93e19

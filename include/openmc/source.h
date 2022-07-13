@@ -12,6 +12,10 @@
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
+#ifdef OPENMC_MCPL
+#include <mcpl.h>
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -100,6 +104,7 @@ private:
   vector<SourceSite> sites_; //!< Source sites from a file
 };
 
+#ifdef OPENMC_MCPL
 //==============================================================================
 // MCPL-file input source
 //==============================================================================
@@ -109,24 +114,21 @@ public:
   MCPLFileSource(std::string path);
   ~MCPLFileSource();
 
-  // Properties
-  ParticleType particle_type() const { return particle_; }
-
+  // Methods
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Site read from MCPL-file
-  SourceSite sample(uint64_t* seed) const override;
+  SourceSite sample(uint64_t* seed) const;
 
 private:
-  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
+  SourceSite read_single_particle() const;
+  void read_source_bank(vector<SourceSite> &sites_);
+
   vector <SourceSite> sites_; //!<source sites from an MCPL-file
   mcpl_file_t mcpl_file;
-
-  uint64_t read_particles;
+  uint64_t n_sites;
 };
-
-
-
+#endif
 
 //==============================================================================
 //! Wrapper for custom sources that manages opening/closing shared library

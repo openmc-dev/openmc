@@ -1,9 +1,6 @@
 """OpenMC transport operator
 
-This module implements a transport operator for OpenMC so that it can be used by
-depletion integrators. The implementation makes use of the Python bindings to
-OpenMC's C API so that reading tally results and updating material number
-densities is all done in-memory instead of through the filesystem.
+This module implements functions used by both OpenMC transport operators as well as pure depletion operators.
 
 """
 
@@ -11,9 +8,9 @@ import copy
 from abc import abstractmethod
 from collections import OrderedDict
 import os
-from warnings import warn
 
 import numpy as np
+from uncertainties import ufloat
 
 import openmc
 from openmc.exceptions import DataError
@@ -22,10 +19,6 @@ from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
 from .results import Results
-from .helpers import (
-    DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
-    FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,
-    SourceRateHelper, FluxCollapseHelper)
 
 
 __all__ = ["OpenMCOperator", "OperatorResult"]
@@ -124,45 +117,61 @@ class OpenMCOperator(TransportOperator):
         depletion operation is complete. Defaults to clearing the library.
     """
 
-    ## modify
-    def __init__(self, chain_file=None, fission_q=None, dilute_initial=0.0, prev_results=None):
+    def __init__(self, materials=None, cross_sections=None, chain_file=None, prev_results=None, diff_burnable_mats=False, normalization_mode=None, fission_q=None, dilute_initial=0.0, fission_yield_mode=None, fission_yield_opts=None,
+                 reaction_rate_mode=None, reaction_rate_opts=None,
+                 reduce_chain=False, reduce_chain_level=None):
 
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
+        self.round_number=False
+        self.materials = materials
+        self.cross_sections = cross_sections
 
-    ## clear, but we must keep the method
-    def __call__(self, vec, source_rate):
-        """Runs a simulation.
+        # Reduce the chain to only those nuclides present
+        if reduce_chain:
+            init_nuclides = set()
+            for material in self.materials:
+                if not material.depletable:
+                    continue
+                for name, _dens_percent, _dens_type in material.nuclides:
+                    init_nuclides.add(name)
 
-        Simulation will abort under the following circumstances:
+            self.chain = self.chain.reduce(init_nuclides, reduce_chain_level)
 
-            1) No energy is computed using OpenMC tallies.
+        if diff_burnable_mats:
+            self._differentiate_burnable_mats()
 
-        Parameters
-        ----------
-        vec : list of numpy.ndarray
-            Total atoms to be used in function.
-        source_rate : float
-            Power in [W] or source rate in [neutron/sec]
+        # Determine which nuclides have cross section data
+        # This nuclides variables contains every nuclides
+        # for which there is an entry in the micro_xs parameter
+        openmc.reset_auto_ids()
+        self.burnable_mats, volumes, all_nuclides = self._get_burnable_mats()
+        self.local_mats = _distribute(self.burnable_mats)
 
-        Returns
-        -------
-        openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates resulting from transport operator
+        self._mat_index_map = {
+            lm: self.burnable_mats.index(lm) for lm in self.local_mats}
 
-        """
+        if self.prev_res is not None:
+            self._load_previous_results()
 
-    ## clear, but must keep the method
-    def write_bos_data(step):
-        """Write a state-point file with beginning of step data
 
-        Parameters
-        ----------
-        step : int
-            Current depletion step including restarts
-        """
-        pass
+        self.nuclides_with_data = self._get_nuclides_with_data(self.cross_sections)
 
-    ## keep
+        # Select nuclides with data that are also in the chain
+        self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
+                               if nuc.name in self.nuclides_with_data]
+
+        # Extract number densities from the geometry / previous depletion run
+        self._extract_number(self.local_mats,
+                             volumes,
+                             all_nuclides,
+                             self.prev_res)
+
+        # Create reaction rates array
+        self.reaction_rates = ReactionRates(
+            self.local_mats, self._burnable_nucs, self.chain.reactions)
+
+        self._get_helper_classes(reaction_rate_mode, reaction_rate_opts, normalization_mode, fission_yield_mode, fission_yield_opts)
+
     def _get_burnable_mats(self):
         """Determine depletable materials, volumes, and nuclides
 
@@ -212,8 +221,7 @@ class OpenMCOperator(TransportOperator):
 
         return burnable_mats, volume, nuclides
 
-    ## keep
-    def _extract_number(self, local_mats, volume, nuclides, prev_res=None):
+    def _extract_number(self, local_mats, volume, all_nuclides, prev_res=None):
         """Construct AtomNumber using geometry
 
         Parameters
@@ -222,13 +230,13 @@ class OpenMCOperator(TransportOperator):
             Material IDs to be managed by this process
         volume : OrderedDict of str to float
             Volumes for the above materials in [cm^3]
-        nuclides : list of str
+        all_nuclides : list of str
             Nuclides to be used in the simulation.
         prev_res : Results, optional
             Results from a previous depletion calculation
 
         """
-        self.number = AtomNumber(local_mats, nuclides, volume, len(self.chain))
+        self.number = AtomNumber(local_mats, all_nuclides, volume, len(self.chain))
 
         if self.dilute_initial != 0.0:
             for nuc in self._burnable_nucs:
@@ -296,7 +304,6 @@ class OpenMCOperator(TransportOperator):
 
             self.number.set_atom_density(mat_id, nuclide, atom_per_cc)
 
-    ## keep, will need to modify
     def initial_condition(self, materials):
         """Performs final setup and returns initial condition.
 
@@ -321,50 +328,11 @@ class OpenMCOperator(TransportOperator):
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
 
-    ## keep? there is a non-removable part of this
-    ## that needs the openmc c executable
+    @abstractmethod
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""
 
-        for rank in range(comm.size):
-            number_i = comm.bcast(self.number, root=rank)
-
-            for mat in number_i.materials:
-                nuclides = []
-                densities = []
-                for nuc in number_i.nuclides:
-                    if nuc in self.nuclides_with_data:
-                        val = 1.0e-24 * number_i.get_atom_density(mat, nuc)
-
-                        # If nuclide is zero, do not add to the problem.
-                        if val > 0.0:
-                            if self.round_number:
-                                val_magnitude = np.floor(np.log10(val))
-                                val_scaled = val / 10**val_magnitude
-                                val_round = round(val_scaled, 8)
-
-                                val = val_round * 10**val_magnitude
-
-                            nuclides.append(nuc)
-                            densities.append(val)
-                        else:
-                            # Only output warnings if values are significantly
-                            # negative. CRAM does not guarantee positive values.
-                            if val < -1.0e-21:
-                                print("WARNING: nuclide ", nuc, " in material ", mat,
-                                      " is negative (density = ", val, " at/barn-cm)")
-                            number_i[mat, nuc] = 0.0
-
-                # Update densities on C API side
-                mat_internal = openmc.lib.materials[int(mat)]
-                mat_internal.set_densities(nuclides, densities)
-
-                #TODO Update densities on the Python side, otherwise the
-                # summary.h5 file contains densities at the first time step
-
-    ## keep, but rename and modify docstring
-    ## get_tally_nuclides
-    def _get_tally_nuclides(self):
+    def _get_reaction_nuclides(self):
         """Determine nuclides that should be tallied for reaction rates.
 
         This method returns a list of all nuclides that have neutron data and
@@ -407,12 +375,6 @@ class OpenMCOperator(TransportOperator):
         nuc_list = comm.bcast(nuc_list)
         return [nuc for nuc in nuc_list if nuc in self.chain]
 
-    ## modify
-    ## the tally-specific methods
-    ## for the normalization and fission helper classes
-    ## will already work with the current implementation.
-    ## For transport-less depletion, we'll need to write
-    ## a new ReactionRateHelper
     def _calculate_reaction_rates(self, source_rate):
         """Unpack tallies from OpenMC and return an operator result
 
@@ -434,11 +396,11 @@ class OpenMCOperator(TransportOperator):
         rates = self.reaction_rates
         rates.fill(0.0)
 
-        # Extract tally bins
-        nuclides = self._rate_helper.nuclides
+        # Extract reaction nuclides
+        rxn_nuclides = self._rate_helper.nuclides
 
         # Form fast map
-        nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
+        nuc_ind = [rates.index_nuc[nuc] for nuc in rxn_nuclides]
         react_ind = [rates.index_rx[react] for react in self.chain.reactions]
 
         # Keep track of energy produced from all reactions in eV per source
@@ -464,7 +426,7 @@ class OpenMCOperator(TransportOperator):
             number.fill(0.0)
 
             # Get new number densities
-            for nuc, i_nuc_results in zip(nuclides, nuc_ind):
+            for nuc, i_nuc_results in zip(rxn_nuclides, nuc_ind):
                 number[i_nuc_results] = self.number[mat, nuc]
 
             tally_rates = self._rate_helper.get_material_rates(
@@ -488,11 +450,26 @@ class OpenMCOperator(TransportOperator):
 
         return rates
 
+
     @abstractmethod
-    def _get_nuclides_with_data(self):
+    def _get_helper_classes(self, reaction_rate_mode, reaction_rate_opts, normalization_mode, fission_yield_mode, fission_yield_opts):
+        """Create the ``_rate_helper``, ``normalization_helper``, and
+        ``_yield_helper`` attributes"""
+
+    @abstractmethod
+    def _load_previous_results(self):
+        """Load reuslts from a previous depletion simulation"""
+
+    @abstractmethod
+    def _get_nuclides_with_data(self, cross_sections):
         """Find nuclides with cross section data"""
 
-    ## Keep
+    @abstractmethod
+    def _differentiate_burnable_mats(self):
+        """Assign distribmats for each burnable material
+
+        """
+
     def get_results_info(self):
         """Returns volume list, material lists, and nuc lists.
 

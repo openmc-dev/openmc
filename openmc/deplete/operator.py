@@ -210,8 +210,6 @@ class Operator(OpenMCOperator):
             if fission_q is not None:
                 warn("Fission Q dictionary will not be used")
                 fission_q = None
-        super().__init__(chain_file, fission_q, dilute_initial, prev_results)
-        self.round_number = False
         self.model = model
         self.settings = model.settings
         self.geometry = model.geometry
@@ -221,103 +219,15 @@ class Operator(OpenMCOperator):
             model.materials = openmc.Materials(
                 model.geometry.get_all_materials().values()
             )
-        self.materials = model.materials
 
         self.cleanup_when_done = True
 
-        # Reduce the chain before we create more materials
-        if reduce_chain:
-            all_isotopes = set()
-            for material in self.materials:
-                if not material.depletable:
-                    continue
-                for name, _dens_percent, _dens_type in material.nuclides:
-                    all_isotopes.add(name)
-            self.chain = self.chain.reduce(all_isotopes, reduce_chain_level)
-
-        # Differentiate burnable materials with multiple instances
-        if diff_burnable_mats:
-            self._differentiate_burnable_mats()
-            self.materials = openmc.Materials(
-                model.geometry.get_all_materials().values()
-            )
-
-        # Clear out OpenMC, create task lists, distribute
-        openmc.reset_auto_ids()
-        self.burnable_mats, volume, nuclides = super()._get_burnable_mats()
-        self.local_mats = _distribute(self.burnable_mats)
-
-        # Generate map from local materials => material index
-        self._mat_index_map = {
-            lm: self.burnable_mats.index(lm) for lm in self.local_mats}
-
-        if self.prev_res is not None:
-            # Reload volumes into geometry
-            prev_results[-1].transfer_volumes(self.model)
-
-            # Store previous results in operator
-            # Distribute reaction rates according to those tracked
-            # on this process
-            if comm.size == 1:
-                self.prev_res = prev_results
-            else:
-                self.prev_res = Results()
-                mat_indexes = _distribute(range(len(self.burnable_mats)))
-                for res_obj in prev_results:
-                    new_res = res_obj.distribute(self.local_mats, mat_indexes)
-                    self.prev_res.append(new_res)
-
-        # Determine which nuclides have incident neutron data
-        self.nuclides_with_data = self._get_nuclides_with_data(cross_sections)
-
-        # Select nuclides with data that are also in the chain
-        self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
-                               if nuc.name in self.nuclides_with_data]
-
-        # Extract number densities from the geometry / previous depletion run
-        super()._extract_number(self.local_mats, volume, nuclides, self.prev_res)
-
-        # Create reaction rates array
-        self.reaction_rates = ReactionRates(
-            self.local_mats, self._burnable_nucs, self.chain.reactions)
-
-        # Get classes to assist working with tallies
-        if reaction_rate_mode == "direct":
-            self._rate_helper = DirectReactionRateHelper(
-                self.reaction_rates.n_nuc, self.reaction_rates.n_react)
-        elif reaction_rate_mode == "flux":
-            if reaction_rate_opts is None:
-                reaction_rate_opts = {}
-
-            # Ensure energy group boundaries were specified
-            if 'energies' not in reaction_rate_opts:
-                raise ValueError(
-                    "Energy group boundaries must be specified in the "
-                    "reaction_rate_opts argument when reaction_rate_mode is"
-                    "set to 'flux'.")
-
-            self._rate_helper = FluxCollapseHelper(
-                self.reaction_rates.n_nuc,
-                self.reaction_rates.n_react,
-                **reaction_rate_opts
-            )
-        else:
-            raise ValueError("Invalid reaction rate mode.")
-
-        if normalization_mode == "fission-q":
-            self._normalization_helper = ChainFissionHelper()
-        elif normalization_mode == "energy-deposition":
-            score = "heating" if self.settings.photon_transport else "heating-local"
-            self._normalization_helper = EnergyScoreHelper(score)
-        else:
-            self._normalization_helper = SourceRateHelper()
-
-        # Select and create fission yield helper
-        fission_helper = self._fission_helpers[fission_yield_mode]
-        fission_yield_opts = (
-            {} if fission_yield_opts is None else fission_yield_opts)
-        self._yield_helper = fission_helper.from_operator(
-            self, **fission_yield_opts)
+        super().__init__(model.materials, cross_sections, chain_file, prev_results,
+                 diff_burnable_mats, normalization_mode,
+                 fission_q, dilute_initial,
+                 fission_yield_mode, fission_yield_opts,
+                 reaction_rate_mode, reaction_rate_opts,
+                 reduce_chain, reduce_chain_level)
 
     def __call__(self, vec, source_rate):
         """Runs a simulation.
@@ -357,10 +267,11 @@ class Operator(OpenMCOperator):
         openmc.reset_auto_ids()
 
         # Update tally nuclides data in preparation for transport solve
-        nuclides = super()._get_tally_nuclides()
+        nuclides = self._get_reaction_nuclides()
         self._rate_helper.nuclides = nuclides
         self._normalization_helper.nuclides = nuclides
         self._yield_helper.update_tally_nuclides(nuclides)
+
 
         # Run OpenMC
         openmc.lib.run()
@@ -415,6 +326,10 @@ class Operator(OpenMCOperator):
                     mat = cell.fill
                     cell.fill = [mat.clone()
                                  for i in range(cell.num_instances)]
+
+        self.materials = openmc.Materials(
+                model.geometry.get_all_materials().values()
+            )
 
     def initial_condition(self):
         """Performs final setup and returns initial condition.
@@ -513,3 +428,62 @@ class Operator(OpenMCOperator):
                     nuclides.add(name)
 
         return nuclides
+
+    def _load_previous_results(self):
+        """Load reuslts from a previous depletion simulation"""
+        # Reload volumes into geometry
+        prev_results[-1].transfer_volumes(self.model)
+
+        # Store previous results in operator
+        # Distribute reaction rates according to those tracked
+        # on this process
+        if comm.size == 1:
+            self.prev_res = prev_results
+        else:
+            self.prev_res = Results()
+            mat_indexes = _distribute(range(len(self.burnable_mats)))
+            for res_obj in prev_results:
+                new_res = res_obj.distribute(self.local_mats, mat_indexes)
+                self.prev_res.append(new_res)
+
+    def _get_helper_classes(self, reaction_rate_mode, reaction_rate_opts, normalization_mode, fission_yield_mode, fission_yield_opts):
+        """Create the ``_rate_helper``, ``normalization_helper``, and
+        ``_yield_helper`` attributes"""
+        # Get classes to assist working with tallies
+        if reaction_rate_mode == "direct":
+            self._rate_helper = DirectReactionRateHelper(
+                self.reaction_rates.n_nuc, self.reaction_rates.n_react)
+        elif reaction_rate_mode == "flux":
+            if reaction_rate_opts is None:
+                reaction_rate_opts = {}
+
+            # Ensure energy group boundaries were specified
+            if 'energies' not in reaction_rate_opts:
+                raise ValueError(
+                    "Energy group boundaries must be specified in the "
+                    "reaction_rate_opts argument when reaction_rate_mode is"
+                    "set to 'flux'.")
+
+            self._rate_helper = FluxCollapseHelper(
+                self.reaction_rates.n_nuc,
+                self.reaction_rates.n_react,
+                **reaction_rate_opts
+            )
+        else:
+            raise ValueError("Invalid reaction rate mode.")
+
+        if normalization_mode == "fission-q":
+            self._normalization_helper = ChainFissionHelper()
+        elif normalization_mode == "energy-deposition":
+            score = "heating" if self.settings.photon_transport else "heating-local"
+            self._normalization_helper = EnergyScoreHelper(score)
+        else:
+            self._normalization_helper = SourceRateHelper()
+
+        # Select and create fission yield helper
+        fission_helper = self._fission_helpers[fission_yield_mode]
+        fission_yield_opts = (
+            {} if fission_yield_opts is None else fission_yield_opts)
+        self._yield_helper = fission_helper.from_operator(
+            self, **fission_yield_opts)
+

@@ -713,6 +713,51 @@ class DAGMCUniverse(UniverseBase):
         dagmc_element.set('filename', self.filename)
         xml_element.append(dagmc_element)
 
+    def bounding_region(self, bounded_type='box', boundary_type='vacuum'):
+        """Creates a either a spherical or box shaped bounding region around
+        the DAGMC geometry.
+
+        Parameters
+        ----------
+        bounded_type : str
+            The type of bounding surface(s) to use when constructing the region.
+            Options include a single spherical surface (sphere) or a rectangle
+            made from siz planes (box).
+        boundary_type : str
+            Boundary condition that defines the behavior for particles hitting
+            the surface. Defaults to vacuum boundary condition. Passed into
+
+        Returns
+        -------
+        openmc.Region
+            Region instance
+        """
+
+        bounding_box = self.bounding_box
+
+        if bounded_type == 'sphere':
+            import math
+            bounding_box_center = (bounding_box[0] + bounding_box[1])/2
+            radius = math.dist(bounding_box[0], bounding_box[1])
+            bounding_surface = openmc.Sphere(x0=bounding_box_center[0], y0=bounding_box_center[1], z0=bounding_box_center[2], r=radius)
+
+            return -bounding_surface
+
+        if bounded_type == 'box':
+            # defines plane surfaces for all six faces of the bounding box
+            lower_x = openmc.XPlane(bounding_box[0][0], boundary_type=boundary_type)
+            upper_x = openmc.XPlane(bounding_box[1][0], boundary_type=boundary_type)
+            lower_y = openmc.YPlane(bounding_box[0][1], boundary_type=boundary_type)
+            upper_y = openmc.YPlane(bounding_box[1][1], boundary_type=boundary_type)
+            lower_z = openmc.ZPlane(bounding_box[0][2], boundary_type=boundary_type)
+            upper_z = openmc.ZPlane(bounding_box[1][2], boundary_type=boundary_type)
+
+            return +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
+
+    def bounded_universe(self, **kwargs):
+        bounding_cell = openmc.Cell(fill=self, region=self.bounding_region(**kwargs))
+        return openmc.Universe(cells=[bounding_cell])
+
     @classmethod
     def from_hdf5(cls, group):
         """Create DAGMC universe from HDF5 group

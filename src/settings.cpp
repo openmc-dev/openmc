@@ -430,6 +430,9 @@ void read_settings_xml()
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
       model::external_sources.push_back(make_unique<FileSource>(path));
+    } else if (check_for_node(node, "mcpl")) {
+      auto path = get_node_value(node, "mcpl", false, true);
+      model::external_sources.push_back(make_unique<MCPLFileSource>(path));
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);

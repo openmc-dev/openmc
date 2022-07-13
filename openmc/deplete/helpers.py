@@ -25,7 +25,7 @@ __all__ = (
     "DirectReactionRateHelper", "ChainFissionHelper", "EnergyScoreHelper"
     "SourceRateHelper", "TalliedFissionYieldHelper",
     "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
-    "AveragedFissionYieldHelper", "FluxCollapseHelper")
+    "AveragedFissionYieldHelper", "FluxCollapseHelper", "FluxTimesXSHelper")
 
 class TalliedFissionYieldHelper(FissionYieldHelper):
     """Abstract class for computing fission yields with tallies
@@ -125,16 +125,21 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 # -------------------------------------
 
 
-class FluxReactionRateHelper(ReactionRateHelper):
+class FluxTimesXSHelper(ReactionRateHelper):
     """Class for generating one-group reaction rates with flux and
     one-group cross sections.
 
     This class does not generate tallies, and instead stores cross sections
-    for each nuclides and transmutation reaction relevant for a depletion
-    calculation.
+    for each nuclide and transmutation reaction relevant for a depletion
+    calculation. The reaction rate is calculated by multiplying the flux by the
+    cross sections.
 
     Parameters
     ----------
+    flux : float
+        Neutron flux
+    micro_xs : pandas.DataFrame
+        Microscopic cross-section data
     n_nucs : int
         Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
     n_react : int
@@ -142,16 +147,22 @@ class FluxReactionRateHelper(ReactionRateHelper):
 
     Attributes
     ----------
-    flux :
-
-    xs :
-
+    nuc_ind_map : dict of int to str
+        Dictionary mapping the nuclide index to nuclide name
+    rxn_ind_map : dict of int to str
+        Dictionary mapping reaction index to reaction name
+    number : AtomNumber
+        AtomNumber object. Needed to convert the microscopic cross-sections
+        to macroscopic cross sections.
 
     """
-    def __init__(self, n_nuc, n_react):
+    def __init__(self, flux, micro_xs, n_nuc, n_react):
         super().__init__(n_nuc, n_react)
-        self._flux = None
-        self._micro_xs = None
+        self._flux = flux
+        self._micro_xs = micro_xs
+        self.nuc_ind_map = None
+        self.rxn_ind_map = None
+        self.number = None
 
     def generate_tallies(self, materials, scores):
         """Unused in this case"""
@@ -191,10 +202,11 @@ class FluxReactionRateHelper(ReactionRateHelper):
             Ordering of reactions
         """
         self._results_cache.fill(0.0)
-        full_tally_res = self._rate_tally.mean[mat_id]
-        for i_tally, (i_nuc, i_react) in enumerate(
-                product(nuc_index, react_index)):
-            self._results_cache[i_nuc, i_react] = full_tally_res[i_tally]
+        for i, (i_nuc, i_react) in enumerate(product(nuc_index, react_index)):
+            nuc = self.nuc_ind_map[i_nuc]
+            rxn = self.rxn_ind_map[i_react]
+            density = self.number.get_atom_density(mat_id, nuc)
+            self._results_cache[i_nuc, i_react] = self._micro_xs[rxn][nuc] * density
 
         return self._results_cache
 

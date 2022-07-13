@@ -133,7 +133,7 @@ def _separation_energy(compound, nucleus, particle):
     N_a = nucleus.n
 
     # Determine breakup energy of incident particle (ENDF-6 Formats Manual,
-    # Appendix H, Table 3)
+    # Appendix H, Table 3) in MeV
     za_to_breaking_energy = {
         1: 0.0,
         1001: 0.0,
@@ -142,7 +142,7 @@ def _separation_energy(compound, nucleus, particle):
         2003: 7.718043,
         2004: 28.29566
     }
-    I_b = za_to_breaking_energy[particle.za]
+    I_a = za_to_breaking_energy[particle.za]
 
     # Eq. 4 in in doi:10.1103/PhysRevC.37.2350 or ENDF-6 Formats Manual section
     # 6.2.3.2
@@ -153,7 +153,7 @@ def _separation_energy(compound, nucleus, particle):
         33.22 * ((N_c - Z_c)**2 / A_c**(4./3.) - (N_a - Z_a)**2 / A_a**(4./3.)) -
         0.717 * (Z_c**2 / A_c**(1./3.) - Z_a**2 / A_a**(1./3.)) +
         1.211 * (Z_c**2 / A_c - Z_a**2 / A_a) -
-        I_b
+        I_a
     )
 
 

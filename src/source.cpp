@@ -346,7 +346,7 @@ MCPLFileSource::MCPLFileSource(std::string path)
   if (!file_exists(path)) {
     fatal_error(fmt::format("Source file '{}' does not exist.", path));
   }
-   
+
   // Read the source from a binary file instead of sampling from some
   // assumed source distribution
   write_message(6, "Reading mcpl source file from {}",path);

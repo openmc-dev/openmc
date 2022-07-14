@@ -724,7 +724,7 @@ class DAGMCUniverse(UniverseBase):
         bounded_type : str
             The type of bounding surface(s) to use when constructing the region.
             Options include a single spherical surface (sphere) or a rectangle
-            made from siz planes (box).
+            made from six planes (box).
         boundary_type : str
             Boundary condition that defines the behavior for particles hitting
             the surface. Defaults to vacuum boundary condition. Passed into the
@@ -760,7 +760,7 @@ class DAGMCUniverse(UniverseBase):
             return +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
 
     def bounded_universe(self, **kwargs):
-        """Returns an openmc.Universe filled with the DAGMCUniverse and bounded
+        """Returns an openmc.Universe filled with this DAGMCUniverse and bounded
         with a cell. Defaults to a box cell with a vacuum surface. kwargs are
         passed directly to DAGMCUniverse.bounding_region()"""
 

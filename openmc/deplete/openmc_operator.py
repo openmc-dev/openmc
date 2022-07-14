@@ -45,10 +45,10 @@ def _distribute(items):
 
 
 class OpenMCOperator(TransportOperator):
-    """Abstrct class holding OpenMC-specific functions for running
+    """Abstract class holding OpenMC-specific functions for running
     depletion calculations.
 
-    Specific classes for running couples transport-depleton calculations or
+    Specific classes for running coupled transport-depletion calculations or
     depletion-only calculations are implemented as subclasses of OpenMCOperator
 
     Parameters
@@ -265,7 +265,7 @@ class OpenMCOperator(TransportOperator):
 
     @abstractmethod
     def _load_previous_results(self):
-        """Load reuslts from a previous depletion simulation"""
+        """Load results from a previous depletion simulation"""
 
     @abstractmethod
     def _get_nuclides_with_data(self, cross_sections):
@@ -375,7 +375,7 @@ class OpenMCOperator(TransportOperator):
             instantiate.
         normalization_mode : str
             Indicates the subclass of :class:`NormalizationHelper` to
-            instatiate.
+            instantiate.
         fission_yield_mode : str
             Indicates the subclass of :class:`FissionYieldHelper` to instatiate.
         reaction_rate_opts : dict

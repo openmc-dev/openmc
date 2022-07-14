@@ -314,7 +314,7 @@ class Operator(OpenMCOperator):
             Indicates the subclass of :class:`NormalizationHelper` to
             instatiate.
         fission_yield_mode : str
-            Indicates the subclass of :class:`FissionYieldHelper` to instatiate.
+            Indicates the subclass of :class:`FissionYieldHelper` to instantiate.
         reaction_rate_opts : dict
             Keyword arguments that are passed to the :class:`ReactionRateHelper`
             subclass.

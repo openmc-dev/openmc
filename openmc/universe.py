@@ -12,9 +12,12 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+
 from ._xml import get_text
+from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
 from .plots import _SVG_COLORS
+from .surface import _BOUNDARY_TYPES
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -724,12 +727,16 @@ class DAGMCUniverse(UniverseBase):
             made from siz planes (box).
         boundary_type : str
             Boundary condition that defines the behavior for particles hitting
-            the surface. Defaults to vacuum boundary condition. Passed into
+            the surface. Defaults to vacuum boundary condition. Passed into the
+            surface construction.
         Returns
         -------
         openmc.Region
             Region instance
         """
+
+        check_type('boundary type', boundary_type, str)
+        check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
 
         bounding_box = self.bounding_box
 
@@ -753,6 +760,10 @@ class DAGMCUniverse(UniverseBase):
             return +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
 
     def bounded_universe(self, **kwargs):
+        """Returns an openmc.Universe filled with the DAGMCUniverse and bounded
+        with a cell. Defaults to a box cell with a vacuum surface. kwargs are
+        passed directly to DAGMCUniverse.bounding_region()"""
+
         bounding_cell = openmc.Cell(fill=self, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 

@@ -53,6 +53,11 @@ class OpenMCOperator(TransportOperator):
 
     Parameters
     ----------
+    materials : openmc.Materials
+        List of all materials in the model
+    cross_sections : str or pandas.DataFrame
+        Path to continuous energy cross section library, or object containing
+        one-group cross-sections.
     chain_file : str, optional
         Path to the depletion chain XML file.  Defaults to the file
         listed under ``depletion_chain`` in
@@ -68,9 +73,7 @@ class OpenMCOperator(TransportOperator):
     normalization_mode : str
         Indicate how reaction rates should be normalized.
     fission_q : dict, optional
-        Dictionary of nuclides and their fission Q values [eV]. If not given,
-        values will be pulled from the ``chain_file``. Only applicable
-        if ``"normalization_mode" == "fission-q"``
+        Dictionary of nuclides and their fission Q values [eV].
     dilute_initial : float, optional
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
@@ -90,25 +93,16 @@ class OpenMCOperator(TransportOperator):
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
         depletion chain up to ``reduce_chain_level``. Default is False.
-
-        .. versionadded:: 0.12
     reduce_chain_level : int, optional
         Depth of the search when reducing the depletion chain. Only used
         if ``reduce_chain`` evaluates to true. The default value of
         ``None`` implies no limit on the depth.
 
-        .. versionadded:: 0.12
-
-
 
     Attributes
     ----------
-    model : openmc.model.Model
-        OpenMC model object
-    geometry : openmc.Geometry
-        OpenMC geometry object
-    settings : openmc.Settings
-        OpenMC settings object
+    materials : openmc.Materials
+        All materials present in the model
     dilute_initial : float
         Initial atom density [atoms/cm^3] to add for nuclides that
         are zero in initial condition to ensure they exist in the decay
@@ -135,6 +129,7 @@ class OpenMCOperator(TransportOperator):
     prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
+
     """
 
     def __init__(
@@ -269,7 +264,20 @@ class OpenMCOperator(TransportOperator):
 
     @abstractmethod
     def _get_nuclides_with_data(self, cross_sections):
-        """Find nuclides with cross section data"""
+        """Find nuclides with cross section data
+
+        Parameters
+        ----------
+        cross_sections : str or pandas.DataFrame
+            Path to continuous energy cross section library, or object
+            containing one-group cross-sections.
+
+        Returns
+        -------
+        nuclides : set of str
+            Set of nuclide names that have cross secton data
+
+        """
 
     def _extract_number(self, local_mats, volume, all_nuclides, prev_res=None):
         """Construct AtomNumber using geometry
@@ -399,6 +407,7 @@ class OpenMCOperator(TransportOperator):
         -------
         list of numpy.ndarray
             Total density for initial conditions.
+
         """
 
         self._rate_helper.generate_tallies(materials, self.chain.reactions)
@@ -414,7 +423,15 @@ class OpenMCOperator(TransportOperator):
 
     def _update_materials_and_nuclides(self, vec):
         """Update the number density, material compositions, and nuclide
-        lists in helper objects"""
+        lists in helper objects
+
+        Parameters
+        ----------
+        vec : list of numpy.ndarray
+            Total atoms.
+
+        """
+
         # Update the number densities regardless of the source rate
         self.number.set_density(vec)
         self._update_materials()

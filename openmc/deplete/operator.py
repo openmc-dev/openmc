@@ -34,7 +34,14 @@ __all__ = ["Operator", "OperatorResult"]
 
 
 def _find_cross_sections(model):
-    """Determine cross sections to use for depletion"""
+    """Determine cross sections to use for depletion
+
+    Parameters
+    ----------
+    model : openmc.model.Model
+        Reactor model
+
+    """
     if model.materials and model.materials.cross_sections is not None:
         # Prefer info from Model class if available
         return model.materials.cross_sections
@@ -283,7 +290,19 @@ class Operator(OpenMCOperator):
                 self.prev_res.append(new_res)
 
     def _get_nuclides_with_data(self, cross_sections):
-        """Loads cross_sections.xml file to find nuclides with neutron data"""
+        """Loads cross_sections.xml file to find nuclides with neutron data
+
+        Parameters
+        ----------
+        cross_sections : str
+            Path to cross_sections.xml file
+
+        Returns
+        -------
+        nuclides : set of str
+            Set of nuclide names that have cross secton data
+
+        """
         nuclides = set()
         data_lib = DataLibrary.from_xml(cross_sections)
         for library in data_lib.libraries:
@@ -368,6 +387,7 @@ class Operator(OpenMCOperator):
         -------
         list of numpy.ndarray
             Total density for initial conditions.
+
         """
 
         # Create XML files
@@ -502,6 +522,7 @@ class Operator(OpenMCOperator):
         ----------
         step : int
             Current depletion step including restarts
+
         """
         openmc.lib.statepoint_write(
             "openmc_simulation_n{}.h5".format(step),

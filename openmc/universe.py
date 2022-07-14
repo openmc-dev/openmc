@@ -762,18 +762,18 @@ class DAGMCUniverse(UniverseBase):
             return +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
 
     def bounded_universe(self, **kwargs):
-        """Returns an openmc.Cell that bounds the DAGMCUniverse and is filled
-        with the DAGMCUniverse. Defaults to a box cell with a vacuum surface.
-        kwargs are passed directly to DAGMCUniverse.bounding_region()
+        """Returns an openmc.Universe filled with this DAGMCUniverse and bounded
+        with a cell. Defaults to a box cell with a vacuum surface. kwargs are
+        passed directly to DAGMCUniverse.bounding_region()
 
         Returns
         -------
-        openmc.Cell
-            cell filled with the DAGMCUniverse
+        openmc.Universe
+            Universe instance
         """
 
         bounding_cell = openmc.Cell(fill=self, region=self.bounding_region(**kwargs))
-        return bounding_cell
+        return openmc.Universe(cells=[bounding_cell])
 
     @classmethod
     def from_hdf5(cls, group):

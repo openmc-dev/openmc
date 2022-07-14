@@ -188,7 +188,35 @@ total system energy.
    helpers.EnergyScoreHelper
    helpers.FissionYieldCutoffHelper
    helpers.FluxCollapseHelper
+
+
+Intermediate Classes
+--------------------
+
+Specific implementations of abstract base classes may utilize some of
+the same methods and data structures. These methods and data are stored 
+in intermediate classes.
+
+Methods common to tally-based implementation of :class:`FissionYieldHelper`
+are stored in :class:`helpers.TalliedFissionYieldHelper`
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
    helpers.TalliedFissionYieldHelper
+
+Methods common to OpenMC-specific implementations of :class:`TransportOperator`
+are stored in :class:`openmc_operator.OpenMCOperator`
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: mycallable.rst
+
+   openmc_operator.OpenMCOperator
+
 
 Abstract Base Classes
 ---------------------
@@ -205,16 +233,6 @@ prior to depleting materials
    :template: mycallable.rst
 
    abc.TransportOperator
-
-Methods common to OpenMC-specific implementations are stored in :class:`openmc_operator.OpenMCOperator`
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: mycallable.rst
-
-   abc.TransportOperator
-
 
 The following classes are abstract classes used to pass information from
 OpenMC simulations back on to the :class:`abc.TransportOperator`

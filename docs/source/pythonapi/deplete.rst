@@ -188,6 +188,7 @@ total system energy.
    helpers.EnergyScoreHelper
    helpers.FissionYieldCutoffHelper
    helpers.FluxCollapseHelper
+   helpers.TalliedFissionYieldHelper
 
 Abstract Base Classes
 ---------------------
@@ -204,7 +205,16 @@ prior to depleting materials
    :template: mycallable.rst
 
    abc.TransportOperator
-   openmc_operator.OpenMCOperator
+
+Methods common to OpenMC-specific implementations are stored in :class:`openmc_operator.OpenMCOperator`
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: mycallable.rst
+
+   abc.TransportOperator
+
 
 The following classes are abstract classes used to pass information from
 OpenMC simulations back on to the :class:`abc.TransportOperator`
@@ -217,7 +227,6 @@ OpenMC simulations back on to the :class:`abc.TransportOperator`
    abc.NormalizationHelper
    abc.FissionYieldHelper
    abc.ReactionRateHelper
-   helpers.TalliedFissionYieldHelper
 
 Custom integrators or depletion solvers can be developed by subclassing from
 the following abstract base classes:

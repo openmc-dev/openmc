@@ -8,7 +8,6 @@ densities is all done in-memory instead of through the filesystem.
 """
 
 import copy
-from collections import OrderedDict
 import os
 from warnings import warn
 
@@ -21,11 +20,9 @@ from openmc.data import DataLibrary
 from openmc.exceptions import DataError
 import openmc.lib
 from openmc.mpi import comm
-from .abc import TransportOperator, OperatorResult
-from .atom_number import AtomNumber
+from .abc import OperatorResult
 from .chain import _find_chain_file
 from .openmc_operator import OpenMCOperator, _distribute
-from .reaction_rates import ReactionRates
 from .results import Results
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
@@ -229,81 +226,8 @@ class Operator(OpenMCOperator):
                  reaction_rate_mode, reaction_rate_opts,
                  reduce_chain, reduce_chain_level)
 
-    def __call__(self, vec, source_rate):
-        """Runs a simulation.
-
-        Simulation will abort under the following circumstances:
-
-            1) No energy is computed using OpenMC tallies.
-
-        Parameters
-        ----------
-        vec : list of numpy.ndarray
-            Total atoms to be used in function.
-        source_rate : float
-            Power in [W] or source rate in [neutron/sec]
-
-        Returns
-        -------
-        openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates resulting from transport operator
-
-        """
-        # Reset results in OpenMC
-        openmc.lib.reset()
-
-        # Update the number densities regardless of the source rate
-        self.number.set_density(vec)
-        self._update_materials()
-
-        # If the source rate is zero, return zero reaction rates without running
-        # a transport solve
-        if source_rate == 0.0:
-            rates = self.reaction_rates.copy()
-            rates.fill(0.0)
-            return OperatorResult(ufloat(0.0, 0.0), rates)
-
-        # Prevent OpenMC from complaining about re-creating tallies
-        openmc.reset_auto_ids()
-
-        # Update tally nuclides data in preparation for transport solve
-        nuclides = self._get_reaction_nuclides()
-        self._rate_helper.nuclides = nuclides
-        self._normalization_helper.nuclides = nuclides
-        self._yield_helper.update_tally_nuclides(nuclides)
-
-
-        # Run OpenMC
-        openmc.lib.run()
-        openmc.lib.reset_timers()
-
-        # Extract results
-        rates = self._calculate_reaction_rates(source_rate)
-
-        # Get k and uncertainty
-        keff = ufloat(*openmc.lib.keff())
-
-        op_result = OperatorResult(keff, rates)
-
-        return copy.deepcopy(op_result)
-
-    @staticmethod
-    def write_bos_data(step):
-        """Write a state-point file with beginning of step data
-
-        Parameters
-        ----------
-        step : int
-            Current depletion step including restarts
-        """
-        openmc.lib.statepoint_write(
-            "openmc_simulation_n{}.h5".format(step),
-            write_source=False)
-
     def _differentiate_burnable_mats(self):
-        """Assign distribmats for each burnable material
-
-        """
+        """Assign distribmats for each burnable material"""
 
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
@@ -331,6 +255,97 @@ class Operator(OpenMCOperator):
                 model.geometry.get_all_materials().values()
             )
 
+    def _load_previous_results(self):
+        """Load results from a previous depletion simulation"""
+        # Reload volumes into geometry
+        prev_results[-1].transfer_volumes(self.model)
+
+        # Store previous results in operator
+        # Distribute reaction rates according to those tracked
+        # on this process
+        if comm.size == 1:
+            self.prev_res = prev_results
+        else:
+            self.prev_res = Results()
+            mat_indexes = _distribute(range(len(self.burnable_mats)))
+            for res_obj in prev_results:
+                new_res = res_obj.distribute(self.local_mats, mat_indexes)
+                self.prev_res.append(new_res)
+
+    def _get_nuclides_with_data(self, cross_sections):
+        """Loads cross_sections.xml file to find nuclides with neutron data"""
+        nuclides = set()
+        data_lib = DataLibrary.from_xml(cross_sections)
+        for library in data_lib.libraries:
+            if library['type'] != 'neutron':
+                continue
+            for name in library['materials']:
+                if name not in nuclides:
+                    nuclides.add(name)
+
+        return nuclides
+
+    def _get_helper_classes(self, reaction_rate_mode, normalization_mode, fission_yield_mode,
+                            reaction_rate_opts, fission_yield_opts):
+        """Create the ``_rate_helper``, ``_normalization_helper``, and
+        ``_yield_helper`` objects.
+
+        Parameters
+        ----------
+        reaction_rate_mode : str
+            Indicates the subclass of :class:`ReactionRateHelper` to
+            instantiate.
+        normalization_mode : str
+            Indicates the subclass of :class:`NormalizationHelper` to
+            instatiate.
+        fission_yield_mode : str
+            Indicates the subclass of :class:`FissionYieldHelper` to instatiate.
+        reaction_rate_opts : dict
+            Keyword arguments that are passed to the :class:`ReactionRateHelper`
+            subclass.
+        fission_yield_opts : dict
+            Keyword arguments that are passed to the :class:`FissionYieldHelper`
+            subclass.
+
+        """
+        # Get classes to assist working with tallies
+        if reaction_rate_mode == "direct":
+            self._rate_helper = DirectReactionRateHelper(
+                self.reaction_rates.n_nuc, self.reaction_rates.n_react)
+        elif reaction_rate_mode == "flux":
+            if reaction_rate_opts is None:
+                reaction_rate_opts = {}
+
+            # Ensure energy group boundaries were specified
+            if 'energies' not in reaction_rate_opts:
+                raise ValueError(
+                    "Energy group boundaries must be specified in the "
+                    "reaction_rate_opts argument when reaction_rate_mode is"
+                    "set to 'flux'.")
+
+            self._rate_helper = FluxCollapseHelper(
+                self.reaction_rates.n_nuc,
+                self.reaction_rates.n_react,
+                **reaction_rate_opts
+            )
+        else:
+            raise ValueError("Invalid reaction rate mode.")
+
+        if normalization_mode == "fission-q":
+            self._normalization_helper = ChainFissionHelper()
+        elif normalization_mode == "energy-deposition":
+            score = "heating" if self.settings.photon_transport else "heating-local"
+            self._normalization_helper = EnergyScoreHelper(score)
+        else:
+            self._normalization_helper = SourceRateHelper()
+
+        # Select and create fission yield helper
+        fission_helper = self._fission_helpers[fission_yield_mode]
+        fission_yield_opts = (
+            {} if fission_yield_opts is None else fission_yield_opts)
+        self._yield_helper = fission_helper.from_operator(
+            self, **fission_yield_opts)
+
     def initial_condition(self):
         """Performs final setup and returns initial condition.
 
@@ -357,10 +372,66 @@ class Operator(OpenMCOperator):
 
         return super().initial_condition(materials)
 
-    def finalize(self):
-        """Finalize a depletion simulation and release resources."""
-        if self.cleanup_when_done:
-            openmc.lib.finalize()
+    def _generate_materials_xml(self):
+        """Creates materials.xml from self.number.
+
+        Due to uncertainty with how MPI interacts with OpenMC API, this
+        constructs the XML manually.  The long term goal is to do this
+        through direct memory writing.
+
+        """
+        # Sort nuclides according to order in AtomNumber object
+        nuclides = list(self.number.nuclides)
+        for mat in self.materials:
+            mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
+
+        self.materials.export_to_xml()
+
+    def __call__(self, vec, source_rate):
+        """Runs a simulation.
+
+        Simulation will abort under the following circumstances:
+
+            1) No energy is computed using OpenMC tallies.
+
+        Parameters
+        ----------
+        vec : list of numpy.ndarray
+            Total atoms to be used in function.
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
+
+        Returns
+        -------
+        openmc.deplete.OperatorResult
+            Eigenvalue and reaction rates resulting from transport operator
+
+        """
+        # Reset results in OpenMC
+        openmc.lib.reset()
+
+        self._update_materials_and_nuclides(vec)
+
+        # If the source rate is zero, return zero reaction rates without running
+        # a transport solve
+        if source_rate == 0.0:
+            rates = self.reaction_rates.copy()
+            rates.fill(0.0)
+            return OperatorResult(ufloat(0.0, 0.0), rates)
+
+        # Run OpenMC
+        openmc.lib.run()
+        openmc.lib.reset_timers()
+
+        # Extract results
+        rates = self._calculate_reaction_rates(source_rate)
+
+        # Get k and uncertainty
+        keff = ufloat(*openmc.lib.keff())
+
+        op_result = OperatorResult(keff, rates)
+
+        return copy.deepcopy(op_result)
 
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""
@@ -401,89 +472,20 @@ class Operator(OpenMCOperator):
                 #TODO Update densities on the Python side, otherwise the
                 # summary.h5 file contains densities at the first time step
 
-    def _generate_materials_xml(self):
-        """Creates materials.xml from self.number.
+    @staticmethod
+    def write_bos_data(step):
+        """Write a state-point file with beginning of step data
 
-        Due to uncertainty with how MPI interacts with OpenMC API, this
-        constructs the XML manually.  The long term goal is to do this
-        through direct memory writing.
-
+        Parameters
+        ----------
+        step : int
+            Current depletion step including restarts
         """
-        # Sort nuclides according to order in AtomNumber object
-        nuclides = list(self.number.nuclides)
-        for mat in self.materials:
-            mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
+        openmc.lib.statepoint_write(
+            "openmc_simulation_n{}.h5".format(step),
+            write_source=False)
 
-        self.materials.export_to_xml()
-
-    def _get_nuclides_with_data(self, cross_sections):
-        """Loads cross_sections.xml file to find nuclides with neutron data"""
-        nuclides = set()
-        data_lib = DataLibrary.from_xml(cross_sections)
-        for library in data_lib.libraries:
-            if library['type'] != 'neutron':
-                continue
-            for name in library['materials']:
-                if name not in nuclides:
-                    nuclides.add(name)
-
-        return nuclides
-
-    def _load_previous_results(self):
-        """Load reuslts from a previous depletion simulation"""
-        # Reload volumes into geometry
-        prev_results[-1].transfer_volumes(self.model)
-
-        # Store previous results in operator
-        # Distribute reaction rates according to those tracked
-        # on this process
-        if comm.size == 1:
-            self.prev_res = prev_results
-        else:
-            self.prev_res = Results()
-            mat_indexes = _distribute(range(len(self.burnable_mats)))
-            for res_obj in prev_results:
-                new_res = res_obj.distribute(self.local_mats, mat_indexes)
-                self.prev_res.append(new_res)
-
-    def _get_helper_classes(self, reaction_rate_mode, reaction_rate_opts, normalization_mode, fission_yield_mode, fission_yield_opts):
-        """Create the ``_rate_helper``, ``normalization_helper``, and
-        ``_yield_helper`` attributes"""
-        # Get classes to assist working with tallies
-        if reaction_rate_mode == "direct":
-            self._rate_helper = DirectReactionRateHelper(
-                self.reaction_rates.n_nuc, self.reaction_rates.n_react)
-        elif reaction_rate_mode == "flux":
-            if reaction_rate_opts is None:
-                reaction_rate_opts = {}
-
-            # Ensure energy group boundaries were specified
-            if 'energies' not in reaction_rate_opts:
-                raise ValueError(
-                    "Energy group boundaries must be specified in the "
-                    "reaction_rate_opts argument when reaction_rate_mode is"
-                    "set to 'flux'.")
-
-            self._rate_helper = FluxCollapseHelper(
-                self.reaction_rates.n_nuc,
-                self.reaction_rates.n_react,
-                **reaction_rate_opts
-            )
-        else:
-            raise ValueError("Invalid reaction rate mode.")
-
-        if normalization_mode == "fission-q":
-            self._normalization_helper = ChainFissionHelper()
-        elif normalization_mode == "energy-deposition":
-            score = "heating" if self.settings.photon_transport else "heating-local"
-            self._normalization_helper = EnergyScoreHelper(score)
-        else:
-            self._normalization_helper = SourceRateHelper()
-
-        # Select and create fission yield helper
-        fission_helper = self._fission_helpers[fission_yield_mode]
-        fission_yield_opts = (
-            {} if fission_yield_opts is None else fission_yield_opts)
-        self._yield_helper = fission_helper.from_operator(
-            self, **fission_yield_opts)
-
+    def finalize(self):
+        """Finalize a depletion simulation and release resources."""
+        if self.cleanup_when_done:
+            openmc.lib.finalize()

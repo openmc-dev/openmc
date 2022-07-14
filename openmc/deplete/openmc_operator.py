@@ -7,7 +7,6 @@ This module implements functions used by both OpenMC transport operators as well
 import copy
 from abc import abstractmethod
 from collections import OrderedDict
-import os
 
 import numpy as np
 from uncertainties import ufloat
@@ -18,8 +17,6 @@ from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
-from .results import Results
-
 
 __all__ = ["OpenMCOperator", "OperatorResult"]
 
@@ -47,16 +44,11 @@ def _distribute(items):
         j += chunk_size
 
 class OpenMCOperator(TransportOperator):
-    """OpenMC transport operator for depletion.
+    """Abstrct class holding OpenMC-specific functions for running
+    depletion calculations.
 
-    Instances of this class can be used to perform depletion using OpenMC as the
-    transport operator. Normally, a user needn't call methods of this class
-    directly. Instead, an instance of this class is passed to an integrator
-    class, such as :class:`openmc.deplete.CECMIntegrator`.
-
-    .. versionchanged:: 0.13.0
-        The geometry and settings parameters have been replaced with a
-        model parameter that takes a :class:`~openmc.model.Model` object
+    Specific classes for running couples transport-depleton calculations or
+    depletion-only calculations are implemented as subclasses of OpenMCOperator
 
     Parameters
     ----------
@@ -68,6 +60,12 @@ class OpenMCOperator(TransportOperator):
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state
         in the previous results.
+    diff_burnable_mats : bool, optional
+        Whether to differentiate burnable materials with multiple instances.
+        Volumes are divided equally from the original material volume.
+        Default: False.
+    normalization_mode : str
+        Indicate how reaction rates should be normalized.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
@@ -77,6 +75,30 @@ class OpenMCOperator(TransportOperator):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
+    fission_yield_mode : str
+        Key indicating what fission product yield scheme to use.
+    fission_yield_opts : dict of str to option, optional
+        Optional arguments to pass to the helper determined by
+        ``fission_yield_mode``. Will be passed directly on to the
+        helper. Passing a value of None will use the defaults for
+        the associated helper.
+    reaction_rate_mode : str, optional
+        Indicate how one-group reaction rates should be calculated.
+    reaction_rate_opts : dict, optional
+        Keyword arguments that are passed to the reaction rate helper class.
+    reduce_chain : bool, optional
+        If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
+        depletion chain up to ``reduce_chain_level``. Default is False.
+
+        .. versionadded:: 0.12
+    reduce_chain_level : int, optional
+        Depth of the search when reducing the depletion chain. Only used
+        if ``reduce_chain`` evaluates to true. The default value of
+        ``None`` implies no limit on the depth.
+
+        .. versionadded:: 0.12
+
+
 
     Attributes
     ----------
@@ -112,9 +134,6 @@ class OpenMCOperator(TransportOperator):
     prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
-    cleanup_when_done : bool
-        Whether to finalize and clear the shared library memory when the
-        depletion operation is complete. Defaults to clearing the library.
     """
 
     def __init__(self, materials=None, cross_sections=None, chain_file=None, prev_results=None, diff_burnable_mats=False, normalization_mode=None, fission_q=None, dilute_initial=0.0, fission_yield_mode=None, fission_yield_opts=None,
@@ -170,7 +189,11 @@ class OpenMCOperator(TransportOperator):
         self.reaction_rates = ReactionRates(
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
-        self._get_helper_classes(reaction_rate_mode, reaction_rate_opts, normalization_mode, fission_yield_mode, fission_yield_opts)
+        self._get_helper_classes(reaction_rate_mode, normalization_mode, fission_yield_mode, reaction_rate_opts, fission_yield_opts)
+
+    @abstractmethod
+    def _differentiate_burnable_mats(self):
+        """Assign distribmats for each burnable material"""
 
     def _get_burnable_mats(self):
         """Determine depletable materials, volumes, and nuclides
@@ -220,6 +243,15 @@ class OpenMCOperator(TransportOperator):
                 nuclides.append(nuc)
 
         return burnable_mats, volume, nuclides
+
+
+    @abstractmethod
+    def _load_previous_results(self):
+        """Load reuslts from a previous depletion simulation"""
+
+    @abstractmethod
+    def _get_nuclides_with_data(self, cross_sections):
+        """Find nuclides with cross section data"""
 
     def _extract_number(self, local_mats, volume, all_nuclides, prev_res=None):
         """Construct AtomNumber using geometry
@@ -304,12 +336,37 @@ class OpenMCOperator(TransportOperator):
 
             self.number.set_atom_density(mat_id, nuclide, atom_per_cc)
 
+    @abstractmethod
+    def _get_helper_classes(self, reaction_rate_mode, normalization_mode, fission_yield_mode, reaction_rate_opts, fission_yield_opts):
+        """Create the ``_rate_helper``, ``_normalization_helper``, and
+        ``_yield_helper`` objects.
+
+        Parameters
+        ----------
+        reaction_rate_mode : str
+            Indicates the subclass of :class:`ReactionRateHelper` to
+            instantiate.
+        normalization_mode : str
+            Indicates the subclass of :class:`NormalizationHelper` to
+            instatiate.
+        fission_yield_mode : str
+            Indicates the subclass of :class:`FissionYieldHelper` to instatiate.
+        reaction_rate_opts : dict
+            Keyword arguments that are passed to the :class:`ReactionRateHelper`
+            subclass.
+        fission_yield_opts : dict
+            Keyword arguments that are passed to the :class:`FissionYieldHelper`
+            subclass.
+
+        """
+
     def initial_condition(self, materials):
         """Performs final setup and returns initial condition.
 
         Parameters
         ----------
-        materials : ???
+        materials : list of str
+            list of material IDs
 
         Returns
         -------
@@ -328,6 +385,22 @@ class OpenMCOperator(TransportOperator):
         # Return number density vector
         return list(self.number.get_mat_slice(np.s_[:]))
 
+    def _update_materials_and_nuclides(self, vec):
+        """Update the number density, material compositions, and nuclide
+        lists in helper objects"""
+        # Update the number densities regardless of the source rate
+        self.number.set_density(vec)
+        self._update_materials()
+
+        # Prevent OpenMC from complaining about re-creating tallies
+        openmc.reset_auto_ids()
+
+        # Update tally nuclides data in preparation for transport solve
+        nuclides = self._get_reaction_nuclides()
+        self._rate_helper.nuclides = nuclides
+        self._normalization_helper.nuclides = nuclides
+        self._yield_helper.update_tally_nuclides(nuclides)
+
     @abstractmethod
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""
@@ -335,16 +408,16 @@ class OpenMCOperator(TransportOperator):
     def _get_reaction_nuclides(self):
         """Determine nuclides that should be tallied for reaction rates.
 
-        This method returns a list of all nuclides that have neutron data and
-        are listed in the depletion chain. Technically, we should tally nuclides
-        that may not appear in the depletion chain because we still need to get
-        the fission reaction rate for these nuclides in order to normalize
-        power, but that is left as a future exercise.
+        This method returns a list of all nuclides that have cross section data
+        and are listed in the depletion chain. Technically, we should count
+        nuclides that may not appear in the depletion chain because we still
+        need to get the fission reaction rate for these nuclides in order to
+        normalize power, but that is left as a future exercise.
 
         Returns
         -------
         list of str
-            Tally nuclides
+            Nuclides with reaction rates
 
         """
         nuc_set = set()
@@ -371,7 +444,7 @@ class OpenMCOperator(TransportOperator):
         else:
             nuc_list = None
 
-        # Store list of tally nuclides on each process
+        # Store list of nuclides on each process
         nuc_list = comm.bcast(nuc_list)
         return [nuc for nuc in nuc_list if nuc in self.chain]
 
@@ -449,26 +522,6 @@ class OpenMCOperator(TransportOperator):
         self.chain.fission_yields = fission_yields
 
         return rates
-
-
-    @abstractmethod
-    def _get_helper_classes(self, reaction_rate_mode, reaction_rate_opts, normalization_mode, fission_yield_mode, fission_yield_opts):
-        """Create the ``_rate_helper``, ``normalization_helper``, and
-        ``_yield_helper`` attributes"""
-
-    @abstractmethod
-    def _load_previous_results(self):
-        """Load reuslts from a previous depletion simulation"""
-
-    @abstractmethod
-    def _get_nuclides_with_data(self, cross_sections):
-        """Find nuclides with cross section data"""
-
-    @abstractmethod
-    def _differentiate_burnable_mats(self):
-        """Assign distribmats for each burnable material
-
-        """
 
     def get_results_info(self):
         """Returns volume list, material lists, and nuc lists.

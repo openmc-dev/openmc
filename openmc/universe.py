@@ -761,10 +761,18 @@ class DAGMCUniverse(UniverseBase):
 
             return +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
 
-    def bounded_universe(self, **kwargs):
+    def bounded_universe(self, auto_geom_ids=True, **kwargs):
         """Returns an openmc.Universe filled with this DAGMCUniverse and bounded
-        with a cell. Defaults to a box cell with a vacuum surface. kwargs are
-        passed directly to DAGMCUniverse.bounding_region()
+        with a cell. Defaults to a box cell with a vacuum surface however this
+        can be changed using the kwargs which are passed directly to
+        DAGMCUniverse.bounding_region().
+
+        Parameters
+        ----------
+        auto_geom_ids : bool
+            Set IDs automatically on initialization (True) or report overlaps
+            in ID space between CSG and DAGMC (False). Defaults to True to avoid
+            overlapping ID numbers between the CSG and DAGMC geometry ID numbers
 
         Returns
         -------
@@ -772,6 +780,7 @@ class DAGMCUniverse(UniverseBase):
             Universe instance
         """
 
+        self.auto_geom_ids = auto_geom_ids
         bounding_cell = openmc.Cell(fill=self, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 

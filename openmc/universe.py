@@ -737,6 +737,8 @@ class DAGMCUniverse(UniverseBase):
 
         check_type('boundary type', boundary_type, str)
         check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
+        check_type('bounded type', bounded_type, str)
+        check_value('bounded type', bounded_type, ('box', 'sphere'))
 
         bounding_box = self.bounding_box
 

@@ -105,6 +105,13 @@ class FluxDepletionOperator(TransportOperator):
         results are to be used.
     """
 
+    # Alternate constructor using a full-fledges Model object
+    #def __init__(self, model, micro_xs, ...):
+    #    ...
+    #    mode.materials = openmc.Materials(model.geometry.get_all_materials().values())
+    #    super().__init__(model.materials, ...)
+
+
     def __init__(self,
                  volume,
                  nuclides,
@@ -131,7 +138,7 @@ class FluxDepletionOperator(TransportOperator):
         materials = self._consolidate_nuclides_to_material(nuclides, volume)
 
         diff_burnable_mats=False
-        # super().__init__(materials, diff_burnable_mats, chain_file, fission_q, dilute_initial, prev_results, helper_class_kwargs)
+        # super().__init__(materials, cross_sections, diff_burnable_mats, chain_file, fission_q, dilute_initial, prev_results, helper_class_kwargs)
 
 
         ## this part goes to OpenMCOperator

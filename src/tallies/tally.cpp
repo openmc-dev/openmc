@@ -669,12 +669,12 @@ void Tally::release_from_device()
 
 const double* Tally::results(gsl::index i, gsl::index j, TallyResult k) const
 {
-  return results_ + (i * n_filter_bins_ + j) * n_scores_ + static_cast<int>(k);
+  return results_ + ((i * n_scores_ + j) * 3 + static_cast<int>(k));
 }
 
 double* Tally::results(gsl::index i, gsl::index j, TallyResult k)
 {
-  return results_ + (i * n_filter_bins_ + j) * n_scores_ + static_cast<int>(k);
+  return results_ + ((i * n_scores_ + j) * 3 + static_cast<int>(k));
 }
 
 std::array<size_t, 3> Tally::results_shape() const
@@ -715,10 +715,10 @@ void read_tallies_xml()
 
   // ==========================================================================
   // READ FILTER DATA
-  
+
   // Determine number of filters
   int n_tally_filters = std::distance(root.children("filter").begin(), root.children("filter").end());
-  
+
   if (n_tally_filters > 0 ) {
     // Allocate the filter array
     model::tally_filters = static_cast<Filter*>(malloc(n_tally_filters * sizeof(Filter)));
@@ -746,9 +746,15 @@ void read_tallies_xml()
     warning("No tallies present in tallies.xml file.");
   }
 
+  // Count the number of tallies
+  model::tallies_size = std::distance(root.children("tally").begin(), root.children("tally").end());
+
+  // Resize the tallies array
+  model::tallies = static_cast<Tally*>(malloc(model::tallies_size * sizeof(Tally)));
+
+  int i = 0;
   for (auto node_tal : root.children("tally")) {
-    new(model::tallies + model::tallies_size) Tally(node_tal);
-    ++model::tallies_size;
+    new(model::tallies + i++) Tally(node_tal);
   }
 }
 

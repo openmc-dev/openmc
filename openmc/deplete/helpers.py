@@ -2,7 +2,6 @@
 Class for normalizing fission energy deposition
 """
 import bisect
-import pandas as pd
 from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
@@ -25,7 +24,7 @@ __all__ = (
     "DirectReactionRateHelper", "ChainFissionHelper", "EnergyScoreHelper"
     "SourceRateHelper", "TalliedFissionYieldHelper",
     "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
-    "AveragedFissionYieldHelper", "FluxCollapseHelper", "FluxTimesXSHelper")
+    "AveragedFissionYieldHelper", "FluxCollapseHelper")
 
 class TalliedFissionYieldHelper(FissionYieldHelper):
     """Abstract class for computing fission yields with tallies
@@ -123,96 +122,6 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
 # -------------------------------------
 # Helpers for generating reaction rates
 # -------------------------------------
-
-
-class FluxTimesXSHelper(ReactionRateHelper):
-    """Class for generating one-group reaction rates with flux and
-    one-group cross sections.
-
-    This class does not generate tallies, and instead stores cross sections
-    for each nuclide and transmutation reaction relevant for a depletion
-    calculation. The reaction rate is calculated by multiplying the flux by the
-    cross sections.
-
-    Parameters
-    ----------
-    flux : float
-        Neutron flux
-    micro_xs : pandas.DataFrame
-        Microscopic cross-section data
-    n_nucs : int
-        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
-    n_react : int
-        Number of reactions tracked by :class:`openmc.deplete.Operator`
-
-    Attributes
-    ----------
-    nuc_ind_map : dict of int to str
-        Dictionary mapping the nuclide index to nuclide name
-    rxn_ind_map : dict of int to str
-        Dictionary mapping reaction index to reaction name
-    number : AtomNumber
-        AtomNumber object. Needed to convert the microscopic cross-sections
-        to macroscopic cross sections.
-
-    """
-    def __init__(self, flux, micro_xs, n_nuc, n_react):
-        super().__init__(n_nuc, n_react)
-        self._flux = flux
-        self._micro_xs = micro_xs
-        self.nuc_ind_map = None
-        self.rxn_ind_map = None
-        self.number = None
-
-    def generate_tallies(self, materials, scores):
-        """Unused in this case"""
-
-
-    @property
-    def flux(self):
-        """Flux in n cm^-2 s^-1"""
-        return self._flux
-
-    @flux.setter
-    def flux(self, flux):
-        check_type("flux", flux, float)
-        self._flux = flux
-
-    @property
-    def micro_xs(self):
-        """DataFrame of microscopic cross sections with requested reaction
-        for all nuclides"""
-        return self._micro_xs
-
-    @micro_xs.setter
-    def micro_xs(self, micro_xs):
-        # TODO : validate micro_xs
-        self._micro_xs = micro_xs
-
-    def get_material_rates(self, mat_id, nuc_index, react_index):
-        """Return 2D array of [nuclide, reaction] reaction rates
-
-        Parameters
-        ----------
-        mat_id : int
-            Unique ID for the requested material
-        nuc_index : list of str
-            Ordering of desired nuclides
-        react_index : list of str
-            Ordering of reactions
-        """
-        self._results_cache.fill(0.0)
-        for i, (i_nuc, i_react) in enumerate(product(nuc_index, react_index)):
-            nuc = self.nuc_ind_map[i_nuc]
-            rxn = self.rxn_ind_map[i_react]
-            density = self.number.get_atom_density(mat_id, nuc)
-            self._results_cache[i_nuc, i_react] = self._micro_xs[rxn][nuc] * density
-
-        return self._results_cache
-
-
-
-
 
 
 class DirectReactionRateHelper(ReactionRateHelper):

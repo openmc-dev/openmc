@@ -204,6 +204,7 @@ prior to depleting materials
    :template: mycallable.rst
 
    abc.TransportOperator
+   openmc_operator.OpenMCOperator
 
 The following classes are abstract classes used to pass information from
 OpenMC simulations back on to the :class:`abc.TransportOperator`
@@ -216,7 +217,7 @@ OpenMC simulations back on to the :class:`abc.TransportOperator`
    abc.NormalizationHelper
    abc.FissionYieldHelper
    abc.ReactionRateHelper
-   abc.TalliedFissionYieldHelper
+   helpers.TalliedFissionYieldHelper
 
 Custom integrators or depletion solvers can be developed by subclassing from
 the following abstract base classes:

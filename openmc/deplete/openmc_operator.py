@@ -43,6 +43,7 @@ def _distribute(items):
             return items[j:j + chunk_size]
         j += chunk_size
 
+
 class OpenMCOperator(TransportOperator):
     """Abstrct class holding OpenMC-specific functions for running
     depletion calculations.
@@ -136,12 +137,25 @@ class OpenMCOperator(TransportOperator):
         results are to be used.
     """
 
-    def __init__(self, materials=None, cross_sections=None, chain_file=None, prev_results=None, diff_burnable_mats=False, normalization_mode=None, fission_q=None, dilute_initial=0.0, fission_yield_mode=None, fission_yield_opts=None,
-                 reaction_rate_mode=None, reaction_rate_opts=None,
-                 reduce_chain=False, reduce_chain_level=None):
+    def __init__(
+            self,
+            materials=None,
+            cross_sections=None,
+            chain_file=None,
+            prev_results=None,
+            diff_burnable_mats=False,
+            normalization_mode=None,
+            fission_q=None,
+            dilute_initial=0.0,
+            fission_yield_mode=None,
+            fission_yield_opts=None,
+            reaction_rate_mode=None,
+            reaction_rate_opts=None,
+            reduce_chain=False,
+            reduce_chain_level=None):
 
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
-        self.round_number=False
+        self.round_number = False
         self.materials = materials
         self.cross_sections = cross_sections
 
@@ -172,8 +186,8 @@ class OpenMCOperator(TransportOperator):
         if self.prev_res is not None:
             self._load_previous_results()
 
-
-        self.nuclides_with_data = self._get_nuclides_with_data(self.cross_sections)
+        self.nuclides_with_data = self._get_nuclides_with_data(
+            self.cross_sections)
 
         # Select nuclides with data that are also in the chain
         self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
@@ -189,7 +203,12 @@ class OpenMCOperator(TransportOperator):
         self.reaction_rates = ReactionRates(
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
-        self._get_helper_classes(reaction_rate_mode, normalization_mode, fission_yield_mode, reaction_rate_opts, fission_yield_opts)
+        self._get_helper_classes(
+            reaction_rate_mode,
+            normalization_mode,
+            fission_yield_mode,
+            reaction_rate_opts,
+            fission_yield_opts)
 
     @abstractmethod
     def _differentiate_burnable_mats(self):
@@ -244,7 +263,6 @@ class OpenMCOperator(TransportOperator):
 
         return burnable_mats, volume, nuclides
 
-
     @abstractmethod
     def _load_previous_results(self):
         """Load reuslts from a previous depletion simulation"""
@@ -268,11 +286,14 @@ class OpenMCOperator(TransportOperator):
             Results from a previous depletion calculation
 
         """
-        self.number = AtomNumber(local_mats, all_nuclides, volume, len(self.chain))
+        self.number = AtomNumber(
+            local_mats, all_nuclides, volume, len(
+                self.chain))
 
         if self.dilute_initial != 0.0:
             for nuc in self._burnable_nucs:
-                self.number.set_atom_density(np.s_[:], nuc, self.dilute_initial)
+                self.number.set_atom_density(
+                    np.s_[:], nuc, self.dilute_initial)
 
         # Now extract and store the number densities
         # From the geometry if no previous depletion results
@@ -337,7 +358,13 @@ class OpenMCOperator(TransportOperator):
             self.number.set_atom_density(mat_id, nuclide, atom_per_cc)
 
     @abstractmethod
-    def _get_helper_classes(self, reaction_rate_mode, normalization_mode, fission_yield_mode, reaction_rate_opts, fission_yield_opts):
+    def _get_helper_classes(
+            self,
+            reaction_rate_mode,
+            normalization_mode,
+            fission_yield_mode,
+            reaction_rate_opts,
+            fission_yield_opts):
         """Create the ``_rate_helper``, ``_normalization_helper``, and
         ``_yield_helper`` objects.
 

@@ -32,6 +32,7 @@ from .helpers import (
 
 __all__ = ["Operator", "OperatorResult"]
 
+
 def _find_cross_sections(model):
     """Determine cross sections to use for depletion"""
     if model.materials and model.materials.cross_sections is not None:
@@ -219,12 +220,21 @@ class Operator(OpenMCOperator):
 
         self.cleanup_when_done = True
 
-        super().__init__(model.materials, cross_sections, chain_file, prev_results,
-                 diff_burnable_mats, normalization_mode,
-                 fission_q, dilute_initial,
-                 fission_yield_mode, fission_yield_opts,
-                 reaction_rate_mode, reaction_rate_opts,
-                 reduce_chain, reduce_chain_level)
+        super().__init__(
+            model.materials,
+            cross_sections,
+            chain_file,
+            prev_results,
+            diff_burnable_mats,
+            normalization_mode,
+            fission_q,
+            dilute_initial,
+            fission_yield_mode,
+            fission_yield_opts,
+            reaction_rate_mode,
+            reaction_rate_opts,
+            reduce_chain,
+            reduce_chain_level)
 
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material"""
@@ -240,7 +250,7 @@ class Operator(OpenMCOperator):
         for mat in distribmats:
             if mat.volume is None:
                 raise RuntimeError("Volume not specified for depletable "
-                                    "material with ID={}.".format(mat.id))
+                                   "material with ID={}.".format(mat.id))
             mat.volume /= mat.num_instances
 
         if distribmats:
@@ -252,8 +262,8 @@ class Operator(OpenMCOperator):
                                  for i in range(cell.num_instances)]
 
         self.materials = openmc.Materials(
-                model.geometry.get_all_materials().values()
-            )
+            model.geometry.get_all_materials().values()
+        )
 
     def _load_previous_results(self):
         """Load results from a previous depletion simulation"""
@@ -285,8 +295,13 @@ class Operator(OpenMCOperator):
 
         return nuclides
 
-    def _get_helper_classes(self, reaction_rate_mode, normalization_mode, fission_yield_mode,
-                            reaction_rate_opts, fission_yield_opts):
+    def _get_helper_classes(
+            self,
+            reaction_rate_mode,
+            normalization_mode,
+            fission_yield_mode,
+            reaction_rate_opts,
+            fission_yield_opts):
         """Create the ``_rate_helper``, ``_normalization_helper``, and
         ``_yield_helper`` objects.
 
@@ -459,17 +474,24 @@ class Operator(OpenMCOperator):
                             densities.append(val)
                         else:
                             # Only output warnings if values are significantly
-                            # negative. CRAM does not guarantee positive values.
+                            # negative. CRAM does not guarantee positive
+                            # values.
                             if val < -1.0e-21:
-                                print("WARNING: nuclide ", nuc, " in material ", mat,
-                                      " is negative (density = ", val, " at/barn-cm)")
+                                print(
+                                    "WARNING: nuclide ",
+                                    nuc,
+                                    " in material ",
+                                    mat,
+                                    " is negative (density = ",
+                                    val,
+                                    " at/barn-cm)")
                             number_i[mat, nuc] = 0.0
 
                 # Update densities on C API side
                 mat_internal = openmc.lib.materials[int(mat)]
                 mat_internal.set_densities(nuclides, densities)
 
-                #TODO Update densities on the Python side, otherwise the
+                # TODO Update densities on the Python side, otherwise the
                 # summary.h5 file contains densities at the first time step
 
     @staticmethod

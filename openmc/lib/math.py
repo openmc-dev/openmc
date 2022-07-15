@@ -1,11 +1,10 @@
 from ctypes import c_int, c_double, POINTER, c_uint64
+from random import getrandbits
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
 
 from . import _dll
-
-from random import getrandbits
 
 
 _dll.t_percentile.restype = c_double
@@ -240,10 +239,10 @@ def maxwell_spectrum(T, prn_seed=None):
         Sampled outgoing energy
 
     """
-    
+
     if prn_seed is None:
         prn_seed = getrandbits(63)
-	
+
     return _dll.maxwell_spectrum(T, c_uint64(prn_seed))
 
 
@@ -265,7 +264,7 @@ def watt_spectrum(a, b, prn_seed=None):
         Sampled outgoing energy
 
     """
-    
+
     if prn_seed is None:
         prn_seed = getrandbits(63)
 
@@ -290,7 +289,7 @@ def normal_variate(mean_value, std_dev, prn_seed=None):
         Sampled outgoing normally distributed value
 
     """
-    
+
     if prn_seed is None:
         prn_seed = getrandbits(63)
 

@@ -399,4 +399,14 @@ void free_memory_source()
   model::external_sources.clear();
 }
 
+//==============================================================================
+// C API
+//==============================================================================
+
+extern "C" int openmc_sample_external_source(uint64_t* seed, SourceSite* site)
+{
+  *site = sample_external_source(seed);
+  return 0;
+}
+
 } // namespace openmc

@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
                     c_char, POINTER, Structure, c_void_p, create_string_buffer,
-                    c_uint64)
+                    c_uint64, c_size_t)
 import sys
 import os
 from random import getrandbits
@@ -98,7 +98,7 @@ _dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
                                             POINTER(c_double)]
 _dll.openmc_global_bounding_box.restype = c_int
 _dll.openmc_global_bounding_box.errcheck = _error_handler
-_dll.openmc_sample_external_source.argtypes = [POINTER(c_uint64), POINTER(_SourceSite)]
+_dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
 
@@ -421,35 +421,42 @@ def run(output=True):
         _dll.openmc_run()
 
 
-def sample_external_source(prn_seed=None):
+def sample_external_source(n_samples=1, prn_seed=None):
     """Sample external source
 
     .. versionadded:: 0.13.1
 
     Parameters
     ----------
+    n_samples : int
+        Number of samples
     prn_seed : int
         PRNG seed; if None, one will be generated randomly
 
     Returns
     -------
-    openmc.SourceParticle
-        Sampled source particle
+    list of openmc.SourceParticle
+        List of samples source particles
 
     """
+    if n_samples <= 0:
+        raise ValueError("Number of samples must be positive")
     if prn_seed is None:
         prn_seed = getrandbits(63)
 
     # Call into C API to sample source
-    site = _SourceSite()
-    _dll.openmc_sample_external_source(c_uint64(prn_seed), site)
+    sites_array = (_SourceSite * n_samples)()
+    _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
 
-    # Convert to SourceParticle and return
-    return openmc.SourceParticle(
-        r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
-        delayed_group=site.delayed_group, surf_id=site.surf_id,
-        particle=openmc.ParticleType(site.particle)
-    )
+    # Convert to list of SourceParticle and return
+    return [
+        openmc.SourceParticle(
+            r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
+            delayed_group=site.delayed_group, surf_id=site.surf_id,
+            particle=openmc.ParticleType(site.particle)
+        )
+        for site in sites_array
+    ]
 
 
 def simulation_init():

@@ -403,9 +403,18 @@ void free_memory_source()
 // C API
 //==============================================================================
 
-extern "C" int openmc_sample_external_source(uint64_t* seed, SourceSite* site)
+extern "C" int openmc_sample_external_source(
+  size_t n, uint64_t* seed, void* sites)
 {
-  *site = sample_external_source(seed);
+  if (!sites || !seed) {
+    set_errmsg("Received null pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  auto sites_array = static_cast<SourceSite*>(sites);
+  for (size_t i = 0; i < n; ++i) {
+    sites_array[i] = sample_external_source(seed);
+  }
   return 0;
 }
 

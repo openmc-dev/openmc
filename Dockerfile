@@ -27,10 +27,6 @@ ARG compile_cores=1
 # Set default value of HOME to /root
 ENV HOME=/root
 
-# OpenMC variables
-ARG openmc_branch=master
-ENV OPENMC_REPO='https://github.com/openmc-dev/openmc'
-
 # Embree variables
 ENV EMBREE_TAG='v3.12.2'
 ENV EMBREE_REPO='https://github.com/embree/embree'
@@ -174,6 +170,17 @@ RUN if [ "$build_libmesh" = "on" ]; then \
 
 FROM dependencies AS build
 
+ENV HOME=/root
+
+ARG openmc_branch=master
+ENV OPENMC_REPO='https://github.com/openmc-dev/openmc'
+
+ARG build_dagmc
+ARG build_libmesh
+
+ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
+ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
+
 # clone and install openmc
 RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && git clone --shallow-submodules --recurse-submodules --single-branch -b ${openmc_branch} --depth=1 ${OPENMC_REPO} \
@@ -210,6 +217,8 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && python -c "import openmc"
 
 FROM build AS release
+
+ENV HOME=/root
 
 # Download cross sections (NNDC and WMP) and ENDF data needed by test suite
 RUN ${HOME}/OpenMC/openmc/tools/ci/download-xs.sh

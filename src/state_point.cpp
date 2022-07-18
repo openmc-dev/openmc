@@ -812,11 +812,17 @@ void write_unstructured_mesh_results()
       auto umesh =
         dynamic_cast<UnstructuredMesh*>(model::meshes[mesh_idx].get());
 
+
       if (!umesh)
         continue;
 
       if (!umesh->output_)
         continue;
+
+      if (umesh->library() == "moab" && !mpi::master) {
+        warning(fmt::format("Output for a MOAB mesh (mesh {}) was requested but will not be written. Please use the Python API to generated the desired VTK tetrahedral mesh.", umesh->id_));
+        continue;
+      }
 
       // if this tally has more than one filter, print
       // warning and skip writing the mesh
@@ -889,12 +895,10 @@ void write_unstructured_mesh_results()
       std::string filename = fmt::format("tally_{0}.{1:0{2}}", tally->id_,
         simulation::current_batch, batch_width);
 
-      if (umesh->library() == "moab" && !mpi::master)
-        continue;
-
       // Write the unstructured mesh and data to file
       umesh->write(filename);
 
+      // remove score data added for this mesh write
       umesh->remove_scores();
     }
   }

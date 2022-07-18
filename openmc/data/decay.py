@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from copy import deepcopy
 from io import StringIO
 from math import log
 import re
@@ -10,7 +9,7 @@ from uncertainties import ufloat, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from openmc.stats import Discrete, Tabular, Mixture
+from openmc.stats import Discrete, Tabular, combine_distributions
 from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
 from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
@@ -567,49 +566,3 @@ class Decay(EqualityMixin):
         return merged_sources
 
 
-def combine_distributions(dists, probs):
-    """Combine distributions with specified probabilities
-
-    This function can be used to combine multiple instances of
-    :class:`~openmc.stats.Discrete` and `~openmc.stats.Tabular` into a single
-    distribution. Multiple discrete distributions are merged into a single
-    distribution and the remainder of the distributions are put into a
-    :class:`~openmc.stats.Mixture` distribution.
-
-    Parameters
-    ----------
-    dists : iterable of openmc.stats.Univariate
-        Distributions to combine
-    probs : iterable of float
-        Probability (or intensity) of each distribution
-
-    """
-    # Get copy of distribution list so as not to modify the argument
-    dist_list = deepcopy(dists)
-
-    # Get list of discrete/continuous distribution indices
-    discrete_index = [i for i, d in enumerate(dist_list) if isinstance(d, Discrete)]
-    cont_index = [i for i, d in enumerate(dist_list) if isinstance(d, Tabular)]
-
-    # Apply probabilites to continuous distributions
-    for i in cont_index:
-        dist = dist_list[i]
-        dist.p *= probs[i]
-
-    if discrete_index:
-        # Create combined discrete distribution
-        dist_discrete = [dist_list[i] for i in discrete_index]
-        discrete_probs = [probs[i] for i in discrete_index]
-        combined_dist = Discrete.merge(dist_discrete, discrete_probs)
-
-        # Replace multiple discrete distributions with merged
-        for idx in reversed(discrete_index):
-            dist_list.pop(idx)
-        dist_list.append(combined_dist)
-
-    # Combine discrete and continuous if present
-    if len(dist_list) > 1:
-        probs = [d.integral() for d in dist_list]
-        dist_list[:] = [Mixture(probs, dist_list.copy())]
-
-    return dist_list[0]

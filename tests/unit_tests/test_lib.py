@@ -829,6 +829,7 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     # Sample some particles and make sure they match specified source
     openmc.lib.init()
     particles = openmc.lib.sample_external_source(10, prn_seed=3)
+    assert len(particles) == 10
     for p in particles:
         assert -5. < p.r[0] < 5.
         assert -5. < p.r[1] < 5.
@@ -840,6 +841,7 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
 
     # Using the same seed should produce the same particles
     other_particles = openmc.lib.sample_external_source(10, prn_seed=3)
+    assert len(other_particles) == 10
     for p1, p2 in zip(particles, other_particles):
         assert p1.r == p2.r
         assert p1.u == p2.u

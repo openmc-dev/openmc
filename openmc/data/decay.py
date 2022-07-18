@@ -316,6 +316,12 @@ class Decay(EqualityMixin):
         'excited_state', 'mass', 'stable', 'spin', and 'parity'.
     spectra : dict
         Resulting radiation spectra for each radiation type.
+    sources : dict
+        Radioactive decay source distributions represented as a dictionary
+        mapping particle types (e.g., 'photon') to instances of
+        :class:`openmc.stats.Univariate`.
+
+        .. versionadded:: 0.13.1
 
     """
     def __init__(self, ev_or_filename):
@@ -498,16 +504,14 @@ class Decay(EqualityMixin):
         """
         return cls(ev_or_filename)
 
-    def get_sources(self):
-        """Get radioactive decay source distributions
+    @property
+    def sources(self):
+        """Radioactive decay source distributions"""
+        # If property has been computed already, return it
+        # TODO: Replace with functools.cached_property when support is Python 3.9+
+        if self._sources is not None:
+            return self._sources
 
-        Returns
-        -------
-        sources : dict
-            Dictionary mapping particle types (e.g., 'photon') to instances of
-            :class:`openmc.stats.Univariate`
-
-        """
         sources = {}
         name = self.nuclide['name']
         decay_constant = self.decay_constant.n
@@ -563,6 +567,5 @@ class Decay(EqualityMixin):
             merged_sources[particle_type] = combine_distributions(
                 dist_list, [1.0]*len(dist_list))
 
-        return merged_sources
-
-
+        self._sources = merged_sources
+        return self._sources

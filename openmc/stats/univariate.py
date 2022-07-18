@@ -224,6 +224,8 @@ class Discrete(Univariate):
     def integral(self):
         """Return integral of distribution
 
+        .. versionadded:: 0.13.1
+
         Returns
         -------
         float
@@ -1041,6 +1043,8 @@ class Tabular(Univariate):
     def integral(self):
         """Return integral of distribution
 
+        .. versionadded: 0.13.1
+
         Returns
         -------
         float
@@ -1230,6 +1234,8 @@ class Mixture(Univariate):
     def integral(self):
         """Return integral of the distribution
 
+        .. versionadded:: 0.13.1
+
         Returns
         -------
         float
@@ -1249,6 +1255,8 @@ def combine_distributions(dists, probs):
     distribution. Multiple discrete distributions are merged into a single
     distribution and the remainder of the distributions are put into a
     :class:`~openmc.stats.Mixture` distribution.
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------

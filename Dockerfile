@@ -15,14 +15,16 @@
 
 # sudo docker run image_name:tag_name or ID with no tag sudo docker run ID number
 
-FROM debian:bullseye-slim AS dependencies
+
+# global ARG as these ARGS are used in multiple stages
+# By default one core is used to compile
+ARG compile_cores=1
 
 # By default this Dockerfile builds OpenMC without DAGMC and LIBMESH support
 ARG build_dagmc=off
 ARG build_libmesh=off
 
-# By default one core is used to compile
-ARG compile_cores=1
+FROM debian:bullseye-slim AS dependencies
 
 # Set default value of HOME to /root
 ENV HOME=/root
@@ -56,7 +58,6 @@ ENV NJOY_REPO='https://github.com/njoy/NJOY2016'
 
 # Setup environment variables for Docker image
 ENV LD_LIBRARY_PATH=${DAGMC_INSTALL_DIR}/lib:$LD_LIBRARY_PATH \
-    OPENMC_CROSS_SECTIONS=/root/nndc_hdf5/cross_sections.xml \
     OPENMC_ENDF_DATA=/root/endf-b-vii.1 \
     DEBIAN_FRONTEND=noninteractive
 
@@ -175,9 +176,6 @@ ENV HOME=/root
 ARG openmc_branch=master
 ENV OPENMC_REPO='https://github.com/openmc-dev/openmc'
 
-ARG build_dagmc
-ARG build_libmesh
-
 ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
 ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 
@@ -219,6 +217,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
 FROM build AS release
 
 ENV HOME=/root
+ENV OPENMC_CROSS_SECTIONS=/root/nndc_hdf5/cross_sections.xml
 
 # Download cross sections (NNDC and WMP) and ENDF data needed by test suite
 RUN ${HOME}/OpenMC/openmc/tools/ci/download-xs.sh

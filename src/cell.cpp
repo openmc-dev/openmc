@@ -801,7 +801,7 @@ bool CSGCell::contains_complex(
       }
 
       // While the operator stack is populated
-      while (op_stack.size() > 0) {
+      while (!op_stack.empty()) {
         // Extract the top operator
         int32_t op = op_stack.pop();
 

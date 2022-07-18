@@ -298,6 +298,7 @@ list(APPEND libopenmc_SOURCES
   src/mgxs_interface.cpp
   src/nuclide.cpp
   src/output.cpp
+  src/operator_stack.cpp
   src/particle.cpp
   src/particle_data.cpp
   src/particle_restart.cpp

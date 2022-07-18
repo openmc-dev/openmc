@@ -21,6 +21,7 @@
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
+#include "openmc/operator_stack.h"
 #include "openmc/settings.h"
 #include "openmc/xml_interface.h"
 
@@ -648,8 +649,8 @@ BoundingBox CSGCell::bounding_box_simple() const
   return bbox;
 }
 
-void CSGCell::apply_demorgan(
-  vector<int32_t>::reverse_iterator start, vector<int32_t>::reverse_iterator stop)
+void CSGCell::apply_demorgan(vector<int32_t>::reverse_iterator start,
+  vector<int32_t>::reverse_iterator stop)
 {
   while (start < stop) {
     if (*start < OP_UNION) {
@@ -698,7 +699,8 @@ vector<int32_t>::reverse_iterator CSGCell::find_left_parenthesis(
 
 void CSGCell::remove_complement_ops(vector<int32_t>& region_prefix)
 {
-  auto it = std::find(region_prefix.rbegin(), region_prefix.rend(), OP_COMPLEMENT);
+  auto it =
+    std::find(region_prefix.rbegin(), region_prefix.rend(), OP_COMPLEMENT);
   while (it != region_prefix.rend()) {
     // find the opening parenthesis (if any)
     auto left = find_left_parenthesis(it, region_prefix);
@@ -774,7 +776,7 @@ bool CSGCell::contains_complex(
   Position r, Direction u, int32_t on_surface) const
 {
   // Initialize a stack for operators and the in cell boolean
-  vector<int32_t> op_stack;
+  OperatorStack op_stack;
   bool in_cell = false;
 
   // For each token in prefix
@@ -801,8 +803,7 @@ bool CSGCell::contains_complex(
       // While the operator stack is populated
       while (op_stack.size() > 0) {
         // Extract the top operator
-        int32_t op = op_stack.back();
-        op_stack.pop_back();
+        int32_t op = op_stack.pop();
 
         if ((op == OP_UNION && in_cell == true) ||
             (op == OP_INTERSECTION && in_cell == false)) {
@@ -824,7 +825,7 @@ bool CSGCell::contains_complex(
             it++;
             int32_t next_token = *it;
 
-            // If the next token is a surface add to the surface counter, 
+            // If the next token is a surface add to the surface counter,
             // if the next token is either an intersection or a union
             // add to the operator counter
             if (next_token < OP_UNION) {
@@ -834,24 +835,18 @@ bool CSGCell::contains_complex(
             }
           }
 
-        // If the operator is a complement
+          // If the operator is a complement
         } else if (op == OP_COMPLEMENT) {
           // Set the current cell boolean to the opposite
           in_cell = !in_cell;
 
-        // If none of the above are true, break
+          // If none of the above are true, break
         } else {
           break;
         }
-
-        // If one of the above was true and the size of the operator
-        // stack is zero return the current cell boolean
-        if (op_stack.size() == 0) {
-          return in_cell;
-        }
       }
 
-    // If the token is an operator
+      // If the token is an operator
     } else {
       // Add it to the operator stack
       op_stack.push_back(token);
@@ -1163,7 +1158,8 @@ struct ParentCellStack {
 };
 
 vector<ParentCell> Cell::find_parent_cells(
-  int32_t instance, const Position& r) const {
+  int32_t instance, const Position& r) const
+{
 
   // create a temporary particle
   Particle dummy_particle {};
@@ -1173,8 +1169,8 @@ vector<ParentCell> Cell::find_parent_cells(
   return find_parent_cells(instance, dummy_particle);
 }
 
-vector<ParentCell> Cell::find_parent_cells(
-  int32_t instance, Particle& p) const {
+vector<ParentCell> Cell::find_parent_cells(int32_t instance, Particle& p) const
+{
   // look up the particle's location
   exhaustive_find_cell(p);
   const auto& coords = p.coord();
@@ -1185,7 +1181,8 @@ vector<ParentCell> Cell::find_parent_cells(
   for (auto it = coords.begin(); it != coords.end(); it++) {
     const auto& coord = *it;
     const auto& cell = model::cells[coord.cell];
-    // if the cell at this level matches the current cell, stop adding to the stack
+    // if the cell at this level matches the current cell, stop adding to the
+    // stack
     if (coord.cell == model::cell_map[this->id_]) {
       cell_found = true;
       break;
@@ -1196,7 +1193,8 @@ vector<ParentCell> Cell::find_parent_cells(
     int lattice_idx = C_NONE;
     if (cell->type_ == Fill::LATTICE) {
       const auto& next_coord = *(it + 1);
-      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(next_coord.lattice_i);
+      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(
+        next_coord.lattice_i);
     }
     stack.push(coord.universe, {coord.cell, lattice_idx});
   }
@@ -1204,7 +1202,8 @@ vector<ParentCell> Cell::find_parent_cells(
   // if this loop finished because the cell was found and
   // the instance matches the one requested in the call
   // we have the correct path and can return the stack
-  if (cell_found && stack.compute_instance(this->distribcell_index_) == instance) {
+  if (cell_found &&
+      stack.compute_instance(this->distribcell_index_) == instance) {
     return stack.parent_cells();
   }
 
@@ -1212,9 +1211,7 @@ vector<ParentCell> Cell::find_parent_cells(
   return exhaustive_find_parent_cells(instance);
 }
 
-
-vector<ParentCell> Cell::exhaustive_find_parent_cells(
-  int32_t instance) const
+vector<ParentCell> Cell::exhaustive_find_parent_cells(int32_t instance) const
 {
   ParentCellStack stack;
   // start with this cell's universe

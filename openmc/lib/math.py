@@ -199,7 +199,8 @@ def rotate_angle(uvw0, mu, phi, prn_seed=None):
     phi : float
         Azimuthal angle; if None, one will be sampled uniformly
     prn_seed : int
-        PRNG seed; if None, one will be generated randomly
+        Pseudorandom number generator (PRNG) seed; if None, one will be
+        generated randomly.
 
     Returns
     -------
@@ -231,7 +232,8 @@ def maxwell_spectrum(T, prn_seed=None):
     T : float
         Spectrum parameter
     prn_seed : int
-        PRNG seed; if None, one will be generated randomly
+        Pseudorandom number generator (PRNG) seed; if None, one will be
+        generated randomly.
 
     Returns
     -------
@@ -256,7 +258,8 @@ def watt_spectrum(a, b, prn_seed=None):
     b : float
         Spectrum parameter b
     prn_seed : int
-        PRNG seed; if None, one will be generated randomly
+        Pseudorandom number generator (PRNG) seed; if None, one will be
+        generated randomly.
 
     Returns
     -------
@@ -281,7 +284,8 @@ def normal_variate(mean_value, std_dev, prn_seed=None):
     std_dev : float
         Standard deviation of the normal distribution
     prn_seed : int
-        PRNG seed; if None, one will be generated randomly
+        Pseudorandom number generator (PRNG) seed; if None, one will be
+        generated randomly.
 
     Returns
     -------

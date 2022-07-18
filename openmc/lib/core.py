@@ -431,7 +431,8 @@ def sample_external_source(n_samples=1, prn_seed=None):
     n_samples : int
         Number of samples
     prn_seed : int
-        PRNG seed; if None, one will be generated randomly
+        Pseudorandom number generator (PRNG) seed; if None, one will be
+        generated randomly.
 
     Returns
     -------

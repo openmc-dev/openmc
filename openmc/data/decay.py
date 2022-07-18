@@ -1,15 +1,19 @@
 from collections.abc import Iterable
 from io import StringIO
 from math import log
+from pathlib import Path
 import re
 from warnings import warn
+from xml.etree import ElementTree as ET
 
 import numpy as np
 from uncertainties import ufloat, UFloat
 
+import openmc
 import openmc.checkvalue as cv
+from openmc.exceptions import DataError
 from openmc.mixin import EqualityMixin
-from openmc.stats import Discrete, Tabular, combine_distributions
+from openmc.stats import Discrete, Tabular, Univariate, combine_distributions
 from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
 from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
@@ -570,3 +574,40 @@ class Decay(EqualityMixin):
 
         self._sources = merged_sources
         return self._sources
+
+
+_DECAY_PHOTON_SOURCE = {}
+
+
+def decay_photon_source(nuclide):
+    """Get photon source from the decay of a nuclide
+
+    This function relies on data stored in a depletion chain. Before calling it
+    for the first time, you need to ensure that a depletion chain has been
+    specified in openmc.config['chain_file'].
+
+    Parameters
+    ----------
+    nuclide : str
+        Name of nuclide, e.g., 'Co58'
+
+    Returns
+    -------
+    openmc.stats.Univariate
+        Distribution of energies in [eV] of photons emitted from decay
+    """
+    if not _DECAY_PHOTON_SOURCE:
+        chain_file = openmc.config.get('chain_file')
+        if chain_file is None:
+            raise DataError(
+                "A depletion chain file must be specified with "
+                "openmc.config['chain_file'] in order to load decay data."
+            )
+
+        from openmc.deplete import Chain
+        chain = Chain.from_xml(chain_file)
+        for nuc in chain.nuclides:
+            if 'photon' in nuc.sources:
+                _DECAY_PHOTON_SOURCE[nuc.name] = nuc.sources['photon']
+
+    return _DECAY_PHOTON_SOURCE.get(nuclide)

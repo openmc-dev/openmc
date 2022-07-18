@@ -255,6 +255,18 @@ class Material(IDManagerMixin):
                            / openmc.data.AVOGADRO
         return density*self.volume
 
+    @property
+    def decay_photon_source(self):
+        atoms = self.get_nuclide_atoms()
+        dists = []
+        probs = []
+        for nuc, num_atoms in atoms.items():
+            source_per_atom = openmc.data.decay_photon_source(nuc)
+            if source_per_atom is not None:
+                dists.append(source_per_atom)
+                probs.append(num_atoms)
+        return openmc.data.combine_distributions(dists, probs)
+
     @classmethod
     def from_hdf5(cls, group: h5py.Group):
         """Create material from HDF5 group

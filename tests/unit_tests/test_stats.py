@@ -13,8 +13,8 @@ def test_discrete():
     elem = d.to_xml_element('distribution')
 
     d = openmc.stats.Discrete.from_xml_element(elem)
-    assert d.x == x
-    assert d.p == p
+    np.testing.assert_array_equal(d.x, x)
+    np.testing.assert_array_equal(d.p, p)
     assert len(d) == len(x)
 
     d = openmc.stats.Univariate.from_xml_element(elem)
@@ -76,8 +76,8 @@ def test_uniform():
     assert len(d) == 2
 
     t = d.to_tabular()
-    assert t.x == [a, b]
-    assert t.p == [1/(b-a), 1/(b-a)]
+    np.testing.assert_array_equal(t.x, [a, b])
+    np.testing.assert_array_equal(t.p, [1/(b-a), 1/(b-a)])
     assert t.interpolation == 'histogram'
 
     exp_mean = 0.5 * (a + b)
@@ -396,3 +396,34 @@ def test_muir():
     assert within_2_sigma / n_samples >= 0.95
     within_3_sigma = np.count_nonzero(samples < 3*d.std_dev)
     assert within_3_sigma / n_samples >= 0.99
+
+
+def test_combine_distributions():
+    # Combine two discrete (same data as in test_merge_discrete)
+    x1 = [0.0, 1.0, 10.0]
+    p1 = [0.3, 0.2, 0.5]
+    d1 = openmc.stats.Discrete(x1, p1)
+    x2 = [0.5, 1.0, 5.0]
+    p2 = [0.4, 0.5, 0.1]
+    d2 = openmc.stats.Discrete(x2, p2)
+
+    # Merged distribution should have x values sorted and probabilities
+    # appropriately combined. Duplicate x values should appear once.
+    merged = openmc.stats.combine_distributions([d1, d2], [0.6, 0.4])
+    assert isinstance(merged, openmc.stats.Discrete)
+    assert merged.x == pytest.approx([0.0, 0.5, 1.0, 5.0, 10.0])
+    assert merged.p == pytest.approx(
+        [0.6*0.3, 0.4*0.4, 0.6*0.2 + 0.4*0.5, 0.4*0.1, 0.6*0.5])
+
+    # Probabilities add up but are not normalized
+    d1 = openmc.stats.Discrete([3.0], [1.0])
+    triple = openmc.stats.combine_distributions([d1, d1, d1], [1.0, 2.0, 3.0])
+    assert triple.x == pytest.approx([3.0])
+    assert triple.p == pytest.approx([6.0])
+
+    # Combine discrete and tabular
+    t1 = openmc.stats.Tabular(x2, p2)
+    mixed = openmc.stats.combine_distributions([d1, t1], [0.5, 0.5])
+    assert isinstance(mixed, openmc.stats.Mixture)
+    assert len(mixed.distribution) == 2
+    assert len(mixed.probability) == 2

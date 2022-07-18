@@ -96,9 +96,9 @@ class Discrete(Univariate):
 
     Attributes
     ----------
-    x : Iterable of float
+    x : numpy.ndarray
         Values of the random variable
-    p : Iterable of float
+    p : numpy.ndarray
         Discrete probability for each value
 
     """
@@ -123,7 +123,7 @@ class Discrete(Univariate):
         if isinstance(x, Real):
             x = [x]
         cv.check_type('discrete values', x, Iterable, Real)
-        self._x = x
+        self._x = np.array(x, dtype=float)
 
     @p.setter
     def p(self, p):
@@ -132,7 +132,7 @@ class Discrete(Univariate):
         cv.check_type('discrete probabilities', p, Iterable, Real)
         for pk in p:
             cv.check_greater_than('discrete probability', pk, 0.0, True)
-        self._p = p
+        self._p = np.array(p, dtype=float)
 
     def cdf(self):
         return np.insert(np.cumsum(self.p), 0, 0.0)
@@ -836,9 +836,9 @@ class Tabular(Univariate):
 
     Attributes
     ----------
-    x : Iterable of float
+    x : numpy.ndarray
         Tabulated values of the random variable
-    p : Iterable of float
+    p : numpy.ndarray
         Tabulated probabilities
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
         Indicate whether the density function is constant between tabulated
@@ -871,7 +871,7 @@ class Tabular(Univariate):
     @x.setter
     def x(self, x):
         cv.check_type('tabulated values', x, Iterable, Real)
-        self._x = x
+        self._x = np.array(x, dtype=float)
 
     @p.setter
     def p(self, p):
@@ -879,7 +879,7 @@ class Tabular(Univariate):
         if not self._ignore_negative:
             for pk in p:
                 cv.check_greater_than('tabulated probability', pk, 0.0, True)
-        self._p = p
+        self._p = np.array(p, dtype=float)
 
     @interpolation.setter
     def interpolation(self, interpolation):
@@ -892,8 +892,8 @@ class Tabular(Univariate):
                                       'distributions using histogram or '
                                       'linear-linear interpolation')
         c = np.zeros_like(self.x)
-        x = np.asarray(self.x)
-        p = np.asarray(self.p)
+        x = self.x
+        p = self.p
 
         if self.interpolation == 'histogram':
             c[1:] = p[:-1] * np.diff(x)
@@ -933,7 +933,7 @@ class Tabular(Univariate):
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
-        self.p = np.asarray(self.p) / self.cdf().max()
+        self.p /= self.cdf().max()
 
     def sample(self, n_samples=1, seed=None):
         if not self.interpolation in ('histogram', 'linear-linear'):

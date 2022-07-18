@@ -746,7 +746,13 @@ class DAGMCUniverse(UniverseBase):
             import math
             bounding_box_center = (bounding_box[0] + bounding_box[1])/2
             radius = math.dist(bounding_box[0], bounding_box[1])
-            bounding_surface = openmc.Sphere(x0=bounding_box_center[0], y0=bounding_box_center[1], z0=bounding_box_center[2], r=radius)
+            bounding_surface = openmc.Sphere(
+                x0=bounding_box_center[0],
+                y0=bounding_box_center[1],
+                z0=bounding_box_center[2],
+                boundary_type=boundary_type,
+                r=radius,
+            )
 
             return -bounding_surface
 

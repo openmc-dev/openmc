@@ -7,7 +7,7 @@ namespace openmc {
  */
 bool OperatorStack::empty() const
 {
-  return size_ == 0;
+  return data_ == 0;
 }
 
 /*!
@@ -15,9 +15,7 @@ bool OperatorStack::empty() const
  */
 void OperatorStack::push_back(value_type op)
 {
-  OperatorStack::size_type bit_op = convert_to_bit_notation(op);
-  data_ = shl(data_) | bit_op;
-  ++size_;
+  data_ = shl(data_) | convert_to_bit_notation(op);
 }
 
 /*!
@@ -25,9 +23,8 @@ void OperatorStack::push_back(value_type op)
  */
 OperatorStack::value_type OperatorStack::pop()
 {
-  OperatorStack::size_type bit_op = top(data_);
+  auto bit_op = top(data_);
   data_ = shr(data_);
-  --size_;
   return convert_to_std_notation(bit_op);
 }
 
@@ -37,14 +34,18 @@ OperatorStack::value_type OperatorStack::pop()
  * OP_INTERSECTION: 2 (0010)
  * OP_COMPLEMENT: 3 (0011)
  */
-OperatorStack::size_type OperatorStack::convert_to_bit_notation(value_type op)
+OperatorStack::size_type OperatorStack::convert_to_bit_notation(
+  value_type op) const
 {
-  if (op == OP_UNION) {
+  switch (op) {
+  case OP_UNION:
     return BIT_OP_UNION;
-  } else if (op == OP_INTERSECTION) {
+  case OP_INTERSECTION:
     return BIT_OP_INTERSECTION;
-  } else {
+  case OP_COMPLEMENT:
     return BIT_OP_COMPLEMENT;
+  default:
+    return 0;
   }
 }
 
@@ -52,14 +53,17 @@ OperatorStack::size_type OperatorStack::convert_to_bit_notation(value_type op)
  * Convert operator from bit notation to int32_t
  */
 OperatorStack::value_type OperatorStack::convert_to_std_notation(
-  size_type bit_op)
+  size_type bit_op) const
 {
-  if (bit_op == BIT_OP_UNION) {
+  switch (bit_op) {
+  case BIT_OP_UNION:
     return OP_UNION;
-  } else if (bit_op == BIT_OP_INTERSECTION) {
+  case BIT_OP_INTERSECTION:
     return OP_INTERSECTION;
-  } else {
+  case BIT_OP_COMPLEMENT:
     return OP_COMPLEMENT;
+  default:
+    return 0;
   }
 }
 

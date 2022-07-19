@@ -211,7 +211,7 @@ or from data arrays::
                 'O16': 4.64e22,
                 'O17': 1.76e19}
     volume = 0.5 
-    op = FluxDepletionOperator.from_nuclide_dict(volume, nuclides, micro_xs, flux, chain_file)
+    op = FluxDepletionOperator.from_nuclides(volume, nuclides, micro_xs, flux, chain_file)
 
 A user can then define an integrator class as they would for a coupled
 transport-depletion calculation and follow the same steps from there.

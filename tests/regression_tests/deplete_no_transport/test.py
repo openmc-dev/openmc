@@ -46,16 +46,18 @@ def test_no_transport(run_in_tmpdir, vol_nuc, multiproc):
     micro_xs_file = Path(__file__).parents[2] / 'micro_xs_simple.csv'
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(micro_xs_file)
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
-    flux = 1164719970082145.0 # flux from pincell example
-    op = FluxDepletionOperator.from_nuclides(vol_nuc[0], vol_nuc[1], micro_xs, flux, chain_file)
+    flux = 1164719970082145.0  # flux from pincell example
+    op = FluxDepletionOperator.from_nuclides(
+        vol_nuc[0], vol_nuc[1], micro_xs, flux, chain_file)
 
     # Power and timesteps
-    dt = [30] # single step
-    power = 174 # W/cm
+    dt = [30]  # single step
+    power = 174  # W/cm
 
     # Perform simulation using the predictor algorithm
     openmc.deplete.pool.USE_MULTIPROCESSING = multiproc
-    openmc.deplete.PredictorIntegrator(op, dt, power, timestep_units='d').integrate()
+    openmc.deplete.PredictorIntegrator(
+        op, dt, power, timestep_units='d').integrate()
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
@@ -102,4 +104,3 @@ def test_no_transport(run_in_tmpdir, vol_nuc, multiproc):
 
             assert correct, "Discrepancy in mat {} and nuc {}\n{}\n{}".format(
                 mat, nuc, y_old, y_test)
-

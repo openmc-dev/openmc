@@ -27,6 +27,7 @@ from .helpers import ConstantFissionYieldHelper, SourceRateHelper
 valid_rxns = list(REACTIONS)
 valid_rxns.append('fission')
 
+
 class FluxDepletionOperator(OpenMCOperator):
     """Depletion operator that uses a user-provided flux spectrum and one-group
     cross sections to calculate reaction rates.
@@ -87,14 +88,14 @@ class FluxDepletionOperator(OpenMCOperator):
 
     @classmethod
     def from_nuclides(cls, volume, nuclides, micro_xs,
-                 flux_spectra,
-                 chain_file,
-                 keff=None,
-                 fission_q=None,
-                 prev_results=None,
-                 reduce_chain=False,
-                 reduce_chain_level=None,
-                 fission_yield_opts=None):
+                      flux_spectra,
+                      chain_file,
+                      keff=None,
+                      fission_q=None,
+                      prev_results=None,
+                      reduce_chain=False,
+                      reduce_chain_level=None,
+                      fission_yield_opts=None):
         """
         Alternate constructor from a dictionary of nuclide concentrations
 
@@ -129,15 +130,15 @@ class FluxDepletionOperator(OpenMCOperator):
         check_type('nuclides', nuclides, dict, str)
         materials = cls._consolidate_nuclides_to_material(nuclides, volume)
         return cls(materials,
-                     micro_xs,
-                     flux_spectra,
-                     chain_file,
-                     keff,
-                     fission_q,
-                     prev_results,
-                     reduce_chain,
-                     reduce_chain_level,
-                     fission_yield_opts)
+                   micro_xs,
+                   flux_spectra,
+                   chain_file,
+                   keff,
+                   fission_q,
+                   prev_results,
+                   reduce_chain,
+                   reduce_chain_level,
+                   fission_yield_opts)
 
     def __init__(self,
                  materials,
@@ -160,7 +161,7 @@ class FluxDepletionOperator(OpenMCOperator):
         self._keff = keff
         self.flux_spectra = flux_spectra
 
-        diff_burnable_mats=False
+        diff_burnable_mats = False
         helper_kwargs = dict()
         helper_kwargs['fission_yield_opts'] = fission_yield_opts
 
@@ -184,7 +185,7 @@ class FluxDepletionOperator(OpenMCOperator):
         openmc.reset_auto_ids()
         mat = openmc.Material()
         for nuc, conc in nuclides.items():
-            mat.add_nuclide(nuc, conc / 1e24) #convert to at/b-cm
+            mat.add_nuclide(nuc, conc / 1e24)  # convert to at/b-cm
 
         mat.volume = volume
         mat.depleteable = True
@@ -231,6 +232,7 @@ class FluxDepletionOperator(OpenMCOperator):
             Dictionary mapping reaction index to reaction name
 
         """
+
         def __init__(self, n_nuc, n_react, outer):
             super().__init__(n_nuc, n_react)
             self.outer = outer
@@ -253,11 +255,13 @@ class FluxDepletionOperator(OpenMCOperator):
                 Ordering of reactions
             """
             self._results_cache.fill(0.0)
-            for i, (i_nuc, i_react) in enumerate(product(nuc_index, react_index)):
+            for i, (i_nuc, i_react) in enumerate(
+                    product(nuc_index, react_index)):
                 nuc = self.nuc_ind_map[i_nuc]
                 rxn = self.rxn_ind_map[i_react]
                 density = self.outer.number.get_atom_density(mat_id, nuc)
-                self._results_cache[i_nuc, i_react] = self.outer.cross_sections[rxn][nuc] * density
+                self._results_cache[i_nuc,
+                                    i_react] = self.outer.cross_sections[rxn][nuc] * density
 
             return self._results_cache
 
@@ -271,7 +275,8 @@ class FluxDepletionOperator(OpenMCOperator):
         nuc_ind_map = {ind: nuc for nuc, ind in rates.index_nuc.items()}
         rxn_ind_map = {ind: rxn for rxn, ind in rates.index_rx.items()}
 
-        self._rate_helper = self.FluxTimesXSHelper(self.reaction_rates.n_nuc, self.reaction_rates.n_react, self)
+        self._rate_helper = self.FluxTimesXSHelper(
+            self.reaction_rates.n_nuc, self.reaction_rates.n_react, self)
         self._rate_helper.nuc_ind_map = nuc_ind_map
         self._rate_helper.rxn_ind_map = rxn_ind_map
 
@@ -378,7 +383,6 @@ class FluxDepletionOperator(OpenMCOperator):
         # Since we aren't running a transport simulation, we simply pass
         pass
 
-
     @staticmethod
     def create_micro_xs_from_data_array(
             nuclides, reactions, data, units='barn'):
@@ -411,7 +415,8 @@ class FluxDepletionOperator(OpenMCOperator):
                 f'reactions array of length {len(reactions)} do not '
                 f'match dimensions of data array of shape {data.shape}')
 
-        FluxDepletionOperator._validate_micro_xs_inputs(nuclides, reactions, data)
+        FluxDepletionOperator._validate_micro_xs_inputs(
+            nuclides, reactions, data)
 
         # Convert to cm^2
         if units == 'barn':
@@ -441,8 +446,8 @@ class FluxDepletionOperator(OpenMCOperator):
         micro_xs = pd.read_csv(csv_file, index_col=0)
 
         FluxDepletionOperator._validate_micro_xs_inputs(list(micro_xs.index),
-                                  list(micro_xs.columns),
-                                  micro_xs.to_numpy())
+                                                        list(micro_xs.columns),
+                                                        micro_xs.to_numpy())
 
         if units == 'barn':
             micro_xs /= 1e24
@@ -457,6 +462,3 @@ class FluxDepletionOperator(OpenMCOperator):
         check_type('data', data, np.ndarray, expected_iter_type=float)
         for reaction in reactions:
             check_value('reactions', reaction, valid_rxns)
-
-
-

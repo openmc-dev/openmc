@@ -20,33 +20,14 @@ from openmc.mpi import comm
 from .abc import TransportOperator, ReactionRateHelper, OperatorResult
 from .atom_number import AtomNumber
 from .chain import REACTIONS
+from .openmc_operator import OpenMCOperator
 from .reaction_rates import ReactionRates
 from .helpers import ConstantFissionYieldHelper, SourceRateHelper
 
 valid_rxns = list(REACTIONS)
 valid_rxns.append('fission')
 
-## delete
-def _distribute(items):
-    """Distribute items across MPI communicator
-    Parameters
-    ----------
-    items : list
-        List of items of distribute
-    Returns
-    -------
-    list
-        Items assigned to process that called
-    """
-    min_size, extra = divmod(len(items), comm.size)
-    j = 0
-    for i in range(comm.size):
-        chunk_size = min_size + int(i < extra)
-        if comm.rank == i:
-            return items[j:j + chunk_size]
-        j += chunk_size
-
-class FluxDepletionOperator(TransportOperator):
+class FluxDepletionOperator(OpenMCOperator):
     """Depletion operator that uses a user-provided flux spectrum and one-group
     cross sections to calculate reaction rates.
 
@@ -130,7 +111,7 @@ class FluxDepletionOperator(TransportOperator):
         check_type('nuclides', nuclides, dict, str)
         check_type('micro_xs', micro_xs, pd.DataFrame)
 
-        self.cross_sections = micro_xs
+        cross_sections = micro_xs
         if keff is not None:
             check_type('keff', keff, tuple, float)
             keff = ufloat(keff)
@@ -140,75 +121,20 @@ class FluxDepletionOperator(TransportOperator):
         materials = self._consolidate_nuclides_to_material(nuclides, volume)
 
         diff_burnable_mats=False
-        #super().__init__(
-        #    materials,
-        #    cross_sections,
-        #    chain_file,
-        #    prev_results,
-        #    diff_burnable_mats,
-        #    normalization_mode,
-        #    None,
-        #    0.0,
-        #    None,
-        #    fission_yield_opts,
-        #    None,
-        #    None,
-        #    reduce_chain,
-        #    reduce_chain_level)
+        helper_kwargs = dict()
+        helper_kwargs['fission_yield_opts'] = fission_yield_opts
 
-        ##delete till end of function
-        super().__init__(chain_file, fission_q, 0.0, prev_results)
-        self.round_number = False
-        self.materials = materials
-
-        # Reduce the chain to only those nuclides present
-        if reduce_chain:
-            init_nuclides = set()
-            for material in self.materials:
-                if not material.depletable:
-                    continue
-                for name, _dens_percent, _dens_type in material.nuclides:
-                    init_nuclides.add(name)
-
-            self.chain = self.chain.reduce(init_nuclides, reduce_chain_level)
-
-        if diff_burnable_mats:
-            ## to implement
-            self._differentiate_burnable_mats()
-
-        # Determine which nuclides have cross section data
-        # This nuclides variables contains every nuclides
-        # for which there is an entry in the micro_xs parameter
-        openmc.reset_auto_ids()
-        self.burnable_mats, volumes, all_nuclides = self._get_burnable_mats()
-        self._all_nuclides = all_nuclides
-        self.local_mats = _distribute(self.burnable_mats)
-
-        self._mat_index_map = {
-            lm: self.burnable_mats.index(lm) for lm in self.local_mats}
-
-        if self.prev_res is not None:
-            ## will be an abstract function for OpenMCOperator
-            self._load_previous_results()
-
-
-        self.nuclides_with_data = self._get_nuclides_with_data(self.cross_sections)
-
-        # Select nuclides with data that are also in the chain
-        self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
-                               if nuc.name in self.nuclides_with_data]
-
-        # Extract number densities from the geometry / previous depletion run
-        self._extract_number(self.local_mats,
-                             volumes,
-                             all_nuclides,
-                             self.prev_res)
-
-        # Create reaction rates array
-        self.reaction_rates = ReactionRates(
-            self.local_mats, self._burnable_nucs, self.chain.reactions)
-
-        self._get_helper_classes(None, fission_yield_opts)
+        super().__init__(
+            materials,
+            cross_sections,
+            chain_file,
+            prev_results,
+            diff_burnable_mats,
+            fission_q,
+            0.0,
+            helper_kwargs,
+            reduce_chain,
+            reduce_chain_level)
 
     def _consolidate_nuclides_to_material(self, nuclides, volume):
         """Puts nuclide list into an openmc.Materials object.
@@ -224,57 +150,9 @@ class FluxDepletionOperator(TransportOperator):
 
         return openmc.Materials([mat])
 
-    def _differentiate_burnable_materials():
+    def _differentiate_burnable_mats():
         """Assign distribmats for each burnable material"""
         pass
-
-    ##delete
-    def _get_burnable_mats(self):
-        """Determine depletable materials, volumes, and nuclides
-        Returns
-        -------
-        burnable_mats : list of str
-            List of burnable material IDs
-        volume : OrderedDict of str to float
-            Volume of each material in [cm^3]
-        nuclides : list of str
-            Nuclides in order of how they'll appear in the simulation.
-        """
-
-        burnable_mats = set()
-        model_nuclides = set()
-        volume = OrderedDict()
-
-        self.heavy_metal = 0.0
-
-        # Iterate once through the geometry to get dictionaries
-        for mat in self.materials:
-            for nuclide in mat.get_nuclides():
-                model_nuclides.add(nuclide)
-            if mat.depletable:
-                burnable_mats.add(str(mat.id))
-                if mat.volume is None:
-                    raise RuntimeError("Volume not specified for depletable "
-                                       "material with ID={}.".format(mat.id))
-                volume[str(mat.id)] = mat.volume
-                self.heavy_metal += mat.fissionable_mass
-
-        # Make sure there are burnable materials
-        if not burnable_mats:
-            raise RuntimeError(
-                "No depletable materials were found in the model.")
-
-        # Sort the sets
-        burnable_mats = sorted(burnable_mats, key=int)
-        model_nuclides = sorted(model_nuclides)
-
-        # Construct a global nuclide dictionary, burned first
-        nuclides = list(self.chain.nuclide_dict)
-        for nuc in model_nuclides:
-            if nuc not in nuclides:
-                nuclides.append(nuc)
-
-        return burnable_mats, volume, nuclides
 
     def _load_previous_results():
         """Load in results from a previous depletion calculation."""
@@ -284,53 +162,6 @@ class FluxDepletionOperator(TransportOperator):
         """Finds nuclides with cross section data
         """
         return set(cross_sections.index)
-
-    ##delete
-    def _extract_number(self, local_mats, volume, nuclides, prev_res=None):
-        """Construct AtomNumber using geometry
-
-        Parameters
-        ----------
-        local_mats : list of str
-            Material IDs to be managed by this process
-        volume : OrderedDict of str to float
-            Volumes for the above materials in [cm^3]
-        nuclides : list of str
-            Nuclides to be used in the simulation.
-        prev_res : Results, optional
-            Results from a previous depletion calculation
-
-        """
-        self.number = AtomNumber(local_mats, nuclides, volume, len(self.chain))
-
-        if self.dilute_initial != 0.0:
-            for nuc in self._burnable_nucs:
-                self.number.set_atom_density(np.s_[:], nuc, self.dilute_initial)
-
-        # Now extract and store the number densities
-        # From the geometry if no previous depletion results
-        if prev_res is None:
-            for mat in self.materials:
-                if str(mat.id) in local_mats:
-                    self._set_number_from_mat(mat)
-        # Else from previous depletion results
-        else:
-            raise RuntimeError(
-                "Loading from previous results not yet supported")
-
-    ##delete
-    def _set_number_from_mat(self, mat):
-        """Extracts material and number densities from openmc.Material
-        Parameters
-        ----------
-        mat : openmc.Material
-            The material to read from
-        """
-        mat_id = str(mat.id)
-
-        for nuclide, atom_per_bcm in mat.get_nuclide_atom_densities().items():
-            atom_per_cc = atom_per_bcm * 1.0e24
-            self.number.set_atom_density(mat_id, nuclide, atom_per_cc)
 
     class FluxTimesXSHelper(ReactionRateHelper):
         """Class for generating one-group reaction rates with flux and
@@ -389,8 +220,11 @@ class FluxDepletionOperator(TransportOperator):
 
             return self._results_cache
 
-    def _get_helper_classes(self, reaction_rate_opts, fission_yield_opts):
+    def _get_helper_classes(self, helper_kwargs):
         """Get helper classes for calculating reation rates and fission yields"""
+
+        fission_yield_opts = helper_kwargs['fission_yield_opts']
+
         rates = self.reaction_rates
         # Get classes to assit working with tallies
         nuc_ind_map = {ind: nuc for nuc, ind in rates.index_nuc.items()}
@@ -419,9 +253,7 @@ class FluxDepletionOperator(TransportOperator):
         """
 
         # Return number density vector
-        #return super().initial_condition()
-        ##delete
-        return list(self.number.get_mat_slice(np.s_[:]))
+        return super().initial_condition(self.materials)
 
     def __call__(self, vec, source_rate):
         """Obtain the reaction rates
@@ -448,18 +280,6 @@ class FluxDepletionOperator(TransportOperator):
 
         op_result = OperatorResult(keff, rates)
         return copy.deepcopy(op_result)
-
-    ##delete
-    def _update_materials_and_nuclides(self, vec):
-        # Update the number densities regardless of the source rate
-        self.number.set_density(vec)
-        self._update_materials()
-
-        # Get all nuclides for which we will calculate reaction rates
-        rxn_nuclides = self._get_reaction_nuclides()
-        self._rate_helper.nuclides = rxn_nuclides
-        self._normalization_helper.nuclides = rxn_nuclides
-        self._yield_helper.update_tally_nuclides(rxn_nuclides)
 
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""
@@ -502,123 +322,6 @@ class FluxDepletionOperator(TransportOperator):
 
                 # TODO Update densities on the Python side, otherwise the
                 # summary.h5 file contains densities at the first time step
-    ##delete
-    def _get_reaction_nuclides(self):
-        """Determine nuclides that should have reaction rates
-
-        This method returns a list of all nuclides that have neutron data and
-        are listed in the depletion chain. Technically, we should list nuclides
-        that may not appear in the depletion chain because we still need to get
-        the fission reaction rate for these nuclides in order to normalize
-        power, but that is left as a future exercise.
-
-        Returns
-        -------
-        list of str
-            nuclides with reaction rates
-
-        """
-        # Create the set of all nuclides in the decay chain in materials marked
-        # for burning in which the number density is greater than zero.
-        nuc_set = set()
-
-        for nuc in self.number.nuclides:
-            if nuc in self.nuclides_with_data:
-                if np.sum(self.number[:,nuc]) > 0.0:
-                    nuc_set.add(nuc)
-
-        # Communicate which nuclides have nonzeros to rank 0
-        if comm.rank == 0:
-            for i in range(1, comm.size):
-                nuc_newset = comm.recv(source=i, tag=i)
-                nuc_set |= nuc_newset
-        else:
-            comm.send(nuc_set, dest=0, tag=comm.rank)
-
-        if comm.rank == 0:
-            # Sort nuclides in the same order as self.number
-            nuc_list = [nuc for nuc in self.number.nuclides
-                        if nuc in nuc_set]
-        else:
-            nuc_list = None
-
-        # Store list of tally nuclides on each process
-        nuc_list = comm.bcast(nuc_list)
-        return [nuc for nuc in nuc_list if nuc in self.chain]
-
-    ##delete
-    def _calculate_reaction_rates(self, source_rate):
-
-        rates = self.reaction_rates
-        rates.fill(0.0)
-
-        rxn_nuclides = self._rate_helper.nuclides
-
-        # Form fast map
-        nuc_ind = [rates.index_nuc[nuc] for nuc in rxn_nuclides]
-        react_ind = [rates.index_rx[react] for react in self.chain.reactions]
-
-        self._normalization_helper.reset()
-        self._yield_helper.unpack()
-
-        # Store fission yield dictionaries
-        fission_yields = []
-
-        # Create arrays to store fission Q values, reaction rates, and nuclide
-        # numbers, zeroed out in material iteration
-        number = np.empty(rates.n_nuc)
-
-        fission_ind = rates.index_rx.get("fission")
-
-        for i, mat in enumerate(self.local_mats):
-            mat_index = self._mat_index_map[mat]
-
-            # Zero out reaction rates and nuclide numbers
-            number.fill(0.0)
-
-            # Get new number densities
-            for nuc, i_nuc_results in zip(rxn_nuclides, nuc_ind):
-                number[i_nuc_results] = self.number[mat, nuc]
-
-            # Calculate macroscopic cross sections and store them in rates array
-            rxn_rates = self._rate_helper.get_material_rates(
-                mat_index, nuc_ind, react_ind)
-
-            ## replace
-            #for nuc in rxn_nuclides:
-            #    density = self.number.get_atom_density(i, nuc)
-            #    for rxn in self.chain.reactions:
-            #        rates.set(
-            #            i,
-            #            nuc,
-            #            rxn,
-            #            self.cross_sections[rxn, nuc] * density)
-
-                    # Compute fission yields for this material
-            fission_yields.append(self._yield_helper.weighted_yields(i))
-
-            # Accumulate energy from fission
-            if fission_ind is not None:
-                self._normalization_helper.update(rxn_rates[:, fission_ind])
-
-            # Divide by total number of atoms and store
-            # the reason we do this is based on the mathematical equation;
-            # in the equation, we multiply the depletion matrix by the nuclide
-            # vector. Since what we want is the depletion matrix, we need to
-            # divide the reaction rates by the number of atoms to get the right
-            # units.
-            rates[i] = self._rate_helper.divide_by_adens(number)
-
-        rates *= self._normalization_helper.factor(source_rate)
-        ##replace
-        # Get reaction rate in reactions/sec
-        #rates *= self.flux_spectra
-
-
-        # Store new fission yields on the chain
-        self.chain.fission_yields = fission_yields
-
-        return rates
 
     def write_bos_data(self, step):
         """Document beginning of step data for a given step
@@ -634,34 +337,6 @@ class FluxDepletionOperator(TransportOperator):
         # Since we aren't running a transport simulation, we simply pass
         pass
 
-    ##delete
-    def get_results_info(self):
-        """Returns volume list, cell lists, and nuc lists.
-
-        Returns
-        -------
-        volume : dict of str to float
-            Volumes corresponding to materials in burn_list
-        nuc_list : list of str
-            A list of all nuclide names. Used for sorting the simulation.
-        burn_list : list of int
-            A list of all cell IDs to be burned.  Used for sorting the
-            simulation.
-        full_burn_list : list of int
-            All burnable materials in the geometry.
-        """
-        nuc_list = self.number.burnable_nuclides
-        burn_list = self.local_mats
-
-        volume = {}
-        for i, mat in enumerate(burn_list):
-            volume[mat] = self.number.volume[i]
-
-        # Combine volume dictionaries across processes
-        volume_list = comm.allgather(volume)
-        volume = {k: v for d in volume_list for k, v in d.items()}
-
-        return volume, nuc_list, burn_list, burn_list
 
     @staticmethod
     def create_micro_xs_from_data_array(

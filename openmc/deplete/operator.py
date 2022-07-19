@@ -227,19 +227,22 @@ class Operator(OpenMCOperator):
 
         self.cleanup_when_done = True
 
+        helper_kwargs = dict()
+        helper_kwargs['reaction_rate_mode'] = reaction_rate_mode
+        helper_kwargs['normalization_mode'] = normalization_mode
+        helper_kwargs['fission_yield_mode'] = fission_yield_mode
+        helper_kwargs['reaction_rate_opts'] = reaction_rate_opts
+        helper_kwargs['fission_yield_opts'] = fission_yield_opts
+
         super().__init__(
             model.materials,
             cross_sections,
             chain_file,
             prev_results,
             diff_burnable_mats,
-            normalization_mode,
             fission_q,
             dilute_initial,
-            fission_yield_mode,
-            fission_yield_opts,
-            reaction_rate_mode,
-            reaction_rate_opts,
+            helper_kwargs,
             reduce_chain,
             reduce_chain_level)
 
@@ -313,18 +316,13 @@ class Operator(OpenMCOperator):
 
         return nuclides
 
-    def _get_helper_classes(
-            self,
-            reaction_rate_mode,
-            normalization_mode,
-            fission_yield_mode,
-            reaction_rate_opts,
-            fission_yield_opts):
+    def _get_helper_classes(self, helper_kwargs):
         """Create the ``_rate_helper``, ``_normalization_helper``, and
         ``_yield_helper`` objects.
 
         Parameters
         ----------
+        **kwargs : ...
         reaction_rate_mode : str
             Indicates the subclass of :class:`ReactionRateHelper` to
             instantiate.
@@ -341,6 +339,12 @@ class Operator(OpenMCOperator):
             subclass.
 
         """
+        reaction_rate_mode = helper_kwargs['reaction_rate_mode']
+        normalization_mode = helper_kwargs['normalization_mode']
+        fission_yield_mode = helper_kwargs['fission_yield_mode']
+        reaction_rate_opts = helper_kwargs['reaction_rate_opts']
+        fission_yield_opts = helper_kwargs['fission_yield_opts']
+
         # Get classes to assist working with tallies
         if reaction_rate_mode == "direct":
             self._rate_helper = DirectReactionRateHelper(

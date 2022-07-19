@@ -67,8 +67,6 @@ class OpenMCOperator(TransportOperator):
         Whether to differentiate burnable materials with multiple instances.
         Volumes are divided equally from the original material volume.
         Default: False.
-    normalization_mode : str
-        Indicate how reaction rates should be normalized.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV].
     dilute_initial : float, optional
@@ -76,17 +74,8 @@ class OpenMCOperator(TransportOperator):
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
         Defaults to 1.0e3.
-    fission_yield_mode : str
-        Key indicating what fission product yield scheme to use.
-    fission_yield_opts : dict of str to option, optional
-        Optional arguments to pass to the helper determined by
-        ``fission_yield_mode``. Will be passed directly on to the
-        helper. Passing a value of None will use the defaults for
-        the associated helper.
-    reaction_rate_mode : str, optional
-        Indicate how one-group reaction rates should be calculated.
-    reaction_rate_opts : dict, optional
-        Keyword arguments that are passed to the reaction rate helper class.
+    helper_kwargs : dict
+        Arguments for helper classes
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
         depletion chain up to ``reduce_chain_level``. Default is False.
@@ -136,13 +125,9 @@ class OpenMCOperator(TransportOperator):
             chain_file=None,
             prev_results=None,
             diff_burnable_mats=False,
-            normalization_mode=None,
             fission_q=None,
             dilute_initial=0.0,
-            fission_yield_mode=None,
-            fission_yield_opts=None,
-            reaction_rate_mode=None,
-            reaction_rate_opts=None,
+            helper_kwargs=None,
             reduce_chain=False,
             reduce_chain_level=None):
 
@@ -195,12 +180,7 @@ class OpenMCOperator(TransportOperator):
         self.reaction_rates = ReactionRates(
             self.local_mats, self._burnable_nucs, self.chain.reactions)
 
-        self._get_helper_classes(
-            reaction_rate_mode,
-            normalization_mode,
-            fission_yield_mode,
-            reaction_rate_opts,
-            fission_yield_opts)
+        self._get_helper_classes(helper_kwargs)
 
     @abstractmethod
     def _differentiate_burnable_mats(self):
@@ -363,13 +343,7 @@ class OpenMCOperator(TransportOperator):
             self.number.set_atom_density(mat_id, nuclide, atom_per_cc)
 
     @abstractmethod
-    def _get_helper_classes(
-            self,
-            reaction_rate_mode,
-            normalization_mode,
-            fission_yield_mode,
-            reaction_rate_opts,
-            fission_yield_opts):
+    def _get_helper_classes(self, helper_kwargs):
         """Create the ``_rate_helper``, ``_normalization_helper``, and
         ``_yield_helper`` objects.
 

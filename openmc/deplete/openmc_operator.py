@@ -4,15 +4,12 @@ This module implements functions used by both OpenMC transport operators as well
 
 """
 
-import copy
 from abc import abstractmethod
 from collections import OrderedDict
 
 import numpy as np
-from uncertainties import ufloat
 
 import openmc
-from openmc.exceptions import DataError
 from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber

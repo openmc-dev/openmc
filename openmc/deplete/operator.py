@@ -269,20 +269,19 @@ class Operator(OpenMCOperator):
                                  for i in range(cell.num_instances)]
 
         self.materials = openmc.Materials(
-            model.geometry.get_all_materials().values()
+            self.model.geometry.get_all_materials().values()
         )
 
     def _load_previous_results(self):
         """Load results from a previous depletion simulation"""
         # Reload volumes into geometry
-        prev_results[-1].transfer_volumes(self.model)
+        self.prev_res[-1].transfer_volumes(self.model)
 
         # Store previous results in operator
         # Distribute reaction rates according to those tracked
         # on this process
-        if comm.size == 1:
-            self.prev_res = prev_results
-        else:
+        if comm.size != 1:
+            prev_results = self.prev_res
             self.prev_res = Results()
             mat_indexes = _distribute(range(len(self.burnable_mats)))
             for res_obj in prev_results:

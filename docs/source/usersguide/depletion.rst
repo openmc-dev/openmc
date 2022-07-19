@@ -188,15 +188,22 @@ Transport-independent depletion
    possible and likely in the near future.
 
 OpenMC supports running depletion calculations independent of the OpenMC
-transport solver using the :class:`FluxDepletionOperator` class. Rather than 
-taking a :class:`openmc.model.Model` object, this class accepts a volume,
-a dictionary of nuclide concentrations, a flux spectra, and one-group
-microscopic cross sections as a :class:`pandas.DataFrame`. The class includes
-helper functions to construct the dataframe from a csv file or from
-data arrays::
+transport solver using the :class:`FluxDepletionOperator` class. This class
+has two ways to initalize it; the default constructor accepts an 
+:class:`openmc.Materials` object, a flux spectra, and one-group microscopic 
+cross sections as a :class:`pandas.Dataframe`, while the `from_nuclides` 
+method accepts a volume and dictionary of nuclide concentrations in place of
+the :class:`openmc.Materials` object in addition to the other parameters.
+The class includes helper functions to construct the dataframe from a csv file
+or from data arrays::
 
     ...
+    # load in the microscopic cross sections
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(micro_xs_path)
+    flux = 1.16e15
+    op = FluxDepletionOperator(materials, micro_xs, flux, chain_file)
+
+    # alternate construtor
     nuclides = {'U234': 8.92e18,
                 'U235': 9.98e20,
                 'U238': 2.22e22,
@@ -204,10 +211,7 @@ data arrays::
                 'O16': 4.64e22,
                 'O17': 1.76e19}
     volume = 0.5 
-    flux = 1.16e15
-
-    op = FluxDepletionOperator(volume, nuclides, micro_xs, flux. chain_file)
-
+    op = FluxDepletionOperator.from_nuclide_dict(volume, nuclides, micro_xs, flux, chain_file)
 
 A user can then define an integrator class as they would for a coupled
 transport-depletion calculation and follow the same steps from there.

@@ -38,11 +38,8 @@ class FluxDepletionOperator(OpenMCOperator):
 
     Parameters
     ----------
-    volume : float
-        Volume of the material being depleted in [cm^3]
-    nuclides : dict of str to float
-        Dictionary with nuclide names as keys and nuclide concentrations as
-        values. Nuclide concentration units are [atom/cm^3].
+    materials : openmc.Materials
+        Materials to deplete.
     micro_xs : pandas.DataFrame
         DataFrame with nuclides names as index and microscopic cross section
         data in the columns. Cross section units are [cm^-2].
@@ -88,16 +85,62 @@ class FluxDepletionOperator(OpenMCOperator):
         results are to be used.
     """
 
-    # Alternate constructor using a full-fledges Model object
-    #def __init__(self, model, micro_xs, ...):
-    #    ...
-    #    mode.materials = openmc.Materials(model.geometry.get_all_materials().values())
-    #    super().__init__(model.materials, ...)
+    @classmethod
+    def from_nuclides(cls, volume, nuclides, micro_xs,
+                 flux_spectra,
+                 chain_file,
+                 keff=None,
+                 fission_q=None,
+                 prev_results=None,
+                 reduce_chain=False,
+                 reduce_chain_level=None,
+                 fission_yield_opts=None):
+        """
+        Alternate constructor from a dictionary of nuclide concentrations
 
+        volume : float
+            Volume of the material being depleted in [cm^3]
+        nuclides : dict of str to float
+            Dictionary with nuclide names as keys and nuclide concentrations as
+            values. Nuclide concentration units are [atom/cm^3].
+        micro_xs : pandas.DataFrame
+            DataFrame with nuclides names as index and microscopic cross section
+            data in the columns. Cross section units are [cm^-2].
+        flux_spectra : float
+            Flux spectrum [n cm^-2 s^-1]
+        chain_file : str
+            Path to the depletion chain XML file.
+        keff : 2-tuple of float, optional
+           keff eigenvalue and uncertainty from transport calculation.
+           Default is None.
+        fission_q : dict, optional
+            Dictionary of nuclides and their fission Q values [eV]. If not given,
+            values will be pulled from the ``chain_file``.
+        prev_results : Results, optional
+            Results from a previous depletion calculation.
+        reduce_chain : bool, optional
+            If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
+            depletion chain up to ``reduce_chain_level``. Default is False.
+        reduce_chain_level : int, optional
+            Depth of the search when reducing the depletion chain. Only used
+            if ``reduce_chain`` evaluates to true. The default value of
+            ``None`` implies no limit on the depth.
+        """
+        check_type('nuclides', nuclides, dict, str)
+        materials = cls._consolidate_nuclides_to_material(nuclides, volume)
+        return cls(materials,
+                     micro_xs,
+                     flux_spectra,
+                     chain_file,
+                     keff,
+                     fission_q,
+                     prev_results,
+                     reduce_chain,
+                     reduce_chain_level,
+                     fission_yield_opts)
 
     def __init__(self,
-                 volume,
-                 nuclides,
+                 materials,
                  micro_xs,
                  flux_spectra,
                  chain_file,
@@ -107,18 +150,15 @@ class FluxDepletionOperator(OpenMCOperator):
                  reduce_chain=False,
                  reduce_chain_level=None,
                  fission_yield_opts=None):
-        # Validate nuclides and micro-xs parameters
-        check_type('nuclides', nuclides, dict, str)
+        # Validate micro-xs parameters
+        check_type('materials', materials, openmc.Materials)
         check_type('micro_xs', micro_xs, pd.DataFrame)
-
-        cross_sections = micro_xs
         if keff is not None:
             check_type('keff', keff, tuple, float)
             keff = ufloat(keff)
 
         self._keff = keff
         self.flux_spectra = flux_spectra
-        materials = self._consolidate_nuclides_to_material(nuclides, volume)
 
         diff_burnable_mats=False
         helper_kwargs = dict()
@@ -126,7 +166,7 @@ class FluxDepletionOperator(OpenMCOperator):
 
         super().__init__(
             materials,
-            cross_sections,
+            micro_xs,
             chain_file,
             prev_results,
             diff_burnable_mats,
@@ -136,7 +176,8 @@ class FluxDepletionOperator(OpenMCOperator):
             reduce_chain,
             reduce_chain_level)
 
-    def _consolidate_nuclides_to_material(self, nuclides, volume):
+    @staticmethod
+    def _consolidate_nuclides_to_material(nuclides, volume):
         """Puts nuclide list into an openmc.Materials object.
 
         """

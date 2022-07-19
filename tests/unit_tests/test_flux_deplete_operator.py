@@ -69,5 +69,5 @@ def test_operator_init():
                 'O16': 4.639065406771322e+22,
                 'O17': 1.7588724018066158e+19}
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(ONE_GROUP_XS)
-    my_flux_operator = FluxDepletionOperator(
+    nuclide_flux_operator = FluxDepletionOperator.from_nuclides(
         1, nuclides, micro_xs, FLUX_SPECTRA, CHAIN_PATH)

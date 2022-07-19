@@ -112,13 +112,16 @@ should be, including indirect components. Some examples are provided below::
     # use a dictionary of fission_q values
     fission_q = {"U235": 202e+6}  # energy in eV
 
+    # create a Model object
+    model  = openmc.model.Model(geometry, settings)
+
     # create a modified chain and write it to a new file
     chain = openmc.deplete.Chain.from_xml("chain.xml", fission_q)
     chain.export_to_xml("chain_mod_q.xml")
-    op = openmc.deplete.Operator(geometry, setting, "chain_mod_q.xml")
+    op = openmc.deplete.Operator(model, "chain_mod_q.xml")
 
     # alternatively, pass the modified fission Q directly to the operator
-    op = openmc.deplete.Operator(geometry, setting, "chain.xml",
+    op = openmc.deplete.Operator(model, "chain.xml",
         fission_q=fission_q)
 
 

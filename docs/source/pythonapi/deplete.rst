@@ -40,7 +40,8 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     SICELIIntegrator
     SILEQIIntegrator
 
-Each of these classes expects a "transport operator" to be passed.
+Each of these classes expects a "transport operator" to be passed. Operators
+specific to OpenMC are available using the following classes:
 
 .. autosummary::
    :toctree: generated
@@ -65,11 +66,12 @@ A minimal example for performing depletion would be:
     >>> import openmc.deplete
     >>> geometry = openmc.Geometry.from_xml()
     >>> settings = openmc.Settings.from_xml()
+    >>> model = openmc.model.Model(geometry, settings)
 
     # Representation of a depletion chain
     >>> chain_file = "chain_casl.xml"
     >>> operator = openmc.deplete.Operator(
-    ...     geometry, settings, chain_file)
+    ...     model, chain_file)
 
     # Set up 5 time steps of one day each
     >>> dt = [24 * 60 * 60] * 5

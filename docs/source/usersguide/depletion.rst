@@ -79,9 +79,11 @@ using the :attr:`Material.depletable` attribute::
 
 When constructing the :class:`~openmc.deplete.Operator`, you should indicate
 that normalization of tally results will be done based on the source rate rather
-than a power or power density::
+than a power or power density. Additionally you may also want to set the
+``dilute_initial`` to zero to avoid small quantities of burnable materials being
+added to the material::
 
-    op = openmc.deplete.Operator(geometry, settings, normalization_mode='source-rate')
+    op = openmc.deplete.Operator(geometry, settings, normalization_mode='source-rate', dilute_initial=0.)
 
 Finally, when creating a depletion integrator, use the ``source_rates`` argument::
 

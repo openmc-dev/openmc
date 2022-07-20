@@ -26,6 +26,10 @@ ARG build_libmesh=off
 
 FROM debian:bullseye-slim AS dependencies
 
+ARG compile_cores
+ARG build_dagmc
+ARG build_libmesh
+
 # Set default value of HOME to /root
 ENV HOME=/root
 
@@ -176,6 +180,7 @@ ENV HOME=/root
 ARG openmc_branch=master
 ENV OPENMC_REPO='https://github.com/openmc-dev/openmc'
 
+ARG compile_cores
 ARG build_dagmc
 ARG build_libmesh
 

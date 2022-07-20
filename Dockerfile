@@ -176,6 +176,9 @@ ENV HOME=/root
 ARG openmc_branch=master
 ENV OPENMC_REPO='https://github.com/openmc-dev/openmc'
 
+ARG build_dagmc
+ARG build_libmesh
+
 ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
 ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 
@@ -185,6 +188,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && mkdir build && cd build ; \
     if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "on" ]; then \
         cmake ../openmc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
             -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on \
             -DOPENMC_USE_DAGMC=on \
@@ -193,6 +197,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     fi ; \
     if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "off" ]; then \
         cmake ../openmc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
             -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on \
             -DOPENMC_USE_DAGMC=ON \
@@ -200,6 +205,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     fi ; \
     if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "on" ]; then \
         cmake ../openmc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
             -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on \
             -DOPENMC_USE_LIBMESH=on \
@@ -207,6 +213,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     fi ; \
     if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "off" ]; then \
         cmake ../openmc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
             -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on ; \
     fi ; \

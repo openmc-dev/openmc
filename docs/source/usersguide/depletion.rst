@@ -188,9 +188,19 @@ Transport-independent depletion
    possible and likely in the near future.
 
 OpenMC supports running depletion calculations independent of the OpenMC
-transport solver using the :class:`~openmc.deplete.FluxDepletionOperator` class. This class
-has two ways to initalize it; the default constructor accepts an 
-:class:`openmc.Materials` object, a flux spectra, and one-group microscopic 
+transport solver using the :class:`~openmc.deplete.FluxDepletionOperator` class.
+This class supports both constant-flux and constant-power depletion.
+
+.. important::
+
+   Make sure you set the correct parameter in the :class:`openmc.abc.Integrator` class. Use the ``flux`` parameter when ``normalization_mode == constant-flux``, and use ``power`` or ``power_density`` when ``normalization_mode == constant-power``.
+
+.. warning::
+
+   The accuracy of results when using ``constant-power`` is entirely dependent on your depletion chain. Make sure it has sufficient data to resolve the dynamics of your particular scenario. 
+
+This class has two ways to initalize it; the default constructor accepts an 
+:class:`openmc.Materials` object and one-group microscopic 
 cross sections as a :class:`pandas.DataFrame`, while the `from_nuclides` 
 method accepts a volume and dictionary of nuclide concentrations in place of
 the :class:`openmc.Materials` object in addition to the other parameters.
@@ -201,7 +211,7 @@ or from data arrays::
     # load in the microscopic cross sections
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(micro_xs_path)
     flux = 1.16e15
-    op = FluxDepletionOperator(materials, micro_xs, flux, chain_file)
+    op = FluxDepletionOperator(materials, micro_xs, chain_file)
 
     # alternate construtor
     nuclides = {'U234': 8.92e18,

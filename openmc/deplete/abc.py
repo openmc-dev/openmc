@@ -526,9 +526,9 @@ class Integrator(ABC):
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
     flux : float or iterable of float, optional
-        Neutron flux in [neur/s-cm^2] for each interval in :attr: `timesteps`
+        neutron flux in [neut/s-cm^2] for each interval in :attr:`timesteps`
     source_rates : float or iterable of float, optional
-        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
+        source rate in [neutron/sec] for each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
@@ -866,6 +866,8 @@ class SIIntegrator(Integrator):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    flux : float or iterable of float, optional
+        neutron flux in [neut/s-cm^2] for each interval in :attr:`timesteps`
     source_rates : float or iterable of float, optional
         Source rate in [neutron/sec] for each interval in :attr:`timesteps`
 
@@ -922,12 +924,12 @@ class SIIntegrator(Integrator):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, timestep_units='s', n_steps=10,
+                 flux=None, source_rates=None, timestep_units='s', n_steps=10,
                  solver="cram48"):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(
-            operator, timesteps, power, power_density, source_rates,
+            operator, timesteps, power, power_density, flux, source_rates,
             timestep_units=timestep_units, solver=solver)
         self.n_steps = n_steps
 

@@ -544,7 +544,7 @@ class Combination(EqualityMixin):
         self._operations = operations
 
 
-class Sum(EqualityMixin):
+class Sum(Function1D):
     """Sum of multiple functions.
 
     This class allows you to create a callable object which represents the sum

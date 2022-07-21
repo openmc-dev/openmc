@@ -701,7 +701,7 @@ class ThermalScattering(EqualityMixin):
                 energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
                 P = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
                 coherent_xs = CoherentElastic(energy, P*EV_PER_MEV)
-                coherent_dist = CoherentElasticAE(xs)
+                coherent_dist = CoherentElasticAE(coherent_xs)
 
                 # Coherent elastic shouldn't have angular distributions listed
                 n_mu = ace.nxs[6] + 1

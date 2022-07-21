@@ -27,11 +27,11 @@ _valid_rxns.append('fission')
 
 
 class FluxDepletionOperator(OpenMCOperator):
-    """Depletion operator that uses a user-provided flux and one-group
+    """Depletion operator that uses one-group
     cross sections to calculate reaction rates.
 
     Instances of this class can be used to perform depletion using one-group
-    cross sections and constant flux. Normally, a user needn't call methods of
+    cross sections and constant flux or constant power. Normally, a user needn't call methods of
     this class directly. Instead, an instance of this class is passed to an
     integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
 
@@ -42,8 +42,6 @@ class FluxDepletionOperator(OpenMCOperator):
     micro_xs : pandas.DataFrame
         DataFrame with nuclides names as index and microscopic cross section
         data in the columns. Cross section units are [cm^-2].
-    flux : float
-        Neutron flux [n cm^-2 s^-1]
     chain_file : str
         Path to the depletion chain XML file.
     keff : 2-tuple of float, optional
@@ -114,7 +112,6 @@ class FluxDepletionOperator(OpenMCOperator):
     def __init__(self,
                  materials,
                  micro_xs,
-                 flux,
                  chain_file,
                  keff=None,
                  normalization_mode = 'constant-flux',
@@ -131,7 +128,6 @@ class FluxDepletionOperator(OpenMCOperator):
             keff = ufloat(*keff)
 
         self._keff = keff
-        self.flux = flux
 
         helper_kwargs = dict()
         helper_kwargs = {'normalization_mode': normalization_mode,
@@ -149,7 +145,6 @@ class FluxDepletionOperator(OpenMCOperator):
 
     @classmethod
     def from_nuclides(cls, volume, nuclides, micro_xs,
-                      flux,
                       chain_file,
                       keff=None,
                       fission_q=None,
@@ -168,8 +163,6 @@ class FluxDepletionOperator(OpenMCOperator):
         micro_xs : pandas.DataFrame
             DataFrame with nuclides names as index and microscopic cross section
             data in the columns. Cross section units are [cm^-2].
-        flux : float
-            Neutron flux [n cm^-2 s^-1]
         chain_file : str
             Path to the depletion chain XML file.
         keff : 2-tuple of float, optional
@@ -203,7 +196,6 @@ class FluxDepletionOperator(OpenMCOperator):
         materials = cls._consolidate_nuclides_to_material(nuclides, volume)
         return cls(materials,
                    micro_xs,
-                   flux,
                    chain_file,
                    keff,
                    fission_q,
@@ -396,8 +388,7 @@ class FluxDepletionOperator(OpenMCOperator):
 
         self._update_materials_and_nuclides(vec)
 
-        # Use the flux as a "source rate"
-        rates = self._calculate_reaction_rates(self.flux)
+        rates = self._calculate_reaction_rates(source_rate)
         keff = self._keff
 
         op_result = OperatorResult(keff, rates)

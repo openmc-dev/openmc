@@ -11,7 +11,6 @@ from openmc.deplete.flux_operator import FluxDepletionOperator
 import pandas as pd
 import numpy as np
 
-FLUX = 5e16
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 ONE_GROUP_XS = Path(__file__).parents[1] / "micro_xs_simple.csv"
 
@@ -62,6 +61,7 @@ def test_create_micro_xs_from_csv():
 def test_operator_init():
     """The test uses a temporary dummy chain. This file will be removed
     at the end of the test, and only contains a depletion_chain node."""
+    volume = 1
     nuclides = {'U234': 8.922411359424315e+18,
                 'U235': 9.98240191860822e+20,
                 'U238': 2.2192386373095893e+22,
@@ -70,4 +70,5 @@ def test_operator_init():
                 'O17': 1.7588724018066158e+19}
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(ONE_GROUP_XS)
     nuclide_flux_operator = FluxDepletionOperator.from_nuclides(
-        1, nuclides, micro_xs, FLUX_SPECTRA, CHAIN_PATH)
+        volume, nuclides, micro_xs, CHAIN_PATH)
+    nuclide_flux_operator = FluxDepletionOperator(materials, micro_xs, CHAIN_PATH)

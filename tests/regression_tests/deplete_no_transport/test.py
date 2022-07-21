@@ -33,8 +33,12 @@ def vol_nuc():
     return (fuel.volume, nuclides)
 
 
-@pytest.mark.parametrize("multiproc", [True, False])
-def test_no_transport(run_in_tmpdir, vol_nuc, multiproc):
+@pytest.mark.parametrize("multiproc, normalization_mode, power, flux", [
+    (True, 'constant-flux', None, 1164719970082145.0),
+    (False, 'constant-flux', None, 1164719970082145.0),
+    (True, 'constant-power', 174, None),
+    (False, 'constant-power', 174, None)])
+def test_no_transport_constant_flux(run_in_tmpdir, vol_nuc, multiproc):
     """Transport free system test suite.
 
     Runs an OpenMC transport-free depletion calculation and verifies
@@ -46,22 +50,26 @@ def test_no_transport(run_in_tmpdir, vol_nuc, multiproc):
     micro_xs_file = Path(__file__).parents[2] / 'micro_xs_simple.csv'
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(micro_xs_file)
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
-    flux = 1164719970082145.0  # flux from pincell example
     op = FluxDepletionOperator.from_nuclides(
-        vol_nuc[0], vol_nuc[1], micro_xs, flux, chain_file)
+        vol_nuc[0], vol_nuc[1], micro_xs, chain_file, normalization_mode=normalization_mode)
 
     # Power and timesteps
     dt = [30]  # single step
+    flux = 1164719970082145.0  # n/cm^2-s, flux from pincell example
     power = 174  # W/cm
 
     # Perform simulation using the predictor algorithm
     openmc.deplete.pool.USE_MULTIPROCESSING = multiproc
     openmc.deplete.PredictorIntegrator(
-        op, dt, power, timestep_units='d').integrate()
+        op, dt, power=power, flux=flux, timestep_units='d').integrate()
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
-    path_reference = Path(__file__).with_name('test_reference.h5')
+    if flux is None:
+        ref_path = 'test_reference_constant_flux.h5'
+    else:
+        ref_path = 'test_reference_constant_power.h5'
+    path_reference = Path(__file__).with_name(ref_path)
 
     # If updating results, do so and return
     if config['update']:

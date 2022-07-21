@@ -20,6 +20,7 @@ MGXS_TYPES = (
     'transport',
     'nu-transport',
     'absorption',
+    'reduced absorption',
     'capture',
     'fission',
     'nu-fission',
@@ -772,6 +773,8 @@ class MGXS:
             mgxs = TransportXS(domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'absorption':
             mgxs = AbsorptionXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'reduced absorption':
+            mgxs = ReducedAbsorptionXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'capture':
             mgxs = CaptureXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'fission':
@@ -824,6 +827,8 @@ class MGXS:
         elif mgxs_type in ARBITRARY_MATRIX_TYPES:
             mgxs = ArbitraryMatrixXS(mgxs_type, domain, domain_type,
                                      energy_groups)
+        else:
+            raise ValueError(f"Unknown MGXS type: {mgxs_type}")
 
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name
@@ -3069,6 +3074,62 @@ class AbsorptionXS(MGXS):
         super().__init__(domain, domain_type, energy_groups, by_nuclide, name,
                          num_polar, num_azimuthal)
         self._rxn_type = 'absorption'
+
+
+@add_params
+class ReducedAbsorptionXS(MGXS):
+    r"""A reduced absorpiton multi-group cross section.
+
+    The reduced absorption reaction rate is defined as the difference between
+    absorption and the produced of neutrons due to (n,xn) reactions.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group capture cross sections for multi-group neutronics calculations.
+    At a minimum, one needs to set the :attr:`CaptureXS.energy_groups` and
+    :attr:`CaptureXS.domain` properties. Tallies for the flux and appropriate
+    reaction rates over the specified domain are generated automatically via the
+    :attr:`CaptureXS.tallies` property, which can then be appended to a
+    :class:`openmc.Tallies` instance.
+
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    necessary data to compute multi-group cross sections from a
+    :class:`openmc.StatePoint` instance. The derived multi-group cross section
+    can then be obtained from the :attr:`CaptureXS.xs_tally` property.
+
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
+    reduced absorption cross section is calculated as:
+
+    .. math::
+
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \left(\sigma_a (r, E) - \sigma_{n,2n}(r,E) - 2\sigma_{n,3n}(r,E) -
+       3\sigma_{n,4n}(r,E) \right) \psi (r, E, \Omega)}{\int_{r \in V} dr
+       \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
+
+    """
+
+    def __init__(self, domain=None, domain_type=None, energy_groups=None,
+                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+        super().__init__(domain, domain_type, energy_groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
+        self._rxn_type = 'reduced absorption'
+
+    @property
+    def scores(self):
+        return ['flux', 'absorption', '(n,2n)', '(n,3n)', '(n,4n)']
+
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = (
+                self.tallies['absorption']
+                - self.tallies['(n,2n)']
+                - 2*self.tallies['(n,3n)']
+                - 3*self.tallies['(n,4n)']
+            )
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
 
 
 @add_params

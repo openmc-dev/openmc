@@ -10,6 +10,9 @@ domain=1 type=nu-transport
 domain=1 type=absorption
 [9.18204614e-03 9.50890834e-02]
 [1.02291781e-03 9.51211716e-03]
+domain=1 type=reduced absorption
+[9.15806809e-03 9.50890834e-02]
+[1.02286279e-03 9.51211716e-03]
 domain=1 type=capture
 [6.76780024e-03 4.04282690e-02]
 [1.01848835e-03 8.89313901e-03]

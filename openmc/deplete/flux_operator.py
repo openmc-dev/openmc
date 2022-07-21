@@ -463,12 +463,13 @@ class FluxDepletionOperator(OpenMCOperator):
             Array containing one-group microscopic cross section information for each
             nuclide and reaction.
         units : {'barn', 'cm^2'}, optional
-            Units for microscopic cross section data. Defaults to ``barn``.
+            Units of cross section values in ``data`` array. Defaults to ``barn``.
 
         Returns
         -------
         micro_xs : pandas.DataFrame
-            A DataFrame object correctly formatted for use in ``FluxOperator``
+            A DataFrame object correctly formatted for use in ``FluxOperator``.
+            Cross section data is in [cm^2]
         """
 
         # Validate inputs
@@ -498,12 +499,13 @@ class FluxDepletionOperator(OpenMCOperator):
             Relative path to csv-file containing microscopic cross section
             data.
         units : {'barn', 'cm^2'}, optional
-            Units for microscopic cross section data. Defaults to ``barn``.
+            Units of cross section values in the ``.csv`` file array. Defaults to ``barn``.
 
         Returns
         -------
         micro_xs : pandas.DataFrame
-            A DataFrame object correctly formatted for use in ``FluxOperator``
+            A DataFrame object correctly formatted for use in ``FluxOperator``.
+            Cross section data is in [cm^2]
 
         """
         micro_xs = pd.read_csv(csv_file, index_col=0)

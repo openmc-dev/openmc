@@ -75,7 +75,7 @@ class Settings:
         Maximum number of lost particles
 
         .. versionadded:: 0.12
-    rel_max_lost_particles : int
+    rel_max_lost_particles : float
         Maximum number of lost particles, relative to the total number of particles
 
         .. versionadded:: 0.12
@@ -517,7 +517,7 @@ class Settings:
         self._max_lost_particles = max_lost_particles
 
     @rel_max_lost_particles.setter
-    def rel_max_lost_particles(self, rel_max_lost_particles: int):
+    def rel_max_lost_particles(self, rel_max_lost_particles: float):
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
         cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)

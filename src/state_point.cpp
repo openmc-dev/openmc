@@ -819,7 +819,8 @@ void write_unstructured_mesh_results()
       if (!umesh->output_)
         continue;
 
-      if (umesh->library() == "moab" && !mpi::master) {
+      if (umesh->library() == "moab") {
+        if (mpi::master)
         warning(fmt::format("Output for a MOAB mesh (mesh {}) was requested but will not be written. Please use the Python API to generated the desired VTK tetrahedral mesh.", umesh->id_));
         continue;
       }

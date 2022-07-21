@@ -116,6 +116,7 @@ Angle-Energy Distributions
     IncoherentElasticAE
     IncoherentElasticAEDiscrete
     IncoherentInelasticAEDiscrete
+    MixedElasticAE
 
 Resonance Data
 --------------

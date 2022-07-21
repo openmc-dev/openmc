@@ -36,6 +36,9 @@ class CoherentElasticAE(AngleEnergy):
     def to_hdf5(self, group, xs_group=None):
         """Write coherent elastic distribution to an HDF5 group
 
+        .. versionchanged:: 0.13.1
+            The *xs_group* argument was added.
+
         Parameters
         ----------
         group : h5py.Group
@@ -219,6 +222,8 @@ class IncoherentInelasticAE(CorrelatedAngleEnergy):
 
 class MixedElasticAE(AngleEnergy):
     """Secondary distribution for mixed coherent/incoherent thermal elastic
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------

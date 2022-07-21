@@ -581,6 +581,8 @@ class Sum(EqualityMixin):
     def to_hdf5(self, group, name='xy'):
         """Write sum of functions to an HDF5 group
 
+        .. versionadded:: 0.13.1
+
         Parameters
         ----------
         group : h5py.Group
@@ -598,6 +600,8 @@ class Sum(EqualityMixin):
     @classmethod
     def from_hdf5(cls, group):
         """Generate sum of functions from an HDF5 group
+
+        .. versionadded:: 0.13.1
 
         Parameters
         ----------

@@ -423,7 +423,7 @@ class ChainFissionHelper(EnergyNormalizationHelper):
 
         self._fission_q_vector = fission_qs
 
-    def update(self, fission_rates):
+    def update(self, fission_rates, mat_index=None):
         """Update energy produced with fission rates in a material
 
         Parameters
@@ -432,6 +432,8 @@ class ChainFissionHelper(EnergyNormalizationHelper):
             fission reaction rate for each isotope in the specified
             material. Should be ordered corresponding to initial
             ``rate_index`` used in :meth:`prepare`
+        mat_index : int
+            Unused
         """
         self._energy += dot(fission_rates, self._fission_q_vector)
 

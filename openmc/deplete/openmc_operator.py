@@ -527,7 +527,7 @@ class OpenMCOperator(TransportOperator):
 
             # Accumulate energy from fission
             if fission_ind is not None:
-                self._normalization_helper.update(tally_rates[:, fission_ind])
+                self._normalization_helper.update(tally_rates[:, fission_ind], mat_index=mat_index)
 
             # Divide by total number and store
             rates[i] = self._rate_helper.divide_by_adens(number)

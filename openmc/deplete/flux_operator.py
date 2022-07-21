@@ -54,6 +54,15 @@ class FluxDepletionOperator(OpenMCOperator):
         values will be pulled from the ``chain_file``.
     prev_results : Results, optional
         Results from a previous depletion calculation.
+    normalization_mode : {"constant-power", "constant-flux"}
+        Indicate how reaction rates should be calculated.
+        ``"constant-power"`` uses the fission Q values from the depletion chain to
+        compute the flux based on the power. ``"constant-flux"`` uses the value stored in `_normalization_helper` as the flux.
+    fission_q : dict, optional
+        Dictionary of nuclides and their fission Q values [eV]. If not given,
+        values will be pulled from the ``chain_file``. Only applicable
+        if ``"normalization_mode" == "constant-power"``.
+
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
         depletion chain up to ``reduce_chain_level``. Default is False.
@@ -108,6 +117,7 @@ class FluxDepletionOperator(OpenMCOperator):
                  flux,
                  chain_file,
                  keff=None,
+                 normalization_mode = 'constant-flux',
                  fission_q=None,
                  prev_results=None,
                  reduce_chain=False,
@@ -124,7 +134,8 @@ class FluxDepletionOperator(OpenMCOperator):
         self.flux = flux
 
         helper_kwargs = dict()
-        helper_kwargs = {'fission_yield_opts': fission_yield_opts}
+        helper_kwargs = {'normalization_mode': normalization_mode,
+                         'fission_yield_opts': fission_yield_opts}
 
         super().__init__(
             materials,
@@ -152,7 +163,7 @@ class FluxDepletionOperator(OpenMCOperator):
         volume : float
             Volume of the material being depleted in [cm^3]
         nuclides : dict of str to float
-            Dictionary with nuclide names as keys and nuclide concentrations as
+            ,Dictionary with nuclide names as keys and nuclide concentrations as
             values. Nuclide concentration units are [atom/cm^3].
         micro_xs : pandas.DataFrame
             DataFrame with nuclides names as index and microscopic cross section
@@ -164,9 +175,15 @@ class FluxDepletionOperator(OpenMCOperator):
         keff : 2-tuple of float, optional
            keff eigenvalue and uncertainty from transport calculation.
            Default is None.
+        normalization_mode : {"constant-power", "constant-flux"}
+            Indicate how reaction rates should be calculated.
+            ``"constant-power"`` uses the fission Q values from the depletion
+            chain to compute the flux based on the power. ``"constant-flux"``
+            uses the value stored in `_normalization_helper` as the flux.
         fission_q : dict, optional
-            Dictionary of nuclides and their fission Q values [eV]. If not given,
-            values will be pulled from the ``chain_file``.
+            Dictionary of nuclides and their fission Q values [eV]. If not
+            given, values will be pulled from the ``chain_file``. Only
+            applicable if ``"normalization_mode" == "constant-power"``.
         prev_results : Results, optional
             Results from a previous depletion calculation.
         reduce_chain : bool, optional
@@ -215,6 +232,49 @@ class FluxDepletionOperator(OpenMCOperator):
         """Finds nuclides with cross section data"""
         return set(cross_sections.index)
 
+    class _FluxDepletionNormalizationHelper(ChainFissionHelper):
+        """Class for calculating one-group flux
+        based on a power.
+
+        flux = Power / X, where X = volume * sum_i(Q_i * fission_micro_xs_i * density_i)
+
+        Parameters
+        ----------
+        op : openmc.deplete.FluxDepletionOperator
+            Reference to the object encapsulate _FluxDepletionNormalizationHelper.
+            We pass this so we don't have to duplicate the ``number`` object.
+
+        """
+
+        def __init__(self, op):
+            self._op = op
+            rates = self.reaction_rates
+            self.nuc_ind_map = {ind: nuc for nuc, ind in rates.index_nuc.items()}
+            super().__init__()
+
+        def update(self, fission_rates, mat_index=None):
+        """Update 'energy' produced with fission rates in a material. What this
+        actually calculates is the quantity X.
+
+        Parameters
+        ----------
+        fission_rates : numpy.ndarray
+            fission reaction rate for each isotope in the specified
+            material. Should be ordered corresponding to initial
+            ``rate_index`` used in :meth:`prepare`
+        mat_index : int
+            Material index
+
+        """
+            volume = self._op.number.get_mat_volume(mat_index)
+            densities = np.empty(shape(fission_rates))
+            for i_nuc in nuc_ind_map:
+                nuc = self.nuc_ind_map[i_nuc]
+                densities[i_nuc] = self._op.number.get_atom_density(mat_index, nuc)
+            fission_rates = fission_rates * volume * densities
+
+            super.update(fission_rates)
+
     class _FluxDepletionRateHelper(ReactionRateHelper):
         """Class for generating one-group reaction rates with flux and
         one-group cross sections.
@@ -246,11 +306,11 @@ class FluxDepletionOperator(OpenMCOperator):
 
         def __init__(self, n_nuc, n_react, op, nuc_ind_map. rxn_ind_map)
             super().__init__(n_nuc, n_react)
-            self._op = op
-            rates = self.reaction_rates
-            # Get classes to assit working with tallies
+            rates = op.reaction_rates
+
             self.nuc_ind_map = {ind: nuc for nuc, ind in rates.index_nuc.items()}
             self.rxn_ind_map = {ind: rxn for rxn, ind in rates.index_rx.items()}
+            self._op = op
 
         def generate_tallies(self, materials, scores):
             """Unused in this case"""
@@ -269,12 +329,14 @@ class FluxDepletionOperator(OpenMCOperator):
                 Ordering of reactions
             """
             self._results_cache.fill(0.0)
+
+            volume = self._op.number.get_mat_volume(mat_id)
             for i_nuc, i_react in product(nuc_index, react_index):
                 nuc = self.nuc_ind_map[i_nuc]
                 rxn = self.rxn_ind_map[i_react]
                 density = self._op.number.get_atom_density(mat_id, nuc)
                 self._results_cache[i_nuc,
-                                    i_react] = self._op.cross_sections[rxn][nuc] * density
+                                    i_react] = self._op.cross_sections[rxn][nuc] * density * volume
 
             return self._results_cache
 
@@ -286,15 +348,17 @@ class FluxDepletionOperator(OpenMCOperator):
         helper_kwargs : dict
             Keyword arguments for helper classes
 
-
         """
 
+        normalization_mode = helper_kwargs['normalization_mode']
         fission_yield_opts = helper_kwargs.get('fission_yield_opts', {})
 
         self._rate_helper = self._FluxDepletionRateHelper(
             self.reaction_rates.n_nuc, self.reaction_rates.n_react, self)
-
-        self._normalization_helper = SourceRateHelper()
+        if normalization_mode == "constant-power":
+            self._normalization_helper = self.FluxDepletionNormalizationHelper()
+        else:
+            self._normalization_helper = SourceRateHelper()
 
         # Select and create fission yield helper
         fission_helper = ConstantFissionYieldHelper

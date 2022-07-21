@@ -329,7 +329,7 @@ class NormalizationHelper(ABC):
             `fission_rates` for :meth:`update`.
         """
 
-    def update(self, fission_rates):
+    def update(self, fission_rates, mat_index=None):
         """Update the normalization based on fission rates (only used for
         energy-based normalization)
 
@@ -339,6 +339,8 @@ class NormalizationHelper(ABC):
             fission reaction rate for each isotope in the specified
             material. Should be ordered corresponding to initial
             ``rate_index`` used in :meth:`prepare`
+        mat_index : int
+            Material index
         """
 
     @property
@@ -523,6 +525,8 @@ class Integrator(ABC):
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
         is not speficied.
+    flux : float or iterable of float, optional
+        Neutron flux in [neur/s-cm^2] for each interval in :attr: `timesteps`
     source_rates : float or iterable of float, optional
         Source rate in [neutron/sec] for each interval in :attr:`timesteps`
 
@@ -597,8 +601,10 @@ class Integrator(ABC):
                 source_rates = power_density * operator.heavy_metal
             else:
                 source_rates = [p*operator.heavy_metal for p in power_density]
+        elif flux is not None:
+            source_rates = flux
         elif source_rates is None:
-            raise ValueError("Either power, power_density, or source_rates must be set")
+            raise ValueError("Either power, power_density, flux, or source_rates must be set")
 
         if not isinstance(source_rates, Iterable):
             # Ensure that rate is single value if that is the case

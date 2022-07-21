@@ -579,7 +579,7 @@ class Integrator(ABC):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, timestep_units='s', solver="cram48"):
+                 flux=None, source_rates=None, timestep_units='s', solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]

@@ -459,10 +459,9 @@ def test_material_from_library():
     m1 = openmc.Material.from_library(name='Sodium Oxide', library='pnnl_v2')
     assert m1.density == 2.27
     assert m1.nuclides == [
-        ('O16', 3.325230E-01, 'ao'),
-        ('O17', 1.266665E-04, 'ao'),
-        ('O18', 6.833327E-04, 'ao'),
-        ('Na23', 6.666670E-01, 'ao')
+        ('O16', 0.3332066659933032, 'ao'),
+        ('O17', 0.0001263332066968, 'ao'),
+        ('Na23', 0.666667, 'ao')
     ]
     with pytest.raises(ValueError):
         openmc.Material.from_library(name='non-existent material')

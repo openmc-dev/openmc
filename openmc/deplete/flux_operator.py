@@ -17,10 +17,11 @@ from uncertainties import ufloat
 import openmc
 from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.mpi import comm
+from openmc.mgxs import EnergyGroups, ArbitraryXS, FissionXS
 from .abc import ReactionRateHelper, OperatorResult
 from .chain import REACTIONS
 from .openmc_operator import OpenMCOperator
-from .helpers import ConstantFissionYieldHelper, SourceRateHelper
+from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateHelper
 
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
@@ -147,6 +148,7 @@ class FluxDepletionOperator(OpenMCOperator):
     def from_nuclides(cls, volume, nuclides, micro_xs,
                       chain_file,
                       keff=None,
+                      normalization_mode='constant-flux',
                       fission_q=None,
                       prev_results=None,
                       reduce_chain=False,
@@ -197,12 +199,13 @@ class FluxDepletionOperator(OpenMCOperator):
         return cls(materials,
                    micro_xs,
                    chain_file,
-                   keff,
-                   fission_q,
-                   prev_results,
-                   reduce_chain,
-                   reduce_chain_level,
-                   fission_yield_opts)
+                   keff=keff,
+                   normalization_mode=normalization_mode,
+                   fission_q=fission_q,
+                   prev_results=prev_results,
+                   reduce_chain=reduce_chain,
+                   reduce_chain_level=reduce_chain_level,
+                   fission_yield_opts=fission_yield_opts)
 
 
     @staticmethod
@@ -245,17 +248,17 @@ class FluxDepletionOperator(OpenMCOperator):
             super().__init__()
 
         def update(self, fission_rates, mat_index=None):
-        """Update 'energy' produced with fission rates in a material. What this
-        actually calculates is the quantity X.
+            """Update 'energy' produced with fission rates in a material. What
+            this actually calculates is the quantity X.
 
-        Parameters
-        ----------
-        fission_rates : numpy.ndarray
-            fission reaction rate for each isotope in the specified
-            material. Should be ordered corresponding to initial
-            ``rate_index`` used in :meth:`prepare`
-        mat_index : int
-            Material index
+            Parameters
+            ----------
+            fission_rates : numpy.ndarray
+                fission reaction rate for each isotope in the specified
+                material. Should be ordered corresponding to initial
+                ``rate_index`` used in :meth:`prepare`
+            mat_index : int
+                Material index
 
         """
             volume = self._op.number.get_mat_volume(mat_index)
@@ -296,7 +299,7 @@ class FluxDepletionOperator(OpenMCOperator):
 
         """
 
-        def __init__(self, n_nuc, n_react, op, nuc_ind_map. rxn_ind_map)
+        def __init__(self, n_nuc, n_react, op):
             super().__init__(n_nuc, n_react)
             rates = op.reaction_rates
 
@@ -354,6 +357,8 @@ class FluxDepletionOperator(OpenMCOperator):
 
         # Select and create fission yield helper
         fission_helper = ConstantFissionYieldHelper
+        if fission_yield_opts is None:
+            fission_yield_opts = {}
         self._yield_helper = fission_helper.from_operator(
             self, **fission_yield_opts)
 
@@ -507,3 +512,68 @@ class FluxDepletionOperator(OpenMCOperator):
         check_type('data', data, np.ndarray, expected_iter_type=float)
         for reaction in reactions:
             check_value('reactions', reaction, _valid_rxns)
+
+
+    @staticmethod
+    def generate_1g_cross_sections(model, reaction_domain, reactions=['(n,gamma)', '(n,2n)', '(n,p)', '(n,a)', '(n,3n)', '(n,4n)', 'fission'],  energy_bounds=(0, 20e6), write_to_csv=True, filename='micro_xs.csv'):
+        """Helper function to generate a one-group cross-section dataframe
+        using OpenMC. Note that the ``openmc`` C executable must be compiled.
+
+        Parameters
+        ----------
+        model : openmc.model.Model
+            OpenMC model object. Must contain geometry, materials, and settings.
+        reaction_domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
+            Domain in which to tally reaction rates.
+        reactions : list of str, optional
+            Reaction names to tally
+        energy_bound : 2-tuple of float, optional
+            Bounds for the energy group.
+        write_to_csv : bool, optional
+            Option to write the DataFrame to a `.csv` file. If `False`,
+            returns the dataframe object.
+        filename : str
+            Name for csv file. Only applicable if ``write_to_csv == True``
+
+        Returns
+        -------
+        None or pandas.DataFrame
+
+        """
+        groups = EnergyGroups()
+        groups.group_edges = np.array(list(energy_bounds))
+
+        # Set up the reaction tallies
+        tallies = openmc.Tallies()
+        xs = dict()
+        for rxn in reactions:
+            if rxn == 'fission':
+                xs[rxn] = FissionXS(domain=reaction_domain, groups=groups, by_nuclide=True)
+            else:
+                xs[rxn] = ArbitraryXS(rxn, domain=reaction_domain, groups=groups, by_nuclide=True)
+            tallies += xs[rxn].tallies.values()
+
+        model.tallies = tallies
+        statepoint_path = model.run()
+
+        sp = openmc.StatePoint(statepoint_path)
+
+        for rxn in xs:
+            xs[rxn].load_from_statepoint(sp)
+
+        sp.close()
+
+        # Build the DataFrame
+        micro_xs = pd.DataFrame()
+        for rxn in xs:
+            df = xs[rxn].get_pandas_dataframe(xs_type='micro')
+            df.index = df['nuclide']
+            df.drop(['nuclide', xs[rxn].domain_type, 'group in', 'std. dev.'], axis=1, inplace=True)
+            df.rename({'mean':rxn}, axis=1, inplace=True)
+            micro_xs = pd.concat([micro_xs, df], axis=1)
+
+        if write_to_csv:
+            micro_xs.to_csv(filename)
+            return None
+        else:
+            return micro_xs

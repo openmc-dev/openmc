@@ -113,7 +113,7 @@ should be, including indirect components. Some examples are provided below::
     fission_q = {"U235": 202e+6}  # energy in eV
 
     # create a Model object
-    model  = openmc.model.Model(geometry, settings)
+    model  = openmc.Model(geometry, settings)
 
     # create a modified chain and write it to a new file
     chain = openmc.deplete.Chain.from_xml("chain.xml", fission_q)
@@ -180,7 +180,7 @@ across all material instances.
     number of tallies and material definitions.
 
 Transport-independent depletion
--------------------------------
+===============================
 
 .. note::
    
@@ -188,10 +188,10 @@ Transport-independent depletion
    possible and likely in the near future.
 
 OpenMC supports running depletion calculations independent of the OpenMC
-transport solver using the :class:`FluxDepletionOperator` class. This class
+transport solver using the :class:`~openmc.deplete.FluxDepletionOperator` class. This class
 has two ways to initalize it; the default constructor accepts an 
 :class:`openmc.Materials` object, a flux spectra, and one-group microscopic 
-cross sections as a :class:`pandas.Dataframe`, while the `from_nuclides` 
+cross sections as a :class:`pandas.DataFrame`, while the `from_nuclides` 
 method accepts a volume and dictionary of nuclide concentrations in place of
 the :class:`openmc.Materials` object in addition to the other parameters.
 The class includes helper functions to construct the dataframe from a csv file

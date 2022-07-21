@@ -11,7 +11,7 @@ from openmc.deplete.flux_operator import FluxDepletionOperator
 import pandas as pd
 import numpy as np
 
-FLUX_SPECTRA = 5e16
+FLUX = 5e16
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 ONE_GROUP_XS = Path(__file__).parents[1] / "micro_xs_simple.csv"
 

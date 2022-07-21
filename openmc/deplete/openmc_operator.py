@@ -66,16 +66,14 @@ class OpenMCOperator(TransportOperator):
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances.
         Volumes are divided equally from the original material volume.
-        Default: False.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV].
     dilute_initial : float, optional
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
-        Defaults to 1.0e3.
     helper_kwargs : dict
-        Arguments for helper classes
+        Keyword arguments for helper classes
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
         depletion chain up to ``reduce_chain_level``. Default is False.
@@ -89,6 +87,10 @@ class OpenMCOperator(TransportOperator):
     ----------
     materials : openmc.Materials
         All materials present in the model
+    cross_sections : str or pandas.DataFrame
+            Path to continuous energy cross section library, or object
+            containing one-group cross-sections.
+
     dilute_initial : float
         Initial atom density [atoms/cm^3] to add for nuclides that
         are zero in initial condition to ensure they exist in the decay
@@ -182,9 +184,9 @@ class OpenMCOperator(TransportOperator):
 
         self._get_helper_classes(helper_kwargs)
 
-    @abstractmethod
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material"""
+        pass
 
     def _get_burnable_mats(self):
         """Determine depletable materials, volumes, and nuclides
@@ -235,9 +237,9 @@ class OpenMCOperator(TransportOperator):
 
         return burnable_mats, volume, nuclides
 
-    @abstractmethod
     def _load_previous_results(self):
         """Load results from a previous depletion simulation"""
+        pass
 
     @abstractmethod
     def _get_nuclides_with_data(self, cross_sections):
@@ -271,9 +273,7 @@ class OpenMCOperator(TransportOperator):
             Results from a previous depletion calculation
 
         """
-        self.number = AtomNumber(
-            local_mats, all_nuclides, volume, len(
-                self.chain))
+        self.number = AtomNumber(local_mats, all_nuclides, volume, len(self.chain))
 
         if self.dilute_initial != 0.0:
             for nuc in self._burnable_nucs:
@@ -349,20 +349,8 @@ class OpenMCOperator(TransportOperator):
 
         Parameters
         ----------
-        reaction_rate_mode : str
-            Indicates the subclass of :class:`ReactionRateHelper` to
-            instantiate.
-        normalization_mode : str
-            Indicates the subclass of :class:`NormalizationHelper` to
-            instantiate.
-        fission_yield_mode : str
-            Indicates the subclass of :class:`FissionYieldHelper` to instatiate.
-        reaction_rate_opts : dict
-            Keyword arguments that are passed to the :class:`ReactionRateHelper`
-            subclass.
-        fission_yield_opts : dict
-            Keyword arguments that are passed to the :class:`FissionYieldHelper`
-            subclass.
+        helper_kwargs : dict
+            Keyword arguments for helper classes
 
         """
 
@@ -419,6 +407,20 @@ class OpenMCOperator(TransportOperator):
     @abstractmethod
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""
+
+    def write_bos_data(self, step):
+        """Document beginning of step data for a given step
+
+        Called at the beginning of a depletion step and at
+        the final point in the simulation.
+
+        Parameters
+        ----------
+        step : int
+            Current depletion step including restarts
+        """
+        # Since we aren't running a transport simulation, we simply pass
+        pass
 
     def _get_reaction_nuclides(self):
         """Determine nuclides that should be tallied for reaction rates.

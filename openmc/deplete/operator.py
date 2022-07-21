@@ -83,7 +83,6 @@ class Operator(OpenMCOperator):
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances.
         Volumes are divided equally from the original material volume.
-        Default: False.
     normalization_mode : {"energy-deposition", "fission-q", "source-rate"}
         Indicate how tally results should be normalized. ``"energy-deposition"``
         computes the total energy deposited in the system and uses the ratio of
@@ -99,7 +98,6 @@ class Operator(OpenMCOperator):
         Initial atom density [atoms/cm^3] to add for nuclides that are zero
         in initial condition to ensure they exist in the decay chain.
         Only done for nuclides with reaction rates.
-        Defaults to 1.0e3.
     fission_yield_mode : {"constant", "cutoff", "average"}
         Key indicating what fission product yield scheme to use. The
         key determines what fission energy helper is used:
@@ -228,11 +226,13 @@ class Operator(OpenMCOperator):
         self.cleanup_when_done = True
 
         helper_kwargs = dict()
-        helper_kwargs['reaction_rate_mode'] = reaction_rate_mode
-        helper_kwargs['normalization_mode'] = normalization_mode
-        helper_kwargs['fission_yield_mode'] = fission_yield_mode
-        helper_kwargs['reaction_rate_opts'] = reaction_rate_opts
-        helper_kwargs['fission_yield_opts'] = fission_yield_opts
+        helper_kwargs = {
+            'reaction_rate_mode': reaction_rate_mode,
+            'normalization_mode': normalization_mode,
+            'fission_yield_mode': fission_yield_mode,
+            'reaction_rate_opts': reaction_rate_opts,
+            'fission_yield_opts': fission_yield_opts
+        }
 
         super().__init__(
             model.materials,
@@ -322,37 +322,21 @@ class Operator(OpenMCOperator):
 
         Parameters
         ----------
-        **kwargs : ...
-        reaction_rate_mode : str
-            Indicates the subclass of :class:`ReactionRateHelper` to
-            instantiate.
-        normalization_mode : str
-            Indicates the subclass of :class:`NormalizationHelper` to
-            instatiate.
-        fission_yield_mode : str
-            Indicates the subclass of :class:`FissionYieldHelper` to instantiate.
-        reaction_rate_opts : dict
-            Keyword arguments that are passed to the :class:`ReactionRateHelper`
-            subclass.
-        fission_yield_opts : dict
-            Keyword arguments that are passed to the :class:`FissionYieldHelper`
-            subclass.
+        helper_kwargs : dict
+            Keyword arguments for helper classes
 
         """
         reaction_rate_mode = helper_kwargs['reaction_rate_mode']
         normalization_mode = helper_kwargs['normalization_mode']
         fission_yield_mode = helper_kwargs['fission_yield_mode']
-        reaction_rate_opts = helper_kwargs['reaction_rate_opts']
-        fission_yield_opts = helper_kwargs['fission_yield_opts']
+        reaction_rate_opts = helper_kwargs.get('reaction_rate_opts', {})
+        fission_yield_opts = helper_kwargs.get('fission_yield_opts', {})
 
         # Get classes to assist working with tallies
         if reaction_rate_mode == "direct":
             self._rate_helper = DirectReactionRateHelper(
                 self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         elif reaction_rate_mode == "flux":
-            if reaction_rate_opts is None:
-                reaction_rate_opts = {}
-
             # Ensure energy group boundaries were specified
             if 'energies' not in reaction_rate_opts:
                 raise ValueError(
@@ -378,8 +362,6 @@ class Operator(OpenMCOperator):
 
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]
-        fission_yield_opts = (
-            {} if fission_yield_opts is None else fission_yield_opts)
         self._yield_helper = fission_helper.from_operator(
             self, **fission_yield_opts)
 
@@ -405,8 +387,7 @@ class Operator(OpenMCOperator):
             openmc.lib.init(intracomm=comm)
 
         # Generate tallies in memory
-        materials = [openmc.lib.materials[int(i)]
-                     for i in self.burnable_mats]
+        materials = [openmc.lib.materials[int(i)] for i in self.burnable_mats]
 
         return super().initial_condition(materials)
 
@@ -500,15 +481,12 @@ class Operator(OpenMCOperator):
                             # negative. CRAM does not guarantee positive
                             # values.
                             if val < -1.0e-21:
-                                print(
-                                    "WARNING: nuclide ",
-                                    nuc,
-                                    " in material ",
-                                    mat,
-                                    " is negative (density = ",
-                                    val,
-                                    " at/barn-cm)")
-                            number_i[mat, nuc] = 0.0
+                                print(f'WARNING: nuclide {nuc} in material'
+                                      f'{mat} is negative (density = {val}'
+
+                                      ' at/barn-cm)')
+
+                                number_i[mat, nuc] = 0.0
 
                 # Update densities on C API side
                 mat_internal = openmc.lib.materials[int(mat)]

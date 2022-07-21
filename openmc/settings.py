@@ -318,7 +318,7 @@ class Settings:
         return self._max_lost_particles
 
     @property
-    def rel_max_lost_particles(self) -> int:
+    def rel_max_lost_particles(self) -> float:
         return self._rel_max_lost_particles
 
     @property
@@ -338,7 +338,7 @@ class Settings:
         return self._max_order
 
     @property
-    def source(self) -> Union[Source, typing.Iterable[Source]]:
+    def source(self) -> typing.List[Source]:
         return self._source
 
     @property
@@ -422,7 +422,7 @@ class Settings:
         return self._trace
 
     @property
-    def track(self) -> typing.Iterable[int]:
+    def track(self) -> typing.Iterable[typing.Iterable[int]]:
         return self._track
 
     @property
@@ -438,7 +438,7 @@ class Settings:
         return self._resonance_scattering
 
     @property
-    def volume_calculations(self) -> Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]:
+    def volume_calculations(self) -> typing.List[VolumeCalculation]:
         return self._volume_calculations
 
     @property
@@ -470,7 +470,7 @@ class Settings:
         return self._write_initial_source
 
     @property
-    def weight_windows(self) -> Union[WeightWindows, typing.Iterable[WeightWindows]]:
+    def weight_windows(self) -> typing.List[WeightWindows]:
         return self._weight_windows
 
     @property

@@ -1204,8 +1204,12 @@ class Material(IDManagerMixin):
         material_to_add = MATERIAL_LIBRARIES[library][name]
 
         mat = cls()
-        for nuclide in material_to_add['nuclides']:
-            mat.add_nuclide(**nuclide)
+        if 'nuclides' in material_to_add.keys():
+            for nuclide in material_to_add['nuclides']:
+                mat.add_nuclide(**nuclide)
+        if 'elements' in material_to_add.keys():
+            for nuclide in material_to_add['elements']:
+                mat.add_element(**nuclide)
 
         mat.set_density(**material_to_add['density'])
 

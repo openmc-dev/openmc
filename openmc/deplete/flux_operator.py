@@ -48,9 +48,6 @@ class FluxDepletionOperator(OpenMCOperator):
     keff : 2-tuple of float, optional
        keff eigenvalue and uncertainty from transport calculation.
        Default is None.
-    fission_q : dict, optional
-        Dictionary of nuclides and their fission Q values [eV]. If not given,
-        values will be pulled from the ``chain_file``.
     prev_results : Results, optional
         Results from a previous depletion calculation.
     normalization_mode : {"constant-power", "constant-flux"}
@@ -61,7 +58,6 @@ class FluxDepletionOperator(OpenMCOperator):
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
         if ``"normalization_mode" == "constant-power"``.
-
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
         depletion chain up to ``reduce_chain_level``. Default is False.
@@ -222,6 +218,23 @@ class FluxDepletionOperator(OpenMCOperator):
         mat.depletable = True
 
         return openmc.Materials([mat])
+
+    def _load_previous_results(self):
+        """Load results from a previous depletion simulation"""
+        # Reload volumes into geometry
+        self.prev_res[-1].transfer_volumes(self.materials)
+
+        # Store previous results in operator
+        # Distribute reaction rates according to those tracked
+        # on this process
+        if comm.size != 1:
+            prev_results = self.prev_res
+            self.prev_res = Results()
+            mat_indexes = _distribute(range(len(self.burnable_mats)))
+            for res_obj in prev_results:
+                new_res = res_obj.distribute(self.local_mats, mat_indexes)
+                self.prev_res.append(new_res)
+
 
     def _get_nuclides_with_data(self, cross_sections):
         """Finds nuclides with cross section data"""

@@ -199,9 +199,9 @@ This class supports both constant-flux and constant-power depletion.
 
    The accuracy of results when using ``constant-power`` is entirely dependent on your depletion chain. Make sure it has sufficient data to resolve the dynamics of your particular scenario. 
 
-This class has two ways to initalize it; the default constructor accepts an 
+This class has two ways to initalize it: the default constructor accepts an 
 :class:`openmc.Materials` object and one-group microscopic 
-cross sections as a :class:`pandas.DataFrame`, while the `from_nuclides` 
+cross sections as a :class:`pandas.DataFrame`, while the ``from_nuclides``
 method accepts a volume and dictionary of nuclide concentrations in place of
 the :class:`openmc.Materials` object in addition to the other parameters.
 The class includes helper functions to construct the dataframe from a csv file

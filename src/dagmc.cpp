@@ -183,9 +183,9 @@ void DAGUniverse::init_geometry()
     } else {
       warning(fmt::format("DAGMC Cell IDs: {}", dagmc_ids_for_dim(3)));
       fatal_error(fmt::format("Cell ID {} exists in both DAGMC Universe {} "
-                              "and the CSG geometry. Setting auto_geom_ids
-                              to True when initiating the DAGMC Universe may
-                              resolve this issue",
+                              "and the CSG geometry. Setting auto_geom_ids "
+                              "to True when initiating the DAGMC Universe may "
+                              "resolve this issue",
         c->id_, this->id_));
     }
 

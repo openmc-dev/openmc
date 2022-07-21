@@ -242,9 +242,9 @@ class FluxDepletionOperator(OpenMCOperator):
         """
 
         def __init__(self, op):
-            self._op = op
-            rates = self.reaction_rates
+            rates = op.reaction_rates
             self.nuc_ind_map = {ind: nuc for nuc, ind in rates.index_nuc.items()}
+            self._op = op
             super().__init__()
 
         def update(self, fission_rates, mat_index=None):
@@ -262,13 +262,13 @@ class FluxDepletionOperator(OpenMCOperator):
 
         """
             volume = self._op.number.get_mat_volume(mat_index)
-            densities = np.empty(shape(fission_rates))
-            for i_nuc in nuc_ind_map:
+            densities = np.empty(np.shape(fission_rates))
+            for i_nuc in self.nuc_ind_map:
                 nuc = self.nuc_ind_map[i_nuc]
                 densities[i_nuc] = self._op.number.get_atom_density(mat_index, nuc)
             fission_rates = fission_rates * volume * densities
 
-            super.update(fission_rates)
+            super().update(fission_rates)
 
     class _FluxDepletionRateHelper(ReactionRateHelper):
         """Class for generating one-group reaction rates with flux and
@@ -351,7 +351,7 @@ class FluxDepletionOperator(OpenMCOperator):
         self._rate_helper = self._FluxDepletionRateHelper(
             self.reaction_rates.n_nuc, self.reaction_rates.n_react, self)
         if normalization_mode == "constant-power":
-            self._normalization_helper = self.FluxDepletionNormalizationHelper()
+            self._normalization_helper = self._FluxDepletionNormalizationHelper(self)
         else:
             self._normalization_helper = SourceRateHelper()
 

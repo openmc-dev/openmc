@@ -337,6 +337,9 @@ class Operator(OpenMCOperator):
             self._rate_helper = DirectReactionRateHelper(
                 self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         elif reaction_rate_mode == "flux":
+            if reaction_rate_opts is None:
+                reaction_rate_opts = {}
+
             # Ensure energy group boundaries were specified
             if 'energies' not in reaction_rate_opts:
                 raise ValueError(
@@ -362,6 +365,8 @@ class Operator(OpenMCOperator):
 
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]
+        if fission_yield_opts is None:
+            fission_yield_opts = {}
         self._yield_helper = fission_helper.from_operator(
             self, **fission_yield_opts)
 

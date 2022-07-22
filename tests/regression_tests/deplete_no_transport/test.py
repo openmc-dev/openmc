@@ -17,46 +17,52 @@ from tests.regression_tests import config
 
 
 @pytest.fixture(scope="module")
-def vol_nuc():
+def fuel():
     fuel = openmc.Material(name="uo2")
     fuel.add_element("U", 1, percent_type="ao", enrichment=4.25)
     fuel.add_element("O", 2)
     fuel.set_density("g/cc", 10.4)
+    fuel.depletable=True
 
     fuel.volume = np.pi * 0.42 ** 2
 
-    nuclides = {}
-    for nuc, dens in fuel.get_nuclide_atom_densities().items():
-        nuclides[nuc] = dens * 1e24
-
-    # Load geometry from example
-    return (fuel.volume, nuclides)
+    return fuel
 
 
-@pytest.mark.parametrize("multiproc, normalization_mode, power, flux", [
-    (True, 'constant-flux', None, 1164719970082145.0),
-    (False, 'constant-flux', None, 1164719970082145.0),
-    (True, 'constant-power', 174, None),
-    (False, 'constant-power', 174, None)])
-def test_no_transport_constant_flux(run_in_tmpdir, vol_nuc, multiproc):
+@pytest.mark.parametrize("multiproc, from_nuclides, normalization_mode, power, flux", [
+    (True, True,'constant-flux', None, 1164719970082145.0),
+    (False, True, 'constant-flux', None, 1164719970082145.0),
+    (True, True, 'constant-power', 174, None),
+    (False, True, 'constant-power', 174, None),
+    (True, False,'constant-flux', None, 1164719970082145.0),
+    (False, False, 'constant-flux', None, 1164719970082145.0),
+    (True, False, 'constant-power', 174, None),
+    (False, False, 'constant-power', 174, None)])
+def test_no_transport_from_nuclides(run_in_tmpdir, fuel, multiproc, from_nuclides, normalization_mode, power, flux):
     """Transport free system test suite.
 
     Runs an OpenMC transport-free depletion calculation and verifies
     that the outputs match a reference file.
 
     """
-
     # Create operator
     micro_xs_file = Path(__file__).parents[2] / 'micro_xs_simple.csv'
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(micro_xs_file)
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
-    op = FluxDepletionOperator.from_nuclides(
-        vol_nuc[0], vol_nuc[1], micro_xs, chain_file, normalization_mode=normalization_mode)
+
+    if from_nuclides:
+        nuclides = {}
+        for nuc, dens in fuel.get_nuclide_atom_densities().items():
+            nuclides[nuc] = dens * 1e24
+
+        op = FluxDepletionOperator.from_nuclides(
+            fuel.volume, nuclides, micro_xs, chain_file, normalization_mode=normalization_mode)
+
+    else:
+        op = FluxDepletionOperator(openmc.Materials([fuel]), micro_xs, chain_file, normalization_mode=normalization_mode)
 
     # Power and timesteps
     dt = [30]  # single step
-    flux = 1164719970082145.0  # n/cm^2-s, flux from pincell example
-    power = 174  # W/cm
 
     # Perform simulation using the predictor algorithm
     openmc.deplete.pool.USE_MULTIPROCESSING = multiproc
@@ -65,16 +71,11 @@ def test_no_transport_constant_flux(run_in_tmpdir, vol_nuc, multiproc):
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
-    if flux is None:
+    if flux is not None:
         ref_path = 'test_reference_constant_flux.h5'
     else:
         ref_path = 'test_reference_constant_power.h5'
     path_reference = Path(__file__).with_name(ref_path)
-
-    # If updating results, do so and return
-    if config['update']:
-        shutil.copyfile(str(path_test), str(path_reference))
-        return
 
     # Load the reference/test results
     res_test = openmc.deplete.Results(path_test)

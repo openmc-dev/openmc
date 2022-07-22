@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from openmc.deplete.flux_operator import FluxDepletionOperator
+from openmc import Material, Materials
 import pandas as pd
 import numpy as np
 
@@ -71,4 +72,12 @@ def test_operator_init():
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(ONE_GROUP_XS)
     nuclide_flux_operator = FluxDepletionOperator.from_nuclides(
         volume, nuclides, micro_xs, CHAIN_PATH)
+
+    fuel = Material(name="uo2")
+    fuel.add_element("U", 1, percent_type="ao", enrichment=4.25)
+    fuel.add_element("O", 2)
+    fuel.set_density("g/cc", 10.4)
+    fuel.depletable=True
+    fuel.volume = 1
+    materials = Materials([fuel])
     nuclide_flux_operator = FluxDepletionOperator(materials, micro_xs, CHAIN_PATH)

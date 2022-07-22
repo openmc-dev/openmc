@@ -248,6 +248,10 @@ class StructuredMesh(MeshBase):
 
         # create VTK arrays for each of
         # the data sets
+
+        # maintain a list of the datasets as added
+        # to the VTK arrays to ensure they persist
+        # in memory until the file is written
         datasets_out = []
         for label, dataset in datasets.items():
             dataset = np.asarray(dataset).flatten()

@@ -337,6 +337,7 @@ class Decay(EqualityMixin):
         self.modes = []
         self.spectra = {}
         self.average_energies = {}
+        self._sources = None
 
         # Get head record
         items = get_head_record(file_obj)

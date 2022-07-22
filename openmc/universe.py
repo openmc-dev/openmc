@@ -767,11 +767,17 @@ class DAGMCUniverse(UniverseBase):
 
             return +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
 
-    def bounded_universe(self, **kwargs):
+    def bounded_universe(self, bounding_cell_id=10000, **kwargs):
         """Returns an openmc.Universe filled with this DAGMCUniverse and bounded
         with a cell. Defaults to a box cell with a vacuum surface however this
         can be changed using the kwargs which are passed directly to
         DAGMCUniverse.bounding_region().
+
+        Parameters
+        ----------
+        bounding_cell_id : int
+            The cell ID number to use for the bounding cell, defaults to 1000 to reduce
+            the chance of overlapping ID numbers with the DAGMC geometry.
 
         Returns
         -------
@@ -779,7 +785,7 @@ class DAGMCUniverse(UniverseBase):
             Universe instance
         """
 
-        bounding_cell = openmc.Cell(fill=self, region=self.bounding_region(**kwargs))
+        bounding_cell = openmc.Cell(fill=self, id=bounding_cell_id, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 
     @classmethod

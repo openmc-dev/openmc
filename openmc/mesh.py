@@ -1722,6 +1722,7 @@ class UnstructuredMesh(MeshBase):
             grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
 
         # check that datasets are the correct size
+        datasets_out = []
         if datasets is not None:
             for name, data in datasets.items():
                 if data.shape != (self.dimension,):
@@ -1739,6 +1740,7 @@ class UnstructuredMesh(MeshBase):
 
             # add data to the mesh
             for name, data in datasets.items():
+                datasets_out.append(data)
                 arr = vtk.vtkDoubleArray()
                 arr.SetName(name)
                 arr.SetNumberOfTuples(data.size)

@@ -2436,7 +2436,7 @@ void score_point_tally(Particle& p)
   col_counter ++;
   fmt::print("------------------------collison happened------------------------\n");
   fmt::print("col counter = {}\n",col_counter);
-  //std::cout << "mass in ev  " << p.getMass() << std::endl ;
+  std::cout << "mass in ev  " << p.getMass() << std::endl ;
   // Determine the collision estimate of the flux
   bool verbose=false;//true;
   double ReturnArray[4]= {std::nan(""),std::nan(""),std::nan(""),std::nan("")};
@@ -3084,6 +3084,10 @@ void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , doub
   double m3= m1; // mass of outgoing particle to detector  (rest mass?)
   double m4= m2; // mass of recoil target  system
   double p1[3]={p1_tot*p_col.u_last().x,p1_tot* p_col.u_last().y,p1_tot* p_col.u_last().z}; // 3 momentum of incoming particle
+  //p.v_t() * m2 / C_LIGHT;
+  std::cout << "p1:  "<< p1[0] <<" "<< p1[1]<<" " <<p1[2] <<std::endl;
+  std::cout << "p2:  "<< (p_col.v_t() * m2 / C_LIGHT).x <<" " <<(p_col.v_t() * m2 / C_LIGHT).y << " "<<(p_col.v_t() * m2 / C_LIGHT).z <<std::endl;
+  //std::cout << (p.v_t() * m2 / C_LIGHT).x << (p.v_t() * m2 / C_LIGHT).y << (p.v_t() * m2 / C_LIGHT).z <<std::endl;
   double p2[3]={0, 0, 0}; //3 momentum of target in lab  
  
   // calculate

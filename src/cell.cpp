@@ -777,7 +777,7 @@ bool CSGCell::contains_complex(
 {
   // Initialize a stack for operators and the in cell boolean
   OperatorStack op_stack;
-  bool in_cell = false;
+  bool in_cell = true;
 
   // For each token in prefix
   for (auto it = region_prefix_.begin(); it != region_prefix_.end(); it++) {

@@ -248,8 +248,14 @@ class StructuredMesh(MeshBase):
 
         # create VTK arrays for each of
         # the data sets
+
+        # maintain a list of the datasets as added
+        # to the VTK arrays to ensure they persist
+        # in memory until the file is written
+        datasets_out = []
         for label, dataset in datasets.items():
             dataset = np.asarray(dataset).flatten()
+            datasets_out.append(dataset)
 
             if volume_normalization:
                 dataset /= self.volumes.flatten()
@@ -692,7 +698,7 @@ class RegularMesh(StructuredMesh):
         root_cell.fill = lattice
 
         return root_cell, cells
-    
+
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh
 
@@ -1605,7 +1611,7 @@ class UnstructuredMesh(MeshBase):
         Raises
         ------
             RuntimeError
-                when the size of a dataset doesn't match the number of cells 
+                when the size of a dataset doesn't match the number of cells
         """
 
         import vtk

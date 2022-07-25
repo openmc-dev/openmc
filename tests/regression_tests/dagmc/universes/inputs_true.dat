@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-  <cell fill="12" id="14" region="22 -23 24 -25 26 -27" universe="13" />
+  <cell fill="12" id="13" region="22 -23 24 -25 26 -27" universe="13" />
   <dagmc_universe auto_geom_ids="true" filename="dagmc.h5m" id="9" />
   <lattice id="12">
     <pitch>24.0 24.0</pitch>

@@ -300,7 +300,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
         If the ENDF file contains multiple material evaluations, this argument
         indicates which evaluation should be used.
     smoothing : bool, optional
-        If the smoothing option in ACER is on (1) or off (0) in the card 6.
+        If the smoothing option (ACER card 6) is on (True) or off (False).
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -383,10 +383,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
     # acer
     if acer:
-        if smoothing is True:
-            ismoothing = 1
-        else:
-            ismoothing = 0
+        ismoothing = int(smoothing)
         nacer_in = nlast
         for i, temperature in enumerate(temperatures):
             # Extend input with an ACER run for each temperature

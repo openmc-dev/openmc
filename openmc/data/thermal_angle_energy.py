@@ -122,7 +122,7 @@ class IncoherentElasticAE(AngleEnergy):
             Incoherent elastic distribution
 
         """
-        return cls(group['debye_waller'])
+        return cls(group['debye_waller'][()])
 
 
 class IncoherentElasticAEDiscrete(AngleEnergy):

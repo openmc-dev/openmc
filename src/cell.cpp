@@ -515,7 +515,8 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   }
 
   // Convert the infix region spec to RPN.
-  rpn_ = generate_rpn(id_, region_);
+  //rpn_ = generate_rpn(id_, region_);
+  rpn_ = region_;
 
   // Check if this is a simple cell.
   simple_ = true;
@@ -768,50 +769,46 @@ bool CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 bool CSGCell::contains_complex(
   Position r, Direction u, int32_t on_surface) const
 {
-  // Make a stack of booleans.  We don't know how big it needs to be, but we do
-  // know that rpn.size() is an upper-bound.
-  vector<bool> stack(rpn_.size());
-  int i_stack = -1;
+  bool in_cell = true;
+  bool negate = false;
+  int paren_depth = 0;
+  int negate_depth = 0;
 
   for (int32_t token : rpn_) {
-    // If the token is a binary operator (intersection/union), apply it to
-    // the last two items on the stack. If the token is a unary operator
-    // (complement), apply it to the last item on the stack.
-    if (token == OP_UNION) {
-      stack[i_stack - 1] = stack[i_stack - 1] || stack[i_stack];
-      i_stack--;
-    } else if (token == OP_INTERSECTION) {
-      stack[i_stack - 1] = stack[i_stack - 1] && stack[i_stack];
-      i_stack--;
-    } else if (token == OP_COMPLEMENT) {
-      stack[i_stack] = !stack[i_stack];
-    } else {
-      // If the token is not an operator, evaluate the sense of particle with
-      // respect to the surface and see if the token matches the sense. If the
-      // particle's surface attribute is set and matches the token, that
-      // overrides the determination based on sense().
-      i_stack++;
-      if (token == on_surface) {
-        stack[i_stack] = true;
-      } else if (-token == on_surface) {
-        stack[i_stack] = false;
-      } else {
-        // Note the off-by-one indexing
-        bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
-        stack[i_stack] = (sense == (token > 0));
-      }
-    }
-  }
+     if (token < OP_UNION && in_cell == true) {
+       if (token == on_surface) {
+         in_cell = true;
+       } else if (-token == on_surface) {
+         in_cell = false;
+       } else {
+         // Note the off-by-one
+         bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
+         in_cell = (sense == (token > 0));
+       }
+     } else if (token == OP_UNION) {
+       if (in_cell == false) {
+         in_cell = true;
+       } else if (paren_depth == 0) {
+         break;
+       }
+     } else if (token == OP_RIGHT_PAREN) {
+       paren_depth--;
+     } else if (token == OP_LEFT_PAREN) {
+       paren_depth++;
+     } else if (token == OP_COMPLEMENT) {
+       negate = true;
+       negate_depth = paren_depth;
+       continue;
+     } else if (paren_depth == 0) {
+       break;
+     }
 
-  if (i_stack == 0) {
-    // The one remaining bool on the stack indicates whether the particle is
-    // in the cell.
-    return stack[i_stack];
-  } else {
-    // This case occurs if there is no region specification since i_stack will
-    // still be -1.
-    return true;
+      if (negate == true && negate_depth == paren_depth) {
+        in_cell = !in_cell;
+        negate = false;
+      }
   }
+  return in_cell;
 }
 
 //==============================================================================

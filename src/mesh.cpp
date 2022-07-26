@@ -2324,6 +2324,14 @@ const std::string LibMesh::mesh_lib_type = "libmesh";
 
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
+  std::string& filename = node.get_node_value(node, "filename");
+  double length_multiplier = std::stod(node.get_node_value(node, "length_multiplier"));
+  set_mesh_pointer_from_filename(filename);
+  set_length_multiplier(length_multiplier);
+  if (specified_length_multiplier_) {
+    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
+  }
+  m_->prepare_for_use();
   initialize();
 }
 

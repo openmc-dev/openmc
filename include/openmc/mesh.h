@@ -7,13 +7,13 @@
 #include <unordered_map>
 
 #include "hdf5.h"
-#include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
+#include "openmc/xml_interface.h"
 
 #ifdef DAGMC
 #include "moab/AdaptiveKDTree.hpp"

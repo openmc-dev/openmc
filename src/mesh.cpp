@@ -2366,6 +2366,8 @@ void LibMesh::initialize()
     libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
   }
 
+  m_->prepare_for_use()
+
   // ensure that the loaded mesh is 3 dimensional
   if (m_->mesh_dimension() != n_dimension_) {
     fatal_error(fmt::format("Mesh file {} specified for use in an unstructured "

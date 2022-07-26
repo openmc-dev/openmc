@@ -8,6 +8,7 @@
 
 #include "hdf5.h"
 #include "xtensor/xtensor.hpp"
+#include "pugixml.hpp"
 
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"

@@ -718,7 +718,7 @@ private:
 
   // Data members
   unique_ptr<libMesh::MeshBase> unique_m_; //!< pointer to the libMesh MeshBase instance, only used if mesh is created inside OpenMC
-  libMesh::MeshBase * m_; //!< pointer to libMesh MeshBase instance
+  libMesh::MeshBase * m_; //!< pointer to libMesh MeshBase instance, always set during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>

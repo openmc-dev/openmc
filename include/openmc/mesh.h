@@ -704,6 +704,8 @@ public:
 
   double volume(int bin) const override;
 
+  libMesh::MeshBase * mesh_ptr() const;
+
 private:
   void initialize() override;
   void set_mesh_pointer_from_filename(const std::string& filename);

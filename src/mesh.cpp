@@ -2332,6 +2332,9 @@ LibMesh::LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier)
 {
   m_ = &input_mesh;
   set_length_multiplier(length_multiplier);
+  if (specified_length_multiplier_) {
+    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
+  }
   initialize();
 }
 
@@ -2340,6 +2343,10 @@ LibMesh::LibMesh(const std::string& filename, double length_multiplier)
 {
   set_mesh_pointer_from_filename(filename);
   set_length_multiplier(length_multiplier);
+  if (specified_length_multiplier_) {
+    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
+  }
+  m_->prepare_for_use();
   initialize();
 }
 
@@ -2361,12 +2368,6 @@ void LibMesh::initialize()
 
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
-
-  if (specified_length_multiplier_) {
-    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
-  }
-
-  m_->prepare_for_use();
 
   // ensure that the loaded mesh is 3 dimensional
   if (m_->mesh_dimension() != n_dimension_) {
@@ -2563,6 +2564,11 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 double LibMesh::volume(int bin) const
 {
   return m_->elem_ref(bin).volume();
+}
+
+libMesh::MeshBase * mesh_ptr() const
+{
+  return m_;
 }
 
 #endif // LIBMESH

@@ -514,14 +514,16 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
   }
 
-  // Convert the infix region spec to RPN.
-  //rpn_ = generate_rpn(id_, region_);
+  // Convert the infix region spec to infix with no complements 
+  // using De Morgan's law.
+  // TODO: Convert rpn to something that makes sense
   rpn_ = region_;
+  remove_complement_ops(rpn_);
 
   // Check if this is a simple cell.
   simple_ = true;
   for (int32_t token : rpn_) {
-    if ((token == OP_COMPLEMENT) || (token == OP_UNION)) {
+    if (token == OP_UNION) {
       simple_ = false;
       break;
     }
@@ -529,16 +531,11 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // If this cell is simple, remove all the superfluous operator tokens.
   if (simple_) {
-    size_t i0 = 0;
-    size_t i1 = 0;
-    while (i1 < rpn_.size()) {
-      if (rpn_[i1] < OP_UNION) {
-        rpn_[i0] = rpn_[i1];
-        ++i0;
+    for (auto it = rpn_.begin(); it != rpn_.end(); it++) {
+      if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
+        rpn_.erase(it);
       }
-      ++i1;
     }
-    rpn_.resize(i0);
   }
   rpn_.shrink_to_fit();
 
@@ -648,7 +645,7 @@ BoundingBox CSGCell::bounding_box_simple() const
 void CSGCell::apply_demorgan(
   vector<int32_t>::iterator start, vector<int32_t>::iterator stop)
 {
-  while (start < stop) {
+  do {
     if (*start < OP_UNION) {
       *start *= -1;
     } else if (*start == OP_UNION) {
@@ -657,16 +654,16 @@ void CSGCell::apply_demorgan(
       *start = OP_UNION;
     }
     start++;
-  }
+  } while (start < stop);
 }
 
 vector<int32_t>::iterator CSGCell::find_left_parenthesis(
-  vector<int32_t>::iterator start, const vector<int32_t>& rpn)
+  vector<int32_t>::iterator start, const vector<int32_t>& infix)
 {
   // start search at zero
   int parenthesis_level = 0;
   auto it = start;
-  while (it != rpn.begin()) {
+  while (it != infix.begin()) {
     // look at two tokens at a time
     int32_t one = *it;
     int32_t two = *(it - 1);
@@ -693,21 +690,25 @@ vector<int32_t>::iterator CSGCell::find_left_parenthesis(
   return it;
 }
 
-void CSGCell::remove_complement_ops(vector<int32_t>& rpn)
+void CSGCell::remove_complement_ops(vector<int32_t>& infix)
 {
-  auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
-  while (it != rpn.end()) {
-    // find the opening parenthesis (if any)
-    auto left = find_left_parenthesis(it, rpn);
-    vector<int32_t> tmp(left, it + 1);
+  auto it = std::find(infix.begin(), infix.end(), OP_COMPLEMENT);
+  while (it != infix.end()) {
+    // Erase complement
+    infix.erase(it);
+
+    // Define stop given left parenthesis or not
+    auto stop = it;
+    if (*it == OP_LEFT_PAREN) {
+      stop = std::find(infix.begin(), infix.end(), OP_RIGHT_PAREN);
+      it++;
+    }
 
     // apply DeMorgan's law to any surfaces/operators between these
     // positions in the RPN
-    apply_demorgan(left, it);
-    // remove complement operator
-    rpn.erase(it);
+    apply_demorgan(it, stop);
     // update iterator position
-    it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
+    it = std::find(infix.begin(), infix.end(), OP_COMPLEMENT);
   }
 }
 
@@ -770,43 +771,42 @@ bool CSGCell::contains_complex(
   Position r, Direction u, int32_t on_surface) const
 {
   bool in_cell = true;
-  bool negate = false;
-  int paren_depth = 0;
-  int negate_depth = 0;
+  
+  // For each token
+  for (auto it = rpn_.begin(); it != rpn_.end(); it++) {
+    int32_t token = *it;
 
-  for (int32_t token : rpn_) {
-     if (token < OP_UNION && in_cell == true) {
-       if (token == on_surface) {
-         in_cell = true;
-       } else if (-token == on_surface) {
-         in_cell = false;
-       } else {
-         // Note the off-by-one
-         bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
-         in_cell = (sense == (token > 0));
-       }
-     } else if (token == OP_UNION) {
-       if (in_cell == false) {
-         in_cell = true;
-       } else if (paren_depth == 0) {
-         break;
-       }
-     } else if (token == OP_RIGHT_PAREN) {
-       paren_depth--;
-     } else if (token == OP_LEFT_PAREN) {
-       paren_depth++;
-     } else if (token == OP_COMPLEMENT) {
-       negate = true;
-       negate_depth = paren_depth;
-       continue;
-     } else if (paren_depth == 0) {
-       break;
-     }
-
-      if (negate == true && negate_depth == paren_depth) {
-        in_cell = !in_cell;
-        negate = false;
+    // If the token is a surface evaluate the sense
+    // If the token is a union or intersection check to 
+    // short circuit
+    if (token < OP_UNION) {
+      if (token == on_surface) {
+        in_cell = true;
+      } else if (-token == on_surface) {
+        in_cell = false;
+      } else {
+        // Note the off-by-one indexing
+        bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
+        in_cell = (sense == (token > 0));
       }
+    } else if ((token == OP_UNION && in_cell == true) ||
+               (token == OP_INTERSECTION && in_cell == false)) {
+      // While the iterator is within the bounds of the vector
+      do {
+        // Get next token
+        it++;
+        int32_t next_token = *it;
+
+        // If the next token is a left parenthesis skip until
+        // the next right parenthesis, if the token is a right 
+        // parenthesis leave short circuiting
+        if (next_token == OP_LEFT_PAREN) {
+          it = std::find(it, rpn_.end(), OP_RIGHT_PAREN);
+        } else if (next_token == OP_RIGHT_PAREN) {
+          break;
+        }
+      } while (it < rpn_.end() - 1);
+    }
   }
   return in_cell;
 }

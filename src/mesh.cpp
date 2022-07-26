@@ -2566,11 +2566,6 @@ double LibMesh::volume(int bin) const
   return m_->elem_ref(bin).volume();
 }
 
-libMesh::MeshBase * mesh_ptr() const
-{
-  return m_;
-}
-
 #endif // LIBMESH
 
 //==============================================================================

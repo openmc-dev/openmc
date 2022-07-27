@@ -497,8 +497,10 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     region_spec = get_node_value(cell_node, "region");
   }
 
-  // Get a tokenized representation of the region specification.
+  // Get a tokenized representation of the region specification
+  // and apply De Morgan's laws to remove complements.
   region_ = tokenize(region_spec);
+  remove_complement_ops(region_);
   region_.shrink_to_fit();
 
   // Convert user IDs to surface indices.
@@ -514,15 +516,9 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
   }
 
-  // Convert the infix region spec to infix with no complements 
-  // using De Morgan's law.
-  // TODO: Convert rpn to something that makes sense
-  rpn_ = region_;
-  remove_complement_ops(rpn_);
-
   // Check if this is a simple cell.
   simple_ = true;
-  for (int32_t token : rpn_) {
+  for (int32_t token : region_) {
     if (token == OP_UNION) {
       simple_ = false;
       break;
@@ -531,13 +527,13 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // If this cell is simple, remove all the superfluous operator tokens.
   if (simple_) {
-    for (auto it = rpn_.begin(); it != rpn_.end(); it++) {
+    for (auto it = region_.begin(); it != region_.end(); it++) {
       if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
-        rpn_.erase(it);
+        region_.erase(it);
       }
     }
   }
-  rpn_.shrink_to_fit();
+  region_.shrink_to_fit();
 
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {
@@ -581,7 +577,7 @@ std::pair<double, int32_t> CSGCell::distance(
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
-  for (int32_t token : rpn_) {
+  for (int32_t token : region_) {
     // Ignore this token if it corresponds to an operator rather than a region.
     if (token >= OP_UNION)
       continue;
@@ -636,7 +632,7 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
 BoundingBox CSGCell::bounding_box_simple() const
 {
   BoundingBox bbox;
-  for (int32_t token : rpn_) {
+  for (int32_t token : region_) {
     bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
   }
   return bbox;
@@ -739,14 +735,14 @@ BoundingBox CSGCell::bounding_box_complex(vector<int32_t> rpn)
 
 BoundingBox CSGCell::bounding_box() const
 {
-  return simple_ ? bounding_box_simple() : bounding_box_complex(rpn_);
+  return simple_ ? bounding_box_simple() : bounding_box_complex(region_);
 }
 
 //==============================================================================
 
 bool CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
-  for (int32_t token : rpn_) {
+  for (int32_t token : region_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
     // respect to the surface and see if the token matches the sense. If the
     // particle's surface attribute is set and matches the token, that
@@ -773,7 +769,7 @@ bool CSGCell::contains_complex(
   bool in_cell = true;
   
   // For each token
-  for (auto it = rpn_.begin(); it != rpn_.end(); it++) {
+  for (auto it = region_.begin(); it != region_.end(); it++) {
     int32_t token = *it;
 
     // If the token is a surface evaluate the sense
@@ -801,11 +797,11 @@ bool CSGCell::contains_complex(
         // the next right parenthesis, if the token is a right 
         // parenthesis leave short circuiting
         if (next_token == OP_LEFT_PAREN) {
-          it = std::find(it, rpn_.end() - 1, OP_RIGHT_PAREN);
+          it = std::find(it, region_.end() - 1, OP_RIGHT_PAREN);
         } else if (next_token == OP_RIGHT_PAREN) {
           break;
         }
-      } while (it < rpn_.end() - 1);
+      } while (it < region_.end() - 1);
     }
   }
   return in_cell;

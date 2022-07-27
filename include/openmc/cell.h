@@ -202,8 +202,6 @@ public:
 
   //! Definition of spatial region as Boolean expression of half-spaces
   vector<std::int32_t> region_;
-  //! Reverse Polish notation for region expression
-  vector<std::int32_t> rpn_;
   bool simple_; //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.

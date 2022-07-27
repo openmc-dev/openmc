@@ -502,8 +502,10 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     region_spec = get_node_value(cell_node, "region");
   }
 
-  // Get a tokenized representation of the region specification.
+  // Get a tokenized representation of the region specification
+  // and apply De Morgan's laws to remove complements.
   region_ = tokenize(region_spec);
+  remove_complement_ops(region_);
   region_.shrink_to_fit();
 
   // Convert user IDs to surface indices.
@@ -649,10 +651,10 @@ BoundingBox CSGCell::bounding_box_simple() const
   return bbox;
 }
 
-void CSGCell::apply_demorgan(vector<int32_t>::reverse_iterator start,
-  vector<int32_t>::reverse_iterator stop)
+void CSGCell::apply_demorgan(
+  vector<int32_t>::iterator start, vector<int32_t>::iterator stop)
 {
-  while (start < stop) {
+  do {
     if (*start < OP_UNION) {
       *start *= -1;
     } else if (*start == OP_UNION) {
@@ -661,7 +663,7 @@ void CSGCell::apply_demorgan(vector<int32_t>::reverse_iterator start,
       *start = OP_UNION;
     }
     start++;
-  }
+  } while (start < stop);
 }
 
 vector<int32_t>::reverse_iterator CSGCell::find_left_parenthesis(
@@ -697,22 +699,25 @@ vector<int32_t>::reverse_iterator CSGCell::find_left_parenthesis(
   return it;
 }
 
-void CSGCell::remove_complement_ops(vector<int32_t>& region_prefix)
+void CSGCell::remove_complement_ops(vector<int32_t>& infix)
 {
-  auto it =
-    std::find(region_prefix.rbegin(), region_prefix.rend(), OP_COMPLEMENT);
-  while (it != region_prefix.rend()) {
-    // find the opening parenthesis (if any)
-    auto left = find_left_parenthesis(it, region_prefix);
-    vector<int32_t> tmp(left, it + 1);
+  auto it = std::find(infix.begin(), infix.end(), OP_COMPLEMENT);
+  while (it != infix.end()) {
+    // Erase complement
+    infix.erase(it);
+
+    // Define stop given left parenthesis or not
+    auto stop = it;
+    if (*it == OP_LEFT_PAREN) {
+      stop = std::find(it, infix.end(), OP_RIGHT_PAREN);
+      it++;
+    }
 
     // apply DeMorgan's law to any surfaces/operators between these
-    // positions in the region_prefix
-    apply_demorgan(left, it);
-    // remove complement operator
-    region_prefix.erase((it + 1).base());
+    // positions in the RPN
+    apply_demorgan(it, stop);
     // update iterator position
-    it = std::find(region_prefix.rbegin(), region_prefix.rend(), OP_COMPLEMENT);
+    it = std::find(it, infix.end(), OP_COMPLEMENT);
   }
 }
 

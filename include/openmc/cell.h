@@ -254,7 +254,7 @@ protected:
   //! \param start Starting point for token modification
   //! \param stop Stopping point for token modification
   static void apply_demorgan(
-    vector<int32_t>::reverse_iterator start, vector<int32_t>::reverse_iterator stop);
+    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
 
   //! Removes complement operators from the prefix
   //! \param region_prefix The prefix to remove complement operators from.

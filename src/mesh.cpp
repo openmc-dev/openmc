@@ -2324,6 +2324,7 @@ const std::string LibMesh::mesh_lib_type = "libmesh";
 
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
+  // filename_ and length_multiplier_ will already be set by the UnstructuredMesh constructor
   set_mesh_pointer_from_filename(filename_);
   set_length_multiplier(length_multiplier_);
   initialize();

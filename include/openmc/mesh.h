@@ -720,7 +720,7 @@ private:
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
-  unique_ptr<libMesh::MeshBase> unique_m_; //!< pointer to the libMesh MeshBase instance, only used if mesh is created inside OpenMC
+  unique_ptr<libMesh::MeshBase> unique_m_ = nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is created inside OpenMC
   libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators

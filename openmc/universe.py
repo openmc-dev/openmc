@@ -7,13 +7,17 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
 
+import h5py
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+
 from ._xml import get_text
+from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
 from .plots import _SVG_COLORS
+from .surface import _BOUNDARY_TYPES
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -630,6 +634,9 @@ class DAGMCUniverse(UniverseBase):
     auto_mat_ids : bool
         Set IDs automatically on initialization (True)  or report overlaps
         in ID space between OpenMC and UWUW materials (False)
+    bounding_box : 2-tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        of the universe.
     """
 
     def __init__(self,
@@ -649,6 +656,14 @@ class DAGMCUniverse(UniverseBase):
         string += '{: <16}=\t{}\n'.format('\tGeom', 'DAGMC')
         string += '{: <16}=\t{}\n'.format('\tFile', self.filename)
         return string
+
+    @property
+    def bounding_box(self):
+        with h5py.File(self.filename) as dagmc_file:
+            coords = dagmc_file['tstt']['nodes']['coordinates'][()]
+            lower_left_corner = coords.min(axis=0)
+            upper_right_corner = coords.max(axis=0)
+            return (lower_left_corner, upper_right_corner)
 
     @property
     def filename(self):
@@ -700,6 +715,78 @@ class DAGMCUniverse(UniverseBase):
             dagmc_element.set('auto_mat_ids', 'true')
         dagmc_element.set('filename', self.filename)
         xml_element.append(dagmc_element)
+
+    def bounding_region(self, bounded_type='box', boundary_type='vacuum'):
+        """Creates a either a spherical or box shaped bounding region around
+        the DAGMC geometry.
+        Parameters
+        ----------
+        bounded_type : str
+            The type of bounding surface(s) to use when constructing the region.
+            Options include a single spherical surface (sphere) or a rectangle
+            made from six planes (box).
+        boundary_type : str
+            Boundary condition that defines the behavior for particles hitting
+            the surface. Defaults to vacuum boundary condition. Passed into the
+            surface construction.
+        Returns
+        -------
+        openmc.Region
+            Region instance
+        """
+
+        check_type('boundary type', boundary_type, str)
+        check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
+        check_type('bounded type', bounded_type, str)
+        check_value('bounded type', bounded_type, ('box', 'sphere'))
+
+        bounding_box = self.bounding_box
+
+        if bounded_type == 'sphere':
+            import math
+            bounding_box_center = (bounding_box[0] + bounding_box[1])/2
+            radius = math.dist(bounding_box[0], bounding_box[1])
+            bounding_surface = openmc.Sphere(
+                x0=bounding_box_center[0],
+                y0=bounding_box_center[1],
+                z0=bounding_box_center[2],
+                boundary_type=boundary_type,
+                r=radius,
+            )
+
+            return -bounding_surface
+
+        if bounded_type == 'box':
+            # defines plane surfaces for all six faces of the bounding box
+            lower_x = openmc.XPlane(bounding_box[0][0], boundary_type=boundary_type)
+            upper_x = openmc.XPlane(bounding_box[1][0], boundary_type=boundary_type)
+            lower_y = openmc.YPlane(bounding_box[0][1], boundary_type=boundary_type)
+            upper_y = openmc.YPlane(bounding_box[1][1], boundary_type=boundary_type)
+            lower_z = openmc.ZPlane(bounding_box[0][2], boundary_type=boundary_type)
+            upper_z = openmc.ZPlane(bounding_box[1][2], boundary_type=boundary_type)
+
+            return +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
+
+    def bounded_universe(self, bounding_cell_id=10000, **kwargs):
+        """Returns an openmc.Universe filled with this DAGMCUniverse and bounded
+        with a cell. Defaults to a box cell with a vacuum surface however this
+        can be changed using the kwargs which are passed directly to
+        DAGMCUniverse.bounding_region().
+
+        Parameters
+        ----------
+        bounding_cell_id : int
+            The cell ID number to use for the bounding cell, defaults to 1000 to reduce
+            the chance of overlapping ID numbers with the DAGMC geometry.
+
+        Returns
+        -------
+        openmc.Universe
+            Universe instance
+        """
+
+        bounding_cell = openmc.Cell(fill=self, cell_id =bounding_cell_id, region=self.bounding_region(**kwargs))
+        return openmc.Universe(cells=[bounding_cell])
 
     @classmethod
     def from_hdf5(cls, group):

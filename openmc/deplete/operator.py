@@ -528,9 +528,9 @@ class Operator(TransportOperator):
         """
         mat_id = str(mat.id)
 
-        for nuclide, density in mat.get_nuclide_atom_densities().values():
-            number = density * 1.0e24
-            self.number.set_atom_density(mat_id, nuclide, number)
+        for nuclide, atom_per_bcm in mat.get_nuclide_atom_densities().items():
+            atom_per_cc = atom_per_bcm * 1.0e24
+            self.number.set_atom_density(mat_id, nuclide, atom_per_cc)
 
     def _set_number_from_results(self, mat, prev_res):
         """Extracts material nuclides and number densities.
@@ -556,16 +556,15 @@ class Operator(TransportOperator):
         # Merge lists of nuclides, with the same order for every calculation
         geom_nuc_densities.update(depl_nuc)
 
-        for nuclide in geom_nuc_densities.keys():
+        for nuclide, atom_per_bcm in geom_nuc_densities.items():
             if nuclide in depl_nuc:
                 concentration = prev_res.get_atoms(mat_id, nuclide)[1][-1]
                 volume = prev_res[-1].volume[mat_id]
-                number = concentration / volume
+                atom_per_cc = concentration / volume
             else:
-                density = geom_nuc_densities[nuclide][1]
-                number = density * 1.0e24
+                atom_per_cc = atom_per_bcm * 1.0e24
 
-            self.number.set_atom_density(mat_id, nuclide, number)
+            self.number.set_atom_density(mat_id, nuclide, atom_per_cc)
 
     def initial_condition(self):
         """Performs final setup and returns initial condition.

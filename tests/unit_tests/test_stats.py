@@ -26,6 +26,21 @@ def test_discrete():
     assert d2.p == [1.0]
     assert len(d2) == 1
 
+    vals = np.array([1.0, 2.0, 3.0])
+    probs = np.array([0.1, 0.7, 0.2])
+
+    exp_mean = (vals * probs).sum()
+
+    d3 = openmc.stats.Discrete(vals, probs)
+
+    # sample discrete distribution
+    n_samples = 1_000_000
+    samples = d3.sample(n_samples, seed=100)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+
 
 def test_merge_discrete():
     x1 = [0.0, 1.0, 10.0]
@@ -65,8 +80,17 @@ def test_uniform():
     assert t.p == [1/(b-a), 1/(b-a)]
     assert t.interpolation == 'histogram'
 
+    exp_mean = 0.5 * (a + b)
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+
+
 def test_powerlaw():
-    a, b, n = 10.0, 20.0, 2.0
+    a, b, n = 10.0, 100.0, 2.0
     d = openmc.stats.PowerLaw(a, b, n)
     elem = d.to_xml_element('distribution')
 
@@ -76,6 +100,17 @@ def test_powerlaw():
     assert d.n == n
     assert len(d) == 3
 
+    exp_mean = 100.0 * (n+1) / (n+2)
+
+    # sample power law distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+
+
 def test_maxwell():
     theta = 1.2895e6
     d = openmc.stats.Maxwell(theta)
@@ -84,6 +119,25 @@ def test_maxwell():
     d = openmc.stats.Maxwell.from_xml_element(elem)
     assert d.theta == theta
     assert len(d) == 1
+
+    exp_mean = 3/2 * theta
+
+    # sample maxwell distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+
+    # A second sample with a different seed
+    samples_2 = d.sample(n_samples, seed=200)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples_2.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples_2.mean()) < 3*std_dev
+
+    assert samples_2.mean() != samples.mean()
 
 
 def test_watt():
@@ -96,18 +150,58 @@ def test_watt():
     assert d.b == b
     assert len(d) == 2
 
+    # mean value form adapted from
+    # "Prompt-fission-neutron average energy for 238U(n, f ) from
+    # threshold to 200 MeV" Ethvignot et. al.
+    # https://doi.org/10.1016/j.physletb.2003.09.048
+    exp_mean = 3/2 * a + a**2 * b / 4
+
+    # sample Watt distribution
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    # check that the mean of the samples is within 3 std. dev.
+    # of the expected mean
+    std_dev = samples.std() / np.sqrt(n_samples)
+    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+
 
 def test_tabular():
-    x = [0.0, 5.0, 7.0]
-    p = [0.1, 0.2, 0.05]
+    x = np.array([0.0, 5.0, 7.0])
+    p = np.array([0.1, 0.2, 0.05])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     elem = d.to_xml_element('distribution')
 
     d = openmc.stats.Tabular.from_xml_element(elem)
-    assert d.x == x
-    assert d.p == p
+    assert all(d.x == x)
+    assert all(d.p == p)
     assert d.interpolation == 'linear-linear'
     assert len(d) == len(x)
+
+    # test linear-linear sampling
+    d = openmc.stats.Tabular(x, p)
+
+    n_samples = 100_000
+    samples = d.sample(n_samples, seed=100)
+    diff = np.abs(samples - d.mean())
+    # within_1_sigma = np.count_nonzero(diff < samples.std())
+    # assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(diff < 2*samples.std())
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(diff < 3*samples.std())
+    assert within_3_sigma / n_samples >= 0.99
+
+    # test histogram sampling
+    d = openmc.stats.Tabular(x, p, interpolation='histogram')
+    d.normalize()
+
+    samples = d.sample(n_samples, seed=100)
+    diff = np.abs(samples - d.mean())
+    # within_1_sigma = np.count_nonzero(diff < samples.std())
+    # assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(diff < 2*samples.std())
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(diff < 3*samples.std())
+    assert within_3_sigma / n_samples >= 0.99
 
 
 def test_legendre():
@@ -251,6 +345,7 @@ def test_point():
     d = openmc.stats.Point.from_xml_element(elem)
     assert d.xyz == pytest.approx(p)
 
+
 def test_normal():
     mean = 10.0
     std_dev = 2.0
@@ -263,6 +358,18 @@ def test_normal():
     assert d.mean_value == pytest.approx(mean)
     assert d.std_dev == pytest.approx(std_dev)
     assert len(d) == 2
+
+    # sample normal distribution
+    n_samples = 10000
+    samples = d.sample(n_samples, seed=100)
+    samples = np.abs(samples - mean)
+    within_1_sigma = np.count_nonzero(samples < std_dev)
+    assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(samples < 2*std_dev)
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(samples < 3*std_dev)
+    assert within_3_sigma / n_samples >= 0.99
+
 
 def test_muir():
     mean = 10.0
@@ -278,3 +385,14 @@ def test_muir():
     assert d.m_rat == pytest.approx(mass)
     assert d.kt == pytest.approx(temp)
     assert len(d) == 3
+
+    # sample muir distribution
+    n_samples = 10000
+    samples = d.sample(n_samples, seed=100)
+    samples = np.abs(samples - mean)
+    within_1_sigma = np.count_nonzero(samples < d.std_dev)
+    assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(samples < 2*d.std_dev)
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(samples < 3*d.std_dev)
+    assert within_3_sigma / n_samples >= 0.99

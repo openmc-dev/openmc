@@ -403,6 +403,20 @@ class Material(IDManagerMixin):
 
         self._nuclides.append(NuclideTuple(nuclide, percent, percent_type))
 
+    def add_nuclides(self, nuclides: dict):
+        """ Add multiple nuclides to a material
+
+        Parameters
+        ----------
+        nuclides : dict of str to tuple
+            Dictionary mapping nuclide names to a tuple containing their
+            atom or weight percent.
+
+        """
+
+        for nuclide, (percent, percent_type) in nuclides.items():
+                self.add_nuclide(nuclide, percent, percent_type)
+
     def remove_nuclide(self, nuclide: str):
         """Remove a nuclide from the material
 

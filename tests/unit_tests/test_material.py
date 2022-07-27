@@ -25,6 +25,32 @@ def test_add_nuclide():
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
 
+def test_add_nuclides():
+    """Test adding multipe nuclides at once"""
+    m = openmc.Material()
+    nuclides = {'H1': (2.0, 'ao'),
+                'O16': (1.0, 'wo')}
+    m.add_nuclides(nuclides)
+
+    # wt-%
+    m = openmc.Material()
+    nuclides = {'H1': (2.0, 'wo'),
+                'O16': (1.0, 'wo')}
+    m.add_nuclides(nuclides)
+
+    # mixed
+    m = openmc.Material()
+    nuclides = {'H1': (2.0, 'ao'),
+                'O16': (1.0, 'wo')}
+    m.add_nuclides(nuclides)
+
+    with pytest.raises(TypeError):
+        m.add_nuclides({'H1': ('1.0', 'ao')})
+    with pytest.raises(TypeError):
+        m.add_nuclides({1.0: ('H1', 'wo')})
+    with pytest.raises(ValueError):
+        m.add_nuclides({'H1': (1.0, 'oa')})
+
 
 def test_remove_nuclide():
     """Test removing nuclides."""
@@ -441,7 +467,7 @@ def test_activity_of_tritium():
     m1.add_nuclide("H3", 1)
     m1.set_density('g/cm3', 1)
     m1.volume = 1
-    assert pytest.approx(m1.activity) == 3.559778e14 
+    assert pytest.approx(m1.activity) == 3.559778e14
 
 
 def test_activity_of_metastable():

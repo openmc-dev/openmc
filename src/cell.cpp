@@ -700,7 +700,7 @@ void CSGCell::remove_complement_ops(vector<int32_t>& infix)
     // Define stop given left parenthesis or not
     auto stop = it;
     if (*it == OP_LEFT_PAREN) {
-      stop = std::find(infix.begin(), infix.end(), OP_RIGHT_PAREN);
+      stop = std::find(it, infix.end(), OP_RIGHT_PAREN);
       it++;
     }
 
@@ -708,7 +708,7 @@ void CSGCell::remove_complement_ops(vector<int32_t>& infix)
     // positions in the RPN
     apply_demorgan(it, stop);
     // update iterator position
-    it = std::find(infix.begin(), infix.end(), OP_COMPLEMENT);
+    it = std::find(it, infix.end(), OP_COMPLEMENT);
   }
 }
 
@@ -801,7 +801,7 @@ bool CSGCell::contains_complex(
         // the next right parenthesis, if the token is a right 
         // parenthesis leave short circuiting
         if (next_token == OP_LEFT_PAREN) {
-          it = std::find(it, rpn_.end(), OP_RIGHT_PAREN);
+          it = std::find(it, rpn_.end() - 1, OP_RIGHT_PAREN);
         } else if (next_token == OP_RIGHT_PAREN) {
           break;
         }

@@ -1616,7 +1616,7 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def dimension(self):
-        return self.n_elements
+        return (self.n_elements,)
 
     @property
     def n_dimension(self):
@@ -1725,15 +1725,15 @@ class UnstructuredMesh(MeshBase):
         datasets_out = []
         if datasets is not None:
             for name, data in datasets.items():
-                if data.shape != (self.dimension,):
-                    raise ValueError(f'Cannot apply dataset {name} with '
+                if data.shape != self.dimension:
+                    raise ValueError(f'Cannot apply dataset "{name}" with '
                                      f'shape {data.shape} to mesh {self.id} '
                                      f'with dimensions {self.dimension}')
 
             if volume_normalization:
                 for name, data in datasets.items():
                     if np.issubdtype(data.dtype, np.integer):
-                        warnings.warn(f'Integer data set {name} will '
+                        warnings.warn(f'Integer data set "{name}" will '
                                       'not be volume-normalized.')
                         continue
                     data /= self.volumes

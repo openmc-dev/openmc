@@ -71,7 +71,7 @@ def test_operator_init():
                 'O17': 1.7588724018066158e+19}
     micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(ONE_GROUP_XS)
     nuclide_flux_operator = FluxDepletionOperator.from_nuclides(
-        volume, nuclides, micro_xs, CHAIN_PATH)
+        volume, nuclides, 'atom/cm3', micro_xs, CHAIN_PATH)
 
     fuel = Material(name="uo2")
     fuel.add_element("U", 1, percent_type="ao", enrichment=4.25)

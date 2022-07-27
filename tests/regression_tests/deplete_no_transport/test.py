@@ -3,15 +3,14 @@
 from math import floor
 import shutil
 from pathlib import Path
-
 from difflib import unified_diff
+
 import numpy as np
 import pytest
 import openmc
 from openmc.data import JOULE_PER_EV
 import openmc.deplete
 from openmc.deplete import FluxDepletionOperator
-
 
 from tests.regression_tests import config
 
@@ -22,7 +21,7 @@ def fuel():
     fuel.add_element("U", 1, percent_type="ao", enrichment=4.25)
     fuel.add_element("O", 2)
     fuel.set_density("g/cc", 10.4)
-    fuel.depletable=True
+    fuel.depletable = True
 
     fuel.volume = np.pi * 0.42 ** 2
 
@@ -30,14 +29,14 @@ def fuel():
 
 
 @pytest.mark.parametrize("multiproc, from_nuclides, normalization_mode, power, flux", [
-    (True, True,'constant-flux', None, 1164719970082145.0),
-    (False, True, 'constant-flux', None, 1164719970082145.0),
-    (True, True, 'constant-power', 174, None),
-    (False, True, 'constant-power', 174, None),
-    (True, False,'constant-flux', None, 1164719970082145.0),
-    (False, False, 'constant-flux', None, 1164719970082145.0),
-    (True, False, 'constant-power', 174, None),
-    (False, False, 'constant-power', 174, None)])
+    (True, True,'source-rate', None, 1164719970082145.0),
+    (False, True, 'source-rate', None, 1164719970082145.0),
+    (True, True, 'fission-q', 174, None),
+    (False, True, 'fission-q', 174, None),
+    (True, False,'source-rate', None, 1164719970082145.0),
+    (False, False, 'source-rate', None, 1164719970082145.0),
+    (True, False, 'fission-q', 174, None),
+    (False, False, 'fission-q', 174, None)])
 def test_no_transport_from_nuclides(run_in_tmpdir, fuel, multiproc, from_nuclides, normalization_mode, power, flux):
     """Transport free system test suite.
 
@@ -53,10 +52,10 @@ def test_no_transport_from_nuclides(run_in_tmpdir, fuel, multiproc, from_nuclide
     if from_nuclides:
         nuclides = {}
         for nuc, dens in fuel.get_nuclide_atom_densities().items():
-            nuclides[nuc] = dens * 1e24
+            nuclides[nuc] = dens
 
         op = FluxDepletionOperator.from_nuclides(
-            fuel.volume, nuclides, micro_xs, chain_file, normalization_mode=normalization_mode)
+            fuel.volume, nuclides,'atom/b-cm', micro_xs, chain_file, normalization_mode=normalization_mode)
 
     else:
         op = FluxDepletionOperator(openmc.Materials([fuel]), micro_xs, chain_file, normalization_mode=normalization_mode)
@@ -67,14 +66,14 @@ def test_no_transport_from_nuclides(run_in_tmpdir, fuel, multiproc, from_nuclide
     # Perform simulation using the predictor algorithm
     openmc.deplete.pool.USE_MULTIPROCESSING = multiproc
     openmc.deplete.PredictorIntegrator(
-        op, dt, power=power, flux=flux, timestep_units='d').integrate()
+        op, dt, power=power, source_rates=flux, timestep_units='d').integrate()
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
     if flux is not None:
-        ref_path = 'test_reference_constant_flux.h5'
+        ref_path = 'test_reference_source_rate.h5'
     else:
-        ref_path = 'test_reference_constant_power.h5'
+        ref_path = 'test_reference_fission_q.h5'
     path_reference = Path(__file__).with_name(ref_path)
 
     # Load the reference/test results

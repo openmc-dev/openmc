@@ -524,11 +524,10 @@ class Integrator(ABC):
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    flux : float or iterable of float, optional
-        neutron flux in [neut/s-cm^2] for each interval in :attr:`timesteps`
+        is not specified.
     source_rates : float or iterable of float, optional
-        source rate in [neutron/sec] for each interval in :attr:`timesteps`
+        Source rate in [neutron/sec] or neutron flux in [neut/s-cm^2] for each
+        interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
@@ -579,7 +578,7 @@ class Integrator(ABC):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 flux=None, source_rates=None, timestep_units='s', solver="cram48"):
+                 source_rates=None, timestep_units='s', solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -601,10 +600,8 @@ class Integrator(ABC):
                 source_rates = power_density * operator.heavy_metal
             else:
                 source_rates = [p*operator.heavy_metal for p in power_density]
-        elif flux is not None:
-            source_rates = flux
         elif source_rates is None:
-            raise ValueError("Either power, power_density, flux, or source_rates must be set")
+            raise ValueError("Either power, power_density, source_rates must be set")
 
         if not isinstance(source_rates, Iterable):
             # Ensure that rate is single value if that is the case
@@ -865,11 +862,10 @@ class SIIntegrator(Integrator):
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
-        is not speficied.
-    flux : float or iterable of float, optional
-        neutron flux in [neut/s-cm^2] for each interval in :attr:`timesteps`
+        is not specified.
     source_rates : float or iterable of float, optional
-        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
+        Source rate in [neutron/sec] or neutron flux in [neut/s-cm^2] for each
+        interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
@@ -924,12 +920,12 @@ class SIIntegrator(Integrator):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 flux=None, source_rates=None, timestep_units='s', n_steps=10,
+                 source_rates=None, timestep_units='s', n_steps=10,
                  solver="cram48"):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(
-            operator, timesteps, power, power_density, flux, source_rates,
+            operator, timesteps, power, power_density, source_rates,
             timestep_units=timestep_units, solver=solver)
         self.n_steps = n_steps
 
@@ -1014,7 +1010,7 @@ class DepSystemSolver(ABC):
         Parameters
         ----------
         A : scipy.sparse.csr_matrix
-            Sparse transmutation matrix ``A[j, i]`` desribing rates at
+            Sparse transmutation matrix ``A[j, i]`` describing rates at
             which isotope ``i`` transmutes to isotope ``j``
         n0 : numpy.ndarray
             Initial compositions, typically given in number of atoms in some

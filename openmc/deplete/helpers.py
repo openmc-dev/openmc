@@ -612,7 +612,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         Default: 0.0253 [eV]
     fast_energy : float, optional
         Energy of yield data corresponding to fast yields.
-        Default: 500 [kev]
+        Default: 500 [KeV]
 
     Attributes
     ----------
@@ -634,7 +634,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         Array of fission rate fractions with shape
         ``(n_mats, 2, n_nucs)``. ``results[:, 0]``
         corresponds to the fraction of all fissions
-        that occured below ``cutoff``. The number
+        that occurred below ``cutoff``. The number
         of materials in the first axis corresponds
         to the number of materials burned by the
         :class:`openmc.deplete.Operator`
@@ -790,7 +790,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
     r"""Class that computes fission yields based on average fission energy
 
-    Computes average energy at which fission events occured with
+    Computes average energy at which fission events occurred with
 
     .. math::
 
@@ -908,7 +908,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         Use the computed average energy of fission
         events to determine fission yields. If average
         energy is between two sets of yields, linearly
-        interpolate bewteen the two.
+        interpolate between the two.
         Otherwise take the closet set of yields.
 
         Parameters

@@ -90,7 +90,6 @@ class OpenMCOperator(TransportOperator):
     cross_sections : str or pandas.DataFrame
             Path to continuous energy cross section library, or object
             containing one-group cross-sections.
-
     dilute_initial : float
         Initial atom density [atoms/cm^3] to add for nuclides that
         are zero in initial condition to ensure they exist in the decay
@@ -527,7 +526,9 @@ class OpenMCOperator(TransportOperator):
 
             # Accumulate energy from fission
             if fission_ind is not None:
-                self._normalization_helper.update(tally_rates[:, fission_ind], mat_index=mat_index)
+                self._normalization_helper.update(
+                    tally_rates[:, fission_ind],
+                    mat_index=mat_index)
 
             # Divide by total number and store
             rates[i] = self._rate_helper.divide_by_adens(number)

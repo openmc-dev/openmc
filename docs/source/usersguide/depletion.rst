@@ -19,10 +19,10 @@ transmutation equations and the method used for advancing time. At present, the
 :class:`openmc.deplete.Operator` (which uses the OpenMC transport solver), but
 in principle additional operator classes based on other transport codes could be
 implemented and no changes to the depletion solver itself would be needed. The
-operator class requires a :class:`openmc.model.Model` instance containing 
+operator class requires a :class:`~openmc.Model` instance containing 
 material, geometry, and settings information::
 
-    model = openmc.model.Model()
+    model = openmc.Model()
     ...
 
     op = openmc.deplete.Operator(model)
@@ -189,17 +189,18 @@ Transport-independent depletion
 
 OpenMC supports running depletion calculations independent of the OpenMC
 transport solver using the :class:`~openmc.deplete.FluxDepletionOperator` class.
-This class supports both constant-flux and constant-power depletion.
+This class supports both constant-flux (``source-rate`` normalization) and 
+constant-power depletion (``fission-q`` normalization).
 
 .. important::
 
-   Make sure you set the correct parameter in the :class:`openmc.abc.Integrator` class. Use the ``flux`` parameter when ``normalization_mode == constant-flux``, and use ``power`` or ``power_density`` when ``normalization_mode == constant-power``.
+   Make sure you set the correct parameter in the :class:`openmc.abc.Integrator` class. Use the ``source_rates`` parameter when ``normalization_mode == source-rate``, and use ``power`` or ``power_density`` when ``normalization_mode == fission-q``.
 
 .. warning::
 
-   The accuracy of results when using ``constant-power`` is entirely dependent on your depletion chain. Make sure it has sufficient data to resolve the dynamics of your particular scenario. 
+   The accuracy of results when using ``fission-q`` is entirely dependent on your depletion chain. Make sure it has sufficient data to resolve the dynamics of your particular scenario. 
 
-This class has two ways to initalize it: the default constructor accepts an 
+This class has two ways to initialize it: the default constructor accepts an 
 :class:`openmc.Materials` object and one-group microscopic 
 cross sections as a :class:`pandas.DataFrame`, while the ``from_nuclides``
 method accepts a volume and dictionary of nuclide concentrations in place of
@@ -221,7 +222,8 @@ or from data arrays::
                 'O16': 4.64e22,
                 'O17': 1.76e19}
     volume = 0.5 
-    op = FluxDepletionOperator.from_nuclides(volume, nuclides, micro_xs, flux, chain_file)
+    op = FluxDepletionOperator.from_nuclides(volume, nuclides, 'atom/cm3',
+                                             micro_xs, flux, chain_file)
 
 A user can then define an integrator class as they would for a coupled
 transport-depletion calculation and follow the same steps from there.

@@ -225,7 +225,10 @@ class Operator(OpenMCOperator):
 
         self.cleanup_when_done = True
 
-        helper_kwargs = dict()
+        if reaction_rate_opts is None:
+                reaction_rate_opts = {}
+        if fission_yield_opts is None:
+            fission_yield_opts = {}
         helper_kwargs = {
             'reaction_rate_mode': reaction_rate_mode,
             'normalization_mode': normalization_mode,
@@ -329,17 +332,14 @@ class Operator(OpenMCOperator):
         reaction_rate_mode = helper_kwargs['reaction_rate_mode']
         normalization_mode = helper_kwargs['normalization_mode']
         fission_yield_mode = helper_kwargs['fission_yield_mode']
-        reaction_rate_opts = helper_kwargs.get('reaction_rate_opts', {})
-        fission_yield_opts = helper_kwargs.get('fission_yield_opts', {})
+        reaction_rate_opts = helper_kwargs['reaction_rate_opts']
+        fission_yield_opts = helper_kwargs['fission_yield_opts']
 
         # Get classes to assist working with tallies
         if reaction_rate_mode == "direct":
             self._rate_helper = DirectReactionRateHelper(
                 self.reaction_rates.n_nuc, self.reaction_rates.n_react)
         elif reaction_rate_mode == "flux":
-            if reaction_rate_opts is None:
-                reaction_rate_opts = {}
-
             # Ensure energy group boundaries were specified
             if 'energies' not in reaction_rate_opts:
                 raise ValueError(
@@ -365,8 +365,6 @@ class Operator(OpenMCOperator):
 
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]
-        if fission_yield_opts is None:
-            fission_yield_opts = {}
         self._yield_helper = fission_helper.from_operator(
             self, **fission_yield_opts)
 
@@ -489,7 +487,7 @@ class Operator(OpenMCOperator):
                                 print(f'WARNING: nuclide {nuc} in material'
                                       f'{mat} is negative (density = {val}'
 
-                                      ' at/barn-cm)')
+                                      ' atom/b-cm)')
 
                                 number_i[mat, nuc] = 0.0
 

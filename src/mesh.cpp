@@ -2324,14 +2324,8 @@ const std::string LibMesh::mesh_lib_type = "libmesh";
 
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
-  std::string filename = get_node_value(node, "filename");
-  double length_multiplier = std::stod(get_node_value(node, "length_multiplier"));
-  set_mesh_pointer_from_filename(filename);
-  set_length_multiplier(length_multiplier);
-  if (specified_length_multiplier_) {
-    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
-  }
-  m_->prepare_for_use();
+  set_mesh_pointer_from_filename(filename_);
+  set_length_multiplier(length_multiplier_);
   initialize();
 }
 
@@ -2340,9 +2334,6 @@ LibMesh::LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier)
 {
   m_ = &input_mesh;
   set_length_multiplier(length_multiplier);
-  if (specified_length_multiplier_) {
-    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
-  }
   initialize();
 }
 
@@ -2351,10 +2342,6 @@ LibMesh::LibMesh(const std::string& filename, double length_multiplier)
 {
   set_mesh_pointer_from_filename(filename);
   set_length_multiplier(length_multiplier);
-  if (specified_length_multiplier_) {
-    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
-  }
-  m_->prepare_for_use();
   initialize();
 }
 
@@ -2376,6 +2363,15 @@ void LibMesh::initialize()
 
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
+
+  if (specified_length_multiplier_) {
+    libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
+  }
+  // if OpenMC is managing the libMesh::MeshBase instance, prepare the mesh.
+  // Otherwise assume that it is prepared by it's owning application
+  if (unique_m_) {
+    m_->prepare_for_use();
+  }
 
   // ensure that the loaded mesh is 3 dimensional
   if (m_->mesh_dimension() != n_dimension_) {

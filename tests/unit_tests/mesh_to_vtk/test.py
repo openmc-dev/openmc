@@ -17,11 +17,10 @@ def ids_func(param):
 test_params = (['libmesh', 'moab'],
                ['tets', 'hexes'])
 
-test_cases = []
-for library, elem_type in product(*test_params):
-    test_case = {'library' : library,
-                 'elem_type' : elem_type}
-    test_cases.append(test_case)
+test_cases = [
+    {'library' : library, 'elem_type' : elem_type}
+    for library, elem_type in product(*test_params)
+]
 
 @pytest.mark.parametrize("test_opts", test_cases, ids=ids_func)
 def test_unstructured_mesh_to_vtk(run_in_tmpdir, request, test_opts):
@@ -60,7 +59,7 @@ def test_unstructured_mesh_to_vtk(run_in_tmpdir, request, test_opts):
     with openmc.StatePoint(sp_file) as sp:
         umesh = sp.meshes[umesh.id]
 
-    test_data = {'ids' : np.arange(umesh.n_elements)}
+    test_data = {'ids': np.arange(umesh.n_elements)}
     umesh.write_data_to_vtk('umesh.vtk',
                             datasets=test_data,
                             volume_normalization=False)

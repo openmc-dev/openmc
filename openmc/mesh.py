@@ -1485,7 +1485,7 @@ class UnstructuredMesh(MeshBase):
     element_types : Iterable of integers
         Mesh element types
 
-        .. versionadded:: 0.13
+        .. versionadded:: 0.13.1
     total_volume : float
         Volume of the unstructured mesh in total
     """
@@ -1770,8 +1770,8 @@ class UnstructuredMesh(MeshBase):
 
         vertices = group['vertices'][()]
         mesh._vertices = vertices.reshape((-1, 3))
-        connectvity = group['connectivity'][()]
-        mesh._connectivity = connectvity.reshape((-1, 8))
+        connectivity = group['connectivity'][()]
+        mesh._connectivity = connectivity.reshape((-1, 8))
         mesh._element_types = group['element_types'][()]
 
         if 'length_multiplier' in group:

@@ -812,7 +812,6 @@ void write_unstructured_mesh_results()
       auto umesh =
         dynamic_cast<UnstructuredMesh*>(model::meshes[mesh_idx].get());
 
-
       if (!umesh)
         continue;
 

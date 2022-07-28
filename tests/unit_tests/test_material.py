@@ -25,31 +25,39 @@ def test_add_nuclide():
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
 
-def test_add_nuclides():
-    """Test adding multipe nuclides at once"""
+def test_add_elements_or_nuclides():
+    """Test adding multipe elements or nuclides at once"""
     m = openmc.Material()
-    nuclides = {'H1': (2.0, 'ao'),
-                'O16': (1.0, 'wo')}
-    m.add_nuclides(nuclides)
-
-    # wt-%
-    m = openmc.Material()
-    nuclides = {'H1': (2.0, 'wo'),
-                'O16': (1.0, 'wo')}
-    m.add_nuclides(nuclides)
-
-    # mixed
-    m = openmc.Material()
-    nuclides = {'H1': (2.0, 'ao'),
-                'O16': (1.0, 'wo')}
-    m.add_nuclides(nuclides)
-
-    with pytest.raises(TypeError):
-        m.add_nuclides({'H1': ('1.0', 'ao')})
-    with pytest.raises(TypeError):
-        m.add_nuclides({1.0: ('H1', 'wo')})
+    components = {'H1': 2.0,
+                'O16': (1.0, 'wo'),
+                'Zr': 1.0,
+                'O': (1.0, 'wo'),
+                'U': (1.0, {'enrichment': 4.5}),
+                'Li': (1.0, 'ao', {'enrichment': 60.0, 'enrichment_target': 'Li7'}),
+                'H': (1.0, 'ao', {'enrichment': 50.0, 'enrichment_target': 'H2', 'enrichment_type': 'wo'})}
+    m.add_elements_or_nuclides(components)
     with pytest.raises(ValueError):
-        m.add_nuclides({'H1': (1.0, 'oa')})
+        m.add_elements_or_nuclides({'U': (1.0, 'ao', {'enrichment': 100.0})})
+    with pytest.raises(ValueError):
+        m.add_elements_or_nuclides({'Pu': (1.0, 'ao', {'enrichment': 3.0})})
+    with pytest.raises(ValueError):
+        m.add_elements_or_nuclides({'U': (1.0, 'ao', {'enrichment': 70.0, 'enrichment_target': 'U235'})})
+    with pytest.raises(ValueError):
+        m.add_elements_or_nuclides({'He': (1.0, 'ao', {'enrichment': 17.0, 'enrichment_target': 'He6'})})
+    with pytest.raises(ValueError):
+        m.add_elements_or_nuclides({'li': (1.0, 'ao')})  # should fail as 1st char is lowercase
+    with pytest.raises(ValueError):
+        m.add_elements_or_nuclides({'LI': (1.0, 'ao')})  # should fail as 2nd char is uppercase
+    with pytest.raises(ValueError):
+        m.add_elements_or_nuclides({'Xx': (1.0, 'ao')})  # should fail as Xx is not an element
+    with pytest.raises(ValueError):
+        m.add_elements_or_nuclides({'n': (1.0, 'ao')})  # check to avoid n for neutron being accepted
+    with pytest.raises(TypeError):
+        m.add_elements_or_nuclides({'H1': ('1.0', 'ao')})
+    with pytest.raises(TypeError):
+        m.add_elements_or_nuclides({1.0: ('H1', 'wo')})
+    with pytest.raises(ValueError):
+        m.add_elements_or_nuclides({'H1': (1.0, 'oa')})
 
 
 def test_remove_nuclide():
@@ -75,7 +83,7 @@ def test_remove_elements():
     assert m.nuclides[0].percent == 1.0
 
 
-def test_elements():
+def test_add_element():
     """Test adding elements."""
     m = openmc.Material()
     m.add_element('Zr', 1.0)
@@ -99,7 +107,6 @@ def test_elements():
         m.add_element('Xx', 1.0)  # should fail as Xx is not an element
     with pytest.raises(ValueError):
         m.add_element('n', 1.0)  # check to avoid n for neutron being accepted
-
 
 def test_elements_by_name():
     """Test adding elements by name"""

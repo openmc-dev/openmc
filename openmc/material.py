@@ -403,32 +403,41 @@ class Material(IDManagerMixin):
 
         self._nuclides.append(NuclideTuple(nuclide, percent, percent_type))
 
-    def add_nuclides(self, nuclides: dict):
-        """ Add multiple nuclides to a material
+    def add_elements_or_nuclides(self, components: dict):
+        """ Add multiple elements or nuclides to a material
 
         Parameters
         ----------
-        nuclides : dict of str to tuple
-            Dictionary mapping nuclide names to a tuple containing their
-            atom or weight percent.
+        components : dict of str to tuple
+            Dictionary mapping element or nuclide names to a tuple containing
+            their atom or weight percent, as well as any other arguments.
+
+        Examples
+        --------
+        >> mat = openmc.Material()
+        >> components  = {'Li': (1.0, {'enrichment': 60.0, 'enrichment_target': 'Li7'}),
+                          'Fl': 1.0,
+                          'Be6': (0.5, 'wo')}
+        >> mat.add_elements_or_nuclides(components)
 
         """
 
-        for nuclide, (percent, percent_type) in nuclides.items():
-                self.add_nuclide(nuclide, percent, percent_type)
+        for component, args in components.items():
+            cv.check_type('component', component, str)
+            percent_type = 'ao'
+            if isinstance(args, float):
+                args = (args,)
 
-    def add_elements(self, elements: dict):
-        """ Add multiple elements to a material
+            ## check if nuclide
+            if str.isdigit(component[-1]):
+                self.add_nuclide(component, *args)
+            else: # is element
+                kwargs = {}
+                if isinstance(args[-1], dict):
+                    kwargs = args[-1]
+                    args = args[:-1]
+                self.add_element(component, *args, **kwargs)
 
-        Parameters
-        ----------
-        elements : dict of str to tuple
-            Dictionary mapping element names to a tuple containing their
-            atom or weight percent.
-        """
-
-        for element, (percent, percent_type) in elements.items():
-                self.add_element(element, percent, percent_type)
     def remove_nuclide(self, nuclide: str):
         """Remove a nuclide from the material
 

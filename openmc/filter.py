@@ -1884,6 +1884,9 @@ class EnergyFunctionFilter(Filter):
         A grid of energy values in [eV]
     y : iterable of Real
         A grid of interpolant values in [eV]
+    interpolation : str
+        Used to indicate the type of interpolation used.
+        One of ('linear-linear', 'log-log')
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -1895,6 +1898,7 @@ class EnergyFunctionFilter(Filter):
         self.energy = energy
         self.y = y
         self.id = filter_id
+        self.interpolation = 'linear-linear'
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -1949,10 +1953,14 @@ class EnergyFunctionFilter(Filter):
                              + group['type'][()].decode() + " instead")
 
         energy = group['energy'][()]
-        y = group['y'][()]
+        y = group['y'][()]            
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-        return cls(energy, y, filter_id=filter_id)
+        out = cls(energy, y, filter_id=filter_id)
+        if 'interpolation' in group:
+            out.interpolation = group['interpolation'][()]
+
+        return out
 
     @classmethod
     def from_tabulated1d(cls, tab1d):
@@ -1974,10 +1982,13 @@ class EnergyFunctionFilter(Filter):
         if tab1d.n_regions > 1:
             raise ValueError('Only Tabulated1Ds with a single interpolation '
                              'region are supported')
-        if tab1d.interpolation[0] != 2:
-            raise ValueError('Only linear-linear Tabulated1Ds are supported')
+        if tab1d.interpolation[0] not in (2, 5):
+            raise ValueError('Only linear-linear or log-log Tabulated1Ds are supported')
+        out = cls(tab1d.x, tab1d.y)
+        if tab1d.interpolation[0] == 5:
+            out.interpolation = 'log-log'
 
-        return cls(tab1d.x, tab1d.y)
+        return out
 
     @property
     def energy(self):
@@ -1986,6 +1997,10 @@ class EnergyFunctionFilter(Filter):
     @property
     def y(self):
         return self._y
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @property
     def bins(self):
@@ -2021,6 +2036,12 @@ class EnergyFunctionFilter(Filter):
     def bins(self, bins):
         raise RuntimeError('EnergyFunctionFilters have no bins.')
 
+    @interpolation.setter
+    def interpolation(self, val):
+        cv.check_type('interpolation', val, str)
+        cv.check_value('interpolation', val, ('linear-linear', 'log-log'))
+        self._interpolation = val
+
     def to_xml_element(self):
         """Return XML Element representing the Filter.
 
@@ -2040,14 +2061,20 @@ class EnergyFunctionFilter(Filter):
         subelement = ET.SubElement(element, 'y')
         subelement.text = ' '.join(str(y) for y in self.y)
 
+        subelement = ET.SubElement(element, 'interpolation')
+        subelement.text = self.interpolation
+
         return element
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
         filter_id = int(elem.get('id'))
         energy = [float(x) for x in get_text(elem, 'energy').split()]
-        y = [float(x) for x in get_text(elem, 'y').split()]
-        return cls(energy, y, filter_id=filter_id)
+        y = [float(x) for x in get_text(elem, 'y').split()]     
+        out = cls(energy, y, filter_id=filter_id)
+        if elem.find('interpolation') is not None:
+            out.interpolation = elem.find('interpolation')
+        return out 
 
     def can_merge(self, other):
         return False

@@ -22,8 +22,14 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
 
   if (!check_for_node(node, "y"))
     fatal_error("y values not specified for EnergyFunction filter.");
-
+  
   auto y = get_node_array<double>(node, "y");
+
+  // use linear-linear interpolation by default
+  interpolation_ = Interpolation::lin_lin;
+  if (check_for_node(node, "interpolation")) {
+    std::string interpolation = get_node_value(node, "interpolation");
+  }
 
   this->set_data(energy, y);
 }
@@ -58,12 +64,23 @@ void EnergyFunctionFilter::get_all_bins(
     // Search for the incoming energy bin.
     auto i = lower_bound_index(energy_.begin(), energy_.end(), p.E_last());
 
-    // Compute the interpolation factor between the nearest bins.
-    double f = (p.E_last() - energy_[i]) / (energy_[i + 1] - energy_[i]);
+    double f, w;
+    switch (interpolation_) {
+      case Interpolation::lin_lin:
+        f = (p.E_last() - energy_[i]) / (energy_[i + 1] - energy_[i]);
+        w = (1 - f) * y_[i] + f * y_[i + 1];
+        break;
+      case Interpolation::log_log:
+        f = log(p.E_last() / energy_[i]) / log(energy_[i + 1] / energy_[i]);
+        w = y_[i] * exp(f * log(y_[i + 1] / y_[i]));
+        break;
+      default:
+        fatal_error(fmt::format("Invalid interpolation scheme found on EnergyFunctionFilter {}", id()));
+    }
 
     // Interpolate on the lin-lin grid.
     match.bins_.push_back(0);
-    match.weights_.push_back((1 - f) * y_[i] + f * y_[i + 1]);
+    match.weights_.push_back(w);
   }
 }
 
@@ -72,6 +89,7 @@ void EnergyFunctionFilter::to_statepoint(hid_t filter_group) const
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "energy", energy_);
   write_dataset(filter_group, "y", y_);
+  write_attr_int(filter_group, "interpolation", interpolation_);
 }
 
 std::string EnergyFunctionFilter::text_label(int bin) const

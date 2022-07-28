@@ -34,7 +34,9 @@ class Material(IDManagerMixin):
     To create a material, one should create an instance of this class, add
     nuclides or elements with :meth:`Material.add_nuclide` or
     :meth:`Material.add_element`, respectively, and set the total material
-    density with :meth:`Material.set_density()`. The material can then be
+    density with :meth:`Material.set_density()`. Alternatively, you can
+    use :meth:`Material.add_elements_or_nuclides()` to pass a dictionary
+    containing all the component information. The material can then be
     assigned to a cell using the :attr:`Cell.fill` attribute.
 
     Parameters

@@ -202,6 +202,8 @@ public:
 
   //! Definition of spatial region as Boolean expression of half-spaces
   vector<std::int32_t> region_;
+  //! Revised infix notation with no complements
+  vector<std::int32_t> region_no_complements_;
   bool simple_; //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.

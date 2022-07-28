@@ -107,6 +107,66 @@ vector<int32_t> tokenize(const std::string region_spec)
   return tokens;
 }
 
+
+//==============================================================================
+//! Add precedence for infix cell finding so intersections have higher 
+//! precedence than unions using parenthesis.
+//==============================================================================
+
+std::vector<int32_t>::iterator
+add_parenthesis(std::vector<int32_t>::iterator start,
+                std::vector<int32_t> &infix) {
+  // Add left parenthesis
+  start = infix.insert(start, OP_LEFT_PAREN);
+  start = start + 2;
+
+  // Initialize return iterator
+  std::vector<int32_t>::iterator return_iterator = infix.end() - 1;
+
+  // Add right parenthesis
+  // While the start iterator is within the bounds of infix
+  while (start < infix.end()) {
+    start++;
+
+    // If we find a union or right parenthesis not wrapped by
+    // left and right parenthesis then place a right parenthesis,
+    // If we find a wrapped region return an iterator pointing to
+    // that wrapped region and continue looking to place a 
+    // right parenthesis
+    if (*start == OP_UNION || *start == OP_RIGHT_PAREN) {
+      start = infix.insert(start, OP_RIGHT_PAREN);
+      return start - 1;
+
+    } else if (*start == OP_LEFT_PAREN) {
+      return_iterator = start;
+      start = std::find(start, infix.end(), OP_RIGHT_PAREN);
+    }
+  }
+
+  // If we get here a right parenthesis hasn't been placed,
+  // return iterator
+  infix.push_back(OP_RIGHT_PAREN);
+  return return_iterator;
+}
+
+void add_precedence(std::vector<int32_t> &infix) {
+  int32_t current_op = 0;
+
+  for (auto it = infix.begin(); it != infix.end(); it++) {
+    int32_t token = *it;
+
+    if (token == OP_UNION && current_op == 0) {
+      current_op = OP_UNION;
+
+    } else if (current_op == OP_UNION && token == OP_INTERSECTION) {
+      it = add_parenthesis(it - 1, infix);
+
+    } else if (token > OP_COMPLEMENT) {
+      current_op = 0;
+    }
+  }
+}
+
 //==============================================================================
 //! Convert infix region specification to Reverse Polish Notation (RPN)
 //!
@@ -498,9 +558,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   }
 
   // Get a tokenized representation of the region specification
-  // and apply De Morgan's laws to remove complements.
   region_ = tokenize(region_spec);
-  remove_complement_ops(region_);
   region_.shrink_to_fit();
 
   // Convert user IDs to surface indices.
@@ -516,9 +574,13 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
   }
 
+  // Remove complement operators using De Morgan's law
+  region_no_complements_ = region_;
+  remove_complement_ops(region_no_complements_);
+
   // Check if this is a simple cell.
   simple_ = true;
-  for (int32_t token : region_) {
+  for (int32_t token : region_no_complements_) {
     if (token == OP_UNION) {
       simple_ = false;
       break;
@@ -527,13 +589,17 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // If this cell is simple, remove all the superfluous operator tokens.
   if (simple_) {
-    for (auto it = region_.begin(); it != region_.end(); it++) {
+    for (auto it = region_no_complements_.begin();
+         it != region_no_complements_.end(); it++) {
       if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
-        region_.erase(it);
+        region_no_complements_.erase(it);
       }
     }
+  } else {
+    // Ensure intersections have precedence over unions
+    add_precedence(region_no_complements_);
   }
-  region_.shrink_to_fit();
+  region_no_complements_.shrink_to_fit();
 
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {
@@ -577,7 +643,7 @@ std::pair<double, int32_t> CSGCell::distance(
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
-  for (int32_t token : region_) {
+  for (int32_t token : region_no_complements_) {
     // Ignore this token if it corresponds to an operator rather than a region.
     if (token >= OP_UNION)
       continue;
@@ -632,7 +698,7 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
 BoundingBox CSGCell::bounding_box_simple() const
 {
   BoundingBox bbox;
-  for (int32_t token : region_) {
+  for (int32_t token : region_no_complements_) {
     bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
   }
   return bbox;
@@ -735,14 +801,15 @@ BoundingBox CSGCell::bounding_box_complex(vector<int32_t> rpn)
 
 BoundingBox CSGCell::bounding_box() const
 {
-  return simple_ ? bounding_box_simple() : bounding_box_complex(region_);
+  return simple_ ? bounding_box_simple()
+                 : bounding_box_complex(region_no_complements_);
 }
 
 //==============================================================================
 
 bool CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
-  for (int32_t token : region_) {
+  for (int32_t token : region_no_complements_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
     // respect to the surface and see if the token matches the sense. If the
     // particle's surface attribute is set and matches the token, that
@@ -767,13 +834,14 @@ bool CSGCell::contains_complex(
   Position r, Direction u, int32_t on_surface) const
 {
   bool in_cell = true;
-  
+
   // For each token
-  for (auto it = region_.begin(); it != region_.end(); it++) {
+  for (auto it = region_no_complements_.begin();
+       it != region_no_complements_.end(); it++) {
     int32_t token = *it;
 
     // If the token is a surface evaluate the sense
-    // If the token is a union or intersection check to 
+    // If the token is a union or intersection check to
     // short circuit
     if (token < OP_UNION) {
       if (token == on_surface) {
@@ -794,14 +862,21 @@ bool CSGCell::contains_complex(
         int32_t next_token = *it;
 
         // If the next token is a left parenthesis skip until
-        // the next right parenthesis, if the token is a right 
-        // parenthesis leave short circuiting
-        if (next_token == OP_LEFT_PAREN) {
-          it = std::find(it, region_.end() - 1, OP_RIGHT_PAREN);
-        } else if (next_token == OP_RIGHT_PAREN) {
-          break;
+        // the next right parenthesis, if the token is a right
+        // parenthesis leave short circuiting, if we go from 
+        // intersections to union operators without parenthesis
+        // break shortc circuiting one behind the union
+        if (next_token >= OP_UNION) {
+          if (next_token == OP_LEFT_PAREN) {
+            it = std::find(it, region_no_complements_.end() - 1, OP_RIGHT_PAREN);
+          } else if (token == OP_RIGHT_PAREN) {
+            break;
+          } else if (token - next_token == 1) {
+            it--;
+            break;
+          } 
         }
-      } while (it < region_.end() - 1);
+      } while (it < region_no_complements_.end() - 1);
     }
   }
   return in_cell;
@@ -1108,7 +1183,8 @@ struct ParentCellStack {
 };
 
 vector<ParentCell> Cell::find_parent_cells(
-  int32_t instance, const Position& r) const {
+  int32_t instance, const Position& r) const
+{
 
   // create a temporary particle
   Particle dummy_particle {};
@@ -1118,8 +1194,8 @@ vector<ParentCell> Cell::find_parent_cells(
   return find_parent_cells(instance, dummy_particle);
 }
 
-vector<ParentCell> Cell::find_parent_cells(
-  int32_t instance, Particle& p) const {
+vector<ParentCell> Cell::find_parent_cells(int32_t instance, Particle& p) const
+{
   // look up the particle's location
   exhaustive_find_cell(p);
   const auto& coords = p.coord();
@@ -1130,7 +1206,8 @@ vector<ParentCell> Cell::find_parent_cells(
   for (auto it = coords.begin(); it != coords.end(); it++) {
     const auto& coord = *it;
     const auto& cell = model::cells[coord.cell];
-    // if the cell at this level matches the current cell, stop adding to the stack
+    // if the cell at this level matches the current cell, stop adding to the
+    // stack
     if (coord.cell == model::cell_map[this->id_]) {
       cell_found = true;
       break;
@@ -1141,7 +1218,8 @@ vector<ParentCell> Cell::find_parent_cells(
     int lattice_idx = C_NONE;
     if (cell->type_ == Fill::LATTICE) {
       const auto& next_coord = *(it + 1);
-      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(next_coord.lattice_i);
+      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(
+        next_coord.lattice_i);
     }
     stack.push(coord.universe, {coord.cell, lattice_idx});
   }
@@ -1149,7 +1227,8 @@ vector<ParentCell> Cell::find_parent_cells(
   // if this loop finished because the cell was found and
   // the instance matches the one requested in the call
   // we have the correct path and can return the stack
-  if (cell_found && stack.compute_instance(this->distribcell_index_) == instance) {
+  if (cell_found &&
+      stack.compute_instance(this->distribcell_index_) == instance) {
     return stack.parent_cells();
   }
 
@@ -1157,9 +1236,7 @@ vector<ParentCell> Cell::find_parent_cells(
   return exhaustive_find_parent_cells(instance);
 }
 
-
-vector<ParentCell> Cell::exhaustive_find_parent_cells(
-  int32_t instance) const
+vector<ParentCell> Cell::exhaustive_find_parent_cells(int32_t instance) const
 {
   ParentCellStack stack;
   // start with this cell's universe

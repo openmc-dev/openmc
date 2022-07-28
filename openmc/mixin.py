@@ -14,8 +14,11 @@ class EqualityMixin:
     def __eq__(self, other):
         if isinstance(other, type(self)):
             for key, value in self.__dict__.items():
-                if not np.array_equal(value, other.__dict__.get(key)):
-                    return False
+                if isinstance(value, np.ndarray):
+                    if not np.array_equal(value, other.__dict__.get(key)):
+                        return False
+                else:
+                    return value == other.__dict__.get(key)
         else:
             return False
 

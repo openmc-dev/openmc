@@ -6,6 +6,12 @@ import openmc
 import openmc.stats
 
 
+def assert_sample_mean(samples, expected_mean):
+    std_dev = samples.std() / np.sqrt(samples.size)
+    assert np.abs(expected_mean - samples.mean()) < 3*std_dev
+
+
+
 def test_discrete():
     x = [0.0, 1.0, 10.0]
     p = [0.3, 0.2, 0.5]
@@ -33,13 +39,11 @@ def test_discrete():
 
     d3 = openmc.stats.Discrete(vals, probs)
 
-    # sample discrete distribution
+    # sample discrete distribution and check that the mean of the samples is
+    # within 3 std. dev. of the expected mean
     n_samples = 1_000_000
     samples = d3.sample(n_samples, seed=100)
-    # check that the mean of the samples is within 3 std. dev.
-    # of the expected mean
-    std_dev = samples.std() / np.sqrt(n_samples)
-    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+    assert_sample_mean(samples, exp_mean)
 
 
 def test_merge_discrete():
@@ -80,13 +84,12 @@ def test_uniform():
     np.testing.assert_array_equal(t.p, [1/(b-a), 1/(b-a)])
     assert t.interpolation == 'histogram'
 
+    # Sample distribution and check that the mean of the samples is within 3
+    # std. dev. of the expected mean
     exp_mean = 0.5 * (a + b)
     n_samples = 1_000_000
     samples = d.sample(n_samples, seed=100)
-    # check that the mean of the samples is within 3 std. dev.
-    # of the expected mean
-    std_dev = samples.std() / np.sqrt(n_samples)
-    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+    assert_sample_mean(samples, exp_mean)
 
 
 def test_powerlaw():
@@ -102,13 +105,11 @@ def test_powerlaw():
 
     exp_mean = 100.0 * (n+1) / (n+2)
 
-    # sample power law distribution
+    # sample power law distribution and check that the mean of the samples is
+    # within 3 std. dev. of the expected mean
     n_samples = 1_000_000
     samples = d.sample(n_samples, seed=100)
-    # check that the mean of the samples is within 3 std. dev.
-    # of the expected mean
-    std_dev = samples.std() / np.sqrt(n_samples)
-    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+    assert_sample_mean(samples, exp_mean)
 
 
 def test_maxwell():
@@ -122,21 +123,15 @@ def test_maxwell():
 
     exp_mean = 3/2 * theta
 
-    # sample maxwell distribution
+    # sample maxwell distribution and check that the mean of the samples is
+    # within 3 std. dev. of the expected mean
     n_samples = 1_000_000
     samples = d.sample(n_samples, seed=100)
-    # check that the mean of the samples is within 3 std. dev.
-    # of the expected mean
-    std_dev = samples.std() / np.sqrt(n_samples)
-    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+    assert_sample_mean(samples, exp_mean)
 
     # A second sample with a different seed
     samples_2 = d.sample(n_samples, seed=200)
-    # check that the mean of the samples is within 3 std. dev.
-    # of the expected mean
-    std_dev = samples_2.std() / np.sqrt(n_samples)
-    assert np.abs(exp_mean - samples_2.mean()) < 3*std_dev
-
+    assert_sample_mean(samples_2, exp_mean)
     assert samples_2.mean() != samples.mean()
 
 
@@ -156,13 +151,11 @@ def test_watt():
     # https://doi.org/10.1016/j.physletb.2003.09.048
     exp_mean = 3/2 * a + a**2 * b / 4
 
-    # sample Watt distribution
+    # sample Watt distribution and check that the mean of the samples is within
+    # 3 std. dev. of the expected mean
     n_samples = 1_000_000
     samples = d.sample(n_samples, seed=100)
-    # check that the mean of the samples is within 3 std. dev.
-    # of the expected mean
-    std_dev = samples.std() / np.sqrt(n_samples)
-    assert np.abs(exp_mean - samples.mean()) < 3*std_dev
+    assert_sample_mean(samples, exp_mean)
 
 
 def test_tabular():
@@ -227,6 +220,11 @@ def test_mixture():
     assert mix.probability == p
     assert mix.distribution == [d1, d2]
     assert len(mix) == 4
+
+    # Sample and make sure sample mean is close to expected mean
+    n_samples = 1_000_000
+    samples = mix.sample(n_samples)
+    assert_sample_mean(samples, (2.5 + 5.0)/2)
 
     elem = mix.to_xml_element('distribution')
 
@@ -427,3 +425,16 @@ def test_combine_distributions():
     assert isinstance(mixed, openmc.stats.Mixture)
     assert len(mixed.distribution) == 2
     assert len(mixed.probability) == 2
+
+    # Combine 1 discrete and 2 tabular -- the tabular distributions should
+    # combine to produce a uniform distribution with mean 0.5. The combined
+    # distribution should have a mean of 0.25.
+    t1 = openmc.stats.Tabular([0., 1.], [2.0, 0.0])
+    t2 = openmc.stats.Tabular([0., 1.], [0.0, 2.0])
+    d1 = openmc.stats.Discrete([0.0], [1.0])
+    combined = openmc.stats.combine_distributions([t1, t2, d1], [0.25, 0.25, 0.5])
+
+    # Sample the combined distribution and make sure the sample mean is within
+    # uncertainty of the expected value
+    samples = combined.sample(10)
+    assert_sample_mean(samples, 0.25)

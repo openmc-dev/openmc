@@ -414,11 +414,11 @@ class Material(IDManagerMixin):
 
         Examples
         --------
-        >> mat = openmc.Material()
-        >> components  = {'Li': (1.0, {'enrichment': 60.0, 'enrichment_target': 'Li7'}),
-                          'Fl': 1.0,
-                          'Be6': (0.5, 'wo')}
-        >> mat.add_elements_or_nuclides(components)
+        >>> mat = openmc.Material()
+        >>> components  = {'Li': (1.0, {'enrichment': 60.0, 'enrichment_target': 'Li7'}),
+        >>>               'Fl': 1.0,
+        >>>               'Be6': (0.5, 'wo')}
+        >>> mat.add_elements_or_nuclides(components)
 
         """
 

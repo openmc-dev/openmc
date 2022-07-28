@@ -90,7 +90,7 @@ void EnergyFunctionFilter::to_statepoint(hid_t filter_group) const
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "energy", energy_);
   write_dataset(filter_group, "y", y_);
-  write_attr_int(filter_group, "interpolation", interpolation_);
+  write_attribute<int>(filter_group, "interpolation", static_cast<int>(interpolation_));
 }
 
 std::string EnergyFunctionFilter::text_label(int bin) const

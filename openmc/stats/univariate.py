@@ -139,7 +139,8 @@ class Discrete(Univariate):
 
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
-        return np.random.choice(self.x, n_samples, p=self.p)
+        p = self.p / self.p.sum()
+        return np.random.choice(self.x, n_samples, p=p)
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
@@ -944,10 +945,11 @@ class Tabular(Univariate):
                                       'linear-linear interpolation')
         np.random.seed(seed)
         xi = np.random.rand(n_samples)
-        cdf = self.cdf()
-        cdf /= cdf.max()
+
         # always use normalized probabilities when sampling
+        cdf = self.cdf()
         p = self.p / cdf.max()
+        cdf /= cdf.max()
 
         # get CDF bins that are above the
         # sampled values
@@ -962,7 +964,7 @@ class Tabular(Univariate):
         # the random number is less than the next cdf
         # entry
         x_i = self.x[cdf_idx]
-        p_i = self.p[cdf_idx]
+        p_i = p[cdf_idx]
 
         if self.interpolation == 'histogram':
             # mask where probability is greater than zero
@@ -980,7 +982,7 @@ class Tabular(Univariate):
             # get variable and probability values for the
             # next entry
             x_i1 = self.x[cdf_idx + 1]
-            p_i1 = self.p[cdf_idx + 1]
+            p_i1 = p[cdf_idx + 1]
             # compute slope between entries
             m = (p_i1 - p_i) / (x_i1 - x_i)
             # set values for zero slope
@@ -1166,9 +1168,10 @@ class Mixture(Univariate):
 
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
-        idx = np.random.choice(self.distribution, n_samples, p=self.probability)
+        idx = np.random.choice(range(len(self.distribution)),
+                               n_samples, p=self.probability)
 
-        out = np.zeros_like(idx)
+        out = np.empty_like(idx, dtype=float)
         for i in np.unique(idx):
             n_dist_samples = np.count_nonzero(idx == i)
             samples = self.distribution[i].sample(n_dist_samples)

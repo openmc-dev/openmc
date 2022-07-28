@@ -1,7 +1,7 @@
-"""Pure depletion operator
+"""Independent depletion operator
 
-This module implements a pure depletion operator that user-provided one-group
-cross sections.
+This module implements a depletion operator that runs independently of any
+transport solver by using user-provided one-group cross sections.
 
 """
 
@@ -11,110 +11,33 @@ from warnings import warn
 from itertools import product
 
 import numpy as np
-import pandas as pd
 from uncertainties import ufloat
 
 import openmc
-from openmc.checkvalue import check_type, check_value, check_iterable_type
+from openmc.checkvalue import check_type
 from openmc.mpi import comm
-from openmc.mgxs import EnergyGroups, ArbitraryXS, FissionXS
 from .abc import ReactionRateHelper, OperatorResult
-from .chain import REACTIONS
 from .openmc_operator import OpenMCOperator, _distribute
+from .microxs import MicroXS
 from .results import Results
 from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateHelper
 
-_valid_rxns = list(REACTIONS)
-_valid_rxns.append('fission')
-
-def generate_1g_cross_sections(model,
-                               reaction_domain,
-                               reactions=['(n,gamma)',
-                                          '(n,2n)',
-                                          '(n,p)',
-                                          '(n,a)',
-                                          '(n,3n)',
-                                          '(n,4n)',
-                                          'fission'],
-                               energy_bounds=(0, 20e6),
-                               write_to_csv=False,
-                               filename='micro_xs.csv'):
-    """Helper function to generate a one-group cross-section dataframe  using
-    OpenMC. Note that the ``openmc`` executable must be compiled.
-
-    Parameters
-    ----------
-    model : openmc.model.Model
-        OpenMC model object. Must contain geometry, materials, and settings.
-    reaction_domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
-        Domain in which to tally reaction rates.
-    reactions : list of str, optional
-        Reaction names to tally
-    energy_bound : 2-tuple of float, optional
-        Bounds for the energy group.
-    write_to_csv : bool, optional
-        Option to write the DataFrame to a `.csv` file.
-    filename : str
-        Name for csv file. Only applicable if ``write_to_csv == True``
-
-    Returns
-    -------
-    None or pandas.DataFrame
-
-    """
-    groups = EnergyGroups(energy_bounds)
-
-    # Set up the reaction tallies
-    original_tallies = model.tallies
-    tallies = openmc.Tallies()
-    xs = {}
-    for rxn in reactions:
-        if rxn == 'fission':
-            xs[rxn] = FissionXS(domain=reaction_domain, groups=groups, by_nuclide=True)
-        else:
-            xs[rxn] = ArbitraryXS(rxn, domain=reaction_domain, groups=groups, by_nuclide=True)
-        tallies += xs[rxn].tallies.values()
-
-    model.tallies = tallies
-    statepoint_path = model.run()
-
-    # Revert to the original tallies
-    model.tallies = old_tallies
-
-    with openmc.StatePoint(statepoint_path) as sp:
-        for rxn in xs:
-            xs[rxn].load_from_statepoint(sp)
-
-    # Build the DataFrame
-    micro_xs = pd.DataFrame()
-    for rxn in xs:
-        df = xs[rxn].get_pandas_dataframe(xs_type='micro')
-        df.index = df['nuclide']
-        df.drop(['nuclide', xs[rxn].domain_type, 'group in', 'std. dev.'], axis=1, inplace=True)
-        df.rename({'mean':rxn}, axis=1, inplace=True)
-        micro_xs = pd.concat([micro_xs, df], axis=1)
-
-    if write_to_csv:
-        micro_xs.to_csv(filename)
-
-    return micro_xs
-
-class FluxDepletionOperator(OpenMCOperator):
-    """Depletion operator that uses one-group
-    cross sections to calculate reaction rates.
+class IndependentOperator(OpenMCOperator):
+    """Depletion operator that uses one-group cross sections to calculate
+    reaction rates.
 
     Instances of this class can be used to perform depletion using one-group
-    cross sections and constant flux or constant power. Normally, a user needn't call methods of
-    this class directly. Instead, an instance of this class is passed to an
-    integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
+    cross sections and constant flux or constant power. Normally, a user needn't
+    call methods of this class directly. Instead, an instance of this class is
+    passed to an integrator class, such as
+    :class:`openmc.deplete.CECMIntegrator`.
 
     Parameters
     ----------
     materials : openmc.Materials
         Materials to deplete.
-    micro_xs : pandas.DataFrame
-        DataFrame with nuclides names as index and microscopic cross section
-        data in the columns. Cross section units are [cm^-2].
+    micro_xs : MicroXS
+        One-group microscopic cross sections in [b] .
     chain_file : str
         Path to the depletion chain XML file.
     keff : 2-tuple of float, optional
@@ -134,23 +57,23 @@ class FluxDepletionOperator(OpenMCOperator):
         if ``"normalization_mode" == "fission-q"``.
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
-        depletion chain up to ``reduce_chain_level``. Default is False.
+        depletion chain up to ``reduce_chain_level``.
     reduce_chain_level : int, optional
         Depth of the search when reducing the depletion chain. Only used
         if ``reduce_chain`` evaluates to true. The default value of
         ``None`` implies no limit on the depth.
     fission_yield_opts : dict of str to option, optional
-        Optional arguments to pass to the `FissionYieldHelper`. Will be
+        Optional arguments to pass to the
+        :class:`openmc.deplete.helpers.FissionYieldHelper` object. Will be
         passed directly on to the helper. Passing a value of None will use
         the defaults for the associated helper.
-
 
     Attributes
     ----------
     materials : openmc.Materials
         All materials present in the model
-    cross_sections : pandas.DataFrame
-        Object containing one-group cross-sections.
+    cross_sections : MicroXS
+        Object containing one-group cross-sections in [cm^2].
     dilute_initial : float
         Initial atom density [atoms/cm^3] to add for nuclides that
         are zero in initial condition to ensure they exist in the decay
@@ -193,7 +116,7 @@ class FluxDepletionOperator(OpenMCOperator):
                  fission_yield_opts=None):
         # Validate micro-xs parameters
         check_type('materials', materials, openmc.Materials)
-        check_type('micro_xs', micro_xs, pd.DataFrame)
+        check_type('micro_xs', micro_xs, MicroXS)
         if keff is not None:
             check_type('keff', keff, tuple, float)
             keff = ufloat(*keff)
@@ -205,9 +128,11 @@ class FluxDepletionOperator(OpenMCOperator):
         helper_kwargs = {'normalization_mode': normalization_mode,
                          'fission_yield_opts': fission_yield_opts}
 
+        cross_sections = micro_xs * 1e-24
+        cross_sections._units = 'cm^2'
         super().__init__(
             materials,
-            micro_xs,
+            cross_sections,
             chain_file,
             prev_results,
             fission_q=fission_q,
@@ -216,9 +141,10 @@ class FluxDepletionOperator(OpenMCOperator):
             reduce_chain_level=reduce_chain_level)
 
     @classmethod
-    def from_nuclides(cls, volume, nuclides, nuc_units,
+    def from_nuclides(cls, volume, nuclides,
                       micro_xs,
                       chain_file,
+                      nuc_units='atom/b-cm',
                       keff=None,
                       normalization_mode='source-rate',
                       fission_q=None,
@@ -234,13 +160,12 @@ class FluxDepletionOperator(OpenMCOperator):
         nuclides : dict of str to float
             Dictionary with nuclide names as keys and nuclide concentrations as
             values.
-        nuc_units : {'atom/cm3', 'atom/b-cm'}
-            Units for nuclide concentration.
-        micro_xs : pandas.DataFrame
-            DataFrame with nuclides names as index and microscopic cross section
-            data in the columns. Cross section units are [cm^-2].
+        micro_xs : MicroXS
+            One-group microscopic cross sections.
         chain_file : str
             Path to the depletion chain XML file.
+        nuc_units : {'atom/cm3', 'atom/b-cm'}
+            Units for nuclide concentration.
         keff : 2-tuple of float, optional
            keff eigenvalue and uncertainty from transport calculation.
            Default is None.
@@ -325,17 +250,16 @@ class FluxDepletionOperator(OpenMCOperator):
         """Finds nuclides with cross section data"""
         return set(cross_sections.index)
 
-    class _FluxDepletionNormalizationHelper(ChainFissionHelper):
-        """Class for calculating one-group flux
-        based on a power.
+    class _IndependentNormalizationHelper(ChainFissionHelper):
+        """Class for calculating one-group flux based on a power.
 
         flux = Power / X, where X = volume * sum_i(Q_i * fission_micro_xs_i * density_i)
 
         Parameters
         ----------
-        op : openmc.deplete.FluxDepletionOperator
-            Reference to the object encapsulate _FluxDepletionNormalizationHelper.
-            We pass this so we don't have to duplicate the ``number`` object.
+        op : openmc.deplete.IndependentOperator
+            Reference to the object encapsulating _IndependentNormalizationHelper.
+            We pass this so we don't have to duplicate :attr:`IndependentOperator.number`.
 
         """
 
@@ -367,7 +291,7 @@ class FluxDepletionOperator(OpenMCOperator):
 
             super().update(fission_rates)
 
-    class _FluxDepletionRateHelper(ReactionRateHelper):
+    class _IndependentRateHelper(ReactionRateHelper):
         """Class for generating one-group reaction rates with flux and
         one-group cross sections.
 
@@ -378,9 +302,9 @@ class FluxDepletionOperator(OpenMCOperator):
 
         Parameters
         ----------
-        op : openmc.deplete.FluxDepletionOperator
-            Reference to the object encapsulate _FluxDepletionRateHelper.
-            We pass this so we don't have to duplicate the ``number`` object.
+        op : openmc.deplete.IndependentOperator
+            Reference to the object encapsulate _IndependentRateHelper.
+            We pass this so we don't have to duplicate the :attr:`IndependentOperator.number` object.
 
 
         Attributes
@@ -441,9 +365,9 @@ class FluxDepletionOperator(OpenMCOperator):
         normalization_mode = helper_kwargs['normalization_mode']
         fission_yield_opts = helper_kwargs['fission_yield_opts']
 
-        self._rate_helper = self._FluxDepletionRateHelper(self)
+        self._rate_helper = self._IndependentRateHelper(self)
         if normalization_mode == "fission-q":
-            self._normalization_helper = self._FluxDepletionNormalizationHelper(self)
+            self._normalization_helper = self._IndependentNormalizationHelper(self)
         else:
             self._normalization_helper = SourceRateHelper()
 
@@ -472,7 +396,7 @@ class FluxDepletionOperator(OpenMCOperator):
         vec : list of numpy.ndarray
             Total atoms to be used in function.
         source_rate : float
-            Power in [W] or flux in [neut/s-cm^2]
+            Power in [W] or flux in [neutron/cm^2-s]
 
         Returns
         -------
@@ -523,79 +447,3 @@ class FluxDepletionOperator(OpenMCOperator):
 
                                       ' atom/b-cm)')
                             number_i[mat, nuc] = 0.0
-
-    @staticmethod
-    def create_micro_xs_from_data_array(nuclides, reactions, data):
-        """
-        Creates a ``micro_xs`` parameter from a dictionary.
-
-        Parameters
-        ----------
-        nuclides : list of str
-            List of nuclide symbols for that have data for at least one
-            reaction.
-        reactions : list of str
-            List of reactions. All reactions must match those in ``chain.REACTIONS``
-        data : ndarray of floats
-            Array containing one-group microscopic cross section values, in
-            [barn], for each nuclide and reaction.
-
-        Returns
-        -------
-        micro_xs : pandas.DataFrame
-            A DataFrame object correctly formatted for use in ``FluxOperator``.
-            Cross section data is in [cm^2]
-        """
-
-        # Validate inputs
-        if data.shape != (len(nuclides), len(reactions)):
-            raise ValueError(
-                f'Nuclides list of length {len(nuclides)} and '
-                f'reactions array of length {len(reactions)} do not '
-                f'match dimensions of data array of shape {data.shape}')
-
-        FluxDepletionOperator._validate_micro_xs_inputs(
-            nuclides, reactions, data)
-
-        # Convert to cm^2
-        data *= 1e-24
-
-        return pd.DataFrame(index=nuclides, columns=reactions, data=data)
-
-    @staticmethod
-    def create_micro_xs_from_csv(csv_file, units='barn'):
-        """
-        Create the ``micro_xs`` parameter from a ``.csv`` file.
-
-        Parameters
-        ----------
-        csv_file : str
-            Relative path to csv-file containing microscopic cross section
-            data. Cross section values should be in [barn].
-
-        Returns
-        -------
-        micro_xs : pandas.DataFrame
-            A DataFrame object correctly formatted for use in ``FluxOperator``.
-            Cross section data is in [cm^2]
-
-        """
-        micro_xs = pd.read_csv(csv_file, index_col=0)
-
-        FluxDepletionOperator._validate_micro_xs_inputs(list(micro_xs.index),
-                                                        list(micro_xs.columns),
-                                                        micro_xs.to_numpy())
-
-        micro_xs *= 1e-24
-
-        return micro_xs
-
-    # Convenience function for the micro_xs static methods
-    @staticmethod
-    def _validate_micro_xs_inputs(nuclides, reactions, data):
-        check_iterable_type('nuclides', nuclides, str)
-        check_iterable_type('reactions', reactions, str)
-        check_type('data', data, np.ndarray, expected_iter_type=float)
-        for reaction in reactions:
-            check_value('reactions', reaction, _valid_rxns)
-

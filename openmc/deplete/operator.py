@@ -131,7 +131,7 @@ class Operator(OpenMCOperator):
         .. versionadded:: 0.12.1
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
-        depletion chain up to ``reduce_chain_level``. Default is False.
+        depletion chain up to ``reduce_chain_level``.
 
         .. versionadded:: 0.12
     reduce_chain_level : int, optional
@@ -226,7 +226,7 @@ class Operator(OpenMCOperator):
         self.cleanup_when_done = True
 
         if reaction_rate_opts is None:
-                reaction_rate_opts = {}
+            reaction_rate_opts = {}
         if fission_yield_opts is None:
             fission_yield_opts = {}
         helper_kwargs = {

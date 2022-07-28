@@ -1,19 +1,12 @@
 """ Transport-free depletion test suite """
 
-from math import floor
-import shutil
 from pathlib import Path
-from difflib import unified_diff
 
 import numpy as np
 import pytest
 import openmc
-from openmc.data import JOULE_PER_EV
 import openmc.deplete
-from openmc.deplete import FluxDepletionOperator
-
-from tests.regression_tests import config
-
+from openmc.deplete import IndependentOperator, MicroXS
 
 @pytest.fixture(scope="module")
 def fuel():
@@ -26,7 +19,6 @@ def fuel():
     fuel.volume = np.pi * 0.42 ** 2
 
     return fuel
-
 
 @pytest.mark.parametrize("multiproc, from_nuclides, normalization_mode, power, flux", [
     (True, True,'source-rate', None, 1164719970082145.0),
@@ -46,7 +38,7 @@ def test_no_transport_from_nuclides(run_in_tmpdir, fuel, multiproc, from_nuclide
     """
     # Create operator
     micro_xs_file = Path(__file__).parents[2] / 'micro_xs_simple.csv'
-    micro_xs = FluxDepletionOperator.create_micro_xs_from_csv(micro_xs_file)
+    micro_xs = MicroXS.from_csv(micro_xs_file)
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
 
     if from_nuclides:
@@ -54,11 +46,11 @@ def test_no_transport_from_nuclides(run_in_tmpdir, fuel, multiproc, from_nuclide
         for nuc, dens in fuel.get_nuclide_atom_densities().items():
             nuclides[nuc] = dens
 
-        op = FluxDepletionOperator.from_nuclides(
-            fuel.volume, nuclides,'atom/b-cm', micro_xs, chain_file, normalization_mode=normalization_mode)
+        op = IndependentOperator.from_nuclides(
+            fuel.volume, nuclides, micro_xs, chain_file, normalization_mode=normalization_mode)
 
     else:
-        op = FluxDepletionOperator(openmc.Materials([fuel]), micro_xs, chain_file, normalization_mode=normalization_mode)
+        op = IndependentOperator(openmc.Materials([fuel]), micro_xs, chain_file, normalization_mode=normalization_mode)
 
     # Power and timesteps
     dt = [30]  # single step

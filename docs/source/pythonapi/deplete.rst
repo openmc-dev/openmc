@@ -49,9 +49,9 @@ specific to OpenMC are available using the following classes:
    :template: mycallable.rst
 
    Operator
-   FluxDepletionOperator
+   IndependentOperator
 
-The :class:`Operator` and :class:`FluxDepletionOperator` classes must also have
+The :class:`Operator` and :class:`IndependentOperator` classes must also have
 some knowledge of how nuclides transmute and decay. This is handled by the 
 :class:`Chain`.
 
@@ -134,6 +134,7 @@ data, such as number densities and reaction rates for each material.
    :template: myclass.rst
 
    AtomNumber
+   MicroXS
    OperatorResult
    ReactionRates
    Results

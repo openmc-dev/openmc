@@ -1,6 +1,6 @@
 """OpenMC transport operator
 
-This module implements functions used by both OpenMC transport operators as well as pure depletion operators.
+This module implements functions shared by both OpenMC transport operators as well as indepenedent depletion operators.
 
 """
 
@@ -75,8 +75,8 @@ class OpenMCOperator(TransportOperator):
     helper_kwargs : dict
         Keyword arguments for helper classes
     reduce_chain : bool, optional
-        If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
-        depletion chain up to ``reduce_chain_level``. Default is False.
+        If True, use :meth:`openmc.deplete.Chain.reduce()` to reduce the
+        depletion chain up to ``reduce_chain_level``.
     reduce_chain_level : int, optional
         Depth of the search when reducing the depletion chain. Only used
         if ``reduce_chain`` evaluates to true. The default value of
@@ -87,7 +87,7 @@ class OpenMCOperator(TransportOperator):
     ----------
     materials : openmc.Materials
         All materials present in the model
-    cross_sections : str or pandas.DataFrame
+    cross_sections : str or MicroXS
             Path to continuous energy cross section library, or object
             containing one-group cross-sections.
     dilute_initial : float

@@ -28,6 +28,8 @@ def model():
     # Make an EnergyFunctionFilter directly from the x and y lists.
     filt1 = openmc.EnergyFunctionFilter(x, y)
 
+    assert filt1.interpolation == 'linear-linear'
+
     # Also make a filter with the .from_tabulated1d constructor.  Make sure
     # the filters are identical.
     tab1d = openmc.data.Tabulated1D(x, y)

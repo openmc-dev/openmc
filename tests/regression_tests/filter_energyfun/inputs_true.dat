@@ -22,6 +22,7 @@
   <filter id="1" type="energyfunction">
     <energy>1e-05 0.369 1000.0 100000.0 600000.0 1000000.0 2000000.0 4000000.0 30000000.0</energy>
     <y>0.1 0.1 0.1333 0.158 0.18467 0.25618 0.4297 0.48 0.48</y>
+    <interpolation>linear-linear</interpolation>
   </filter>
   <tally id="1">
     <nuclides>Am241</nuclides>

@@ -7,13 +7,14 @@
 #include <unordered_map>
 
 #include "hdf5.h"
-#include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
+#include "pugixml.hpp"
 
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
+#include "openmc/xml_interface.h"
 
 #ifdef DAGMC
 #include "moab/AdaptiveKDTree.hpp"
@@ -53,7 +54,7 @@ extern vector<unique_ptr<Mesh>> meshes;
 
 #ifdef LIBMESH
 namespace settings {
-// used when creating new libMesh::Mesh instances
+// used when creating new libMesh::MeshBase instances
 extern unique_ptr<libMesh::LibMeshInit> libmesh_init;
 extern const libMesh::Parallel::Communicator* libmesh_comm;
 } // namespace settings
@@ -671,7 +672,8 @@ class LibMesh : public UnstructuredMesh {
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
-  LibMesh(const std::string& filename, double length_multiplier = 1.0);
+  LibMesh(const std::string & filename, double length_multiplier = 1.0);
+  LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier = 1.0);
 
   static const std::string mesh_lib_type;
 
@@ -703,8 +705,11 @@ public:
 
   double volume(int bin) const override;
 
+  libMesh::MeshBase* mesh_ptr() const { return m_; };
+
 private:
   void initialize() override;
+  void set_mesh_pointer_from_filename(const std::string& filename);
 
   // Methods
 
@@ -715,7 +720,8 @@ private:
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
-  unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
+  unique_ptr<libMesh::MeshBase> unique_m_ = nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is created inside OpenMC
+  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>

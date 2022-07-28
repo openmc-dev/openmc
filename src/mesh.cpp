@@ -256,7 +256,7 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
     } else {
       num_elem_skipped++;
       xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::UNSUPPORTED);
-      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({-1, -1, -1, -1, -1, -1, -1, -1});
+      xt::view(connectivity, i, xt::all()) = -1;
     }
   }
 

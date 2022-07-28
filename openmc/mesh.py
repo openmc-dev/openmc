@@ -1477,7 +1477,7 @@ class UnstructuredMesh(MeshBase):
 
         .. versionadded:: 0.13
 
-    connectivity : np.ndarray (8, n_elements)
+    connectivity : np.ndarray (n_elements, 8)
         Connectivity of the elements
 
         .. versionadded:: 0.13
@@ -1633,6 +1633,17 @@ class UnstructuredMesh(MeshBase):
 
     def centroid(self, bin):
         """Return the vertex averaged centroid of an element
+
+        Parameters
+        ----------
+        bin : int
+            Bin ID for the returned centroid 
+        
+        Returns
+        -------
+        numpy.ndarray
+            x, y, z values of the element centroid
+
         """
         conn = self.connectivity[bin]
         coords = self.vertices[conn]
@@ -1749,11 +1760,7 @@ class UnstructuredMesh(MeshBase):
                     arr.SetTuple1(i, data.flat[i])
                 grid.GetCellData().AddArray(arr)
 
-        if vtk.VTK_MAJOR_VERSION == 5:
-            grid.update()
-            writer.SetInput(grid)
-        else:
-            writer.SetInputData(grid)
+        writer.SetInputData(grid)
 
         writer.Write()
 

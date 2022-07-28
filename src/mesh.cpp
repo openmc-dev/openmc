@@ -2369,7 +2369,7 @@ void LibMesh::initialize()
     libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
   }
   // if OpenMC is managing the libMesh::MeshBase instance, prepare the mesh.
-  // Otherwise assume that it is prepared by it's owning application
+  // Otherwise assume that it is prepared by its owning application
   if (unique_m_) {
     m_->prepare_for_use();
   }

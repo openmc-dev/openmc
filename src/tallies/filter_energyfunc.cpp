@@ -22,7 +22,7 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
 
   if (!check_for_node(node, "y"))
     fatal_error("y values not specified for EnergyFunction filter.");
-  
+
   auto y = get_node_array<double>(node, "y");
 
   // use linear-linear interpolation by default
@@ -66,16 +66,17 @@ void EnergyFunctionFilter::get_all_bins(
 
     double f, w;
     switch (interpolation_) {
-      case Interpolation::lin_lin:
-        f = (p.E_last() - energy_[i]) / (energy_[i + 1] - energy_[i]);
-        w = (1 - f) * y_[i] + f * y_[i + 1];
-        break;
-      case Interpolation::log_log:
-        f = log(p.E_last() / energy_[i]) / log(energy_[i + 1] / energy_[i]);
-        w = y_[i] * exp(f * log(y_[i + 1] / y_[i]));
-        break;
-      default:
-        fatal_error(fmt::format("Invalid interpolation scheme found on EnergyFunctionFilter {}", id()));
+    case Interpolation::lin_lin:
+      f = (p.E_last() - energy_[i]) / (energy_[i + 1] - energy_[i]);
+      w = (1 - f) * y_[i] + f * y_[i + 1];
+      break;
+    case Interpolation::log_log:
+      f = log(p.E_last() / energy_[i]) / log(energy_[i + 1] / energy_[i]);
+      w = y_[i] * exp(f * log(y_[i + 1] / y_[i]));
+      break;
+    default:
+      fatal_error(fmt::format(
+        "Invalid interpolation scheme found on EnergyFunctionFilter {}", id()));
     }
 
     // Interpolate on the lin-lin grid.

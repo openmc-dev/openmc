@@ -1594,13 +1594,6 @@ class UnstructuredMesh(MeshBase):
         cv.check_type('Number of elements', val, Integral)
         self._n_elements = val
 
-
-    @centroids.setter
-    def centroids(self, centroids):
-        cv.check_type("Unstructured mesh centroids", centroids,
-                      Iterable, Real)
-        self._centroids = centroids
-
     @property
     def length_multiplier(self):
         return self._length_multiplier

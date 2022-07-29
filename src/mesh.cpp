@@ -262,11 +262,9 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 
   // warn users that some elements were skipped
   if (num_elem_skipped > 0) {
-    warning(fmt::format(
-      "The connectivity of {} elements
-      on mesh {} were not written
-      "
-      "because they are not of type linear tet/hex.",
+    warning(fmt::format("The connectivity of {} elements "
+                        "on mesh {} were not written "
+                        "because they are not of type linear tet/hex.",
       num_elem_skipped, this->id_));
   }
 

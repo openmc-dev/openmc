@@ -866,8 +866,17 @@ bool CSGCell::contains_complex(
         // skip a section or break
         if (next_token >= OP_UNION && token != next_token) {
           if (next_token == OP_LEFT_PAREN) {
-            it =
-              std::find(it, region_no_complements_.end() - 1, OP_RIGHT_PAREN);
+            int depth = 1;
+            while (depth > 0) {
+              it++;
+              if (*it > OP_COMPLEMENT) {
+                if (*it == OP_RIGHT_PAREN) {
+                  depth--;
+                } else {
+                  depth++;
+                }
+              }
+            }
           } else {
             break;
           }

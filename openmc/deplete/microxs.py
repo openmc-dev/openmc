@@ -25,8 +25,10 @@ _valid_rxns.append('fission')
 
 
 class MicroXS(DataFrame):
-    """Stores microscopic cross section data for use in
-    transport-independent depletion.
+    """Microscopic cross section data for use in transport-independent depletion.
+
+    .. versionadded:: 0.13.1
+
     """
 
     @classmethod
@@ -59,7 +61,7 @@ class MicroXS(DataFrame):
         energy_bound : 2-tuple of float, optional
             Bounds for the energy group.
         run_kwargs : dict, optional
-            Keyword arguments for :meth:`openmc.model.Model.run()`
+            Keyword arguments passed to :meth:`openmc.model.Model.run`
 
         Returns
         -------

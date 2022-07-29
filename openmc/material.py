@@ -463,6 +463,8 @@ class Material(IDManagerMixin):
     def remove_element(self, element):
         """Remove an element from the material
 
+        .. versionadded:: 0.13.1
+
         Parameters
         ----------
         element : str
@@ -918,7 +920,7 @@ class Material(IDManagerMixin):
         Returns
         -------
         Union[dict, float]
-            If by_nuclide is True then a dictionary whose keys are nuclide 
+            If by_nuclide is True then a dictionary whose keys are nuclide
             names and values are activity is returned. Otherwise the activity
             of the material is returned as a float.
         """

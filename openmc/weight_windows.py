@@ -409,7 +409,9 @@ class WeightWindows(IDManagerMixin):
 
 
 def wwinp_to_wws(path):
-    """Creates WeightWindows classes from a wwinp file
+    """Create WeightWindows instances from a wwinp file
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------

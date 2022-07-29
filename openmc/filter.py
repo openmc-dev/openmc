@@ -1340,6 +1340,8 @@ class EnergyFilter(RealFilter):
     def from_group_structure(cls, group_structure):
         """Construct an EnergyFilter instance from a standard group structure.
 
+        .. versionadded:: 0.13.1
+
         Parameters
         ----------
         group_structure : str

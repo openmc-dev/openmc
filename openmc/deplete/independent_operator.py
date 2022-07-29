@@ -6,8 +6,6 @@ transport solver by using user-provided one-group cross sections.
 """
 
 import copy
-from collections import OrderedDict
-from warnings import warn
 from itertools import product
 
 import numpy as np
@@ -22,6 +20,7 @@ from .microxs import MicroXS
 from .results import Results
 from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateHelper
 
+
 class IndependentOperator(OpenMCOperator):
     """Transport-independent transport operator that uses one-group cross
     sections to calculate reaction rates.
@@ -31,6 +30,8 @@ class IndependentOperator(OpenMCOperator):
     call methods of this class directly. Instead, an instance of this class is
     passed to an integrator class, such as
     :class:`openmc.deplete.CECMIntegrator`.
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------

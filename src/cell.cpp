@@ -107,15 +107,14 @@ vector<int32_t> tokenize(const std::string region_spec)
   return tokens;
 }
 
-
 //==============================================================================
-//! Add precedence for infix cell finding so intersections have higher 
+//! Add precedence for infix cell finding so intersections have higher
 //! precedence than unions using parenthesis.
 //==============================================================================
 
-std::vector<int32_t>::iterator
-add_parenthesis(std::vector<int32_t>::iterator start,
-                std::vector<int32_t> &infix) {
+std::vector<int32_t>::iterator add_parenthesis(
+  std::vector<int32_t>::iterator start, std::vector<int32_t>& infix)
+{
   // Add left parenthesis
   start = infix.insert(start, OP_LEFT_PAREN);
   start = start + 2;
@@ -131,7 +130,7 @@ add_parenthesis(std::vector<int32_t>::iterator start,
     // If we find a union or right parenthesis not wrapped by
     // left and right parenthesis then place a right parenthesis,
     // If we find a wrapped region return an iterator pointing to
-    // that wrapped region and continue looking to place a 
+    // that wrapped region and continue looking to place a
     // right parenthesis
     if (*start == OP_UNION || *start == OP_RIGHT_PAREN) {
       start = infix.insert(start, OP_RIGHT_PAREN);
@@ -149,7 +148,8 @@ add_parenthesis(std::vector<int32_t>::iterator start,
   return return_iterator;
 }
 
-void add_precedence(std::vector<int32_t> &infix) {
+void add_precedence(std::vector<int32_t>& infix)
+{
   int32_t current_op = 0;
 
   for (auto it = infix.begin(); it != infix.end(); it++) {
@@ -861,20 +861,16 @@ bool CSGCell::contains_complex(
         it++;
         int32_t next_token = *it;
 
-        // If the next token is a left parenthesis skip until
-        // the next right parenthesis, if the token is a right
-        // parenthesis leave short circuiting, if we go from 
-        // intersections to union operators without parenthesis
-        // break shortc circuiting one behind the union
-        if (next_token >= OP_UNION) {
+        // If the next token is an operator and is not the same as the one that
+        // started the short circuiting, check if it is a left parenthesis to
+        // skip a section or break
+        if (next_token >= OP_UNION && token != next_token) {
           if (next_token == OP_LEFT_PAREN) {
-            it = std::find(it, region_no_complements_.end() - 1, OP_RIGHT_PAREN);
-          } else if (token == OP_RIGHT_PAREN) {
+            it =
+              std::find(it, region_no_complements_.end() - 1, OP_RIGHT_PAREN);
+          } else {
             break;
-          } else if (token - next_token == 1) {
-            it--;
-            break;
-          } 
+          }
         }
       } while (it < region_no_complements_.end() - 1);
     }

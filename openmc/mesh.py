@@ -1470,14 +1470,14 @@ class UnstructuredMesh(MeshBase):
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     centroids : numpy.ndarray
-        Centroids of the mesh elements with array shape (3, n_elements)
+        Centroids of the mesh elements with array shape (n_elements, 3)
 
     vertices : numpy.ndarray
-        Coordinates of the mesh vertices with array shape (3, n_elements)
+        Coordinates of the mesh vertices with array shape (n_elements, 3)
 
         .. versionadded:: 0.13.1
     connectivity : numpy.ndarray 
-        Connectivity of the elements with array shape (8, n_elements)
+        Connectivity of the elements with array shape (n_elements, 8)
 
         .. versionadded:: 0.13.1
     element_types : Iterable of integers

@@ -29,6 +29,16 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
   interpolation_ = Interpolation::lin_lin;
   if (check_for_node(node, "interpolation")) {
     std::string interpolation = get_node_value(node, "interpolation");
+    if (interpolation == "linear-linear") {
+      interpolation_ = Interpolation::lin_lin;
+    } else if (interpolation == "log-log") {
+      interpolation_ = Interpolation::log_log;
+    } else {
+      fatal_error(fmt::format(
+        "Invalid interpolation type '{}' specified on EnergyFunctionFilter {}. "
+        "Must be 'linear-linear' or 'log-log'.",
+        interpolation, id()));
+    }
   }
 
   this->set_data(energy, y);
@@ -90,7 +100,7 @@ void EnergyFunctionFilter::to_statepoint(hid_t filter_group) const
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "energy", energy_);
   write_dataset(filter_group, "y", y_);
-  write_attribute<int>(
+  write_dataset(
     filter_group, "interpolation", static_cast<int>(interpolation_));
 }
 

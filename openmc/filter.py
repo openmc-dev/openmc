@@ -1959,9 +1959,9 @@ class EnergyFunctionFilter(Filter):
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
         out = cls(energy, y, filter_id=filter_id)
-        if 'interpolation' in group.attrs:
+        if 'interpolation' in group:
             out.interpolation =  \
-                openmc.data.INTERPOLATION_SCHEME[group.attrs['interpolation']]
+                openmc.data.INTERPOLATION_SCHEME[group['interpolation'][()]]
 
         return out
 

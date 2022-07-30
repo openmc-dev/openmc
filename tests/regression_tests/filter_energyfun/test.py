@@ -52,8 +52,6 @@ def model():
     tallies[2].filters = [filt3]
     model.tallies.extend(tallies)
 
-
-
     return model
 
 
@@ -74,15 +72,15 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         # Read the statepoint file.
         sp = openmc.StatePoint(self._sp_name)
 
-        # check that values are round-tripped correctly from
+        # check that information is round-tripped correctly from
         # the statepoint file
-        sp_tally = sp.get_tally(id=2)
+        sp_tally = sp.get_tally(id=3)
         sp_filt = sp_tally.find_filter(openmc.EnergyFunctionFilter)
 
-        model_tally = self._model.tallies[1]
+        model_tally = self._model.tallies[2]
         model_filt = model_tally.find_filter(openmc.EnergyFunctionFilter)
 
-        assert sp_filt.interpolation == 'linear-linear'
+        assert sp_filt.interpolation == 'log-log'
         assert all(sp_filt.energy == model_filt.energy)
         assert all(sp_filt.y == model_filt.y)
 

@@ -12,19 +12,20 @@ Primary API
 The two primary requirements to perform depletion with :mod:`openmc.deplete`
 are:
 
-    1) A transport operator
+    1) A reaction rate operator
     2) A time-integration scheme
 
-The former is responsible for executing a transport code, like OpenMC,
-and retaining important information required for depletion. The most common examples
-are reaction rates and power normalization data. The latter is responsible for
-projecting reaction rates and compositions forward in calendar time across
-some step size :math:`\Delta t`, and obtaining new compositions given a power
-or power density. The :class:`Operator` is provided to handle communicating with
-OpenMC. Several classes are provided that implement different time-integration
-algorithms for depletion calculations, which are described in detail in Colin
-Josey's thesis, `Development and analysis of high order neutron
-transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
+The former is responsible for obtaining transmuation reaction rates. The latter
+is responsible for projecting reaction rates and compositions forward in
+calendar time across some step size :math:`\Delta t`, and obtaining new
+compositions given a power or power density. The :class:`Operator` class is
+provided to obtain reaction rates via tallies through OpenMC's transport
+solver, and the :class:`IndependentOperator` class is provided to obtain
+reaction rates from cross-section data. Several classes are provided that
+implement different time-integration algorithms for depletion calculations,
+which are described in detail in Colin Josey's thesis, `Development and
+analysis of high order neutron transport-depletion coupling algorithms
+<http://hdl.handle.net/1721.1/113721>`_.
 
 .. autosummary::
     :toctree: generated
@@ -40,8 +41,8 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     SICELIIntegrator
     SILEQIIntegrator
 
-Each of these classes expects a "transport operator" to be passed. Operators
-specific to OpenMC are available using the following classes:
+Each of these classes expects a "reaction rate operator" to be passed. Operators
+provided by OpenMC are available using the following classes:
 
 .. autosummary::
    :toctree: generated

@@ -557,7 +557,7 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
 
         Parameters
         ----------
-        operator : openmc.deplete.TransportOperator
+        operator : openmc.deplete.abc.DepletionOperator
             operator with a depletion chain
         kwargs:
             Additional keyword arguments to be used in construction

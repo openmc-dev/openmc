@@ -1,4 +1,4 @@
-"""Transport-independent operator for depletion.
+"""Transport-independent depletion operator.
 
 This module implements a depletion operator that runs independently of any
 transport solver by using user-provided one-group cross sections.
@@ -23,8 +23,8 @@ from .results import Results
 from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateHelper
 
 class IndependentOperator(OpenMCOperator):
-    """Depletion operator that uses one-group cross sections to calculate
-    reaction rates.
+    """Transport-independent depletion operator that uses one-group cross
+    sections to calculate reaction rates.
 
     Instances of this class can be used to perform depletion using one-group
     cross sections and constant flux or constant power. Normally, a user needn't
@@ -189,7 +189,8 @@ class IndependentOperator(OpenMCOperator):
             if ``reduce_chain`` evaluates to true. The default value of
             ``None`` implies no limit on the depth.
         fission_yield_opts : dict of str to option, optional
-            Optional arguments to pass to the `FissionYieldHelper`. Will be
+            Optional arguments to pass to the
+            :class:`openmc.deplete.helpers.FissionYieldHelper` class. Will be
             passed directly on to the helper. Passing a value of None will use
             the defaults for the associated helper.
 

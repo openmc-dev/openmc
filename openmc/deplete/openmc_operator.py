@@ -1,6 +1,7 @@
 """OpenMC transport operator
 
-This module implements functions shared by both OpenMC transport operators as well as indepenedent depletion operators.
+This module implements functions shared by both OpenMC transport-coupled and
+transport-independent depletion operators.
 
 """
 
@@ -11,7 +12,7 @@ import numpy as np
 
 import openmc
 from openmc.mpi import comm
-from .abc import TransportOperator, OperatorResult
+from .abc import DepletionOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
 
@@ -41,12 +42,12 @@ def _distribute(items):
         j += chunk_size
 
 
-class OpenMCOperator(TransportOperator):
+class OpenMCOperator(DepletionOperator):
     """Abstract class holding OpenMC-specific functions for running
     depletion calculations.
 
-    Specific classes for running coupled transport-depletion calculations or
-    depletion-only calculations are implemented as subclasses of OpenMCOperator
+    Specific classes for running transport-coupled or transport-independent
+    depletion calculations are implemented as subclasses of OpenMCOperator.
 
     Parameters
     ----------

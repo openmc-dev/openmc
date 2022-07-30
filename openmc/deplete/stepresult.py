@@ -462,7 +462,7 @@ class StepResult:
 
         Parameters
         ----------
-        op : openmc.deplete.TransportOperator
+        op : openmc.deplete.abc.DepletionOperator
             The operator used to generate these results.
         x : list of list of numpy.array
             The prior x vectors.  Indexed [i][cell] using the above equation.

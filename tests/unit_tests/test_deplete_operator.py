@@ -7,7 +7,7 @@ to a custom file with new depletion_chain node
 from pathlib import Path
 
 import pytest
-from openmc.deplete.abc import TransportOperator
+from openmc.deplete.abc import DepletionOperator
 from openmc.deplete.chain import Chain, _find_chain_file
 
 BARE_XS_FILE = "bare_cross_sections.xml"
@@ -32,7 +32,7 @@ def bare_xs(run_in_tmpdir):
     yield BARE_XS_FILE
 
 
-class BareDepleteOperator(TransportOperator):
+class BareDepleteOperator(DepletionOperator):
     """Very basic class for testing the initialization."""
 
     @staticmethod

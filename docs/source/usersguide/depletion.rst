@@ -13,14 +13,14 @@ updated reaction rates, and the process is repeated for as many timesteps as
 are requested.
 
 The depletion module is designed such that the reaction rate solution (the
-"operator") is completely isolated from the solution of the transmutation
+depletion "operator") is completely isolated from the solution of the transmutation
 equations and the method used for advancing time. 
 
 :mod:`openmc.deplete` supports multiple time-integration methods for determining
 material compositions over time. Each method appears as a different class.
 For example, :class:`openmc.deplete.CECMIntegrator` runs a depletion calculation
 using the CE/CM algorithm (deplete over a timestep using the middle-of-step
-reaction rates). An instance of :class:`~openmc.deplete.abc.TransportOperator`
+reaction rates). An instance of :class:`~openmc.deplete.abc.DepletionOperator`
 is passed to one of these functions along with the timesteps and power level::
 
     power = 1200.0e6  # watts
@@ -37,8 +37,8 @@ time::
     time, keff = results.get_keff()
 
 Note that the coupling between the reaction rate solver and the transmutation
-solver happens in-memory rather than by reading/writing files on disk. OpenMC has two categories of
-operators for obtaining transmutation reaction rates. 
+solver happens in-memory rather than by reading/writing files on disk. OpenMC has two categories of depletion operators for obtaining transmutation reaction
+rates. 
 
 .. _coupled-depletion:
 

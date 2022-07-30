@@ -72,17 +72,34 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         # Read the statepoint file.
         sp = openmc.StatePoint(self._sp_name)
 
-        # check that information is round-tripped correctly from
-        # the statepoint file
-        sp_tally = sp.get_tally(id=3)
-        sp_filt = sp_tally.find_filter(openmc.EnergyFunctionFilter)
+        # statepoint file round-trip checks
+        
+        # linear-linear interpolation tally
+        sp_lin_lin_tally = sp.get_tally(id=2)
+        sp_lin_lin_filt = sp_lin_lin_tally.find_filter(openmc.EnergyFunctionFilter)
 
-        model_tally = self._model.tallies[2]
-        model_filt = model_tally.find_filter(openmc.EnergyFunctionFilter)
+        model_lin_lin_tally = self._model.tallies[1]
+        model_lin_lin_filt = model_lin_lin_tally.find_filter(openmc.EnergyFunctionFilter)
 
-        assert sp_filt.interpolation == 'log-log'
-        assert all(sp_filt.energy == model_filt.energy)
-        assert all(sp_filt.y == model_filt.y)
+        assert sp_lin_lin_filt.interpolation == 'linear-linear'
+        assert all(sp_lin_lin_filt.energy == model_lin_lin_filt.energy)
+        assert all(sp_lin_lin_filt.y == model_lin_lin_filt.y)
+
+        # log-log interpolation tally
+        sp_log_log_tally = sp.get_tally(id=3)
+        sp_log_log_filt = sp_log_log_tally.find_filter(openmc.EnergyFunctionFilter)
+
+        model_log_log_tally = self._model.tallies[2]
+        model_log_log_filt = model_log_log_tally.find_filter(openmc.EnergyFunctionFilter)
+
+        assert sp_log_log_filt.interpolation == 'log-log'
+        assert all(sp_log_log_filt.energy == model_log_log_filt.energy)
+        assert all(sp_log_log_filt.y == model_log_log_filt.y)
+
+
+        # because the values of y are monotonically increasing,
+        # we expect the log-log tally to have a higher value
+        assert all(sp_lin_lin_tally.mean < sp_log_log_tally.mean)
 
 
 def test_filter_energyfun(model):

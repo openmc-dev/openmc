@@ -1894,11 +1894,11 @@ class EnergyFunctionFilter(Filter):
 
     """
 
-    def __init__(self, energy, y, filter_id=None):
+    def __init__(self, energy, y, interpolation='linear-linear', filter_id=None):
         self.energy = energy
         self.y = y
         self.id = filter_id
-        self.interpolation = 'linear-linear'
+        self.interpolation = interpolation
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -1936,12 +1936,14 @@ class EnergyFunctionFilter(Filter):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
         string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
+        string += '{: <16}=\t{}\n'.format('\tInterpolation', self.interpolation)
         return hash(string)
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
         string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
+        string += '{: <16}=\t{}\n'.format('\tInterpolation', self.interpolation)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 

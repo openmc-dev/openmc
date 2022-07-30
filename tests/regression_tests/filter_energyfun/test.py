@@ -39,13 +39,20 @@ def model():
     filt2 = openmc.EnergyFunctionFilter.from_tabulated1d(tab1d)
     assert filt1 == filt2, 'Error with the .from_tabulated1d constructor'
 
+    filt3 = openmc.EnergyFunctionFilter(x, y)
+    filt3.interpolation = 'log-log'
+    print(filt3)
+
     # Make tallies
-    tallies = [openmc.Tally(), openmc.Tally()]
+    tallies = [openmc.Tally(), openmc.Tally(), openmc.Tally()]
     for t in tallies:
         t.scores = ['(n,gamma)']
         t.nuclides = ['Am241']
     tallies[1].filters = [filt1]
+    tallies[2].filters = [filt3]
     model.tallies.extend(tallies)
+
+
 
     return model
 
@@ -75,7 +82,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         model_tally = self._model.tallies[1]
         model_filt = model_tally.find_filter(openmc.EnergyFunctionFilter)
 
-        assert sp_filt.interpolation == model_filt.interpolation
+        assert sp_filt.interpolation == 'linear-linear'
         assert all(sp_filt.energy == model_filt.energy)
         assert all(sp_filt.y == model_filt.y)
 

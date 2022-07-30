@@ -61,6 +61,24 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         # Output the tally in a Pandas DataFrame.
         return br_tally.get_pandas_dataframe().to_string() + '\n'
 
+    def _compare_results(self):
+        super()._compare_results()
+
+        # Read the statepoint file.
+        sp = openmc.StatePoint(self._sp_name)
+
+        # check that values are round-tripped correctly from
+        # the statepoint file
+        sp_tally = sp.get_tally(id=2)
+        sp_filt = sp_tally.find_filter(openmc.EnergyFunctionFilter)
+
+        model_tally = self._model.tallies[1]
+        model_filt = model_tally.find_filter(openmc.EnergyFunctionFilter)
+
+        assert sp_filt.interpolation == model_filt.interpolation
+        assert all(sp_filt.energy == model_filt.energy)
+        assert all(sp_filt.y == model_filt.y)
+
 
 def test_filter_energyfun(model):
     harness = FilterEnergyFunHarness('statepoint.5.h5', model)

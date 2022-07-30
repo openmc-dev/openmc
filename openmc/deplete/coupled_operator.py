@@ -191,6 +191,13 @@ class CoupledOperator(OpenMCOperator):
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
+        # warn of name change
+        warn(
+            "The Operator(...) class has been renamed and will "
+            "be removed in a future version of OpenMC. Use "
+            "CoupledOperator(...) instead.",
+            FutureWarning
+        )
         # check for old call to constructor
         if isinstance(model, openmc.Geometry):
             msg = "As of version 0.13.0 openmc.deplete.CoupledOperator " \

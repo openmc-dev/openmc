@@ -60,11 +60,17 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         # Read the statepoint file.
         sp = openmc.StatePoint(self._sp_name)
 
+        dataframes_string = ""
         # Use tally arithmetic to compute the branching ratio.
         br_tally = sp.tallies[2] / sp.tallies[1]
+        dataframes_string += br_tally.get_pandas_dataframe().to_string() + '\n'
+
+        # Write out the log-log interpolation as well
+        log_tally = sp.tallies[3]
+        dataframes_string += log_tally.get_pandas_dataframe().to_string() + '\n'
 
         # Output the tally in a Pandas DataFrame.
-        return br_tally.get_pandas_dataframe().to_string() + '\n'
+        return dataframes_string
 
     def _compare_results(self):
         super()._compare_results()
@@ -95,7 +101,6 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         assert sp_log_log_filt.interpolation == 'log-log'
         assert all(sp_log_log_filt.energy == model_log_log_filt.energy)
         assert all(sp_log_log_filt.y == model_log_log_filt.y)
-
 
         # because the values of y are monotonically increasing,
         # we expect the log-log tally to have a higher value

@@ -234,7 +234,7 @@ of FPY:
    Only applicable to transport-coupled depletion
 
 The method for transport-coupled depletion can be selected through the
-``fission_yield_mode`` argument to the :class:`openmc.deplete.Operator`
+``fission_yield_mode`` argument to the :class:`openmc.deplete.CoupledOperator`
 constructor.
 
 Power Normalization
@@ -246,8 +246,8 @@ compute an absolute reaction rate in reactions per second. To do so, the
 reaction rates are normalized based on a specified power. A complete
 description of how this normalization can be performed is described in
 :ref:`usersguide_tally_normalization`. Here, we simply note that the main
-depletion class, :class:`openmc.deplete.Operator`, allows the user to choose
-one of two methods for estimating the heating rate, including:
+depletion class, :class:`openmc.deplete.CoupledOperator`, allows the user to
+choose one of two methods for estimating the heating rate, including:
 
 1. Using fixed Q values from a depletion chain file (useful for comparisons to
    other codes that use fixed Q values), or
@@ -255,4 +255,4 @@ one of two methods for estimating the heating rate, including:
    energy-dependent estimate of the true heating rate.
 
 The method for normalization can be chosen through the ``normalization_mode``
-argument to the :class:`openmc.deplete.Operator` class.
+argument to the :class:`openmc.deplete.CoupledOperator` class.

@@ -18,8 +18,8 @@ are:
 The former is responsible for obtaining transmuation reaction rates. The latter
 is responsible for projecting reaction rates and compositions forward in
 calendar time across some step size :math:`\Delta t`, and obtaining new
-compositions given a power or power density. The :class:`Operator` class is
-provided to obtain reaction rates via tallies through OpenMC's transport
+compositions given a power or power density. The :class:`CoupledOperator` class
+is provided to obtain reaction rates via tallies through OpenMC's transport
 solver, and the :class:`IndependentOperator` class is provided to obtain
 reaction rates from cross-section data. Several classes are provided that
 implement different time-integration algorithms for depletion calculations,
@@ -49,11 +49,11 @@ provided by OpenMC are available using the following classes:
    :nosignatures:
    :template: mycallable.rst
 
-   Operator
+   CoupledOperator
    IndependentOperator
 
-The :class:`Operator` and :class:`IndependentOperator` classes must also have
-some knowledge of how nuclides transmute and decay. This is handled by the 
+The :class:`CoupledOperator` and :class:`IndependentOperator` classes must also
+have some knowledge of how nuclides transmute and decay. This is handled by the 
 :class:`Chain`.
 
 Minimal Example
@@ -71,7 +71,7 @@ A minimal example for performing depletion would be:
 
     # Representation of a depletion chain
     >>> chain_file = "chain_casl.xml"
-    >>> operator = openmc.deplete.Operator(
+    >>> operator = openmc.deplete.CoupledOperator(
     ...     model, chain_file)
 
     # Set up 5 time steps of one day each
@@ -177,7 +177,7 @@ with :func:`cram.CRAM48` being the default.
    :class:`multiprocessing.pool.Pool` class. If set to ``None`` (default), the
    number returned by :func:`os.cpu_count` is used.
 
-The following classes are used to help the :class:`openmc.deplete.Operator`
+The following classes are used to help the :class:`openmc.deplete.CoupledOperator`
 compute quantities like effective fission yields, reaction rates, and
 total system energy.
 
@@ -194,6 +194,8 @@ total system energy.
    helpers.FissionYieldCutoffHelper
    helpers.FluxCollapseHelper
 
+The :class:`openmc.deplete.IndependentOperator` uses inner class subclassed from
+those listed to perform similar calculations.
 
 Intermediate Classes
 --------------------

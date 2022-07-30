@@ -30,7 +30,7 @@ from .helpers import (
     SourceRateHelper, FluxCollapseHelper)
 
 
-__all__ = ["Operator", "OperatorResult"]
+__all__ = ["CoupledOperator", "Operator", "OperatorResult"]
 
 
 def _find_cross_sections(model):
@@ -56,13 +56,13 @@ def _find_cross_sections(model):
     return cross_sections
 
 
-class Operator(OpenMCOperator):
-    """OpenMC transport operator for depletion.
+class CoupledOperator(OpenMCOperator):
+    """Transport-coupled operator for depletion.
 
-    Instances of this class can be used to perform depletion using OpenMC as the
-    transport operator. Normally, a user needn't call methods of this class
-    directly. Instead, an instance of this class is passed to an integrator
-    class, such as :class:`openmc.deplete.CECMIntegrator`.
+    Instances of this class can be used to perform transport-coupled depletion
+    using OpenMC's transport solver. Normally, a user needn't call methods of
+    this class directly. Instead, an instance of this class is passed to an
+    integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
 
     .. versionchanged:: 0.13.0
         The geometry and settings parameters have been replaced with a
@@ -193,11 +193,11 @@ class Operator(OpenMCOperator):
                  reduce_chain=False, reduce_chain_level=None):
         # check for old call to constructor
         if isinstance(model, openmc.Geometry):
-            msg = "As of version 0.13.0 openmc.deplete.Operator requires an " \
-                "openmc.Model object rather than the openmc.Geometry and " \
-                "openmc.Settings parameters. Please use the geometry and " \
-                "settings objects passed here to create a model with which " \
-                "to generate the depletion Operator."
+            msg = "As of version 0.13.0 openmc.deplete.CoupledOperator " \
+                "requires an openmc.Model object rather than the " \
+                "openmc.Geometry and openmc.Settings parameters. Please use " \
+                "the geometry and settings objects passed here to create a " \
+                " model with which to generate the depletion Operator."
             raise TypeError(msg)
 
         # Determine cross sections / depletion chain
@@ -516,3 +516,6 @@ class Operator(OpenMCOperator):
         """Finalize a depletion simulation and release resources."""
         if self.cleanup_when_done:
             openmc.lib.finalize()
+
+# Retain deprecated name for the time being
+Operator = CoupledOperator

@@ -1,5 +1,5 @@
 """
-Class for normalizing fission energy deposition
+Classes for collecting and calculating quantities for reaction rate operators
 """
 import bisect
 from abc import abstractmethod

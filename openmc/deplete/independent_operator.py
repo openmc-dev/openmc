@@ -1,4 +1,4 @@
-"""Independent depletion operator
+"""Transport-independent operator for depletion.
 
 This module implements a depletion operator that runs independently of any
 transport solver by using user-provided one-group cross sections.

@@ -41,7 +41,6 @@ def model():
 
     filt3 = openmc.EnergyFunctionFilter(x, y)
     filt3.interpolation = 'log-log'
-    print(filt3)
 
     # Make tallies
     tallies = [openmc.Tally(), openmc.Tally(), openmc.Tally()]

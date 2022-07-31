@@ -25,7 +25,7 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
 
   auto y = get_node_array<double>(node, "y");
 
-  // use linear-linear interpolation by default
+  // default to linear-linear interpolation
   interpolation_ = Interpolation::lin_lin;
   if (check_for_node(node, "interpolation")) {
     std::string interpolation = get_node_value(node, "interpolation");

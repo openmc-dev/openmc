@@ -29,6 +29,16 @@
     <y>0.1 0.1 0.1333 0.158 0.18467 0.25618 0.4297 0.48 0.48</y>
     <interpolation>log-log</interpolation>
   </filter>
+  <filter id="4" type="energyfunction">
+    <energy>1e-05 0.369 1000.0 100000.0 600000.0 1000000.0 2000000.0 4000000.0 30000000.0</energy>
+    <y>0.1 0.1 0.1333 0.158 0.18467 0.25618 0.4297 0.48 0.48</y>
+    <interpolation>linear-log</interpolation>
+  </filter>
+  <filter id="5" type="energyfunction">
+    <energy>1e-05 0.369 1000.0 100000.0 600000.0 1000000.0 2000000.0 4000000.0 30000000.0</energy>
+    <y>0.1 0.1 0.1333 0.158 0.18467 0.25618 0.4297 0.48 0.48</y>
+    <interpolation>log-linear</interpolation>
+  </filter>
   <tally id="1">
     <nuclides>Am241</nuclides>
     <scores>(n,gamma)</scores>
@@ -40,6 +50,16 @@
   </tally>
   <tally id="3">
     <filters>3</filters>
+    <nuclides>Am241</nuclides>
+    <scores>(n,gamma)</scores>
+  </tally>
+  <tally id="4">
+    <filters>4</filters>
+    <nuclides>Am241</nuclides>
+    <scores>(n,gamma)</scores>
+  </tally>
+  <tally id="5">
+    <filters>5</filters>
     <nuclides>Am241</nuclides>
     <scores>(n,gamma)</scores>
   </tally>

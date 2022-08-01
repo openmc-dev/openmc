@@ -3,6 +3,7 @@
 #include <fmt/core.h>
 
 #include "openmc/error.h"
+#include "openmc/interpolate.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/xml_interface.h"
@@ -31,12 +32,15 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
     std::string interpolation = get_node_value(node, "interpolation");
     if (interpolation == "linear-linear") {
       interpolation_ = Interpolation::lin_lin;
+    } else if (interpolation == "linear-log") {
+      interpolation_ = Interpolation::lin_log;
+    } else if (interpolation == "log-linear") {
+      interpolation_ = Interpolation::log_lin;
     } else if (interpolation == "log-log") {
       interpolation_ = Interpolation::log_log;
     } else {
       fatal_error(fmt::format(
-        "Invalid interpolation type '{}' specified on EnergyFunctionFilter {}. "
-        "Must be 'linear-linear' or 'log-log'.",
+        "Found invalid interpolation type '{}' on EnergyFunctionFilter {}.",
         interpolation, id()));
     }
   }
@@ -77,12 +81,20 @@ void EnergyFunctionFilter::get_all_bins(
     double f, w;
     switch (interpolation_) {
     case Interpolation::lin_lin:
-      f = (p.E_last() - energy_[i]) / (energy_[i + 1] - energy_[i]);
-      w = (1 - f) * y_[i] + f * y_[i + 1];
+      w = interpolate_lin_lin(
+        energy_[i], energy_[i + 1], y_[i], y_[i + 1], p.E_last());
+      break;
+    case Interpolation::lin_log:
+      w = interpolate_lin_log(
+        energy_[i], energy_[i + 1], y_[i], y_[i + 1], p.E_last());
+      break;
+    case Interpolation::log_lin:
+      w = interpolate_log_lin(
+        energy_[i], energy_[i + 1], y_[i], y_[i + 1], p.E_last());
       break;
     case Interpolation::log_log:
-      f = log(p.E_last() / energy_[i]) / log(energy_[i + 1] / energy_[i]);
-      w = y_[i] * exp(f * log(y_[i + 1] / y_[i]));
+      w = interpolate_log_log(
+        energy_[i], energy_[i + 1], y_[i], y_[i + 1], p.E_last());
       break;
     default:
       fatal_error(fmt::format(

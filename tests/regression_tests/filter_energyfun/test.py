@@ -32,7 +32,7 @@ def model():
 
     with pytest.raises(ValueError):
         filt1.interpolation = '5th order polynomial'
-    
+
     # Also make a filter with the .from_tabulated1d constructor.  Make sure
     # the filters are identical.
     tab1d = openmc.data.Tabulated1D(x, y)
@@ -42,13 +42,22 @@ def model():
     filt3 = openmc.EnergyFunctionFilter(x, y)
     filt3.interpolation = 'log-log'
 
+    filt4 = openmc.EnergyFunctionFilter(x , y)
+    filt4.interpolation = 'linear-log'
+
+    filt5 = openmc.EnergyFunctionFilter(x, y)
+    filt5.interpolation = 'log-linear'
+
+    filters = [filt1, filt3, filt4, filt5]
     # Make tallies
-    tallies = [openmc.Tally(), openmc.Tally(), openmc.Tally()]
+    tallies = [openmc.Tally() for i in range(5)]
     for t in tallies:
         t.scores = ['(n,gamma)']
         t.nuclides = ['Am241']
-    tallies[1].filters = [filt1]
-    tallies[2].filters = [filt3]
+
+    for t, f in zip(tallies[1:], filters):
+        t.filters = [f]
+
     model.tallies.extend(tallies)
 
     return model
@@ -64,9 +73,11 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         br_tally = sp.tallies[2] / sp.tallies[1]
         dataframes_string += br_tally.get_pandas_dataframe().to_string() + '\n'
 
-        # Write out the log-log interpolation as well
-        log_tally = sp.tallies[3]
-        dataframes_string += log_tally.get_pandas_dataframe().to_string() + '\n'
+
+        for t_id in (3, 4, 5):
+            # Write out the log-log interpolation as well
+            ef_tally = sp.tallies[t_id]
+            dataframes_string += ef_tally.get_pandas_dataframe().to_string() + '\n'
 
         # Output the tally in a Pandas DataFrame.
         return dataframes_string
@@ -78,7 +89,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         sp = openmc.StatePoint(self._sp_name)
 
         # statepoint file round-trip checks
-        
+
         # linear-linear interpolation tally
         sp_lin_lin_tally = sp.get_tally(id=2)
         sp_lin_lin_filt = sp_lin_lin_tally.find_filter(openmc.EnergyFunctionFilter)
@@ -104,6 +115,14 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         # because the values of y are monotonically increasing,
         # we expect the log-log tally to have a higher value
         assert all(sp_lin_lin_tally.mean < sp_log_log_tally.mean)
+
+        sp_lin_log_tally = self._model.tallies[3]
+        sp_lin_log_filt = sp_lin_log_tally.find_filter(openmc.EnergyFunctionFilter)
+        assert sp_lin_log_filt.interpolation == 'linear-log'
+
+        sp_log_lin_tally = self._model.tallies[4]
+        sp_log_lin_filt = sp_log_lin_tally.find_filter(openmc.EnergyFunctionFilter)
+        assert sp_log_lin_filt.interpolation == 'log-linear'
 
 
 def test_filter_energyfun(model):

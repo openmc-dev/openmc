@@ -12,6 +12,7 @@ import pandas as pd
 import openmc
 import openmc.checkvalue as cv
 from .cell import Cell
+from .data.function import INTERPOLATION_SCHEME
 from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
@@ -1877,7 +1878,6 @@ class EnergyFunctionFilter(Filter):
         A grid of interpolant values in [eV]
     interpolation : str
         The type of interpolation to be used.
-        One of ('linear-linear', 'log-log')
     filter_id : int
         Unique identifier for the filter
 
@@ -1889,7 +1889,6 @@ class EnergyFunctionFilter(Filter):
         A grid of interpolant values in [eV]
     interpolation : str
         The type of interpolation to be used.
-        One of ('linear-linear', 'log-log')
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -1958,7 +1957,7 @@ class EnergyFunctionFilter(Filter):
                              + group['type'][()].decode() + " instead")
 
         energy = group['energy'][()]
-        y = group['y'][()]            
+        y = group['y'][()]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
         out = cls(energy, y, filter_id=filter_id)
@@ -2045,7 +2044,7 @@ class EnergyFunctionFilter(Filter):
     @interpolation.setter
     def interpolation(self, val):
         cv.check_type('interpolation', val, str)
-        cv.check_value('interpolation', val, ('linear-linear', 'log-log'))
+        cv.check_value('interpolation', val, INTERPOLATION_SCHEME.values())
         self._interpolation = val
 
     def to_xml_element(self):
@@ -2076,11 +2075,11 @@ class EnergyFunctionFilter(Filter):
     def from_xml_element(cls, elem, **kwargs):
         filter_id = int(elem.get('id'))
         energy = [float(x) for x in get_text(elem, 'energy').split()]
-        y = [float(x) for x in get_text(elem, 'y').split()]     
+        y = [float(x) for x in get_text(elem, 'y').split()]
         out = cls(energy, y, filter_id=filter_id)
         if elem.find('interpolation') is not None:
             out.interpolation = elem.find('interpolation')
-        return out 
+        return out
 
     def can_merge(self, other):
         return False

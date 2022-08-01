@@ -47,6 +47,4 @@ def test_from_model(model):
     ref_xs = MicroXS.from_csv('test_reference.csv')
     test_xs = MicroXS.from_model(model, model.materials[0])
 
-    assert ref_xs._units == test_xs._units
     np.testing.assert_allclose(test_xs, ref_xs, rtol=1e-11)
-

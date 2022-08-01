@@ -38,6 +38,12 @@
 namespace openmc {
 
 //==============================================================================
+// Constants
+//==============================================================================
+
+enum class ElementType { UNSUPPORTED=-1, LINEAR_TET, LINEAR_HEX };
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -486,6 +492,23 @@ public:
   //! \return The centroid of the bin
   virtual Position centroid(int bin) const = 0;
 
+  //! Get the number of vertices in the mesh
+  //
+  //! \return Number of vertices
+  virtual int n_vertices() const = 0;
+
+  //! Retrieve a vertex of the mesh
+  //
+  //! \param[in] vertex ID
+  //! \return vertex coordinates
+  virtual Position vertex(int id) const = 0;
+
+  //! Retrieve connectivity of a mesh element
+  //
+  //! \param[in] element ID
+  //! \return element connectivity as IDs of the vertices
+  virtual std::vector<int> connectivity(int id) const = 0;
+
   //! Get the volume of a mesh bin
   //
   //! \param[in] bin Bin to return the volume for
@@ -558,6 +581,12 @@ public:
 
   Position centroid(int bin) const override;
 
+  int n_vertices() const override;
+
+  Position vertex(int id) const override;
+
+  std::vector<int> connectivity(int id) const override;
+
   double volume(int bin) const override;
 
 private:
@@ -622,6 +651,9 @@ private:
   //! \return MOAB EntityHandle of tet
   moab::EntityHandle get_ent_handle_from_bin(int bin) const;
 
+  //! Get a vertex index into the global range from a handle
+  int get_vert_idx_from_handle(moab::EntityHandle vert) const;
+
   //! Get the bin for a given mesh cell index
   //
   //! \param[in] idx Index of the mesh cell.
@@ -656,6 +688,7 @@ private:
 
   // Data members
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
+  moab::Range verts_; //!< Range of vertex EntityHandle's in the mesh
   moab::EntityHandle tetset_;      //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
   std::shared_ptr<moab::Interface> mbi_;    //!< MOAB instance
@@ -702,6 +735,12 @@ public:
   void write(const std::string& base_filename) const override;
 
   Position centroid(int bin) const override;
+
+  int n_vertices() const override;
+
+  Position vertex(int id) const override;
+
+  std::vector<int> connectivity(int id) const override;
 
   double volume(int bin) const override;
 

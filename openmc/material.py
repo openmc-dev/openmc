@@ -408,6 +408,8 @@ class Material(IDManagerMixin):
     def add_components(self, components: dict, percent_type: str = 'ao'):
         """ Add multiple elements or nuclides to a material
 
+        .. versionadded:: 0.13.1
+
         Parameters
         ----------
         components : dict of str to float or dict
@@ -442,17 +444,14 @@ class Material(IDManagerMixin):
                     raise ValueError("An entry in the dictionary does not have "
                                      "a required key: 'percent'")
 
-            percent = params.pop('percent')
-            args = (percent, percent_type)
+            params['percent_type'] = percent_type
 
             ## check if nuclide
             if str.isdigit(component[-1]):
-                self.add_nuclide(component, *args)
+                self.add_nuclide(component, **params)
             else: # is element
                 kwargs = params
-                self.add_element(component, *args, **kwargs)
-
-            params['percent'] = percent
+                self.add_element(component, **params)
 
     def remove_nuclide(self, nuclide: str):
         """Remove a nuclide from the material

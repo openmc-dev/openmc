@@ -54,7 +54,6 @@ def test_csv():
     ref_xs = MicroXS.from_csv(ONE_GROUP_XS)
     ref_xs.to_csv('temp_xs.csv')
     temp_xs = MicroXS.from_csv('temp_xs.csv')
-    assert ref_xs._units == temp_xs._units
     assert np.all(ref_xs == temp_xs)
     remove('temp_xs.csv')
 

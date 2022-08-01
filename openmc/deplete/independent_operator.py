@@ -129,7 +129,6 @@ class IndependentOperator(OpenMCOperator):
                          'fission_yield_opts': fission_yield_opts}
 
         cross_sections = micro_xs * 1e-24
-        cross_sections._units = 'cm^2'
         super().__init__(
             materials,
             cross_sections,

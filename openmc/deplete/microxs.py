@@ -111,7 +111,8 @@ class MicroXS(DataFrame):
             :data:`openmc.deplete.chain.REACTIONS`
         data : ndarray of floats
             Array containing one-group microscopic cross section values for
-            each nuclide and reaction
+            each nuclide and reaction. Cross section values are assumed to be
+            in [b].
 
         Returns
         -------
@@ -128,7 +129,6 @@ class MicroXS(DataFrame):
         cls._validate_micro_xs_inputs(
             nuclides, reactions, data)
         micro_xs = cls(index=nuclides, columns=reactions, data=data)
-        micro_xs._units = 'b'
 
         return micro_xs
 
@@ -141,9 +141,7 @@ class MicroXS(DataFrame):
         ----------
         csv_file : str
             Relative path to csv-file containing microscopic cross section
-            data.
-        units : {'b', 'cm^2'}
-            Units of the cross section values in the ``.csv`` file
+            data. Cross section values are assumed to be in [b]
         **kwargs : dict
             Keyword arguments to pass to :func:`pandas.read_csv()`.
 
@@ -160,8 +158,6 @@ class MicroXS(DataFrame):
         cls._validate_micro_xs_inputs(list(micro_xs.index),
                                       list(micro_xs.columns),
                                       micro_xs.to_numpy())
-        micro_xs._units = 'b'
-
         return micro_xs
 
     @staticmethod

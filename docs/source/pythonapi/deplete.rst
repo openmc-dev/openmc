@@ -15,7 +15,7 @@ are:
     1) A depletion operator
     2) A time-integration scheme
 
-The former is responsible for calcuating retaining important information required for depletion. The most common examples are reaction rates and power
+The former is responsible for calcuating and retaining important information required for depletion. The most common examples are reaction rates and power
 normalization data. The latter is responsible for projecting reaction rates and
 compositions forward in calendar time across some step size :math:`\Delta t`,
 and obtaining new compositions given a power or power density. The
@@ -194,8 +194,8 @@ total system energy.
    helpers.FissionYieldCutoffHelper
    helpers.FluxCollapseHelper
 
-The :class:`openmc.deplete.IndependentOperator` uses inner class subclassed from
-those listed to perform similar calculations.
+The :class:`openmc.deplete.IndependentOperator` uses inner classes subclassed 
+from those listed above to perform similar calculations.
 
 Intermediate Classes
 --------------------

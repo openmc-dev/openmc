@@ -231,7 +231,7 @@ of FPY:
    to transport-coupled depletion.
 3. Compute the average energy at which fission events occur and use an effective
    FPY by linearly interpolating between FPY provided at neighboring energies.
-   Only applicable to transport-coupled depletion
+   Only applicable to transport-coupled depletion.
 
 The method for transport-coupled depletion can be selected through the
 ``fission_yield_mode`` argument to the :class:`openmc.deplete.CoupledOperator`

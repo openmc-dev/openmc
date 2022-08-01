@@ -8,7 +8,7 @@ OpenMC supports transport-coupled and transport-independent depletion, or
 burnup, calculations through the :mod:`openmc.deplete` Python module. OpenMC
 uses transmutation reaction rates to solve a set of transmutation equations
 that determine the evolution of nuclide densities within a material. The
-nuclide densities predicted as some future time are then used to determine
+nuclide densities predicted at some future time are then used to determine
 updated reaction rates, and the process is repeated for as many timesteps as
 are requested.
 
@@ -197,8 +197,8 @@ Transport-independent depletion
 
 .. note::
    
-   This feature is still under heavy development and has yet to be verifed
-   code-to-code . API changes and feature additions are possible and likely in
+   This feature is still under heavy development and has yet to be rigorously 
+   verified. API changes and feature additions are possible and likely in
    the near future.
 
 This category of operator uses pre-calculated one-group microscopic cross
@@ -282,7 +282,7 @@ expects the units to be. The :class:`~openmc.deplete.MicroXS` class also include
                      [0.01, 0.5]])
     micro_xs = MicroXS.from_array(nuclides, reactions, data)
 
-.. important ::
+.. important::
 
    Both :meth:`~openmc.deplete.MicroXS.from_csv()` and
    :meth:`~openmc.deplete.MicroXS.from_array()` assume the cross section values 
@@ -306,12 +306,12 @@ normalizing reaction rates:
    ``normalization_mode == source-rate``, and use ``power`` or ``power_density``
    when ``normalization_mode == fission-q``.
 
-1. ``soure-rate`` normalization, which assumes the ``source-rate`` provided by
+1. ``source-rate`` normalization, which assumes the ``source_rate`` provided by
    the time integrator is a flux, and obtains the reaction rates by multiplying
    the cross-sections by the ``source-rate``.
-2. ``fission-q`` normalization, which assumes the ``source-rate`` provided by
-   the time integrator is a power, and obtains the reaction rates by computing a
-   value for the flux based on this power. The general equation for the flux is 
+2. ``fission-q`` normalization, which uses the ``power`` or ``power_density``
+   provided by the time integrator to obtain reaction rates by computing a value
+   for the flux based on this power. The general equation for the flux is 
 
    .. math::
 
@@ -324,8 +324,7 @@ normalizing reaction rates:
    However, there is a method to converge to a more accurate value for flux by
    using substeps during time integration.
    `This paper <https://doi.org/10.1016/j.anucene.2016.05.031>`_ provides a
-   good discussion of this method. Hopefully such a method will be implemented
-   in OpenMC in the near future.
+   good discussion of this method. 
 
 .. warning::
 
@@ -342,7 +341,7 @@ separate with respect to reaction rates. This can be useful for running many
 different cases of a particular scenario. However, running a depletion
 simulation with multiple materials using the ``fission-q`` normalization method
 treats each material as part of the same "reactor" due to how ``fission-q``
-normalization conglomerates energy values from each material to a single value.
+normalization accumulates energy values from each material to a single value.
 This behavior may change in the future.
 
 Time integration

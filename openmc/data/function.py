@@ -13,7 +13,7 @@ from openmc.mixin import EqualityMixin
 from .data import EV_PER_MEV
 
 INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
-                        4: 'log-linear', 5: 'log-log'}
+                        4: 'log-linear', 5: 'log-log', 6 : 'cubic'}
 
 
 def sum_functions(funcs):

@@ -318,7 +318,8 @@ enum class Interpolation {
   lin_lin = 2,
   lin_log = 3,
   log_lin = 4,
-  log_log = 5
+  log_log = 5,
+  cubic = 6
 };
 
 enum class RunMode {

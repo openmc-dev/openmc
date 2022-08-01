@@ -1,6 +1,6 @@
-"""Transport-independent depletion operator.
+"""Transport-independent transport operator for depletion.
 
-This module implements a depletion operator that runs independently of any
+This module implements a transport operator that runs independently of any
 transport solver by using user-provided one-group cross sections.
 
 """
@@ -23,7 +23,7 @@ from .results import Results
 from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateHelper
 
 class IndependentOperator(OpenMCOperator):
-    """Transport-independent depletion operator that uses one-group cross
+    """Transport-independent transport operator that uses one-group cross
     sections to calculate reaction rates.
 
     Instances of this class can be used to perform depletion using one-group

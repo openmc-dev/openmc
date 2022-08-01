@@ -6,7 +6,7 @@ import scipy.sparse as sp
 from uncertainties import ufloat
 
 from openmc.deplete.reaction_rates import ReactionRates
-from openmc.deplete.abc import DepletionOperator, OperatorResult
+from openmc.deplete.abc import TransportOperator, OperatorResult
 from openmc.deplete import (
     CECMIntegrator, PredictorIntegrator, CELIIntegrator, LEQIIntegrator,
     EPCRK4Integrator, CF4Integrator, SICELIIntegrator, SILEQIIntegrator
@@ -117,7 +117,7 @@ class TestChain:
         return sp.csr_matrix(np.array([[a11, a12], [a21, a22]]))
 
 
-class DummyOperator(DepletionOperator):
+class DummyOperator(TransportOperator):
     """This is a dummy operator class with no statistical uncertainty.
 
     y_1' = sin(y_2) y_1 + cos(y_1) y_2

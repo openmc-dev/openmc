@@ -28,7 +28,7 @@ from .pool import deplete
 
 
 __all__ = [
-    "OperatorResult", "DepletionOperator",
+    "OperatorResult", "TransportOperator",
     "ReactionRateHelper", "NormalizationHelper", "FissionYieldHelper",
     "Integrator", "SIIntegrator", "DepSystemSolver", "add_params"]
 
@@ -75,13 +75,13 @@ def change_directory(output_dir):
         os.chdir(orig_dir)
 
 
-class DepletionOperator(ABC):
-    """Abstract class defining a depletion operator
+class TransportOperator(ABC):
+    """Abstract class defining a transport operator
 
     Each depletion integrator is written to work with a generic depletion
     operator that takes a vector of material compositions and returns an
     eigenvalue and reaction rates. This abstract class sets the requirements
-    for such a depletion operator. Users should instantiate
+    for such a transport operator. Users should instantiate
     :class:`openmc.deplete.CoupledOperator` or
     :class:`openmc.deplete.IndependentOperator` rather than this class.
 
@@ -222,10 +222,10 @@ class ReactionRateHelper(ABC):
     ----------
     n_nucs : int
         Number of burnable nuclides tracked by
-        :class:`openmc.deplete.abc.DepletionOperator`
+        :class:`openmc.deplete.abc.TransportOperator`
     n_react : int
         Number of reactions tracked by
-        :class:`openmc.deplete.abc.DepletionOperator`
+        :class:`openmc.deplete.abc.TransportOperator`
 
     Attributes
     ----------
@@ -294,7 +294,7 @@ class NormalizationHelper(ABC):
     """Abstract class for obtaining normalization factor on tallies
 
     This helper class determines how reaction rates calculated by an instance of
-    :class:`openmc.deplete.abc.DepletionOperator` should be normalized for the
+    :class:`openmc.deplete.abc.TransportOperator` should be normalized for the
     purpose of constructing a burnup matrix. Based on the method chosen, the
     power or source rate provided by the user, and reaction rates from a
     :class:`ReactionRateHelper`, this class will scale reaction rates to the
@@ -304,7 +304,7 @@ class NormalizationHelper(ABC):
     ----------
     nuclides : list of str
         All nuclides with desired reaction rates. Ordered to be
-        consistent with :class:`openmc.deplete.abc.DepletionOperator`
+        consistent with :class:`openmc.deplete.abc.TransportOperator`
 
     """
 
@@ -319,7 +319,7 @@ class NormalizationHelper(ABC):
         """Perform work needed to obtain energy produced
 
         This method is called prior to calculating the reaction rates
-        in :meth:`openmc.deplete.abc.DepletionOperator.initial_condition`. Only
+        in :meth:`openmc.deplete.abc.TransportOperator.initial_condition`. Only
         used for energy-based normalization.
 
         Parameters
@@ -433,7 +433,7 @@ class FissionYieldHelper(ABC):
     def unpack():
         """Unpack tally data prior to compute fission yields.
 
-        Called after a :meth:`openmc.deplete.abc.DepletionOperator.__call__`
+        Called after a :meth:`openmc.deplete.abc.TransportOperator.__call__`
         routine during the normalization of reaction rates.
 
         Not necessary for all subclasses to implement, unless tallies
@@ -466,13 +466,13 @@ class FissionYieldHelper(ABC):
         ----------
         nuclides : iterable of str
             Nuclides with non-zero densities from the
-            :class:`openmc.deplete.abc.DepletionOperator`
+            :class:`openmc.deplete.abc.TransportOperator`
 
         Returns
         -------
         nuclides : list of str
             Union of nuclides that the
-            :class:`openmc.deplete.abc.DepletionOperator` says have non-zero
+            :class:`openmc.deplete.abc.TransportOperator` says have non-zero
             densities at this stage and those that have yield data. Sorted by
             nuclide name
 
@@ -488,7 +488,7 @@ class FissionYieldHelper(ABC):
 
         Parameters
         ----------
-        operator : openmc.deplete.abc.DepletionOperator
+        operator : openmc.deplete.abc.TransportOperator
             Operator with a depletion chain
         kwargs: optional
             Additional keyword arguments to be used in constuction
@@ -509,8 +509,8 @@ class Integrator(ABC):
     _params = r"""
     Parameters
     ----------
-    operator : openmc.deplete.abc.DepletionOperator
-        Operator that calculates reaction rates
+    operator : openmc.deplete.abc.TransportOperator
+        Operator to perform transport simulations
     timesteps : iterable of float or iterable of tuple
         Array of timesteps. Note that values are not cumulative. The units are
         specified by the `timestep_units` argument when `timesteps` is an
@@ -552,8 +552,8 @@ class Integrator(ABC):
 
     Attributes
     ----------
-    operator : openmc.deplete.abc.DepletionOperator
-        Operator that calculates reaction rates
+    operator : openmc.deplete.abc.TransportOperator
+        Operator to perform transport simulations
     chain : openmc.deplete.Chain
         Depletion chain
     timesteps : iterable of float
@@ -847,8 +847,8 @@ class SIIntegrator(Integrator):
     _params = r"""
     Parameters
     ----------
-    operator : openmc.deplete.abc.DepletionOperator
-        Operator that calculates reaction rates
+    operator : openmc.deplete.abc.TransportOperator
+        Operator to perform transport simulations
     timesteps : iterable of float or iterable of tuple
         Array of timesteps. Note that values are not cumulative. The units are
         specified by the `timestep_units` argument when `timesteps` is an
@@ -893,8 +893,8 @@ class SIIntegrator(Integrator):
 
     Attributes
     ----------
-    operator : openmc.deplete.abc.DepletionOperator
-        Operator that calculates reaction rates
+    operator : openmc.deplete.abc.TransportOperator
+        Operator to perform transport simulations
     chain : openmc.deplete.Chain
         Depletion chain
     timesteps : iterable of float

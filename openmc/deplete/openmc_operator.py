@@ -1,7 +1,7 @@
 """OpenMC transport operator
 
 This module implements functions shared by both OpenMC transport-coupled and
-transport-independent depletion operators.
+transport-independent transport operators.
 
 """
 
@@ -12,7 +12,7 @@ import numpy as np
 
 import openmc
 from openmc.mpi import comm
-from .abc import DepletionOperator, OperatorResult
+from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
 
@@ -42,7 +42,7 @@ def _distribute(items):
         j += chunk_size
 
 
-class OpenMCOperator(DepletionOperator):
+class OpenMCOperator(TransportOperator):
     """Abstract class holding OpenMC-specific functions for running
     depletion calculations.
 

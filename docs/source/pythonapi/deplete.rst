@@ -12,7 +12,7 @@ Primary API
 The two primary requirements to perform depletion with :mod:`openmc.deplete`
 are:
 
-    1) A depletion operator
+    1) A transpor operator
     2) A time-integration scheme
 
 The former is responsible for calcuating and retaining important information required for depletion. The most common examples are reaction rates and power
@@ -41,8 +41,8 @@ algorithms <http://hdl.handle.net/1721.1/113721>`_.
     SICELIIntegrator
     SILEQIIntegrator
 
-Each of these classes expects a "depletion operator" to be passed. OpenMC
-provides The following classes implementing depletion operators:
+Each of these classes expects a "transport operator" to be passed. OpenMC
+provides The following classes implementing transpor operators:
 
 .. autosummary::
    :toctree: generated
@@ -214,7 +214,7 @@ are stored in :class:`helpers.TalliedFissionYieldHelper`
 
    helpers.TalliedFissionYieldHelper
 
-Methods common to OpenMC-specific implementations of :class:`DepletionOperator`
+Methods common to OpenMC-specific implementations of :class:`TransportOperator`
 are stored in :class:`openmc_operator.OpenMCOperator`
 
 .. autosummary::
@@ -230,7 +230,7 @@ Abstract Base Classes
 
 A good starting point for extending capabilities in :mod:`openmc.deplete` is
 to examine the following abstract base classes. Custom classes can
-inherit from :class:`abc.DepletionOperator` to implement alternative
+inherit from :class:`abc.TransportOperator` to implement alternative
 schemes for collecting reaction rates and other data prior to depleting
 materials
 
@@ -239,12 +239,12 @@ materials
    :nosignatures:
    :template: mycallable.rst
 
-   abc.DepletionOperator
+   abc.TransportOperator
 
 The following classes are abstract classes used to pass information from
 transport simulations (in the case of transport-coupled depletion) or to
 simply calculate these quantities directly (in the case of
-transport-independent depletion) back on to the :class:`abc.DepletionOperator`
+transport-independent depletion) back on to the :class:`abc.TransportOperator`
 
 .. autosummary::
    :toctree: generated

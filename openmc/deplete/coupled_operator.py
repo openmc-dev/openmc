@@ -1,6 +1,6 @@
-"""Transport-coupled operator for depletion.
+"""Transport-coupled transport operator for depletion.
 
-This module implements a depletion operator coupled to OpenMC's transport solver
+This module implements a transport operator coupled to OpenMC's transport solver
 so that it can be used by depletion integrators. The implementation makes use of
 the Python bindings to OpenMC's C API so that reading tally results and updating
 material number densities is all done in-memory instead of through the
@@ -58,7 +58,7 @@ def _find_cross_sections(model):
 
 
 class CoupledOperator(OpenMCOperator):
-    """Transport-coupled depletion operator.
+    """Transport-coupled transport operator.
 
     Instances of this class can be used to perform transport-coupled depletion
     using OpenMC's transport solver. Normally, a user needn't call methods of
@@ -199,7 +199,7 @@ class CoupledOperator(OpenMCOperator):
                 "requires an openmc.Model object rather than the " \
                 "openmc.Geometry and openmc.Settings parameters. Please use " \
                 "the geometry and settings objects passed here to create a " \
-                " model with which to generate the depletion Operator."
+                " model with which to generate the transport Operator."
             raise TypeError(msg)
 
         # Determine cross sections / depletion chain

@@ -150,6 +150,34 @@ private:
                                        //!< each incident energy
 };
 
+//==============================================================================
+//! Mixed coherent/incoherent elastic angle-energy distribution
+//==============================================================================
+
+class MixedElasticAE : public AngleEnergy {
+public:
+  //! Construct from HDF5 file
+  //
+  //! \param[in] group  HDF5 group
+  explicit MixedElasticAE(
+    hid_t group, const CoherentElasticXS& coh_xs, const Function1D& incoh_xs);
+
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
+  //! \param[inout] seed Pseudorandom number seed pointer
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+private:
+  CoherentElasticAE coherent_dist_;         //!< Coherent distribution
+  unique_ptr<AngleEnergy> incoherent_dist_; //!< Incoherent distribution
+
+  const CoherentElasticXS& coherent_xs_; //!< Ref. to coherent XS
+  const Function1D& incoherent_xs_;      //!< Polymorphic ref. to incoherent XS
+};
+
 } // namespace openmc
 
 #endif // OPENMC_SECONDARY_THERMAL_H

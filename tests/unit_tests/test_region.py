@@ -208,3 +208,17 @@ def test_from_expression(reset):
     # Opening parenthesis immediately after halfspace
     r = openmc.Region.from_expression('1(2|-3)', surfs)
     assert str(r) == '(1 (2 | -3))'
+
+
+def test_translate_inplace():
+    sph = openmc.Sphere()
+    x = openmc.XPlane()
+    region = -sph & +x
+
+    # Translating a region should produce new surfaces
+    region2 = region.translate((0.5, -6.7, 3.9), inplace=False)
+    assert str(region) != str(region2)
+
+    # Translating a region in-place should *not* produce new surfaces
+    region3 = region.translate((0.5, -6.7, 3.9), inplace=True)
+    assert str(region) == str(region3)

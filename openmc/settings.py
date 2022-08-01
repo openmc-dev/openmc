@@ -75,7 +75,7 @@ class Settings:
         Maximum number of lost particles
 
         .. versionadded:: 0.12
-    rel_max_lost_particles : int
+    rel_max_lost_particles : float
         Maximum number of lost particles, relative to the total number of particles
 
         .. versionadded:: 0.12
@@ -298,191 +298,191 @@ class Settings:
         self._max_tracks = None
 
     @property
-    def run_mode(self):
+    def run_mode(self) -> str:
         return self._run_mode.value
 
     @property
-    def batches(self):
+    def batches(self) -> int:
         return self._batches
 
     @property
-    def generations_per_batch(self):
+    def generations_per_batch(self) -> int:
         return self._generations_per_batch
 
     @property
-    def inactive(self):
+    def inactive(self) -> int:
         return self._inactive
 
     @property
-    def max_lost_particles(self):
+    def max_lost_particles(self) -> int:
         return self._max_lost_particles
 
     @property
-    def rel_max_lost_particles(self):
+    def rel_max_lost_particles(self) -> float:
         return self._rel_max_lost_particles
 
     @property
-    def particles(self):
+    def particles(self) -> int:
         return self._particles
 
     @property
-    def keff_trigger(self):
+    def keff_trigger(self) -> dict:
         return self._keff_trigger
 
     @property
-    def energy_mode(self):
+    def energy_mode(self) -> str:
         return self._energy_mode
 
     @property
-    def max_order(self):
+    def max_order(self) -> int:
         return self._max_order
 
     @property
-    def source(self):
+    def source(self) -> typing.List[Source]:
         return self._source
 
     @property
-    def confidence_intervals(self):
+    def confidence_intervals(self) -> bool:
         return self._confidence_intervals
 
     @property
-    def electron_treatment(self):
+    def electron_treatment(self) -> str:
         return self._electron_treatment
 
     @property
-    def ptables(self):
+    def ptables(self) -> bool:
         return self._ptables
 
     @property
-    def photon_transport(self):
+    def photon_transport(self) -> bool:
         return self._photon_transport
 
     @property
-    def seed(self):
+    def seed(self) -> int:
         return self._seed
 
     @property
-    def survival_biasing(self):
+    def survival_biasing(self) -> bool:
         return self._survival_biasing
 
     @property
-    def entropy_mesh(self):
+    def entropy_mesh(self) -> RegularMesh:
         return self._entropy_mesh
 
     @property
-    def trigger_active(self):
+    def trigger_active(self) -> bool:
         return self._trigger_active
 
     @property
-    def trigger_max_batches(self):
+    def trigger_max_batches(self) -> int:
         return self._trigger_max_batches
 
     @property
-    def trigger_batch_interval(self):
+    def trigger_batch_interval(self) -> int:
         return self._trigger_batch_interval
 
     @property
-    def output(self):
+    def output(self) -> dict:
         return self._output
 
     @property
-    def sourcepoint(self):
+    def sourcepoint(self) -> dict:
         return self._sourcepoint
 
     @property
-    def statepoint(self):
+    def statepoint(self) -> dict:
         return self._statepoint
 
     @property
-    def surf_source_read(self):
+    def surf_source_read(self) -> dict:
         return self._surf_source_read
 
     @property
-    def surf_source_write(self):
+    def surf_source_write(self) -> dict:
         return self._surf_source_write
 
     @property
-    def no_reduce(self):
+    def no_reduce(self) -> bool:
         return self._no_reduce
 
     @property
-    def verbosity(self):
+    def verbosity(self) -> int:
         return self._verbosity
 
     @property
-    def tabular_legendre(self):
+    def tabular_legendre(self) -> dict:
         return self._tabular_legendre
 
     @property
-    def temperature(self):
+    def temperature(self) -> dict:
         return self._temperature
 
     @property
-    def trace(self):
+    def trace(self) -> typing.Iterable:
         return self._trace
 
     @property
-    def track(self):
+    def track(self) -> typing.Iterable[typing.Iterable[int]]:
         return self._track
 
     @property
-    def cutoff(self):
+    def cutoff(self) -> dict:
         return self._cutoff
 
     @property
-    def ufs_mesh(self):
+    def ufs_mesh(self) -> RegularMesh:
         return self._ufs_mesh
 
     @property
-    def resonance_scattering(self):
+    def resonance_scattering(self) -> dict:
         return self._resonance_scattering
 
     @property
-    def volume_calculations(self):
+    def volume_calculations(self) -> typing.List[VolumeCalculation]:
         return self._volume_calculations
 
     @property
-    def create_fission_neutrons(self):
+    def create_fission_neutrons(self) -> bool:
         return self._create_fission_neutrons
 
     @property
-    def delayed_photon_scaling(self):
+    def delayed_photon_scaling(self) -> bool:
         return self._delayed_photon_scaling
 
     @property
-    def material_cell_offsets(self):
+    def material_cell_offsets(self) -> bool:
         return self._material_cell_offsets
 
     @property
-    def log_grid_bins(self):
+    def log_grid_bins(self) -> int:
         return self._log_grid_bins
 
     @property
-    def event_based(self):
+    def event_based(self) -> bool:
         return self._event_based
 
     @property
-    def max_particles_in_flight(self):
+    def max_particles_in_flight(self) -> int:
         return self._max_particles_in_flight
 
     @property
-    def write_initial_source(self):
+    def write_initial_source(self) -> bool:
         return self._write_initial_source
 
     @property
-    def weight_windows(self):
+    def weight_windows(self) -> typing.List[WeightWindows]:
         return self._weight_windows
 
     @property
-    def weight_windows_on(self):
+    def weight_windows_on(self) -> bool:
         return self._weight_windows_on
 
     @property
-    def max_splits(self):
+    def max_splits(self) -> int:
         return self._max_splits
 
     @property
-    def max_tracks(self):
+    def max_tracks(self) -> int:
         return self._max_tracks
 
     @run_mode.setter
@@ -517,7 +517,7 @@ class Settings:
         self._max_lost_particles = max_lost_particles
 
     @rel_max_lost_particles.setter
-    def rel_max_lost_particles(self, rel_max_lost_particles: int):
+    def rel_max_lost_particles(self, rel_max_lost_particles: float):
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
         cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)

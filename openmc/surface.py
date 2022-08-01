@@ -336,9 +336,9 @@ class Surface(IDManagerMixin, ABC):
         ----------
         vector : iterable of float
             Direction in which surface should be translated
-        inplace : boolean
+        inplace : bool
             Whether or not to return a new instance of this Surface or to
-            modify the coefficients of this Surface. Defaults to False
+            modify the coefficients of this Surface.
 
         Returns
         -------
@@ -374,7 +374,7 @@ class Surface(IDManagerMixin, ABC):
             :math:`\psi` about z. This corresponds to an x-y-z extrinsic
             rotation as well as a z-y'-x'' intrinsic rotation using Tait-Bryan
             angles :math:`(\phi, \theta, \psi)`.
-        inplace : boolean
+        inplace : bool
             Whether or not to return a new instance of Surface or to modify the
             coefficients of this Surface in place. Defaults to False.
 
@@ -568,9 +568,9 @@ class PlaneMixin:
         ----------
         vector : iterable of float
             Direction in which surface should be translated
-        inplace : boolean
+        inplace : bool
             Whether or not to return a new instance of a Plane or to modify the
-            coefficients of this plane. Defaults to False
+            coefficients of this plane.
 
         Returns
         -------
@@ -1012,9 +1012,8 @@ class QuadricMixin:
         ----------
         vector : iterable of float
             Direction in which surface should be translated
-        inplace : boolean
+        inplace : bool
             Whether to return a clone of the Surface or the Surface itself.
-            Defaults to False
 
         Returns
         -------
@@ -2563,7 +2562,7 @@ class Halfspace(Region):
         clone.surface = self.surface.clone(memo)
         return clone
 
-    def translate(self, vector, memo=None):
+    def translate(self, vector, inplace=False, memo=None):
         """Translate half-space in given direction
 
         Parameters
@@ -2585,7 +2584,7 @@ class Halfspace(Region):
         # If translated surface not in memo, add it
         key = (self.surface, tuple(vector))
         if key not in memo:
-            memo[key] = self.surface.translate(vector)
+            memo[key] = self.surface.translate(vector, inplace)
 
         # Return translated half-space
         return type(self)(memo[key], self.side)
@@ -2617,7 +2616,7 @@ class Halfspace(Region):
             :math:`\psi` about z. This corresponds to an x-y-z extrinsic
             rotation as well as a z-y'-x'' intrinsic rotation using Tait-Bryan
             angles :math:`(\phi, \theta, \psi)`.
-        inplace : boolean
+        inplace : bool
             Whether or not to return a new instance of Surface or to modify the
             coefficients of this Surface in place. Defaults to False.
         memo : dict or None

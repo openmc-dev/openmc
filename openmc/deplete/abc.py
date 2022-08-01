@@ -529,8 +529,8 @@ class Integrator(ABC):
         initial heavy metal inventory to get total power if ``power``
         is not specified.
     source_rates : float or iterable of float, optional
-        Source rate in [neutron/sec] or neutron flux in [neut/cm^2-s] for each
-        interval in :attr:`timesteps`
+        Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
+        each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}

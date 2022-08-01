@@ -6,7 +6,6 @@ nuclides names as row indices and reaction names as column indices.
 
 import tempfile
 from pathlib import Path
-from os import chdir
 
 from pandas import DataFrame, read_csv, concat
 from numpy import ndarray
@@ -54,7 +53,8 @@ class MicroXS(DataFrame):
 
         Returns
         -------
-        MicroXS, cross section data in [b]
+        MicroXS
+            Cross section data in [b]
 
         """
         groups = EnergyGroups(energy_bounds)
@@ -73,15 +73,12 @@ class MicroXS(DataFrame):
         model.tallies = tallies
 
         # create temporary run
-        original_dir = Path.cwd()
-        temp_dir = tempfile.TemporaryDirectory()
-        chdir(tempfile.gettempdir())
-        statepoint_path = model.run()
-        chdir(original_dir)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            statepoint_path = model.run(cwd=temp_dir)
 
-        with StatePoint(statepoint_path) as sp:
-            for rxn in xs:
-                xs[rxn].load_from_statepoint(sp)
+            with StatePoint(statepoint_path) as sp:
+                for rxn in xs:
+                    xs[rxn].load_from_statepoint(sp)
 
         # Build the DataFrame
         micro_xs = cls()
@@ -89,7 +86,7 @@ class MicroXS(DataFrame):
             df = xs[rxn].get_pandas_dataframe(xs_type='micro')
             df.index = df['nuclide']
             df.drop(['nuclide', xs[rxn].domain_type, 'group in', 'std. dev.'], axis=1, inplace=True)
-            df.rename({'mean':rxn}, axis=1, inplace=True)
+            df.rename({'mean': rxn}, axis=1, inplace=True)
             micro_xs = concat([micro_xs, df], axis=1)
 
         micro_xs._units = 'b'
@@ -100,7 +97,7 @@ class MicroXS(DataFrame):
         return micro_xs
 
     @classmethod
-    def from_array(cls, nuclides, reactions, data, units='b'):
+    def from_array(cls, nuclides, reactions, data):
         """
         Creates a ``MicroXS`` object from arrays.
 
@@ -115,8 +112,6 @@ class MicroXS(DataFrame):
         data : ndarray of floats
             Array containing one-group microscopic cross section values for
             each nuclide and reaction
-        units : {'b', 'cm^2'}
-            Units of the cross section values in ``data``
 
         Returns
         -------
@@ -133,12 +128,12 @@ class MicroXS(DataFrame):
         cls._validate_micro_xs_inputs(
             nuclides, reactions, data)
         micro_xs = cls(index=nuclides, columns=reactions, data=data)
-        micro_xs._units = units
+        micro_xs._units = 'b'
 
         return micro_xs
 
     @classmethod
-    def from_csv(cls, csv_file, units='b', **kwargs):
+    def from_csv(cls, csv_file, **kwargs):
         """
         Load a ``MicroXS`` object from a ``.csv`` file.
 
@@ -165,7 +160,7 @@ class MicroXS(DataFrame):
         cls._validate_micro_xs_inputs(list(micro_xs.index),
                                       list(micro_xs.columns),
                                       micro_xs.to_numpy())
-        micro_xs._units = units
+        micro_xs._units = 'b'
 
         return micro_xs
 

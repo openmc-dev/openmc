@@ -12,10 +12,11 @@ Primary API
 The two primary requirements to perform depletion with :mod:`openmc.deplete`
 are:
 
-    1) A transpor operator
+    1) A transport operator
     2) A time-integration scheme
 
-The former is responsible for calcuating and retaining important information required for depletion. The most common examples are reaction rates and power
+The former is responsible for calculating and retaining important information
+required for depletion. The most common examples are reaction rates and power
 normalization data. The latter is responsible for projecting reaction rates and
 compositions forward in calendar time across some step size :math:`\Delta t`,
 and obtaining new compositions given a power or power density. The

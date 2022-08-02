@@ -615,7 +615,6 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         Default: 0.0253 [eV]
     fast_energy : float, optional
         Energy of yield data corresponding to fast yields.
-        Default: 500 [KeV]
 
     Attributes
     ----------

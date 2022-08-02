@@ -70,7 +70,7 @@ def test_get_keff(res):
     np.testing.assert_allclose(k[:, 1], u_ref)
 
 
-@pytest.mark.parametrize("unit", ("s", "d", "min", "h", "y"))
+@pytest.mark.parametrize("unit", ("s", "d", "min", "h", "a"))
 def test_get_steps(unit):
     # Make a Results full of near-empty Result instances
     # Just fill out a time schedule

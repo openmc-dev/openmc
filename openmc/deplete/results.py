@@ -16,7 +16,7 @@ __all__ = ["Results", "ResultsList"]
 
 
 def _get_time_as(seconds, units):
-    if units == "y":
+    if units == "a":
         return seconds / (60 * 60 * 24 * 365.25)  # 365.25 due to the leap year
     if units == "d":
         return seconds / (60 * 60 * 24)
@@ -97,7 +97,7 @@ class Results(list):
             Units for the returned concentration. Default is ``"atoms"``
 
             .. versionadded:: 0.12
-        time_units : {"s", "min", "h", "d", "y"}, optional
+        time_units : {"s", "min", "h", "d", "a"}, optional
             Units for the returned time array. Default is ``"s"`` to
             return the value in seconds.
 
@@ -111,7 +111,7 @@ class Results(list):
             Concentration of specified nuclide in units of ``nuc_units``
 
         """
-        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "y"})
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
         cv.check_value("nuc_units", nuc_units,
                     {"atoms", "atom/b-cm", "atom/cm3"})
 
@@ -192,7 +192,7 @@ class Results(list):
 
         Parameters
         ----------
-        time_units : {"s", "d", "min", "h", "y"}, optional
+        time_units : {"s", "d", "min", "h", "a"}, optional
             Desired units for the times array
 
         Returns
@@ -205,7 +205,7 @@ class Results(list):
             1 contains the associated uncertainty
 
         """
-        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "y"})
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
 
         times = np.empty_like(self, dtype=float)
         eigenvalues = np.empty((len(self), 2), dtype=float)
@@ -259,7 +259,7 @@ class Results(list):
 
         Parameters
         ----------
-        time_units : {"s", "d", "min", "h", "y"}, optional
+        time_units : {"s", "d", "min", "h", "a"}, optional
             Return the vector in these units. Default is to
             convert to days
 
@@ -269,7 +269,7 @@ class Results(list):
             1-D vector of time points
 
         """
-        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "y"})
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
 
         times = np.fromiter(
             (r.time[0] for r in self),
@@ -298,7 +298,7 @@ class Results(list):
         ----------
         time : float
             Desired point in time
-        time_units : {"s", "d", "min", "h", "y"}, optional
+        time_units : {"s", "d", "min", "h", "a"}, optional
             Units on ``time``. Default: days
         atol : float, optional
             Absolute tolerance (in ``time_units``) if ``time`` is not

@@ -37,7 +37,8 @@ time::
     time, keff = results.get_keff()
 
 Note that the coupling between the reaction rate solver and the transmutation
-solver happens in-memory rather than by reading/writing files on disk. OpenMC has two categories of transport operators for obtaining transmutation reaction
+solver happens in-memory rather than by reading/writing files on disk. OpenMC
+has two categories of transport operators for obtaining transmutation reaction
 rates. 
 
 .. _coupled-depletion:
@@ -195,7 +196,7 @@ across all material instances.
 Transport-independent depletion
 ===============================
 
-.. note::
+.. warning::
    
    This feature is still under heavy development and has yet to be rigorously 
    verified. API changes and feature additions are possible and likely in
@@ -218,7 +219,7 @@ and a path to a depletion chain file::
     micro_xs = openmc.deplete.MicroXS()
     ...
 
-    op = IndependentOperator(materials, micro_xs, chain_file)
+    op = openmc.deplete.IndependentOperator(materials, micro_xs, chain_file)
 
 .. note::
 
@@ -270,8 +271,10 @@ Users can generate the one-group microscopic cross sections needed by
 
 The :meth:`~openmc.deplete.MicroXS.from_model()` method will produce a
 :class:`~openmc.deplete.MicroXS` object with microscopic cross section data in
-units of ``b``, which is what :class:`~openmc.deplete.IndependentOperator`
-expects the units to be. The :class:`~openmc.deplete.MicroXS` class also includes functions to read in cross section data directly from a ``.csv`` file or from data arrays::
+units of barns, which is what :class:`~openmc.deplete.IndependentOperator`
+expects the units to be. The :class:`~openmc.deplete.MicroXS` class also
+includes functions to read in cross section data directly from a ``.csv`` file
+or from data arrays::
 
     micro_xs = MicroXS.from_csv(micro_xs_path)
 

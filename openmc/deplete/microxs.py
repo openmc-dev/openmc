@@ -89,8 +89,6 @@ class MicroXS(DataFrame):
             df.rename({'mean': rxn}, axis=1, inplace=True)
             micro_xs = concat([micro_xs, df], axis=1)
 
-        micro_xs._units = 'b'
-
         # Revert to the original tallies
         model.tallies = original_tallies
 

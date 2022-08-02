@@ -78,7 +78,7 @@ def change_directory(output_dir):
 class TransportOperator(ABC):
     """Abstract class defining a transport operator
 
-    Each depletion integrator is written to work with a generic depletion
+    Each depletion integrator is written to work with a generic transport
     operator that takes a vector of material compositions and returns an
     eigenvalue and reaction rates. This abstract class sets the requirements
     for such a transport operator. Users should instantiate
@@ -604,7 +604,7 @@ class Integrator(ABC):
             else:
                 source_rates = [p*operator.heavy_metal for p in power_density]
         elif source_rates is None:
-            raise ValueError("Either power, power_density, source_rates must be set")
+            raise ValueError("Either power, power_density, or source_rates must be set")
 
         if not isinstance(source_rates, Iterable):
             # Ensure that rate is single value if that is the case

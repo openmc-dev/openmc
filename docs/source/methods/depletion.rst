@@ -108,7 +108,8 @@ transport-coupled depletion, the expense is driven almost entirely by the time
 to compute a transport solution, i.e., to evaluate :math:`\mathbf{A}` for a
 given :math:`\mathbf{n}`. Thus, the cost of a method scales with the number of
 :math:`\mathbf{A}` evaluations that are performed per timestep. On the other
-hand, methods that require more evaluations generally achieve higher accuracy. The predictor method only requires one evaluation and its error converges as
+hand, methods that require more evaluations generally achieve higher accuracy.
+The predictor method only requires one evaluation and its error converges as
 :math:`\mathcal{O}(h)`. The CE/CM method requires two evaluations and is thus
 twice as expensive as the predictor method, but achieves an error of
 :math:`\mathcal{O}(h^2)`. An exhaustive description of time integration methods

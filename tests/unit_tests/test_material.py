@@ -481,12 +481,16 @@ def test_activity_of_stable():
 
 
 def test_activity_of_tritium():
-    """Checks that 1g of tritium has the correct activity"""
+    """Checks that 1g of tritium has the correct activity activity scaling"""
     m1 = openmc.Material()
     m1.add_nuclide("H3", 1)
     m1.set_density('g/cm3', 1)
     m1.volume = 1
     assert pytest.approx(m1.activity) == 3.559778e14
+    m1.set_density('g/cm3', 2)
+    assert pytest.approx(m1.activity) == 3.559778e14*2
+    m1.volume = 3
+    assert pytest.approx(m1.activity) == 3.559778e14*2*3
 
 
 def test_activity_of_metastable():
@@ -499,18 +503,9 @@ def test_activity_of_metastable():
 
 
 def test_specific_activity_of_tritium():
-    """Checks that specific activity stays the same for all volumes and
-    densities while activity changes proportionally to mass"""
+    """Checks that specific activity of tritium is correct"""
     m1 = openmc.Material()
     m1.add_nuclide("H3", 1)
     m1.set_density('g/cm3', 1)
-    m1.volume = 1
-    # activity and specific_activity are initially the same as we have 1g
-    assert pytest.approx(m1.specific_activity) == 3.559778e14
-    assert pytest.approx(m1.activity) == 3.559778e14
-    m1.set_density('g/cm3', 2)
-    assert pytest.approx(m1.specific_activity) == 3.559778e14
-    assert pytest.approx(m1.activity) == 3.559778e14*2
-    m1.volume = 3
-    assert pytest.approx(m1.specific_activity) == 3.559778e14
-    assert pytest.approx(m1.activity) == 3.559778e14*2*3
+    assert m1.specific_activity == 355978108155965.9
+    assert m1.get_nuclide_specific_activity() == {"H3": 355978108155965.9}

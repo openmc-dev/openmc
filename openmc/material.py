@@ -945,9 +945,9 @@ class Material(IDManagerMixin):
             activity in [Bq/g].
         """
         activity = {}
-        for nuclide, atoms in self.get_nuclide_atoms().items():
+        for nuclide, atoms in self.get_nuclide_atom_densities().items():
             inv_seconds = openmc.data.decay_constant(nuclide)
-            activity[nuclide] = (inv_seconds * atoms) / self.get_mass()
+            activity[nuclide] = (inv_seconds * atoms * 1.0e24) / self.density
         return activity
 
     def get_nuclide_atoms(self):

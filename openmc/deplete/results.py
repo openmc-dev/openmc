@@ -111,7 +111,8 @@ class Results(list):
         time_units : {"s", "min", "h", "d", "a"}, optional
             Units for the returned time array. Default is ``"s"`` to
             return the value in seconds. Other options are minutes ``"min"``,
-            hours ``"hours"``, days ``"d"``, years ``"a"``
+            hours ``"hours"``, days ``"d"``, years ``"a"`` (Julian year 365.25
+            days).
 
             .. versionadded:: 0.12
 
@@ -207,6 +208,7 @@ class Results(list):
         time_units : {"s", "d", "min", "h", "a"}, optional
             Desired units for the times array. Options are seconds ``"s"``
             minutes ``"min"``, hours ``"hours"``, days ``"d"``, years ``"a"``
+            (Julian year 365.25 days).
 
         Returns
         -------
@@ -275,7 +277,8 @@ class Results(list):
         time_units : {"s", "d", "min", "h", "a"}, optional
             Return the vector in these units. Default is to
             convert to days ``"d"``. Other options are seconds ``"s"``, minutes
-            ``"min"``, hours ``"hours"``, years ``"a"`` 
+            ``"min"``, hours ``"hours"``, years ``"a"`` (Julian year 365.25
+            days).
 
         Returns
         -------
@@ -315,6 +318,7 @@ class Results(list):
         time_units : {"s", "d", "min", "h", "a"}, optional
             Units on ``time``. Default: days ``"d"``. Other options are seconds
             ``"s"``, minutes ``"min"``, hours ``"hours"`` and years ``"a"``
+            (Julian year 365.25 days)
         atol : float, optional
             Absolute tolerance (in ``time_units``) if ``time`` is not
             found.

@@ -496,3 +496,21 @@ def test_activity_of_metastable():
     m1.set_density('g/cm3', 1)
     m1.volume = 98.9
     assert pytest.approx(m1.activity, rel=0.001) == 1.93e19
+
+
+def test_specific_activity_of_tritium():
+    """Checks that specific activity stays the same for all volumes and
+    densities while activity changes proportionally to mass"""
+    m1 = openmc.Material()
+    m1.add_nuclide("H3", 1)
+    m1.set_density('g/cm3', 1)
+    m1.volume = 1
+    # activity and specific_activity are initially the same as we have 1g
+    assert pytest.approx(m1.specific_activity) == 3.559778e14
+    assert pytest.approx(m1.activity) == 3.559778e14
+    m1.set_density('g/cm3', 2)
+    assert pytest.approx(m1.specific_activity) == 3.559778e14
+    assert pytest.approx(m1.activity) == 3.559778e14*2
+    m1.volume = 3
+    assert pytest.approx(m1.specific_activity) == 3.559778e14
+    assert pytest.approx(m1.activity) == 3.559778e14*2*3

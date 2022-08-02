@@ -94,6 +94,9 @@ class Material(IDManagerMixin):
     activity : float
         Activity of the material in [Bq]. Requires that the :attr:`volume`
         attribute is set.
+    specific_activity : float
+        Activity of the material per unit mass in [Bq/kg]. Requires that the
+        :attr:`volume` and :attr:`density` attributes are set.
 
     """
 
@@ -154,6 +157,11 @@ class Material(IDManagerMixin):
     def activity(self):
         """Returns the total activity of the material in Becquerels."""
         return sum(self.get_nuclide_activity().values())
+
+    @property
+    def specific_activity(self):
+        """Returns the total specific activity of the material in Becquerels per gram."""
+        return sum(self.get_nuclide_specific_activity().values())
 
     @property
     def name(self):
@@ -923,6 +931,23 @@ class Material(IDManagerMixin):
         for nuclide, atoms in self.get_nuclide_atoms().items():
             inv_seconds = openmc.data.decay_constant(nuclide)
             activity[nuclide] = inv_seconds * atoms
+        return activity
+
+    def get_nuclide_specific_activity(self):
+        """Return specific activity in [Bq/g] for each nuclide in the material
+
+        .. versionadded:: 0.13.1
+
+        Returns
+        -------
+        dict
+            Dictionary whose keys are nuclide names and values are specific
+            activity in [Bq/g].
+        """
+        activity = {}
+        for nuclide, atoms in self.get_nuclide_atoms().items():
+            inv_seconds = openmc.data.decay_constant(nuclide)
+            activity[nuclide] = (inv_seconds * atoms) / self.get_mass()
         return activity
 
     def get_nuclide_atoms(self):

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import struct
-import sys
 from argparse import ArgumentParser
 
 import numpy as np

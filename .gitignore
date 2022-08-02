@@ -105,3 +105,6 @@ CMakeSettings.json
 
 # Python pickle files
 *.pkl
+
+# file containing version number
+openmc/_version.py

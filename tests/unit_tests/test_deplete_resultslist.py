@@ -77,7 +77,7 @@ def test_get_steps(unit):
     results = openmc.deplete.Results()
     # Time in units of unit
     times = np.linspace(0, 100, num=5)
-    if unit == "y":
+    if unit == "a":
         conversion_to_seconds = 60 * 60 * 24 * 365.25
     elif unit == "d":
         conversion_to_seconds = 60 * 60 * 24

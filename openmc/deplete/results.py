@@ -16,6 +16,17 @@ __all__ = ["Results", "ResultsList"]
 
 
 def _get_time_as(seconds, units):
+    """Converts the time in seconds to time in different units
+
+    Parameters
+    ----------
+    seconds : float
+        The time to convert expressed in seconds
+    units : {"s", "min", "h", "d", "a"}
+        The units to convert time into. Available options are seconds ``"s"``,
+        minutes ``"min"``, hours ``"hours"`` days ``"d"``, years ``"a"``
+
+    """
     if units == "a":
         return seconds / (60 * 60 * 24 * 365.25)  # 365.25 due to the leap year
     if units == "d":
@@ -99,7 +110,8 @@ class Results(list):
             .. versionadded:: 0.12
         time_units : {"s", "min", "h", "d", "a"}, optional
             Units for the returned time array. Default is ``"s"`` to
-            return the value in seconds.
+            return the value in seconds. Other options are minutes ``"min"``,
+            hours ``"hours"``, days ``"d"``, years ``"a"``
 
             .. versionadded:: 0.12
 
@@ -193,7 +205,8 @@ class Results(list):
         Parameters
         ----------
         time_units : {"s", "d", "min", "h", "a"}, optional
-            Desired units for the times array
+            Desired units for the times array. Options are seconds ``"s"``
+            minutes ``"min"``, hours ``"hours"``, days ``"d"``, years ``"a"``
 
         Returns
         -------
@@ -261,7 +274,8 @@ class Results(list):
         ----------
         time_units : {"s", "d", "min", "h", "a"}, optional
             Return the vector in these units. Default is to
-            convert to days
+            convert to days ``"d"``. Other options are seconds ``"s"``, minutes
+            ``"min"``, hours ``"hours"``, years ``"a"`` 
 
         Returns
         -------
@@ -299,7 +313,8 @@ class Results(list):
         time : float
             Desired point in time
         time_units : {"s", "d", "min", "h", "a"}, optional
-            Units on ``time``. Default: days
+            Units on ``time``. Default: days ``"d"``. Other options are seconds
+            ``"s"``, minutes ``"min"``, hours ``"hours"`` and years ``"a"``
         atol : float, optional
             Absolute tolerance (in ``time_units``) if ``time`` is not
             found.

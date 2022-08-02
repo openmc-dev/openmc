@@ -481,7 +481,7 @@ def test_activity_of_stable():
 
 
 def test_activity_of_tritium():
-    """Checks that 1g of tritium has the correct activity activity scaling"""
+    """Checks that 1g of tritium has the correct activity scaling"""
     m1 = openmc.Material()
     m1.add_nuclide("H3", 1)
     m1.set_density('g/cm3', 1)

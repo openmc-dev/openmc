@@ -6,6 +6,7 @@ nuclides names as row indices and reaction names as column indices.
 
 import tempfile
 from pathlib import Path
+from copy import deepcopy
 
 from pandas import DataFrame, read_csv, concat
 import numpy as np
@@ -13,11 +14,11 @@ import numpy as np
 from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.mgxs import EnergyGroups, ArbitraryXS, FissionXS
 from openmc.data import DataLibrary
-from openmc import Tallies, StatePoint, Materials
+from openmc import Tallies, StatePoint, Materials, Material
 
 
 from .chain import Chain, REACTIONS
-from .coupled_operator import _find_cross_sections
+from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
@@ -67,6 +68,7 @@ class MicroXS(DataFrame):
 
         # Set up the reaction tallies
         original_tallies = model.tallies
+        original_materials = deepcopy(model.materials)
         tallies = Tallies()
         xs = {}
         reactions, diluted_materials = cls._add_dilute_nuclides(chain_file,
@@ -100,17 +102,45 @@ class MicroXS(DataFrame):
             df.rename({'mean': rxn}, axis=1, inplace=True)
             micro_xs = concat([micro_xs, df], axis=1)
 
-        # Revert to the original tallies
+        # Revert to the original tallies and materials
         model.tallies = original_tallies
+        model.materials = original_materials
 
         return micro_xs
 
     @classmethod
     def _add_dilute_nuclides(cls, chain_file, model, dilute_initial):
+        """
+        Add nuclides not present in burnable materials that have neutron data
+        and are present in the depletion chain to those materials. This allows
+        us to tally those specific nuclides for reactions to create one-group
+        cross sections.
+
+        Parameters
+        ----------
+        chain_file : str
+            Path to the depletion chain XML file that will be used in depletion
+            simulation. Used to determine cross sections for materials not
+            present in the inital composition.
+        model : openmc.Model
+            Model object
+        dilute_initial : float
+            Initial atom density [atoms/cm^3] to add for nuclides that
+            are zero in initial condition to ensure they exist in the cross
+            section data. Only done for nuclides with reaction rates.
+
+        Returns
+        -------
+        reactions : list of str
+            List of reaction names
+        diluted_materials : openmc.Materials
+            :class:`openmc.Materials` object with nuclides added to burnable
+            materials.
+        """
         chain = Chain.from_xml(chain_file)
         reactions = chain.reactions
         cross_sections = _find_cross_sections(model)
-        nuclides_with_data = cls._get_nuclides_with_data(cross_sections)
+        nuclides_with_data = _get_nuclides_with_data(cross_sections)
         burnable_nucs = [nuc.name for nuc in chain.nuclides
                          if nuc.name in nuclides_with_data]
         diluted_materials = Materials()
@@ -125,35 +155,10 @@ class MicroXS(DataFrame):
                 for burn_nuc in burnable_nucs:
                     if burn_nuc not in nuc_densities:
                         material.add_nuclide(burn_nuc,
-                                             dilute_density)
+                                                     dilute_density)
             diluted_materials.append(material)
+
         return reactions, diluted_materials
-
-    @staticmethod
-    def _get_nuclides_with_data(cross_sections):
-        """Loads cross_sections.xml file to find nuclides with neutron data
-
-        Parameters
-        ----------
-        cross_sections : str
-            Path to cross_sections.xml file
-
-        Returns
-        -------
-        nuclides : set of str
-            Set of nuclide names that have cross secton data
-
-        """
-        nuclides = set()
-        data_lib = DataLibrary.from_xml(cross_sections)
-        for library in data_lib.libraries:
-            if library['type'] != 'neutron':
-                continue
-            for name in library['materials']:
-                if name not in nuclides:
-                    nuclides.add(name)
-
-        return nuclides
 
     @classmethod
     def from_array(cls, nuclides, reactions, data):

@@ -216,9 +216,7 @@ and a path to a depletion chain file::
     materials = openmc.Materials()
     ...
 
-    micro_xs = openmc.deplete.MicroXS
-    ...
-
+    micro_xs = openmc.deplete.MicroXS.from_csv(micro_xs_path)
     op = openmc.deplete.IndependentOperator(materials, micro_xs, chain_file)
 
 .. note::

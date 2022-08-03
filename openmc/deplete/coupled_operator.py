@@ -56,6 +56,30 @@ def _find_cross_sections(model):
         )
     return cross_sections
 
+def _get_nuclides_with_data(cross_sections):
+    """Loads cross_sections.xml file to find nuclides with neutron data
+
+    Parameters
+    ----------
+    cross_sections : str
+        Path to cross_sections.xml file
+
+    Returns
+    -------
+    nuclides : set of str
+        Set of nuclide names that have cross secton data
+
+    """
+    nuclides = set()
+    data_lib = DataLibrary.from_xml(cross_sections)
+    for library in data_lib.libraries:
+        if library['type'] != 'neutron':
+            continue
+        for name in library['materials']:
+            if name not in nuclides:
+                nuclides.add(name)
+
+    return nuclides
 
 class CoupledOperator(OpenMCOperator):
     """Transport-coupled transport operator.
@@ -310,16 +334,7 @@ class CoupledOperator(OpenMCOperator):
             Set of nuclide names that have cross secton data
 
         """
-        nuclides = set()
-        data_lib = DataLibrary.from_xml(cross_sections)
-        for library in data_lib.libraries:
-            if library['type'] != 'neutron':
-                continue
-            for name in library['materials']:
-                if name not in nuclides:
-                    nuclides.add(name)
-
-        return nuclides
+        return _get_nuclides_with_data(cross_sections)
 
     def _get_helper_classes(self, helper_kwargs):
         """Create the ``_rate_helper``, ``_normalization_helper``, and

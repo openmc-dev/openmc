@@ -72,7 +72,6 @@ class MicroXS(DataFrame):
         reactions, diluted_materials = cls._add_dilute_nuclides(chain_file,
                                                                 model,
                                                                 dilute_initial)
-        diluted_materials.export_to_xml('diluted_materials.xml')
         model.materials = diluted_materials
 
         for rxn in reactions:
@@ -113,12 +112,12 @@ class MicroXS(DataFrame):
         cross_sections = _find_cross_sections(model)
         nuclides_with_data = cls._get_nuclides_with_data(cross_sections)
         burnable_nucs = [nuc.name for nuc in chain.nuclides
-                               if nuc.name in nuclides_with_data]
+                         if nuc.name in nuclides_with_data]
         diluted_materials = Materials()
         for material in model.materials:
             if material.depletable:
                 nuc_densities = material.get_nuclide_atom_densities()
-                dilute_density = 1.E-24 * dilute_initial
+                dilute_density = 1.e-24 * dilute_initial
                 material.set_density('sum')
                 for nuc, density in nuc_densities.items():
                     material.remove_nuclide(nuc)

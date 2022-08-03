@@ -477,7 +477,7 @@ def test_activity_of_stable():
     m1.add_element("Fe", 1)
     m1.set_density('g/cm3', 1)
     m1.volume = 1
-    assert m1.activity == 0
+    assert m1.get_activity() == 0
 
 
 def test_activity_of_tritium():
@@ -486,11 +486,11 @@ def test_activity_of_tritium():
     m1.add_nuclide("H3", 1)
     m1.set_density('g/cm3', 1)
     m1.volume = 1
-    assert pytest.approx(m1.activity) == 3.559778e14
+    assert pytest.approx(m1.get_activity()) == 3.559778e14
     m1.set_density('g/cm3', 2)
-    assert pytest.approx(m1.activity) == 3.559778e14*2
+    assert pytest.approx(m1.get_activity()) == 3.559778e14*2
     m1.volume = 3
-    assert pytest.approx(m1.activity) == 3.559778e14*2*3
+    assert pytest.approx(m1.get_activity()) == 3.559778e14*2*3
 
 
 def test_activity_of_metastable():
@@ -499,13 +499,22 @@ def test_activity_of_metastable():
     m1.add_nuclide("Tc99_m1", 1)
     m1.set_density('g/cm3', 1)
     m1.volume = 98.9
-    assert pytest.approx(m1.activity, rel=0.001) == 1.93e19
+    assert pytest.approx(m1.get_activity(), rel=0.001) == 1.93e19
 
 
 def test_specific_activity_of_tritium():
-    """Checks that specific activity of tritium is correct"""
+    """Checks that specific and volumetric activity of tritium are correct"""
     m1 = openmc.Material()
     m1.add_nuclide("H3", 1)
     m1.set_density('g/cm3', 1)
-    assert m1.specific_activity == 355978108155965.9
-    assert m1.get_nuclide_specific_activity() == {"H3": 355978108155965.9}
+    assert m1.get_activity(normalization='mass') == 355978108155965.9  # [Bq/g]
+    assert m1.get_activity(normalization='mass', by_nuclide=True) == {
+        "H3": 355978108155965.9  # [Bq/g]
+    }
+    # volume is required to calculate total and volumetric activity
+    m1.volume = 10.
+    assert m1.get_activity(normalization='total') == 355978108155965.9*10. # [Bq]
+    assert m1.get_activity(normalization='volume') == 355978108155965.9/10. # [Bq/cc]
+    assert m1.get_activity(normalization='volume', by_nuclide=True) == {
+        "H3": 355978108155965.9/10. # [Bq/cc]
+    }

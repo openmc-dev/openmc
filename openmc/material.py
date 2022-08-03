@@ -91,13 +91,6 @@ class Material(IDManagerMixin):
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
-    activity : float
-        Activity of the material in [Bq]. Requires that the :attr:`volume`
-        attribute is set.
-    specific_activity : float
-        Activity of the material per unit mass in [Bq/kg]. Requires that the
-        :attr:`volume` and :attr:`density` attributes are set.
-
     """
 
     next_id = 1
@@ -152,16 +145,6 @@ class Material(IDManagerMixin):
             string += '{: <16}'.format('\t{}'.format(self._macroscopic))
 
         return string
-
-    @property
-    def activity(self):
-        """Returns the total activity of the material in Becquerels."""
-        return sum(self.get_nuclide_activity().values())
-
-    @property
-    def specific_activity(self):
-        """Returns the total specific activity of the material in Becquerels per gram."""
-        return sum(self.get_nuclide_specific_activity().values())
 
     @property
     def name(self):
@@ -916,39 +899,57 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_nuclide_activity(self):
-        """Return activity in [Bq] for each nuclide in the material
+    def get_activity(self, normalization: str = 'total', by_nuclide: bool = False):
+        """Returns the activity of the material or for each nuclide in the
+        material in units of [Bq], [Bq/g] or [Bq/cc].
 
         .. versionadded:: 0.13.1
 
-        Returns
-        -------
-        dict
-            Dictionary whose keys are nuclide names and values are activity in
-            [Bq].
-        """
-        activity = {}
-        for nuclide, atoms in self.get_nuclide_atoms().items():
-            inv_seconds = openmc.data.decay_constant(nuclide)
-            activity[nuclide] = inv_seconds * atoms
-        return activity
-
-    def get_nuclide_specific_activity(self):
-        """Return specific activity in [Bq/g] for each nuclide in the material
-
-        .. versionadded:: 0.13.1
+        Parameters
+        ----------
+        normalization : {'total', 'mass', 'volume'}
+            Specifies the type of activity to return, 'total' will return the
+            material activity in [Bq], 'mass' returns the materials specific
+            activity in [Bq/g] and 'volume' returns the activity in [Bq/cc].
+        by_nuclide : bool
+            Specifies if the activity should be returned for the material as a
+            whole or per nuclide.
 
         Returns
         -------
-        dict
-            Dictionary whose keys are nuclide names and values are specific
-            activity in [Bq/g].
+
+        Union[dict, float]
+            If by_nuclide is True then a dictionary whose keys are nuclide 
+            names and values are activity is returned. Otherwise the activity
+            of the material is returned as a float.
         """
-        activity = {}
-        for nuclide, atoms in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(nuclide)
-            activity[nuclide] = (inv_seconds * atoms * 1.0e24) / self.density
-        return activity
+
+        cv.check_value('normalization', normalization, {'total', 'mass', 'volume'})
+        cv.check_type('by_nuclide', by_nuclide, bool)
+        
+        if normalization=='total':
+            activity = {}
+            for nuclide, atoms in self.get_nuclide_atoms().items():
+                inv_seconds = openmc.data.decay_constant(nuclide)
+                activity[nuclide] = inv_seconds * atoms
+
+        elif normalization=='mass':
+            activity = {}
+            for nuclide, atoms in self.get_nuclide_atom_densities().items():
+                inv_seconds = openmc.data.decay_constant(nuclide)
+                activity[nuclide] = (inv_seconds * atoms * 1.0e24) / self.density
+        # normalization must be volume by this stage so else can be used
+        else:
+            activity = {}
+            for nuclide, atoms in self.get_nuclide_atom_densities().items():
+                inv_seconds = openmc.data.decay_constant(nuclide)
+                activity[nuclide] = (inv_seconds * atoms * 1.0e24) / self.volume
+
+        if by_nuclide:
+            return activity
+        else:
+            return sum(activity.values())
+
 
     def get_nuclide_atoms(self):
         """Return number of atoms of each nuclide in the material

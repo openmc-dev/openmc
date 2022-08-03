@@ -334,6 +334,13 @@ class Universe(UniverseBase):
             if seed is not None:
                 model.settings.seed = seed
 
+            # Determine whether any materials contains macroscopic data and if
+            # so, set energy mode accordingly
+            for mat in self.get_all_materials().values():
+                if mat._macroscopic is not None:
+                    model.settings.energy_mode = 'multi-group'
+                    break
+
             # Create plot object matching passed arguments
             plot = openmc.Plot()
             plot.origin = origin

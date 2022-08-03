@@ -21,7 +21,7 @@ class PlotVoxelTestHarness(TestHarness):
     def _run_openmc(self):
         openmc.plot_geometry(openmc_exec=config['exe'])
 
-        check_call(['../../../scripts/openmc-voxel-to-vtk'] +
+        check_call(['../../../scripts/openmc_voxel_to_vtk'] +
                    glob.glob('plot_4.h5'))
 
     def _test_output_created(self):

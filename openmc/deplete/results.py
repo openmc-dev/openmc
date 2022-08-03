@@ -24,7 +24,7 @@ def _get_time_as(seconds, units):
         The time to convert expressed in seconds
     units : {"s", "min", "h", "d", "a"}
         The units to convert time into. Available options are seconds ``"s"``,
-        minutes ``"min"``, hours ``"hours"`` days ``"d"``, years ``"a"``
+        minutes ``"min"``, hours ``"h"`` days ``"d"``, Julian years ``"a"``
 
     """
     if units == "a":
@@ -111,8 +111,7 @@ class Results(list):
         time_units : {"s", "min", "h", "d", "a"}, optional
             Units for the returned time array. Default is ``"s"`` to
             return the value in seconds. Other options are minutes ``"min"``,
-            hours ``"hours"``, days ``"d"``, years ``"a"`` (Julian year 365.25
-            days).
+            hours ``"h"``, days ``"d"``, and Julian years ``"a"``.
 
             .. versionadded:: 0.12
 
@@ -206,9 +205,9 @@ class Results(list):
         Parameters
         ----------
         time_units : {"s", "d", "min", "h", "a"}, optional
-            Desired units for the times array. Options are seconds ``"s"``
-            minutes ``"min"``, hours ``"hours"``, days ``"d"``, years ``"a"``
-            (Julian year 365.25 days).
+            Desired units for the times array. Options are seconds ``"s"``,
+            minutes ``"min"``, hours ``"h"``, days ``"d"``, and Julian years
+            ``"a"``.
 
         Returns
         -------
@@ -277,8 +276,7 @@ class Results(list):
         time_units : {"s", "d", "min", "h", "a"}, optional
             Return the vector in these units. Default is to
             convert to days ``"d"``. Other options are seconds ``"s"``, minutes
-            ``"min"``, hours ``"hours"``, years ``"a"`` (Julian year 365.25
-            days).
+            ``"min"``, hours ``"h"``, days ``"d"``, and Julian years ``"a"``.
 
         Returns
         -------
@@ -317,8 +315,7 @@ class Results(list):
             Desired point in time
         time_units : {"s", "d", "min", "h", "a"}, optional
             Units on ``time``. Default: days ``"d"``. Other options are seconds
-            ``"s"``, minutes ``"min"``, hours ``"hours"`` and years ``"a"``
-            (Julian year 365.25 days)
+            ``"s"``, minutes ``"min"``, hours ``"h"`` and Julian years ``"a"``.
         atol : float, optional
             Absolute tolerance (in ``time_units``) if ``time`` is not
             found.

@@ -61,6 +61,7 @@ Core Functions
 
     atomic_mass
     atomic_weight
+    combine_distributions
     decay_constant
     dose_coefficients
     gnd_name

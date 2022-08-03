@@ -103,8 +103,8 @@ int openmc_simulation_init()
 
 
   // Allocate tally results arrays if they're not allocated yet
-  for (auto& t : model::tallies) {
-    t->init_results();
+  for (int i = 0; i < model::tallies_size; ++i) {
+    model::tallies[i].init_results();
   }
 
   // Set up material nuclide index mapping
@@ -186,8 +186,8 @@ int openmc_simulation_finalize()
   if (settings::output_tallies && mpi::master) write_tallies();
 
   // Deactivate all tallies
-  for (auto& t : model::tallies) {
-    t->active_ = false;
+  for (int i = 0; i < model::tallies_size; ++i) {
+    model::tallies[i].active_ = false;
   }
 
   // Stop timers and show timing statistics
@@ -363,8 +363,8 @@ void initialize_batch()
   } else if (first_active) {
     simulation::time_inactive.stop();
     simulation::time_active.start();
-    for (auto& t : model::tallies) {
-      t->active_ = true;
+    for (int i = 0; i < model::tallies_size; ++i) {
+      model::tallies[i].active_ = true;
     }
   }
 
@@ -689,14 +689,12 @@ void broadcast_results() {
     // Create a new datatype that consists of all values for a given filter
     // bin and then use that to broadcast. This is done to minimize the
     // chance of the 'count' argument of MPI_BCAST exceeding 2**31
-    auto& results = t->results_;
-
-    auto shape = results.shape();
+    auto shape = t->results_shape();
     int count_per_filter = shape[1] * shape[2];
     MPI_Datatype result_block;
     MPI_Type_contiguous(count_per_filter, MPI_DOUBLE, &result_block);
     MPI_Type_commit(&result_block);
-    MPI_Bcast(results.data(), shape[0], result_block, 0, mpi::intracomm);
+    MPI_Bcast(t->results_, shape[0], result_block, 0, mpi::intracomm);
     MPI_Type_free(&result_block);
   }
 

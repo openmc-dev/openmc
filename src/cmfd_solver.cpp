@@ -210,7 +210,7 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
   openmc_get_tally_index(meshtally_id, &tally_index);
 
   // Get filters assocaited with tally
-  const auto& tally_filters = model::tallies[tally_index]->filters();
+  const auto& tally_filters = model::tallies[tally_index].filters();
 
   // Get mesh filter index
   auto meshfilter_index = tally_filters[0];

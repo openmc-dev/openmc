@@ -4,12 +4,14 @@
 #include "openmc/constants.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/trigger.h"
+#include "openmc/vector.h"
 
 #include <gsl/gsl>
 #include "pugixml.hpp"
 #include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
 
+#include <array>
 #include <memory> // for unique_ptr
 #include <unordered_map>
 #include <string>
@@ -75,6 +77,9 @@ public:
   //! A string representing the i-th score on this tally
   std::string score_name(int score_idx) const;
 
+  void copy_to_device();
+  void release_from_device();
+
   //----------------------------------------------------------------------------
   // Major public data members.
 
@@ -93,16 +98,22 @@ public:
   //! Number of realizations
   int n_realizations_ {0};
 
-  std::vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
+  vector<int> scores_; //!< Filter integrands (e.g. flux, fission)
 
   //! Index of each nuclide to be tallied.  -1 indicates total material.
-  std::vector<int> nuclides_ {-1};
+  vector<int> nuclides_ {-1};
 
   //! Results for each bin -- the first dimension of the array is for the
   //! combination of filters (e.g. specific cell, specific energy group, etc.)
   //! and the second dimension of the array is for scores (e.g. flux, total
   //! reaction rate, fission reaction rate, etc.)
-  xt::xtensor<double, 3> results_;
+  double* results_;
+  size_t results_size_ {0};
+  size_t n_scores_;
+
+  const double* results(gsl::index i, gsl::index j, TallyResult k) const;
+  double* results(gsl::index i, gsl::index j, TallyResult k);
+  std::array<size_t, 3> results_shape() const;
 
   //! True if this tally should be written to statepoint files
   bool writable_ {true};
@@ -140,13 +151,20 @@ private:
 
 namespace model {
   extern std::unordered_map<int, int> tally_map;
-  extern std::vector<std::unique_ptr<Tally>> tallies;
   extern std::vector<int> active_tallies;
   extern std::vector<int> active_analog_tallies;
   extern std::vector<int> active_tracklength_tallies;
   extern std::vector<int> active_collision_tallies;
   extern std::vector<int> active_meshsurf_tallies;
   extern std::vector<int> active_surface_tallies;
+
+  #pragma omp declare target
+  extern Tally* tallies;
+  extern size_t tallies_size;
+  extern int* device_active_tallies;
+  extern int* device_active_collision_tallies;
+  extern int* device_active_tracklength_tallies;
+  #pragma omp end declare target
 }
 
 namespace simulation {

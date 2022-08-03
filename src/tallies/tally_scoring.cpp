@@ -240,7 +240,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index,
     FilterMatch* filter_matches)
 {
   // Save the original delayed group bin
-  auto& tally {*model::tallies[i_tally]};
+  auto& tally {model::tallies[i_tally]};
   auto i_filt = tally.filters(tally.delayedgroup_filter_);
   auto& dg_match {filter_matches[i_filt]};
   auto i_bin = dg_match.i_bin_;
@@ -260,7 +260,7 @@ score_fission_delayed_dg(int i_tally, int d_bin, double score, int score_index,
 
   // Update the tally result
   #pragma omp atomic
-  tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
+  *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
 
   // Reset the original delayed group bin
   dg_match.bins_[i_bin] = original_bin;
@@ -417,7 +417,7 @@ double score_neutron_heating(const Particle& p, const Tally& tally, double flux,
 void
 score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 {
-  auto& tally {*model::tallies[i_tally]};
+  auto& tally {model::tallies[i_tally]};
   auto i_eout_filt = tally.filters()[tally.energyout_filter_];
   auto i_bin = p.filter_matches_[i_eout_filt].i_bin_;
   auto bin_energyout = p.filter_matches_[i_eout_filt].bins_[i_bin];
@@ -494,7 +494,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 
       // Update tally results
       #pragma omp atomic
-      tally.results_(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
+      *tally.results(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
 
     } else if (score_bin == SCORE_DELAYED_NU_FISSION && g != 0) {
 
@@ -540,7 +540,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 
         // Update tally results
         #pragma omp atomic
-        tally.results_(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
+        *tally.results(filter_index, i_score, TallyResult::VALUE) += score*filter_weight;
       }
     }
   }
@@ -610,7 +610,7 @@ void
 score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter_index,
   double filter_weight, int i_nuclide, double atom_density, double flux, NuclideMicroXS& micro)
 {
-  Tally& tally {*model::tallies[i_tally]};
+  Tally& tally {model::tallies[i_tally]};
 
   // Get the pre-collision energy of the particle.
   auto E = p.E_last_;
@@ -941,7 +941,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
     case SCORE_EVENTS:
       // Simply count the number of scoring events
       #pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      *tally.results(filter_index, score_index, TallyResult::VALUE) += 1.0;
       continue;
 
     case ELASTIC:
@@ -1106,7 +1106,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
 
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
+    *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 
@@ -1120,7 +1120,7 @@ void
 score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_index,
   double filter_weight, int i_nuclide, double atom_density, double flux)
 {
-  Tally& tally {*model::tallies[i_tally]};
+  Tally& tally {model::tallies[i_tally]};
 
   // Get the pre-collision energy of the particle.
   auto E = p.E_last_;
@@ -1506,7 +1506,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
     case SCORE_EVENTS:
       // Simply count the number of scoring events
       #pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      *tally.results(filter_index, score_index, TallyResult::VALUE) += 1.0;
       continue;
 
 
@@ -1630,7 +1630,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
 
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
+    *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 
@@ -1643,7 +1643,7 @@ void
 score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
   double filter_weight, int i_nuclide, double atom_density, double flux)
 {
-  auto& tally {*model::tallies[i_tally]};
+  auto& tally {model::tallies[i_tally]};
 
   // Set the direction and group to use with get_xs
   Direction p_u;
@@ -2255,7 +2255,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
     case SCORE_EVENTS:
       // Simply count the number of scoring events
       #pragma omp atomic
-      tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      *tally.results(filter_index, score_index, TallyResult::VALUE) += 1.0;
       continue;
 
 
@@ -2265,7 +2265,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
 
     // Update tally results
     #pragma omp atomic
-    tally.results_(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
+    *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
 }
 
@@ -2279,7 +2279,7 @@ void score_analog_tally_ce(Particle& p)
     1.0 : 0.0;
 
   for (auto i_tally : model::active_analog_tallies) {
-    const Tally& tally {*model::tallies[i_tally]};
+    const Tally& tally {model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2322,7 +2322,7 @@ void score_analog_tally_ce(Particle& p)
 void score_analog_tally_mg(Particle& p)
 {
   for (auto i_tally : model::active_analog_tallies) {
-    const Tally& tally {*model::tallies[i_tally]};
+    const Tally& tally {model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2372,7 +2372,7 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
   double flux = p.wgt_ * distance;
 
   for (auto i_tally : model::active_tracklength_tallies) {
-    const Tally& tally {*model::tallies[i_tally]};
+    const Tally& tally {model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2445,7 +2445,7 @@ void score_collision_tally(Particle& p)
   }
 
   for (auto i_tally : model::active_collision_tallies) {
-    const Tally& tally {*model::tallies[i_tally]};
+    const Tally& tally {model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2504,7 +2504,7 @@ score_surface_tally(Particle& p, const std::vector<int>& tallies)
   double current = p.wgt_last_;
 
   for (auto i_tally : tallies) {
-    auto& tally {*model::tallies[i_tally]};
+    auto& tally {model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2526,7 +2526,7 @@ score_surface_tally(Particle& p, const std::vector<int>& tallies)
       for (auto score_index = 0; score_index < tally.scores_.size();
            ++score_index) {
         #pragma omp atomic
-        tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
+        *tally.results(filter_index, score_index, TallyResult::VALUE) += score;
       }
     }
 

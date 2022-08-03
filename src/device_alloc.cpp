@@ -227,22 +227,39 @@ void move_read_only_data_to_device()
   #pragma omp target enter data map(alloc: simulation::device_progeny_per_particle[:simulation::progeny_per_particle.size()])
 
   // Filters ////////////////////////////////////////////////////////////////
-  
+
   std::cout << "Moving " << model::n_tally_filters << " tally filters to device..." << std::endl;
   #pragma omp target update to(model::n_tally_filters)
   #pragma omp target enter data map(to: model::tally_filters[:model::n_tally_filters])
   for (int i = 0; i < model::n_tally_filters; i++) {
     model::tally_filters[i].copy_to_device();
   }
-  
+
   // Meshes ////////////////////////////////////////////////////////////////
-  
+
   std::cout << "Moving " << model::meshes_size << " meshes to device..." << std::endl;
   #pragma omp target update to(model::meshes_size)
   #pragma omp target enter data map(to: model::meshes[:model::meshes_size])
   for (int i = 0; i < model::meshes_size; i++) {
     model::meshes[i].copy_to_device();
   }
+
+  // Tallies ///////////////////////////////////////////////////
+
+  std::cout << "Moving " << model::tallies_size << " tallies to device..." << std::endl;
+  #pragma omp target update to(model::tallies_size)
+  #pragma omp target enter data map(to: model::tallies[:model::tallies_size])
+  for (int i = 0; i < model::tallies_size; ++i) {
+    auto& tally = model::tallies[i];
+    std::cout << "Moving " << tally.name_ << " data to device..." << std::endl;
+    tally.copy_to_device();
+  }
+  model::device_active_tallies = model::active_tallies.data();
+  model::device_active_collision_tallies = model::active_collision_tallies.data();
+  model::device_active_tracklength_tallies = model::active_tracklength_tallies.data();
+  #pragma omp target enter data map(to: model::device_active_tallies[:model::active_tallies.size()])
+  #pragma omp target enter data map(to: model::device_active_collision_tallies[:model::active_collision_tallies.size()])
+  #pragma omp target enter data map(to: model::device_active_tracklength_tallies[:model::active_tracklength_tallies.size()])
 
   #ifdef OPENMC_MPI
   MPI_Barrier( mpi::intracomm );
@@ -259,6 +276,10 @@ void release_data_from_device()
 
   for (int i = 0; i < data::elements_size; ++i) {
     data::elements[i].release_from_device();
+  }
+
+  for (int i = 0; i < model::tallies_size; ++i) {
+    model::tallies[i].release_from_device();
   }
 }
 

@@ -99,7 +99,7 @@ void
 apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
   double atom_density, int score_bin, double& score)
 {
-  const Tally& tally {*model::tallies[i_tally]};
+  const Tally& tally {model::tallies[i_tally]};
 
   if (score == 0.0) return;
 

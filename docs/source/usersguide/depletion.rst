@@ -216,7 +216,7 @@ and a path to a depletion chain file::
     materials = openmc.Materials()
     ...
 
-    micro_xs = openmc.deplete.MicroXS()
+    micro_xs = openmc.deplete.MicroXS
     ...
 
     op = openmc.deplete.IndependentOperator(materials, micro_xs, chain_file)
@@ -267,7 +267,9 @@ Users can generate the one-group microscopic cross sections needed by
 
     model = openmc.Model.from_xml()
 
-    micro_xs = openmc.deplete.MicroXS.from_model(model, model.materials[0])
+    micro_xs = openmc.deplete.MicroXS.from_model(model,
+                                                 model.materials[0],
+                                                 chain_file)
 
 The :meth:`~openmc.deplete.MicroXS.from_model()` method will produce a
 :class:`~openmc.deplete.MicroXS` object with microscopic cross section data in

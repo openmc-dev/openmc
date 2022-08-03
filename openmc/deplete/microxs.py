@@ -8,13 +8,16 @@ import tempfile
 from pathlib import Path
 
 from pandas import DataFrame, read_csv, concat
-from numpy import ndarray
+import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.mgxs import EnergyGroups, ArbitraryXS, FissionXS
-from openmc import Tallies, StatePoint
+from openmc.data import DataLibrary
+from openmc import Tallies, StatePoint, Materials
 
-from .chain import REACTIONS
+
+from .chain import Chain, REACTIONS
+from .coupled_operator import _find_cross_sections
 
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
@@ -29,13 +32,8 @@ class MicroXS(DataFrame):
     def from_model(cls,
                    model,
                    reaction_domain,
-                   reactions=['(n,gamma)',
-                              '(n,2n)',
-                              '(n,p)',
-                              '(n,a)',
-                              '(n,3n)',
-                              '(n,4n)',
-                              'fission'],
+                   chain_file,
+                   dilute_initial=1.0e3,
                    energy_bounds=(0, 20e6)):
         """Generate a one-group cross-section dataframe using
         OpenMC. Note that the ``openmc`` executable must be compiled.
@@ -46,6 +44,14 @@ class MicroXS(DataFrame):
             OpenMC model object. Must contain geometry, materials, and settings.
         reaction_domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
             Domain in which to tally reaction rates.
+        chain_file : str
+            Path to the depletion chain XML file that will be used in depletion
+            simulation. Used to determine cross sections for materials not
+            present in the inital composition.
+        dilute_initial : float
+            Initial atom density [atoms/cm^3] to add for nuclides that
+            are zero in initial condition to ensure they exist in the cross
+            section data. Only done for nuclides with reaction rates.
         reactions : list of str, optional
             Reaction names to tally
         energy_bound : 2-tuple of float, optional
@@ -63,6 +69,12 @@ class MicroXS(DataFrame):
         original_tallies = model.tallies
         tallies = Tallies()
         xs = {}
+        reactions, diluted_materials = cls._add_dilute_nuclides(chain_file,
+                                                                model,
+                                                                dilute_initial)
+        diluted_materials.export_to_xml('diluted_materials.xml')
+        model.materials = diluted_materials
+
         for rxn in reactions:
             if rxn == 'fission':
                 xs[rxn] = FissionXS(domain=reaction_domain, groups=groups, by_nuclide=True)
@@ -93,6 +105,56 @@ class MicroXS(DataFrame):
         model.tallies = original_tallies
 
         return micro_xs
+
+    @classmethod
+    def _add_dilute_nuclides(cls, chain_file, model, dilute_initial):
+        chain = Chain.from_xml(chain_file)
+        reactions = chain.reactions
+        cross_sections = _find_cross_sections(model)
+        nuclides_with_data = cls._get_nuclides_with_data(cross_sections)
+        burnable_nucs = [nuc.name for nuc in chain.nuclides
+                               if nuc.name in nuclides_with_data]
+        diluted_materials = Materials()
+        for material in model.materials:
+            if material.depletable:
+                nuc_densities = material.get_nuclide_atom_densities()
+                dilute_density = 1.E-24 * dilute_initial
+                material.set_density('sum')
+                for nuc, density in nuc_densities.items():
+                    material.remove_nuclide(nuc)
+                    material.add_nuclide(nuc, density)
+                for burn_nuc in burnable_nucs:
+                    if burn_nuc not in nuc_densities:
+                        material.add_nuclide(burn_nuc,
+                                             dilute_density)
+            diluted_materials.append(material)
+        return reactions, diluted_materials
+
+    @staticmethod
+    def _get_nuclides_with_data(cross_sections):
+        """Loads cross_sections.xml file to find nuclides with neutron data
+
+        Parameters
+        ----------
+        cross_sections : str
+            Path to cross_sections.xml file
+
+        Returns
+        -------
+        nuclides : set of str
+            Set of nuclide names that have cross secton data
+
+        """
+        nuclides = set()
+        data_lib = DataLibrary.from_xml(cross_sections)
+        for library in data_lib.libraries:
+            if library['type'] != 'neutron':
+                continue
+            for name in library['materials']:
+                if name not in nuclides:
+                    nuclides.add(name)
+
+        return nuclides
 
     @classmethod
     def from_array(cls, nuclides, reactions, data):
@@ -162,6 +224,6 @@ class MicroXS(DataFrame):
     def _validate_micro_xs_inputs(nuclides, reactions, data):
         check_iterable_type('nuclides', nuclides, str)
         check_iterable_type('reactions', reactions, str)
-        check_type('data', data, ndarray, expected_iter_type=float)
+        check_type('data', data, np.ndarray, expected_iter_type=float)
         for reaction in reactions:
             check_value('reactions', reaction, _valid_rxns)

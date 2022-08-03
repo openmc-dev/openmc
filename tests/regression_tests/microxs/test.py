@@ -1,9 +1,13 @@
 """Test one-group cross section generation"""
+from pathlib import Path
+
 import numpy as np
 import pytest
 import openmc
 
 from openmc.deplete import MicroXS
+
+CHAIN_FILE = Path(__file__).parents[2] / "chain_simple.xml"
 
 @pytest.fixture(scope="module")
 def model():
@@ -24,8 +28,6 @@ def model():
 
     radii = [0.42, 0.45]
     fuel.volume = np.pi * radii[0] ** 2
-    clad.volume = np.pi * (radii[1]**2 - radii[0]**2)
-    water.volume = 1.24**2 - (np.pi * radii[1]**2)
 
     materials = openmc.Materials([fuel, clad, water])
 
@@ -45,6 +47,6 @@ def model():
 
 def test_from_model(model):
     ref_xs = MicroXS.from_csv('test_reference.csv')
-    test_xs = MicroXS.from_model(model, model.materials[0])
+    test_xs = MicroXS.from_model(model, model.materials[0], CHAIN_FILE)
 
     np.testing.assert_allclose(test_xs, ref_xs, rtol=1e-11)

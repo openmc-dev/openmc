@@ -276,9 +276,12 @@ void Particle::event_tracklength_tally(bool need_depletion_rx)
 {
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
+    #pragma omp target
+    {
     score_tracklength_tally(*this, advance_distance_, need_depletion_rx);
+    }
   }
-  
+
   // Score flux derivative accumulators for differential tallies.
   /*
   if (!model::active_tallies.empty()) {

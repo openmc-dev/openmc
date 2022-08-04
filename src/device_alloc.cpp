@@ -62,6 +62,7 @@ void move_settings_to_device()
   settings::energy_cutoff[0]; // Lazy extern template expansion workaround
   #pragma omp target update to(settings::energy_cutoff)
   #pragma omp target update to(settings::n_log_bins)
+  #pragma omp target update to(settings::assume_separate)
   #pragma omp target update to(settings::check_overlaps)
   #pragma omp target update to(settings::max_particles_in_flight)
   #pragma omp target update to(settings::minimum_sort_items)

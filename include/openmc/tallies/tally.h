@@ -111,9 +111,11 @@ public:
   size_t results_size_ {0};
   size_t n_scores_;
 
+  #pragma omp declare target
   const double* results(gsl::index i, gsl::index j, TallyResult k) const;
   double* results(gsl::index i, gsl::index j, TallyResult k);
   std::array<size_t, 3> results_shape() const;
+  #pragma omp end declare target
 
   //! True if this tally should be written to statepoint files
   bool writable_ {true};
@@ -162,8 +164,11 @@ namespace model {
   extern Tally* tallies;
   extern size_t tallies_size;
   extern int* device_active_tallies;
+  extern size_t active_tallies_size;
   extern int* device_active_collision_tallies;
+  extern size_t active_collision_tallies_size;
   extern int* device_active_tracklength_tallies;
+  extern size_t active_tracklength_tallies_size;
   #pragma omp end declare target
 }
 

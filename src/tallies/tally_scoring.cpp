@@ -277,7 +277,7 @@ double get_nuc_fission_q(const Nuclide& nuc, const Particle& p, int score_bin)
   } else if (score_bin == SCORE_FISS_Q_RECOV) {
     if (nuc.fission_q_recov_) {
       return (*nuc.fission_q_recov_)(p.E_last_);
-    }
+  }
   }
   return 0.0;
 }
@@ -986,8 +986,8 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       // This case block only works if cross sections for these reactions have
       // been precalculated. When they are not, we revert to the default case,
       // which looks up cross sections
-      
-      
+
+
       // Note: the below problem no longer applies. We now check if any
       // of these scores are present at tally initialization and do the lookups
       // when tallies are active
@@ -1081,8 +1081,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.type_ != Type::neutron) continue;
 
       // Any other cross section has to be calculated on-the-fly
-      if (score_bin < 2) fatal_error("Invalid score type on tally "
-        + std::to_string(tally.id_));
+      if (score_bin < 2) printf("Invalid score type on tally %d\n", tally.id_);
       score = 0.;
       if (i_nuclide >= 0) {
         score = get_nuclide_xs(p, i_nuclide, score_bin) * atom_density * flux;
@@ -1099,10 +1098,10 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       }
     }
 
-    // Add derivative information on score for differential tallies.
-    if (tally.deriv_ != C_NONE)
-      apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
-        score);
+    // // Add derivative information on score for differential tallies.
+    // if (tally.deriv_ != C_NONE)
+    //   apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
+    //     score);
 
     // Update tally results
     #pragma omp atomic
@@ -2371,7 +2370,8 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
   // Determine the tracklength estimate of the flux
   double flux = p.wgt_ * distance;
 
-  for (auto i_tally : model::active_tracklength_tallies) {
+  for (int i = 0; i < model::active_tracklength_tallies_size; ++i) {
+    int i_tally = model::device_active_tracklength_tallies[i];
     const Tally& tally {model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are

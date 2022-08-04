@@ -309,7 +309,8 @@ void Filter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMat
     case FilterType::SpatialLegendreFilter    : SpatialLegendreFilter_get_all_bins(p, estimator, match); break;
     case FilterType::SurfaceFilter            : SurfaceFilter_get_all_bins(p, estimator, match); break;
     case FilterType::UniverseFilter           : UniverseFilter_get_all_bins(p, estimator, match); break;
-    case FilterType::ZernikeFilter            : ZernikeFilter_get_all_bins(p, estimator, match); break;
+    // TODO: ZernikeFilter relies on calc_zn, which uses a std::vector
+    //case FilterType::ZernikeFilter            : ZernikeFilter_get_all_bins(p, estimator, match); break;
     case FilterType::ZernikeRadialFilter      : ZernikeRadialFilter_get_all_bins(p, estimator, match); break;
   }
 }

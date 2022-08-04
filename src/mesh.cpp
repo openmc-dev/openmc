@@ -91,7 +91,7 @@ Mesh::Mesh(pugi::xml_node node)
         std::to_string(id_));
     }
   }
-  
+
   // Determine number of dimensions for mesh
   if (!check_for_node(node, "dimension")) {
     fatal_error("Must specify <dimension> on a regular mesh.");
@@ -174,7 +174,7 @@ Mesh::Mesh(pugi::xml_node node)
   // Set volume fraction
   int prod = shape_[0];
   for (int i = 1; i < shape_.size(); i++) {
-    prod *= shape_[i]; 
+    prod *= shape_[i];
   }
   volume_frac_ = 1.0/prod;
 }
@@ -217,7 +217,7 @@ int Mesh::get_bin_from_indices(const int* ijk) const
   case 3:
     return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0] - 1;
   default:
-    throw std::runtime_error{"Invalid number of mesh dimensions"};
+    printf("Invalid number of mesh dimensions\n");
   }
 }
 
@@ -251,7 +251,7 @@ int Mesh::n_bins() const
 {
   int prod = shape_[0];
   for (int i = 1; i < shape_.size(); i++) {
-    prod *= shape_[i]; 
+    prod *= shape_[i];
   }
   return prod;
 }
@@ -327,7 +327,7 @@ bool Mesh::intersects(Position& r0, Position r1, int* ijk) const
   case 3:
     return intersects_3d(r0, r1, ijk);
   default:
-    throw std::runtime_error{"Invalid number of mesh dimensions."};
+    printf("Invalid number of mesh dimensions.\n");
   }
 }
 
@@ -2020,7 +2020,7 @@ void read_meshes(pugi::xml_node root)
 {
   // Count the number of materials
   model::meshes_size = std::distance(root.children("mesh").begin(), root.children("mesh").end());
-  
+
   // Resize the mesh array
   model::meshes = static_cast<Mesh*>(malloc(model::meshes_size * sizeof(Mesh)));
 

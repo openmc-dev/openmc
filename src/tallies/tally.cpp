@@ -45,8 +45,11 @@ namespace model {
   std::vector<int> active_meshsurf_tallies;
   std::vector<int> active_surface_tallies;
   int* device_active_tallies;
+  size_t active_tallies_size;
   int* device_active_collision_tallies;
+  size_t active_collision_tallies_size;
   int* device_active_tracklength_tallies;
+  size_t active_tracklength_tallies_size;
 }
 
 namespace simulation {
@@ -877,12 +880,17 @@ setup_active_tallies()
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
+  model::active_tallies_size = 0;
+  model::active_collision_tallies_size = 0;
+  model::active_tracklength_tallies_size = 0;
+
 
   for (auto i = 0; i < model::tallies_size; ++i) {
     const auto& tally {model::tallies[i]};
 
     if (tally.active_) {
       model::active_tallies.push_back(i);
+      model::active_tallies_size++;
       switch (tally.type_) {
 
       case TallyType::VOLUME:
@@ -892,9 +900,11 @@ setup_active_tallies()
             break;
           case TallyEstimator::TRACKLENGTH:
             model::active_tracklength_tallies.push_back(i);
+            model::active_tracklength_tallies_size++;
             break;
           case TallyEstimator::COLLISION:
             model::active_collision_tallies.push_back(i);
+            model::active_collision_tallies_size++;
         }
         break;
 
@@ -907,6 +917,14 @@ setup_active_tallies()
       }
     }
   }
+
+  // Update active tally vectors on device
+  #pragma omp target update to(model::active_tallies_size)
+  #pragma omp target update to(model::active_collision_tallies_size)
+  #pragma omp target update to(model::active_tracklength_tallies_size)
+  #pragma omp target update to(model::device_active_tallies[:model::active_tallies_size])
+  #pragma omp target update to(model::device_active_collision_tallies[:model::active_collision_tallies_size])
+  #pragma omp target update to(model::device_active_tracklength_tallies[:model::active_tracklength_tallies_size])
 }
 
 void

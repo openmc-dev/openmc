@@ -53,6 +53,7 @@ public:
 
   // Methods
 
+  #pragma omp declare target
   //! Determine which bins were crossed by a particle
   //
   //! \param[in] p Particle to check
@@ -76,6 +77,7 @@ public:
   //! \param[in] r Position to get bin for
   //! \return Mesh bin
   int get_bin(Position r) const;
+  #pragma omp end declare target
 
   //! Get the number of mesh cells.
   int n_bins() const;
@@ -101,7 +103,7 @@ public:
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const;
-  
+
   //! Count number of bank sites in each mesh bin / energy bin
   //
   //! \param[in] Pointer to bank sites
@@ -109,7 +111,7 @@ public:
   //! \param[out] Whether any bank sites are outside the mesh
   xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
                                      int64_t length, bool* outside) const;
-  
+
   //! Get bin given mesh indices
   //
   //! \param[in] Array of mesh indices
@@ -154,22 +156,22 @@ public:
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
   double negative_grid_boundary(int* ijk, int i) const;
-  
+
   bool intersects_1d(Position& r0, Position r1, int* ijk) const;
   bool intersects_2d(Position& r0, Position r1, int* ijk) const;
   bool intersects_3d(Position& r0, Position r1, int* ijk) const;
- 
+
   void copy_to_device();
 
   // Data members
   int id_ {-1};  //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
-  
+
   // Data members
   vector<double> lower_left_; //!< Lower-left coordinates of mesh
   vector<double> upper_right_; //!< Upper-right coordinates of mesh
   vector<int> shape_; //!< Number of mesh elements in each dimension
-  
+
   double volume_frac_; //!< Volume fraction of each mesh element
   vector<double> width_; //!< Width of each mesh element
 };
@@ -313,7 +315,7 @@ public:
 
   //void surface_bins_crossed(const Particle* p, std::vector<int>& bins)
   //const override;
-  
+
   void surface_bins_crossed(const Particle& p, FilterMatch& match)
   const override;
 

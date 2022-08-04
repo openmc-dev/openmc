@@ -507,14 +507,14 @@ def test_specific_activity_of_tritium():
     m1 = openmc.Material()
     m1.add_nuclide("H3", 1)
     m1.set_density('g/cm3', 1)
-    assert m1.get_activity(normalization='mass') == 355978108155965.9  # [Bq/g]
+    assert m1.get_activity(normalization='mass') == 355978108155966.0  # [Bq/g]
     assert m1.get_activity(normalization='mass', by_nuclide=True) == {
-        "H3": 355978108155965.9  # [Bq/g]
+        "H3": 355978108155966.0  # [Bq/g]
     }
-    # volume is required to calculate total and volumetric activity
-    m1.volume = 10.
-    assert m1.get_activity(normalization='total') == 355978108155965.9*10. # [Bq]
-    assert m1.get_activity(normalization='volume') == 355978108155965.9/10. # [Bq/cc]
+    assert m1.get_activity(normalization='volume') == 355978108155965.94 # [Bq/cc]
     assert m1.get_activity(normalization='volume', by_nuclide=True) == {
-        "H3": 355978108155965.9/10. # [Bq/cc]
+        "H3": 355978108155965.94 # [Bq/cc]
     }
+    # volume is required to calculate total activity
+    m1.volume = 10.
+    assert m1.get_activity(normalization='total') == 3559781081559659.5 # [Bq]

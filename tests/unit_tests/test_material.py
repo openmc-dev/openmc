@@ -474,7 +474,7 @@ def test_mix_materials():
 def test_get_activity():
     """Tests the activity of stable, metastable and active materials"""
 
-    # Creates a material with stable isotopes to checks the activity is 0
+    # Creates a material with stable isotopes to check the activity is 0
     m1 = openmc.Material()
     m1.add_element("Fe", 0.7)
     m1.add_element("Li", 0.3)
@@ -506,15 +506,15 @@ def test_get_activity():
     # Checks that specific and volumetric activity of tritium are correct
     m4 = openmc.Material()
     m4.add_nuclide("H3", 1)
-    m4.set_density('g/cm3', 1)
-    assert m4.get_activity(normalization='mass') == 355978108155966.0  # [Bq/g]
+    m4.set_density('g/cm3', 1.5)
+    assert m4.get_activity(normalization='mass') == 355978108155966.0*2/3  # [Bq/g]
     assert m4.get_activity(normalization='mass', by_nuclide=True) == {
-        "H3": 355978108155966.0  # [Bq/g]
+        "H3": 355978108155966.0*2/3  # [Bq/g]
     }
-    assert m4.get_activity(normalization='volume') == 355978108155965.94 # [Bq/cc]
+    assert m4.get_activity(normalization='volume') == 355978108155965.94*3/2 # [Bq/cc]
     assert m4.get_activity(normalization='volume', by_nuclide=True) == {
-        "H3": 355978108155965.94 # [Bq/cc]
+        "H3": 355978108155965.94*3/2 # [Bq/cc]
     }
     # volume is required to calculate total activity
     m4.volume = 10.
-    assert m4.get_activity(normalization='total') == 3559781081559659.5 # [Bq]
+    assert m4.get_activity(normalization='total') == 355978108155965.94*3/2*10 # [Bq]

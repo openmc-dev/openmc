@@ -17,6 +17,7 @@ import numpy as np
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
+from .data.data import _INTERNAL_DATA_PATH
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 
@@ -1241,7 +1242,7 @@ class Material(IDManagerMixin):
 
         # loads in the library into the MATERIAL_LIBRARIES if not already loaded
         if library not in MATERIAL_LIBRARIES.keys():
-            mat_lib_path = Path(__file__).parent / 'data' / f'material_library_{library}.json'
+            mat_lib_path = _INTERNAL_DATA_PATH / f'material_library_{library}.json'
             MATERIAL_LIBRARIES[library] = json.loads(mat_lib_path.read_text())
 
         if name not in MATERIAL_LIBRARIES[library].keys():

@@ -204,6 +204,9 @@ _GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 _HALF_LIFE = {}
 _LOG_TWO = log(2.0)
 
+_INTERNAL_DATA_PATH = Path(__file__).parent
+
+
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
 

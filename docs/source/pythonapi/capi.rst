@@ -29,6 +29,7 @@ Functions
    reset
    run
    run_in_memory
+   sample_external_source
    simulation_init
    simulation_finalize
    source_bank

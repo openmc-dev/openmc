@@ -36,7 +36,9 @@ class Material(IDManagerMixin):
     To create a material, one should create an instance of this class, add
     nuclides or elements with :meth:`Material.add_nuclide` or
     :meth:`Material.add_element`, respectively, and set the total material
-    density with :meth:`Material.set_density()`. The material can then be
+    density with :meth:`Material.set_density()`. Alternatively, you can
+    use :meth:`Material.add_components()` to pass a dictionary
+    containing all the component information. The material can then be
     assigned to a cell using the :attr:`Cell.fill` attribute.
 
     Parameters
@@ -404,6 +406,54 @@ class Material(IDManagerMixin):
                 self.depletable = True
 
         self._nuclides.append(NuclideTuple(nuclide, percent, percent_type))
+
+    def add_components(self, components: dict, percent_type: str = 'ao'):
+        """ Add multiple elements or nuclides to a material
+
+        .. versionadded:: 0.13.1
+
+        Parameters
+        ----------
+        components : dict of str to float or dict
+            Dictionary mapping element or nuclide names to their atom or weight
+            percent. To specify enrichment of an element, the entry of
+            ``components`` for that element must instead be a dictionary
+            containing the keyword arguments as well as a value for
+            ``'percent'``
+        percent_type : {'ao', 'wo'}
+            'ao' for atom percent and 'wo' for weight percent
+
+        Examples
+        --------
+        >>> mat = openmc.Material()
+        >>> components  = {'Li': {'percent': 1.0,
+        >>>                       'enrichment': 60.0,
+        >>>                       'enrichment_target': 'Li7'},
+        >>>                'Fl': 1.0,
+        >>>                'Be6': 0.5}
+        >>> mat.add_components(components)
+
+        """
+
+        for component, params in components.items():
+            cv.check_type('component', component, str)
+            if isinstance(params, float):
+                params = {'percent': params}
+
+            else:
+                cv.check_type('params', params, dict)
+                if 'percent' not in params:
+                    raise ValueError("An entry in the dictionary does not have "
+                                     "a required key: 'percent'")
+
+            params['percent_type'] = percent_type
+
+            ## check if nuclide
+            if str.isdigit(component[-1]):
+                self.add_nuclide(component, **params)
+            else: # is element
+                kwargs = params
+                self.add_element(component, **params)
 
     def remove_nuclide(self, nuclide: str):
         """Remove a nuclide from the material
@@ -813,7 +863,7 @@ class Material(IDManagerMixin):
         elif self.density_units == 'atom/b-cm':
             density = self.density
         elif self.density_units == 'atom/cm3' or self.density_units == 'atom/cc':
-            density = 1.E-24 * self.density
+            density = 1.e-24 * self.density
 
         # For ease of processing split out nuc, nuc_density,
         # and nuc_density_type into separate arrays
@@ -849,7 +899,7 @@ class Material(IDManagerMixin):
 
         # Convert the mass density to an atom density
         if not density_in_atom:
-            density = -density / self.average_molar_mass * 1.E-24 \
+            density = -density / self.average_molar_mass * 1.e-24 \
                       * openmc.data.AVOGADRO
 
         nuc_densities = density * nuc_densities

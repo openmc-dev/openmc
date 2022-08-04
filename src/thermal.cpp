@@ -210,14 +210,22 @@ ThermalData::ThermalData(hid_t group)
     if (temp == "coherent_elastic") {
       auto xs = dynamic_cast<CoherentElasticXS*>(elastic_.xs.get());
       elastic_.distribution = make_unique<CoherentElasticAE>(*xs);
-    } else {
-      if (temp == "incoherent_elastic") {
-        elastic_.distribution = make_unique<IncoherentElasticAE>(dgroup);
-      } else if (temp == "incoherent_elastic_discrete") {
-        auto xs = dynamic_cast<Tabulated1D*>(elastic_.xs.get());
-        elastic_.distribution =
-          make_unique<IncoherentElasticAEDiscrete>(dgroup, xs->x());
-      }
+    } else if (temp == "incoherent_elastic") {
+      elastic_.distribution = make_unique<IncoherentElasticAE>(dgroup);
+    } else if (temp == "incoherent_elastic_discrete") {
+      auto xs = dynamic_cast<Tabulated1D*>(elastic_.xs.get());
+      elastic_.distribution =
+        make_unique<IncoherentElasticAEDiscrete>(dgroup, xs->x());
+    } else if (temp == "mixed_elastic") {
+      // Get coherent/incoherent cross sections
+      auto mixed_xs = dynamic_cast<Sum1D*>(elastic_.xs.get());
+      const auto& coh_xs =
+        dynamic_cast<const CoherentElasticXS*>(mixed_xs->functions(0).get());
+      const auto& incoh_xs = mixed_xs->functions(1).get();
+
+      // Create mixed elastic distribution
+      elastic_.distribution =
+        make_unique<MixedElasticAE>(dgroup, *coh_xs, *incoh_xs);
     }
 
     close_group(elastic_group);

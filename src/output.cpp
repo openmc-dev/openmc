@@ -2,6 +2,7 @@
 
 #include <algorithm> // for transform, max
 #include <cstring>   // for strlen
+#include <cstdio>    // for stdout
 #include <ctime>     // for time, localtime
 #include <fstream>
 #include <iomanip> // for setw, setprecision, put_time
@@ -93,7 +94,8 @@ void title()
   // Write number of OpenMP threads
   fmt::print("  OpenMP Threads | {}\n", omp_get_max_threads());
 #endif
-  std::cout << std::endl;
+  fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -133,7 +135,8 @@ void header(const char* msg, int level)
 
   // Print header based on verbosity level.
   if (settings::verbosity >= level)
-    std::cout << '\n' << out << "\n" << std::endl;
+    fmt::print("\n{}\n\n", out);
+    std::fflush(stdout);
 }
 
 //==============================================================================
@@ -379,7 +382,8 @@ void print_generation()
   if (n > 1) {
     fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
   }
-  std::cout << std::endl;
+  fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -546,7 +550,8 @@ void print_results()
     fmt::print(" Leakage Fraction           = {:.5f}\n",
       gt(GlobalTally::LEAKAGE, TallyResult::SUM) / n);
   }
-  std::cout << std::endl;
+  fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================

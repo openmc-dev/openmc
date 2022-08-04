@@ -46,6 +46,32 @@ class DAGMCUniverseTest(PyAPITestHarness):
         # create the DAGMC universe
         pincell_univ = openmc.DAGMCUniverse(filename='dagmc.h5m', auto_geom_ids=True)
 
+        # creates another DAGMC universe, this time with within a bounded cell
+        bound_pincell_universe = openmc.DAGMCUniverse(filename='dagmc.h5m').bounded_universe()
+        # uses the bound_dag_cell as the root argument to test the type checks in openmc.Geometry
+        bound_pincell_geometry = openmc.Geometry(root=bound_pincell_universe)
+        # assigns the bound_dag_geometry to the model to test the type checks in model.Geometry setter
+        model.Geometry = bound_pincell_geometry
+
+        # checks that the bounding box is calculated correctly
+        bounding_box = pincell_univ.bounding_box
+        assert bounding_box[0].tolist() == [-25., -25., -25.]
+        assert bounding_box[1].tolist() == [25., 25., 25.]
+
+        # checks that the bounding region is six surfaces each with a vacuum boundary type
+        b_region = pincell_univ.bounding_region(bounded_type='box', boundary_type='vacuum')
+        assert isinstance(b_region, openmc.Region)
+        assert len(b_region.get_surfaces()) == 6
+        for surface in list(b_region.get_surfaces().values()):
+            assert surface.boundary_type == 'vacuum'
+
+        # checks that the bounding region is a single surface with a reflective boundary type
+        b_region = pincell_univ.bounding_region(bounded_type='sphere', boundary_type='reflective')
+        assert isinstance(b_region, openmc.Region)
+        assert len(b_region.get_surfaces()) == 1
+        for surface in list(b_region.get_surfaces().values()):
+            assert surface.boundary_type == 'reflective'
+
         # create a 2 x 2 lattice using the DAGMC pincell
         pitch = np.asarray((24.0, 24.0))
         lattice = openmc.RectLattice()

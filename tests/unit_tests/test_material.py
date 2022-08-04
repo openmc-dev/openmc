@@ -511,7 +511,6 @@ def test_get_activity():
     assert pytest.approx(m4.get_activity(normalization='mass', by_nuclide=True)["H3"]) == 355978108155965.94  # [Bq/g]
     assert pytest.approx(m4.get_activity(normalization='volume')) == 355978108155965.94*3/2 # [Bq/cc]
     assert pytest.approx(m4.get_activity(normalization='volume', by_nuclide=True)["H3"]) == 355978108155965.94*3/2 # [Bq/cc]
-    }
     # volume is required to calculate total activity
     m4.volume = 10.
     assert pytest.approx(m4.get_activity(normalization='total')) == 355978108155965.94*3/2*10 # [Bq]

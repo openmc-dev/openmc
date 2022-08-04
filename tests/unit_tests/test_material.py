@@ -471,10 +471,13 @@ def test_mix_materials():
     assert m5.density == pytest.approx(dens5)
 
 
-def test_get_activity_of_stable_nuclides():
-    """Creates a material with stable isotopes to checks the activity is 0"""
+def test_get_activity():
+    """Tests the activity of stable, metastable and active materials"""
+
+    # Creates a material with stable isotopes to checks the activity is 0
     m1 = openmc.Material()
-    m1.add_element("Fe", 1)
+    m1.add_element("Fe", 0.7)
+    m1.add_element("Li", 0.3)
     m1.set_density('g/cm3', 1.5)
     # activity in Bq/cc and Bq/g should not require volume setting
     assert m1.get_activity(normalization='volume') == 0
@@ -482,42 +485,36 @@ def test_get_activity_of_stable_nuclides():
     m1.volume = 1
     assert m1.get_activity() == 0
 
+    # Checks that 1g of tritium has the correct activity scaling
+    m2 = openmc.Material()
+    m2.add_nuclide("H3", 1)
+    m2.set_density('g/cm3', 1)
+    m2.volume = 1
+    assert pytest.approx(m2.get_activity()) == 3.559778e14
+    m2.set_density('g/cm3', 2)
+    assert pytest.approx(m2.get_activity()) == 3.559778e14*2
+    m2.volume = 3
+    assert pytest.approx(m2.get_activity()) == 3.559778e14*2*3
 
-def test_get_activity_of_tritium():
-    """Checks that 1g of tritium has the correct activity scaling"""
-    m1 = openmc.Material()
-    m1.add_nuclide("H3", 1)
-    m1.set_density('g/cm3', 1)
-    m1.volume = 1
-    assert pytest.approx(m1.get_activity()) == 3.559778e14
-    m1.set_density('g/cm3', 2)
-    assert pytest.approx(m1.get_activity()) == 3.559778e14*2
-    m1.volume = 3
-    assert pytest.approx(m1.get_activity()) == 3.559778e14*2*3
+    # Checks that 1 mol of a metastable nuclides has the correct activity
+    m3 = openmc.Material()
+    m3.add_nuclide("Tc99_m1", 1)
+    m3.set_density('g/cm3', 1)
+    m3.volume = 98.9
+    assert pytest.approx(m3.get_activity(), rel=0.001) == 1.93e19
 
-
-def test_get_activity_of_metastable():
-    """Checks that 1 mol of a Tc99_m1 nuclides has the correct activity"""
-    m1 = openmc.Material()
-    m1.add_nuclide("Tc99_m1", 1)
-    m1.set_density('g/cm3', 1)
-    m1.volume = 98.9
-    assert pytest.approx(m1.get_activity(), rel=0.001) == 1.93e19
-
-
-def test_get_activity_of_tritium_nuclides():
-    """Checks that specific and volumetric activity of tritium are correct"""
-    m1 = openmc.Material()
-    m1.add_nuclide("H3", 1)
-    m1.set_density('g/cm3', 1)
-    assert m1.get_activity(normalization='mass') == 355978108155966.0  # [Bq/g]
-    assert m1.get_activity(normalization='mass', by_nuclide=True) == {
+    # Checks that specific and volumetric activity of tritium are correct
+    m4 = openmc.Material()
+    m4.add_nuclide("H3", 1)
+    m4.set_density('g/cm3', 1)
+    assert m4.get_activity(normalization='mass') == 355978108155966.0  # [Bq/g]
+    assert m4.get_activity(normalization='mass', by_nuclide=True) == {
         "H3": 355978108155966.0  # [Bq/g]
     }
-    assert m1.get_activity(normalization='volume') == 355978108155965.94 # [Bq/cc]
-    assert m1.get_activity(normalization='volume', by_nuclide=True) == {
+    assert m4.get_activity(normalization='volume') == 355978108155965.94 # [Bq/cc]
+    assert m4.get_activity(normalization='volume', by_nuclide=True) == {
         "H3": 355978108155965.94 # [Bq/cc]
     }
     # volume is required to calculate total activity
-    m1.volume = 10.
-    assert m1.get_activity(normalization='total') == 3559781081559659.5 # [Bq]
+    m4.volume = 10.
+    assert m4.get_activity(normalization='total') == 3559781081559659.5 # [Bq]

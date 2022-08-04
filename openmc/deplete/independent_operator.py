@@ -232,7 +232,10 @@ class IndependentOperator(OpenMCOperator):
     def _load_previous_results(self):
         """Load results from a previous depletion simulation"""
         # Reload volumes into geometry
-        self.prev_res[-1].transfer_volumes(self.materials)
+        model = openmc.Model(materials=self.materials)
+        self.prev_res[-1].transfer_volumes(model)
+        self.materials = model.materials
+
 
         # Store previous results in operator
         # Distribute reaction rates according to those tracked

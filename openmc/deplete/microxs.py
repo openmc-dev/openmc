@@ -94,19 +94,16 @@ class MicroXS(DataFrame):
                     xs[rxn].load_from_statepoint(sp)
 
         # Build the DataFrame
-        micro_xs = cls()
-        for rxn in xs:
-            df = xs[rxn].get_pandas_dataframe(xs_type='micro')
-            df.index = df['nuclide']
-            df.drop(['nuclide', xs[rxn].domain_type, 'group in', 'std. dev.'], axis=1, inplace=True)
-            df.rename({'mean': rxn}, axis=1, inplace=True)
-            micro_xs = concat([micro_xs, df], axis=1)
+        series = {}
+        for rx in xs:
+            df = xs[rx].get_pandas_dataframe(xs_type='micro')
+            series[rx] = df.set_index('nuclide')['mean']
 
         # Revert to the original tallies and materials
         model.tallies = original_tallies
         model.materials = original_materials
 
-        return cls(micro_xs)
+        return cls(series)
 
     @classmethod
     def _add_dilute_nuclides(cls, chain_file, model, dilute_initial):

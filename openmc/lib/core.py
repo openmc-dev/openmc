@@ -50,6 +50,7 @@ _dll.openmc_hard_reset.errcheck = _error_handler
 _dll.openmc_init.argtypes = [c_int, POINTER(POINTER(c_char)), c_void_p]
 _dll.openmc_init.restype = c_int
 _dll.openmc_init.errcheck = _error_handler
+_dll.openmc_initialize_geometry.restype = None
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
@@ -291,6 +292,10 @@ def init(args=None, intracomm=None, output=True):
         _dll.openmc_init(argc, argv, intracomm)
     openmc.lib.is_initialized = True
 
+
+def init_geom():
+    """Initialize OpenMC geometry only """
+    _dll.openmc_initialize_geometry()
 
 def is_statepoint_batch():
     """Return whether statepoint will be written in current batch or not.

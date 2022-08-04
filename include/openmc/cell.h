@@ -204,6 +204,7 @@ public:
   vector<std::int32_t> region_;
   //! Revised infix notation with no complements
   vector<std::int32_t> region_no_complements_;
+  vector<std::int32_t> rpn_;
   bool simple_; //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.

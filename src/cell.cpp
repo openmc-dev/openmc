@@ -138,7 +138,17 @@ std::vector<int32_t>::iterator add_parenthesis(
 
     } else if (*start == OP_LEFT_PAREN) {
       return_iterator = start;
-      start = std::find(start, infix.end(), OP_RIGHT_PAREN);
+      int depth = 1;
+      do {
+        start++;
+        if (*start > OP_COMPLEMENT) {
+          if (*start == OP_RIGHT_PAREN) {
+            depth--;
+          } else {
+            depth++;
+          }
+        }
+      } while (depth > 0);
     }
   }
 
@@ -598,6 +608,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   } else {
     // Ensure intersections have precedence over unions
     add_precedence(region_no_complements_);
+    rpn_ = generate_rpn(id_, region_no_complements_);
   }
   region_no_complements_.shrink_to_fit();
 
@@ -776,9 +787,6 @@ void CSGCell::remove_complement_ops(vector<int32_t>& infix)
 
 BoundingBox CSGCell::bounding_box_complex(vector<int32_t> rpn)
 {
-  // remove complements by adjusting surface signs and operators
-  remove_complement_ops(rpn);
-
   vector<BoundingBox> stack(rpn.size());
   int i_stack = -1;
 
@@ -802,7 +810,7 @@ BoundingBox CSGCell::bounding_box_complex(vector<int32_t> rpn)
 BoundingBox CSGCell::bounding_box() const
 {
   return simple_ ? bounding_box_simple()
-                 : bounding_box_complex(region_no_complements_);
+                 : bounding_box_complex(rpn_);
 }
 
 //==============================================================================
@@ -867,7 +875,7 @@ bool CSGCell::contains_complex(
         if (next_token >= OP_UNION && token != next_token) {
           if (next_token == OP_LEFT_PAREN) {
             int depth = 1;
-            while (depth > 0) {
+            do {
               it++;
               if (*it > OP_COMPLEMENT) {
                 if (*it == OP_RIGHT_PAREN) {
@@ -876,7 +884,7 @@ bool CSGCell::contains_complex(
                   depth++;
                 }
               }
-            }
+            } while (depth > 0);
           } else {
             break;
           }

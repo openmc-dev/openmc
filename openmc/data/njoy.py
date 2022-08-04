@@ -127,7 +127,7 @@ acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
 1 0 1 .{ext} /
 '{library}: {zsymam} at {temperature}'/
 {mat} {temperature}
-1 1 {ismoothing}/
+1 1 {ismooth}/
 /
 """
 
@@ -383,7 +383,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
     # acer
     if acer:
-        ismoothing = int(smoothing)
+        ismooth = int(smoothing)
         nacer_in = nlast
         for i, temperature in enumerate(temperatures):
             # Extend input with an ACER run for each temperature

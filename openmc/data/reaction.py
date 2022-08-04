@@ -82,7 +82,7 @@ def _get_products(ev, mt):
 
     Raises
     ------
-    IOError:
+    IOError
         When the Kalbach-Mann systematics is used, but the product
         is not defined in the 'center-of-mass' system. The breakup logic
         is not implemented which can lead to this error being raised while

@@ -1,6 +1,7 @@
 #include "openmc/mesh.h"
 
 #include <algorithm> // for copy, equal, min, min_element
+#include <array>
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
 #include <memory> // for allocator
@@ -238,7 +239,7 @@ void Mesh::get_indices_from_bin(int bin, int* ijk) const
 int Mesh::get_bin(Position r) const
 {
   // Determine indices
-  std::vector<int> ijk(n_dimension_);
+  std::array<int, 3> ijk;
   bool in_mesh;
   get_indices(r, ijk.data(), &in_mesh);
   if (!in_mesh) return -1;
@@ -712,7 +713,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;
-  std::vector<int> ijk0(n), ijk1(n);
+  std::array<int, 3> ijk0, ijk1;
   bool start_in_mesh;
   get_indices(r0, ijk0.data(), &start_in_mesh);
   bool end_in_mesh;
@@ -721,7 +722,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
   // Check if the track intersects any part of the mesh.
   if (!start_in_mesh) {
     Position r0_copy = r0;
-    std::vector<int> ijk0_copy(ijk0);
+    std::array<int, 3> ijk0_copy(ijk0);
     if (!intersects(r0_copy, r1, ijk0_copy.data())) return;
   }
 

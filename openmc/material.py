@@ -25,7 +25,25 @@ from .mixin import IDManagerMixin
 DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro')
 
+_MAT_LIB_DIRS = os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH',
+                               openmc.data.INTERNAL_DATA_PATH /
+                               'material_libraries').split(':')
+
+_MAT_LIB_PATHS = [f.resolve() for p in _MAT_LIB_DIRS
+                  for f in sorted(Path(p).glob('*'))]
+
 MATERIAL_LIBRARIES = {}
+_MATERIAL_LIBRARY_CACHE = {}
+
+for matlib_path in _MAT_LIB_PATHS:
+    if matlib_path.stem not in MATERIAL_LIBRARIES.keys():
+        MATERIAL_LIBRARIES[matlib_path.stem] = matlib_path
+    else:
+        msg = (f"Material library {matlib_path} is superseded by
+               {MATERIAL_LIBRARIES[matlib_path.stem]} and will not be
+               available.")
+        warnings.warn(msg)
+        
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
 
@@ -1228,30 +1246,30 @@ class Material(IDManagerMixin):
 
         """
 
-        available_mat_libraries = ['pnnl_v2']
-
-        if library not in available_mat_libraries:
+        if library not in MATERIAL_LIBRARIES.keys():
             msg = (
                     f'library {library} not found in available libraries. '
-                    f'Supported libraries are {available_mat_libraries}'
+                    f'Supported libraries are {list(MATERIAL_LIBRARIES.keys())}'
             )
             raise ValueError(msg)
-
-        global MATERIAL_LIBRARIES
+            
+        global _MATERIAL_LIBRARY_CACHE
 
         # loads in the library into the MATERIAL_LIBRARIES if not already loaded
-        if library not in MATERIAL_LIBRARIES.keys():
-            mat_lib_path = openmc.data.INTERNAL_DATA_PATH / f'material_library_{library}.json'
-            MATERIAL_LIBRARIES[library] = json.loads(mat_lib_path.read_text())
+        try:
+            library_data = _MATERIAL_LIBRARY_CACHE[library]
+        except KeyError:
+            library_data = json.loads(MATERIAL_LIBRARIES[library].read_text())
+            _MATERIAL_LIBRARY_CACHE[library] = library_data
 
-        if name not in MATERIAL_LIBRARIES[library].keys():
+        if name not in library_data.keys():
             msg = (
                     f'material name {name} not found in the {library} materials '
-                    f'library. Available are {list(MATERIAL_LIBRARIES[library].keys())}'
+                    f'library. Available are {list(library_data.keys())}'
             )
             raise ValueError(msg)
 
-        material_to_add = MATERIAL_LIBRARIES[library][name]
+        material_to_add = library_data[name]
 
         mat = cls()
         if 'nuclides' in material_to_add.keys():

@@ -927,23 +927,15 @@ class Material(IDManagerMixin):
         cv.check_value('normalization', normalization, {'total', 'mass', 'volume'})
         cv.check_type('by_nuclide', by_nuclide, bool)
         
-        if normalization=='total':
-            activity = {}
-            for nuclide, atoms in self.get_nuclide_atoms().items():
-                inv_seconds = openmc.data.decay_constant(nuclide)
-                activity[nuclide] = inv_seconds * atoms
-
-        elif normalization=='mass':
-            activity = {}
-            for nuclide, atoms in self.get_nuclide_atom_densities().items():
-                inv_seconds = openmc.data.decay_constant(nuclide)
-                activity[nuclide] = (inv_seconds * atoms * 1.0e24) / self.density
-        # normalization must be volume by this stage so else can be used
+        if normalization == 'total':
+            multiplier = self.volume
         else:
-            activity = {}
-            for nuclide, atoms in self.get_nuclide_atom_densities().items():
-                inv_seconds = openmc.data.decay_constant(nuclide)
-                activity[nuclide] = (inv_seconds * atoms * 1.0e24) / self.volume
+            multiplier = 1 if normalization == 'volume' else 1.0 / self.get_mass_density()
+            
+        activity = {}
+        for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
+            inv_seconds = openmc.data.decay_constant(nuclide)
+            activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         if by_nuclide:
             return activity

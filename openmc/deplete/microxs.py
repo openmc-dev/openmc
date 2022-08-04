@@ -106,7 +106,7 @@ class MicroXS(DataFrame):
         model.tallies = original_tallies
         model.materials = original_materials
 
-        return micro_xs
+        return cls(micro_xs)
 
     @classmethod
     def _add_dilute_nuclides(cls, chain_file, model, dilute_initial):

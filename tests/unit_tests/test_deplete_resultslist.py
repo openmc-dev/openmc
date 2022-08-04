@@ -70,14 +70,16 @@ def test_get_keff(res):
     np.testing.assert_allclose(k[:, 1], u_ref)
 
 
-@pytest.mark.parametrize("unit", ("s", "d", "min", "h"))
+@pytest.mark.parametrize("unit", ("s", "d", "min", "h", "a"))
 def test_get_steps(unit):
     # Make a Results full of near-empty Result instances
     # Just fill out a time schedule
     results = openmc.deplete.Results()
     # Time in units of unit
     times = np.linspace(0, 100, num=5)
-    if unit == "d":
+    if unit == "a":
+        conversion_to_seconds = 60 * 60 * 24 * 365.25
+    elif unit == "d":
         conversion_to_seconds = 60 * 60 * 24
     elif unit == "h":
         conversion_to_seconds = 60 * 60

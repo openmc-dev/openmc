@@ -471,16 +471,19 @@ def test_mix_materials():
     assert m5.density == pytest.approx(dens5)
 
 
-def test_activity_of_stable():
+def test_get_activity_of_stable_nuclides():
     """Creates a material with stable isotopes to checks the activity is 0"""
     m1 = openmc.Material()
     m1.add_element("Fe", 1)
-    m1.set_density('g/cm3', 1)
+    m1.set_density('g/cm3', 1.5)
+    # activity in Bq/cc and Bq/g should not require volume setting
+    assert m1.get_activity(normalization='volume') == 0
+    assert m1.get_activity(normalization='mass') == 0
     m1.volume = 1
     assert m1.get_activity() == 0
 
 
-def test_activity_of_tritium():
+def test_get_activity_of_tritium():
     """Checks that 1g of tritium has the correct activity scaling"""
     m1 = openmc.Material()
     m1.add_nuclide("H3", 1)
@@ -493,7 +496,7 @@ def test_activity_of_tritium():
     assert pytest.approx(m1.get_activity()) == 3.559778e14*2*3
 
 
-def test_activity_of_metastable():
+def test_get_activity_of_metastable():
     """Checks that 1 mol of a Tc99_m1 nuclides has the correct activity"""
     m1 = openmc.Material()
     m1.add_nuclide("Tc99_m1", 1)
@@ -502,7 +505,7 @@ def test_activity_of_metastable():
     assert pytest.approx(m1.get_activity(), rel=0.001) == 1.93e19
 
 
-def test_specific_activity_of_tritium():
+def test_get_activity_of_tritium_nuclides():
     """Checks that specific and volumetric activity of tritium are correct"""
     m1 = openmc.Material()
     m1.add_nuclide("H3", 1)

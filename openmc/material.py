@@ -929,8 +929,10 @@ class Material(IDManagerMixin):
         
         if normalization == 'total':
             multiplier = self.volume
-        else:
-            multiplier = 1 if normalization == 'volume' else 1.0 / self.get_mass_density()
+        elif normalization == 'volume':
+            multiplier = 1
+        elif normalization == 'mass':
+            multiplier = 1.0 / self.get_mass_density()
             
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():

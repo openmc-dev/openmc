@@ -39,9 +39,9 @@ for matlib_path in _MAT_LIB_PATHS:
     if matlib_path.stem not in MATERIAL_LIBRARIES.keys():
         MATERIAL_LIBRARIES[matlib_path.stem] = matlib_path
     else:
-        msg = (f"Material library {matlib_path} is superseded by
-               {MATERIAL_LIBRARIES[matlib_path.stem]} and will not be
-               available.")
+        msg = (f"Material library {matlib_path} is superseded by "
+               "{MATERIAL_LIBRARIES[matlib_path.stem]} and will not be "
+               "available.")
         warnings.warn(msg)
         
 

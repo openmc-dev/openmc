@@ -483,33 +483,33 @@ def test_get_activity():
     assert m1.get_activity(normalization='volume') == 0
     assert m1.get_activity(normalization='mass') == 0
     m1.volume = 1
-    assert m1.get_activity() == 0
+    assert m1.get_activity(normalization='total') == 0
 
     # Checks that 1g of tritium has the correct activity scaling
     m2 = openmc.Material()
     m2.add_nuclide("H3", 1)
     m2.set_density('g/cm3', 1)
     m2.volume = 1
-    assert pytest.approx(m2.get_activity()) == 3.559778e14
+    assert pytest.approx(m2.get_activity(normalization='total')) == 3.559778e14
     m2.set_density('g/cm3', 2)
-    assert pytest.approx(m2.get_activity()) == 3.559778e14*2
+    assert pytest.approx(m2.get_activity(normalization='total')) == 3.559778e14*2
     m2.volume = 3
-    assert pytest.approx(m2.get_activity()) == 3.559778e14*2*3
+    assert pytest.approx(m2.get_activity(normalization='total')) == 3.559778e14*2*3
 
     # Checks that 1 mol of a metastable nuclides has the correct activity
     m3 = openmc.Material()
     m3.add_nuclide("Tc99_m1", 1)
     m3.set_density('g/cm3', 1)
     m3.volume = 98.9
-    assert pytest.approx(m3.get_activity(), rel=0.001) == 1.93e19
+    assert pytest.approx(m3.get_activity(normalization='total'), rel=0.001) == 1.93e19
 
     # Checks that specific and volumetric activity of tritium are correct
     m4 = openmc.Material()
     m4.add_nuclide("H3", 1)
     m4.set_density('g/cm3', 1.5)
-    assert m4.get_activity(normalization='mass') == 355978108155966.0*2/3  # [Bq/g]
+    assert m4.get_activity(normalization='mass') == 355978108155965.94  # [Bq/g]
     assert m4.get_activity(normalization='mass', by_nuclide=True) == {
-        "H3": 355978108155966.0*2/3  # [Bq/g]
+        "H3": 355978108155965.94  # [Bq/g]
     }
     assert m4.get_activity(normalization='volume') == 355978108155965.94*3/2 # [Bq/cc]
     assert m4.get_activity(normalization='volume', by_nuclide=True) == {

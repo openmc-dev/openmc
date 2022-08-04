@@ -899,7 +899,7 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_activity(self, normalization: str = 'total', by_nuclide: bool = False):
+    def get_activity(self, normalization: str = 'volume', by_nuclide: bool = False):
         """Returns the activity of the material or for each nuclide in the
         material in units of [Bq], [Bq/g] or [Bq/cc].
 

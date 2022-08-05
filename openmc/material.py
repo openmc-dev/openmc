@@ -25,9 +25,9 @@ from .mixin import IDManagerMixin
 DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro')
 
-_MAT_LIB_DIRS = os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH',
-                               openmc.data.INTERNAL_DATA_PATH /
-                               'material_libraries').split(':')
+_MAT_LIB_DIRS = [openmc.data.INTERNAL_DATA_PATH / 'material_libraries']
+if os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH') is not None:
+    _MAT_LIB_DIRS += [Path(a) for a in os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH').split(':')]
 
 _MAT_LIB_PATHS = [f.resolve() for p in _MAT_LIB_DIRS
                   for f in sorted(Path(p).glob('*'))]

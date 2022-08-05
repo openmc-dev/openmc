@@ -5,6 +5,7 @@ from xml.etree import ElementTree as ET
 import numpy as np
 import h5py
 
+import openmc
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
@@ -36,6 +37,8 @@ class Source:
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type
+    cells : iterable of int or openmc.Cell
+        Cells to reject based on
 
     Attributes
     ----------
@@ -57,11 +60,14 @@ class Source:
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type
+    cells : iterable of int or openmc.Cell
+        Cells to reject based on
 
     """
 
     def __init__(self, space=None, angle=None, energy=None, time=None, filename=None,
-                 library=None, parameters=None, strength=1.0, particle='neutron'):
+                 library=None, parameters=None, strength=1.0, particle='neutron',
+                 cells=None):
         self._space = None
         self._angle = None
         self._energy = None
@@ -69,6 +75,7 @@ class Source:
         self._file = None
         self._library = None
         self._parameters = None
+        self._cells = []
 
         if space is not None:
             self.space = space
@@ -86,6 +93,8 @@ class Source:
             self.parameters = parameters
         self.strength = strength
         self.particle = particle
+        if cells is not None:
+            self.cells = cells
 
     @property
     def file(self):
@@ -122,6 +131,10 @@ class Source:
     @property
     def particle(self):
         return self._particle
+
+    @property
+    def cells(self):
+        return self._cells
 
     @file.setter
     def file(self, filename):
@@ -169,6 +182,13 @@ class Source:
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
+    @cells.setter
+    def cells(self, cells):
+        self._cells = [
+            cell.id if isinstance(cell, openmc.Cell) else cell
+            for cell in cells
+        ]
+
     def to_xml_element(self):
         """Return XML representation of the source
 
@@ -196,6 +216,9 @@ class Source:
             element.append(self.energy.to_xml_element('energy'))
         if self.time is not None:
             element.append(self.time.to_xml_element('time'))
+        if self.cells:
+            cells_elem = ET.SubElement(element, "cells")
+            cells_elem.text = ' '.join(str(x) for x in self.cells)
         return element
 
     @classmethod
@@ -250,6 +273,10 @@ class Source:
         time = elem.find('time')
         if time is not None:
             source.time = Univariate.from_xml_element(time)
+
+        cells = elem.find('cells')
+        if cells is not None:
+            source.cells = [int(x) for x in cells.text.split()]
 
         return source
 

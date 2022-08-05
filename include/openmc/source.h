@@ -4,6 +4,8 @@
 #ifndef OPENMC_SOURCE_H
 #define OPENMC_SOURCE_H
 
+#include <unordered_set>
+
 #include "pugixml.hpp"
 
 #include "openmc/distribution_multi.h"
@@ -51,13 +53,15 @@ public:
 };
 
 //==============================================================================
-//! Source composed of independent spatial, angle, energy, and time distributions
+//! Source composed of independent spatial, angle, energy, and time
+//! distributions
 //==============================================================================
 
 class IndependentSource : public Source {
 public:
   // Constructors
-  IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time);
+  IndependentSource(
+    UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time);
   explicit IndependentSource(pugi::xml_node node);
 
   //! Sample from the external source distribution
@@ -82,6 +86,7 @@ private:
   UPtrAngle angle_;                               //!< Angular distribution
   UPtrDist energy_;                               //!< Energy distribution
   UPtrDist time_;                                 //!< Time distribution
+  std::unordered_set<int32_t> cells_;             //!< Cells to reject from
 };
 
 //==============================================================================

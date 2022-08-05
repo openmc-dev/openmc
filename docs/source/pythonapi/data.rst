@@ -67,6 +67,7 @@ Core Functions
     gnd_name
     half_life
     isotopes
+    kalbach_slope
     linearize
     thin
     water_density

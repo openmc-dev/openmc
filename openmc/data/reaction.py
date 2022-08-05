@@ -80,6 +80,14 @@ def _get_products(ev, mt):
     mt : int
         The MT value of the reaction to get products for
 
+    Raises
+    ------
+    IOError
+        When the Kalbach-Mann systematics is used, but the product
+        is not defined in the 'center-of-mass' system. The breakup logic
+        is not implemented which can lead to this error being raised while
+        the definition of the product is correct.
+
     Returns
     -------
     products : list of openmc.data.Product
@@ -141,7 +149,26 @@ def _get_products(ev, mt):
             if lang == 1:
                 p.distribution = [CorrelatedAngleEnergy.from_endf(file_obj)]
             elif lang == 2:
-                p.distribution = [KalbachMann.from_endf(file_obj)]
+                # Products need to be described in the center-of-mass system
+                product_center_of_mass = False
+                if reference_frame == 'center-of-mass':
+                    product_center_of_mass = True
+                elif reference_frame == 'light-heavy':
+                    product_center_of_mass = (awr <= 4.0)
+                # TODO: 'breakup' logic not implemented
+
+                if product_center_of_mass is False:
+                    raise IOError(
+                        "Kalbach-Mann representation must be defined in the "
+                        "'center-of-mass' system"
+                    )
+
+                zat = ev.target["atomic_number"] * 1000 + ev.target["mass_number"]
+                projectile_mass = ev.projectile["mass"]
+                p.distribution = [KalbachMann.from_endf(file_obj,
+                                                        za,
+                                                        zat,
+                                                        projectile_mass)]
 
         elif law == 2:
             # Discrete two-body scattering

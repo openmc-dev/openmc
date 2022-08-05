@@ -11,7 +11,7 @@ import openmc.deplete
 @pytest.fixture
 def res():
     """Load the reference results"""
-    filename = (Path(__file__).parents[1] / 'regression_tests' / 'deplete'
+    filename = (Path(__file__).parents[1] / 'regression_tests' / 'deplete_with_transport'
                 / 'test_reference.h5')
     return openmc.deplete.Results(filename)
 

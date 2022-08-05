@@ -94,9 +94,9 @@ class Results(list):
         .. note::
             Initial values for some isotopes that do not appear in
             initial concentrations may be non-zero, depending on the
-            value of the :attr:`openmc.deplete.Operator.dilute_initial`
-            attribute. The :class:`openmc.deplete.Operator` class adds isotopes
-            according to this setting, which can be set to zero.
+            value of the :attr:`openmc.deplete.CoupledOperator.dilute_initial`
+            attribute. The :class:`openmc.deplete.CoupledOperator` class adds
+            isotopes according to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -159,8 +159,8 @@ class Results(list):
 
             Initial values for some isotopes that do not appear in
             initial concentrations may be non-zero, depending on the
-            value of :class:`openmc.deplete.Operator` ``dilute_initial``
-            The :class:`openmc.deplete.Operator` adds isotopes according
+            value of :class:`openmc.deplete.CoupledOperator` ``dilute_initial``
+            The :class:`openmc.deplete.CoupledOperator` adds isotopes according
             to this setting, which can be set to zero.
 
         Parameters

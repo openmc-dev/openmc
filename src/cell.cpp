@@ -773,7 +773,17 @@ void CSGCell::remove_complement_ops(vector<int32_t>& infix)
     // Define stop given left parenthesis or not
     auto stop = it;
     if (*it == OP_LEFT_PAREN) {
-      stop = std::find(it, infix.end(), OP_RIGHT_PAREN);
+      int depth = 1;
+      do {
+        stop++;
+        if (*stop > OP_COMPLEMENT) {
+          if (*stop == OP_RIGHT_PAREN) {
+            depth--;
+          } else {
+            depth++;
+          }
+        }
+      } while (depth > 0);
       it++;
     }
 

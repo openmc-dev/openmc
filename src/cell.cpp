@@ -503,9 +503,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   }
 
   // Get a tokenized representation of the region specification
-  // and apply De Morgan's laws to remove complements.
   region_ = tokenize(region_spec);
-  remove_complement_ops(region_);
   region_.shrink_to_fit();
 
   // Convert user IDs to surface indices.
@@ -522,7 +520,9 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   }
 
   // Convert the infix region spec to prefix notation
-  region_prefix_ = generate_region_prefix(id_, region_);
+  region_prefix_ = region_;
+  remove_complement_ops(region_prefix_);
+  region_prefix_ = generate_region_prefix(id_, region_prefix_);
 
   // Check if this is a simple cell.
   simple_ = true;
@@ -709,7 +709,17 @@ void CSGCell::remove_complement_ops(vector<int32_t>& infix)
     // Define stop given left parenthesis or not
     auto stop = it;
     if (*it == OP_LEFT_PAREN) {
-      stop = std::find(it, infix.end(), OP_RIGHT_PAREN);
+      int depth = 1;
+      do {
+        stop++;
+        if (*stop > OP_COMPLEMENT) {
+          if (*stop == OP_RIGHT_PAREN) {
+            depth--;
+          } else {
+            depth++;
+          }
+        }
+      } while (depth > 0);
       it++;
     }
 

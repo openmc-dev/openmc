@@ -60,6 +60,31 @@ inline double interpolate(const std::vector<double>& xs,
   return interpolate(xs, ys, idx, x, i);
 }
 
+inline double interpolate_lagrangian(
+  const std::vector<double>& xs, const std::vector<double>& ys, double x)
+{
+  int idx = lower_bound_index(xs.begin(), xs.end(), x);
+
+  std::vector<double> coeffs;
+
+  int order = 3;
+
+  for (int i = 0; i < order + 1; i++) {
+    double numerator {1.0};
+    double denominator {1.0};
+    for (int j = 0; j < order; j++) {
+      if (i == j)
+        continue;
+      numerator *= (x - xs[idx + j]);
+      denominator *= (xs[idx + i] - xs[idx + j]);
+    }
+    coeffs.push_back(numerator / denominator);
+  }
+
+  return std::inner_product(
+    coeffs.begin(), coeffs.end(), ys.begin() + idx, 0.0);
+}
+
 } // namespace openmc
 
 #endif

@@ -785,7 +785,7 @@ class DAGMCUniverse(UniverseBase):
             Universe instance
         """
 
-        bounding_cell = openmc.Cell(fill=self, cell_id =bounding_cell_id, region=self.bounding_region(**kwargs))
+        bounding_cell = openmc.Cell(fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 
     @classmethod

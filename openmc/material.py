@@ -917,7 +917,6 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-
         Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide 
             names and values are activity is returned. Otherwise the activity
@@ -939,10 +938,7 @@ class Material(IDManagerMixin):
             inv_seconds = openmc.data.decay_constant(nuclide)
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
-        if by_nuclide:
-            return activity
-        else:
-            return sum(activity.values())
+        return activity if by_nuclide else sum(activity.values())
 
     def get_nuclide_atoms(self):
         """Return number of atoms of each nuclide in the material

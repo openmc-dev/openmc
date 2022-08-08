@@ -30,9 +30,13 @@ if os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH') is not None:
     _MAT_LIB_DIRS += [Path(a) for a in os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH').split(':')]
 
 _MAT_LIB_PATHS = [f.resolve() for p in _MAT_LIB_DIRS
-                  for f in sorted(Path(p).glob('*'))]
+                  for f in sorted(Path(p).glob('*.json'))]
 
+# MATERIAL_LIBRARIES maps strings of library names to pathlib.Path objects for 
+# each available material library
 MATERIAL_LIBRARIES = {}
+# _MATERIAL_LIBRARY_CACHE maps strings of library names to the loaded library to
+# prevent loading the same library multiple times or loading unused libraries
 _MATERIAL_LIBRARY_CACHE = {}
 
 for matlib_path in _MAT_LIB_PATHS:

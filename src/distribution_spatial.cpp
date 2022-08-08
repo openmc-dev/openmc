@@ -6,9 +6,6 @@
 #include "openmc/mesh.h"
 #include "openmc/search.h"
 
-#include <iostream>
-#include <fstream>
-
 namespace openmc {
 
 //==============================================================================
@@ -202,48 +199,48 @@ MeshIndependent::MeshIndependent(pugi::xml_node node)
   umesh_ptr_ = dynamic_cast<UnstructuredMesh*>(mesh_ptr.get());
   if (!umesh_ptr_) {fatal_error("Mesh passed to spatial distribution is not an unstructured mesh object"); }
 
-  // Create CDF based on weighting scheme
+  // Initialize arrays for CDF creation
   tot_bins_ = umesh_ptr_->n_bins();
-  std::vector<double> weights = {};
-  weights.resize(tot_bins_);
-  double temp_total_weight = 0.0;
+  std::vector<double> strengths = {};
+  strengths.resize(tot_bins_);
+  double temp_total_strength = 0.0;
   mesh_CDF_.resize(tot_bins_+1);
   mesh_CDF_[0] = {0.0};
-  total_weight_ = 0.0;
-  mesh_weights_.resize(tot_bins_);
+  total_strength_ = 0.0;
+  mesh_strengths_.resize(tot_bins_);
 
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet
   // File scheme is weighted by an array given in the xml file
 
-  if (check_for_node(node, "weights_from_file")) {
-    mesh_weights_ = get_node_array<double>(node, "weights_from_file");
-    if (mesh_weights_.size() != tot_bins_){
-      write_message("WARNING: The size of the weights array from the xml file does not equal the number of elements in the mesh.");
-    } if (get_node_value_bool(node, "volume_weighting")){
+  if (check_for_node(node, "strengths")) {
+    mesh_strengths_ = get_node_array<double>(node, "strengths");
+    if (mesh_strengths_.size() != tot_bins_){
+      fatal_error("The size of the strengths array from the xml file does not equal the number of elements in the mesh.");
+    } if (get_node_value_bool(node, "volume_normalized")){
       for (int i = 0; i < tot_bins_; i++){
-        weights[i] = mesh_weights_[i]*umesh_ptr_->volume(i);
+        strengths[i] = mesh_strengths_[i]*umesh_ptr_->volume(i);
       } 
-    } else if (!get_node_value_bool(node, "volume_weighting")){
+    } else if (!get_node_value_bool(node, "volume_normalized")){
       for (int i = 0; i < tot_bins_; i++){
-        weights[i] = mesh_weights_[i];  
+        strengths[i] = mesh_strengths_[i];  
       }
     }
-  } else if (get_node_value_bool(node, "volume_weighting")){
+  } else if (get_node_value_bool(node, "volume_normalized")){
     for (int i = 0; i<tot_bins_; i++){
-      weights[i] = umesh_ptr_->volume(i);
+      strengths[i] = umesh_ptr_->volume(i);
     }
   } else {
     for (int i = 0; i<tot_bins_; i++){
-      weights[i] = 1;
+      strengths[i] = 1;
     }
   }
   for (int i = 0; i<tot_bins_; i++){
-    temp_total_weight = temp_total_weight + weights[i];
+    temp_total_strength = temp_total_strength + strengths[i];
   }
-  total_weight_ = temp_total_weight;
+  total_strength_ = temp_total_strength;
   for (int i = 0; i<tot_bins_; i++){
-    mesh_CDF_[i+1] = mesh_CDF_[i] + weights[i]/total_weight_;
+    mesh_CDF_[i+1] = mesh_CDF_[i] + strengths[i]/total_strength_;
   }
 }
 

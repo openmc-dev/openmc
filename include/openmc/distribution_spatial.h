@@ -112,11 +112,10 @@ private:
   UnstructuredMesh* umesh_ptr_;
   int32_t mesh_map_idx_;
   std::string sample_scheme_;
-  double total_weight_;
+  double total_strength_;
   std::vector<double> mesh_CDF_;
-  std::vector<double> mesh_weights_;
+  std::vector<double> mesh_strengths_;
   int64_t tot_bins_;
-  
 };
 
 //==============================================================================

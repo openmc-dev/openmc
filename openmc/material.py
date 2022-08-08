@@ -30,7 +30,7 @@ if os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH') is not None:
     _MAT_LIB_DIRS += [Path(a) for a in os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH').split(':')]
 
 _MAT_LIB_PATHS = [f.resolve() for p in _MAT_LIB_DIRS
-                  for f in sorted(Path(p).glob('*.json'))]
+                  for f in sorted(Path(p).glob('*.xml'))]
 
 # MATERIAL_LIBRARIES maps strings of library names to pathlib.Path objects for 
 # each available material library
@@ -1263,7 +1263,10 @@ class Material(IDManagerMixin):
         try:
             library_data = _MATERIAL_LIBRARY_CACHE[library]
         except KeyError:
-            library_data = json.loads(MATERIAL_LIBRARIES[library].read_text())
+            material_objs = openmc.Materials.from_xml(MATERIAL_LIBRARIES[library])
+            library_data = {}
+            for material_obj in material_objs:
+                library_data[material_obj.name] = material_obj
             _MATERIAL_LIBRARY_CACHE[library] = library_data
 
         if name not in library_data.keys():
@@ -1275,17 +1278,10 @@ class Material(IDManagerMixin):
 
         material_to_add = library_data[name]
 
-        mat = cls()
-        if 'nuclides' in material_to_add.keys():
-            for nuclide in material_to_add['nuclides']:
-                mat.add_nuclide(**nuclide)
-        if 'elements' in material_to_add.keys():
-            for nuclide in material_to_add['elements']:
-                mat.add_element(**nuclide)
+        # mat = cls()
+        
 
-        mat.set_density(**material_to_add['density'])
-
-        return mat
+        return material_to_add
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element):

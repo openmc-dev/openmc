@@ -25,6 +25,7 @@ def test_add_nuclide():
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
 
+
 def test_add_components():
     """Test adding multipe elements or nuclides at once"""
     m = openmc.Material()
@@ -504,8 +505,9 @@ def test_material_from_library():
     m1 = openmc.Material.from_library(name='Sodium Oxide', library='pnnl_v2')
     assert m1.density == 2.27
     assert m1.nuclides == [
-        ('O16', 0.3332066659933032, 'ao'),
-        ('O17', 0.0001263332066968, 'ao'),
+        ('O16', 0.332523, 'ao'),
+        ('O17', 0.0001266665, 'ao'),
+        ('O18', 0.0006833327, 'ao'),
         ('Na23', 0.666667, 'ao')
     ]
     with pytest.raises(ValueError):

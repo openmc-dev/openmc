@@ -1324,7 +1324,7 @@ class EnergyFilter(RealFilter):
             cv.check_greater_than('filter value', v0, 0., equality=True)
             cv.check_greater_than('filter value', v1, 0., equality=True)
 
-    def bin_log_width(self):
+    def bin_lethargy(self):
         """Calculates the base 10 log width of energy bins which is useful when
         plotting the normalized flux.
 

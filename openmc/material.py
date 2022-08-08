@@ -3,7 +3,6 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
-import json
 import os
 import re
 import typing  # imported separately as py3.8 requires typing.Iterable

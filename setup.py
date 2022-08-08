@@ -34,7 +34,7 @@ kwargs = {
         'openmc.lib': ['libopenmc.{}'.format(suffix)],
         'openmc.data': ['mass16.txt', 'BREMX.DAT', 'half_life.json', '*.h5'],
         'openmc.data.effective_dose': ['*.txt'],
-        'openmc.data.material_libraries': ['*.json']
+        'openmc.data.material_libraries': ['*.xml']
     },
 
     # Metadata

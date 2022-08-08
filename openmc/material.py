@@ -899,18 +899,17 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_activity(self, normalization: str = 'volume', by_nuclide: bool = False):
+    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False):
         """Returns the activity of the material or for each nuclide in the
-        material in units of [Bq], [Bq/g] or [Bq/cc].
+        material in units of [Bq], [Bq/g] or [Bq/cm3].
 
         .. versionadded:: 0.13.1
 
         Parameters
         ----------
-        normalization : {'total', 'mass', 'volume'}
-            Specifies the type of activity to return, 'total' will return the
-            material activity in [Bq], 'mass' returns the materials specific
-            activity in [Bq/g] and 'volume' returns the activity in [Bq/cc].
+        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+            Specifies the type of activity to return, options include total
+            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide.
@@ -924,16 +923,16 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('normalization', normalization, {'total', 'mass', 'volume'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
-        
-        if normalization == 'total':
+
+        if units == 'Bq':
             multiplier = self.volume
-        elif normalization == 'volume':
+        elif units == 'Bq/g':
             multiplier = 1
-        elif normalization == 'mass':
+        elif units == 'Bq/cm3':
             multiplier = 1.0 / self.get_mass_density()
-            
+
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             inv_seconds = openmc.data.decay_constant(nuclide)
@@ -943,7 +942,6 @@ class Material(IDManagerMixin):
             return activity
         else:
             return sum(activity.values())
-
 
     def get_nuclide_atoms(self):
         """Return number of atoms of each nuclide in the material

@@ -2,11 +2,12 @@ import glob
 from itertools import product
 import os
 
-import openmc
-import openmc.lib
+import pytest
 import numpy as np
 
-import pytest
+import openmc
+import openmc.lib
+
 from tests.testing_harness import PyAPITestHarness
 from tests.regression_tests import config
 from subprocess import call

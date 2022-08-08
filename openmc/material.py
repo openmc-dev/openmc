@@ -928,9 +928,9 @@ class Material(IDManagerMixin):
 
         if units == 'Bq':
             multiplier = self.volume
-        elif units == 'Bq/g':
-            multiplier = 1
         elif units == 'Bq/cm3':
+            multiplier = 1
+        elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
 
         activity = {}

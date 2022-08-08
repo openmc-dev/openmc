@@ -910,9 +910,10 @@ class Material(IDManagerMixin):
         units : {'Bq', 'Bq/g', 'Bq/cm3'}
             Specifies the type of activity to return, options include total
             activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
+            Default is volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
-            whole or per nuclide.
+            whole or per nuclide. Default is False.
 
         Returns
         -------

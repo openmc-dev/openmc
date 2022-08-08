@@ -3078,10 +3078,10 @@ class AbsorptionXS(MGXS):
 
 @add_params
 class ReducedAbsorptionXS(MGXS):
-    r"""A reduced absorpiton multi-group cross section.
+    r"""A reduced absorption multi-group cross section.
 
     The reduced absorption reaction rate is defined as the difference between
-    absorption and the produced of neutrons due to (n,xn) reactions.
+    absorption and the production of neutrons due to (n,xn) reactions.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated

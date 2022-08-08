@@ -3,7 +3,6 @@ from collections.abc import Iterable
 from math import pi, cos
 from numbers import Real
 from xml.etree import ElementTree as ET
-from xmlrpc.client import boolean
 
 import numpy as np
 
@@ -629,29 +628,25 @@ class MeshIndependent(Spatial):
 
     Parameters
     ----------
-    elem_weight_scheme : str, optional
-        The scheme for weighting and sampling elements from the mesh. Options are 'file' and 'volume' based weights.
     mesh : openmc.MeshBase
         The mesh instance used for sampling, mesh is written into settings.xml, mesh.id is written into the source distribution
-    weights_from_file : Iterable of Real, optional
+    strengths : Iterable of Real, optional
         A list of values which represent the weights of each element
 
 
     Attributes
     ----------
-    elem_weight_scheme : str, optional
-        Weighting scheme for sampling element from mesh, defaults to volume
     mesh : openmc.MeshBase
         The mesh instance used for sampling, mesh is written into settings.xml, mesh.id is written into the source distribution
-    weights_from_file : Iterable of Real, optional
+    strengths : Iterable of Real, optional
         A list of values which represent the weights of each element
 
     """
 
-    def __init__(self, mesh, weights_from_file=None, volume_weighting=False):
+    def __init__(self, mesh, strengths=None, volume_normalized=False):
         self.mesh = mesh        
-        self.weights_from_file = weights_from_file
-        self.volume_weighting = volume_weighting
+        self.strengths = strengths
+        self.volume_normalized = volume_normalized
 
     @property
     def mesh(self):
@@ -660,34 +655,35 @@ class MeshIndependent(Spatial):
     @mesh.setter
     def mesh(self, mesh):
         if mesh != None:
-            cv.check_type('Unstructured Mesh', mesh, MeshBase)
+            cv.check_type('Unstructured Mesh instance', mesh, MeshBase)
         self._mesh = mesh
 
     @property
-    def volume_weighting(self):
-        return self._volume_weighting
+    def volume_normalized(self):
+        return self._volume_normalized
 
-    @volume_weighting.setter
-    def volume_weighting(self, volume_weighting):
-        cv.check_type('Scheme for sampling an element from the mesh', volume_weighting, bool)
-        self._volume_weighting = volume_weighting
+    @volume_normalized.setter
+    def volume_normalized(self, volume_normalized):
+        cv.check_type('Normalize (multiply) strengths by volume', volume_normalized, bool)
+        self._volume_normalized = volume_normalized
 
     @property
-    def weights_from_file(self):
-        return self._weights_from_file
+    def strengths(self):
+        return self._strengths
 
-    @weights_from_file.setter
-    def weights_from_file(self, given_weights):
-        if given_weights is not None:
-            self._weights_from_file = (np.array(given_weights, dtype=float)).flatten()
+    @strengths.setter
+    def strengths(self, given_strengths):
+        if given_strengths is not None:
+            cv.check_type('strengths array passed in', given_strengths, Iterable, Real)
+            self._strengths = np.array(given_strengths, dtype=float).flatten()
         else:
-            self._weights_from_file = None
+            self._strengths = None
 
     @property
-    def num_weight_bins(self):
-        if self.weights_from_file == None:
-            raise ValueError('Weight bins are not set')
-        return self.weights_from_file.size
+    def num_strength_bins(self):
+        if self.strengths == None:
+            raise ValueError('Strengths are not set')
+        return self.strengths.size
                 
     def to_xml_element(self):
         """Return XML representation of the spatial distribution
@@ -701,11 +697,11 @@ class MeshIndependent(Spatial):
         element = ET.Element('space')
         element.set('type', 'mesh')
         element.set("mesh_id", str(self.mesh.id))
-        element.set("volume_weighting", str(self.volume_weighting))
+        element.set("volume_normalized", str(self.volume_normalized))
 
-        if self.weights_from_file is not None:
-            subelement = ET.SubElement(element, 'weights_from_file')
-            subelement.text = ' '.join(str(e) for e in self.weights_from_file)
+        if self.strengths is not None:
+            subelement = ET.SubElement(element, 'strengths')
+            subelement.text = ' '.join(str(e) for e in self.strengths)
 
         return element
 
@@ -726,13 +722,13 @@ class MeshIndependent(Spatial):
         """
 
         mesh_id = int(elem.get('mesh_id'))
-        volume_weighting = elem.get("volume_weighting")
-        volume_weighting = get_text(elem, 'volume_weighting').lower() == 'true'
-        if elem.get('weights_from_file') is not None:
-            weights_from_file = [float(b) for b in get_text(elem, 'weights_from_file').split()]
+        volume_normalized = elem.get("volume_normalized")
+        volume_normalized = get_text(elem, 'volume_normalized').lower() == 'true'
+        if elem.get('strengths') is not None:
+            strengths = [float(b) for b in get_text(elem, 'strengths').split()]
         else:
-            weights_from_file = None
-        return cls(volume_weighting, mesh_id, weights_from_file)
+            strengths = None
+        return cls(volume_normalized, mesh_id, strengths)
 
 
 class Box(Spatial):

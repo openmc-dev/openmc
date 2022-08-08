@@ -358,7 +358,7 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
   return ijk;
 }
 
-Position StructuredMesh::sample(uint64_t* seed, int32_t tet_bin) const {
+Position StructuredMesh::sample(uint64_t* seed, int32_t bin) const {
   fatal_error("Position sampling on structured meshes is not yet implemented");
 }
 
@@ -2085,9 +2085,9 @@ std::string MOABMesh::library() const
 }
 
 // Sample position within a tet for MOAB type tets
-Position MOABMesh::sample(uint64_t* seed, int32_t tet_bin) const {
+Position MOABMesh::sample(uint64_t* seed, int32_t bin) const {
 
-  moab::EntityHandle tet_ent = get_ent_handle_from_bin(tet_bin);
+  moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
 
   // Get vertex coordinates for MOAB tet
   vector<moab::EntityHandle> conn1;
@@ -2103,7 +2103,7 @@ Position MOABMesh::sample(uint64_t* seed, int32_t tet_bin) const {
 
   std::array<Position, 4> tet_verts;
   for (int i = 0; i < 4; i++) {
-    tet_verts[i] =  {p[i][0], p[i][1], p[i][2]};
+    tet_verts[i] = {p[i][0], p[i][1], p[i][2]};
   }
   // Samples position within tet using Barycentric stuff  
   Position r = this->sample_tet(tet_verts, seed);
@@ -2565,8 +2565,8 @@ void LibMesh::initialize()
 }
 
 // Sample position within a tet for LibMesh type tets
-Position LibMesh::sample(uint64_t* seed, int32_t tet_bin) const {
-  const auto& elem = get_element_from_bin(tet_bin);
+Position LibMesh::sample(uint64_t* seed, int32_t bin) const {
+  const auto& elem = get_element_from_bin(bin);
   // Get tet vertex coordinates from LibMesh
   std::array<Position, 4> tet_verts;
   for (int i = 0; i < elem.n_nodes(); i++) {

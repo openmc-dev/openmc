@@ -468,9 +468,6 @@ public:
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;
 
-  //! Sample a tetrahedron for an unstructured mesh
-  virtual Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
-
   // Overridden Methods
   // TODO Position sample(uint64_t* seed) const=0;
 
@@ -544,6 +541,9 @@ protected:
   double length_multiplier_ {
     1.0}; //!< Constant multiplication factor to apply to mesh coordinates
   bool specified_length_multiplier_ {false};
+
+  //! Sample a tetrahedron for an unstructured mesh
+  Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
 
 private:
   //! Setup method for the mesh. Builds data structures,

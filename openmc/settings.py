@@ -978,7 +978,9 @@ class Settings:
         for source in self.source:
             root.append(source.to_xml_element())
             if isinstance(source.space, MeshIndependent):
-                root.append(source.space.mesh.to_xml_element())
+                path = f"./mesh[@id='{source.space.mesh.id}']" 
+                if root.find(path) is None: 
+                    root.append(source.space.mesh.to_xml_element())
 
     def _create_volume_calcs_subelement(self, root):
         for calc in self.volume_calculations:

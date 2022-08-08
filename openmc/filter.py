@@ -1324,7 +1324,8 @@ class EnergyFilter(RealFilter):
             cv.check_greater_than('filter value', v0, 0., equality=True)
             cv.check_greater_than('filter value', v1, 0., equality=True)
 
-    def bin_lethargy(self):
+    @property
+    def lethargy_bin_width(self):
         """Calculates the base 10 log width of energy bins which is useful when
         plotting the normalized flux.
 
@@ -1333,9 +1334,7 @@ class EnergyFilter(RealFilter):
         numpy.array
             Array of bin widths
         """
-        bin_edges = np.unique(self.bins)
-        log_width = np.log10(bin_edges[1:]/bin_edges[:-1])
-        return log_width
+        return np.log10(self.bins[:, 1]/self.bins[:, 0])
 
     @classmethod
     def from_group_structure(cls, group_structure):

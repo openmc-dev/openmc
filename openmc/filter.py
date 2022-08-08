@@ -1325,8 +1325,14 @@ class EnergyFilter(RealFilter):
             cv.check_greater_than('filter value', v1, 0., equality=True)
 
     def bin_log_width(self):
-        """Returns the base 10 log width of energy bins which is useful when
-        plotting the normalized flux"""
+        """Calculates the base 10 log width of energy bins which is useful when
+        plotting the normalized flux.
+
+        Returns
+        -------
+        numpy.array
+            Array of bin widths
+        """
         bin_edges = np.unique(self.bins)
         log_width = np.log10(bin_edges[1:]/bin_edges[:-1])
         return log_width

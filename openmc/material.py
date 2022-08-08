@@ -861,7 +861,7 @@ class Material(IDManagerMixin):
         elif self.density_units == 'atom/b-cm':
             density = self.density
         elif self.density_units == 'atom/cm3' or self.density_units == 'atom/cc':
-            density = 1.E-24 * self.density
+            density = 1.e-24 * self.density
 
         # For ease of processing split out nuc, nuc_density,
         # and nuc_density_type into separate arrays
@@ -897,7 +897,7 @@ class Material(IDManagerMixin):
 
         # Convert the mass density to an atom density
         if not density_in_atom:
-            density = -density / self.average_molar_mass * 1.E-24 \
+            density = -density / self.average_molar_mass * 1.e-24 \
                       * openmc.data.AVOGADRO
 
         nuc_densities = density * nuc_densities

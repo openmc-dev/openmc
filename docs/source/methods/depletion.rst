@@ -103,16 +103,17 @@ integrate over the entire timestep.
 Our aim here is not to exhaustively describe all integration methods but rather
 to give a few examples that elucidate the main considerations one must take into
 account when choosing a method. Generally, there is a tradeoff between the
-accuracy of the method and its computational expense. The expense is driven
-almost entirely by the time to compute a transport solution, i.e., to evaluate
-:math:`\mathbf{A}` for a given :math:`\mathbf{n}`. Thus, the cost of a method
-scales with the number of :math:`\mathbf{A}` evaluations that are performed per
-timestep. On the other hand, methods that require more evaluations generally
-achieve higher accuracy. The predictor method only requires one evaluation and
-its error converges as :math:`\mathcal{O}(h)`. The CE/CM method requires two
-evaluations and is thus twice as expensive as the predictor method, but achieves
-an error of :math:`\mathcal{O}(h^2)`. An exhaustive description of time
-integration methods and their merits can be found in the `thesis of Colin Josey
+accuracy of the method and its computational expense. In the case of
+transport-coupled depletion, the expense is driven almost entirely by the time
+to compute a transport solution, i.e., to evaluate :math:`\mathbf{A}` for a
+given :math:`\mathbf{n}`. Thus, the cost of a method scales with the number of
+:math:`\mathbf{A}` evaluations that are performed per timestep. On the other
+hand, methods that require more evaluations generally achieve higher accuracy.
+The predictor method only requires one evaluation and its error converges as
+:math:`\mathcal{O}(h)`. The CE/CM method requires two evaluations and is thus
+twice as expensive as the predictor method, but achieves an error of
+:math:`\mathcal{O}(h^2)`. An exhaustive description of time integration methods
+and their merits can be found in the `thesis of Colin Josey
 <http://dspace.mit.edu/handle/1721.1/7582>`_.
 
 OpenMC does not rely on a single time integration method but rather has several
@@ -169,12 +170,14 @@ Data Considerations
 
 In principle, solving Eq. :eq:`depletion-matrix` using CRAM is fairly simple:
 just construct the burnup matrix at various times and solve a set of sparse
-linear systems. However, constructing the burnup matrix itself involves not only
-solving the transport equation to estimate transmutation reaction rates but also
-a series of choices about what data to include. In OpenMC, the burnup matrix is
-constructed based on data inside of a *depletion chain* file, which includes
-fundamental data gathered from ENDF incident neutron, decay, and fission product
-yield sublibraries. For each nuclide, this file includes:
+linear systems. However, constructing the burnup matrix itself involves not
+only solving the transport equation to estimate transmutation reaction rates
+(in the case of transport-coupled depletion) or to obtain microscopic cross
+sections (in the case of transport-independent depletion), but also a series of
+choices about what data to include. In OpenMC, the burnup matrix is constructed
+based on data inside of a *depletion chain* file, which includes fundamental
+data gathered from ENDF incident neutron, decay, and fission product yield
+sublibraries. For each nuclide, this file includes:
 
 - What transmutation reactions are possible, their Q values, and their products;
 - If a nuclide is not stable, what decay modes are possible, their branching
@@ -185,9 +188,12 @@ yield sublibraries. For each nuclide, this file includes:
 Transmutation Reactions
 -----------------------
 
-OpenMC will setup tallies in a problem based on what transmutation reactions are
-available in a depletion chain file, so any arbitrary number of transmutation
-reactions can be tracked. The pregenerated chain files that are available on
+In transport-coupled depletion, OpenMC will setup tallies in a problem based on
+what transmutation reactions are available in a depletion chain file, so any
+arbitrary number of transmutation reactions can be tracked. In
+transport-independent depletion, OpenMC will calculate reaction rates for every
+reaction that is present in both the available cross sections and the depletion
+chain file. The pregenerated chain files that are available on
 https://openmc.org include the following transmutation reactions: fission, (n,\
 :math:`\gamma`\ ), (n,2n), (n,3n), (n,4n), (n,p), and (n,\ :math:`\alpha`\ ).
 
@@ -202,11 +208,12 @@ accurately model the branching of the capture reaction in Am241. This is
 complicated by the fact that the branching ratio may depend on the incident
 neutron energy causing capture.
 
-OpenMC does not currently allow energy-dependent capture branching ratios.
-However, the depletion chain file does allow a transmutation reaction to be
-listed multiple times with different branching ratios resulting in different
-products. Spectrum-averaged capture branching ratios have been computed in LWR
-and SFR spectra and are available at https://openmc.org/depletion-chains.
+OpenMC's transport solver does not currently allow energy-dependent capture
+branching ratios. However, the depletion chain file does allow a transmutation
+reaction to be listed multiple times with different branching ratios resulting
+in different products. Spectrum-averaged capture branching ratios have been
+computed in LWR and SFR spectra and are available at
+https://openmc.org/depletion-chains.
 
 Fission Product Yields
 ----------------------
@@ -217,26 +224,31 @@ energies. It is an open question as to what the best way to handle this energy
 dependence is. OpenMC includes three methods for treating the energy dependence
 of FPY:
 
-1. Use FPY data corresponding to a specified energy.
+1. Use FPY data corresponding to a specified energy. This is used by default in
+   both transport-coupled and transport-independent depletion.
 2. Tally fission rates above and below a specified cutoff energy. Assume that
    all fissions below the cutoff energy correspond to thermal FPY data and all
-   fission above the cutoff energy correspond to fast FPY data.
+   fission above the cutoff energy correspond to fast FPY data. Only applicable
+   to transport-coupled depletion.
 3. Compute the average energy at which fission events occur and use an effective
    FPY by linearly interpolating between FPY provided at neighboring energies.
+   Only applicable to transport-coupled depletion.
 
-The method can be selected through the ``fission_yield_mode`` argument to the
-:class:`openmc.deplete.Operator` constructor.
+The method for transport-coupled depletion can be selected through the
+``fission_yield_mode`` argument to the :class:`openmc.deplete.CoupledOperator`
+constructor.
 
 Power Normalization
 -------------------
 
-The reaction rates provided OpenMC are given in units of reactions per source
-particle. For depletion, it is necessary to compute an absolute reaction rate in
-reactions per second. To do so, the reaction rates are normalized based on a
-specified power. A complete description of how this normalization can be
-performed is described in :ref:`usersguide_tally_normalization`. Here, we simply
-note that the main depletion class, :class:`openmc.deplete.Operator`, allows the
-user to choose one of two methods for estimating the heating rate, including:
+In transport-coupled depletion, the reaction rates provided OpenMC are given in
+units of reactions per source particle. For depletion, it is necessary to
+compute an absolute reaction rate in reactions per second. To do so, the
+reaction rates are normalized based on a specified power. A complete
+description of how this normalization can be performed is described in
+:ref:`usersguide_tally_normalization`. Here, we simply note that the main
+depletion class, :class:`openmc.deplete.CoupledOperator`, allows the user to
+choose one of two methods for estimating the heating rate, including:
 
 1. Using fixed Q values from a depletion chain file (useful for comparisons to
    other codes that use fixed Q values), or
@@ -244,4 +256,4 @@ user to choose one of two methods for estimating the heating rate, including:
    energy-dependent estimate of the true heating rate.
 
 The method for normalization can be chosen through the ``normalization_mode``
-argument to the :class:`openmc.deplete.Operator` class.
+argument to the :class:`openmc.deplete.CoupledOperator` class.

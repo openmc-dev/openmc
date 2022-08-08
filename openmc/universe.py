@@ -334,6 +334,13 @@ class Universe(UniverseBase):
             if seed is not None:
                 model.settings.seed = seed
 
+            # Determine whether any materials contains macroscopic data and if
+            # so, set energy mode accordingly
+            for mat in self.get_all_materials().values():
+                if mat._macroscopic is not None:
+                    model.settings.energy_mode = 'multi-group'
+                    break
+
             # Create plot object matching passed arguments
             plot = openmc.Plot()
             plot.origin = origin
@@ -785,7 +792,7 @@ class DAGMCUniverse(UniverseBase):
             Universe instance
         """
 
-        bounding_cell = openmc.Cell(fill=self, cell_id =bounding_cell_id, region=self.bounding_region(**kwargs))
+        bounding_cell = openmc.Cell(fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 
     @classmethod

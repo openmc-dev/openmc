@@ -264,7 +264,8 @@ class Chain:
     requires a list of ENDF incident neutron, decay, and neutron fission product
     yield sublibrary files. The depletion chain used during a depletion
     simulation is indicated by either an argument to
-    :class:`openmc.deplete.Operator` or through the
+    :class:`openmc.deplete.CoupledOperator` or
+    :class:`openmc.deplete.IndependentOperator`, or through the
     ``depletion_chain`` item in the :envvar:`OPENMC_CROSS_SECTIONS`
     environment variable.
 

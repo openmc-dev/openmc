@@ -242,10 +242,12 @@ def test_first_moment(run_in_tmpdir, box_model):
         assert first_score(sph_flux_tally) == approx(flux)
         assert first_score(zernike_tally) == approx(scatter)
 
+
 def test_energy():
     f = openmc.EnergyFilter.from_group_structure('CCFE-709')
     assert f.bins.shape == (709, 2)
     assert len(f.values) == 710
+
 
 def test_lethargy_bin_width():
     f = openmc.EnergyFilter.from_group_structure('VITAMIN-J-175')

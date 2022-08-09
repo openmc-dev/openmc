@@ -127,7 +127,7 @@ acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
 1 0 1 .{ext} /
 '{library}: {zsymam} at {temperature}'/
 {mat} {temperature}
-1 1/
+1 1 {ismooth}/
 /
 """
 
@@ -248,7 +248,8 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
 
 def make_ace(filename, temperatures=None, acer=True, xsdir=None,
              output_dir=None, pendf=False, error=0.001, broadr=True,
-             heatr=True, gaspr=True, purr=True, evaluation=None, **kwargs):
+             heatr=True, gaspr=True, purr=True, evaluation=None,
+             smoothing=True, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     File names can be passed to
@@ -298,6 +299,8 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
     evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF file contains multiple material evaluations, this argument
         indicates which evaluation should be used.
+    smoothing : bool, optional
+        If the smoothing option (ACER card 6) is on (True) or off (False).
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -380,6 +383,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
     # acer
     if acer:
+        ismooth = int(smoothing)
         nacer_in = nlast
         for i, temperature in enumerate(temperatures):
             # Extend input with an ACER run for each temperature

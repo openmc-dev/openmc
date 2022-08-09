@@ -436,5 +436,5 @@ def test_combine_distributions():
 
     # Sample the combined distribution and make sure the sample mean is within
     # uncertainty of the expected value
-    samples = combined.sample(10)
+    samples = combined.sample(1000)
     assert_sample_mean(samples, 0.25)

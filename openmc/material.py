@@ -114,10 +114,6 @@ class Material(IDManagerMixin):
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
-    activity : float
-        Activity of the material in [Bq]. Requires that the :attr:`volume`
-        attribute is set.
-
     """
 
     next_id = 1
@@ -172,11 +168,6 @@ class Material(IDManagerMixin):
             string += '{: <16}'.format('\t{}'.format(self._macroscopic))
 
         return string
-
-    @property
-    def activity(self):
-        """Returns the total activity of the material in Becquerels."""
-        return sum(self.get_nuclide_activity().values())
 
     @property
     def name(self):
@@ -931,22 +922,46 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_nuclide_activity(self):
-        """Return activity in [Bq] for each nuclide in the material
+    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False):
+        """Returns the activity of the material or for each nuclide in the
+        material in units of [Bq], [Bq/g] or [Bq/cm3].
 
         .. versionadded:: 0.13.1
 
+        Parameters
+        ----------
+        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+            Specifies the type of activity to return, options include total
+            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
+            Default is volumetric activity [Bq/cm3].
+        by_nuclide : bool
+            Specifies if the activity should be returned for the material as a
+            whole or per nuclide. Default is False.
+
         Returns
         -------
-        dict
-            Dictionary whose keys are nuclide names and values are activity in
-            [Bq].
+        Union[dict, float]
+            If by_nuclide is True then a dictionary whose keys are nuclide 
+            names and values are activity is returned. Otherwise the activity
+            of the material is returned as a float.
         """
+
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        cv.check_type('by_nuclide', by_nuclide, bool)
+
+        if units == 'Bq':
+            multiplier = self.volume
+        elif units == 'Bq/cm3':
+            multiplier = 1
+        elif units == 'Bq/g':
+            multiplier = 1.0 / self.get_mass_density()
+
         activity = {}
-        for nuclide, atoms in self.get_nuclide_atoms().items():
+        for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             inv_seconds = openmc.data.decay_constant(nuclide)
-            activity[nuclide] = inv_seconds * atoms
-        return activity
+            activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
+
+        return activity if by_nuclide else sum(activity.values())
 
     def get_nuclide_atoms(self):
         """Return number of atoms of each nuclide in the material

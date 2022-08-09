@@ -222,7 +222,7 @@ class Settings:
         Indicate whether to write the initial source distribution to file
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._run_mode = RunMode.EIGENVALUE
         self._batches = None
         self._generations_per_batch = None
@@ -296,6 +296,9 @@ class Settings:
         self._weight_windows_on = None
         self._max_splits = None
         self._max_tracks = None
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     @property
     def run_mode(self) -> str:

@@ -24,7 +24,7 @@
             "name": "intel",
             "inherits": ["unity"],
             "cacheVariables": {
-                "CMAKE_C_COMPILER": "icc",
+                "CMAKE_C_COMPILER": "icx",
                 "CMAKE_CXX_COMPILER": "icpx"
             },
             "environment": {

@@ -528,13 +528,13 @@ class OpenMCOperator(TransportOperator):
             # Accumulate energy from fission
             if fission_ind is not None:
                 self._normalization_helper.update(
-                    tally_rates[:, fission_ind],
-                    mat_index=mat_index)
+                    tally_rates[:, fission_ind])
 
             # Divide by total number and store
             rates[i] = self._rate_helper.divide_by_adens(number)
 
         # Scale reaction rates to obtain units of reactions/sec
+        print(f"flux, power, or source rate: {self._normalization_helper.factor(source_rate)}")
         rates *= self._normalization_helper.factor(source_rate)
 
         # Store new fission yields on the chain

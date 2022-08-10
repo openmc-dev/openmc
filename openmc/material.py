@@ -46,7 +46,7 @@ for matlib_path in _MAT_LIB_PATHS:
                "{MATERIAL_LIBRARIES[matlib_path.stem]} and will not be "
                "available.")
         warnings.warn(msg)
-        
+
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
 

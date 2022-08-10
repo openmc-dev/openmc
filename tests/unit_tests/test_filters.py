@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import openmc
 from pytest import fixture, approx
@@ -246,3 +247,11 @@ def test_energy():
     f = openmc.EnergyFilter.from_group_structure('CCFE-709')
     assert f.bins.shape == (709, 2)
     assert len(f.values) == 710
+
+
+def test_lethargy_bin_width():
+    f = openmc.EnergyFilter.from_group_structure('VITAMIN-J-175')
+    assert len(f.lethargy_bin_width) == 175
+    energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175'] 
+    assert f.lethargy_bin_width[0] == math.log10(energy_bins[1]/energy_bins[0])
+    assert f.lethargy_bin_width[-1] == math.log10(energy_bins[-1]/energy_bins[-2])

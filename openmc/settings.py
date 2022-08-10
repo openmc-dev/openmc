@@ -29,6 +29,178 @@ _RES_SCAT_METHODS = ['dbrc', 'rvs']
 class Settings:
     """Settings used for an OpenMC simulation.
 
+    Parameters
+    ----------
+    batches : int, optional
+        Number of batches to simulate
+    confidence_intervals : bool, optional
+        If True, uncertainties on tally results will be reported as the
+        half-width of the 95% two-sided confidence interval. If False,
+        uncertainties on tally results will be reported as the sample standard
+        deviation.
+    create_fission_neutrons : bool, optional
+        Indicate whether fission neutrons should be created or not.
+    cutoff : dict, optional
+        Dictionary defining weight cutoff and energy cutoff. The dictionary may
+        have six keys, 'weight', 'weight_avg', 'energy_neutron', 'energy_photon',
+        'energy_electron', and 'energy_positron'. Value for 'weight'
+        should be a float indicating weight cutoff below which particle undergo
+        Russian roulette. Value for 'weight_avg' should be a float indicating
+        weight assigned to particles that are not killed after Russian
+        roulette. Value of energy should be a float indicating energy in eV
+        below which particle type will be killed.
+    delayed_photon_scaling : bool, optional
+        Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
+        where EGP is the energy release of prompt photons and EGD is the energy
+        release of delayed photons.
+    electron_treatment : {'led', 'ttb'}, optional
+        Whether to deposit all energy from electrons locally ('led') or create
+        secondary bremsstrahlung photons ('ttb').
+    energy_mode : {'continuous-energy', 'multi-group'}, optional
+        Set whether the calculation should be continuous-energy or multi-group.
+    entropy_mesh : openmc.RegularMesh, optional
+        Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
+        not specified, OpenMC assigns a mesh such that 20 source sites per mesh
+        cell are to be expected on average.
+    event_based : bool, optional
+        Indicate whether to use event-based parallelism instead of the default
+        history-based parallelism.
+    generations_per_batch : int, optional
+        Number of generations per batch
+    max_lost_particles : int, optional
+        Maximum number of lost particles
+    rel_max_lost_particles : float, optional
+        Maximum number of lost particles, relative to the total number of particles
+    inactive : int, optional
+        Number of inactive batches
+    keff_trigger : dict, optional
+        Dictionary defining a trigger on eigenvalue. The dictionary must have
+        two keys, 'type' and 'threshold'. Acceptable values corresponding to
+        type are 'variance', 'std_dev', and 'rel_err'. The threshold value
+        should be a float indicating the variance, standard deviation, or
+        relative error used.
+    log_grid_bins : int, optional
+        Number of bins for logarithmic energy grid search
+    material_cell_offsets : bool, optional
+        Generate an "offset table" for material cells by default. These tables
+        are necessary when a particular instance of a cell needs to be tallied.
+    max_particles_in_flight : int, optional
+        Number of neutrons to run concurrently when using event-based
+        parallelism.
+    max_order : None or int, optional
+        Maximum scattering order to apply globally when in multi-group mode.
+    max_splits : int, optional
+        Maximum number of times a particle can split during a history
+    max_tracks : int, optional
+        Maximum number of tracks written to a track file (per MPI process).
+    no_reduce : bool, optional
+        Indicate that all user-defined and global tallies should not be reduced
+        across processes in a parallel calculation.
+    output : dict, optional
+        Dictionary indicating what files to output. Acceptable keys are:
+
+        :path: String indicating a directory where output files should be
+               written
+        :summary: Whether the 'summary.h5' file should be written (bool)
+        :tallies: Whether the 'tallies.out' file should be written (bool)
+    particles : int, optional
+        Number of particles per generation
+    photon_transport : bool, optional
+        Whether to use photon transport.
+    ptables : bool, optional
+        Determine whether probability tables are used.
+    resonance_scattering : dict, optional
+        Settings for resonance elastic scattering. Accepted keys are 'enable'
+        (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
+        'nuclides' (list). The 'method' can be set to 'dbrc' (Doppler broadening
+        rejection correction) or 'rvs' (relative velocity sampling). If not
+        specified, 'rvs' is the default method. The 'energy_min' and
+        'energy_max' values indicate the minimum and maximum energies above and
+        below which the resonance elastic scattering method is to be
+        applied. The 'nuclides' list indicates what nuclides the method should
+        be applied to. In its absence, the method will be applied to all
+        nuclides with 0 K elastic scattering data present.
+    run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}, optional
+        The type of calculation to perform (default is 'eigenvalue')
+    seed : int, optional
+        Seed for the linear congruential pseudorandom number generator
+    source : Iterable of openmc.Source, optional
+        Distribution of source sites in space, angle, and energy
+    sourcepoint : dict, optional
+        Options for writing source points. Acceptable keys are:
+
+        :batches: list of batches at which to write source
+        :overwrite: bool indicating whether to overwrite
+        :separate: bool indicating whether the source should be written as a
+                   separate file
+        :write: bool indicating whether or not to write the source
+    statepoint : dict, optional
+        Options for writing state points. Acceptable keys are:
+
+        :batches: list of batches at which to write source
+    surf_source_read : dict, optional
+        Options for reading surface source points. Acceptable keys are:
+
+        :path: Path to surface source file (str).
+    surf_source_write : dict, optional
+        Options for writing surface source points. Acceptable keys are:
+
+        :surface_ids: List of surface ids at which crossing particles are to be
+                   banked (int)
+        :max_particles: Maximum number of particles to be banked on
+                   surfaces per process (int)
+    survival_biasing : bool, optional
+        Indicate whether survival biasing is to be used
+    tabular_legendre : dict, optional
+        Determines if a multi-group scattering moment kernel expanded via
+        Legendre polynomials is to be converted to a tabular distribution or
+        not. Accepted keys are 'enable' and 'num_points'. The value for
+        'enable' is a bool stating whether the conversion to tabular is
+        performed; the value for 'num_points' sets the number of points to use
+        in the tabular distribution, should 'enable' be True.
+    temperature : dict, optional
+        Defines a default temperature and method for treating intermediate
+        temperatures at which nuclear data doesn't exist. Accepted keys are
+        'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+        for 'default' should be a float representing the default temperature in
+        Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+        If the method is 'nearest', 'tolerance' indicates a range of temperature
+        within which cross sections may be used. The value for 'range' should be
+        a pair a minimum and maximum temperatures which are used to indicate
+        that cross sections be loaded at all temperatures within the
+        range. 'multipole' is a boolean indicating whether or not the windowed
+        multipole method should be used to evaluate resolved resonance cross
+        sections.
+    trace : tuple or list, optional
+        Show detailed information about a single particle, indicated by three
+        integers: the batch number, generation number, and particle number
+    track : tuple or list, optional
+        Specify particles for which track files should be written. Each particle
+        is identified by a tuple with the batch number, generation number, and
+        particle number.
+    trigger_active : bool, optional
+        Indicate whether tally triggers are used
+    trigger_batch_interval : int, optional
+        Number of batches in between convergence checks
+    trigger_max_batches : int, optional
+        Maximum number of batches simulated. If this is set, the number of
+        batches specified via ``batches`` is interpreted as the minimum number
+        of batches
+    ufs_mesh : openmc.RegularMesh, optional
+        Mesh to be used for redistributing source sites via the uniform fission
+        site (UFS) method.
+    verbosity : int, optional
+        Verbosity during simulation between 1 and 10. Verbosity levels are
+        described in :ref:`verbosity`.
+    volume_calculations : VolumeCalculation or iterable of VolumeCalculation, optional
+        Stochastic volume calculation specifications
+    weight_windows : WeightWindows iterable of WeightWindows, optional
+        Weight windows to use for variance reduction
+    weight_windows_on : bool, optional
+        Whether weight windows are enabled
+    write_initial_source : bool, optional
+        Indicate whether to write the initial source distribution to file
+
     Attributes
     ----------
     batches : int

@@ -62,8 +62,10 @@ class DAGMCUniverseTest(PyAPITestHarness):
         b_region = pincell_univ.bounding_region(bounded_type='box', boundary_type='vacuum')
         assert isinstance(b_region, openmc.Region)
         assert len(b_region.get_surfaces()) == 6
-        for surface in list(b_region.get_surfaces().values()):
+        starting_id = 10000
+        for i, surface in enumerate(b_region.get_surfaces().values()):
             assert surface.boundary_type == 'vacuum'
+            assert surface.id == 10000 + i
 
         # checks that the bounding region is a single surface with a reflective boundary type
         b_region = pincell_univ.bounding_region(bounded_type='sphere', boundary_type='reflective')
@@ -71,6 +73,7 @@ class DAGMCUniverseTest(PyAPITestHarness):
         assert len(b_region.get_surfaces()) == 1
         for surface in list(b_region.get_surfaces().values()):
             assert surface.boundary_type == 'reflective'
+            assert surface.id == 10000
 
         # create a 2 x 2 lattice using the DAGMC pincell
         pitch = np.asarray((24.0, 24.0))

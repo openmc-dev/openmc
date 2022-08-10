@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-  <cell fill="12" id="13" region="22 -23 24 -25 26 -27" universe="13" />
+  <cell fill="12" id="13" region="9 -10 11 -12 13 -14" universe="13" />
   <dagmc_universe auto_geom_ids="true" filename="dagmc.h5m" id="9" />
   <lattice id="12">
     <pitch>24.0 24.0</pitch>
@@ -10,12 +10,12 @@
 9 9 
 9 9 </universes>
   </lattice>
-  <surface boundary="reflective" coeffs="-24.0" id="22" name="left" type="x-plane" />
-  <surface boundary="reflective" coeffs="24.0" id="23" name="right" type="x-plane" />
-  <surface boundary="reflective" coeffs="-24.0" id="24" name="front" type="y-plane" />
-  <surface boundary="reflective" coeffs="24.0" id="25" name="back" type="y-plane" />
-  <surface boundary="reflective" coeffs="-10.0" id="26" name="bottom" type="z-plane" />
-  <surface boundary="reflective" coeffs="10.0" id="27" name="top" type="z-plane" />
+  <surface boundary="reflective" coeffs="-24.0" id="9" name="left" type="x-plane" />
+  <surface boundary="reflective" coeffs="24.0" id="10" name="right" type="x-plane" />
+  <surface boundary="reflective" coeffs="-24.0" id="11" name="front" type="y-plane" />
+  <surface boundary="reflective" coeffs="24.0" id="12" name="back" type="y-plane" />
+  <surface boundary="reflective" coeffs="-10.0" id="13" name="bottom" type="z-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="14" name="top" type="z-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>

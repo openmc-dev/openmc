@@ -46,6 +46,8 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
+// map: key (tally ID) to value (tally index)
+// index coresponds to the tally ID's posiition in the tallies vector
 std::unordered_map<int, int> tally_map;
 vector<unique_ptr<Tally>> tallies;
 vector<int> active_tallies;
@@ -1269,6 +1271,15 @@ extern "C" int openmc_global_tallies(double** ptr)
 extern "C" size_t tallies_size()
 {
   return model::tallies.size();
+}
+
+// given a tally ID, remove it from the tallies vector
+extern "C" void remove_tally_from_tallies(int32_t id)
+{
+  // query map for index corersponding to the given id
+  int index = model::tally_map[id];
+  // delete the tally
+  model::tallies.erase(index);
 }
 
 } // namespace openmc

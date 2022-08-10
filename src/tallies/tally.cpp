@@ -1277,9 +1277,9 @@ extern "C" size_t tallies_size()
 extern "C" void openmc_remove_tally_from_tallies(int32_t id)
 {
   // query map for index corersponding to the given id
-  int index = model::tally_map[id];
-  // delete the tally
-  model::tallies.erase(index);
+  int32_t index = model::tally_map[id];
+  // delete the tally via iterator pointing to correct position
+  model::tallies.erase(model::tallies.begin() + index);
 }
 
 } // namespace openmc

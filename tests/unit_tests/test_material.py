@@ -27,7 +27,7 @@ def test_add_nuclide():
 
 
 def test_add_components():
-    """Test adding multipe elements or nuclides at once"""
+    """Test adding multiple elements or nuclides at once"""
     m = openmc.Material()
     components = {'H1': 2.0,
                   'O16': 1.0,
@@ -486,21 +486,6 @@ def test_get_activity():
     m1.volume = 1
     assert m1.get_activity(units='Bq') == 0
 
-
-def test_get_activity():
-    """Tests the activity of stable, metastable and active materials"""
-
-    # Creates a material with stable isotopes to check the activity is 0
-    m1 = openmc.Material()
-    m1.add_element("Fe", 0.7)
-    m1.add_element("Li", 0.3)
-    m1.set_density('g/cm3', 1.5)
-    # activity in Bq/cc and Bq/g should not require volume setting
-    assert m1.get_activity(units='Bq/cm3') == 0
-    assert m1.get_activity(units='Bq/g') == 0
-    m1.volume = 1
-    assert m1.get_activity(units='Bq') == 0
-
     # Checks that 1g of tritium has the correct activity scaling
     m2 = openmc.Material()
     m2.add_nuclide("H3", 1)
@@ -547,4 +532,3 @@ def test_material_from_library():
         openmc.Material.from_library(name='non-existent material')
     with pytest.raises(ValueError):
         openmc.Material.from_library(name='Gold', library='non-existent library')
-

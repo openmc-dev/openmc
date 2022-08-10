@@ -11,7 +11,7 @@ from typing import Optional
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
-from openmc.stats.multivariate import MeshIndependent
+from openmc.stats.multivariate import MeshSpatial
 
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
@@ -977,7 +977,7 @@ class Settings:
     def _create_source_subelement(self, root):
         for source in self.source:
             root.append(source.to_xml_element())
-            if isinstance(source.space, MeshIndependent):
+            if isinstance(source.space, MeshSpatial):
                 path = f"./mesh[@id='{source.space.mesh.id}']" 
                 if root.find(path) is None: 
                     root.append(source.space.mesh.to_xml_element())
@@ -1328,13 +1328,16 @@ class Settings:
 
     def _source_from_xml_element(self, root):
         for elem in root.findall('source'):
-            self.source.append(Source.from_xml_element(elem))
-            if isinstance(Source.from_xml_element(elem), MeshIndependent):
+            src = Source.from_xml_element(elem)
+            if isinstance(src.space, MeshSpatial):
                 mesh_id = int(get_text(elem, 'mesh'))
                 path = f"./mesh[@id='{mesh_id}']"
                 mesh_elem = root.find(path)
                 if mesh_elem is not None:
-                    self.source.space.mesh = MeshBase.from_xml_element(mesh_elem)
+                    src.space.mesh = MeshBase.from_xml_element(mesh_elem)
+                else:
+                    raise RuntimeError('No mesh was specified for the mesh source')
+            self.source.append(src)
 
     def _volume_calcs_from_xml_element(self, root):
         volume_elems = root.findall("volume_calc")

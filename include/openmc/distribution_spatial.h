@@ -99,9 +99,9 @@ private:
 //! Distribution of points within a mesh
 //==============================================================================
 
-class MeshIndependent : public SpatialDistribution {
+class MeshSpatial : public SpatialDistribution {
 public:
-  explicit MeshIndependent(pugi::xml_node node);
+  explicit MeshSpatial(pugi::xml_node node);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
@@ -109,13 +109,13 @@ public:
   Position sample(uint64_t* seed) const;
 
 private:
-  UnstructuredMesh* umesh_ptr_;
-  int32_t mesh_map_idx_;
+  Mesh* mesh_ptr_;
+  int32_t mesh_idx_;
   std::string sample_scheme_;
   double total_strength_;
   std::vector<double> mesh_CDF_;
   std::vector<double> mesh_strengths_;
-  int64_t tot_bins_;
+  int32_t tot_bins_;
 };
 
 //==============================================================================

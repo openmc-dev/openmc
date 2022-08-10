@@ -271,7 +271,7 @@ class Spatial(ABC):
         elif distribution == 'spherical':
             return SphericalIndependent.from_xml_element(elem)
         elif distribution == 'mesh':
-            return MeshIndependent.from_xml_element(elem)
+            return MeshSpatial.from_xml_element(elem)
         elif distribution == 'box' or distribution == 'fission':
             return Box.from_xml_element(elem)
         elif distribution == 'point':
@@ -619,10 +619,10 @@ class CylindricalIndependent(Spatial):
         origin = [float(x) for x in elem.get('origin').split()]
         return cls(r, phi, z, origin=origin)
 
-class MeshIndependent(Spatial):
+class MeshSpatial(Spatial):
     """Spatial distribution for a mesh.
 
-    This distribution allows one to specify a mesh to sample over and the scheme to sample over the entire mesh. 
+    This distribution specifies a mesh to sample over, chooses whether it will be volume normalized, and can set the source strengths. 
 
     .. versionadded:: 0.13
 
@@ -716,7 +716,7 @@ class MeshIndependent(Spatial):
 
         Returns
         -------
-        openmc.stats.MeshIndependent
+        openmc.stats.MeshSpatial
             Spatial distribution generated from XML element
 
         """

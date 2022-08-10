@@ -319,7 +319,7 @@ normalizing reaction rates:
 
    .. math::
 
-      \phi = \frac{P}{V \cdot \sum_i (Q_i \cdot \Sigma^f_i \cdot \rho_i)}
+      \phi = \frac{P}{V \cdot \sum_i (Q_i \cdot \sigma^f_i \cdot \rho_i)}
 
    where :math:`\sum_i` is the sum over all nuclides :math:`i`. This equation
    makes the same assumptions and issues as discussed in

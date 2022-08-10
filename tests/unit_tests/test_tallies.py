@@ -39,3 +39,6 @@ def test_xml_roundtrip(run_in_tmpdir):
     assert new_tally.triggers[0].trigger_type == tally.triggers[0].trigger_type
     assert new_tally.triggers[0].threshold == tally.triggers[0].threshold
     assert new_tally.triggers[0].scores == tally.triggers[0].scores
+    # delete tally and check that new_tallies now has length zero
+    new_tally.openmc_remove_tally_from_tallies(tally.id)
+    assert len(new_tallies) == 0

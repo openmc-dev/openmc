@@ -755,9 +755,8 @@ class DAGMCUniverse(UniverseBase):
         bbox = self.bounding_box
 
         if bounded_type == 'sphere':
-            import math
             bbox_center = (bbox[0] + bbox[1])/2
-            radius = math.dist(bbox[0], bbox[1])
+            radius = np.linalg.norm(np.asarray(bbox))
             bounding_surface = openmc.Sphere(
                 surface_id=starting_id,
                 x0=bbox_center[0],

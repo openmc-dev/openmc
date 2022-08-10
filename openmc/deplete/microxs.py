@@ -76,12 +76,14 @@ class MicroXS(DataFrame):
                                                                 dilute_initial)
         model.materials = diluted_materials
 
-        for rxn in reactions:
-            if rxn == 'fission':
-                xs[rxn] = FissionXS(domain=reaction_domain, groups=groups, by_nuclide=True)
+        for rx in reactions:
+            if rx == 'fission':
+                xs[rx] = FissionXS(domain=reaction_domain,
+                                   energy_groups=groups, by_nuclide=True)
             else:
-                xs[rxn] = ArbitraryXS(rxn, domain=reaction_domain, groups=groups, by_nuclide=True)
-            tallies += xs[rxn].tallies.values()
+                xs[rx] = ArbitraryXS(rx, domain=reaction_domain,
+                                     energy_groups=groups, by_nuclide=True)
+            tallies += xs[rx].tallies.values()
 
         model.tallies = tallies
 
@@ -90,8 +92,8 @@ class MicroXS(DataFrame):
             statepoint_path = model.run(cwd=temp_dir)
 
             with StatePoint(statepoint_path) as sp:
-                for rxn in xs:
-                    xs[rxn].load_from_statepoint(sp)
+                for rx in xs:
+                    xs[rx].load_from_statepoint(sp)
 
         # Build the DataFrame
         series = {}

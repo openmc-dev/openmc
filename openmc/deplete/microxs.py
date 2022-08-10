@@ -1,7 +1,7 @@
 """MicroXS module
 
 A pandas.DataFrame storing microscopic cross section data with
-nuclides names as row indices and reaction names as column indices.
+nuclide names as row indices and reaction names as column indices.
 """
 
 import tempfile
@@ -26,7 +26,7 @@ _valid_rxns.append('fission')
 
 class MicroXS(DataFrame):
     """Stores microscopic cross section data for use in
-    independent depletion.
+    transport-independent depletion.
     """
 
     @classmethod

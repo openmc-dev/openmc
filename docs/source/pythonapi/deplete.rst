@@ -43,7 +43,7 @@ algorithms <http://hdl.handle.net/1721.1/113721>`_.
     SILEQIIntegrator
 
 Each of these classes expects a "transport operator" to be passed. OpenMC
-provides The following classes implementing transpor operators:
+provides The following classes implement transport operators:
 
 .. autosummary::
    :toctree: generated
@@ -55,7 +55,7 @@ provides The following classes implementing transpor operators:
 
 The :class:`CoupledOperator` and :class:`IndependentOperator` classes must also
 have some knowledge of how nuclides transmute and decay. This is handled by the 
-:class:`Chain`.
+:class:`Chain` class.
 
 Minimal Example
 ---------------

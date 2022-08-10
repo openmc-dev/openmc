@@ -183,24 +183,23 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 }
 
 //==============================================================================
-// MeshIndependent implementation
+// MeshSpatial implementation
 //==============================================================================
 
-MeshIndependent::MeshIndependent(pugi::xml_node node)
+MeshSpatial::MeshSpatial(pugi::xml_node node)
 {
   // No in-tet distributions implemented, could include distributions for the barycentric coords
   // Read in unstructured mesh from mesh_id value
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
   // Get pointer to spatial distribution
-  mesh_map_idx_ = model::mesh_map.at(mesh_id);
-  const auto& mesh_ptr = model::meshes[mesh_map_idx_];
+  mesh_idx_ = model::mesh_map.at(mesh_id);
   
-  // Check whether mesh pointer points to an unstructured mesh
-  umesh_ptr_ = dynamic_cast<UnstructuredMesh*>(mesh_ptr.get());
-  if (!umesh_ptr_) {fatal_error("Mesh passed to spatial distribution is not an unstructured mesh object"); }
+  // Check whether mesh pointer points to a mesh
+  mesh_ptr_ = dynamic_cast<Mesh*>(model::meshes[mesh_idx_].get());
+  if (!mesh_ptr_) {fatal_error("Mesh passed to spatial distribution is not a mesh object"); }
 
   // Initialize arrays for CDF creation
-  tot_bins_ = umesh_ptr_->n_bins();
+  tot_bins_ = mesh_ptr_->n_bins();
   std::vector<double> strengths = {};
   strengths.resize(tot_bins_);
   double temp_total_strength = 0.0;
@@ -219,7 +218,7 @@ MeshIndependent::MeshIndependent(pugi::xml_node node)
       fatal_error("The size of the strengths array from the xml file does not equal the number of elements in the mesh.");
     } if (get_node_value_bool(node, "volume_normalized")){
       for (int i = 0; i < tot_bins_; i++){
-        strengths[i] = mesh_strengths_[i]*umesh_ptr_->volume(i);
+        strengths[i] = mesh_strengths_[i]*mesh_ptr_->volume(i);
       } 
     } else if (!get_node_value_bool(node, "volume_normalized")){
       for (int i = 0; i < tot_bins_; i++){
@@ -228,7 +227,7 @@ MeshIndependent::MeshIndependent(pugi::xml_node node)
     }
   } else if (get_node_value_bool(node, "volume_normalized")){
     for (int i = 0; i<tot_bins_; i++){
-      strengths[i] = umesh_ptr_->volume(i);
+      strengths[i] = mesh_ptr_->volume(i);
     }
   } else {
     for (int i = 0; i<tot_bins_; i++){
@@ -244,13 +243,13 @@ MeshIndependent::MeshIndependent(pugi::xml_node node)
   }
 }
 
-Position MeshIndependent::sample(uint64_t* seed) const
+Position MeshSpatial::sample(uint64_t* seed) const
 { 
   // Create random variable for sampling element from mesh
   float eta = prn(seed);
   // Sample over the CDF defined in initialization above
   int32_t tet_bin = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
-  return umesh_ptr_->sample(seed, tet_bin);
+  return mesh_ptr_->sample(seed, tet_bin);
 }
 
 

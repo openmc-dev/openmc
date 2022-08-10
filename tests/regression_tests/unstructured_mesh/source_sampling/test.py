@@ -34,15 +34,14 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
         # shown below
         average_in_hex = 10.0
 
-        call(['../../../../scripts/openmc-track-combine', '-o', 'tracks.h5'] +
-                glob.glob('tracks_p*.h5'))
-
-        # loop over the tracks and get data
+        # Load in tracks
+        openmc.Tracks.combine(glob.glob('tracks_p*.h5'))
         tracks = openmc.Tracks(filepath='tracks.h5')
         tracks_born = np.empty((len(tracks), 1))
 
         instances = np.zeros(1000)
 
+        # loop over the tracks and get data
         for i in range(0, len(tracks)):
             tracks_born[i] = tracks[i].particle_tracks[0].states['cell_id'][0]
             instances[int(tracks_born[i])-1] += 1
@@ -113,9 +112,9 @@ def test_unstructured_mesh(test_opts):
 
     for i in range(0,dimen+1):
         coord = -10.0 + i * size_hex
-        surfaces[i][0] = openmc.XPlane(coord, name="X plane at "+str(coord))
-        surfaces[i][1] = openmc.YPlane(coord, name="Y plane at "+str(coord))
-        surfaces[i][2] = openmc.ZPlane(coord, name="Z plane at "+str(coord))
+        surfaces[i][0] = openmc.XPlane(coord, name=f"X plane at {coord}")
+        surfaces[i][1] = openmc.YPlane(coord, name=f"Y plane at {coord}")
+        surfaces[i][2] = openmc.ZPlane(coord, name=f"Z plane at {coord}")
 
         surfaces[i][0].boundary_type = 'vacuum'
         surfaces[i][1].boundary_type = 'vacuum'
@@ -126,8 +125,8 @@ def test_unstructured_mesh(test_opts):
             for i in range(0,dimen):
                 cell[i][j][k] = openmc.Cell(name=("x = {}, y = {}, z = {}".format(i,j,k)))
                 cell[i][j][k].region = +surfaces[i][0] & -surfaces[i+1][0] & \
-                                    +surfaces[j][1] & -surfaces[j+1][1] & \
-                                    +surfaces[k][2] & -surfaces[k+1][2]
+                                       +surfaces[j][1] & -surfaces[j+1][1] & \
+                                       +surfaces[k][2] & -surfaces[k+1][2]
                 cell[i][j][k].fill = None
                 universe.add_cell(cell[i][j][k])
 
@@ -158,13 +157,13 @@ def test_unstructured_mesh(test_opts):
 
     # source setup
     if test_opts['schemes'] == 'volume':
-        space = openmc.stats.MeshIndependent(volume_normalized=True, mesh=uscd_mesh)
+        space = openmc.stats.MeshSpatial(volume_normalized=True, mesh=uscd_mesh)
     elif test_opts['schemes'] == 'file':
         array = np.zeros(12000)
         for i in range(0, 12):
             array[i] = 10
             array[i+12] = 2
-        space = openmc.stats.MeshIndependent(volume_normalized=False, strengths=array, mesh=uscd_mesh)
+        space = openmc.stats.MeshSpatial(volume_normalized=False, strengths=array, mesh=uscd_mesh)
 
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy)

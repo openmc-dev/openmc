@@ -87,6 +87,9 @@ _dll.openmc_tally_set_type.errcheck = _error_handler
 _dll.openmc_tally_set_writable.argtypes = [c_int32, c_bool]
 _dll.openmc_tally_set_writable.restype = c_int
 _dll.openmc_tally_set_writable.errcheck = _error_handler
+_dll.openmc_remove_tally_from_tallies.argtypes = [c_int32]
+_dll.openmc_remove_tally_from_tallies.restype = None
+_dll.openmc_remove_tally_from_tallies.errcheck = _error_handler
 _dll.tallies_size.restype = c_size_t
 
 

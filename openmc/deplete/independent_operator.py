@@ -321,8 +321,10 @@ class IndependentOperator(OpenMCOperator):
                 nuc = self.nuc_ind_map[i_nuc]
                 rxn = self.rxn_ind_map[i_react]
                 density = self._op.number.get_atom_density(mat_id, nuc)
-                self._results_cache[i_nuc,
-                                    i_react] = self._op.cross_sections[rxn][nuc] * density * volume
+
+                # Sigma^j_i * V = sigma^j_i * rho * V
+                self._results_cache[i_nuc,i_react] = \
+                    self._op.cross_sections[rxn][nuc] * density * volume
 
             return self._results_cache
 

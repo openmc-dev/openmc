@@ -43,7 +43,7 @@ algorithms <http://hdl.handle.net/1721.1/113721>`_.
     SILEQIIntegrator
 
 Each of these classes expects a "transport operator" to be passed. OpenMC
-provides The following classes implement transport operators:
+provides the following transport operator classes:
 
 .. autosummary::
    :toctree: generated

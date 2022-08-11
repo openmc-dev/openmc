@@ -534,7 +534,6 @@ class OpenMCOperator(TransportOperator):
             rates[i] = self._rate_helper.divide_by_adens(number)
 
         # Scale reaction rates to obtain units of reactions/sec
-        print(f"flux, power, or source rate: {self._normalization_helper.factor(source_rate)}")
         rates *= self._normalization_helper.factor(source_rate)
 
         # Store new fission yields on the chain

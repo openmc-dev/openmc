@@ -23,9 +23,7 @@ def fuel():
 @pytest.fixture(scope="module")
 def micro_xs():
     micro_xs_file = Path(__file__).parents[2] / 'micro_xs_simple.csv'
-    micro_xs = MicroXS.from_csv(micro_xs_file)
-
-    return micro_xs
+    return MicroXS.from_csv(micro_xs_file)
 
 @pytest.fixture(scope="module")
 def chain_file():

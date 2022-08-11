@@ -41,9 +41,14 @@ option(OPENMC_USE_MPI         "Enable MPI"                                      
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
   if(DEFINED ${OLD_OPT})
     string(TOUPPER ${OLD_OPT} OPT_UPPER)
+    if ("${OLD_OPT}" STREQUAL "profile" OR "${OLD_OPT}" STREQUAL "coverage")
+      set(NEW_OPT_PREFIX "OPENMC_ENABLE")
+    else()
+      set(NEW_OPT_PREFIX "OPENMC_USE")
+    endif()
     message(WARNING "The OpenMC CMake option '${OLD_OPT}' has been deprecated. "
       "Its value will be ignored. "
-      "Please use '-DOPENMC_USE_${OPT_UPPER}=${${OLD_OPT}}' instead.")
+      "Please use '-D${NEW_OPT_PREFIX}_${OPT_UPPER}=${${OLD_OPT}}' instead.")
     unset(${OLD_OPT} CACHE)
   endif()
 endforeach()

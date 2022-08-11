@@ -1285,7 +1285,8 @@ extern "C" int openmc_remove_tally(int32_t id)
   model::tallies.erase(model::tallies.begin() + index);
 
   // after erasing tally, remove id from map
-  model::tally_map.remove(id) return 0;
+  model::tally_map.erase(id);
+  return 0;
 }
 
 } // namespace openmc

@@ -46,8 +46,7 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-// map: key (tally ID) to value (tally index)
-// index coresponds to the tally ID's position in the tallies vector
+//! a mapping of tally ID to index in the tallies vector
 std::unordered_map<int, int> tally_map;
 vector<unique_ptr<Tally>> tallies;
 vector<int> active_tallies;

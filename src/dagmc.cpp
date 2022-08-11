@@ -745,7 +745,7 @@ namespace openmc {
 void read_dagmc_universes(pugi::xml_node node)
 {
   if (check_for_node(node, "dagmc_universe")) {
-    fatal_error("DAGMC Universes are present but OpenMC was not configured"
+    fatal_error("DAGMC Universes are present but OpenMC was not configured "
                 "with DAGMC");
   }
 };

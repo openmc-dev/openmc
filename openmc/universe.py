@@ -771,12 +771,12 @@ class DAGMCUniverse(UniverseBase):
         if bounded_type == 'box':
             surf_ids = [starting_id+i for i in range(6)]
             # defines plane surfaces for all six faces of the bounding box
-            lower_x = openmc.XPlane(bbox[0][0], surface_id=surf_ids[0])
-            upper_x = openmc.XPlane(bbox[1][0], surface_id=surf_ids[1])
-            lower_y = openmc.YPlane(bbox[0][1], surface_id=surf_ids[2])
-            upper_y = openmc.YPlane(bbox[1][1], surface_id=surf_ids[3])
-            lower_z = openmc.ZPlane(bbox[0][2], surface_id=surf_ids[4])
-            upper_z = openmc.ZPlane(bbox[1][2], surface_id=surf_ids[5])
+            lower_x = openmc.XPlane(bbox[0][0], surface_id=starting_id)
+            upper_x = openmc.XPlane(bbox[1][0], surface_id=starting_id+1)
+            lower_y = openmc.YPlane(bbox[0][1], surface_id=starting_id+2)
+            upper_y = openmc.YPlane(bbox[1][1], surface_id=starting_id+3)
+            lower_z = openmc.ZPlane(bbox[0][2], surface_id=starting_id+4)
+            upper_z = openmc.ZPlane(bbox[1][2], surface_id=starting_id+5)
 
             region = +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
 

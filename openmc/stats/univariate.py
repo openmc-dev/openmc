@@ -79,6 +79,18 @@ class Univariate(EqualityMixin, ABC):
         """
         pass
 
+    def integral(self):
+        """Return integral of distribution
+
+        .. versionadded:: 0.13.1
+
+        Returns
+        -------
+        float
+            Integral of distribution
+        """
+        return 1.0
+
 
 class Discrete(Univariate):
     """Distribution characterized by a probability mass function.
@@ -1168,9 +1180,17 @@ class Mixture(Univariate):
 
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
-        idx = np.random.choice(range(len(self.distribution)),
-                               n_samples, p=self.probability)
 
+        # Get probability of each distribution accounting for its intensity
+        p = np.array([prob*dist.integral() for prob, dist in
+                      zip(self.probability, self.distribution)])
+        p /= p.sum()
+
+        # Sample from the distributions
+        idx = np.random.choice(range(len(self.distribution)),
+                               n_samples, p=p)
+
+        # Draw samples from the distributions sampled above
         out = np.empty_like(idx, dtype=float)
         for i in np.unique(idx):
             n_dist_samples = np.count_nonzero(idx == i)
@@ -1294,7 +1314,7 @@ def combine_distributions(dists, probs):
 
     # Combine discrete and continuous if present
     if len(dist_list) > 1:
-        probs = [d.integral() for d in dist_list]
+        probs = [1.0]*len(dist_list)
         dist_list[:] = [Mixture(probs, dist_list.copy())]
 
     return dist_list[0]

@@ -61,12 +61,14 @@ def test_merge_discrete():
     assert merged.x == pytest.approx([0.0, 0.5, 1.0, 5.0, 10.0])
     assert merged.p == pytest.approx(
         [0.6*0.3, 0.4*0.4, 0.6*0.2 + 0.4*0.5, 0.4*0.1, 0.6*0.5])
+    assert merged.integral() == pytest.approx(1.0)
 
     # Probabilities add up but are not normalized
     d1 = openmc.stats.Discrete([3.0], [1.0])
     triple = openmc.stats.Discrete.merge([d1, d1, d1], [1.0, 2.0, 3.0])
     assert triple.x == pytest.approx([3.0])
     assert triple.p == pytest.approx([6.0])
+    assert triple.integral() == pytest.approx(6.0)
 
 
 def test_uniform():
@@ -186,6 +188,7 @@ def test_tabular():
     # test histogram sampling
     d = openmc.stats.Tabular(x, p, interpolation='histogram')
     d.normalize()
+    assert d.integral() == pytest.approx(1.0)
 
     samples = d.sample(n_samples, seed=100)
     diff = np.abs(samples - d.mean())
@@ -433,8 +436,9 @@ def test_combine_distributions():
     t2 = openmc.stats.Tabular([0., 1.], [0.0, 2.0])
     d1 = openmc.stats.Discrete([0.0], [1.0])
     combined = openmc.stats.combine_distributions([t1, t2, d1], [0.25, 0.25, 0.5])
+    assert combined.integral() == pytest.approx(1.0)
 
     # Sample the combined distribution and make sure the sample mean is within
     # uncertainty of the expected value
-    samples = combined.sample(1000)
+    samples = combined.sample(10_000)
     assert_sample_mean(samples, 0.25)

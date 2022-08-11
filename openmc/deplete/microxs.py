@@ -35,7 +35,8 @@ class MicroXS(DataFrame):
                    reaction_domain,
                    chain_file,
                    dilute_initial=1.0e3,
-                   energy_bounds=(0, 20e6)):
+                   energy_bounds=(0, 20e6),
+                   run_kwargs=None):
         """Generate a one-group cross-section dataframe using
         OpenMC. Note that the ``openmc`` executable must be compiled.
 
@@ -57,6 +58,8 @@ class MicroXS(DataFrame):
             Reaction names to tally
         energy_bound : 2-tuple of float, optional
             Bounds for the energy group.
+        run_kwargs : dict, optional
+            Keyword arguments for :meth:`openmc.model.Model.run()`
 
         Returns
         -------
@@ -89,7 +92,12 @@ class MicroXS(DataFrame):
 
         # create temporary run
         with tempfile.TemporaryDirectory() as temp_dir:
-            statepoint_path = model.run(cwd=temp_dir)
+            if run_kwargs is None:
+                run_kwargs = {}
+                model.init_lib()
+            elif 'cwd' in run_kwargs:
+                run_kwargs.pop('cwd')
+            statepoint_path = model.run(cwd=temp_dir, **run_kwargs)
 
             with StatePoint(statepoint_path) as sp:
                 for rx in xs:

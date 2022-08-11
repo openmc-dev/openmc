@@ -57,7 +57,6 @@ class UnstructuredMeshTest(PyAPITestHarness):
             np.testing.assert_array_equal(umesh.vertices[0], exp_vertex)
             np.testing.assert_array_equal(umesh.centroid(0), exp_centroid)
 
-
             # loop over the tallies and get data
             for tally in sp.tallies.values():
                 # find the regular and unstructured meshes

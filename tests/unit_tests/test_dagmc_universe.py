@@ -36,3 +36,33 @@ def test_bounding_region():
     assert isinstance(region, openmc.Halfspace)
     assert region.surface.type == 'sphere'
     assert region.surface.boundary_type == 'reflective'
+
+def test_bounded_universe():
+
+    u = openmc.DAGMCUniverse("tests/regression_tests/dagmc/universes/dagmc.h5m")
+
+    # bounded with defaults
+    bu = u.bounded_universe()
+
+    cells = list(bu.get_all_cells().items())
+    assert len(cells) == 1
+    assert cells[0][0] == 10000  # default bounding_cell_id is 10000
+    assert cells[0][1].id == 10000  # default bounding_cell_id is 10000
+    surfaces = list(cells[0][1].region.get_surfaces().items())
+    assert len(surfaces) == 6
+    assert surfaces[0][1].id == 10000
+
+    # bounded with non defaults
+    bu = u.bounded_universe(
+        bounding_cell_id=42,
+        bounded_type='sphere',
+        starting_id=43
+    )
+
+    cells = list(bu.get_all_cells().items())
+    assert len(cells) == 1
+    assert cells[0][0] == 42  # default bounding_cell_id is 10000
+    assert cells[0][1].id == 42  # default bounding_cell_id is 10000
+    surfaces = list(cells[0][1].region.get_surfaces().items())
+    assert surfaces[0][1].type == 'sphere'
+    assert surfaces[0][1].id == 43

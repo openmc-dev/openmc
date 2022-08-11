@@ -146,7 +146,7 @@ class MicroXS(DataFrame):
         for material in model.materials:
             if material.depletable:
                 nuc_densities = material.get_nuclide_atom_densities()
-                dilute_density = 1.e-24 * dilute_initial
+                dilute_density = 1.0e-24 * dilute_initial
                 material.set_density('sum')
                 for nuc, density in nuc_densities.items():
                     material.remove_nuclide(nuc)

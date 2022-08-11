@@ -769,7 +769,6 @@ class DAGMCUniverse(UniverseBase):
             return -bounding_surface
 
         if bounded_type == 'box':
-            surf_ids = [starting_id+i for i in range(6)]
             # defines plane surfaces for all six faces of the bounding box
             lower_x = openmc.XPlane(bbox[0][0], surface_id=starting_id)
             upper_x = openmc.XPlane(bbox[1][0], surface_id=starting_id+1)

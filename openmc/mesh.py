@@ -1476,7 +1476,7 @@ class UnstructuredMesh(MeshBase):
         Coordinates of the mesh vertices with array shape (n_elements, 3)
 
         .. versionadded:: 0.13.1
-    connectivity : numpy.ndarray 
+    connectivity : numpy.ndarray
         Connectivity of the elements with array shape (n_elements, 8)
 
         .. versionadded:: 0.13.1
@@ -1563,10 +1563,6 @@ class UnstructuredMesh(MeshBase):
         return np.sum(self.volumes)
 
     @property
-    def centroids(self):
-        return self._centroids
-
-    @property
     def vertices(self):
         return self._vertices
 
@@ -1628,8 +1624,8 @@ class UnstructuredMesh(MeshBase):
         Parameters
         ----------
         bin : int
-            Bin ID for the returned centroid 
-        
+            Bin ID for the returned centroid
+
         Returns
         -------
         numpy.ndarray
@@ -1637,6 +1633,8 @@ class UnstructuredMesh(MeshBase):
 
         """
         conn = self.connectivity[bin]
+        # remove invalid connectivity values
+        conn = conn[conn >= 0]
         coords = self.vertices[conn]
         return coords.mean(axis=0)
 

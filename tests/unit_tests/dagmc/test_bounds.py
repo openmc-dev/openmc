@@ -3,21 +3,21 @@ import pytest
 from pathlib import Path
 
 
-def test_bounding_box():
+def test_bounding_box(request):
     """Checks that the DAGMCUniverse.bounding_box returns the correct values"""
 
-    u = openmc.DAGMCUniverse(str(Path(__file__).parent.resolve() / "dagmc/dagmc.h5m"))
+    u = openmc.DAGMCUniverse(Path(request.fspath).parent / "dagmc.h5m")
 
     ll, ur = u.bounding_box
     assert ll == pytest.approx((-25.0, -25.0, -25))
     assert ur == pytest.approx((25.0, 25.0, 25))
 
 
-def test_bounding_region():
+def test_bounding_region(request):
     """Checks that the DAGMCUniverse.bounding_region() returns a region with
     correct surfaces and boundary types"""
 
-    u = openmc.DAGMCUniverse(str(Path(__file__).parent.resolve() / "dagmc/dagmc.h5m"))
+    u = openmc.DAGMCUniverse(Path(request.fspath).parent / "dagmc.h5m")
 
     region = u.bounding_region()  # should default to bounded_type='box'
     assert isinstance(region, openmc.Region)
@@ -42,11 +42,11 @@ def test_bounding_region():
     assert region.surface.boundary_type == "reflective"
 
 
-def test_bounded_universe():
+def test_bounded_universe(request):
     """Checks that the DAGMCUniverse.bounded_universe() returns a
     openmc.Universe with correct surface ids and cell ids"""
 
-    u = openmc.DAGMCUniverse(str(Path(__file__).parent.resolve() / "dagmc/dagmc.h5m"))
+    u = openmc.DAGMCUniverse(Path(request.fspath).parent / "dagmc.h5m")
 
     # bounded with defaults
     bu = u.bounded_universe()

@@ -678,8 +678,8 @@ class DAGMCUniverse(UniverseBase):
 
     @filename.setter
     def filename(self, val):
-        cv.check_type('DAGMC filename', val, str)
-        self._filename = val
+        cv.check_type('DAGMC filename', val, (Path, str))
+        self._filename = str(val)
 
     @property
     def auto_geom_ids(self):

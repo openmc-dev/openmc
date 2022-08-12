@@ -37,6 +37,26 @@ class UnstructuredMeshTest(PyAPITestHarness):
 
     def _compare_results(self):
         with openmc.StatePoint(self._sp_name) as sp:
+            # check some properties of the unstructured mesh
+            umesh = None
+            for m in sp.meshes.values():
+                if isinstance(m, openmc.UnstructuredMesh):
+                    umesh = m
+            assert umesh is not None
+
+            # check that the first element centroid is correct
+            # this will depend on whether the tet mesh or hex mesh
+            # file is being used in this test
+            if umesh.element_types[0] == umesh._LINEAR_TET:
+                exp_vertex = (-10.0, -10.0, -10.0)
+                exp_centroid = (-8.75, -9.75, -9.25)
+            else:
+                exp_vertex = (-10.0, -10.0, 10.0)
+                exp_centroid = (-9.0, -9.0, 9.0)
+
+            np.testing.assert_array_equal(umesh.vertices[0], exp_vertex)
+            np.testing.assert_array_equal(umesh.centroid(0), exp_centroid)
+
             # loop over the tallies and get data
             for tally in sp.tallies.values():
                 # find the regular and unstructured meshes

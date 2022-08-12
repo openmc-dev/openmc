@@ -64,7 +64,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
     chain.export_to_xml('test_chain.xml')
 
     # Create transport operator
-    op = openmc.deplete.Operator(
+    op = openmc.deplete.CoupledOperator(
         model, 'test_chain.xml',
         normalization_mode="source-rate",
         reaction_rate_mode=reaction_rate_mode,
@@ -144,7 +144,7 @@ def test_decay(run_in_tmpdir):
 
     model = openmc.Model(geometry=geometry, settings=settings)
     # Create transport operator
-    op = openmc.deplete.Operator(
+    op = openmc.deplete.CoupledOperator(
         model, 'test_chain.xml', normalization_mode="source-rate"
     )
 

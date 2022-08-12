@@ -599,7 +599,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // Check if this is a simple cell.
   simple_ = true;
   for (int32_t token : region_) {
-    if ((token == OP_COMPLEMENT) || (token == OP_UNION)) {
+    if (token == OP_UNION) {
       simple_ = false;
       // Ensure intersections have precedence over unions
       add_precedence(region_);

@@ -1276,7 +1276,7 @@ extern "C" size_t tallies_size()
 extern "C" int openmc_remove_tally(int32_t id)
 {
   // check that id is in the map
-  if (!model::tally_map.contains(id)) {
+  if (model::tally_map.count(id)!=1) {
     return OPENMC_E_INVALID_ID;
   }
   // query map for index corersponding to the given id

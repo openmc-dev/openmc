@@ -77,9 +77,9 @@ public:
   //! Simple cells can be evaluated with short circuit evaluation, i.e., as soon
   //! as we know that one half-space is not satisfied, we can exit. This
   //! provides a performance benefit for the common case. In
-  //! contains_complex, we evaluate the prefix expression using an operator stack
-  //! where the sense of the surface is evaluated first and compared to the
-  //! short circuiting possibilities. If no short circuiting is possible, we
+  //! contains_complex, we evaluate the prefix expression using an operator
+  //! stack where the sense of the surface is evaluated first and compared to
+  //! the short circuiting possibilities. If no short circuiting is possible, we
   //! continue through the prefix expression.
   //! \param r The 3D Cartesian coordinate to check.
   //! \param u A direction used to "break ties" the coordinates are very
@@ -202,8 +202,6 @@ public:
 
   //! Definition of spatial region as Boolean expression of half-spaces
   vector<std::int32_t> region_;
-  //! Reverse Polish notation for region expression
-  vector<std::int32_t> region_prefix_;
   bool simple_; //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.
@@ -261,12 +259,13 @@ protected:
   static void remove_complement_ops(vector<int32_t>& region_prefix);
 
   //! Returns the beginning position of a parenthesis block (immediately before
-  //! two surface tokens) in the prefix expression given a starting position at the end of
-  //! that block (immediately after two surface tokens)
-  //! \param start Starting position of the search
-  //! \param region_prefix The prefix being searched
+  //! two surface tokens) in the prefix expression given a starting position at
+  //! the end of that block (immediately after two surface tokens) \param start
+  //! Starting position of the search \param region_prefix The prefix being
+  //! searched
   static vector<int32_t>::reverse_iterator find_left_parenthesis(
-    vector<int32_t>::reverse_iterator start, const vector<int32_t>& region_prefix);
+    vector<int32_t>::reverse_iterator start,
+    const vector<int32_t>& region_prefix);
 };
 
 //==============================================================================

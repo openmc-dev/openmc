@@ -85,6 +85,7 @@ int openmc_finalize()
   settings::material_cell_offsets = true;
   settings::max_particles_in_flight = 100000;
   settings::max_splits = 1000;
+  settings::max_tracks = 1000;
   settings::n_inactive = 0;
   settings::n_particles = -1;
   settings::output_summary = true;

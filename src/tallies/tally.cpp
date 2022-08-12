@@ -1277,7 +1277,7 @@ extern "C" int openmc_remove_tally(int32_t id)
 {
   // check that id is in the map
   if (!model::tally_map.contains(id)) {
-    return OPENMC_INVALID_ID;
+    return OPENMC_E_INVALID_ID;
   }
   // query map for index corersponding to the given id
   int32_t index = model::tally_map.at(id);

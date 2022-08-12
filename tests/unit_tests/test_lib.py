@@ -339,19 +339,16 @@ def test_new_tally(lib_init):
     new_tally_with_id.scores = ['flux']
     assert len(openmc.lib.tallies) == 5
 
-def test_add_and_delete_tally(lib_init):
-    with pytest.raises(exc.AllocationError):
-        openmc.lib.Material(1)
-    new_tally = openmc.lib.Tally()
-    new_tally.scores = ['flux']
-    new_tally_with_id = openmc.lib.Tally(10)
-    new_tally_with_id.scores = ['flux']
-    assert len(openmc.lib.tallies) == 5
-    # delete tally and check length is one less than before
-    openmc_remove_tally(10)
+def test_delete_tally(lib_init):
+    # delete tally 10 which was added in the above test
+    # check length is one less than before
+    openmc.lib.openmc_remove_tally(openmc.lib.get_tally_index(10))
     assert len(openmc.lib.tallies) == 4
 
-# def test_delete_wrong_id():
+def test_delete_invalid_id(lib_init):
+    # attempt to delete a tally that is guaranteed not to have a valid index
+    with pytest.raises(exc.InvalidIDError):
+        openmc.lib.openmc_remove_tally(np.max(id)+1)
 
 
 def test_tally_activate(lib_simulation_init):

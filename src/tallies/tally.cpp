@@ -1276,7 +1276,7 @@ extern "C" size_t tallies_size()
 extern "C" int openmc_remove_tally(int32_t index)
 {
   // check that id is in the map
-  if (index <= 0 || index > model::tallies.size()) {
+  if (index < 0 || index > model::tallies.size()) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   // grab tally so it's ID can be obtained to remove the (ID,index) pair from tally_map

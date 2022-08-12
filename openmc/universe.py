@@ -679,7 +679,7 @@ class DAGMCUniverse(UniverseBase):
     @filename.setter
     def filename(self, val):
         cv.check_type('DAGMC filename', val, (Path, str))
-        self._filename = str(val)
+        self._filename = val
 
     @property
     def auto_geom_ids(self):
@@ -720,7 +720,7 @@ class DAGMCUniverse(UniverseBase):
             dagmc_element.set('auto_geom_ids', 'true')
         if self.auto_mat_ids:
             dagmc_element.set('auto_mat_ids', 'true')
-        dagmc_element.set('filename', self.filename)
+        dagmc_element.set('filename', str(self.filename))
         xml_element.append(dagmc_element)
 
     def bounding_region(self, bounded_type='box', boundary_type='vacuum', starting_id=10000):

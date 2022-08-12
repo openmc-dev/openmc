@@ -1273,19 +1273,18 @@ extern "C" size_t tallies_size()
 }
 
 // given a tally ID, remove it from the tallies vector
-extern "C" int openmc_remove_tally(int32_t id)
+extern "C" int openmc_remove_tally(int32_t index)
 {
   // check that id is in the map
-  if (model::tally_map.count(id)!=1) {
-    return OPENMC_E_INVALID_ID;
+  if (index <= 0 || index > model::tallies.size()) {
+    return OPENMC_E_OUT_OF_BOUNDS;
   }
-  // query map for index corersponding to the given id
-  int32_t index = model::tally_map.at(id);
+  // grab tally so it's ID can be obtained to remove the (ID,index) pair from tally_map
+  auto& tally = model::tallies[index];
+  model::tally_map.erase(tally->id_);
   // delete the tally via iterator pointing to correct position
   model::tallies.erase(model::tallies.begin() + index);
 
-  // after erasing tally, remove id from map
-  model::tally_map.erase(id);
   return 0;
 }
 

@@ -29,6 +29,11 @@ _RES_SCAT_METHODS = ['dbrc', 'rvs']
 class Settings:
     """Settings used for an OpenMC simulation.
 
+    Parameters
+    ----------
+    **kwargs : dict, optional
+        Any keyword arguments are used to set attributes on the instance.
+
     Attributes
     ----------
     batches : int
@@ -222,7 +227,7 @@ class Settings:
         Indicate whether to write the initial source distribution to file
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._run_mode = RunMode.EIGENVALUE
         self._batches = None
         self._generations_per_batch = None
@@ -296,6 +301,9 @@ class Settings:
         self._weight_windows_on = None
         self._max_splits = None
         self._max_tracks = None
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     @property
     def run_mode(self) -> str:

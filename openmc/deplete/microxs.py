@@ -94,10 +94,8 @@ class MicroXS(DataFrame):
         with tempfile.TemporaryDirectory() as temp_dir:
             if run_kwargs is None:
                 run_kwargs = {}
-                model.init_lib()
-            elif 'cwd' in run_kwargs:
-                run_kwargs.pop('cwd')
-            statepoint_path = model.run(cwd=temp_dir, **run_kwargs)
+            run_kwargs.setdefault('cwd', temp_dir)
+            statepoint_path = model.run(**run_kwargs)
 
             with StatePoint(statepoint_path) as sp:
                 for rx in xs:

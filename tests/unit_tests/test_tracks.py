@@ -142,7 +142,8 @@ def test_filter(sphere_model, run_in_tmpdir):
     matches = tracks.filter(particle='bunnytron')
     assert matches == []
 
-def test_write_tracks_to_vtk():
+
+def test_write_tracks_to_vtk(sphere_model):
     # Set maximum number of tracks per process to write
     sphere_model.settings.max_tracks = 25
     sphere_model.settings.photon_transport = True

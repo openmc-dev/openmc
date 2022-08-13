@@ -266,6 +266,55 @@ class Tracks(list):
             track.plot(ax)
         return ax
 
+    def write_tracks_to_vtk(self, filename):
+        """Creates a VTK file of the tracks
+
+        Parameters
+        ----------
+        filename : str
+            Name of the VTK file to write.
+
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
+        """
+
+        import vtk
+
+        # Initialize data arrays and offset.
+        points = vtk.vtkPoints()
+        cells = vtk.vtkCellArray()
+    
+        for particle in self:
+            for state in particle.states:
+                points.InsertNextPoint(state['r'])
+
+            # Create VTK line and assign points to line.
+            n = particle.states.size
+            line = vtk.vtkPolyLine()
+            line.GetPointIds().SetNumberOfIds(n)
+            for i in range(n):
+                line.GetPointIds().SetId(i, point_offset + i)
+            point_offset += n
+
+            # Add line to cell array
+            cells.InsertNextCell(line)
+
+        data = vtk.vtkPolyData()
+        data.SetPoints(points)
+        data.SetLines(cells)
+
+        writer = vtk.vtkXMLPPolyDataWriter()
+        if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+            writer.SetInputData(data)
+        else:
+            writer.SetInput(data)
+        writer.SetFileName(filename)
+        writer.Write()
+
+        return filename
+
     @staticmethod
     def combine(track_files, path='tracks.h5'):
         """Combine multiple track files into a single track file

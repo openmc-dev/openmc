@@ -1281,8 +1281,8 @@ extern "C" int openmc_remove_tally(int32_t index)
   }
   // grab tally so it's ID can be obtained to remove the (ID,index) pair from tally_map
   auto& tally = model::tallies[index];
-  model::tally_map.erase(tally->id_);
   // delete the tally via iterator pointing to correct position
+  // this calls the Tally destructor, removing the tally from the map as well
   model::tallies.erase(model::tallies.begin() + index);
 
   return 0;

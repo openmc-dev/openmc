@@ -160,14 +160,12 @@ protected:
   //! \param[in] instance of the cell to find parent cells for
   //! \param[in] p particle used to do a fast search for parent cells
   //! \return parent cells
-  vector<ParentCell> find_parent_cells(
-    int32_t instance, Particle& p) const;
+  vector<ParentCell> find_parent_cells(int32_t instance, Particle& p) const;
 
   //! Determine the path to this cell instance in the geometry hierarchy
   //! \param[in] instance of the cell to find parent cells for
   //! \return parent cells
-  vector<ParentCell> exhaustive_find_parent_cells(
-    int32_t instance) const;
+  vector<ParentCell> exhaustive_find_parent_cells(int32_t instance) const;
 
   //! Inner function for retrieving contained cells
   void get_contained_cells_inner(
@@ -202,9 +200,6 @@ public:
 
   //! Definition of spatial region as Boolean expression of half-spaces
   vector<std::int32_t> region_;
-  //! Revised infix notation with no complements
-  vector<std::int32_t> region_no_complements_;
-  vector<std::int32_t> rpn_;
   bool simple_; //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.

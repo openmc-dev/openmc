@@ -483,8 +483,6 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  virtual double volume(int bin) const = 0;
-
   std::string bin_label(int bin) const override;
 
   // Methods
@@ -528,10 +526,6 @@ public:
   //! \return element connectivity as IDs of the vertices
   virtual std::vector<int> connectivity(int id) const = 0;
 
-  //! Get the volume of a mesh bin
-  //
-  //! \param[in] bin Bin to return the volume for
-  //! \return Volume of the bin
   virtual double volume(int bin) const = 0;
 
   //! Get the library used for this unstructured mesh

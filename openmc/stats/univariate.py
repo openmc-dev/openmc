@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
+from copy import deepcopy
 from numbers import Real
 from xml.etree import ElementTree as ET
 
@@ -78,6 +79,18 @@ class Univariate(EqualityMixin, ABC):
         """
         pass
 
+    def integral(self):
+        """Return integral of distribution
+
+        .. versionadded:: 0.13.1
+
+        Returns
+        -------
+        float
+            Integral of distribution
+        """
+        return 1.0
+
 
 class Discrete(Univariate):
     """Distribution characterized by a probability mass function.
@@ -95,9 +108,9 @@ class Discrete(Univariate):
 
     Attributes
     ----------
-    x : Iterable of float
+    x : numpy.ndarray
         Values of the random variable
-    p : Iterable of float
+    p : numpy.ndarray
         Discrete probability for each value
 
     """
@@ -122,7 +135,7 @@ class Discrete(Univariate):
         if isinstance(x, Real):
             x = [x]
         cv.check_type('discrete values', x, Iterable, Real)
-        self._x = x
+        self._x = np.array(x, dtype=float)
 
     @p.setter
     def p(self, p):
@@ -131,14 +144,15 @@ class Discrete(Univariate):
         cv.check_type('discrete probabilities', p, Iterable, Real)
         for pk in p:
             cv.check_greater_than('discrete probability', pk, 0.0, True)
-        self._p = p
+        self._p = np.array(p, dtype=float)
 
     def cdf(self):
         return np.insert(np.cumsum(self.p), 0, 0.0)
 
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
-        return np.random.choice(self.x, n_samples, p=self.p)
+        p = self.p / self.p.sum()
+        return np.random.choice(self.x, n_samples, p=p)
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
@@ -219,6 +233,18 @@ class Discrete(Univariate):
         x_arr = np.array(sorted(x_merged))
         p_arr = np.array([p_merged[x] for x in x_arr])
         return cls(x_arr, p_arr)
+
+    def integral(self):
+        """Return integral of distribution
+
+        .. versionadded:: 0.13.1
+
+        Returns
+        -------
+        float
+            Integral of discrete distribution
+        """
+        return np.sum(self.p)
 
 class Uniform(Univariate):
     """Distribution with constant probability over a finite interval [a,b]
@@ -825,9 +851,9 @@ class Tabular(Univariate):
 
     Attributes
     ----------
-    x : Iterable of float
+    x : numpy.ndarray
         Tabulated values of the random variable
-    p : Iterable of float
+    p : numpy.ndarray
         Tabulated probabilities
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
         Indicate whether the density function is constant between tabulated
@@ -860,7 +886,7 @@ class Tabular(Univariate):
     @x.setter
     def x(self, x):
         cv.check_type('tabulated values', x, Iterable, Real)
-        self._x = x
+        self._x = np.array(x, dtype=float)
 
     @p.setter
     def p(self, p):
@@ -868,7 +894,7 @@ class Tabular(Univariate):
         if not self._ignore_negative:
             for pk in p:
                 cv.check_greater_than('tabulated probability', pk, 0.0, True)
-        self._p = p
+        self._p = np.array(p, dtype=float)
 
     @interpolation.setter
     def interpolation(self, interpolation):
@@ -881,8 +907,8 @@ class Tabular(Univariate):
                                       'distributions using histogram or '
                                       'linear-linear interpolation')
         c = np.zeros_like(self.x)
-        x = np.asarray(self.x)
-        p = np.asarray(self.p)
+        x = self.x
+        p = self.p
 
         if self.interpolation == 'histogram':
             c[1:] = p[:-1] * np.diff(x)
@@ -922,7 +948,7 @@ class Tabular(Univariate):
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
-        self.p = np.asarray(self.p) / self.cdf().max()
+        self.p /= self.cdf().max()
 
     def sample(self, n_samples=1, seed=None):
         if not self.interpolation in ('histogram', 'linear-linear'):
@@ -931,10 +957,11 @@ class Tabular(Univariate):
                                       'linear-linear interpolation')
         np.random.seed(seed)
         xi = np.random.rand(n_samples)
-        cdf = self.cdf()
-        cdf /= cdf.max()
+
         # always use normalized probabilities when sampling
+        cdf = self.cdf()
         p = self.p / cdf.max()
+        cdf /= cdf.max()
 
         # get CDF bins that are above the
         # sampled values
@@ -949,7 +976,7 @@ class Tabular(Univariate):
         # the random number is less than the next cdf
         # entry
         x_i = self.x[cdf_idx]
-        p_i = self.p[cdf_idx]
+        p_i = p[cdf_idx]
 
         if self.interpolation == 'histogram':
             # mask where probability is greater than zero
@@ -967,7 +994,7 @@ class Tabular(Univariate):
             # get variable and probability values for the
             # next entry
             x_i1 = self.x[cdf_idx + 1]
-            p_i1 = self.p[cdf_idx + 1]
+            p_i1 = p[cdf_idx + 1]
             # compute slope between entries
             m = (p_i1 - p_i) / (x_i1 - x_i)
             # set values for zero slope
@@ -1026,6 +1053,24 @@ class Tabular(Univariate):
         x = params[:len(params)//2]
         p = params[len(params)//2:]
         return cls(x, p, interpolation)
+
+    def integral(self):
+        """Return integral of distribution
+
+        .. versionadded: 0.13.1
+
+        Returns
+        -------
+        float
+            Integral of tabular distrbution
+        """
+        if self.interpolation == 'histogram':
+            return np.sum(np.diff(self.x) * self.p[:-1])
+        elif self.interpolation == 'linear-linear':
+            return np.trapz(self.p, self.x)
+        else:
+            raise NotImplementedError(
+                f'integral() not supported for {self.inteprolation} interpolation')
 
 
 class Legendre(Univariate):
@@ -1135,9 +1180,18 @@ class Mixture(Univariate):
 
     def sample(self, n_samples=1, seed=None):
         np.random.seed(seed)
-        idx = np.random.choice(self.distribution, n_samples, p=self.probability)
 
-        out = np.zeros_like(idx)
+        # Get probability of each distribution accounting for its intensity
+        p = np.array([prob*dist.integral() for prob, dist in
+                      zip(self.probability, self.distribution)])
+        p /= p.sum()
+
+        # Sample from the distributions
+        idx = np.random.choice(range(len(self.distribution)),
+                               n_samples, p=p)
+
+        # Draw samples from the distributions sampled above
+        out = np.empty_like(idx, dtype=float)
         for i in np.unique(idx):
             n_dist_samples = np.count_nonzero(idx == i)
             samples = self.distribution[i].sample(n_dist_samples)
@@ -1199,3 +1253,68 @@ class Mixture(Univariate):
             distribution.append(Univariate.from_xml_element(pair.find("dist")))
 
         return cls(probability, distribution)
+
+    def integral(self):
+        """Return integral of the distribution
+
+        .. versionadded:: 0.13.1
+
+        Returns
+        -------
+        float
+            Integral of the distribution
+        """
+        return sum([
+            p*dist.integral()
+            for p, dist in zip(self.probability, self.distribution)
+        ])
+
+
+def combine_distributions(dists, probs):
+    """Combine distributions with specified probabilities
+
+    This function can be used to combine multiple instances of
+    :class:`~openmc.stats.Discrete` and `~openmc.stats.Tabular`. Multiple
+    discrete distributions are merged into a single distribution and the
+    remainder of the distributions are put into a :class:`~openmc.stats.Mixture`
+    distribution.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    dists : iterable of openmc.stats.Univariate
+        Distributions to combine
+    probs : iterable of float
+        Probability (or intensity) of each distribution
+
+    """
+    # Get copy of distribution list so as not to modify the argument
+    dist_list = deepcopy(dists)
+
+    # Get list of discrete/continuous distribution indices
+    discrete_index = [i for i, d in enumerate(dist_list) if isinstance(d, Discrete)]
+    cont_index = [i for i, d in enumerate(dist_list) if isinstance(d, Tabular)]
+
+    # Apply probabilites to continuous distributions
+    for i in cont_index:
+        dist = dist_list[i]
+        dist.p *= probs[i]
+
+    if discrete_index:
+        # Create combined discrete distribution
+        dist_discrete = [dist_list[i] for i in discrete_index]
+        discrete_probs = [probs[i] for i in discrete_index]
+        combined_dist = Discrete.merge(dist_discrete, discrete_probs)
+
+        # Replace multiple discrete distributions with merged
+        for idx in reversed(discrete_index):
+            dist_list.pop(idx)
+        dist_list.append(combined_dist)
+
+    # Combine discrete and continuous if present
+    if len(dist_list) > 1:
+        probs = [1.0]*len(dist_list)
+        dist_list[:] = [Mixture(probs, dist_list.copy())]
+
+    return dist_list[0]

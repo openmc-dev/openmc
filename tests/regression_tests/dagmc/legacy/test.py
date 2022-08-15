@@ -1,6 +1,7 @@
 import openmc
 import openmc.lib
 
+from pathlib import Path
 import pytest
 from tests.testing_harness import PyAPITestHarness
 
@@ -27,7 +28,7 @@ def model():
     model.settings.dagmc = True
 
     # geometry
-    dag_univ = openmc.DAGMCUniverse("dagmc.h5m")
+    dag_univ = openmc.DAGMCUniverse(Path("dagmc.h5m"))
     model.geometry = openmc.Geometry(dag_univ)
 
     # tally

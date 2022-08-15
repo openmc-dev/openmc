@@ -462,7 +462,7 @@ class StepResult:
 
         Parameters
         ----------
-        op : openmc.deplete.TransportOperator
+        op : openmc.deplete.abc.TransportOperator
             The operator used to generate these results.
         x : list of list of numpy.array
             The prior x vectors.  Indexed [i][cell] using the above equation.
@@ -495,7 +495,13 @@ class StepResult:
             for mat_i in range(n_mat):
                 results[i, mat_i, :] = x[i][mat_i]
 
-        results.k = [(r.k.nominal_value, r.k.std_dev) for r in op_results]
+        ks = []
+        for r in op_results:
+            if isinstance(r.k, type(None)):
+                ks += [(None, None)]
+            else:
+                ks += [(r.k.nominal_value, r.k.std_dev)]
+        results.k = ks
         results.rates = [r.rates for r in op_results]
         results.time = t
         results.source_rate = source_rate

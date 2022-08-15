@@ -3,9 +3,7 @@ import openmc.stats
 
 
 def test_export_to_xml(run_in_tmpdir):
-    s = openmc.Settings()
-    s.run_mode = 'fixed source'
-    s.batches = 1000
+    s = openmc.Settings(run_mode='fixed source', batches=1000, seed=17)
     s.generations_per_batch = 10
     s.inactive = 100
     s.particles = 1000000
@@ -25,7 +23,6 @@ def test_export_to_xml(run_in_tmpdir):
     s.surf_source_write = {'surface_ids': [2], 'max_particles': 200}
     s.confidence_intervals = True
     s.ptables = True
-    s.seed = 17
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
                 'energy_photon': 1000.0, 'energy_electron': 1.0e-5,

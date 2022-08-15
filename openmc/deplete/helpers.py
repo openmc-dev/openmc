@@ -1,5 +1,5 @@
 """
-Class for normalizing fission energy deposition
+Classes for collecting and calculating quantities for reaction rate operators
 """
 import bisect
 from abc import abstractmethod
@@ -68,7 +68,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
-            :class:`openmc.deplete.Operator` that uses this helper
+            :class:`openmc.deplete.CoupledOperator` that uses this helper
             may only burn a subset of all materials when running
             in parallel mode.
         """
@@ -133,9 +133,11 @@ class DirectReactionRateHelper(ReactionRateHelper):
     Parameters
     ----------
     n_nucs : int
-        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
+        Number of burnable nuclides tracked by
+        :class:`openmc.deplete.CoupledOperator`
     n_react : int
-        Number of reactions tracked by :class:`openmc.deplete.Operator`
+        Number of reactions tracked by an instance of
+        :class:`openmc.deplete.CoupledOperator`
 
     Attributes
     ----------
@@ -217,9 +219,10 @@ class FluxCollapseHelper(ReactionRateHelper):
     Parameters
     ----------
     n_nucs : int
-        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
+        Number of burnable nuclides tracked by
+        :class:`openmc.deplete.CoupledOperator`
     n_react : int
-        Number of reactions tracked by :class:`openmc.deplete.Operator`
+        Number of reactions tracked by :class:`openmc.deplete.CoupledOperator`
     energies : iterable of float
         Energy group boundaries for flux spectrum in [eV]
     reactions : iterable of str
@@ -385,7 +388,7 @@ class ChainFissionHelper(EnergyNormalizationHelper):
     ----------
     nuclides : list of str
         All nuclides with desired reaction rates. Ordered to be
-        consistent with :class:`openmc.deplete.Operator`
+        consistent with :class:`openmc.deplete.CoupledOperator`
     energy : float
         Total energy [J/s/source neutron] produced in a transport simulation.
         Updated in the material iteration with :meth:`update`.
@@ -552,7 +555,7 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
 
         Parameters
         ----------
-        operator : openmc.deplete.TransportOperator
+        operator : openmc.deplete.abc.TransportOperator
             operator with a depletion chain
         kwargs:
             Additional keyword arguments to be used in construction
@@ -610,7 +613,6 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         Default: 0.0253 [eV]
     fast_energy : float, optional
         Energy of yield data corresponding to fast yields.
-        Default: 500 [kev]
 
     Attributes
     ----------
@@ -632,10 +634,10 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         Array of fission rate fractions with shape
         ``(n_mats, 2, n_nucs)``. ``results[:, 0]``
         corresponds to the fraction of all fissions
-        that occured below ``cutoff``. The number
+        that occurred below ``cutoff``. The number
         of materials in the first axis corresponds
         to the number of materials burned by the
-        :class:`openmc.deplete.Operator`
+        :class:`openmc.deplete.CoupledOperator`
     """
 
     def __init__(self, chain_nuclides, n_bmats, cutoff=112.0,
@@ -692,7 +694,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 
         Parameters
         ----------
-        operator : openmc.deplete.Operator
+        operator : openmc.deplete.CoupledOperator
             Operator with a chain and burnable materials
         kwargs:
             Additional keyword arguments to be used in construction
@@ -718,7 +720,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
-            :class:`openmc.deplete.Operator` that uses this helper
+            :class:`openmc.deplete.CoupledOperator` that uses this helper
             may only burn a subset of all materials when running
             in parallel mode.
         """
@@ -788,7 +790,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
 class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
     r"""Class that computes fission yields based on average fission energy
 
-    Computes average energy at which fission events occured with
+    Computes average energy at which fission events occurred with
 
     .. math::
 
@@ -843,7 +845,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
-            :class:`openmc.deplete.Operator` that uses this helper
+            :class:`openmc.deplete.CoupledOperator` that uses this helper
             may only burn a subset of all materials when running
             in parallel mode.
         """
@@ -906,7 +908,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         Use the computed average energy of fission
         events to determine fission yields. If average
         energy is between two sets of yields, linearly
-        interpolate bewteen the two.
+        interpolate between the two.
         Otherwise take the closet set of yields.
 
         Parameters
@@ -956,7 +958,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
         Parameters
         ----------
-        operator : openmc.deplete.TransportOperator
+        operator : openmc.deplete.CoupledOperator
             Operator with a depletion chain
         kwargs :
             Additional keyword arguments to be used in construction

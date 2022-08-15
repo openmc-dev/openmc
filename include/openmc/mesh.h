@@ -7,13 +7,14 @@
 #include <unordered_map>
 
 #include "hdf5.h"
-#include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
+#include "pugixml.hpp"
 
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
+#include "openmc/xml_interface.h"
 
 #ifdef DAGMC
 #include "moab/AdaptiveKDTree.hpp"
@@ -37,6 +38,12 @@
 namespace openmc {
 
 //==============================================================================
+// Constants
+//==============================================================================
+
+enum class ElementType { UNSUPPORTED=-1, LINEAR_TET, LINEAR_HEX };
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -53,7 +60,7 @@ extern vector<unique_ptr<Mesh>> meshes;
 
 #ifdef LIBMESH
 namespace settings {
-// used when creating new libMesh::Mesh instances
+// used when creating new libMesh::MeshBase instances
 extern unique_ptr<libMesh::LibMeshInit> libmesh_init;
 extern const libMesh::Parallel::Communicator* libmesh_comm;
 } // namespace settings
@@ -485,6 +492,23 @@ public:
   //! \return The centroid of the bin
   virtual Position centroid(int bin) const = 0;
 
+  //! Get the number of vertices in the mesh
+  //
+  //! \return Number of vertices
+  virtual int n_vertices() const = 0;
+
+  //! Retrieve a vertex of the mesh
+  //
+  //! \param[in] vertex ID
+  //! \return vertex coordinates
+  virtual Position vertex(int id) const = 0;
+
+  //! Retrieve connectivity of a mesh element
+  //
+  //! \param[in] element ID
+  //! \return element connectivity as IDs of the vertices
+  virtual std::vector<int> connectivity(int id) const = 0;
+
   //! Get the volume of a mesh bin
   //
   //! \param[in] bin Bin to return the volume for
@@ -557,6 +581,12 @@ public:
 
   Position centroid(int bin) const override;
 
+  int n_vertices() const override;
+
+  Position vertex(int id) const override;
+
+  std::vector<int> connectivity(int id) const override;
+
   double volume(int bin) const override;
 
 private:
@@ -621,6 +651,9 @@ private:
   //! \return MOAB EntityHandle of tet
   moab::EntityHandle get_ent_handle_from_bin(int bin) const;
 
+  //! Get a vertex index into the global range from a handle
+  int get_vert_idx_from_handle(moab::EntityHandle vert) const;
+
   //! Get the bin for a given mesh cell index
   //
   //! \param[in] idx Index of the mesh cell.
@@ -655,6 +688,7 @@ private:
 
   // Data members
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
+  moab::Range verts_; //!< Range of vertex EntityHandle's in the mesh
   moab::EntityHandle tetset_;      //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
   std::shared_ptr<moab::Interface> mbi_;    //!< MOAB instance
@@ -671,7 +705,8 @@ class LibMesh : public UnstructuredMesh {
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
-  LibMesh(const std::string& filename, double length_multiplier = 1.0);
+  LibMesh(const std::string & filename, double length_multiplier = 1.0);
+  LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier = 1.0);
 
   static const std::string mesh_lib_type;
 
@@ -701,10 +736,19 @@ public:
 
   Position centroid(int bin) const override;
 
+  int n_vertices() const override;
+
+  Position vertex(int id) const override;
+
+  std::vector<int> connectivity(int id) const override;
+
   double volume(int bin) const override;
+
+  libMesh::MeshBase* mesh_ptr() const { return m_; };
 
 private:
   void initialize() override;
+  void set_mesh_pointer_from_filename(const std::string& filename);
 
   // Methods
 
@@ -715,7 +759,8 @@ private:
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
-  unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
+  unique_ptr<libMesh::MeshBase> unique_m_ = nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is created inside OpenMC
+  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>

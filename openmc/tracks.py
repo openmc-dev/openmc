@@ -7,6 +7,7 @@ from .checkvalue import check_filetype_version
 from .source import SourceParticle, ParticleType
 
 from pathlib import Path
+
 ParticleTrack = namedtuple('ParticleTrack', ['particle', 'states'])
 ParticleTrack.__doc__ = """\
 Particle track information
@@ -266,7 +267,7 @@ class Tracks(list):
             track.plot(ax)
         return ax
 
-    def write_tracks_to_vtk(self, filename=Path('tracks.vtk')):
+    def write_tracks_to_vtk(self, filename=Path('tracks.vtp')):
         """Creates a VTP file of the tracks
 
         Parameters

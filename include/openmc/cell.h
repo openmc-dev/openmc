@@ -201,7 +201,9 @@ public:
   vector<double> sqrtkT_;
 
   //! Definition of spatial region as Boolean expression of half-spaces
-  vector<std::int32_t> region_;
+  vector<int32_t> region_;
+  //! Region in prefix notation
+  vector<int32_t> region_prefix_;
   bool simple_; //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.

@@ -390,7 +390,7 @@ class Tally(_FortranObjectWithID):
 
 class _TallyMapping(Mapping):
     def __getitem__(self, key):
-        return Tally(index=self._get_tally_index(key))
+        return Tally(index=self[key])
 
     def __iter__(self):
         for i in range(len(self)):
@@ -404,16 +404,6 @@ class _TallyMapping(Mapping):
 
     def __delitem__(self, key):
         """Delete a tally from tally vector and remove the ID,index pair from tally"""
-        _dll.openmc_remove_tally(self._get_tally_index(key))
-
-    def _get_tally_index(self, key):
-        """Given the ID, return the index"""
-        index = c_int32()
-        try:
-            _dll.openmc_get_tally_index(key, index)
-        except (AllocationError, InvalidIDError) as e:
-            # __contains__ expects a KeyError to work correctly
-            raise KeyError(str(e))
-        return index.value
+        _dll.openmc_remove_tally(self[key]._index)
 
 tallies = _TallyMapping()

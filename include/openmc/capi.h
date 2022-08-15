@@ -118,7 +118,7 @@ int openmc_regular_mesh_get_params(
 int openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims);
 int openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
   const double* ur, const double* width);
-int openmc_remove_tally(int32_t id);
+int openmc_remove_tally(int32_t index);
 int openmc_reset();
 int openmc_reset_timers();
 int openmc_run();

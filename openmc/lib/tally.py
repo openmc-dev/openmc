@@ -402,7 +402,7 @@ class _TallyMapping(Mapping):
     def __repr__(self):
         return repr(dict(self))
 
-    def __delitem__(self,key):
+    def __delitem__(self, key):
         """Delete a tally from tally vector and remove the ID,index pair from tally"""
         _dll.openmc_remove_tally(self._get_tally_index(key))
 

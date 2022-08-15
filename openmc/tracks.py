@@ -6,7 +6,7 @@ import h5py
 from .checkvalue import check_filetype_version
 from .source import SourceParticle, ParticleType
 
-
+from pathlib import Path
 ParticleTrack = namedtuple('ParticleTrack', ['particle', 'states'])
 ParticleTrack.__doc__ = """\
 Particle track information
@@ -266,18 +266,18 @@ class Tracks(list):
             track.plot(ax)
         return ax
 
-    def write_tracks_to_vtk(self, filename='tracks.vtk'):
-        """Creates a VTK file of the tracks
+    def write_tracks_to_vtk(self, filename=Path('tracks.vtk')):
+        """Creates a VTP file of the tracks
 
         Parameters
         ----------
-        filename : str
+        filename : path-like
             Name of the VTK file to write.
 
         Returns
         -------
-        vtk.vtkStructuredGrid
-            the VTK object
+        vtk.vtkPolyData
+            the VTK vtkPolyData object produced
         """
 
         import vtk
@@ -312,10 +312,10 @@ class Tracks(list):
             writer.SetInputData(data)
         else:
             writer.SetInput(data)
-        writer.SetFileName(filename)
+        writer.SetFileName(str(filename))  # SetFileName requires a string
         writer.Write()
 
-        return filename
+        return data
 
     @staticmethod
     def combine(track_files, path='tracks.h5'):

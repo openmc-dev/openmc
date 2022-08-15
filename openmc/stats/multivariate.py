@@ -643,7 +643,7 @@ class MeshSpatial(Spatial):
 
     """
 
-    def __init__(self, mesh, strengths=None, volume_normalized=False):
+    def __init__(self, mesh, strengths=None, volume_normalized=True):
         self.mesh = mesh        
         self.strengths = strengths
         self.volume_normalized = volume_normalized

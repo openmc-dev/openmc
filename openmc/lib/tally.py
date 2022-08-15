@@ -406,7 +406,7 @@ class _TallyMapping(Mapping):
         """Delete a tally from tally vector and remove the ID,index pair from tally"""
         _dll.openmc_remove_tally(self._get_tally_index(key))
 
-    def _get_tally_index(self,key):
+    def _get_tally_index(self, key):
         """Given the ID, return the index"""
         index = c_int32()
         try:

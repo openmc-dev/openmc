@@ -9,7 +9,9 @@ from uncertainties import ufloat, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+from openmc.stats import Discrete, Tabular, combine_distributions
 from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
+from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
 
 
@@ -314,6 +316,12 @@ class Decay(EqualityMixin):
         'excited_state', 'mass', 'stable', 'spin', and 'parity'.
     spectra : dict
         Resulting radiation spectra for each radiation type.
+    sources : dict
+        Radioactive decay source distributions represented as a dictionary
+        mapping particle types (e.g., 'photon') to instances of
+        :class:`openmc.stats.Univariate`.
+
+        .. versionadded:: 0.13.1
 
     """
     def __init__(self, ev_or_filename):
@@ -329,6 +337,7 @@ class Decay(EqualityMixin):
         self.modes = []
         self.spectra = {}
         self.average_energies = {}
+        self._sources = None
 
         # Get head record
         items = get_head_record(file_obj)
@@ -495,3 +504,69 @@ class Decay(EqualityMixin):
 
         """
         return cls(ev_or_filename)
+
+    @property
+    def sources(self):
+        """Radioactive decay source distributions"""
+        # If property has been computed already, return it
+        # TODO: Replace with functools.cached_property when support is Python 3.9+
+        if self._sources is not None:
+            return self._sources
+
+        sources = {}
+        name = self.nuclide['name']
+        decay_constant = self.decay_constant.n
+        for particle, spectra in self.spectra.items():
+            # Set particle type based on 'particle' above
+            particle_type = {
+                'gamma': 'photon',
+                'beta-': 'electron',
+                'ec/beta+': 'positron',
+                'alpha': 'alpha',
+                'n': 'neutron',
+                'sf': 'fragment',
+                'p': 'proton',
+                'e-': 'electron',
+                'xray': 'photon',
+                'anti-neutrino': 'anti-neutrino',
+                'neutrino': 'neutrino',
+            }[particle]
+
+            if particle_type not in sources:
+                sources[particle_type] = []
+
+            # Create distribution for discrete
+            if spectra['continuous_flag'] in ('discrete', 'both'):
+                energies = []
+                intensities = []
+                for discrete_data in spectra['discrete']:
+                    energies.append(discrete_data['energy'].n)
+                    intensities.append(discrete_data['intensity'].n)
+                energies = np.array(energies)
+                intensity = spectra['discrete_normalization'].n
+                rates = decay_constant * intensity * np.array(intensities)
+                dist_discrete = Discrete(energies, rates)
+                sources[particle_type].append(dist_discrete)
+
+            # Create distribution for continuous
+            if spectra['continuous_flag'] in ('continuous', 'both'):
+                f = spectra['continuous']['probability']
+                if len(f.interpolation) > 1:
+                    raise NotImplementedError("Multiple interpolation regions: {name}, {particle}")
+                interpolation = INTERPOLATION_SCHEME[f.interpolation[0]]
+                if interpolation not in ('histogram', 'linear-linear'):
+                    raise NotImplementedError("Continuous spectra with {interpolation} interpolation ({name}, {particle}) not supported")
+
+                intensity = spectra['continuous_normalization'].n
+                rates = decay_constant * intensity * f.y
+                dist_continuous = Tabular(f.x, rates, interpolation)
+                sources[particle_type].append(dist_continuous)
+
+        # Combine discrete distributions
+        merged_sources = {}
+        for particle_type, dist_list in sources.items():
+            merged_sources[particle_type] = combine_distributions(
+                dist_list, [1.0]*len(dist_list))
+
+        self._sources = merged_sources
+        return self._sources

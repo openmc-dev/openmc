@@ -15,21 +15,23 @@
 
 # sudo docker run image_name:tag_name or ID with no tag sudo docker run ID number
 
-FROM debian:bullseye-slim AS dependencies
+
+# global ARG as these ARGS are used in multiple stages
+# By default one core is used to compile
+ARG compile_cores=1
 
 # By default this Dockerfile builds OpenMC without DAGMC and LIBMESH support
 ARG build_dagmc=off
 ARG build_libmesh=off
 
-# By default one core is used to compile
-ARG compile_cores=1
+FROM debian:bullseye-slim AS dependencies
+
+ARG compile_cores
+ARG build_dagmc
+ARG build_libmesh
 
 # Set default value of HOME to /root
 ENV HOME=/root
-
-# OpenMC variables
-ARG openmc_branch=master
-ENV OPENMC_REPO='https://github.com/openmc-dev/openmc'
 
 # Embree variables
 ENV EMBREE_TAG='v3.12.2'
@@ -60,7 +62,6 @@ ENV NJOY_REPO='https://github.com/njoy/NJOY2016'
 
 # Setup environment variables for Docker image
 ENV LD_LIBRARY_PATH=${DAGMC_INSTALL_DIR}/lib:$LD_LIBRARY_PATH \
-    OPENMC_CROSS_SECTIONS=/root/nndc_hdf5/cross_sections.xml \
     OPENMC_ENDF_DATA=/root/endf-b-vii.1 \
     DEBIAN_FRONTEND=noninteractive
 
@@ -174,12 +175,25 @@ RUN if [ "$build_libmesh" = "on" ]; then \
 
 FROM dependencies AS build
 
+ENV HOME=/root
+
+ARG openmc_branch=master
+ENV OPENMC_REPO='https://github.com/openmc-dev/openmc'
+
+ARG compile_cores
+ARG build_dagmc
+ARG build_libmesh
+
+ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
+ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
+
 # clone and install openmc
 RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && git clone --shallow-submodules --recurse-submodules --single-branch -b ${openmc_branch} --depth=1 ${OPENMC_REPO} \
     && mkdir build && cd build ; \
     if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "on" ]; then \
         cmake ../openmc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
             -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on \
             -DOPENMC_USE_DAGMC=on \
@@ -188,6 +202,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     fi ; \
     if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "off" ]; then \
         cmake ../openmc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
             -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on \
             -DOPENMC_USE_DAGMC=ON \
@@ -195,6 +210,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     fi ; \
     if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "on" ]; then \
         cmake ../openmc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
             -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on \
             -DOPENMC_USE_LIBMESH=on \
@@ -202,6 +218,7 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     fi ; \
     if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "off" ]; then \
         cmake ../openmc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
             -DOPENMC_USE_MPI=on \
             -DHDF5_PREFER_PARALLEL=on ; \
     fi ; \
@@ -210,6 +227,9 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && python -c "import openmc"
 
 FROM build AS release
+
+ENV HOME=/root
+ENV OPENMC_CROSS_SECTIONS=/root/nndc_hdf5/cross_sections.xml
 
 # Download cross sections (NNDC and WMP) and ENDF data needed by test suite
 RUN ${HOME}/OpenMC/openmc/tools/ci/download-xs.sh

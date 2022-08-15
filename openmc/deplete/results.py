@@ -16,6 +16,19 @@ __all__ = ["Results", "ResultsList"]
 
 
 def _get_time_as(seconds, units):
+    """Converts the time in seconds to time in different units
+
+    Parameters
+    ----------
+    seconds : float
+        The time to convert expressed in seconds
+    units : {"s", "min", "h", "d", "a"}
+        The units to convert time into. Available options are seconds ``"s"``,
+        minutes ``"min"``, hours ``"h"`` days ``"d"``, Julian years ``"a"``
+
+    """
+    if units == "a":
+        return seconds / (60 * 60 * 24 * 365.25)  # 365.25 due to the leap year
     if units == "d":
         return seconds / (60 * 60 * 24)
     elif units == "h":
@@ -81,9 +94,9 @@ class Results(list):
         .. note::
             Initial values for some isotopes that do not appear in
             initial concentrations may be non-zero, depending on the
-            value of the :attr:`openmc.deplete.Operator.dilute_initial`
-            attribute. The :class:`openmc.deplete.Operator` class adds isotopes
-            according to this setting, which can be set to zero.
+            value of the :attr:`openmc.deplete.CoupledOperator.dilute_initial`
+            attribute. The :class:`openmc.deplete.CoupledOperator` class adds
+            isotopes according to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -95,9 +108,10 @@ class Results(list):
             Units for the returned concentration. Default is ``"atoms"``
 
             .. versionadded:: 0.12
-        time_units : {"s", "min", "h", "d"}, optional
+        time_units : {"s", "min", "h", "d", "a"}, optional
             Units for the returned time array. Default is ``"s"`` to
-            return the value in seconds.
+            return the value in seconds. Other options are minutes ``"min"``,
+            hours ``"h"``, days ``"d"``, and Julian years ``"a"``.
 
             .. versionadded:: 0.12
 
@@ -109,7 +123,7 @@ class Results(list):
             Concentration of specified nuclide in units of ``nuc_units``
 
         """
-        cv.check_value("time_units", time_units, {"s", "d", "min", "h"})
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
         cv.check_value("nuc_units", nuc_units,
                     {"atoms", "atom/b-cm", "atom/cm3"})
 
@@ -145,8 +159,8 @@ class Results(list):
 
             Initial values for some isotopes that do not appear in
             initial concentrations may be non-zero, depending on the
-            value of :class:`openmc.deplete.Operator` ``dilute_initial``
-            The :class:`openmc.deplete.Operator` adds isotopes according
+            value of :class:`openmc.deplete.CoupledOperator` ``dilute_initial``
+            The :class:`openmc.deplete.CoupledOperator` adds isotopes according
             to this setting, which can be set to zero.
 
         Parameters
@@ -190,8 +204,10 @@ class Results(list):
 
         Parameters
         ----------
-        time_units : {"s", "d", "h", "min"}, optional
-            Desired units for the times array
+        time_units : {"s", "d", "min", "h", "a"}, optional
+            Desired units for the times array. Options are seconds ``"s"``,
+            minutes ``"min"``, hours ``"h"``, days ``"d"``, and Julian years
+            ``"a"``.
 
         Returns
         -------
@@ -203,7 +219,7 @@ class Results(list):
             1 contains the associated uncertainty
 
         """
-        cv.check_value("time_units", time_units, {"s", "d", "min", "h"})
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
 
         times = np.empty_like(self, dtype=float)
         eigenvalues = np.empty((len(self), 2), dtype=float)
@@ -257,9 +273,10 @@ class Results(list):
 
         Parameters
         ----------
-        time_units : {"s", "d", "h", "min"}, optional
+        time_units : {"s", "d", "min", "h", "a"}, optional
             Return the vector in these units. Default is to
-            convert to days
+            convert to days ``"d"``. Other options are seconds ``"s"``, minutes
+            ``"min"``, hours ``"h"``, days ``"d"``, and Julian years ``"a"``.
 
         Returns
         -------
@@ -267,7 +284,7 @@ class Results(list):
             1-D vector of time points
 
         """
-        cv.check_value("time_units", time_units, {"s", "d", "min", "h"})
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
 
         times = np.fromiter(
             (r.time[0] for r in self),
@@ -296,8 +313,9 @@ class Results(list):
         ----------
         time : float
             Desired point in time
-        time_units : {"s", "d", "min", "h"}, optional
-            Units on ``time``. Default: days
+        time_units : {"s", "d", "min", "h", "a"}, optional
+            Units on ``time``. Default: days ``"d"``. Other options are seconds
+            ``"s"``, minutes ``"min"``, hours ``"h"`` and Julian years ``"a"``.
         atol : float, optional
             Absolute tolerance (in ``time_units``) if ``time`` is not
             found.
@@ -399,7 +417,16 @@ class Results(list):
             mat_id = str(mat.id)
             if mat_id in result.mat_to_ind:
                 mat.volume = result.volume[mat_id]
+
+                # Change density of all nuclides in material to atom/b-cm
+                atoms_per_barn_cm = mat.get_nuclide_atom_densities()
+                for nuc, value in atoms_per_barn_cm.items():
+                    mat.remove_nuclide(nuc)
+                    mat.add_nuclide(nuc, value)
                 mat.set_density('sum')
+
+                # For nuclides in chain that have cross sections, replace
+                # density in original material with new density from results
                 for nuc in result.nuc_to_ind:
                     if nuc not in available_cross_sections:
                         continue

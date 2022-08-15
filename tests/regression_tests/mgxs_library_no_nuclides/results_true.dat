@@ -14,6 +14,10 @@ absorption
    material  group in nuclide      mean  std. dev.
 1         1         1   total  0.027335   0.002038
 0         1         2   total  0.263007   0.029616
+reduced absorption
+   material  group in nuclide      mean  std. dev.
+1         1         1   total  0.027278   0.002038
+0         1         2   total  0.263007   0.029616
 capture
    material  group in nuclide      mean  std. dev.
 1         1         1   total  0.019722   0.001980
@@ -316,6 +320,10 @@ absorption
    material  group in nuclide      mean  std. dev.
 1         2         1   total  0.001395   0.000129
 0         2         2   total  0.005202   0.000498
+reduced absorption
+   material  group in nuclide      mean  std. dev.
+1         2         1   total  0.001390   0.000129
+0         2         2   total  0.005202   0.000498
 capture
    material  group in nuclide      mean  std. dev.
 1         2         1   total  0.001395   0.000129
@@ -615,6 +623,10 @@ nu-transport
 1         3         1   total  0.291947   0.019086
 0         3         2   total  1.464248   0.116005
 absorption
+   material  group in nuclide      mean  std. dev.
+1         3         1   total  0.000715   0.000032
+0         3         2   total  0.031290   0.001882
+reduced absorption
    material  group in nuclide      mean  std. dev.
 1         3         1   total  0.000715   0.000032
 0         3         2   total  0.031290   0.001882

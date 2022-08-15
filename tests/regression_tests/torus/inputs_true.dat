@@ -3,7 +3,7 @@
   <cell id="1" material="1" region="-2" universe="1" />
   <cell id="2" material="1" region="-3" universe="1" />
   <cell id="3" material="1" region="-1" universe="1" />
-  <cell id="4" material="2" region="4 -5 6 -7 8 -9 2 3 1" universe="1" />
+  <cell id="4" material="2" region="-5 4 -7 6 -9 8 2 3 1" universe="1" />
   <surface coeffs="0.0 0.0 0.0 3 1.5 1" id="1" type="z-torus" />
   <surface coeffs="6 0.0 0.0 3 1.5 1" id="2" type="x-torus" />
   <surface coeffs="6 0.0 0.0 6 1 0.75" id="3" type="y-torus" />

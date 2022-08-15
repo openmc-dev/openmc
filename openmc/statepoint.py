@@ -11,7 +11,7 @@ from uncertainties import ufloat
 import openmc
 import openmc.checkvalue as cv
 
-_VERSION_STATEPOINT = 17
+_VERSION_STATEPOINT = 18
 
 
 class StatePoint:

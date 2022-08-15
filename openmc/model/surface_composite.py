@@ -451,10 +451,10 @@ class RectangularParallelepiped(CompositeSurface):
         self.zmax = openmc.ZPlane(z0=zmax, **kwargs)
 
     def __neg__(self):
-        return +self.xmin & -self.xmax & +self.ymin & -self.ymax & +self.zmin & -self.zmax
+        return -self.xmax & +self.xmin & -self.ymax & +self.ymin & -self.zmax & +self.zmin
 
     def __pos__(self):
-        return -self.xmin | +self.xmax | -self.ymin | +self.ymax | -self.zmin | +self.zmax
+        return +self.xmax | -self.xmin | +self.ymax | -self.ymin | +self.zmax | -self.zmin
 
 
 class XConeOneSided(CompositeSurface):

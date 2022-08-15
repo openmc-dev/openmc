@@ -1,7 +1,6 @@
-"""function module.
+"""abc module.
 
-This module contains the Operator class, which is then passed to an integrator
-to run a full depletion simulation.
+This module contains Abstract Base Classes for implementing operator, integrator, depletion system solver, and operator helper classes
 """
 
 from abc import ABC, abstractmethod
@@ -29,8 +28,8 @@ from .pool import deplete
 
 
 __all__ = [
-    "OperatorResult", "TransportOperator", "ReactionRateHelper",
-    "NormalizationHelper", "FissionYieldHelper",
+    "OperatorResult", "TransportOperator",
+    "ReactionRateHelper", "NormalizationHelper", "FissionYieldHelper",
     "Integrator", "SIIntegrator", "DepSystemSolver", "add_params"]
 
 
@@ -83,7 +82,8 @@ class TransportOperator(ABC):
     operator that takes a vector of material compositions and returns an
     eigenvalue and reaction rates. This abstract class sets the requirements
     for such a transport operator. Users should instantiate
-    :class:`openmc.deplete.Operator` rather than this class.
+    :class:`openmc.deplete.CoupledOperator` or
+    :class:`openmc.deplete.IndependentOperator` rather than this class.
 
     Parameters
     ----------
@@ -221,9 +221,11 @@ class ReactionRateHelper(ABC):
     Parameters
     ----------
     n_nucs : int
-        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
+        Number of burnable nuclides tracked by
+        :class:`openmc.deplete.abc.TransportOperator`
     n_react : int
-        Number of reactions tracked by :class:`openmc.deplete.Operator`
+        Number of reactions tracked by
+        :class:`openmc.deplete.abc.TransportOperator`
 
     Attributes
     ----------
@@ -292,9 +294,9 @@ class NormalizationHelper(ABC):
     """Abstract class for obtaining normalization factor on tallies
 
     This helper class determines how reaction rates calculated by an instance of
-    :class:`openmc.deplete.Operator` should be normalized for the purpose of
-    constructing a burnup matrix. Based on the method chosen, the power or
-    source rate provided by the user, and reaction rates from a
+    :class:`openmc.deplete.abc.TransportOperator` should be normalized for the
+    purpose of constructing a burnup matrix. Based on the method chosen, the
+    power or source rate provided by the user, and reaction rates from a
     :class:`ReactionRateHelper`, this class will scale reaction rates to the
     correct values.
 
@@ -302,7 +304,7 @@ class NormalizationHelper(ABC):
     ----------
     nuclides : list of str
         All nuclides with desired reaction rates. Ordered to be
-        consistent with :class:`openmc.deplete.Operator`
+        consistent with :class:`openmc.deplete.abc.TransportOperator`
 
     """
 
@@ -316,9 +318,9 @@ class NormalizationHelper(ABC):
     def prepare(self, chain_nucs, rate_index):
         """Perform work needed to obtain energy produced
 
-        This method is called prior to the transport simulations
-        in :meth:`openmc.deplete.Operator.initial_condition`. Only used for
-        energy-based normalization.
+        This method is called prior to calculating the reaction rates
+        in :meth:`openmc.deplete.abc.TransportOperator.initial_condition`. Only
+        used for energy-based normalization.
 
         Parameters
         ----------
@@ -429,7 +431,7 @@ class FissionYieldHelper(ABC):
     def unpack():
         """Unpack tally data prior to compute fission yields.
 
-        Called after a :meth:`openmc.deplete.Operator.__call__`
+        Called after a :meth:`openmc.deplete.abc.TransportOperator.__call__`
         routine during the normalization of reaction rates.
 
         Not necessary for all subclasses to implement, unless tallies
@@ -450,7 +452,7 @@ class FissionYieldHelper(ABC):
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
-            :class:`openmc.deplete.Operator` that uses this helper
+            :class:`openmc.deplete.CoupledOperator` that uses this helper
             may only burn a subset of all materials when running
             in parallel mode.
         """
@@ -462,14 +464,15 @@ class FissionYieldHelper(ABC):
         ----------
         nuclides : iterable of str
             Nuclides with non-zero densities from the
-            :class:`openmc.deplete.Operator`
+            :class:`openmc.deplete.abc.TransportOperator`
 
         Returns
         -------
         nuclides : list of str
-            Union of nuclides that the :class:`openmc.deplete.Operator`
-            says have non-zero densities at this stage and those that
-            have yield data. Sorted by nuclide name
+            Union of nuclides that the
+            :class:`openmc.deplete.abc.TransportOperator` says have non-zero
+            densities at this stage and those that have yield data. Sorted by
+            nuclide name
 
         """
         return sorted(self._chain_set & set(nuclides))
@@ -483,7 +486,7 @@ class FissionYieldHelper(ABC):
 
         Parameters
         ----------
-        operator : openmc.deplete.TransportOperator
+        operator : openmc.deplete.abc.TransportOperator
             Operator with a depletion chain
         kwargs: optional
             Additional keyword arguments to be used in constuction
@@ -504,7 +507,7 @@ class Integrator(ABC):
     _params = r"""
     Parameters
     ----------
-    operator : openmc.deplete.TransportOperator
+    operator : openmc.deplete.abc.TransportOperator
         Operator to perform transport simulations
     timesteps : iterable of float or iterable of tuple
         Array of timesteps. Note that values are not cumulative. The units are
@@ -522,9 +525,10 @@ class Integrator(ABC):
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
-        is not speficied.
+        is not specified.
     source_rates : float or iterable of float, optional
-        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
+        Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
+        each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
@@ -546,7 +550,7 @@ class Integrator(ABC):
 
     Attributes
     ----------
-    operator : openmc.deplete.TransportOperator
+    operator : openmc.deplete.abc.TransportOperator
         Operator to perform transport simulations
     chain : openmc.deplete.Chain
         Depletion chain
@@ -841,8 +845,8 @@ class SIIntegrator(Integrator):
     _params = r"""
     Parameters
     ----------
-    operator : openmc.deplete.TransportOperator
-        The operator object to simulate on.
+    operator : openmc.deplete.abc.TransportOperator
+        Operator to perform transport simulations
     timesteps : iterable of float or iterable of tuple
         Array of timesteps. Note that values are not cumulative. The units are
         specified by the `timestep_units` argument when `timesteps` is an
@@ -859,9 +863,10 @@ class SIIntegrator(Integrator):
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
-        is not speficied.
+        is not specified.
     source_rates : float or iterable of float, optional
-        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
+        Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
+        each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
@@ -886,7 +891,7 @@ class SIIntegrator(Integrator):
 
     Attributes
     ----------
-    operator : openmc.deplete.TransportOperator
+    operator : openmc.deplete.abc.TransportOperator
         Operator to perform transport simulations
     chain : openmc.deplete.Chain
         Depletion chain
@@ -1006,7 +1011,7 @@ class DepSystemSolver(ABC):
         Parameters
         ----------
         A : scipy.sparse.csr_matrix
-            Sparse transmutation matrix ``A[j, i]`` desribing rates at
+            Sparse transmutation matrix ``A[j, i]`` describing rates at
             which isotope ``i`` transmutes to isotope ``j``
         n0 : numpy.ndarray
             Initial compositions, typically given in number of atoms in some

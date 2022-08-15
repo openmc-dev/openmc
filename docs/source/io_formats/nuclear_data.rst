@@ -339,6 +339,16 @@ Incoherent elastic scattering
               [eV\ :math:`^{-1}`].
 :Attributes: - **type** (*char[]*) -- 'IncoherentElastic'
 
+Sum of functions
+----------------
+
+:Object type: Group
+:Attributes: - **type** (*char[]*) -- "Sum"
+             - **n** (*int*) -- Number of functions
+:Datasets:
+           - ***func_<i>** (:ref:`function <1d_functions>`) -- Dataset for the
+             i-th function (indexing starts at 1)
+
 .. _angle_energy:
 
 --------------------------
@@ -500,6 +510,19 @@ equiprobable bins.
              for each pair of incoming and outgoing energies.
            - **skewed** (*int8_t*) -- Whether discrete angles are equi-probable
              (0) or have a skewed distribution (1).
+
+Mixed Elastic
+-------------
+
+This angle-energy distribution is used when an evaluation specifies both
+coherent and incoherent elastic thermal neutron scattering.
+
+:Object type: Group
+:Attributes: - **type** (*char[]*) -- "mixed_elastic"
+:Groups: - **coherent** -- Distribution for coherent elastic scattering. The
+           format is given in :ref:`angle_energy`.
+         - **incoherent** -- Distribution for incoherent elastic scattering.
+           The format is given in :ref:`angle_energy`.
 
 .. _energy_distribution:
 

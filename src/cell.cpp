@@ -925,12 +925,6 @@ bool CSGCell::contains_complex(
               number_of_operators++;
             }
           }
-
-          // If the operator is a complement
-        } else if (op == OP_COMPLEMENT) {
-          // Set the current cell boolean to the opposite
-          in_cell = !in_cell;
-
           // If none of the above are true, break
         } else {
           break;

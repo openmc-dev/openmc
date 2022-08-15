@@ -266,7 +266,7 @@ class Tracks(list):
             track.plot(ax)
         return ax
 
-    def write_tracks_to_vtk(self, filename):
+    def write_tracks_to_vtk(self, filename='tracks.vtk'):
         """Creates a VTK file of the tracks
 
         Parameters
@@ -286,12 +286,14 @@ class Tracks(list):
         points = vtk.vtkPoints()
         cells = vtk.vtkCellArray()
     
+        point_offset = 0
         for particle in self:
-            for state in particle.states:
-                points.InsertNextPoint(state['r'])
+            for pt in particle.particle_tracks:
+                for state in pt.states:
+                    points.InsertNextPoint(state['r'])
 
             # Create VTK line and assign points to line.
-            n = particle.states.size
+            n = pt.states.size
             line = vtk.vtkPolyLine()
             line.GetPointIds().SetNumberOfIds(n)
             for i in range(n):

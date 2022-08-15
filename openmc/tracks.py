@@ -272,7 +272,7 @@ class Tracks(list):
         Parameters
         ----------
         filename : path-like
-            Name of the VTK file to write.
+            Name of the VTP file to write.
 
         Returns
         -------

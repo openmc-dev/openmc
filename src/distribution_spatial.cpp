@@ -212,34 +212,27 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   // Volume scheme is weighted by the volume of each tet
   // File scheme is weighted by an array given in the xml file
 
+  mesh_strengths_ = std::vector<double>(tot_bins_, 1.0);
   if (check_for_node(node, "strengths")) {
-    mesh_strengths_ = get_node_array<double>(node, "strengths");
-    if (mesh_strengths_.size() != tot_bins_){
-      fatal_error("The size of the strengths array from the xml file does not equal the number of elements in the mesh.");
-    } if (get_node_value_bool(node, "volume_normalized")){
-      for (int i = 0; i < tot_bins_; i++){
-        strengths[i] = mesh_strengths_[i]*mesh_ptr_->volume(i);
-      } 
-    } else if (!get_node_value_bool(node, "volume_normalized")){
-      for (int i = 0; i < tot_bins_; i++){
-        strengths[i] = mesh_strengths_[i];  
+      strengths = get_node_array<double>(node, "strengths");
+      if (strengths.size() != mesh_strengths_.size()){
+        fatal_error("Number of entries in the strength matrix does not match the number of mesh entities");
       }
-    }
-  } else if (get_node_value_bool(node, "volume_normalized")){
-    for (int i = 0; i<tot_bins_; i++){
-      strengths[i] = mesh_ptr_->volume(i);
-    }
-  } else {
-    for (int i = 0; i<tot_bins_; i++){
-      strengths[i] = 1;
+      mesh_strengths_ = strengths;
+  }
+
+  if (get_node_value_bool(node, "volume_normalized")) {
+    for (int i = 0; i < tot_bins_; i++) {
+      mesh_strengths_[i] *= mesh_ptr_->volume(i);
     }
   }
+
   for (int i = 0; i<tot_bins_; i++){
-    temp_total_strength = temp_total_strength + strengths[i];
+    temp_total_strength = temp_total_strength + mesh_strengths_[i];
   }
   total_strength_ = temp_total_strength;
   for (int i = 0; i<tot_bins_; i++){
-    mesh_CDF_[i+1] = mesh_CDF_[i] + strengths[i]/total_strength_;
+    mesh_CDF_[i+1] = mesh_CDF_[i] + mesh_strengths_[i]/total_strength_;
   }
 }
 

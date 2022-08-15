@@ -35,7 +35,9 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
         average_in_hex = 10.0
 
         # Load in tracks
-        openmc.Tracks.combine(glob.glob('tracks_p*.h5'))
+        if config['mpi']:
+            openmc.Tracks.combine(glob.glob('tracks_p*.h5'))
+        
         tracks = openmc.Tracks(filepath='tracks.h5')
         tracks_born = np.empty((len(tracks), 1))
 

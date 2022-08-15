@@ -8,13 +8,12 @@ import tempfile
 from pathlib import Path
 from copy import deepcopy
 
-from pandas import DataFrame, read_csv, concat
+from pandas import DataFrame, read_csv
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.mgxs import EnergyGroups, ArbitraryXS, FissionXS
-from openmc.data import DataLibrary
-from openmc import Tallies, StatePoint, Materials, Material
+from openmc import Tallies, StatePoint, Materials, Summary
 
 
 from .chain import Chain, REACTIONS
@@ -97,7 +96,15 @@ class MicroXS(DataFrame):
             run_kwargs.setdefault('cwd', temp_dir)
             statepoint_path = model.run(**run_kwargs)
 
-            with StatePoint(statepoint_path) as sp:
+            # Load summary object -- if model.init_lib() was called, the
+            # summary.h5 file is in the current working directory
+            if model.is_initialized:
+                summary = Summary('summary.h5')
+            else:
+                summary = Summary(Path(temp_dir) / 'summary.h5')
+
+            with StatePoint(statepoint_path, autolink=False) as sp:
+                sp.link_with_summary(summary)
                 for rx in xs:
                     xs[rx].load_from_statepoint(sp)
 

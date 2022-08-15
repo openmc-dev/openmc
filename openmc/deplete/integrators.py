@@ -103,7 +103,7 @@ class CECMIntegrator(Integrator):
         op_results : list of openmc.deplete.OperatorResult
             Eigenvalue and reaction rates from transport simulations
         """
-        # deplete across first half of inteval
+        # deplete across first half of interval
         time0, x_middle = self._timed_deplete(conc, rates, dt / 2)
         res_middle = self.operator(x_middle, source_rate)
 

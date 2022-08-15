@@ -544,7 +544,7 @@ class Combination(EqualityMixin):
         self._operations = operations
 
 
-class Sum(EqualityMixin):
+class Sum(Function1D):
     """Sum of multiple functions.
 
     This class allows you to create a callable object which represents the sum
@@ -577,6 +577,49 @@ class Sum(EqualityMixin):
     def functions(self, functions):
         cv.check_type('functions', functions, Iterable, Callable)
         self._functions = functions
+
+    def to_hdf5(self, group, name='xy'):
+        """Write sum of functions to an HDF5 group
+
+        .. versionadded:: 0.13.1
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+        name : str
+            Name of the dataset to create
+
+        """
+        sum_group = group.create_group(name)
+        sum_group.attrs['type'] = np.string_(type(self).__name__)
+        sum_group.attrs['n'] = len(self.functions)
+        for i, f in enumerate(self.functions):
+            f.to_hdf5(sum_group, f'func_{i+1}')
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate sum of functions from an HDF5 group
+
+        .. versionadded:: 0.13.1
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group to read from
+
+        Returns
+        -------
+        openmc.data.Sum
+            Functions read from the group
+
+        """
+        n = group.attrs['n']
+        functions = [
+            Function1D.from_hdf5(group[f'func_{i+1}'])
+            for i in range(n)
+        ]
+        return cls(functions)
 
 
 class Regions1D(EqualityMixin):

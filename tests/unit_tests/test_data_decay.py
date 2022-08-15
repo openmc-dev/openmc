@@ -24,6 +24,14 @@ def nb90():
 
 
 @pytest.fixture(scope='module')
+def ba137m():
+    """Ba137_m1 decay data."""
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    filename = os.path.join(endf_data, 'decay', 'dec-056_Ba_137m1.endf')
+    return openmc.data.Decay.from_endf(filename)
+
+
+@pytest.fixture(scope='module')
 def u235_yields():
     """U235 fission product yield data."""
     endf_data = os.environ['OPENMC_ENDF_DATA']
@@ -47,6 +55,7 @@ def test_nb90_halflife(nb90):
     ufloat_close(nb90.half_life, ufloat(52560.0, 180.0))
     ufloat_close(nb90.decay_constant, log(2.)/nb90.half_life)
     ufloat_close(nb90.decay_energy, ufloat(2265527.5, 25159.400474401213))
+
 
 def test_nb90_nuclide(nb90):
     assert nb90.nuclide['atomic_number'] == 41
@@ -91,3 +100,29 @@ def test_fpy(u235_yields):
     assert len(u235_yields.independent) == 3
     thermal = u235_yields.independent[0]
     ufloat_close(thermal['I135'], ufloat(0.0292737, 0.000819663))
+
+
+def test_sources(ba137m, nb90):
+    # Running .sources twice should give same objects
+    sources = ba137m.sources
+    sources2 = ba137m.sources
+    for key in sources:
+        assert sources[key] is sources2[key]
+
+    # Each source should be a univariate distribution
+    for dist in sources.values():
+        assert isinstance(dist, openmc.stats.Univariate)
+
+    # Check for presence of 662 keV gamma ray in decay of Ba137m
+    gamma_source = ba137m.sources['photon']
+    assert isinstance(gamma_source, openmc.stats.Discrete)
+    b = np.isclose(gamma_source.x, 661657.)
+    assert np.count_nonzero(b) == 1
+
+    # Check value of decay/s/atom
+    idx = np.flatnonzero(b)[0]
+    assert gamma_source.p[idx] == pytest.approx(0.004069614)
+
+    # Nb90 decays by β+ and should emit positrons, electrons, and photons
+    sources = nb90.sources
+    assert len(set(sources.keys()) ^ {'positron', 'electron', 'photon'}) == 0

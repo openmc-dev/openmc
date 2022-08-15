@@ -269,7 +269,7 @@ Prerequisites
       In addition to turning this option on, the path to the DAGMC installation
       should be specified as part of the ``CMAKE_PREFIX_PATH`` variable::
 
-          cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation
+          cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation ..
 
     * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
@@ -280,7 +280,7 @@ Prerequisites
       installation should be specified as part of the ``CMAKE_PREFIX_PATH``
       variable.::
 
-          cmake -DOPENMC_USE_LIBMESH=on -DOPENMC_USE_MPI=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation
+          cmake -DOPENMC_USE_LIBMESH=on -DOPENMC_USE_MPI=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation ..
 
       Note that libMesh is most commonly compiled with MPI support. If that
       is the case, then OpenMC should be compiled with MPI support as well.

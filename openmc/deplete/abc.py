@@ -331,7 +331,7 @@ class NormalizationHelper(ABC):
             `fission_rates` for :meth:`update`.
         """
 
-    def update(self, fission_rates, mat_index=None):
+    def update(self, fission_rates):
         """Update the normalization based on fission rates (only used for
         energy-based normalization)
 
@@ -341,8 +341,6 @@ class NormalizationHelper(ABC):
             fission reaction rate for each isotope in the specified
             material. Should be ordered corresponding to initial
             ``rate_index`` used in :meth:`prepare`
-        mat_index : int
-            Material index
         """
 
     @property

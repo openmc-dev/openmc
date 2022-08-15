@@ -21,7 +21,8 @@ material compositions over time. Each method appears as a different class.
 For example, :class:`openmc.deplete.CECMIntegrator` runs a depletion calculation
 using the CE/CM algorithm (deplete over a timestep using the middle-of-step
 reaction rates). An instance of :class:`~openmc.deplete.abc.TransportOperator`
-is passed to one of these functions along with the timesteps and power level::
+is passed to one of these Integrator classes along with the timesteps and power
+level::
 
     power = 1200.0e6  # watts
     timesteps = [10.0, 10.0, 10.0]  # days
@@ -318,7 +319,7 @@ normalizing reaction rates:
 
    .. math::
 
-      \phi = \frac{P}{V \cdot \sum_i (Q_i \cdot \Sigma^f_i \cdot \rho_i)}
+      \phi = \frac{P}{V \cdot \sum_i (Q_i \cdot \sigma^f_i \cdot \n_i)}
 
    where :math:`\sum_i` is the sum over all nuclides :math:`i`. This equation
    makes the same assumptions and issues as discussed in

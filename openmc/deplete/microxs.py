@@ -1,7 +1,7 @@
 """MicroXS module
 
 A pandas.DataFrame storing microscopic cross section data with
-nuclides names as row indices and reaction names as column indices.
+nuclide names as row indices and reaction names as column indices.
 """
 
 import tempfile
@@ -26,7 +26,7 @@ _valid_rxns.append('fission')
 
 class MicroXS(DataFrame):
     """Stores microscopic cross section data for use in
-    independent depletion.
+    transport-independent depletion.
     """
 
     @classmethod
@@ -35,7 +35,8 @@ class MicroXS(DataFrame):
                    reaction_domain,
                    chain_file,
                    dilute_initial=1.0e3,
-                   energy_bounds=(0, 20e6)):
+                   energy_bounds=(0, 20e6),
+                   run_kwargs=None):
         """Generate a one-group cross-section dataframe using
         OpenMC. Note that the ``openmc`` executable must be compiled.
 
@@ -57,6 +58,8 @@ class MicroXS(DataFrame):
             Reaction names to tally
         energy_bound : 2-tuple of float, optional
             Bounds for the energy group.
+        run_kwargs : dict, optional
+            Keyword arguments for :meth:`openmc.model.Model.run()`
 
         Returns
         -------
@@ -89,7 +92,10 @@ class MicroXS(DataFrame):
 
         # create temporary run
         with tempfile.TemporaryDirectory() as temp_dir:
-            statepoint_path = model.run(cwd=temp_dir)
+            if run_kwargs is None:
+                run_kwargs = {}
+            run_kwargs.setdefault('cwd', temp_dir)
+            statepoint_path = model.run(**run_kwargs)
 
             with StatePoint(statepoint_path) as sp:
                 for rx in xs:
@@ -146,7 +152,7 @@ class MicroXS(DataFrame):
         for material in model.materials:
             if material.depletable:
                 nuc_densities = material.get_nuclide_atom_densities()
-                dilute_density = 1.e-24 * dilute_initial
+                dilute_density = 1.0e-24 * dilute_initial
                 material.set_density('sum')
                 for nuc, density in nuc_densities.items():
                     material.remove_nuclide(nuc)

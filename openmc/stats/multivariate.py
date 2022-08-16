@@ -377,7 +377,10 @@ class SphericalIndependent(Spatial):
     :math:`\theta`, and :math:`\phi` components are sampled independently
     from one another and centered on the coordinates (x0, y0, z0).
 
-    .. versionadded: 0.12
+    .. versionadded:: 0.12
+
+    .. versionchanged:: 0.13.1
+        Accepts ``cos_theta`` instead of ``theta``
 
     Parameters
     ----------
@@ -787,7 +790,7 @@ def spherical_uniform(r_outer, r_inner=0.0, thetas=(0., pi), phis=(0., 2*pi),
     shell between `r_inner` and `r_outer`. Optionally, the range of angles
     can be restricted by the `thetas` and `phis` arguments.
 
-    .. versionadded: 0.13.1
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------

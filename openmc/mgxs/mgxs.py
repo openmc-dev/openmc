@@ -3107,6 +3107,8 @@ class ReducedAbsorptionXS(MGXS):
        3\sigma_{n,4n}(r,E) \right) \psi (r, E, \Omega)}{\int_{r \in V} dr
        \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
+    .. versionadded:: 0.13.1
+
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,

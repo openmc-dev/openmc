@@ -1059,7 +1059,7 @@ class Tabular(Univariate):
     def integral(self):
         """Return integral of distribution
 
-        .. versionadded: 0.13.1
+        .. versionadded:: 0.13.1
 
         Returns
         -------

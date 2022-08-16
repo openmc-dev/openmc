@@ -462,11 +462,10 @@ Functions
 
 .. c:function:: int openmc_remove_tally(int32_t index);
 
-   Given an index of a tally, remove it from the tallies vector
-   :param int index: Index in tallies vector
+   Given an index of a tally, remove it from the tallies array
+   :param int index: Index in tallies array
    :return: Return status (negative if an error occurs)
    :rtype: int
-
 
 .. c:function:: int openmc_run()
 

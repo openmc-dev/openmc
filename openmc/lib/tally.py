@@ -390,7 +390,12 @@ class Tally(_FortranObjectWithID):
 
 class _TallyMapping(Mapping):
     def __getitem__(self, key):
-        return Tally(index=self[key])
+        index = c_int32()
+        try:
+            _dll.openmc_get_tally_index(key, index)
+        except (AllocationError, InvalidIDError) as e:
+            # __contains__ expects a KeyError to work correctly
+            raise KeyError(str(e))
 
     def __iter__(self):
         for i in range(len(self)):

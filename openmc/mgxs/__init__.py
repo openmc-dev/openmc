@@ -14,9 +14,8 @@ GROUP_STRUCTURES = {}
 - "SHEM-361_" designed for LWR analysis to eliminate self-shielding calculations
   of thermal resonances ([HFA2005]_, [SAN2007]_, [HEB2008]_)
 - "SCALE-44" designed for criticality analysis ([ZAL1999]_)
-- "ECCO-2000" is a 1968-group neutron structure aimed at fine group reactor
-  cell calculations for fast, intermediate and thermal reactor applications.
-  ([SAR1990]_)
+- "ECCO-1968" designed for fine group reactor cell calculations for fast,
+  intermediate and thermal reactor applications ([SAR1990]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
   "TRIPOLI-315", "CCFE-709_" and "UKAEA-1102_"
 
@@ -28,6 +27,7 @@ GROUP_STRUCTURES = {}
 .. _VITAMIN-J-42: https://www.oecd-nea.org/dbdata/nds_jefreports/jefreport-10.pdf
 .. _CCFE-709: https://fispact.ukaea.uk/wiki/CCFE-709_group_structure
 .. _UKAEA-1102: https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure
+.. _ECCO-1968: http://serpent.vtt.fi/mediawiki/index.php/ECCO_1968-group_structure
 .. [SAR1990] Sartori, E., OECD/NEA Data Bank: Standard Energy Group Structures
    of Cross Section Libraries for Reactor Shielding, Reactor Cell and Fusion
    Neutronics Applications: VITAMIN-J, ECCO-33, ECCO-2000 and XMAS JEF/DOC-315

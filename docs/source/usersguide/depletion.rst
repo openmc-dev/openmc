@@ -319,16 +319,18 @@ normalizing reaction rates:
 
    .. math::
 
-      \phi = \frac{P}{V \cdot \sum\limits_i (Q_i \cdot \sigma^f_i \cdot n_i)}
+      \phi = \frac{P}{\sum\limits_i (Q_i \sigma^f_i n_i)}
 
-   where :math:`\sum_i` is the sum over all nuclides :math:`i`. This equation
-   makes the same assumptions and issues as discussed in
-   :ref:`energy-deposition`. Unfortunately, the proposed solution in that
+   where :math:`P` is the power, :math:`Q_i` is the fission Q value for nuclide
+   :math:`i`, :math:`\sigma_i^f` is the microscopic fission cross section for
+   nuclide :math:`i`, and :math:`N_i` is the number of atoms of nuclide
+   :math:`i`. This equation makes the same assumptions and issues as discussed
+   in :ref:`energy-deposition`. Unfortunately, the proposed solution in that
    section does not apply here since we are decoupled from transport code.
    However, there is a method to converge to a more accurate value for flux by
-   using substeps during time integration.
-   `This paper <https://doi.org/10.1016/j.anucene.2016.05.031>`_ provides a
-   good discussion of this method.
+   using substeps during time integration. `This paper
+   <https://doi.org/10.1016/j.anucene.2016.05.031>`_ provides a good discussion
+   of this method.
 
 .. warning::
 

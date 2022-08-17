@@ -126,6 +126,23 @@ class AtomNumber:
         return [nuc for nuc, ind in self.index_nuc.items()
                 if ind < self.n_nuc_burn]
 
+    def get_mat_volume(self, mat):
+        """Return material volume
+
+        Parameters
+        ----------
+        mat : str, int, openmc.Material, or slice
+            Material index.
+
+        Returns
+        -------
+        float
+            Material volume in [cm^3]
+
+        """
+        mat = self._get_mat_index(mat)
+        return self.volume[mat]
+
     def get_atom_density(self, mat, nuc):
         """Return atom density of given material and nuclide
 

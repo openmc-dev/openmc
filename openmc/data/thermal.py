@@ -19,12 +19,12 @@ from . import HDF5_VERSION, HDF5_VERSION_MAJOR, endf
 from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, isotopes
 from .ace import Table, get_table, Library
 from .angle_energy import AngleEnergy
-from .function import Tabulated1D, Function1D
+from .function import Tabulated1D, Function1D, Sum
 from .njoy import make_ace_thermal
 from .thermal_angle_energy import (CoherentElasticAE, IncoherentElasticAE,
                                    IncoherentElasticAEDiscrete,
                                    IncoherentInelasticAEDiscrete,
-                                   IncoherentInelasticAE)
+                                   IncoherentInelasticAE, MixedElasticAE)
 
 
 _THERMAL_NAMES = {
@@ -694,29 +694,53 @@ class ThermalScattering(EqualityMixin):
 
         # Incoherent/coherent elastic scattering cross section
         idx = ace.jxs[4]
-        n_mu = ace.nxs[6] + 1
         if idx != 0:
-            n_energy = int(ace.xss[idx])
-            energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
-            P = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
-
-            if ace.nxs[5] == 4:
+            if ace.nxs[5] in (4, 5):
                 # Coherent elastic
-                xs = CoherentElastic(energy, P*EV_PER_MEV)
-                distribution = CoherentElasticAE(xs)
+                n_energy = int(ace.xss[idx])
+                energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
+                P = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
+                coherent_xs = CoherentElastic(energy, P*EV_PER_MEV)
+                coherent_dist = CoherentElasticAE(coherent_xs)
 
                 # Coherent elastic shouldn't have angular distributions listed
+                n_mu = ace.nxs[6] + 1
                 assert n_mu == 0
-            else:
-                # Incoherent elastic
-                xs = Tabulated1D(energy, P)
+
+            if ace.nxs[5] in (3, 5):
+                # Incoherent elastic scattering -- first determine if both
+                # incoherent and coherent are present (mixed)
+                mixed = (ace.nxs[5] == 5)
+
+                # Get cross section values
+                idx = ace.jxs[7] if mixed else ace.jxs[4]
+                n_energy = int(ace.xss[idx])
+                energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
+                values = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
+
+                incoherent_xs = Tabulated1D(energy, values)
 
                 # Angular distribution
+                n_mu = (ace.nxs[8] if mixed else ace.nxs[6]) + 1
                 assert n_mu > 0
-                idx = ace.jxs[6]
+                idx = ace.jxs[9] if mixed else ace.jxs[6]
                 mu_out = ace.xss[idx:idx + n_energy * n_mu]
                 mu_out.shape = (n_energy, n_mu)
-                distribution = IncoherentElasticAEDiscrete(mu_out)
+                incoherent_dist = IncoherentElasticAEDiscrete(mu_out)
+
+            if ace.nxs[5] == 3:
+                xs = incoherent_xs
+                dist = incoherent_dist
+            elif ace.nxs[5] == 4:
+                xs = coherent_xs
+                dist = coherent_dist
+            else:
+                # Create mixed cross section -- note that coherent must come
+                # first due to assumption on C++ side
+                xs = Sum([coherent_xs, incoherent_xs])
+
+                # Create mixed distribution
+                distribution = MixedElasticAE(coherent_dist, incoherent_dist)
 
             table.elastic = ThermalScatteringReaction({T: xs}, {T: distribution})
 
@@ -802,7 +826,7 @@ class ThermalScattering(EqualityMixin):
                     # Replace ACE data with ENDF data
                     rx, rx_endf = data.elastic, data_endf.elastic
                     for t in temperatures:
-                        if isinstance(rx_endf.xs[t], IncoherentElastic):
+                        if isinstance(rx_endf.xs[t], (IncoherentElastic, Sum)):
                             rx.xs[t] = rx_endf.xs[t]
                             rx.distribution[t] = rx_endf.distribution[t]
 
@@ -832,20 +856,14 @@ class ThermalScattering(EqualityMixin):
         # Read coherent/incoherent elastic data
         elastic = None
         if (7, 2) in ev.section:
-            xs = {}
-            distribution = {}
-
-            file_obj = StringIO(ev.section[7, 2])
-            lhtr = endf.get_head_record(file_obj)[2]
-            if lhtr == 1:
-                # coherent elastic
-
+            # Define helper functions to avoid duplication
+            def get_coherent_elastic(file_obj):
                 # Get structure factor at first temperature
                 params, S = endf.get_tab1_record(file_obj)
                 strT = _temperature_str(params[0])
                 n_temps = params[2]
                 bragg_edges = S.x
-                xs[strT] = CoherentElastic(bragg_edges, S.y)
+                xs = {strT: CoherentElastic(bragg_edges, S.y)}
                 distribution = {strT: CoherentElasticAE(xs[strT])}
 
                 # Get structure factor for subsequent temperatures
@@ -854,15 +872,34 @@ class ThermalScattering(EqualityMixin):
                     strT = _temperature_str(params[0])
                     xs[strT] = CoherentElastic(bragg_edges, S)
                     distribution[strT] = CoherentElasticAE(xs[strT])
+                return xs, distribution
 
-            elif lhtr == 2:
-                # incoherent elastic
+            def get_incoherent_elastic(file_obj):
                 params, W = endf.get_tab1_record(file_obj)
                 bound_xs = params[0]
+                xs = {}
+                distribution = {}
                 for T, debye_waller in zip(W.x, W.y):
                     strT = _temperature_str(T)
                     xs[strT] = IncoherentElastic(bound_xs, debye_waller)
                     distribution[strT] = IncoherentElasticAE(debye_waller)
+                return xs, distribution
+
+            file_obj = StringIO(ev.section[7, 2])
+            lhtr = endf.get_head_record(file_obj)[2]
+            if lhtr == 1:
+                # coherent elastic
+                xs, distribution = get_coherent_elastic(file_obj)
+            elif lhtr == 2:
+                # incoherent elastic
+                xs, distribution = get_incoherent_elastic(file_obj)
+            elif lhtr == 3:
+                # mixed coherent / incoherent elastic
+                xs_c, dist_c = get_coherent_elastic(file_obj)
+                xs_i, dist_i = get_incoherent_elastic(file_obj)
+                assert sorted(xs_c) == sorted(xs_i)
+                xs = {T: Sum([xs_c[T], xs_i[T]]) for T in xs_c}
+                distribution = {T: MixedElasticAE(dist_c[T], dist_i[T]) for T in dist_c}
 
             elastic = ThermalScatteringReaction(xs, distribution)
 

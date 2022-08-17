@@ -220,20 +220,57 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "type", mesh_type);
   write_dataset(mesh_group, "filename", filename_);
   write_dataset(mesh_group, "library", this->library());
-  // write volume of each element
-  vector<double> tet_vols;
-  xt::xtensor<double, 2> centroids({static_cast<size_t>(this->n_bins()), 3});
-  for (int i = 0; i < this->n_bins(); i++) {
-    tet_vols.emplace_back(this->volume(i));
-    auto c = this->centroid(i);
-    xt::view(centroids, i, xt::all()) = xt::xarray<double>({c.x, c.y, c.z});
-  }
-
-  write_dataset(mesh_group, "volumes", tet_vols);
-  write_dataset(mesh_group, "centroids", centroids);
 
   if (specified_length_multiplier_)
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
+
+  // write vertex coordinates
+  xt::xtensor<double, 2> vertices({static_cast<size_t>(this->n_vertices()), 3});
+  for (int i = 0; i < this->n_vertices(); i++) {
+    auto v = this->vertex(i);
+    xt::view(vertices, i, xt::all()) = xt::xarray<double>({v.x, v.y, v.z});
+  }
+  write_dataset(mesh_group, "vertices", vertices);
+
+  int num_elem_skipped = 0;
+
+  // write element types and connectivity
+  vector<double> volumes;
+  xt::xtensor<int, 2> connectivity ({static_cast<size_t>(this->n_bins()), 8});
+  xt::xtensor<int, 2> elem_types ({static_cast<size_t>(this->n_bins()), 1});
+  for (int i = 0; i < this->n_bins(); i++) {
+    auto conn = this->connectivity(i);
+
+    volumes.emplace_back(this->volume(i));
+
+    // write linear tet element
+    if (conn.size() == 4) {
+      xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::LINEAR_TET);
+      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1], conn[2], conn[3],
+                                                              -1, -1, -1, -1});
+    // write linear hex element
+    } else if (conn.size() == 8) {
+      xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::LINEAR_HEX);
+      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1], conn[2], conn[3],
+                                                              conn[4], conn[5], conn[6], conn[7]});
+    } else {
+      num_elem_skipped++;
+      xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::UNSUPPORTED);
+      xt::view(connectivity, i, xt::all()) = -1;
+    }
+  }
+
+  // warn users that some elements were skipped
+  if (num_elem_skipped > 0) {
+    warning(fmt::format("The connectivity of {} elements "
+                        "on mesh {} were not written "
+                        "because they are not of type linear tet/hex.",
+      num_elem_skipped, this->id_));
+  }
+
+  write_dataset(mesh_group, "volumes", volumes);
+  write_dataset(mesh_group, "connectivity", connectivity);
+  write_dataset(mesh_group, "element_types", elem_types);
 
   close_group(mesh_group);
 }
@@ -379,7 +416,7 @@ void StructuredMesh::raytrace_mesh(
   // TODO: when c++-17 is available, use "if constexpr ()" to compile-time
   // enable/disable tally calls for now, T template type needs to provide both
   // surface and track methods, which might be empty. modern optimizing
-  // compilers will (hopefully) eleminate the complete code (including
+  // compilers will (hopefully) eliminate the complete code (including
   // calculation of parameters) but for the future: be explicit
 
   // Compute the length of the entire track.
@@ -957,7 +994,7 @@ double CylindricalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
 
-  if ((shell < 0) || (shell >= shape_[0]))
+  if ((shell < 0) || (shell > shape_[0]))
     return INFTY;
 
   // solve r.x^2 + r.y^2 == r0^2
@@ -1190,7 +1227,7 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
 double SphericalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  if ((shell < 0) || (shell >= shape_[0]))
+  if ((shell < 0) || (shell > shape_[0]))
     return INFTY;
 
   // solve |r+s*u| = r0
@@ -1312,20 +1349,17 @@ StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
 {
 
   if (i == 0) {
-
     return std::min(
       MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
       MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
-
     return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
                       find_theta_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_theta(ijk[i] - 1), false,
         find_theta_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
-
     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
                       find_phi_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
@@ -1778,6 +1812,14 @@ void MOABMesh::initialize()
             filename_);
   }
 
+  // set member range of vertices
+  int vertex_dim = 0;
+  rval = mbi_->get_entities_by_dimension(0, vertex_dim, verts_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get all vertex handles");
+  }
+
+
   // make an entity set for all tetrahedra
   // this is used for convenience later in output
   rval = mbi_->create_meshset(moab::MESHSET_SET, tetset_);
@@ -2127,6 +2169,14 @@ std::pair<vector<double>, vector<double>> MOABMesh::plot(
   return {};
 }
 
+int MOABMesh::get_vert_idx_from_handle(moab::EntityHandle vert) const {
+  int idx = vert - verts_[0];
+  if (idx >= n_vertices()) {
+    fatal_error(fmt::format("Invalid vertex idx {} (# vertices {})", idx, n_vertices()));
+  }
+  return idx;
+}
+
 int MOABMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const
 {
   int bin = eh - ehs_[0];
@@ -2192,6 +2242,46 @@ Position MOABMesh::centroid(int bin) const
   centroid /= double(coords.size());
 
   return {centroid[0], centroid[1], centroid[2]};
+}
+
+int MOABMesh::n_vertices() const {
+  return verts_.size();
+}
+
+Position MOABMesh::vertex(int id) const {
+
+  moab::ErrorCode rval;
+
+  moab::EntityHandle vert = verts_[id];
+
+  moab::CartVect coords;
+  rval = mbi_->get_coords(&vert, 1, coords.array());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get the coordinates of a vertex.");
+  }
+
+  return {coords[0], coords[1], coords[2]};
+}
+
+std::vector<int> MOABMesh::connectivity(int bin) const {
+  moab::ErrorCode rval;
+
+  auto tet = get_ent_handle_from_bin(bin);
+
+  // look up the tet connectivity
+  vector<moab::EntityHandle> conn;
+  rval = mbi_->get_connectivity(&tet, 1, conn);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get connectivity of a mesh element.");
+    return {};
+  }
+
+  std::vector<int> verts(4);
+  for (int i = 0; i < verts.size(); i++) {
+    verts[i] = get_vert_idx_from_handle(conn[i]);
+  }
+
+  return verts;
 }
 
 std::pair<moab::Tag, moab::Tag> MOABMesh::get_score_tags(
@@ -2327,16 +2417,37 @@ const std::string LibMesh::mesh_lib_type = "libmesh";
 
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
+  // filename_ and length_multiplier_ will already be set by the UnstructuredMesh constructor
+  set_mesh_pointer_from_filename(filename_);
+  set_length_multiplier(length_multiplier_);
   initialize();
 }
 
-LibMesh::LibMesh(const std::string& filename, double length_multiplier)
+// create the mesh from a pointer to a libMesh Mesh
+LibMesh::LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier)
 {
-  filename_ = filename;
+  m_ = &input_mesh;
   set_length_multiplier(length_multiplier);
   initialize();
 }
 
+// create the mesh from an input file
+LibMesh::LibMesh(const std::string& filename, double length_multiplier)
+{
+  set_mesh_pointer_from_filename(filename);
+  set_length_multiplier(length_multiplier);
+  initialize();
+}
+
+void LibMesh::set_mesh_pointer_from_filename(const std::string& filename)
+{
+  filename_ = filename;
+  unique_m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
+  m_ = unique_m_.get();
+  m_->read(filename_);
+}
+
+// intialize from mesh file
 void LibMesh::initialize()
 {
   if (!settings::libmesh_comm) {
@@ -2347,14 +2458,14 @@ void LibMesh::initialize()
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
 
-  m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
-  m_->read(filename_);
-
   if (specified_length_multiplier_) {
     libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
   }
-
-  m_->prepare_for_use();
+  // if OpenMC is managing the libMesh::MeshBase instance, prepare the mesh.
+  // Otherwise assume that it is prepared by its owning application
+  if (unique_m_) {
+    m_->prepare_for_use();
+  }
 
   // ensure that the loaded mesh is 3 dimensional
   if (m_->mesh_dimension() != n_dimension_) {
@@ -2395,6 +2506,27 @@ Position LibMesh::centroid(int bin) const
   const auto& elem = this->get_element_from_bin(bin);
   auto centroid = elem.centroid();
   return {centroid(0), centroid(1), centroid(2)};
+}
+
+int LibMesh::n_vertices() const
+{
+  return m_->n_nodes();
+}
+
+Position LibMesh::vertex(int vertex_id) const
+{
+  const auto node_ref = m_->node_ref(vertex_id);
+  return {node_ref(0), node_ref(1), node_ref(2)};
+}
+
+std::vector<int> LibMesh::connectivity(int elem_id) const
+{
+  std::vector<int> conn;
+  const auto* elem_ptr = m_->elem_ptr(elem_id);
+  for (int i = 0; i < elem_ptr->n_nodes(); i++) {
+    conn.push_back(elem_ptr->node_id(i));
+  }
+  return conn;
 }
 
 std::string LibMesh::library() const
@@ -2567,8 +2699,9 @@ void read_meshes(pugi::xml_node root)
     // Check to make sure multiple meshes in the same file don't share IDs
     int id = std::stoi(get_node_value(node, "id"));
     if (contains(mesh_ids, id)) {
-      fatal_error(
-        fmt::format("Two or more meshes use the same unique ID '{}' in the same input file", id));
+      fatal_error(fmt::format(
+        "Two or more meshes use the same unique ID '{}' in the same input file",
+        id));
     }
     mesh_ids.insert(id);
 

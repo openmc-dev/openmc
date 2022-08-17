@@ -37,6 +37,37 @@ option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"         
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 
+# Warnings for deprecated options
+foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
+  if(DEFINED ${OLD_OPT})
+    string(TOUPPER ${OLD_OPT} OPT_UPPER)
+    if ("${OLD_OPT}" STREQUAL "profile" OR "${OLD_OPT}" STREQUAL "coverage")
+      set(NEW_OPT_PREFIX "OPENMC_ENABLE")
+    else()
+      set(NEW_OPT_PREFIX "OPENMC_USE")
+    endif()
+    message(WARNING "The OpenMC CMake option '${OLD_OPT}' has been deprecated. "
+      "Its value will be ignored. "
+      "Please use '-D${NEW_OPT_PREFIX}_${OPT_UPPER}=${${OLD_OPT}}' instead.")
+    unset(${OLD_OPT} CACHE)
+  endif()
+endforeach()
+
+foreach(OLD_BLD in ITEMS "debug" "optimize")
+  if(DEFINED ${OLD_BLD})
+    if("${OLD_BLD}" STREQUAL "debug")
+      set(BLD_VAR "Debug")
+    else()
+      set(BLD_VAR "Release")
+    endif()
+    message(WARNING "The OpenMC CMake option '${OLD_BLD}' has been deprecated. "
+      "Its value will be ignored. "
+      "OpenMC now uses the CMAKE_BUILD_TYPE variable to set the build mode. "
+      "Please use '-DCMAKE_BUILD_TYPE=${BLD_VAR}' instead.")
+    unset(${OLD_BLD} CACHE)
+  endif()
+endforeach()
+
 #===============================================================================
 # Set a default build configuration if not explicitly specified
 #===============================================================================

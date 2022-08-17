@@ -89,10 +89,10 @@
   <filter id="6" type="legendre">
     <order>1</order>
   </filter>
-  <filter id="28" type="legendre">
+  <filter id="30" type="legendre">
     <order>3</order>
   </filter>
-  <filter id="73" type="delayedgroup">
+  <filter id="75" type="delayedgroup">
     <bins>1 2 3 4 5 6</bins>
   </filter>
   <tally id="1">
@@ -182,19 +182,19 @@
   <tally id="15">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>fission</scores>
+    <scores>(n,2n)</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="16">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>flux</scores>
+    <scores>(n,3n)</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="17">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>fission</scores>
+    <scores>(n,4n)</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="18">
@@ -206,305 +206,335 @@
   <tally id="19">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>nu-fission</scores>
+    <scores>absorption</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="20">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>flux</scores>
+    <scores>fission</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="21">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>kappa-fission</scores>
+    <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="22">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>flux</scores>
+    <scores>fission</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="23">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>scatter</scores>
+    <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="24">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>flux</scores>
-    <estimator>analog</estimator>
+    <scores>nu-fission</scores>
+    <estimator>tracklength</estimator>
   </tally>
   <tally id="25">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>nu-scatter</scores>
-    <estimator>analog</estimator>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
   </tally>
   <tally id="26">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>flux</scores>
-    <estimator>analog</estimator>
+    <scores>kappa-fission</scores>
+    <estimator>tracklength</estimator>
   </tally>
   <tally id="27">
-    <filters>1 2 5 28</filters>
+    <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>scatter</scores>
-    <estimator>analog</estimator>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
   </tally>
   <tally id="28">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>scatter</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="29">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
-  <tally id="29">
-    <filters>1 2 5 28</filters>
-    <nuclides>total</nuclides>
-    <scores>nu-scatter</scores>
-    <estimator>analog</estimator>
-  </tally>
   <tally id="30">
-    <filters>1 2 5</filters>
+    <filters>1 2</filters>
     <nuclides>total</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="31">
-    <filters>1 2 5</filters>
+    <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>scatter</scores>
+    <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="32">
-    <filters>1 2</filters>
+    <filters>1 2 5 30</filters>
     <nuclides>total</nuclides>
-    <scores>flux</scores>
+    <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="33">
-    <filters>1 2 5</filters>
+    <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>nu-fission</scores>
+    <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="34">
-    <filters>1 2 5</filters>
+    <filters>1 2 5 30</filters>
     <nuclides>total</nuclides>
-    <scores>scatter</scores>
+    <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="35">
-    <filters>1 2</filters>
-    <nuclides>total</nuclides>
-    <scores>flux</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="36">
-    <filters>1 2</filters>
-    <nuclides>total</nuclides>
-    <scores>scatter</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="37">
-    <filters>1 2 5 28</filters>
-    <nuclides>total</nuclides>
-    <scores>scatter</scores>
-    <estimator>analog</estimator>
-  </tally>
-  <tally id="38">
-    <filters>1 2</filters>
-    <nuclides>total</nuclides>
-    <scores>flux</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="39">
-    <filters>1 2</filters>
-    <nuclides>total</nuclides>
-    <scores>scatter</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="40">
-    <filters>1 2 5 28</filters>
-    <nuclides>total</nuclides>
-    <scores>scatter</scores>
-    <estimator>analog</estimator>
-  </tally>
-  <tally id="41">
     <filters>1 2 5</filters>
     <nuclides>total</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
-  <tally id="42">
+  <tally id="36">
+    <filters>1 2 5</filters>
+    <nuclides>total</nuclides>
+    <scores>scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="37">
     <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="38">
+    <filters>1 2 5</filters>
     <nuclides>total</nuclides>
     <scores>nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
-  <tally id="43">
-    <filters>1 5</filters>
+  <tally id="39">
+    <filters>1 2 5</filters>
     <nuclides>total</nuclides>
-    <scores>nu-fission</scores>
+    <scores>scatter</scores>
     <estimator>analog</estimator>
+  </tally>
+  <tally id="40">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="41">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>scatter</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="42">
+    <filters>1 2 5 30</filters>
+    <nuclides>total</nuclides>
+    <scores>scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="43">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
   </tally>
   <tally id="44">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>prompt-nu-fission</scores>
-    <estimator>analog</estimator>
+    <scores>scatter</scores>
+    <estimator>tracklength</estimator>
   </tally>
   <tally id="45">
-    <filters>1 5</filters>
+    <filters>1 2 5 30</filters>
     <nuclides>total</nuclides>
-    <scores>prompt-nu-fission</scores>
+    <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="46">
-    <filters>1 2</filters>
+    <filters>1 2 5</filters>
     <nuclides>total</nuclides>
-    <scores>flux</scores>
-    <estimator>tracklength</estimator>
+    <scores>nu-scatter</scores>
+    <estimator>analog</estimator>
   </tally>
   <tally id="47">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>inverse-velocity</scores>
-    <estimator>tracklength</estimator>
+    <scores>nu-fission</scores>
+    <estimator>analog</estimator>
   </tally>
   <tally id="48">
-    <filters>1 2</filters>
+    <filters>1 5</filters>
     <nuclides>total</nuclides>
-    <scores>flux</scores>
-    <estimator>tracklength</estimator>
+    <scores>nu-fission</scores>
+    <estimator>analog</estimator>
   </tally>
   <tally id="49">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
     <scores>prompt-nu-fission</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="50">
-    <filters>1 2</filters>
-    <nuclides>total</nuclides>
-    <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
-  <tally id="51">
-    <filters>1 2 5</filters>
+  <tally id="50">
+    <filters>1 5</filters>
     <nuclides>total</nuclides>
     <scores>prompt-nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
-  <tally id="52">
+  <tally id="51">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="52">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>inverse-velocity</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="53">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>total</scores>
+    <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="54">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>flux</scores>
-    <estimator>analog</estimator>
+    <scores>prompt-nu-fission</scores>
+    <estimator>tracklength</estimator>
   </tally>
   <tally id="55">
-    <filters>1 5 6</filters>
-    <nuclides>total</nuclides>
-    <scores>scatter</scores>
-    <estimator>analog</estimator>
-  </tally>
-  <tally id="56">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
-    <estimator>tracklength</estimator>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="56">
+    <filters>1 2 5</filters>
+    <nuclides>total</nuclides>
+    <scores>prompt-nu-fission</scores>
+    <estimator>analog</estimator>
   </tally>
   <tally id="57">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
-    <scores>total</scores>
+    <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="58">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
+    <scores>total</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="59">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
-  <tally id="59">
+  <tally id="60">
+    <filters>1 5 6</filters>
+    <nuclides>total</nuclides>
+    <scores>scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="61">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="62">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>total</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="63">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="64">
     <filters>1 5 6</filters>
     <nuclides>total</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
-  <tally id="60">
+  <tally id="65">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>tracklength</estimator>
   </tally>
-  <tally id="61">
-    <filters>1 73 2</filters>
-    <nuclides>total</nuclides>
-    <scores>delayed-nu-fission</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="62">
-    <filters>1 73 2</filters>
-    <nuclides>total</nuclides>
-    <scores>delayed-nu-fission</scores>
-    <estimator>analog</estimator>
-  </tally>
-  <tally id="63">
-    <filters>1 73 5</filters>
-    <nuclides>total</nuclides>
-    <scores>delayed-nu-fission</scores>
-    <estimator>analog</estimator>
-  </tally>
-  <tally id="64">
-    <filters>1 2</filters>
-    <nuclides>total</nuclides>
-    <scores>nu-fission</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="65">
-    <filters>1 73 2</filters>
-    <nuclides>total</nuclides>
-    <scores>delayed-nu-fission</scores>
-    <estimator>tracklength</estimator>
-  </tally>
   <tally id="66">
-    <filters>1 73</filters>
+    <filters>1 75 2</filters>
     <nuclides>total</nuclides>
     <scores>delayed-nu-fission</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="67">
-    <filters>1 73</filters>
+    <filters>1 75 2</filters>
+    <nuclides>total</nuclides>
+    <scores>delayed-nu-fission</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="68">
+    <filters>1 75 5</filters>
+    <nuclides>total</nuclides>
+    <scores>delayed-nu-fission</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="69">
+    <filters>1 2</filters>
+    <nuclides>total</nuclides>
+    <scores>nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="70">
+    <filters>1 75 2</filters>
+    <nuclides>total</nuclides>
+    <scores>delayed-nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="71">
+    <filters>1 75</filters>
+    <nuclides>total</nuclides>
+    <scores>delayed-nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="72">
+    <filters>1 75</filters>
     <nuclides>total</nuclides>
     <scores>decay-rate</scores>
     <estimator>tracklength</estimator>
   </tally>
-  <tally id="68">
+  <tally id="73">
     <filters>1 2</filters>
     <nuclides>total</nuclides>
     <scores>flux</scores>
     <estimator>analog</estimator>
   </tally>
-  <tally id="69">
-    <filters>1 73 2 5</filters>
+  <tally id="74">
+    <filters>1 75 2 5</filters>
     <nuclides>total</nuclides>
     <scores>delayed-nu-fission</scores>
     <estimator>analog</estimator>

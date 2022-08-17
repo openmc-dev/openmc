@@ -183,7 +183,9 @@ void DAGUniverse::init_geometry()
     } else {
       warning(fmt::format("DAGMC Cell IDs: {}", dagmc_ids_for_dim(3)));
       fatal_error(fmt::format("Cell ID {} exists in both DAGMC Universe {} "
-                              "and the CSG geometry.",
+                              "and the CSG geometry. Setting auto_geom_ids "
+                              "to True when initiating the DAGMC Universe may "
+                              "resolve this issue",
         c->id_, this->id_));
     }
 
@@ -743,7 +745,7 @@ namespace openmc {
 void read_dagmc_universes(pugi::xml_node node)
 {
   if (check_for_node(node, "dagmc_universe")) {
-    fatal_error("DAGMC Universes are present but OpenMC was not configured"
+    fatal_error("DAGMC Universes are present but OpenMC was not configured "
                 "with DAGMC");
   }
 };

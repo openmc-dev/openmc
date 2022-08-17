@@ -3,7 +3,7 @@ import json
 import os
 import re
 from pathlib import Path
-from math import sqrt
+from math import sqrt, log
 from warnings import warn
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
@@ -202,7 +202,7 @@ _GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 # Used in half_life function as a cache
 _HALF_LIFE = {}
-
+_LOG_TWO = log(2.0)
 
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
@@ -283,6 +283,8 @@ def half_life(isotope):
     Half-life values are from the `ENDF/B-VIII.0 decay sublibrary
     <https://www.nndc.bnl.gov/endf-b8.0/download.html>`_.
 
+    .. versionadded:: 0.13.1
+
     Parameters
     ----------
     isotope : str
@@ -301,6 +303,35 @@ def half_life(isotope):
         _HALF_LIFE = json.loads(half_life_path.read_text())
 
     return _HALF_LIFE.get(isotope.lower())
+
+
+def decay_constant(isotope):
+    """Return decay constant of isotope in [s^-1]
+
+    Decay constants are based on half-life values from the
+    :func:`~openmc.data.half_life` function. When the isotope is stable, a decay
+    constant of zero is returned.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    isotope : str
+        Name of isotope, e.g., 'Pu239'
+
+    Returns
+    -------
+    float
+        Decay constant of isotope in [s^-1]
+
+    See also
+    --------
+    openmc.data.half_life
+
+    """
+    t = half_life(isotope)
+    return _LOG_TWO / t if t else 0.0
+
 
 def water_density(temperature, pressure=0.1013):
     """Return the density of liquid water at a given temperature and pressure.

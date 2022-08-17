@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import pi
 from numbers import Real, Integral
+from pathlib import Path
 import warnings
 from xml.etree import ElementTree as ET
 
@@ -193,6 +194,87 @@ class StructuredMesh(MeshBase):
         s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
 
+    @property
+    def num_mesh_cells(self):
+        return np.prod(self.dimension)
+
+    def write_data_to_vtk(self, points, filename, datasets, volume_normalization=True):
+        """Creates a VTK object of the mesh
+
+        Parameters
+        ----------
+        points : list or np.array
+            List of (X,Y,Z) tuples.
+        filename : str
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+
+        Raises
+        ------
+        RuntimeError
+            When the size of a dataset doesn't match the number of cells
+
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
+        """
+
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        # check that the data sets are appropriately sized
+        errmsg = "The size of the dataset {} should be equal to the number of cells"
+        for label, dataset in datasets.items():
+            if isinstance(dataset, np.ndarray):
+                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
+            else:
+                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
+                    raise RuntimeError(errmsg.format(label))
+            cv.check_type('label', label, str)
+
+        vtk_grid = vtk.vtkStructuredGrid()
+
+        vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
+
+        vtkPts = vtk.vtkPoints()
+        vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
+        vtk_grid.SetPoints(vtkPts)
+
+        # create VTK arrays for each of
+        # the data sets
+
+        # maintain a list of the datasets as added
+        # to the VTK arrays to ensure they persist
+        # in memory until the file is written
+        datasets_out = []
+        for label, dataset in datasets.items():
+            dataset = np.asarray(dataset).flatten()
+            datasets_out.append(dataset)
+
+            if volume_normalization:
+                dataset /= self.volumes.flatten()
+
+            dataset_array = vtk.vtkDoubleArray()
+            dataset_array.SetName(label)
+            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
+                           dataset.size,
+                           True)
+            vtk_grid.GetCellData().AddArray(dataset_array)
+
+        # write the .vtk file
+        writer = vtk.vtkStructuredGridWriter()
+        writer.SetFileName(str(filename))
+        writer.SetInputData(vtk_grid)
+        writer.Write()
+
+        return vtk_grid
 
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
@@ -272,10 +354,6 @@ class RegularMesh(StructuredMesh):
                 ls = self._lower_left
                 dims =  self._dimension
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
-
-    @property
-    def num_mesh_cells(self):
-        return np.prod(self._dimension)
 
     @property
     def volumes(self):
@@ -622,6 +700,41 @@ class RegularMesh(StructuredMesh):
 
         return root_cell, cells
 
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+        """Creates a VTK object of the mesh
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+            Defaults to True.
+
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
+        """
+
+        ll, ur = self.lower_left, self.upper_right
+        x_vals = np.linspace(ll[0], ur[0], num=self.dimension[0] + 1)
+        y_vals = np.linspace(ll[1], ur[1], num=self.dimension[1] + 1)
+        z_vals = np.linspace(ll[2], ur[2], num=self.dimension[2] + 1)
+
+        # create points
+        pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
+
+        return super().write_data_to_vtk(
+            points=pts_cartesian,
+            filename=filename,
+            datasets=datasets,
+            volume_normalization=volume_normalization
+        )
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
@@ -821,6 +934,36 @@ class RectilinearMesh(StructuredMesh):
 
         return element
 
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+        """Creates a VTK object of the mesh
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+            Defaults to True.
+
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
+        """
+        # create points
+        pts_cartesian = np.array([[x, y, z] for z in self.z_grid for y in self.y_grid for x in self.x_grid])
+
+        return super().write_data_to_vtk(
+            points=pts_cartesian,
+            filename=filename,
+            datasets=datasets,
+            volume_normalization=volume_normalization
+        )
+
 
 class CylindricalMesh(StructuredMesh):
     """A 3D cylindrical mesh
@@ -1012,6 +1155,46 @@ class CylindricalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+        """Creates a VTK object of the mesh
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+            Defaults to True.
+
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
+        """
+        # create points
+        pts_cylindrical = np.array(
+            [
+                [r, phi, z]
+                for z in self.z_grid
+                for phi in self.phi_grid
+                for r in self.r_grid
+            ]
+        )
+        pts_cartesian = np.copy(pts_cylindrical)
+        r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
+        pts_cartesian[:, 0] = r * np.cos(phi)
+        pts_cartesian[:, 1] = r * np.sin(phi)
+
+        return super().write_data_to_vtk(
+            points=pts_cartesian,
+            filename=filename,
+            datasets=datasets,
+            volume_normalization=volume_normalization
+        )
 
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
@@ -1204,6 +1387,49 @@ class SphericalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+        """Creates a VTK object of the mesh
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            Name of the VTK file to write.
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by
+            the volume of the mesh elements.
+            Defaults to True.
+
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            the VTK object
+        """
+
+        # create points
+        pts_spherical = np.array(
+            [
+                [r, theta, phi]
+                for phi in self.phi_grid
+                for theta in self.theta_grid
+                for r in self.r_grid
+            ]
+        )
+        pts_cartesian = np.copy(pts_spherical)
+        r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
+        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
+        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)
+        pts_cartesian[:, 2] = r * np.cos(phi)
+
+        return super().write_data_to_vtk(
+            points=pts_cartesian,
+            filename=filename,
+            datasets=datasets,
+            volume_normalization=volume_normalization
+        )
+
 
 class UnstructuredMesh(MeshBase):
     """A 3D unstructured mesh
@@ -1215,7 +1441,7 @@ class UnstructuredMesh(MeshBase):
 
     Parameters
     ----------
-    filename : str
+    filename : str or pathlib.Path
         Location of the unstructured mesh file
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
@@ -1243,20 +1469,39 @@ class UnstructuredMesh(MeshBase):
         be generated for this mesh
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
+    centroids : numpy.ndarray
+        Centroids of the mesh elements with array shape (n_elements, 3)
+
+    vertices : numpy.ndarray
+        Coordinates of the mesh vertices with array shape (n_elements, 3)
+
+        .. versionadded:: 0.13.1
+    connectivity : numpy.ndarray
+        Connectivity of the elements with array shape (n_elements, 8)
+
+        .. versionadded:: 0.13.1
+    element_types : Iterable of integers
+        Mesh element types
+
+        .. versionadded:: 0.13.1
     total_volume : float
         Volume of the unstructured mesh in total
-    centroids : Iterable of tuple
-        An iterable of element centroid coordinates, e.g. [(0.0, 0.0, 0.0),
-        (1.0, 1.0, 1.0), ...]
     """
+
+    _UNSUPPORTED_ELEM = -1
+    _LINEAR_TET = 0
+    _LINEAR_HEX = 1
+
     def __init__(self, filename, library, mesh_id=None, name='',
                  length_multiplier=1.0):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
-        self._centroids = None
+        self._n_elements = None
+        self._conectivity = None
+        self._vertices = None
         self.library = library
-        self._output = True
+        self._output = False
         self.length_multiplier = length_multiplier
 
     @property
@@ -1265,7 +1510,7 @@ class UnstructuredMesh(MeshBase):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('Unstructured Mesh filename', filename, str)
+        cv.check_type('Unstructured Mesh filename', filename, (str, Path))
         self._filename = filename
 
     @property
@@ -1318,21 +1563,32 @@ class UnstructuredMesh(MeshBase):
         return np.sum(self.volumes)
 
     @property
+    def vertices(self):
+        return self._vertices
+
+    @property
+    def connectivity(self):
+        return self._connectivity
+
+    @property
+    def element_types(self):
+        return self._element_types
+
+    @property
     def centroids(self):
-        return self._centroids
+        return np.array([self.centroid(i) for i in range(self.n_elements)])
 
     @property
     def n_elements(self):
-        if self._centroids is None:
+        if self._n_elements is None:
             raise RuntimeError("No information about this mesh has "
                                "been loaded from a statepoint file.")
-        return len(self._centroids)
+        return self._n_elements
 
-    @centroids.setter
-    def centroids(self, centroids):
-        cv.check_type("Unstructured mesh centroids", centroids,
-                      Iterable, Real)
-        self._centroids = centroids
+    @n_elements.setter
+    def n_elements(self, val):
+        cv.check_type('Number of elements', val, Integral)
+        self._n_elements = val
 
     @property
     def length_multiplier(self):
@@ -1347,33 +1603,50 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def dimension(self):
-        return self.n_elements
+        return (self.n_elements,)
 
     @property
     def n_dimension(self):
         return 3
 
-    @property
-    def vertices(self):
-        raise NotImplementedError("Vertices for UnstructuredMesh objects are "
-                                  "not yet available")
-
     def __repr__(self):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
-        string += '{: <16}=\t{}\n'.format('\tMesh Library', self.mesh_lib)
+        string += '{: <16}=\t{}\n'.format('\tMesh Library', self.library)
         if self.length_multiplier != 1.0:
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
         return string
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
-        """Map data to the unstructured mesh element centroids
-           to create a VTK point-cloud dataset.
+    def centroid(self, bin):
+        """Return the vertex averaged centroid of an element
 
         Parameters
         ----------
-        filename : str
+        bin : int
+            Bin ID for the returned centroid
+
+        Returns
+        -------
+        numpy.ndarray
+            x, y, z values of the element centroid
+
+        """
+        conn = self.connectivity[bin]
+        # remove invalid connectivity values
+        conn = conn[conn >= 0]
+        coords = self.vertices[conn]
+        return coords.mean(axis=0)
+
+    def write_vtk_mesh(self, **kwargs):
+        """Map data to unstructured VTK mesh elements.
+
+        .. deprecated:: 0.13
+          Use :func:`UnstructuredMesh.write_data_to_vtk` instead.
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels
@@ -1382,74 +1655,102 @@ class UnstructuredMesh(MeshBase):
             Whether or not to normalize the data by the
             volume of the mesh elements
         """
+        warnings.warn(
+            "The 'UnstructuredMesh.write_vtk_mesh' method has been renamed "
+            "to 'write_data_to_vtk' and will be removed in a future version "
+            " of OpenMC.", FutureWarning
+        )
+        self.write_data_to_vtk(**kwargs)
 
+    def write_data_to_vtk(self, filename=None, datasets=None, volume_normalization=True):
+        """Map data to unstructured VTK mesh elements.
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            Name of the VTK file to write
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are numpy appropriately sized arrays
+            of the data
+        volume_normalization : bool
+            Whether or not to normalize the data by the
+            volume of the mesh elements
+        """
         import vtk
-        from vtk.util import numpy_support as vtk_npsup
+        from vtk.util import numpy_support as nps
 
-        if self.centroids is None:
-            raise RuntimeError("No centroid information is present on this "
-                               "unstructured mesh. Please load this "
-                               "information from a relevant statepoint file.")
+        if self.connectivity is None or self.vertices is None:
+            raise RuntimeError('This mesh has not been '
+                               'loaded from a statepoint file.')
 
-        if self.volumes is None and volume_normalization:
-            raise RuntimeError("No volume data is present on this "
-                               "unstructured mesh. Please load the "
-                               " mesh information from a statepoint file.")
+        if filename is None:
+            filename = f'mesh_{self.id}.vtk'
 
-        # check that the data sets are appropriately sized
-        for label, dataset in datasets.items():
-            if isinstance(dataset, np.ndarray):
-                assert dataset.size == self.n_elements
+        writer = vtk.vtkUnstructuredGridWriter()
+
+        writer.SetFileName(str(filename))
+
+        grid = vtk.vtkUnstructuredGrid()
+
+        vtk_pnts = vtk.vtkPoints()
+        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices))
+        grid.SetPoints(vtk_pnts)
+
+        n_skipped = 0
+        elems = []
+        for elem_type, conn in zip(self.element_types, self.connectivity):
+            if elem_type == self._LINEAR_TET:
+                elem = vtk.vtkTetra()
+            elif elem_type == self._LINEAR_HEX:
+                elem = vtk.vtkHexahedron()
+            elif elem_type == self._UNSUPPORTED_ELEM:
+                n_skipped += 1
             else:
-                assert len(dataset) == self.n_elements
-            cv.check_type('label', label, str)
+                raise RuntimeError(f'Invalid element type {elem_type} found')
+            for i, c in enumerate(conn):
+                if c == -1:
+                    break
+                elem.GetPointIds().SetId(i, c)
+            elems.append(elem)
 
-        # create data arrays for the cells/points
-        cell_dim = 1
-        vertices = vtk.vtkCellArray()
-        points = vtk.vtkPoints()
+        if n_skipped > 0:
+            warnings.warn(f'{n_skipped} elements were not written because '
+                          'they are not of type linear tet/hex')
 
-        for centroid in self.centroids:
-            # create a point for each centroid
-            point_id = points.InsertNextPoint(centroid * self.length_multiplier)
-            # create a cell of type "Vertex" for each point
-            cell_id = vertices.InsertNextCell(cell_dim, (point_id,))
+        for elem in elems:
+            grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
 
-        # create a VTK data object
-        poly_data = vtk.vtkPolyData()
-        poly_data.SetPoints(points)
-        poly_data.SetVerts(vertices)
-
-        # strange VTK nuance:
-        # data must be held in some container
-        # until the vtk file is written
-        data_holder = []
-
-        # create VTK arrays for each of
-        # the data sets
-        for label, dataset in datasets.items():
-            dataset = np.asarray(dataset).flatten()
+        # check that datasets are the correct size
+        datasets_out = []
+        if datasets is not None:
+            for name, data in datasets.items():
+                if data.shape != self.dimension:
+                    raise ValueError(f'Cannot apply dataset "{name}" with '
+                                     f'shape {data.shape} to mesh {self.id} '
+                                     f'with dimensions {self.dimension}')
 
             if volume_normalization:
-                dataset /= self.volumes.flatten()
+                for name, data in datasets.items():
+                    if np.issubdtype(data.dtype, np.integer):
+                        warnings.warn(f'Integer data set "{name}" will '
+                                      'not be volume-normalized.')
+                        continue
+                    data /= self.volumes
 
-            array = vtk.vtkDoubleArray()
-            array.SetName(label)
-            array.SetNumberOfComponents(1)
-            array.SetArray(vtk_npsup.numpy_to_vtk(dataset),
-                           dataset.size,
-                           True)
+            # add data to the mesh
+            for name, data in datasets.items():
+                datasets_out.append(data)
+                arr = vtk.vtkDoubleArray()
+                arr.SetName(name)
+                arr.SetNumberOfTuples(data.size)
 
-            data_holder.append(dataset)
-            poly_data.GetPointData().AddArray(array)
+                for i in range(data.size):
+                    arr.SetTuple1(i, data.flat[i])
+                grid.GetCellData().AddArray(arr)
 
-        # set filename
-        if not filename.endswith(".vtk"):
-            filename += ".vtk"
+        writer.SetInputData(grid)
 
-        writer = vtk.vtkGenericDataObjectWriter()
-        writer.SetFileName(filename)
-        writer.SetInputData(poly_data)
         writer.Write()
 
     @classmethod
@@ -1460,10 +1761,14 @@ class UnstructuredMesh(MeshBase):
 
         mesh = cls(filename, library, mesh_id=mesh_id)
         vol_data = group['volumes'][()]
-        centroids = group['centroids'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
-        mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
-        mesh.size = mesh.volumes.size
+        mesh.n_elements = mesh.volumes.size
+
+        vertices = group['vertices'][()]
+        mesh._vertices = vertices.reshape((-1, 3))
+        connectivity = group['connectivity'][()]
+        mesh._connectivity = connectivity.reshape((-1, 8))
+        mesh._element_types = group['element_types'][()]
 
         if 'length_multiplier' in group:
             mesh.length_multiplier = group['length_multiplier'][()]
@@ -1485,7 +1790,7 @@ class UnstructuredMesh(MeshBase):
         element.set("type", "unstructured")
         element.set("library", self._library)
         subelement = ET.SubElement(element, "filename")
-        subelement.text = self.filename
+        subelement.text = str(self.filename)
 
         if self._length_multiplier != 1.0:
             element.set("length_multiplier", str(self.length_multiplier))

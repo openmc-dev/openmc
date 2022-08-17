@@ -25,6 +25,52 @@ def test_add_nuclide():
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
 
+def test_add_components():
+    """Test adding multipe elements or nuclides at once"""
+    m = openmc.Material()
+    components = {'H1': 2.0,
+                  'O16': 1.0,
+                  'Zr': 1.0,
+                  'O': 1.0,
+                  'U': {'percent': 1.0,
+                        'enrichment': 4.5},
+                  'Li': {'percent': 1.0,
+                         'enrichment': 60.0,
+                         'enrichment_target': 'Li7'},
+                  'H': {'percent': 1.0,
+                        'enrichment': 50.0,
+                        'enrichment_target': 'H2',
+                        'enrichment_type': 'wo'}}
+    m.add_components(components)
+    with pytest.raises(ValueError):
+        m.add_components({'U': {'percent': 1.0,
+                                'enrichment': 100.0}})
+    with pytest.raises(ValueError):
+        m.add_components({'Pu': {'percent': 1.0,
+                                 'enrichment': 3.0}})
+    with pytest.raises(ValueError):
+        m.add_components({'U': {'percent': 1.0,
+                                'enrichment': 70.0,
+                                'enrichment_target':'U235'}})
+    with pytest.raises(ValueError):
+        m.add_components({'He': {'percent': 1.0,
+                                 'enrichment': 17.0,
+                                 'enrichment_target': 'He6'}})
+    with pytest.raises(ValueError):
+        m.add_components({'li': 1.0})  # should fail as 1st char is lowercase
+    with pytest.raises(ValueError):
+        m.add_components({'LI': 1.0})  # should fail as 2nd char is uppercase
+    with pytest.raises(ValueError):
+        m.add_components({'Xx': 1.0})  # should fail as Xx is not an element
+    with pytest.raises(ValueError):
+        m.add_components({'n': 1.0})  # check to avoid n for neutron being accepted
+    with pytest.raises(TypeError):
+        m.add_components({'H1': '1.0'})
+    with pytest.raises(TypeError):
+        m.add_components({1.0: 'H1'}, percent_type = 'wo')
+    with pytest.raises(ValueError):
+        m.add_components({'H1': 1.0}, percent_type = 'oa')
+
 
 def test_remove_nuclide():
     """Test removing nuclides."""
@@ -49,7 +95,7 @@ def test_remove_elements():
     assert m.nuclides[0].percent == 1.0
 
 
-def test_elements():
+def test_add_element():
     """Test adding elements."""
     m = openmc.Material()
     m.add_element('Zr', 1.0)
@@ -73,7 +119,6 @@ def test_elements():
         m.add_element('Xx', 1.0)  # should fail as Xx is not an element
     with pytest.raises(ValueError):
         m.add_element('n', 1.0)  # check to avoid n for neutron being accepted
-
 
 def test_elements_by_name():
     """Test adding elements by name"""
@@ -100,7 +145,7 @@ def test_add_elements_by_formula():
     m.add_elements_from_formula('Li4SiO4')
     # checking the ratio of elements is 4:1:4 for Li:Si:O
     elem = defaultdict(float)
-    for nuclide, adens in m.get_nuclide_atom_densities().values():
+    for nuclide, adens in m.get_nuclide_atom_densities().items():
         if nuclide.startswith("Li"):
             elem["Li"] += adens
         if nuclide.startswith("Si"):
@@ -117,7 +162,7 @@ def test_add_elements_by_formula():
                 'O16': 0.443386, 'O17': 0.000168}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing the correct nuclides are added to the Material when enriched
     m = openmc.Material()
@@ -129,7 +174,7 @@ def test_add_elements_by_formula():
                 'O16': 0.443386, 'O17': 0.000168}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing the use of brackets
     m = openmc.Material()
@@ -137,7 +182,7 @@ def test_add_elements_by_formula():
 
     # checking the ratio of elements is 2:2:6 for Mg:N:O
     elem = defaultdict(float)
-    for nuclide, adens in m.get_nuclide_atom_densities().values():
+    for nuclide, adens in m.get_nuclide_atom_densities().items():
         if nuclide.startswith("Mg"):
             elem["Mg"] += adens
         if nuclide.startswith("N"):
@@ -155,7 +200,7 @@ def test_add_elements_by_formula():
                 'O16': 0.599772, 'O17': 0.000227}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing non integer multiplier results in a value error
     m = openmc.Material()
@@ -289,10 +334,19 @@ def test_get_nuclide_densities(uo2):
 
 
 def test_get_nuclide_atom_densities(uo2):
-    nucs = uo2.get_nuclide_atom_densities()
-    for nuc, density in nucs.values():
+    for nuc, density in uo2.get_nuclide_atom_densities().items():
         assert nuc in ('U235', 'O16')
         assert density > 0
+
+
+def test_get_nuclide_atoms():
+    mat = openmc.Material()
+    mat.add_nuclide('Li6', 1.0)
+    mat.set_density('atom/cm3', 3.26e20)
+    mat.volume = 100.0
+
+    atoms = mat.get_nuclide_atoms()
+    assert atoms['Li6'] == pytest.approx(mat.density * mat.volume)
 
 
 def test_mass():
@@ -341,7 +395,7 @@ def test_borated_water():
                 'O16':2.4672e-02}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
     assert m.id == 50
 
     # Test the Celsius conversion.
@@ -417,28 +471,46 @@ def test_mix_materials():
     assert m5.density == pytest.approx(dens5)
 
 
-def test_activity_of_stable():
-    """Creates a material with stable isotopes to checks the activity is 0"""
+def test_get_activity():
+    """Tests the activity of stable, metastable and active materials"""
+
+    # Creates a material with stable isotopes to check the activity is 0
     m1 = openmc.Material()
-    m1.add_element("Fe", 1)
-    m1.set_density('g/cm3', 1)
+    m1.add_element("Fe", 0.7)
+    m1.add_element("Li", 0.3)
+    m1.set_density('g/cm3', 1.5)
+    # activity in Bq/cc and Bq/g should not require volume setting
+    assert m1.get_activity(units='Bq/cm3') == 0
+    assert m1.get_activity(units='Bq/g') == 0
     m1.volume = 1
-    assert m1.activity == 0
+    assert m1.get_activity(units='Bq') == 0
 
+    # Checks that 1g of tritium has the correct activity scaling
+    m2 = openmc.Material()
+    m2.add_nuclide("H3", 1)
+    m2.set_density('g/cm3', 1)
+    m2.volume = 1
+    assert pytest.approx(m2.get_activity(units='Bq')) == 3.559778e14
+    m2.set_density('g/cm3', 2)
+    assert pytest.approx(m2.get_activity(units='Bq')) == 3.559778e14*2
+    m2.volume = 3
+    assert pytest.approx(m2.get_activity(units='Bq')) == 3.559778e14*2*3
 
-def test_activity_of_tritium():
-    """Checks that 1g of tritium has the correct activity"""
-    m1 = openmc.Material()
-    m1.add_nuclide("H3", 1)
-    m1.set_density('g/cm3', 1)
-    m1.volume = 1
-    assert pytest.approx(m1.activity) == 3.559778e14 
+    # Checks that 1 mol of a metastable nuclides has the correct activity
+    m3 = openmc.Material()
+    m3.add_nuclide("Tc99_m1", 1)
+    m3.set_density('g/cm3', 1)
+    m3.volume = 98.9
+    assert pytest.approx(m3.get_activity(units='Bq'), rel=0.001) == 1.93e19
 
-
-def test_activity_of_metastable():
-    """Checks that 1 mol of a Tc99_m1 nuclides has the correct activity"""
-    m1 = openmc.Material()
-    m1.add_nuclide("Tc99_m1", 1)
-    m1.set_density('g/cm3', 1)
-    m1.volume = 98.9
-    assert pytest.approx(m1.activity, rel=0.001) == 1.93e19
+    # Checks that specific and volumetric activity of tritium are correct
+    m4 = openmc.Material()
+    m4.add_nuclide("H3", 1)
+    m4.set_density('g/cm3', 1.5)
+    assert pytest.approx(m4.get_activity(units='Bq/g')) == 355978108155965.94  # [Bq/g]
+    assert pytest.approx(m4.get_activity(units='Bq/g', by_nuclide=True)["H3"]) == 355978108155965.94  # [Bq/g]
+    assert pytest.approx(m4.get_activity(units='Bq/cm3')) == 355978108155965.94*3/2 # [Bq/cc]
+    assert pytest.approx(m4.get_activity(units='Bq/cm3', by_nuclide=True)["H3"]) == 355978108155965.94*3/2 # [Bq/cc]
+    # volume is required to calculate total activity
+    m4.volume = 10.
+    assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]

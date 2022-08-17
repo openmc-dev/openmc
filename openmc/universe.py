@@ -2,18 +2,22 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
-from numbers import Real
+from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
 
+import h5py
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+
 from ._xml import get_text
+from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
 from .plots import _SVG_COLORS
+from .surface import _BOUNDARY_TYPES
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -330,6 +334,13 @@ class Universe(UniverseBase):
             if seed is not None:
                 model.settings.seed = seed
 
+            # Determine whether any materials contains macroscopic data and if
+            # so, set energy mode accordingly
+            for mat in self.get_all_materials().values():
+                if mat._macroscopic is not None:
+                    model.settings.energy_mode = 'multi-group'
+                    break
+
             # Create plot object matching passed arguments
             plot = openmc.Plot()
             plot.origin = origin
@@ -630,6 +641,9 @@ class DAGMCUniverse(UniverseBase):
     auto_mat_ids : bool
         Set IDs automatically on initialization (True)  or report overlaps
         in ID space between OpenMC and UWUW materials (False)
+    bounding_box : 2-tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        of the universe.
     """
 
     def __init__(self,
@@ -651,12 +665,20 @@ class DAGMCUniverse(UniverseBase):
         return string
 
     @property
+    def bounding_box(self):
+        with h5py.File(self.filename) as dagmc_file:
+            coords = dagmc_file['tstt']['nodes']['coordinates'][()]
+            lower_left_corner = coords.min(axis=0)
+            upper_right_corner = coords.max(axis=0)
+            return (lower_left_corner, upper_right_corner)
+
+    @property
     def filename(self):
         return self._filename
 
     @filename.setter
     def filename(self, val):
-        cv.check_type('DAGMC filename', val, str)
+        cv.check_type('DAGMC filename', val, (Path, str))
         self._filename = val
 
     @property
@@ -698,8 +720,89 @@ class DAGMCUniverse(UniverseBase):
             dagmc_element.set('auto_geom_ids', 'true')
         if self.auto_mat_ids:
             dagmc_element.set('auto_mat_ids', 'true')
-        dagmc_element.set('filename', self.filename)
+        dagmc_element.set('filename', str(self.filename))
         xml_element.append(dagmc_element)
+
+    def bounding_region(self, bounded_type='box', boundary_type='vacuum', starting_id=10000):
+        """Creates a either a spherical or box shaped bounding region around
+        the DAGMC geometry.
+        Parameters
+        ----------
+        bounded_type : str
+            The type of bounding surface(s) to use when constructing the region.
+            Options include a single spherical surface (sphere) or a rectangle
+            made from six planes (box).
+        boundary_type : str
+            Boundary condition that defines the behavior for particles hitting
+            the surface. Defaults to vacuum boundary condition. Passed into the
+            surface construction.
+        starting_id : int
+            Starting ID of the surface(s) used in the region. For bounded_type
+            'box', the next 5 IDs will also be used. Defaults to 10000 to reduce
+            the chance of an overlap of surface IDs with the DAGMC geometry.
+        Returns
+        -------
+        openmc.Region
+            Region instance
+        """
+
+        check_type('boundary type', boundary_type, str)
+        check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
+        check_type('starting surface id', starting_id, Integral)
+        check_type('bounded type', bounded_type, str)
+        check_value('bounded type', bounded_type, ('box', 'sphere'))
+
+        bbox = self.bounding_box
+
+        if bounded_type == 'sphere':
+            bbox_center = (bbox[0] + bbox[1])/2
+            radius = np.linalg.norm(np.asarray(bbox))
+            bounding_surface = openmc.Sphere(
+                surface_id=starting_id,
+                x0=bbox_center[0],
+                y0=bbox_center[1],
+                z0=bbox_center[2],
+                boundary_type=boundary_type,
+                r=radius,
+            )
+
+            return -bounding_surface
+
+        if bounded_type == 'box':
+            # defines plane surfaces for all six faces of the bounding box
+            lower_x = openmc.XPlane(bbox[0][0], surface_id=starting_id)
+            upper_x = openmc.XPlane(bbox[1][0], surface_id=starting_id+1)
+            lower_y = openmc.YPlane(bbox[0][1], surface_id=starting_id+2)
+            upper_y = openmc.YPlane(bbox[1][1], surface_id=starting_id+3)
+            lower_z = openmc.ZPlane(bbox[0][2], surface_id=starting_id+4)
+            upper_z = openmc.ZPlane(bbox[1][2], surface_id=starting_id+5)
+
+            region = +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
+
+            for surface in region.get_surfaces().values():
+                surface.boundary_type = boundary_type
+
+            return region
+
+    def bounded_universe(self, bounding_cell_id=10000, **kwargs):
+        """Returns an openmc.Universe filled with this DAGMCUniverse and bounded
+        with a cell. Defaults to a box cell with a vacuum surface however this
+        can be changed using the kwargs which are passed directly to
+        DAGMCUniverse.bounding_region().
+
+        Parameters
+        ----------
+        bounding_cell_id : int
+            The cell ID number to use for the bounding cell, defaults to 10000 to reduce
+            the chance of overlapping ID numbers with the DAGMC geometry.
+
+        Returns
+        -------
+        openmc.Universe
+            Universe instance
+        """
+        bounding_cell = openmc.Cell(fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
+        return openmc.Universe(cells=[bounding_cell])
 
     @classmethod
     def from_hdf5(cls, group):

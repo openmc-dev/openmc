@@ -29,6 +29,7 @@
 
 #include <algorithm> // for max, min, max_element
 #include <cmath>     // for sqrt, exp, log, abs, copysign
+#include <xtensor/xview.hpp>
 
 namespace openmc {
 
@@ -352,25 +353,26 @@ void sample_photon_reaction(Particle& p)
 
   // Photoelectric effect
   double prob_after = prob + micro.photoelectric;
+
   if (prob_after > cutoff) {
+    // Get grid index, interpolation factor, and bounding subshell
+    // cross sections
+    int i_grid = micro.index_grid;
+    double f = micro.interp_factor;
+    const auto& xs_lower = xt::row(element.cross_sections_, i_grid);
+    const auto& xs_upper = xt::row(element.cross_sections_, i_grid + 1);
+
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
       const auto& shell {element.shells_[i_shell]};
 
-      // Get grid index and interpolation factor
-      int i_grid = micro.index_grid;
-      double f = micro.interp_factor;
-
       // Check threshold of reaction
-      int i_start = shell.threshold;
-      if (i_grid < i_start)
+      if (xs_lower(i_shell) == 0)
         continue;
 
-      // Evaluation subshell photoionization cross section
-      double xs = std::exp(shell.cross_section(i_grid - i_start) +
-                           f * (shell.cross_section(i_grid + 1 - i_start) -
-                                 shell.cross_section(i_grid - i_start)));
+      //  Evaluation subshell photoionization cross section
+      prob += std::exp(
+        xs_lower(i_shell) + f * (xs_upper(i_shell) - xs_lower(i_shell)));
 
-      prob += xs;
       if (prob > cutoff) {
         double E_electron = p.E() - shell.binding_energy;
 

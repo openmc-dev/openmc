@@ -61,6 +61,8 @@ void ensure_exists(hid_t obj_id, const char* name, bool attribute = false);
 vector<std::string> group_names(hid_t group_id);
 vector<hsize_t> object_shape(hid_t obj_id);
 std::string object_name(hid_t obj_id);
+hid_t open_object(hid_t group_id, const std::string& name);
+void close_object(hid_t obj_id);
 
 //==============================================================================
 // Fortran compatibility functions

@@ -4,7 +4,6 @@ A pandas.DataFrame storing microscopic cross section data with
 nuclide names as row indices and reaction names as column indices.
 """
 
-import tempfile
 from pathlib import Path
 from copy import deepcopy
 
@@ -36,6 +35,8 @@ class MicroXS(DataFrame):
                    chain_file,
                    dilute_initial=1.0e3,
                    energy_bounds=(0, 20e6),
+                   init_lib=False,
+                   lib_kwargs=None,
                    run_kwargs=None):
         """Generate a one-group cross-section dataframe using
         OpenMC. Note that the ``openmc`` executable must be compiled.
@@ -58,6 +59,11 @@ class MicroXS(DataFrame):
             Reaction names to tally
         energy_bound : 2-tuple of float, optional
             Bounds for the energy group.
+        init_lib : bool, optional
+            Decide if we use the OpenMC C++ API to initialize the model
+            in memory. Recommended to set as `True` if executing in parallel.
+        lib_kwargs : dict, optional
+            Keywork arguments for :meth:`openmc.model.Model.init_lib()`
         run_kwargs : dict, optional
             Keyword arguments for :meth:`openmc.model.Model.run()`
 
@@ -91,15 +97,17 @@ class MicroXS(DataFrame):
         model.tallies = tallies
 
         # create temporary run
-        with tempfile.TemporaryDirectory() as temp_dir:
-            if run_kwargs is None:
-                run_kwargs = {}
-            run_kwargs.setdefault('cwd', temp_dir)
-            statepoint_path = model.run(**run_kwargs)
+        if run_kwargs is None:
+            run_kwargs = {}
+        if init_lib:
+            if lib_kwargs is None:
+                lib_kwargs = {}
+            model.init_lib(**lib_kwargs)
+        statepoint_path = model.run(**run_kwargs)
 
-            with StatePoint(statepoint_path) as sp:
-                for rx in xs:
-                    xs[rx].load_from_statepoint(sp)
+        with StatePoint(statepoint_path) as sp:
+            for rx in xs:
+                xs[rx].load_from_statepoint(sp)
 
         # Build the DataFrame
         series = {}
@@ -110,6 +118,8 @@ class MicroXS(DataFrame):
         # Revert to the original tallies and materials
         model.tallies = original_tallies
         model.materials = original_materials
+        # write the original model to xml files
+        model.export_to_xml()
 
         return cls(series)
 

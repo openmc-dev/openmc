@@ -360,12 +360,15 @@ class Universe(UniverseBase):
 
             # Create a figure sized such that the size of the axes within
             # exactly matches the number of pixels specified
-            px = 1/plt.rcParams['figure.dpi']
-            fig, ax = plt.subplots()
-            params = fig.subplotpars
-            width = pixels[0]*px/(params.right - params.left)
-            height = pixels[0]*px/(params.top - params.bottom)
-            fig.set_size_inches(width, height)
+            if kwargs.get("ax") is None:
+                px = 1/plt.rcParams['figure.dpi']
+                fig, ax = plt.subplots()
+                params = fig.subplotpars
+                width = pixels[0]*px/(params.right - params.left)
+                height = pixels[0]*px/(params.top - params.bottom)
+                fig.set_size_inches(width, height)
+            else:
+                ax = kwargs.pop("ax")
 
             # Plot image and return the axes
             return ax.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)

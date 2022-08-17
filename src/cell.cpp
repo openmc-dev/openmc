@@ -869,6 +869,7 @@ bool CSGCell::contains_complex(
   Position r, Direction u, int32_t on_surface) const
 {
   bool in_cell = true;
+  int total_depth = 0;
 
   // For each token
   for (auto it = region_infix_.begin(); it != region_infix_.end(); it++) {
@@ -889,6 +890,13 @@ bool CSGCell::contains_complex(
       }
     } else if ((token == OP_UNION && in_cell == true) ||
                (token == OP_INTERSECTION && in_cell == false)) {
+      // If the total depth is zero return
+      if (total_depth == 0) {
+        return in_cell;
+      }
+      
+      total_depth--;
+
       // While the iterator is within the bounds of the vector
       int depth = 1;
       do {
@@ -905,7 +913,11 @@ bool CSGCell::contains_complex(
             depth++;
           }
         }
-      } while (depth > 0 && it < region_infix_.end() - 1);
+      } while (depth > 0);
+    } else if (token == OP_LEFT_PAREN) {
+      total_depth++;
+    } else if (token == OP_RIGHT_PAREN) {
+      total_depth--;
     }
   }
   return in_cell;

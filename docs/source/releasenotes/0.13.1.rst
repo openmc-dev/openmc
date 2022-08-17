@@ -101,7 +101,8 @@ New Features
   a corresponding Python binding :func:`openmc.lib.sample_external_source`.
 - The track file generation capability has been completely overhauled. Track
   files now include much more information, and a new :class:`~openmc.Tracks`
-  class allows access to track file information from the Python API. Multiple
+  class allows access to track file information from the Python API and has a
+  :meth:`~openmc.Tracks.write_to_vtk` method for writing a VTK file. Multiple
   tracks are now written to a single file (one per MPI rank).
 - A new :func:`openmc.wwinp_to_wws` function that converts weight windows from a
   ``wwinp`` file to a list of :class:`~openmc.WeightWindows` objects.

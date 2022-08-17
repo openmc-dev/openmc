@@ -271,7 +271,7 @@ class Tracks(list):
             track.plot(ax)
         return ax
 
-    def write_tracks_to_vtk(self, filename=Path('tracks.vtp')):
+    def write_to_vtk(self, filename=Path('tracks.vtp')):
         """Creates a VTP file of the tracks
 
         Parameters

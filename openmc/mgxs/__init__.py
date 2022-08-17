@@ -14,7 +14,7 @@ GROUP_STRUCTURES = {}
 - "SHEM-361_" designed for LWR analysis to eliminate self-shielding calculations
   of thermal resonances ([HFA2005]_, [SAN2007]_, [HEB2008]_)
 - "SCALE-44" designed for criticality analysis ([ZAL1999]_)
-- "ECCO-1968" designed for fine group reactor cell calculations for fast,
+- "ECCO-1968_" designed for fine group reactor cell calculations for fast,
   intermediate and thermal reactor applications ([SAR1990]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
   "TRIPOLI-315", "CCFE-709_" and "UKAEA-1102_"

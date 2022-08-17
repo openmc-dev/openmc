@@ -319,7 +319,7 @@ normalizing reaction rates:
 
    .. math::
 
-      \phi = \frac{P}{\sum\limits_i (Q_i \sigma^f_i n_i)}
+      \phi = \frac{P}{\sum\limits_i (Q_i \sigma^f_i N_i)}
 
    where :math:`P` is the power, :math:`Q_i` is the fission Q value for nuclide
    :math:`i`, :math:`\sigma_i^f` is the microscopic fission cross section for

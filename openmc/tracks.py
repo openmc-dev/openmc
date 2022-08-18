@@ -47,6 +47,8 @@ class Track(Sequence):
     primary/secondary particle is stored in the :attr:`particle_tracks`
     attribute.
 
+    .. versionadded:: 0.13.1
+
     Parameters
     ----------
     dset : h5py.Dataset
@@ -201,6 +203,8 @@ class Tracks(list):
     This class behaves like a list and can be indexed using the normal subscript
     notation. Each element in the list is a :class:`openmc.Track` object.
 
+    .. versionadded:: 0.13.1
+
     Parameters
     ----------
     filepath : str or pathlib.Path
@@ -267,7 +271,7 @@ class Tracks(list):
             track.plot(ax)
         return ax
 
-    def write_tracks_to_vtk(self, filename=Path('tracks.vtp')):
+    def write_to_vtk(self, filename=Path('tracks.vtp')):
         """Creates a VTP file of the tracks
 
         Parameters
@@ -286,7 +290,7 @@ class Tracks(list):
         # Initialize data arrays and offset.
         points = vtk.vtkPoints()
         cells = vtk.vtkCellArray()
-    
+
         point_offset = 0
         for particle in self:
             for pt in particle.particle_tracks:

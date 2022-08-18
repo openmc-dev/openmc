@@ -56,6 +56,7 @@ def _find_cross_sections(model):
         )
     return cross_sections
 
+
 def _get_nuclides_with_data(cross_sections):
     """Loads cross_sections.xml file to find nuclides with neutron data
 
@@ -81,6 +82,7 @@ def _get_nuclides_with_data(cross_sections):
 
     return nuclides
 
+
 class CoupledOperator(OpenMCOperator):
     """Transport-coupled transport operator.
 
@@ -92,6 +94,9 @@ class CoupledOperator(OpenMCOperator):
     .. versionchanged:: 0.13.0
         The geometry and settings parameters have been replaced with a
         model parameter that takes a :class:`~openmc.model.Model` object
+
+    .. versionchanged:: 0.13.1
+        Name changed from ``Operator`` to ``CoupledOperator``
 
     Parameters
     ----------
@@ -533,6 +538,7 @@ class CoupledOperator(OpenMCOperator):
         """Finalize a depletion simulation and release resources."""
         if self.cleanup_when_done:
             openmc.lib.finalize()
+
 
 # Retain deprecated name for the time being
 def Operator(*args, **kwargs):

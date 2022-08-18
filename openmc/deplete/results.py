@@ -46,6 +46,9 @@ class Results(list):
     each depletion step and provides extra methods for interrogating these
     results.
 
+    .. versionchanged:: 0.13.1
+        Name changed from ``ResultsList`` to ``Results``
+
     Parameters
     ----------
     filename : str

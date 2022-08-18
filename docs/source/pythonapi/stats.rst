@@ -51,3 +51,10 @@ Spatial Distributions
    openmc.stats.SphericalIndependent
    openmc.stats.Box
    openmc.stats.Point
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.stats.spherical_uniform

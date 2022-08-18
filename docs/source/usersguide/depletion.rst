@@ -14,7 +14,7 @@ are requested.
 
 The depletion module is designed such that the reaction rate solution (the
 transport "operator") is completely isolated from the solution of the
-transmutation equations and the method used for advancing time. 
+transmutation equations and the method used for advancing time.
 
 :mod:`openmc.deplete` supports multiple time-integration methods for determining
 material compositions over time. Each method appears as a different class.
@@ -40,7 +40,7 @@ time::
 Note that the coupling between the reaction rate solver and the transmutation
 solver happens in-memory rather than by reading/writing files on disk. OpenMC
 has two categories of transport operators for obtaining transmutation reaction
-rates. 
+rates.
 
 .. _coupled-depletion:
 
@@ -65,7 +65,7 @@ Any material that contains a fissionable nuclide is depleted by default, but
 this can behavior can be changed with the :attr:`Material.depletable` attribute.
 
 .. important::
-   
+
    The volume must be specified for each material that is depleted by setting
    the :attr:`Material.volume` attribute. This is necessary in order to
    calculate the proper normalization of tally results based on the source rate.
@@ -198,8 +198,8 @@ Transport-independent depletion
 ===============================
 
 .. warning::
-   
-   This feature is still under heavy development and has yet to be rigorously 
+
+   This feature is still under heavy development and has yet to be rigorously
    verified. API changes and feature additions are possible and likely in
    the near future.
 
@@ -237,7 +237,7 @@ object::
                 'U236': 4.57e18,
                 'O16': 4.64e22,
                 'O17': 1.76e19}
-    volume = 0.5 
+    volume = 0.5
     op = openmc.deplete.IndependentOperator.from_nuclides(volume,
                                                           nuclides,
                                                           micro_xs,
@@ -250,8 +250,8 @@ transport-depletion calculation and follow the same steps from there.
 .. note::
 
    Ideally, one-group cross section data should be available for every
-   reaction in the depletion chain. If a nuclide that has a reaction 
-   associated with it in the depletion chain is present in the `nuclides` 
+   reaction in the depletion chain. If a nuclide that has a reaction
+   associated with it in the depletion chain is present in the `nuclides`
    parameter but not the cross section data, that reaction will not be
    simulated.
 
@@ -289,7 +289,7 @@ or from data arrays::
 .. important::
 
    Both :meth:`~openmc.deplete.MicroXS.from_csv()` and
-   :meth:`~openmc.deplete.MicroXS.from_array()` assume the cross section values 
+   :meth:`~openmc.deplete.MicroXS.from_array()` assume the cross section values
    provided are in barns by defualt, but have no way of verifying this. Make
    sure your cross sections are in the correct units before passing to a
    :class:`~openmc.deplete.IndependentOperator` object.
@@ -315,26 +315,28 @@ normalizing reaction rates:
    the cross-sections by the ``source-rate``.
 2. ``fission-q`` normalization, which uses the ``power`` or ``power_density``
    provided by the time integrator to obtain reaction rates by computing a value
-   for the flux based on this power. The general equation for the flux is 
+   for the flux based on this power. The general equation for the flux is
 
    .. math::
 
-      \phi = \frac{P}{V \cdot \sum_i (Q_i \cdot \sigma^f_i \cdot \n_i)}
+      \phi = \frac{P}{\sum\limits_i (Q_i \sigma^f_i N_i)}
 
-   where :math:`\sum_i` is the sum over all nuclides :math:`i`. This equation
-   makes the same assumptions and issues as discussed in
-   :ref:`energy-deposition`. Unfortunately, the proposed solution in that
+   where :math:`P` is the power, :math:`Q_i` is the fission Q value for nuclide
+   :math:`i`, :math:`\sigma_i^f` is the microscopic fission cross section for
+   nuclide :math:`i`, and :math:`N_i` is the number of atoms of nuclide
+   :math:`i`. This equation makes the same assumptions and issues as discussed
+   in :ref:`energy-deposition`. Unfortunately, the proposed solution in that
    section does not apply here since we are decoupled from transport code.
    However, there is a method to converge to a more accurate value for flux by
-   using substeps during time integration.
-   `This paper <https://doi.org/10.1016/j.anucene.2016.05.031>`_ provides a
-   good discussion of this method. 
+   using substeps during time integration. `This paper
+   <https://doi.org/10.1016/j.anucene.2016.05.031>`_ provides a good discussion
+   of this method.
 
 .. warning::
 
    The accuracy of results when using ``fission-q`` is entirely dependent on
    your depletion chain. Make sure it has sufficient data to resolve the
-   dynamics of your particular scenario. 
+   dynamics of your particular scenario.
 
 Multiple Materials
 ~~~~~~~~~~~~~~~~~~

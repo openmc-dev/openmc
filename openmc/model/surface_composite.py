@@ -64,6 +64,8 @@ class CylinderSector(CompositeSurface):
     operators applied to it will produce a half-space. The negative
     side is defined to be the region inside of the cylinder sector.
 
+    .. versionadded:: 0.13.1
+
     Parameters
     ----------
     r1 : float
@@ -224,6 +226,8 @@ class IsogonalOctagon(CompositeSurface):
     This class acts as a proper surface, meaning that unary `+` and `-`
     operators applied to it will produce a half-space. The negative side is
     defined to be the region inside of the octogonal prism.
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------

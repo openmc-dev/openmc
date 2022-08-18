@@ -6,8 +6,6 @@ transport solver by using user-provided one-group cross sections.
 """
 
 import copy
-from collections import OrderedDict
-from warnings import warn
 from itertools import product
 
 import numpy as np
@@ -22,6 +20,7 @@ from .microxs import MicroXS
 from .results import Results
 from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateHelper
 
+
 class IndependentOperator(OpenMCOperator):
     """Transport-independent transport operator that uses one-group cross
     sections to calculate reaction rates.
@@ -31,6 +30,8 @@ class IndependentOperator(OpenMCOperator):
     call methods of this class directly. Instead, an instance of this class is
     passed to an integrator class, such as
     :class:`openmc.deplete.CECMIntegrator`.
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------
@@ -271,15 +272,15 @@ class IndependentOperator(OpenMCOperator):
 
         This class does not generate tallies, and instead stores cross sections
         for each nuclide and transmutation reaction relevant for a depletion
-        calculation. The reaction rate is calculated by multiplying the flux by the
-        cross sections.
+        calculation. The reaction rate is calculated by multiplying the flux by
+        the cross sections.
 
         Parameters
         ----------
         op : openmc.deplete.IndependentOperator
             Reference to the object encapsulate _IndependentRateHelper.
-            We pass this so we don't have to duplicate the :attr:`IndependentOperator.number` object.
-
+            We pass this so we don't have to duplicate the
+            :attr:`IndependentOperator.number` object.
 
         Attributes
         ----------
@@ -316,15 +317,14 @@ class IndependentOperator(OpenMCOperator):
             """
             self._results_cache.fill(0.0)
 
-            volume = self._op.number.get_mat_volume(mat_id)
             for i_nuc, i_react in product(nuc_index, react_index):
                 nuc = self.nuc_ind_map[i_nuc]
                 rxn = self.rxn_ind_map[i_react]
-                density = self._op.number.get_atom_density(mat_id, nuc)
 
-                # Sigma^j_i * V = sigma^j_i * rho * V
+                # Sigma^j_i * V = sigma^j_i * n_i * V = sigma^j_i * N_i
                 self._results_cache[i_nuc,i_react] = \
-                    self._op.cross_sections[rxn][nuc] * density * volume
+                    self._op.cross_sections[rxn][nuc] * \
+                    self._op.number[mat_id, nuc]
 
             return self._results_cache
 

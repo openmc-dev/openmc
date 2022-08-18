@@ -53,7 +53,7 @@ def test_full(run_in_tmpdir, problem, multiproc):
 
     # Create operator
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
-    op = openmc.deplete.Operator(model, chain_file)
+    op = openmc.deplete.CoupledOperator(model, chain_file)
     op.round_number = True
 
     # Power and timesteps

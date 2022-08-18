@@ -88,7 +88,7 @@ model = openmc.Model(geometry=geometry, settings=settings)
 
 # Create depletion "operator"
 chain_file = 'chain_simple.xml'
-op = openmc.deplete.Operator(model, chain_file)
+op = openmc.deplete.CoupledOperator(model, chain_file)
 
 # Perform simulation using the predictor algorithm
 time_steps = [1.0, 1.0, 1.0, 1.0, 1.0]  # days

@@ -644,6 +644,8 @@ class DAGMCUniverse(UniverseBase):
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
+
+        .. versionadded:: 0.13.1
     """
 
     def __init__(self,
@@ -726,6 +728,9 @@ class DAGMCUniverse(UniverseBase):
     def bounding_region(self, bounded_type='box', boundary_type='vacuum', starting_id=10000):
         """Creates a either a spherical or box shaped bounding region around
         the DAGMC geometry.
+
+        .. versionadded:: 0.13.1
+
         Parameters
         ----------
         bounded_type : str
@@ -740,6 +745,7 @@ class DAGMCUniverse(UniverseBase):
             Starting ID of the surface(s) used in the region. For bounded_type
             'box', the next 5 IDs will also be used. Defaults to 10000 to reduce
             the chance of an overlap of surface IDs with the DAGMC geometry.
+
         Returns
         -------
         openmc.Region

@@ -23,6 +23,9 @@ __all__ = ["StepResult"]
 class StepResult:
     """Result of a single depletion timestep
 
+    .. versionchanged:: 0.13.1
+        Name changed from ``Results`` to ``StepResult``
+
     Attributes
     ----------
     k : list of (float, float)

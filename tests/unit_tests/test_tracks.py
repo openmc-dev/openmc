@@ -143,7 +143,7 @@ def test_filter(sphere_model, run_in_tmpdir):
     assert matches == []
 
 
-def test_write_tracks_to_vtk(sphere_model):
+def test_write_to_vtk(sphere_model):
     vtk = pytest.importorskip('vtk')
     # Set maximum number of tracks per process to write
     sphere_model.settings.max_tracks = 25
@@ -153,7 +153,7 @@ def test_write_tracks_to_vtk(sphere_model):
     generate_track_file(sphere_model, tracks=True)
 
     tracks = openmc.Tracks('tracks.h5')
-    polydata = tracks.write_tracks_to_vtk('tracks.vtp')
+    polydata = tracks.write_to_vtk('tracks.vtp')
 
     assert isinstance(polydata, vtk.vtkPolyData)
     assert Path('tracks.vtp').is_file()

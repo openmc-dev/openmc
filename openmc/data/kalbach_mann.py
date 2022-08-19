@@ -178,6 +178,8 @@ def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
     energies are not calculated with the AWR number, but approximated with
     the number of mass instead.
 
+    .. versionadded:: 0.13.1
+
     Parameters
     ----------
     energy_projectile : float
@@ -592,6 +594,9 @@ class KalbachMann(AngleEnergy):
 
         If the projectile is a neutron, the slope is calculated when it is
         not given explicitly.
+
+        .. versionchanged:: 0.13.1
+            Arguments changed to accommodate slope calculation
 
         Parameters
         ----------

@@ -269,6 +269,8 @@ class Region(ABC):
         inplace : bool
             Whether or not to return a region based on new surfaces or one based
             on the original surfaces that have been modified.
+
+            .. versionadded:: 0.13.1
         memo : dict or None
             Dictionary used for memoization. This parameter is used internally
             and should not be specified by the user.

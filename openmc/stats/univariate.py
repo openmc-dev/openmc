@@ -205,6 +205,8 @@ class Discrete(Univariate):
     def merge(cls, dists, probs):
         """Merge multiple discrete distributions into a single distribution
 
+        .. versionadded:: 0.13.1
+
         Parameters
         ----------
         dists : iterable of openmc.stats.Discrete
@@ -1057,7 +1059,7 @@ class Tabular(Univariate):
     def integral(self):
         """Return integral of distribution
 
-        .. versionadded: 0.13.1
+        .. versionadded:: 0.13.1
 
         Returns
         -------

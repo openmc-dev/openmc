@@ -6,6 +6,7 @@ import h5py
 from .checkvalue import check_filetype_version
 from .source import SourceParticle, ParticleType
 
+from pathlib import Path
 
 ParticleTrack = namedtuple('ParticleTrack', ['particle', 'states'])
 ParticleTrack.__doc__ = """\
@@ -45,6 +46,8 @@ class Track(Sequence):
     particle and any secondary particles that it created. The track for each
     primary/secondary particle is stored in the :attr:`particle_tracks`
     attribute.
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------
@@ -200,6 +203,8 @@ class Tracks(list):
     This class behaves like a list and can be indexed using the normal subscript
     notation. Each element in the list is a :class:`openmc.Track` object.
 
+    .. versionadded:: 0.13.1
+
     Parameters
     ----------
     filepath : str or pathlib.Path
@@ -265,6 +270,57 @@ class Tracks(list):
         for track in self:
             track.plot(ax)
         return ax
+
+    def write_to_vtk(self, filename=Path('tracks.vtp')):
+        """Creates a VTP file of the tracks
+
+        Parameters
+        ----------
+        filename : path-like
+            Name of the VTP file to write.
+
+        Returns
+        -------
+        vtk.vtkPolyData
+            the VTK vtkPolyData object produced
+        """
+
+        import vtk
+
+        # Initialize data arrays and offset.
+        points = vtk.vtkPoints()
+        cells = vtk.vtkCellArray()
+
+        point_offset = 0
+        for particle in self:
+            for pt in particle.particle_tracks:
+                for state in pt.states:
+                    points.InsertNextPoint(state['r'])
+
+            # Create VTK line and assign points to line.
+            n = pt.states.size
+            line = vtk.vtkPolyLine()
+            line.GetPointIds().SetNumberOfIds(n)
+            for i in range(n):
+                line.GetPointIds().SetId(i, point_offset + i)
+            point_offset += n
+
+            # Add line to cell array
+            cells.InsertNextCell(line)
+
+        data = vtk.vtkPolyData()
+        data.SetPoints(points)
+        data.SetLines(cells)
+
+        writer = vtk.vtkXMLPPolyDataWriter()
+        if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+            writer.SetInputData(data)
+        else:
+            writer.SetInput(data)
+        writer.SetFileName(str(filename))  # SetFileName requires a string
+        writer.Write()
+
+        return data
 
     @staticmethod
     def combine(track_files, path='tracks.h5'):

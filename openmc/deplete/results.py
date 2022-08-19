@@ -46,6 +46,9 @@ class Results(list):
     each depletion step and provides extra methods for interrogating these
     results.
 
+    .. versionchanged:: 0.13.1
+        Name changed from ``ResultsList`` to ``Results``
+
     Parameters
     ----------
     filename : str
@@ -417,7 +420,16 @@ class Results(list):
             mat_id = str(mat.id)
             if mat_id in result.mat_to_ind:
                 mat.volume = result.volume[mat_id]
+
+                # Change density of all nuclides in material to atom/b-cm
+                atoms_per_barn_cm = mat.get_nuclide_atom_densities()
+                for nuc, value in atoms_per_barn_cm.items():
+                    mat.remove_nuclide(nuc)
+                    mat.add_nuclide(nuc, value)
                 mat.set_density('sum')
+
+                # For nuclides in chain that have cross sections, replace
+                # density in original material with new density from results
                 for nuc in result.nuc_to_ind:
                     if nuc not in available_cross_sections:
                         continue

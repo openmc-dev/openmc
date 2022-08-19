@@ -340,6 +340,20 @@ def test_new_tally(lib_init):
     assert len(openmc.lib.tallies) == 5
 
 
+def test_delete_tally(lib_init):
+    # delete tally 10 which was added in the above test
+    # check length is one less than before
+    del openmc.lib.tallies[10]
+    assert len(openmc.lib.tallies) == 4
+
+
+def test_invalid_tally_id(lib_init):
+    # attempt to access a tally that is guaranteed not to have a valid index
+    max_id = max(openmc.lib.tallies.keys())
+    with pytest.raises(KeyError):
+        openmc.lib.tallies[max_id+1]
+
+
 def test_tally_activate(lib_simulation_init):
     t = openmc.lib.tallies[1]
     assert not t.active

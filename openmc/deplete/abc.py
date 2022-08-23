@@ -35,6 +35,7 @@ __all__ = [
 _SECONDS_PER_MINUTE = 60
 _SECONDS_PER_HOUR = 60*60
 _SECONDS_PER_DAY = 24*60*60
+_SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 OperatorResult.__doc__ = """\
@@ -530,11 +531,11 @@ class Integrator(ABC):
         each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'a', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years
+        and 'MWd/kg' indicates that the values are given in burnup (MW-d of
+        energy deposited per kilogram of initial heavy metal).
     solver : str or callable, optional
         If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
@@ -638,6 +639,8 @@ class Integrator(ABC):
                 seconds.append(timestep*_SECONDS_PER_HOUR)
             elif unit in ('d', 'day'):
                 seconds.append(timestep*_SECONDS_PER_DAY)
+            elif unit in ('a', 'year'):
+                seconds.append(timestep*_SECONDS_PER_JULIAN_YEAR)
             elif unit.lower() == 'mwd/kg':
                 watt_days_per_kg = 1e6*timestep
                 kilograms = 1e-3*operator.heavy_metal
@@ -869,7 +872,6 @@ class Integrator(ABC):
 
         axes[1].set_xlabel(f'Timesteps [{self.timestep_units}]')
         axes[1].set_ylim(0, 1)
-        axes[1].set_xticks(linear_time_steps)
         axes[1].get_yaxis().set_visible(False)
 
         return fig

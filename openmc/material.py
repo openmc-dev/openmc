@@ -825,9 +825,15 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self):
-        """Returns all nuclides in the material and their atomic densities in
-        units of atom/b-cm
+    def get_nuclide_atom_densities(self, nuclide: Optional[str] = None):
+        """Returns one or all nuclides in the material and their atomic
+        densities in units of atom/b-cm
+
+        Parameters
+        ----------
+        nuclides : str, optional
+            Nuclide for which atom density is desired. If not specified, the
+            atom density for the all the material is given.
 
         .. versionchanged:: 0.13.1
             The values in the dictionary were changed from a tuple containing
@@ -862,10 +868,11 @@ class Material(IDManagerMixin):
         nuc_densities = []
         nuc_density_types = []
 
-        for nuclide in self.nuclides:
-            nucs.append(nuclide.name)
-            nuc_densities.append(nuclide.percent)
-            nuc_density_types.append(nuclide.percent_type)
+        for loop_nuclide in self.nuclides:
+            if nuclide is None or nuclide == loop_nuclide.name:
+                nucs.append(loop_nuclide.name)
+                nuc_densities.append(loop_nuclide.percent)
+                nuc_density_types.append(loop_nuclide.percent_type)
 
         nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)

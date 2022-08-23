@@ -339,6 +339,13 @@ def test_get_nuclide_atom_densities(uo2):
         assert density > 0
 
 
+def test_get_specific_nuclide_atom_densities(uo2):
+    print(uo2)
+    nuc = uo2.get_nuclide_atom_densities(nuclide='O16')
+    assert list(nuc.keys()) == ['O16']
+    assert list(nuc.values())[0] > 0
+
+
 def test_get_nuclide_atoms():
     mat = openmc.Material()
     mat.add_nuclide('Li6', 1.0)

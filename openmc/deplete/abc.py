@@ -12,9 +12,7 @@ from numbers import Real, Integral
 from contextlib import contextmanager
 import os
 from pathlib import Path
-import sys
 import time
-from turtle import color
 from warnings import warn
 
 from numpy import nonzero, empty, asarray

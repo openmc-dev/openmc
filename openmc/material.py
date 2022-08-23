@@ -984,11 +984,10 @@ class Material(IDManagerMixin):
 
         """
         mass_density = 0.0
-        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            if nuclide is None or nuclide == nuc:
-                density_i = 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
-                            / openmc.data.AVOGADRO
-                mass_density += density_i
+        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities(nuclide=nuclide).items():
+            density_i = 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
+                        / openmc.data.AVOGADRO
+            mass_density += density_i
         return mass_density
 
     def get_mass(self, nuclide: Optional[str] = None):

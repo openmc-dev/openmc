@@ -869,10 +869,9 @@ class Material(IDManagerMixin):
         nuc_density_types = []
 
         for loop_nuclide in self.nuclides:
-            if nuclide is None or nuclide == loop_nuclide.name:
-                nucs.append(loop_nuclide.name)
-                nuc_densities.append(loop_nuclide.percent)
-                nuc_density_types.append(loop_nuclide.percent_type)
+            nucs.append(loop_nuclide.name)
+            nuc_densities.append(loop_nuclide.percent)
+            nuc_density_types.append(loop_nuclide.percent_type)
 
         nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)
@@ -904,7 +903,8 @@ class Material(IDManagerMixin):
 
         nuclides = OrderedDict()
         for n, nuc in enumerate(nucs):
-            nuclides[nuc] = nuc_densities[n]
+            if nuclide is None or nuclide == nuc:
+                nuclides[nuc] = nuc_densities[n]
 
         return nuclides
 

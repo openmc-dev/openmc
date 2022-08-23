@@ -340,7 +340,6 @@ def test_get_nuclide_atom_densities(uo2):
 
 
 def test_get_specific_nuclide_atom_densities(uo2):
-    print(uo2)
     one_nuc = uo2.get_nuclide_atom_densities(nuclide='O16')
     assert list(one_nuc.keys()) == ['O16']
     assert list(one_nuc.values())[0] > 0

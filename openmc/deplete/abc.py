@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import sys
 import time
+from turtle import color
 from warnings import warn
 
 from numpy import nonzero, empty, asarray
@@ -23,7 +24,7 @@ from openmc.checkvalue import check_type, check_greater_than
 from openmc.mpi import comm
 from .stepresult import StepResult
 from .chain import Chain
-from .results import Results
+from .results import Results, _get_time_as
 from .pool import deplete
 
 
@@ -592,6 +593,7 @@ class Integrator(ABC):
                         self._num_stages))
         self.operator = operator
         self.chain = operator.chain
+        self.timestep_units = timestep_units
 
         # Determine source rate and normalize units to W in using power
         if power is not None:
@@ -833,6 +835,46 @@ class Integrator(ABC):
 
         self.operator.finalize()
 
+    def plot(self):
+        """Plots the source strength as a function of time and the depletion
+        timesteps on an adjacent subplot.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Resulting image
+
+        """
+
+        import matplotlib.pyplot as plt
+
+        current_time = 0
+        linear_time_steps = [0]
+
+        for time_step in self.timesteps:
+            current_time += _get_time_as(time_step, self.timestep_units)
+            linear_time_steps.append(current_time)
+
+        fig, axes = plt.subplots(2, 1,  gridspec_kw={'height_ratios': [3, 1]})
+
+        # adds space between the plots to avoid overlapping x label
+        fig.subplots_adjust(hspace=.4)
+
+        axes[0].set_ylabel('Neutron source rate [n/s]')
+        axes[0].set_xlabel(f'Time [{self.timestep_units}]')
+        axes[0].stairs(self.source_rates, linear_time_steps, linewidth=2)
+
+        for timestep in linear_time_steps:
+            x_vals = [timestep, timestep]
+            y_vals = [0, 1]  # arbitrary heights selected as axis has no y scale
+            axes[1].plot(x_vals, y_vals, '-', color='red')
+
+        axes[1].set_xlabel(f'Timesteps [{self.timestep_units}]')
+        axes[1].set_ylim(0, 1)
+        axes[1].set_xticks(linear_time_steps)
+        axes[1].get_yaxis().set_visible(False)
+
+        return fig
 
 @add_params
 class SIIntegrator(Integrator):

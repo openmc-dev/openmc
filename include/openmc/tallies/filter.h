@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <gsl/gsl>
@@ -15,6 +14,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
+#include "openmc/static_map.h"
 #include "openmc/tallies/filter_match.h"
 #include "pugixml.hpp"
 
@@ -306,9 +306,9 @@ private:
   gsl::index index_;
   vector<double> bins_;
   vector<int32_t> cells_;
-  std::unordered_map<int32_t, int> map_;
+  static_map<int32_t, int> map_;
   vector<CellInstance> cell_instances_;
-  std::unordered_map<CellInstance, gsl::index, CellInstanceHash> imap_;
+  static_map<CellInstance, gsl::index, CellInstanceHash> imap_;
   vector<int> groups_;
   int32_t cell_;
   bool matches_transport_groups_ {false};

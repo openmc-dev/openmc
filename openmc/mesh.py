@@ -229,11 +229,11 @@ class StructuredMesh(MeshBase):
         from vtk.util import numpy_support as nps
 
         # check that the data sets are appropriately sized
-        errmsg = "The size of the dataset '{}' ({}) should be equal to the number of mesh cells ({})"
         for label, dataset in datasets.items():
             if isinstance(dataset, np.ndarray):
                 num_cells = self.dimension[0] * self.dimension[1] * self.dimension[2]
                 if not dataset.size == num_cells:
+                    errmsg = "The size of the dataset '{}' ({}) should be equal to the number of mesh cells ({})"
                     raise RuntimeError(errmsg.format(label, dataset.size, num_cells))
             else:
                 if len(dataset) == self.dimension[0] * self.dimension[1] * self.dimension[2]:

@@ -829,15 +829,15 @@ class Material(IDManagerMixin):
         """Returns one or all nuclides in the material and their atomic
         densities in units of atom/b-cm
 
+        .. versionchanged:: 0.13.1
+            The values in the dictionary were changed from a tuple containing
+            the nuclide name and the density to just the density.
+
         Parameters
         ----------
         nuclides : str, optional
             Nuclide for which atom density is desired. If not specified, the
             atom density for each nuclide in the material is given.
-
-        .. versionchanged:: 0.13.1
-            The values in the dictionary were changed from a tuple containing
-            the nuclide name and the density to just the density.
 
         Returns
         -------

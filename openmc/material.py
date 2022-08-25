@@ -833,7 +833,7 @@ class Material(IDManagerMixin):
         ----------
         nuclides : str, optional
             Nuclide for which atom density is desired. If not specified, the
-            atom density for the all the material is given.
+            atom density for each nuclide in the material is given.
 
         .. versionchanged:: 0.13.1
             The values in the dictionary were changed from a tuple containing
@@ -868,10 +868,10 @@ class Material(IDManagerMixin):
         nuc_densities = []
         nuc_density_types = []
 
-        for loop_nuclide in self.nuclides:
-            nucs.append(loop_nuclide.name)
-            nuc_densities.append(loop_nuclide.percent)
-            nuc_density_types.append(loop_nuclide.percent_type)
+        for nuc in self.nuclides:
+            nucs.append(nuc.name)
+            nuc_densities.append(nuc.percent)
+            nuc_density_types.append(nuc.percent_type)
 
         nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)

@@ -200,8 +200,6 @@ public:
 
   //! Definition of spatial region as Boolean expression of half-spaces
   vector<int32_t> region_;
-  //! Region in infix that may be modified depending on simplicity
-  vector<int32_t> region_infix_;
   bool simple_; //!< Does the region contain only intersections?
 
   //! \brief Neighboring cells in the same universe.

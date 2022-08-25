@@ -205,7 +205,7 @@ void add_precedence(std::vector<int32_t>& infix)
 //! This function uses the shunting-yard algorithm.
 //==============================================================================
 
-vector<int32_t> generate_rpn(int32_t cell_id, vector<int32_t> infix)
+vector<int32_t> generate_postfix(int32_t cell_id, vector<int32_t> infix)
 {
   vector<int32_t> rpn;
   vector<int32_t> stack;
@@ -619,15 +619,14 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   }
   region_.shrink_to_fit();
 
-  region_infix_ = region_;
   // If this cell is simple, remove all the superfluous operator tokens.
   if (simple_) {
-    for (auto it = region_infix_.begin(); it != region_infix_.end(); it++) {
+    for (auto it = region_.begin(); it != region_.end(); it++) {
       if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
-        region_infix_.erase(it);
+        region_.erase(it);
       }
     }
-    region_infix_.shrink_to_fit();
+    region_.shrink_to_fit();
   }
 
   // Read the translation vector.
@@ -672,7 +671,7 @@ std::pair<double, int32_t> CSGCell::distance(
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
 
-  for (int32_t token : region_infix_) {
+  for (int32_t token : region_) {
     // Ignore this token if it corresponds to an operator rather than a region.
     if (token >= OP_UNION)
       continue;
@@ -705,19 +704,18 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
   if (!region_.empty()) {
     std::stringstream region_spec {};
     for (int32_t token : region_) {
-      if (token == OP_LEFT_PAREN) {
-        region_spec << " (";
-      } else if (token == OP_RIGHT_PAREN) {
-        region_spec << " )";
-      } else if (token == OP_COMPLEMENT) {
-        region_spec << " ~";
-      } else if (token == OP_INTERSECTION) {
-      } else if (token == OP_UNION) {
-        region_spec << " |";
-      } else {
+      if (token < OP_UNION) {
         // Note the off-by-one indexing
         auto surf_id = model::surfaces[abs(token) - 1]->id_;
         region_spec << " " << ((token > 0) ? surf_id : -surf_id);
+      } else if (token > OP_COMPLEMENT) {
+        if (token == OP_LEFT_PAREN) {
+          region_spec << " (";
+        } else {
+          region_spec << " )";
+        }
+      } else if (token == OP_UNION) {
+        region_spec << " |";
       }
     }
     write_string(group_id, "region", region_spec.str(), false);
@@ -727,7 +725,7 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
 BoundingBox CSGCell::bounding_box_simple() const
 {
   BoundingBox bbox;
-  for (int32_t token : region_infix_) {
+  for (int32_t token : region_) {
     bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
   }
   return bbox;
@@ -813,12 +811,12 @@ void CSGCell::remove_complement_ops(vector<int32_t>& infix)
   }
 }
 
-BoundingBox CSGCell::bounding_box_complex(vector<int32_t> rpn)
+BoundingBox CSGCell::bounding_box_complex(vector<int32_t> postfix)
 {
-  vector<BoundingBox> stack(rpn.size());
+  vector<BoundingBox> stack(postfix.size());
   int i_stack = -1;
 
-  for (auto& token : rpn) {
+  for (auto& token : postfix) {
     if (token == OP_UNION) {
       stack[i_stack - 1] = stack[i_stack - 1] | stack[i_stack];
       i_stack--;
@@ -837,14 +835,19 @@ BoundingBox CSGCell::bounding_box_complex(vector<int32_t> rpn)
 
 BoundingBox CSGCell::bounding_box() const
 {
-  return simple_ ? bounding_box_simple() : bounding_box_complex(region_infix_);
+  if (simple_) {
+    return bounding_box_simple();
+  } else {
+    auto postfix = generate_postfix(this->id_, this->region_);
+    return bounding_box_complex(postfix);
+  }
 }
 
 //==============================================================================
 
 bool CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
-  for (int32_t token : region_infix_) {
+  for (int32_t token : region_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
     // respect to the surface and see if the token matches the sense. If the
     // particle's surface attribute is set and matches the token, that
@@ -872,7 +875,7 @@ bool CSGCell::contains_complex(
   int total_depth = 0;
 
   // For each token
-  for (auto it = region_infix_.begin(); it != region_infix_.end(); it++) {
+  for (auto it = region_.begin(); it != region_.end(); it++) {
     int32_t token = *it;
 
     // If the token is a surface evaluate the sense

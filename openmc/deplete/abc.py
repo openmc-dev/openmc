@@ -592,7 +592,6 @@ class Integrator(ABC):
                         self._num_stages))
         self.operator = operator
         self.chain = operator.chain
-        self.timestep_units = timestep_units
 
         # Determine source rate and normalize units to W in using power
         if power is not None:
@@ -836,9 +835,17 @@ class Integrator(ABC):
 
         self.operator.finalize()
 
-    def plot(self):
+    def plot(self, timestep_units: str = 's'):
         """Plots the source strength as a function of time and the depletion
         timesteps on an adjacent subplot.
+
+        Parameters
+        ----------
+        timestep_units : {'s', 'min', 'h', 'd', 'a', 'MWd/kg'}
+            Units for values specified in the `timesteps` argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian
+            years and 'MWd/kg' indicates that the values are given in burnup
+            (MW-d of energy deposited per kilogram of initial heavy metal).
 
         Returns
         -------
@@ -853,7 +860,7 @@ class Integrator(ABC):
         linear_time_steps = [0]
 
         for time_step in self.timesteps:
-            current_time += _get_time_as(time_step, self.timestep_units)
+            current_time += _get_time_as(time_step, timestep_units)
             linear_time_steps.append(current_time)
 
         fig, axes = plt.subplots(2, 1,  gridspec_kw={'height_ratios': [3, 1]})
@@ -862,7 +869,7 @@ class Integrator(ABC):
         fig.subplots_adjust(hspace=.4)
 
         axes[0].set_ylabel('Neutron source rate [n/s]')
-        axes[0].set_xlabel(f'Time [{self.timestep_units}]')
+        axes[0].set_xlabel(f'Time [{timestep_units}]')
         axes[0].stairs(self.source_rates, linear_time_steps, linewidth=2)
 
         for timestep in linear_time_steps:
@@ -870,7 +877,7 @@ class Integrator(ABC):
             y_vals = [0, 1]  # arbitrary heights selected as axis has no y scale
             axes[1].plot(x_vals, y_vals, '-', color='red')
 
-        axes[1].set_xlabel(f'Timesteps [{self.timestep_units}]')
+        axes[1].set_xlabel(f'Timesteps [{timestep_units}]')
         axes[1].set_ylim(0, 1)
         axes[1].get_yaxis().set_visible(False)
 

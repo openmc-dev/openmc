@@ -97,6 +97,7 @@ int openmc_simulation_init()
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
+    t->set_strides();
     t->init_results();
   }
 

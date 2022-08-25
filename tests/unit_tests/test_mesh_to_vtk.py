@@ -71,6 +71,9 @@ def test_write_data_to_vtk_size_mismatch(mesh):
     right_size = mesh.num_mesh_cells
     data = np.random.random(right_size + 1)
 
-    expected_error_msg = "The size of the dataset label should be equal to the number of cells"
+    expected_error_msg = (
+        f"The size of the dataset 'label' ({len(data)}) should be equal to "
+        f"the number of mesh cells ({mesh.num_mesh_cells})"
+    )
     with pytest.raises(RuntimeError, match=expected_error_msg):
         mesh.write_data_to_vtk(filename="out.vtk", datasets={"label": data})

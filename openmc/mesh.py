@@ -230,14 +230,16 @@ class StructuredMesh(MeshBase):
 
         # check that the data sets are appropriately sized
         for label, dataset in datasets.items():
+            errmsg = (
+                f"The size of the dataset '{label}' ({dataset.size}) "
+                f"should be equal to the number of mesh cells ({self.num_mesh_cells})"
+            )
             if isinstance(dataset, np.ndarray):
-                num_cells = self.dimension[0] * self.dimension[1] * self.dimension[2]
-                if not dataset.size == num_cells:
-                    errmsg = "The size of the dataset '{}' ({}) should be equal to the number of mesh cells ({})"
-                    raise RuntimeError(errmsg.format(label, dataset.size, num_cells))
+                if not dataset.size == self.num_mesh_cells:
+                    raise RuntimeError(errmsg)
             else:
-                if len(dataset) == self.dimension[0] * self.dimension[1] * self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
+                if len(dataset) == self.num_mesh_cells:
+                    raise RuntimeError(errmsg)
             cv.check_type('label', label, str)
 
         vtk_grid = vtk.vtkStructuredGrid()

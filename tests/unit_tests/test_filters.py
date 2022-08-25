@@ -1,4 +1,3 @@
-import math
 import numpy as np
 import openmc
 from pytest import fixture, approx

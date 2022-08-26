@@ -5,7 +5,7 @@ from numbers import Real
 from pathlib import Path
 import os
 import re
-import typing  # imported separately as py3.8 requires typing.Iterableo
+import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
 from typing import Optional, Union
 from xml.etree import ElementTree as ET
@@ -1136,17 +1136,14 @@ class Material(IDManagerMixin):
         return element
 
 
-    def is_natural_abundance(self, element: str = None, abs_tol: float = 1e-9):
+    def is_natural_abundance(self, element: Optional[str] = None):
         """Checks whether the ratio of nuclide abundances in the material
-        matches that found in nature.
+        matches that found in nature. Checks all the elements by default.
 
         Parameters
         ----------
         element : str
             Specifies the element to match when searching through the nuclides
-        abs_tol : float
-            The absolute tolerance between the natural abundance nuclide ratios
-            and the nuclide ratios in the material
 
         Returns
         -------

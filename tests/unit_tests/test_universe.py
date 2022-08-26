@@ -66,7 +66,7 @@ def test_get_nuclides(uo2):
     c = openmc.Cell(fill=uo2)
     univ = openmc.Universe(cells=[c])
     nucs = univ.get_nuclides()
-    assert nucs == ['U235', 'O16']
+    assert nucs == ['O16', 'U235']
 
 
 def test_cells():

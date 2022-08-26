@@ -120,7 +120,7 @@ def test_rotation():
 def test_get_nuclides(uo2):
     c = openmc.Cell(fill=uo2)
     nucs = c.get_nuclides()
-    assert nucs == ['U235', 'O16']
+    assert nucs == ['O16', 'U235']
 
 
 def test_volume_setting():

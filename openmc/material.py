@@ -15,6 +15,7 @@ import numpy as np
 
 import openmc
 import openmc.data
+from openmc.data import NATURAL_ABUNDANCE
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
@@ -795,8 +796,14 @@ class Material(IDManagerMixin):
 
         return sorted({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
 
-    def get_nuclides(self):
-        """Returns all nuclides in the material
+    def get_nuclides(self, element: Optional[str] = None):
+        """Returns all nuclides in the material, if element is specified then
+        just nuclides of the specified element are returned.
+
+        Parameters
+        ----------
+        element : str
+            Specifies the element to match when searching through the nuclides
 
         Returns
         -------
@@ -804,7 +811,15 @@ class Material(IDManagerMixin):
             List of nuclide names
 
         """
-        return [x.name for x in self._nuclides]
+        if element:
+            matching_nuclides = []
+            for nuclide in self._nuclides:
+                if re.split(r'(\d+)', nuclide.name)[0] == element:
+                    matching_nuclides.append(nuclide.name)
+            return sorted(set(matching_nuclides))
+
+        else:
+            return sorted(set([x.name for x in self._nuclides]))
 
     def get_nuclide_densities(self):
         """Returns all nuclides in the material and their densities

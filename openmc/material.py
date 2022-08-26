@@ -15,7 +15,6 @@ import numpy as np
 
 import openmc
 import openmc.data
-from openmc.data import NATURAL_ABUNDANCE
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin

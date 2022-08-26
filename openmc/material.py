@@ -825,13 +825,19 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self):
-        """Returns all nuclides in the material and their atomic densities in
-        units of atom/b-cm
+    def get_nuclide_atom_densities(self, nuclide: Optional[str] = None):
+        """Returns one or all nuclides in the material and their atomic
+        densities in units of atom/b-cm
 
         .. versionchanged:: 0.13.1
             The values in the dictionary were changed from a tuple containing
             the nuclide name and the density to just the density.
+
+        Parameters
+        ----------
+        nuclides : str, optional
+            Nuclide for which atom density is desired. If not specified, the
+            atom density for each nuclide in the material is given.
 
         Returns
         -------
@@ -862,10 +868,10 @@ class Material(IDManagerMixin):
         nuc_densities = []
         nuc_density_types = []
 
-        for nuclide in self.nuclides:
-            nucs.append(nuclide.name)
-            nuc_densities.append(nuclide.percent)
-            nuc_density_types.append(nuclide.percent_type)
+        for nuc in self.nuclides:
+            nucs.append(nuc.name)
+            nuc_densities.append(nuc.percent)
+            nuc_density_types.append(nuc.percent_type)
 
         nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)
@@ -897,7 +903,8 @@ class Material(IDManagerMixin):
 
         nuclides = OrderedDict()
         for n, nuc in enumerate(nucs):
-            nuclides[nuc] = nuc_densities[n]
+            if nuclide is None or nuclide == nuc:
+                nuclides[nuc] = nuc_densities[n]
 
         return nuclides
 
@@ -977,11 +984,10 @@ class Material(IDManagerMixin):
 
         """
         mass_density = 0.0
-        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            if nuclide is None or nuclide == nuc:
-                density_i = 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
-                            / openmc.data.AVOGADRO
-                mass_density += density_i
+        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities(nuclide=nuclide).items():
+            density_i = 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
+                        / openmc.data.AVOGADRO
+            mass_density += density_i
         return mass_density
 
     def get_mass(self, nuclide: Optional[str] = None):

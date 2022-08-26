@@ -389,6 +389,12 @@ struct CellInstance {
   bool operator==(const CellInstance& other) const
   { return index_cell == other.index_cell && instance == other.instance; }
 
+  bool operator<(const CellInstance& other) const
+  {
+    return std::tie(index_cell, instance) <
+           std::tie(other.index_cell, other.instance);
+  }
+
   gsl::index index_cell;
   gsl::index instance;
 };

@@ -40,9 +40,10 @@ Filter::set_surfaces(gsl::span<int32_t> surfaces)
     Expects(index >= 0);
     Expects(index < model::surfaces.size());
     surfaces_.push_back(index);
-    map_[index] = surfaces_.size() - 1;
+    map_.insert({index, surfaces_.size() - 1});
   }
 
+  map_.finalize();
   n_bins_ = surfaces_.size();
 }
 

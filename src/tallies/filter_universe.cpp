@@ -38,9 +38,10 @@ Filter::set_universes(gsl::span<int32_t> universes)
     Expects(index >= 0);
     Expects(index < model::universes.size());
     universes_.push_back(index);
-    map_[index] = universes_.size() - 1;
+    map_.insert({index, universes_.size() - 1});
   }
 
+  map_.finalize();
   n_bins_ = universes_.size();
 }
 

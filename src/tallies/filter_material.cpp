@@ -38,9 +38,10 @@ Filter::set_materials(gsl::span<const int32_t> materials)
     Expects(index >= 0);
     Expects(index < model::materials_size);
     materials_.push_back(index);
-    map_[index] = materials_.size() - 1;
+    map_.insert({index, materials_.size() - 1});
   }
 
+  map_.finalize();
   n_bins_ = materials_.size();
 }
 

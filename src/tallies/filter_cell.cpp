@@ -39,9 +39,10 @@ Filter::set_cells(gsl::span<int32_t> cells)
     Expects(index >= 0);
     Expects(index < model::cells.size());
     cells_.push_back(index);
-    map_[index] = cells_.size() - 1;
+    map_.insert({index, cells_.size() - 1});
   }
 
+  map_.finalize();
   n_bins_ = cells_.size();
 }
 

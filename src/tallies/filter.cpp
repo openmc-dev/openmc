@@ -42,10 +42,8 @@ extern "C" size_t tally_filters_size()
 
 void Filter::copy_to_device()
 {
-  //TODO: Need to Map the unordered map fields to device
-  //map_.copy_to_device();
-  //imap_.copy_to_device();
-
+  map_.copy_to_device();
+  imap_.copy_to_device();
   bins_.copy_to_device();
   cells_.copy_to_device();
   cell_instances_.copy_to_device();

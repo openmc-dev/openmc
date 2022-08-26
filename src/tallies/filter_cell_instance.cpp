@@ -61,9 +61,10 @@ Filter::set_cell_instances(gsl::span<CellInstance> instances)
         "used in a cell instance filter.", c.id_)};
     }
     cell_instances_.push_back(x);
-    imap_[x] = cell_instances_.size() - 1;
+    imap_.insert({x, cell_instances_.size() - 1});
   }
 
+  imap_.finalize();
   n_bins_ = cell_instances_.size();
 }
 

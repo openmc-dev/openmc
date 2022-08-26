@@ -523,3 +523,53 @@ def test_get_activity():
     # volume is required to calculate total activity
     m4.volume = 10.
     assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
+
+def test_is_natural_abundance():
+    """Tests single nuclide, single element and multiple element materials"""
+    
+    mat = openmc.Material()
+
+    # checking empty material raises error
+    with pytest.raises(ValueError):
+        mat.is_natural_abundance()
+
+    # checking single nuclide material is not natural
+    mat.add_nuclide('Li6', 1)
+    assert mat.is_natural_abundance() is False
+    assert mat.is_natural_abundance(element='Li') is False
+    
+    # checking single element material is natural
+    mat.remove_nuclide('Li6')
+    mat.add_element('Li', 1)
+    assert mat.is_natural_abundance(element='Li') is True
+    assert mat.is_natural_abundance() is True
+    
+    # checking multiple element material is natural
+    mat.add_element('Be', 1)
+    assert mat.is_natural_abundance() is True
+    assert mat.is_natural_abundance(element='Be') is True
+    assert mat.is_natural_abundance(element='Li') is True
+
+    # checking multiple element with single element material not natural
+    mat.add_nuclide('U235', 1)
+    mat.is_natural_abundance() is False
+    assert mat.is_natural_abundance(element='Li') is True
+    assert mat.is_natural_abundance(element='Be') is True
+    assert mat.is_natural_abundance(element='U') is False
+
+    # unstable isotope that does not appear in openmc.data.isotopes
+    mat.remove_nuclide('U235')
+    mat.add_nuclide('Li8', 1)
+    assert mat.is_natural_abundance() is False
+    assert mat.is_natural_abundance(element='Li') is False
+    assert mat.is_natural_abundance(element='Be') is True
+
+    # unstable isotope that does not appear in openmc.data.isotopes
+    mat2 = openmc.Material()
+    mat2.add_element('Li', 1)
+    mat2.add_nuclide('Li8', 1)
+    assert mat2.is_natural_abundance() is False
+    assert mat2.is_natural_abundance(element='Li') is False
+    
+    with pytest.raises(ValueError):
+        mat.is_natural_abundance(element='Au')

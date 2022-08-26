@@ -5,7 +5,7 @@ from numbers import Real
 from pathlib import Path
 import os
 import re
-import typing  # imported separately as py3.8 requires typing.Iterable
+import typing  # imported separately as py3.8 requires typing.Iterableo
 import warnings
 from typing import Optional, Union
 from xml.etree import ElementTree as ET
@@ -16,6 +16,7 @@ import numpy as np
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
+from openmc.data import isotopes
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 
@@ -1133,6 +1134,68 @@ class Material(IDManagerMixin):
             subelement.text = ' '.join(self._isotropic)
 
         return element
+
+
+    def is_natural_abundance(self, element: str = None, abs_tol: float = 1e-9):
+        """Checks whether the ratio of nuclide abundances in the material
+        matches that found in nature.
+
+        Parameters
+        ----------
+        element : str
+            Specifies the element to match when searching through the nuclides
+        abs_tol : float
+            The absolute tolerance between the natural abundance nuclide ratios
+            and the nuclide ratios in the material
+
+        Returns
+        -------
+        natural : boolean
+            whether the nuclide composition of the material or element in
+            material is natural (True) or not (False)
+        """
+        
+        elements_present = self.get_elements()
+        
+        if len(self.nuclides) == 0:
+            msg = (
+                'Material has no nuclides or elements. Natural abundance '
+                'status can not be found'
+            )
+            raise ValueError(msg)
+            
+        if element:
+            if element not in elements_present:
+                msg = (
+                    f'Element {element} is not present in the material.'
+                    f'Elements present in the material are {elements_present}'
+                )
+                raise ValueError(msg)
+            elements_to_check = [element]
+        else:
+            elements_to_check = elements_present
+    
+        mat_nuc_abund = self.get_nuclide_atom_densities()
+        for element_being_checked in elements_to_check:
+            nat_nuc_abund = isotopes(element_being_checked)
+            
+            nucs_of_element_in_mat = self.get_nuclides(element=element_being_checked)
+            
+            if len(nucs_of_element_in_mat) != len(nat_nuc_abund):
+                return False
+            
+            nuc_ratios = []
+            for key, value in nat_nuc_abund:
+    
+                if key not in mat_nuc_abund.keys():
+                    return False
+                    
+                nuc_ratios.append(mat_nuc_abund[key] / value)
+
+            if len(set(nuc_ratios)) != 1:
+                return False
+
+        return True
 
     @classmethod
     def mix_materials(cls, materials, fracs: typing.Iterable[float],

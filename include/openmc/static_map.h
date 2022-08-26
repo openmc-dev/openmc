@@ -39,7 +39,8 @@ struct integer_hash
 //! This is a read-only hash table that supports on-device lookups. The table
 //! is constructed on the host and must be "finalized" before it can be used to
 //! search for items. Adapted from the \c Static_Device_Map class in Oak Ridge
-//! National Laboratory's SCALE code system.
+//! National Laboratory's SCALE code system with help from 
+//! Seth Johnson, Tom Evans, and Steven Hamilton.
 template<typename Key, typename T, typename Hash = integer_hash<Key>>
 class static_map {
 public:

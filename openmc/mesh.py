@@ -231,8 +231,8 @@ class StructuredMesh(MeshBase):
         # check that the data sets are appropriately sized
         for label, dataset in datasets.items():
             errmsg = (
-                f"The size of the dataset '{label}' ({dataset.size}) "
-                f"should be equal to the number of mesh cells ({self.num_mesh_cells})"
+                f"The size of the dataset '{label}' ({dataset.size}) should be"
+                f" equal to the number of mesh cells ({self.num_mesh_cells})"
             )
             if isinstance(dataset, np.ndarray):
                 if not dataset.size == self.num_mesh_cells:

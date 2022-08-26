@@ -797,8 +797,9 @@ class Material(IDManagerMixin):
         return sorted({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
 
     def get_nuclides(self, element: Optional[str] = None):
-        """Returns all nuclides in the material, if element is specified then
-        just nuclides of the specified element are returned.
+        """Returns a sorted list of all nuclides in the material, if the
+        argument element is specified then just nuclides of that element are
+        returned.
 
         Parameters
         ----------

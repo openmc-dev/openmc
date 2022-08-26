@@ -357,7 +357,7 @@ def test_get_nuclide_atoms():
     atoms = mat.get_nuclide_atoms()
     assert atoms['Li6'] == pytest.approx(mat.density * mat.volume)
 
-def test_get_nuclide():
+def test_get_nuclides():
     mat = openmc.Material()
 
     mat.add_nuclide('Li6', 1.0)

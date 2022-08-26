@@ -624,6 +624,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     for (auto it = region_.begin(); it != region_.end(); it++) {
       if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
         region_.erase(it);
+        it--;
       }
     }
     region_.shrink_to_fit();
@@ -807,7 +808,7 @@ void CSGCell::remove_complement_ops(vector<int32_t>& infix)
     // positions in the RPN
     apply_demorgan(it, stop);
     // update iterator position
-    it = std::find(it, infix.end(), OP_COMPLEMENT);
+    it = std::find(infix.begin(), infix.end(), OP_COMPLEMENT);
   }
 }
 

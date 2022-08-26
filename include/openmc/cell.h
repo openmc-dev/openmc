@@ -244,7 +244,7 @@ protected:
   bool contains_simple(Position r, Direction u, int32_t on_surface) const;
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
   BoundingBox bounding_box_simple() const;
-  static BoundingBox bounding_box_complex(vector<int32_t> rpn);
+  static BoundingBox bounding_box_complex(vector<int32_t> postfix);
 
   //! Applies DeMorgan's laws to a section of the RPN
   //! \param start Starting point for token modification

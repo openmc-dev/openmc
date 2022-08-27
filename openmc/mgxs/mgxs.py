@@ -3154,6 +3154,8 @@ class DiffusionCoefficient(TransportXS):
                 raise ValueError(msg)
 
             # Switch EnergyoutFilter to EnergyFilter
+            # If 'scatter-1' is not in tallies, it is because the transport correction has
+            # already occurred on this MGXS in another function or in a previous call to this function.
             if 'scatter-1' in self.tallies:
                 p1_tally = self.tallies['scatter-1']
                 old_filt = p1_tally.filters[-2]
@@ -3176,7 +3178,7 @@ class DiffusionCoefficient(TransportXS):
 
         return self._xs_tally
 
-    def get_condensed_xs(self, coarse_groups, condense_diff_coef=True):
+    def get_condensed_xs(self, coarse_groups):
         """Construct an energy-condensed version of this cross section.
 
         Parameters
@@ -3202,7 +3204,9 @@ class DiffusionCoefficient(TransportXS):
         # Clone this MGXS to initialize the condensed version
         condensed_xs = copy.deepcopy(self)
 
-        if condense_diff_coef:
+        # If 'scatter-1' is not in tallies, it is because the transport correction has
+        # already occurred on this MGXS in another function or in a previous call to this function.
+        if 'scatter-1' in self.tallies:
             p1_tally = self.tallies['scatter-1']
             old_filt = p1_tally.filters[-2]
             new_filt = openmc.EnergyFilter(old_filt.values)

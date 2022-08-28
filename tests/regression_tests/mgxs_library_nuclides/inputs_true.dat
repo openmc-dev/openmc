@@ -82,7 +82,7 @@
   </tally>
   <tally id="2">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -94,7 +94,7 @@
   </tally>
   <tally id="4">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -106,7 +106,7 @@
   </tally>
   <tally id="6">
     <filters>1 5 6</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -118,7 +118,7 @@
   </tally>
   <tally id="8">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -130,7 +130,7 @@
   </tally>
   <tally id="10">
     <filters>1 5 6</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -142,7 +142,7 @@
   </tally>
   <tally id="12">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>absorption</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -154,25 +154,25 @@
   </tally>
   <tally id="14">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>absorption</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="15">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,2n)</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="16">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,3n)</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="17">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,4n)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -184,13 +184,13 @@
   </tally>
   <tally id="19">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>absorption</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="20">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -202,7 +202,7 @@
   </tally>
   <tally id="22">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -214,7 +214,7 @@
   </tally>
   <tally id="24">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -226,7 +226,7 @@
   </tally>
   <tally id="26">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>kappa-fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -238,7 +238,7 @@
   </tally>
   <tally id="28">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -250,7 +250,7 @@
   </tally>
   <tally id="30">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -262,7 +262,7 @@
   </tally>
   <tally id="32">
     <filters>1 2 5 30</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -274,19 +274,19 @@
   </tally>
   <tally id="34">
     <filters>1 2 5 30</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="35">
     <filters>1 2 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="36">
     <filters>1 2 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -298,13 +298,13 @@
   </tally>
   <tally id="38">
     <filters>1 2 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="39">
     <filters>1 2 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -316,13 +316,13 @@
   </tally>
   <tally id="41">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="42">
     <filters>1 2 5 30</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -334,43 +334,43 @@
   </tally>
   <tally id="44">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="45">
     <filters>1 2 5 30</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="46">
     <filters>1 2 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="47">
     <filters>1 54</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="48">
     <filters>1 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="49">
     <filters>1 54</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>prompt-nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="50">
     <filters>1 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>prompt-nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
@@ -382,7 +382,7 @@
   </tally>
   <tally id="52">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>inverse-velocity</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -394,7 +394,7 @@
   </tally>
   <tally id="54">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>prompt-nu-fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -406,7 +406,7 @@
   </tally>
   <tally id="56">
     <filters>1 2 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>prompt-nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
@@ -418,7 +418,7 @@
   </tally>
   <tally id="58">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -430,7 +430,7 @@
   </tally>
   <tally id="60">
     <filters>1 5 6</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -442,7 +442,7 @@
   </tally>
   <tally id="62">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -454,7 +454,7 @@
   </tally>
   <tally id="64">
     <filters>1 5 6</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -466,7 +466,7 @@
   </tally>
   <tally id="66">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,elastic)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -478,7 +478,7 @@
   </tally>
   <tally id="68">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,level)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -490,7 +490,7 @@
   </tally>
   <tally id="70">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,2n)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -502,7 +502,7 @@
   </tally>
   <tally id="72">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,na)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -514,7 +514,7 @@
   </tally>
   <tally id="74">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,nc)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -526,7 +526,7 @@
   </tally>
   <tally id="76">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,gamma)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -538,7 +538,7 @@
   </tally>
   <tally id="78">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,a)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -550,7 +550,7 @@
   </tally>
   <tally id="80">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,Xa)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -562,7 +562,7 @@
   </tally>
   <tally id="82">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>heating</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -574,7 +574,7 @@
   </tally>
   <tally id="84">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>damage-energy</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -586,7 +586,7 @@
   </tally>
   <tally id="86">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,n1)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -598,7 +598,7 @@
   </tally>
   <tally id="88">
     <filters>1 2</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,a0)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -610,7 +610,7 @@
   </tally>
   <tally id="90">
     <filters>1 2 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,nc)</scores>
     <estimator>analog</estimator>
   </tally>
@@ -622,7 +622,7 @@
   </tally>
   <tally id="92">
     <filters>1 2 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,n1)</scores>
     <estimator>analog</estimator>
   </tally>
@@ -634,7 +634,7 @@
   </tally>
   <tally id="94">
     <filters>1 2 5</filters>
-    <nuclides>U234 U235 U238 O16</nuclides>
+    <nuclides>O16 U234 U235 U238</nuclides>
     <scores>(n,2n)</scores>
     <estimator>analog</estimator>
   </tally>

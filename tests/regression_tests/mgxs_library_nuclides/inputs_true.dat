@@ -1210,7 +1210,7 @@
   </tally>
   <tally id="190">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1222,7 +1222,7 @@
   </tally>
   <tally id="192">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1234,7 +1234,7 @@
   </tally>
   <tally id="194">
     <filters>211 5 6</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1246,7 +1246,7 @@
   </tally>
   <tally id="196">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1258,7 +1258,7 @@
   </tally>
   <tally id="198">
     <filters>211 5 6</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1270,7 +1270,7 @@
   </tally>
   <tally id="200">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>absorption</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1282,25 +1282,25 @@
   </tally>
   <tally id="202">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>absorption</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="203">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,2n)</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="204">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,3n)</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="205">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,4n)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1312,13 +1312,13 @@
   </tally>
   <tally id="207">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>absorption</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="208">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1330,7 +1330,7 @@
   </tally>
   <tally id="210">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1342,7 +1342,7 @@
   </tally>
   <tally id="212">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1354,7 +1354,7 @@
   </tally>
   <tally id="214">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>kappa-fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1366,7 +1366,7 @@
   </tally>
   <tally id="216">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1378,7 +1378,7 @@
   </tally>
   <tally id="218">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1390,7 +1390,7 @@
   </tally>
   <tally id="220">
     <filters>211 2 5 30</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1402,19 +1402,19 @@
   </tally>
   <tally id="222">
     <filters>211 2 5 30</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="223">
     <filters>211 2 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="224">
     <filters>211 2 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1426,13 +1426,13 @@
   </tally>
   <tally id="226">
     <filters>211 2 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="227">
     <filters>211 2 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1444,13 +1444,13 @@
   </tally>
   <tally id="229">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="230">
     <filters>211 2 5 30</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1462,43 +1462,43 @@
   </tally>
   <tally id="232">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>tracklength</estimator>
   </tally>
   <tally id="233">
     <filters>211 2 5 30</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="234">
     <filters>211 2 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="235">
     <filters>211 54</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="236">
     <filters>211 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="237">
     <filters>211 54</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>prompt-nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
   <tally id="238">
     <filters>211 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>prompt-nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1510,7 +1510,7 @@
   </tally>
   <tally id="240">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>inverse-velocity</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1522,7 +1522,7 @@
   </tally>
   <tally id="242">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>prompt-nu-fission</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1534,7 +1534,7 @@
   </tally>
   <tally id="244">
     <filters>211 2 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>prompt-nu-fission</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1546,7 +1546,7 @@
   </tally>
   <tally id="246">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1558,7 +1558,7 @@
   </tally>
   <tally id="248">
     <filters>211 5 6</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1570,7 +1570,7 @@
   </tally>
   <tally id="250">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>total</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1582,7 +1582,7 @@
   </tally>
   <tally id="252">
     <filters>211 5 6</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>nu-scatter</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1594,7 +1594,7 @@
   </tally>
   <tally id="254">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,elastic)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1606,7 +1606,7 @@
   </tally>
   <tally id="256">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,level)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1618,7 +1618,7 @@
   </tally>
   <tally id="258">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,2n)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1630,7 +1630,7 @@
   </tally>
   <tally id="260">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,na)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1642,7 +1642,7 @@
   </tally>
   <tally id="262">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,nc)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1654,7 +1654,7 @@
   </tally>
   <tally id="264">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,gamma)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1666,7 +1666,7 @@
   </tally>
   <tally id="266">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,a)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1678,7 +1678,7 @@
   </tally>
   <tally id="268">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,Xa)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1690,7 +1690,7 @@
   </tally>
   <tally id="270">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>heating</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1702,7 +1702,7 @@
   </tally>
   <tally id="272">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>damage-energy</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1714,7 +1714,7 @@
   </tally>
   <tally id="274">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,n1)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1726,7 +1726,7 @@
   </tally>
   <tally id="276">
     <filters>211 2</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,a0)</scores>
     <estimator>tracklength</estimator>
   </tally>
@@ -1738,7 +1738,7 @@
   </tally>
   <tally id="278">
     <filters>211 2 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,nc)</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1750,7 +1750,7 @@
   </tally>
   <tally id="280">
     <filters>211 2 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,n1)</scores>
     <estimator>analog</estimator>
   </tally>
@@ -1762,7 +1762,7 @@
   </tally>
   <tally id="282">
     <filters>211 2 5</filters>
-    <nuclides>H1 O16 B10 B11</nuclides>
+    <nuclides>B10 B11 H1 O16</nuclides>
     <scores>(n,2n)</scores>
     <estimator>analog</estimator>
   </tally>

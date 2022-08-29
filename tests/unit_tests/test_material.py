@@ -299,6 +299,23 @@ def test_isotropic():
     assert m2.isotropic == ['H1']
 
 
+def test_get_nuclides():
+    mat = openmc.Material()
+
+    mat.add_nuclide('Li6', 1.0)
+    assert mat.get_nuclides() == ['Li6']
+    assert mat.get_nuclides(element='Li') == ['Li6']
+    assert mat.get_nuclides(element='Be') == []
+
+    mat.add_element('Li', 1.0)
+    assert mat.get_nuclides() == ['Li7', 'Li6']
+    assert mat.get_nuclides(element='Be') == []
+
+    mat.add_element('Be', 1.0)
+    assert mat.get_nuclides() == ['Li7', 'Li6', 'Be9']
+    assert mat.get_nuclides(element='Be') == ['Be9']
+
+
 def test_get_elements():
     # test that zero elements exist on creation
     m = openmc.Material()

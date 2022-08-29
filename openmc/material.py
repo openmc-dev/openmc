@@ -795,16 +795,30 @@ class Material(IDManagerMixin):
 
         return sorted({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
 
-    def get_nuclides(self):
-        """Returns all nuclides in the material
+    def get_nuclides(self, element: Optional[str] = None):
+        """Returns a list of all nuclides in the material, if the element
+        argument is specified then just nuclides of that element are returned.
+
+        Parameters
+        ----------
+        element : str
+            Specifies the element to match when searching through the nuclides
 
         Returns
         -------
         nuclides : list of str
             List of nuclide names
-
         """
-        return [x.name for x in self._nuclides]
+
+        if element:
+            matching_nuclides = []
+            for nuclide in self._nuclides:
+                if re.split(r'(\d+)', nuclide.name)[0] == element:
+                    matching_nuclides.append(nuclide.name)
+            return list(set(matching_nuclides))
+
+        else:
+            return list(set([x.name for x in self._nuclides]))
 
     def get_nuclide_densities(self):
         """Returns all nuclides in the material and their densities

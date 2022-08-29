@@ -53,7 +53,7 @@ ENV DAGMC_REPO='https://github.com/svalinn/DAGMC'
 ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
 
 # LIBMESH variables
-ENV LIBMESH_TAG='v1.6.0'
+ENV LIBMESH_TAG='v1.7.1'
 ENV LIBMESH_REPO='https://github.com/libMesh/libmesh'
 ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 

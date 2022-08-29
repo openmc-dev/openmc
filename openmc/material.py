@@ -810,15 +810,18 @@ class Material(IDManagerMixin):
             List of nuclide names
         """
 
+        matching_nuclides = []
         if element:
-            matching_nuclides = []
             for nuclide in self._nuclides:
                 if re.split(r'(\d+)', nuclide.name)[0] == element:
-                    matching_nuclides.append(nuclide.name)
-            return list(set(matching_nuclides))
-
+                    if nuclide.name not in matching_nuclides:
+                        matching_nuclides.append(nuclide.name)
         else:
-            return list(set([x.name for x in self._nuclides]))
+            for nuclide in self._nuclides:
+                if nuclide.name not in matching_nuclides:
+                    matching_nuclides.append(nuclide.name)
+                        
+        return matching_nuclides
 
     def get_nuclide_densities(self):
         """Returns all nuclides in the material and their densities

@@ -308,11 +308,11 @@ def test_get_nuclides():
     assert mat.get_nuclides(element='Be') == []
 
     mat.add_element('Li', 1.0)
-    assert mat.get_nuclides() == ['Li7', 'Li6']
+    assert mat.get_nuclides() == ['Li6', 'Li7']
     assert mat.get_nuclides(element='Be') == []
 
     mat.add_element('Be', 1.0)
-    assert mat.get_nuclides() == ['Li7', 'Li6', 'Be9']
+    assert mat.get_nuclides() == ['Li6', 'Li7', 'Be9']
     assert mat.get_nuclides(element='Be') == ['Be9']
 
 

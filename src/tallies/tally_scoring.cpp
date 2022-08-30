@@ -2370,27 +2370,30 @@ void score_collision_tally(Particle& p)
   //fmt::print("collison happened\n");
   if(p.E_last()>2e5)
   {
-  fmt::print("post energy = {0} pre energy = {1}\n",p.E(),p.E_last());
-  fmt::print("event mt = {}\n",p.event_mt());
-  fmt::print("post weight = {0} pre weight = {1}\n",p.wgt(),p.wgt_last());
+  //fmt::print("post energy = {0} pre energy = {1}\n",p.E(),p.E_last());
+  //fmt::print("event mt = {}\n",p.event_mt());
+  //fmt::print("post weight = {0} pre weight = {1}\n",p.wgt(),p.wgt_last());
   //fmt::print("pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
-
-  fmt::print("distance = {}\n",distance);
-  fmt::print("xs = {}\n",p.macro_xs().total);
+  //fmt::print("u = {0} , {1} , {2}\n",p.u().x,p.u().y,p.u().z);
+  //fmt::print("u_last = {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  //fmt::print("distance = {}\n",distance);
+  //fmt::print("xs = {}\n",p.macro_xs().total);
 
   const auto& mat {model::materials[p.material()]};
   int n = mat->nuclide_.size();
   const auto& nuc {data::nuclides[0]};
   const auto& nuc2 {data::nuclides[1]};
-  fmt::print("number of nuclear = {}\n",n);
-  fmt::print("name of 1# nuclicde = {}\n",nuc->name_);
-  fmt::print("name of 2# nuclicde = {}\n",nuc2->name_);
+  //fmt::print("number of nuclear = {}\n",n);
+  //fmt::print("name of 1# nuclicde = {}\n",nuc->name_);
+  //fmt::print("name of 2# nuclicde = {}\n",nuc2->name_);
   int i_nuclide=0;
   const auto& rx {nuc->reactions_[0]};
+  //fmt::print("reaction MT = {}\n",rx->mt_);
   auto& d = rx->products_[0].distribution_[0];
   auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
-
-  fmt::print("name of 2# nuclicde = {}\n",d_.energy_[0]);
+  //fmt::print("d type = {}\n",typeid(d.get()).name());
+  //fmt::print("energy distribution at 0 {}\n",d_->angle().get_energy(0));
+  //fmt::print("energy distribution at 1 {}\n",d_->angle().get_energy(1));
   }
   //fmt::print("post energy = {}\n",p.E);
   //fmt::print(p.E);

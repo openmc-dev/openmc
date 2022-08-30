@@ -302,7 +302,8 @@ class Universe(UniverseBase):
             Seed for the random number generator
         openmc_exec : str
             Path to OpenMC executable.
-        axes : matplotlib.Axes to draw to
+        axes : matplotlib.Axes
+            Axes to draw to
 
             .. versionadded:: 0.13.1
         **kwargs

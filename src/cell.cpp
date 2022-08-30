@@ -135,8 +135,10 @@ std::vector<int32_t>::iterator add_parentheses(
     // If the current token is an operator and is different than the start token
     if (*start >= OP_UNION && *start != start_token) {
       // Skip wrapped regions but save iterator position to check precedence and
-      // add right parenthesis depending on the precedence of the original token
-      // when a right parenthesis is encountered of the opposite token
+      // add right parenthesis, right parenthesis position depends on the
+      // operator, when the operator is a union then do not include the operator
+      // in the region, when the operator is an intersection then include the
+      // operato and next surface
       if (*start == OP_LEFT_PAREN) {
         return_iterator = start;
         int depth = 1;
@@ -150,14 +152,9 @@ std::vector<int32_t>::iterator add_parentheses(
             }
           }
         } while (depth > 0);
-      } else if (start_token == OP_UNION) {
-        start = infix.insert(start - 1, OP_RIGHT_PAREN);
-        if (return_iterator == infix.begin()) {
-          return_iterator = start - 1;
-        }
-        return return_iterator;
       } else {
-        start = infix.insert(start, OP_RIGHT_PAREN);
+        start = infix.insert(
+          start_token == OP_UNION ? start - 1 : start, OP_RIGHT_PAREN);
         if (return_iterator == infix.begin()) {
           return_iterator = start - 1;
         }
@@ -181,19 +178,17 @@ void add_precedence(std::vector<int32_t>& infix)
   for (auto it = infix.begin(); it != infix.end(); it++) {
     int32_t token = *it;
 
-    // If the token is a union another operator has not been found set the
-    // current operator to union
-    // If the current operator is a union and the token is an intersection
-    // assert precedence
-    // If the token is a parenthesis reset the current operator
     if (token == OP_UNION || token == OP_INTERSECTION) {
       if (current_op == 0) {
+        // Set the current operator if is hasn't been set
         current_op = token;
       } else if (token != current_op) {
+        // If the current operator doesn't match the token, add parenthesis to assert precedence
         it = add_parentheses(it, infix);
         current_op = 0;
       }
     } else if (token > OP_COMPLEMENT) {
+      // If the token is a parenthesis reset the current operator
       current_op = 0;
     }
   }
@@ -898,7 +893,7 @@ bool CSGCell::contains_complex(
       if (total_depth == 0) {
         return in_cell;
       }
-      
+
       total_depth--;
 
       // While the iterator is within the bounds of the vector

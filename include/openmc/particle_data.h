@@ -203,6 +203,7 @@ class ParticleData {
 
 public:
   ParticleData();
+  void reset_cords();
 
 private:
   //==========================================================================

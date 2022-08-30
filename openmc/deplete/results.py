@@ -358,6 +358,42 @@ class Results(list):
                 time, time_units, atol, rtol)
         )
 
+    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False, burnup_index=None):
+        """Returns the activity of each materail in each burnup index in the
+        each depletion. The activity can optionally be split into activity for
+        each nuclide in the materials.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+            Specifies the type of activity to return, options include total
+            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
+            Default is volumetric activity [Bq/cm3].
+        by_nuclide : bool
+            Specifies if the activity should be returned for the material as a
+            whole or per nuclide. Default is False.
+        burn_index : int, Iterable of ints, optional
+            Index(es) of burnup step to evaluate. See also: get_step_where for
+            obtaining burnup step indices from other data such as the time.
+            Defaults to None which returns activities from all burnup indices.
+
+        Returns
+        -------
+        Iterable of Iterables of Union[dict, float]
+            If by_nuclide is True then a dictionary whose keys are nuclide
+            names and values are activity is returned. Otherwise the activity
+            of the material is returned as a float.
+        """
+
+        materials_at_each_burnstep = self.export_to_materials(burnup_index=burnup_index)
+
+        activities = []
+        for material in materials_at_each_burnstep:
+            activities.append(material.get_activity(units=units, by_nuclide=by_nuclide))
+        return activities
+
     def export_to_materials(self, burnup_index, nuc_with_data=None) -> Materials:
         """Return openmc.Materials object based on results at a given step
 

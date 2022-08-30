@@ -1411,6 +1411,37 @@ class Materials(cv.CheckedList):
             # Write the closing tag for the root element.
             fh.write('</materials>\n')
 
+    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False):
+        """Returns the activity of each material in the materials collection.
+        The activity can optionally be split into activity for each nuclide in
+        the material.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+            Specifies the type of activity to return, options include total
+            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
+            Default is volumetric activity [Bq/cm3].
+        by_nuclide : bool
+            Specifies if the activity should be returned for the material as a
+            whole or per nuclide. Default is False.
+
+        Returns
+        -------
+        Iterable of Union[dict, float]
+            If by_nuclide is True then a dictionary whose keys are nuclide
+            names and values are activity is returned. Otherwise the activity
+            of the material is returned as a float.
+        """
+
+        activities = []
+        for material in self:
+            activity = material.get_activity(units=units, by_nuclide=by_nuclide)
+            activities.append(activity)
+        return activities
+
     @classmethod
     def from_xml(cls, path: Union[str, os.PathLike] = 'materials.xml'):
         """Generate materials collection from XML file

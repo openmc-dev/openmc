@@ -28,6 +28,7 @@ spherical_mesh.r_grid = np.linspace(1, 2, num=30)
 spherical_mesh.phi_grid = np.linspace(0, np.pi, num=50)
 spherical_mesh.theta_grid = np.linspace(0, np.pi / 2, num=30)
 
+
 @pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
 def test_write_data_to_vtk(mesh, tmpdir):
     # BUILD
@@ -43,7 +44,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
 
     # read file
     reader = vtk.vtkStructuredGridReader()
-    reader.SetFileName(filename)
+    reader.SetFileName(str(filename))
     reader.Update()
 
     # check name of datasets
@@ -58,6 +59,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
     assert nps.vtk_to_numpy(array1).size == data.size
     assert nps.vtk_to_numpy(array2).size == data.size
 
+
 @pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
 def test_write_data_to_vtk_size_mismatch(mesh):
     """Checks that an error is raised when the size of the dataset
@@ -71,6 +73,12 @@ def test_write_data_to_vtk_size_mismatch(mesh):
     right_size = mesh.num_mesh_cells
     data = np.random.random(right_size + 1)
 
-    expected_error_msg = "The size of the dataset label should be equal to the number of cells"
-    with pytest.raises(RuntimeError, match=expected_error_msg):
+    # Error message has \ in to escape characters that are otherwise recognized
+    # by regex. These are needed to make the test string match the error message
+    # string when using the match argument as that uses regular expression
+    expected_error_msg = (
+        f"The size of the dataset 'label' \({len(data)}\) should be equal to "
+        f"the number of mesh cells \({mesh.num_mesh_cells}\)"
+    )
+    with pytest.raises(ValueError, match=expected_error_msg):
         mesh.write_data_to_vtk(filename="out.vtk", datasets={"label": data})

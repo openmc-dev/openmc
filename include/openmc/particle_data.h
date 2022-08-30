@@ -221,6 +221,7 @@ class ParticleData {
 
 public:
   ParticleData();
+  void reset_cords();
 
 private:
   //==========================================================================
@@ -268,6 +269,7 @@ private:
   int event_nuclide_;     //!< index in nuclides array
   int event_mt_;          //!< reaction MT
   int delayed_group_ {0}; //!< delayed group
+  Direction v_t_;
 
   // Post-collision physical data
   int n_bank_ {0};        //!< number of fission sites banked
@@ -403,6 +405,8 @@ public:
   const int& event_nuclide() const { return event_nuclide_; }
   int& event_mt() { return event_mt_; }
   int& delayed_group() { return delayed_group_; }
+  Position& v_t() { return v_t_; }
+  const Position& v_t() const { return v_t_; }
 
   int& n_bank() { return n_bank_; }
   int& n_bank_second() { return n_bank_second_; }

@@ -29,6 +29,13 @@ void LocalCoord::reset()
   lattice_i[2] = 0;
   rotated = false;
 }
+void ParticleData::reset_cords()
+{
+  // Create and clear coordinate levels
+  coord_.resize(model::n_coord_levels);
+  cell_last_.resize(model::n_coord_levels);
+  clear();
+}
 
 ParticleData::ParticleData()
 {

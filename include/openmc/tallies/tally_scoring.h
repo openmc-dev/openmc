@@ -68,6 +68,13 @@ private:
 //! \param p The particle being tracked
 void score_collision_tally(Particle& p);
 
+//! Score tallies using the next event estimator.
+//
+//! This is triggered after every collision.
+//
+//! \param p The particle being tracked
+void score_point_tally(Particle& p);
+
 //! Score tallies based on a simple count of events (for continuous energy).
 //
 //! Analog tallies are triggered at every collision, not every event.

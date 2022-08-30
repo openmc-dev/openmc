@@ -47,7 +47,7 @@ flags:
 -r, --restart file     Restart a previous run from a state point or a particle
                        restart file
 -s, --threads N        Run with *N* OpenMP threads
--t, --track            Write tracks for all particles
+-t, --track            Write tracks for all particles (up to max_tracks)
 -v, --version          Show version information
 -h, --help             Show help message
 
@@ -111,6 +111,19 @@ otherwise.
 ``openmc-plot-mesh-tally`` provides a graphical user interface for plotting mesh
 tallies. The path to the statepoint file can be provided as an optional arugment
 (if omitted, a file dialog will be presented).
+
+.. _scripts_track_combine:
+
+------------------------
+``openmc-track-combine``
+------------------------
+
+This script combines multiple HDF5 :ref:`particle track files
+<usersguide_track>` into a single HDF5 particle track file. The filenames of the
+particle track files should be given as posititional arguments. The output
+filename can also be changed with the ``-o`` flag:
+
+-o OUT, --out OUT    Output HDF5 particle track file
 
 .. _scripts_track:
 

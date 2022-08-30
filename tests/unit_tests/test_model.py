@@ -293,14 +293,14 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # C API execution modes and ensuring they give the same result.
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
-        cli_keff = sp.k_combined
+        cli_keff = sp.keff
         cli_flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
         cli_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 
     test_model.init_lib(output=False, intracomm=mpi_intracomm)
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
-        lib_keff = sp.k_combined
+        lib_keff = sp.keff
         lib_flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
         lib_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 
@@ -391,16 +391,14 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert openmc.lib.materials[1].get_density('atom/b-cm') == \
         pytest.approx(0.06891296988603757, abs=1e-13)
     mat_a_dens = np.sum(
-        [v[1] for v in test_model.materials[0].
-            get_nuclide_atom_densities().values()])
+        list(test_model.materials[0].get_nuclide_atom_densities().values()))
     assert mat_a_dens == pytest.approx(0.06891296988603757, abs=1e-8)
     # Change the density
     test_model.update_densities(['UO2'], 2.)
     assert openmc.lib.materials[1].get_density('atom/b-cm') == \
         pytest.approx(2., abs=1e-13)
     mat_a_dens = np.sum(
-        [v[1] for v in test_model.materials[0].
-            get_nuclide_atom_densities().values()])
+        list(test_model.materials[0].get_nuclide_atom_densities().values()))
     assert mat_a_dens == pytest.approx(2., abs=1e-8)
 
     # Now lets do the cell temperature updates.
@@ -441,7 +439,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     test_model = openmc.Model(geom, mats, settings, tals, plots)
 
     initial_mat = mats[0].clone()
-    initial_u = initial_mat.get_nuclide_atom_densities()['U235'][1]
+    initial_u = initial_mat.get_nuclide_atom_densities()['U235']
 
     # Note that the chain file includes only U-235 fission to a stable Xe136 w/
     # a yield of 100%. Thus all the U235 we lose becomes Xe136
@@ -453,8 +451,8 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
     # Get the new Xe136 and U235 atom densities
-    after_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
-    after_u = mats[0].get_nuclide_atom_densities()['U235'][1]
+    after_xe = mats[0].get_nuclide_atom_densities()['Xe136']
+    after_u = mats[0].get_nuclide_atom_densities()['U235']
     assert after_xe + after_u == pytest.approx(initial_u, abs=1e-15)
     assert test_model.is_initialized is False
 
@@ -462,7 +460,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats[0].nuclides.clear()
     densities = initial_mat.get_nuclide_atom_densities()
     tot_density = 0.
-    for nuc, density in densities.values():
+    for nuc, density in densities.items():
         mats[0].add_nuclide(nuc, density)
         tot_density += density
     mats[0].set_density('atom/b-cm', tot_density)
@@ -473,8 +471,8 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
     # Get the new Xe136 and U235 atom densities
-    after_lib_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
-    after_lib_u = mats[0].get_nuclide_atom_densities()['U235'][1]
+    after_lib_xe = mats[0].get_nuclide_atom_densities()['Xe136']
+    after_lib_u = mats[0].get_nuclide_atom_densities()['U235']
     assert after_lib_xe + after_lib_u == pytest.approx(initial_u, abs=1e-15)
     assert test_model.is_initialized is True
 

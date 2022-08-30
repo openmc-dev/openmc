@@ -70,7 +70,7 @@ private:
 };
 
 //==============================================================================
-//! Distribution of points specified by spherical coordinates r,theta,phi
+//! Distribution of points specified by spherical coordinates r,cos_theta,phi
 //==============================================================================
 
 class SphericalIndependent : public SpatialDistribution {
@@ -83,15 +83,15 @@ public:
   Position sample(uint64_t* seed) const;
 
   Distribution* r() const { return r_.get(); }
-  Distribution* theta() const { return theta_.get(); }
+  Distribution* cos_theta() const { return cos_theta_.get(); }
   Distribution* phi() const { return phi_.get(); }
   Position origin() const { return origin_; }
 
 private:
-  UPtrDist r_;      //!< Distribution of r coordinates
-  UPtrDist theta_;  //!< Distribution of theta coordinates
-  UPtrDist phi_;    //!< Distribution of phi coordinates
-  Position origin_; //!< Cartesian coordinates of the sphere center
+  UPtrDist r_;         //!< Distribution of r coordinates
+  UPtrDist cos_theta_; //!< Distribution of cos_theta coordinates
+  UPtrDist phi_;       //!< Distribution of phi coordinates
+  Position origin_;    //!< Cartesian coordinates of the sphere center
 };
 
 //==============================================================================

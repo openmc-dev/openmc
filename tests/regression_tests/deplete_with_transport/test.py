@@ -12,7 +12,7 @@ from openmc.data import JOULE_PER_EV
 import openmc.deplete
 
 from tests.regression_tests import config
-from example_geometry import generate_problem
+from .example_geometry import generate_problem
 
 
 @pytest.fixture(scope="module")
@@ -53,7 +53,7 @@ def test_full(run_in_tmpdir, problem, multiproc):
 
     # Create operator
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
-    op = openmc.deplete.Operator(model, chain_file)
+    op = openmc.deplete.CoupledOperator(model, chain_file)
     op.round_number = True
 
     # Power and timesteps
@@ -77,8 +77,8 @@ def test_full(run_in_tmpdir, problem, multiproc):
         return
 
     # Load the reference/test results
-    res_test = openmc.deplete.ResultsList.from_hdf5(path_test)
-    res_ref = openmc.deplete.ResultsList.from_hdf5(path_reference)
+    res_test = openmc.deplete.Results(path_test)
+    res_ref = openmc.deplete.Results(path_reference)
 
     # Assert same mats
     for mat in res_ref[0].mat_to_ind:
@@ -115,16 +115,16 @@ def test_full(run_in_tmpdir, problem, multiproc):
 
     # Compare statepoint files with depletion results
 
-    t_test, k_test = res_test.get_eigenvalue()
-    t_ref, k_ref = res_ref.get_eigenvalue()
+    t_test, k_test = res_test.get_keff()
+    t_ref, k_ref = res_ref.get_keff()
     k_state = np.empty_like(k_ref)
 
     n_tallies = np.empty(N + 1, dtype=int)
 
     # Get statepoint files for all BOS points and EOL
     for n in range(N + 1):
-        statepoint = openmc.StatePoint("openmc_simulation_n{}.h5".format(n))
-        k_n = statepoint.k_combined
+        statepoint = openmc.StatePoint(f"openmc_simulation_n{n}.h5")
+        k_n = statepoint.keff
         k_state[n] = [k_n.nominal_value, k_n.std_dev]
         n_tallies[n] = len(statepoint.tallies)
     # Look for exact match pulling from statepoint and depletion_results
@@ -139,7 +139,7 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
     """Checks openmc.Materials objects can be created from depletion results"""
     # Load the reference/test results
     path_reference = Path(__file__).with_name('test_reference.h5')
-    res_ref = openmc.deplete.ResultsList.from_hdf5(path_reference)
+    res_ref = openmc.deplete.Results(path_reference)
 
     # Firstly need to export materials.xml file for the initial simulation state
     geometry, lower_left, upper_right = problem

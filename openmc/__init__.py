@@ -30,10 +30,11 @@ from openmc.mixin import *
 from openmc.plotter import *
 from openmc.search import *
 from openmc.polynomial import *
+from openmc.tracks import *
 from . import examples
 
 # Import a few names from the model module
 from openmc.model import rectangular_prism, hexagonal_prism, Model
 
 
-__version__ = '0.13.1-dev'
+__version__ = '0.14.0-dev'

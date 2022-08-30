@@ -64,7 +64,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
     chain.export_to_xml('test_chain.xml')
 
     # Create transport operator
-    op = openmc.deplete.Operator(
+    op = openmc.deplete.CoupledOperator(
         model, 'test_chain.xml',
         normalization_mode="source-rate",
         reaction_rate_mode=reaction_rate_mode,
@@ -92,7 +92,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
 
     w = model.geometry.get_materials_by_name('tungsten')[0]
     atom_densities = w.get_nuclide_atom_densities()
-    atom_per_cc = 1e24 * atom_densities['W186'][1]  # Density in atom/cm^3
+    atom_per_cc = 1e24 * atom_densities['W186']  # Density in atom/cm^3
     n0 = atom_per_cc * w.volume  # Absolute number of atoms
 
     # Pick a random irradiation time and then determine necessary source rate to
@@ -107,7 +107,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
     integrator.integrate()
 
     # Get resulting number of atoms
-    results = openmc.deplete.ResultsList.from_hdf5('depletion_results.h5')
+    results = openmc.deplete.Results('depletion_results.h5')
     _, atoms = results.get_atoms(w, "W186")
 
     assert atoms[0] == pytest.approx(n0)
@@ -144,7 +144,7 @@ def test_decay(run_in_tmpdir):
 
     model = openmc.Model(geometry=geometry, settings=settings)
     # Create transport operator
-    op = openmc.deplete.Operator(
+    op = openmc.deplete.CoupledOperator(
         model, 'test_chain.xml', normalization_mode="source-rate"
     )
 
@@ -155,7 +155,7 @@ def test_decay(run_in_tmpdir):
     integrator.integrate()
 
     # Get resulting number of atoms
-    results = openmc.deplete.ResultsList.from_hdf5('depletion_results.h5')
+    results = openmc.deplete.Results('depletion_results.h5')
     _, atoms = results.get_atoms(mat, "Sr89")
 
     # Ensure density goes down by a factor of 2 after each half-life

@@ -297,3 +297,20 @@ def test_to_xml_element(cell_with_lattice):
     elem = c.create_xml_subelement(root)
     assert elem.get('region') == str(c.region)
     assert elem.get('temperature') == str(c.temperature)
+
+
+@pytest.mark.parametrize("rotation", [
+    (90, 45, 0),
+    [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]
+])
+def test_rotation_from_xml(rotation):
+    # Make sure rotation attribute (matrix) round trips through XML correctly
+    s = openmc.ZCylinder(r=10.0)
+    cell = openmc.Cell(region=-s)
+    cell.rotation = rotation
+    root = ET.Element('geometry')
+    elem = cell.create_xml_subelement(root)
+    new_cell = openmc.Cell.from_xml_element(
+        elem, {s.id: s}, {'void': None}, openmc.Universe
+    )
+    np.testing.assert_allclose(new_cell.rotation, cell.rotation)

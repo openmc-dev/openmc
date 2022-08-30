@@ -120,8 +120,11 @@ class MDGXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -605,7 +608,7 @@ class MDGXS(MGXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Delayed-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -1000,8 +1003,11 @@ class ChiDelayed(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -1516,8 +1522,11 @@ class DelayedNuFissionXS(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -1652,8 +1661,11 @@ class Beta(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -1842,8 +1854,11 @@ class DecayRate(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -2152,8 +2167,11 @@ class MatrixMDGXS(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -2477,7 +2495,7 @@ class MatrixMDGXS(MDGXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Delayed-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -2748,8 +2766,11 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -2759,6 +2780,6 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         super().__init__(domain, domain_type, energy_groups, delayed_groups,
                          by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'delayed-nu-fission'
-        self._hdf5_key = 'delayed-nu-fission matrix'
+        self._mgxs_type = 'delayed-nu-fission matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']

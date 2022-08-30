@@ -214,8 +214,8 @@ class Cell(IDManagerMixin):
                 self._atoms = self._fill.get_nuclide_atom_densities()
 
                 # Convert to total number of atoms
-                for key, nuclide in self._atoms.items():
-                    atom = nuclide[1] * self._volume * 1.0e+24
+                for key, atom_per_bcm in self._atoms.items():
+                    atom = atom_per_bcm * self._volume * 1.0e+24
                     self._atoms[key] = atom
 
             elif self.fill_type == 'distribmat':
@@ -224,12 +224,12 @@ class Cell(IDManagerMixin):
                 partial_volume = self.volume / len(self.fill)
                 self._atoms = OrderedDict()
                 for mat in self.fill:
-                    for key, nuclide in mat.get_nuclide_atom_densities().items():
+                    for key, atom_per_bcm in mat.get_nuclide_atom_densities().items():
                         # To account for overlap of nuclides between distribmat
                         # we need to append new atoms to any existing value
                         # hence it is necessary to ask for default.
                         atom = self._atoms.setdefault(key, 0)
-                        atom += nuclide[1] * partial_volume * 1.0e+24
+                        atom += atom_per_bcm * partial_volume * 1.0e+24
                         self._atoms[key] = atom
 
             else:
@@ -690,7 +690,10 @@ class Cell(IDManagerMixin):
         for key in ('temperature', 'rotation', 'translation'):
             value = get_text(elem, key)
             if value is not None:
-                setattr(c, key, [float(x) for x in value.split()])
+                values = [float(x) for x in value.split()]
+                if key == 'rotation' and len(values) == 9:
+                    values = np.array(values).reshape(3, 3)
+                setattr(c, key, values)
 
         # Add this cell to appropriate universe
         univ_id = int(get_text(elem, 'universe', 0))

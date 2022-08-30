@@ -2,6 +2,7 @@ import os
 import typing  # imported separately as py3.8 requires typing.Iterable
 from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
+import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
@@ -27,6 +28,11 @@ _RES_SCAT_METHODS = ['dbrc', 'rvs']
 
 class Settings:
     """Settings used for an OpenMC simulation.
+
+    Parameters
+    ----------
+    **kwargs : dict, optional
+        Any keyword arguments are used to set attributes on the instance.
 
     Attributes
     ----------
@@ -74,7 +80,7 @@ class Settings:
         Maximum number of lost particles
 
         .. versionadded:: 0.12
-    rel_max_lost_particles : int
+    rel_max_lost_particles : float
         Maximum number of lost particles, relative to the total number of particles
 
         .. versionadded:: 0.12
@@ -104,6 +110,10 @@ class Settings:
         Maximum number of times a particle can split during a history
 
         .. versionadded:: 0.13
+    max_tracks : int
+        Maximum number of tracks written to a track file (per MPI process).
+
+        .. versionadded:: 0.13.1
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
@@ -187,7 +197,7 @@ class Settings:
         integers: the batch number, generation number, and particle number
     track : tuple or list
         Specify particles for which track files should be written. Each particle
-        is identified by a triplet with the batch number, generation number, and
+        is identified by a tuple with the batch number, generation number, and
         particle number.
     trigger_active : bool
         Indicate whether tally triggers are used
@@ -217,7 +227,7 @@ class Settings:
         Indicate whether to write the initial source distribution to file
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._run_mode = RunMode.EIGENVALUE
         self._batches = None
         self._generations_per_batch = None
@@ -290,190 +300,198 @@ class Settings:
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
         self._weight_windows_on = None
         self._max_splits = None
+        self._max_tracks = None
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     @property
-    def run_mode(self):
+    def run_mode(self) -> str:
         return self._run_mode.value
 
     @property
-    def batches(self):
+    def batches(self) -> int:
         return self._batches
 
     @property
-    def generations_per_batch(self):
+    def generations_per_batch(self) -> int:
         return self._generations_per_batch
 
     @property
-    def inactive(self):
+    def inactive(self) -> int:
         return self._inactive
 
     @property
-    def max_lost_particles(self):
+    def max_lost_particles(self) -> int:
         return self._max_lost_particles
 
     @property
-    def rel_max_lost_particles(self):
+    def rel_max_lost_particles(self) -> float:
         return self._rel_max_lost_particles
 
     @property
-    def particles(self):
+    def particles(self) -> int:
         return self._particles
 
     @property
-    def keff_trigger(self):
+    def keff_trigger(self) -> dict:
         return self._keff_trigger
 
     @property
-    def energy_mode(self):
+    def energy_mode(self) -> str:
         return self._energy_mode
 
     @property
-    def max_order(self):
+    def max_order(self) -> int:
         return self._max_order
 
     @property
-    def source(self):
+    def source(self) -> typing.List[Source]:
         return self._source
 
     @property
-    def confidence_intervals(self):
+    def confidence_intervals(self) -> bool:
         return self._confidence_intervals
 
     @property
-    def electron_treatment(self):
+    def electron_treatment(self) -> str:
         return self._electron_treatment
 
     @property
-    def ptables(self):
+    def ptables(self) -> bool:
         return self._ptables
 
     @property
-    def photon_transport(self):
+    def photon_transport(self) -> bool:
         return self._photon_transport
 
     @property
-    def seed(self):
+    def seed(self) -> int:
         return self._seed
 
     @property
-    def survival_biasing(self):
+    def survival_biasing(self) -> bool:
         return self._survival_biasing
 
     @property
-    def entropy_mesh(self):
+    def entropy_mesh(self) -> RegularMesh:
         return self._entropy_mesh
 
     @property
-    def trigger_active(self):
+    def trigger_active(self) -> bool:
         return self._trigger_active
 
     @property
-    def trigger_max_batches(self):
+    def trigger_max_batches(self) -> int:
         return self._trigger_max_batches
 
     @property
-    def trigger_batch_interval(self):
+    def trigger_batch_interval(self) -> int:
         return self._trigger_batch_interval
 
     @property
-    def output(self):
+    def output(self) -> dict:
         return self._output
 
     @property
-    def sourcepoint(self):
+    def sourcepoint(self) -> dict:
         return self._sourcepoint
 
     @property
-    def statepoint(self):
+    def statepoint(self) -> dict:
         return self._statepoint
 
     @property
-    def surf_source_read(self):
+    def surf_source_read(self) -> dict:
         return self._surf_source_read
 
     @property
-    def surf_source_write(self):
+    def surf_source_write(self) -> dict:
         return self._surf_source_write
 
     @property
-    def no_reduce(self):
+    def no_reduce(self) -> bool:
         return self._no_reduce
 
     @property
-    def verbosity(self):
+    def verbosity(self) -> int:
         return self._verbosity
 
     @property
-    def tabular_legendre(self):
+    def tabular_legendre(self) -> dict:
         return self._tabular_legendre
 
     @property
-    def temperature(self):
+    def temperature(self) -> dict:
         return self._temperature
 
     @property
-    def trace(self):
+    def trace(self) -> typing.Iterable:
         return self._trace
 
     @property
-    def track(self):
+    def track(self) -> typing.Iterable[typing.Iterable[int]]:
         return self._track
 
     @property
-    def cutoff(self):
+    def cutoff(self) -> dict:
         return self._cutoff
 
     @property
-    def ufs_mesh(self):
+    def ufs_mesh(self) -> RegularMesh:
         return self._ufs_mesh
 
     @property
-    def resonance_scattering(self):
+    def resonance_scattering(self) -> dict:
         return self._resonance_scattering
 
     @property
-    def volume_calculations(self):
+    def volume_calculations(self) -> typing.List[VolumeCalculation]:
         return self._volume_calculations
 
     @property
-    def create_fission_neutrons(self):
+    def create_fission_neutrons(self) -> bool:
         return self._create_fission_neutrons
 
     @property
-    def delayed_photon_scaling(self):
+    def delayed_photon_scaling(self) -> bool:
         return self._delayed_photon_scaling
 
     @property
-    def material_cell_offsets(self):
+    def material_cell_offsets(self) -> bool:
         return self._material_cell_offsets
 
     @property
-    def log_grid_bins(self):
+    def log_grid_bins(self) -> int:
         return self._log_grid_bins
 
     @property
-    def event_based(self):
+    def event_based(self) -> bool:
         return self._event_based
 
     @property
-    def max_particles_in_flight(self):
+    def max_particles_in_flight(self) -> int:
         return self._max_particles_in_flight
 
     @property
-    def write_initial_source(self):
+    def write_initial_source(self) -> bool:
         return self._write_initial_source
 
     @property
-    def weight_windows(self):
+    def weight_windows(self) -> typing.List[WeightWindows]:
         return self._weight_windows
 
     @property
-    def weight_windows_on(self):
+    def weight_windows_on(self) -> bool:
         return self._weight_windows_on
 
     @property
-    def max_splits(self):
+    def max_splits(self) -> int:
         return self._max_splits
+
+    @property
+    def max_tracks(self) -> int:
+        return self._max_tracks
 
     @run_mode.setter
     def run_mode(self, run_mode: str):
@@ -507,7 +525,7 @@ class Settings:
         self._max_lost_particles = max_lost_particles
 
     @rel_max_lost_particles.setter
-    def rel_max_lost_particles(self, rel_max_lost_particles: int):
+    def rel_max_lost_particles(self, rel_max_lost_particles: float):
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
         cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
@@ -776,16 +794,18 @@ class Settings:
         self._trace = trace
 
     @track.setter
-    def track(self, track: typing.Iterable[int]):
-        cv.check_type('track', track, Iterable, Integral)
-        if len(track) % 3 != 0:
-            msg = f'Unable to set the track to "{track}" since its length is ' \
-                  'not a multiple of 3'
-            raise ValueError(msg)
-        for t in zip(track[::3], track[1::3], track[2::3]):
+    def track(self, track: typing.Iterable[typing.Iterable[int]]):
+        cv.check_type('track', track, Iterable)
+        for t in track:
+            if len(t) != 3:
+                msg = f'Unable to set the track to "{t}" since its length is not 3'
+                raise ValueError(msg)
             cv.check_greater_than('track batch', t[0], 0)
-            cv.check_greater_than('track generation', t[0], 0)
-            cv.check_greater_than('track particle', t[0], 0)
+            cv.check_greater_than('track generation', t[1], 0)
+            cv.check_greater_than('track particle', t[2], 0)
+            cv.check_type('track batch', t[0], Integral)
+            cv.check_type('track generation', t[1], Integral)
+            cv.check_type('track particle', t[2], Integral)
         self._track = track
 
     @ufs_mesh.setter
@@ -881,8 +901,14 @@ class Settings:
     @max_splits.setter
     def max_splits(self, value: int):
         cv.check_type('maximum particle splits', value, Integral)
-        cv.check_greater_than('max particles in flight', value, 0)
+        cv.check_greater_than('max particle splits', value, 0)
         self._max_splits = value
+
+    @max_tracks.setter
+    def max_tracks(self, value: int):
+        cv.check_type('maximum particle tracks', value, Integral)
+        cv.check_greater_than('maximum particle tracks', value, 0, True)
+        self._max_tracks = value
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1110,7 +1136,7 @@ class Settings:
     def _create_track_subelement(self, root):
         if self._track is not None:
             element = ET.SubElement(root, "track")
-            element.text = ' '.join(map(str, self._track))
+            element.text = ' '.join(map(str, itertools.chain(*self._track)))
 
     def _create_ufs_mesh_subelement(self, root):
         if self.ufs_mesh is not None:
@@ -1195,6 +1221,11 @@ class Settings:
         if self._max_splits is not None:
             elem = ET.SubElement(root, "max_splits")
             elem.text = str(self._max_splits)
+
+    def _create_max_tracks_subelement(self, root):
+        if self._max_tracks is not None:
+            elem = ET.SubElement(root, "max_tracks")
+            elem.text = str(self._max_tracks)
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1424,7 +1455,8 @@ class Settings:
     def _track_from_xml_element(self, root):
         text = get_text(root, 'track')
         if text is not None:
-            self.track = [int(x) for x in text.split()]
+            values = [int(x) for x in text.split()]
+            self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
     def _ufs_mesh_from_xml_element(self, root):
         text = get_text(root, 'ufs_mesh')
@@ -1498,6 +1530,11 @@ class Settings:
         if text is not None:
             self.max_splits = int(text)
 
+    def _max_tracks_from_xml_element(self, root):
+        text = get_text(root, 'max_tracks')
+        if text is not None:
+            self.max_tracks = int(text)
+
     def export_to_xml(self, path: Union[str, os.PathLike] = 'settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1554,6 +1591,7 @@ class Settings:
         self._create_write_initial_source_subelement(root_element)
         self._create_weight_windows_subelement(root_element)
         self._create_max_splits_subelement(root_element)
+        self._create_max_tracks_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
@@ -1633,6 +1671,7 @@ class Settings:
         settings._write_initial_source_from_xml_element(root)
         settings._weight_windows_from_xml_element(root)
         settings._max_splits_from_xml_element(root)
+        settings._max_tracks_from_xml_element(root)
 
         # TODO: Get volume calculations
 

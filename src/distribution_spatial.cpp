@@ -132,15 +132,15 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
     r_ = make_unique<Discrete>(x, p, 1);
   }
 
-  // Read distribution for theta-coordinate
-  if (check_for_node(node, "theta")) {
-    pugi::xml_node node_dist = node.child("theta");
-    theta_ = distribution_from_xml(node_dist);
+  // Read distribution for cos_theta-coordinate
+  if (check_for_node(node, "cos_theta")) {
+    pugi::xml_node node_dist = node.child("cos_theta");
+    cos_theta_ = distribution_from_xml(node_dist);
   } else {
-    // If no distribution was specified, default to a single point at theta=0
+    // If no distribution was specified, default to a single point at cos_theta=0
     double x[] {0.0};
     double p[] {1.0};
-    theta_ = make_unique<Discrete>(x, p, 1);
+    cos_theta_ = make_unique<Discrete>(x, p, 1);
   }
 
   // Read distribution for phi-coordinate
@@ -171,11 +171,12 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
 Position SphericalIndependent::sample(uint64_t* seed) const
 {
   double r = r_->sample(seed);
-  double theta = theta_->sample(seed);
+  double cos_theta = cos_theta_->sample(seed);
   double phi = phi_->sample(seed);
-  double x = r * sin(theta) * cos(phi) + origin_.x;
-  double y = r * sin(theta) * sin(phi) + origin_.y;
-  double z = r * cos(theta) + origin_.z;
+  // sin(theta) by sin**2 + cos**2 = 1
+  double x = r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x;
+  double y = r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y;
+  double z = r * cos_theta + origin_.z;
   return {x, y, z};
 }
 

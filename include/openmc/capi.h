@@ -118,9 +118,11 @@ int openmc_regular_mesh_get_params(
 int openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims);
 int openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
   const double* ur, const double* width);
+int openmc_remove_tally(int32_t index);
 int openmc_reset();
 int openmc_reset_timers();
 int openmc_run();
+int openmc_sample_external_source(size_t n, uint64_t* seed, void* sites);
 void openmc_set_seed(int64_t new_seed);
 int openmc_set_n_batches(
   int32_t n_batches, bool set_max_batches, bool add_statepoint_batch);

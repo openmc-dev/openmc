@@ -291,10 +291,10 @@ class WeightWindows(IDManagerMixin):
         subelement.text = ' '.join(str(e) for e in self.energy_bounds)
 
         subelement = ET.SubElement(element, 'lower_ww_bounds')
-        subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds)
+        subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds.ravel('F'))
 
         subelement = ET.SubElement(element, 'upper_ww_bounds')
-        subelement.text = ' '.join(str(b) for b in self.upper_ww_bounds)
+        subelement.text = ' '.join(str(b) for b in self.upper_ww_bounds.ravel('F'))
 
         subelement = ET.SubElement(element, 'survival_ratio')
         subelement.text = str(self.survival_ratio)
@@ -409,7 +409,9 @@ class WeightWindows(IDManagerMixin):
 
 
 def wwinp_to_wws(path):
-    """Creates WeightWindows classes from a wwinp file
+    """Create WeightWindows instances from a wwinp file
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------

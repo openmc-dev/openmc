@@ -6,6 +6,12 @@ import openmc
 import openmc.stats
 
 
+def assert_sample_mean(samples, expected_mean):
+    std_dev = samples.std() / np.sqrt(samples.size)
+    assert np.abs(expected_mean - samples.mean()) < 3*std_dev
+
+
+
 def test_discrete():
     x = [0.0, 1.0, 10.0]
     p = [0.3, 0.2, 0.5]
@@ -13,8 +19,8 @@ def test_discrete():
     elem = d.to_xml_element('distribution')
 
     d = openmc.stats.Discrete.from_xml_element(elem)
-    assert d.x == x
-    assert d.p == p
+    np.testing.assert_array_equal(d.x, x)
+    np.testing.assert_array_equal(d.p, p)
     assert len(d) == len(x)
 
     d = openmc.stats.Univariate.from_xml_element(elem)
@@ -25,6 +31,44 @@ def test_discrete():
     assert d2.x == [1e6]
     assert d2.p == [1.0]
     assert len(d2) == 1
+
+    vals = np.array([1.0, 2.0, 3.0])
+    probs = np.array([0.1, 0.7, 0.2])
+
+    exp_mean = (vals * probs).sum()
+
+    d3 = openmc.stats.Discrete(vals, probs)
+
+    # sample discrete distribution and check that the mean of the samples is
+    # within 3 std. dev. of the expected mean
+    n_samples = 1_000_000
+    samples = d3.sample(n_samples, seed=100)
+    assert_sample_mean(samples, exp_mean)
+
+
+def test_merge_discrete():
+    x1 = [0.0, 1.0, 10.0]
+    p1 = [0.3, 0.2, 0.5]
+    d1 = openmc.stats.Discrete(x1, p1)
+
+    x2 = [0.5, 1.0, 5.0]
+    p2 = [0.4, 0.5, 0.1]
+    d2 = openmc.stats.Discrete(x2, p2)
+
+    # Merged distribution should have x values sorted and probabilities
+    # appropriately combined. Duplicate x values should appear once.
+    merged = openmc.stats.Discrete.merge([d1, d2], [0.6, 0.4])
+    assert merged.x == pytest.approx([0.0, 0.5, 1.0, 5.0, 10.0])
+    assert merged.p == pytest.approx(
+        [0.6*0.3, 0.4*0.4, 0.6*0.2 + 0.4*0.5, 0.4*0.1, 0.6*0.5])
+    assert merged.integral() == pytest.approx(1.0)
+
+    # Probabilities add up but are not normalized
+    d1 = openmc.stats.Discrete([3.0], [1.0])
+    triple = openmc.stats.Discrete.merge([d1, d1, d1], [1.0, 2.0, 3.0])
+    assert triple.x == pytest.approx([3.0])
+    assert triple.p == pytest.approx([6.0])
+    assert triple.integral() == pytest.approx(6.0)
 
 
 def test_uniform():
@@ -38,12 +82,20 @@ def test_uniform():
     assert len(d) == 2
 
     t = d.to_tabular()
-    assert t.x == [a, b]
-    assert t.p == [1/(b-a), 1/(b-a)]
+    np.testing.assert_array_equal(t.x, [a, b])
+    np.testing.assert_array_equal(t.p, [1/(b-a), 1/(b-a)])
     assert t.interpolation == 'histogram'
 
+    # Sample distribution and check that the mean of the samples is within 3
+    # std. dev. of the expected mean
+    exp_mean = 0.5 * (a + b)
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert_sample_mean(samples, exp_mean)
+
+
 def test_powerlaw():
-    a, b, n = 10.0, 20.0, 2.0
+    a, b, n = 10.0, 100.0, 2.0
     d = openmc.stats.PowerLaw(a, b, n)
     elem = d.to_xml_element('distribution')
 
@@ -53,6 +105,15 @@ def test_powerlaw():
     assert d.n == n
     assert len(d) == 3
 
+    exp_mean = 100.0 * (n+1) / (n+2)
+
+    # sample power law distribution and check that the mean of the samples is
+    # within 3 std. dev. of the expected mean
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert_sample_mean(samples, exp_mean)
+
+
 def test_maxwell():
     theta = 1.2895e6
     d = openmc.stats.Maxwell(theta)
@@ -61,6 +122,19 @@ def test_maxwell():
     d = openmc.stats.Maxwell.from_xml_element(elem)
     assert d.theta == theta
     assert len(d) == 1
+
+    exp_mean = 3/2 * theta
+
+    # sample maxwell distribution and check that the mean of the samples is
+    # within 3 std. dev. of the expected mean
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert_sample_mean(samples, exp_mean)
+
+    # A second sample with a different seed
+    samples_2 = d.sample(n_samples, seed=200)
+    assert_sample_mean(samples_2, exp_mean)
+    assert samples_2.mean() != samples.mean()
 
 
 def test_watt():
@@ -73,18 +147,57 @@ def test_watt():
     assert d.b == b
     assert len(d) == 2
 
+    # mean value form adapted from
+    # "Prompt-fission-neutron average energy for 238U(n, f ) from
+    # threshold to 200 MeV" Ethvignot et. al.
+    # https://doi.org/10.1016/j.physletb.2003.09.048
+    exp_mean = 3/2 * a + a**2 * b / 4
+
+    # sample Watt distribution and check that the mean of the samples is within
+    # 3 std. dev. of the expected mean
+    n_samples = 1_000_000
+    samples = d.sample(n_samples, seed=100)
+    assert_sample_mean(samples, exp_mean)
+
 
 def test_tabular():
-    x = [0.0, 5.0, 7.0]
-    p = [0.1, 0.2, 0.05]
+    x = np.array([0.0, 5.0, 7.0])
+    p = np.array([0.1, 0.2, 0.05])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     elem = d.to_xml_element('distribution')
 
     d = openmc.stats.Tabular.from_xml_element(elem)
-    assert d.x == x
-    assert d.p == p
+    assert all(d.x == x)
+    assert all(d.p == p)
     assert d.interpolation == 'linear-linear'
     assert len(d) == len(x)
+
+    # test linear-linear sampling
+    d = openmc.stats.Tabular(x, p)
+
+    n_samples = 100_000
+    samples = d.sample(n_samples, seed=100)
+    diff = np.abs(samples - d.mean())
+    # within_1_sigma = np.count_nonzero(diff < samples.std())
+    # assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(diff < 2*samples.std())
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(diff < 3*samples.std())
+    assert within_3_sigma / n_samples >= 0.99
+
+    # test histogram sampling
+    d = openmc.stats.Tabular(x, p, interpolation='histogram')
+    d.normalize()
+    assert d.integral() == pytest.approx(1.0)
+
+    samples = d.sample(n_samples, seed=100)
+    diff = np.abs(samples - d.mean())
+    # within_1_sigma = np.count_nonzero(diff < samples.std())
+    # assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(diff < 2*samples.std())
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(diff < 3*samples.std())
+    assert within_3_sigma / n_samples >= 0.99
 
 
 def test_legendre():
@@ -110,6 +223,11 @@ def test_mixture():
     assert mix.probability == p
     assert mix.distribution == [d1, d2]
     assert len(mix) == 4
+
+    # Sample and make sure sample mean is close to expected mean
+    n_samples = 1_000_000
+    samples = mix.sample(n_samples)
+    assert_sample_mean(samples, (2.5 + 5.0)/2)
 
     elem = mix.to_xml_element('distribution')
 
@@ -228,6 +346,7 @@ def test_point():
     d = openmc.stats.Point.from_xml_element(elem)
     assert d.xyz == pytest.approx(p)
 
+
 def test_normal():
     mean = 10.0
     std_dev = 2.0
@@ -240,6 +359,18 @@ def test_normal():
     assert d.mean_value == pytest.approx(mean)
     assert d.std_dev == pytest.approx(std_dev)
     assert len(d) == 2
+
+    # sample normal distribution
+    n_samples = 10000
+    samples = d.sample(n_samples, seed=100)
+    samples = np.abs(samples - mean)
+    within_1_sigma = np.count_nonzero(samples < std_dev)
+    assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(samples < 2*std_dev)
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(samples < 3*std_dev)
+    assert within_3_sigma / n_samples >= 0.99
+
 
 def test_muir():
     mean = 10.0
@@ -255,3 +386,59 @@ def test_muir():
     assert d.m_rat == pytest.approx(mass)
     assert d.kt == pytest.approx(temp)
     assert len(d) == 3
+
+    # sample muir distribution
+    n_samples = 10000
+    samples = d.sample(n_samples, seed=100)
+    samples = np.abs(samples - mean)
+    within_1_sigma = np.count_nonzero(samples < d.std_dev)
+    assert within_1_sigma / n_samples >= 0.68
+    within_2_sigma = np.count_nonzero(samples < 2*d.std_dev)
+    assert within_2_sigma / n_samples >= 0.95
+    within_3_sigma = np.count_nonzero(samples < 3*d.std_dev)
+    assert within_3_sigma / n_samples >= 0.99
+
+
+def test_combine_distributions():
+    # Combine two discrete (same data as in test_merge_discrete)
+    x1 = [0.0, 1.0, 10.0]
+    p1 = [0.3, 0.2, 0.5]
+    d1 = openmc.stats.Discrete(x1, p1)
+    x2 = [0.5, 1.0, 5.0]
+    p2 = [0.4, 0.5, 0.1]
+    d2 = openmc.stats.Discrete(x2, p2)
+
+    # Merged distribution should have x values sorted and probabilities
+    # appropriately combined. Duplicate x values should appear once.
+    merged = openmc.stats.combine_distributions([d1, d2], [0.6, 0.4])
+    assert isinstance(merged, openmc.stats.Discrete)
+    assert merged.x == pytest.approx([0.0, 0.5, 1.0, 5.0, 10.0])
+    assert merged.p == pytest.approx(
+        [0.6*0.3, 0.4*0.4, 0.6*0.2 + 0.4*0.5, 0.4*0.1, 0.6*0.5])
+
+    # Probabilities add up but are not normalized
+    d1 = openmc.stats.Discrete([3.0], [1.0])
+    triple = openmc.stats.combine_distributions([d1, d1, d1], [1.0, 2.0, 3.0])
+    assert triple.x == pytest.approx([3.0])
+    assert triple.p == pytest.approx([6.0])
+
+    # Combine discrete and tabular
+    t1 = openmc.stats.Tabular(x2, p2)
+    mixed = openmc.stats.combine_distributions([d1, t1], [0.5, 0.5])
+    assert isinstance(mixed, openmc.stats.Mixture)
+    assert len(mixed.distribution) == 2
+    assert len(mixed.probability) == 2
+
+    # Combine 1 discrete and 2 tabular -- the tabular distributions should
+    # combine to produce a uniform distribution with mean 0.5. The combined
+    # distribution should have a mean of 0.25.
+    t1 = openmc.stats.Tabular([0., 1.], [2.0, 0.0])
+    t2 = openmc.stats.Tabular([0., 1.], [0.0, 2.0])
+    d1 = openmc.stats.Discrete([0.0], [1.0])
+    combined = openmc.stats.combine_distributions([t1, t2, d1], [0.25, 0.25, 0.5])
+    assert combined.integral() == pytest.approx(1.0)
+
+    # Sample the combined distribution and make sure the sample mean is within
+    # uncertainty of the expected value
+    samples = combined.sample(10_000)
+    assert_sample_mean(samples, 0.25)

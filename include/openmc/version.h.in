@@ -1,3 +1,6 @@
+#ifndef OPENMC_VERSION_H
+#define OPENMC_VERSION_H
+
 #include "openmc/array.h"
 
 namespace openmc {
@@ -12,3 +15,5 @@ constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELE
 // clang-format on
 
 } // namespace openmc
+
+#endif // OPENMC_VERSION_H

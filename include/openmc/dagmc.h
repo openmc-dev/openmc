@@ -22,6 +22,7 @@ void check_dagmc_root_univ();
 #ifdef DAGMC
 
 #include "DagMC.hpp"
+#include "dagmcmetadata.hpp"
 
 #include "openmc/cell.h"
 #include "openmc/particle.h"
@@ -87,6 +88,11 @@ public:
   explicit DAGUniverse(const std::string& filename, bool auto_geom_ids = false,
     bool auto_mat_ids = false);
 
+  //! Alternative DAGMC universe constructor for external DAGMC instance
+  explicit DAGUniverse(std::shared_ptr<moab::DagMC> external_dagmc_ptr,
+    const std::string& filename = "", bool auto_geom_ids = false,
+    bool auto_mat_ids = false);
+
   //! Initialize the DAGMC accel. data structures, indices, material
   //! assignments, etc.
   void initialize();
@@ -139,10 +145,16 @@ public:
   bool has_graveyard() const { return has_graveyard_; }
 
 private:
+  void set_id();        //!< Deduce the universe id from model::universes
+  void init_dagmc();    //!< Create and initialise DAGMC pointer
+  void init_metadata(); //!< Create and initialise dagmcMetaData pointer
+  void init_geometry(); //!< Create cells and surfaces from DAGMC entities
+
   std::string
     filename_; //!< Name of the DAGMC file used to create this universe
   std::shared_ptr<UWUW>
-    uwuw_;                   //!< Pointer to the UWUW instance for this universe
+    uwuw_; //!< Pointer to the UWUW instance for this universe
+  std::unique_ptr<dagmcMetaData> dmd_ptr; //! Pointer to DAGMC metadata object
   bool adjust_geometry_ids_; //!< Indicates whether or not to automatically
                              //!< generate new cell and surface IDs for the
                              //!< universe

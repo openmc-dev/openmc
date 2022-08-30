@@ -1,9 +1,10 @@
 import itertools
-from math import sqrt
+import json
 import os
 import re
+from pathlib import Path
+from math import sqrt, log
 from warnings import warn
-
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
@@ -199,6 +200,9 @@ _ATOMIC_MASS = {}
 # Regex for GND nuclide names (used in zam function)
 _GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
+# Used in half_life function as a cache
+_HALF_LIFE = {}
+_LOG_TWO = log(2.0)
 
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
@@ -224,7 +228,7 @@ def atomic_mass(isotope):
         with open(mass_file, 'r') as ame:
             # Read lines in file starting at line 40
             for line in itertools.islice(ame, 39, None):
-                name = '{}{}'.format(line[20:22].strip(), int(line[16:19]))
+                name = f'{line[20:22].strip()}{int(line[16:19])}'
                 mass = float(line[96:99]) + 1e-6*float(
                     line[100:106] + '.' + line[107:112])
                 _ATOMIC_MASS[name.lower()] = mass
@@ -269,8 +273,63 @@ def atomic_weight(element):
     if weight > 0.:
         return weight
     else:
-        raise ValueError("No naturally-occurring isotopes for element '{}'."
-                         .format(element))
+        raise ValueError(f"No naturally-occurring isotopes for element '{element}'.")
+
+
+def half_life(isotope):
+    """Return half-life of isotope in seconds or None if isotope is stable
+
+    Half-life values are from the `ENDF/B-VIII.0 decay sublibrary
+    <https://www.nndc.bnl.gov/endf-b8.0/download.html>`_.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    isotope : str
+        Name of isotope, e.g., 'Pu239'
+
+    Returns
+    -------
+    float
+        Half-life of isotope in [s]
+
+    """
+    global _HALF_LIFE
+    if not _HALF_LIFE:
+        # Load ENDF/B-VIII.0 data from JSON file
+        half_life_path = Path(__file__).with_name('half_life.json')
+        _HALF_LIFE = json.loads(half_life_path.read_text())
+
+    return _HALF_LIFE.get(isotope.lower())
+
+
+def decay_constant(isotope):
+    """Return decay constant of isotope in [s^-1]
+
+    Decay constants are based on half-life values from the
+    :func:`~openmc.data.half_life` function. When the isotope is stable, a decay
+    constant of zero is returned.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    isotope : str
+        Name of isotope, e.g., 'Pu239'
+
+    Returns
+    -------
+    float
+        Decay constant of isotope in [s^-1]
+
+    See also
+    --------
+    openmc.data.half_life
+
+    """
+    t = half_life(isotope)
+    return _LOG_TWO / t if t else 0.0
 
 
 def water_density(temperature, pressure=0.1013):
@@ -396,9 +455,8 @@ def gnd_name(Z, A, m=0):
 
     """
     if m > 0:
-        return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
-    else:
-        return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+        return f'{ATOMIC_SYMBOL[Z]}{A}_m{m}'
+    return f'{ATOMIC_SYMBOL[Z]}{A}'
 
 
 def isotopes(element):
@@ -426,7 +484,7 @@ def isotopes(element):
     if len(element) > 2:
         symbol = ELEMENT_SYMBOL.get(element.lower())
         if symbol is None:
-            raise ValueError('Element name "{}" not recognised'.format(element))
+            raise ValueError(f'Element name "{element}" not recognised')
         element = symbol
 
     # Get the nuclides present in nature
@@ -455,12 +513,11 @@ def zam(name):
     try:
         symbol, A, state = _GND_NAME_RE.match(name).groups()
     except AttributeError:
-        raise ValueError("'{}' does not appear to be a nuclide name in GND "
-                         "format".format(name))
+        raise ValueError(f"'{name}' does not appear to be a nuclide name in "
+                         "GND format")
 
     if symbol not in ATOMIC_NUMBER:
-        raise ValueError("'{}' is not a recognized element symbol"
-                         .format(symbol))
+        raise ValueError(f"'{symbol}' is not a recognized element symbol")
 
     metastable = int(state[2:]) if state else 0
     return (ATOMIC_NUMBER[symbol], int(A), metastable)

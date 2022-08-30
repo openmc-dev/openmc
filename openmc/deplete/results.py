@@ -358,16 +358,17 @@ class Results(list):
                 time, time_units, atol, rtol)
         )
 
-    def export_to_materials(self, burnup_index, nuc_with_data=None) -> Materials:
+    def export_to_materials(self, burnup_index=None, nuc_with_data=None) -> Materials:
         """Return openmc.Materials object based on results at a given step
 
         .. versionadded:: 0.12.1
 
         Parameters
         ----------
-        burn_index : int
-            Index of burnup step to evaluate. See also: get_step_where for
+        burn_index : int, Iterable of ints, optional
+            Index(es) of burnup step to evaluate. See also: get_step_where for
             obtaining burnup step indices from other data such as the time.
+            Defaults to None which returns materials from all burnup indices.
         nuc_with_data : Iterable of str, optional
             Nuclides to include in resulting materials.
             This can be specified if not all nuclides appearing in
@@ -380,66 +381,76 @@ class Results(list):
         Returns
         -------
         mat_file : Materials
-            A modified Materials instance containing depleted material data
-            and original isotopic compositions of non-depletable materials
+            An iterable of modified Materials instance containing depleted
+            material data and original isotopic compositions of non-depletable
+            materials
         """
-        result = self[burnup_index]
 
-        # Only materials found in the original materials.xml file will be
-        # updated. If for some reason you have modified OpenMC to produce
-        # new materials as depletion takes place, this method will not
-        # work as expected and leave out that material.
-        mat_file = Materials.from_xml("materials.xml")
+        if burnup_index is None:
+            burnup_index = list(range(len(self)))
+        elif isinstance(burnup_index, int):
+            burnup_index = [burnup_index]
 
-        # Only nuclides with valid transport data will be written to
-        # the new materials XML file. The precedence of nuclides to select
-        # is first ones provided as a kwarg here, then ones specified
-        # in the materials.xml file if provided, then finally from
-        # the environment variable OPENMC_CROSS_SECTIONS.
-        if nuc_with_data:
-            cv.check_iterable_type('nuclide names', nuc_with_data, str)
-            available_cross_sections = nuc_with_data
-        else:
-            # select cross_sections.xml file to use
-            if mat_file.cross_sections:
-                this_library = DataLibrary.from_xml(path=mat_file.cross_sections)
+        materials = []
+        for index in burnup_index:
+            result = self[index]
+
+            # Only materials found in the original materials.xml file will be
+            # updated. If for some reason you have modified OpenMC to produce
+            # new materials as depletion takes place, this method will not
+            # work as expected and leave out that material.
+            mat_file = Materials.from_xml("materials.xml")
+
+            # Only nuclides with valid transport data will be written to
+            # the new materials XML file. The precedence of nuclides to select
+            # is first ones provided as a kwarg here, then ones specified
+            # in the materials.xml file if provided, then finally from
+            # the environment variable OPENMC_CROSS_SECTIONS.
+            if nuc_with_data:
+                cv.check_iterable_type('nuclide names', nuc_with_data, str)
+                available_cross_sections = nuc_with_data
             else:
-                this_library = DataLibrary.from_xml()
+                # select cross_sections.xml file to use
+                if mat_file.cross_sections:
+                    this_library = DataLibrary.from_xml(path=mat_file.cross_sections)
+                else:
+                    this_library = DataLibrary.from_xml()
 
-            # Find neutron libraries we have access to
-            available_cross_sections = set()
-            for lib in this_library.libraries:
-                if lib['type'] == 'neutron':
-                    available_cross_sections.update(lib['materials'])
-            if not available_cross_sections:
-                raise DataError('No neutron libraries found in cross_sections.xml')
+                # Find neutron libraries we have access to
+                available_cross_sections = set()
+                for lib in this_library.libraries:
+                    if lib['type'] == 'neutron':
+                        available_cross_sections.update(lib['materials'])
+                if not available_cross_sections:
+                    raise DataError('No neutron libraries found in cross_sections.xml')
 
-        # Overwrite material definitions, if they can be found in the depletion
-        # results, and save them to the new depleted xml file.
-        for mat in mat_file:
-            mat_id = str(mat.id)
-            if mat_id in result.mat_to_ind:
-                mat.volume = result.volume[mat_id]
+            # Overwrite material definitions, if they can be found in the depletion
+            # results, and save them to the new depleted xml file.
+            for mat in mat_file:
+                mat_id = str(mat.id)
+                if mat_id in result.mat_to_ind:
+                    mat.volume = result.volume[mat_id]
 
-                # Change density of all nuclides in material to atom/b-cm
-                atoms_per_barn_cm = mat.get_nuclide_atom_densities()
-                for nuc, value in atoms_per_barn_cm.items():
-                    mat.remove_nuclide(nuc)
-                    mat.add_nuclide(nuc, value)
-                mat.set_density('sum')
+                    # Change density of all nuclides in material to atom/b-cm
+                    atoms_per_barn_cm = mat.get_nuclide_atom_densities()
+                    for nuc, value in atoms_per_barn_cm.items():
+                        mat.remove_nuclide(nuc)
+                        mat.add_nuclide(nuc, value)
+                    mat.set_density('sum')
 
-                # For nuclides in chain that have cross sections, replace
-                # density in original material with new density from results
-                for nuc in result.nuc_to_ind:
-                    if nuc not in available_cross_sections:
-                        continue
-                    atoms = result[0, mat_id, nuc]
-                    if atoms > 0.0:
-                        atoms_per_barn_cm = 1e-24 * atoms / mat.volume
-                        mat.remove_nuclide(nuc) # Replace if it's there
-                        mat.add_nuclide(nuc, atoms_per_barn_cm)
+                    # For nuclides in chain that have cross sections, replace
+                    # density in original material with new density from results
+                    for nuc in result.nuc_to_ind:
+                        if nuc not in available_cross_sections:
+                            continue
+                        atoms = result[0, mat_id, nuc]
+                        if atoms > 0.0:
+                            atoms_per_barn_cm = 1e-24 * atoms / mat.volume
+                            mat.remove_nuclide(nuc) # Replace if it's there
+                            mat.add_nuclide(nuc, atoms_per_barn_cm)
 
-        return mat_file
+            materials.append(mat_file)
+        return materials
 
 
 # Retain deprecated name for the time being

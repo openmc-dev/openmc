@@ -54,7 +54,7 @@ public:
   //! simply as a secondary particle.
   //! \param src Source site data
   void from_source(const SourceSite* src);
-
+  void initilze_ghost_particle(Particle& p,Direction u, double E);
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();

@@ -109,10 +109,10 @@ vector<int32_t> tokenize(const std::string region_spec)
 
 //==============================================================================
 //! Add precedence for infix regions so intersections have higher
-//! precedence than unions using parenthesis.
+//! precedence than unions using parentheses.
 //==============================================================================
 
-std::vector<int32_t>::iterator add_parenthesis(
+std::vector<int32_t>::iterator add_parentheses(
   std::vector<int32_t>::iterator start, std::vector<int32_t>& infix)
 {
   int32_t start_token = *start;
@@ -125,7 +125,7 @@ std::vector<int32_t>::iterator add_parenthesis(
   start++;
 
   // Initialize return iterator
-  std::vector<int32_t>::iterator return_iterator = infix.begin();
+  auto return_iterator = infix.begin();
 
   // Add right parenthesis
   // While the start iterator is within the bounds of infix
@@ -134,7 +134,7 @@ std::vector<int32_t>::iterator add_parenthesis(
 
     // If the current token is an operator and is different than the start token
     if (*start >= OP_UNION && *start != start_token) {
-      // Skip wraped regions but save iterator position to check precedence and
+      // Skip wrapped regions but save iterator position to check precedence and
       // add right parenthesis depending on the precedence of the original token
       // when a right parenthesis is encountered of the opposite token
       if (*start == OP_LEFT_PAREN) {
@@ -190,7 +190,7 @@ void add_precedence(std::vector<int32_t>& infix)
       if (current_op == 0) {
         current_op = token;
       } else if (token != current_op) {
-        it = add_parenthesis(it, infix);
+        it = add_parentheses(it, infix);
         current_op = 0;
       }
     } else if (token > OP_COMPLEMENT) {

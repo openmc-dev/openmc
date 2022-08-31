@@ -420,6 +420,8 @@ class Chain:
                     # Append decay mode
                     nuclide.add_decay_mode(type_, target, br)
 
+                nuclide.sources = data.sources
+
             fissionable = False
             if parent in reactions:
                 reactions_available = set(reactions[parent].keys())

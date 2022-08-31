@@ -151,6 +151,17 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
     # Export last step of depletion to its own openmc.Materials object,
     # using only nuclides available in the current nuclear data library
     last_step_materials = res_ref.export_to_materials(-1)
+    assert isinstance(last_step_materials, openmc.Materials)
+
+    # tests for different materials export options
+    last_step_materials_list = res_ref.export_to_materials([-1])
+    assert isinstance(last_step_materials_list, openmc.Materials)
+    all_step_materials_default = res_ref.export_to_materials()
+    assert len(all_step_materials_default) == 3  # there are three time steps
+    all_step_materials = res_ref.export_to_materials(burnup_index=None)
+    assert len(all_step_materials) == 3  # there are three time steps
+    two_step_materials = res_ref.export_to_materials(burnup_index=[1, 2])
+    assert len(two_step_materials) == 2
 
     # Export final depletion  step materials to XML
     output_xml_file = 'last_step_materials.xml'

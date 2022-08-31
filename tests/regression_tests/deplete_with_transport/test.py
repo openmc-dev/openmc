@@ -157,9 +157,9 @@ def test_depletion_results_to_material(run_in_tmpdir, problem):
     last_step_materials_list = res_ref.export_to_materials([-1])
     assert isinstance(last_step_materials_list, openmc.Materials)
     all_step_materials_default = res_ref.export_to_materials()
-    assert len(all_step_materials_default) == 3  # there are three time steps
+    assert len(all_step_materials_default) == 4
     all_step_materials = res_ref.export_to_materials(burnup_index=None)
-    assert len(all_step_materials) == 3  # there are three time steps
+    assert len(all_step_materials) == 4
     two_step_materials = res_ref.export_to_materials(burnup_index=[1, 2])
     assert len(two_step_materials) == 2
 

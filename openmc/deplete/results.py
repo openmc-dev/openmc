@@ -2,6 +2,7 @@ import numbers
 import bisect
 import math
 from warnings import warn
+from copy import deepcopy
 
 import h5py
 import numpy as np
@@ -391,41 +392,42 @@ class Results(list):
         elif isinstance(burnup_index, int):
             burnup_index = [burnup_index]
 
+        # Only materials found in the original materials.xml file will be
+        # updated. If for some reason you have modified OpenMC to produce
+        # new materials as depletion takes place, this method will not
+        # work as expected and leave out that material.
+        mat_file_base = Materials.from_xml("materials.xml")
+
+        # Only nuclides with valid transport data will be written to
+        # the new materials XML file. The precedence of nuclides to select
+        # is first ones provided as a kwarg here, then ones specified
+        # in the materials.xml file if provided, then finally from
+        # the environment variable OPENMC_CROSS_SECTIONS.
+        if nuc_with_data:
+            cv.check_iterable_type('nuclide names', nuc_with_data, str)
+            available_cross_sections = nuc_with_data
+        else:
+            # select cross_sections.xml file to use
+            if mat_file_base.cross_sections:
+                this_library = DataLibrary.from_xml(path=mat_file_base.cross_sections)
+            else:
+                this_library = DataLibrary.from_xml()
+
+            # Find neutron libraries we have access to
+            available_cross_sections = set()
+            for lib in this_library.libraries:
+                if lib['type'] == 'neutron':
+                    available_cross_sections.update(lib['materials'])
+            if not available_cross_sections:
+                raise DataError('No neutron libraries found in cross_sections.xml')
+
         materials = []
         for index in burnup_index:
             result = self[index]
 
-            # Only materials found in the original materials.xml file will be
-            # updated. If for some reason you have modified OpenMC to produce
-            # new materials as depletion takes place, this method will not
-            # work as expected and leave out that material.
-            mat_file = Materials.from_xml("materials.xml")
-
-            # Only nuclides with valid transport data will be written to
-            # the new materials XML file. The precedence of nuclides to select
-            # is first ones provided as a kwarg here, then ones specified
-            # in the materials.xml file if provided, then finally from
-            # the environment variable OPENMC_CROSS_SECTIONS.
-            if nuc_with_data:
-                cv.check_iterable_type('nuclide names', nuc_with_data, str)
-                available_cross_sections = nuc_with_data
-            else:
-                # select cross_sections.xml file to use
-                if mat_file.cross_sections:
-                    this_library = DataLibrary.from_xml(path=mat_file.cross_sections)
-                else:
-                    this_library = DataLibrary.from_xml()
-
-                # Find neutron libraries we have access to
-                available_cross_sections = set()
-                for lib in this_library.libraries:
-                    if lib['type'] == 'neutron':
-                        available_cross_sections.update(lib['materials'])
-                if not available_cross_sections:
-                    raise DataError('No neutron libraries found in cross_sections.xml')
-
             # Overwrite material definitions, if they can be found in the depletion
             # results, and save them to the new depleted xml file.
+            mat_file = deepcopy(mat_file_base)
             for mat in mat_file:
                 mat_id = str(mat.id)
                 if mat_id in result.mat_to_ind:
@@ -450,6 +452,11 @@ class Results(list):
                             mat.add_nuclide(nuc, atoms_per_barn_cm)
 
             materials.append(mat_file)
+
+        # Preserve previous behavior
+        if len(materials) == 1:
+            materials = materials[0]
+
         return materials
 
 

@@ -6,6 +6,7 @@ timestep.
 
 from collections import OrderedDict
 import copy
+import warnings
 
 import h5py
 import numpy as np
@@ -197,6 +198,32 @@ class StepResult:
         new.data = self.data[:, ranges]
         new.rates = [r[ranges] for r in self.rates]
         return new
+
+    def get_material(self, mat_id):
+        """Return material object for given depleted composition
+
+        Parameters
+        ----------
+        mat_id : str
+            Material ID as a string
+
+        Returns
+        -------
+        openmc.Material
+            Equivalent material
+        """
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', openmc.IDWarning)
+            material = openmc.Material(material_id=int(mat_id))
+        vol = self.volume[mat_id]
+        for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):
+            atoms = self[0, mat_id, nuc]
+            if atoms < 0.0:
+                continue
+            atom_per_bcm = atoms / vol * 1e-24
+            material.add_nuclide(nuc, atom_per_bcm)
+        material.volume = vol
+        return material
 
     def export_to_hdf5(self, filename, step):
         """Export results to an HDF5 file

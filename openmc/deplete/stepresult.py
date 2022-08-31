@@ -42,9 +42,9 @@ class StepResult:
         The reaction rates for each substep.
     volume : OrderedDict of str to float
         Dictionary mapping mat id to volume.
-    mat_to_ind : OrderedDict of str to int
+    index_mat : OrderedDict of str to int
         A dictionary mapping mat ID as string to index.
-    nuc_to_ind : OrderedDict of str to int
+    index_nuc : OrderedDict of str to int
         A dictionary mapping nuclide name as string to index.
     mat_to_hdf5_ind : OrderedDict of str to int
         A dictionary mapping mat ID as string to global index.
@@ -67,8 +67,8 @@ class StepResult:
         self.volume = None
         self.proc_time = None
 
-        self.mat_to_ind = None
-        self.nuc_to_ind = None
+        self.index_mat = None
+        self.index_nuc = None
         self.mat_to_hdf5_ind = None
 
         self.data = None
@@ -98,9 +98,9 @@ class StepResult:
         if isinstance(mat, openmc.Material):
             mat = str(mat.id)
         if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
+            mat = self.index_mat[mat]
         if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
+            nuc = self.index_nuc[nuc]
 
         return self.data[stage, mat, nuc]
 
@@ -120,19 +120,19 @@ class StepResult:
         """
         stage, mat, nuc = pos
         if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
+            mat = self.index_mat[mat]
         if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
+            nuc = self.index_nuc[nuc]
 
         self.data[stage, mat, nuc] = val
 
     @property
     def n_mat(self):
-        return len(self.mat_to_ind)
+        return len(self.index_mat)
 
     @property
     def n_nuc(self):
-        return len(self.nuc_to_ind)
+        return len(self.index_nuc)
 
     @property
     def n_hdf5_mats(self):
@@ -160,8 +160,8 @@ class StepResult:
 
         """
         self.volume = copy.deepcopy(volume)
-        self.nuc_to_ind = {nuc: i for i, nuc in enumerate(nuc_list)}
-        self.mat_to_ind = {mat: i for i, mat in enumerate(burn_list)}
+        self.index_nuc = {nuc: i for i, nuc in enumerate(nuc_list)}
+        self.index_mat = {mat: i for i, mat in enumerate(burn_list)}
         self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
 
         # Create storage array
@@ -186,10 +186,10 @@ class StepResult:
         """
         new = StepResult()
         new.volume = {lm: self.volume[lm] for lm in local_materials}
-        new.mat_to_ind = {mat: idx for (idx, mat) in enumerate(local_materials)}
+        new.index_mat = {mat: idx for (idx, mat) in enumerate(local_materials)}
 
         # Direct transfer
-        direct_attrs = ("time", "k", "source_rate", "nuc_to_ind",
+        direct_attrs = ("time", "k", "source_rate", "index_nuc",
                         "mat_to_hdf5_ind", "proc_time")
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
@@ -239,11 +239,11 @@ class StepResult:
         """
         # Create and save the 5 dictionaries:
         # quantities
-        #   self.mat_to_ind -> self.volume (TODO: support for changing volumes)
-        #   self.nuc_to_ind
+        #   self.index_mat -> self.volume (TODO: support for changing volumes)
+        #   self.index_nuc
         # reactions
-        #   self.rates[0].nuc_to_ind (can be different from above, above is superset)
-        #   self.rates[0].react_to_ind
+        #   self.rates[0].index_nuc (can be different from above, above is superset)
+        #   self.rates[0].index_rx
         # these are shared by every step of the simulation, and should be deduplicated.
 
         # Store concentration mat and nuclide dictionaries (along with volumes)
@@ -252,7 +252,7 @@ class StepResult:
         handle.attrs['filetype'] = np.string_('depletion results')
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)
-        nuc_list = sorted(self.nuc_to_ind)
+        nuc_list = sorted(self.index_nuc)
         rxn_list = sorted(self.rates[0].index_rx)
 
         n_mats = self.n_hdf5_mats
@@ -272,7 +272,7 @@ class StepResult:
 
         for nuc in nuc_list:
             nuc_single_group = nuc_group.create_group(nuc)
-            nuc_single_group.attrs["atom number index"] = self.nuc_to_ind[nuc]
+            nuc_single_group.attrs["atom number index"] = self.index_nuc[nuc]
             if nuc in self.rates[0].index_nuc:
                 nuc_single_group.attrs["reaction rate index"] = self.rates[0].index_nuc[nuc]
 
@@ -367,13 +367,13 @@ class StepResult:
             proc_time_dset.resize(proc_shape)
 
         # If nothing to write, just return
-        if len(self.mat_to_ind) == 0:
+        if len(self.index_mat) == 0:
             return
 
         # Add data
         # Note, for the last step, self.n_stages = 1, even if n_stages != 1.
         n_stages = self.n_stages
-        inds = [self.mat_to_hdf5_ind[mat] for mat in self.mat_to_ind]
+        inds = [self.mat_to_hdf5_ind[mat] for mat in self.index_mat]
         low = min(inds)
         high = max(inds)
         for i in range(n_stages):
@@ -427,8 +427,8 @@ class StepResult:
 
         # Reconstruct dictionaries
         results.volume = OrderedDict()
-        results.mat_to_ind = OrderedDict()
-        results.nuc_to_ind = OrderedDict()
+        results.index_mat = OrderedDict()
+        results.index_nuc = OrderedDict()
         rxn_nuc_to_ind = OrderedDict()
         rxn_to_ind = OrderedDict()
 
@@ -437,11 +437,11 @@ class StepResult:
             ind = mat_handle.attrs["index"]
 
             results.volume[mat] = vol
-            results.mat_to_ind[mat] = ind
+            results.index_mat[mat] = ind
 
         for nuc, nuc_handle in handle["/nuclides"].items():
             ind_atom = nuc_handle.attrs["atom number index"]
-            results.nuc_to_ind[nuc] = ind_atom
+            results.index_nuc[nuc] = ind_atom
 
             if "reaction rate index" in nuc_handle.attrs:
                 rxn_nuc_to_ind[nuc] = nuc_handle.attrs["reaction rate index"]
@@ -452,7 +452,7 @@ class StepResult:
         results.rates = []
         # Reconstruct reactions
         for i in range(results.n_stages):
-            rate = ReactionRates(results.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind, True)
+            rate = ReactionRates(results.index_mat, rxn_nuc_to_ind, rxn_to_ind, True)
 
             rate[:] = handle["/reaction rates"][step, i, :, :, :]
             results.rates.append(rate)

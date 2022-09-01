@@ -850,7 +850,6 @@ void transport_event_based()
   #pragma omp target update to(simulation::keff)
   
   // Transfer tally data to device for on-device tallying
-  //#pragma omp target update to(model::tallies[:model::tallies_size])
   for (int i = 0; i < model::tallies_size; ++i) {
     auto& tally = model::tallies[i];
     tally.update_to_device();
@@ -930,15 +929,6 @@ void transport_event_based()
   for (int i = 0; i < model::tallies_size; ++i) {
     auto& tally = model::tallies[i];
     tally.update_to_host();
-  }
-  //#pragma omp target update from(model::tallies[:model::tallies_size])
-  
-  // Print tally info
-  for (int i = 0; i < model::tallies_size; i++ ) {
-    auto& tally = model::tallies[i];
-    for( int j = 0; j < tally.results_size_; j++ ) {
-      printf("(%d, %d): %.3le\n", i, j, tally.results_[j]);
-    }
   }
 
   #ifdef OPENMC_MPI

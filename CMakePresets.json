@@ -28,7 +28,7 @@
                 "CMAKE_CXX_COMPILER": "icpx"
             },
             "environment": {
-                "INTEL_CXX_FLAGS": "-fiopenmp -gline-tables-only"
+                "INTEL_CXX_FLAGS": "-fiopenmp"
             }
         },
         {
@@ -39,7 +39,7 @@
                 "CMAKE_CXX_COMPILER": "clang++"
             },
             "environment": {
-                "LLVM_CXX_FLAGS": "-fopenmp -fopenmp-cuda-mode -gline-tables-only --save-temps"
+                "LLVM_CXX_FLAGS": "-fopenmp -fopenmp-cuda-mode"
             }
         },
         {
@@ -108,10 +108,10 @@
         },
         {
             "name": "llvm_a100_lto",
-            "inherits": ["llvm"],
+            "inherits": ["llvm_a100"],
             "displayName": "LLVM Clang A100",
             "environment": {
-                "PRESET_CXX_FLAGS": "-fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80 -foffload-lto"
+                "PRESET_CXX_FLAGS": "-foffload-lto"
             }
         },
         {

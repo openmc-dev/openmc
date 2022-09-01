@@ -607,6 +607,7 @@ void Tally::init_results()
 {
   n_scores_ = scores_.size() * nuclides_.size();
   results_size_ = n_filter_bins_ * n_scores_ * 3;
+  std::cout << "Allocating tally " << id_ << " buffer for " << n_filter_bins_ << " bins with " << n_scores_ << " scores each. Total size: " << (double) results_size_ * sizeof(double) / 1.0e6 << " MB" << std::endl;
   results_ = static_cast<double*>(malloc(results_size_ * sizeof(double)));
 }
 
@@ -679,6 +680,8 @@ void Tally::release_from_device()
 {
   scores_.release_device();
   nuclides_.release_device();
+  filters_.release_device();
+  strides_.release_device();
   #pragma omp target exit data map(release: results_[:results_size_])
 }
 
@@ -945,9 +948,6 @@ setup_active_tallies()
   #pragma omp target update to(model::active_tallies_size)
   #pragma omp target update to(model::active_collision_tallies_size)
   #pragma omp target update to(model::active_tracklength_tallies_size)
-  //#pragma omp target update to(model::device_active_tallies[:model::active_tallies_size])
-  //#pragma omp target update to(model::device_active_collision_tallies[:model::active_collision_tallies_size])
-  //#pragma omp target update to(model::device_active_tracklength_tallies[:model::active_tracklength_tallies_size])
 }
 
 void
@@ -970,9 +970,9 @@ free_memory_tally()
   free(model::tallies);
   model::tallies_size = 0;
 
-  free(model::device_active_tallies);
-  free(model::device_active_collision_tallies);
-  free(model::device_active_tracklength_tallies);
+  #pragma omp target exit data map(release: model::device_active_tallies[:model::active_tallies.size()])
+  #pragma omp target exit data map(release: model::device_active_collision_tallies[:model::active_collision_tallies.size()])
+  #pragma omp target exit data map(release: model::device_active_tracklength_tallies[:model::active_tracklength_tallies.size()])
 
   model::active_tallies.clear();
   model::active_analog_tallies.clear();

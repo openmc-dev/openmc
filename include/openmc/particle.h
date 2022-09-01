@@ -49,7 +49,7 @@
 //#define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define SECONDARY_BANK_SIZE 5 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define FLUX_DERIVS_SIZE 1 // This is the min required to pass regression tests (diff_tally is limiter)
-#define FILTER_MATCHES_SIZE 3 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
+#define FILTER_MATCHES_SIZE 4 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
 //#define FILTER_MATCHES_SIZE 140 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
 #define NU_BANK_SIZE 16 // infinite_cell regression test
 

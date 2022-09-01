@@ -700,18 +700,19 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
   if (!region_.empty()) {
     std::stringstream region_spec {};
     for (int32_t token : region_) {
-      if (token < OP_UNION) {
+      if (token == OP_LEFT_PAREN) {
+        region_spec << " (";
+      } else if (token == OP_RIGHT_PAREN) {
+        region_spec << " )";
+      } else if (token == OP_COMPLEMENT) {
+        region_spec << " ~";
+      } else if (token == OP_INTERSECTION) {
+      } else if (token == OP_UNION) {
+        region_spec << " |";
+      } else {
         // Note the off-by-one indexing
         auto surf_id = model::surfaces[abs(token) - 1]->id_;
         region_spec << " " << ((token > 0) ? surf_id : -surf_id);
-      } else if (token > OP_COMPLEMENT) {
-        if (token == OP_LEFT_PAREN) {
-          region_spec << " (";
-        } else {
-          region_spec << " )";
-        }
-      } else if (token == OP_UNION) {
-        region_spec << " |";
       }
     }
     write_string(group_id, "region", region_spec.str(), false);

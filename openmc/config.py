@@ -21,6 +21,9 @@ class _Config(MutableMapping):
             # Force environment variable to match
             self._mapping[key] = Path(value)
             os.environ['OPENMC_CROSS_SECTIONS'] = str(value)
+        elif key == 'mg_cross_sections':
+            self._mapping[key] = Path(value)
+            os.environ['OPENMC_MG_CROSS_SECTIONS'] = str(value)
         elif key == 'chain_file':
             self._mapping[key] = Path(value)
         else:
@@ -40,7 +43,10 @@ class _Config(MutableMapping):
 config = _Config()
 
 # Set cross sections using environment variable
-config['cross_sections'] = os.environ.get("OPENMC_CROSS_SECTIONS")
+if "OPENMC_CROSS_SECTIONS" in os.environ:
+    config['cross_sections'] = os.environ["OPENMC_CROSS_SECTIONS"]
+if "OPENMC_MG_CROSS_SECTIONS" in os.environ:
+    config['mg_cross_sections'] = os.environ["OPENMC_MG_CROSS_SECTIONS"]
 
 # Check for depletion chain in cross_sections.xml
 # Set depletion chain
@@ -51,4 +57,5 @@ if chain_file is None and config['cross_sections'] is not None:
         if lib['type'] == 'depletion_chain':
             chain_file = lib['path']
             break
-config['chain_file'] = chain_file
+if chain_file is not None:
+    config['chain_file'] = chain_file

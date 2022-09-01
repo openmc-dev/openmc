@@ -154,10 +154,22 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       time_ = UPtrDist {new Discrete {T, p, 1}};
     }
 
-    // Check for cells to reject from
-    if (check_for_node(node, "cells")) {
-      auto cells = get_node_array<int>(node, "cells");
-      cells_.insert(cells.cbegin(), cells.cend());
+    // Check for domains to reject from
+    if (check_for_node(node, "domain_type")) {
+      std::string domain_type = get_node_value(node, "domain_type");
+      if (domain_type == "cell") {
+        domain_type_ = DomainType::CELL;
+      } else if (domain_type == "material") {
+        domain_type_ = DomainType::MATERIAL;
+      } else if (domain_type == "universe") {
+        domain_type_ = DomainType::UNIVERSE;
+      } else {
+        fatal_error(std::string(
+          "Unrecognized domain type for source rejection: " + domain_type));
+      }
+
+      auto ids = get_node_array<int>(node, "domain_ids");
+      domain_ids_.insert(ids.begin(), ids.end());
     }
   }
 }
@@ -199,13 +211,25 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
         }
       }
 
-      // Rejection based on cells
-      if (!cells_.empty()) {
+      // Rejection based on cells/materials/universes
+      if (!domain_ids_.empty()) {
         found = false;
-        for (const auto& coord : p.coord()) {
-          if (contains(cells_, model::cells[coord.cell]->id_)) {
-            found = true;
-            break;
+        if (domain_type_ == DomainType::MATERIAL) {
+          auto mat_index = p.material();
+          if (mat_index != MATERIAL_VOID) {
+            if (contains(domain_ids_, model::materials[mat_index]->id())) {
+              found = true;
+            }
+          }
+        } else {
+          for (const auto& coord : p.coord()) {
+            auto id = (domain_type_ == DomainType::CELL)
+                        ? model::cells[coord.cell]->id_
+                        : model::universes[coord.universe]->id_;
+            if (contains(domain_ids_, id)) {
+              found = true;
+              break;
+            }
           }
         }
       }

@@ -80,13 +80,18 @@ public:
   Distribution* time() const { return time_.get(); }
 
 private:
+  // Domain types
+  enum class DomainType { UNIVERSE, MATERIAL, CELL };
+
+  // Data members
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
   double strength_ {1.0};                         //!< Source strength
   UPtrSpace space_;                               //!< Spatial distribution
   UPtrAngle angle_;                               //!< Angular distribution
   UPtrDist energy_;                               //!< Energy distribution
   UPtrDist time_;                                 //!< Time distribution
-  std::unordered_set<int32_t> cells_;             //!< Cells to reject from
+  DomainType domain_type_;                        //!< Domain type for rejection
+  std::unordered_set<int32_t> domain_ids_;        //!< Domains to reject from
 };
 
 //==============================================================================

@@ -1,5 +1,7 @@
+from collections.abc import Iterable
 from enum import Enum
 from numbers import Real
+import warnings
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -37,8 +39,9 @@ class Source:
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type
-    cells : iterable of int or openmc.Cell
-        Cells to reject based on
+    domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
+        Domains to reject based on, i.e., if a sampled spatial location is not
+        within one of these domains, it will be rejected.
 
     Attributes
     ----------
@@ -60,14 +63,16 @@ class Source:
         Strength of the source
     particle : {'neutron', 'photon'}
         Source particle type
-    cells : iterable of int or openmc.Cell
-        Cells to reject based on
+    ids : Iterable of int
+        IDs of domains to use for rejection
+    domain_type : {'cell', 'material', 'universe'}
+        Type of domain to use for rejection
 
     """
 
     def __init__(self, space=None, angle=None, energy=None, time=None, filename=None,
                  library=None, parameters=None, strength=1.0, particle='neutron',
-                 cells=None):
+                 domains=None):
         self._space = None
         self._angle = None
         self._energy = None
@@ -75,7 +80,6 @@ class Source:
         self._file = None
         self._library = None
         self._parameters = None
-        self._cells = []
 
         if space is not None:
             self.space = space
@@ -93,8 +97,17 @@ class Source:
             self.parameters = parameters
         self.strength = strength
         self.particle = particle
-        if cells is not None:
-            self.cells = cells
+
+        self._domain_ids = []
+        self._domain_type = None
+        if domains is not None:
+            if isinstance(domains[0], openmc.Cell):
+                self.domain_type = 'cell'
+            elif isinstance(domains[0], openmc.Material):
+                self.domain_type = 'material'
+            elif isinstance(domains[0], openmc.Universe):
+                self.domain_type = 'universe'
+            self.domain_ids = [d.id for d in domains]
 
     @property
     def file(self):
@@ -133,8 +146,22 @@ class Source:
         return self._particle
 
     @property
-    def cells(self):
-        return self._cells
+    def domain_ids(self):
+        return self._domain_ids
+
+    @property
+    def domain_type(self):
+        return self._domain_type
+
+    @domain_ids.setter
+    def domain_ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._domain_ids = ids
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
+        self._domain_type = domain_type
 
     @file.setter
     def file(self, filename):
@@ -182,13 +209,6 @@ class Source:
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
-    @cells.setter
-    def cells(self, cells):
-        self._cells = [
-            cell.id if isinstance(cell, openmc.Cell) else cell
-            for cell in cells
-        ]
-
     def to_xml_element(self):
         """Return XML representation of the source
 
@@ -216,9 +236,11 @@ class Source:
             element.append(self.energy.to_xml_element('energy'))
         if self.time is not None:
             element.append(self.time.to_xml_element('time'))
-        if self.cells:
-            cells_elem = ET.SubElement(element, "cells")
-            cells_elem.text = ' '.join(str(x) for x in self.cells)
+        if self.domain_ids:
+            dt_elem = ET.SubElement(element, "domain_type")
+            dt_elem.text = self.domain_type
+            id_elem = ET.SubElement(element, "domain_ids")
+            id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
         return element
 
     @classmethod
@@ -236,7 +258,24 @@ class Source:
             Source generated from XML element
 
         """
-        source = cls()
+        domain_type = get_text(elem, "domain_type")
+        if domain_type is not None:
+            domain_ids = [int(x) for x in get_text(elem, "domain_ids").split()]
+
+            # Instantiate some throw-away domains that are used by the
+            # constructor to assign IDs
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', openmc.IDWarning)
+                if domain_type == 'cell':
+                    domains = [openmc.Cell(uid) for uid in domain_ids]
+                elif domain_type == 'material':
+                    domains = [openmc.Material(uid) for uid in domain_ids]
+                elif domain_type == 'universe':
+                    domains = [openmc.Universe(uid) for uid in domain_ids]
+        else:
+            domains = None
+
+        source = cls(domains=domains)
 
         strength = get_text(elem, 'strength')
         if strength is not None:
@@ -273,10 +312,6 @@ class Source:
         time = elem.find('time')
         if time is not None:
             source.time = Univariate.from_xml_element(time)
-
-        cells = elem.find('cells')
-        if cells is not None:
-            source.cells = [int(x) for x in cells.text.split()]
 
         return source
 

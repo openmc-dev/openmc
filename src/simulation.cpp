@@ -848,6 +848,13 @@ void transport_event_based()
   #pragma omp target update to(simulation::device_source_bank[:simulation::source_bank.size()])
   simulation::fission_bank.copy_host_to_device();
   #pragma omp target update to(simulation::keff)
+  
+  // Transfer tally data to device for on-device tallying
+  //#pragma omp target update to(model::tallies[:model::tallies_size])
+  for (int i = 0; i < model::tallies_size; ++i) {
+    auto& tally = model::tallies[i];
+    tally.update_to_device();
+  }
 
   // Figure out # of particles to initialize. If # of particles required per batch for this rank
   // is greater than what is allowed in-flight at once, then the particles will be refilled
@@ -918,6 +925,21 @@ void transport_event_based()
 
   // Copy back fission bank to host
   simulation::fission_bank.copy_device_to_host();
+  
+  // Transfer tally data back to host for host-side accumulation
+  for (int i = 0; i < model::tallies_size; ++i) {
+    auto& tally = model::tallies[i];
+    tally.update_to_host();
+  }
+  //#pragma omp target update from(model::tallies[:model::tallies_size])
+  
+  // Print tally info
+  for (int i = 0; i < model::tallies_size; i++ ) {
+    auto& tally = model::tallies[i];
+    for( int j = 0; j < tally.results_size_; j++ ) {
+      printf("(%d, %d): %.3le\n", i, j, tally.results_[j]);
+    }
+  }
 
   #ifdef OPENMC_MPI
   MPI_Barrier( mpi::intracomm );

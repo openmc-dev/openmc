@@ -660,7 +660,19 @@ void Tally::copy_to_device()
 {
   scores_.copy_to_device();
   nuclides_.copy_to_device();
+  filters_.copy_to_device();
+  strides_.copy_to_device();
   #pragma omp target enter data map(to: results_[:results_size_])
+}
+
+void Tally::update_to_device()
+{
+  #pragma omp target update to(results_[:results_size_])
+}
+
+void Tally::update_to_host()
+{
+  #pragma omp target update from(results_[:results_size_])
 }
 
 void Tally::release_from_device()
@@ -917,14 +929,25 @@ setup_active_tallies()
       }
     }
   }
+  
+  model::device_active_tallies = model::active_tallies.data();
+  model::device_active_collision_tallies = model::active_collision_tallies.data();
+  model::device_active_tracklength_tallies = model::active_tracklength_tallies.data();
+  #pragma omp target enter data map(to: model::device_active_tallies[:model::active_tallies.size()])
+  #pragma omp target enter data map(to: model::device_active_collision_tallies[:model::active_collision_tallies.size()])
+  #pragma omp target enter data map(to: model::device_active_tracklength_tallies[:model::active_tracklength_tallies.size()])
+  
+  model::active_tallies_size = model::active_tallies.size();
+  model::active_collision_tallies_size = model::active_collision_tallies.size();
+  model::active_tracklength_tallies_size = model::active_tracklength_tallies.size();
 
   // Update active tally vectors on device
   #pragma omp target update to(model::active_tallies_size)
   #pragma omp target update to(model::active_collision_tallies_size)
   #pragma omp target update to(model::active_tracklength_tallies_size)
-  #pragma omp target update to(model::device_active_tallies[:model::active_tallies_size])
-  #pragma omp target update to(model::device_active_collision_tallies[:model::active_collision_tallies_size])
-  #pragma omp target update to(model::device_active_tracklength_tallies[:model::active_tracklength_tallies_size])
+  //#pragma omp target update to(model::device_active_tallies[:model::active_tallies_size])
+  //#pragma omp target update to(model::device_active_collision_tallies[:model::active_collision_tallies_size])
+  //#pragma omp target update to(model::device_active_tracklength_tallies[:model::active_tracklength_tallies_size])
 }
 
 void

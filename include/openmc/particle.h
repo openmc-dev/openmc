@@ -322,8 +322,8 @@ public:
   #pragma omp end declare target
 
   // Coarse-grained particle events
-  void event_tracklength_tally(bool need_depletion_rx);
   #pragma omp declare target
+  void event_tracklength_tally(bool need_depletion_rx);
   void event_calculate_xs(bool need_depletion_rx);
   bool event_calculate_xs_dispatch();
   void event_calculate_xs_execute(bool need_depletion_rx);

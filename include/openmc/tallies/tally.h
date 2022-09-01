@@ -49,7 +49,7 @@ public:
 
   void set_nuclides(const std::vector<std::string>& nuclides);
 
-  const std::vector<int32_t>& filters() const {return filters_;}
+  const vector<int32_t>& filters() const {return filters_;}
 
   int32_t filters(int i) const {return filters_[i];}
 
@@ -78,6 +78,8 @@ public:
   std::string score_name(int score_idx) const;
 
   void copy_to_device();
+  void update_to_host();
+  void update_to_device();
   void release_from_device();
 
   //----------------------------------------------------------------------------
@@ -137,10 +139,10 @@ private:
   //----------------------------------------------------------------------------
   // Private data.
 
-  std::vector<int32_t> filters_; //!< Filter indices in global filters array
+  vector<int32_t> filters_; //!< Filter indices in global filters array
 
   //! Index strides assigned to each filter to support 1D indexing.
-  std::vector<int32_t> strides_;
+  vector<int32_t> strides_;
 
   int32_t n_filter_bins_ {0};
 

@@ -255,12 +255,14 @@ void move_read_only_data_to_device()
     std::cout << "Moving " << tally.name_ << " data to device..." << std::endl;
     tally.copy_to_device();
   }
+  /*
   model::device_active_tallies = model::active_tallies.data();
   model::device_active_collision_tallies = model::active_collision_tallies.data();
   model::device_active_tracklength_tallies = model::active_tracklength_tallies.data();
   #pragma omp target enter data map(to: model::device_active_tallies[:model::active_tallies.size()])
   #pragma omp target enter data map(to: model::device_active_collision_tallies[:model::active_collision_tallies.size()])
   #pragma omp target enter data map(to: model::device_active_tracklength_tallies[:model::active_tracklength_tallies.size()])
+  */
 
   #ifdef OPENMC_MPI
   MPI_Barrier( mpi::intracomm );

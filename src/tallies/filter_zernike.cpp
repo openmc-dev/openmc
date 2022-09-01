@@ -40,7 +40,8 @@ Filter::ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
   if (r <= 1.0) {
     // Compute and return the Zernike weights.
     double zn[FILTERMATCH_BINS_WEIGHTS_SIZE];
-    calc_zn(order_, r, theta, zn);
+    //TODO: FIX ZERNIKE FILTERS
+    //calc_zn(order_, r, theta, zn);
     for (int i = 0; i < n_bins_; i++) {
       //match.bins_.push_back(i);
       //match.weights_.push_back(zn[i]);

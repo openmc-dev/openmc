@@ -67,7 +67,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
     if (!match.bins_present_) {
       match.bins_weights_length_ = 0;
       for (auto i = 0; i < model::tally_filters[i_filt].n_bins(); ++i) {
-        assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
+        //assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
         match.bins_[match.bins_weights_length_] = i;
         match.weights_[match.bins_weights_length_] = 1.0;
         match.bins_weights_length_++;
@@ -1104,6 +1104,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
     //     score);
 
     // Update tally results
+    printf("Scoring (%d, %d, %d) += %.3lf\n", filter_index, score_index, TallyResult::VALUE, score*filter_weight);
     #pragma omp atomic
     *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
@@ -1628,6 +1629,7 @@ score_general_ce_analog(Particle& p, int i_tally, int start_index, int filter_in
         score);
 
     // Update tally results
+    printf("Scoring (%d, %d, %d) += %.3lf\n", filter_index, score_index, TallyResult::VALUE, score*filter_weight);
     #pragma omp atomic
     *tally.results(filter_index, score_index, TallyResult::VALUE) += score*filter_weight;
   }
@@ -2369,9 +2371,11 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
 {
   // Determine the tracklength estimate of the flux
   double flux = p.wgt_ * distance;
+  //printf("flux = %.3le active tracklength tallies size = %d\n", flux, model::active_tracklength_tallies_size);
 
   for (int i = 0; i < model::active_tracklength_tallies_size; ++i) {
     int i_tally = model::device_active_tracklength_tallies[i];
+    printf("i_tally = %d\n", i_tally);
     const Tally& tally {model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
@@ -2403,7 +2407,9 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
           if (p.material_ != MATERIAL_VOID) {
             auto j = model::materials[p.material_].mat_nuclide_index_[i_nuclide];
             if (j == C_NONE) continue;
-            atom_density = model::materials[p.material_].atom_density_(j);
+            //atom_density = model::materials[p.material_].atom_density_(j);
+            atom_density = model::materials[p.material_].device_atom_density_[j];
+            printf("i = %d, Tally nuclide index = %d, material nuclide index = %d, material ID = %d, atom density = %.3le\n", i, i_nuclide, j, p.material_, atom_density);
             #ifdef NO_MICRO_XS_CACHE
             micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
             #else
@@ -2414,6 +2420,8 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
 
         //TODO: consider replacing this "if" with pointers or templates
         if (settings::run_CE) {
+          printf("calling scoring for i_tally = %d, filter_index = %d, filter_weight = %.3lf, i_nuclide = %d, atom_density = %.3le, flux = %.3le\n",
+              i_tally, filter_index, filter_weight, i_nuclide, atom_density, flux);
           score_general_ce_nonanalog(p, i_tally, i*tally.scores_.size(), filter_index,
             filter_weight, i_nuclide, atom_density, flux, micro);
         } else {

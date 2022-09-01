@@ -28,7 +28,7 @@
                 "CMAKE_CXX_COMPILER": "icpx"
             },
             "environment": {
-                "INTEL_CXX_FLAGS": "-fiopenmp"
+                "INTEL_CXX_FLAGS": "-fiopenmp -gline-tables-only"
             }
         },
         {
@@ -39,7 +39,7 @@
                 "CMAKE_CXX_COMPILER": "clang++"
             },
             "environment": {
-                "LLVM_CXX_FLAGS": "-fopenmp -fopenmp-cuda-mode"
+                "LLVM_CXX_FLAGS": "-fopenmp -fopenmp-cuda-mode -gline-tables-only --save-temps"
             }
         },
         {
@@ -70,7 +70,6 @@
             "name": "llvm_v100",
             "inherits": ["llvm"],
             "displayName": "LLVM Clang V100",
-            "binaryDir": "${sourceDir}/build/llvm_v100",
             "environment": {
                 "PRESET_CXX_FLAGS": "-fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_70"
             }

@@ -254,6 +254,7 @@ void process_advance_particle_events(int n_particles)
   simulation::surface_crossing_queue.sync_size_device_to_host();
   simulation::collision_queue.sync_size_device_to_host();
 
+  /*
   // Perform tallying on host, if needed
   if (!model::active_tracklength_tallies.empty()) {
     bool need_depletion_rx = depletion_rx_check();
@@ -266,6 +267,30 @@ void process_advance_particle_events(int n_particles)
       p.event_tracklength_tally(need_depletion_rx);
     }
     #pragma omp target update to(simulation::device_particles[:n_particles])
+  }
+  */
+  
+  // Perform tallying on device, if needed
+  if (!model::active_tracklength_tallies.empty()) {
+    /*
+    for (int i = 0; i < model::tallies_size; ++i) {
+      auto& tally = model::tallies[i];
+      tally.update_to_device();
+    }
+    */
+    bool need_depletion_rx = depletion_rx_check();
+    #pragma omp target teams distribute parallel for
+    for (int i = 0; i < simulation::advance_particle_queue.size(); i++) {
+      int buffer_idx = simulation::advance_particle_queue[i].idx;
+      Particle& p = simulation::device_particles[buffer_idx];
+      p.event_tracklength_tally(need_depletion_rx);
+    }
+    /*
+    for (int i = 0; i < model::tallies_size; ++i) {
+      auto& tally = model::tallies[i];
+      tally.update_to_host();
+    }
+    */
   }
 
   simulation::advance_particle_queue.resize(0);

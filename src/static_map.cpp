@@ -6,7 +6,12 @@ namespace openmc {
 // Static map implementation
 //==============================================================================
 
+  /*
+ `openmc::static_map<openmc::CellInstance, long, openmc::CellInstanceHash>::calc_num_buckets(unsigned long) const'
+ `openmc::static_map<int, int, openmc::integer_hash<int> >::calc_num_buckets(unsigned long) const'
+ */
 //! Find the nearest prime above a value, used for hash table bucket sizing
+/*
 template<typename Key, typename T, typename Hash>
 auto static_map<Key, T, Hash>::calc_num_buckets(size_type count) const
   -> size_type
@@ -21,5 +26,6 @@ auto static_map<Key, T, Hash>::calc_num_buckets(size_type count) const
   auto iter = std::lower_bound(std::begin(primes), std::end(primes), count);
   return *iter;
 }
+*/
 
 } // namespace openmc

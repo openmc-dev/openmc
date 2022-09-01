@@ -32,7 +32,7 @@ def test_add_components():
                   'O16': 1.0,
                   'Zr': 1.0,
                   'O': 1.0,
-                  'Ag110m': 1.0,
+                  'Ag110_m1': 1.0,
                   'U': {'percent': 1.0,
                         'enrichment': 4.5},
                   'Li': {'percent': 1.0,

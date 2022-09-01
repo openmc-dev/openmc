@@ -1310,9 +1310,8 @@ class Materials(cv.CheckedList):
     """Collection of Materials used for an OpenMC simulation.
 
     This class corresponds directly to the materials.xml input file. It can be
-    thought of as a normal Python list where each member is a
-    :class:`Material`. It behaves like a list as the following example
-    demonstrates:
+    thought of as a normal Python list where each member is a :class:`Material`.
+    It behaves like a list as the following example demonstrates:
 
     >>> fuel = openmc.Material()
     >>> clad = openmc.Material()
@@ -1330,9 +1329,8 @@ class Materials(cv.CheckedList):
     ----------
     cross_sections : str or path-like
         Indicates the path to an XML cross section listing file (usually named
-        cross_sections.xml). If it is not set, the
-        :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
-        continuous-energy calculations and
+        cross_sections.xml). If it is not set, openmc.config['cross_sections']
+        will be used for continuous-energy calculations and
         :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
         calculations to find the path to the HDF5 cross section file.
 

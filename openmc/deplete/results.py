@@ -392,7 +392,7 @@ class Results(list):
             as such cannot be used in subsequent transport calculations.
             If not provided, nuclides from the cross_sections element of
             materials.xml will be used. If that element is not present,
-            nuclides from OPENMC_CROSS_SECTIONS will be used.
+            nuclides from openmc.config['cross_sections'] will be used.
 
         Returns
         -------
@@ -412,7 +412,7 @@ class Results(list):
         # the new materials XML file. The precedence of nuclides to select
         # is first ones provided as a kwarg here, then ones specified
         # in the materials.xml file if provided, then finally from
-        # the environment variable OPENMC_CROSS_SECTIONS.
+        # openmc.config['cross_sections'].
         if nuc_with_data:
             cv.check_iterable_type('nuclide names', nuc_with_data, str)
             available_cross_sections = nuc_with_data

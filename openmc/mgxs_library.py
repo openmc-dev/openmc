@@ -2546,7 +2546,7 @@ class MGXSLibrary:
 
         """
         # If filename is None, get the cross sections from the
-        # OPENMC_CROSS_SECTIONS environment variable
+        # OPENMC_MG_CROSS_SECTIONS environment variable
         if filename is None:
             filename = os.environ.get('OPENMC_MG_CROSS_SECTIONS')
 

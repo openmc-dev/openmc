@@ -11,6 +11,7 @@ from collections import OrderedDict
 import numpy as np
 
 import openmc
+from openmc.exceptions import DataError
 from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
@@ -57,9 +58,8 @@ class OpenMCOperator(TransportOperator):
         Path to continuous energy cross section library, or object containing
         one-group cross-sections.
     chain_file : str, optional
-        Path to the depletion chain XML file.  Defaults to the file
-        listed under ``depletion_chain`` in
-        :envvar:`OPENMC_CROSS_SECTIONS` environment variable.
+        Path to the depletion chain XML file. Defaults to
+        openmc.config['chain_file'].
     prev_results : Results, optional
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state
@@ -82,7 +82,6 @@ class OpenMCOperator(TransportOperator):
         Depth of the search when reducing the depletion chain. Only used
         if ``reduce_chain`` evaluates to true. The default value of
         ``None`` implies no limit on the depth.
-
 
     Attributes
     ----------
@@ -132,6 +131,15 @@ class OpenMCOperator(TransportOperator):
             helper_kwargs=None,
             reduce_chain=False,
             reduce_chain_level=None):
+
+        # If chain file was not specified, try to get it from global config
+        if chain_file is None:
+            chain_file = openmc.config.get('chain_file')
+            if chain_file is None:
+                raise DataError(
+                    "No depletion chain specified and could not find depletion "
+                    "chain in openmc.config['chain_file']"
+                )
 
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False

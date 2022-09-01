@@ -272,7 +272,7 @@ class Universe(UniverseBase):
 
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', **kwargs):
+             openmc_exec='openmc', axes=None, **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -302,6 +302,8 @@ class Universe(UniverseBase):
             Seed for the random number generator
         openmc_exec : str
             Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
 
             .. versionadded:: 0.13.1
         **kwargs
@@ -360,15 +362,16 @@ class Universe(UniverseBase):
 
             # Create a figure sized such that the size of the axes within
             # exactly matches the number of pixels specified
-            px = 1/plt.rcParams['figure.dpi']
-            fig, ax = plt.subplots()
-            params = fig.subplotpars
-            width = pixels[0]*px/(params.right - params.left)
-            height = pixels[0]*px/(params.top - params.bottom)
-            fig.set_size_inches(width, height)
+            if axes is None:
+                px = 1/plt.rcParams['figure.dpi']
+                fig, axes = plt.subplots()
+                params = fig.subplotpars
+                width = pixels[0]*px/(params.right - params.left)
+                height = pixels[0]*px/(params.top - params.bottom)
+                fig.set_size_inches(width, height)
 
             # Plot image and return the axes
-            return ax.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+            return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
     def add_cell(self, cell):
         """Add a cell to the universe.

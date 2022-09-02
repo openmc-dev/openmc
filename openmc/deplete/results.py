@@ -359,17 +359,17 @@ class Results(list):
                 time, time_units, atol, rtol)
         )
 
-    def export_to_materials(self, burnup_index=None, nuc_with_data=None):
+    def export_to_materials(self, burnup_index, nuc_with_data=None):
         """Return openmc.Materials objects based on results at given burnup steps
 
         .. versionadded:: 0.12.1
 
         Parameters
         ----------
-        burn_index : int or Iterable of ints, optional
+        burn_index : int or Iterable of ints
             Index(es) of burnup step to evaluate. See also: get_step_where for
             obtaining burnup step indices from other data such as the time.
-            Defaults to None which returns materials from all burnup steps.
+            Set to None if the materials from all burnup steps are required.
         nuc_with_data : Iterable of str, optional
             Nuclides to include in resulting materials.
             This can be specified if not all nuclides appearing in
@@ -381,7 +381,7 @@ class Results(list):
 
         Returns
         -------
-        mat_file : Materials or iterable of Materials
+        mat_file : iterable of Materials
             Modified Materials instances containing depleted
             material data and original isotopic compositions of non-depletable
             materials
@@ -452,10 +452,6 @@ class Results(list):
                             mat.add_nuclide(nuc, atoms_per_barn_cm)
 
             materials.append(mat_file)
-
-        # Preserve previous behavior
-        if len(materials) == 1:
-            materials = materials[0]
 
         return materials
 

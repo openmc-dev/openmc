@@ -149,9 +149,9 @@ public:
   void SpatialLegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
   void SurfaceFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
   void UniverseFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
-  void ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
   void ZernikeRadialFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
   #pragma omp end declare target
+  void ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const;
 
 
   //! Writes data describing this filter to an HDF5 statepoint group.

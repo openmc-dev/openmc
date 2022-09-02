@@ -21,6 +21,7 @@ namespace openmc {
 void
 Filter::ZernikeFilter_from_xml(pugi::xml_node node)
 {
+  fatal_error("Zernike filters not yet supported on device (due to calc_zn() dynamic memory allocation).");
   set_order(std::stoi(get_node_value(node, "order")));
   x_ = std::stod(get_node_value(node, "x"));
   yy_ = std::stod(get_node_value(node, "y"));
@@ -40,8 +41,7 @@ Filter::ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
   if (r <= 1.0) {
     // Compute and return the Zernike weights.
     double zn[FILTERMATCH_BINS_WEIGHTS_SIZE];
-    //TODO: FIX ZERNIKE FILTERS
-    //calc_zn(order_, r, theta, zn);
+    calc_zn(order_, r, theta, zn);
     for (int i = 0; i < n_bins_; i++) {
       //match.bins_.push_back(i);
       //match.weights_.push_back(zn[i]);

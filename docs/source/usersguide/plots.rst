@@ -133,7 +133,7 @@ The :class:`openmc.ProjectionPlot` class presents an alternative method
 of producing 3D visualizations of OpenMC geometries. It was developed to
 overcome the primary shortcoming of voxel plots, that an enormous number
 of voxels must be employed to capture detailed geometric features.
-Projection plots do volume rendering on material or
+Projection plots perform volume rendering on material or
 cell volumes, with colors specified in the same manner as slice plots.
 This is done using the native ray tracing capabilities within OpenMC,
 so any geometry in which particles successfully run without overlaps

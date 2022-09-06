@@ -1,6 +1,7 @@
 import numbers
 import bisect
 import math
+from typing import Iterable, Optional, Tuple
 from warnings import warn
 
 import h5py
@@ -15,7 +16,7 @@ from openmc.exceptions import DataError
 __all__ = ["Results", "ResultsList"]
 
 
-def _get_time_as(seconds, units):
+def _get_time_as(seconds: float, units: str) -> float:
     """Converts the time in seconds to time in different units
 
     Parameters
@@ -70,7 +71,7 @@ class Results(list):
 
 
     @classmethod
-    def from_hdf5(cls, filename):
+    def from_hdf5(cls, filename: str):
         """Load in depletion results from a previous file
 
         Parameters
@@ -91,7 +92,13 @@ class Results(list):
         )
         return cls(filename)
 
-    def get_atoms(self, mat, nuc, nuc_units="atoms", time_units="s"):
+    def get_atoms(
+        self,
+        mat: Material,
+        nuc: str,
+        nuc_units: str = "atoms",
+        time_units: str = "s"
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Get number of nuclides over time from a single material
 
         .. note::
@@ -155,7 +162,12 @@ class Results(list):
 
         return times, concentrations
 
-    def get_reaction_rate(self, mat, nuc, rx):
+    def get_reaction_rate(
+        self,
+        mat: Material,
+        nuc: str,
+        rx: str
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Get reaction rate in a single material/nuclide over time
 
         .. note::
@@ -200,7 +212,7 @@ class Results(list):
 
         return times, rates
 
-    def get_keff(self, time_units='s'):
+    def get_keff(self, time_units: str = 's') -> Tuple[np.ndarray, np.ndarray]:
         """Evaluates the eigenvalue from a results list.
 
         .. versionadded:: 0.13.1
@@ -236,12 +248,12 @@ class Results(list):
         times = _get_time_as(times, time_units)
         return times, eigenvalues
 
-    def get_eigenvalue(self, time_units='s'):
+    def get_eigenvalue(self, time_units: str = 's') -> Tuple[np.ndarray, np.ndarray]:
         warn("The get_eigenvalue(...) function has been renamed get_keff and "
              "will be removed in a future version of OpenMC.", FutureWarning)
         return self.get_keff(time_units)
 
-    def get_depletion_time(self):
+    def get_depletion_time(self) -> np.ndarray:
         """Return an array of the average time to deplete a material
 
         .. note::
@@ -269,7 +281,7 @@ class Results(list):
             times[ix] = res.proc_time
         return times
 
-    def get_times(self, time_units="d") -> np.ndarray:
+    def get_times(self, time_units: str = "d") -> np.ndarray:
         """Return the points in time that define the depletion schedule
 
         .. versionadded:: 0.12.1
@@ -298,7 +310,7 @@ class Results(list):
         return _get_time_as(times, time_units)
 
     def get_step_where(
-        self, time, time_units="d", atol=1e-6, rtol=1e-3
+        self, time, time_units: str = "d", atol: float = 1e-6, rtol: float = 1e-3
     ) -> int:
         """Return the index closest to a given point in time
 
@@ -358,7 +370,11 @@ class Results(list):
                 time, time_units, atol, rtol)
         )
 
-    def export_to_materials(self, burnup_index, nuc_with_data=None) -> Materials:
+    def export_to_materials(
+        self,
+        burnup_index: int,
+        nuc_with_data: Optional[Iterable[str]] = None
+    ) -> Materials:
         """Return openmc.Materials object based on results at a given step
 
         .. versionadded:: 0.12.1

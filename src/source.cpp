@@ -41,6 +41,12 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+#ifdef OPENMC_MCPL
+const bool MCPL_ENABLED = true;
+#else
+const bool MCPL_ENABLED = false;
+#endif
+
 namespace model {
 
 vector<unique_ptr<Source>> external_sources;

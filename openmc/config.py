@@ -1,6 +1,7 @@
 from collections.abc import MutableMapping
 import os
 from pathlib import Path
+import warnings
 
 from openmc.data import DataLibrary
 
@@ -17,17 +18,21 @@ class _Config(MutableMapping):
 
     def __delitem__(self, key):
         del self._mapping[key]
+        if key == 'cross_sections':
+            del os.environ['OPENMC_CROSS_SECTIONS']
+        elif key == 'mg_cross_sections':
+            del os.environ['OPENMC_MG_CROSS_SECTIONS']
 
     def __setitem__(self, key, value):
         if key == 'cross_sections':
             # Force environment variable to match
-            self._mapping[key] = Path(value)
+            self._set_path(key, value)
             os.environ['OPENMC_CROSS_SECTIONS'] = str(value)
         elif key == 'mg_cross_sections':
-            self._mapping[key] = Path(value)
+            self._set_path(key, value)
             os.environ['OPENMC_MG_CROSS_SECTIONS'] = str(value)
         elif key == 'chain_file':
-            self._mapping[key] = Path(value)
+            self._set_path(key, value)
         else:
             raise KeyError(f'Unrecognized config key: {key}')
 
@@ -40,6 +45,11 @@ class _Config(MutableMapping):
     def __repr__(self):
         return repr(self._mapping)
 
+    def _set_path(self, key, value):
+        self._mapping[key] = p = Path(value)
+        if not p.exists():
+            warnings.warn(f"'{value}' does not exist.")
+
 
 def _default_config():
     """Return default configuration"""
@@ -51,10 +61,13 @@ def _default_config():
     if "OPENMC_MG_CROSS_SECTIONS" in os.environ:
         config['mg_cross_sections'] = os.environ["OPENMC_MG_CROSS_SECTIONS"]
 
-    # Check for depletion chain in cross_sections.xml
     # Set depletion chain
     chain_file = os.environ.get("OPENMC_DEPLETE_CHAIN")
-    if chain_file is None and config['cross_sections'] is not None:
+    if (chain_file is None and
+        config['cross_sections'] is not None and
+        config['cross_sections'].exists()
+    ):
+        # Check for depletion chain in cross_sections.xml
         data = DataLibrary.from_xml(config['cross_sections'])
         for lib in reversed(data.libraries):
             if lib['type'] == 'depletion_chain':

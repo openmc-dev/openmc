@@ -666,12 +666,12 @@ void Tally::copy_to_device()
   #pragma omp target enter data map(to: results_[:results_size_])
 }
 
-void Tally::update_to_device()
+void Tally::update_host_to_device()
 {
   #pragma omp target update to(results_[:results_size_])
 }
 
-void Tally::update_to_host()
+void Tally::update_device_to_host()
 {
   #pragma omp target update from(results_[:results_size_])
 }

@@ -78,8 +78,8 @@ public:
   std::string score_name(int score_idx) const;
 
   void copy_to_device();
-  void update_to_host();
-  void update_to_device();
+  void update_device_to_host();
+  void update_host_to_device();
   void release_from_device();
 
   //----------------------------------------------------------------------------

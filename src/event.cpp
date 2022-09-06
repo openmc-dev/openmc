@@ -244,7 +244,6 @@ void process_advance_particle_events(int n_particles)
     int buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();
-
     if (p.collision_distance_ > p.boundary_.distance) {
       simulation::surface_crossing_queue.thread_safe_append({p.E_, buffer_idx});
     } else {
@@ -254,7 +253,10 @@ void process_advance_particle_events(int n_particles)
   simulation::surface_crossing_queue.sync_size_device_to_host();
   simulation::collision_queue.sync_size_device_to_host();
   
-  // Perform tallying on device, if needed
+  simulation::time_event_advance_particle.stop();
+  simulation::time_event_tally.start();
+  
+  // Perform tracklength tallying on device if active tallies are present
   if (!model::active_tracklength_tallies.empty()) {
     bool need_depletion_rx = depletion_rx_check();
     #pragma omp target teams distribute parallel for
@@ -266,8 +268,7 @@ void process_advance_particle_events(int n_particles)
   }
 
   simulation::advance_particle_queue.resize(0);
-
-  simulation::time_event_advance_particle.stop();
+  simulation::time_event_tally.stop();
 }
 
 void process_surface_crossing_events()

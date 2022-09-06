@@ -279,7 +279,7 @@ double get_nuc_fission_q(const Nuclide& nuc, const Particle& p, int score_bin)
   } else if (score_bin == SCORE_FISS_Q_RECOV) {
     if (nuc.fission_q_recov_) {
       return (*nuc.fission_q_recov_)(p.E_last_);
-  }
+    }
   }
   return 0.0;
 }

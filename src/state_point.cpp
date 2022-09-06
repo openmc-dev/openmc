@@ -299,7 +299,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       write_dataset(runtime_group, "sampling source sites", time_bank_sample.elapsed());
       write_dataset(runtime_group, "SEND-RECV source sites", time_bank_sendrecv.elapsed());
     }
-    write_dataset(runtime_group, "accumulating tallies", time_tallies.elapsed());
+    write_dataset(runtime_group, "accumulating tallies", time_accumulate_tallies.elapsed());
     write_dataset(runtime_group, "total", time_total.elapsed());
     write_dataset(runtime_group, "writing statepoints", time_statepoint.elapsed());
     close_group(runtime_group);

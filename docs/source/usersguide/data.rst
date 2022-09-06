@@ -1,8 +1,8 @@
-.. _usersguide_cross_sections:
+.. _usersguide_data:
 
-===========================
-Cross Section Configuration
-===========================
+==================
+Data Configuration
+==================
 
 In order to run a simulation with OpenMC, you will need cross section data for
 each nuclide or material in your problem. OpenMC can be run in continuous-energy

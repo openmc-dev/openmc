@@ -140,8 +140,7 @@ so any geometry in which particles successfully run without overlaps
 or leaks will work with projection plots.
 
 One drawback of projection plots is that particle tracks cannot be overlaid
-on them at present. Moreover, checking for overlap regions as is possible
-with slice plots is also not available. The image heading this section can
+on them at present. Moreover, checking for overlap regions is not currently possible with projection plots. The image heading this section can
 be created by adding the following code to the hexagonal lattice example packaged
 with OpenMC, before exporting to plots.xml.
 

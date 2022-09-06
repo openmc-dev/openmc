@@ -383,19 +383,30 @@ SourceSite MCPLFileSource::read_single_particle() const
 {
   SourceSite omc_particle_;
   const mcpl_particle_t *mcpl_particle;
-  //extract particle from mcpl-file
+  // extract particle from mcpl-file
   mcpl_particle=mcpl_read(mcpl_file);
-  // check if it is a neutron or a photon. otherwise skip
-  while ( mcpl_particle->pdgcode!=2112 && mcpl_particle->pdgcode!=22 ) {
+  // check if it is a neutron, photon, electron, or positron. Otherwise skip.
+  int pdg=mcpl_particle->pdgcode;
+  while ( pdg!=2112 && pdg!=22 && pdg!=11 && pdg!=-11) {
     mcpl_particle=mcpl_read(mcpl_file);
-    //should check for file exhaustion This could happen if particles are other than
-    //neutrons or photons
+    pdg=mcpl_particle->pdgcode;
+    //should check for file exhaustion. This could happen if particles are other than
+    //neutrons, photons, electrons, or positrons.
   }
 
-  if(mcpl_particle->pdgcode==2112) {
-    omc_particle_.particle=ParticleType::neutron;
-  } else if (mcpl_particle->pdgcode==22) {
-    omc_particle_.particle=ParticleType::photon;
+  switch(pdg){
+    case 2112:
+      omc_particle_.particle=ParticleType::neutron;
+      break;
+    case 22:
+      omc_particle_.particle=ParticleType::photon;
+      break;
+    case 11:
+      omc_particle_.particle=ParticleType::electron;
+      break;
+    case -11:
+      omc_particle_.particle=ParticleType::positron;
+      break;
   }
 
   //particle is good, convert to openmc-formalism

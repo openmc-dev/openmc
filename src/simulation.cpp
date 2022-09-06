@@ -408,10 +408,10 @@ void finalize_batch()
     write_source_point(filename.c_str(), true);
   }
 
-  if(settings::surf_mcpl_write && simulation::current_batch == settings::n_batches){
-    auto filename = settings::path_output + ".mcpl";
-    write_mcpl_source_point(filename.c_str(), true);
-  }
+if(settings::surf_mcpl_write && simulation::current_batch == settings::n_batches){
+  auto filename = settings::path_output + ".mcpl";
+  write_mcpl_source_point(filename.c_str(), true);
+}
 
 
 }

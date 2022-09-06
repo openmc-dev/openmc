@@ -1,7 +1,7 @@
 import numbers
 import bisect
 import math
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Tuple, Union
 from warnings import warn
 
 import h5py
@@ -12,6 +12,7 @@ import openmc.checkvalue as cv
 from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
 from openmc.exceptions import DataError
+from openmc.checkvalue import PathLike
 
 __all__ = ["Results", "ResultsList"]
 
@@ -71,7 +72,7 @@ class Results(list):
 
 
     @classmethod
-    def from_hdf5(cls, filename: str):
+    def from_hdf5(cls, filename: PathLike):
         """Load in depletion results from a previous file
 
         Parameters
@@ -164,7 +165,7 @@ class Results(list):
 
     def get_reaction_rate(
         self,
-        mat: Material,
+        mat: Union[Material, str],
         nuc: str,
         rx: str
     ) -> Tuple[np.ndarray, np.ndarray]:

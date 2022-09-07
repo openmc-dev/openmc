@@ -33,6 +33,7 @@ class _Config(MutableMapping):
             os.environ['OPENMC_MG_CROSS_SECTIONS'] = str(value)
         elif key == 'chain_file':
             self._set_path(key, value)
+            os.environ['OPENMC_CHAIN_FILE'] = str(value)
         else:
             raise KeyError(f'Unrecognized config key: {key}')
 
@@ -62,7 +63,7 @@ def _default_config():
         config['mg_cross_sections'] = os.environ["OPENMC_MG_CROSS_SECTIONS"]
 
     # Set depletion chain
-    chain_file = os.environ.get("OPENMC_DEPLETE_CHAIN")
+    chain_file = os.environ.get("OPENMC_CHAIN_FILE")
     if (chain_file is None and
         config['cross_sections'] is not None and
         config['cross_sections'].exists()

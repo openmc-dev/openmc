@@ -95,7 +95,7 @@ class Results(list):
 
     def get_atoms(
         self,
-        mat: Material,
+        mat: Union[Material, str],
         nuc: str,
         nuc_units: str = "atoms",
         time_units: str = "s"

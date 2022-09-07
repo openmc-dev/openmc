@@ -254,3 +254,12 @@ def test_lethargy_bin_width():
     energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175']
     assert f.lethargy_bin_width[0] == np.log10(energy_bins[1]/energy_bins[0])
     assert f.lethargy_bin_width[-1] == np.log10(energy_bins[-1]/energy_bins[-2])
+
+
+def test_lethargy():
+    f = openmc.EnergyFilter.from_group_structure('VITAMIN-J-175')
+    assert len(f.lethargy(14e6)) == 175
+    energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175']
+    assert f.lethargy(14e6)[0] == np.log10(14e6/energy_bins[0])
+    # last bin is skipped by lethargy() so test looks at 2nd to last
+    assert f.lethargy(14e6)[-1] == np.log10(14e6/energy_bins[-2])

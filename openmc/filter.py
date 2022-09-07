@@ -1336,6 +1336,18 @@ class EnergyFilter(RealFilter):
         """
         return np.log10(self.bins[:, 1]/self.bins[:, 0])
 
+    def lethargy(self, energy):
+        """Calculates the base 10 log of the reference energy over the lower
+        energy bin edge for each energy bin. This is useful when plotting the
+        normalized flux.
+
+        Returns
+        -------
+        numpy.array
+            Array of lethargy values
+        """
+        return np.log10(energy/np.unique(self.bins[:-1]))
+
     @classmethod
     def from_group_structure(cls, group_structure):
         """Construct an EnergyFilter instance from a standard group structure.

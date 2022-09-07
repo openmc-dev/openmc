@@ -438,7 +438,7 @@ class Material(IDManagerMixin):
             params['percent_type'] = percent_type
 
             ## check if nuclide
-            if not str.isalpha():
+            if not component.isalpha():
                 self.add_nuclide(component, **params)
             else: # is element
                 kwargs = params

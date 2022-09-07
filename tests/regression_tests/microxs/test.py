@@ -1,4 +1,5 @@
 """Test one-group cross section generation"""
+import os
 from pathlib import Path
 
 import numpy as np
@@ -44,9 +45,11 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-
-def test_from_model(model):
+@pytest.mark.parametrize("tmpdir_env_var", [True, False])
+def test_from_model(model, tmpdir_env_var):
     ref_xs = MicroXS.from_csv('test_reference.csv')
+    if tmpdir_env_var:
+        os.environ['TMPDIR'] = Path.cwd().resolve().as_posix()
     test_xs = MicroXS.from_model(model, model.materials[0], CHAIN_FILE)
 
     np.testing.assert_allclose(test_xs, ref_xs, rtol=1e-11)

@@ -1992,8 +1992,9 @@ class EnergyFunctionFilter(Filter):
                              'log-log Tabulated1Ds are supported')
         out = cls(tab1d.x, tab1d.y)
 
+        # set interpolation type
         if tab1d.interpolation[0] == 2:
-            out.interpolation = 'linear-lienar'
+            out.interpolation = 'linear-linear'
         elif tab1d.interpolation[0] == 3:
             out.interpolation = 'linear-log'
         elif tab1d.interpolation[0] == 4:

@@ -5,6 +5,7 @@ nuclide names as row indices and reaction names as column indices.
 """
 
 import tempfile
+import os
 from pathlib import Path
 from copy import deepcopy
 
@@ -91,7 +92,11 @@ class MicroXS(DataFrame):
         model.tallies = tallies
 
         # create temporary run
-        with tempfile.TemporaryDirectory(dir=Path.cwd()) as temp_dir:
+        if 'TMPDIR' in os.environ:
+            d = tempfile.gettempdir()
+        else:
+            d = Path.cwd()
+        with tempfile.TemporaryDirectory(dir=d) as temp_dir:
             if run_kwargs is None:
                 run_kwargs = {}
             run_kwargs.setdefault('cwd', temp_dir)

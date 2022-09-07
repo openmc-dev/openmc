@@ -29,9 +29,8 @@ responsible for specifying one or more of the following:
 
 Each of the above files can specified in several ways. In the Python API, a
 :ref:`runtime configuration variable <usersguide_data_runtime>`
-:data:`openmc.config` can be used to specify any of the above. Alternatively,
-you can specify these files using a set of :ref:`environment variables
-<usersguide_data_envvar>`.
+:data:`openmc.config` can be used to specify any of the above and is initialized
+using a set of environment variables.
 
 .. _usersguide_data_runtime:
 
@@ -47,53 +46,28 @@ and the key can be one of the following:
 ``"cross_sections"``
   Indicates the path to the :ref:`cross sections XML <io_cross_sections>` file
   that lists HDF5 format neutron cross sections, photon cross sections, and
-  windowed multipole data. Note that the :attr:`openmc.Materials.cross_sections`
-  attribute will override this, if specified.
+  windowed multipole data. At startup, this is initialized with the value of the
+  :envvar:`OPENMC_CROSS_SECTIONS` environment variable. Note that the
+  :attr:`openmc.Materials.cross_sections` attribute will override this, if
+  specified.
 
 ``"chain_file"``
   Indicates the path to the :ref:`depletion chain XML <io_depletion_chain>` file
   that contains decay data, fission product yields, and what neutron reactions
-  may result in transmutation of a target nuclide.
+  may result in transmutation of a target nuclide. At startup, this is
+  initialized with the value of the :envvar:`OPENMC_CHAIN_FILE` environment
+  variable.
 
 ``"mg_cross_sections"``
   Indicates the path to an :ref:`HDF5 file <io_mgxs_library>` that contains
-  multigroup cross sections. Note that the
+  multigroup cross sections. At startup, this is initialized with the value of
+  the :envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable. Note that the
   :attr:`openmc.Materials.cross_sections` attribute will override this if
   specified.
 
-At the time the :mod:`openmc` Python module is imported, the
-:data:`openmc.config` dictionary will be initialized using a set of
-:ref:`environment variable <usersguide_data_envvar>`.
-
-.. _usersguide_data_envvar:
-
----------------------
-Environment Variables
----------------------
-
-In addition to the :ref:`runtime configuration <usersguide_data_runtime>`, data
-sources can be specified using a set of environment variables. The following
-environment variables are recognized by OpenMC:
-
-:envvar:`OPENMC_CROSS_SECTIONS`
-  Indicates the path to the :ref:`cross sections XML <io_cross_sections>` file
-  that lists HDF5 format neutron cross sections, photon cross sections, and
-  windowed multipole data. Note that the :attr:`openmc.Materials.cross_sections`
-  attribute will override this if specified.
-
-:envvar:`OPENMC_CHAIN_FILE`
-  Indicates the path to the :ref:`depletion chain XML <io_depletion_chain>` file
-  that contains decay data, fission product yields, and what neutron reactions
-  may result in transmutation of a target nuclide.
-
-:envvar:`OPENMC_MG_CROSS_SECTIONS`
-  Indicates the path to an :ref:`HDF5 file <io_mgxs_library>` that contains
-  multigroup cross sections. Note that the
-  :attr:`openmc.Materials.cross_sections` attribute will override this if
-  specified.
-
-To set these environment variables persistently, export them from your shell
-profile (``.profile`` or ``.bashrc`` in bash_).
+If you want to persistently set the environment variables used to initialized
+the configuration, export them from your shell profile (``.profile`` or
+``.bashrc`` in bash_).
 
 .. _bash: http://www.linuxfromscratch.org/blfs/view/6.3/postlfs/profile.html
 
@@ -311,12 +285,10 @@ Multigroup Cross Sections
 
 Multigroup cross section libraries are generally tailored to the specific
 calculation to be performed.  Therefore, at this point in time, OpenMC is not
-distributed with any pre-existing multi-group cross section libraries. However,
-if  obtained or generated their own library, the user should set the
-:envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable to the absolute path of
-the file library expected to used most frequently.
-
-For an example of how to create a multi-group library, see the `example notebook
+distributed with any pre-existing multigroup cross section libraries. However,
+if a multigroup library file is downloaded or generated, the path to the file
+needs to be specified as described in :ref:`usersguide_data_runtime`. For an
+example of how to create a multigroup library, see the `example notebook
 <../examples/mg-mode-part-i.ipynb>`__.
 
 .. _NJOY: http://www.njoy21.io/

@@ -75,31 +75,8 @@ void EnergyFunctionFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   if (p.E_last() >= energy_.front() && p.E_last() <= energy_.back()) {
-    // Search for the incoming energy bin.
-    auto i = lower_bound_index(energy_.begin(), energy_.end(), p.E_last());
 
-    double f, w;
-    switch (interpolation_) {
-    case Interpolation::lin_lin:
-      w = interpolate_lin_lin(
-        energy_[i], energy_[i + 1], y_[i], y_[i + 1], p.E_last());
-      break;
-    case Interpolation::lin_log:
-      w = interpolate_lin_log(
-        energy_[i], energy_[i + 1], y_[i], y_[i + 1], p.E_last());
-      break;
-    case Interpolation::log_lin:
-      w = interpolate_log_lin(
-        energy_[i], energy_[i + 1], y_[i], y_[i + 1], p.E_last());
-      break;
-    case Interpolation::log_log:
-      w = interpolate_log_log(
-        energy_[i], energy_[i + 1], y_[i], y_[i + 1], p.E_last());
-      break;
-    default:
-      fatal_error(fmt::format(
-        "Invalid interpolation scheme found on EnergyFunctionFilter {}", id()));
-    }
+    double w = interpolate(energy_, y_, p.E_last(), interpolation_);
 
     // Interpolate on the lin-lin grid.
     match.bins_.push_back(0);

@@ -3,7 +3,6 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
-import os
 import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
@@ -18,6 +17,7 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
+from openmc.checkvalue import PathLike
 
 
 # Units for density supported by OpenMC
@@ -1382,7 +1382,7 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def export_to_xml(self, path: Union[str, os.PathLike] = 'materials.xml'):
+    def export_to_xml(self, path: PathLike = 'materials.xml'):
         """Export material collection to an XML file.
 
         Parameters
@@ -1429,7 +1429,7 @@ class Materials(cv.CheckedList):
             fh.write('</materials>\n')
 
     @classmethod
-    def from_xml(cls, path: Union[str, os.PathLike] = 'materials.xml'):
+    def from_xml(cls, path: PathLike = 'materials.xml'):
         """Generate materials collection from XML file
 
         Parameters

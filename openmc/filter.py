@@ -1987,10 +1987,18 @@ class EnergyFunctionFilter(Filter):
         if tab1d.n_regions > 1:
             raise ValueError('Only Tabulated1Ds with a single interpolation '
                              'region are supported')
-        if tab1d.interpolation[0] not in (2, 5):
-            raise ValueError('Only linear-linear or log-log Tabulated1Ds are supported')
+        if tab1d.interpolation[0] not in (2, 3, 4, 5):
+            raise ValueError('Only linear-linear, linear-log, log-linear, and '
+                             'log-log Tabulated1Ds are supported')
         out = cls(tab1d.x, tab1d.y)
-        if tab1d.interpolation[0] == 5:
+
+        if tab1d.interpolation[0] == 2:
+            out.interpolation = 'linear-lienar'
+        elif tab1d.interpolation[0] == 3:
+            out.interpolation = 'linear-log'
+        elif tab1d.interpolation[0] == 4:
+            out.interpolation = 'log-linear'
+        elif tab1d.interpolation[0] == 5:
             out.interpolation = 'log-log'
 
         return out

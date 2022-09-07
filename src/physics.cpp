@@ -7,7 +7,6 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
-#include "openmc/interpolate.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
@@ -884,9 +883,15 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
     if (sampling_method == ResScatMethod::dbrc) {
       // interpolate xs since we're not exactly at the energy indices
-      double xs_low =
-        interpolate(nuc.energy_0K_, nuc.elastic_0K_, i_E_low, E_low);
-      double xs_up = interpolate(nuc.energy_0K_, nuc.elastic_0K_, i_E_up, E_up);
+      double xs_low = nuc.elastic_0K_[i_E_low];
+      double m = (nuc.elastic_0K_[i_E_low + 1] - xs_low) /
+                 (nuc.energy_0K_[i_E_low + 1] - nuc.energy_0K_[i_E_low]);
+      xs_low += m * (E_low - nuc.energy_0K_[i_E_low]);
+      double xs_up = nuc.elastic_0K_[i_E_up];
+      m = (nuc.elastic_0K_[i_E_up + 1] - xs_up) /
+          (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
+      xs_up += m * (E_up - nuc.energy_0K_[i_E_up]);
+
       // get max 0K xs value over range of practical relative energies
       double xs_max = *std::max_element(
         &nuc.elastic_0K_[i_E_low + 1], &nuc.elastic_0K_[i_E_up + 1]);

@@ -1346,7 +1346,7 @@ class EnergyFilter(RealFilter):
         numpy.array
             Array of lethargy values
         """
-        return np.log10(energy/np.unique(self.bins[:-1]))
+        return np.log10(energy/self.bins[:, 0]))
 
     @classmethod
     def from_group_structure(cls, group_structure):

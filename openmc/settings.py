@@ -13,6 +13,7 @@ import openmc.checkvalue as cv
 
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
+from openmc.checkvalue import PathLike
 
 
 class RunMode(Enum):
@@ -1535,7 +1536,7 @@ class Settings:
         if text is not None:
             self.max_tracks = int(text)
 
-    def export_to_xml(self, path: Union[str, os.PathLike] = 'settings.xml'):
+    def export_to_xml(self, path: PathLike = 'settings.xml'):
         """Export simulation settings to an XML file.
 
         Parameters
@@ -1607,7 +1608,7 @@ class Settings:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml(cls, path: Union[str, os.PathLike] = 'settings.xml'):
+    def from_xml(cls, path: PathLike = 'settings.xml'):
         """Generate settings from XML file
 
         .. versionadded:: 0.13.0

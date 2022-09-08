@@ -98,7 +98,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   // Find all of the z-planes in this universe.  A set is used here for the
   // O(log(n)) insertions that will ensure entries are not repeated.
   for (auto i_cell : univ.cells_) {
-    for (auto token : model::cells[i_cell]->rpn_) {
+    for (auto token : model::cells[i_cell]->region_) {
       if (token < OP_UNION) {
         auto i_surf = std::abs(token) - 1;
         const auto* surf = model::surfaces[i_surf].get();
@@ -125,7 +125,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     // Find the tokens for bounding z-planes.
     int32_t lower_token = 0, upper_token = 0;
     double min_z, max_z;
-    for (auto token : model::cells[i_cell]->rpn_) {
+    for (auto token : model::cells[i_cell]->region_) {
       if (token < OP_UNION) {
         const auto* surf = model::surfaces[std::abs(token) - 1].get();
         if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {

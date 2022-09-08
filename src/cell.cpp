@@ -43,6 +43,7 @@ vector<unique_ptr<Cell>> cells;
 //! operators.
 //==============================================================================
 
+// TODO: Move this to be Region::Region(...)
 vector<int32_t> tokenize(const std::string region_spec)
 {
   // Check for an empty region_spec first.
@@ -183,7 +184,8 @@ void add_precedence(std::vector<int32_t>& infix)
         // Set the current operator if is hasn't been set
         current_op = token;
       } else if (token != current_op) {
-        // If the current operator doesn't match the token, add parenthesis to assert precedence
+        // If the current operator doesn't match the token, add parenthesis to
+        // assert precedence
         it = add_parentheses(it, infix);
         current_op = 0;
       }
@@ -586,7 +588,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // Get a tokenized representation of the region specification and apply De
   // Morgans law
-  region_ = tokenize(region_spec);
+  region_ = Region(region_spec);
   remove_complement_ops(region_);
 
   // Convert user IDs to surface indices.
@@ -696,6 +698,7 @@ void CSGCell::to_hdf5_inner(hid_t group_id) const
 
   write_string(group_id, "geom_type", "csg", false);
 
+  // TODO: Move to Region::str()
   // Write the region specification.
   if (!region_.empty()) {
     std::stringstream region_spec {};

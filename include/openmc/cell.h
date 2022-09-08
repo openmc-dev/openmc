@@ -52,8 +52,41 @@ extern vector<unique_ptr<Cell>> cells;
 } // namespace model
 
 //==============================================================================
+
+// TODO: Maybe not, just move this inline to Region::bounding_box() for complex
+// case
+class RegionPostfix {
+public:
+  BoundingBox bounding_box() const;
+};
+
+class Region {
+public:
+  Region() {}
+  explicit Region(std::string region_expression);
+
+  void add_precedence();
+  std::string str() const;
+  BoundingBox bounding_box() const;
+  bool contains(Position r, Direction u, int32_t on_surface) const;
+
+  RegionPostfix to_postfix() const;
+
+private:
+  void add_parentheses();
+  void apply_demorgan(
+    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
+
+  //! Definition of spatial region as Boolean expression of half-spaces
+  // TODO: Should this be a vector of some other type
+  vector<int32_t> tokens_;
+  bool simple_; //!< Does the region contain only intersections?
+};
+
 //==============================================================================
 
+// TODO: Think about what data members really need to live in this class versus
+// putting them in the Region class
 class Cell {
 public:
   //----------------------------------------------------------------------------
@@ -198,9 +231,9 @@ public:
   //! T. The units are sqrt(eV).
   vector<double> sqrtkT_;
 
+  // TODO: Probably move this guy to CSGCell
   //! Definition of spatial region as Boolean expression of half-spaces
-  vector<int32_t> region_;
-  bool simple_; //!< Does the region contain only intersections?
+  Region region_;
 
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;
@@ -263,6 +296,9 @@ protected:
   //! \param rpn The rpn being searched
   static vector<int32_t>::iterator find_left_parenthesis(
     vector<int32_t>::iterator start, const vector<int32_t>& rpn);
+
+private:
+  Region region_;
 };
 
 //==============================================================================

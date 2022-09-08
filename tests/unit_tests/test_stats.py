@@ -376,16 +376,14 @@ def test_muir():
     mean = 10.0
     mass = 5.0
     temp = 20000.
-    d = openmc.stats.Muir(mean,mass,temp)
+    d = openmc.stats.muir(mean, mass, temp)
+    assert isinstance(d, openmc.stats.Normal)
 
     elem = d.to_xml_element('energy')
-    assert elem.attrib['type'] == 'muir'
+    assert elem.attrib['type'] == 'normal'
 
-    d = openmc.stats.Muir.from_xml_element(elem)
-    assert d.e0 == pytest.approx(mean)
-    assert d.m_rat == pytest.approx(mass)
-    assert d.kt == pytest.approx(temp)
-    assert len(d) == 3
+    d = openmc.stats.Univariate.from_xml_element(elem)
+    assert isinstance(d, openmc.stats.Normal)
 
     # sample muir distribution
     n_samples = 10000

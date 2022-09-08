@@ -32,6 +32,7 @@ def test_add_components():
                   'O16': 1.0,
                   'Zr': 1.0,
                   'O': 1.0,
+                  'Ag110_m1': 1.0,
                   'U': {'percent': 1.0,
                         'enrichment': 4.5},
                   'Li': {'percent': 1.0,
@@ -297,6 +298,23 @@ def test_isotropic():
     mats.make_isotropic_in_lab()
     assert m1.isotropic == ['U235', 'O16']
     assert m2.isotropic == ['H1']
+
+
+def test_get_nuclides():
+    mat = openmc.Material()
+
+    mat.add_nuclide('Li6', 1.0)
+    assert mat.get_nuclides() == ['Li6']
+    assert mat.get_nuclides(element='Li') == ['Li6']
+    assert mat.get_nuclides(element='Be') == []
+
+    mat.add_element('Li', 1.0)
+    assert mat.get_nuclides() == ['Li6', 'Li7']
+    assert mat.get_nuclides(element='Be') == []
+
+    mat.add_element('Be', 1.0)
+    assert mat.get_nuclides() == ['Li6', 'Li7', 'Be9']
+    assert mat.get_nuclides(element='Be') == ['Be9']
 
 
 def test_get_elements():

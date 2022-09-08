@@ -148,9 +148,9 @@ class PolarAzimuthal(UnitSphere):
 
         """
         mu_phi = cls()
-        params = get_text(elem, 'parameters')
-        if params is not None:
-            mu_phi.reference_uvw = [float(x) for x in params.split()]
+        uvw = get_text(elem, 'reference_uvw')
+        if uvw is not None:
+            mu_phi.reference_uvw = [float(x) for x in uvw.split()]
         mu_phi.mu = Univariate.from_xml_element(elem.find('mu'))
         mu_phi.phi = Univariate.from_xml_element(elem.find('phi'))
         return mu_phi
@@ -242,9 +242,9 @@ class Monodirectional(UnitSphere):
 
         """
         monodirectional = cls()
-        params = get_text(elem, 'parameters')
-        if params is not None:
-            monodirectional.reference_uvw = [float(x) for x in params.split()]
+        uvw = get_text(elem, 'reference_uvw')
+        if uvw is not None:
+            monodirectional.reference_uvw = [float(x) for x in uvw.split()]
         return monodirectional
 
 

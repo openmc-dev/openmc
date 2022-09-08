@@ -154,7 +154,7 @@ void partition_universes()
       // Collect the set of surfaces in this universe.
       std::unordered_set<int32_t> surf_inds;
       for (auto i_cell : univ->cells_) {
-        for (auto token : model::cells[i_cell]->rpn_) {
+        for (auto token : model::cells[i_cell]->region_) {
           if (token < OP_UNION)
             surf_inds.insert(std::abs(token) - 1);
         }

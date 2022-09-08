@@ -3,7 +3,6 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
-import os
 import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
@@ -18,6 +17,7 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
+from openmc.checkvalue import PathLike
 
 
 # Units for density supported by OpenMC
@@ -438,7 +438,7 @@ class Material(IDManagerMixin):
             params['percent_type'] = percent_type
 
             ## check if nuclide
-            if str.isdigit(component[-1]):
+            if not component.isalpha():
                 self.add_nuclide(component, **params)
             else: # is element
                 kwargs = params
@@ -795,16 +795,33 @@ class Material(IDManagerMixin):
 
         return sorted({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
 
-    def get_nuclides(self):
-        """Returns all nuclides in the material
+    def get_nuclides(self, element: Optional[str] = None):
+        """Returns a list of all nuclides in the material, if the element
+        argument is specified then just nuclides of that element are returned.
+
+        Parameters
+        ----------
+        element : str
+            Specifies the element to match when searching through the nuclides
 
         Returns
         -------
         nuclides : list of str
             List of nuclide names
-
         """
-        return [x.name for x in self._nuclides]
+
+        matching_nuclides = []
+        if element:
+            for nuclide in self._nuclides:
+                if re.split(r'(\d+)', nuclide.name)[0] == element:
+                    if nuclide.name not in matching_nuclides:
+                        matching_nuclides.append(nuclide.name)
+        else:
+            for nuclide in self._nuclides:
+                if nuclide.name not in matching_nuclides:
+                    matching_nuclides.append(nuclide.name)
+                        
+        return matching_nuclides
 
     def get_nuclide_densities(self):
         """Returns all nuclides in the material and their densities
@@ -1365,7 +1382,7 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def export_to_xml(self, path: Union[str, os.PathLike] = 'materials.xml'):
+    def export_to_xml(self, path: PathLike = 'materials.xml'):
         """Export material collection to an XML file.
 
         Parameters
@@ -1412,7 +1429,7 @@ class Materials(cv.CheckedList):
             fh.write('</materials>\n')
 
     @classmethod
-    def from_xml(cls, path: Union[str, os.PathLike] = 'materials.xml'):
+    def from_xml(cls, path: PathLike = 'materials.xml'):
         """Generate materials collection from XML file
 
         Parameters

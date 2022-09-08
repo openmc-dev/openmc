@@ -216,8 +216,8 @@ class StructuredMesh(MeshBase):
 
         Raises
         ------
-        RuntimeError
-            When the size of a dataset doesn't match the number of cells
+        ValueError
+            When the size of a dataset doesn't match the number of mesh cells
 
         Returns
         -------
@@ -229,14 +229,17 @@ class StructuredMesh(MeshBase):
         from vtk.util import numpy_support as nps
 
         # check that the data sets are appropriately sized
-        errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
+            errmsg = (
+                f"The size of the dataset '{label}' ({dataset.size}) should be"
+                f" equal to the number of mesh cells ({self.num_mesh_cells})"
+            )
             if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
+                if not dataset.size == self.num_mesh_cells:
+                    raise ValueError(errmsg)
             else:
-                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
+                if len(dataset) == self.num_mesh_cells:
+                    raise ValueError(errmsg)
             cv.check_type('label', label, str)
 
         vtk_grid = vtk.vtkStructuredGrid()

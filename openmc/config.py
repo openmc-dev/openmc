@@ -65,7 +65,7 @@ def _default_config():
     # Set depletion chain
     chain_file = os.environ.get("OPENMC_CHAIN_FILE")
     if (chain_file is None and
-        config['cross_sections'] is not None and
+        config.get('cross_sections') is not None and
         config['cross_sections'].exists()
     ):
         # Check for depletion chain in cross_sections.xml

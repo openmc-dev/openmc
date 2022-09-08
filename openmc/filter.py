@@ -12,7 +12,6 @@ import pandas as pd
 import openmc
 import openmc.checkvalue as cv
 from .cell import Cell
-from .data.function import INTERPOLATION_SCHEME
 from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
@@ -1896,6 +1895,11 @@ class EnergyFunctionFilter(Filter):
 
     """
 
+    # keys selected to match those in function.py where possible
+    INTERPOLATION_SCHEMES = {2: 'linear-linear', 3: 'linear-log',
+                             4: 'log-linear', 5: 'log-log',
+                             6 : 'quadratic', 7 : 'cubic'}
+
     def __init__(self, energy, y, interpolation='linear-linear', filter_id=None):
         self.energy = energy
         self.y = y
@@ -1963,7 +1967,7 @@ class EnergyFunctionFilter(Filter):
         out = cls(energy, y, filter_id=filter_id)
         if 'interpolation' in group:
             out.interpolation =  \
-                openmc.data.INTERPOLATION_SCHEME[group['interpolation'][()]]
+                cls.INTERPOLATION_SCHEMES[group['interpolation'][()]]
 
         return out
 
@@ -2053,7 +2057,7 @@ class EnergyFunctionFilter(Filter):
     @interpolation.setter
     def interpolation(self, val):
         cv.check_type('interpolation', val, str)
-        cv.check_value('interpolation', val, INTERPOLATION_SCHEME.values())
+        cv.check_value('interpolation', val, self.INTERPOLATION_SCHEMES.values())
         self._interpolation = val
 
     def to_xml_element(self):

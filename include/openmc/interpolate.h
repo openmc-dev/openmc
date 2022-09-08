@@ -61,6 +61,9 @@ inline double interpolate(const std::vector<double>& xs,
 {
   int idx = lower_bound_index(xs.begin(), xs.end(), x);
 
+  if (idx == xs.size())
+    idx--;
+
   switch (i) {
   case Interpolation::lin_lin:
     return interpolate_lin_lin(xs[idx], xs[idx + 1], ys[idx], ys[idx + 1], x);

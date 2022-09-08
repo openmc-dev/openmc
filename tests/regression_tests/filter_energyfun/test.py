@@ -73,9 +73,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         br_tally = sp.tallies[2] / sp.tallies[1]
         dataframes_string += br_tally.get_pandas_dataframe().to_string() + '\n'
 
-
         for t_id in (3, 4, 5):
-            # Write out the log-log interpolation as well
             ef_tally = sp.tallies[t_id]
             dataframes_string += ef_tally.get_pandas_dataframe().to_string() + '\n'
 

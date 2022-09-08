@@ -294,6 +294,14 @@ or from data arrays::
    sure your cross sections are in the correct units before passing to a
    :class:`~openmc.deplete.IndependentOperator` object.
 
+If you are runnnig :meth:`~openmc.deplete.MicroXS.from_model()` on a cluster
+that does not share local filesystems across nodes, you'll need to set an
+environment variable so that each MPI process knows where to store output files
+used to calculate the microscopic cross sections. In order of priority, they
+are `TMPDIR`. `TEMP`, and `TMP`. Users interested in further details can read
+the `relevant docpage on the tempfile pacakge <https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_
+
+
 Caveats
 -------
 

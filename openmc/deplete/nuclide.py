@@ -682,7 +682,7 @@ class FissionYield(Mapping):
             self.__class__.__name__, len(self))
 
     def __deepcopy__(self, memo):
-        result = FissionYield(self.products, np.copy(self.yields))
+        result = FissionYield(self.products, self.yields.copy())
         memo[id(self)] = result
         return result
 

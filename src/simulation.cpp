@@ -688,7 +688,8 @@ void initialize_data()
 #ifdef OPENMC_MPI
 void broadcast_results() {
   // Broadcast tally results so that each process has access to results
-  for (auto& t : model::tallies) {
+  for (int i = 0; i < model::tallies_size; i++) {
+    Tally* t = &model::tallies[i];
     // Create a new datatype that consists of all values for a given filter
     // bin and then use that to broadcast. This is done to minimize the
     // chance of the 'count' argument of MPI_BCAST exceeding 2**31

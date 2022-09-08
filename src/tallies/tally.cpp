@@ -783,7 +783,7 @@ void reduce_tally_results()
   if (settings::reduce_tallies) {
     for (int i_tally : model::active_tallies) {
       // Skip any tallies that are not active
-      auto& tally {model::tallies[i_tally]};
+      Tally* tally = &model::tallies[i_tally];
 
       auto shape = tally->results_shape();
       size_t n_values = shape[0] * shape[1];
@@ -792,7 +792,7 @@ void reduce_tally_results()
       std::vector<double> values;
       values.reserve(n_values);
       for (int i = 0; i < shape[0]; ++i) {
-        for (int j = 0; j < shape[1]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
           values.push_back(*tally->results(i, j, TallyResult::VALUE));
         }
       }
@@ -804,9 +804,9 @@ void reduce_tally_results()
 
       // Transfer values on master and reset on other ranks
       for (int i = 0; i < shape[0]; ++i) {
-        for (int j = 0; j < shape[1]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
           *tally->results(i, j, TallyResult::VALUE) =
-            mpi::master ? values_reduced[i * shape[0] + j] : 0;
+            mpi::master ? values_reduced[i * shape[1] + j] : 0;
         }
       }
     }

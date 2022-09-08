@@ -96,14 +96,11 @@
         },
         {
             "name": "llvm_a100_mpi",
-            "inherits": ["llvm"],
+            "inherits": ["llvm_a100"],
             "displayName": "LLVM Clang A100",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "mpicc",
                 "CMAKE_CXX_COMPILER": "mpic++"
-            },
-            "environment": {
-                "PRESET_CXX_FLAGS": "-fopenmp-targets=nvptx64 -Xopenmp-target -march=sm_80"
             }
         },
         {

@@ -296,12 +296,12 @@ units of barns::
                                                  model.materials[0],
                                                  chain_file)
 
-If you are runnnig :meth:`~openmc.deplete.MicroXS.from_model()` on a cluster
-that does not share local filesystems across nodes, you'll need to set an
+If you are running :meth:`~openmc.deplete.MicroXS.from_model()` on a cluster
+where temporary files are created on a local filesystem that is not shared across nodes, you'll need to set an
 environment variable so that each MPI process knows where to store output files
 used to calculate the microscopic cross sections. In order of priority, they
-are `TMPDIR`. `TEMP`, and `TMP`. Users interested in further details can read
-the `relevant docpage on the tempfile pacakge <https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_
+are :envvar:`TMPDIR`. :envvar:`TEMP`, and :envvar:`TMP`. Users interested in further details can read
+the documentation for the `tempfile <https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_ module.
 
 
 Caveats

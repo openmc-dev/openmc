@@ -525,7 +525,7 @@ class RegularMesh(StructuredMesh):
         ----------
         domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
             The object passed in will be used as a template for this mesh. The
-            domain of the property of the object passed will be used to
+            bounding box of the property of the object passed will be used to
             set the lower_left and upper_right of the mesh instance
         dimension : Iterable of int
             The number of mesh cells in each direction.

@@ -459,36 +459,6 @@ class RegularMesh(StructuredMesh):
         return string
 
     @classmethod
-    def from_universe(cls, universe, dimension=[10, 10, 10], mesh_id=None, name=''):
-        """Create mesh from an existing openmc universe
-
-        Parameters
-        ----------
-        universe : openmc.Universe
-            Open used as a template for this mesh
-        dimension : Iterable of int
-            The number of mesh cells in each direction.
-        mesh_id : int
-            Unique identifier for the mesh
-        name : str
-            Name of the mesh
-
-        Returns
-        -------
-        openmc.RegularMesh
-            RegularMesh instance
-
-        """
-        cv.check_type('rectangular lattice', universe, openmc.Universe)
-
-        mesh = cls(mesh_id, name)
-        mesh.lower_left = universe.bounding_box[0]
-        mesh.upper_right = universe.bounding_box[1]
-        mesh.dimension = dimension
-
-        return mesh
-
-    @classmethod
     def from_hdf5(cls, group):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 

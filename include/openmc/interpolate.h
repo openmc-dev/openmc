@@ -34,8 +34,8 @@ inline double interpolate_log_log(
   return y0 * exp(f * log(y1 / y0));
 }
 
-inline double interpolate_lagrangian(
-  const std::vector<double>& xs, const std::vector<double>& ys, int idx, double x, int order)
+inline double interpolate_lagrangian(const std::vector<double>& xs,
+  const std::vector<double>& ys, int idx, double x, int order)
 {
   std::vector<double> coeffs;
 
@@ -55,9 +55,8 @@ inline double interpolate_lagrangian(
     coeffs.begin(), coeffs.end(), ys.begin() + idx, 0.0);
 }
 
-double interpolate(const std::vector<double>& xs,
-  const std::vector<double>& ys, double x,
-  Interpolation i = Interpolation::lin_lin)
+double interpolate(const std::vector<double>& xs, const std::vector<double>& ys,
+  double x, Interpolation i = Interpolation::lin_lin)
 {
   int idx = lower_bound_index(xs.begin(), xs.end(), x);
 
@@ -75,19 +74,21 @@ double interpolate(const std::vector<double>& xs,
     return interpolate_log_lin(xs[idx], xs[idx + 1], ys[idx], ys[idx + 1], x);
   case Interpolation::quadratic:
     // move back one point if x is in the last interval of the x-grid
-    if (idx == xs.size() - 2 && idx > 0) idx--;
+    if (idx == xs.size() - 2 && idx > 0)
+      idx--;
     return interpolate_lagrangian(xs, ys, idx, x, 2);
   case Interpolation::cubic:
     // if x is not in the first interval of the x-grid, move back one
-    if (idx > 0) idx--;
+    if (idx > 0)
+      idx--;
     // if the index was the last interval of the x-grid, move it back one more
-    if (idx == xs.size() - 3) idx--;
+    if (idx == xs.size() - 3)
+      idx--;
     return interpolate_lagrangian(xs, ys, idx, x, 3);
   default:
     fatal_error("Unsupported interpolation");
   }
 }
-
 
 } // namespace openmc
 

@@ -40,11 +40,16 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
       interpolation_ = Interpolation::log_log;
     } else if (interpolation == "quadratic") {
       if (energy.size() < 3)
-      fatal_error(fmt::format("Quadratic interpolation on EnergyFunctionFilter {} requires at least 3 data points.", id()));
+        fatal_error(
+          fmt::format("Quadratic interpolation on EnergyFunctionFilter {} "
+                      "requires at least 3 data points.",
+            id()));
       interpolation_ = Interpolation::quadratic;
     } else if (interpolation == "cubic") {
       if (energy.size() < 4)
-      fatal_error(fmt::format("Cubic interpolation on EnergyFunctionFilter {} requires at least 4 data points.", id()));
+        fatal_error(fmt::format("Cubic interpolation on EnergyFunctionFilter "
+                                "{} requires at least 4 data points.",
+          id()));
       interpolation_ = Interpolation::cubic;
     } else {
       fatal_error(fmt::format(

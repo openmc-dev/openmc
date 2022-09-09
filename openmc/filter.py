@@ -2058,6 +2058,13 @@ class EnergyFunctionFilter(Filter):
     def interpolation(self, val):
         cv.check_type('interpolation', val, str)
         cv.check_value('interpolation', val, self.INTERPOLATION_SCHEMES.values())
+
+        if val == 'quadratic' and len(self.energy) < 3:
+            raise ValueError('Quadratic interpolation requires 3 or more values.')
+
+        if val == 'cubic' and len(self.energy) < 4:
+            raise ValueError('Cubic interpolation requires 3 or more values.')
+
         self._interpolation = val
 
     def to_xml_element(self):

@@ -13,7 +13,7 @@ try:
 except ImportError:
     import xml.etree.ElementTree as ET
 
-from numpy import empty, searchsorted
+import numpy as np
 
 from openmc.checkvalue import check_type
 
@@ -470,7 +470,7 @@ class FissionYieldDistribution(Mapping):
         shared_prod = set.union(*(set(x) for x in fission_yields.values()))
         ordered_prod = sorted(shared_prod)
 
-        yield_matrix = empty((len(energies), len(shared_prod)))
+        yield_matrix = np.empty((len(energies), len(shared_prod)))
 
         for g_index, energy in enumerate(energies):
             prod_map = fission_yields[energy]
@@ -560,7 +560,7 @@ class FissionYieldDistribution(Mapping):
             return None
 
         products = sorted(overlap)
-        indices = searchsorted(self.products, products)
+        indices = np.searchsorted(self.products, products)
 
         # coerce back to dictionary to pass back to __init__
         new_yields = {}
@@ -680,6 +680,11 @@ class FissionYield(Mapping):
     def __repr__(self):
         return "<{} containing {} products and yields>".format(
             self.__class__.__name__, len(self))
+
+    def __deepcopy__(self, memo):
+        result = FissionYield(self.products, self.yields.copy())
+        memo[id(self)] = result
+        return result
 
     # Avoid greedy numpy operations like np.float64 * fission_yield
     # converting this to an array on the fly. Force __rmul__ and

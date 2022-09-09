@@ -48,9 +48,21 @@ def model():
     filt5 = openmc.EnergyFunctionFilter(x, y)
     filt5.interpolation = 'log-linear'
 
-    filters = [filt1, filt3, filt4, filt5]
+    # define a trapezoidal function for comparison
+    x = [0.0, 5e6, 1e7, 1.5e7]
+    y = [0.2, 0.7, 0.7, 0.2]
+
+    filt6 = openmc.EnergyFunctionFilter(x, y)
+
+    filt7 = openmc.EnergyFunctionFilter(x, y)
+    filt7.interpolation = 'quadratic'
+
+    filt8 = openmc.EnergyFunctionFilter(x, y)
+    filt8.interpolation = 'cubic'
+
+    filters = [filt1, filt3, filt4, filt5, filt6, filt7, filt8]
     # Make tallies
-    tallies = [openmc.Tally() for i in range(5)]
+    tallies = [openmc.Tally() for _ in range(len(filters) + 1)]
     for t in tallies:
         t.scores = ['(n,gamma)']
         t.nuclides = ['Am241']
@@ -73,7 +85,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         br_tally = sp.tallies[2] / sp.tallies[1]
         dataframes_string += br_tally.get_pandas_dataframe().to_string() + '\n'
 
-        for t_id in (3, 4, 5):
+        for t_id in (3, 4, 5, 6):
             ef_tally = sp.tallies[t_id]
             dataframes_string += ef_tally.get_pandas_dataframe().to_string() + '\n'
 
@@ -121,6 +133,15 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         sp_log_lin_tally = self._model.tallies[4]
         sp_log_lin_filt = sp_log_lin_tally.find_filter(openmc.EnergyFunctionFilter)
         assert sp_log_lin_filt.interpolation == 'log-linear'
+
+        # check that the cubic interpolation provides a higher value
+        # than linear-linear
+        contrived_lin_lin_tally = sp.get_tally(id=6)
+        contrived_quadratic_tally = sp.get_tally(id=7)
+        contrived_cubic_tally = sp.get_tally(id=8)
+
+        assert all(contrived_lin_lin_tally.mean < contrived_quadratic_tally.mean)
+        assert all(contrived_lin_lin_tally.mean < contrived_cubic_tally.mean)
 
 
 def test_filter_energyfun(model):

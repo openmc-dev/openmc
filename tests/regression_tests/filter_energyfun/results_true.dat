@@ -6,3 +6,5 @@
 0  b4e2ac84068d2d   Am241  (n,gamma) 8.19e-02   2.25e-03
    energyfunction nuclide      score     mean  std. dev.
 0  dacf88242512ea   Am241  (n,gamma) 7.95e-02   2.19e-03
+   energyfunction nuclide      score     mean  std. dev.
+0  fe168c70d9e078   Am241  (n,gamma) 1.06e-01   2.96e-03

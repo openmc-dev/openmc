@@ -42,7 +42,7 @@ inline double interpolate_lagrangian(
   for (int i = 0; i < order + 1; i++) {
     double numerator {1.0};
     double denominator {1.0};
-    for (int j = 0; j < order; j++) {
+    for (int j = 0; j < order + 1; j++) {
       if (i == j)
         continue;
       numerator *= (x - xs[idx + j]);
@@ -55,7 +55,7 @@ inline double interpolate_lagrangian(
     coeffs.begin(), coeffs.end(), ys.begin() + idx, 0.0);
 }
 
-inline double interpolate(const std::vector<double>& xs,
+double interpolate(const std::vector<double>& xs,
   const std::vector<double>& ys, double x,
   Interpolation i = Interpolation::lin_lin)
 {
@@ -76,13 +76,13 @@ inline double interpolate(const std::vector<double>& xs,
   case Interpolation::quadratic:
     // move back one point if x is in the last interval of the x-grid
     if (idx == xs.size() - 2 && idx > 0) idx--;
-    return interpolate_lagrangian(xs, ys, x, idx, 2);
+    return interpolate_lagrangian(xs, ys, idx, x, 2);
   case Interpolation::cubic:
     // if x is not in the first interval of the x-grid, move back one
     if (idx > 0) idx--;
     // if the index was the last interval of the x-grid, move it back one more
     if (idx == xs.size() - 3) idx--;
-    return interpolate_lagrangian(xs, ys, x, idx, 3);
+    return interpolate_lagrangian(xs, ys, idx, x, 3);
   default:
     fatal_error("Unsupported interpolation");
   }

@@ -511,9 +511,9 @@ class RegularMesh(StructuredMesh):
         return mesh
 
     @classmethod
-    def from_bounding_box(
+    def from_domain(
         cls,
-        bounding_box,
+        domain,
         dimension=[100, 100, 100],
         mesh_id=None,
         name=''
@@ -523,9 +523,9 @@ class RegularMesh(StructuredMesh):
 
         Parameters
         ----------
-        bounding_box : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
+        domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
             The object passed in will be used as a template for this mesh. The
-            bounding_box of the property of the object passed will be used to
+            domain of the property of the object passed will be used to
             set the lower_left and upper_right of the mesh instance
         dimension : Iterable of int
             The number of mesh cells in each direction.
@@ -541,14 +541,14 @@ class RegularMesh(StructuredMesh):
 
         """
         cv.check_type(
-            "bounding_box",
-            bounding_box,
+            "domain",
+            domain,
             (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
         )
 
         mesh = cls(mesh_id, name)
-        mesh.lower_left = bounding_box.bounding_box[0]
-        mesh.upper_right = bounding_box.bounding_box[1]
+        mesh.lower_left = domain.bounding_box[0]
+        mesh.upper_right = domain.bounding_box[1]
         mesh.dimension = dimension
 
         return mesh

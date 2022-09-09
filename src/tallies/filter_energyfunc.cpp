@@ -38,6 +38,10 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
       interpolation_ = Interpolation::log_lin;
     } else if (interpolation == "log-log") {
       interpolation_ = Interpolation::log_log;
+    } else if (interpolation == "quadratic") {
+      interpolation_ = Interpolation::quadratic;
+    } else if (interpolation == "cubic") {
+      interpolation_ = Interpolation::cubic;
     } else {
       fatal_error(fmt::format(
         "Found invalid interpolation type '{}' on EnergyFunctionFilter {}.",

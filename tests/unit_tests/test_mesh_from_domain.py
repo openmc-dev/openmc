@@ -3,7 +3,7 @@ import openmc
 import pytest
 
 
-def test_mesh_from_cell():
+def test_reg_mesh_from_cell():
     """Tests a RegularMesh can be made from a Cell and the specified dimensions
     are propagated through. Cell is not centralized"""
     surface = openmc.Sphere(r=10, x0=2, y0=3, z0=5)
@@ -16,7 +16,7 @@ def test_mesh_from_cell():
     assert np.array_equal(mesh.upper_right, cell.bounding_box[1])
 
 
-def test_mesh_from_region():
+def test_reg_mesh_from_region():
     """Tests a RegularMesh can be made from a Region and the default dimensions
     are propagated through. Region is not centralized"""
     surface = openmc.Sphere(r=1, x0=-5, y0=-3, z0=-2)
@@ -29,7 +29,7 @@ def test_mesh_from_region():
     assert np.array_equal(mesh.upper_right, region.bounding_box[1])
 
 
-def test_mesh_from_universe():
+def test_reg_mesh_from_universe():
     """Tests a RegularMesh can be made from a Universe and the default dimensions
     are propagated through. Universe is centralized"""
     surface = openmc.Sphere(r=42)
@@ -43,7 +43,7 @@ def test_mesh_from_universe():
     assert np.array_equal(mesh.upper_right, universe.bounding_box[1])
 
 
-def test_mesh_from_geometry():
+def test_reg_mesh_from_geometry():
     """Tests a RegularMesh can be made from a Geometry and the default dimensions
     are propagated through. Geometry is centralized"""
     surface = openmc.Sphere(r=42)

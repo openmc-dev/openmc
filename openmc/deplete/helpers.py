@@ -147,7 +147,6 @@ class DirectReactionRateHelper(ReactionRateHelper):
     def __init__(self, n_nuc, n_react):
         super().__init__(n_nuc, n_react)
         self._rate_tally = None
-        self._rate_tally_means = None
 
         # Automatically pre-calculate reaction rates for depletion
         openmc.lib.settings.need_depletion_rx = True
@@ -176,18 +175,20 @@ class DirectReactionRateHelper(ReactionRateHelper):
         self._rate_tally.writable = False
         self._rate_tally.scores = scores
         self._rate_tally.filters = [MaterialFilter(materials)]
+        self._rate_tally_means_cache = None
 
     @property
     def rate_tally_means(self):
         # If the mean cache is empty, fill it once with this transport cycle's results
-        if self._rate_tally_means is None:
-            self._rate_tally_means = self._rate_tally.mean
-        return self._rate_tally_means
+        if self._rate_tally_means_cache is None:
+            self._rate_tally_means_cache = self._rate_tally.mean
+        return self._rate_tally_means_cache
 
     def reset_tally_means(self):
-        """Reset the cached mean rate tallies. This step must be performed after each transport cycle
+        """Reset the cached mean rate tallies.
+        This step must be performed after each transport cycle
         """
-        self._rate_tally_means = None
+        self._rate_tally_means_cache = None
 
     def get_material_rates(self, mat_id, nuc_index, react_index):
         """Return an array of reaction rates for a material
@@ -318,7 +319,8 @@ class FluxCollapseHelper(ReactionRateHelper):
         return self._flux_tally_means_cache
 
     def reset_tally_means(self):
-        """Reset the cached mean rate and flux tallies. This step must be performed after each transport cycle
+        """Reset the cached mean rate and flux tallies.
+        This step must be performed after each transport cycle
         """
         self._flux_tally_means_cache = None
         if self._reactions_direct:

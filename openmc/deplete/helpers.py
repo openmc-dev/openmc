@@ -147,6 +147,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
     def __init__(self, n_nuc, n_react):
         super().__init__(n_nuc, n_react)
         self._rate_tally = None
+        self._rate_tally_means = None
 
         # Automatically pre-calculate reaction rates for depletion
         openmc.lib.settings.need_depletion_rx = True
@@ -176,6 +177,18 @@ class DirectReactionRateHelper(ReactionRateHelper):
         self._rate_tally.scores = scores
         self._rate_tally.filters = [MaterialFilter(materials)]
 
+    @property
+    def rate_tally_means(self):
+        # If the mean cache is empty, fill it once with this transport cycle's results
+        if self._rate_tally_means is None:
+            self._rate_tally_means = self._rate_tally.mean
+        return self._rate_tally_means
+
+    def reset_tally_means(self):
+        """Reset the cached mean rate tallies. This step must be performed after each transport cycle
+        """
+        self._rate_tally_means = None
+
     def get_material_rates(self, mat_id, nuc_index, react_index):
         """Return an array of reaction rates for a material
 
@@ -196,7 +209,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
             reaction rates in this material
         """
         self._results_cache.fill(0.0)
-        full_tally_res = self._rate_tally.mean[mat_id]
+        full_tally_res = self.rate_tally_means[mat_id]
         for i_tally, (i_nuc, i_react) in enumerate(
                 product(nuc_index, react_index)):
             self._results_cache[i_nuc, i_react] = full_tally_res[i_tally]
@@ -278,6 +291,7 @@ class FluxCollapseHelper(ReactionRateHelper):
             EnergyFilter(self._energies)
         ]
         self._flux_tally.scores = ['flux']
+        self._flux_tally_means_cache = None
 
         # Create reaction rate tally
         if self._reactions_direct:
@@ -285,8 +299,31 @@ class FluxCollapseHelper(ReactionRateHelper):
             self._rate_tally.writable = False
             self._rate_tally.scores = self._reactions_direct
             self._rate_tally.filters = [MaterialFilter(materials)]
+            self._rate_tally_means_cache = None
             if self._nuclides_direct is not None:
                 self._rate_tally.nuclides = self._nuclides_direct
+
+    @property
+    def rate_tally_means(self):
+        # If the mean cache is empty, fill it once with this transport cycle's results
+        if self._rate_tally_means_cache is None:
+            self._rate_tally_means_cache = self._rate_tally.mean
+        return self._rate_tally_means_cache
+
+    @property
+    def flux_tally_means(self):
+        # If the mean cache is empty, fill it once for this transport cycle's results
+        if self._flux_tally_means_cache is None:
+            self._flux_tally_means_cache = self._flux_tally.mean
+        return self._flux_tally_means_cache
+
+    def reset_tally_means(self):
+        """Reset the cached mean rate and flux tallies. This step must be performed after each transport cycle
+        """
+        self._flux_tally_means_cache = None
+        if self._reactions_direct:
+            self._rate_tally_means_cache = None
+
 
     def get_material_rates(self, mat_index, nuc_index, react_index):
         """Return an array of reaction rates for a material
@@ -312,14 +349,14 @@ class FluxCollapseHelper(ReactionRateHelper):
 
         # Get flux for specified material
         shape = (len(self._materials), len(self._energies) - 1)
-        mean_value = self._flux_tally.mean.reshape(shape)
+        mean_value = self.flux_tally_means.reshape(shape)
         flux = mean_value[mat_index]
 
         # Get direct reaction rates
         if self._reactions_direct:
             nuclides_direct = self._rate_tally.nuclides
             shape = (len(nuclides_direct), len(self._reactions_direct))
-            rx_rates = self._rate_tally.mean[mat_index].reshape(shape)
+            rx_rates = self.rate_tally_means[mat_index].reshape(shape)
 
         mat = self._materials[mat_index]
 

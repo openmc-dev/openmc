@@ -507,6 +507,9 @@ class OpenMCOperator(TransportOperator):
 
         fission_ind = rates.index_rx.get("fission")
 
+        # Reset the cached material reaction rates tallies
+        self._rate_helper.reset_tally_means()
+
         # Extract results
         for i, mat in enumerate(self.local_mats):
             # Get tally index

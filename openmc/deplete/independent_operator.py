@@ -303,6 +303,10 @@ class IndependentOperator(OpenMCOperator):
             """Unused in this case"""
             pass
 
+        def reset_tally_means(self):
+            """Unused in this case"""
+            pass
+
         def get_material_rates(self, mat_id, nuc_index, react_index):
             """Return 2D array of [nuclide, reaction] reaction rates
 

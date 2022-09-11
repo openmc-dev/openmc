@@ -375,6 +375,7 @@ class Results(list):
     def export_to_materials(
         self,
         burnup_index: Union[int, Iterable[int]],
+        mat_id: Union[int, Iterable[int]] = None,
         nuc_with_data: Optional[Iterable[str]] = None
     ) -> Materials:
         """Return openmc.Materials object based on results at a given step
@@ -387,6 +388,9 @@ class Results(list):
             Index(es) of burnup step to evaluate. See also: get_step_where for
             obtaining burnup step indices from other data such as the time.
             Set to None if the materials from all burnup steps are required.
+        mat_id : int or Iterable of ints
+            ID(s) of the materials to return. Defaults to None which returns
+            all materials present.
         nuc_with_data : Iterable of str, optional
             Nuclides to include in resulting materials.
             This can be specified if not all nuclides appearing in
@@ -408,6 +412,10 @@ class Results(list):
             burnup_index = list(range(len(self)))
         elif isinstance(burnup_index, int):
             burnup_index = [burnup_index]
+    
+        if mat_id is not None and isinstance(mat_id, int):
+            mat_id = [mat_id]
+        
 
         # Only materials found in the original materials.xml file will be
         # updated. If for some reason you have modified OpenMC to produce
@@ -446,9 +454,11 @@ class Results(list):
             # results, and save them to the new depleted xml file.
             mat_file = deepcopy(mat_file_base)
             for mat in mat_file:
-                mat_id = str(mat.id)
-                if mat_id in result.mat_to_ind:
-                    mat.volume = result.volume[mat_id]
+                material_id = str(mat.id)
+                if material_id in result.mat_to_ind:
+                    if mat_id is not None and material_id not in mat_id:
+                        continue  # skips rest of loop as material isn't needed
+                    mat.volume = result.volume[material_id]
 
                     # Change density of all nuclides in material to atom/b-cm
                     atoms_per_barn_cm = mat.get_nuclide_atom_densities()
@@ -462,7 +472,7 @@ class Results(list):
                     for nuc in result.nuc_to_ind:
                         if nuc not in available_cross_sections:
                             continue
-                        atoms = result[0, mat_id, nuc]
+                        atoms = result[0, material_id, nuc]
                         if atoms > 0.0:
                             atoms_per_barn_cm = 1e-24 * atoms / mat.volume
                             mat.remove_nuclide(nuc) # Replace if it's there

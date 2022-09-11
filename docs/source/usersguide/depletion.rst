@@ -259,12 +259,12 @@ transport-depletion calculation and follow the same steps from there.
    will not be simulated.
 
 Loading and Generating Microscopic Cross Sections
--------------------------------------
+-------------------------------------------------
 
 As mentioned earlier, any transport code could be used to calculate one-group
 microscopic cross sections. The :mod:`openmc.deplete` module provides the 
 :class:`~openmc.deplete.MicroXS` class, which contains methods to read in
-pre-caluclated cross sections from a ``.csv`` file or from data arrays::
+pre-calculated cross sections from a ``.csv`` file or from data arrays::
 
     micro_xs = MicroXS.from_csv(micro_xs_path)
 
@@ -296,12 +296,13 @@ units of barns::
                                                  model.materials[0],
                                                  chain_file)
 
-If you are runnnig :meth:`~openmc.deplete.MicroXS.from_model()` on a cluster
-that does not share local filesystems across nodes, you'll need to set an
-environment variable pointing to a directory accessible by MPI so that each
-MPI process knows where to store output files used to calculate the microscopic
-cross sections. In order of priority, they are `TMPDIR`. `TEMP`, and `TMP`.
-Users interested in further details can read the `relevant docpage on the tempfile pacakge <https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_
+If you are running :meth:`~openmc.deplete.MicroXS.from_model()` on a cluster
+where temporary files are created on a local filesystem that is not shared
+across nodes, you'll need to set an environment variable pointing to a local
+directoy so that each MPI process knows where to store output files used to
+calculate the microscopic cross sections. In order of priority, they are
+:envvar:`TMPDIR`. :envvar:`TEMP`, and :envvar:`TMP`. Users interested in
+further details can read the documentation for the `tempfile <https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_ module.
 
 
 Caveats
@@ -352,7 +353,7 @@ normalizing reaction rates:
 Multiple Materials
 ~~~~~~~~~~~~~~~~~~
 
-A transport-independent depletion simulation using ``source-race`` normalization
+A transport-independent depletion simulation using ``source-rate`` normalization
 will calculate reaction rates for each material independently. This can be
 useful for running many different cases of a particular scenario. A 
 transport-independent depletion simulation using ``fission-q`` normalization

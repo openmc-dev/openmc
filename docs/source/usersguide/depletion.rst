@@ -298,10 +298,10 @@ units of barns::
 
 If you are runnnig :meth:`~openmc.deplete.MicroXS.from_model()` on a cluster
 that does not share local filesystems across nodes, you'll need to set an
-environment variable so that each MPI process knows where to store output files
-used to calculate the microscopic cross sections. In order of priority, they
-are `TMPDIR`. `TEMP`, and `TMP`. Users interested in further details can read
-the `relevant docpage on the tempfile pacakge <https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_
+environment variable pointing to a directory accessible by MPI so that each
+MPI process knows where to store output files used to calculate the microscopic
+cross sections. In order of priority, they are `TMPDIR`. `TEMP`, and `TMP`.
+Users interested in further details can read the `relevant docpage on the tempfile pacakge <https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_
 
 
 Caveats
@@ -325,7 +325,7 @@ normalizing reaction rates:
    the cross sections by the ``source-rate``.
 2. ``fission-q`` normalization, which uses the ``power`` or ``power_density``
    provided by the time integrator to obtain reaction rates by computing a value
-   for the flux based on this power. The general equation for the flux is
+   for the flux based on this power. The equation we use for this calculation is
 
    .. math::
       :label: fission-q
@@ -354,11 +354,13 @@ Multiple Materials
 
 A transport-independent depletion simulation using ``source-race`` normalization
 will calculate reaction rates for each material independently. This can be
-useful for running many different cases of a particular scenario. A depletion
-simulation using ``fission-q`` normalization will sum the energy values from
-each material into :math:`Q` in Equation :math:numref:`fission-q`, which is
-used to normalize the reaction rates for all materials. This behavior may
-change in the future.
+useful for running many different cases of a particular scenario. A 
+transport-independent depletion simulation using ``fission-q`` normalization
+will sum the fission energy values across all materials into :math:`Q_i` in 
+Equation :math:numref:`fission-q`, and Equation :math:numref:`fission-q`
+provides the flux we use to calculate the reaction rates in each material.
+This can be useful for running a scenario with multiple depletable materials
+that are part of the same reactor. This behavior may change in the future.
 
 Time integration
 ~~~~~~~~~~~~~~~~

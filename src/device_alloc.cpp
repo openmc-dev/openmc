@@ -15,6 +15,7 @@
 
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
 
 
 namespace openmc {

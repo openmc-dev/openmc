@@ -2281,6 +2281,10 @@ void score_analog_tally_ce(Particle& p)
 
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2314,16 +2318,16 @@ void score_analog_tally_ce(Particle& p)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 void score_analog_tally_mg(Particle& p)
 {
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2360,10 +2364,6 @@ void score_analog_tally_mg(Particle& p)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 void
@@ -2375,6 +2375,10 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
   for (int i = 0; i < model::active_tracklength_tallies_size; ++i) {
     int i_tally = model::device_active_tracklength_tallies[i];
     const Tally& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2432,10 +2436,6 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 void score_collision_tally(Particle& p)
@@ -2448,6 +2448,10 @@ void score_collision_tally(Particle& p)
 
   for (auto i_tally : model::active_collision_tallies) {
     const Tally& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2493,10 +2497,6 @@ void score_collision_tally(Particle& p)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 void
@@ -2507,6 +2507,10 @@ score_surface_tally(Particle& p, const std::vector<int>& tallies)
 
   for (auto i_tally : tallies) {
     auto& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2538,10 +2542,6 @@ score_surface_tally(Particle& p, const std::vector<int>& tallies)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 } // namespace openmc

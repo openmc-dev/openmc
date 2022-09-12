@@ -81,9 +81,7 @@ const
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), E);
       //match.bins_.push_back(bin);
       //match.weights_.push_back(1.0);
-      match.bins_[match.bins_weights_length_] = bin;
-      match.weights_[match.bins_weights_length_] = 1.0;
-      match.bins_weights_length_++;
+      match.push_back(bin, 1.0);
     }
   // }
 }
@@ -120,9 +118,7 @@ Filter::EnergyoutFilter_get_all_bins(const Particle& p, TallyEstimator estimator
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), p.E_);
       //match.bins_.push_back(bin);
       //match.weights_.push_back(1.0);
-      match.bins_[match.bins_weights_length_] = bin;
-      match.weights_[match.bins_weights_length_] = 1.0;
-      match.bins_weights_length_++;
+      match.push_back(bin, 1.0);
     }
   // }
 }

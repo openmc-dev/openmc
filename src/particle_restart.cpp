@@ -13,6 +13,7 @@
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
 
 #include <algorithm> // for copy

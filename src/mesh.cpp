@@ -628,9 +628,7 @@ void Mesh::bins_crossed(const Particle& p, FilterMatch& match) const
       double distance = (r1 - r0).norm();
       //bins.push_back(get_bin_from_indices(ijk0.data()));
       //lengths.push_back(distance / total_distance);
-      match.bins_[match.bins_weights_length_]    = get_bin_from_indices(ijk0);
-      match.weights_[match.bins_weights_length_] = distance/total_distance;
-      match.bins_weights_length_++;
+      match.push_back(get_bin_from_indices(ijk0), distance / total_distance);
       break;
     }
 
@@ -653,9 +651,7 @@ void Mesh::bins_crossed(const Particle& p, FilterMatch& match) const
     double distance = d[j];
     //bins.push_back(get_bin_from_indices(ijk0.data()));
     //lengths.push_back(distance / total_distance);
-    match.bins_[match.bins_weights_length_]    = get_bin_from_indices(ijk0);
-    match.weights_[match.bins_weights_length_] = distance/total_distance;
-    match.bins_weights_length_++;
+    match.push_back(get_bin_from_indices(ijk0), distance / total_distance);
 
     // Translate to the oncoming mesh surface.
     r0 += distance * u;
@@ -785,7 +781,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             //bins.push_back(i_bin);
-            match.bins_[match.bins_weights_length_++] = i_bin;
+            match.push_back(i_bin);
           }
 
           // Advance position
@@ -807,7 +803,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             //bins.push_back(i_bin);
-            match.bins_[match.bins_weights_length_++] = i_bin;
+            match.push_back(i_bin);
           }
 
         } else {
@@ -820,7 +816,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             //bins.push_back(i_bin);
-            match.bins_[match.bins_weights_length_++] = i_bin;
+            match.push_back(i_bin);
           }
 
           // Advance position
@@ -842,7 +838,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             //bins.push_back(i_bin);
-            match.bins_[match.bins_weights_length_++] = i_bin;
+            match.push_back(i_bin);
           }
         }
       }
@@ -1590,9 +1586,7 @@ void UnstructuredMesh::bins_crossed(const Particle& p, FilterMatch& match) const
     if (bin != -1) {
       //bins.push_back(bin);
       //lengths.push_back(1.0);
-      match.bins_[match.bins_weights_length_]    = bin;
-      match.weights_[match.bins_weights_length_] = 1.0;
-      match.bins_weights_length_++;
+      match.push_back(bin, 1.0);
     }
     return;
   }
@@ -1619,10 +1613,7 @@ void UnstructuredMesh::bins_crossed(const Particle& p, FilterMatch& match) const
 
     //bins.push_back(bin);
     //lengths.push_back(segment_length / track_len);
-      match.bins_[match.bins_weights_length_]    = bin;
-      match.weights_[match.bins_weights_length_] = segment_length / track_len;
-      match.bins_weights_length_++;
-
+    match.push_back(bin, segment_length / track_len);
   }
 
   // tally remaining portion of track after last hit if
@@ -1636,9 +1627,7 @@ void UnstructuredMesh::bins_crossed(const Particle& p, FilterMatch& match) const
     if (bin != -1) {
       //bins.push_back(bin);
       //lengths.push_back(segment_length / track_len);
-      match.bins_[match.bins_weights_length_]    = bin;
-      match.weights_[match.bins_weights_length_] = segment_length / track_len;
-      match.bins_weights_length_++;
+      match.push_back(bin, segment_length / track_len);
     }
   }
 };

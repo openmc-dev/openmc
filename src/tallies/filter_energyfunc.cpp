@@ -67,9 +67,7 @@ Filter::EnergyFunctionFilter_get_all_bins(const Particle& p, TallyEstimator esti
     // Interpolate on the lin-lin grid.
     //match.bins_.push_back(0);
     //match.weights_.push_back((1-f) * y_[i] + f * y_[i+1]);
-    match.bins_[match.bins_weights_length_] = 0;
-    match.weights_[match.bins_weights_length_] = (1-f) * y_[i] + f * y_[i+1];
-    match.bins_weights_length_++;
+    match.push_back(0, (1-f) * y_[i] + f * y_[i+1]);
   }
 }
 

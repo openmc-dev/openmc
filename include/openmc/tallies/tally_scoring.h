@@ -6,6 +6,8 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/vector.h"
 
+#define FILTER_MATCHES_SIZE 4 // The maximum number of filters in a given tally
+
 namespace openmc {
 
 //==============================================================================

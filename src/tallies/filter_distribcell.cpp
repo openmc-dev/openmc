@@ -59,9 +59,7 @@ Filter::DistribcellFilter_get_all_bins(const Particle& p, TallyEstimator estimat
     if (cell_ == p.coord_[i].cell) {
       //match.bins_.push_back(offset);
       //match.weights_.push_back(1.0);
-      match.bins_[match.bins_weights_length_] = offset;
-      match.weights_[match.bins_weights_length_] = 1.0;
-      match.bins_weights_length_++;
+      match.push_back(offset, 1.0);
       return;
     }
   }

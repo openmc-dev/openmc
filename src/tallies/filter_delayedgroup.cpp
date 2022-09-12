@@ -42,9 +42,7 @@ Filter::DelayedGroupFilter_get_all_bins(const Particle& p, TallyEstimator estima
 {
   //match.bins_.push_back(0);
   //match.weights_.push_back(1.0);
-    match.bins_[match.bins_weights_length_] = 0;
-    match.weights_[match.bins_weights_length_] = 1.0;
-    match.bins_weights_length_++;
+  match.push_back(0, 1.0);
 }
 
 void

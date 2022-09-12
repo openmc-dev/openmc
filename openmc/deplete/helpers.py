@@ -179,6 +179,8 @@ class DirectReactionRateHelper(ReactionRateHelper):
 
     @property
     def rate_tally_means(self):
+        """The mean results of the tally of every material's reaction rates for this cycle
+        """
         # If the mean cache is empty, fill it once with this transport cycle's results
         if self._rate_tally_means_cache is None:
             self._rate_tally_means_cache = self._rate_tally.mean
@@ -186,7 +188,9 @@ class DirectReactionRateHelper(ReactionRateHelper):
 
     def reset_tally_means(self):
         """Reset the cached mean rate tallies.
-        This step must be performed after each transport cycle
+        .. note::
+            
+                This step must be performed after each transport cycle
         """
         self._rate_tally_means_cache = None
 
@@ -306,6 +310,8 @@ class FluxCollapseHelper(ReactionRateHelper):
 
     @property
     def rate_tally_means(self):
+        """The mean results of the tally of every material's reaction rates for this cycle
+        """
         # If the mean cache is empty, fill it once with this transport cycle's results
         if self._rate_tally_means_cache is None:
             self._rate_tally_means_cache = self._rate_tally.mean
@@ -320,12 +326,13 @@ class FluxCollapseHelper(ReactionRateHelper):
 
     def reset_tally_means(self):
         """Reset the cached mean rate and flux tallies.
-        This step must be performed after each transport cycle
+        .. note::
+            
+                This step must be performed after each transport cycle
         """
         self._flux_tally_means_cache = None
         if self._reactions_direct:
             self._rate_tally_means_cache = None
-
 
     def get_material_rates(self, mat_index, nuc_index, react_index):
         """Return an array of reaction rates for a material

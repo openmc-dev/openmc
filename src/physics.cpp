@@ -142,19 +142,18 @@ void sample_neutron_reaction(Particle& p)
   // exiting neutron
 
 #ifdef NCRYSTAL
-  if (model::materials[p.material_]->m_NCrystal_mat_ != nullptr && p.E() < settings::ncrystal_max_energy){
-
+  if (model::materials[p.material()]->m_NCrystal_mat() != nullptr && p.E() < settings::ncrystal_max_energy){
     NcrystalRNG_Wrapper rng(p.current_seed()); // Initialize RNG
     //create a cache pointer for multi thread physics
     NCrystal::CachePtr dummyCache;//fixme: avoid recreating here (triggers malloc)
     auto nc_energy = NCrystal::NeutronEnergy{p.E()};
-    auto outcome = model::materials[p.material_]->m_NCrystal_mat_->sampleScatter( dummyCache, rng , nc_energy, {p.u().x, p.u().y, p.u().z});
+    auto outcome = model::materials[p.material()]->m_NCrystal_mat()->sampleScatter( dummyCache, rng , nc_energy, {p.u().x, p.u().y, p.u().z});
     p.E_last() = p.E();
     p.E() = outcome.ekin.get();
     Direction u_old {p.u()};
     p.u() = Direction(outcome.direction[0], outcome.direction[1], outcome.direction[2]);
-    p.mu_ = u_old.dot(p.u());
-    p.event_mt_ = ELASTIC;//fixme: define a new label for NCrystal?
+    p.mu() = u_old.dot(p.u());
+    p.event_mt() = ELASTIC;//fixme: define a new label for NCrystal?
   } else {
     scatter(p, i_nuclide);
   }

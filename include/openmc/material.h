@@ -155,6 +155,12 @@ public:
   //! \return Temperature in [K]
   double temperature() const;
 
+#ifdef NCRYSTAL
+  //! Gwet pointer to NCrystal material object
+  //! \return Pointer to NCrystal material object
+  std::shared_ptr<const NCrystal::ProcImpl::Process> m_NCrystal_mat() const {return m_NCrystal_mat_};
+#endif
+
   //----------------------------------------------------------------------------
   // Data
   int32_t id_ {C_NONE};                 //!< Unique ID

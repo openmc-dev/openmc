@@ -4,6 +4,10 @@ Provided to avoid some circular imports
 """
 from itertools import repeat, starmap
 from multiprocessing import Pool
+import functools
+from copy import deepcopy
+from scipy.sparse import bmat
+import numpy as np
 
 
 # Configurable switch that enables / disables the use of
@@ -15,7 +19,7 @@ USE_MULTIPROCESSING = True
 NUM_PROCESSES = None
 
 
-def deplete(func, chain, x, rates, dt, msr, matrix_func=None):
+def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -33,7 +37,11 @@ def deplete(func, chain, x, rates, dt, msr, matrix_func=None):
         Time in [s] to deplete for
     msr : openmc.deplete.MsrContinuous, Optional
         MsrContinuous removal terms to add to Bateman equation,
-        accounting for material transfers.
+        accounting for elements removal and transfer. Creates a sparse matrix
+        (scipy.bmat) of matrices (sub-arrays), in which the diagonals are the
+        depletion matrices as defined by the Bateman equation with the addition
+        of a removal coefficient; and the off-diagonals are the matrices
+        accounting for transfers from one material to another.
     maxtrix_func : callable, optional
         Function to form the depletion matrix after calling
         ``matrix_func(chain, rates, fission_yields)``, where
@@ -57,15 +65,11 @@ def deplete(func, chain, x, rates, dt, msr, matrix_func=None):
             "equal to the number of compositions {}".format(
                 len(fission_yields), len(x)))
 
-    # Create a dictionary where keys are depletable materials indeces and values
-    # None, with dimension : (rates.n_mat X rates.n_mat).
-    ids = {(i,i): None for i in range(rates.n_mat)}
-
     if msr is None:
         if matrix_func is None:
-            matrices = map(chain.form_matrix, rates, ids.items(), fission_yields)
+            matrices = map(chain.form_matrix, rates, fission_yields)
         else:
-            matrices = map(matrix_func, repeat(chain), rates, ids.items(), fission_yields)
+            matrices = map(matrix_func, repeat(chain), rates, fission_yields)
         inputs = zip(matrices, x, repeat(dt))
         if USE_MULTIPROCESSING:
             with Pool() as pool:
@@ -74,75 +78,76 @@ def deplete(func, chain, x, rates, dt, msr, matrix_func=None):
             x_result = list(starmap(func, inputs))
 
     else:
-        """ Construct a single sparse matrix of matrices, where diagoanl ones
-￼       correspond to depletable materials and off-diagonal to materials
-￼       coupling (i.e. materials for which a removal or transfer of nuclides
-        has been defined)
-￼
-￼       """
-
-        # rates can be returned as openmc.deplete.ReactionRates object or as
-        # list of several zipped openmc.deplete.ReactionRates, according to
-        # the openmc.deplete integrator scheme used.
-        copy_rates = copy.deepcopy(rates)
-        copy_fy = copy.deepcopy(fission_yields)
+        # Unzip ReactionRates from high orders integrator schemes intermediate
+        # steps (such as CF4Integrator)
         if type(rates) is list:
-            list_rates = copy_rates
-            unzip_rates = [list(t) for t in zip(*copy_rates)]
-            _rates = unzip_rates[0]
-            depletable_id = [(v,int(k)) for k,v in _rates[0].index_mat.items() ]
+            rate = list(zip(*rates))[0][0]
+            list_rates = deepcopy(rates)
         else:
-            list_rates = list(copy_rates)
-            depletable_id = {int(k): v for k,v in copy_rates.index_mat.items()}
+            rate = rates[0]
+            list_rates = list(deepcopy(rates))
 
-        # create 0-filled reaction rate and fission yelds to add to off-diagoanl
-        # terms.
-        null_rate = copy.deepcopy(rates)[0]
-        null_rate.fill(0)
-        null_fy=copy.deepcopy(fission_yields)[0]
-        for product,y in null_fy.items():
-                y.yields.fill(0)
+        #Create a deep copy of fy
+        fission_yields = deepcopy(fission_yields)
 
-        # Assign lambda coefficients instructions to diagonal and off-diagonal
-        #matrices. For each transfer initilize an off-diagonal matrix with the
-        #right indeces and add empty reaction rate and fission yeld arrays.
-        for r in msr.removal_term:
-            j = depletable_id[r['mat_id']]
-            ids[(j,j)] = r['transfer']
-            for t in r['transfer']:
-                if type(rates) == list:
-                    list_rates.append((null_rate,)*len(unzip_rates))
+        # Create zero reaction rates to be added to off-diagonal terms of the
+        # sparse matrix, where reaction rates and fy are not needed
+        null_rate = rate.copy()
+        null_rate.fill(0.0)
+        null_fy = deepcopy(fission_yields[0])
+        for product, y in null_fy.items():
+            y.yields.fill(0.0)
+
+        # Create dictionaries of material indeces to order the sparse matrix
+        depletable_ids = {int(k): v for k, v in rate.index_mat.items()}
+        msr_ids = {(i, i): None for i in range(rate.n_mat)}
+
+        # Add user-defined removal coefficients to the depletable materials as
+        # diagonal elements of the sparse matrix and material coupling transfers
+        # as off-diagonal (i,j)
+        for removal in msr:
+            j = depletable_ids[removal['mat_id']]
+            msr_ids[(j, j)] = removal['transfer']
+            for transfer in removal['transfer']:
+                if type(rates) is list:
+                    list_rates.append((null_rate,)*len(list(zip(*rates))))
                 else:
                     list_rates.append(null_rate)
-                copy_fy.append(null_fy)
-                i = depletable_id[t['to']]
-                ids[(i,j)] = t
+                fission_yields.append(null_fy)
+                i = depletable_ids[transfer['to']]
+                msr_ids[(i, j)] = transfer
 
+        # Form all the matrices
         if matrix_func is None:
-            matrices = map(chain.form_matrix, list_rates, ids.items(), copy_fy)
+            matrices = map(chain.form_matrix, list_rates,
+                           msr_ids.items(), fission_yields)
         else:
-            matrices = map(matrix_func, repeat(chain), list_rates, ids.items(), copy_fy)
+            matrices = map(matrix_func, repeat(chain), list_rates,
+                           msr_ids.items(), fission_yields)
 
-        # Populate 2d array with all the matrices
+        # Combine all the matrices in a 2d-list of arrays
         matrices = list(matrices)
         raws = []
-        for raw in range(rates.n_mat):
+        for raw in range(rate.n_mat):
             cols = []
-            for col in range(rates.n_mat):
+            for col in range(rate.n_mat):
                 val = None
-                for keys,array in zip(ids.keys(), matrices):
-                    if keys == (raw,col):
+                for keys, array in zip(msr_ids.keys(), matrices):
+                    if keys == (raw, col):
                         val = array
                 cols.append(val)
             raws.append(cols)
 
-        # Build 1 msr_matrix from a 2d array
-        msr_matrix = bmat(raws)
-        # Concatenate all nuclides vectors in one
-        x = np.concatenate([_x for _x in x])
-        x_result = func(matrix, x, dt)
-        # Split back the vectors
-        split_index = np.cumsum([i.shape[0] for i in matrices[:rates.n_mat]]).tolist()[:-1]
-        x_result = np.split(x_result, split_index)
+        # Build a sparse matrix from the sparse sub-arrays
+        sparse_matrix = bmat(raws)
+
+        # Concatenate all atoms vectors in one
+        x = np.concatenate([xx for xx in x])
+
+        x_result = func(sparse_matrix, x, dt)
+
+        # Split the result vectors before returning
+        split = np.cumsum([i.shape[0] for i in matrices[:rate.n_mat]])
+        x_result = np.split(x_result, split.tolist()[:-1])
 
     return x_result

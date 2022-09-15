@@ -610,7 +610,7 @@ class Chain:
             out[nuc.name] = dict(yield_obj)
         return out
 
-    def form_matrix(self, rates, fission_yields=None):
+    def form_matrix(self, rates, msr=None, fission_yields=None):
         """Forms depletion matrix.
 
         Parameters
@@ -633,6 +633,7 @@ class Chain:
         :meth:`get_default_fission_yields`
         """
         matrix = defaultdict(float)
+        offdiag_matrix = defaultdict(float)
         reactions = set()
 
         if fission_yields is None:
@@ -655,6 +656,23 @@ class Chain:
                         if branch_val != 0.0:
                             k = self.nuclide_dict[target]
                             matrix[k, i] += branch_val
+
+            # Loss/gain from transfer
+            if msr is not None:
+                if msr[1] is not None:
+                    # Diagonal term
+                    if msr[0][0] == msr[0][1]:
+                        for remove in msr[1]:
+                            if regex.split(nuc.name)[0] in remove['element']:
+                                c = - 1 / remove['cycle_time']
+                                matrix [i, i] += c
+                    # Off-diagonal term
+                    else:
+                        if regex.split(nuc.name)[0] in msr[1]['element']:
+                            c = 1 / msr[1]['cycle_time']
+                            offdiag_matrix[i, i] += c
+                        else:
+                            offdiag_matrix[i, i] += 0.0
 
             if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
@@ -700,7 +718,10 @@ class Chain:
         # Use DOK matrix as intermediate representation, then convert to CSR and return
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))
-        dict.update(matrix_dok, matrix)
+        if len(offdiag_matrix) is 0:
+            dict.update(matrix_dok, matrix)
+        else:
+            dict.update(matrix_dok, offdiag_matrix)
         return matrix_dok.tocsr()
 
     def get_branch_ratios(self, reaction="(n,gamma)"):

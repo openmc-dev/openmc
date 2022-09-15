@@ -279,6 +279,7 @@ class StructuredMesh(MeshBase):
 
         return vtk_grid
 
+
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
 
@@ -506,6 +507,49 @@ class RegularMesh(StructuredMesh):
         mesh.lower_left = lattice.lower_left
         mesh.upper_right = lattice.lower_left + width
         mesh.dimension = shape*division
+
+        return mesh
+
+    @classmethod
+    def from_domain(
+        cls,
+        domain,
+        dimension=[100, 100, 100],
+        mesh_id=None,
+        name=''
+    ):
+        """Create mesh from an existing openmc cell, region, universe or
+        geometry by making use of the objects bounding box property.
+
+        Parameters
+        ----------
+        domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
+            The object passed in will be used as a template for this mesh. The
+            bounding box of the property of the object passed will be used to
+            set the lower_left and upper_right of the mesh instance
+        dimension : Iterable of int
+            The number of mesh cells in each direction.
+        mesh_id : int
+            Unique identifier for the mesh
+        name : str
+            Name of the mesh
+
+        Returns
+        -------
+        openmc.RegularMesh
+            RegularMesh instance
+
+        """
+        cv.check_type(
+            "domain",
+            domain,
+            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
+        )
+
+        mesh = cls(mesh_id, name)
+        mesh.lower_left = domain.bounding_box[0]
+        mesh.upper_right = domain.bounding_box[1]
+        mesh.dimension = dimension
 
         return mesh
 

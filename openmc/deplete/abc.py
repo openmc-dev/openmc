@@ -25,6 +25,7 @@ from .stepresult import StepResult
 from .chain import Chain
 from .results import Results
 from .pool import deplete
+from .msr import MsrContinuous
 
 
 __all__ = [
@@ -529,7 +530,7 @@ class Integrator(ABC):
     source_rates : float or iterable of float, optional
         Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
         each interval in :attr:`timesteps`
-
+    msr_continuous :
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
@@ -579,7 +580,8 @@ class Integrator(ABC):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, timestep_units='s', solver="cram48"):
+                 source_rates=None, msr=None, timestep_units='s',
+                 solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -652,6 +654,17 @@ class Integrator(ABC):
         self.timesteps = asarray(seconds)
         self.source_rates = asarray(source_rates)
 
+        if msr is not None:
+            if not isinstance(msr, MsrContinuous):
+                raise ValueError('This is not a valid MsrContinuous')
+            else:
+                if not msr.removal_terms:
+                    raise ValueError('MsrContinuous removal terms is empty')
+                else:
+                    self.msr = msr
+        else:
+            self.msr = None
+
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
             if solver == "cram48":
@@ -702,7 +715,7 @@ class Integrator(ABC):
     def _timed_deplete(self, concs, rates, dt, matrix_func=None):
         start = time.time()
         results = deplete(
-            self._solver, self.chain, concs, rates, dt, matrix_func)
+            self._solver, self.chain, concs, rates, dt, self.msr, matrix_func)
         return time.time() - start, results
 
     @abstractmethod

@@ -203,21 +203,25 @@ Transport-independent depletion
    verified. API changes and feature additions are possible and likely in
    the near future.
 
-This category of operator uses pre-calculated one-group microscopic cross
-sections to obtain transmutation reaction rates. OpenMC provides the
-:class:`~openmc.deplete.IndependentOperator` for this method of calculation.
-While the one-group microscopic cross sections can be calculated using a
-transport solver, :class:`~openmc.deplete.IndependentOperator` is not directly
-coupled to any transport solver. The
-:class:`~openmc.deplete.IndependentOperator` class requires a
-:class:`openmc.Materials` object, a :class:`~openmc.deplete.MicroXS` object,
-and a path to a depletion chain file::
+This category of operator uses one-group microscopic cross sections to obtain
+transmutation reaction rates. The cross sections are pre-calculated, so there is
+no need for direct coupling between a transport-independent operator and a
+transport solver. The :mod:`openmc.deplete` module offers a single
+transport-independent operator, :class:`~openmc.deplete.IndependentOperator`,
+and only one operator is needed since, in theory, any transport code could
+calcuate the one-group microscopic cross sections.
 
-    # load in the microscopic cross sections
+The :class:`~openmc.deplete.IndependentOperator` class has two constructors.
+The default constructor requires a :class:`openmc.Materials` instance, a
+:class:`~openmc.deplete.MicroXS` instance containing one-group microscoic cross
+sections in units of barns, and a path to a depletion chain file::
+
     materials = openmc.Materials()
     ...
 
+    # load in the microscopic cross sections
     micro_xs = openmc.deplete.MicroXS.from_csv(micro_xs_path)
+
     op = openmc.deplete.IndependentOperator(materials, micro_xs, chain_file)
 
 .. note::
@@ -229,7 +233,7 @@ and a path to a depletion chain file::
 An alternate constructor,
 :meth:`~openmc.deplete.IndependentOperator.from_nuclides`, accepts a volume and
 dictionary of nuclide concentrations in place of the :class:`openmc.Materials`
-object::
+instance::
 
     nuclides = {'U234': 8.92e18,
                 'U235': 9.98e20,
@@ -250,32 +254,17 @@ transport-depletion calculation and follow the same steps from there.
 .. note::
 
    Ideally, one-group cross section data should be available for every
-   reaction in the depletion chain. If a nuclide that has a reaction
-   associated with it in the depletion chain is present in the `nuclides`
-   parameter but not the cross section data, that reaction will not be
-   simulated.
+   reaction in the depletion chain. If cross section data is not present for
+   a nuclide in the depletion chain with at least one reaction, that reaction
+   will not be simulated.
 
-Generating Microscopic Cross Sections
--------------------------------------
+Loading and Generating Microscopic Cross Sections
+-------------------------------------------------
 
-Users can generate the one-group microscopic cross sections needed by
-:class:`~openmc.deplete.IndependentOperator` using the
-:class:`~openmc.deplete.MicroXS` class::
-
-    import openmc
-
-    model = openmc.Model.from_xml()
-
-    micro_xs = openmc.deplete.MicroXS.from_model(model,
-                                                 model.materials[0],
-                                                 chain_file)
-
-The :meth:`~openmc.deplete.MicroXS.from_model()` method will produce a
-:class:`~openmc.deplete.MicroXS` object with microscopic cross section data in
-units of barns, which is what :class:`~openmc.deplete.IndependentOperator`
-expects the units to be. The :class:`~openmc.deplete.MicroXS` class also
-includes functions to read in cross section data directly from a ``.csv`` file
-or from data arrays::
+As mentioned earlier, any transport code could be used to calculate one-group
+microscopic cross sections. The :mod:`openmc.deplete` module provides the 
+:class:`~openmc.deplete.MicroXS` class, which contains methods to read in
+pre-calculated cross sections from a ``.csv`` file or from data arrays::
 
     micro_xs = MicroXS.from_csv(micro_xs_path)
 
@@ -293,6 +282,28 @@ or from data arrays::
    provided are in barns by defualt, but have no way of verifying this. Make
    sure your cross sections are in the correct units before passing to a
    :class:`~openmc.deplete.IndependentOperator` object.
+
+The :class:`~openmc.deplete.MicroXS` class also contains a method to generate one-group microscopic cross sections using OpenMC's transport solver. The
+:meth:`~openmc.deplete.MicroXS.from_model()` method will produce a
+:class:`~openmc.deplete.MicroXS` instance with microscopic cross section data in
+units of barns::
+
+    import openmc
+
+    model = openmc.Model.from_xml()
+
+    micro_xs = openmc.deplete.MicroXS.from_model(model,
+                                                 model.materials[0],
+                                                 chain_file)
+
+If you are running :meth:`~openmc.deplete.MicroXS.from_model()` on a cluster
+where temporary files are created on a local filesystem that is not shared
+across nodes, you'll need to set an environment variable pointing to a local
+directoy so that each MPI process knows where to store output files used to
+calculate the microscopic cross sections. In order of priority, they are
+:envvar:`TMPDIR`. :envvar:`TEMP`, and :envvar:`TMP`. Users interested in
+further details can read the documentation for the `tempfile <https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_ module.
+
 
 Caveats
 -------
@@ -312,12 +323,13 @@ normalizing reaction rates:
 
 1. ``source-rate`` normalization, which assumes the ``source_rate`` provided by
    the time integrator is a flux, and obtains the reaction rates by multiplying
-   the cross-sections by the ``source-rate``.
+   the cross sections by the ``source-rate``.
 2. ``fission-q`` normalization, which uses the ``power`` or ``power_density``
    provided by the time integrator to obtain reaction rates by computing a value
-   for the flux based on this power. The general equation for the flux is
+   for the flux based on this power. The equation we use for this calculation is
 
    .. math::
+      :label: fission-q
 
       \phi = \frac{P}{\sum\limits_i (Q_i \sigma^f_i N_i)}
 
@@ -341,19 +353,20 @@ normalizing reaction rates:
 Multiple Materials
 ~~~~~~~~~~~~~~~~~~
 
-Running a depletion simulation with multiple materials using the
-``source-rate`` normalization method treats each material as completely
-separate with respect to reaction rates. This can be useful for running many
-different cases of a particular scenario. However, running a depletion
-simulation with multiple materials using the ``fission-q`` normalization method
-treats each material as part of the same "reactor" due to how ``fission-q``
-normalization accumulates energy values from each material to a single value.
-This behavior may change in the future.
+A transport-independent depletion simulation using ``source-rate`` normalization
+will calculate reaction rates for each material independently. This can be
+useful for running many different cases of a particular scenario. A 
+transport-independent depletion simulation using ``fission-q`` normalization
+will sum the fission energy values across all materials into :math:`Q_i` in 
+Equation :math:numref:`fission-q`, and Equation :math:numref:`fission-q`
+provides the flux we use to calculate the reaction rates in each material.
+This can be useful for running a scenario with multiple depletable materials
+that are part of the same reactor. This behavior may change in the future.
 
 Time integration
 ~~~~~~~~~~~~~~~~
 
-The one-group microscopic cross sections passed to
-:class:`openmc.deplete.IndependentOperator` are fixed values for the entire
-depletion simulation. This implicit assumption may produce inaccurate results
-for certain scenarios.
+The values of the one-group microscopic cross sections passed to
+:class:`openmc.deplete.IndependentOperator` are fixed for the entire depletion
+simulation. This implicit assumption may produce inaccurate results for certain
+scenarios.

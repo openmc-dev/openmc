@@ -426,6 +426,7 @@ MCPLFileSource::MCPLFileSource(std::string path)
 
   read_source_bank(sites_);
 }
+<<<<<<< HEAD
 
 MCPLFileSource::~MCPLFileSource(){
   mcpl_close_file(mcpl_file);
@@ -495,6 +496,9 @@ SourceSite MCPLFileSource::read_single_particle() const
 #endif //OPENMC_MCPL
 =======
 >>>>>>> 380cfc150b449ef56debb5261caa010a52c42bdd
+=======
+#endif
+>>>>>>> 71568d4f4 (refactor MCPL file read part of FileSource)
 
 //==============================================================================
 // Non-member functions

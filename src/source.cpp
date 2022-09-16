@@ -390,31 +390,6 @@ CustomSourceWrapper::~CustomSourceWrapper()
 #endif
 }
 
-#ifdef OPENMC_MCPL
-//===========================================================================
-// Read particles from an MCPL-file
-//===========================================================================
-MCPLFileSource::MCPLFileSource(std::string path)
-{
-  // Check if source file exists
-  if (!file_exists(path)) {
-    fatal_error(fmt::format("Source file '{}' does not exist.", path));
-  }
-
-  // Read the source from a binary file instead of sampling from some
-  // assumed source distribution
-  write_message(6, "Reading mcpl source file from {}",path);
-
-  // Open the mcpl file
-  mcpl_file = mcpl_open_file(path.c_str());
-
-  //do checks on the mcpl_file to see if particles are many enough.
-  // should model this on the example source shown in the docs.
-  n_sites=mcpl_hdr_nparticles(mcpl_file);
-
-  read_source_bank(sites_);
-}
-#endif
 
 //==============================================================================
 // Non-member functions

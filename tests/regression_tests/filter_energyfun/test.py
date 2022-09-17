@@ -28,6 +28,7 @@ def model():
     # Make an EnergyFunctionFilter directly from the x and y lists.
     filt1 = openmc.EnergyFunctionFilter(x, y)
 
+    # check interpolatoin property setter
     assert filt1.interpolation == 'linear-linear'
 
     with pytest.raises(ValueError):
@@ -60,7 +61,10 @@ def model():
     filt8 = openmc.EnergyFunctionFilter(x, y)
     filt8.interpolation = 'cubic'
 
-    filters = [filt1, filt3, filt4, filt5, filt6, filt7, filt8]
+    filt9 = openmc.EnergyFunctionFilter(x, y)
+    filt9.interpolation = 'histogram'
+
+    filters = [filt1, filt3, filt4, filt5, filt6, filt7, filt8, filt9]
     # Make tallies
     tallies = [openmc.Tally() for _ in range(len(filters) + 1)]
     for t in tallies:
@@ -71,6 +75,14 @@ def model():
         t.filters = [f]
 
     model.tallies.extend(tallies)
+
+    interpolation_vals = \
+    list(openmc.EnergyFunctionFilter.INTERPOLATION_SCHEMES.keys())
+    for i_val in interpolation_vals:
+        # breakpoint here is fake and unused
+        t1d = openmc.data.Tabulated1D(x, y, breakpoints=[1], interpolation=[i_val])
+        f = openmc.EnergyFunctionFilter.from_tabulated1d(t1d)
+        assert f.interpolation == openmc.EnergyFunctionFilter.INTERPOLATION_SCHEMES[i_val]
 
     return model
 
@@ -143,6 +155,10 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         assert all(contrived_lin_lin_tally.mean < contrived_quadratic_tally.mean)
         assert all(contrived_lin_lin_tally.mean < contrived_cubic_tally.mean)
 
+        # check that the histogram tally is less than the quadratic/cubic interpolations
+        histogram_tally = sp.get_tally(id=9)
+        assert all(histogram_tally.mean < contrived_quadratic_tally.mean)
+        assert all(histogram_tally.mean < contrived_cubic_tally.mean)
 
 def test_filter_energyfun(model):
     harness = FilterEnergyFunHarness('statepoint.5.h5', model)

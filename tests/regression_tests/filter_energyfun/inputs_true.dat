@@ -54,6 +54,11 @@
     <y>0.2 0.7 0.7 0.2</y>
     <interpolation>cubic</interpolation>
   </filter>
+  <filter id="9" type="energyfunction">
+    <energy>0.0 5000000.0 10000000.0 15000000.0</energy>
+    <y>0.2 0.7 0.7 0.2</y>
+    <interpolation>histogram</interpolation>
+  </filter>
   <tally id="1">
     <nuclides>Am241</nuclides>
     <scores>(n,gamma)</scores>
@@ -90,6 +95,11 @@
   </tally>
   <tally id="8">
     <filters>8</filters>
+    <nuclides>Am241</nuclides>
+    <scores>(n,gamma)</scores>
+  </tally>
+  <tally id="9">
+    <filters>9</filters>
     <nuclides>Am241</nuclides>
     <scores>(n,gamma)</scores>
   </tally>

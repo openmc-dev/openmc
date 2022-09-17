@@ -1967,13 +1967,14 @@ class EnergyFunctionFilter(Filter):
                              + group['type'][()].decode() + " instead")
 
         energy = group['energy'][()]
-        y = group['y'][()]
+        y_grp = group['y']
+        y = y_grp[()]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
         out = cls(energy, y, filter_id=filter_id)
-        if 'interpolation' in group:
+        if 'interpolation' in y_grp.attrs:
             out.interpolation =  \
-                cls.INTERPOLATION_SCHEMES[group['interpolation'][()]]
+                cls.INTERPOLATION_SCHEMES[y_grp.attrs['interpolation'][()]]
 
         return out
 

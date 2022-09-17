@@ -1913,6 +1913,8 @@ class EnergyFunctionFilter(Filter):
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
+        elif not self.interpolation == other.interpolation:
+            return False
         elif not all(self.energy == other.energy):
             return False
         else:

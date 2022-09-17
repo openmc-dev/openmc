@@ -42,7 +42,7 @@ def model():
     filt3 = openmc.EnergyFunctionFilter(x, y)
     filt3.interpolation = 'log-log'
 
-    filt4 = openmc.EnergyFunctionFilter(x , y)
+    filt4 = openmc.EnergyFunctionFilter(x, y)
     filt4.interpolation = 'linear-log'
 
     filt5 = openmc.EnergyFunctionFilter(x, y)

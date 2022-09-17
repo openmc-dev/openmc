@@ -1,4 +1,3 @@
-
 #ifndef OPENMC_INTERPOLATE_H
 #define OPENMC_INTERPOLATE_H
 
@@ -18,20 +17,20 @@ inline double interpolate_lin_lin(
 inline double interpolate_lin_log(
   double x0, double x1, double y0, double y1, double x)
 {
-  return y0 + log(x / x0) / log(x1 / x0) * (y1 - y0);
+  return y0 + std::log(x / x0) / std::log(x1 / x0) * (y1 - y0);
 }
 
 inline double interpolate_log_lin(
   double x0, double x1, double y0, double y1, double x)
 {
-  return y0 * exp((x - x0) / (x1 - x0) * log(y1 / y0));
+  return y0 * std::exp((x - x0) / (x1 - x0) * std::log(y1 / y0));
 }
 
 inline double interpolate_log_log(
   double x0, double x1, double y0, double y1, double x)
 {
-  double f = log(x / x0) / log(x1 / x0);
-  return y0 * exp(f * log(y1 / y0));
+  double f = std::log(x / x0) / std::log(x1 / x0);
+  return y0 * std::exp(f * std::log(y1 / y0));
 }
 
 inline double interpolate_lagrangian(const std::vector<double>& xs,

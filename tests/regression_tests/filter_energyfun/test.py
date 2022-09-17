@@ -80,9 +80,13 @@ def model():
     list(openmc.EnergyFunctionFilter.INTERPOLATION_SCHEMES.keys())
     for i_val in interpolation_vals:
         # breakpoint here is fake and unused
-        t1d = openmc.data.Tabulated1D(x, y, breakpoints=[1], interpolation=[i_val])
+        t1d = openmc.data.Tabulated1D(x,
+                                      y,
+                                      breakpoints=[1],
+                                      interpolation=[i_val])
         f = openmc.EnergyFunctionFilter.from_tabulated1d(t1d)
-        assert f.interpolation == openmc.EnergyFunctionFilter.INTERPOLATION_SCHEMES[i_val]
+        assert f.interpolation == \
+        openmc.EnergyFunctionFilter.INTERPOLATION_SCHEMES[i_val]
 
     return model
 

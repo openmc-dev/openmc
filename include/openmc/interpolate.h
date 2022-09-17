@@ -36,9 +36,7 @@ inline double interpolate_log_log(
 inline double interpolate_lagrangian(gsl::span<const double> xs,
   gsl::span<const double> ys, int idx, double x, int order)
 {
-  Expects(order <= 3);
-  std::array<double, 4> coeffs;
-  coeffs.fill(0.0);
+  double output {0.0};
 
   for (int i = 0; i < order + 1; i++) {
     double numerator {1.0};
@@ -49,11 +47,10 @@ inline double interpolate_lagrangian(gsl::span<const double> xs,
       numerator *= (x - xs[idx + j]);
       denominator *= (xs[idx + i] - xs[idx + j]);
     }
-    coeffs[i] = numerator / denominator;
+    output += (numerator / denominator) * ys[i];
   }
 
-  return std::inner_product(
-    coeffs.begin(), coeffs.end(), ys.begin() + idx, 0.0);
+  return output;
 }
 
 double interpolate(gsl::span<const double> xs, gsl::span<const double> ys,

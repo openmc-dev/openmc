@@ -1995,11 +1995,11 @@ class EnergyFunctionFilter(Filter):
         if tab1d.n_regions > 1:
             raise ValueError('Only Tabulated1Ds with a single interpolation '
                              'region are supported')
-        interpolation = tab1d.interpolation[0]
-        if interpolation not in cls.INTERPOLATION_SCHEMES.keys():
+        interpolation_val = tab1d.interpolation[0]
+        if interpolation_val not in cls.INTERPOLATION_SCHEMES.keys():
             raise ValueError('Only histogram, linear-linear, linear-log, log-linear, and '
                              'log-log Tabulated1Ds are supported')
-        return cls(tab1d.x, tab1d.y, interpolation)
+        return cls(tab1d.x, tab1d.y, cls.INTERPOLATION_SCHEMES[interpolation_val])
 
     @property
     def energy(self):

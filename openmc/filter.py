@@ -1887,7 +1887,9 @@ class EnergyFunctionFilter(Filter):
     y : iterable of Real
         A grid of interpolant values in [eV]
     interpolation : str
-        The type of interpolation to be used.
+        The type of interpolation to be used. One of
+        ('histogram', 'linear-linear', 'linear-log', 'log-linear',
+        'log-log', 'quadratic', 'cubic')
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -1896,9 +1898,12 @@ class EnergyFunctionFilter(Filter):
     """
 
     # keys selected to match those in function.py where possible
-    INTERPOLATION_SCHEMES = {2: 'linear-linear', 3: 'linear-log',
-                             4: 'log-linear', 5: 'log-log',
-                             6 : 'quadratic', 7 : 'cubic'}
+    # skip 6 b/c ENDF-6 reserves this value for
+    # "special one-dimensional interpolation law"
+    INTERPOLATION_SCHEMES = {1: 'histogram', 2: 'linear-linear',
+                             3: 'linear-log', 4: 'log-linear',
+                             5: 'log-log', 7: 'quadratic',
+                             8: 'cubic'}
 
     def __init__(self, energy, y, interpolation='linear-linear', filter_id=None):
         self.energy = energy
@@ -1991,22 +1996,11 @@ class EnergyFunctionFilter(Filter):
         if tab1d.n_regions > 1:
             raise ValueError('Only Tabulated1Ds with a single interpolation '
                              'region are supported')
-        if tab1d.interpolation[0] not in (2, 3, 4, 5):
-            raise ValueError('Only linear-linear, linear-log, log-linear, and '
+        interpolation = tab1d.interpolation[0]
+        if interpolation not in cls.INTERPOLATION_SCHEMES.keys():
+            raise ValueError('Only histogram, linear-linear, linear-log, log-linear, and '
                              'log-log Tabulated1Ds are supported')
-        out = cls(tab1d.x, tab1d.y)
-
-        # set interpolation type
-        if tab1d.interpolation[0] == 2:
-            out.interpolation = 'linear-linear'
-        elif tab1d.interpolation[0] == 3:
-            out.interpolation = 'linear-log'
-        elif tab1d.interpolation[0] == 4:
-            out.interpolation = 'log-linear'
-        elif tab1d.interpolation[0] == 5:
-            out.interpolation = 'log-log'
-
-        return out
+        return cls(tab1d.x, tab1d.y, interpolation)
 
     @property
     def energy(self):

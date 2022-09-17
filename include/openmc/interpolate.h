@@ -33,10 +33,12 @@ inline double interpolate_log_log(
   return y0 * std::exp(f * std::log(y1 / y0));
 }
 
-inline double interpolate_lagrangian(const std::vector<double>& xs,
-  const std::vector<double>& ys, int idx, double x, int order)
+inline double interpolate_lagrangian(gsl::span<const double> xs,
+  gsl::span<const double> ys, int idx, double x, int order)
 {
-  std::vector<double> coeffs;
+  Expects(order <= 3);
+  std::array<double, 4> coeffs;
+  coeffs.fill(0.0);
 
   for (int i = 0; i < order + 1; i++) {
     double numerator {1.0};
@@ -47,14 +49,14 @@ inline double interpolate_lagrangian(const std::vector<double>& xs,
       numerator *= (x - xs[idx + j]);
       denominator *= (xs[idx + i] - xs[idx + j]);
     }
-    coeffs.push_back(numerator / denominator);
+    coeffs[i] = numerator / denominator;
   }
 
   return std::inner_product(
     coeffs.begin(), coeffs.end(), ys.begin() + idx, 0.0);
 }
 
-double interpolate(const std::vector<double>& xs, const std::vector<double>& ys,
+double interpolate(gsl::span<const double> xs, gsl::span<const double> ys,
   double x, Interpolation i = Interpolation::lin_lin)
 {
   int idx = lower_bound_index(xs.begin(), xs.end(), x);
@@ -63,6 +65,8 @@ double interpolate(const std::vector<double>& xs, const std::vector<double>& ys,
     idx--;
 
   switch (i) {
+  case Interpolation::histogram:
+    return ys[idx];
   case Interpolation::lin_lin:
     return interpolate_lin_lin(xs[idx], xs[idx + 1], ys[idx], ys[idx + 1], x);
   case Interpolation::log_log:

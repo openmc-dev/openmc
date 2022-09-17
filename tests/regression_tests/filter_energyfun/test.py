@@ -31,7 +31,7 @@ def model():
     assert filt1.interpolation == 'linear-linear'
 
     with pytest.raises(ValueError):
-        filt1.interpolation = '5th order polynomial'
+        filt1.interpolation = '🥏'
 
     # Also make a filter with the .from_tabulated1d constructor.  Make sure
     # the filters are identical.

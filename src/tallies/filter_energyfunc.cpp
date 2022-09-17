@@ -30,7 +30,9 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
   interpolation_ = Interpolation::lin_lin;
   if (check_for_node(node, "interpolation")) {
     std::string interpolation = get_node_value(node, "interpolation");
-    if (interpolation == "linear-linear") {
+    if (interpolation == "histogram") {
+      interpolation_ = Interpolation::histogram;
+    } else if (interpolation == "linear-linear") {
       interpolation_ = Interpolation::lin_lin;
     } else if (interpolation == "linear-log") {
       interpolation_ = Interpolation::lin_log;

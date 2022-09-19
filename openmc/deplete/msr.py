@@ -22,13 +22,14 @@ class MsrContinuous:
     def build_index_msr(self):
 
         index_msr = OrderedDict()
-        for id, (rt, mat) in self.removal_terms.items():
+        for id, val in self.removal_terms.items():
             j = self.ord_burn[id]
-            if rt:
-                index_msr[(j, j)] = rt
-                if mat is not None:
-                    i = self.ord_burn[mat]
-                    index_msr[(i, j)] = rt
+            if val:
+                for tr, mat in val.items():
+                    index_msr[(j, j)] = tr
+                    if mat is not None:
+                        i = self.ord_burn[mat.id]
+                        index_msr[(i, j)] = tr
             else:
                 index_msr[(j, j)] = None
 
@@ -59,7 +60,7 @@ class MsrContinuous:
                     raise ValueError(f'{dest_mat} must be depletable')
 
         for element in elements:
-            self.removal_terms[mat.id][element] = (transfer_rate, dest_mat)
+            self.removal_terms[mat.id][element] = [transfer_rate, dest_mat]
 
     def get_transfer_rate(self, mat, element):
         return self.removal_terms[mat.id][element][0]

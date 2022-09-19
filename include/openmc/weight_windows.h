@@ -93,6 +93,8 @@ public:
   //! \param[in] p  Particle to get weight window for
   WeightWindow get_weight_window(const Particle& p) const;
 
+  double bounds_size() const;
+
   void set_weight_windows(
     gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds);
 

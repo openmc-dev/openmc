@@ -242,6 +242,13 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   return ww;
 }
 
+double WeightWindows::bounds_size() const
+{
+  int num_spatial_bins = this->mesh().n_bins();
+  int num_energy_bins = energy_bounds_.size() - 1;
+  return num_spatial_bins * num_energy_bins;
+}
+
 void WeightWindows::set_weight_windows(
   gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
 {
@@ -259,15 +266,14 @@ void WeightWindows::set_weight_windows(
   }
 
   // check that the number of weight window entries is correct
-  int num_spatial_bins = this->mesh().n_bins();
-  int num_energy_bins = energy_bounds_.size() - 1;
-  int num_weight_bins = lower_ww_.size();
-  if (num_weight_bins != num_spatial_bins * num_energy_bins) {
+  if (lower_ww_.size() != this->bounds_size()) {
+    int num_energy_bins = energy_bounds_.size() - 1;
+    int num_spatial_bins = this->mesh().n_bins();
     auto err_msg =
       fmt::format("In weight window domain {} the number of spatial "
                   "energy/spatial bins ({}) does not match the number "
                   "of weight bins ({})",
-        id_, num_energy_bins, num_weight_bins);
+        id_, num_energy_bins * num_spatial_bins, lower_ww_.size());
     fatal_error(err_msg);
   }
 }
@@ -299,6 +305,31 @@ void WeightWindows::to_hdf5(hid_t group) const
   write_dataset(ww_group, "mesh", this->mesh().id_);
 
   close_group(ww_group);
+}
+
+//==============================================================================
+// C API
+//==============================================================================
+
+extern "C" int openmc_set_weight_windows(
+  int ww_id, size_t n, const double* lower_bounds, const double* upper_bounds)
+{
+
+  // look up the weight windows object
+  const auto& wws =
+    variance_reduction::weight_windows.at(variance_reduction::ww_map.at(ww_id));
+
+  // check length of arrays
+  if (n != wws->bounds_size()) {
+    set_errmsg(fmt::format(
+      "Incorrect size for weight window bounds for domain {}", wws->id()));
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // set bounds
+  wws->set_weight_windows({lower_bounds, n}, {upper_bounds, n});
+
+  return 0;
 }
 
 } // namespace openmc

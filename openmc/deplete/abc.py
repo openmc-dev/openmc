@@ -531,7 +531,7 @@ class Integrator(ABC):
         Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
         each interval in :attr:`timesteps`
     msr_continuous :
-        .. versionadded:: 0.12.1
+        .. versionadded:: 0.13.2
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates

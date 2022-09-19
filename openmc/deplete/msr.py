@@ -19,21 +19,18 @@ class MsrContinuous:
     def n_burn(self):
         return len(self.index_burn)
 
-    def build_index_msr(self):
+    def index_msr(self):
 
-        index_msr = OrderedDict()
+        index_msr = OrderedDict(((i, i), None) for i in range(self.n_burn))
         for id, val in self.removal_terms.items():
-            j = self.ord_burn[id]
             if val:
-                for tr, mat in val.items():
-                    index_msr[(j, j)] = tr
+                for elm, [tr, mat] in val.items():
                     if mat is not None:
+                        j = self.ord_burn[id]
                         i = self.ord_burn[mat.id]
-                        index_msr[(i, j)] = tr
-            else:
-                index_msr[(j, j)] = None
+                        index_msr[(i,j)] = None
 
-        return index_msr
+        return index_msr.keys()
 
     def add_removal_rate(self, mat, elements, removal_rate, units = '1/s', dest_mat=None):
 
@@ -60,10 +57,28 @@ class MsrContinuous:
                     raise ValueError(f'{dest_mat} must be depletable')
 
         for element in elements:
-            self.removal_terms[mat.id][element] = [transfer_rate, dest_mat]
+            self.removal_terms[mat.id][element] = [removal_rate, dest_mat]
 
-    def get_transfer_rate(self, mat, element):
-        return self.removal_terms[mat.id][element][0]
+    def get_removal_rate(self, mat, element):
+        if isinstance(mat, Material):
+            if mat.depletable:
+                mat = mat.id
+            else:
+                raise ValueError(f'{mat} must be depletable')
+        else:
+            if mat not in self.index_burn:
+                raise ValueError(f'{mat} is not a valid depletable material id')
+
+        return self.removal_terms[mat][element][0]
 
     def get_destination_mat(self, mat, element):
+
         return self.removal_terms[mat.id][element][1]
+
+    def get_elements(self, mat):
+        elements=[]
+        for k, v in self.removal_terms.items():
+            if k == mat:
+                for elm, _ in v.items():
+                    elements.append(elm)
+        return elements

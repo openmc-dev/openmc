@@ -134,10 +134,6 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   // energy bounds
   energy_bounds_ = get_node_array<double>(node, "energy_bounds");
 
-  // read the lower/upper weight bounds
-  lower_ww_ = get_node_array<double>(node, "lower_ww_bounds");
-  upper_ww_ = get_node_array<double>(node, "upper_ww_bounds");
-
   // get the survival value - optional
   if (check_for_node(node, "survival_ratio")) {
     survival_ratio_ = std::stod(get_node_value(node, "survival_ratio"));
@@ -170,23 +166,9 @@ WeightWindows::WeightWindows(pugi::xml_node node)
       fatal_error("weight_cutoff must be less than 1");
   }
 
-  // make sure that the upper and lower bounds have the same size
-  if (upper_ww_.size() != lower_ww_.size()) {
-    fatal_error("The upper and lower weight window lengths do not match.");
-  }
-
-  // num spatial*energy bins must match num weight bins
-  int num_spatial_bins = this->mesh().n_bins();
-  int num_energy_bins = energy_bounds_.size() - 1;
-  int num_weight_bins = lower_ww_.size();
-  if (num_weight_bins != num_spatial_bins * num_energy_bins) {
-    auto err_msg =
-      fmt::format("In weight window domain {} the number of "
-                  "energy/spatial bins ({}) does not match the number "
-                  "of weight bins provided ({})",
-        id_, num_energy_bins * num_spatial_bins, num_weight_bins);
-    fatal_error(err_msg);
-  }
+  // read the lower/upper weight bounds
+  this->set_weight_windows(get_node_array<double>(node, "lower_ww_bounds"),
+    get_node_array<double>(node, "upper_ww_bounds"));
 }
 
 void WeightWindows::set_id(int32_t id)
@@ -258,6 +240,47 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   ww.max_split = max_split_;
   ww.weight_cutoff = weight_cutoff_;
   return ww;
+}
+
+void WeightWindows::set_weight_windows(
+  gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
+{
+  // clear out old memory
+  lower_ww_.clear();
+  upper_ww_.clear();
+
+  // set new weight window values
+  lower_ww_.insert(lower_ww_.begin(), lower_bounds.begin(), lower_bounds.end());
+  upper_ww_.insert(upper_ww_.begin(), upper_bounds.begin(), upper_bounds.end());
+
+  // make sure that the upper and lower bounds have the same size
+  if (upper_ww_.size() != lower_ww_.size()) {
+    fatal_error("The upper and lower weight window lengths do not match.");
+  }
+
+  // check that the number of weight window entries is correct
+  int num_spatial_bins = this->mesh().n_bins();
+  int num_energy_bins = energy_bounds_.size() - 1;
+  int num_weight_bins = lower_ww_.size();
+  if (num_weight_bins != num_spatial_bins * num_energy_bins) {
+    auto err_msg =
+      fmt::format("In weight window domain {} the number of spatial "
+                  "energy/spatial bins ({}) does not match the number "
+                  "of weight bins ({})",
+        id_, num_energy_bins, num_weight_bins);
+    fatal_error(err_msg);
+  }
+}
+
+void WeightWindows::set_weight_windows(
+  gsl::span<const double> lower_bounds, double bounds_ratio)
+{
+
+  this->set_weight_windows(lower_bounds, lower_bounds);
+
+  for (auto& e : upper_ww_) {
+    e *= bounds_ratio;
+  }
 }
 
 void WeightWindows::to_hdf5(hid_t group) const

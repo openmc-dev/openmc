@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <unordered_map>
 
+#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 #include <pugixml.hpp>
 
@@ -91,6 +92,12 @@ public:
   //! Retrieve the weight window for a particle
   //! \param[in] p  Particle to get weight window for
   WeightWindow get_weight_window(const Particle& p) const;
+
+  void set_weight_windows(
+    gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds);
+
+  void set_weight_windows(
+    gsl::span<const double> lower_bounds, double bound_ratio);
 
   // Accessors
   int32_t id() const { return id_; }

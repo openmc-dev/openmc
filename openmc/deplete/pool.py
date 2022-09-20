@@ -79,7 +79,6 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
 
     else:
         # Unzip ReactionRates from high orders integrator schemes intermediate
-        # steps (such as CF4Integrator)
         if type(rates) is list:
             rate = list(zip(*rates))[0][0]
             list_rates = deepcopy(rates)
@@ -87,20 +86,16 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
             rate = rates[0]
             list_rates = list(deepcopy(rates))
 
-        #Create a deep copy of fy
         fission_yields = deepcopy(fission_yields)
 
-        # Create zero reaction rates to be added to off-diagonal terms of the
-        # sparse matrix, where reaction rates and fy are not needed
+        # Create null reaction rate and fy
         null_rate = rate.copy()
         null_rate.fill(0.0)
         null_fy = deepcopy(fission_yields[0])
         for _, y in null_fy.items():
             y.yields.fill(0.0)
 
-        # Add user-defined removal coefficients to the depletable materials as
-        # diagonal elements of the sparse matrix and material coupling transfers
-        # as off-diagonal (i,j)
+        # Append null rates and fy coeffs for off-diagonal matrices
         for j, k in msr.index_msr():
             if j != k:
                 if type(rates) is list:
@@ -108,8 +103,7 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
                 else:
                     list_rates.append(null_rate)
                 fission_yields.append(null_fy)
-        print(msr.index_msr())
-        # Form all the matrices
+
         if matrix_func is None:
             matrices = map(chain.form_matrix, list_rates, repeat(msr),
                            msr.index_msr(), fission_yields)
@@ -117,7 +111,7 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
             matrices = map(matrix_func, repeat(chain), list_rates, repeat(msr),
                            msr.index_msr(), fission_yields)
 
-        # Combine all the matrices in a 2d-list of arrays
+        # Combine all Bateman matrices in a 2d-list of arrays
         matrices = list(matrices)
         raws = []
         for raw in range(msr.n_burn):
@@ -138,7 +132,6 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
 
         x_result = func(sparse_matrix, x, dt)
 
-        # Split the result vectors before returning
         split = np.cumsum([i.shape[0] for i in matrices[:msr.n_burn]])
         x_result = np.split(x_result, split.tolist()[:-1])
 

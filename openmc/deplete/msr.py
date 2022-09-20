@@ -60,6 +60,7 @@ class MsrContinuous:
             self.removal_terms[mat.id][element] = [removal_rate, dest_mat]
 
     def get_removal_rate(self, mat, element):
+        
         if isinstance(mat, Material):
             if mat.depletable:
                 mat = mat.id
@@ -72,10 +73,27 @@ class MsrContinuous:
         return self.removal_terms[mat][element][0]
 
     def get_destination_mat(self, mat, element):
-
+        if isinstance(mat, Material):
+            if mat.depletable:
+                mat = mat.id
+            else:
+                raise ValueError(f'{mat} must be depletable')
+        else:
+            if mat not in self.index_burn:
+                raise ValueError(f'{mat} is not a valid depletable material id')
         return self.removal_terms[mat.id][element][1]
 
     def get_elements(self, mat):
+
+        if isinstance(mat, Material):
+            if mat.depletable:
+                mat = mat.id
+            else:
+                raise ValueError(f'{mat} must be depletable')
+        else:
+            if mat not in self.index_burn:
+                raise ValueError(f'{mat} is not a valid depletable material id')
+
         elements=[]
         for k, v in self.removal_terms.items():
             if k == mat:

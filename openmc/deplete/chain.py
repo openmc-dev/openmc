@@ -660,16 +660,16 @@ class Chain:
             # Loss/gain from transfer
             if index_msr is not None:
                 j, k = index_msr
+                elm = re.split(r'\d+', nuc.name)[0]
+                mat = msr.index_burn[k]
                 # Diagonal term
                 if j == k:
-                    if re.split(r'\d+', nuc.name)[0] in msr.get_elements(msr.index_burn[k]):
-                        matrix [i, i] -= msr.get_removal_rate(msr.index_burn[k],
-                                                re.split(r'\d+', nuc.name)[0])
+                    if elm in msr.get_elements(mat):
+                        matrix [i, i] -= msr.get_removal_rate(mat, elm)
                 # Off-diagonal term
                 else:
-                    if re.split(r'\d+', nuc.name)[0] in msr.get_elements(msr.index_burn[k]):
-                        offdiag_matrix[i, i] += msr.get_removal_rate(msr.index_burn[k],
-                                                re.split(r'\d+', nuc.name)[0])
+                    if elm in msr.get_elements(mat):
+                        offdiag_matrix[i, i] += msr.get_removal_rate(mat, elm)
                     else:
                         offdiag_matrix[i, i] += 0.0 #to test if neeeded
 

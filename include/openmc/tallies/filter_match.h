@@ -24,10 +24,17 @@ public:
   int i_bin_;
   bool bins_present_ {false};
 
-  void push_back(int bin, double weight) {
-    if (bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE ) {
+  bool is_full() {
+    if (bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE) {
       printf("Error: Too many filter matches - tally data will be incorrect. Increase size of FILTERMATCH_BINS_WEIGHTS_SIZE macro.\n");
+      return true;
     } else {
+      return false;
+    }
+  }
+
+  void push_back(int bin, double weight) {
+    if (!is_full()) {
       bins_[bins_weights_length_] = bin;
       weights_[bins_weights_length_] = weight;
       bins_weights_length_++;
@@ -35,9 +42,7 @@ public:
   }
   
   void push_back(int bin) {
-    if (bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE ) {
-      printf("Error: Too many filter matches - tally data will be incorrect. Increase size of FILTERMATCH_BINS_WEIGHTS_SIZE macro.\n");
-    } else {
+    if (!is_full()) {
       bins_[bins_weights_length_] = bin;
       bins_weights_length_++;
     }

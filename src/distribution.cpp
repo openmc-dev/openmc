@@ -368,6 +368,10 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist {new Tabular(node)};
   } else if (type == "mixture") {
     dist = UPtrDist {new Mixture(node)};
+  } else if (type == "muir") {
+    openmc::fatal_error(
+      "'muir' distribution type is no longer supported. Please regenerate your "
+      "XML files using the Python API.");
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }

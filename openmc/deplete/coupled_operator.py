@@ -101,7 +101,7 @@ class CoupledOperator(OpenMCOperator):
     model : openmc.model.Model
         OpenMC model object
     chain_file : str, optional
-        Path to the depletion chain XML file.  Defaults to
+        Path to the depletion chain XML file. Defaults to
         ``openmc.config['chain_file']``.
     prev_results : Results, optional
         Results from a previous depletion calculation. If this argument is

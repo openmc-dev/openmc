@@ -492,7 +492,6 @@ public:
 
   // TODO: filter_matches_ can eventually be converted to an allocated array, with size fixed at runtime
   //std::vector<FilterMatch> filter_matches_; // tally filter matches
-  //FilterMatch filter_matches_[FILTER_MATCHES_SIZE]; // tally filter matches
   FilterMatch* filter_matches_; // tally filter matches
 
   std::vector<std::vector<Position>> tracks_; // tracks for outputting to file

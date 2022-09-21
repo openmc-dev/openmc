@@ -49,7 +49,7 @@ public:
 
   void set_nuclides(const std::vector<std::string>& nuclides);
 
-  const std::vector<int32_t>& filters() const {return filters_;}
+  const vector<int32_t>& filters() const {return filters_;}
 
   int32_t filters(int i) const {return filters_[i];}
 
@@ -78,6 +78,8 @@ public:
   std::string score_name(int score_idx) const;
 
   void copy_to_device();
+  void update_device_to_host();
+  void update_host_to_device();
   void release_from_device();
 
   //----------------------------------------------------------------------------
@@ -111,9 +113,11 @@ public:
   size_t results_size_ {0};
   size_t n_scores_;
 
+  #pragma omp declare target
   const double* results(gsl::index i, gsl::index j, TallyResult k) const;
   double* results(gsl::index i, gsl::index j, TallyResult k);
   std::array<size_t, 3> results_shape() const;
+  #pragma omp end declare target
 
   //! True if this tally should be written to statepoint files
   bool writable_ {true};
@@ -135,10 +139,10 @@ private:
   //----------------------------------------------------------------------------
   // Private data.
 
-  std::vector<int32_t> filters_; //!< Filter indices in global filters array
+  vector<int32_t> filters_; //!< Filter indices in global filters array
 
   //! Index strides assigned to each filter to support 1D indexing.
-  std::vector<int32_t> strides_;
+  vector<int32_t> strides_;
 
   int32_t n_filter_bins_ {0};
 
@@ -162,8 +166,11 @@ namespace model {
   extern Tally* tallies;
   extern size_t tallies_size;
   extern int* device_active_tallies;
+  extern size_t active_tallies_size;
   extern int* device_active_collision_tallies;
+  extern size_t active_collision_tallies_size;
   extern int* device_active_tracklength_tallies;
+  extern size_t active_tracklength_tallies_size;
   #pragma omp end declare target
 }
 

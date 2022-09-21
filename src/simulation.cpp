@@ -161,10 +161,6 @@ int openmc_simulation_finalize()
   // Skip if simulation was never run
   if (!simulation::initialized) return 0;
 
-  // Stop active batch timer and start finalization timer
-  simulation::time_active.stop();
-  simulation::time_finalize.start();
-
   // Release data from device
   release_data_from_device();
 
@@ -246,9 +242,7 @@ int openmc_next_batch(int* status)
 
     finalize_generation();
   }
-
-  finalize_batch();
-
+  
   // Check simulation ending criteria
   if (status) {
     if (simulation::current_batch == settings::n_max_batches) {
@@ -259,6 +253,15 @@ int openmc_next_batch(int* status)
       *status = STATUS_EXIT_NORMAL;
     }
   }
+
+  if (*status) {
+    // Stop active batch timer and start finalization timer
+    simulation::time_active.stop();
+    simulation::time_finalize.start();
+  }
+
+  finalize_batch();
+
   return 0;
 }
 
@@ -366,18 +369,18 @@ void initialize_batch()
     for (int i = 0; i < model::tallies_size; ++i) {
       model::tallies[i].active_ = true;
     }
+    // Add user tallies to active tallies list
+    setup_active_tallies();
   }
 
-  // Add user tallies to active tallies list
-  setup_active_tallies();
 }
 
 void finalize_batch()
 {
   // Reduce tallies onto master process and accumulate
-  simulation::time_tallies.start();
+  simulation::time_accumulate_tallies.start();
   accumulate_tallies();
-  simulation::time_tallies.stop();
+  simulation::time_accumulate_tallies.stop();
 
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
@@ -685,7 +688,8 @@ void initialize_data()
 #ifdef OPENMC_MPI
 void broadcast_results() {
   // Broadcast tally results so that each process has access to results
-  for (auto& t : model::tallies) {
+  for (int i = 0; i < model::tallies_size; i++) {
+    Tally* t = &model::tallies[i];
     // Create a new datatype that consists of all values for a given filter
     // bin and then use that to broadcast. This is done to minimize the
     // chance of the 'count' argument of MPI_BCAST exceeding 2**31
@@ -734,7 +738,9 @@ void transport_history_based_single_particle(Particle& p, double& absorption, do
   while (true) {
     p.event_calculate_xs(need_depletion_rx);
     p.event_advance();
-    p.event_tracklength_tally(need_depletion_rx);
+    if (!model::active_tracklength_tallies.empty()) {
+      p.event_tracklength_tally(need_depletion_rx);
+    }
     if (p.collision_distance_ > p.boundary_.distance) {
       p.event_cross_surface();
     } else {
@@ -848,6 +854,14 @@ void transport_event_based()
   #pragma omp target update to(simulation::device_source_bank[:simulation::source_bank.size()])
   simulation::fission_bank.copy_host_to_device();
   #pragma omp target update to(simulation::keff)
+  
+  // Transfer tally data to device for on-device tallying
+  if (!model::active_tracklength_tallies.empty()) {
+    for (int i = 0; i < model::tallies_size; ++i) {
+      auto& tally = model::tallies[i];
+      tally.update_host_to_device();
+    }
+  }
 
   // Figure out # of particles to initialize. If # of particles required per batch for this rank
   // is greater than what is allowed in-flight at once, then the particles will be refilled
@@ -918,6 +932,14 @@ void transport_event_based()
 
   // Copy back fission bank to host
   simulation::fission_bank.copy_device_to_host();
+  
+  // Transfer tally data back to host for host-side accumulation
+  if (!model::active_tracklength_tallies.empty()) {
+    for (int i = 0; i < model::tallies_size; ++i) {
+      auto& tally = model::tallies[i];
+      tally.update_device_to_host();
+    }
+  }
 
   #ifdef OPENMC_MPI
   MPI_Barrier( mpi::intracomm );

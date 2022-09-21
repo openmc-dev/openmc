@@ -331,7 +331,6 @@ list(APPEND libopenmc_SOURCES
   src/simulation.cpp
   src/source.cpp
   src/state_point.cpp
-  src/static_map.cpp
   src/string_utils.cpp
   src/summary.cpp
   src/surface.cpp

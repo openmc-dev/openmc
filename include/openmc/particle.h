@@ -49,8 +49,6 @@
 //#define SECONDARY_BANK_SIZE 200 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define SECONDARY_BANK_SIZE 5 // 100 not enough to pass regression tests, but 200 works. TODO: narrow this down.
 #define FLUX_DERIVS_SIZE 1 // This is the min required to pass regression tests (diff_tally is limiter)
-#define FILTER_MATCHES_SIZE 3 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
-//#define FILTER_MATCHES_SIZE 140 // tallies regression test is the limiter here. More realistic tests only need 2. This can be set at runtime init though.
 #define NU_BANK_SIZE 16 // infinite_cell regression test
 
 namespace openmc {
@@ -322,8 +320,8 @@ public:
   #pragma omp end declare target
 
   // Coarse-grained particle events
-  void event_tracklength_tally(bool need_depletion_rx);
   #pragma omp declare target
+  void event_tracklength_tally(bool need_depletion_rx);
   void event_calculate_xs(bool need_depletion_rx);
   bool event_calculate_xs_dispatch();
   void event_calculate_xs_execute(bool need_depletion_rx);
@@ -494,7 +492,7 @@ public:
 
   // TODO: filter_matches_ can eventually be converted to an allocated array, with size fixed at runtime
   //std::vector<FilterMatch> filter_matches_; // tally filter matches
-  FilterMatch filter_matches_[FILTER_MATCHES_SIZE]; // tally filter matches
+  FilterMatch* filter_matches_; // tally filter matches
 
   std::vector<std::vector<Position>> tracks_; // tracks for outputting to file
 

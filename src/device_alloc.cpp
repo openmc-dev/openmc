@@ -15,6 +15,7 @@
 
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
 
 
 namespace openmc {
@@ -62,6 +63,7 @@ void move_settings_to_device()
   settings::energy_cutoff[0]; // Lazy extern template expansion workaround
   #pragma omp target update to(settings::energy_cutoff)
   #pragma omp target update to(settings::n_log_bins)
+  #pragma omp target update to(settings::assume_separate)
   #pragma omp target update to(settings::check_overlaps)
   #pragma omp target update to(settings::max_particles_in_flight)
   #pragma omp target update to(settings::minimum_sort_items)
@@ -254,12 +256,6 @@ void move_read_only_data_to_device()
     std::cout << "Moving " << tally.name_ << " data to device..." << std::endl;
     tally.copy_to_device();
   }
-  model::device_active_tallies = model::active_tallies.data();
-  model::device_active_collision_tallies = model::active_collision_tallies.data();
-  model::device_active_tracklength_tallies = model::active_tracklength_tallies.data();
-  #pragma omp target enter data map(to: model::device_active_tallies[:model::active_tallies.size()])
-  #pragma omp target enter data map(to: model::device_active_collision_tallies[:model::active_collision_tallies.size()])
-  #pragma omp target enter data map(to: model::device_active_tracklength_tallies[:model::active_tracklength_tallies.size()])
 
   #ifdef OPENMC_MPI
   MPI_Barrier( mpi::intracomm );

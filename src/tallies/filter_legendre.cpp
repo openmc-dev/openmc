@@ -32,9 +32,7 @@ Filter::LegendreFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
   for (int i = 0; i < n_bins_; i++) {
     //match.bins_.push_back(i);
     //match.weights_.push_back(wgt[i]);
-    match.bins_[match.bins_weights_length_] = i;
-    match.weights_[match.bins_weights_length_] = wgt[i];
-    match.bins_weights_length_++;
+    match.push_back(i, wgt[i]);
   }
 }
 

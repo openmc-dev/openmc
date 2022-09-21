@@ -23,8 +23,8 @@ namespace openmc {
 namespace settings {
 
 // Boolean flags
-extern bool assume_separate;          //!< assume tallies are spatially separate?
 #pragma omp declare target
+extern bool assume_separate;          //!< assume tallies are spatially separate?
 extern bool check_overlaps;           //!< check overlaps in geometry?
 #pragma omp end declare target
 extern bool confidence_intervals;     //!< use confidence intervals for results?

@@ -21,6 +21,7 @@ namespace openmc {
 void
 Filter::ZernikeFilter_from_xml(pugi::xml_node node)
 {
+  fatal_error("Zernike filters not yet supported on device (due to calc_zn() dynamic memory allocation).");
   set_order(std::stoi(get_node_value(node, "order")));
   x_ = std::stod(get_node_value(node, "x"));
   yy_ = std::stod(get_node_value(node, "y"));
@@ -44,9 +45,7 @@ Filter::ZernikeFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
     for (int i = 0; i < n_bins_; i++) {
       //match.bins_.push_back(i);
       //match.weights_.push_back(zn[i]);
-      match.bins_[match.bins_weights_length_] = i;
-      match.weights_[match.bins_weights_length_] = zn[i];
-      match.bins_weights_length_++;
+      match.push_back(i, zn[i]);
     }
   }
 }
@@ -105,9 +104,7 @@ Filter::ZernikeRadialFilter_get_all_bins(const Particle& p, TallyEstimator estim
     for (int i = 0; i < n_bins_; i++) {
       //match.bins_.push_back(i);
       //match.weights_.push_back(zn[i]);
-      match.bins_[match.bins_weights_length_] = i;
-      match.weights_[match.bins_weights_length_] = zn[i];
-      match.bins_weights_length_++;
+      match.push_back(i, zn[i]);
     }
   }
 }

@@ -1,6 +1,7 @@
 #include "openmc/mesh.h"
 
 #include <algorithm> // for copy, equal, min, min_element
+#include <array>
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
 #include <memory> // for allocator
@@ -91,7 +92,7 @@ Mesh::Mesh(pugi::xml_node node)
         std::to_string(id_));
     }
   }
-  
+
   // Determine number of dimensions for mesh
   if (!check_for_node(node, "dimension")) {
     fatal_error("Must specify <dimension> on a regular mesh.");
@@ -174,7 +175,7 @@ Mesh::Mesh(pugi::xml_node node)
   // Set volume fraction
   int prod = shape_[0];
   for (int i = 1; i < shape_.size(); i++) {
-    prod *= shape_[i]; 
+    prod *= shape_[i];
   }
   volume_frac_ = 1.0/prod;
 }
@@ -217,7 +218,7 @@ int Mesh::get_bin_from_indices(const int* ijk) const
   case 3:
     return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0] - 1;
   default:
-    throw std::runtime_error{"Invalid number of mesh dimensions"};
+    printf("Error: Invalid number of mesh dimensions\n");
   }
 }
 
@@ -238,7 +239,7 @@ void Mesh::get_indices_from_bin(int bin, int* ijk) const
 int Mesh::get_bin(Position r) const
 {
   // Determine indices
-  std::vector<int> ijk(n_dimension_);
+  std::array<int, 3> ijk;
   bool in_mesh;
   get_indices(r, ijk.data(), &in_mesh);
   if (!in_mesh) return -1;
@@ -251,7 +252,7 @@ int Mesh::n_bins() const
 {
   int prod = shape_[0];
   for (int i = 1; i < shape_.size(); i++) {
-    prod *= shape_[i]; 
+    prod *= shape_[i];
   }
   return prod;
 }
@@ -327,7 +328,7 @@ bool Mesh::intersects(Position& r0, Position r1, int* ijk) const
   case 3:
     return intersects_3d(r0, r1, ijk);
   default:
-    throw std::runtime_error{"Invalid number of mesh dimensions."};
+    printf("Error: Invalid number of mesh dimensions.\n");
   }
 }
 
@@ -627,9 +628,7 @@ void Mesh::bins_crossed(const Particle& p, FilterMatch& match) const
       double distance = (r1 - r0).norm();
       //bins.push_back(get_bin_from_indices(ijk0.data()));
       //lengths.push_back(distance / total_distance);
-      match.bins_[match.bins_weights_length_]    = get_bin_from_indices(ijk0);
-      match.weights_[match.bins_weights_length_] = distance/total_distance;
-      match.bins_weights_length_++;
+      match.push_back(get_bin_from_indices(ijk0), distance / total_distance);
       break;
     }
 
@@ -652,9 +651,7 @@ void Mesh::bins_crossed(const Particle& p, FilterMatch& match) const
     double distance = d[j];
     //bins.push_back(get_bin_from_indices(ijk0.data()));
     //lengths.push_back(distance / total_distance);
-    match.bins_[match.bins_weights_length_]    = get_bin_from_indices(ijk0);
-    match.weights_[match.bins_weights_length_] = distance/total_distance;
-    match.bins_weights_length_++;
+    match.push_back(get_bin_from_indices(ijk0), distance / total_distance);
 
     // Translate to the oncoming mesh surface.
     r0 += distance * u;
@@ -712,7 +709,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;
-  std::vector<int> ijk0(n), ijk1(n);
+  std::array<int, 3> ijk0, ijk1;
   bool start_in_mesh;
   get_indices(r0, ijk0.data(), &start_in_mesh);
   bool end_in_mesh;
@@ -721,7 +718,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
   // Check if the track intersects any part of the mesh.
   if (!start_in_mesh) {
     Position r0_copy = r0;
-    std::vector<int> ijk0_copy(ijk0);
+    std::array<int, 3> ijk0_copy(ijk0);
     if (!intersects(r0_copy, r1, ijk0_copy.data())) return;
   }
 
@@ -784,7 +781,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             //bins.push_back(i_bin);
-            match.bins_[match.bins_weights_length_++] = i_bin;
+            match.push_back(i_bin);
           }
 
           // Advance position
@@ -806,7 +803,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             //bins.push_back(i_bin);
-            match.bins_[match.bins_weights_length_++] = i_bin;
+            match.push_back(i_bin);
           }
 
         } else {
@@ -819,7 +816,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             //bins.push_back(i_bin);
-            match.bins_[match.bins_weights_length_++] = i_bin;
+            match.push_back(i_bin);
           }
 
           // Advance position
@@ -841,7 +838,7 @@ void Mesh::surface_bins_crossed(const Particle& p, FilterMatch& match) const
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             //bins.push_back(i_bin);
-            match.bins_[match.bins_weights_length_++] = i_bin;
+            match.push_back(i_bin);
           }
         }
       }
@@ -1589,9 +1586,7 @@ void UnstructuredMesh::bins_crossed(const Particle& p, FilterMatch& match) const
     if (bin != -1) {
       //bins.push_back(bin);
       //lengths.push_back(1.0);
-      match.bins_[match.bins_weights_length_]    = bin;
-      match.weights_[match.bins_weights_length_] = 1.0;
-      match.bins_weights_length_++;
+      match.push_back(bin, 1.0);
     }
     return;
   }
@@ -1618,10 +1613,7 @@ void UnstructuredMesh::bins_crossed(const Particle& p, FilterMatch& match) const
 
     //bins.push_back(bin);
     //lengths.push_back(segment_length / track_len);
-      match.bins_[match.bins_weights_length_]    = bin;
-      match.weights_[match.bins_weights_length_] = segment_length / track_len;
-      match.bins_weights_length_++;
-
+    match.push_back(bin, segment_length / track_len);
   }
 
   // tally remaining portion of track after last hit if
@@ -1635,9 +1627,7 @@ void UnstructuredMesh::bins_crossed(const Particle& p, FilterMatch& match) const
     if (bin != -1) {
       //bins.push_back(bin);
       //lengths.push_back(segment_length / track_len);
-      match.bins_[match.bins_weights_length_]    = bin;
-      match.weights_[match.bins_weights_length_] = segment_length / track_len;
-      match.bins_weights_length_++;
+      match.push_back(bin, segment_length / track_len);
     }
   }
 };
@@ -2020,7 +2010,7 @@ void read_meshes(pugi::xml_node root)
 {
   // Count the number of materials
   model::meshes_size = std::distance(root.children("mesh").begin(), root.children("mesh").end());
-  
+
   // Resize the mesh array
   model::meshes = static_cast<Mesh*>(malloc(model::meshes_size * sizeof(Mesh)));
 

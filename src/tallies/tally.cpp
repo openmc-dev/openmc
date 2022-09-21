@@ -45,8 +45,11 @@ namespace model {
   std::vector<int> active_meshsurf_tallies;
   std::vector<int> active_surface_tallies;
   int* device_active_tallies;
+  size_t active_tallies_size;
   int* device_active_collision_tallies;
+  size_t active_collision_tallies_size;
   int* device_active_tracklength_tallies;
+  size_t active_tracklength_tallies_size;
 }
 
 namespace simulation {
@@ -604,6 +607,7 @@ void Tally::init_results()
 {
   n_scores_ = scores_.size() * nuclides_.size();
   results_size_ = n_filter_bins_ * n_scores_ * 3;
+  std::cout << "Allocating tally " << id_ << " buffer for " << n_filter_bins_ << " bins with " << n_scores_ << " scores each. Total size: " << (double) results_size_ * sizeof(double) / 1.0e6 << " MB" << std::endl;
   results_ = static_cast<double*>(malloc(results_size_ * sizeof(double)));
 }
 
@@ -657,13 +661,27 @@ void Tally::copy_to_device()
 {
   scores_.copy_to_device();
   nuclides_.copy_to_device();
+  filters_.copy_to_device();
+  strides_.copy_to_device();
   #pragma omp target enter data map(to: results_[:results_size_])
+}
+
+void Tally::update_host_to_device()
+{
+  #pragma omp target update to(results_[:results_size_])
+}
+
+void Tally::update_device_to_host()
+{
+  #pragma omp target update from(results_[:results_size_])
 }
 
 void Tally::release_from_device()
 {
   scores_.release_device();
   nuclides_.release_device();
+  filters_.release_device();
+  strides_.release_device();
   #pragma omp target exit data map(release: results_[:results_size_])
 }
 
@@ -765,7 +783,7 @@ void reduce_tally_results()
   if (settings::reduce_tallies) {
     for (int i_tally : model::active_tallies) {
       // Skip any tallies that are not active
-      auto& tally {model::tallies[i_tally]};
+      Tally* tally = &model::tallies[i_tally];
 
       auto shape = tally->results_shape();
       size_t n_values = shape[0] * shape[1];
@@ -774,7 +792,7 @@ void reduce_tally_results()
       std::vector<double> values;
       values.reserve(n_values);
       for (int i = 0; i < shape[0]; ++i) {
-        for (int j = 0; j < shape[1]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
           values.push_back(*tally->results(i, j, TallyResult::VALUE));
         }
       }
@@ -786,9 +804,9 @@ void reduce_tally_results()
 
       // Transfer values on master and reset on other ranks
       for (int i = 0; i < shape[0]; ++i) {
-        for (int j = 0; j < shape[1]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
           *tally->results(i, j, TallyResult::VALUE) =
-            mpi::master ? values_reduced[i * shape[0] + j] : 0;
+            mpi::master ? values_reduced[i * shape[1] + j] : 0;
         }
       }
     }
@@ -877,12 +895,17 @@ setup_active_tallies()
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
+  model::active_tallies_size = 0;
+  model::active_collision_tallies_size = 0;
+  model::active_tracklength_tallies_size = 0;
+
 
   for (auto i = 0; i < model::tallies_size; ++i) {
     const auto& tally {model::tallies[i]};
 
     if (tally.active_) {
       model::active_tallies.push_back(i);
+      model::active_tallies_size++;
       switch (tally.type_) {
 
       case TallyType::VOLUME:
@@ -892,9 +915,11 @@ setup_active_tallies()
             break;
           case TallyEstimator::TRACKLENGTH:
             model::active_tracklength_tallies.push_back(i);
+            model::active_tracklength_tallies_size++;
             break;
           case TallyEstimator::COLLISION:
             model::active_collision_tallies.push_back(i);
+            model::active_collision_tallies_size++;
         }
         break;
 
@@ -907,6 +932,22 @@ setup_active_tallies()
       }
     }
   }
+  
+  model::device_active_tallies = model::active_tallies.data();
+  model::device_active_collision_tallies = model::active_collision_tallies.data();
+  model::device_active_tracklength_tallies = model::active_tracklength_tallies.data();
+  #pragma omp target enter data map(to: model::device_active_tallies[:model::active_tallies.size()])
+  #pragma omp target enter data map(to: model::device_active_collision_tallies[:model::active_collision_tallies.size()])
+  #pragma omp target enter data map(to: model::device_active_tracklength_tallies[:model::active_tracklength_tallies.size()])
+  
+  model::active_tallies_size = model::active_tallies.size();
+  model::active_collision_tallies_size = model::active_collision_tallies.size();
+  model::active_tracklength_tallies_size = model::active_tracklength_tallies.size();
+
+  // Update active tally vectors on device
+  #pragma omp target update to(model::active_tallies_size)
+  #pragma omp target update to(model::active_collision_tallies_size)
+  #pragma omp target update to(model::active_tracklength_tallies_size)
 }
 
 void
@@ -929,9 +970,9 @@ free_memory_tally()
   free(model::tallies);
   model::tallies_size = 0;
 
-  free(model::device_active_tallies);
-  free(model::device_active_collision_tallies);
-  free(model::device_active_tracklength_tallies);
+  #pragma omp target exit data map(release: model::device_active_tallies[:model::active_tallies.size()])
+  #pragma omp target exit data map(release: model::device_active_collision_tallies[:model::active_collision_tallies.size()])
+  #pragma omp target exit data map(release: model::device_active_tracklength_tallies[:model::active_tracklength_tallies.size()])
 
   model::active_tallies.clear();
   model::active_analog_tallies.clear();

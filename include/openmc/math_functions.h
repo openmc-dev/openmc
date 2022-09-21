@@ -45,7 +45,9 @@ extern "C" double t_percentile(double p, int df);
 //!   evaluated at x.
 //==============================================================================
 
+#pragma omp declare target
 extern "C" void calc_pn_c(int n, double x, double pnx[]);
+#pragma omp end declare target
 
 //==============================================================================
 //! Find the value of f(x) given a set of Legendre coefficients and the value
@@ -73,7 +75,9 @@ extern "C" double evaluate_legendre(int n, const double data[], double x);
 
 extern "C" void calc_rn_c(int n, const double uvw[3], double rn[]);
 
+#pragma omp declare target
 void calc_rn(int n, Direction u, double rn[]);
+#pragma omp end declare target
 
 //==============================================================================
 //! Calculate the n-th order modified Zernike polynomial moment for a given
@@ -116,7 +120,9 @@ extern "C" void calc_zn(int n, double rho, double phi, double zn[]);
 //!   evaluated at rho and phi when m = 0.
 //==============================================================================
 
+#pragma omp declare target
 extern "C" void calc_zn_rad(int n, double rho, double zn_rad[]);
+#pragma omp end declare target
 
 //==============================================================================
 //! Rotate the direction cosines through a polar angle whose cosine is mu and

@@ -67,7 +67,9 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
     if (!match.bins_present_) {
       match.bins_weights_length_ = 0;
       for (auto i = 0; i < model::tally_filters[i_filt].n_bins(); ++i) {
-        assert(match.bins_weights_length_ < FILTERMATCH_BINS_WEIGHTS_SIZE);
+        if (match.bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE) {
+          printf("Error: FILTERMATCH_BINS_WEIGHTS_SIZE too small!\n");
+        }
         match.bins_[match.bins_weights_length_] = i;
         match.weights_[match.bins_weights_length_] = 1.0;
         match.bins_weights_length_++;
@@ -986,8 +988,8 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       // This case block only works if cross sections for these reactions have
       // been precalculated. When they are not, we revert to the default case,
       // which looks up cross sections
-      
-      
+
+
       // Note: the below problem no longer applies. We now check if any
       // of these scores are present at tally initialization and do the lookups
       // when tallies are active
@@ -1081,8 +1083,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.type_ != Type::neutron) continue;
 
       // Any other cross section has to be calculated on-the-fly
-      if (score_bin < 2) fatal_error("Invalid score type on tally "
-        + std::to_string(tally.id_));
+      if (score_bin < 2) printf("Error: Invalid score type on tally %d\n", tally.id_);
       score = 0.;
       if (i_nuclide >= 0) {
         score = get_nuclide_xs(p, i_nuclide, score_bin) * atom_density * flux;
@@ -1099,10 +1100,10 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       }
     }
 
-    // Add derivative information on score for differential tallies.
-    if (tally.deriv_ != C_NONE)
-      apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
-        score);
+    // // Add derivative information on score for differential tallies.
+    // if (tally.deriv_ != C_NONE)
+    //   apply_derivative_to_score(p, i_tally, i_nuclide, atom_density, score_bin,
+    //     score);
 
     // Update tally results
     #pragma omp atomic
@@ -2280,6 +2281,10 @@ void score_analog_tally_ce(Particle& p)
 
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2313,16 +2318,16 @@ void score_analog_tally_ce(Particle& p)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 void score_analog_tally_mg(Particle& p)
 {
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2359,10 +2364,6 @@ void score_analog_tally_mg(Particle& p)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 void
@@ -2371,8 +2372,13 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
   // Determine the tracklength estimate of the flux
   double flux = p.wgt_ * distance;
 
-  for (auto i_tally : model::active_tracklength_tallies) {
+  for (int i = 0; i < model::active_tracklength_tallies_size; ++i) {
+    int i_tally = model::device_active_tracklength_tallies[i];
     const Tally& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2403,7 +2409,7 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
           if (p.material_ != MATERIAL_VOID) {
             auto j = model::materials[p.material_].mat_nuclide_index_[i_nuclide];
             if (j == C_NONE) continue;
-            atom_density = model::materials[p.material_].atom_density_(j);
+            atom_density = model::materials[p.material_].device_atom_density_[j];
             #ifdef NO_MICRO_XS_CACHE
             micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
             #else
@@ -2430,10 +2436,6 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 void score_collision_tally(Particle& p)
@@ -2446,6 +2448,10 @@ void score_collision_tally(Particle& p)
 
   for (auto i_tally : model::active_collision_tallies) {
     const Tally& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2491,10 +2497,6 @@ void score_collision_tally(Particle& p)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 void
@@ -2505,6 +2507,10 @@ score_surface_tally(Particle& p, const std::vector<int>& tallies)
 
   for (auto i_tally : tallies) {
     auto& tally {model::tallies[i_tally]};
+    
+    // Allocate particle FilterMatch array on the stack
+    FilterMatch filter_matches[FILTER_MATCHES_SIZE];
+    p.filter_matches_ = filter_matches;
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2536,10 +2542,6 @@ score_surface_tally(Particle& p, const std::vector<int>& tallies)
     // tallies specified
     if (settings::assume_separate) break;
   }
-
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches_)
-    match.bins_present_ = false;
 }
 
 } // namespace openmc

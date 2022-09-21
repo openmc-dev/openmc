@@ -457,6 +457,7 @@ void print_runtime()
     show_time("Fuel energy sorting", time_event_sort.elapsed(), 2);
     show_time("Avg. time per sort", time_event_sort.elapsed() / sort_counter, 2);
     show_time("Advancing", time_event_advance_particle.elapsed(), 2);
+    show_time("Tallying", time_event_tally.elapsed(), 2);
     show_time("Surface crossings", time_event_surface_crossing.elapsed(), 2);
     show_time("Collisions", time_event_collision.elapsed(), 2);
     show_time("Particle death", time_event_death.elapsed(), 2);
@@ -471,7 +472,7 @@ void print_runtime()
     show_time("Sampling source sites", time_bank_sample.elapsed(), 2);
     show_time("SEND/RECV source sites", time_bank_sendrecv.elapsed(), 2);
   }
-  show_time("Time accumulating tallies", time_tallies.elapsed(), 1);
+  show_time("Time accumulating tallies", time_accumulate_tallies.elapsed(), 1);
   show_time("Time writing statepoints", time_statepoint.elapsed(), 1);
   show_time("Total time for finalization", time_finalize.elapsed());
   show_time("Total time elapsed", time_total.elapsed());

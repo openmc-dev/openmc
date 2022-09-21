@@ -61,18 +61,18 @@ void
 Filter::EnergyFilter_get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match)
 const
 {
-  if (p.g_ != F90_NONE && matches_transport_groups_) {
-    if (estimator == TallyEstimator::TRACKLENGTH) {
-      //match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
-      match.bins_[match.bins_weights_length_] = data::mg.num_energy_groups_ - p.g_ - 1;
-    } else {
-      //match.bins_.push_back(data::mg.num_energy_groups_ - p->g_last_ - 1);
-      match.bins_[match.bins_weights_length_] = data::mg.num_energy_groups_ - p.g_last_ - 1;
-    }
-    //match.weights_.push_back(1.0);
-    match.weights_[match.bins_weights_length_] = 1.0;
-    match.bins_weights_length_++;
-  } else {
+  // if (p.g_ != F90_NONE && matches_transport_groups_) {
+  //   if (estimator == TallyEstimator::TRACKLENGTH) {
+  //     //match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
+  //     match.bins_[match.bins_weights_length_] = data::mg.num_energy_groups_ - p.g_ - 1;
+  //   } else {
+  //     //match.bins_.push_back(data::mg.num_energy_groups_ - p->g_last_ - 1);
+  //     match.bins_[match.bins_weights_length_] = data::mg.num_energy_groups_ - p.g_last_ - 1;
+  //   }
+  //   //match.weights_.push_back(1.0);
+  //   match.weights_[match.bins_weights_length_] = 1.0;
+  //   match.bins_weights_length_++;
+  // } else {
     // Get the pre-collision energy of the particle.
     auto E = p.E_last_;
 
@@ -81,11 +81,9 @@ const
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), E);
       //match.bins_.push_back(bin);
       //match.weights_.push_back(1.0);
-      match.bins_[match.bins_weights_length_] = bin;
-      match.weights_[match.bins_weights_length_] = 1.0;
-      match.bins_weights_length_++;
+      match.push_back(bin, 1.0);
     }
-  }
+  // }
 }
 
 void
@@ -108,23 +106,21 @@ void
 Filter::EnergyoutFilter_get_all_bins(const Particle& p, TallyEstimator estimator,
                               FilterMatch& match) const
 {
-  if (p.g_ != F90_NONE && matches_transport_groups_) {
-    //match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
-    //match.weights_.push_back(1.0);
-      match.bins_[match.bins_weights_length_] = data::mg.num_energy_groups_ - p.g_ - 1;
-      match.weights_[match.bins_weights_length_] = 1.0;
-      match.bins_weights_length_++;
+  // if (p.g_ != F90_NONE && matches_transport_groups_) {
+  //   //match.bins_.push_back(data::mg.num_energy_groups_ - p->g_ - 1);
+  //   //match.weights_.push_back(1.0);
+  //     match.bins_[match.bins_weights_length_] = data::mg.num_energy_groups_ - p.g_ - 1;
+  //     match.weights_[match.bins_weights_length_] = 1.0;
+  //     match.bins_weights_length_++;
 
-  } else {
+  // } else {
     if (p.E_ >= bins_.front() && p.E_ <= bins_.back()) {
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), p.E_);
       //match.bins_.push_back(bin);
       //match.weights_.push_back(1.0);
-      match.bins_[match.bins_weights_length_] = bin;
-      match.weights_[match.bins_weights_length_] = 1.0;
-      match.bins_weights_length_++;
+      match.push_back(bin, 1.0);
     }
-  }
+  // }
 }
 
 std::string

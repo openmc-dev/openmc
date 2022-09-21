@@ -218,7 +218,7 @@ int Mesh::get_bin_from_indices(const int* ijk) const
   case 3:
     return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0] - 1;
   default:
-    printf("Invalid number of mesh dimensions\n");
+    printf("Error: Invalid number of mesh dimensions\n");
   }
 }
 
@@ -328,7 +328,7 @@ bool Mesh::intersects(Position& r0, Position r1, int* ijk) const
   case 3:
     return intersects_3d(r0, r1, ijk);
   default:
-    printf("Invalid number of mesh dimensions.\n");
+    printf("Error: Invalid number of mesh dimensions.\n");
   }
 }
 

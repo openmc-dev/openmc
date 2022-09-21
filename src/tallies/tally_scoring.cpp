@@ -68,7 +68,7 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
       match.bins_weights_length_ = 0;
       for (auto i = 0; i < model::tally_filters[i_filt].n_bins(); ++i) {
         if (match.bins_weights_length_ >= FILTERMATCH_BINS_WEIGHTS_SIZE) {
-          printf("Error - FILTERMATCH_BINS_WEIGHTS_SIZE too small!\n");
+          printf("Error: FILTERMATCH_BINS_WEIGHTS_SIZE too small!\n");
         }
         match.bins_[match.bins_weights_length_] = i;
         match.weights_[match.bins_weights_length_] = 1.0;
@@ -1083,7 +1083,7 @@ score_general_ce_nonanalog(Particle& p, int i_tally, int start_index, int filter
       if (p.type_ != Type::neutron) continue;
 
       // Any other cross section has to be calculated on-the-fly
-      if (score_bin < 2) printf("Invalid score type on tally %d\n", tally.id_);
+      if (score_bin < 2) printf("Error: Invalid score type on tally %d\n", tally.id_);
       score = 0.;
       if (i_nuclide >= 0) {
         score = get_nuclide_xs(p, i_nuclide, score_bin) * atom_density * flux;

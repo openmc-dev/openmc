@@ -201,13 +201,11 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
           static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
         fatal_error("More than 95% of external source sites sampled were "
-                    "rejected. Please check your external source definition.");
+                    "rejected. Please check your external source's spatial "
+                    "definition.");
       }
     }
   }
-
-  // Increment number of accepted samples
-  ++n_accept;
 
   // Sample angle
   site.u = angle_->sample(seed);
@@ -233,10 +231,21 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Resample if energy falls outside minimum or maximum particle energy
     if (site.E < data::energy_max[p] && site.E > data::energy_min[p])
       break;
+
+    n_reject++;
+    if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
+        static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
+      fatal_error("More than 95% of external source sites sampled were "
+                  "rejected. Please check your external source energy spectrum "
+                  "definition.");
+    }
   }
 
   // Sample particle creation time
   site.time = time_->sample(seed);
+
+  // Increment number of accepted samples
+  ++n_accept;
 
   return site;
 }

@@ -32,6 +32,7 @@ from openmc.search import *
 from openmc.polynomial import *
 from openmc.tracks import *
 from . import examples
+from .config import *
 
 # Import a few names from the model module
 from openmc.model import rectangular_prism, hexagonal_prism, Model

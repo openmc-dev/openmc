@@ -1,55 +1,73 @@
-.. _usersguide_cross_sections:
+.. _usersguide_data:
 
-===========================
-Cross Section Configuration
-===========================
+==================
+Data Configuration
+==================
 
-In order to run a simulation with OpenMC, you will need cross section data for
-each nuclide or material in your problem. OpenMC can be run in continuous-energy
-or multi-group mode.
+OpenMC relies on a variety of physical data in order to carry out transport
+simulations, depletion simulations, and other common tasks. As a user, you are
+responsible for specifying one or more of the following:
 
-In continuous-energy mode, OpenMC uses a native `HDF5
-<https://support.hdfgroup.org/HDF5/>`_ format (see :ref:`io_nuclear_data`) to
-store all nuclear data. Pregenerated HDF5 libraries can be found at
-https://openmc.org; unless you have specific data needs, it is highly
-recommended to use one of the pregenerated libraries. Alternatively, if you have
-ACE format data that was produced with NJOY_, such as that distributed with
-MCNP_ or Serpent_, it can be converted to the HDF5 format using the :ref:`using
-the Python API <create_xs_library>`. Several sources provide openly available
-ACE data including the `ENDF/B`_, JEFF_, and TENDL_ libraries as well as the
-`LANL Nuclear Data Team <https://nucleardata.lanl.gov/>`_. In addition to
-tabulated cross sections in the HDF5 files, OpenMC relies on :ref:`windowed
-multipole <windowed_multipole>` data to perform on-the-fly Doppler broadening.
+- **Cross sections (XML)** -- A :ref:`cross sections XML <io_cross_sections>`
+  file (commonly named ``cross_sections.xml``) contains a listing of other data
+  files, in particular neutron cross sections, photon cross sections, and
+  windowed multipole data. Each of those files, in turn, uses a `HDF5
+  <https://support.hdfgroup.org/HDF5/>`_ format (see :ref:`io_nuclear_data`). In
+  order to run transport simulations with continuous-energy cross sections, you
+  need to specify this file.
 
-In multi-group mode, OpenMC utilizes an HDF5-based library format which can be
-used to describe nuclide- or material-specific quantities.
+- **Depletion chain (XML)** -- A :ref:`depletion chain XML <io_depletion_chain>`
+  file contains decay data, fission product yields, and information on what
+  neutron reactions can result in transmutation. This file is needed for
+  depletion/activation calculations as well as some basic functions in the
+  :mod:`openmc.data` module.
+
+- **Multigroup cross sections (HDF5)** -- OpenMC can also perform transport
+  simulations using multigroup data. In this case, multigroup cross sections are
+  stored in a single :ref:`HDF5 file <io_mgxs_library>`. Thus, in order to run a
+  multigroup transport simulation, this file needs to be specified.
+
+Each of the above files can specified in several ways. In the Python API, a
+:ref:`runtime configuration variable <usersguide_data_runtime>`
+:data:`openmc.config` can be used to specify any of the above and is initialized
+using a set of environment variables.
+
+.. _usersguide_data_runtime:
 
 ---------------------
-Environment Variables
+Runtime Configuration
 ---------------------
 
-When :ref:`scripts_openmc` is run, it will look for several environment
-variables that indicate where cross sections can be found. While the location of
-cross sections can also be indicated through the
-:attr:`openmc.Materials.cross_sections` attribute (or in the :ref:`materials.xml
-<io_materials>` file), if you always use the same set of cross section data, it
-is often easier to just set an environment variable that will be picked up by
-default every time OpenMC is run. The following environment variables are used:
+Data sources for OpenMC can be specified at runtime in Python using the
+:data:`openmc.config` variable. This variable acts like a dictionary and stores
+key-values pairs, where the values are file paths (strings or path-like objects)
+and the key can be one of the following:
 
-:envvar:`OPENMC_CROSS_SECTIONS`
-  Indicates the path to the :ref:`cross_sections.xml <io_cross_sections>`
-  summary file that is used to locate HDF5 format cross section libraries if the
-  user has not specified :attr:`openmc.Materials.cross_sections` (equivalently,
-  the :ref:`cross_sections` in :ref:`materials.xml <io_materials>`).
+``"cross_sections"``
+  Indicates the path to the :ref:`cross sections XML <io_cross_sections>` file
+  that lists HDF5 format neutron cross sections, photon cross sections, and
+  windowed multipole data. At startup, this is initialized with the value of the
+  :envvar:`OPENMC_CROSS_SECTIONS` environment variable. Note that the
+  :attr:`openmc.Materials.cross_sections` attribute will override this, if
+  specified.
 
-:envvar:`OPENMC_MG_CROSS_SECTIONS`
+``"chain_file"``
+  Indicates the path to the :ref:`depletion chain XML <io_depletion_chain>` file
+  that contains decay data, fission product yields, and what neutron reactions
+  may result in transmutation of a target nuclide. At startup, this is
+  initialized with the value of the :envvar:`OPENMC_CHAIN_FILE` environment
+  variable.
+
+``"mg_cross_sections"``
   Indicates the path to an :ref:`HDF5 file <io_mgxs_library>` that contains
-  multi-group cross sections if the user has not specified
-  :attr:`openmc.Materials.cross_sections` (equivalently, the
-  :ref:`cross_sections` in :ref:`materials.xml <io_materials>`).
+  multigroup cross sections. At startup, this is initialized with the value of
+  the :envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable. Note that the
+  :attr:`openmc.Materials.cross_sections` attribute will override this if
+  specified.
 
-To set these environment variables persistently, export them from your shell
-profile (``.profile`` or ``.bashrc`` in bash_).
+If you want to persistently set the environment variables used to initialized
+the configuration, export them from your shell profile (``.profile`` or
+``.bashrc`` in bash_).
 
 .. _bash: http://www.linuxfromscratch.org/blfs/view/6.3/postlfs/profile.html
 
@@ -61,12 +79,13 @@ Using Pregenerated Libraries
 ----------------------------
 
 Various evaluated nuclear data libraries have been processed into the HDF5
-format required by OpenMC and can be found at https://openmc.org. You
-can find both libraries generated by the OpenMC development team as well as
-libraries based on ACE files distributed elsewhere. To use these libraries,
-download the archive file, unpack it, and then set your
-:envvar:`OPENMC_CROSS_SECTIONS` environment variable to the absolute path of
-the ``cross_sections.xml`` file contained in the unpacked directory.
+format required by OpenMC and can be found at https://openmc.org. Unless you
+have specific data needs, it is highly recommended to use one of the
+pregenerated libraries. You can find both libraries generated by the OpenMC
+development team as well as libraries based on ACE files distributed elsewhere.
+To use these libraries, download the archive file, unpack it, and then specify
+the path of the ``cross_sections.xml`` file contained in the unpacked directory
+as described in :ref:`usersguide_data_runtime`.
 
 .. _create_xs_library:
 
@@ -74,6 +93,12 @@ Manually Creating a Library from ACE files
 ------------------------------------------
 
 .. currentmodule:: openmc.data
+
+If you have ACE format data that was produced with NJOY_, such as that
+distributed with MCNP_ or Serpent_, it can be converted to the HDF5 format using
+the using the Python API. Several sources provide openly available ACE data
+including the `ENDF/B`_, JEFF_, and TENDL_ libraries as well as the `LANL
+Nuclear Data Team <https://nucleardata.lanl.gov/>`_.
 
 The :mod:`openmc.data` module in the Python API enables users to directly
 convert ACE data to OpenMC's HDF5 format and create a corresponding
@@ -224,6 +249,19 @@ relaxation sublibrary files are required:
 Once the HDF5 files have been generated, a library can be created using the
 :class:`DataLibrary` class as described in :ref:`create_xs_library`.
 
+-----------
+Chain Files
+-----------
+
+Pregenerated depletion chain XML files can be found at https://openmc.org.
+Additionally, depletion chains can be generated using the
+:class:`openmc.deplete.Chain` class. In particular, the
+:meth:`~openmc.deplete.Chain.from_endf` method allows a chain to be generated
+starting from a set of ENDF incident neutron, decay, and fission product yield
+sublibrary files. Once you've downloaded or generated a depletion chain XML
+file, make sure to specify its path as described in
+:ref:`usersguide_data_runtime`.
+
 -----------------------
 Windowed Multipole Data
 -----------------------
@@ -241,18 +279,16 @@ The `official ENDF/B-VII.1 HDF5 library
 multipole library, so if you are using this library, the windowed multipole data
 will already be available to you.
 
---------------------------
-Multi-Group Cross Sections
---------------------------
+-------------------------
+Multigroup Cross Sections
+-------------------------
 
-Multi-group cross section libraries are generally tailored to the specific
+Multigroup cross section libraries are generally tailored to the specific
 calculation to be performed.  Therefore, at this point in time, OpenMC is not
-distributed with any pre-existing multi-group cross section libraries.
-However, if  obtained or generated their own library, the user
-should set the :envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable
-to the absolute path of the file library expected to used most frequently.
-
-For an example of how to create a multi-group library, see the `example notebook
+distributed with any pre-existing multigroup cross section libraries. However,
+if a multigroup library file is downloaded or generated, the path to the file
+needs to be specified as described in :ref:`usersguide_data_runtime`. For an
+example of how to create a multigroup library, see the `example notebook
 <../examples/mg-mode-part-i.ipynb>`__.
 
 .. _NJOY: http://www.njoy21.io/

@@ -22,7 +22,7 @@ Univariate Probability Distributions
    openmc.stats.Legendre
    openmc.stats.Mixture
    openmc.stats.Normal
-   openmc.stats.Muir
+   openmc.stats.muir
 
 Angular Distributions
 ---------------------

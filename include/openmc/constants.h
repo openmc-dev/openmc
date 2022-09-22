@@ -318,7 +318,11 @@ enum class Interpolation {
   lin_lin = 2,
   lin_log = 3,
   log_lin = 4,
-  log_log = 5
+  log_log = 5,
+  // skip 6 b/c ENDF-6 reserves this value for
+  // "special one-dimensional interpolation law"
+  quadratic = 7,
+  cubic = 8
 };
 
 enum class RunMode {

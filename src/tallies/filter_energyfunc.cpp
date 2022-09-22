@@ -3,6 +3,7 @@
 #include <fmt/core.h>
 
 #include "openmc/error.h"
+#include "openmc/interpolate.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/xml_interface.h"
@@ -24,6 +25,40 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
     fatal_error("y values not specified for EnergyFunction filter.");
 
   auto y = get_node_array<double>(node, "y");
+
+  // default to linear-linear interpolation
+  interpolation_ = Interpolation::lin_lin;
+  if (check_for_node(node, "interpolation")) {
+    std::string interpolation = get_node_value(node, "interpolation");
+    if (interpolation == "histogram") {
+      interpolation_ = Interpolation::histogram;
+    } else if (interpolation == "linear-linear") {
+      interpolation_ = Interpolation::lin_lin;
+    } else if (interpolation == "linear-log") {
+      interpolation_ = Interpolation::lin_log;
+    } else if (interpolation == "log-linear") {
+      interpolation_ = Interpolation::log_lin;
+    } else if (interpolation == "log-log") {
+      interpolation_ = Interpolation::log_log;
+    } else if (interpolation == "quadratic") {
+      if (energy.size() < 3)
+        fatal_error(
+          fmt::format("Quadratic interpolation on EnergyFunctionFilter {} "
+                      "requires at least 3 data points.",
+            id()));
+      interpolation_ = Interpolation::quadratic;
+    } else if (interpolation == "cubic") {
+      if (energy.size() < 4)
+        fatal_error(fmt::format("Cubic interpolation on EnergyFunctionFilter "
+                                "{} requires at least 4 data points.",
+          id()));
+      interpolation_ = Interpolation::cubic;
+    } else {
+      fatal_error(fmt::format(
+        "Found invalid interpolation type '{}' on EnergyFunctionFilter {}.",
+        interpolation, id()));
+    }
+  }
 
   this->set_data(energy, y);
 }
@@ -55,15 +90,12 @@ void EnergyFunctionFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   if (p.E_last() >= energy_.front() && p.E_last() <= energy_.back()) {
-    // Search for the incoming energy bin.
-    auto i = lower_bound_index(energy_.begin(), energy_.end(), p.E_last());
 
-    // Compute the interpolation factor between the nearest bins.
-    double f = (p.E_last() - energy_[i]) / (energy_[i + 1] - energy_[i]);
+    double w = interpolate(energy_, y_, p.E_last(), interpolation_);
 
     // Interpolate on the lin-lin grid.
     match.bins_.push_back(0);
-    match.weights_.push_back((1 - f) * y_[i] + f * y_[i + 1]);
+    match.weights_.push_back(w);
   }
 }
 
@@ -72,6 +104,9 @@ void EnergyFunctionFilter::to_statepoint(hid_t filter_group) const
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "energy", energy_);
   write_dataset(filter_group, "y", y_);
+  hid_t y_dataset = open_dataset(filter_group, "y");
+  write_attribute<int>(y_dataset, "interpolation", static_cast<int>(interpolation_));
+  close_dataset(y_dataset);
 }
 
 std::string EnergyFunctionFilter::text_label(int bin) const

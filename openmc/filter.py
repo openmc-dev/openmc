@@ -1876,7 +1876,8 @@ class EnergyFunctionFilter(Filter):
     y : iterable of Real
         A grid of interpolant values in [eV]
     interpolation : str
-        The type of interpolation to be used.
+        Interpolation scheme: {'histogram', 'linear-linear', 'linear-log',
+        'log-linear', 'log-log', 'quadratic', 'cubic'}
     filter_id : int
         Unique identifier for the filter
 

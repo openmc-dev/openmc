@@ -610,7 +610,7 @@ class Chain:
             out[nuc.name] = dict(yield_obj)
         return out
 
-    def form_matrix(self, rates, msr=None, index_msr=None, fission_yields=None):
+    def form_matrix(self, rates, fission_yields=None, msr=None, index_msr=None):
         """Forms depletion matrix.
 
         Parameters
@@ -657,21 +657,19 @@ class Chain:
                             k = self.nuclide_dict[target]
                             matrix[k, i] += branch_val
 
-            # Loss/gain from transfer
+            # Loss/gain from removal rates
             if index_msr is not None:
                 j, k = index_msr
                 elm = re.split(r'\d+', nuc.name)[0]
                 mat = msr.index_burn[k]
-                # Diagonal term
-                if j == k:
-                    if elm in msr.get_elements(mat):
-                        matrix [i, i] -= msr.get_removal_rate(mat, elm)
-                # Off-diagonal term
-                else:
-                    if elm in msr.get_elements(mat):
-                        offdiag_matrix[i, i] += msr.get_removal_rate(mat, elm)
-                    else:
-                        offdiag_matrix[i, i] += 0.0 #to test if neeeded
+                if elm in msr.get_elements(mat):
+                    rr = msr.get_removal_rate(mat, elm)
+                    # Diagonal term
+                    if j == k:
+                        matrix [i, i] -= rr
+                    # Off-diagonal term
+                    elif j != k:
+                        offdiag_matrix[i, i] += rr
 
             if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
@@ -721,6 +719,21 @@ class Chain:
             dict.update(matrix_dok, matrix)
         else:
             dict.update(matrix_dok, offdiag_matrix)
+        return matrix_dok.tocsr()
+
+    def form_transfer_matrix(self, msr=None, index_msr=None):
+        matrix = defaultdict(float)
+        for i, nuc in enumerate(self.nuclides):
+            if index_msr is not None:
+                j, k = index_msr
+                elm = re.split(r'\d+', nuc.name)[0]
+                mat = msr.index_burn[k]
+                if elm in msr.get_elements(mat):
+                    matrix [i, i] = msr.get_removal_rate(mat, elm)
+                    
+        n = len(self)
+        matrix_dok = sp.dok_matrix((n, n))
+        dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
 
     def get_branch_ratios(self, reaction="(n,gamma)"):

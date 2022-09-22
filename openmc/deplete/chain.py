@@ -633,7 +633,6 @@ class Chain:
         :meth:`get_default_fission_yields`
         """
         matrix = defaultdict(float)
-        offdiag_matrix = defaultdict(float)
         reactions = set()
 
         if fission_yields is None:
@@ -663,13 +662,7 @@ class Chain:
                 elm = re.split(r'\d+', nuc.name)[0]
                 mat = msr.index_burn[k]
                 if elm in msr.get_elements(mat):
-                    rr = msr.get_removal_rate(mat, elm)
-                    # Diagonal term
-                    if j == k:
-                        matrix [i, i] -= rr
-                    # Off-diagonal term
-                    elif j != k:
-                        offdiag_matrix[i, i] += rr
+                    matrix [i, i] -= msr.get_removal_rate(mat, elm)
 
             if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
@@ -715,14 +708,12 @@ class Chain:
         # Use DOK matrix as intermediate representation, then convert to CSR and return
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))
-        if len(offdiag_matrix) == 0:
-            dict.update(matrix_dok, matrix)
-        else:
-            dict.update(matrix_dok, offdiag_matrix)
+        dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
 
     def form_transfer_matrix(self, msr=None, index_msr=None):
         matrix = defaultdict(float)
+
         for i, nuc in enumerate(self.nuclides):
             if index_msr is not None:
                 j, k = index_msr
@@ -730,7 +721,7 @@ class Chain:
                 mat = msr.index_burn[k]
                 if elm in msr.get_elements(mat):
                     matrix [i, i] = msr.get_removal_rate(mat, elm)
-                    
+
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))
         dict.update(matrix_dok, matrix)

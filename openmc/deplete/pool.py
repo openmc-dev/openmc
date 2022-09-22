@@ -70,6 +70,7 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
             matrices = map(chain.form_matrix, rates, fission_yields)
         else:
             matrices = map(matrix_func, repeat(chain), rates, fission_yields)
+
         inputs = zip(matrices, x, repeat(dt))
         if USE_MULTIPROCESSING:
             with Pool() as pool:
@@ -78,58 +79,39 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
             x_result = list(starmap(func, inputs))
 
     else:
-        # Unzip ReactionRates from high orders integrator schemes intermediate
-        if type(rates) is list:
-            rate = list(zip(*rates))[0][0]
-            list_rates = deepcopy(rates)
-        else:
-            rate = rates[0]
-            list_rates = list(deepcopy(rates))
-
-        fission_yields = deepcopy(fission_yields)
-
-        # Create null reaction rate and fy
-        null_rate = rate.copy()
-        null_rate.fill(0.0)
-        null_fy = deepcopy(fission_yields[0])
-        for _, y in null_fy.items():
-            y.yields.fill(0.0)
-
-        # Append null rates and fy coeffs for off-diagonal matrices
-        for j, k in msr.index_msr():
-            if j != k:
-                if type(rates) is list:
-                    list_rates.append((null_rate,)*len(list(zip(*rates))))
-                else:
-                    list_rates.append(null_rate)
-                fission_yields.append(null_fy)
-
+        #Build first diagonal matrices, with removal term
         if matrix_func is None:
-            matrices = map(chain.form_matrix, list_rates, repeat(msr),
-                           msr.index_msr(), fission_yields)
+            diag_matrices = map(chain.form_matrix, rates, fission_yields,
+                                repeat(msr), msr.index_msr)
         else:
-            matrices = map(matrix_func, repeat(chain), list_rates, repeat(msr),
-                           msr.index_msr(), fission_yields)
+            diag_matrices = map(matrix_func, repeat(chain), rates, fission_yields,
+                                repeat(msr), msr.index_msr)
 
-        # Combine all Bateman matrices in a 2d-list of arrays
-        matrices = list(matrices)
+        transfer_matrices = map(chain.form_transfer_matrix, repeat(msr),
+                             msr.get_transfer_index())
+
+        matrices = list(diag_matrices) + list(transfer_matrices)
+
+        # Arrange all matrices in a indexed ordered 2d-array
         raws = []
         for raw in range(msr.n_burn):
             cols = []
             for col in range(msr.n_burn):
                 val = None
-                for keys, array in zip(msr.index_msr(), matrices):
-                    if keys == (raw, col):
-                        val = array
+                for index, matrix in zip(msr.index_msr + msr.get_transfer_index(),
+                                         matrices):
+                    if index == (raw, col):
+                        val = matrix
                 cols.append(val)
             raws.append(cols)
 
-        # Build a sparse matrix from the sparse sub-arrays
+        # Build a coupled sparse matrix
         sparse_matrix = bmat(raws)
 
         # Concatenate all atoms vectors in one
         x = np.concatenate([_x for _x in x])
 
+        # Solve the coupled matrices
         x_result = func(sparse_matrix, x, dt)
 
         split = np.cumsum([i.shape[0] for i in matrices[:msr.n_burn]])

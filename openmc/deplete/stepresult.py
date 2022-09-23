@@ -202,6 +202,8 @@ class StepResult:
     def get_material(self, mat_id):
         """Return material object for given depleted composition
 
+        .. versionadded:: 0.14.0
+
         Parameters
         ----------
         mat_id : str

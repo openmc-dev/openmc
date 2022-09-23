@@ -63,6 +63,7 @@ Core Functions
     atomic_weight
     combine_distributions
     decay_constant
+    decay_photon_source
     dose_coefficients
     gnd_name
     half_life

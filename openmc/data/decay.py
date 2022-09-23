@@ -579,12 +579,14 @@ class Decay(EqualityMixin):
 _DECAY_PHOTON_SOURCE = {}
 
 
-def decay_photon_source(nuclide):
+def decay_photon_source(nuclide: str) -> Univariate:
     """Get photon source from the decay of a nuclide
 
     This function relies on data stored in a depletion chain. Before calling it
     for the first time, you need to ensure that a depletion chain has been
     specified in openmc.config['chain_file'].
+
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------

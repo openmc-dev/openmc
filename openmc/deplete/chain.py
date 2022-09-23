@@ -610,7 +610,7 @@ class Chain:
             out[nuc.name] = dict(yield_obj)
         return out
 
-    def form_matrix(self, rates, fission_yields=None, msr=None, index_msr=None):
+    def form_matrix(self, rates, fission_yields=None, msr=None):
         """Forms depletion matrix.
 
         Parameters
@@ -622,7 +622,12 @@ class Chain:
             to be of the form ``{parent : {product : f_yield}}``
             with string nuclide names for ``parent`` and ``product``,
             and ``f_yield`` as the respective fission yield
-
+        msr : openmc.msr.MsrContinuous, optional
+            Istance of openmc.msr.MsrContinuous. If passed, the
+            concept od removal rates is applied to the depletion matrix.
+        index_msr : list of tuples, optional
+            For each depletabel material, a tuple of indeces (i, j) defines
+            the matrix position.
         Returns
         -------
         scipy.sparse.csr_matrix
@@ -637,6 +642,9 @@ class Chain:
 
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
+
+        if msr is not None:
+            mat_index, msr = msr
 
         for i, nuc in enumerate(self.nuclides):
             # Loss from radioactive decay
@@ -657,10 +665,9 @@ class Chain:
                             matrix[k, i] += branch_val
 
             # Loss/gain from removal rates
-            if index_msr is not None:
-                j, k = index_msr
+            if msr is not None:
                 elm = re.split(r'\d+', nuc.name)[0]
-                mat = msr.index_burn[k]
+                mat = msr.index_burn[mat_index]
                 if elm in msr.get_elements(mat):
                     matrix [i, i] -= msr.get_removal_rate(mat, elm)
 
@@ -711,7 +718,7 @@ class Chain:
         dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
 
-    def form_transfer_matrix(self, msr=None, index_msr=None):
+    def form_transfer_matrix(self, msr, index_msr):
         matrix = defaultdict(float)
 
         for i, nuc in enumerate(self.nuclides):

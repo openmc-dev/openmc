@@ -65,12 +65,14 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
             "equal to the number of compositions {}".format(
                 len(fission_yields), len(x)))
 
-    if msr is None:
-        if matrix_func is None:
-            matrices = map(chain.form_matrix, rates, fission_yields)
-        else:
-            matrices = map(matrix_func, repeat(chain), rates, fission_yields)
+    if matrix_func is None:
+        matrices = map(chain.form_matrix, rates, fission_yields,
+                       enumerate(repeat(msr)))
+    else:
+        matrices = map(matrix_func, repeat(chain), rates, fission_yields,
+                       enumerate(repeat(msr)))
 
+    if not msr.transfer_matrix_index():
         inputs = zip(matrices, x, repeat(dt))
         if USE_MULTIPROCESSING:
             with Pool() as pool:
@@ -79,27 +81,19 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
             x_result = list(starmap(func, inputs))
 
     else:
-        #Build first diagonal matrices, with removal term
-        if matrix_func is None:
-            diag_matrices = map(chain.form_matrix, rates, fission_yields,
-                                repeat(msr), msr.index_msr)
-        else:
-            diag_matrices = map(matrix_func, repeat(chain), rates, fission_yields,
-                                repeat(msr), msr.index_msr)
-
         transfer_matrices = map(chain.form_transfer_matrix, repeat(msr),
-                             msr.get_transfer_index())
+                             msr.transfer_matrix_index())
 
-        matrices = list(diag_matrices) + list(transfer_matrices)
+        matrices = list(matrices) + list(transfer_matrices)
 
         # Arrange all matrices in a indexed ordered 2d-array
+        matrices_index = msr.index_msr + msr.transfer_matrix_index()
         raws = []
         for raw in range(msr.n_burn):
             cols = []
             for col in range(msr.n_burn):
                 val = None
-                for index, matrix in zip(msr.index_msr + msr.get_transfer_index(),
-                                         matrices):
+                for index, matrix in zip(matrices_index, matrices):
                     if index == (raw, col):
                         val = matrix
                 cols.append(val)

@@ -41,7 +41,7 @@ class MsrContinuous:
             mat = str(mat.id)
         return self.index_burn[mat] if isinstance(mat, str) else mat
 
-    def get_transfer_index(self):
+    def transfer_matrix_index(self):
         transfer_index = OrderedDict()
         for id, val in self.removal_terms.items():
             if val:

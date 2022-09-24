@@ -699,6 +699,36 @@ class DAGMCUniverse(UniverseBase):
     def auto_mat_ids(self):
         return self._auto_mat_ids
 
+    @property
+    def material_names(self):
+        """Return the names of the materials that are contained within the
+         DAGMC h5m file. This is useful when naming openmc.Material() objects
+         as each material name present in the DAGMC h5m file must have a
+         matching openmc.Material() with the same name.
+
+        Returns
+        -------
+        materials : List[str]
+            Sorted list of material names present in the DAGMC h5m file
+
+        """
+
+        dagmc_file_contents = h5py.File(self.filename)
+        material_tags_hex=dagmc_file_contents['/tstt/tags/NAME'].get('values')
+        material_tags_ascii=[]
+        for tag in material_tags_hex:
+            raw_tag=  np.array2string(tag)
+            tag_in_hex=raw_tag.replace("\\x00", '').replace("\\x", '')
+            tag_in_hex =tag_in_hex.lstrip("b'").rstrip("'")
+            candidate_tag = bytes.fromhex(tag_in_hex).decode()
+            # tags might be for temperature or reflective surfaces
+            if candidate_tag.startswith('mat:'):
+                # removes first 4 characters as openmc.Material name should be
+                # set without the 'mat:' part of the tag
+                material_tags_ascii.append(candidate_tag[4:])
+
+        return sorted(set(material_tags_ascii))
+
     @auto_mat_ids.setter
     def auto_mat_ids(self, val):
         cv.check_type('DAGMC automatic material ids', val, bool)

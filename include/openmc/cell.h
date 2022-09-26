@@ -53,33 +53,46 @@ extern vector<unique_ptr<Cell>> cells;
 
 //==============================================================================
 
-// TODO: Maybe not, just move this inline to Region::bounding_box() for complex
-// case
-class RegionPostfix {
-public:
-  BoundingBox bounding_box() const;
-};
-
 class Region {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors
   Region() {}
-  explicit Region(std::string region_expression);
+  explicit Region(std::string region_expressioni, int32_t cell_id);
 
-  void add_precedence();
-  std::string str() const;
-  BoundingBox bounding_box() const;
+  //----------------------------------------------------------------------------
+  // Methods
+  std::pair<double, int32_t> distance(
+    Position r, Direction u, int32_t on_surface, Particle* p) const;
   bool contains(Position r, Direction u, int32_t on_surface) const;
+  BoundingBox bounding_box(int32_t cell_id) const;
+  std::string str() const;
+  vector<int32_t> surfaces() const;
 
-  RegionPostfix to_postfix() const;
+  //----------------------------------------------------------------------------
+  // Accessors
+  bool is_simple() const { return simple_; }
 
 private:
-  void add_parentheses();
+  //----------------------------------------------------------------------------
+  // Private Methods
+  vector<int32_t> generate_postfix(int32_t cell_id) const;
+  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
+  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+  BoundingBox bounding_box_simple() const;
+  BoundingBox bounding_box_complex(vector<int32_t> postfix) const;
+  void add_precedence();
+  std::vector<int32_t>::iterator add_parentheses(
+    std::vector<int32_t>::iterator start);
+  void remove_complement_ops();
   void apply_demorgan(
     vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
 
+  //----------------------------------------------------------------------------
+  // Private Data
   //! Definition of spatial region as Boolean expression of half-spaces
   // TODO: Should this be a vector of some other type
-  vector<int32_t> tokens_;
+  vector<int32_t> expression_;
   bool simple_; //!< Does the region contain only intersections?
 };
 
@@ -140,6 +153,12 @@ public:
 
   //! Get the BoundingBox for this cell.
   virtual BoundingBox bounding_box() const = 0;
+
+  //! Get a vector of surfaces in the cell
+  virtual vector<int32_t> surfaces() const = 0;
+
+  //! Check if the cell region expression is simple
+  virtual bool is_simple() const = 0;
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -231,10 +250,6 @@ public:
   //! T. The units are sqrt(eV).
   vector<double> sqrtkT_;
 
-  // TODO: Probably move this guy to CSGCell
-  //! Definition of spatial region as Boolean expression of half-spaces
-  Region region_;
-
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;
 
@@ -260,35 +275,36 @@ struct CellInstanceItem {
 
 class CSGCell : public Cell {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors
   CSGCell();
-
   explicit CSGCell(pugi::xml_node cell_node);
 
-  bool contains(Position r, Direction u, int32_t on_surface) const override;
+  //----------------------------------------------------------------------------
+  // Methods
+  vector<int32_t> surfaces() const override { return region_.surfaces(); }
 
   std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const override;
+    Position r, Direction u, int32_t on_surface, Particle* p) const override
+  {
+    return region_.distance(r, u, on_surface, p);
+  }
+
+  bool contains(Position r, Direction u, int32_t on_surface) const override
+  {
+    return region_.contains(r, u, on_surface);
+  }
+
+  BoundingBox bounding_box() const override
+  {
+    return region_.bounding_box(id_);
+  }
 
   void to_hdf5_inner(hid_t group_id) const override;
 
-  BoundingBox bounding_box() const override;
+  bool is_simple() const override { return region_.is_simple(); }
 
 protected:
-  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
-  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
-  BoundingBox bounding_box_simple() const;
-  static BoundingBox bounding_box_complex(vector<int32_t> postfix);
-
-  //! Applies DeMorgan's laws to a section of the RPN
-  //! \param start Starting point for token modification
-  //! \param stop Stopping point for token modification
-  static void apply_demorgan(
-    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
-
-  //! Removes complement operators from the RPN
-  //! \param rpn The rpn to remove complement operators from.
-  static void remove_complement_ops(vector<int32_t>& rpn);
-
   //! Returns the beginning position of a parenthesis block (immediately before
   //! two surface tokens) in the RPN given a starting position at the end of
   //! that block (immediately after two surface tokens)

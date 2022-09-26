@@ -730,10 +730,10 @@ class ThermalScattering(EqualityMixin):
 
             if ace.nxs[5] == 3:
                 xs = incoherent_xs
-                dist = incoherent_dist
+                distribution = incoherent_dist
             elif ace.nxs[5] == 4:
                 xs = coherent_xs
-                dist = coherent_dist
+                distribution = coherent_dist
             else:
                 # Create mixed cross section -- note that coherent must come
                 # first due to assumption on C++ side

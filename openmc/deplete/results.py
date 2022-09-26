@@ -435,7 +435,7 @@ class Results(list):
         # results, and save them to the new depleted xml file.
         for mat in mat_file:
             mat_id = str(mat.id)
-            if mat_id in result.mat_to_ind:
+            if mat_id in result.index_mat:
                 mat.volume = result.volume[mat_id]
 
                 # Change density of all nuclides in material to atom/b-cm
@@ -447,7 +447,7 @@ class Results(list):
 
                 # For nuclides in chain that have cross sections, replace
                 # density in original material with new density from results
-                for nuc in result.nuc_to_ind:
+                for nuc in result.index_nuc:
                     if nuc not in available_cross_sections:
                         continue
                     atoms = result[0, mat_id, nuc]

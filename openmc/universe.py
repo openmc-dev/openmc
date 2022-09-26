@@ -708,7 +708,7 @@ class DAGMCUniverse(UniverseBase):
 
         Returns
         -------
-        materials : List[str]
+        materials : list of str
             Sorted list of material names present in the DAGMC h5m file
 
         """
@@ -717,10 +717,7 @@ class DAGMCUniverse(UniverseBase):
         material_tags_hex=dagmc_file_contents['/tstt/tags/NAME'].get('values')
         material_tags_ascii=[]
         for tag in material_tags_hex:
-            raw_tag=  np.array2string(tag)
-            tag_in_hex=raw_tag.replace("\\x00", '').replace("\\x", '')
-            tag_in_hex =tag_in_hex.lstrip("b'").rstrip("'")
-            candidate_tag = bytes.fromhex(tag_in_hex).decode()
+            candidate_tag = tag.tobytes().decode().replace('\x00', '')
             # tags might be for temperature or reflective surfaces
             if candidate_tag.startswith('mat:'):
                 # removes first 4 characters as openmc.Material name should be

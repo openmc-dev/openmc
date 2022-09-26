@@ -1154,7 +1154,7 @@ class CylindricalMesh(StructuredMesh):
         domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
-            set the The r_grid, z_grid ranges.
+            set the r_grid, z_grid ranges.
         dimension : Iterable of int
             The number of equally spaced mesh cells in each direction (r_grid,
             phi_grid, z_grid)

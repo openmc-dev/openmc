@@ -1137,6 +1137,66 @@ class CylindricalMesh(StructuredMesh):
 
         return mesh
 
+    @classmethod
+    def from_domain(
+        cls,
+        domain,
+        dimension=[100, 100, 100],
+        mesh_id=None,
+        name=''
+    ):
+        """Create mesh from an existing openmc cell, region, universe or
+        geometry by making use of the objects bounding box property. phi_grid
+        is set to have a range of 0 to 2π by default.
+
+        Parameters
+        ----------
+        domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
+            The object passed in will be used as a template for this mesh. The
+            bounding box of the property of the object passed will be used to
+            set the The r_grid, z_grid ranges.
+        dimension : Iterable of int
+            The number of equally spaced mesh cells in each direction (r_grid,
+            phi_grid, z_grid)
+        mesh_id : int
+            Unique identifier for the mesh
+        name : str
+            Name of the mesh
+
+        Returns
+        -------
+        openmc.RegularMesh
+            RegularMesh instance
+
+        """
+        cv.check_type(
+            "domain",
+            domain,
+            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
+        )
+
+        mesh = cls(mesh_id, name)
+
+        # loaded once to avoid reading h5m file repeatedly
+        cached_bb = domain.bounding_box
+        max_bounding_box_radius = max(
+            [
+                cached_bb[0][0],
+                cached_bb[0][1],
+                cached_bb[1][0],
+                cached_bb[1][1],
+            ]
+        )
+        mesh.r_grid = np.linspace(0, max_bounding_box_radius, num=dimension[0]+1)
+        mesh.phi_grid = np.linspace(0, 2*np.pi, num=dimension[1]+1)
+        mesh.z_grid = np.linspace(
+            cached_bb[0][2],
+            cached_bb[1][2],
+            num=dimension[2]+1
+        )
+
+        return mesh
+
     def to_xml_element(self):
         """Return XML representation of the mesh
 

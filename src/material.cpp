@@ -62,7 +62,7 @@ Material::Material(pugi::xml_node node)
 
 #ifdef NCRYSTAL
   if (check_for_node(node, "cfg")) {
-    cfg_ = get_node_value(node, "cfg");
+    ncrystal_cfg_ = get_node_value(node, "cfg");
     write_message(5, "NCrystal config string: '{}'", ncrystal_cfg_);
     ncrystal_mat_ = NCrystal::FactImpl::createScatter(ncrystal_cfg_);
   }
@@ -857,7 +857,6 @@ void Material::calculate_neutron_xs(Particle& p) const
 #else
     const auto& micro {p.neutron_xs(i_nuclide)};
 #endif
-    auto& micro {p.neutron_xs(i_nuclide)};
     if (p.E() != micro.last_E || p.sqrtkT() != micro.last_sqrtkT ||
         i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
       data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);

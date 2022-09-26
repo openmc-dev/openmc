@@ -63,8 +63,8 @@ Material::Material(pugi::xml_node node)
 #ifdef NCRYSTAL
   if (check_for_node(node, "cfg")) {
     cfg_ = get_node_value(node, "cfg");
-    write_message(5, "NCrystal config string: >>{}<< ", cfg_);
-    m_NCrystal_mat_  = NCrystal::FactImpl::createScatter(cfg_);
+    write_message(5, "NCrystal config string: '{}'", ncrystal_cfg_);
+    ncrystal_mat_  = NCrystal::FactImpl::createScatter(ncrystal_cfg_);
   }
 #endif
 
@@ -803,11 +803,11 @@ void Material::calculate_neutron_xs(Particle& p) const
 #ifdef NCRYSTAL
   double ncrystal_xs = -1;
 
-  if (m_NCrystal_mat_ != nullptr && p.E() < settings::ncrystal_max_energy){
+  if (ncrystal_mat_ && p.E() < settings::ncrystal_max_energy){
     // Calculate scattering XS per atom with NCrystal, only once per material
-    NCrystal::CachePtr dummyCache;
+    NCrystal::CachePtr dummy_cache;
     auto nc_energy = NCrystal::NeutronEnergy{p.E()};
-    ncrystal_xs = m_NCrystal_mat_->crossSection( dummyCache, nc_energy,  {p.u().x, p.u().y, p.u().z}).get();
+    ncrystal_xs = ncrystal_mat_->crossSection( dummy_cache, nc_energy,  {p.u().x, p.u().y, p.u().z}).get();
   }
 #endif
 
@@ -849,8 +849,10 @@ void Material::calculate_neutron_xs(Particle& p) const
     int i_nuclide = nuclide_[i];
 
     // Calculate microscopic cross section for this nuclide
-#ifndef NCRYSTAL
-    const
+#ifdef NCRYSTAL
+    auto& micro {p.neutron_xs(i_nuclide)};
+#else
+    const auto& micro {p.neutron_xs(i_nuclide)};
 #endif
     auto& micro {p.neutron_xs(i_nuclide)};
     if (p.E() != micro.last_E || p.sqrtkT() != micro.last_sqrtkT ||

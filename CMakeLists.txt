@@ -104,7 +104,7 @@ endmacro()
 #===============================================================================
 
 if(OPENMC_USE_NCRYSTAL)
-  find_package(NCrystal REQUIRED PATH_SUFFIXES ./)#fixme
+  find_package(NCrystal REQUIRED)
 endif()
 
 #===============================================================================

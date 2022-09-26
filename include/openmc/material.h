@@ -156,9 +156,9 @@ public:
   double temperature() const;
 
 #ifdef NCRYSTAL
-  //! Gwet pointer to NCrystal material object
+  //! Get pointer to NCrystal material object
   //! \return Pointer to NCrystal material object
-  std::shared_ptr<const NCrystal::ProcImpl::Process> m_NCrystal_mat() const {return m_NCrystal_mat_; };
+  std::shared_ptr<const NCrystal::ProcImpl::Process> ncrystal_mat() const {return ncrystal_mat_; };
 #endif
 
   //----------------------------------------------------------------------------
@@ -168,8 +168,8 @@ public:
   vector<int> nuclide_;                 //!< Indices in nuclides vector
   vector<int> element_;                 //!< Indices in elements vector
 #ifdef NCRYSTAL
-  std::string cfg_; //!< NCrystal configuration string
-  std::shared_ptr<const NCrystal::ProcImpl::Process> m_NCrystal_mat_;
+  std::string ncrystal_cfg_; //!< NCrystal configuration string
+  std::shared_ptr<const NCrystal::ProcImpl::Process> ncrystal_mat_;
 #endif
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_;                      //!< Total atom density in [atom/b-cm]

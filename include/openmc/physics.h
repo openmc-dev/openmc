@@ -110,17 +110,11 @@ void split_particle(Particle& p);
 // NCrystal wrapper class for the OpenMC random number generator
 //==============================================================================
 
-class NcrystalRNG_Wrapper : public NCrystal::RNGStream {
+class NCrystalRNGWrapper : public NCrystal::RNGStream {
     uint64_t* openmc_seed_;
 public:
-    constexpr NcrystalRNG_Wrapper(uint64_t* s) noexcept : openmc_seed_(s) {}
-  //Can be cheaply created on the stack just before being used in calls to
-  //ProcImpl::Scatter objects, like:
-  //
-  //  RNG_Wrapper rng(seed);
-  //
+    constexpr NCrystalRNGWrapper(uint64_t* seed) noexcept : openmc_seed_(seed) {}
 protected:
-  //double actualGenerate() override { return prn(openmc_seed_); }
   double actualGenerate() override {
       return std::max<double>( std::numeric_limits<double>::min(), prn(openmc_seed_) );
   }

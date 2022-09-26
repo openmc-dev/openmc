@@ -158,15 +158,18 @@ public:
 #ifdef NCRYSTAL
   //! Get pointer to NCrystal material object
   //! \return Pointer to NCrystal material object
-  std::shared_ptr<const NCrystal::ProcImpl::Process> ncrystal_mat() const {return ncrystal_mat_; };
+  std::shared_ptr<const NCrystal::ProcImpl::Process> ncrystal_mat() const
+  {
+    return ncrystal_mat_;
+  };
 #endif
 
   //----------------------------------------------------------------------------
   // Data
-  int32_t id_ {C_NONE};                 //!< Unique ID
-  std::string name_;                    //!< Name of material
-  vector<int> nuclide_;                 //!< Indices in nuclides vector
-  vector<int> element_;                 //!< Indices in elements vector
+  int32_t id_ {C_NONE}; //!< Unique ID
+  std::string name_;    //!< Name of material
+  vector<int> nuclide_; //!< Indices in nuclides vector
+  vector<int> element_; //!< Indices in elements vector
 #ifdef NCRYSTAL
   std::string ncrystal_cfg_; //!< NCrystal configuration string
   std::shared_ptr<const NCrystal::ProcImpl::Process> ncrystal_mat_;

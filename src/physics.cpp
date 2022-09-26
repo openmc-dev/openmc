@@ -138,20 +138,24 @@ void sample_neutron_reaction(Particle& p)
   if (!p.alive())
     return;
 
-  // Sample a scattering reaction and determine the secondary energy of the
-  // exiting neutron
+    // Sample a scattering reaction and determine the secondary energy of the
+    // exiting neutron
 
 #ifdef NCRYSTAL
-  if (model::materials[p.material()]->ncrystal_mat() && p.E() < settings::ncrystal_max_energy){
+  if (model::materials[p.material()]->ncrystal_mat() &&
+      p.E() < settings::ncrystal_max_energy) {
     NCrystalRNGWrapper rng(p.current_seed()); // Initialize RNG
-    //create a cache pointer for multi thread physics
+    // create a cache pointer for multi thread physics
     NCrystal::CachePtr dummy_cache;
-    auto nc_energy = NCrystal::NeutronEnergy{p.E()};
-    auto outcome = model::materials[p.material()]->ncrystal_mat()->sampleScatter( dummy_cache, rng , nc_energy, {p.u().x, p.u().y, p.u().z});
+    auto nc_energy = NCrystal::NeutronEnergy {p.E()};
+    auto outcome =
+      model::materials[p.material()]->ncrystal_mat()->sampleScatter(
+        dummy_cache, rng, nc_energy, {p.u().x, p.u().y, p.u().z});
     p.E_last() = p.E();
     p.E() = outcome.ekin.get();
     Direction u_old {p.u()};
-    p.u() = Direction(outcome.direction[0], outcome.direction[1], outcome.direction[2]);
+    p.u() = Direction(
+      outcome.direction[0], outcome.direction[1], outcome.direction[2]);
     p.mu() = u_old.dot(p.u());
     p.event_mt() = ELASTIC;
   } else {

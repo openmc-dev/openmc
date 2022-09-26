@@ -119,7 +119,7 @@ double weight_cutoff {0.25};
 double weight_survive {1.0};
 
 #ifdef NCRYSTAL
-double ncrystal_max_energy{5.0};
+double ncrystal_max_energy {5.0};
 #endif
 
 } // namespace settings

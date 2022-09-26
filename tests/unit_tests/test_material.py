@@ -1,8 +1,10 @@
 from collections import defaultdict
+from pathlib import Path
 
 import pytest
 
 import openmc
+from openmc.data import decay_photon_source
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -541,3 +543,28 @@ def test_get_activity():
     # volume is required to calculate total activity
     m4.volume = 10.
     assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
+
+
+def test_decay_photon_source():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    # Material representing single atom of I135, Xe135, and Cs135
+    m = openmc.Material()
+    m.add_nuclide('I135', 1.0e-24)
+    m.add_nuclide('Xe135', 1.0e-24)
+    m.add_nuclide('Cs135', 1.0e-24)
+    m.volume = 1.0
+
+    # Get decay photon source and make sure it's the right type
+    src = m.decay_photon_source
+    assert isinstance(src, openmc.stats.Discrete)
+
+    # With a single atom of each, the intensity of the photon source should be
+    # equal to sum(I*λ)
+    def intensity(src):
+        return src.integral() if src is not None else 0.0
+
+    assert src.integral() == pytest.approx(sum(
+        intensity(decay_photon_source(nuc)) for nuc in m.get_nuclides()
+    ))

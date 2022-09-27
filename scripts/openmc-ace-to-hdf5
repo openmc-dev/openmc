@@ -92,7 +92,10 @@ def ace_to_hdf5(destination, xsdir, xsdata, libraries, metastable, libver):
                 # Add data for new temperature
                 try:
                     print(f"Converting {table.name} (ACE) to {data.name} (HDF5)")
-                    data.add_temperature_from_ace(table)
+                    if table.data_type == TableType.NEUTRON_CONTINUOUS:
+                        data.add_temperature_from_ace(table, metastable)
+                    else:
+                        data.add_temperature_from_ace(table)
                 except Exception as e:
                     print(f"Failed to convert {table.name}: {e}")
                     continue

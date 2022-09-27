@@ -2,7 +2,8 @@ from collections import OrderedDict
 from openmc import Materials, Material
 
 class MsrContinuous:
-    """Class defining a msr continuous object for removal rates.
+    """Class defining Molten salt reactor (msr) elements (fission products)
+    removal, based on removal rates and cycle time concepts.
 
     Parameters
     ----------
@@ -72,7 +73,7 @@ class MsrContinuous:
         Returns
         ----------
         list of tuples :
-            List od tuples pairs to order the transfer matrices
+            List of tuples pairs to order the transfer matrices
             when building the coupled matrix
         """
         transfer_index = OrderedDict()

@@ -75,10 +75,7 @@ person. The nested tags *firstname*, *lastname*, *age*, and *occupation*
 indicate characteristics about the person being described.
 
 In much the same way, OpenMC input uses XML tags to describe the geometry, the
-materials, and settings for a Monte Carlo simulation. Note that because the XML
-files have a well-defined structure, they can be validated using the
-:ref:`scripts_validate` script or using :ref:`Emacs nXML mode
-<usersguide_nxml>`.
+materials, and settings for a Monte Carlo simulation.
 
 Creating Input Files
 --------------------

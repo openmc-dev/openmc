@@ -625,9 +625,7 @@ class Chain:
         msr : openmc.msr.MsrContinuous, optional
             Istance of openmc.msr.MsrContinuous. If passed, the
             concept od removal rates is applied to the depletion matrix.
-        index_msr : list of tuples, optional
-            For each depletabel material, a tuple of indeces (i, j) defines
-            the matrix position.
+
         Returns
         -------
         scipy.sparse.csr_matrix
@@ -664,7 +662,7 @@ class Chain:
                             k = self.nuclide_dict[target]
                             matrix[k, i] += branch_val
 
-            # Loss/gain from removal rates
+            # Loss term, from removal rates
             if msr is not None:
                 elm = re.split(r'\d+', nuc.name)[0]
                 mat = msr.index_burn[mat_index]
@@ -719,15 +717,28 @@ class Chain:
         return matrix_dok.tocsr()
 
     def form_transfer_matrix(self, msr, index_msr):
+        """Forms transfer depletion matrix.
+
+        Parameters
+        ----------
+        msr : openmc.msr.MsrContinuous
+            Istance of openmc.msr.MsrContinuous.
+        index_msr : list of tuples
+            List of tuples pairs that represent transfer matrix indexing
+            when building the coupled matrix
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+
+        """
         matrix = defaultdict(float)
 
+        _, k = index_msr
+        mat = msr.index_burn[k]
         for i, nuc in enumerate(self.nuclides):
-            if index_msr is not None:
-                j, k = index_msr
-                elm = re.split(r'\d+', nuc.name)[0]
-                mat = msr.index_burn[k]
-                if elm in msr.get_elements(mat):
-                    matrix [i, i] = msr.get_removal_rate(mat, elm)
+            elm = re.split(r'\d+', nuc.name)[0]
+            if elm in msr.get_elements(mat):
+                matrix [i, i] = msr.get_removal_rate(mat, elm)
 
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))

@@ -36,12 +36,17 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
     dt : float
         Time in [s] to deplete for
     msr : openmc.deplete.MsrContinuous, Optional
-        MsrContinuous removal terms to add to Bateman equation,
-        accounting for elements removal and transfer. Creates a sparse matrix
-        (scipy.bmat) of matrices (sub-arrays), in which the diagonals are the
-        depletion matrices as defined by the Bateman equation with the addition
-        of a removal coefficient; and the off-diagonals are the matrices
-        accounting for transfers from one material to another.
+        Introduce user-defined removal rates to Bateman matrices.
+        In case one wants to keep track of the removing nuclides or define
+        transfer between two depletable materials, all the matrices are coupled
+        together in one with scipy.bmat and solved in one go.
+        For example, in case of 3 depletable materials and one transfer between
+        material 1 and 3, the final coupled matrix has the form:
+        [A11   0     0
+         0     A22   0
+         T31   0     A33]
+         where A is the depletion matrix including the removal rates,
+         and T the transfer matrix including only the removal rates.
     maxtrix_func : callable, optional
         Function to form the depletion matrix after calling
         ``matrix_func(chain, rates, fission_yields)``, where
@@ -72,7 +77,7 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
         matrices = map(matrix_func, repeat(chain), rates, fission_yields,
                        enumerate(repeat(msr)))
 
-    if not msr.transfer_matrix_index():
+    if msr is None or not msr.transfer_matrix_index():
         inputs = zip(matrices, x, repeat(dt))
         if USE_MULTIPROCESSING:
             with Pool() as pool:
@@ -81,34 +86,24 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
             x_result = list(starmap(func, inputs))
 
     else:
-        transfer_matrices = map(chain.form_transfer_matrix, repeat(msr),
-                             msr.transfer_matrix_index())
-
-        matrices = list(matrices) + list(transfer_matrices)
-
-        # Arrange all matrices in a indexed ordered 2d-array
-        matrices_index = msr.index_msr + msr.transfer_matrix_index()
+        transfer_matrices = list(map(chain.form_transfer_matrix, repeat(msr),
+                             msr.transfer_matrix_index()))
+        matrices = dict(zip(msr.index_msr + msr.transfer_matrix_index(),
+                                 list(matrices) + transfer_matrices))
+        # Order matrices in a 2d-array and build sparse coupled matrix
         raws = []
-        for raw in range(msr.n_burn):
+        for i in range(msr.n_burn):
             cols = []
-            for col in range(msr.n_burn):
-                val = None
-                for index, matrix in zip(matrices_index, matrices):
-                    if index == (raw, col):
-                        val = matrix
-                cols.append(val)
+            for j in range(msr.n_burn):
+                if (i,j) in matrices.keys():
+                    cols.append(matrices[(i,j)])
+                else:
+                    cols.append(None)
             raws.append(cols)
-
-        # Build a coupled sparse matrix
-        sparse_matrix = bmat(raws)
-
-        # Concatenate all atoms vectors in one
+        coupled_matrix = bmat(raws)
         x = np.concatenate([_x for _x in x])
-
-        # Solve the coupled matrices
-        x_result = func(sparse_matrix, x, dt)
-
-        split = np.cumsum([i.shape[0] for i in matrices[:msr.n_burn]])
+        x_result = func(coupled_matrix, x, dt)
+        split = np.cumsum([i.shape[0] for i in matrices.values()[:msr.n_burn]])
         x_result = np.split(x_result, split.tolist()[:-1])
 
     return x_result

@@ -110,7 +110,8 @@ def test_rejection(run_in_tmpdir):
     )
     cell1 = openmc.Cell(fill=mat, region=-sph1)
     cell2 = openmc.Cell(fill=mat, region=-sph2)
-    cell3 = openmc.Cell(region=+sph1 & +sph2 & -cube)
+    non_source_region = +sph1 & +sph2 & -cube
+    cell3 = openmc.Cell(region=non_source_region)
     model = openmc.Model()
     model.geometry = openmc.Geometry([cell1, cell2, cell3])
     model.settings.particles = 100
@@ -130,5 +131,6 @@ def test_rejection(run_in_tmpdir):
     joint_region = cell1.region | cell2.region
     for p in particles:
         assert p.r in joint_region
+       assert p.r not in non_source_region
 
     openmc.lib.finalize()

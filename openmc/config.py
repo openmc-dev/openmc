@@ -4,7 +4,7 @@ from pathlib import Path
 import warnings
 
 from openmc.data import DataLibrary
-from openmc.data.decay import _DECAY_PHOTON_SOURCE
+from openmc.data.decay import _DECAY_PHOTON_ENERGY
 
 __all__ = ["config"]
 
@@ -26,7 +26,7 @@ class _Config(MutableMapping):
         elif key == 'chain_file':
             del os.environ['OPENMC_CHAIN_FILE']
             # Reset photon source data since it relies on chain file
-            _DECAY_PHOTON_SOURCE.clear()
+            _DECAY_PHOTON_ENERGY.clear()
 
     def __setitem__(self, key, value):
         if key == 'cross_sections':
@@ -40,7 +40,7 @@ class _Config(MutableMapping):
             self._set_path(key, value)
             os.environ['OPENMC_CHAIN_FILE'] = str(value)
             # Reset photon source data since it relies on chain file
-            _DECAY_PHOTON_SOURCE.clear()
+            _DECAY_PHOTON_ENERGY.clear()
         else:
             raise KeyError(f'Unrecognized config key: {key}')
 

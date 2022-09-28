@@ -129,18 +129,23 @@ def test_sources(ba137m, nb90):
     assert len(set(sources.keys()) ^ {'positron', 'electron', 'photon'}) == 0
 
 
-def test_decay_photon_source():
+def test_decay_photon_energy():
     # If chain file is not set, we should get a data error
     if 'chain_file' in openmc.config:
         del openmc.config['chain_file']
     with pytest.raises(DataError):
-        openmc.data.decay_photon_source('135')
+        openmc.data.decay_photon_energy('I135')
 
     # Set chain file to simple chain
     openmc.config['chain_file'] = Path(__file__).parents[1] / "chain_simple.xml"
 
     # Check strength of I135 source and presence of specific spectral line
-    src = openmc.data.decay_photon_source('I135')
+    src = openmc.data.decay_photon_energy('I135')
     assert isinstance(src, openmc.stats.Discrete)
     assert src.integral() == pytest.approx(3.920996223799345e-05)
     assert 1260409. in src.x
+
+    # Check Xe135 source, which should be tabular
+    src = openmc.data.decay_photon_energy('Xe135')
+    assert isinstance(src, openmc.stats.Tabular)
+    assert src.integral() == pytest.approx(2.076506258964966e-05)

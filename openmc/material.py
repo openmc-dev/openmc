@@ -92,7 +92,7 @@ class Material(IDManagerMixin):
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
-    decay_photon_source : openmc.stats.Univariate
+    decay_photon_energy : openmc.stats.Univariate
         Energy distribution of photons emitted from decay of unstable nuclides
         within the material. The integral of this distribution is the total
         intensity of the photon source.
@@ -264,12 +264,12 @@ class Material(IDManagerMixin):
         return density*self.volume
 
     @property
-    def decay_photon_source(self) -> Univariate:
+    def decay_photon_energy(self) -> Univariate:
         atoms = self.get_nuclide_atoms()
         dists = []
         probs = []
         for nuc, num_atoms in atoms.items():
-            source_per_atom = openmc.data.decay_photon_source(nuc)
+            source_per_atom = openmc.data.decay_photon_energy(nuc)
             if source_per_atom is not None:
                 dists.append(source_per_atom)
                 probs.append(num_atoms)

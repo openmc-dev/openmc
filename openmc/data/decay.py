@@ -576,11 +576,11 @@ class Decay(EqualityMixin):
         return self._sources
 
 
-_DECAY_PHOTON_SOURCE = {}
+_DECAY_PHOTON_ENERGY = {}
 
 
-def decay_photon_source(nuclide: str) -> Univariate:
-    """Get photon source from the decay of a nuclide
+def decay_photon_energy(nuclide: str) -> Univariate:
+    """Get photon energy distribution resulting from the decay of a nuclide
 
     This function relies on data stored in a depletion chain. Before calling it
     for the first time, you need to ensure that a depletion chain has been
@@ -598,7 +598,7 @@ def decay_photon_source(nuclide: str) -> Univariate:
     openmc.stats.Univariate
         Distribution of energies in [eV] of photons emitted from decay
     """
-    if not _DECAY_PHOTON_SOURCE:
+    if not _DECAY_PHOTON_ENERGY:
         chain_file = openmc.config.get('chain_file')
         if chain_file is None:
             raise DataError(
@@ -610,6 +610,11 @@ def decay_photon_source(nuclide: str) -> Univariate:
         chain = Chain.from_xml(chain_file)
         for nuc in chain.nuclides:
             if 'photon' in nuc.sources:
-                _DECAY_PHOTON_SOURCE[nuc.name] = nuc.sources['photon']
+                _DECAY_PHOTON_ENERGY[nuc.name] = nuc.sources['photon']
 
-    return _DECAY_PHOTON_SOURCE.get(nuclide)
+        # If the chain file contained no sources at all, warn the user
+        if not _DECAY_PHOTON_ENERGY:
+            warn(f"Chain file '{chain_file}' does not have any decay photon "
+                 "sources listed.")
+
+    return _DECAY_PHOTON_ENERGY.get(nuclide)

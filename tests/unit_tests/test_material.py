@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 import openmc
-from openmc.data import decay_photon_source
+from openmc.data import decay_photon_energy
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -545,26 +545,31 @@ def test_get_activity():
     assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
 
 
-def test_decay_photon_source():
+def test_decay_photon_energy():
     # Set chain file for testing
     openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
 
-    # Material representing single atom of I135, Xe135, and Cs135
+    # Material representing single atom of I135 and Cs135
     m = openmc.Material()
     m.add_nuclide('I135', 1.0e-24)
-    m.add_nuclide('Xe135', 1.0e-24)
     m.add_nuclide('Cs135', 1.0e-24)
     m.volume = 1.0
 
     # Get decay photon source and make sure it's the right type
-    src = m.decay_photon_source
+    src = m.decay_photon_energy
     assert isinstance(src, openmc.stats.Discrete)
 
+    # If we add Xe135 (which has a tabular distribution), the photon source
+    # should be a mixture distribution
+    m.add_nuclide('Xe135', 1.0e-24)
+    src = m.decay_photon_energy
+    assert isinstance(src, openmc.stats.Mixture)
+
     # With a single atom of each, the intensity of the photon source should be
-    # equal to sum(I*λ)
+    # equal to the sum of the intensities for each nuclide
     def intensity(src):
         return src.integral() if src is not None else 0.0
 
     assert src.integral() == pytest.approx(sum(
-        intensity(decay_photon_source(nuc)) for nuc in m.get_nuclides()
+        intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
     ))

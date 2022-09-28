@@ -95,7 +95,7 @@ class Material(IDManagerMixin):
     decay_photon_energy : openmc.stats.Univariate
         Energy distribution of photons emitted from decay of unstable nuclides
         within the material. The integral of this distribution is the total
-        intensity of the photon source.
+        intensity of the photon source in [decay/sec].
 
         .. versionadded:: 0.14.0
 

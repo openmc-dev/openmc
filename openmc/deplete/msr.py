@@ -18,7 +18,7 @@ class MsrContinuous:
         List of depletable material id
     ordr_burn : OrderedDict of int and int
         OrderedDict of depletable material id and enuemerated indeces
-    removal_terms : OrderedDict of str and OrderedDict
+    removal_rates : OrderedDict of str and OrderedDict
         OrderedDict of depletable material id and OrderedDict to fill
     """
 
@@ -29,20 +29,15 @@ class MsrContinuous:
         else:
             self.local_mats = local_mats
 
-        self.index_burn = self._get_index_burn()
-        self.n_burn = len(self.index_burn)
-        self.ord_burn = self._order_burn_mats()
-        self.removal_terms = self._initialize_removal_rates()
+        self.index_burn = [mat.id for mat in self.local_mats if mat.depletable]
         self.index_msr = [(i, i) for i in range(self.n_burn)]
 
-    def _get_index_burn(self):
-        """Get burnable material id
-        Returns
-        ----------
-        list of str
-            List of depletable material id
-        """
-        return [mat.id for mat in self.local_mats if mat.depletable]
+        self.ord_burn = self._order_burn_mats()
+        self.removal_rates = self._initialize_removal_rates()
+
+    @property
+    def n_burn(self):
+        return len(self.index_burn)
 
     def _order_burn_mats(self):
         """Order depletable material id
@@ -77,7 +72,7 @@ class MsrContinuous:
             when building the coupled matrix
         """
         transfer_index = OrderedDict()
-        for id, val in self.removal_terms.items():
+        for id, val in self.removal_rates.items():
             if val:
                 for elm, [tr, mat] in val.items():
                     if mat is not None:
@@ -100,7 +95,7 @@ class MsrContinuous:
             Removal rate value
         """
         mat = self._get_mat_index(mat)
-        return self.removal_terms[mat][element][0]
+        return self.removal_rates[mat][element][0]
 
     def get_destination_mat(self, mat, element):
         """Extract destination material
@@ -116,7 +111,7 @@ class MsrContinuous:
             Depletable material id to where elements get transferred
         """
         mat = self._get_mat_index(mat)
-        return self.removal_terms[mat][element][1]
+        return self.removal_rates[mat][element][1]
 
     def get_elements(self, mat):
         """Extract removing elements for a given material
@@ -131,7 +126,7 @@ class MsrContinuous:
         """
         mat = self._get_mat_index(mat)
         elements=[]
-        for k, v in self.removal_terms.items():
+        for k, v in self.removal_rates.items():
             if k == mat:
                 for elm, _ in v.items():
                     elements.append(elm)
@@ -158,4 +153,4 @@ class MsrContinuous:
         if dest_mat is not None:
             dest_mat = self._get_mat_index(dest_mat)
         for element in elements:
-            self.removal_terms[mat][element] = [removal_rate, dest_mat]
+            self.removal_rates[mat][element] = [removal_rate, dest_mat]

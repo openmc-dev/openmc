@@ -131,6 +131,6 @@ def test_rejection(run_in_tmpdir):
     joint_region = cell1.region | cell2.region
     for p in particles:
         assert p.r in joint_region
-       assert p.r not in non_source_region
+        assert p.r not in non_source_region
 
     openmc.lib.finalize()

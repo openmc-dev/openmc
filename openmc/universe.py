@@ -760,7 +760,6 @@ class DAGMCUniverse(UniverseBase):
         with h5py.File(self.filename) as dagmc_file:
             category_data = dagmc_file['tstt/tags/CATEGORY/values']
             category_strs = map(decode_str_tag, category_data)
-            # add one assuming implicit complement doesn't exist
             n = sum([v == geom_type.capitalize() for v in category_strs])
 
             # check for presence of an implicit complement in the file and

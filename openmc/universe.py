@@ -730,6 +730,46 @@ class DAGMCUniverse(UniverseBase):
     def get_all_materials(self, memo=None):
         return OrderedDict()
 
+    def _n_geom_elements(self, geom_type):
+        """
+        Helper function for retrieving the number geometric entities in a DAGMC
+        file
+
+        Parameters
+        ----------
+
+        geom_type : str
+            The type of geometric entity to count. One of {'Volume', 'Surface'}. Returns
+            the runtime number of voumes in the DAGMC model (includes implicit complement).
+        """
+        cv.check_value('geometry type', geom_type, ('volume', 'surface'))
+
+        def decode_str_tag(tag_val):
+            return tag_val.tobytes().decode().replace('\x00', '')
+
+        with h5py.File(self.filename) as dagmc_file:
+            category_data = dagmc_file['tstt/tags/CATEGORY/values']
+            category_strs = map(decode_str_tag, category_data)
+            # add one assuming implicit complement doesn't exist
+            n = sum([v == geom_type.capitalize() for v in category_strs])
+
+            # check for presence of an implicit complement in the file and
+            # increment the number of cells if it doesn't exist
+            if geom_type == 'volume':
+                name_data = dagmc_file['tstt/tags/NAME/values']
+                name_strs = map(decode_str_tag, name_data)
+                if not sum(['impl_complement' in n for n in name_strs]):
+                    n += 1
+        return n
+
+    @property
+    def n_cells(self):
+        return self._n_geom_elements('volume')
+
+    @property
+    def n_surfaces(self):
+        return self._n_geom_elements('surface')
+
     def create_xml_subelement(self, xml_element, memo=None):
         if memo and self in memo:
             return

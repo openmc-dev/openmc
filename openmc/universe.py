@@ -624,11 +624,11 @@ class DAGMCUniverse(UniverseBase):
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
     auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
+        Set IDs automatically on initialization (True) or report overlaps in ID
+        space between CSG and DAGMC (False)
     auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
+        Set IDs automatically on initialization (True)  or report overlaps in ID
+        space between OpenMC and UWUW materials (False)
 
     Attributes
     ----------
@@ -639,11 +639,11 @@ class DAGMCUniverse(UniverseBase):
     filename : str
         Path to the DAGMC file used to represent this universe.
     auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
+        Set IDs automatically on initialization (True) or report overlaps in ID
+        space between CSG and DAGMC (False)
     auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
+        Set IDs automatically on initialization (True)  or report overlaps in ID
+        space between OpenMC and UWUW materials (False)
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
@@ -652,6 +652,12 @@ class DAGMCUniverse(UniverseBase):
         DAGMC h5m file. This is useful when naming openmc.Material() objects
         as each material name present in the DAGMC h5m file must have a
         matching openmc.Material() with the same name.
+    n_cells : int
+        The number of cells in the DAGMC model. This is the number of cells at
+        runtime and accounts for the implicit complement volume if it isn't
+        present in the DAGMC file.
+    n_surfaces : int
+        The number of surfaces in the model.
 
         .. versionadded:: 0.13.1
     """
@@ -737,10 +743,14 @@ class DAGMCUniverse(UniverseBase):
 
         Parameters
         ----------
-
         geom_type : str
             The type of geometric entity to count. One of {'Volume', 'Surface'}. Returns
             the runtime number of voumes in the DAGMC model (includes implicit complement).
+
+        Returns
+        -------
+        int
+            Number of geometry elements of the specified type
         """
         cv.check_value('geometry type', geom_type, ('volume', 'surface'))
 

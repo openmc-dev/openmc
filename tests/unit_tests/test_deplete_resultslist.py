@@ -133,3 +133,17 @@ def test_get_steps(unit):
     actual = results.get_step_where(
         times[-1] * 100, time_units=unit, atol=inf, rtol=inf)
     assert actual == times.size - 1
+
+
+def test_stepresult_get_material(res):
+    # Get material at first timestep
+    step_result = res[0]
+    mat1 = step_result.get_material("1")
+    assert mat1.id == 1
+    assert mat1.volume == step_result.volume["1"]
+
+    # Spot check number densities
+    densities = mat1.get_nuclide_atom_densities()
+    assert densities['Xe135'] == pytest.approx(1e-14)
+    assert densities['I135'] == pytest.approx(1e-21)
+    assert densities['U234'] == pytest.approx(1.00506e-05)

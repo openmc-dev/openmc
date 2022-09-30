@@ -18,6 +18,7 @@ import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 from openmc.checkvalue import PathLike
+from openmc.stats import Univariate
 
 
 # Units for density supported by OpenMC
@@ -34,10 +35,10 @@ class Material(IDManagerMixin):
     To create a material, one should create an instance of this class, add
     nuclides or elements with :meth:`Material.add_nuclide` or
     :meth:`Material.add_element`, respectively, and set the total material
-    density with :meth:`Material.set_density()`. Alternatively, you can
-    use :meth:`Material.add_components()` to pass a dictionary
-    containing all the component information. The material can then be
-    assigned to a cell using the :attr:`Cell.fill` attribute.
+    density with :meth:`Material.set_density()`. Alternatively, you can use
+    :meth:`Material.add_components()` to pass a dictionary containing all the
+    component information. The material can then be assigned to a cell using the
+    :attr:`Cell.fill` attribute.
 
     Parameters
     ----------
@@ -91,6 +92,13 @@ class Material(IDManagerMixin):
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
+    decay_photon_energy : openmc.stats.Univariate
+        Energy distribution of photons emitted from decay of unstable nuclides
+        within the material. The integral of this distribution is the total
+        intensity of the photon source in [decay/sec].
+
+        .. versionadded:: 0.14.0
+
     """
 
     next_id = 1
@@ -254,6 +262,18 @@ class Material(IDManagerMixin):
                 density += 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
                            / openmc.data.AVOGADRO
         return density*self.volume
+
+    @property
+    def decay_photon_energy(self) -> Univariate:
+        atoms = self.get_nuclide_atoms()
+        dists = []
+        probs = []
+        for nuc, num_atoms in atoms.items():
+            source_per_atom = openmc.data.decay_photon_energy(nuc)
+            if source_per_atom is not None:
+                dists.append(source_per_atom)
+                probs.append(num_atoms)
+        return openmc.data.combine_distributions(dists, probs)
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):
@@ -820,7 +840,7 @@ class Material(IDManagerMixin):
             for nuclide in self._nuclides:
                 if nuclide.name not in matching_nuclides:
                     matching_nuclides.append(nuclide.name)
-                        
+
         return matching_nuclides
 
     def get_nuclide_densities(self):

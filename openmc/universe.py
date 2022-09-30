@@ -757,7 +757,8 @@ class DAGMCUniverse(UniverseBase):
         def decode_str_tag(tag_val):
             return tag_val.tobytes().decode().replace('\x00', '')
 
-        with h5py.File(self.filename) as dagmc_file:
+        dagmc_filepath = Path(self.filename).resolve()
+        with h5py.File(dagmc_filepath) as dagmc_file:
             category_data = dagmc_file['tstt/tags/CATEGORY/values']
             category_strs = map(decode_str_tag, category_data)
             n = sum([v == geom_type.capitalize() for v in category_strs])

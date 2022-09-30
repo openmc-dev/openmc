@@ -647,7 +647,7 @@ class DAGMCUniverse(UniverseBase):
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
-    material_name : list of str
+    material_names : list of str
         Return a sorted list of materials names that are contained within the
         DAGMC h5m file. This is useful when naming openmc.Material() objects
         as each material name present in the DAGMC h5m file must have a

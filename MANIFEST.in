@@ -23,6 +23,7 @@ recursive-include examples *.cpp
 recursive-include examples *.py
 recursive-include examples *.xml
 recursive-include include *.h
+recursive-include include *.h.in
 recursive-include include *.hh
 recursive-include man *.1
 recursive-include openmc *.pyx

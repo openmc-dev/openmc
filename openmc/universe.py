@@ -654,7 +654,7 @@ class DAGMCUniverse(UniverseBase):
         matching openmc.Material() with the same name.
     n_cells : int
         The number of cells in the DAGMC model. This is the number of cells at
-        runtime and accounts for the implicit complement volume if it isn't
+        runtime and accounts for the implicit complement whether or not is it
         present in the DAGMC file.
     n_surfaces : int
         The number of surfaces in the model.

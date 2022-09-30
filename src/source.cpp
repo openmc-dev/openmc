@@ -217,19 +217,14 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
         if (domain_type_ == DomainType::MATERIAL) {
           auto mat_index = p.material();
           if (mat_index != MATERIAL_VOID) {
-            if (contains(domain_ids_, model::materials[mat_index]->id())) {
-              found = true;
-            }
+            found = contains(domain_ids_, model::materials[mat_index]->id());
           }
         } else {
           for (const auto& coord : p.coord()) {
             auto id = (domain_type_ == DomainType::CELL)
                         ? model::cells[coord.cell]->id_
                         : model::universes[coord.universe]->id_;
-            if (contains(domain_ids_, id)) {
-              found = true;
-              break;
-            }
+            if (found = contains(domain_ids_, id)) break;
           }
         }
       }

@@ -1,2 +1,24 @@
 [build-system]
-requires = ["setuptools", "wheel", "numpy<1.22", "cython"]
+requires = [
+    "setuptools>=65.4.1 ",
+    "scikit-build>=0.15.0",
+    "cmake>=3.24.1",
+    "ninja",
+]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name="openmc"
+version="0.14.0"
+dependencies=[
+        "matplotlib",
+        "numpy",
+        "scipy",
+        "ipython",
+        "matplotlib",
+        "uncertainties",
+        "lxml",
+        "pandas",
+        "h5py"
+    ]

@@ -30,7 +30,8 @@ def dagmc_model(request):
     model.settings.source = source
 
     # geometry
-    dagmc_universe = openmc.DAGMCUniverse('dagmc.h5m')
+    dagmc_file = Path(request.fspath).parent / 'dagmc.h5m'
+    dagmc_universe = openmc.DAGMCUniverse(dagmc_file)
     model.geometry = openmc.Geometry(dagmc_universe)
 
     # check number of surfaces and volumes for this pincell model there should

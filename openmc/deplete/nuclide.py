@@ -321,7 +321,7 @@ class Nuclide:
                 # TODO: Ugly hack to deal with the fact that
                 # 'source.to_xml_element' will return an xml.etree object
                 # whereas here lxml is being used preferentially. We should just
-                # switch to use lxml everywhere,
+                # switch to use lxml everywhere
                 import xml.etree.ElementTree as etree
                 src_elem_xmletree = source.to_xml_element('source')
                 src_elem = ET.fromstring(etree.tostring(src_elem_xmletree))

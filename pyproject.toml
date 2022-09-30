@@ -4,21 +4,6 @@ requires = [
     "scikit-build>=0.15.0",
     "cmake>=3.24.1",
     "ninja",
+    "Cython",
 ]
 build-backend = "setuptools.build_meta"
-
-
-[project]
-name="openmc"
-version="0.14.0"
-dependencies=[
-        "matplotlib",
-        "numpy",
-        "scipy",
-        "ipython",
-        "matplotlib",
-        "uncertainties",
-        "lxml",
-        "pandas",
-        "h5py"
-    ]

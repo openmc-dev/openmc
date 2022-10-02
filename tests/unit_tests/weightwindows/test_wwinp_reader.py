@@ -118,7 +118,13 @@ def test_wwinp_reader(wwinp_data, request):
         # check the expected weight window values mocked in the file --
         # a reversed array of the flat index into the numpy array
         n_wws = np.prod((*mesh.dimension, e_bounds.size - 1))
-        exp_ww_lb = np.linspace(1, n_wws, n_wws)[::-1]
+        nx, ny, nz, ne = mesh.dimension + (e_bounds.size - 1,)
+        exp_ww_lb = np.linspace(1, n_wws, n_wws)[::-1].reshape(nx, ny, nz, ne)
+        # this is how the ww lower bounds were actually written to file
+        exp_ww_lb = np.swapaxes(exp_ww_lb, 0, 2).flatten()
+        # this is how we expect them to be read back in
+        exp_ww_lb = exp_ww_lb.reshape(ne, nz, ny, nx).T.flatten()
+
         np.testing.assert_array_equal(exp_ww_lb, ww.lower_ww_bounds.flatten())
 
 

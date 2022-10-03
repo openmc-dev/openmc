@@ -1,6 +1,7 @@
 from math import pi
 
 import openmc
+import openmc.lib
 import openmc.stats
 import numpy as np
 from pytest import approx
@@ -96,3 +97,40 @@ def test_source_xml_roundtrip():
     np.testing.assert_allclose(new_src.angle.reference_uvw, src.angle.reference_uvw)
     assert new_src.particle == src.particle
     assert new_src.strength == approx(src.strength)
+
+
+def test_rejection(run_in_tmpdir):
+    # Model with two spheres inside a box
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    sph1 = openmc.Sphere(x0=3, r=1.0)
+    sph2 = openmc.Sphere(x0=-3, r=1.0)
+    cube = openmc.model.RectangularParallelepiped(
+        -5., 5., -5., 5., -5., 5., boundary_type='reflective'
+    )
+    cell1 = openmc.Cell(fill=mat, region=-sph1)
+    cell2 = openmc.Cell(fill=mat, region=-sph2)
+    non_source_region = +sph1 & +sph2 & -cube
+    cell3 = openmc.Cell(region=non_source_region)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell1, cell2, cell3])
+    model.settings.particles = 100
+    model.settings.batches = 10
+    model.settings.run_mode = 'fixed source'
+
+    # Set up a box source with rejection on the spherical cell
+    space = openmc.stats.Box(*cell3.bounding_box)
+    model.settings.source = openmc.Source(space=space, domains=[cell1, cell2])
+
+    # Load up model via openmc.lib and sample source
+    model.export_to_xml()
+    openmc.lib.init()
+    particles = openmc.lib.sample_external_source(1000)
+
+    # Make sure that all sampled sources are within one of the spheres
+    joint_region = cell1.region | cell2.region
+    for p in particles:
+        assert p.r in joint_region
+        assert p.r not in non_source_region
+
+    openmc.lib.finalize()

@@ -16,8 +16,10 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
 #include "openmc/memory.h"
@@ -151,29 +153,48 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       double p[] {1.0};
       time_ = UPtrDist {new Discrete {T, p, 1}};
     }
+
+    // Check for domains to reject from
+    if (check_for_node(node, "domain_type")) {
+      std::string domain_type = get_node_value(node, "domain_type");
+      if (domain_type == "cell") {
+        domain_type_ = DomainType::CELL;
+      } else if (domain_type == "material") {
+        domain_type_ = DomainType::MATERIAL;
+      } else if (domain_type == "universe") {
+        domain_type_ = DomainType::UNIVERSE;
+      } else {
+        fatal_error(std::string(
+          "Unrecognized domain type for source rejection: " + domain_type));
+      }
+
+      auto ids = get_node_array<int>(node, "domain_ids");
+      domain_ids_.insert(ids.begin(), ids.end());
+    }
   }
 }
 
 SourceSite IndependentSource::sample(uint64_t* seed) const
 {
   SourceSite site;
+  site.particle = particle_;
 
   // Repeat sampling source location until a good site has been found
   bool found = false;
   int n_reject = 0;
   static int n_accept = 0;
+
   while (!found) {
     // Set particle type
-    site.particle = particle_;
+    Particle p;
+    p.type() = particle_;
+    p.u() = {0.0, 0.0, 1.0};
 
     // Sample spatial distribution
-    site.r = space_->sample(seed);
+    p.r() = space_->sample(seed);
 
     // Now search to see if location exists in geometry
-    int32_t cell_index, instance;
-    double xyz[] {site.r.x, site.r.y, site.r.z};
-    int err = openmc_find_cell(xyz, &cell_index, &instance);
-    found = (err != OPENMC_E_GEOMETRY);
+    found = exhaustive_find_cell(p);
 
     // Check if spatial site is in fissionable material
     if (found) {
@@ -181,15 +202,29 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       if (space_box) {
         if (space_box->only_fissionable()) {
           // Determine material
-          const auto& c = model::cells[cell_index];
-          auto mat_index =
-            c->material_.size() == 1 ? c->material_[0] : c->material_[instance];
-
+          auto mat_index = p.material();
           if (mat_index == MATERIAL_VOID) {
             found = false;
           } else {
-            if (!model::materials[mat_index]->fissionable_)
-              found = false;
+            found = model::materials[mat_index]->fissionable_;
+          }
+        }
+      }
+
+      // Rejection based on cells/materials/universes
+      if (!domain_ids_.empty()) {
+        found = false;
+        if (domain_type_ == DomainType::MATERIAL) {
+          auto mat_index = p.material();
+          if (mat_index != MATERIAL_VOID) {
+            found = contains(domain_ids_, model::materials[mat_index]->id());
+          }
+        } else {
+          for (const auto& coord : p.coord()) {
+            auto id = (domain_type_ == DomainType::CELL)
+                        ? model::cells[coord.cell]->id_
+                        : model::universes[coord.universe]->id_;
+            if (found = contains(domain_ids_, id)) break;
           }
         }
       }
@@ -205,6 +240,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
                     "definition.");
       }
     }
+
+    site.r = p.r();
   }
 
   // Sample angle

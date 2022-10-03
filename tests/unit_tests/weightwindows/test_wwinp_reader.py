@@ -119,7 +119,6 @@ def test_wwinp_reader(wwinp_data, request):
         # a reversed array of the flat index into the numpy array
         n_wws = np.prod((*mesh.dimension, e_bounds.size - 1))
         exp_ww_lb = np.linspace(1, n_wws, n_wws)[::-1]
-
         np.testing.assert_array_equal(exp_ww_lb, ww.lower_ww_bounds.flatten())
 
 

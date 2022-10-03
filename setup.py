@@ -1,8 +1,12 @@
+#!/usr/bin/env python
+
 import glob
 import sys
-from skbuild import setup
 
 from setuptools import find_packages
+
+from skbuild import setup
+
 
 # Determine shared library suffix
 if sys.platform == 'darwin':

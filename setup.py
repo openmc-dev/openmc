@@ -41,6 +41,5 @@ setup(
         'openmc.data': ['mass16.txt', 'BREMX.DAT', 'half_life.json', '*.h5'],
         'openmc.data.effective_dose': ['*.txt']
     },
-    cmake_minimum_required_version="3.10.0",
-    cmake_args=['-DOPENMC_USE_DAGMC:BOOL=ON']
+    cmake_minimum_required_version="3.10.0"
 )

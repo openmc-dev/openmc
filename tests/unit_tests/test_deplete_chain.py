@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from openmc.mpi import comm
 from openmc.deplete import Chain, reaction_rates, nuclide, cram, pool
+from openmc.stats import Discrete
 import pytest
 
 from tests import cdtemp
@@ -474,6 +475,15 @@ def test_validate_inputs():
 def gnd_simple_chain():
     chainfile = Path(__file__).parents[1] / "chain_simple.xml"
     return Chain.from_xml(chainfile)
+
+
+def test_chain_sources(gnd_simple_chain):
+    i135 = gnd_simple_chain['I135']
+    assert isinstance(i135.sources, dict)
+    assert list(i135.sources.keys()) == ['photon']
+    photon_src = i135.sources['photon']
+    assert isinstance(photon_src, Discrete)
+    assert photon_src.integral() == pytest.approx(3.920996223799345e-05)
 
 
 def test_reduce(gnd_simple_chain, endf_chain):

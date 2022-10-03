@@ -647,6 +647,11 @@ class DAGMCUniverse(UniverseBase):
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
+    material_name : list of str
+        Return a sorted list of materials names that are contained within the
+        DAGMC h5m file. This is useful when naming openmc.Material() objects
+        as each material name present in the DAGMC h5m file must have a
+        matching openmc.Material() with the same name.
 
         .. versionadded:: 0.13.1
     """
@@ -698,6 +703,21 @@ class DAGMCUniverse(UniverseBase):
     @property
     def auto_mat_ids(self):
         return self._auto_mat_ids
+
+    @property
+    def material_names(self):
+        dagmc_file_contents = h5py.File(self.filename)
+        material_tags_hex=dagmc_file_contents['/tstt/tags/NAME'].get('values')
+        material_tags_ascii=[]
+        for tag in material_tags_hex:
+            candidate_tag = tag.tobytes().decode().replace('\x00', '')
+            # tags might be for temperature or reflective surfaces
+            if candidate_tag.startswith('mat:'):
+                # removes first 4 characters as openmc.Material name should be
+                # set without the 'mat:' part of the tag
+                material_tags_ascii.append(candidate_tag[4:])
+
+        return sorted(set(material_tags_ascii))
 
     @auto_mat_ids.setter
     def auto_mat_ids(self, val):

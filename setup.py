@@ -1,15 +1,26 @@
+import glob
+import sys
 from skbuild import setup
+
+from setuptools import find_packages
+
+# Determine shared library suffix
+if sys.platform == 'darwin':
+    suffix = 'dylib'
+else:
+    suffix = 'so'
+
+# Get version information from __init__.py. This is ugly, but more reliable
+# than using an import.
+with open('openmc/__init__.py', 'r') as f:
+    version = f.readlines()[-1].split()[-1].strip("'")
 
 setup(
     name="openmc",
-    version="0.14.0",
+    version=version,
+    packages=find_packages(exclude=['tests*']),
     include_package_data=True,
-    description="OpenMC Monte Carlo Code",
-    author='The OpenMC Development Team',
-    license="MIT",
-    packages=['openmc'],
-    python_requires=">=3.8",
-    zip_safe=False,
+    python_requires=">=3.6",
     install_requires=[
         "matplotlib",
         "numpy",
@@ -20,4 +31,10 @@ setup(
         "lxml",
         "pandas",
         "h5py"],
+    scripts=glob.glob('scripts/openmc-*'),
+    package_data={
+        'openmc.lib': ['libopenmc.{}'.format(suffix)],
+        'openmc.data': ['mass16.txt', 'BREMX.DAT', 'half_life.json', '*.h5'],
+        'openmc.data.effective_dose': ['*.txt']
+    }
 )

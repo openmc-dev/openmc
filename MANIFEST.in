@@ -48,3 +48,4 @@ recursive-include vendor *.natvis
 include vendor/gsl-lite/include/gsl/gsl
 prune docs/build
 prune docs/source/pythonapi/generated/
+global-include openmc

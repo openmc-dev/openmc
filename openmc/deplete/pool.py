@@ -103,7 +103,7 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
         coupled_matrix = bmat(raws)
         x = np.concatenate([_x for _x in x])
         x_result = func(coupled_matrix, x, dt)
-        split = np.cumsum([i.shape[0] for i in matrices.values()[:msr.n_burn]])
+        split = np.cumsum([i.shape[0] for i in list(matrices.values())[:msr.n_burn]])
         x_result = np.split(x_result, split.tolist()[:-1])
 
     return x_result

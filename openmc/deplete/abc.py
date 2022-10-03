@@ -580,8 +580,8 @@ class Integrator(ABC):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, msr=None, timestep_units='s',
-                 solver="cram48"):
+                 source_rates=None, msr_continuous=None, msr_batchwise=None,
+                 timestep_units='s', solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -654,16 +654,24 @@ class Integrator(ABC):
         self.timesteps = asarray(seconds)
         self.source_rates = asarray(source_rates)
 
-        if msr is not None:
-            if not isinstance(msr, MsrContinuous):
+        if msr_continuous is not None:
+            if not isinstance(msr_continuous, MsrContinuous):
                 raise ValueError('This is not a valid MsrContinuous')
             else:
-                if not msr.removal_terms:
+                if not msr_continuous.removal_rates:
                     raise ValueError('MsrContinuous removal terms is empty')
                 else:
-                    self.msr = msr
+                    self.msr_continuous = msr_continuous
         else:
-            self.msr = None
+            self.msr_continuous = None
+
+        if msr_batchwise is not None:
+            if not isinstance(msr_batchwise, MsrBatchwise):
+                raise ValueError('This is not a valid MsrBatchwise')
+            else
+                self.msr_batchwise = msr_batchwise
+        else:
+            self.msr_batchwise = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -715,7 +723,8 @@ class Integrator(ABC):
     def _timed_deplete(self, concs, rates, dt, matrix_func=None):
         start = time.time()
         results = deplete(
-            self._solver, self.chain, concs, rates, dt, self.msr, matrix_func)
+            self._solver, self.chain, concs, rates, dt, self.msr_continuous,
+            matrix_func)
         return time.time() - start, results
 
     @abstractmethod
@@ -789,6 +798,16 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
+    def _bw_control(self, step_index, bos_conc):
+        """Get BOS from Operator criticality batch-wise control
+        """
+        x = deepcopy(bos_conc)
+        # Get new vector after keff criticality control
+        diff = 0
+        if step_index > 0 and self.operator.keff_control is not None:
+            x, diff = self.operator.make_keff_control(x,step_index)
+        return x, diff
+
     def integrate(self, final_step=True, output=True):
         """Perform the entire depletion process across all steps
 
@@ -814,6 +833,8 @@ class Integrator(ABC):
 
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
+                    # Modify vector according to msr batchwise definition
+                    conc, diff = self._bw_control(i, conc)
                     conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
                 else:
                     conc, res = self._get_bos_data_from_restart(i, source_rate, conc)

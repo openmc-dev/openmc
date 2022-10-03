@@ -1143,6 +1143,7 @@ class CylindricalMesh(StructuredMesh):
         domain,
         dimension=[100, 100, 100],
         mesh_id=None,
+        phi_grid=[0.0, 2*pi],
         name=''
     ):
         """Create mesh from an existing openmc cell, region, universe or
@@ -1160,6 +1161,9 @@ class CylindricalMesh(StructuredMesh):
             phi_grid, z_grid)
         mesh_id : int
             Unique identifier for the mesh
+        phi_grid : numpy.ndarray
+            1-D array of mesh boundary points along the phi-axis in radians.
+            The default value is [0, 2π], i.e. the full phi range.
         name : str
             Name of the mesh
 
@@ -1188,7 +1192,7 @@ class CylindricalMesh(StructuredMesh):
             ]
         )
         mesh.r_grid = np.linspace(0, max_bounding_box_radius, num=dimension[0]+1)
-        mesh.phi_grid = np.linspace(0, 2*np.pi, num=dimension[1]+1)
+        mesh.phi_grid = np.linspace(phi_grid[0], phi_grid[1], num=dimension[1]+1)
         mesh.z_grid = np.linspace(
             cached_bb[0][2],
             cached_bb[1][2],

@@ -36,16 +36,16 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
     dt : float
         Time in [s] to deplete for
     msr : openmc.deplete.MsrContinuous, Optional
-        Introduce user-defined removal rates to Bateman matrices.
+        Introduce user-defined removal rates to Bateman equations.
         In case one wants to keep track of the removing nuclides or define
-        transfer between two depletable materials, all the matrices are coupled
-        together in one with scipy.bmat and solved in one go.
+        transfer between two depletable materials, the matrices can be coupled
+        together in one by means of scipy library (bmat).
         For example, in case of 3 depletable materials and one transfer between
-        material 1 and 3, the final coupled matrix has the form:
+        material 1 and 3, the final coupled matrix assumes the form:
         [A11   0     0
          0     A22   0
          T31   0     A33]
-         where A is the depletion matrix including the removal rates,
+         where A are the depletion matrices including the removal rates,
          and T the transfer matrix including only the removal rates.
     maxtrix_func : callable, optional
         Function to form the depletion matrix after calling

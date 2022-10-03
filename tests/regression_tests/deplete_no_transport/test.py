@@ -161,23 +161,23 @@ def _create_operator(from_nuclides,
     return op
 
 def _assert_same_mats(res_ref, res_test):
-    for mat in res_ref[0].mat_to_ind:
-            assert mat in res_test[0].mat_to_ind, \
+    for mat in res_ref[0].index_mat:
+            assert mat in res_test[0].index_mat, \
                 "Material {} not in new results.".format(mat)
-    for nuc in res_ref[0].nuc_to_ind:
-        assert nuc in res_test[0].nuc_to_ind, \
+    for nuc in res_ref[0].index_nuc:
+        assert nuc in res_test[0].index_nuc, \
             "Nuclide {} not in new results.".format(nuc)
 
-    for mat in res_test[0].mat_to_ind:
-        assert mat in res_ref[0].mat_to_ind, \
+    for mat in res_test[0].index_mat:
+        assert mat in res_ref[0].index_mat, \
             "Material {} not in old results.".format(mat)
-    for nuc in res_test[0].nuc_to_ind:
-        assert nuc in res_ref[0].nuc_to_ind, \
+    for nuc in res_test[0].index_nuc:
+        assert nuc in res_ref[0].index_nuc, \
             "Nuclide {} not in old results.".format(nuc)
 
 def _assert_atoms_equal(res_ref, res_test, tol):
-    for mat in res_test[0].mat_to_ind:
-        for nuc in res_test[0].nuc_to_ind:
+    for mat in res_test[0].index_mat:
+        for nuc in res_test[0].index_nuc:
             _, y_test = res_test.get_atoms(mat, nuc)
             _, y_old = res_ref.get_atoms(mat, nuc)
 

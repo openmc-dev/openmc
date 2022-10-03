@@ -334,7 +334,7 @@ class OpenMCOperator(TransportOperator):
         mat_id = str(mat.id)
 
         # Get nuclide lists from geometry and depletion results
-        depl_nuc = prev_res[-1].nuc_to_ind
+        depl_nuc = prev_res[-1].index_nuc
         geom_nuc_densities = mat.get_nuclide_atom_densities()
 
         # Merge lists of nuclides, with the same order for every calculation

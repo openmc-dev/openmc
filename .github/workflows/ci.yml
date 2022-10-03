@@ -57,9 +57,6 @@ jobs:
             python-version: 3.8
             omp: n
             mpi: y
-          - python-version: 3.9
-            omp: n
-            mpi: n
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
       mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
       libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}

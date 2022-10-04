@@ -624,11 +624,11 @@ class DAGMCUniverse(UniverseBase):
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
     auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
+        Set IDs automatically on initialization (True) or report overlaps in ID
+        space between CSG and DAGMC (False)
     auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
+        Set IDs automatically on initialization (True)  or report overlaps in ID
+        space between OpenMC and UWUW materials (False)
 
     Attributes
     ----------
@@ -639,19 +639,25 @@ class DAGMCUniverse(UniverseBase):
     filename : str
         Path to the DAGMC file used to represent this universe.
     auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
+        Set IDs automatically on initialization (True) or report overlaps in ID
+        space between CSG and DAGMC (False)
     auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
+        Set IDs automatically on initialization (True)  or report overlaps in ID
+        space between OpenMC and UWUW materials (False)
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
-    material_name : list of str
+    material_names : list of str
         Return a sorted list of materials names that are contained within the
         DAGMC h5m file. This is useful when naming openmc.Material() objects
         as each material name present in the DAGMC h5m file must have a
         matching openmc.Material() with the same name.
+    n_cells : int
+        The number of cells in the DAGMC model. This is the number of cells at
+        runtime and accounts for the implicit complement whether or not is it
+        present in the DAGMC file.
+    n_surfaces : int
+        The number of surfaces in the model.
 
         .. versionadded:: 0.13.1
     """
@@ -729,6 +735,50 @@ class DAGMCUniverse(UniverseBase):
 
     def get_all_materials(self, memo=None):
         return OrderedDict()
+
+    def _n_geom_elements(self, geom_type):
+        """
+        Helper function for retrieving the number geometric entities in a DAGMC
+        file
+
+        Parameters
+        ----------
+        geom_type : str
+            The type of geometric entity to count. One of {'Volume', 'Surface'}. Returns
+            the runtime number of voumes in the DAGMC model (includes implicit complement).
+
+        Returns
+        -------
+        int
+            Number of geometry elements of the specified type
+        """
+        cv.check_value('geometry type', geom_type, ('volume', 'surface'))
+
+        def decode_str_tag(tag_val):
+            return tag_val.tobytes().decode().replace('\x00', '')
+
+        dagmc_filepath = Path(self.filename).resolve()
+        with h5py.File(dagmc_filepath) as dagmc_file:
+            category_data = dagmc_file['tstt/tags/CATEGORY/values']
+            category_strs = map(decode_str_tag, category_data)
+            n = sum([v == geom_type.capitalize() for v in category_strs])
+
+            # check for presence of an implicit complement in the file and
+            # increment the number of cells if it doesn't exist
+            if geom_type == 'volume':
+                name_data = dagmc_file['tstt/tags/NAME/values']
+                name_strs = map(decode_str_tag, name_data)
+                if not sum(['impl_complement' in n for n in name_strs]):
+                    n += 1
+        return n
+
+    @property
+    def n_cells(self):
+        return self._n_geom_elements('volume')
+
+    @property
+    def n_surfaces(self):
+        return self._n_geom_elements('surface')
 
     def create_xml_subelement(self, xml_element, memo=None):
         if memo and self in memo:

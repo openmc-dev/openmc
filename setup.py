@@ -6,6 +6,7 @@ import sys
 from setuptools import find_packages
 
 from skbuild import setup
+from Cython.Build import cythonize
 
 
 # Determine shared library suffix
@@ -40,5 +41,6 @@ setup(
         'openmc.lib': ['libopenmc.{}'.format(suffix)],
         'openmc.data': ['mass16.txt', 'BREMX.DAT', 'half_life.json', '*.h5'],
         'openmc.data.effective_dose': ['*.txt']
-    }
+    },
+    ext_modules= cythonize('openmc/data/*.pyx')
 )

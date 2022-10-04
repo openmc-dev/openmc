@@ -25,7 +25,7 @@ from .stepresult import StepResult
 from .chain import Chain
 from .results import Results
 from .pool import deplete
-from .msr import MsrContinuous
+from .msr import MsrContinuous, MsrBatchwise, MsrBatchwiseGeom, MsrBatchwiseMat
 
 
 __all__ = [
@@ -580,8 +580,8 @@ class Integrator(ABC):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, msr_continuous=None, msr_batchwise=None,
-                 timestep_units='s', solver="cram48"):
+                 source_rates=None, msr_continuous=None, msr_bw_geom=None,
+                 msr_bw_mat=None, timestep_units='s', solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -665,13 +665,21 @@ class Integrator(ABC):
         else:
             self.msr_continuous = None
 
-        if msr_batchwise is not None:
-            if not isinstance(msr_batchwise, MsrBatchwise):
-                raise ValueError('This is not a valid MsrBatchwise')
-            else
-                self.msr_batchwise = msr_batchwise
+        if msr_bw_geom is not None:
+            if not isinstance(msr_bw_geom, MsrBatchwiseGeom):
+                raise ValueError('This is not a valid MsrBatchwiseGeom')
+            else:
+                self.msr_bw_geom = msr_bw_geom
         else:
-            self.msr_batchwise = None
+            self.msr_bw_geom = None
+
+        if msr_bw_mat is not None:
+            if not isinstance(msr_bw_mat, MsrBatchwiseMat):
+                raise ValueError('This is not a valid MsrBatchwiseMat')
+            else:
+                self.msr_bw_mat = msr_bw_mat
+        else:
+            self.msr_bw_mat = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -798,14 +806,25 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
-    def _bw_control(self, step_index, bos_conc):
+    def _geometry_critical_update(self, step_index, bos_conc):
         """Get BOS from Operator criticality batch-wise control
         """
         x = deepcopy(bos_conc)
         # Get new vector after keff criticality control
         diff = 0
-        if step_index > 0 and self.operator.keff_control is not None:
-            x, diff = self.operator.make_keff_control(x,step_index)
+        if step_index > 0:
+            res, diff = self.msr_bw_geom.perform_bw_search_for_keff(x)
+            if res == self.msr_bw_geom.start_param and self.msr_bw_mat is not None:
+                x, diff = _material_critical_update(step_index, bos_conc)
+        return x, diff
+
+    def _material_critical_update(self, step_index, bos_conc):
+        """Get BOS from Operator criticality batch-wise control
+        """
+        x = deepcopy(bos_conc)
+        diff = 0
+        if step_index > 0:
+            x, diff = self.msr_bw_mat.perform_bw_search_for_keff(x)
         return x, diff
 
     def integrate(self, final_step=True, output=True):
@@ -833,8 +852,11 @@ class Integrator(ABC):
 
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
-                    # Modify vector according to msr batchwise definition
-                    conc, diff = self._bw_control(i, conc)
+                    # Update geometry/material according to msr batchwise definition
+                    if self.msr_bw_geom is not None:
+                        conc, diff = self._geometry_critical_update(i, conc)
+                    elif self.msr_bw_mat is not None:
+                        conc, diff = self._material_critical_update(i, conc)
                     conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
                 else:
                     conc, res = self._get_bos_data_from_restart(i, source_rate, conc)

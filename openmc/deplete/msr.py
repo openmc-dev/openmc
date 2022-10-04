@@ -1,7 +1,6 @@
 from collections import OrderedDict
 from openmc import Materials, Material, search_for_keff
 from copy import deepcopy
-from .openmc_operator import OpenMCOperator
 
 class MsrContinuous:
     """Class defining Molten salt reactor (msr) elements (fission products)
@@ -158,18 +157,25 @@ class MsrContinuous:
             self.removal_rates[mat][element] = [removal_rate, dest_mat]
 
 
-class MsrBatchwise(OpenMCOperator):
+class MsrBatchwise:
     """
     """
-    def __init__(self, model, range, keff_search_bracket_method='brentq',
-                 keff_search_tolerance, keff_search_target=1.0, atom_density_limit=None,
-                 refine_search=True, refuel=False, start_param=0.0):
+    def __init__(self, operator, model, range=None, keff_search_bracket_method='brentq',
+                 keff_search_tolerance=0.01, keff_search_target=1.0,
+                 atom_density_limit=None, refine_search=True, refuel=False,
+                 start_param=0.0):
 
-        super().__init__()
+        #super().__init__()
+        self.operator = operator
+        self.index_burn = operator.burnable_mats
+
+        # Select nuclides with data that are also in the chain
+        self._burnable_nucs = [nuc.name for nuc in self.operator.chain.nuclides
+                               if nuc.name in self.operator.nuclides_with_data]
         self.model = model
-        self.settings = self.model.settings
-        self.geometry = self.model.geometry
-        self.materials = self.model.materials
+        self.settings = model.settings
+        self.geometry = model.geometry
+        self.materials = model.materials
 
         if len(range) != 3:
             raise ValueError(f'{range} lenght must be 3')
@@ -184,18 +190,18 @@ class MsrBatchwise(OpenMCOperator):
         self.refuel = refuel
         self.start_param = start_param
 
-    def order_burn_nuclides(self, x):
+    def _order_burn_nuclides(self, x):
         """
         x : atoms vector
         """
         self.burn_nucs = list()
-        for idx,burn_id in enumerate(self.burnable_mats):
+        for idx, burn_id in enumerate(self.index_burn):
             nucs = OrderedDict()
-            for id_nuc, nuc in enumerate(self.number.burnable_nuclides):
+            for id_nuc, nuc in enumerate(self.operator.number.burnable_nuclides):
                 nucs[nuc] = x[idx][id_nuc]
             self.burn_nucs.append(nucs)
 
-    def msr_criticality_search(self, parametric_model):
+    def _msr_criticality_search(self, parametric_model):
         """
         """
         while res == None:
@@ -208,22 +214,24 @@ class MsrBatchwise(OpenMCOperator):
                         check_brackets=False)
 
             if len(search) == 3:
-                res, guesses, k = search
+                res, _, _ = search
             elif len(search) == 2:
                 print ("Invalid range")
                 guesses, k = search
 
-                if np.array(k).prod() < target:
-                    # If k is close enought to target (below 0.2%),get directly that value
-                    if (target - np.array(k).max()) < 0.002:
-                        index = [idx for idx,i in enumerate(k) if i == np.array(k).max()][0]
+                if np.array(k).prod() < self.keff_search_target:
+
+                    if (self.keff_search_target - np.array(k).max()) < 0.002:
+                        index = [idx for idx,i in enumerate(k)
+                                 if i == np.array(k).max()][0]
                         res =  guesses[index]
                     else:
                         lower_range = upper_range
                         upper_range *= 5
                 else:
-                    if (np.array(k).min() -target)  < 0.002:
-                        index = [idx for idx,i in enumerate(k) if i == np.array(k).min()][0]
+                    if (np.array(k).min() -self.keff_search_target)  < 0.002:
+                        index = [idx for idx,i in enumerate(k)
+                                 if i == np.array(k).min()][0]
                         res = guesses[index]
                     else:
                         upper_range = lower_range
@@ -232,12 +240,50 @@ class MsrBatchwise(OpenMCOperator):
                 raise Exception(f'search_for_keff output not contemplated')
         return res
 
-    def _reinitilize_materials(self):
+    def _get_parametric_geom_coeff(self, geom_id):
+        for surf in self.geometry.get_all_surfaces().items():
+            if surf[1].id == geom_id:
+                keys = list(surf[1].coefficients.keys())
+                if len(keys) == 1:
+                    self.coeff = getattr(surf[1], keys[0])
+                else:
+                    msg=(f'Surface coefficients {keys} are not one')
+                    raise Exception(msg)
+
+    def _update_geom(self, surf_id, res):
+        """
+        """
+        for surf in self.geometry.get_all_surfaces().items():
+            if surf[1].id == surf_id:
+                keys = list(surf[1].coefficients.keys())
+                if len(keys) == 1:
+                    setattr(surf[1], keys[0], res)
+                else:
+                    msg = (f'Surface coefficients {keys} are not one')
+                    raise Exception(msg)
+
+class MsrBatchwiseGeom(MsrBatchwise):
+    """
+    """
+    def __init__(self, op, model, geom_id, type='surface', range=None,
+                    keff_search_bracket_method='brentq', keff_search_tolerance=0.01,
+                    keff_search_target=1.0, atom_density_limit=None,
+                    refine_search=True, refuel=False, start_param=0.0):
+
+        super().__init__(op, model, range, keff_search_bracket_method,
+                         keff_search_tolerance, keff_search_target, atom_density_limit,
+                         refine_search, refuel, start_param)
+        self.geom_id = geom_id
+        if type == 'surface':
+            self._get_parametric_geom_coeff(self.geom_id)
+
+    def _normalize_nuclides(self, x):
         """
         """
         materials = deepcopy(self.model.materials)
+        self._order_burn_nuclides(x)
 
-        for idx, burn_id in enumerate(self.burnable_mats):
+        for idx, burn_id in enumerate(self.index_burn):
             atoms_gram_per_mol = 0
             for nuc,val in self.burn_nucs[idx].items():
                 if val < density_limit or nuc not in self._burnable_nucs:
@@ -253,61 +299,27 @@ class MsrBatchwise(OpenMCOperator):
             self.number.volume[idx] = atoms_gram_per_mol/openmc.data.AVOGADRO/density
         self.materials = materials
 
-    def _update_critical_param(self, res):
-        """
-        """
-        # Set paramteric result in the geometry model (really needed?)
-        for surf in self.geometry.get_all_surfaces().items():
-            if surf[1].id == self.geom_id:
-                keys = list(surf[1].coefficients.keys())
-                if len(keys) == 1:
-                    setattr(surf[1], keys[0], res)
-                else:
-                    msg = (f'Surface coefficients {keys} are not one')
-                    raise Exception(msg)
-
-class MsrBatchwiseGeom(MsrBatchwise):
-    """
-    """
-    def __init__(self, model, geom_id, type='surface', range,
-                    keff_search_bracket_method='brentq', keff_search_tolerance,
-                    keff_search_target=1.0, atom_density_limit=None,
-                    refine_search=True, refuel=False, start_param=0.0):
-
-        super().__init__(model, range, keff_search_bracket_method,
-                         keff_search_tolerance, keff_search_target, atom_density_limit,
-                         refine_search, refuel, start_param)
-        self.geom_id = geom_id
-        if type == 'surface':
-            for surf in self.geometry.get_all_surfaces().items():
-                if surf[1].id == self.geom_id:
-                    keys = list(surf[1].coefficients.keys())
-                    if len(keys) == 1:
-                        self.geom = getattr(surf[1], keys[0])
-                    else:
-                        msg=(f'Surface coefficients {keys} are not one')
-                        raise Exception(msg)
-        #TODO implement a universe type
-        # elif type == 'universe'
-
     def _build_parametric_model(self, param):
         """
         """
         model = deepcopy(self.model)
         for surf in model.geometry.get_all_surfaces().items():
-            if surf[1].id == surf_id:
+            if surf[1].id == self.geom_id:
                 keys = list(surf[1].coefficients.keys())
                 if len(keys) == 1:
-                    setattr(surf[1],keys[0], param)
+                    setattr(surf[1],keys[0], self.coeff)
                 else:
                     raise Exception(f'Surface coefficients {keys} are not one')
         model.export_to_xml()
         return model
 
+    def _update_geom_in_memory(self):
+        openmc.lib.init_geom()
+
     def perform_bw_search_for_keff(self, x):
         """
         """
-        self._reinitilize_materials(x)
+        self._normalize_nuclides(x)
 
         res = None
         lower_range = self.range[0]
@@ -375,36 +387,31 @@ class MsrBatchwiseGeom(MsrBatchwise):
                 raise Exception(f'search_for_keff output not contemplated')
 
         #probably not needed
-        self._update_critical_param(res)
-
+        self._update_geom(self.geom_id, res)
+        self._update_geom_in_memory()
         print(f'res: {res}, guess: {guess}')
         diff = res - guess
-
-        return res
-
-    def finilize_geom(self):
-        openmc.lib.init_geom()
+        return res, diff
 
 class MsrBatchwiseMat(MsrBatchwise):
     """
     """
-    def __init__(self, model, mat_id, refuel_vector, range,
+    def __init__(self, op, model, mat_id, refuel_vector, range=None,
                  keff_search_bracket_method='brentq',
-                 keff_search_tolerance, keff_search_target=1.0,
+                 keff_search_tolerance=0.01, keff_search_target=1.0,
                  atom_density_limit=None):
 
-        super().__init__(model, range, keff_search_bracket_method,
+        super().__init__(op, model, range, keff_search_bracket_method,
                          keff_search_tolerance, keff_search_target, atom_density_limit)
         if str(mat_id) not in self.burnable_mats:
                 raise ValueError(f'Mat_id: {mat_id} is not a valid depletable material id')
         else:
             self.mat_id = mat_id
         self.refuel_vector = refuel_vector
-        atoms_vec = self._order_burn_nuclides(x)
 
-    def initialize_geometry(self, geom_res=None, geom_id=None):
-        if geom_res is not None:
-            self._update_critical_param(geom_res, geom_id)
+    def initialize_geometry(self, geom_id=None, res=None):
+        if res is not None:
+            self.set_surface(geom_id, res)
 
     def _build_parametric_model(self, param):
         """
@@ -434,7 +441,7 @@ class MsrBatchwiseMat(MsrBatchwise):
         model.export_to_xml()
         return model
 
-    def update_x_vector_and_volumes(self, x, res):
+    def _update_x_vector_and_volumes(self, x, res):
         diff = dict()
         for idx, burn_id in enumerate(self.burnable_mats):
             #to calculate the new volume we need total atoms-gram per mol
@@ -450,3 +457,6 @@ class MsrBatchwiseMat(MsrBatchwise):
             vol = atoms_gram_per_mol/openmc.data.AVOGADRO/self.materials[int(self.burnable_mats[idx])-1].get_mass_density()
             self.number.volume[idx] = vol
         return x, diff
+
+    def perform_bw_search_for_keff(self, x):
+        pass

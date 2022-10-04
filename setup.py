@@ -57,14 +57,13 @@ kwargs = {
         'Topic :: Scientific/Engineering'
         'Programming Language :: C++',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
     ],
 
     # Dependencies
-    'python_requires': '>=3.6',
+    'python_requires': '>=3.7',
     'install_requires': [
         'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
         'pandas', 'lxml', 'uncertainties'

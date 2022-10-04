@@ -402,6 +402,7 @@ CustomSourceWrapper::~CustomSourceWrapper()
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef OPENMC_MCPL
 //===========================================================================
 // Read particles from an MCPL-file
@@ -494,11 +495,6 @@ SourceSite MCPLFileSource::read_single_particle() const
   return omc_particle_;
 }
 #endif //OPENMC_MCPL
-=======
->>>>>>> 380cfc150b449ef56debb5261caa010a52c42bdd
-=======
-#endif
->>>>>>> 71568d4f4 (refactor MCPL file read part of FileSource)
 
 //==============================================================================
 // Non-member functions

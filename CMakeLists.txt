@@ -129,6 +129,13 @@ if(${HDF5_VERSION} VERSION_GREATER_EQUAL 1.12.0)
 endif()
 
 #===============================================================================
+# MCPL
+#===============================================================================
+if (OPENMC_USE_MCPL)
+  find_package(MCPL REQUIRED)
+endif()
+
+#===============================================================================
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
@@ -153,10 +160,6 @@ endif()
 if(OPENMC_ENABLE_COVERAGE)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
-endif()
-
-if(OPENMC_USE_MCPL)
-  list(APPEND ldflags -lmcpl)
 endif()
 
 # Show flags being used
@@ -413,10 +416,6 @@ endif()
 if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
 endif()
-if(OPENMC_USE_MCPL)
-  target_compile_definitions(libopenmc PUBLIC -DOPENMC_MCPL)
-endif()
-
 
 # Set git SHA1 hash as a compile definition
 if(GIT_FOUND)
@@ -458,6 +457,11 @@ endif()
 
 if (OPENMC_USE_MPI)
   target_link_libraries(libopenmc MPI::MPI_CXX)
+endif()
+
+if (OPENMC_USE_MCPL)
+  target_compile_definitions(libopenmc PUBLIC OPENMC_MCPL)
+  target_link_libraries(libopenmc MCPL::mcpl)
 endif()
 
 #===============================================================================

@@ -101,7 +101,7 @@ _dll.openmc_global_bounding_box.errcheck = _error_handler
 _dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
-
+_dll.openmc_initialize_geometry.restype = None
 
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
@@ -303,6 +303,9 @@ def is_statepoint_batch():
     """
     return _dll.openmc_is_statepoint_batch()
 
+def init_geom():
+    """Initialize OpenMC geometry only """
+    _dll.openmc_initialize_geometry()
 
 def iter_batches():
     """Iterator over batches.

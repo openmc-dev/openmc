@@ -665,7 +665,7 @@ class Chain:
             # Loss term, from removal rates
             if msr is not None:
                 elm = re.split(r'\d+', nuc.name)[0]
-                mat = msr.index_burn[mat_index]
+                mat = msr.burn_mats[mat_index]
                 if elm in msr.get_elements(mat):
                     matrix [i, i] -= msr.get_removal_rate(mat, elm)
 
@@ -734,7 +734,7 @@ class Chain:
         matrix = defaultdict(float)
 
         _, k = index_msr
-        mat = msr.index_burn[k]
+        mat = msr.burn_mats[k]
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
             if elm in msr.get_elements(mat):

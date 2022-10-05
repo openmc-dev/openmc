@@ -813,7 +813,7 @@ class Integrator(ABC):
         # Get new vector after keff criticality control
         diff = 0
         if step_index > 0:
-            res, diff = self.msr_bw_geom.perform_bw_search_for_keff(x)
+            res, diff = self.msr_bw_geom.msr_criticality_search(x)
             if res == self.msr_bw_geom.start_param and self.msr_bw_mat is not None:
                 x, diff = _material_critical_update(step_index, bos_conc)
         return x, diff
@@ -824,7 +824,7 @@ class Integrator(ABC):
         x = deepcopy(bos_conc)
         diff = 0
         if step_index > 0:
-            x, diff = self.msr_bw_mat.perform_bw_search_for_keff(x)
+            x, diff = self.msr_bw_mat.msr_criticality_search(x)
         return x, diff
 
     def integrate(self, final_step=True, output=True):

@@ -358,7 +358,10 @@ class Universe(UniverseBase):
             model.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
 
             # Read image from file
-            img = mpimg.imread(Path(tmpdir) / f'plot_{plot.id}.png')
+            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            if not img_path.is_file():
+                img_path = img_path.with_suffix('.ppm')
+            img = mpimg.imread(img_path)
 
             # Create a figure sized such that the size of the axes within
             # exactly matches the number of pixels specified

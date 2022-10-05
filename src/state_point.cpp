@@ -603,7 +603,8 @@ void write_source_point(const char* filename, bool surf_source_bank)
     file_close(file_id);
 }
 
-void write_mcpl_point(const char *filename, bool surf_source_bank)
+#ifdef OPENMC_MCPL
+void write_mcpl_source_point(const char *filename, bool surf_source_bank)
 {
   std::string filename_;
   if (filename) {
@@ -640,7 +641,7 @@ void write_mcpl_point(const char *filename, bool surf_source_bank)
   }
 
 }
-
+#endif
 
 void write_source_bank(hid_t group_id, bool surf_source_bank)
 {
@@ -758,6 +759,7 @@ void write_source_bank(hid_t group_id, bool surf_source_bank)
   H5Tclose(banktype);
 }
 
+#ifdef OPENMC_MCPL
 void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
 {
   int64_t dims_size = settings::n_particles;
@@ -838,7 +840,7 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
   }
 
 }
-
+#endif
 
 // Determine member names of a compound HDF5 datatype
 std::string dtype_member_names(hid_t dtype_id)

@@ -16,6 +16,7 @@ from .atom_number import *
 from .stepresult import *
 from .results import *
 from .integrators import *
+from .msr import *
 from . import abc
 from . import cram
 from . import helpers

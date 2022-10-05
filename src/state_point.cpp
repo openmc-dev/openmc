@@ -603,7 +603,6 @@ void write_source_point(const char* filename, bool surf_source_bank)
     file_close(file_id);
 }
 
-
 #ifdef OPENMC_MCPL
 void write_mcpl_source_point(const char *filename, bool surf_source_bank)
 {
@@ -642,7 +641,6 @@ void write_mcpl_source_point(const char *filename, bool surf_source_bank)
   }
 
 }
-
 #endif
 
 void write_source_bank(hid_t group_id, bool surf_source_bank)

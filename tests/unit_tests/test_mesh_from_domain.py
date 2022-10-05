@@ -19,9 +19,9 @@ def test_reg_mesh_from_cell():
 def test_cylindrical_mesh_from_cell():
     """Tests a CylindricalMesh can be made from a Cell and the specified
     dimensions are propagated through. Cell is not centralized"""
-    cy_surface = openmc. openmc.ZCylinder(r=50)
-    z_surface_1 = openmc. openmc.ZPlane(z0=30)
-    z_surface_2 = openmc. openmc.ZPlane(z0=0)
+    cy_surface = openmc.ZCylinder(r=50)
+    z_surface_1 = openmc.ZPlane(z0=30)
+    z_surface_2 = openmc.ZPlane(z0=0)
     cell = openmc.Cell(region=-cy_surface & -z_surface_1 & +z_surface_2)
     mesh = openmc.CylindricalMesh.from_domain(cell, dimension=[2, 4, 3])
 
@@ -48,9 +48,9 @@ def test_reg_mesh_from_region():
 def test_cylindrical_mesh_from_region():
     """Tests a CylindricalMesh can be made from a Region and the specified
     dimensions are propagated through. Cell is centralized"""
-    cy_surface = openmc. openmc.ZCylinder(r=6)
-    z_surface_1 = openmc. openmc.ZPlane(z0=30)
-    z_surface_2 = openmc. openmc.ZPlane(z0=-30)
+    cy_surface = openmc.ZCylinder(r=6)
+    z_surface_1 = openmc.ZPlane(z0=30)
+    z_surface_2 = openmc.ZPlane(z0=-30)
     cell = openmc.Cell(region=-cy_surface & -z_surface_1 & +z_surface_2)
     mesh = openmc.CylindricalMesh.from_domain(cell, dimension=[6, 2, 3])
 

@@ -1141,9 +1141,9 @@ class CylindricalMesh(StructuredMesh):
     def from_domain(
         cls,
         domain,
-        dimension=[100, 100, 100],
+        dimension=(100, 100, 100),
         mesh_id=None,
-        phi_grid=[0.0, 2*pi],
+        phi_grid=(0.0, 2*pi),
         name=''
     ):
         """Create mesh from an existing openmc cell, region, universe or
@@ -1152,7 +1152,7 @@ class CylindricalMesh(StructuredMesh):
 
         Parameters
         ----------
-        domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
+        domain : openmc.Cell or openmc.Region or openmc.Universe or openmc.Geometry
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
             set the r_grid, z_grid ranges.
@@ -1163,7 +1163,7 @@ class CylindricalMesh(StructuredMesh):
             Unique identifier for the mesh
         phi_grid : numpy.ndarray
             1-D array of mesh boundary points along the phi-axis in radians.
-            The default value is [0, 2π], i.e. the full phi range.
+            The default value is (0, 2π), i.e., the full phi range.
         name : str
             Name of the mesh
 

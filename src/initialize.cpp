@@ -262,6 +262,10 @@ int parse_command_line(int argc, char* argv[])
         print_version();
         return OPENMC_E_UNASSIGNED;
 
+      } else if (arg == "-b" || arg == "--build-info") {
+        print_build_info();
+        return OPENMC_E_UNASSIGNED;
+
       } else if (arg == "-t" || arg == "--track") {
         settings::write_all_tracks = true;
 

@@ -1,10 +1,9 @@
 from collections.abc import Iterable
 from io import StringIO
 from math import log
-from pathlib import Path
 import re
+from typing import Optional
 from warnings import warn
-from xml.etree import ElementTree as ET
 
 import numpy as np
 from uncertainties import ufloat, UFloat
@@ -579,7 +578,7 @@ class Decay(EqualityMixin):
 _DECAY_PHOTON_ENERGY = {}
 
 
-def decay_photon_energy(nuclide: str) -> Univariate:
+def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
     """Get photon energy distribution resulting from the decay of a nuclide
 
     This function relies on data stored in a depletion chain. Before calling it
@@ -595,9 +594,10 @@ def decay_photon_energy(nuclide: str) -> Univariate:
 
     Returns
     -------
-    openmc.stats.Univariate
-        Distribution of energies in [eV] of photons emitted from decay. Note
-        that the probabilities represent intensities, given as [decay/sec].
+    openmc.stats.Univariate or None
+        Distribution of energies in [eV] of photons emitted from decay, or None
+        if no photon source exists. Note that the probabilities represent
+        intensities, given as [decay/sec].
     """
     if not _DECAY_PHOTON_ENERGY:
         chain_file = openmc.config.get('chain_file')

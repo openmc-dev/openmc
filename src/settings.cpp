@@ -61,6 +61,7 @@ bool source_latest {false};
 bool source_separate {false};
 bool source_write {true};
 bool surf_source_write {false};
+bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
 bool temperature_multipole {false};
@@ -682,9 +683,14 @@ void read_settings_xml()
       max_surface_particles =
         std::stoll(get_node_value(node_ssw, "max_particles"));
     }
+#ifdef OPENMC_MCPL
+    if(check_for_node(node_ssw, "mcpl")){
+      surf_mcpl_write=true;
+    }
+#endif
   }
 
-  // If source is not seperate and is to be written out in the statepoint file,
+  // If source is not separate and is to be written out in the statepoint file,
   // make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
   if (!source_separate) {

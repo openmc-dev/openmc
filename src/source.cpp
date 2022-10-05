@@ -350,10 +350,19 @@ FileSource::FileSource(mcpl_file_t mcpl_file)
       //neutrons or photons
     }
 
-    if(mcpl_particle->pdgcode==2112) {
-      site_.particle=ParticleType::neutron;
-    } else if (mcpl_particle->pdgcode==22) {
-      site_.particle=ParticleType::photon;
+    switch(pdg){
+      case 2112:
+        site_.particle=ParticleType::neutron;
+        break;
+      case 22:
+        site_.particle=ParticleType::photon;
+        break;
+      case 11:
+        site_.particle=ParticleType::electron;
+        break;
+      case -11:
+        site_.particle=ParticleType::positron;
+        break;
     }
 
     //particle is good, convert to openmc-formalism

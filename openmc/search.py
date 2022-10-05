@@ -199,6 +199,9 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     args.update(kwargs)
 
     # Perform the search
-    zero_value = root_finder(**args)
+    try:
+        zero_value = root_finder(**args)
+    except:
+        return guesses, results
 
     return zero_value, guesses, results

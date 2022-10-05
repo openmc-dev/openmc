@@ -1,8 +1,13 @@
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from copy import deepcopy
+
+import numpy as np
+
 from openmc import Materials, Material
 from openmc.search import search_for_keff
-from copy import deepcopy
+from openmc.data import atomic_mass, AVOGADRO
+from openmc.lib import init_geom
 
 class MsrContinuous:
     """Class defining Molten salt reactor (msr) elements (fission products)
@@ -163,7 +168,7 @@ class MsrBatchwise(ABC):
     """
     """
     def __init__(self, operator, model, range=None, bracketed_method='brentq',
-                 tol=0.01, target=1.0, atom_density_limit=None,
+                 tol=0.01, target=1.0, atom_density_limit=0.0,
                  refine_search=True, refuel=False, start_param=0.0):
 
         self.operator = operator
@@ -222,7 +227,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
     """
     def __init__(self, operator, model, geom_id, type='surface', range=None,
                     bracketed_method='brentq', tol=0.01, target=1.0,
-                    atom_density_limit=None, refine_search=True, refuel=False,
+                    atom_density_limit=0.0, refine_search=True, refuel=False,
                     start_param=0.0):
 
         super().__init__(operator, model, range, bracketed_method, tol, target,
@@ -230,7 +235,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
 
         self.geom_id = geom_id
         if type == 'surface':
-            self.coeff = self._extract_geom_coeff(self.geom_id)
+            self.coeff = self._extract_geom_coeff()
 
     def _extract_geom_coeff(self):
         for surf in self.geometry.get_all_surfaces().items():
@@ -270,13 +275,13 @@ class MsrBatchwiseGeom(MsrBatchwise):
                 else:
                     materials[int(burn_mat)-1].remove_nuclide(nuc)
                     materials[int(burn_mat)-1].add_nuclide(nuc,val, 'ao')
-                    atoms_gram_per_mol += val * openmc.data.atomic_mass(nuc)
+                    atoms_gram_per_mol += val * atomic_mass(nuc)
 
             #ensure constant density is set and assign new volume
             density = materials[int(burn_mat)-1].get_mass_density()
             materials[int(burn_mat)-1].set_density('g/cm3', density)
-            self.number.volume[idx] = atoms_gram_per_mol /\
-                                      openmc.data.AVOGADRO / density
+            self.operator.number.volume[idx] = atoms_gram_per_mol /\
+                                      AVOGADRO / density
         self.materials = materials
 
     def _build_parametric_model(self, param):
@@ -288,7 +293,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
         return model
 
     def _finalize(self):
-        openmc.lib.init_geom()
+        init_geom()
 
     def msr_criticality_search(self, x):
         """
@@ -314,7 +319,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
             search = search_for_keff(self._build_parametric_model,
                     bracket=[self.coeff + lower_range, self.coeff + upper_range],
                     tol=self.tol, bracketed_method= self.bracketed_method,
-                    target=self.target, print_iterations=True) 
+                    target=self.target, print_iterations=True)
                     #check_brackets=check_brackets)
 
             if len(search) == 3:
@@ -324,15 +329,15 @@ class MsrBatchwiseGeom(MsrBatchwise):
                     res = _res
                 else:
                     if self.refuel:
-                        msg = 'INFO: Hit upper limit {} cm. Update geom coeff \
-                                to {} and start refuel'.format(self.range[2],
+                        msg = 'INFO: Hit upper limit {:.2f} cm Update geom' \
+                        'coeff to {:.2f} and start refuel'.format(self.range[2],
                                                                self.init_param)
                         print(msg)
                         res = self.start_param
                         break
                     else:
-                        msg = 'STOP: Hit upper limit and no further criteria \
-                                defined'
+                        msg = 'STOP: Hit upper limit and no further criteria' \
+                               'defined'
                         raise Exception(msg)
 
             elif len(search) == 2:
@@ -340,20 +345,20 @@ class MsrBatchwiseGeom(MsrBatchwise):
 
                 if guesses[-1] > self.range[2]:
                     if self.refuel:
-                        msg = 'INFO: Hit upper limit {} cm. Update geom coeff \
-                                to {} and start refuel'.format(self.range[2],
+                        msg = 'INFO: Hit upper limit {:.2f} cm Update geom' \
+                        'coeff to {:.2f} and start refuel'.format(self.range[2],
                                                                self.init_param)
                         print(msg)
                         res = self.start_param
                         break
                     else:
-                        msg = 'STOP: Hit upper limit and no further criteria \
-                                defined'
+                        msg = 'STOP: Hit upper limit and no further criteria' \
+                               'defined'
                         raise Exception(msg)
 
                 if np.array(k).prod() < self.target:
-                    print ('INFO: Function returned values BELOW target, \
-                                  adapting bracket range...')
+                    print ('INFO: Function returned values BELOW target,' \
+                           'adapting bracket range...')
                     if (self.target - np.array(k).prod()) <= 0.02:
                         lower_range = upper_range - 3
                     elif 0.02 < (self.target - np.array(k).prod()) < 0.03:
@@ -363,8 +368,8 @@ class MsrBatchwiseGeom(MsrBatchwise):
                     upper_range += abs(self.range[1])/2
 
                 else:
-                    print ('INFO: Function returned values ABOVE target, \
-                                  adapting bracket range...')
+                    print ('INFO: Function returned values ABOVE target,' \
+                           'adapting bracket range...')
                     upper_range = lower_range + 2
                     lower_range -= abs(self.range[0])
 
@@ -374,7 +379,9 @@ class MsrBatchwiseGeom(MsrBatchwise):
         #probably not needed
         self._set_geom_coeff(res)
         self._finalize()
-        print(f'UPDATE: old coeff: {self.coeff}cm --> new coeff: {res}cm')
+        msg = 'UPDATE: old coeff: {:.2f} cm --> ' \
+              'new coeff: {:.2f} cm'.format(self.coeff, res)
+        print(msg)
         diff = res - self.coeff
         return res, diff
 
@@ -414,7 +421,7 @@ class MsrBatchwiseMat(MsrBatchwise):
                     if model.materials[int(burn_id)-1].id == int(self.mat_id):
                         model.materials[int(burn_id)-1].remove_nuclide(nuc)
                         # convert grams into atoms
-                        atoms = param/openmc.data.atomic_mass(nuc)*openmc.data.AVOGADRO*self.refuel_vector[nuc]
+                        atoms = param/atomic_mass(nuc)*AVOGADRO*self.refuel_vector[nuc]
                         model.materials[int(burn_id)-1].add_nuclide(nuc,val+atoms,'ao')
                     else:
                         model.materials[int(burn_id)-1].remove_nuclide(nuc)
@@ -433,12 +440,12 @@ class MsrBatchwiseMat(MsrBatchwise):
             for id_nuc, nuc in enumerate(self.number.burnable_nuclides):
                 if nuc in self.refuel_vector.keys() and int(burn_id) == int(self.mat_id):
                     # Convert res grams into atoms
-                    res_atoms = res / openmc.data.atomic_mass(nuc) * openmc.data.AVOGADRO * self.refuel_vector[nuc]
+                    res_atoms = res / atomic_mass(nuc) * AVOGADRO * self.refuel_vector[nuc]
                     diff[nuc] = x[idx][id_nuc] - res_atoms
                     x[idx][id_nuc] += res_atoms
-                atoms_gram_per_mol += x[idx][id_nuc]*openmc.data.atomic_mass(nuc)
+                atoms_gram_per_mol += x[idx][id_nuc]*atomic_mass(nuc)
             # Calculate new volume and assign it in memory
-            vol = atoms_gram_per_mol/openmc.data.AVOGADRO/self.materials[int(self.burnable_mats[idx])-1].get_mass_density()
+            vol = atoms_gram_per_mol/AVOGADRO/self.materials[int(self.burnable_mats[idx])-1].get_mass_density()
             self.number.volume[idx] = vol
         return x, diff
 

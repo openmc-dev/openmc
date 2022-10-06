@@ -49,9 +49,16 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
 
     # Build the model
     model = model_builder(guess, **model_args)
-
+    print(f'guess: {guess}')
+    for surf in model.geometry.get_all_surfaces().items():
+            if surf[1].id == 9999:
+                keys = list(surf[1].coefficients.keys())
+                coeff = getattr(surf[1], keys[0])
+                print(f'search coeff: {coeff}')
     # Run the model and obtain keff
-    sp_filepath = model.run(**run_args)
+    #sp_filepath = model.run(**run_args)
+    openmc.run(**run_args)
+    sp_filepath = f'statepoint.{str(model.settings.batches)}.h5'
     with openmc.StatePoint(sp_filepath) as sp:
         keff = sp.keff
 

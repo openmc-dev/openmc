@@ -234,8 +234,8 @@ class MsrBatchwiseGeom(MsrBatchwise):
                          atom_density_limit, refine_search, refuel, start_param)
 
         self.geom_id = geom_id
-        if type == 'surface':
-            self.coeff = self._extract_geom_coeff()
+        #if type == 'surface':
+            #self.coeff = self._extract_geom_coeff()
 
     def _extract_geom_coeff(self):
         for surf in self.geometry.get_all_surfaces().items():
@@ -251,7 +251,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
     def _set_geom_coeff(self, res):
         """
         """
-        for surf in self.geometry.get_all_surfaces().items():
+        for surf in self.model.geometry.get_all_surfaces().items():
             if surf[1].id == self.geom_id:
                 keys = list(surf[1].coefficients.keys())
                 if len(keys) == 1:
@@ -264,33 +264,33 @@ class MsrBatchwiseGeom(MsrBatchwise):
         """
         Remove
         """
-        materials = deepcopy(self.materials)
+        #materials = deepcopy(self.materials)
         nucs = super()._order_vector(x)
 
         for idx, burn_mat in enumerate(self.burn_mats):
             atoms_gram_per_mol = 0
             for nuc, val in nucs[idx].items():
                 if val < self.atom_density_limit or nuc not in self.burn_nucs:
-                    materials[int(burn_mat)-1].remove_nuclide(nuc)
+                    self.model.materials[int(burn_mat)-1].remove_nuclide(nuc)
                 else:
-                    materials[int(burn_mat)-1].remove_nuclide(nuc)
-                    materials[int(burn_mat)-1].add_nuclide(nuc,val, 'ao')
+                    self.model.materials[int(burn_mat)-1].remove_nuclide(nuc)
+                    self.model.materials[int(burn_mat)-1].add_nuclide(nuc,val, 'ao')
                     atoms_gram_per_mol += val * atomic_mass(nuc)
 
             #ensure constant density is set and assign new volume
-            density = materials[int(burn_mat)-1].get_mass_density()
-            materials[int(burn_mat)-1].set_density('g/cm3', density)
+            density = self.model.materials[int(burn_mat)-1].get_mass_density()
+            self.model.materials[int(burn_mat)-1].set_density('g/cm3', density)
             self.operator.number.volume[idx] = atoms_gram_per_mol /\
                                       AVOGADRO / density
-        self.materials = materials
+        #self.materials = materials
 
     def _build_parametric_model(self, param):
         """
         """
-        model = deepcopy(self.model)
+        #model = deepcopy(self.model)
         self._set_geom_coeff(param)
-        model.export_to_xml()
-        return model
+        self.model.export_to_xml()
+        return self.model
 
     def _finalize(self):
         init_geom()
@@ -299,27 +299,29 @@ class MsrBatchwiseGeom(MsrBatchwise):
         """
         """
         self._normalize_nuclides(x)
+        coeff = self._extract_geom_coeff()
 
         lower_range = self.range[0]
         upper_range = self.range[1]
 
-        if -1.0 < self.coeff < 1.0:
+        if -1.0 < coeff < 1.0:
             self.tol /= 2
         else:
-            self.tol /= abs(self.coeff)
+            self.tol /= abs(coeff)
 
         res = None
         while res == None:
 
-            if self.refine_search and self.coeff >= abs(self.range[2])/2:
+            if self.refine_search and coeff >= abs(self.range[2])/2:
                 check_brackets = True
             else:
                 check_brackets = False
 
             search = search_for_keff(self._build_parametric_model,
-                    bracket=[self.coeff + lower_range, self.coeff + upper_range],
+                    bracket=[coeff + lower_range, coeff + upper_range],
                     tol=self.tol, bracketed_method= self.bracketed_method,
-                    target=self.target, print_iterations=True)
+                    target=self.target, print_iterations=True,
+                    run_args={'output':False})
                     #check_brackets=check_brackets)
 
             if len(search) == 3:
@@ -329,7 +331,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
                     res = _res
                 else:
                     if self.refuel:
-                        msg = 'INFO: Hit upper limit {:.2f} cm Update geom' \
+                        msg = 'INFO: Hit upper limit {:.2f} cm. Update geom' \
                         'coeff to {:.2f} and start refuel'.format(self.range[2],
                                                                self.init_param)
                         print(msg)
@@ -345,19 +347,19 @@ class MsrBatchwiseGeom(MsrBatchwise):
 
                 if guesses[-1] > self.range[2]:
                     if self.refuel:
-                        msg = 'INFO: Hit upper limit {:.2f} cm Update geom' \
+                        msg = 'INFO: Hit upper limit {:.2f} cm. Update geom' \
                         'coeff to {:.2f} and start refuel'.format(self.range[2],
                                                                self.init_param)
                         print(msg)
                         res = self.start_param
                         break
                     else:
-                        msg = 'STOP: Hit upper limit and no further criteria' \
+                        msg = 'STOP: Hit upper limit and no further criteria ' \
                                'defined'
                         raise Exception(msg)
 
                 if np.array(k).prod() < self.target:
-                    print ('INFO: Function returned values BELOW target,' \
+                    print ('INFO: Function returned values BELOW target, ' \
                            'adapting bracket range...')
                     if (self.target - np.array(k).prod()) <= 0.02:
                         lower_range = upper_range - 3
@@ -368,7 +370,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
                     upper_range += abs(self.range[1])/2
 
                 else:
-                    print ('INFO: Function returned values ABOVE target,' \
+                    print ('INFO: Function returned values ABOVE target, ' \
                            'adapting bracket range...')
                     upper_range = lower_range + 2
                     lower_range -= abs(self.range[0])
@@ -380,9 +382,9 @@ class MsrBatchwiseGeom(MsrBatchwise):
         self._set_geom_coeff(res)
         self._finalize()
         msg = 'UPDATE: old coeff: {:.2f} cm --> ' \
-              'new coeff: {:.2f} cm'.format(self.coeff, res)
+              'new coeff: {:.2f} cm'.format(coeff, res)
         print(msg)
-        diff = res - self.coeff
+        diff = res - coeff
         return res, diff
 
 class MsrBatchwiseMat(MsrBatchwise):

@@ -5,11 +5,7 @@ import sys
 import numpy as np
 
 from setuptools import setup, find_packages
-try:
-    from Cython.Build import cythonize
-    have_cython = True
-except ImportError:
-    have_cython = False
+from Cython.Build import cythonize
 
 
 # Determine shared library suffix
@@ -76,13 +72,9 @@ kwargs = {
         'test': ['pytest', 'pytest-cov', 'colorama'],
         'vtk': ['vtk'],
     },
+    # Cython is used to add resonance reconstruction and fast float_endf
+    'ext_modules': cythonize('openmc/data/*.pyx'),
+    'include_dirs': [np.get_include()]
 }
-
-# If Cython is present, add resonance reconstruction and fast float_endf
-if have_cython:
-    kwargs.update({
-        'ext_modules': cythonize('openmc/data/*.pyx'),
-        'include_dirs': [np.get_include()]
-    })
 
 setup(**kwargs)

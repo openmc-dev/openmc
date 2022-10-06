@@ -557,7 +557,6 @@ DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
 {
   geom_type_ = GeometryType::DAG;
-  simple_ = true;
 };
 
 std::pair<double, int32_t> DAGCell::distance(

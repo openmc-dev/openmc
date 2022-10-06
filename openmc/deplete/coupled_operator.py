@@ -464,7 +464,7 @@ class CoupledOperator(OpenMCOperator):
             return OperatorResult(ufloat(0.0, 0.0), rates)
 
         # Run OpenMC
-        openmc.lib.run()
+        openmc.lib.run(output=False)
         openmc.lib.reset_timers()
 
         # Extract results

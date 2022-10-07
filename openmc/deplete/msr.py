@@ -277,11 +277,11 @@ class MsrBatchwiseGeom(MsrBatchwise):
                     self.model.materials[int(burn_mat)-1].add_nuclide(nuc, val)
                     atoms_gram_per_mol += val * atomic_mass(nuc)
 
-            #ensure constant density is set and assign new volume
+            #Calculate new volume to keep density constant
             density = self.model.materials[int(burn_mat)-1].get_mass_density()
             self.model.materials[int(burn_mat)-1].set_density('g/cm3', density)
             self.operator.number.volume[idx] = atoms_gram_per_mol /\
-                                      AVOGADRO / density
+                                                AVOGADRO / density
         #self.materials = materials
 
     def _build_parametric_model(self, param):
@@ -379,7 +379,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
                 raise ValueError(f'ERROR: search_for_keff output not valid')
 
         #probably not needed
-        #self._set_geom_coeff(res)
+        self._set_geom_coeff(res)
         self._finalize()
         msg = 'UPDATE: old coeff: {:.2f} cm --> ' \
               'new coeff: {:.2f} cm'.format(coeff, res)
@@ -404,35 +404,36 @@ class MsrBatchwiseMat(MsrBatchwise):
 
     def initialize_geometry(self, geom_id=None, res=None):
         if res is not None:
-            self.set_surface(geom_id, res)
+            self._set_geom_coeff(geom_id, res)
 
     def _build_parametric_model(self, param):
         """
         """
-        model = deepcopy(self.model)
-
-        for idx, burn_id in enumerate(self.burnable_mats):
-            for nuc, val in self.burn_nucs[idx].items():
+        _materials = deepcopy(self.materials)
+        nucs = super()._order_vector(x)
+        for idx, burn_id in enumerate(self.burn_mats):
+            for nuc, val in nucs[idx].items():
                 if nuc not in self.refuel_vector.keys():
-                    if val < self.atom_density_limit or nuc not in self._burnable_nucs:
-                        model.materials[int(burn_id)-1].remove_nuclide(nuc)
+                    if val < self.atom_density_limit or nuc not in self.burn_nucs:
+                        _materials[int(burn_id)-1].remove_nuclide(nuc)
                     else:
-                        model.materials[int(burn_id)-1].remove_nuclide(nuc)
-                        model.materials[int(burn_id)-1].add_nuclide(nuc,val,'ao')
+                        _materials[int(burn_id)-1].remove_nuclide(nuc)
+                        _materials[int(burn_id)-1].add_nuclide(nuc,val)
                 else:
-                    if model.materials[int(burn_id)-1].id == int(self.mat_id):
-                        model.materials[int(burn_id)-1].remove_nuclide(nuc)
+                    if _materials[int(burn_id)-1].id == int(self.mat_id):
+                        _materials[int(burn_id)-1].remove_nuclide(nuc)
                         # convert grams into atoms
-                        atoms = param/atomic_mass(nuc)*AVOGADRO*self.refuel_vector[nuc]
-                        model.materials[int(burn_id)-1].add_nuclide(nuc,val+atoms,'ao')
+                        atoms = param / atomic_mass(nuc) * AVOGADRO * \
+                                self.refuel_vector[nuc]
+                        _materials[int(burn_id)-1].add_nuclide(nuc, val+atoms)
                     else:
-                        model.materials[int(burn_id)-1].remove_nuclide(nuc)
-                        model.materials[int(burn_id)-1].add_nuclide(nuc,val,'ao')
+                        _materials[int(burn_id)-1].remove_nuclide(nuc)
+                        _materials[int(burn_id)-1].add_nuclide(nuc, val)
             # ensure density is set
-            density = model.materials[int(burn_id)-1].get_mass_density()
-            model.materials[int(burn_id)-1].set_density('g/cm3',density)
-        model.export_to_xml()
-        return model
+            density = _materials[int(burn_id)-1].get_mass_density()
+            _materials[int(burn_id)-1].set_density('g/cm3',density)
+        _materials.export_to_xml()
+        return self.model
 
     def _update_x_vector_and_volumes(self, x, res):
         diff = dict()
@@ -451,5 +452,5 @@ class MsrBatchwiseMat(MsrBatchwise):
             self.number.volume[idx] = vol
         return x, diff
 
-    def perform_bw_search_for_keff(self, x):
+    def msr_criticality_search(self, x):
         pass

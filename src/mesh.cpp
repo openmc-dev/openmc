@@ -955,6 +955,7 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
+  centre = get_node_array<double>(node, "centre");
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -982,6 +983,11 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
     if (mapped_r[1] < 0)
       mapped_r[1] += 2 * M_PI;
   }
+
+  // TODO: pass centre as argument 
+  mapped_r[0] += centre[0]
+  mapped_r[1] += centre[1]
+  mapped_r[2] += centre[2]
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 
@@ -1187,6 +1193,7 @@ SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "theta_grid");
   grid_[2] = get_node_array<double>(node, "phi_grid");
+  centre = get_node_array<double>(node, "centre");
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -1215,6 +1222,11 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
     if (mapped_r[2] < 0)
       mapped_r[2] += 2 * M_PI;
   }
+
+  // TODO: pass centre as argument 
+  mapped_r[0] += centre[0]
+  mapped_r[1] += centre[1]
+  mapped_r[2] += centre[2]
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 

@@ -359,6 +359,8 @@ public:
   void to_hdf5(hid_t group) const override;
 
   array<vector<double>, 3> grid_;
+  array<double, 3> centre_;
+
 
   int set_grid();
 
@@ -413,6 +415,7 @@ public:
   void to_hdf5(hid_t group) const override;
 
   array<vector<double>, 3> grid_;
+  array<double, 3> centre_;
 
   int set_grid();
 

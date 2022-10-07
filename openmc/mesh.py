@@ -1052,7 +1052,7 @@ class CylindricalMesh(StructuredMesh):
         self._r_grid = None
         self._phi_grid = [0.0, 2*pi]
         self._z_grid = None
-        self._centre = [0, 0, 0]
+        self._centre = [0., 0., 0.]
 
     @property
     def dimension(self):
@@ -1251,6 +1251,11 @@ class CylindricalMesh(StructuredMesh):
         pts_cartesian[:, 0] = r * np.cos(phi)
         pts_cartesian[:, 1] = r * np.sin(phi)
 
+        # offset with centre
+        pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.centre[0]
+        pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.centre[1]
+        pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.centre[2]
+
         return super().write_data_to_vtk(
             points=pts_cartesian,
             filename=filename,
@@ -1299,7 +1304,7 @@ class SphericalMesh(StructuredMesh):
         self._r_grid = None
         self._theta_grid = [0, pi]
         self._phi_grid = [0, 2*pi]
-        self._centre = [0, 0, 0]
+        self._centre = [0., 0., 0.]
 
     @property
     def dimension(self):
@@ -1499,6 +1504,11 @@ class SphericalMesh(StructuredMesh):
         pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
         pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)
         pts_cartesian[:, 2] = r * np.cos(phi)
+
+        # offset with centre
+        pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.centre[0]
+        pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.centre[1]
+        pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.centre[2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,

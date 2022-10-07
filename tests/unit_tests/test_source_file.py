@@ -75,3 +75,25 @@ def test_wrong_source_attributes(run_in_tmpdir):
     with pytest.raises(RuntimeError) as excinfo:
         openmc.run()
     assert 'platypus, axolotl, narwhal' in str(excinfo.value)
+
+
+def test_source_file_transport(run_in_tmpdir):
+    # Create a source file with a single particle
+    particle = openmc.SourceParticle()
+    openmc.write_source_file([particle], 'source.h5')
+
+    # Created simple model to use source file
+    model = openmc.Model()
+    al = openmc.Material()
+    al.add_element('Al', 1.0)
+    al.set_density('g/cm3', 2.7)
+    sph = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=al, region=-sph)
+    model.geometry = openmc.Geometry([cell])
+    model.settings.source = openmc.Source(filename='source.h5')
+    model.settings.particles = 10
+    model.settings.batches = 3
+    model.settings.run_mode = 'fixed source'
+
+    # Try running OpenMC
+    model.run()

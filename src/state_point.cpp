@@ -527,6 +527,7 @@ hid_t h5banktype()
   H5Tinsert(banktype, "r", HOFFSET(SourceSite, r), postype);
   H5Tinsert(banktype, "u", HOFFSET(SourceSite, u), postype);
   H5Tinsert(banktype, "E", HOFFSET(SourceSite, E), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "time", HOFFSET(SourceSite, time), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "wgt", HOFFSET(SourceSite, wgt), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "delayed_group", HOFFSET(SourceSite, delayed_group),
     H5T_NATIVE_INT);

@@ -1161,6 +1161,9 @@ class CylindricalMesh(StructuredMesh):
         subelement = ET.SubElement(element, "z_grid")
         subelement.text = ' '.join(map(str, self.z_grid))
 
+        subelement = ET.SubElement(element, "centre")
+        subelement.text = ' '.join(map(str, self.centre))
+
         return element
 
     @classmethod
@@ -1184,6 +1187,8 @@ class CylindricalMesh(StructuredMesh):
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
         mesh.z_grid = [float(x) for x in get_text(elem, "z_grid").split()]
+        # TODO: add read centre
+
         return mesh
 
     @property
@@ -1394,6 +1399,9 @@ class SphericalMesh(StructuredMesh):
         subelement = ET.SubElement(element, "phi_grid")
         subelement.text = ' '.join(map(str, self.phi_grid))
 
+        subelement = ET.SubElement(element, "centre")
+        subelement.text = ' '.join(map(str, self.centre))
+
         return element
 
     @classmethod
@@ -1417,6 +1425,8 @@ class SphericalMesh(StructuredMesh):
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()]
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
+
+        # TODO: add read centre
         return mesh
 
     @property

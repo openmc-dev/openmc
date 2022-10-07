@@ -1223,9 +1223,6 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
       mapped_r[2] += 2 * M_PI;
   }
 
-  // test
-  coucou = grid_[0]
-
   // TODO: pass centre as argument 
   mapped_r[0] += centre_[0]
   mapped_r[1] += centre_[1]

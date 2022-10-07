@@ -274,7 +274,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
                     self.model.materials[int(burn_mat)-1].remove_nuclide(nuc)
                 else:
                     self.model.materials[int(burn_mat)-1].remove_nuclide(nuc)
-                    self.model.materials[int(burn_mat)-1].add_nuclide(nuc,val, 'ao')
+                    self.model.materials[int(burn_mat)-1].add_nuclide(nuc, val)
                     atoms_gram_per_mol += val * atomic_mass(nuc)
 
             #ensure constant density is set and assign new volume
@@ -305,9 +305,9 @@ class MsrBatchwiseGeom(MsrBatchwise):
         upper_range = self.range[1]
 
         if -1.0 < coeff < 1.0:
-            self.tol /= 2
+            _tol = self.tol / 2
         else:
-            self.tol /= abs(coeff)
+            _tol = self.tol / abs(coeff)
 
         res = None
         while res == None:
@@ -319,7 +319,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
 
             search = search_for_keff(self._build_parametric_model,
                     bracket=[coeff + lower_range, coeff + upper_range],
-                    tol=self.tol, bracketed_method= self.bracketed_method,
+                    tol=_tol, bracketed_method= self.bracketed_method,
                     target=self.target, print_iterations=True,
                     run_args={'output':False})
                     #check_brackets=check_brackets)
@@ -379,7 +379,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
                 raise ValueError(f'ERROR: search_for_keff output not valid')
 
         #probably not needed
-        self._set_geom_coeff(res)
+        #self._set_geom_coeff(res)
         self._finalize()
         msg = 'UPDATE: old coeff: {:.2f} cm --> ' \
               'new coeff: {:.2f} cm'.format(coeff, res)

@@ -1065,6 +1065,10 @@ class CylindricalMesh(StructuredMesh):
         return 3
 
     @property
+    def centre(self):
+        return self._centre
+
+    @property
     def r_grid(self):
         return self._r_grid
 
@@ -1089,6 +1093,11 @@ class CylindricalMesh(StructuredMesh):
                 for z in range(1, nz + 1)
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
+
+    @centre.setter
+    def centre(self, coords):
+        cv.check_type('mesh r_grid', coords, Iterable, Real)
+        self._centre = np.asarray(coords)
 
     @r_grid.setter
     def r_grid(self, grid):
@@ -1303,6 +1312,10 @@ class SphericalMesh(StructuredMesh):
         return 3
 
     @property
+    def centre(self):
+        return self._centre
+
+    @property
     def r_grid(self):
         return self._r_grid
 
@@ -1327,6 +1340,11 @@ class SphericalMesh(StructuredMesh):
                 for p in range(1, np + 1)
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
+
+    @centre.setter
+    def centre(self, coords):
+        cv.check_type('mesh r_grid', coords, Iterable, Real)
+        self._centre = np.asarray(coords)
 
     @r_grid.setter
     def r_grid(self, grid):

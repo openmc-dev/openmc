@@ -955,7 +955,7 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
-  centre_ = get_node_array<double>(node, "centre");
+  double centre_ = get_node_array<double>(node, "centre");
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -1193,7 +1193,7 @@ SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "theta_grid");
   grid_[2] = get_node_array<double>(node, "phi_grid");
-  centre_ = get_node_array<double>(node, "centre");
+  double centre_ = get_node_array<double>(node, "centre");
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);

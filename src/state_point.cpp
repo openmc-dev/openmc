@@ -802,9 +802,11 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
         p.position[1]=_site->r.y;
         p.position[2]=_site->r.z;
 
+        //mcpl requires that the direction vector is unit length
+        //which is also the case in openmc
         p.direction[0]=_site->u.x;
         p.direction[1]=_site->u.y;
-        p.direction[2]=_site->u.x;
+        p.direction[2]=_site->u.z;
 
         //mcpl stores kinetic energy in MeV
         p.ekin=_site->E*1e-6;

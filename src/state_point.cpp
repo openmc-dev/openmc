@@ -626,9 +626,9 @@ void write_mcpl_source_point(const char *filename, bool surf_source_bank)
     //write_attribute(file_id, "filetype", "source");
     //write header stuff (oopy in xml-files as binary blobs for instance))
     if (VERSION_DEV){
-      line=fmt::format("OpenMC {VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_RELEASE}-development");
+      line=fmt::format("OpenMC {0}.{1}.{2}-development",VERSION_MAJOR,VERSION_MINOR,VERSION_RELEASE);
     } else {
-      line=fmt::format("OpenMC {VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_RELEASE}");
+      line=fmt::format("OpenMC {0}.{1}.{2}",VERSION_MAJOR,VERSION_MINOR,VERSION_RELEASE);
     }
     mcpl_hdr_set_srcname(file_id,line.c_str());
   }

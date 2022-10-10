@@ -18,6 +18,7 @@ from warnings import warn
 
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
+import pandas as pd
 
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.mpi import comm
@@ -815,7 +816,7 @@ class Integrator(ABC):
         if step_index > 0:
             res, diff = self.msr_bw_geom.msr_criticality_search(x)
             if res == self.msr_bw_geom.start_param and self.msr_bw_mat is not None:
-                x, diff = _material_critical_update(step_index, bos_conc)
+                x, diff = self._material_critical_update(step_index, x)
         return x, diff
 
     def _material_critical_update(self, step_index, bos_conc):
@@ -845,6 +846,7 @@ class Integrator(ABC):
         with change_directory(self.operator.output_dir):
             conc = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
+            msr_res = list()
 
             for i, (dt, source_rate) in enumerate(self):
                 if output:
@@ -861,7 +863,7 @@ class Integrator(ABC):
                 else:
                     conc, res = self._get_bos_data_from_restart(i, source_rate, conc)
 
-                print(f'keff: {res.k.n}')
+                print('Timestep: {} --> keff: {:.5f}'.format(i, res.k.n))
                 # Solve Bateman equations over time interval
                 proc_time, conc_list, res_list = self(conc, res.rates, dt, source_rate, i)
 
@@ -875,8 +877,12 @@ class Integrator(ABC):
                 StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
                              source_rate, self._i_res + i, proc_time)
 
+                msr_res.append(diff)
+
                 t += dt
 
+                #Overwrite every time
+                pd.DataFrame(msr_res).to_csv("diff.csv")
             # Final simulation -- in the case that final_step is False, a zero
             # source rate is passed to the transport operator (which knows to
             # just return zero reaction rates without actually doing a transport

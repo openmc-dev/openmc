@@ -815,8 +815,9 @@ class Integrator(ABC):
         diff = 0
         if step_index > 0:
             res, diff = self.msr_bw_geom.msr_criticality_search(x)
+            # Call to _material_critical_update here in case of refuel
             if res == self.msr_bw_geom.start_param and self.msr_bw_mat is not None:
-                x, diff = self._material_critical_update(step_index, x)
+                x, _diff = self._material_critical_update(step_index, x)
         return x, diff
 
     def _material_critical_update(self, step_index, bos_conc):

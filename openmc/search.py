@@ -80,7 +80,7 @@ def _check_brackets(batches, model, target, args, print_iterations, run_args,
     cond = False
     print('INFO: Entering check brackets method...')
     while cond is False:
-        print(f'Number of batches: {batches}')
+        print(f'UPDATE --> Number of batches: {batches}')
         guesses_check = []
         results_check = []
         _search_keff(bracket_0, target, model, args, print_iterations,
@@ -106,7 +106,8 @@ def _check_brackets(batches, model, target, args, print_iterations, run_args,
         elif (not cond1 and not cond2 and not cond3):
             batches *= 2
             cond = True
-            print('INFO: Conditions not verified, double batches and exit anyway...')
+            print('INFO: Conditions not verified, '
+                  'double batches and exit anyway...')
         else:
             batches *= 2 #double the amount of batches
             print('INFO: Conditions not verified, continue...')

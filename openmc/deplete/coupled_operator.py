@@ -453,7 +453,6 @@ class CoupledOperator(OpenMCOperator):
         """
         # Reset results in OpenMC
         openmc.lib.reset()
-        print(f'Volume fuel: {self.number.volume[0]}')
         self._update_materials_and_nuclides(vec)
 
         # If the source rate is zero, return zero reaction rates without running

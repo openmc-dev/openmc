@@ -231,8 +231,9 @@ class MsrBatchwiseGeom(MsrBatchwise):
                          atom_density_limit, refine_search, refuel, start_param)
 
         self.geom_id = geom_id
-        #if type == 'surface':
-            #self.coeff = self._extract_geom_coeff()
+        if len(range) != 3:
+            raise ValueError("Range: {range} lenght is not 3. Must provide"
+                             "bracketed range and upper limit")
 
     def _extract_geom_coeff(self):
         for surf in self.geometry.get_all_surfaces().items():
@@ -276,7 +277,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
 
             #Calculate new volume to keep density constant
             density = _materials[int(burn_mat)-1].get_mass_density()
-            _materials[int(burn_mat)-1].set_density('g/cm3', density)
+            #_materials[int(burn_mat)-1].set_density('g/cm3', density)
             self.operator.number.volume[idx] = atoms_gram_per_mol /\
                                                 AVOGADRO / density
         _materials.export_to_xml()
@@ -392,7 +393,7 @@ class MsrBatchwiseMat(MsrBatchwise):
     """
     def __init__(self, operator, model, mat_id, refuel_vector, range=None,
                  bracketed_method='brentq', tol=0.01, target=1.0,
-                 atom_density_limit=None):
+                 atom_density_limit=0.0):
 
         super().__init__(operator, model, range, bracketed_method, tol, target,
                          atom_density_limit)
@@ -403,6 +404,10 @@ class MsrBatchwiseMat(MsrBatchwise):
                 raise ValueError(msg)
         else:
             self.mat_id = mat_id
+
+        if len(range) != 2:
+            raise ValueError("Range: {range} lenght is not 2. Must provide "
+                             "bracketed range only")
 
         self.refuel_vector = refuel_vector
 
@@ -422,18 +427,19 @@ class MsrBatchwiseMat(MsrBatchwise):
                         _model.materials[int(burn_id)-1].remove_nuclide(nuc)
                         _model.materials[int(burn_id)-1].add_nuclide(nuc,val)
                 else:
-                    if _model.materials[int(burn_id)-1].id == int(self.mat_id):
+                    if _model.materials[int(burn_id)-1].id == self.mat_id:
                         _model.materials[int(burn_id)-1].remove_nuclide(nuc)
                         # convert grams into atoms
                         atoms = param / atomic_mass(nuc) * AVOGADRO * \
                                 self.refuel_vector[nuc]
-                        _model.materials[int(burn_id)-1].add_nuclide(nuc, val+atoms)
+                        _model.materials[int(burn_id)-1].add_nuclide(nuc,
+                                                                    val + atoms)
                     else:
                         _model.materials[int(burn_id)-1].remove_nuclide(nuc)
                         _model.materials[int(burn_id)-1].add_nuclide(nuc, val)
             # ensure density is set
-            density = _model.materials[int(burn_id)-1].get_mass_density()
-            _model.materials[int(burn_id)-1].set_density('g/cm3',density)
+            #density = _model.materials[int(burn_id)-1].get_mass_density()
+            #_model.materials[int(burn_id)-1].set_density('g/cm3',density)
 
         _model.export_to_xml()
         return _model
@@ -447,16 +453,16 @@ class MsrBatchwiseMat(MsrBatchwise):
             #to calculate the new volume we need total atoms-gram per mol
             atoms_gram_per_mol = 0
             for id_nuc, nuc in enumerate(self.operator.number.burnable_nuclides):
-                if nuc in self.refuel_vector.keys() and int(burn_id) == int(self.mat_id):
+                if nuc in self.refuel_vector.keys() and int(burn_id) == self.mat_id:
                     # Convert res grams into atoms
-                    res_atoms = res / atomic_mass(nuc) * AVOGADRO *\
+                    res_atoms = res / atomic_mass(nuc) * AVOGADRO * \
                                 self.refuel_vector[nuc]
                     diff[nuc] = x[idx][id_nuc] - res_atoms
                     x[idx][id_nuc] += res_atoms
                 atoms_gram_per_mol += x[idx][id_nuc] * atomic_mass(nuc)
 
             # Calculate new volume and assign it in memory
-            vol = atoms_gram_per_mol / AVOGADRO /\
+            vol = atoms_gram_per_mol / AVOGADRO / \
                 self.model.materials[int(self.burn_mats[idx])-1].get_mass_density()
             self.operator.number.volume[idx] = vol
         return x, diff

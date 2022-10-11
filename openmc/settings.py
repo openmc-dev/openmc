@@ -165,6 +165,7 @@ class Settings:
                    banked (int)
         :max_particles: Maximum number of particles to be banked on
                    surfaces per process (int)
+        :mcpl: Output in the form of an MCPL-file (bool)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -643,7 +644,7 @@ class Settings:
         cv.check_type('surface source writing options', surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value('surface source writing key', key,
-                           ('surface_ids', 'max_particles'))
+                           ('surface_ids', 'max_particles', 'mcpl'))
             if key == 'surface_ids':
                 cv.check_type('surface ids for source banking', value,
                               Iterable, Integral)
@@ -655,6 +656,9 @@ class Settings:
                               value, Integral)
                 cv.check_greater_than('maximum particle banks on surfaces per process',
                                       value, 0)
+            elif key == 'mcpl':
+                cv.check_type('write to an MCPL-format file', value, bool)
+
         self._surf_source_write = surf_source_write
 
     @confidence_intervals.setter
@@ -1023,6 +1027,9 @@ class Settings:
             if 'max_particles' in self._surf_source_write:
                 subelement = ET.SubElement(element, "max_particles")
                 subelement.text = str(self._surf_source_write['max_particles'])
+            if 'mcpl' in self._surf_source_write:
+                subelement = ET.SubElement(element, "mcpl")
+                subelement.text = str(self._surf_source_write['mcpl']).lower()
 
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:

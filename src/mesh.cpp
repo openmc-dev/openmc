@@ -1178,6 +1178,7 @@ void CylindricalMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "phi_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
+  write_dataset(mesh_group, "origin", origin_);
 
   close_group(mesh_group);
 }
@@ -1447,6 +1448,7 @@ void SphericalMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "theta_grid", grid_[1]);
   write_dataset(mesh_group, "phi_grid", grid_[2]);
+  write_dataset(mesh_group, "origin", origin_);
 
   close_group(mesh_group);
 }

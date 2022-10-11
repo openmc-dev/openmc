@@ -1052,7 +1052,7 @@ class CylindricalMesh(StructuredMesh):
         self._r_grid = None
         self._phi_grid = [0.0, 2*pi]
         self._z_grid = None
-        self._centre = [0., 0., 0.]
+        self._origin = [0., 0., 0.]
 
     @property
     def dimension(self):
@@ -1065,8 +1065,8 @@ class CylindricalMesh(StructuredMesh):
         return 3
 
     @property
-    def centre(self):
-        return self._centre
+    def origin(self):
+        return self._origin
 
     @property
     def r_grid(self):
@@ -1094,10 +1094,10 @@ class CylindricalMesh(StructuredMesh):
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
 
-    @centre.setter
-    def centre(self, coords):
+    @origin.setter
+    def origin(self, coords):
         cv.check_type('mesh r_grid', coords, Iterable, Real)
-        self._centre = np.asarray(coords)
+        self._origin = np.asarray(coords)
 
     @r_grid.setter
     def r_grid(self, grid):
@@ -1240,8 +1240,8 @@ class CylindricalMesh(StructuredMesh):
         subelement = ET.SubElement(element, "z_grid")
         subelement.text = ' '.join(map(str, self.z_grid))
 
-        subelement = ET.SubElement(element, "centre")
-        subelement.text = ' '.join(map(str, self.centre))
+        subelement = ET.SubElement(element, "origin")
+        subelement.text = ' '.join(map(str, self.origin))
 
         return element
 
@@ -1266,7 +1266,7 @@ class CylindricalMesh(StructuredMesh):
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
         mesh.z_grid = [float(x) for x in get_text(elem, "z_grid").split()]
-        mesh.centre = [float(x) for x in get_text(elem, "centre").split()]
+        mesh.origin = [float(x) for x in get_text(elem, "origin").split()]
 
         return mesh
 
@@ -1321,10 +1321,10 @@ class CylindricalMesh(StructuredMesh):
         pts_cartesian[:, 0] = r * np.cos(phi)
         pts_cartesian[:, 1] = r * np.sin(phi)
 
-        # offset with centre
-        pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.centre[0]
-        pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.centre[1]
-        pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.centre[2]
+        # offset with origin
+        pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.origin[0]
+        pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.origin[1]
+        pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.origin[2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,
@@ -1374,7 +1374,7 @@ class SphericalMesh(StructuredMesh):
         self._r_grid = None
         self._theta_grid = [0, pi]
         self._phi_grid = [0, 2*pi]
-        self._centre = [0., 0., 0.]
+        self._origin = [0., 0., 0.]
 
     @property
     def dimension(self):
@@ -1387,8 +1387,8 @@ class SphericalMesh(StructuredMesh):
         return 3
 
     @property
-    def centre(self):
-        return self._centre
+    def origin(self):
+        return self._origin
 
     @property
     def r_grid(self):
@@ -1416,10 +1416,10 @@ class SphericalMesh(StructuredMesh):
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
 
-    @centre.setter
-    def centre(self, coords):
+    @origin.setter
+    def origin(self, coords):
         cv.check_type('mesh r_grid', coords, Iterable, Real)
-        self._centre = np.asarray(coords)
+        self._origin = np.asarray(coords)
 
     @r_grid.setter
     def r_grid(self, grid):
@@ -1492,8 +1492,8 @@ class SphericalMesh(StructuredMesh):
         subelement = ET.SubElement(element, "phi_grid")
         subelement.text = ' '.join(map(str, self.phi_grid))
 
-        subelement = ET.SubElement(element, "centre")
-        subelement.text = ' '.join(map(str, self.centre))
+        subelement = ET.SubElement(element, "origin")
+        subelement.text = ' '.join(map(str, self.origin))
 
         return element
 
@@ -1518,7 +1518,7 @@ class SphericalMesh(StructuredMesh):
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()]
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
-        mesh.centre = [float(x) for x in get_text(elem, "centre").split()]
+        mesh.origin = [float(x) for x in get_text(elem, "origin").split()]
 
         return mesh
 
@@ -1575,10 +1575,10 @@ class SphericalMesh(StructuredMesh):
         pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)
         pts_cartesian[:, 2] = r * np.cos(phi)
 
-        # offset with centre
-        pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.centre[0]
-        pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.centre[1]
-        pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.centre[2]
+        # offset with origin
+        pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.origin[0]
+        pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.origin[1]
+        pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.origin[2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,

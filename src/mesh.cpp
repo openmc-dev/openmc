@@ -976,6 +976,11 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
 
   mapped_r[0] = std::hypot(r.x, r.y);
   mapped_r[2] = r[2];
+
+  mapped_r[0] += centre_[0];
+  mapped_r[1] += centre_[1];
+  mapped_r[2] += centre_[2];
+
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;
   } else {
@@ -983,11 +988,6 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
     if (mapped_r[1] < 0)
       mapped_r[1] += 2 * M_PI;
   }
-
-  // TODO: pass centre as argument 
-  mapped_r[0] += centre_[0];
-  mapped_r[1] += centre_[1];
-  mapped_r[2] += centre_[2];
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 
@@ -1213,6 +1213,11 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position mapped_r;
 
   mapped_r[0] = r.norm();
+
+  mapped_r[0] += centre_[0];
+  mapped_r[1] += centre_[1];
+  mapped_r[2] += centre_[2];
+
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;
     mapped_r[2] = 0.0;
@@ -1222,11 +1227,6 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
     if (mapped_r[2] < 0)
       mapped_r[2] += 2 * M_PI;
   }
-
-  // TODO: pass centre as argument 
-  mapped_r[0] += centre_[0];
-  mapped_r[1] += centre_[1];
-  mapped_r[2] += centre_[2];
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 

@@ -334,10 +334,10 @@ double Cell::temperature(int32_t instance) const
 void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
-    if (T < data::temperature_min) {
+    if (T < data::temperature_min - settings::temperature_tolerance) {
       throw std::runtime_error {"Temperature is below minimum temperature at "
                                 "which data is available."};
-    } else if (T > data::temperature_max) {
+    } else if (T > data::temperature_max + settings::temperature_tolerance) {
       throw std::runtime_error {"Temperature is above maximum temperature at "
                                 "which data is available."};
     }

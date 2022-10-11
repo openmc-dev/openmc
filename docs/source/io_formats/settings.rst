@@ -832,7 +832,9 @@ cell, the nearest temperature at which cross sections are given is to be
 applied, within a given tolerance (see :ref:`temperature_tolerance`). A value of
 "interpolation" indicates that cross sections are to be linear-linear
 interpolated between temperatures at which nuclear data are present (see
-:ref:`temperature_treatment`).
+:ref:`temperature_treatment`). With the "interpolation" method, temperatures
+outside of the bounds of the nuclear data may be accepted, provided they still
+fall within the tolerance (see :ref:`temperature_tolerance`).
 
   *Default*: "nearest"
 
@@ -871,7 +873,12 @@ The ``<temperature_tolerance>`` element specifies a tolerance in Kelvin that is
 to be applied when the "nearest" temperature method is used. For example, if a
 cell temperature is 340 K and the tolerance is 15 K, then the closest
 temperature in the range of 325 K to 355 K will be used to evaluate cross
-sections.
+sections. If the ``<temperature_method>`` is "interpolation", the tolerance
+specified applies to cell temperatures outside of the data bounds. For example,
+If a cell is specified at 695K, a tolerance of 15K and data only available at
+700K and 1000K, the cell's cross sections will be evaluated at 700K, since
+desired temperature of 695K is within the tolerance of the actual data despite
+not being bounded on both sides.
 
   *Default*: 10 K
 

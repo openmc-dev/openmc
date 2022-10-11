@@ -117,6 +117,16 @@ ThermalScattering::ThermalScattering(
         }
       }
       if (!found) {
+        // If no pairs found, check if the desired temperature falls within
+        // bounds' tolerance
+        if (T - temps_available[0] <= -settings::temperature_tolerance) {
+          temps_to_read.push_back(std::round(temps_available[0]));
+          break;
+        }
+        if (T - temps_available[n - 1] <= settings::temperature_tolerance) {
+          temps_to_read.push_back(std::round(temps_available[n - 1]));
+          break;
+        }
         fatal_error(
           fmt::format("Nuclear data library does not contain cross "
                       "sections for {} at temperatures that bound {} K.",
@@ -159,20 +169,27 @@ void ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 
   auto n = kTs_.size();
   if (n > 1) {
-    // Find temperatures that bound the actual temperature
-    while (kTs_[i + 1] < kT && i + 1 < n - 1)
-      ++i;
-
     if (settings::temperature_method == TemperatureMethod::NEAREST) {
+      while (kTs_[i + 1] < kT && i + 1 < n - 1)
+        ++i;
       // Pick closer of two bounding temperatures
       if (kT - kTs_[i] > kTs_[i + 1] - kT)
         ++i;
-
     } else {
-      // Randomly sample between temperature i and i+1
-      double f = (kT - kTs_[i]) / (kTs_[i + 1] - kTs_[i]);
-      if (f > prn(seed))
-        ++i;
+      // If current kT outside of the bounds of available, snap to the bound
+      if (kT < kTs_.front()) {
+        i = 0;
+      } else if (kT > kTs_.back()) {
+        i = kTs_.size() - 1;
+      } else {
+        // Find temperatures that bound the actual temperature
+        while (kTs_[i + 1] < kT && i + 1 < n - 1)
+          ++i;
+        // Randomly sample between temperature i and i+1
+        double f = (kT - kTs_[i]) / (kTs_[i + 1] - kTs_[i]);
+        if (f > prn(seed))
+          ++i;
+      }
     }
   }
 

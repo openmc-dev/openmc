@@ -343,11 +343,13 @@ FileSource::FileSource(mcpl_file_t mcpl_file)
     const mcpl_particle_t *mcpl_particle;
     //extract particle from mcpl-file
     mcpl_particle=mcpl_read(mcpl_file);
-    // check if it is a neutron or a photon. otherwise skip
-    while ( mcpl_particle->pdgcode!=2112 && mcpl_particle->pdgcode!=22 ) {
+    // check if it is a neutron, photon, electron, or positron. Otherwise skip.
+    int pdg=mcpl_particle->pdgcode;
+    while ( pdg!=2112 && pdg!=22 && pdg!=11 && pdg!=-11) {
       mcpl_particle=mcpl_read(mcpl_file);
-      //should check for file exhaustion This could happen if particles are other than
-      //neutrons or photons
+      pdg=mcpl_particle->pdgcode;
+      //should check for file exhaustion. This could happen if particles are other than
+      //neutrons, photons, electrons, or positrons.
     }
 
     switch(pdg){
@@ -444,6 +446,7 @@ CustomSourceWrapper::~CustomSourceWrapper()
               "non-POSIX systems");
 #endif
 }
+
 
 //==============================================================================
 // Non-member functions

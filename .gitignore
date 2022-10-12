@@ -45,6 +45,8 @@ results_test.dat
 
 # HDF5 files
 *.h5
+!compton_profiles.h5
+!density_effect.h5
 
 # Build files
 src/CMakeCache.txt

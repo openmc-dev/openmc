@@ -407,6 +407,13 @@ void finalize_batch()
     auto filename = settings::path_output + "surface_source.h5";
     write_source_point(filename.c_str(), true);
   }
+#ifdef OPENMC_MCPL
+  if(settings::surf_mcpl_write && simulation::current_batch == settings::n_batches){
+    auto filename = settings::path_output + "surface_source.mcpl";
+    write_mcpl_source_point(filename.c_str(), true);
+  }
+#endif
+
 }
 
 void initialize_generation()

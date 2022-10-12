@@ -22,7 +22,7 @@ with open('src/openmc/__init__.py', 'r') as f:
 kwargs = {
     'name': 'openmc',
     'version': version,
-    'packages': find_packages(where=['src']),
+    'packages': find_packages(where='src'),
     'scripts': glob.glob('scripts/openmc-*'),
 
     # Data files and libraries

@@ -786,30 +786,40 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
   }
 
   if (mpi::master) {
-    //write particles from the master node
+    // Particles are writeen to disk from the master node only
+
+    // Save source bank sites since the array is overwritten below
+#ifdef OPENMC_MPI
+    vector<SourceSite> temp_source {source_bank->begin(), source_bank->end()};
+#endif
+
     //loop over the other nodes and receive data - then write those.
     for (int i = 0; i < mpi::n_procs; ++i) {
+      // number of particles for node node i
+      size_t count[] {
+        static_cast<size_t>((*bank_index)[i + 1] - (*bank_index)[i])};
+
 #ifdef OPENMC_MPI
       if (i>0)
         MPI_Recv(source_bank->data(), count[0], mpi::source_site, i, i,
           mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
-      //now write the source_banke data again.
+      // now write the source_bank data again.
       for (vector<SourceSite>::iterator _site=source_bank->begin(); _site!=source_bank->end();_site++){
-        //particle is now at the iterator
-        //write it to the mcpl-file
+        // particle is now at the iterator
+        // write it to the mcpl-file
         mcpl_particle_t p;
         p.position[0]=_site->r.x;
         p.position[1]=_site->r.y;
         p.position[2]=_site->r.z;
 
-        //mcpl requires that the direction vector is unit length
-        //which is also the case in openmc
+        // mcpl requires that the direction vector is unit length
+        // which is also the case in openmc
         p.direction[0]=_site->u.x;
         p.direction[1]=_site->u.y;
         p.direction[2]=_site->u.z;
 
-        //mcpl stores kinetic energy in MeV
+        // mcpl stores kinetic energy in MeV
         p.ekin=_site->E*1e-6;
 
         p.time=_site->time*1e3;
@@ -834,6 +844,10 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
         mcpl_add_particle(file_id,&p);
       }
     }
+#ifdef OPENMC_MPI
+    // Restore state of source bank
+    std::copy(temp_source.begin(), temp_source.end(), source_bank->begin());
+#endif
   } else {
 #ifdef OPENMC_MPI
     MPI_Send(source_bank->data(), count_size, mpi::source_site, 0, mpi::rank,

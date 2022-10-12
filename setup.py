@@ -23,6 +23,7 @@ kwargs = {
     'name': 'openmc',
     'version': version,
     'packages': find_packages(where='src'),
+    'package_dir': {'':'src'},
     'scripts': glob.glob('scripts/openmc-*'),
 
     # Data files and libraries

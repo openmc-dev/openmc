@@ -15,4 +15,4 @@ if [[ $EVENT == 'y' ]]; then
 fi
 
 # Run regression and unit tests
-pytest --cov=openmc -v $args tests
+pytest --cov=src/openmc -v $args tests

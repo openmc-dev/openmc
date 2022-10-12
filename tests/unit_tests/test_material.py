@@ -573,3 +573,9 @@ def test_decay_photon_energy():
     assert src.integral() == pytest.approx(sum(
         intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
     ))
+
+    # A material with no unstable nuclides should have no decay photon source
+    stable = openmc.Material()
+    stable.add_nuclide('Gd156', 1.0)
+    stable.volume = 1.0
+    assert stable.decay_photon_energy is None

@@ -79,6 +79,7 @@ scripts/G4EMLOW*/
 
 # Cython files
 *.c
+!endf.c
 *.html
 *.so
 

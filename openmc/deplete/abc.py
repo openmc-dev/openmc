@@ -599,8 +599,8 @@ class Integrator(ABC):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, msr_continuous=None, msr_bw_geom=None,
-                 msr_bw_mat=None, timestep_units='s', solver="cram48"):
+                 source_rates=None, msr_continuous=None, msr_batchwise=None,
+                 timestep_units='s', solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -675,8 +675,7 @@ class Integrator(ABC):
 
 
         self.msr_continuous = msr_continuous
-        self.msr_bw_geom = msr_bw_geom
-        self.msr_bw_mat = msr_bw_mat
+        self.msr_batchwise = msr_batchwise
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -803,27 +802,14 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
-    def _geometry_critical_update(self, step_index, bos_conc):
-        """Get BOS from Operator criticality batch-wise control
+    def _msr_critical_update(self, step_index, bos_conc):
+        """Get BOS from MSR criticality batch-wise control
         """
         x = deepcopy(bos_conc)
         # Get new vector after keff criticality control
-        diff = 0
         if step_index > 0:
-            res, diff = self.msr_bw_geom.msr_criticality_search(x)
-            # Call to _material_critical_update here in case of refuel
-            if res == self.msr_bw_geom.start_param and self.msr_bw_mat is not None:
-                x, _diff = self._material_critical_update(step_index, x)
-        return x, diff
-
-    def _material_critical_update(self, step_index, bos_conc):
-        """Get BOS from Operator criticality batch-wise control
-        """
-        x = deepcopy(bos_conc)
-        diff = 0
-        if step_index > 0:
-            x, diff = self.msr_bw_mat.msr_criticality_search(x)
-        return x, diff
+            x = self.msr_batchwise.msr_criticality_search(x)
+        return x
 
     def integrate(self, final_step=True, output=True):
         """Perform the entire depletion process across all steps
@@ -843,7 +829,6 @@ class Integrator(ABC):
         with change_directory(self.operator.output_dir):
             conc = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
-            msr_res = list()
 
             for i, (dt, source_rate) in enumerate(self):
                 if output:
@@ -852,15 +837,13 @@ class Integrator(ABC):
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
                     # Update geometry/material according to msr batchwise definition
-                    if self.msr_bw_geom is not None:
-                        conc, diff = self._geometry_critical_update(i, conc)
-                    elif self.msr_bw_mat is not None:
-                        conc, diff = self._material_critical_update(i, conc)
+                    if self.msr_batchwise is not None:
+                        conc = self._msr_critical_update(i, conc)
+
                     conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
                 else:
                     conc, res = self._get_bos_data_from_restart(i, source_rate, conc)
 
-                print('Timestep: {} --> keff: {:.5f}'.format(i, res.k.n))
                 # Solve Bateman equations over time interval
                 proc_time, conc_list, res_list = self(conc, res.rates, dt, source_rate, i)
 
@@ -874,12 +857,8 @@ class Integrator(ABC):
                 StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
                              source_rate, self._i_res + i, proc_time)
 
-                msr_res.append(diff)
-
                 t += dt
 
-                #Overwrite every time
-                pd.DataFrame(msr_res).to_csv("diff.csv")
             # Final simulation -- in the case that final_step is False, a zero
             # source rate is passed to the transport operator (which knows to
             # just return zero reaction rates without actually doing a transport

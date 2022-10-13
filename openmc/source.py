@@ -223,7 +223,10 @@ class Source:
         if self.particle != 'neutron':
             element.set("particle", self.particle)
         if self.file is not None:
-            element.set("file", self.file)
+            if (self.file.endswith('.mcpl')):
+              element.set("mcpl", self.file)
+            else:
+              element.set("file", self.file)
         if self.library is not None:
             element.set("library", self.library)
         if self.parameters is not None:

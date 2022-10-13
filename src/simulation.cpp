@@ -389,16 +389,33 @@ void finalize_batch()
 
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // Write out a separate source point if it's been specified for this batch
-    if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
-        settings::source_write && settings::source_separate) {
-      write_source_point(nullptr);
-    }
+#ifdef OPENMC_MCPL
+    if(! settings::source_mcpl_write) {
+#endif
+      if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
+          settings::source_write && settings::source_separate) {
+        write_source_point(nullptr);
+      }
 
-    // Write a continously-overwritten source point if requested.
-    if (settings::source_latest) {
-      auto filename = settings::path_output + "source.h5";
-      write_source_point(filename.c_str());
+      // Write a continously-overwritten source point if requested.
+      if (settings::source_latest) {
+        auto filename = settings::path_output + "source.h5";
+        write_source_point(filename.c_str());
+      }
+#ifdef OPENMC_MCPL
+    } else {
+      if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
+            settings::source_mcpl_write && settings::source_separate) {
+          write_mcpl_source_point(nullptr);
+      }
+
+      // Write a continously-overwritten source point if requested.
+      if (settings::source_latest && settings::source_mcpl_write) {
+        auto filename = settings::path_output + "source.mcpl";
+        write_mcpl_source_point(filename.c_str());
+      }
     }
+#endif
   }
 
   // Write out surface source if requested.
@@ -407,6 +424,13 @@ void finalize_batch()
     auto filename = settings::path_output + "surface_source.h5";
     write_source_point(filename.c_str(), true);
   }
+#ifdef OPENMC_MCPL
+  if(settings::surf_mcpl_write && simulation::current_batch == settings::n_batches){
+    auto filename = settings::path_output + "surface_source.mcpl";
+    write_mcpl_source_point(filename.c_str(), true);
+  }
+#endif
+
 }
 
 void initialize_generation()

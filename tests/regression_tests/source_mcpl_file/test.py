@@ -1,65 +1,101 @@
-import os
-import subprocess
+#!/usr/bin/env python
+
 import glob
+import os
 
-from tests.testing_harness import TestHarness
+from tests.testing_harness import *
 
 
-class SourceMCPLFileTestHarness(TestHarness):
-  def execute_test(self):
-    """Run OpenMC with the appropriate arguments and check the outputs."""
-    try:
-      self._create_input()
-      self._test_input_created()
-      self._run_openmc()
-      self._test_output_created()
-      results = self._get_results()
-      self._write_results(results)
-      self._compare_results()
-    finally:
-      self._cleanup()
+settings1="""<?xml version="1.0"?>
+<settings>
+  <state_point batches="10" />
+  <source_point mcpl="true" separate="true" />
+  <eigenvalue>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <particles>1000</particles>
+  </eigenvalue>
+  <source>
+    <space type="box">
+      <parameters>-4 -4 -4  4  4  4</parameters>
+    </space>
+  </source>
+</settings>
+"""
 
-  def _create_input(self):
-    compiled=subprocess.run(['gcc','-o','gen_dummy_mcpl.out','gen_dummy_mcpl.c','-lm','-lmcpl'])
-    assert compiled==0, 'Could not compile mcpl-file generator code'
-    subprocess.run(['./gen_dummy_mcpl.out'])
+settings2 = """<?xml version="1.0"?>
+<settings>
+  <eigenvalue>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <particles>1000</particles>
+  </eigenvalue>
+  <source>
+    <mcpl> source.10.{0} </mcpl>
+  </source>
+</settings>
+"""
 
-  def update_results(self):
-    """Update the results_true using the current version of OpenMC."""
-    try:
-      self._create_input()
-      self._test_input_created()
-      self._run_openmc()
-      self._test_output_created()
-      results = self._get_results()
-      self._write_results(results)
-      self._overwrite_results()
-    finally:
-      self._cleanup()
 
-  def _test_input_created(self):
-    """Check that the input mcpl.file was generated as it should"""
-    mcplfile=glob.glob(os.path.join(os.getcwd(),'source.10.mcpl'))
-    assert len(mcplfile) == 1, 'Either multiple or no mcpl files ' \
-      'exist.'
-    assert mcplfile[0].endswith('mcpl'), \
-      'output file does not end with mcpl.'
+class SourceFileTestHarness(TestHarness):
+    def execute_test(self):
+        """Run OpenMC with the appropriate arguments and check the outputs."""
+        try:
+            self._run_openmc()
+            self._test_output_created()
+            self._run_openmc_restart()
+            results = self._get_results()
+            self._write_results(results)
+            self._compare_results()
+        finally:
+            self._cleanup()
 
-  def _test_output_created(self):
-    """Check that the output files were created"""
-    statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
-    assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
-      'exist.'
-    assert statepoint[0].endswith('h5'), \
-      'statepoint file does not end with h5.'
+    def update_results(self):
+        """Update the results_true using the current version of OpenMC."""
+        try:
+            self._run_openmc()
+            self._test_output_created()
+            self._run_openmc_restart()
+            results = self._get_results()
+            self._write_results(results)
+            self._overwrite_results()
+        finally:
+            self._cleanup()
 
-  def _cleanup(self):
-    super()._cleanup()
-    source_mcpl=glob.glob(os.path.join(os.getcwd(),'source*.mcpl'))
-    for f in source_mcpl:
-      if (os.path.exists(f)):
-        os.remove(f)
+    def _test_output_created(self):
+        """Make sure statepoint and source files have been created."""
+        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
+        assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
+             'exist.'
+        assert statepoint[0].endswith('h5'), \
+             'Statepoint file is not a HDF5 file.'
 
-def test_mcpl_source_file():
-  harness = SourceMCPLFileTestHarness('source.10.mcpl')
-  harness.main()
+        source = glob.glob(os.path.join(os.getcwd(), 'source.10.mcpl*'))
+        assert len(source) == 1, 'Either multiple or no source files exist.'
+        assert source[0].endswith('mcpl') or source[0].endswith('mcpl.gz'), \
+             'Source file is not a MCPL file.'
+
+    def _run_openmc_restart(self):
+        # Get the name of the source file.
+        source = glob.glob(os.path.join(os.getcwd(), 'source.10.*'))
+
+        # Write the new settings.xml file.
+        with open('settings.xml','w') as fh:
+            fh.write(settings2.format(source[0].split('.')[-1]))
+
+        # Run OpenMC.
+        self._run_openmc()
+
+    def _cleanup(self):
+        TestHarness._cleanup(self)
+        output = glob.glob(os.path.join(os.getcwd(), 'source.*'))
+        #for f in output:
+        #    if os.path.exists(f):
+        #        os.remove(f)
+        with open('settings.xml','w') as fh:
+            fh.write(settings1)
+
+
+def test_source_file():
+    harness = SourceFileTestHarness('statepoint.10.h5')
+    harness.main()

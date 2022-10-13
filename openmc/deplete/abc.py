@@ -531,8 +531,16 @@ class Integrator(ABC):
     source_rates : float or iterable of float, optional
         Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
         each interval in :attr:`timesteps`
-    msr_continuous :
-        .. versionadded:: 0.13.2
+    msr_continuous : openmc.deplete.msr.MsrContinuous
+        Instance to MsrContinuous class to perform msr continuous removal based
+        on removal rates definitions. Removal rates coefficients are added as
+        extra terms to the Bateman equations.
+    msr_batchwise : openmc.deplete.msr.MsrBatchwise
+        Instance to MsrBatchwise class to perform msr batchwise operations at
+        every timestep as single action in time to control criticality.
+        Instances of this class can either be based on the model geomety and in
+        this case the instance should be to `MsrBatchwiseGeom` or to the the
+        model materials, instance to `MsrBatchwiseMat`.
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
@@ -561,6 +569,16 @@ class Integrator(ABC):
     source_rates : iterable of float
         Source rate in [W] or [neutron/sec] for each interval in
         :attr:`timesteps`
+    msr_continuous : openmc.deplete.msr.MsrContinuous
+        Instance to MsrContinuous class to perform msr continuous removal based
+        on removal rates definitions. Removal rates coefficients are added as
+        extra terms to the Bateman equations.
+    msr_batchwise : openmc.deplete.msr.MsrBatchwise
+        Instance to MsrBatchwise class to perform msr batchwise operations at
+        every timestep as single action in time to control criticality.
+        Instances of this class can either be based on the model geomety and in
+        this case the instance should be to `MsrBatchwiseGeom` or to the the
+        model materials, instance to `MsrBatchwiseMat`.
     solver : callable
         Function that will solve the Bateman equations
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
@@ -655,32 +673,10 @@ class Integrator(ABC):
         self.timesteps = asarray(seconds)
         self.source_rates = asarray(source_rates)
 
-        if msr_continuous is not None:
-            if not isinstance(msr_continuous, MsrContinuous):
-                raise ValueError('This is not a valid MsrContinuous')
-            else:
-                if not msr_continuous.removal_rates:
-                    raise ValueError('MsrContinuous removal terms is empty')
-                else:
-                    self.msr_continuous = msr_continuous
-        else:
-            self.msr_continuous = None
 
-        if msr_bw_geom is not None:
-            if not isinstance(msr_bw_geom, MsrBatchwiseGeom):
-                raise ValueError('This is not a valid MsrBatchwiseGeom')
-            else:
-                self.msr_bw_geom = msr_bw_geom
-        else:
-            self.msr_bw_geom = None
-
-        if msr_bw_mat is not None:
-            if not isinstance(msr_bw_mat, MsrBatchwiseMat):
-                raise ValueError('This is not a valid MsrBatchwiseMat')
-            else:
-                self.msr_bw_mat = msr_bw_mat
-        else:
-            self.msr_bw_mat = None
+        self.msr_continuous = msr_continuous
+        self.msr_bw_geom = msr_bw_geom
+        self.msr_bw_mat = msr_bw_mat
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file

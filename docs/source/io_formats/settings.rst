@@ -875,10 +875,10 @@ cell temperature is 340 K and the tolerance is 15 K, then the closest
 temperature in the range of 325 K to 355 K will be used to evaluate cross
 sections. If the ``<temperature_method>`` is "interpolation", the tolerance
 specified applies to cell temperatures outside of the data bounds. For example,
-If a cell is specified at 695K, a tolerance of 15K and data only available at
-700K and 1000K, the cell's cross sections will be evaluated at 700K, since
-desired temperature of 695K is within the tolerance of the actual data despite
-not being bounded on both sides.
+if a cell is specified at 695K, a tolerance of 15K and data is only available
+at 700K and 1000K, the cell's cross sections will be evaluated at 700K, since
+the desired temperature of 695K is within the tolerance of the actual data
+despite not being bounded on both sides.
 
   *Default*: 10 K
 

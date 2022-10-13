@@ -654,6 +654,9 @@ void read_settings_xml()
     if (check_for_node(node_sp, "write")) {
       source_write = get_node_value_bool(node_sp, "write");
     }
+    if (check_for_node(node_sp, "mcpl")) {
+      source_write = get_node_value_bool(node_sp, "mcpl");
+    }
     if (check_for_node(node_sp, "overwrite_latest")) {
       source_latest = get_node_value_bool(node_sp, "overwrite_latest");
       source_separate = source_latest;

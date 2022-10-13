@@ -399,6 +399,20 @@ void finalize_batch()
       auto filename = settings::path_output + "source.h5";
       write_source_point(filename.c_str());
     }
+
+#ifdef OPENMC_MCPL
+    if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
+        settings::source_mcpl_write && settings::source_separate) {
+      write_mcpl_source_point(nullptr);
+    }
+
+    // Write a continously-overwritten source point if requested.
+    if (settings::source_latest && setting::source_mcpl_write) {
+      auto filename = settings::path_output + "source.mcpl";
+      write_mcpl_source_point(filename.c_str());
+    }
+#endif
+
   }
 
   // Write out surface source if requested.

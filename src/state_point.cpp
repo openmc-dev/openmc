@@ -637,7 +637,7 @@ void write_mcpl_source_point(const char *filename, bool surf_source_bank)
 
   if (mpi::master) {
     //change this - this is h5 specific
-    mcpl_closeandgzip_outfile(file_id);
+    mcpl_close_outfile(file_id);
   }
 
 }

@@ -75,7 +75,7 @@ class Geometry:
                 if universe.id in volume_calc.volumes:
                     universe.add_volume_information(volume_calc)
 
-    def export_to_xml(self, path='geometry.xml', remove_surfs=True):
+    def export_to_xml(self, path='geometry.xml', remove_surfs=False):
         """Export geometry to an XML file.
 
         Parameters

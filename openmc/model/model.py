@@ -397,7 +397,7 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.', remove_surfs=True):
+    def export_to_xml(self, directory='.', remove_surfs=False):
         """Export model to XML files.
 
         Parameters

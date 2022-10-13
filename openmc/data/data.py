@@ -203,6 +203,7 @@ _GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 # Used in half_life function as a cache
 _HALF_LIFE = {}
 _LOG_TWO = log(2.0)
+_DECAY_ENERGY = {}
 
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
@@ -330,6 +331,34 @@ def decay_constant(isotope):
     """
     t = half_life(isotope)
     return _LOG_TWO / t if t else 0.0
+
+
+def decay_energy(isotope):
+    """Return decay energy of isotope in eV or 0.0 if isotope is stable
+
+    Decay energy values are from the `ENDF/B-VIII.0 decay sublibrary
+    <https://www.nndc.bnl.gov/endf-b8.0/download.html>`_.
+
+    .. versionadded:: 0.14.1
+
+    Parameters
+    ----------
+    isotope : str
+        Name of isotope, e.g., 'U235'
+
+    Returns
+    -------
+    float
+        Decay energy of isotope in [eV]
+
+    """
+    global _DECAY_ENERGY
+    if not _DECAY_ENERGY:
+        # Load ENDF/B-VIII.0 data from JSON file
+        decay_energy_path = Path(__file__).with_name('decay_energy.json')
+        _DECAY_ENERGY = json.loads(decay_energy_path.read_text())
+    t = half_life(isotope)
+    return _DECAY_ENERGY.get(isotope.lower()) if t else 0.0
 
 
 def water_density(temperature, pressure=0.1013):

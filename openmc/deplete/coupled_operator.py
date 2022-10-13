@@ -453,7 +453,6 @@ class CoupledOperator(OpenMCOperator):
         """
         # Reset results in OpenMC
         openmc.lib.reset()
-
         self._update_materials_and_nuclides(vec)
 
         # If the source rate is zero, return zero reaction rates without running
@@ -464,7 +463,7 @@ class CoupledOperator(OpenMCOperator):
             return OperatorResult(ufloat(0.0, 0.0), rates)
 
         # Run OpenMC
-        openmc.lib.run()
+        openmc.lib.run(output=False)
         openmc.lib.reset_timers()
 
         # Extract results

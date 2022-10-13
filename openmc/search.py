@@ -2,6 +2,7 @@ from collections.abc import Callable
 from numbers import Real
 
 import scipy.optimize as sopt
+import numpy as np
 
 import openmc
 import openmc.model
@@ -12,7 +13,7 @@ _SCALAR_BRACKETED_METHODS = ['brentq', 'brenth', 'ridder', 'bisect']
 
 
 def _search_keff(guess, target, model_builder, model_args, print_iterations,
-                 run_args, guesses, results):
+                 run_args, guesses, results, batches=None):
     """Function which will actually create our model, run the calculation, and
     obtain the result. This function will be passed to the root finding
     algorithm
@@ -49,9 +50,17 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
 
     # Build the model
     model = model_builder(guess, **model_args)
-
     # Run the model and obtain keff
-    sp_filepath = model.run(**run_args)
+    #sp_filepath = model.run(**run_args)
+    if batches is not None:
+        model.settings.batches = batches
+        #this is a temporary workaround, until a nicer solution is found. The
+        # problem is that if one model is initialized in memory no settings
+        # modification are allowed. The only way found was to overright the
+        #settings.xml and run through I/O readings.
+        model.settings.export_to_xml()
+    openmc.run(**run_args)
+    sp_filepath = f'statepoint.{str(model.settings.batches)}.h5'
     with openmc.StatePoint(sp_filepath) as sp:
         keff = sp.keff
 
@@ -66,11 +75,49 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
 
     return keff.n - target
 
+def _check_brackets(batches, model, target, args, print_iterations, run_args,
+                   bracket_0, bracket_1, limit=200 ):
+    cond = False
+    print('INFO: Entering check brackets method...')
+    while cond is False:
+        print(f'UPDATE --> Number of batches: {batches}')
+        guesses_check = []
+        results_check = []
+        _search_keff(bracket_0, target, model, args, print_iterations,
+                     run_args, guesses_check, results_check, batches)
+        _search_keff(bracket_1, target, model, args, print_iterations,
+                     run_args, guesses_check, results_check, batches)
+        cond1 = (
+        np.sign(results_check[0].n - target ) !=
+        np.sign(results_check[1].n -target)
+        )
+        cond2 = (
+        np.sign(results_check[0].n + results_check[0].s - target ) !=
+        np.sign(results_check[1].n - results_check[1].s -target)
+        )
+        cond3 = (
+        np.sign(results_check[0].n - results_check[0].s - target ) !=
+        np.sign(results_check[1].n + results_check[1].s -target)
+        )
+
+        if (cond1 and cond2 and cond3) or (batches >= limit):
+           cond = True
+           print('INFO: Conditions verified, exit loop...')
+        elif (not cond1 and not cond2 and not cond3):
+            batches *= 2
+            cond = True
+            print('INFO: Conditions not verified, '
+                  'double batches and exit anyway...')
+        else:
+            batches *= 2 #double the amount of batches
+            print('INFO: Conditions not verified, continue...')
+
+    return batches
 
 def search_for_keff(model_builder, initial_guess=None, target=1.0,
                     bracket=None, model_args=None, tol=None,
                     bracketed_method='bisect', print_iterations=False,
-                    run_args=None, **kwargs):
+                    run_args=None, check_brackets=False, **kwargs):
     """Function to perform a keff search by modifying a model parametrized by a
     single independent variable.
 
@@ -190,6 +237,13 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     else:
         raise ValueError("Either the 'bracket' or 'initial_guess' parameters "
                          "must be set")
+
+    batches = model.settings.batches
+    # Check if the statistic is robust enought before performing the optimization
+    if check_brackets:
+        batches = _check_brackets(batches, model_builder, target, {},
+                    print_iterations, run_args,
+                    bracket[0], bracket[1], 200)
 
     # Add information to be passed to the searching function
     args['args'] = (target, model_builder, model_args, print_iterations,

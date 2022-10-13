@@ -75,7 +75,7 @@ class Geometry:
                 if universe.id in volume_calc.volumes:
                     universe.add_volume_information(volume_calc)
 
-    def export_to_xml(self, path='geometry.xml', remove_surfs=False):
+    def export_to_xml(self, path='geometry.xml', remove_surfs=True):
         """Export geometry to an XML file.
 
         Parameters
@@ -411,7 +411,8 @@ class Geometry:
         """
         tally = defaultdict(list)
         for surf in self.get_all_surfaces().values():
-            coeffs = tuple(surf._coefficients[k] for k in surf._coeff_keys)
+            coeffs = tuple(round(surf._coefficients[k], 10)
+                           for k in surf._coeff_keys)
             key = (surf._type,) + coeffs
             tally[key].append(surf)
         return {replace.id: keep

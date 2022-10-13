@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
+from warnings import warn
 
 import numpy as np
 
@@ -190,12 +191,8 @@ class MsrBatchwise(ABC):
     target : float
         Search_for_keff function target
         Default to 1.0
-    atom_density_limit : float, optional
-        Atom density limit below which nuclides are excluded from
-        search_for_keff, to be used for speed up.
-        Default to 0.0
-    Attributes
 
+    Attributes
     ----------
     operator : openmc.deplete.Operator
         OpenMC operator object
@@ -213,12 +210,9 @@ class MsrBatchwise(ABC):
         Tolerance for search_for_keff method
     target : float
         Search_for_keff function target
-    atom_density_limit : float
-        Atom density limit below which nuclides are excluded from
-        search_for_keff, to be used for speed up.
     """
     def __init__(self, operator, model, range=None, bracketed_method='brentq',
-                 tol=0.01, target=1.0, atom_density_limit=0.0):
+                 tol=0.01, target=1.0):
 
         self.operator = operator
         self.burn_mats = operator.burnable_mats
@@ -229,7 +223,6 @@ class MsrBatchwise(ABC):
         self.bracketed_method = bracketed_method
         self.tol = tol
         self.target = target
-        self.atom_density_limit = atom_density_limit
 
     def _order_vector(self, x):
         """
@@ -265,8 +258,6 @@ class MsrBatchwise(ABC):
         ------------
         res : float
             root of search_for_keff function
-        diff : float
-            difference from previous result
         """
         pass
 
@@ -328,21 +319,6 @@ class MsrBatchwiseGeom(MsrBatchwise):
     target : float
         Search_for_keff function target
         Default to 1.0
-    atom_density_limit : float, optional
-        Atom density limit below which nuclides are excluded from
-        search_for_keff, to be used for speed up.
-        Default to 0.0
-    refine_search : bool, optional
-        Whether or not to include search_for_keff statistical refinement
-        when close to a geometrical upper limit.
-        Default to True
-    refuel : bool, Optional
-        Whether or not to include a refule, whenever the upper limit gets hit
-        by the geometrical search_for_keff. A call from the abc class will
-        Default to False
-    start_param : float, optional
-        Restarting geometrical variable coefficient after a refuel event.
-        Deafult to 0.0
 
     Attributes
     ----------
@@ -351,32 +327,16 @@ class MsrBatchwiseGeom(MsrBatchwise):
     type : string
         Parametric goemetrical feature type. Right now only 'surface' is
         supported
-    refine_search : bool
-        Whether or not to include search_for_keff statistical refinement
-        when close to a geometrical upper limit.
-    refuel : bool
-        Whether or not to include a refule, whenever the upper limit gets hit
-        by the geometrical search_for_keff. A call from the abc class will
-    start_param : float
-        Restarting geometrical variable coefficient after a refuel event.
-
     """
     def __init__(self, operator, model, geom_id, type='surface', range=None,
-                    bracketed_method='brentq', tol=0.01, target=1.0,
-                    atom_density_limit=0.0, refine_search=True, refuel=True,
-                    start_param=0.0):
+                    bracketed_method='brentq', tol=0.01, target=1.0):
 
-        super().__init__(operator, model, range, bracketed_method, tol, target,
-                         atom_density_limit)
+        super().__init__(operator, model, range, bracketed_method, tol, target)
 
         self.geom_id = geom_id
         if len(range) != 3:
             raise ValueError("Range: {range} lenght is not 3. Must provide"
                              "bracketed range and upper limit")
-
-        self.refine_search = refine_search
-        self.refuel = refuel
-        self.start_param = start_param
 
     def _extract_geom_coeff(self):
         """
@@ -440,8 +400,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
 
             atoms_gram_per_mol = 0
             for nuc, val in nucs[i].items():
-                if val < self.atom_density_limit or \
-                nuc not in self.operator.nuclides_with_data:
+                if nuc not in self.operator.nuclides_with_data:
                     _materials[int(mat)-1].remove_nuclide(nuc)
                 else:
                     _materials[int(mat)-1].remove_nuclide(nuc)
@@ -494,8 +453,6 @@ class MsrBatchwiseGeom(MsrBatchwise):
         ------------
         res : float
             geometrical coefficient root of search_for_keff function
-        diff : float
-            difference from previous result
         """
         self._normalize_nuclides(x)
         coeff = self._extract_geom_coeff()
@@ -503,18 +460,15 @@ class MsrBatchwiseGeom(MsrBatchwise):
         low_range = self.range[0]
         up_range = self.range[1]
 
+        # Normalize search_for_keff tolerance with coefficient value
         if -1.0 < coeff < 1.0:
             _tol = self.tol / 2
         else:
             _tol = self.tol / abs(coeff)
 
+        # Run until a search_for_keff root is found
         res = None
         while res == None:
-
-            if self.refine_search and coeff >= abs(self.range[2])/2:
-                check_brackets = True
-            else:
-                check_brackets = False
 
             search = search_for_keff(self._build_parametric_model,
                     bracket=[coeff + low_range, coeff + up_range],
@@ -522,8 +476,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
                     bracketed_method=self.bracketed_method,
                     target=self.target,
                     print_iterations=True,
-                    run_args={'output':False},
-                    check_brackets=check_brackets)
+                    run_args={'output':False})
 
             if len(search) == 3:
                 _res, _, _ = search
@@ -531,60 +484,43 @@ class MsrBatchwiseGeom(MsrBatchwise):
                 if _res <= self.range[2]:
                     res = _res
                 else:
-                    if self.refuel:
-                        msg = 'INFO: Hit upper limit {:.2f} cm. Update geom' \
-                        'coeff to {:.2f} and start refuel'.format(self.range[2],
-                                                               self.start_param)
-                        print(msg)
-                        res = self.start_param
-                        break
-                    else:
-                        msg = 'STOP: Hit upper limit and no further criteria' \
-                               'defined'
-                        raise Exception(msg)
+                    warn('WARNING: Hit upper limit. Set root to {:.2f} cm ' \
+                         'and exit msr batchwise'.format(self.range[2]))
+                    res = self.range[2]
 
             elif len(search) == 2:
                 guesses, k = search
 
                 if guesses[-1] > self.range[2]:
-                    if self.refuel:
-                        msg = 'INFO: Hit upper limit {:.2f} cm. Update geom' \
-                        'coeff to {:.2f} and start refuel'.format(self.range[2],
-                                                               self.start_param)
-                        print(msg)
-                        res = self.start_param
-                        break
-                    else:
-                        msg = 'STOP: Hit upper limit and no further criteria ' \
-                               'defined'
-                        raise Exception(msg)
-
-                if np.array(k).prod() < self.target:
-                    print ('INFO: Function returned values BELOW target, ' \
-                           'adapting bracket range...')
-                    if (self.target - np.array(k).prod()) <= 0.02:
-                        low_range = up_range - 3
-                    elif 0.02 < (self.target - np.array(k).prod()) < 0.03:
-                        low_range = up_range - 1
-                    else:
-                        low_range = up_range - 0.5
-                    up_range += abs(self.range[1])/2
-
+                    warn('WARNING: Hit upper limit. Set root to {:.2f} cm ' \
+                         'and exit msr batchwise'.format(self.range[2]))
+                    res = self.range[2]
                 else:
-                    print ('INFO: Function returned values ABOVE target, ' \
-                           'adapting bracket range...')
-                    up_range = low_range + 2
-                    low_range -= abs(self.range[0])
+                    #Simple method to iteratively adapt the bracketed range
+                    if np.array(k).prod() < self.target:
+                        print ('INFO: Function returned values BELOW target, ' \
+                               'adapting bracket range...')
+                        if (self.target - np.array(k).prod()) <= 0.02:
+                            low_range = up_range - 3
+                        elif 0.02 < (self.target - np.array(k).prod()) < 0.03:
+                            low_range = up_range - 1
+                        else:
+                            low_range = up_range - 0.5
+                        up_range += abs(self.range[1])/2
+
+                    else:
+                        print ('INFO: Function returned values ABOVE target, ' \
+                               'adapting bracket range...')
+                        up_range = low_range + 2
+                        low_range -= abs(self.range[0])
 
             else:
                 raise ValueError(f'ERROR: search_for_keff output not valid')
 
         self._finalize(res)
-        msg = 'UPDATE: old coeff: {:.2f} cm --> ' \
-              'new coeff: {:.2f} cm'.format(coeff, res)
-        print(msg)
-        diff = res - coeff
-        return res, diff
+        print('UPDATE: old coeff: {:.2f} cm --> ' \
+              'new coeff: {:.2f} cm'.format(coeff, res))
+        return res
 
 class MsrBatchwiseMat(MsrBatchwise):
     """ MsrBatchwise material class
@@ -617,11 +553,7 @@ class MsrBatchwiseMat(MsrBatchwise):
     target : float
         Search_for_keff function target
         Default to 1.0
-    atom_density_limit : float, optional
-        Atom density limit below which nuclides are excluded from
-        search_for_keff, to be used for speed up.
-        Default to 0.0
-        
+
     Attributes
     ----------
     mat_id : int
@@ -631,11 +563,9 @@ class MsrBatchwiseMat(MsrBatchwise):
         the nuclides str and values are the composition fractions.
     """
     def __init__(self, operator, model, mat_id, refuel_vector, range=None,
-                 bracketed_method='brentq', tol=0.01, target=1.0,
-                 atom_density_limit=0.0):
+                 bracketed_method='brentq', tol=0.01, target=1.0):
 
-        super().__init__(operator, model, range, bracketed_method, tol, target,
-                         atom_density_limit)
+        super().__init__(operator, model, range, bracketed_method, tol, target)
 
         if str(mat_id) not in self.burn_mats:
                 msg = 'Mat_id: {} is not a valid depletable material id'\
@@ -668,8 +598,7 @@ class MsrBatchwiseMat(MsrBatchwise):
         for i, mat in enumerate(self.burn_mats):
             for nuc, val in self.nucs[i].items():
                 if nuc not in self.refuel_vector.keys():
-                    if val < self.atom_density_limit or \
-                    nuc not in self.operator.nuclides_with_data:
+                    if nuc not in self.operator.nuclides_with_data:
                         _model.materials[int(mat)-1].remove_nuclide(nuc)
                     else:
                         _model.materials[int(mat)-1].remove_nuclide(nuc)
@@ -707,10 +636,7 @@ class MsrBatchwiseMat(MsrBatchwise):
         ------------
         x : list of numpy.ndarray
             Updated total atoms to be used in function
-        diff : float
-            Difference from previous iteration
         """
-        diff = dict()
 
         for i, mat in enumerate(self.burn_mats):
             atoms_gram_per_mol = 0
@@ -719,7 +645,6 @@ class MsrBatchwiseMat(MsrBatchwise):
                     # Convert res grams into atoms
                     res_atoms = res / atomic_mass(nuc) * AVOGADRO * \
                                 self.refuel_vector[nuc]
-                    diff[nuc] = x[i][j] - res_atoms
                     x[i][j] += res_atoms
                 atoms_gram_per_mol += x[i][j] * atomic_mass(nuc)
 
@@ -727,7 +652,7 @@ class MsrBatchwiseMat(MsrBatchwise):
             self.operator.number.volume[i] = atoms_gram_per_mol / AVOGADRO / \
                             self.model.materials[int(mat)-1].get_mass_density()
 
-        return x, diff
+        return x
 
     def msr_criticality_search(self, x):
         """
@@ -747,8 +672,11 @@ class MsrBatchwiseMat(MsrBatchwise):
 
         low_range = self.range[0]
         up_range = self.range[1]
+
+        # Run until a search_for_keff root is found
         res = None
         while res == None:
+
             search = search_for_keff(self._build_parametric_model,
                     bracket=[low_range, up_range],
                     tol=self.tol,
@@ -762,6 +690,7 @@ class MsrBatchwiseMat(MsrBatchwise):
 
             elif len(search) == 2:
                 guesses, k = search
+                #Simple method to iteratively adapt the bracketed range
                 if np.array(k).prod() < self.target:
                     print ('INFO: Function returned values BELOW target, ' \
                            'adapting bracket range...')
@@ -784,7 +713,7 @@ class MsrBatchwiseMat(MsrBatchwise):
             else:
                 raise ValueError(f'ERROR: search_for_keff output not valid')
 
-        msg = 'UPDATE: Refueling: {:.2f} g --> ' \
-              .format(res)
-        print(msg)
+        print('UPDATE: Refueling: {:.2f} g --> ' \
+              .format(res))
+
         return  self._update_x_vector_and_volumes(x, res)

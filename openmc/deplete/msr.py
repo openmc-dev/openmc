@@ -181,16 +181,17 @@ class MsrBatchwise(ABC):
     model : openmc.model.Model
         OpenMC model object
     range : list of float
-        List of floats defining bracketed range for search_for_keff
-    bracketed_method : string
-        Bracketed method for search_for_keff
-        Default to 'brentq' --> more robuts
+        Bracketing interval to search for the solution as list of float.
+        This is equivalent to the `bracket` parameter of the `search_for_keff`.
+    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
+        Solution method to use; only applies if
+        `bracket` is set, otherwise the Secant method is used.
+        Defaults to 'brentq'.
     tol : float
         Tolerance for search_for_keff method
         Default to 0.01
-    target : float
-        Search_for_keff function target
-        Default to 1.0
+    target : Real, optional
+        keff value to search for, defaults to 1.0.
 
     Attributes
     ----------
@@ -203,7 +204,7 @@ class MsrBatchwise(ABC):
     model : openmc.model.Model
         OpenMC model object
         range : list of float
-        list of floats defining bracketed range for search_for_keff
+        list of floats defining bracketed range for `search_for_keff`
     bracketed_method : string
         Bracketed method for search_for_keff
     tol : float
@@ -249,7 +250,7 @@ class MsrBatchwise(ABC):
     def msr_criticality_search(self, x):
         """
         Perform the criticality search for a given parametric model.
-        It can either be a geometrical or material search.
+        It can either be a geometrical or material `search_for_keff`.
         Parameters
         ------------
         x : list of numpy.ndarray
@@ -257,17 +258,20 @@ class MsrBatchwise(ABC):
         Returns
         ------------
         res : float
-            root of search_for_keff function
+            Estimated value of the variable parameter where keff is the
+            targeted value
         """
         pass
 
     @abstractmethod
     def _build_parametric_model(self, param):
         """
-        Builds the parametric model to be passed to `msr_criticality_search`
+        Builds the parametric model to be passed to `search_for_keff`.
+        Callable function which builds a model according to a passed
+        parameter. This function must return an openmc.model.Model object.
         Parameters
         ------------
-        param :
+        param : parameter
             model function variable
         Returns
         ------------
@@ -278,12 +282,13 @@ class MsrBatchwise(ABC):
 
     def finalize(self, var):
         """
-        Finilize the geometry by setting the search_for_keff function root to
-        the geometry model defined in memory
+        Finilize the geometry by setting the `search_for_keff` estimated value
+        to the geometry model in memory via the C API
         Parameters
         ------------
         var : float
-            geometrical variable to re-initialize geometry in memory
+            Estimated geoemtrical value of the variable parameter returned by
+            the `search_for_keff`.
         """
         pass
 

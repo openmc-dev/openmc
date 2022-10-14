@@ -638,17 +638,13 @@ class Polygon(CompositeSurface):
     Attributes
     ----------
     """
-    _basis_surface_map = {}
-    _basis_surface_map['xy'] = 2*(openmc.XPlane, openmc.YPlane)
-    _basis_surface_map['yz'] = 2*(openmc.YPlane, openmc.ZPlane)
-    _basis_surface_map['xz'] = 2*(openmc.XPlane, openmc.ZPlane)
 
     def __init__(self, points, basis='rz'):
         # If the last point is the same as the first remove it and order the
         # vertices in a counter-clockwise sense.
         if np.allclose(points[0, :], points[-1, :]):
             points = points[:-1, :]
-        self._points = self.make_ccw(np.asarray(points, dtype=float))
+        self._points = make_ccw(np.asarray(points, dtype=float))
         self._basis = basis
 
         # Create a triangulation and convex hull of the points. The
@@ -656,8 +652,6 @@ class Polygon(CompositeSurface):
         # of the convex hull with the intersection of the complements of the
         # simplices outside the polygon, but inside the convex hull.
         self._tri = Delaunay(self._points, qhull_options='QJ')
-        self._convex_hull = ConvexHull(self._points)
-        self._convex_hull_surfs = self.get_convex_hull_surfs()
 
         # Get centroids of all the simplices and determine if they are inside
         # the polygon defined by input vertices or not. If they are not, they
@@ -666,26 +660,35 @@ class Polygon(CompositeSurface):
         path = Path(self._points)
         in_polygon = np.array([path.contains_point(c) for c in centroids])
         self._in_polygon = in_polygon
-        # Loop through simplices that aren't in the polygon and add them to the
-        # surfaces that need to be removed
-        self._surfs_to_remove = []
-        for simplex in self._tri.simplices[~in_polygon, :]:
-            qhull = ConvexHull(self._points[simplex, :])
-            idx = self.get_ordered_simplex_indices(qhull)
-            eqns = qhull.equations[idx, :]
-            self._surfs_to_remove.append(self.get_convex_hull_surfs(eqns))
+
+        # ndict maps simplex indices to a list of their neighbors inside the
+        # polygon
+        ndict = {}
+        for i, nlist in enumerate(self._tri.neighbors):
+            if not in_polygon[i]:
+                continue
+            ndict[i] = [n for n in nlist if in_polygon[n] and n >=0]
+        #for key, value in ndict.items():
+        #    print(key, ' : ', value)
+
+        groups = group_wrapper(self._tri, ndict)
+        self._groups = groups
+        for g in groups:
+            print(g)
+
+        self._surfsets = []
+        for pts in get_ordered_points(self._tri, groups):
+            qhull = ConvexHull(pts)
+            surf_ops = get_convex_hull_surfs(qhull)
+            self._surfsets.append(surf_ops)
 
         # Set surface names as required by CompositeSurface protocol
         surfnames = []
-        for i, (surf, _) in enumerate(self._convex_hull_surfs):
-            setattr(self, f'hull_surf_{i}', surf)
-            surfnames.append(f'hull_surf_{i}')
-
         i = 0
-        for surfs_ops in self._surfs_to_remove:
+        for surfs_ops in self._surfsets:
             for surf, _ in surfs_ops:
-                setattr(self, f'aux_surf_{i}', surf)
-                surfnames.append(f'aux_surf_{i}')
+                setattr(self, f'surface_{i}', surf)
+                surfnames.append(f'surface_{i}')
                 i += 1
 
         self._surfnames = tuple(surfnames)
@@ -748,14 +751,17 @@ class Polygon(CompositeSurface):
         return openmc.Intersection(regions)
 
     @property
+    def regions(self):
+        regions = []
+        for surfs_ops in self._surfsets:
+            reg = openmc.Intersection([getattr(surf, op)() for surf, op in
+                                       surfs_ops])
+            regions.append(reg)
+        return regions
+
+    @property
     def region(self):
-        hull_reg = self.hull_region
-        surfs_ops_sets = self._surfs_to_remove
-        complements = []
-        for surfs_ops in surfs_ops_sets:
-            regions = [getattr(surf, op)() for surf, op in surfs_ops]
-            complements.append(~openmc.Intersection(regions))
-        return hull_reg & openmc.Intersection(complements)
+        return openmc.Union(self.regions)
 
     def offset(self, distance):
         """Offset this polygon by a set distance
@@ -787,121 +793,166 @@ class Polygon(CompositeSurface):
 
         return type(self)(new_points, basis=self.basis)
 
-    def get_ordered_simplex_indices(self, qhull=None):
-        """Return simplex indices in same order as ConvexHull.vertices
+def get_ordered_simplex_indices(qhull):
+    """Return simplex indices in same order as ConvexHull.vertices
 
-        Parameters
-        ----------
-        qhull : scipy.spatial.ConvexHull, optional
-            A ConvexHull object.
+    Parameters
+    ----------
+    qhull : scipy.spatial.ConvexHull, optional
+        A ConvexHull object.
 
-        Returns
-        -------
-        idxlist : np.array of ordered simplex indices
-        """
-        qhull = self._convex_hull if qhull is None else qhull
-        idxlist = []
-        verts = qhull.vertices
-        nverts = len(verts)
-        simplices = qhull.simplices
-        for i in range(nverts):
-            next_i = (i + 1) % nverts
-            tmp_verts = [verts[i], verts[next_i]]
-            for j, simplex in enumerate(simplices):
-                if all(idx in simplex for idx in tmp_verts):
-                    idxlist.append(j)
-        return np.array(idxlist)
+    Returns
+    -------
+    idxlist : np.array of ordered simplex indices
+    """
+    idxlist = []
+    verts = qhull.vertices
+    nverts = len(verts)
+    simplices = qhull.simplices
+    for i in range(nverts):
+        next_i = (i + 1) % nverts
+        tmp_verts = [verts[i], verts[next_i]]
+        for j, simplex in enumerate(simplices):
+            if all(idx in simplex for idx in tmp_verts):
+                idxlist.append(j)
+    return np.array(idxlist)
 
-    def get_convex_hull_surfs(self, hull_equations=None):
-        """Generate a list of surfaces given by a set of linear equations
+def get_convex_hull_surfs(qhull, basis='rz'):
+    """Generate a list of surfaces given by a set of linear equations
 
-        Parameters
-        ----------
-        hull_equations : np.ndarray, optional
-            An Nx3 array where N is the number of facets (or sides) that represent
-            the equations and each row is given by (nx, ny, c) where (nx, ny) is
-            the unit vector normal to the facet and c is a constant such that the
-            surface described by the equation is n dot x + c = 0.
+    Parameters
+    ----------
+    hull_equations : np.ndarray, optional
+        An Nx3 array where N is the number of facets (or sides) that represent
+        the equations and each row is given by (nx, ny, c) where (nx, ny) is
+        the unit vector normal to the facet and c is a constant such that the
+        surface described by the equation is n dot x + c = 0.
 
-        Returns
-        -------
-        surfs_ops : list of (surface, operator) tuples
+    Returns
+    -------
+    surfs_ops : list of (surface, operator) tuples
 
-        """
-        hull_equations = self.hull_equations if hull_equations is None else \
-            hull_equations
-        # Collect surface/operator pairs such that the intersection of the
-        # regions defined by these pairs is the inside of the polygon.
-        surfs_ops = []
-        # hull facet equation: dx*x + dy*y + c = 0
-        for dx, dy, c in hull_equations:
-            # default to negative halfspace operator for inside the polygon
-            op = '__neg__'
-            # Check if the facet is horizontal
-            if isclose(dx, 0):
-                if self.basis in ('xz', 'yz', 'rz'):
-                    surf = openmc.ZPlane(z0=-c/dy)
-                else:
-                    surf = openmc.YPlane(y0=-c/dy)
-                # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
-                if dy < 0:
-                    op = '__pos__'
-            # Check if the facet is vertical
-            elif isclose(dy, 0):
-                if self.basis in ('xy', 'xz'):
-                    surf = openmc.XPlane(x0=-c/dx)
-                elif self.basis == 'yz':
-                    surf = openmc.YPlane(y0=-c/dx)
-                else:
-                    surf = openmc.ZCylinder(r=-c/dx)
-                # if (1, 0).(dx, dy) < 0 we want positive halfspace instead
-                if dx < 0:
-                    op = '__pos__'
-            # Otherwise the facet is at an angle
+    """
+    idx = get_ordered_simplex_indices(qhull)
+    hull_equations = qhull.equations[idx, :]
+    # Collect surface/operator pairs such that the intersection of the
+    # regions defined by these pairs is the inside of the polygon.
+    surfs_ops = []
+    # hull facet equation: dx*x + dy*y + c = 0
+    for dx, dy, c in hull_equations:
+        # default to negative halfspace operator for inside the polygon
+        op = '__neg__'
+        # Check if the facet is horizontal
+        if isclose(dx, 0):
+            if basis in ('xz', 'yz', 'rz'):
+                surf = openmc.ZPlane(z0=-c/dy)
             else:
-                y0 = -c/dy
-                r2 = dy**2 / dx**2
-                # Check if the *slope* of the facet is positive
-                if dy / dx < 0:
-                    if self.basis == 'rz':
-                        surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=True)
-                    else:
-                        raise NotImplementedError
-                    # if (1, -1).(dx, dy) < 0 we want positive halfspace instead
-                    if dx - dy < 0:
-                        op = '__pos__'
+                surf = openmc.YPlane(y0=-c/dy)
+            # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
+            if dy < 0:
+                op = '__pos__'
+        # Check if the facet is vertical
+        elif isclose(dy, 0):
+            if basis in ('xy', 'xz'):
+                surf = openmc.XPlane(x0=-c/dx)
+            elif basis == 'yz':
+                surf = openmc.YPlane(y0=-c/dx)
+            else:
+                surf = openmc.ZCylinder(r=-c/dx)
+            # if (1, 0).(dx, dy) < 0 we want positive halfspace instead
+            if dx < 0:
+                op = '__pos__'
+        # Otherwise the facet is at an angle
+        else:
+            y0 = -c/dy
+            r2 = dy**2 / dx**2
+            # Check if the *slope* of the facet is positive
+            if dy / dx < 0:
+                if basis == 'rz':
+                    surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=True)
                 else:
-                    if self.basis == 'rz':
-                        surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=False)
-                    else:
-                        raise NotImplementedError
-                    # if (1, 1).(dx, dy) < 0 we want positive halfspace instead
-                    if dx + dy < 0:
-                        op = '__pos__'
+                    raise NotImplementedError
+                # if (1, -1).(dx, dy) < 0 we want positive halfspace instead
+                if dx - dy < 0:
+                    op = '__pos__'
+            else:
+                if basis == 'rz':
+                    surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=False)
+                else:
+                    raise NotImplementedError
+                # if (1, 1).(dx, dy) < 0 we want positive halfspace instead
+                if dx + dy < 0:
+                    op = '__pos__'
 
-            surfs_ops.append((surf, op))
+        surfs_ops.append((surf, op))
 
-        return surfs_ops
+    return surfs_ops
 
-    def make_ccw(self, verts):
-        """Determine whether the vertices are ordered counter-clockwise
+def make_ccw(verts):
+    """Determine whether the vertices are ordered counter-clockwise
 
-        Parameters
-        ----------
-        verts : np.ndarray (Nx2)
-            An Nx2 array of coordinate pairs describing the vertices.
+    Parameters
+    ----------
+    verts : np.ndarray (Nx2)
+        An Nx2 array of coordinate pairs describing the vertices.
 
 
-        Returns
-        -------
-        bool : True if vertices are in counter-clockwise order. False otherwise.
+    Returns
+    -------
+    bool : True if vertices are in counter-clockwise order. False otherwise.
 
-        """
-        vector = np.empty(verts.shape[0])
-        vector[:-1] = (verts[1:, 0] - verts[:-1, 0])*(verts[1:, 1] + verts[:-1, 1])
-        vector[-1] = (verts[0, 0] - verts[-1, 0])*(verts[0, 1] + verts[-1, 1])
+    """
+    vector = np.empty(verts.shape[0])
+    vector[:-1] = (verts[1:, 0] - verts[:-1, 0])*(verts[1:, 1] + verts[:-1, 1])
+    vector[-1] = (verts[0, 0] - verts[-1, 0])*(verts[0, 1] + verts[-1, 1])
 
-        if np.sum(vector) < 0:
-            return verts
+    if np.sum(vector) < 0:
+        return verts
 
-        return verts[::-1, :]
+    return verts[::-1, :]
+
+
+def get_ordered_points(tri, groups):
+    points = []
+    for g in groups:
+        idx = np.unique(tri.simplices[g, :])
+        qhull = ConvexHull(tri.points[idx, :])
+        points.append(qhull.points[qhull.vertices, :])
+    return points
+
+def group_wrapper(tri, simp_dict):
+    groups = []
+    while simp_dict:
+        groups.append(group_simplices(tri, simp_dict))
+    return groups
+
+def group_simplices(tri, simp_dict, group=None):
+    """Generate a list of convex subsets"""
+    # If dictionary is empty there's nothing left to do
+    if not simp_dict:
+        return group
+    # If group is empty grab the next simplex in the dictionary and recurse
+    if group is None:
+        sidx = next(iter(simp_dict))
+        return group_simplices(tri, simp_dict, group=[sidx])
+    # Otherwise use the last simplex in the group 
+    else:
+        # Remove current simplex from dictionary since it is in a group
+        sidx = group[-1]
+        neighbors = simp_dict.pop(sidx, [])
+        # For each neighbor check if it is part of the same convex
+        # hull as the rest of the group. If yes, recurse. If no, continue on.
+        for n in neighbors:
+            if n in group or simp_dict.get(n, None) is None:
+                continue
+            test_group = group + [n]
+            #print('group :', group)
+            #print('test_group :', test_group)
+            test_point_idx = np.unique(tri.simplices[test_group, :])
+            test_points = tri.points[test_point_idx]
+            if is_convex(test_points):
+                group = group_simplices(tri, simp_dict, group=test_group)
+        return group
+
+def is_convex(points):
+    return len(points) == len(ConvexHull(points).vertices)

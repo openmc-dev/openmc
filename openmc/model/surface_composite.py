@@ -660,26 +660,24 @@ class Polygon(CompositeSurface):
         # Get centroids of all the simplices and determine if they are inside
         # the polygon defined by input vertices or not.
         centroids = np.mean(self._points[self._tri.simplices], axis=1)
-        path = Path(self._points)
-        in_polygon = np.array([path.contains_point(c) for c in centroids])
+        in_polygon = Path(self._points).contains_points(centroids)
         self._in_polygon = in_polygon
 
         # Build a map with keys of simplex indices inside the polygon whose
-        # values are lists of that simplex's neighbors inside the
+        # values are lists of that simplex's neighbors also inside the
         # polygon
         ndict = {}
         for i, nlist in enumerate(self._tri.neighbors):
             if not in_polygon[i]:
                 continue
             ndict[i] = [n for n in nlist if in_polygon[n] and n >=0]
-        #for key, value in ndict.items():
-        #    print(key, ' : ', value)
 
+        # Get the groups of simplices forming convex polygons whose union
+        # comprises the full input polygon.
         groups = group_wrapper(self._tri, ndict)
         self._groups = groups
-        for g in groups:
-            print(g)
 
+        # Get the sets of surface, operator pairs defining the polygon
         self._surfsets = []
         for pts in get_ordered_points(self._tri, groups):
             qhull = ConvexHull(pts)
@@ -698,14 +696,10 @@ class Polygon(CompositeSurface):
         self._surfnames = tuple(surfnames)
 
     def __neg__(self):
-        # inside convex surface and outside all convex surfaces formed from
-        # concave points
-        return self.region
+        return self._region
 
     def __pos__(self):
-        # outside convex hull or inside one of the convex shapes formed from
-        # concave points
-        return ~self.region
+        return ~self._region
 
     @property
     def _surface_names(self):
@@ -720,52 +714,22 @@ class Polygon(CompositeSurface):
         return self._basis
 
     @property
-    def tangents(self):
-        return np.diff(self._points, axis=0, append=[self._points[0, :]])
-
-    @property
-    def normals(self):
+    def _normals(self):
         rotation = np.array([[0, 1], [-1, 0]])
-        tangents = self.tangents
+        tangents = np.diff(self._points, axis=0, append=[self._points[0, :]])
         tangents /= np.linalg.norm(tangents, axis=-1, keepdims=True)
         return rotation.dot(tangents.T).T
 
     @property
-    def hull_points(self):
-        return self._points[self._convex_hull.vertices]
-
-    @property
-    def hull_tangents(self):
-        pts = self._points[self._convex_hull.vertices]
-        return np.diff(pts, axis=0, append=[pts[0, :]])
-
-    @property
-    def hull_equations(self):
-        idx = self.get_ordered_simplex_indices()
-        return self._convex_hull.equations[idx, :]
-
-    @property
-    def convex_hull_surfs(self):
-        return self._convex_hull_surfs
-
-    @property
-    def hull_region(self):
-        surfs_ops = self.convex_hull_surfs
-        regions = [getattr(surf, op)() for surf, op in surfs_ops]
-        return openmc.Intersection(regions)
-
-    @property
-    def regions(self):
+    def _regions(self):
         regions = []
         for surfs_ops in self._surfsets:
-            reg = openmc.Intersection([getattr(surf, op)() for surf, op in
-                                       surfs_ops])
-            regions.append(reg)
-        return regions
+            regions.append([getattr(surf, op)() for surf, op in surfs_ops])
+        return [openmc.Intersection(regs) for regs in regions]
 
     @property
-    def region(self):
-        return openmc.Union(self.regions)
+    def _region(self):
+        return openmc.Union(self._regions)
 
     def offset(self, distance):
         """Offset this polygon by a set distance
@@ -782,7 +746,7 @@ class Polygon(CompositeSurface):
         offset_polygon : openmc.model.Polygon
         """
         points = self.points
-        normals = self.normals
+        normals = self._normals
         normals = np.insert(normals, 0, normals[-1, :], axis=0)
         ndotv1 = np.sum(normals[:-1, :]*(points + distance*normals[:-1, :]),
                         axis=-1, keepdims=True)

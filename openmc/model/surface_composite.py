@@ -626,17 +626,21 @@ class ZConeOneSided(CompositeSurface):
 
 
 class Polygon(CompositeSurface):
-    """Create a polygon composite surface from connected points.
+    """Create a polygon composite surface from a path of closed points.
 
     Parameters
     ----------
-    points : np.ndarray (Nx2)
-        Points defining the vertices of the polygon.
+    points : np.ndarray
+        An Nx2 array of points defining the vertices of the polygon.
     basis : str, {'rz', 'xy', 'yz', 'xz'}, optional
         2D basis set for the polygon.
 
     Attributes
     ----------
+    points : np.ndarray
+        An Nx2 array of points defining the vertices of the polygon.
+    basis : str, {'rz', 'xy', 'yz', 'xz'}
+        2D basis set for the polygon.
     """
 
     def __init__(self, points, basis='rz'):
@@ -644,24 +648,24 @@ class Polygon(CompositeSurface):
         # vertices in a counter-clockwise sense.
         if np.allclose(points[0, :], points[-1, :]):
             points = points[:-1, :]
+
+        # TODO check if path is self intersecting, throw error if yes
         self._points = make_ccw(np.asarray(points, dtype=float))
+        check_value('basis', basis, ('xy', 'yz', 'xz', 'rz'))
         self._basis = basis
 
-        # Create a triangulation and convex hull of the points. The
-        # Polygon region will be primarily defined by the intersection
-        # of the convex hull with the intersection of the complements of the
-        # simplices outside the polygon, but inside the convex hull.
+        # Create a triangulation of the points.
         self._tri = Delaunay(self._points, qhull_options='QJ')
 
         # Get centroids of all the simplices and determine if they are inside
-        # the polygon defined by input vertices or not. If they are not, they
-        # are added to the convex_subsets
+        # the polygon defined by input vertices or not.
         centroids = np.mean(self._points[self._tri.simplices], axis=1)
         path = Path(self._points)
         in_polygon = np.array([path.contains_point(c) for c in centroids])
         self._in_polygon = in_polygon
 
-        # ndict maps simplex indices to a list of their neighbors inside the
+        # Build a map with keys of simplex indices inside the polygon whose
+        # values are lists of that simplex's neighbors inside the
         # polygon
         ndict = {}
         for i, nlist in enumerate(self._tri.neighbors):
@@ -679,7 +683,7 @@ class Polygon(CompositeSurface):
         self._surfsets = []
         for pts in get_ordered_points(self._tri, groups):
             qhull = ConvexHull(pts)
-            surf_ops = get_convex_hull_surfs(qhull)
+            surf_ops = get_convex_hull_surfs(qhull, basis=self.basis)
             self._surfsets.append(surf_ops)
 
         # Set surface names as required by CompositeSurface protocol
@@ -809,9 +813,8 @@ def get_ordered_simplex_indices(qhull):
     verts = qhull.vertices
     nverts = len(verts)
     simplices = qhull.simplices
-    for i in range(nverts):
-        next_i = (i + 1) % nverts
-        tmp_verts = [verts[i], verts[next_i]]
+    for i, vert in enumerate(verts):
+        tmp_verts = [vert, verts[(i + 1) % nverts]]
         for j, simplex in enumerate(simplices):
             if all(idx in simplex for idx in tmp_verts):
                 idxlist.append(j)
@@ -835,13 +838,12 @@ def get_convex_hull_surfs(qhull, basis='rz'):
     """
     idx = get_ordered_simplex_indices(qhull)
     hull_equations = qhull.equations[idx, :]
+    check_value('basis', basis, ('xy', 'yz', 'xz', 'rz'))
     # Collect surface/operator pairs such that the intersection of the
     # regions defined by these pairs is the inside of the polygon.
     surfs_ops = []
     # hull facet equation: dx*x + dy*y + c = 0
     for dx, dy, c in hull_equations:
-        # default to negative halfspace operator for inside the polygon
-        op = '__neg__'
         # Check if the facet is horizontal
         if isclose(dx, 0):
             if basis in ('xz', 'yz', 'rz'):
@@ -849,8 +851,7 @@ def get_convex_hull_surfs(qhull, basis='rz'):
             else:
                 surf = openmc.YPlane(y0=-c/dy)
             # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
-            if dy < 0:
-                op = '__pos__'
+            op = '__pos__' if dy < 0 else '__neg__'
         # Check if the facet is vertical
         elif isclose(dy, 0):
             if basis in ('xy', 'xz'):
@@ -860,29 +861,29 @@ def get_convex_hull_surfs(qhull, basis='rz'):
             else:
                 surf = openmc.ZCylinder(r=-c/dx)
             # if (1, 0).(dx, dy) < 0 we want positive halfspace instead
-            if dx < 0:
-                op = '__pos__'
+            op = '__pos__' if dx < 0 else '__neg__'
         # Otherwise the facet is at an angle
         else:
-            y0 = -c/dy
-            r2 = dy**2 / dx**2
-            # Check if the *slope* of the facet is positive
-            if dy / dx < 0:
-                if basis == 'rz':
-                    surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=True)
-                else:
-                    raise NotImplementedError
-                # if (1, -1).(dx, dy) < 0 we want positive halfspace instead
-                if dx - dy < 0:
-                    op = '__pos__'
+            op = '__neg__'
+            if basis == 'xy':
+                surf = openmc.Plane(a=dx, b=dy, d=-c)
+            elif basis == 'yz':
+                surf = openmc.Plane(b=dx, c=dy, d=-c)
+            elif basis == 'xz':
+                surf = openmc.Plane(a=dx, c=dy, d=-c)
             else:
-                if basis == 'rz':
-                    surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=False)
-                else:
-                    raise NotImplementedError
-                # if (1, 1).(dx, dy) < 0 we want positive halfspace instead
-                if dx + dy < 0:
+                y0 = -c/dy
+                r2 = dy**2 / dx**2
+                # Check if the *slope* of the facet is positive. If dy/dx < 0
+                # then we want up to be True for the one-sided cones.
+                up = dy / dx < 0
+                surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=up)
+                # if (1, -1).(dx, dy) < 0 for up cones we want positive halfspace
+                # if (1, 1).(dx, dy) < 0 for down cones we want positive halfspace
+                if (up and dx - dy < 0) or (not up and dx + dy < 0):
                     op = '__pos__'
+                else:
+                    op = '__neg__'
 
         surfs_ops.append((surf, op))
 

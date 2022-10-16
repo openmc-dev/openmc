@@ -559,7 +559,9 @@ class Decay(EqualityMixin):
                     raise NotImplementedError("Multiple interpolation regions: {name}, {particle}")
                 interpolation = INTERPOLATION_SCHEME[f.interpolation[0]]
                 if interpolation not in ('histogram', 'linear-linear'):
-                    raise NotImplementedError("Continuous spectra with {interpolation} interpolation ({name}, {particle}) not supported")
+                    raise NotImplementedError(
+                        f"Continuous spectra with {interpolation} interpolation "
+                        f"({name}, {particle}) not supported")
 
                 intensity = spectra['continuous_normalization'].n
                 rates = decay_constant * intensity * f.y

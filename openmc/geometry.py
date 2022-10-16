@@ -3,10 +3,11 @@ from collections.abc import Iterable
 from copy import deepcopy
 from pathlib import Path
 from xml.etree import ElementTree as ET
+import warnings
 
 import openmc
 import openmc._xml as xml
-from .checkvalue import check_type
+from .checkvalue import check_type, check_less_than, check_greater_than
 
 
 class Geometry:
@@ -17,6 +18,13 @@ class Geometry:
     root : openmc.UniverseBase or Iterable of openmc.Cell, optional
         Root universe which contains all others, or an iterable of cells that
         should be used to create a root universe.
+    cull_surfaces : bool, optional
+        Whether to remove redundant surfaces when the geometry is exported.
+        Defaults to False.
+    surface_precision : int, optional
+        Number of decimal places to round to for comparing the coefficients of
+        surfaces for considering them topologically equivalent. Defaults to 10
+        decimal places.
 
     Attributes
     ----------
@@ -25,12 +33,19 @@ class Geometry:
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
+    cull_surfaces : bool
+        Whether to remove redundant surfaces when the geometry is exported.
+    surface_precision : int
+        Number of decimal places to round to for comparing the coefficients of
+        surfaces for considering them topologically equivalent.
 
     """
 
-    def __init__(self, root=None):
+    def __init__(self, root=None, cull_surfaces=False, surface_precision=10):
         self._root_universe = None
         self._offsets = {}
+        self.cull_surfaces = cull_surfaces
+        self.surface_precision = surface_precision
         if root is not None:
             if isinstance(root, openmc.UniverseBase):
                 self.root_universe = root
@@ -48,10 +63,30 @@ class Geometry:
     def bounding_box(self):
         return self.root_universe.bounding_box
 
+    @property
+    def cull_surfaces(self):
+        return self._cull_surfaces
+
+    @property
+    def surface_precision(self):
+        return self._surface_precision
+
     @root_universe.setter
     def root_universe(self, root_universe):
         check_type('root universe', root_universe, openmc.UniverseBase)
         self._root_universe = root_universe
+
+    @cull_surfaces.setter
+    def cull_surfaces(self, cull_surfaces):
+        check_type('cull surfaces', cull_surfaces, bool)
+        self._cull_surfaces = cull_surfaces
+
+    @surface_precision.setter
+    def surface_precision(self, surface_precision):
+        check_type('surface precision', surface_precision, int)
+        check_less_than('surface_precision', surface_precision, 16)
+        check_greater_than('surface_precision', surface_precision, 0)
+        self._surface_precision = surface_precision
 
     def add_volume_information(self, volume_calc):
         """Add volume information from a stochastic volume calculation.
@@ -91,6 +126,11 @@ class Geometry:
         """
         # Find and remove redundant surfaces from the geometry
         if remove_surfs:
+            warnings.warn("remove_surfs kwarg will be deprecated soon, please "
+                          "set the Geometry.cull_surfaces attribute instead.")
+            self.cull_surfaces = True
+
+        if self.cull_surfaces:
             self.remove_redundant_surfaces()
 
         # Create XML representation
@@ -396,10 +436,17 @@ class Geometry:
                 surfaces = cell.region.get_surfaces(surfaces)
         return surfaces
 
-    def get_redundant_surfaces(self):
+    def get_redundant_surfaces(self, precision=None):
         """Return all of the topologically redundant surface IDs
 
         .. versionadded:: 0.12
+
+        Parameters
+        ----------
+        precision : int, optional
+            The number of decimal places to round to for considering surface
+            coefficients to be equal. Defaults to the value specified by
+            Geometry.surface_precision.
 
         Returns
         -------
@@ -409,9 +456,12 @@ class Geometry:
             that should replace it.
 
         """
+        precision = self.surface_precision if precision is None else precision
+        check_less_than('precision', precision, 16)
+        check_greater_than('precision', precision, 0)
         tally = defaultdict(list)
         for surf in self.get_all_surfaces().values():
-            coeffs = tuple(round(surf._coefficients[k], 10)
+            coeffs = tuple(round(surf._coefficients[k], precision)
                            for k in surf._coeff_keys)
             key = (surf._type,) + coeffs
             tally[key].append(surf)
@@ -565,11 +615,23 @@ class Geometry:
         """
         return self._get_domains_by_name(name, case_sensitive, matching, 'lattice')
 
-    def remove_redundant_surfaces(self):
-        """Remove redundant surfaces from the geometry"""
+    def remove_redundant_surfaces(self, precision=None):
+        """Remove redundant surfaces from the geometry.
+
+        Parameters
+        ----------
+        precision : int, optional
+            The number of decimal places to round to for considering surface
+            coefficients to be equal. Defaults to the value specified by
+            Geometry.surface_precision.
+
+        """
+        precision = self.surface_precision if precision is None else precision
+        check_less_than('precision', precision, 16)
+        check_greater_than('precision', precision, 0)
 
         # Get redundant surfaces
-        redundant_surfaces = self.get_redundant_surfaces()
+        redundant_surfaces = self.get_redundant_surfaces(precision=precision)
 
         # Iterate through all cells contained in the geometry
         for cell in self.get_all_cells().values():

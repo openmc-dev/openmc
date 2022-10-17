@@ -657,38 +657,17 @@ class Polygon(CompositeSurface):
         # Create a triangulation of the points.
         self._tri = Delaunay(self._points, qhull_options='QJ')
 
-        # Get centroids of all the simplices and determine if they are inside
-        # the polygon defined by input vertices or not.
-        centroids = np.mean(self._points[self._tri.simplices], axis=1)
-        in_polygon = Path(self._points).contains_points(centroids)
-        self._in_polygon = in_polygon
+        # Decompose the polygon into groups of simplices forming convex subsets
+        self._groups = self._decompose_polygon_into_convex_sets()
 
-        # Build a map with keys of simplex indices inside the polygon whose
-        # values are lists of that simplex's neighbors also inside the
-        # polygon
-        ndict = {}
-        for i, nlist in enumerate(self._tri.neighbors):
-            if not in_polygon[i]:
-                continue
-            ndict[i] = [n for n in nlist if in_polygon[n] and n >=0]
-
-        # Get the groups of simplices forming convex polygons whose union
-        # comprises the full input polygon.
-        groups = group_wrapper(self._tri, ndict)
-        self._groups = groups
-
-        # Get the sets of surface, operator pairs defining the polygon
-        self._surfsets = []
-        for pts in get_ordered_points(self._tri, groups):
-            qhull = ConvexHull(pts)
-            surf_ops = get_convex_hull_surfs(qhull, basis=self.basis)
-            self._surfsets.append(surf_ops)
+        # Get the sets of (surface, operator) pairs defining the polygon
+        self._surfsets = self._get_surfsets()
 
         # Set surface names as required by CompositeSurface protocol
         surfnames = []
         i = 0
-        for surfs_ops in self._surfsets:
-            for surf, _ in surfs_ops:
+        for surfset in self._surfsets:
+            for surf, op in surfset:
                 setattr(self, f'surface_{i}', surf)
                 surfnames.append(f'surface_{i}')
                 i += 1
@@ -715,6 +694,7 @@ class Polygon(CompositeSurface):
 
     @property
     def _normals(self):
+        """Generate the outward normal unit vectors for the polygon."""
         rotation = np.array([[0, 1], [-1, 0]])
         tangents = np.diff(self._points, axis=0, append=[self._points[0, :]])
         tangents /= np.linalg.norm(tangents, axis=-1, keepdims=True)
@@ -722,6 +702,7 @@ class Polygon(CompositeSurface):
 
     @property
     def _regions(self):
+        """Generate a list of regions whose union represents the polygon."""
         regions = []
         for surfs_ops in self._surfsets:
             regions.append([getattr(surf, op)() for surf, op in surfs_ops])
@@ -730,6 +711,57 @@ class Polygon(CompositeSurface):
     @property
     def _region(self):
         return openmc.Union(self._regions)
+
+    def _decompose_polygon_into_convex_sets(self):
+        """Decompose the Polygon into a set of convex polygons.
+
+        Returns
+        -------
+        list of sets of simplices
+        """
+
+        # Get centroids of all the simplices and determine if they are inside
+        # the polygon defined by input vertices or not.
+        centroids = np.mean(self._points[self._tri.simplices], axis=1)
+        in_polygon = Path(self._points).contains_points(centroids)
+        self._in_polygon = in_polygon
+
+        # Build a map with keys of simplex indices inside the polygon whose
+        # values are lists of that simplex's neighbors also inside the
+        # polygon
+        neighbor_map = {}
+        for i, nlist in enumerate(self._tri.neighbors):
+            if not in_polygon[i]:
+                continue
+            neighbor_map[i] = [n for n in nlist if in_polygon[n] and n >=0]
+
+        # Get the groups of simplices forming convex polygons whose union
+        # comprises the full input polygon. While there are still simplices
+        # left in the neighbor map, group them together into convex sets.
+        groups = []
+        while neighbor_map:
+            groups.append(group_simplices(self._tri, neighbor_map))
+
+        return groups
+
+    def _get_surfsets(self):
+        """Generate lists of surface, operator pairs for the sub-polygons.
+
+        Returns
+        -------
+        surfsets : a list of lists of surface, operator pairs
+        """
+
+        surfsets = []
+        for g in self._groups:
+            # Find all the unique points in the convex group of simplices,
+            # generate the convex hull and find the resulting surfaces and
+            # unary operators that represent this convex subset of the polygon.
+            idx = np.unique(self._tri.simplices[g, :])
+            qhull = ConvexHull(self._tri.points[idx, :])
+            surf_ops = get_convex_hull_surfs(qhull, basis=self.basis)
+            surfsets.append(surf_ops)
+        return surfsets
 
     def offset(self, distance):
         """Offset this polygon by a set distance
@@ -745,6 +777,8 @@ class Polygon(CompositeSurface):
         -------
         offset_polygon : openmc.model.Polygon
         """
+        # Get the points of the polygon and outward normals such that
+        # normals[i] corresponds to the edge between points[i-1] and points[i]
         points = self.points
         normals = self._normals
         normals = np.insert(normals, 0, normals[-1, :], axis=0)
@@ -761,53 +795,28 @@ class Polygon(CompositeSurface):
 
         return type(self)(new_points, basis=self.basis)
 
-def get_ordered_simplex_indices(qhull):
-    """Return simplex indices in same order as ConvexHull.vertices
-
-    Parameters
-    ----------
-    qhull : scipy.spatial.ConvexHull, optional
-        A ConvexHull object.
-
-    Returns
-    -------
-    idxlist : np.array of ordered simplex indices
-    """
-    idxlist = []
-    verts = qhull.vertices
-    nverts = len(verts)
-    simplices = qhull.simplices
-    for i, vert in enumerate(verts):
-        tmp_verts = [vert, verts[(i + 1) % nverts]]
-        for j, simplex in enumerate(simplices):
-            if all(idx in simplex for idx in tmp_verts):
-                idxlist.append(j)
-    return np.array(idxlist)
 
 def get_convex_hull_surfs(qhull, basis='rz'):
     """Generate a list of surfaces given by a set of linear equations
 
     Parameters
     ----------
-    hull_equations : np.ndarray, optional
-        An Nx3 array where N is the number of facets (or sides) that represent
-        the equations and each row is given by (nx, ny, c) where (nx, ny) is
-        the unit vector normal to the facet and c is a constant such that the
-        surface described by the equation is n dot x + c = 0.
+    qhull : scipy.spatial.ConvexHull
+        A ConvexHull object representing the sub-region of the polygon.
+    basis : str, {'rz', 'xy', 'yz', 'xz'}, optional
+        2D basis set for the polygon.
 
     Returns
     -------
     surfs_ops : list of (surface, operator) tuples
 
     """
-    idx = get_ordered_simplex_indices(qhull)
-    hull_equations = qhull.equations[idx, :]
     check_value('basis', basis, ('xy', 'yz', 'xz', 'rz'))
     # Collect surface/operator pairs such that the intersection of the
     # regions defined by these pairs is the inside of the polygon.
     surfs_ops = []
     # hull facet equation: dx*x + dy*y + c = 0
-    for dx, dy, c in hull_equations:
+    for dx, dy, c in qhull.equations:
         # Check if the facet is horizontal
         if isclose(dx, 0):
             if basis in ('xz', 'yz', 'rz'):
@@ -853,6 +862,7 @@ def get_convex_hull_surfs(qhull, basis='rz'):
 
     return surfs_ops
 
+
 def make_ccw(verts):
     """Determine whether the vertices are ordered counter-clockwise
 
@@ -877,47 +887,46 @@ def make_ccw(verts):
     return verts[::-1, :]
 
 
-def get_ordered_points(tri, groups):
-    points = []
-    for g in groups:
-        idx = np.unique(tri.simplices[g, :])
-        qhull = ConvexHull(tri.points[idx, :])
-        points.append(qhull.points[qhull.vertices, :])
-    return points
+def group_simplices(tri, neighbor_map, group=None):
+    """Generate a list of convex groups of simplices.
 
-def group_wrapper(tri, simp_dict):
-    groups = []
-    while simp_dict:
-        groups.append(group_simplices(tri, simp_dict))
-    return groups
+    Parameters
+    ----------
+    tri : scipy.spatial.Delaunay
+        A Delaunay triangulation of points generated from the polygon.
+    neighbor_map : dict
+        A map whose keys are simplex indices for simplices inside the polygon
+        and whose values are a list of simplex indices that neighbor this
+        simplex and are also inside the polygon.
+    group : list
+        A list of simplex indices that comprise the current convex group.
 
-def group_simplices(tri, simp_dict, group=None):
-    """Generate a list of convex subsets"""
-    # If dictionary is empty there's nothing left to do
-    if not simp_dict:
+    Returns
+    -------
+    group : list
+        The list of simplex indices that comprise the complete convex group.
+    """
+    # If neighbor_map is empty there's nothing left to do
+    if not neighbor_map:
         return group
-    # If group is empty grab the next simplex in the dictionary and recurse
+    # If group is empty, grab the next simplex in the dictionary and recurse
     if group is None:
-        sidx = next(iter(simp_dict))
-        return group_simplices(tri, simp_dict, group=[sidx])
+        sidx = next(iter(neighbor_map))
+        return group_simplices(tri, neighbor_map, group=[sidx])
     # Otherwise use the last simplex in the group 
     else:
-        # Remove current simplex from dictionary since it is in a group
         sidx = group[-1]
-        neighbors = simp_dict.pop(sidx, [])
+        # Remove current simplex from dictionary since it is in a group
+        neighbors = neighbor_map.pop(sidx, [])
         # For each neighbor check if it is part of the same convex
         # hull as the rest of the group. If yes, recurse. If no, continue on.
         for n in neighbors:
-            if n in group or simp_dict.get(n, None) is None:
+            if n in group or neighbor_map.get(n, None) is None:
                 continue
             test_group = group + [n]
-            #print('group :', group)
-            #print('test_group :', test_group)
             test_point_idx = np.unique(tri.simplices[test_group, :])
             test_points = tri.points[test_point_idx]
-            if is_convex(test_points):
-                group = group_simplices(tri, simp_dict, group=test_group)
+            # If test_points are convex keep adding to this group
+            if len(test_points) == len(ConvexHull(test_points).vertices):
+                group = group_simplices(tri, neighbor_map, group=test_group)
         return group
-
-def is_convex(points):
-    return len(points) == len(ConvexHull(points).vertices)

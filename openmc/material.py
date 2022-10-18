@@ -825,6 +825,8 @@ class Material(IDManagerMixin):
         element : str
             Specifies the element to match when searching through the nuclides
 
+            .. versionadded:: 0.14.0
+
         Returns
         -------
         nuclides : list of str
@@ -876,6 +878,8 @@ class Material(IDManagerMixin):
         nuclides : str, optional
             Nuclide for which atom density is desired. If not specified, the
             atom density for each nuclide in the material is given.
+
+            .. versionadded:: 0.14.0
 
         Returns
         -------

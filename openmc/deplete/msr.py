@@ -181,16 +181,17 @@ class MsrBatchwise(ABC):
     model : openmc.model.Model
         OpenMC model object
     range : list of float
-        List of floats defining bracketed range for search_for_keff
-    bracketed_method : string
-        Bracketed method for search_for_keff
-        Default to 'brentq' --> more robuts
+        Bracketing interval to search for the solution as list of float.
+        This is equivalent to the `bracket` parameter of the `search_for_keff`.
+    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
+        Solution method to use; only applies if
+        `bracket` is set, otherwise the Secant method is used.
+        Defaults to 'brentq'.
     tol : float
         Tolerance for search_for_keff method
         Default to 0.01
-    target : float
-        Search_for_keff function target
-        Default to 1.0
+    target : Real, optional
+        keff value to search for, defaults to 1.0.
 
     Attributes
     ----------
@@ -203,7 +204,7 @@ class MsrBatchwise(ABC):
     model : openmc.model.Model
         OpenMC model object
         range : list of float
-        list of floats defining bracketed range for search_for_keff
+        list of floats defining bracketed range for `search_for_keff`
     bracketed_method : string
         Bracketed method for search_for_keff
     tol : float
@@ -249,7 +250,7 @@ class MsrBatchwise(ABC):
     def msr_criticality_search(self, x):
         """
         Perform the criticality search for a given parametric model.
-        It can either be a geometrical or material search.
+        It can either be a geometrical or material `search_for_keff`.
         Parameters
         ------------
         x : list of numpy.ndarray
@@ -257,17 +258,20 @@ class MsrBatchwise(ABC):
         Returns
         ------------
         res : float
-            root of search_for_keff function
+            Estimated value of the variable parameter where keff is the
+            targeted value
         """
         pass
 
     @abstractmethod
     def _build_parametric_model(self, param):
         """
-        Builds the parametric model to be passed to `msr_criticality_search`
+        Builds the parametric model to be passed to `search_for_keff`.
+        Callable function which builds a model according to a passed
+        parameter. This function must return an openmc.model.Model object.
         Parameters
         ------------
-        param :
+        param : parameter
             model function variable
         Returns
         ------------
@@ -327,7 +331,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
         if len(range) != 3:
             raise ValueError("Range: {range} lenght is not 3. Must provide"
                              "bracketed range and upper limit")
-
+        self.vector = vector
         self.d = np.array(vector).argmax()
 
     def _extract_geom_coeff(self, attrib_name='translation'):
@@ -342,10 +346,10 @@ class MsrBatchwiseGeom(MsrBatchwise):
         """
         for cell in openmc.lib.cells.values():
             if cell.id == self.name_or_id or cell.name == self.name_or_id:
-                value = cell.translation
-        return value
+                translation = cell.translation
+        return translation[self.d]
 
-    def _set_geom_coeff(self, value, attrib_name='translation'):
+    def _set_geom_coeff(self, coeff, attrib_name='translation'):
         """
         Set cell coefficient
         Parameters
@@ -355,7 +359,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
         geometry : openmc.model.geometry
             OpenMC geometry model
         """
-
+        value = np.array(self.vector) * coeff
         for cell in openmc.lib.cells.values():
             if cell.id == self.name_or_id or cell.name == self.name_or_id:
                 setattr(cell, attrib_name, value)
@@ -424,23 +428,23 @@ class MsrBatchwiseGeom(MsrBatchwise):
             geometrical coefficient root of search_for_keff function
         """
         self._normalize_nuclides(x)
-        value = self._extract_geom_coeff()
+        coeff = self._extract_geom_coeff()
 
         low_range = self.range[0]
         up_range = self.range[1]
 
         # Normalize search_for_keff tolerance with coefficient value
-        if -1.0 < value[self.d] < 1.0:
+        if -1.0 < coeff < 1.0:
             _tol = self.tol / 2
         else:
-            _tol = self.tol / abs(value[self.d])
+            _tol = self.tol / abs(coeff)
 
         # Run until a search_for_keff root is found
         res = None
         while res == None:
 
             search = search_for_keff(self._build_parametric_model,
-                    bracket=[value[self.d]+low_range, value[self.d]+up_range],
+                    bracket=[coeff+low_range, coeff+up_range],
                     tol=_tol,
                     bracketed_method=self.bracketed_method,
                     target=self.target,
@@ -487,7 +491,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
                 raise ValueError(f'ERROR: search_for_keff output not valid')
 
         print('UPDATE: old coeff: {:.2f} cm --> ' \
-              'new coeff: {:.2f} cm'.format(value[self.d], res))
+              'new coeff: {:.2f} cm'.format(coeff, res))
         return res
 
 class MsrBatchwiseMat(MsrBatchwise):

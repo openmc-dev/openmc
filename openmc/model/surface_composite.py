@@ -6,7 +6,8 @@ from scipy.spatial import ConvexHull, Delaunay
 from matplotlib.path import Path
 
 import openmc
-from openmc.checkvalue import check_greater_than, check_value
+from openmc.checkvalue import (check_greater_than, check_value,
+                               check_iterable_type, check_length)
 
 
 class CompositeSurface(ABC):
@@ -641,27 +642,34 @@ class Polygon(CompositeSurface):
         An Nx2 array of points defining the vertices of the polygon.
     basis : str, {'rz', 'xy', 'yz', 'xz'}
         2D basis set for the polygon.
+    regions : list of openmc.Region
+        A list of openmc.Region objects, one for each of the convex polygons
+        formed during the decomposition of the input polygon.
+    region : openmc.Union
+        The union of all the regions comprising the polygon.
     """
 
     def __init__(self, points, basis='rz'):
-        # If the last point is the same as the first remove it and order the
-        # vertices in a counter-clockwise sense.
-        if np.allclose(points[0, :], points[-1, :]):
-            points = points[:-1, :]
-
-        # TODO check if path is self intersecting, throw error if yes
-        self._points = make_ccw(np.asarray(points, dtype=float))
         check_value('basis', basis, ('xy', 'yz', 'xz', 'rz'))
         self._basis = basis
+        points = np.asarray(points, dtype=float)
+        check_iterable_type('points', points, float, min_depth=2, max_depth=2)
+        check_length('points', points[0, :], 2, 2)
+
+        # If the last point is the same as the first, remove it and make sure
+        # there are still at least 3 points for a valid polygon.
+        if np.allclose(points[0, :], points[-1, :]):
+            points = points[:-1, :]
+        check_length('points', points, 3)
+
+        self._points = points
 
         # Create a triangulation of the points.
         self._tri = Delaunay(self._points, qhull_options='QJ')
 
         # Decompose the polygon into groups of simplices forming convex subsets
-        self._groups = self._decompose_polygon_into_convex_sets()
-
-        # Get the sets of (surface, operator) pairs defining the polygon
-        self._surfsets = self._get_surfsets()
+        # and get the sets of (surface, operator) pairs defining the polygon
+        self._surfsets = self._decompose_polygon_into_convex_sets()
 
         # Set surface names as required by CompositeSurface protocol
         surfnames = []
@@ -671,8 +679,16 @@ class Polygon(CompositeSurface):
                 setattr(self, f'surface_{i}', surf)
                 surfnames.append(f'surface_{i}')
                 i += 1
-
         self._surfnames = tuple(surfnames)
+
+        # Generate a list of regions whose union represents the polygon.
+        regions = []
+        for surfs_ops in self._surfsets:
+            regions.append([getattr(surf, op)() for surf, op in surfs_ops])
+        self._regions = [openmc.Intersection(regs) for regs in regions]
+
+        # Create the union of all the convex subsets
+        self._region = openmc.Union(self._regions)
 
     def __neg__(self):
         return self._region
@@ -701,23 +717,125 @@ class Polygon(CompositeSurface):
         return rotation.dot(tangents.T).T
 
     @property
-    def _regions(self):
-        """Generate a list of regions whose union represents the polygon."""
-        regions = []
-        for surfs_ops in self._surfsets:
-            regions.append([getattr(surf, op)() for surf, op in surfs_ops])
-        return [openmc.Intersection(regs) for regs in regions]
+    def regions(self):
+        return self._regions
 
     @property
-    def _region(self):
-        return openmc.Union(self._regions)
+    def region(self):
+        return self._region
+
+    def _group_simplices(self, neighbor_map, group=None):
+        """Generate a convex grouping of simplices.
+
+        Parameters
+        ----------
+        neighbor_map : dict
+            A map whose keys are simplex indices for simplices inside the polygon
+            and whose values are a list of simplex indices that neighbor this
+            simplex and are also inside the polygon.
+        group : list
+            A list of simplex indices that comprise the current convex group.
+
+        Returns
+        -------
+        group : list
+            The list of simplex indices that comprise the complete convex group.
+        """
+        # If neighbor_map is empty there's nothing left to do
+        if not neighbor_map:
+            return group
+        # If group is empty, grab the next simplex in the dictionary and recurse
+        if group is None:
+            sidx = next(iter(neighbor_map))
+            return self._group_simplices(neighbor_map, group=[sidx])
+        # Otherwise use the last simplex in the group 
+        else:
+            sidx = group[-1]
+            # Remove current simplex from dictionary since it is in a group
+            neighbors = neighbor_map.pop(sidx, [])
+            # For each neighbor check if it is part of the same convex
+            # hull as the rest of the group. If yes, recurse. If no, continue on.
+            for n in neighbors:
+                if n in group or neighbor_map.get(n, None) is None:
+                    continue
+                test_group = group + [n]
+                test_point_idx = np.unique(self._tri.simplices[test_group, :])
+                test_points = self._tri.points[test_point_idx]
+                # If test_points are convex keep adding to this group
+                if len(test_points) == len(ConvexHull(test_points).vertices):
+                    group = self._group_simplices(neighbor_map, group=test_group)
+            return group
+
+    def _get_convex_hull_surfs(self, qhull):
+        """Generate a list of surfaces given by a set of linear equations
+
+        Parameters
+        ----------
+        qhull : scipy.spatial.ConvexHull
+            A ConvexHull object representing the sub-region of the polygon.
+
+        Returns
+        -------
+        surfs_ops : list of (surface, operator) tuples
+
+        """
+        basis = self.basis
+        # Collect surface/operator pairs such that the intersection of the
+        # regions defined by these pairs is the inside of the polygon.
+        surfs_ops = []
+        # hull facet equation: dx*x + dy*y + c = 0
+        for dx, dy, c in qhull.equations:
+            # Check if the facet is horizontal
+            if isclose(dx, 0):
+                if basis in ('xz', 'yz', 'rz'):
+                    surf = openmc.ZPlane(z0=-c/dy)
+                else:
+                    surf = openmc.YPlane(y0=-c/dy)
+                # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
+                op = '__pos__' if dy < 0 else '__neg__'
+            # Check if the facet is vertical
+            elif isclose(dy, 0):
+                if basis in ('xy', 'xz'):
+                    surf = openmc.XPlane(x0=-c/dx)
+                elif basis == 'yz':
+                    surf = openmc.YPlane(y0=-c/dx)
+                else:
+                    surf = openmc.ZCylinder(r=-c/dx)
+                # if (1, 0).(dx, dy) < 0 we want positive halfspace instead
+                op = '__pos__' if dx < 0 else '__neg__'
+            # Otherwise the facet is at an angle
+            else:
+                op = '__neg__'
+                if basis == 'xy':
+                    surf = openmc.Plane(a=dx, b=dy, d=-c)
+                elif basis == 'yz':
+                    surf = openmc.Plane(b=dx, c=dy, d=-c)
+                elif basis == 'xz':
+                    surf = openmc.Plane(a=dx, c=dy, d=-c)
+                else:
+                    y0 = -c/dy
+                    r2 = dy**2 / dx**2
+                    # Check if the *slope* of the facet is positive. If dy/dx < 0
+                    # then we want up to be True for the one-sided cones.
+                    up = dy / dx < 0
+                    surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=up)
+                    # if (1, -1).(dx, dy) < 0 for up cones we want positive halfspace
+                    # if (1, 1).(dx, dy) < 0 for down cones we want positive halfspace
+                    if (up and dx - dy < 0) or (not up and dx + dy < 0):
+                        op = '__pos__'
+                    else:
+                        op = '__neg__'
+
+            surfs_ops.append((surf, op))
+
+        return surfs_ops
 
     def _decompose_polygon_into_convex_sets(self):
         """Decompose the Polygon into a set of convex polygons.
 
         Returns
         -------
-        list of sets of simplices
+        surfsets : a list of lists of surface, operator pairs
         """
 
         # Get centroids of all the simplices and determine if they are inside
@@ -740,26 +858,19 @@ class Polygon(CompositeSurface):
         # left in the neighbor map, group them together into convex sets.
         groups = []
         while neighbor_map:
-            groups.append(group_simplices(self._tri, neighbor_map))
+            groups.append(self._group_simplices(neighbor_map))
+        self._groups = groups
 
-        return groups
-
-    def _get_surfsets(self):
-        """Generate lists of surface, operator pairs for the sub-polygons.
-
-        Returns
-        -------
-        surfsets : a list of lists of surface, operator pairs
-        """
-
+        # Generate lists of (surface, operator) pairs for each convex
+        # sub-region.
         surfsets = []
-        for g in self._groups:
+        for group in groups:
             # Find all the unique points in the convex group of simplices,
             # generate the convex hull and find the resulting surfaces and
             # unary operators that represent this convex subset of the polygon.
-            idx = np.unique(self._tri.simplices[g, :])
+            idx = np.unique(self._tri.simplices[group, :])
             qhull = ConvexHull(self._tri.points[idx, :])
-            surf_ops = get_convex_hull_surfs(qhull, basis=self.basis)
+            surf_ops = self._get_convex_hull_surfs(qhull)
             surfsets.append(surf_ops)
         return surfsets
 
@@ -794,139 +905,3 @@ class Polygon(CompositeSurface):
         new_points /= denom[:, None]
 
         return type(self)(new_points, basis=self.basis)
-
-
-def get_convex_hull_surfs(qhull, basis='rz'):
-    """Generate a list of surfaces given by a set of linear equations
-
-    Parameters
-    ----------
-    qhull : scipy.spatial.ConvexHull
-        A ConvexHull object representing the sub-region of the polygon.
-    basis : str, {'rz', 'xy', 'yz', 'xz'}, optional
-        2D basis set for the polygon.
-
-    Returns
-    -------
-    surfs_ops : list of (surface, operator) tuples
-
-    """
-    check_value('basis', basis, ('xy', 'yz', 'xz', 'rz'))
-    # Collect surface/operator pairs such that the intersection of the
-    # regions defined by these pairs is the inside of the polygon.
-    surfs_ops = []
-    # hull facet equation: dx*x + dy*y + c = 0
-    for dx, dy, c in qhull.equations:
-        # Check if the facet is horizontal
-        if isclose(dx, 0):
-            if basis in ('xz', 'yz', 'rz'):
-                surf = openmc.ZPlane(z0=-c/dy)
-            else:
-                surf = openmc.YPlane(y0=-c/dy)
-            # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
-            op = '__pos__' if dy < 0 else '__neg__'
-        # Check if the facet is vertical
-        elif isclose(dy, 0):
-            if basis in ('xy', 'xz'):
-                surf = openmc.XPlane(x0=-c/dx)
-            elif basis == 'yz':
-                surf = openmc.YPlane(y0=-c/dx)
-            else:
-                surf = openmc.ZCylinder(r=-c/dx)
-            # if (1, 0).(dx, dy) < 0 we want positive halfspace instead
-            op = '__pos__' if dx < 0 else '__neg__'
-        # Otherwise the facet is at an angle
-        else:
-            op = '__neg__'
-            if basis == 'xy':
-                surf = openmc.Plane(a=dx, b=dy, d=-c)
-            elif basis == 'yz':
-                surf = openmc.Plane(b=dx, c=dy, d=-c)
-            elif basis == 'xz':
-                surf = openmc.Plane(a=dx, c=dy, d=-c)
-            else:
-                y0 = -c/dy
-                r2 = dy**2 / dx**2
-                # Check if the *slope* of the facet is positive. If dy/dx < 0
-                # then we want up to be True for the one-sided cones.
-                up = dy / dx < 0
-                surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=up)
-                # if (1, -1).(dx, dy) < 0 for up cones we want positive halfspace
-                # if (1, 1).(dx, dy) < 0 for down cones we want positive halfspace
-                if (up and dx - dy < 0) or (not up and dx + dy < 0):
-                    op = '__pos__'
-                else:
-                    op = '__neg__'
-
-        surfs_ops.append((surf, op))
-
-    return surfs_ops
-
-
-def make_ccw(verts):
-    """Determine whether the vertices are ordered counter-clockwise
-
-    Parameters
-    ----------
-    verts : np.ndarray (Nx2)
-        An Nx2 array of coordinate pairs describing the vertices.
-
-
-    Returns
-    -------
-    bool : True if vertices are in counter-clockwise order. False otherwise.
-
-    """
-    vector = np.empty(verts.shape[0])
-    vector[:-1] = (verts[1:, 0] - verts[:-1, 0])*(verts[1:, 1] + verts[:-1, 1])
-    vector[-1] = (verts[0, 0] - verts[-1, 0])*(verts[0, 1] + verts[-1, 1])
-
-    if np.sum(vector) < 0:
-        return verts
-
-    return verts[::-1, :]
-
-
-def group_simplices(tri, neighbor_map, group=None):
-    """Generate a list of convex groups of simplices.
-
-    Parameters
-    ----------
-    tri : scipy.spatial.Delaunay
-        A Delaunay triangulation of points generated from the polygon.
-    neighbor_map : dict
-        A map whose keys are simplex indices for simplices inside the polygon
-        and whose values are a list of simplex indices that neighbor this
-        simplex and are also inside the polygon.
-    group : list
-        A list of simplex indices that comprise the current convex group.
-
-    Returns
-    -------
-    group : list
-        The list of simplex indices that comprise the complete convex group.
-    """
-    # If neighbor_map is empty there's nothing left to do
-    if not neighbor_map:
-        return group
-    # If group is empty, grab the next simplex in the dictionary and recurse
-    if group is None:
-        sidx = next(iter(neighbor_map))
-        return group_simplices(tri, neighbor_map, group=[sidx])
-    # Otherwise use the last simplex in the group 
-    else:
-        sidx = group[-1]
-        # Remove current simplex from dictionary since it is in a group
-        neighbors = neighbor_map.pop(sidx, [])
-        # For each neighbor check if it is part of the same convex
-        # hull as the rest of the group. If yes, recurse. If no, continue on.
-        for n in neighbors:
-            if n in group or neighbor_map.get(n, None) is None:
-                continue
-            test_group = group + [n]
-            test_point_idx = np.unique(tri.simplices[test_group, :])
-            test_points = tri.points[test_point_idx]
-            # If test_points are convex keep adding to this group
-            if len(test_points) == len(ConvexHull(test_points).vertices):
-                group = group_simplices(tri, neighbor_map, group=test_group)
-        return group

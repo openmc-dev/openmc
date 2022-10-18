@@ -314,3 +314,7 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
 
     # Make sure repr works
     repr(s)
+
+@pytest.mark.parametrize("basis", [("xz",), ("yz",), ("xy",), ("rz",)])
+def test_polygon(basis=basis):
+

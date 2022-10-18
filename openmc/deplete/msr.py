@@ -8,7 +8,7 @@ import numpy as np
 from openmc import Materials, Material
 from openmc.search import search_for_keff
 from openmc.data import atomic_mass, AVOGADRO
-from openmc.lib import init_geom
+import openmc.lib
 
 class MsrContinuous:
     """Class defining Molten salt reactor (msr) elements (fission products)
@@ -276,17 +276,6 @@ class MsrBatchwise(ABC):
         """
         pass
 
-    def finalize(self, var):
-        """
-        Finilize the geometry by setting the search_for_keff function root to
-        the geometry model defined in memory
-        Parameters
-        ------------
-        var : float
-            geometrical variable to re-initialize geometry in memory
-        """
-        pass
-
 class MsrBatchwiseGeom(MsrBatchwise):
     """ MsrBatchwise geoemtrical class
 
@@ -302,12 +291,12 @@ class MsrBatchwiseGeom(MsrBatchwise):
         OpenMC operator object
     model : openmc.model.Model
         OpenMC model object
-    geom_id : int
+    name_or_id : int
         Parametric goemetrical feature id from the geometry model
-    type : string, optional
-        Parametric goemetrical feature type. Right now only 'surface' is
+    obj_type : string, optional
+        Parametric goemetrical feature obj_type. Right now only 'cell' is
         supported
-        Default to 'surface'
+        Default to 'cell'
     range : list of float
         List of floats defining bracketed range for search_for_keff
     bracketed_method : string
@@ -322,45 +311,43 @@ class MsrBatchwiseGeom(MsrBatchwise):
 
     Attributes
     ----------
-    geom_id : int
+    name_or_id : int
         Parametric goemetrical feature id from the geometry model
-    type : string
-        Parametric goemetrical feature type. Right now only 'surface' is
+    obj_type : string
+        Parametric goemetrical feature obj_type. Right now only 'cell' is
         supported
     """
-    def __init__(self, operator, model, geom_id, type='surface', range=None,
-                    bracketed_method='brentq', tol=0.01, target=1.0):
+    def __init__(self, operator, model, name_or_id, vector, obj_type='cell',
+                    range=None, bracketed_method='brentq', tol=0.01, target=1.0):
 
         super().__init__(operator, model, range, bracketed_method, tol, target)
 
-        self.geom_id = geom_id
+
+        self.name_or_id = name_or_id
         if len(range) != 3:
             raise ValueError("Range: {range} lenght is not 3. Must provide"
                              "bracketed range and upper limit")
 
-    def _extract_geom_coeff(self):
+        self.d = np.array(vector).argmax()
+
+    def _extract_geom_coeff(self, attrib_name='translation'):
         """
-        Extract surface coefficient from surface id. Right now only
-        surfaces are supported, but this could be extended to other geometrical
+        Extract cell coefficient from cell id. Right now only
+        cells are supported, but this could be extended to other geometrical
         features.
         Returns
         ------------
         coeff : float
-            surface coefficient
+            cell coefficient
         """
-        for surf in self.model.geometry.get_all_surfaces().items():
-            if surf[1].id == self.geom_id:
-                keys = list(surf[1].coefficients.keys())
-                if len(keys) == 1:
-                    coeff = getattr(surf[1], keys[0])
-                else:
-                    msg=(f'Surface coefficients {keys} are more than one')
-                    raise Exception(msg)
-        return coeff
+        for cell in openmc.lib.cells.values():
+            if cell.id == self.name_or_id or cell.name == self.name_or_id:
+                value = cell.translation
+        return value
 
-    def _set_geom_coeff(self, var, geometry):
+    def _set_geom_coeff(self, value, attrib_name='translation'):
         """
-        Set surface coefficient
+        Set cell coefficient
         Parameters
         ------------
         var : float
@@ -368,14 +355,10 @@ class MsrBatchwiseGeom(MsrBatchwise):
         geometry : openmc.model.geometry
             OpenMC geometry model
         """
-        for surf in geometry.get_all_surfaces().items():
-            if surf[1].id == self.geom_id:
-                keys = list(surf[1].coefficients.keys())
-                if len(keys) == 1:
-                    setattr(surf[1], keys[0], var)
-                else:
-                    msg = (f'Surface coefficients {keys} are more than one')
-                    raise Exception(msg)
+
+        for cell in openmc.lib.cells.values():
+            if cell.id == self.name_or_id or cell.name == self.name_or_id:
+                setattr(cell, attrib_name, value)
 
     def _normalize_nuclides(self, x):
         """
@@ -393,24 +376,25 @@ class MsrBatchwiseGeom(MsrBatchwise):
         x : list of numpy.ndarray
             Total atoms to be used in function.
         """
-        _materials = deepcopy(self.model.materials)
         nucs = super()._order_vector(x)
 
         for i, mat in enumerate(self.burn_mats):
-
+            print(mat)
+            nuclides = []
+            densities = []
             atoms_gram_per_mol = 0
             for nuc, val in nucs[i].items():
-                if nuc not in self.operator.nuclides_with_data:
-                    _materials[int(mat)-1].remove_nuclide(nuc)
-                else:
-                    _materials[int(mat)-1].remove_nuclide(nuc)
-                    _materials[int(mat)-1].add_nuclide(nuc, val)
+                if nuc in self.operator.nuclides_with_data:
+                    if val > 0.0:
+                        nuclides.append(nuc)
+                        density = 1.0e-24 * val / self.operator.number.volume[i]
+                        densities.append(density)
                 atoms_gram_per_mol += val * atomic_mass(nuc)
 
+            openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
             #Assign new volume to AtomNumber
             self.operator.number.volume[i] = atoms_gram_per_mol / AVOGADRO /\
-                                    _materials[int(mat)-1].get_mass_density()
-        _materials.export_to_xml()
+                            self.model.materials[int(mat)-1].get_mass_density()
 
     def _build_parametric_model(self, param):
         """
@@ -424,23 +408,8 @@ class MsrBatchwiseGeom(MsrBatchwise):
         _model :  openmc.model.Model
             OpenMC parametric model
         """
-        _model = deepcopy(self.model)
-        self._set_geom_coeff(param, _model.geometry)
-        _model.geometry.export_to_xml()
-        return _model
-
-    def _finalize(self, var):
-        """
-        Finilize the geometry by setting the search_for_keff function root to
-        the geometry model defined in memory
-        Parameters
-        ------------
-        var : float
-            geometry coefficient
-        """
-        self._set_geom_coeff(var, self.model.geometry)
-        self.model.geometry.export_to_xml()
-        init_geom()
+        self._set_geom_coeff(param)
+        return self.model
 
     def msr_criticality_search(self, x):
         """
@@ -455,23 +424,23 @@ class MsrBatchwiseGeom(MsrBatchwise):
             geometrical coefficient root of search_for_keff function
         """
         self._normalize_nuclides(x)
-        coeff = self._extract_geom_coeff()
+        value = self._extract_geom_coeff()
 
         low_range = self.range[0]
         up_range = self.range[1]
 
         # Normalize search_for_keff tolerance with coefficient value
-        if -1.0 < coeff < 1.0:
+        if -1.0 < value[self.d] < 1.0:
             _tol = self.tol / 2
         else:
-            _tol = self.tol / abs(coeff)
+            _tol = self.tol / abs(value[self.d])
 
         # Run until a search_for_keff root is found
         res = None
         while res == None:
 
             search = search_for_keff(self._build_parametric_model,
-                    bracket=[coeff + low_range, coeff + up_range],
+                    bracket=[value[self.d]+low_range, value[self.d]+up_range],
                     tol=_tol,
                     bracketed_method=self.bracketed_method,
                     target=self.target,
@@ -517,9 +486,8 @@ class MsrBatchwiseGeom(MsrBatchwise):
             else:
                 raise ValueError(f'ERROR: search_for_keff output not valid')
 
-        self._finalize(res)
         print('UPDATE: old coeff: {:.2f} cm --> ' \
-              'new coeff: {:.2f} cm'.format(coeff, res))
+              'new coeff: {:.2f} cm'.format(value[self.d], res))
         return res
 
 class MsrBatchwiseMat(MsrBatchwise):
@@ -593,29 +561,30 @@ class MsrBatchwiseMat(MsrBatchwise):
         _model :  openmc.model.Model
             OpenMC parametric model
         """
-        _model = deepcopy(self.model)
 
         for i, mat in enumerate(self.burn_mats):
+            nuclides = []
+            densities = []
             for nuc, val in self.nucs[i].items():
                 if nuc not in self.refuel_vector.keys():
-                    if nuc not in self.operator.nuclides_with_data:
-                        _model.materials[int(mat)-1].remove_nuclide(nuc)
-                    else:
-                        _model.materials[int(mat)-1].remove_nuclide(nuc)
-                        _model.materials[int(mat)-1].add_nuclide(nuc, val)
-                else:
-                    if _model.materials[int(mat)-1].id == self.mat_id:
-                        _model.materials[int(mat)-1].remove_nuclide(nuc)
-                        # convert grams into atoms
-                        atoms = param / atomic_mass(nuc) * AVOGADRO * \
-                                self.refuel_vector[nuc]
-                        _model.materials[int(mat)-1].add_nuclide(nuc, val+atoms)
-                    else:
-                        _model.materials[int(mat)-1].remove_nuclide(nuc)
-                        _model.materials[int(mat)-1].add_nuclide(nuc, val)
+                    if nuc in self.operator.nuclides_with_data:
+                        nuclides.append(nuc)
+                        density = 1.0e-24 * val / self.operator.number.volume[i]
+                        densities.append(density)
 
-        _model.export_to_xml()
-        return _model
+                else:
+                    nuclides.append(nuc)
+                    if openmc.lib.materials[int(mat)].id == self.mat_id:
+                        # convert grams into atoms-b/cm3
+                        density = 1.0e-24 * (val + (param / atomic_mass(nuc) * \
+                                AVOGADRO * self.refuel_vector[nuc])) / \
+                                self.operator.number.volume[i]
+                    else:
+                        density = 1.0e-24 * val / self.operator.number.volume[i]
+                    densities.append(density)
+
+            openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
+        return self.model
 
     def _update_x_vector_and_volumes(self, x, res):
         """

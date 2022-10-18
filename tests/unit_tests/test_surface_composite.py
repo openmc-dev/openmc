@@ -315,6 +315,26 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
     # Make sure repr works
     repr(s)
 
-@pytest.mark.parametrize("basis", [("xz",), ("yz",), ("xy",), ("rz",)])
-def test_polygon(basis=basis):
+def test_polygon():
+    # define a 5 pointed star centered on 1, 1
+    star = np.array([[1.        , 2.        ],
+                     [0.70610737, 1.4045085 ],
+                     [0.04894348, 1.30901699],
+                     [0.52447174, 0.8454915 ],
+                     [0.41221475, 0.19098301],
+                     [1.        , 0.5       ],
+                     [1.58778525, 0.19098301],
+                     [1.47552826, 0.8454915 ],
+                     [1.95105652, 1.30901699],
+                     [1.29389263, 1.4045085 ],
+                     [1.        , 2.        ]])
+    points_in = [(1, 1, 0), (0, 1, 1), (1, 0, 1), (.707, .707, 1)]
+    for i, basis in enumerate(('xy', 'yz', 'xz', 'rz')):
+        star_poly = openmc.model.Polygon(star, basis=basis)
+        assert points_in[i] in -star_poly
+        assert points_in[i] not in +star_poly
+        assert (0, 0, 0) not in -star_poly
+        if basis != 'rz':
+            assert(0, 0, 0) in -star_poly.offset(.6)
+
 

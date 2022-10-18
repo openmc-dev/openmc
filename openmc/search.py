@@ -2,7 +2,6 @@ from collections.abc import Callable
 from numbers import Real
 
 import scipy.optimize as sopt
-import numpy as np
 
 import openmc
 import openmc.model
@@ -50,10 +49,9 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
 
     # Build the model
     model = model_builder(guess, **model_args)
+
     # Run the model and obtain keff
-    #sp_filepath = model.run(**run_args)
-    openmc.run(**run_args)
-    sp_filepath = f'statepoint.{str(model.settings.batches)}.h5'
+    sp_filepath = model.run(**run_args)
     with openmc.StatePoint(sp_filepath) as sp:
         keff = sp.keff
 
@@ -67,6 +65,7 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
         print(text.format(len(guesses), guess, keff.n, keff.s))
 
     return keff.n - target
+
 
 def search_for_keff(model_builder, initial_guess=None, target=1.0,
                     bracket=None, model_args=None, tol=None,

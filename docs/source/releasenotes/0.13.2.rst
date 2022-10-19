@@ -68,7 +68,7 @@ New Features
 Bug Fixes
 ---------
 
-- `Delay call to Tally::set_strides <https://github.com/openmc-dev/openmc/pull/2183>`
+- `Delay call to Tally::set_strides <https://github.com/openmc-dev/openmc/pull/2183>`_
 - `Fix reading reference direction from XML for angular distributions <https://github.com/openmc-dev/openmc/pull/2204>`_
 - `Fix erroneous behavior in Material.add_components <https://github.com/openmc-dev/openmc/pull/2205>`_
 - `Fix reading thermal elastic data from ACE <https://github.com/openmc-dev/openmc/pull/2226>`_

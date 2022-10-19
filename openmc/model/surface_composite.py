@@ -662,7 +662,8 @@ class Polygon(CompositeSurface):
             points = points[:-1, :]
         check_length('points', points, 3)
 
-        self._points = points
+        # Order the points counter-clockwise (necessary for offset method)
+        self._points = self._make_ccw(points)
 
         # Create a triangulation of the points.
         self._tri = Delaunay(self._points, qhull_options='QJ')
@@ -723,6 +724,29 @@ class Polygon(CompositeSurface):
     @property
     def region(self):
         return self._region
+
+    def _make_ccw(self, points):
+        """Order a set of points counter-clockwise.
+
+        Parameters
+        ----------
+        points : np.ndarray (Nx2)
+            An Nx2 array of coordinate pairs describing the vertices.
+
+        Returns
+        -------
+        ordered_points : the input points ordered counter-clockwise
+        """
+        vector = np.empty(points.shape[0])
+        this_x, this_y = points[:-1, 0], points[:-1, 1]
+        next_x, next_y = points[1:, 0], points[1:, 1]
+        vector[:-1] = (next_x - this_x)*(next_y + this_y)
+        vector[-1] = (this_x[0] - next_x[-1])*(this_y[0] + next_y[-1])
+
+        if np.sum(vector) < 0:
+            return points
+
+        return points[::-1, :]
 
     def _group_simplices(self, neighbor_map, group=None):
         """Generate a convex grouping of simplices.
@@ -883,25 +907,15 @@ class Polygon(CompositeSurface):
             The distance to offset the polygon by. Positive is outward
             (expanding) and negative is inward (shrinking).
 
-
         Returns
         -------
         offset_polygon : openmc.model.Polygon
         """
-        # Get the points of the polygon and outward normals such that
-        # normals[i] corresponds to the edge between points[i-1] and points[i]
-        points = self.points
-        normals = self._normals
-        normals = np.insert(normals, 0, normals[-1, :], axis=0)
-        ndotv1 = np.sum(normals[:-1, :]*(points + distance*normals[:-1, :]),
-                        axis=-1, keepdims=True)
-        ndotv2 = np.sum(normals[1:, :]*(points + distance*normals[1:, :]),
-                        axis=-1, keepdims=True)
+        normals = np.insert(self._normals, 0, self._normals[-1, :], axis=0)
+        cos2theta = np.sum(normals[1:, :]*normals[:-1, :], axis=-1, keepdims=True)
+        costheta = np.cos(np.arccos(cos2theta) / 2)
+        nvec = (normals[1:, :] + normals[:-1, :])
+        unit_nvec = nvec / np.linalg.norm(nvec, axis=-1, keepdims=True)
+        disp_vec = distance / costheta * unit_nvec
 
-        new_points = np.empty_like(points)
-        denom = normals[:-1, 0]*normals[1:, 1] - normals[:-1, 1]*normals[1:, 0]
-        new_points[:, 0] = normals[1:, 1]*ndotv1.T - normals[:-1, 1]*ndotv2.T
-        new_points[:, 1] = -normals[1:, 0]*ndotv1.T + normals[:-1, 0]*ndotv2.T
-        new_points /= denom[:, None]
-
-        return type(self)(new_points, basis=self.basis)
+        return type(self)(self.points + disp_vec, basis=self.basis)

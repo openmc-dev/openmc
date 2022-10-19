@@ -225,6 +225,13 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     iterations++;
     size_t total_samples = iterations * n_samples_;
 
+    // warn user if total sample size is greater than what the size_t type can
+    // represent
+    if (total_samples > SIZE_T_MAX) {
+      warning("The number of samples has exceeded the size_t type. Volume "
+              "results may be inaccurate.");
+    }
+
     // reset
     double trigger_val = -INFTY;
 

@@ -2095,7 +2095,7 @@ class EnergyFunctionFilter(Filter):
         y = [float(x) for x in get_text(elem, 'y').split()]
         out = cls(energy, y, filter_id=filter_id)
         if elem.find('interpolation') is not None:
-            out.interpolation = elem.find('interpolation')
+            out.interpolation = elem.find('interpolation').text
         return out
 
     def can_merge(self, other):

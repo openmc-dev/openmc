@@ -99,9 +99,9 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 {
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
-  vector<vector<int>> master_indices(
+  vector<vector<int32_t>> master_indices(
     n); // List of material indices for each domain
-  vector<vector<int>> master_hits(
+  vector<vector<size_t>> master_hits(
     n); // Number of hits for each material in each domain
   int iterations = 0;
 
@@ -281,7 +281,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 #endif
 
       if (mpi::master) {
-        int total_hits = 0;
+        size_t total_hits = 0;
         for (int j = 0; j < master_indices[i_domain].size(); ++j) {
           total_hits += master_hits[i_domain][j];
           double f =

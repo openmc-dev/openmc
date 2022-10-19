@@ -658,17 +658,17 @@ class DAGMCUniverse(UniverseBase):
         as each material name present in the DAGMC h5m file must have a
         matching openmc.Material() with the same name.
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.13.2
     n_cells : int
         The number of cells in the DAGMC model. This is the number of cells at
         runtime and accounts for the implicit complement whether or not is it
         present in the DAGMC file.
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.13.2
     n_surfaces : int
         The number of surfaces in the model.
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.13.2
 
     """
 

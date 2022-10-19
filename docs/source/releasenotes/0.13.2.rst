@@ -1,5 +1,5 @@
 ====================
-What's New in 0.14.0
+What's New in 0.13.2
 ====================
 
 .. currentmodule:: openmc

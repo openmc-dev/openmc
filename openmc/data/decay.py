@@ -587,7 +587,7 @@ def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
     for the first time, you need to ensure that a depletion chain has been
     specified in openmc.config['chain_file'].
 
-    .. versionadded:: 0.14.0
+    .. versionadded:: 0.13.2
 
     Parameters
     ----------

@@ -98,7 +98,7 @@ class Material(IDManagerMixin):
         this distribution is the total intensity of the photon source in
         [decay/sec].
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.13.2
 
     """
 
@@ -825,7 +825,7 @@ class Material(IDManagerMixin):
         element : str
             Specifies the element to match when searching through the nuclides
 
-            .. versionadded:: 0.14.0
+            .. versionadded:: 0.13.2
 
         Returns
         -------
@@ -879,7 +879,7 @@ class Material(IDManagerMixin):
             Nuclide for which atom density is desired. If not specified, the
             atom density for each nuclide in the material is given.
 
-            .. versionadded:: 0.14.0
+            .. versionadded:: 0.13.2
 
         Returns
         -------

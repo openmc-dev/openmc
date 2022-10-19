@@ -729,7 +729,7 @@ def muir(e0, m_rat, kt):
     distribution: the mean energy of particles ``e0``, the mass of reactants
     ``m_rat``, and the ion temperature ``kt``.
 
-    .. versionadded:: 0.14.0
+    .. versionadded:: 0.13.2
 
     Parameters
     ----------

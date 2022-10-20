@@ -396,7 +396,7 @@ void print_build_info()
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
     fmt::print("Coverage testing:      {}\n", coverage);
-    fmt::print("Profiling flags:       {}\n", profiling);
+    fmt::print("Profiling flags:         {}\n", profiling);
   }
 }
 

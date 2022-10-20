@@ -335,15 +335,23 @@ class Material(IDManagerMixin):
         return material
 
     @classmethod
-    def from_ncrystal(cls, cfg):
-        """Create material from NCrystal configuration string
-        Density is set from the NCrystal value,
-        and material temperature from the configuration string.
-      
+    def from_ncrystal(cls, cfg, material_id=None, name=''):
+        """Create material from NCrystal configuration string. Density,
+        temperature, and material composition, and (ultimately) thermal neutron
+        scattering, will be automatically be provided by NCrystal based on this
+        string. The name and material_id parameters are simply passed on to the
+        Material constructor.
+
         Parameters
         ----------
         cfg : str
             NCrystal configuration string
+        material_id : int, optional
+            Unique identifier for the material. If not specified, an identifier will
+            automatically be assigned.
+        name : str, optional
+            Name of the material. If not specified, the name will be the empty
+            string.
 
         Returns
         -------
@@ -353,22 +361,43 @@ class Material(IDManagerMixin):
         """
 
         import NCrystal
-
         nc_mat = NCrystal.createInfo(cfg)
-        nc_comp = nc_mat.getComposition()
+
+        def openmc_natabund( Z ):
+            #nc_mat.getFlattenedComposition might need natural abundancies.
+            #This call-back function is used so NCrystal can flatten composition
+            #using OpenMC's natural abundancies. In practice this function will
+            #only get invoked in the unlikely case where a material is specified
+            #by referring both to natural elements and specific isotopes of the
+            #same element.
+            elem_name = openmc.data.ATOMIC_SYMBOL.get( Z, None )
+            if not elem_name:
+                raise ValueError( f'Element with Z={Z} is not known' )
+            l = []
+            for iso_name,abund in openmc.data.isotopes( elem_name ):
+                l.append( ( int(iso_name[ len(elem_name) : ]), abund ) )
+            return l
+
+        flat_compos = nc_mat.getFlattenedComposition( preferNaturalElements = True,
+                                                      naturalAbundProvider = openmc_natabund )
 
         # Create the Material
-        material = cls()
+        material = cls( material_id = material_id,
+                        name = name,
+                        temperature = nc_mat.getTemperature() )
 
-        for frac, atom in nc_comp:
-            if not atom.isNaturalElement():
-                raise ValueError('NCrystal-OpenMC interface only works with natural elements for now.')
-            material.add_element(atom.elementName(), frac, 'ao')
+        for Z, A_vals in flat_compos:
+            elemname = openmc.data.ATOMIC_SYMBOL.get(Z,None)
+            if not elemname:
+                raise ValueError(f'Element with Z={Z} is not known')
+            for A, frac in A_vals:
+                if A:
+                    material.add_nuclide( elemname + str(A), frac, 'ao' )
+                else:
+                    material.add_element( elemname, frac, 'ao' )
 
-        material._ncrystal_cfg = cfg
-        material._density_units = "g/cm3"
-        material._density = nc_mat.getDensity()
-        material.temperature = nc_mat.getTemperature()
+        material.set_density( 'g/cm3', nc_mat.getDensity() )
+        material._ncrystal_cfg = NCrystal.normaliseCfg( cfg )
 
         return material
 
@@ -1186,7 +1215,7 @@ class Material(IDManagerMixin):
             if self._sab:
                 raise ValueError("NCrystal materials are not compatible with S(a,b).")
             if self._macroscopic is not None:
-                raise ValueError("NCrystal materials are not compatible macroscopic cross sections.")
+                raise ValueError("NCrystal materials are not compatible with macroscopic cross sections.")
 
             element.set("cfg", str(self._ncrystal_cfg))
 

@@ -676,16 +676,18 @@ class Polygon(CompositeSurface):
         surfnames = []
         i = 0
         for surfset in self._surfsets:
-            for surf, op in surfset:
-                setattr(self, f'surface_{i}', surf)
-                surfnames.append(f'surface_{i}')
-                i += 1
+            print(surfset)
+            for surf, op, on_boundary in surfset:
+                if on_boundary:
+                    setattr(self, f'surface_{i}', surf)
+                    surfnames.append(f'surface_{i}')
+                    i += 1
         self._surfnames = tuple(surfnames)
 
         # Generate a list of regions whose union represents the polygon.
         regions = []
         for surfs_ops in self._surfsets:
-            regions.append([getattr(surf, op)() for surf, op in surfs_ops])
+            regions.append([getattr(surf, op)() for surf, op, _ in surfs_ops])
         self._regions = [openmc.Intersection(regs) for regs in regions]
 
         # Create the union of all the convex subsets
@@ -716,6 +718,14 @@ class Polygon(CompositeSurface):
         tangents = np.diff(self._points, axis=0, append=[self._points[0, :]])
         tangents /= np.linalg.norm(tangents, axis=-1, keepdims=True)
         return rotation.dot(tangents.T).T
+
+    @property
+    def _equations(self):
+        normals = self._normals
+        equations = np.empty((normals.shape[0], 3))
+        equations[:, 0:2] = normals
+        equations[:, 2] = -np.sum(normals*self.points, axis=-1)
+        return equations
 
     @property
     def regions(self):
@@ -804,11 +814,15 @@ class Polygon(CompositeSurface):
 
         """
         basis = self.basis
+        boundary_eqns = self._equations
         # Collect surface/operator pairs such that the intersection of the
         # regions defined by these pairs is the inside of the polygon.
         surfs_ops = []
         # hull facet equation: dx*x + dy*y + c = 0
         for dx, dy, c in qhull.equations:
+            # check if this facet is on the boundary of the polygon
+            facet_eq = np.array([dx, dy, c])
+            on_boundary = any([np.allclose(facet_eq, eq) for eq in boundary_eqns])
             # Check if the facet is horizontal
             if isclose(dx, 0):
                 if basis in ('xz', 'yz', 'rz'):
@@ -850,7 +864,7 @@ class Polygon(CompositeSurface):
                     else:
                         op = '__neg__'
 
-            surfs_ops.append((surf, op))
+            surfs_ops.append((surf, op, on_boundary))
 
         return surfs_ops
 

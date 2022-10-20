@@ -4,6 +4,7 @@ from math import sqrt, pi, sin, cos, isclose
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 from matplotlib.path import Path
+import warnings
 
 import openmc
 from openmc.checkvalue import (check_greater_than, check_value,
@@ -701,6 +702,18 @@ class Polygon(CompositeSurface):
     @property
     def _surface_names(self):
         return self._surfnames
+
+    @CompositeSurface.boundary_type.setter
+    def boundary_type(self, boundary_type):
+        if boundary_type != 'transmission':
+            warnings.warn("Setting boundary_type to a value other than "
+                          "'transmission' on Polygon composite surfaces can "
+                          "result in unintended behavior. Please use the "
+                          "regions property of the Polygon to generate "
+                          "individual openmc.Cell objects to avoid unwanted "
+                          "behavior.")
+        for name in self._surface_names:
+            getattr(self, name).boundary_type = boundary_type
 
     @property
     def points(self):

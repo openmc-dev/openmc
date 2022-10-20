@@ -105,6 +105,7 @@ endmacro()
 
 if(OPENMC_USE_NCRYSTAL)
   find_package(NCrystal REQUIRED)
+  message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
 endif()
 
 #===============================================================================

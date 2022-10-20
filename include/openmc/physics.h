@@ -111,8 +111,6 @@ void split_particle(Particle& p);
 //==============================================================================
 
 class NCrystalRNGWrapper : public NCrystal::RNGStream {
-  uint64_t* openmc_seed_;
-
 public:
   constexpr NCrystalRNGWrapper(uint64_t* seed) noexcept : openmc_seed_(seed) {}
 
@@ -122,6 +120,8 @@ protected:
     return std::max<double>(
       std::numeric_limits<double>::min(), prn(openmc_seed_));
   }
+private:
+  uint64_t* openmc_seed_;
 };
 #endif
 

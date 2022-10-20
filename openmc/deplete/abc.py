@@ -808,7 +808,7 @@ class Integrator(ABC):
         x = deepcopy(bos_conc)
         # Get new vector after keff criticality control
         if step_index > 0:
-            x = self.msr_batchwise.msr_criticality_search(x)
+            x = self.msr_batchwise.msr_search_for_keff(x)
         return x
 
     def integrate(self, final_step=True, output=True):
@@ -843,7 +843,7 @@ class Integrator(ABC):
                     conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
                 else:
                     conc, res = self._get_bos_data_from_restart(i, source_rate, conc)
-
+                print('Timestep: {} --> keff: {:.5f}'.format(i, res.k.n))
                 # Solve Bateman equations over time interval
                 proc_time, conc_list, res_list = self(conc, res.rates, dt, source_rate, i)
 

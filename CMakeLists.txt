@@ -489,10 +489,10 @@ target_compile_definitions(libopenmc PRIVATE BUILD_TYPE=${CMAKE_BUILD_TYPE})
 target_compile_definitions(libopenmc PRIVATE COMPILER_ID=${CMAKE_CXX_COMPILER_ID})
 target_compile_definitions(libopenmc PRIVATE COMPILER_VERSION=${CMAKE_CXX_COMPILER_VERSION})
 if (OPENMC_ENABLE_PROFILE)
-    target_compile_definitions(libopenmc PRIVATE PROFILINGBUILD)
+  target_compile_definitions(libopenmc PRIVATE PROFILINGBUILD)
 endif()
 if (OPENMC_ENABLE_COVERAGE)
-    target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
+  target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
 endif()
 
 #===============================================================================

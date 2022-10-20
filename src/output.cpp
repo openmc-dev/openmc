@@ -325,7 +325,6 @@ void print_usage()
       "max_tracks)\n"
       "  -e, --event            Run using event-based parallelism\n"
       "  -v, --version          Show version information\n"
-      "  -b, --build-info       Show compile options\n"
       "  -h, --help             Show this message\n");
   }
 }

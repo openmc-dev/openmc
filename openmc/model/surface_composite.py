@@ -676,7 +676,6 @@ class Polygon(CompositeSurface):
         surfnames = []
         i = 0
         for surfset in self._surfsets:
-            print(surfset)
             for surf, op, on_boundary in surfset:
                 if on_boundary:
                     setattr(self, f'surface_{i}', surf)

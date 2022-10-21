@@ -3,7 +3,7 @@ from enum import Enum
 from numbers import Real
 import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -84,7 +84,7 @@ class Source:
         parameters: Optional[str] = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Optional[Union[openmc.Cell, openmc.Material, openmc.Universe]] = None
+        domains: Optional[Union[openmc.Cell, openmc.Material, 'openmc.Universe']] = None
     ):
         self._space = None
         self._angle = None
@@ -257,7 +257,7 @@ class Source:
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element) -> openmc.Source:
+    def from_xml_element(cls, elem: ET.Element) -> 'openmc.Source':
         """Generate source from an XML element
 
         Parameters
@@ -364,8 +364,8 @@ class SourceParticle:
     """
     def __init__(
         self,
-        r: typing.Iterable[float, float, float] = (0., 0., 0.),
-        u: typing.Iterable[float, float, float] = (0., 0., 1.),
+        r: Tuple[float, float, float] = (0., 0., 0.),
+        u: Tuple[float, float, float] = (0., 0., 1.),
         E: float = 1.0e6,
         time: float = 0.0,
         wgt: float = 1.0,
@@ -401,7 +401,7 @@ class SourceParticle:
 
 
 def write_source_file(
-    source_particles: typing.Iterable[openmc.SourceParticle],
+    source_particles: 'typing.Iterable[openmc.SourceParticle]',
     filename: PathLike, **kwargs
 ):
     """Write a source file using a collection of source particles

@@ -5,6 +5,7 @@
 #define OPENMC_CONSTANTS_H
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
 #include "openmc/array.h"
@@ -338,6 +339,11 @@ enum class RunMode {
 // Geometry Constants
 
 enum class GeometryType { CSG, DAG };
+
+//==============================================================================
+// Volume Calculation Constants
+
+constexpr uint64_t UINT64_T_MAX {std::numeric_limits<uint64_t>::max()};
 
 } // namespace openmc
 

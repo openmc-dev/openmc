@@ -347,6 +347,61 @@ void print_version()
 
 //==============================================================================
 
+void print_build_info()
+{
+  const std::string n("no");
+  const std::string y("yes");
+
+  std::string mpi(n);
+  std::string phdf5(n);
+  std::string dagmc(n);
+  std::string libmesh(n);
+  std::string png(n);
+  std::string profiling(n);
+  std::string coverage(n);
+
+#ifdef PHDF5
+  phdf5 = y;
+#endif
+#ifdef OPENMC_MPI
+  mpi = y;
+#endif
+#ifdef DAGMC
+  dagmc = y;
+#endif
+#ifdef LIBMESH
+  libmesh = y;
+#endif
+#ifdef USE_LIBPNG
+  png = y;
+#endif
+#ifdef PROFILINGBUILD
+  profiling = y;
+#endif
+#ifdef COVERAGEBUILD
+  coverage = y;
+#endif
+
+  // Wraps macro variables in quotes
+#define STRINGIFY(x) STRINGIFY2(x)
+#define STRINGIFY2(x) #x
+
+  if (mpi::master) {
+    fmt::print("Build type:            {}\n", STRINGIFY(BUILD_TYPE));
+    fmt::print("Compiler ID:           {} {}\n", STRINGIFY(COMPILER_ID),
+      STRINGIFY(COMPILER_VERSION));
+    fmt::print("MPI enabled:           {}\n", mpi);
+    fmt::print("Parallel HDF5 enabled: {}\n", phdf5);
+    fmt::print("PNG support:           {}\n", png);
+    fmt::print("DAGMC support:         {}\n", dagmc);
+    fmt::print("libMesh support:       {}\n", libmesh);
+    fmt::print("Coverage testing:      {}\n", coverage);
+    fmt::print("Profiling flags:         {}\n", profiling);
+  }
+}
+
+//==============================================================================
+
 void print_columns()
 {
   if (settings::entropy_on) {

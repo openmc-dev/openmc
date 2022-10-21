@@ -222,7 +222,7 @@ class Source:
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
-    def to_xml_element(self):
+    def to_xml_element(self) -> ET.Element:
         """Return XML representation of the source
 
         Returns
@@ -257,7 +257,7 @@ class Source:
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element):
+    def from_xml_element(cls, elem: ET.Element) -> openmc.Source:
         """Generate source from an XML element
 
         Parameters
@@ -387,7 +387,7 @@ class SourceParticle:
         name = self.particle.name.lower()
         return f'<SourceParticle: {name} at E={self.E:.6e} eV>'
 
-    def to_tuple(self):
+    def to_tuple(self) -> tuple:
         """Return source particle attributes as a tuple
 
         Returns

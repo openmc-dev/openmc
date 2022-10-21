@@ -1,8 +1,8 @@
 #include "openmc/output.h"
 
 #include <algorithm> // for transform, max
-#include <cstring>   // for strlen
 #include <cstdio>    // for stdout
+#include <cstring>   // for strlen
 #include <ctime>     // for time, localtime
 #include <fstream>
 #include <iomanip> // for setw, setprecision, put_time
@@ -134,9 +134,10 @@ void header(const char* msg, int level)
   auto out = header(msg);
 
   // Print header based on verbosity level.
-  if (settings::verbosity >= level)
+  if (settings::verbosity >= level) {
     fmt::print("\n{}\n\n", out);
     std::fflush(stdout);
+  }
 }
 
 //==============================================================================
@@ -396,7 +397,7 @@ void print_build_info()
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
     fmt::print("Coverage testing:      {}\n", coverage);
-    fmt::print("Profiling flags:         {}\n", profiling);
+    fmt::print("Profiling flags:       {}\n", profiling);
   }
 }
 

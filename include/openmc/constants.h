@@ -340,11 +340,6 @@ enum class RunMode {
 
 enum class GeometryType { CSG, DAG };
 
-//==============================================================================
-// Volume Calculation Constants
-
-constexpr uint64_t UINT64_T_MAX {std::numeric_limits<uint64_t>::max()};
-
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

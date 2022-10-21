@@ -63,7 +63,7 @@ Material::Material(pugi::xml_node node)
 #ifdef NCRYSTAL
   if (check_for_node(node, "cfg")) {
     ncrystal_cfg_ = get_node_value(node, "cfg");
-    write_message(5, "NCrystal config string: '{}'", ncrystal_cfg_);
+    write_message(5, "NCrystal config string for material #{}: '{}'", this->id(), ncrystal_cfg_);
     ncrystal_mat_ = NCrystal::FactImpl::createScatter(ncrystal_cfg_);
   }
 #endif

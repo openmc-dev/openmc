@@ -227,7 +227,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 
     // warn user if total sample size is greater than what the size_t type can
     // represent
-    if (total_samples > UINT64_T_MAX) {
+    if (total_samples == UINT64_T_MAX) {
       warning("The number of samples has exceeded the type used to track hits. "
               "Volume "
               "results may be inaccurate.");

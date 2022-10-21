@@ -199,11 +199,3 @@ int openmc_hard_reset()
   openmc::openmc_set_seed(DEFAULT_SEED);
   return 0;
 }
-
-void openmc_initialize_geometry()
-{
-  free_memory_geometry();
-  free_memory_surfaces();
-  read_geometry_xml();
-  finalize_geometry();
-}

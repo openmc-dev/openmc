@@ -225,12 +225,11 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     iterations++;
     uint64_t total_samples = iterations * n_samples_;
 
-    // warn user if total sample size is greater than what the size_t type can
+    // warn user if total sample size is greater than what the uin64_t type can
     // represent
-    if (total_samples == UINT64_T_MAX) {
+    if (total_samples == std::numeric_limits<uint64_t>::max()) {
       warning("The number of samples has exceeded the type used to track hits. "
-              "Volume "
-              "results may be inaccurate.");
+              "Volume results may be inaccurate.");
     }
 
     // reset
@@ -246,8 +245,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // Create 2D array to store atoms/uncertainty for each nuclide. Later this
       // is compressed into vectors storing only those nuclides that are
       // non-zero
-      auto n_nuc = settings::run_CE ? data::nuclides.size()
-                                    : data::mg.nuclides_.size();
+      auto n_nuc =
+        settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
       xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
 
 #ifdef OPENMC_MPI

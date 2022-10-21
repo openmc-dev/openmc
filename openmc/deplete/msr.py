@@ -5,8 +5,10 @@ from warnings import warn
 
 import numpy as np
 
+import openmc.checkvalue import check_type, check_value, check_less_than, \
+check_iterable_type, check_lenght
 from openmc import Materials, Material
-from openmc.search import search_for_keff
+from openmc.search import _SCALAR_BRACKETED_METHODS, search_for_keff
 from openmc.data import atomic_mass, AVOGADRO
 import openmc.lib
 
@@ -166,7 +168,6 @@ class MsrContinuous:
         for element in elements:
             self.removal_rates[mat][element] = [removal_rate, dest_mat]
 
-
 class MsrBatchwise(ABC):
     """Abstract Base Class for implementing msr batchwise classes.
 
@@ -212,22 +213,75 @@ class MsrBatchwise(ABC):
     target : float
         Search_for_keff function target
     """
-    def __init__(self, operator, model, bracket=None, bracketed_method='brentq',
-                 tol=0.01, target=1.0):
+    def __init__(self, operator, model, bracket, bracket_limit,
+                 bracketed_method='brentq', tol=0.01, target=1.0,
+                 print_iteration=True, search_for_keff_output=False):
 
         self.operator = operator
         self.burn_mats = operator.burnable_mats
-
         self.model = model
 
-        if len(bracket) != 2:
-            raise ValueError("Range: {bracket} lenght is not 2. Must provide "
-                             "bracketed bracket only")
-
+        check_iterable_type('bracket', bracket, Real)
+        check_length('bracket', bracket, 2)
+        check_less_than('bracket values', bracket[0], bracket[1])
         self.bracket = bracket
+
+        check_iterable_type('bracket_limit', bracket_limit, Real)
+        check_length('bracket_limit', bracket_limit, 2)
+        check_less_than('bracket limit values',
+                         bracket_limit[0], bracket_limit[1])
+        self.bracket_limit = bracket_limit
+
         self.bracketed_method = bracketed_method
         self.tol = tol
         self.target = target
+        self.print_iterations = print_iterations
+        self.search_for_keff_output = search_for_keff_output
+
+    @property
+    def bracketed_method(self):
+        return self._bracketed_method
+
+    @bracketed_method.setter
+    def bracketed_method(self, value):
+        check_value('bracketed_method', value, _SCALAR_BRACKETED_METHODS)
+        if value != 'brentq':
+            warn('brentq bracketed method is recomended')
+        self._bracketed_method = value
+
+    @propery
+    def tol(self):
+        return self._tol
+
+    @tol.setter
+    def tol(self, value):
+        check_type("tol", value, Real)
+        self._tol = value
+
+    @propery
+    def target(self):
+        return self._target
+
+    @target.setter
+    def target(self, value):
+        check_type("target", value, Real)
+        self._target = value
+
+    @abstractmethod
+    def _model_builder(self, param):
+        """
+        Builds the parametric model to be passed to `search_for_keff`.
+        Callable function which builds a model according to a passed
+        parameter. This function must return an openmc.model.Model object.
+        Parameters
+        ------------
+        param : parameter
+            model function variable
+        Returns
+        ------------
+        _model :  openmc.model.Model
+            OpenMC parametric model
+        """
 
     def _conc_dict(self, x):
         """
@@ -266,55 +320,41 @@ class MsrBatchwise(ABC):
         """
         _bracket = deepcopy(self.bracket)
 
-        # Normalize search_for_keff tolerance with coefficient value
-        if -1.0 < val < 1.0:
-            _tol = self.tol / 2
-        else:
+        # Normalize search_for_keff tolerance with guess value
+        if not -1.0 < val < 1.0:
             _tol = self.tol / abs(val)
 
-        # Run until a search_for_keff root is found
+        # Run until a search_for_keff root is found or ouf ot limits
         res = None
         while res == None:
 
             search = search_for_keff(self._model_builder,
-                    bracket=[val+_bracket[0], val+_bracket[1]],
-                    tol=_tol,
-                    bracketed_method=self.bracketed_method,
-                    target=self.target,
-                    print_iterations=True,
-                    run_args={'output':False})
+                    bracket = [_bracket[0]+val, _bracket[1]+val],
+                    tol = _tol,
+                    bracketed_method = self.bracketed_method,
+                    target = self.target,
+                    print_iterations = self.print_iterations,
+                    run_args = {'output': self.search_for_keff_output})
 
             if len(search) == 3:
                 _res, _, _ = search
-                if self.bracket_limit[0] <= _res <=  self.bracket_limit[1]:
+                if self.bracket_limit[0] < _res <  self.bracket_limit[1]:
                     res = _res
                 else:
-                    if _res < self.bracket_limit[0]:
-                        warn('WARNING: Hit lower limit. Set root to {:.2f} cm '\
-                         'and exit msr batchwise'.format(self.bracket_limit[0]))
-                        res = self.bracket_limit[0]
-                    elif _res > self.bracket_limit[1]:
-                        warn('WARNING: Hit upper limit. Set root to {:.2f} cm '\
-                         'and exit msr batchwise'.format(self.bracket_limit[1]))
-                        res = self.bracket_limit[1]
+                    # Set res with closest limit and continue
+                    arg_min = abs(np.array(res.bracket_limit)-_res).argmin()
+                    warn('WARNING: Search_for_keff returned root out of '\
+                         'bracket limit. Set root to {:.2f} and continue.'
+                         .format(self.bracket_limit[arg_min]))
+                    res = self.bracket_limit[arg_min]
 
             elif len(search) == 2:
-                guesses, k = search
+                guess, k = search
 
-                if np.any(guesses) < self.bracket_limit[0]:
-                    warn('WARNING: Hit lower limit. Set root to {:.2f} cm ' \
-                         'and exit msr batchwise'.format(self.bracket_limit[0]))
-                    res = self.bracket[0]
-
-                elif np.any(guesses) > self.bracket_limit[1]:
-                    warn('WARNING: Hit upper limit. Set root to {:.2f} cm ' \
-                         'and exit msr batchwise'.format(self.bracket_limit[1]))
-                    res = self.bracket[1]
-
-                else:
+                if self.bracket_limit[0] < np.all(guess) < self.bracket_limit[1]:
                     #Simple method to iteratively adapt the bracket
-                    print ('INFO: Function returned values OFF target, ' \
-                           'adapting bracket...')
+                    print('INFO: Function returned values below or above ' \
+                           'target. Adapt bracket...')
 
                     # if the bracket ends up being smaller than the std of the
                     # keff's closer value to target, no need to continue-
@@ -323,38 +363,31 @@ class MsrBatchwise(ABC):
 
                     # Calculate gradient as ratio of delta bracket and delta k
                     grad = abs(np.diff(_bracket) / np.diff(k))[0].n
+
                     # Move the bracket closer to presumed keff root
                     if np.mean(k) < self.target:
-                        sign = np.sign(guesses[np.argmax(k)])
+                        sign = np.sign(guess[np.argmax(k)])
                         _bracket[np.argmin(k)] = _bracket[np.argmax(k)]
                         _bracket[np.argmax(k)] += grad * (self.target - \
                                                   max(k).n) * sign
                     else:
-                        sign = np.sign(guesses[np.argmin(k)])
+                        sign = np.sign(guess[np.argmin(k)])
                         _bracket[np.argmax(k)] = _bracket[np.argmin(k)]
                         _bracket[np.argmin(k)] += grad * (min(k).n - \
                                                   self.target) * sign
+
+                else:
+                    # Set res with closest limit and continue
+                    arg_min = abs(np.array(res.bracket_limit)-guess).argmin()
+                    warn('WARNING: Adaptive iterative bracket went off '\
+                         'bracket limits. Set root to {:.2f} and continue.'
+                         .format(self.bracket_limit[arg_min]))
+                    res = self.bracket_limit[arg_min]
+
             else:
-                raise ValueError(f'ERROR: search_for_keff output not valid')
+                raise ValueError(f'ERROR: Search_for_keff output is not valid')
 
         return x, res
-
-    @abstractmethod
-    def _model_builder(self, param):
-        """
-        Builds the parametric model to be passed to `search_for_keff`.
-        Callable function which builds a model according to a passed
-        parameter. This function must return an openmc.model.Model object.
-        Parameters
-        ------------
-        param : parameter
-            model function variable
-        Returns
-        ------------
-        _model :  openmc.model.Model
-            OpenMC parametric model
-        """
-        pass
 
 class MsrBatchwiseGeom(MsrBatchwise):
     """ MsrBatchwise geoemtrical class
@@ -397,12 +430,23 @@ class MsrBatchwiseGeom(MsrBatchwise):
         Parametric goemetrical feature obj_type. Right now only 'cell' is
         supported
     """
-    def __init__(self, operator, model, name_or_id, axis, bracket, bracket_limit,
-                 bracketed_method='brentq', tol=0.01, target=1.0):
+    def __init__(self, operator, model, name_or_id, axis, bracket,
+                 bracket_limit, print_iterations, bracketed_method='brentq',
+                 tol=0.01, target=1.0):
 
-        super().__init__(operator, model, bracket, bracketed_method, tol, target)
+        super().__init__(operator, model, bracket, bracketed_method,
+                         bracket_limit, tol, target, print_iterations)
 
+        if isinstance(name_or_id, int):
+            check_value('id', name_or_id,
+                        [cell.id for cell in openmc.lib.cells.values()])
+        elif isinstance(name_or_id, str):
+            check_value('name', name_or_id,
+                        [cell.name for cell in openmc.lib.cells.values()])
+        else:
+            ValueError(f'{name_or_id} is neither a str nor an int')
         self.name_or_id = name_or_id
+
         #index of vector axis
         if axis == 'x':
             self.axis = 0
@@ -411,10 +455,9 @@ class MsrBatchwiseGeom(MsrBatchwise):
         elif axis == 'z':
             self.axis = 2
         else:
-            raise ValueError()
+            raise ValueError(f'{axis} value to recognized, should be x, y or z')
 
-        self.bracket_limit = bracket_limit
-
+        # Initialize translation vector
         self.vector = np.zeros(3)
 
     def _get_cell_attrib(self):
@@ -477,6 +520,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
                 atoms_gram_per_mol += val * atomic_mass(nuc)
 
             openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
+
             #Assign new volume to AtomNumber
             mass_dens = [m.get_mass_density() for m in self.model.materials if
                     m.id == int(mat)][0]
@@ -495,7 +539,6 @@ class MsrBatchwiseGeom(MsrBatchwise):
         _model :  openmc.model.Model
             OpenMC parametric model
         """
-
         self._set_cell_attrib(param)
         return self.model
 
@@ -519,7 +562,6 @@ class MsrBatchwiseGeom(MsrBatchwise):
         self._set_cell_attrib(res)
         print('UPDATE: old value: {:.2f} cm --> ' \
               'new value: {:.2f} cm'.format(val, res))
-
         return x
 
 class MsrBatchwiseMat(MsrBatchwise):
@@ -563,17 +605,19 @@ class MsrBatchwiseMat(MsrBatchwise):
         the nuclides str and values are the composition fractions.
     """
     def __init__(self, operator, model, mat_id, refuel_vector, bracket,
-                 bracketed_method='brentq', tol=0.01, target=1.0):
+                 bracket_limit, print_iterations, bracketed_method='brentq',
+                 tol=0.01, target=1.0):
 
-        super().__init__(operator, model, bracket, bracketed_method, tol, target)
+        super().__init__(operator, model, bracket, bracketed_method,
+                         bracket_limit, tol, target, print_iterations)
 
-        if str(mat_id) not in self.burn_mats:
-                msg = 'Mat_id: {} is not a valid depletable material id'\
-                      .format(mat_id)
-                raise ValueError(msg)
-
+        check_value("mat id", str(mat_id), self.burn_mats)
         self.mat_id = mat_id
 
+        check_type("refuel vector", refuel_vector, dict, str)
+        for nuc in refuel_vector.keys():
+            check_value("refuel vector nuclide", nuc,
+                        self.operator.nuclides_with_data)
         self.refuel_vector = refuel_vector
 
     def _model_builder(self, param):
@@ -666,10 +710,9 @@ class MsrBatchwiseMat(MsrBatchwise):
         diff : float
             Difference from previous result
         """
+        self.nucs = super()._order_vector(x)
         x, res = super()._msr_search_for_keff(x, 0)
 
-        print('UPDATE: Refueling: {:.2f} g --> ' \
-              .format(res))
+        print('UPDATE: material addition --> {:.2f} g --> '.format(res))
         x = self._update_x_vector_and_volumes(x, res)
-
         return  x

@@ -2,6 +2,8 @@ from collections.abc import Iterable
 from enum import Enum
 from numbers import Real
 import warnings
+import typing  # imported separately as py3.8 requires typing.Iterable
+from typing import Optional, Union
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -9,6 +11,7 @@ import h5py
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_text
@@ -70,9 +73,19 @@ class Source:
 
     """
 
-    def __init__(self, space=None, angle=None, energy=None, time=None, filename=None,
-                 library=None, parameters=None, strength=1.0, particle='neutron',
-                 domains=None):
+    def __init__(
+        self,
+        space: Optional[openmc.stats.Spatial] = None,
+        angle: Optional[openmc.stats.Spatial] = None,
+        energy: Optional[openmc.stats.Univariate] = None,
+        time: Optional[openmc.stats.Univariate] = None,
+        filename: Optional[str] = None,
+        library: Optional[str] = None,
+        parameters: Optional[str] = None,
+        strength: float = 1.0,
+        particle: str = 'neutron',
+        domains: Optional[Union[openmc.Cell, openmc.Material, openmc.Universe]] = None
+    ):
         self._space = None
         self._angle = None
         self._energy = None
@@ -244,7 +257,7 @@ class Source:
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate source from an XML element
 
         Parameters
@@ -349,8 +362,18 @@ class SourceParticle:
         Type of the particle
 
     """
-    def __init__(self, r=(0., 0., 0.), u=(0., 0., 1.), E=1.0e6, time=0.0, wgt=1.0,
-                 delayed_group=0, surf_id=0, particle=ParticleType.NEUTRON):
+    def __init__(
+        self,
+        r: typing.Iterable[float, float, float] = (0., 0., 0.),
+        u: typing.Iterable[float, float, float] = (0., 0., 1.),
+        E: float = 1.0e6,
+        time: float = 0.0,
+        wgt: float = 1.0,
+        delayed_group: int = 0,
+        surf_id: int = 0,
+        particle: ParticleType = ParticleType.NEUTRON
+    ):
+
         self.r = tuple(r)
         self.u = tuple(u)
         self.E = float(E)
@@ -377,7 +400,10 @@ class SourceParticle:
                 self.delayed_group, self.surf_id, self.particle.value)
 
 
-def write_source_file(source_particles, filename, **kwargs):
+def write_source_file(
+    source_particles: typing.Iterable[openmc.SourceParticle],
+    filename: PathLike, **kwargs
+):
     """Write a source file using a collection of source particles
 
     Parameters

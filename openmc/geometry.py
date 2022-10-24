@@ -436,17 +436,13 @@ class Geometry:
                 surfaces = cell.region.get_surfaces(surfaces)
         return surfaces
 
-    def get_redundant_surfaces(self, precision=None):
-        """Return all of the topologically redundant surface IDs
+    def get_redundant_surfaces(self):
+        """Return all of the topologically redundant surface IDs.
+
+        Uses surface_precision attribute of Geometry instance for rounding and
+        comparing surface coefficients.
 
         .. versionadded:: 0.12
-
-        Parameters
-        ----------
-        precision : int, optional
-            The number of decimal places to round to for considering surface
-            coefficients to be equal. Defaults to the value specified by
-            Geometry.surface_precision.
 
         Returns
         -------
@@ -456,12 +452,9 @@ class Geometry:
             that should replace it.
 
         """
-        precision = self.surface_precision if precision is None else precision
-        check_less_than('precision', precision, 16)
-        check_greater_than('precision', precision, 0)
         tally = defaultdict(list)
         for surf in self.get_all_surfaces().values():
-            coeffs = tuple(round(surf._coefficients[k], precision)
+            coeffs = tuple(round(surf._coefficients[k], self.surface_precision)
                            for k in surf._coeff_keys)
             key = (surf._type,) + coeffs
             tally[key].append(surf)
@@ -615,23 +608,11 @@ class Geometry:
         """
         return self._get_domains_by_name(name, case_sensitive, matching, 'lattice')
 
-    def remove_redundant_surfaces(self, precision=None):
-        """Remove redundant surfaces from the geometry.
-
-        Parameters
-        ----------
-        precision : int, optional
-            The number of decimal places to round to for considering surface
-            coefficients to be equal. Defaults to the value specified by
-            Geometry.surface_precision.
-
-        """
-        precision = self.surface_precision if precision is None else precision
-        check_less_than('precision', precision, 16)
-        check_greater_than('precision', precision, 0)
+    def remove_redundant_surfaces(self):
+        """Remove redundant surfaces from the geometry."""
 
         # Get redundant surfaces
-        redundant_surfaces = self.get_redundant_surfaces(precision=precision)
+        redundant_surfaces = self.get_redundant_surfaces()
 
         # Iterate through all cells contained in the geometry
         for cell in self.get_all_cells().values():

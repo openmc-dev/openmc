@@ -341,6 +341,11 @@ class WeightWindows(IDManagerMixin):
         particle_type = get_text(elem, 'particle_type')
         survival_ratio = float(get_text(elem, 'survival_ratio'))
 
+        ww_shape = (len(e_bounds) - 1,) + mesh.dimension[::-1]
+        print(ww_shape)
+        lower_ww_bounds = np.array(lower_ww_bounds).reshape(ww_shape).T
+        upper_ww_bounds = np.array(upper_ww_bounds).reshape(ww_shape).T
+
         max_lower_bound_ratio = None
         if get_text(elem, 'max_lower_bound_ratio'):
             max_lower_bound_ratio = float(get_text(elem, 'max_lower_bound_ratio'))

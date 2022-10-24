@@ -2,11 +2,12 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 from warnings import warn
+from numbers import Real
 
 import numpy as np
 
-import openmc.checkvalue import check_type, check_value, check_less_than, \
-check_iterable_type, check_lenght
+from openmc.checkvalue import check_type, check_value, check_less_than, \
+check_iterable_type, check_length
 from openmc import Materials, Material
 from openmc.search import _SCALAR_BRACKETED_METHODS, search_for_keff
 from openmc.data import atomic_mass, AVOGADRO
@@ -215,7 +216,7 @@ class MsrBatchwise(ABC):
     """
     def __init__(self, operator, model, bracket, bracket_limit,
                  bracketed_method='brentq', tol=0.01, target=1.0,
-                 print_iteration=True, search_for_keff_output=False):
+                 print_iterations=True, search_for_keff_output=False):
 
         self.operator = operator
         self.burn_mats = operator.burnable_mats
@@ -249,7 +250,7 @@ class MsrBatchwise(ABC):
             warn('brentq bracketed method is recomended')
         self._bracketed_method = value
 
-    @propery
+    @property
     def tol(self):
         return self._tol
 
@@ -258,7 +259,7 @@ class MsrBatchwise(ABC):
         check_type("tol", value, Real)
         self._tol = value
 
-    @propery
+    @property
     def target(self):
         return self._target
 
@@ -319,7 +320,7 @@ class MsrBatchwise(ABC):
             targeted value
         """
         _bracket = deepcopy(self.bracket)
-
+        _tol = self.tol
         # Normalize search_for_keff tolerance with guess value
         if not -1.0 < val < 1.0:
             _tol = self.tol / abs(val)
@@ -431,18 +432,18 @@ class MsrBatchwiseGeom(MsrBatchwise):
         supported
     """
     def __init__(self, operator, model, name_or_id, axis, bracket,
-                 bracket_limit, print_iterations, bracketed_method='brentq',
+                 bracket_limit, print_iterations=True, bracketed_method='brentq',
                  tol=0.01, target=1.0):
 
-        super().__init__(operator, model, bracket, bracketed_method,
-                         bracket_limit, tol, target, print_iterations)
+        super().__init__(operator, model, bracket, bracket_limit,
+                         bracketed_method, tol, target, print_iterations)
 
         if isinstance(name_or_id, int):
-            check_value('id', name_or_id,
-                        [cell.id for cell in openmc.lib.cells.values()])
+            check_value('id', name_or_id, [cell.id for cell in \
+                                self.model.geometry.get_all_cells().values()])
         elif isinstance(name_or_id, str):
-            check_value('name', name_or_id,
-                        [cell.name for cell in openmc.lib.cells.values()])
+            check_value('name', name_or_id, [cell.name for cell in \
+                                self.model.geometry.get_all_cells().values()])
         else:
             ValueError(f'{name_or_id} is neither a str nor an int')
         self.name_or_id = name_or_id
@@ -605,11 +606,11 @@ class MsrBatchwiseMat(MsrBatchwise):
         the nuclides str and values are the composition fractions.
     """
     def __init__(self, operator, model, mat_id, refuel_vector, bracket,
-                 bracket_limit, print_iterations, bracketed_method='brentq',
+                 bracket_limit, print_iterations=True, bracketed_method='brentq',
                  tol=0.01, target=1.0):
 
-        super().__init__(operator, model, bracket, bracketed_method,
-                         bracket_limit, tol, target, print_iterations)
+        super().__init__(operator, model, bracket, bracket_limit,
+                         bracketed_method, tol, target, print_iterations)
 
         check_value("mat id", str(mat_id), self.burn_mats)
         self.mat_id = mat_id
@@ -638,7 +639,7 @@ class MsrBatchwiseMat(MsrBatchwise):
             densities = []
             for nuc, val in self.nucs[i].items():
                 if nuc not in self.refuel_vector.keys():
-                    if nuc in self.operator.nuclides_with_data:
+                    if nuc in self.operator.nuclides_with_data and val > 0.0:
                         nuclides.append(nuc)
                         density = 1.0e-24 * val / self.operator.number.volume[i]
                         densities.append(density)
@@ -710,7 +711,7 @@ class MsrBatchwiseMat(MsrBatchwise):
         diff : float
             Difference from previous result
         """
-        self.nucs = super()._order_vector(x)
+        self.nucs = super()._conc_dict(x)
         x, res = super()._msr_search_for_keff(x, 0)
 
         print('UPDATE: material addition --> {:.2f} g --> '.format(res))

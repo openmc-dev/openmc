@@ -188,7 +188,7 @@ class Settings:
         Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
         If the method is 'nearest', 'tolerance' indicates a range of temperature
         within which cross sections may be used. The value for 'range' should be
-        a pair a minimum and maximum temperatures which are used to indicate
+        a pair of a minimum and maximum temperature which are used to indicate
         that cross sections be loaded at all temperatures within the
         range. 'multipole' is a boolean indicating whether or not the windowed
         multipole method should be used to evaluate resolved resonance cross

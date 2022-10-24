@@ -171,34 +171,6 @@ the latest HDF5-based format.
 -i IN, --input IN    Input XML file
 -o OUT, --output OUT  Output file in HDF5 format
 
-.. _scripts_validate:
-
------------------------
-``openmc-validate-xml``
------------------------
-
-Input files can be checked before executing OpenMC using the
-``openmc-validate-xml`` script which is installed alongside the Python API. Two
-command line arguments can be set when running ``openmc-validate-xml``:
-
--i, --input-path      Location of OpenMC input files.
--r, --relaxng-path    Location of OpenMC RelaxNG files
-
-If the RelaxNG path is not set, the script will search for these files because
-it expects that the user is either running the script located in the install
-directory ``bin`` folder or in ``src/utils``. Once executed, it will match
-OpenMC XML files with their RelaxNG schema and check if they are valid.  Below
-is a table of the messages that will be printed after each file is checked.
-
-========================  ===================================
-Message                   Description
-========================  ===================================
-[XML ERROR]               Cannot parse XML file.
-[NO RELAXNG FOUND]        No RelaxNG file found for XML file.
-[NOT VALID]               XML file does not match RelaxNG.
-[VALID]                   XML file matches RelaxNG.
-========================  ===================================
-
 .. _scripts_voxel:
 
 ---------------------------

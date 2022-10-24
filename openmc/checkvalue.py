@@ -1,7 +1,12 @@
 import copy
+import os
+from typing import Union
 from collections.abc import Iterable
 
 import numpy as np
+
+# Type for arguments that accept file paths
+PathLike = Union[str, os.PathLike]
 
 
 def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=False):

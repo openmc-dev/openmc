@@ -1875,6 +1875,9 @@ class EnergyFunctionFilter(Filter):
         A grid of energy values in [eV]
     y : iterable of Real
         A grid of interpolant values in [eV]
+    interpolation : str
+        Interpolation scheme: {'histogram', 'linear-linear', 'linear-log',
+        'log-linear', 'log-log', 'quadratic', 'cubic'}
     filter_id : int
         Unique identifier for the filter
 
@@ -1884,6 +1887,9 @@ class EnergyFunctionFilter(Filter):
         A grid of energy values in [eV]
     y : iterable of Real
         A grid of interpolant values in [eV]
+    interpolation : str
+        Interpolation scheme: {'histogram', 'linear-linear', 'linear-log',
+        'log-linear', 'log-log', 'quadratic', 'cubic'}
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -1891,13 +1897,24 @@ class EnergyFunctionFilter(Filter):
 
     """
 
-    def __init__(self, energy, y, filter_id=None):
+    # keys selected to match those in function.py where possible
+    # skip 6 b/c ENDF-6 reserves this value for
+    # "special one-dimensional interpolation law"
+    INTERPOLATION_SCHEMES = {1: 'histogram', 2: 'linear-linear',
+                             3: 'linear-log', 4: 'log-linear',
+                             5: 'log-log', 7: 'quadratic',
+                             8: 'cubic'}
+
+    def __init__(self, energy, y, interpolation='linear-linear', filter_id=None):
         self.energy = energy
         self.y = y
         self.id = filter_id
+        self.interpolation = interpolation
 
     def __eq__(self, other):
         if type(self) is not type(other):
+            return False
+        elif not self.interpolation == other.interpolation:
             return False
         elif not all(self.energy == other.energy):
             return False
@@ -1932,12 +1949,14 @@ class EnergyFunctionFilter(Filter):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
         string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
+        string += '{: <16}=\t{}\n'.format('\tInterpolation', self.interpolation)
         return hash(string)
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
         string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
+        string += '{: <16}=\t{}\n'.format('\tInterpolation', self.interpolation)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
@@ -1949,10 +1968,16 @@ class EnergyFunctionFilter(Filter):
                              + group['type'][()].decode() + " instead")
 
         energy = group['energy'][()]
-        y = group['y'][()]
+        y_grp = group['y']
+        y = y_grp[()]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-        return cls(energy, y, filter_id=filter_id)
+        out = cls(energy, y, filter_id=filter_id)
+        if 'interpolation' in y_grp.attrs:
+            out.interpolation =  \
+                cls.INTERPOLATION_SCHEMES[y_grp.attrs['interpolation'][()]]
+
+        return out
 
     @classmethod
     def from_tabulated1d(cls, tab1d):
@@ -1974,10 +1999,11 @@ class EnergyFunctionFilter(Filter):
         if tab1d.n_regions > 1:
             raise ValueError('Only Tabulated1Ds with a single interpolation '
                              'region are supported')
-        if tab1d.interpolation[0] != 2:
-            raise ValueError('Only linear-linear Tabulated1Ds are supported')
-
-        return cls(tab1d.x, tab1d.y)
+        interpolation_val = tab1d.interpolation[0]
+        if interpolation_val not in cls.INTERPOLATION_SCHEMES.keys():
+            raise ValueError('Only histogram, linear-linear, linear-log, log-linear, and '
+                             'log-log Tabulated1Ds are supported')
+        return cls(tab1d.x, tab1d.y, cls.INTERPOLATION_SCHEMES[interpolation_val])
 
     @property
     def energy(self):
@@ -1986,6 +2012,10 @@ class EnergyFunctionFilter(Filter):
     @property
     def y(self):
         return self._y
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @property
     def bins(self):
@@ -2021,6 +2051,19 @@ class EnergyFunctionFilter(Filter):
     def bins(self, bins):
         raise RuntimeError('EnergyFunctionFilters have no bins.')
 
+    @interpolation.setter
+    def interpolation(self, val):
+        cv.check_type('interpolation', val, str)
+        cv.check_value('interpolation', val, self.INTERPOLATION_SCHEMES.values())
+
+        if val == 'quadratic' and len(self.energy) < 3:
+            raise ValueError('Quadratic interpolation requires 3 or more values.')
+
+        if val == 'cubic' and len(self.energy) < 4:
+            raise ValueError('Cubic interpolation requires 3 or more values.')
+
+        self._interpolation = val
+
     def to_xml_element(self):
         """Return XML Element representing the Filter.
 
@@ -2040,6 +2083,9 @@ class EnergyFunctionFilter(Filter):
         subelement = ET.SubElement(element, 'y')
         subelement.text = ' '.join(str(y) for y in self.y)
 
+        subelement = ET.SubElement(element, 'interpolation')
+        subelement.text = self.interpolation
+
         return element
 
     @classmethod
@@ -2047,7 +2093,10 @@ class EnergyFunctionFilter(Filter):
         filter_id = int(elem.get('id'))
         energy = [float(x) for x in get_text(elem, 'energy').split()]
         y = [float(x) for x in get_text(elem, 'y').split()]
-        return cls(energy, y, filter_id=filter_id)
+        out = cls(energy, y, filter_id=filter_id)
+        if elem.find('interpolation') is not None:
+            out.interpolation = elem.find('interpolation').text
+        return out
 
     def can_merge(self, other):
         return False

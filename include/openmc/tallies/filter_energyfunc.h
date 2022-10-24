@@ -1,6 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_ENERGYFUNC_H
 #define OPENMC_TALLIES_FILTER_ENERGYFUNC_H
 
+#include "openmc/constants.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -39,7 +40,9 @@ public:
 
   const vector<double>& energy() const { return energy_; }
   const vector<double>& y() const { return y_; }
+  Interpolation interpolation() const { return interpolation_; }
   void set_data(gsl::span<const double> energy, gsl::span<const double> y);
+  void set_interpolation(const std::string& interpolation);
 
 private:
   //----------------------------------------------------------------------------
@@ -50,6 +53,9 @@ private:
 
   //! Interpolant values.
   vector<double> y_;
+
+  //! Interpolation scheme
+  Interpolation interpolation_ {Interpolation::lin_lin};
 };
 
 } // namespace openmc

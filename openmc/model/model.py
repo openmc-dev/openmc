@@ -256,7 +256,9 @@ class Model:
         restart_file : str, optional
             Path to restart file to use
         tracks : bool, optional
-            Write tracks for all particles. Defaults to False.
+            Enables the writing of particles tracks. The number of particle
+            tracks written to tracks.h5 is limited to 1000 unless
+            Settings.max_tracks is set. Defaults to False.
         output : bool
             Capture OpenMC output from standard out
         event_based : None or bool, optional
@@ -517,7 +519,9 @@ class Model:
         restart_file : str, optional
             Path to restart file to use
         tracks : bool, optional
-            Write tracks for all particles. Defaults to False.
+            Enables the writing of particles tracks. The number of particle
+            tracks written to tracks.h5 is limited to 1000 unless
+            Settings.max_tracks is set. Defaults to False.
         output : bool, optional
             Capture OpenMC output from standard out
         cwd : str, optional

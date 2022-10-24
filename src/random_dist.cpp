@@ -46,11 +46,4 @@ double normal_variate(double mean, double standard_deviation, uint64_t* seed)
   return mean + standard_deviation * z * x;
 }
 
-double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed)
-{
-  // https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-  double sigma = std::sqrt(4. * e0 * kt / m_rat);
-  return normal_variate(e0, sigma, seed);
-}
-
 } // namespace openmc

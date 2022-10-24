@@ -283,6 +283,11 @@ def test_energy_function_filter(lib_init):
     assert len(efunc.y) == 2
     assert (efunc.y == [0.0, 2.0]).all()
 
+    # Default should be lin-lin
+    assert efunc.interpolation == 'linear-linear'
+    efunc.interpolation = 'histogram'
+    assert efunc.interpolation == 'histogram'
+
 
 def test_tally(lib_init):
     t = openmc.lib.tallies[1]

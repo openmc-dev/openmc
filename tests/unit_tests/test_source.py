@@ -1,6 +1,11 @@
-import openmc
-import openmc.stats
 from math import pi
+
+import openmc
+import openmc.lib
+import openmc.stats
+import numpy as np
+from pytest import approx
+
 
 def test_source():
     space = openmc.stats.Point()
@@ -39,8 +44,8 @@ def test_spherical_uniform():
                                                         phis,
                                                         origin)
 
-    assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent) 
-    
+    assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+
 
 def test_source_file():
     filename = 'source.h5'
@@ -59,3 +64,73 @@ def test_source_dlopen():
 
     elem = src.to_xml_element()
     assert 'library' in elem.attrib
+
+
+def test_source_xml_roundtrip():
+    # Create a source and write to an XML element
+    space = openmc.stats.Box([-5., -5., -5.], [5., 5., 5.])
+    energy = openmc.stats.Discrete([1.0e6, 2.0e6, 5.0e6], [0.3, 0.5, 0.2])
+    angle = openmc.stats.PolarAzimuthal(
+        mu=openmc.stats.Uniform(0., 1.),
+        phi=openmc.stats.Uniform(0., 2*pi),
+        reference_uvw=(0., 1., 0.)
+    )
+    src = openmc.Source(
+        space=space, angle=angle, energy=energy,
+        particle='photon', strength=100.0
+    )
+    elem = src.to_xml_element()
+
+    # Read from XML element and make sure data is preserved
+    new_src = openmc.Source.from_xml_element(elem)
+    assert isinstance(new_src.space, openmc.stats.Box)
+    np.testing.assert_allclose(new_src.space.lower_left, src.space.lower_left)
+    np.testing.assert_allclose(new_src.space.upper_right, src.space.upper_right)
+    assert isinstance(new_src.energy, openmc.stats.Discrete)
+    np.testing.assert_allclose(new_src.energy.x, src.energy.x)
+    np.testing.assert_allclose(new_src.energy.p, src.energy.p)
+    assert isinstance(new_src.angle, openmc.stats.PolarAzimuthal)
+    assert new_src.angle.mu.a == src.angle.mu.a
+    assert new_src.angle.mu.b == src.angle.mu.b
+    assert new_src.angle.phi.a == src.angle.phi.a
+    assert new_src.angle.phi.b == src.angle.phi.b
+    np.testing.assert_allclose(new_src.angle.reference_uvw, src.angle.reference_uvw)
+    assert new_src.particle == src.particle
+    assert new_src.strength == approx(src.strength)
+
+
+def test_rejection(run_in_tmpdir):
+    # Model with two spheres inside a box
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    sph1 = openmc.Sphere(x0=3, r=1.0)
+    sph2 = openmc.Sphere(x0=-3, r=1.0)
+    cube = openmc.model.RectangularParallelepiped(
+        -5., 5., -5., 5., -5., 5., boundary_type='reflective'
+    )
+    cell1 = openmc.Cell(fill=mat, region=-sph1)
+    cell2 = openmc.Cell(fill=mat, region=-sph2)
+    non_source_region = +sph1 & +sph2 & -cube
+    cell3 = openmc.Cell(region=non_source_region)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell1, cell2, cell3])
+    model.settings.particles = 100
+    model.settings.batches = 10
+    model.settings.run_mode = 'fixed source'
+
+    # Set up a box source with rejection on the spherical cell
+    space = openmc.stats.Box(*cell3.bounding_box)
+    model.settings.source = openmc.Source(space=space, domains=[cell1, cell2])
+
+    # Load up model via openmc.lib and sample source
+    model.export_to_xml()
+    openmc.lib.init()
+    particles = openmc.lib.sample_external_source(1000)
+
+    # Make sure that all sampled sources are within one of the spheres
+    joint_region = cell1.region | cell2.region
+    for p in particles:
+        assert p.r in joint_region
+        assert p.r not in non_source_region
+
+    openmc.lib.finalize()

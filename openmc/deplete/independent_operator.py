@@ -40,7 +40,8 @@ class IndependentOperator(OpenMCOperator):
     micro_xs : MicroXS
         One-group microscopic cross sections in [b] .
     chain_file : str
-        Path to the depletion chain XML file.
+        Path to the depletion chain XML file.  Defaults to
+        ``openmc.config['chain_file']``.
     keff : 2-tuple of float, optional
        keff eigenvalue and uncertainty from transport calculation.
        Default is None.
@@ -111,7 +112,7 @@ class IndependentOperator(OpenMCOperator):
     def __init__(self,
                  materials,
                  micro_xs,
-                 chain_file,
+                 chain_file=None,
                  keff=None,
                  normalization_mode='fission-q',
                  fission_q=None,
@@ -300,6 +301,10 @@ class IndependentOperator(OpenMCOperator):
             self._op = op
 
         def generate_tallies(self, materials, scores):
+            """Unused in this case"""
+            pass
+
+        def reset_tally_means(self):
             """Unused in this case"""
             pass
 

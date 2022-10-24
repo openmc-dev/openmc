@@ -5,18 +5,16 @@ nuclide names as row indices and reaction names as column indices.
 """
 
 import tempfile
-from pathlib import Path
 from copy import deepcopy
 
-from pandas import DataFrame, read_csv, concat
+from pandas import DataFrame, read_csv
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type
+from openmc.exceptions import DataError
 from openmc.mgxs import EnergyGroups, ArbitraryXS, FissionXS
-from openmc.data import DataLibrary
-from openmc import Tallies, StatePoint, Materials, Material
-
-
+from openmc import Tallies, StatePoint, Materials
+import openmc
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 
@@ -35,7 +33,7 @@ class MicroXS(DataFrame):
     def from_model(cls,
                    model,
                    reaction_domain,
-                   chain_file,
+                   chain_file=None,
                    dilute_initial=1.0e3,
                    energy_bounds=(0, 20e6),
                    run_kwargs=None):
@@ -48,11 +46,12 @@ class MicroXS(DataFrame):
             OpenMC model object. Must contain geometry, materials, and settings.
         reaction_domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
             Domain in which to tally reaction rates.
-        chain_file : str
+        chain_file : str, optional
             Path to the depletion chain XML file that will be used in depletion
             simulation. Used to determine cross sections for materials not
-            present in the inital composition.
-        dilute_initial : float
+            present in the inital composition. Defaults to
+            ``openmc.config['chain_file']``.
+        dilute_initial : float, optional
             Initial atom density [atoms/cm^3] to add for nuclides that
             are zero in initial condition to ensure they exist in the cross
             section data. Only done for nuclides with reaction rates.
@@ -144,6 +143,13 @@ class MicroXS(DataFrame):
             :class:`openmc.Materials` object with nuclides added to burnable
             materials.
         """
+        if chain_file is None:
+            chain_file = openmc.config.get('chain_file')
+            if chain_file is None:
+                raise DataError(
+                    "No depletion chain specified and could not find depletion "
+                    "chain in openmc.config['chain_file']"
+                )
         chain = Chain.from_xml(chain_file)
         reactions = chain.reactions
         cross_sections = _find_cross_sections(model)

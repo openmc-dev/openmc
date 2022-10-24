@@ -166,27 +166,6 @@ double Normal::sample(uint64_t* seed) const
 }
 
 //==============================================================================
-// Muir implementation
-//==============================================================================
-Muir::Muir(pugi::xml_node node)
-{
-  auto params = get_node_array<double>(node, "parameters");
-  if (params.size() != 3) {
-    openmc::fatal_error("Muir energy distribution must have three "
-                        "parameters specified.");
-  }
-
-  e0_ = params.at(0);
-  m_rat_ = params.at(1);
-  kt_ = params.at(2);
-}
-
-double Muir::sample(uint64_t* seed) const
-{
-  return muir_spectrum(e0_, m_rat_, kt_, seed);
-}
-
-//==============================================================================
 // Tabular implementation
 //==============================================================================
 
@@ -200,7 +179,7 @@ Tabular::Tabular(pugi::xml_node node)
       interp_ = Interpolation::lin_lin;
     } else {
       openmc::fatal_error(
-        "Unknown interpolation type for distribution: " + temp);
+        "Unsupported interpolation type for distribution: " + temp);
     }
   } else {
     interp_ = Interpolation::histogram;
@@ -324,8 +303,10 @@ Mixture::Mixture(pugi::xml_node node)
   double cumsum = 0.0;
   for (pugi::xml_node pair : node.children("pair")) {
     // Check that required data exists
-    if (!pair.attribute("probability")) fatal_error("Mixture pair element does not have probability.");
-    if (!pair.child("dist")) fatal_error("Mixture pair element does not have a distribution.");
+    if (!pair.attribute("probability"))
+      fatal_error("Mixture pair element does not have probability.");
+    if (!pair.child("dist"))
+      fatal_error("Mixture pair element does not have a distribution.");
 
     // cummulative sum of probybilities
     cumsum += std::stod(pair.attribute("probability").value());
@@ -381,14 +362,16 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist {new Watt(node)};
   } else if (type == "normal") {
     dist = UPtrDist {new Normal(node)};
-  } else if (type == "muir") {
-    dist = UPtrDist {new Muir(node)};
   } else if (type == "discrete") {
     dist = UPtrDist {new Discrete(node)};
   } else if (type == "tabular") {
     dist = UPtrDist {new Tabular(node)};
   } else if (type == "mixture") {
     dist = UPtrDist {new Mixture(node)};
+  } else if (type == "muir") {
+    openmc::fatal_error(
+      "'muir' distributions are now specified using the openmc.stats.muir() "
+      "function in Python. Please regenerate your XML files.");
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }

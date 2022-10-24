@@ -220,16 +220,16 @@
 28      2  2  y-min out        1   total  4.548  0.156691
   mesh 1       group in nuclide      mean std. dev.
        x  y  z                                     
-0      1  1  1        1   total  0.757948  0.035459
-2      1  2  1        1   total  0.779112  0.047034
-1      2  1  1        1   total  0.787475  0.050368
-3      2  2  1        1   total  0.769656  0.058065
+0      1  1  1        1   total  0.931945  0.045510
+2      1  2  1        1   total  0.962029  0.072431
+1      2  1  1        1   total  0.971983  0.071094
+3      2  2  1        1   total  0.930013  0.102254
   mesh 1       group in nuclide      mean std. dev.
        x  y  z                                     
-0      1  1  1        1   total  0.757948  0.035459
-2      1  2  1        1   total  0.778934  0.047027
-1      2  1  1        1   total  0.787475  0.050368
-3      2  2  1        1   total  0.769656  0.058065
+0      1  1  1        1   total  0.931945  0.045510
+2      1  2  1        1   total  0.961685  0.072418
+1      2  1  1        1   total  0.971983  0.071094
+3      2  2  1        1   total  0.930013  0.102254
    mesh 1       delayedgroup group in nuclide      mean     std. dev.
         x  y  z                                                      
 0       1  1  1            1        1   total  0.000006  3.699363e-07

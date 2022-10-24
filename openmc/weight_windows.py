@@ -206,9 +206,9 @@ class WeightWindows(IDManagerMixin):
         # reshape data according to mesh and energy bins
         bounds = np.asarray(bounds)
         if isinstance(self.mesh, UnstructuredMesh):
-            bounds.reshape(-1, self.num_energy_bins)
+            bounds = bounds.reshape(-1, self.num_energy_bins)
         else:
-            bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
+            bounds = bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
         self._lower_ww_bounds = bounds
 
     @property
@@ -225,9 +225,9 @@ class WeightWindows(IDManagerMixin):
         # reshape data according to mesh and energy bins
         bounds = np.asarray(bounds)
         if isinstance(self.mesh, UnstructuredMesh):
-            bounds.reshape(-1, self.num_energy_bins)
+            bounds = bounds.reshape(-1, self.num_energy_bins)
         else:
-            bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
+            bounds = bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
         self._upper_ww_bounds = bounds
 
     @property

@@ -342,7 +342,6 @@ class WeightWindows(IDManagerMixin):
         survival_ratio = float(get_text(elem, 'survival_ratio'))
 
         ww_shape = (len(e_bounds) - 1,) + mesh.dimension[::-1]
-        print(ww_shape)
         lower_ww_bounds = np.array(lower_ww_bounds).reshape(ww_shape).T
         upper_ww_bounds = np.array(upper_ww_bounds).reshape(ww_shape).T
 

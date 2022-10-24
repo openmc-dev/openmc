@@ -5,7 +5,6 @@
 #include <unordered_map>
 
 #include <gsl/gsl-lite.hpp>
-#include <hdf5.h>
 #include <pugixml.hpp>
 
 #include "openmc/constants.h"
@@ -76,8 +75,10 @@ struct WeightWindow {
 class WeightWindows {
 public:
   // Constructors
-  WeightWindows();
+  WeightWindows(int32_t id = -1) { set_id(id); }
   WeightWindows(pugi::xml_node node);
+  ~WeightWindows();
+  static WeightWindows* create(int32_t id = -1);
 
   // Methods
 

@@ -174,6 +174,17 @@ WeightWindows::WeightWindows(pugi::xml_node node)
     get_node_array<double>(node, "upper_ww_bounds"));
 }
 
+WeightWindows::~WeightWindows()
+{
+  variance_reduction::ww_map.erase(id());
+}
+
+WeightWindows* WeightWindows::create(int32_t id)
+{
+  variance_reduction::weight_windows.push_back(make_unique<WeightWindows>(id));
+  return variance_reduction::weight_windows.back().get();
+}
+
 void WeightWindows::set_id(int32_t id)
 {
   Expects(id >= 0 || id == C_NONE);

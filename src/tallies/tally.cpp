@@ -688,6 +688,14 @@ std::string Tally::score_name(int score_idx) const
   return reaction_name(scores_[score_idx]);
 }
 
+std::vector<std::string> Tally::scores() const
+{
+  std::vector<std::string> score_names;
+  for (int score : scores_)
+    score_names.push_back(score_name(score));
+  return score_names;
+}
+
 std::string Tally::nuclide_name(int nuclide_idx) const
 {
   if (nuclide_idx < 0 || nuclide_idx >= nuclides_.size()) {

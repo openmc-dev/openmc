@@ -35,6 +35,8 @@ public:
 
   void set_id(int32_t id);
 
+  int id() const { return id_; }
+
   void set_active(bool active) { active_ = active; }
 
   void set_writable(bool writable) { writable_ = writable; }
@@ -43,9 +45,13 @@ public:
 
   void set_scores(const vector<std::string>& scores);
 
+  std::vector<std::string> scores() const;
+
   void set_nuclides(pugi::xml_node node);
 
   void set_nuclides(const vector<std::string>& nuclides);
+
+  const xt::xtensor<double, 3>& results() const { return results_; }
 
   //! returns vector of indices corresponding to the tally this is called on
   const vector<int32_t>& filters() const { return filters_; }

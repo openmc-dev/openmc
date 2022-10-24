@@ -1,5 +1,7 @@
 #include "openmc/weight_windows.h"
 
+#include "xtensor/xview.hpp"
+
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
@@ -7,6 +9,7 @@
 #include "openmc/particle_data.h"
 #include "openmc/physics_common.h"
 #include "openmc/search.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/xml_interface.h"
 
 #include <fmt/core.h>
@@ -328,6 +331,50 @@ extern "C" int openmc_set_weight_windows(
 
   // set bounds
   wws->set_weight_windows({lower_bounds, n}, {upper_bounds, n});
+
+  return 0;
+}
+
+extern "C" int openmc_update_weight_windows(int tally_idx, int ww_idx,
+  const char* score, const char* value, const char* method)
+{
+
+  // get the requested tally
+  const auto& tally = model::tallies.at(tally_idx);
+
+  // check for a
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+
+  // check the tally filters. We currently require that the tally can only have
+  // a MeshFilter and (optionally) an EnergyFilter
+  if (tally->filters().size() > 2) {
+    set_errmsg(
+      fmt::format("More than 2 filters found on tally {}", tally->id()));
+    return OPENMC_E_INVALID_SIZE;
+  }
+
+  // ensure the provided score is valid
+  auto tally_scores = tally->scores();
+  auto score_it = std::find(tally_scores.begin(), tally_scores.end(), score);
+  if (score_it == tally->scores().end()) {
+    set_errmsg(fmt::format(
+      "The score '{}' could not be found on tally {}", score, tally->id()));
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // gather information from the tally (assume one group for now)
+  int score_idx = score_it - tally_scores.begin();
+  // sum results over all nuclides and select results related to a single score
+  auto score_view =
+    xt::view(xt::sum(tally->results(), {2}), score_idx, TallyResult::SUM);
+
+  // now generate new weight window values
+  double score_max = *std::max(score_view.begin(), score_view.end());
+
+  // normalize the score by the max value
+  xt::xarray<double> lower_bounds(score_view / score_max);
+
+  wws->set_weight_windows(lower_bounds, 5.0);
 
   return 0;
 }

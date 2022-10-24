@@ -71,39 +71,44 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
                 len(fission_yields), len(x)))
 
     if matrix_func is None:
-        matrices = map(chain.form_matrix, rates, fission_yields,
-                       enumerate(repeat(msr)))
+        matrices = map(chain.form_matrix, rates, fission_yields)
     else:
-        matrices = map(matrix_func, repeat(chain), rates, fission_yields,
-                       enumerate(repeat(msr)))
+        matrices = map(matrix_func, repeat(chain), rates, fission_yields)
 
-    if msr is None or not msr.transfer_matrix_index():
-        inputs = zip(matrices, x, repeat(dt))
-        if USE_MULTIPROCESSING:
-            with Pool() as pool:
-                x_result = list(pool.starmap(func, inputs))
-        else:
-            x_result = list(starmap(func, inputs))
+    if msr is not None:
+        rr_matrices = map(chain.form_rr_matrix, repeat(msr),
+                             msr.index_msr)
 
+        matrices = [mat1 - mat2 for (mat1, mat2) in zip(matrices, rr_matrices)]
+
+
+        if len(msr.index_msr) > len(msr.burn_mats):
+            matrices = dict(zip(msr.index_msr, matrices + rr_matrices))
+            # Order matrices in a 2d-array and build sparse coupled matrix
+            raws = []
+            for i in range(msr.n_burn):
+                cols = []
+                for j in range(msr.n_burn):
+                    if (i,j) in matrices.keys():
+                        cols.append(matrices[(i,j)])
+                    else:
+                        cols.append(None)
+                raws.append(cols)
+            coupled_matrix = bmat(raws)
+            x = np.concatenate([_x for _x in x])
+            x_result = func(coupled_matrix, x, dt)
+            split = np.cumsum([i.shape[0] for i in list(matrices.values())[:msr.n_burn]])
+            x_result = np.split(x_result, split.tolist()[:-1])
+            return x_result
+
+    matrices=list(matrices)
+    print(len(matrices))
+    print(matrices)
+    inputs = zip(matrices, x, repeat(dt))
+    if USE_MULTIPROCESSING:
+        with Pool() as pool:
+            x_result = list(pool.starmap(func, inputs))
     else:
-        transfer_matrices = list(map(chain.form_transfer_matrix, repeat(msr),
-                             msr.transfer_matrix_index()))
-        matrices = dict(zip(msr.index_msr + msr.transfer_matrix_index(),
-                                 list(matrices) + transfer_matrices))
-        # Order matrices in a 2d-array and build sparse coupled matrix
-        raws = []
-        for i in range(msr.n_burn):
-            cols = []
-            for j in range(msr.n_burn):
-                if (i,j) in matrices.keys():
-                    cols.append(matrices[(i,j)])
-                else:
-                    cols.append(None)
-            raws.append(cols)
-        coupled_matrix = bmat(raws)
-        x = np.concatenate([_x for _x in x])
-        x_result = func(coupled_matrix, x, dt)
-        split = np.cumsum([i.shape[0] for i in list(matrices.values())[:msr.n_burn]])
-        x_result = np.split(x_result, split.tolist()[:-1])
+        x_result = list(starmap(func, inputs))
 
     return x_result

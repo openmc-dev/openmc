@@ -610,7 +610,7 @@ class Chain:
             out[nuc.name] = dict(yield_obj)
         return out
 
-    def form_matrix(self, rates, fission_yields=None, msr=None):
+    def form_matrix(self, rates, fission_yields=None):
         """Forms depletion matrix.
 
         Parameters
@@ -622,9 +622,6 @@ class Chain:
             to be of the form ``{parent : {product : f_yield}}``
             with string nuclide names for ``parent`` and ``product``,
             and ``f_yield`` as the respective fission yield
-        msr : openmc.msr.MsrContinuous, optional
-            Istance of openmc.msr.MsrContinuous. If passed, the
-            concept od removal rates is applied to the depletion matrix.
 
         Returns
         -------
@@ -640,9 +637,6 @@ class Chain:
 
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
-
-        if msr is not None:
-            mat_index, msr = msr
 
         for i, nuc in enumerate(self.nuclides):
             # Loss from radioactive decay
@@ -661,13 +655,6 @@ class Chain:
                         if branch_val != 0.0:
                             k = self.nuclide_dict[target]
                             matrix[k, i] += branch_val
-
-            # Loss term, from removal rates
-            if msr is not None:
-                elm = re.split(r'\d+', nuc.name)[0]
-                mat = msr.burn_mats[mat_index]
-                if elm in msr.get_elements(mat):
-                    matrix [i, i] -= msr.get_removal_rate(mat, elm)
 
             if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
@@ -716,8 +703,8 @@ class Chain:
         dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
 
-    def form_transfer_matrix(self, msr, index_msr):
-        """Forms transfer depletion matrix.
+    def form_rr_matrix(self, msr, index_msr):
+        """Forms removal_rates depletion matrix.
 
         Parameters
         ----------

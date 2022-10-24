@@ -102,6 +102,7 @@ _dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POIN
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
 
+
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
     inf = sys.float_info.max

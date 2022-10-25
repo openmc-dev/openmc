@@ -3088,7 +3088,10 @@ void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , doub
   std::cout << "p1:  "<< p1[0] <<" "<< p1[1]<<" " <<p1[2] <<std::endl;
   std::cout << "p2:  "<< (p_col.v_t() * m2 / C_LIGHT).x <<" " <<(p_col.v_t() * m2 / C_LIGHT).y << " "<<(p_col.v_t() * m2 / C_LIGHT).z <<std::endl;
   //std::cout << (p.v_t() * m2 / C_LIGHT).x << (p.v_t() * m2 / C_LIGHT).y << (p.v_t() * m2 / C_LIGHT).z <<std::endl;
-  double p2[3]={0, 0, 0}; //3 momentum of target in lab  
+  double p2_x = (p_col.v_t() * m2 / C_LIGHT).x;
+  double p2_y = (p_col.v_t() * m2 / C_LIGHT).y;
+  double p2_z = (p_col.v_t() * m2 / C_LIGHT).z;
+  double p2[3]={p2_x, p2_y, p2_z}; //3 momentum of target in lab  
  
   // calculate
   double Fp1[4]; //four momentum of incoming particle  in LAB 

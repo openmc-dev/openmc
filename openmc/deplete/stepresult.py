@@ -1,6 +1,7 @@
-"""The results module.
+"""The stepresult module.
 
-Contains results generation and saving capabilities.
+Contains capabilities for generating and saving results of a single depletion
+timestep.
 """
 
 from collections import OrderedDict
@@ -16,11 +17,14 @@ from .reaction_rates import ReactionRates
 VERSION_RESULTS = (1, 1)
 
 
-__all__ = ["Results"]
+__all__ = ["StepResult"]
 
 
-class Results:
-    """Output of a depletion run
+class StepResult:
+    """Result of a single depletion timestep
+
+    .. versionchanged:: 0.13.1
+        Name changed from ``Results`` to ``StepResult``
 
     Attributes
     ----------
@@ -50,7 +54,7 @@ class Results:
         Number of stages in simulation.
     data : numpy.ndarray
         Atom quantity, stored by stage, mat, then by nuclide.
-    proc_time: int
+    proc_time : int
         Average time spent depleting a material across all
         materials and processes
 
@@ -68,6 +72,11 @@ class Results:
         self.mat_to_hdf5_ind = None
 
         self.data = None
+
+    def __repr__(self):
+        t = self.time[0]
+        dt = self.time[1] - self.time[0]
+        return f"<StepResult: t={t}, dt={dt}, source={self.source_rate}>"
 
     def __getitem__(self, pos):
         """Retrieves an item from results.
@@ -134,7 +143,7 @@ class Results:
         return self.data.shape[0]
 
     def allocate(self, volume, nuc_list, burn_list, full_burn_list, stages):
-        """Allocates memory of Results.
+        """Allocate memory for depletion step data
 
         Parameters
         ----------
@@ -172,10 +181,10 @@ class Results:
 
         Returns
         -------
-        Results
+        StepResult
             New results object
         """
-        new = Results()
+        new = StepResult()
         new.volume = {lm: self.volume[lm] for lm in local_materials}
         new.mat_to_ind = {mat: idx for (idx, mat) in enumerate(local_materials)}
 
@@ -406,7 +415,7 @@ class Results:
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
-        results.source_rate = source_rate_dset[step, :]
+        results.source_rate = source_rate_dset[step, 0]
 
         if "depletion time" in handle:
             proc_time_dset = handle["/depletion time"]
@@ -456,7 +465,7 @@ class Results:
 
         Parameters
         ----------
-        op : openmc.deplete.TransportOperator
+        op : openmc.deplete.abc.TransportOperator
             The operator used to generate these results.
         x : list of list of numpy.array
             The prior x vectors.  Indexed [i][cell] using the above equation.
@@ -480,7 +489,7 @@ class Results:
         stages = len(x)
 
         # Create results
-        results = Results()
+        results = StepResult()
         results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages)
 
         n_mat = len(burn_list)
@@ -489,7 +498,13 @@ class Results:
             for mat_i in range(n_mat):
                 results[i, mat_i, :] = x[i][mat_i]
 
-        results.k = [(r.k.nominal_value, r.k.std_dev) for r in op_results]
+        ks = []
+        for r in op_results:
+            if isinstance(r.k, type(None)):
+                ks += [(None, None)]
+            else:
+                ks += [(r.k.nominal_value, r.k.std_dev)]
+        results.k = ks
         results.rates = [r.rates for r in op_results]
         results.time = t
         results.source_rate = source_rate

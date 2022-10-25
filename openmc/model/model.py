@@ -256,7 +256,9 @@ class Model:
         restart_file : str, optional
             Path to restart file to use
         tracks : bool, optional
-            Write tracks for all particles. Defaults to False.
+            Enables the writing of particles tracks. The number of particle
+            tracks written to tracks.h5 is limited to 1000 unless
+            Settings.max_tracks is set. Defaults to False.
         output : bool
             Capture OpenMC output from standard out
         event_based : None or bool, optional
@@ -331,7 +333,7 @@ class Model:
             Indicate whether or not a transport solve should be run at the end
             of the last timestep. Defaults to running this transport solve.
         operator_kwargs : dict
-            Keyword arguments passed to the depletion Operator initializer
+            Keyword arguments passed to the depletion operator initializer
             (e.g., :func:`openmc.deplete.Operator`)
         directory : str, optional
             Directory to write XML files to. If it doesn't exist already, it
@@ -360,8 +362,8 @@ class Model:
 
         with _change_directory(Path(directory)):
             with openmc.lib.quiet_dll(output):
-                depletion_operator = \
-                    dep.Operator(self, **op_kwargs)
+                # TODO: Support use of IndependentOperator too
+                depletion_operator = dep.CoupledOperator(self, **op_kwargs)
 
             # Tell depletion_operator.finalize NOT to clear C API memory when
             # it is done
@@ -517,7 +519,9 @@ class Model:
         restart_file : str, optional
             Path to restart file to use
         tracks : bool, optional
-            Write tracks for all particles. Defaults to False.
+            Enables the writing of particles tracks. The number of particle
+            tracks written to tracks.h5 is limited to 1000 unless
+            Settings.max_tracks is set. Defaults to False.
         output : bool, optional
             Capture OpenMC output from standard out
         cwd : str, optional

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept> // for out_of_range
 
+#include "fmt/format.h"
 #include "openmc/array.h"
 #include "openmc/vector.h"
 
@@ -217,5 +218,15 @@ std::ostream& operator<<(std::ostream& os, Position a);
 using Direction = Position;
 
 } // namespace openmc
+
+template<>
+struct fmt::formatter<openmc::Position> : formatter<std::string> {
+  template<typename FormatContext>
+  auto format(const openmc::Position& pos, FormatContext& ctx)
+  {
+    return fmt::formatter<std::string>::format(
+      fmt::format("({}, {}, {})", pos.x, pos.y, pos.z), ctx);
+  }
+};
 
 #endif // OPENMC_POSITION_H

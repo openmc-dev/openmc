@@ -13,9 +13,10 @@ try:
 except ImportError:
     import xml.etree.ElementTree as ET
 
-from numpy import empty, searchsorted
+import numpy as np
 
 from openmc.checkvalue import check_type
+from openmc.stats import Univariate
 
 __all__ = [
     "DecayTuple", "ReactionTuple", "Nuclide", "FissionYield",
@@ -101,6 +102,9 @@ class Nuclide:
     reactions : list of openmc.deplete.ReactionTuple
         Reaction information. Each element of the list is a named tuple with
         attribute 'type', 'target', 'Q', and 'branching_ratio'.
+    sources : dict
+        Dictionary mapping particle type as string to energy distribution of
+        decay source represented as :class:`openmc.stats.Univariate`
     yield_data : FissionYieldDistribution or None
         Fission product yields at tabulated energies for this nuclide. Can be
         treated as a nested dictionary ``{energy: {product: yield}}``
@@ -119,6 +123,9 @@ class Nuclide:
 
         # Reaction paths
         self.reactions = []
+
+        # Decay sources
+        self.sources = {}
 
         # Neutron fission yields, if present
         self._yield_data = None
@@ -237,6 +244,12 @@ class Nuclide:
             branching_ratio = float(decay_elem.get('branching_ratio'))
             nuc.decay_modes.append(DecayTuple(d_type, target, branching_ratio))
 
+        # Check for sources
+        for src_elem in element.iter('source'):
+            particle = src_elem.get('particle')
+            distribution = Univariate.from_xml_element(src_elem)
+            nuc.sources[particle] = distribution
+
         # Check for reaction paths
         for reaction_elem in element.iter('reaction'):
             r_type = reaction_elem.get('type')
@@ -301,6 +314,19 @@ class Nuclide:
                 if daughter:
                     mode_elem.set('target', daughter)
                 mode_elem.set('branching_ratio', str(br))
+
+        # Write decay sources
+        if self.sources:
+            for particle, source in self.sources.items():
+                # TODO: Ugly hack to deal with the fact that
+                # 'source.to_xml_element' will return an xml.etree object
+                # whereas here lxml is being used preferentially. We should just
+                # switch to use lxml everywhere
+                import xml.etree.ElementTree as etree
+                src_elem_xmletree = source.to_xml_element('source')
+                src_elem = ET.fromstring(etree.tostring(src_elem_xmletree))
+                src_elem.set('particle', particle)
+                elem.append(src_elem)
 
         elem.set('reactions', str(len(self.reactions)))
         for rx, daughter, Q, br in self.reactions:
@@ -470,7 +496,7 @@ class FissionYieldDistribution(Mapping):
         shared_prod = set.union(*(set(x) for x in fission_yields.values()))
         ordered_prod = sorted(shared_prod)
 
-        yield_matrix = empty((len(energies), len(shared_prod)))
+        yield_matrix = np.empty((len(energies), len(shared_prod)))
 
         for g_index, energy in enumerate(energies):
             prod_map = fission_yields[energy]
@@ -560,7 +586,7 @@ class FissionYieldDistribution(Mapping):
             return None
 
         products = sorted(overlap)
-        indices = searchsorted(self.products, products)
+        indices = np.searchsorted(self.products, products)
 
         # coerce back to dictionary to pass back to __init__
         new_yields = {}
@@ -680,6 +706,11 @@ class FissionYield(Mapping):
     def __repr__(self):
         return "<{} containing {} products and yields>".format(
             self.__class__.__name__, len(self))
+
+    def __deepcopy__(self, memo):
+        result = FissionYield(self.products, self.yields.copy())
+        memo[id(self)] = result
+        return result
 
     # Avoid greedy numpy operations like np.float64 * fission_yield
     # converting this to an array on the fly. Force __rmul__ and

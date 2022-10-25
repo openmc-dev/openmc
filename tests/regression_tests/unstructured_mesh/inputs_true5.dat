@@ -50,9 +50,9 @@
   <source strength="1.0">
     <space origin="0.0 0.0 0.0" type="spherical">
       <r parameters="0.0 0.0" type="uniform" />
-      <theta type="discrete">
-        <parameters>0.0 1.0</parameters>
-      </theta>
+      <cos_theta type="discrete">
+        <parameters>1.0 1.0</parameters>
+      </cos_theta>
       <phi type="discrete">
         <parameters>0.0 1.0</parameters>
       </phi>

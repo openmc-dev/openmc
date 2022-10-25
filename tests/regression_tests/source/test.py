@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, cos
 
 import numpy as np
 import openmc
@@ -32,19 +32,19 @@ class SourceTestHarness(PyAPITestHarness):
         r_dist = openmc.stats.Uniform(2., 3.)
         r_dist1 = openmc.stats.PowerLaw(2., 3., 1.)
         r_dist2 = openmc.stats.PowerLaw(2., 3., 2.)
-        theta_dist = openmc.stats.Discrete([pi/4, pi/2, 3*pi/4],
-                                           [0.3, 0.4, 0.3])
+        cos_theta_dist = openmc.stats.Discrete([cos(pi/4), 0.0, cos(3*pi/4)],
+                                               [0.3, 0.4, 0.3])
         phi_dist = openmc.stats.Uniform(0.0, 2*pi)
         spatial1 = openmc.stats.CartesianIndependent(x_dist, y_dist, z_dist)
         spatial2 = openmc.stats.Box([-4., -4., -4.], [4., 4., 4.])
         spatial3 = openmc.stats.Point([1.2, -2.3, 0.781])
-        spatial4 = openmc.stats.SphericalIndependent(r_dist, theta_dist,
+        spatial4 = openmc.stats.SphericalIndependent(r_dist, cos_theta_dist,
                                                      phi_dist, 
                                                      origin=(1., 1., 0.))
         spatial5 = openmc.stats.CylindricalIndependent(r_dist, phi_dist, 
                                                        z_dist,
                                                        origin=(1., 1., 0.))
-        spatial6 = openmc.stats.SphericalIndependent(r_dist2, theta_dist,
+        spatial6 = openmc.stats.SphericalIndependent(r_dist2, cos_theta_dist,
                                                      phi_dist, 
                                                      origin=(1., 1., 0.))
         spatial7 = openmc.stats.CylindricalIndependent(r_dist1, phi_dist, 

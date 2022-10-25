@@ -4,7 +4,7 @@ project(openmc C CXX)
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
 set(OPENMC_VERSION_MINOR 13)
-set(OPENMC_VERSION_RELEASE 1)
+set(OPENMC_VERSION_RELEASE 2)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -17,8 +17,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
 # Allow user to specify <project>_ROOT variables
-if (NOT (CMAKE_VERSION VERSION_LESS 3.12))
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
   cmake_policy(SET CMP0074 NEW)
+endif()
+
+# Enable correct usage of CXX_EXTENSIONS
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
+  cmake_policy(SET CMP0128 NEW)
 endif()
 
 #===============================================================================
@@ -31,6 +36,37 @@ option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"            
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
+
+# Warnings for deprecated options
+foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
+  if(DEFINED ${OLD_OPT})
+    string(TOUPPER ${OLD_OPT} OPT_UPPER)
+    if ("${OLD_OPT}" STREQUAL "profile" OR "${OLD_OPT}" STREQUAL "coverage")
+      set(NEW_OPT_PREFIX "OPENMC_ENABLE")
+    else()
+      set(NEW_OPT_PREFIX "OPENMC_USE")
+    endif()
+    message(WARNING "The OpenMC CMake option '${OLD_OPT}' has been deprecated. "
+      "Its value will be ignored. "
+      "Please use '-D${NEW_OPT_PREFIX}_${OPT_UPPER}=${${OLD_OPT}}' instead.")
+    unset(${OLD_OPT} CACHE)
+  endif()
+endforeach()
+
+foreach(OLD_BLD in ITEMS "debug" "optimize")
+  if(DEFINED ${OLD_BLD})
+    if("${OLD_BLD}" STREQUAL "debug")
+      set(BLD_VAR "Debug")
+    else()
+      set(BLD_VAR "Release")
+    endif()
+    message(WARNING "The OpenMC CMake option '${OLD_BLD}' has been deprecated. "
+      "Its value will be ignored. "
+      "OpenMC now uses the CMAKE_BUILD_TYPE variable to set the build mode. "
+      "Please use '-DCMAKE_BUILD_TYPE=${BLD_VAR}' instead.")
+    unset(${OLD_BLD} CACHE)
+  endif()
+endforeach()
 
 #===============================================================================
 # Set a default build configuration if not explicitly specified
@@ -118,7 +154,7 @@ endif()
 # Version 1.12 of HDF5 deprecates the H5Oget_info_by_idx() interface.
 # Thus, we give these flags to allow usage of the old interface in newer
 # versions of HDF5.
-if(NOT (${HDF5_VERSION} VERSION_LESS 1.12.0))
+if(${HDF5_VERSION} VERSION_GREATER_EQUAL 1.12.0)
   list(APPEND cxxflags -DH5Oget_info_by_idx_vers=1 -DH5O_info_t_vers=1)
 endif()
 
@@ -205,7 +241,7 @@ endif()
 #===============================================================================
 
 # CMake 3.13+ will complain about policy CMP0079 unless it is set explicitly
-if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
   cmake_policy(SET CMP0079 NEW)
 endif()
 
@@ -394,7 +430,8 @@ target_include_directories(libopenmc
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
 # Add include directory for configured version file
-target_include_directories(libopenmc PRIVATE ${CMAKE_BINARY_DIR}/include)
+target_include_directories(libopenmc
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
@@ -446,6 +483,19 @@ if (OPENMC_USE_MPI)
 endif()
 
 #===============================================================================
+# Log build info that this executable can report later
+#===============================================================================
+target_compile_definitions(libopenmc PRIVATE BUILD_TYPE=${CMAKE_BUILD_TYPE})
+target_compile_definitions(libopenmc PRIVATE COMPILER_ID=${CMAKE_CXX_COMPILER_ID})
+target_compile_definitions(libopenmc PRIVATE COMPILER_VERSION=${CMAKE_CXX_COMPILER_VERSION})
+if (OPENMC_ENABLE_PROFILE)
+  target_compile_definitions(libopenmc PRIVATE PROFILINGBUILD)
+endif()
+if (OPENMC_ENABLE_COVERAGE)
+  target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
+endif()
+
+#===============================================================================
 # openmc executable
 #===============================================================================
 add_executable(openmc src/main.cpp)
@@ -454,9 +504,10 @@ target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
 
-# Ensure C++14 standard is used
+# Ensure C++14 standard is used and turn off GNU extensions
 target_compile_features(openmc PUBLIC cxx_std_14)
 target_compile_features(libopenmc PUBLIC cxx_std_14)
+set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 
 #===============================================================================
 # Python package
@@ -487,7 +538,6 @@ install(EXPORT openmc-targets
   NAMESPACE OpenMC::
   DESTINATION ${INSTALL_CONFIGDIR})
 
-install(DIRECTORY src/relaxng DESTINATION ${CMAKE_INSTALL_DATADIR}/openmc)
 install(FILES
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"

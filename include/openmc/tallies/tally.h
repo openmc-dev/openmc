@@ -47,9 +47,11 @@ public:
 
   void set_nuclides(const vector<std::string>& nuclides);
 
-  const vector<int32_t>& filters() const { return filters_; }
+  //! returns vector of indices corresponding to the tally this is called on
+  const vector<int32_t>& filters() const { return filters_; } 
 
-  int32_t filters(int i) const { return filters_[i]; }
+  //! \brief Returns the tally filter at index i
+  int32_t filters(int i) const { return filters_[i]; } 
 
   void set_filters(gsl::span<Filter*> filters);
 

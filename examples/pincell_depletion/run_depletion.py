@@ -88,7 +88,7 @@ model = openmc.Model(geometry=geometry, settings=settings)
 
 # Create depletion "operator"
 chain_file = 'chain_simple.xml'
-op = openmc.deplete.Operator(model, chain_file)
+op = openmc.deplete.CoupledOperator(model, chain_file)
 
 # Perform simulation using the predictor algorithm
 time_steps = [1.0, 1.0, 1.0, 1.0, 1.0]  # days
@@ -101,36 +101,35 @@ integrator.integrate()
 ###############################################################################
 
 # Open results file
-results = openmc.deplete.ResultsList.from_hdf5("depletion_results.h5")
+results = openmc.deplete.Results("depletion_results.h5")
 
 # Obtain K_eff as a function of time
-time, keff = results.get_eigenvalue()
+time, keff = results.get_keff(time_units='d')
 
 # Obtain U235 concentration as a function of time
-time, n_U235 = results.get_atoms(uo2, 'U235')
+_, n_U235 = results.get_atoms(uo2, 'U235')
 
 # Obtain Xe135 capture reaction rate as a function of time
-time, Xe_capture = results.get_reaction_rate(uo2, 'Xe135', '(n,gamma)')
+_, Xe_capture = results.get_reaction_rate(uo2, 'Xe135', '(n,gamma)')
 
 ###############################################################################
 #                            Generate plots
 ###############################################################################
 
-days = 24*60*60
 fig, ax = plt.subplots()
-ax.errorbar(time/days, keff[:, 0], keff[:, 1], label="K-effective")
+ax.errorbar(time, keff[:, 0], keff[:, 1], label="K-effective")
 ax.set_xlabel("Time [d]")
 ax.set_ylabel("Keff")
 plt.show()
 
 fig, ax = plt.subplots()
-ax.plot(time/days, n_U235, label="U235")
+ax.plot(time, n_U235, label="U235")
 ax.set_xlabel("Time [d]")
 ax.set_ylabel("U235 atoms")
 plt.show()
 
 fig, ax = plt.subplots()
-ax.plot(time/days, Xe_capture, label="Xe135 capture")
+ax.plot(time, Xe_capture, label="Xe135 capture")
 ax.set_xlabel("Time [d]")
 ax.set_ylabel("Xe135 capture rate")
 plt.show()

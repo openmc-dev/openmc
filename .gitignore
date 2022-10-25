@@ -3,6 +3,7 @@
 *.o
 *.log
 *.out
+*.pkl
 
 # Compiler python objects
 *.pyc

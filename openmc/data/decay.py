@@ -2,14 +2,19 @@ from collections.abc import Iterable
 from io import StringIO
 from math import log
 import re
+from typing import Optional
 from warnings import warn
 
 import numpy as np
 from uncertainties import ufloat, UFloat
 
+import openmc
 import openmc.checkvalue as cv
+from openmc.exceptions import DataError
 from openmc.mixin import EqualityMixin
+from openmc.stats import Discrete, Tabular, Univariate, combine_distributions
 from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
+from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
 
 
@@ -314,6 +319,12 @@ class Decay(EqualityMixin):
         'excited_state', 'mass', 'stable', 'spin', and 'parity'.
     spectra : dict
         Resulting radiation spectra for each radiation type.
+    sources : dict
+        Radioactive decay source distributions represented as a dictionary
+        mapping particle types (e.g., 'photon') to instances of
+        :class:`openmc.stats.Univariate`.
+
+        .. versionadded:: 0.13.1
 
     """
     def __init__(self, ev_or_filename):
@@ -329,6 +340,7 @@ class Decay(EqualityMixin):
         self.modes = []
         self.spectra = {}
         self.average_energies = {}
+        self._sources = None
 
         # Get head record
         items = get_head_record(file_obj)
@@ -465,11 +477,10 @@ class Decay(EqualityMixin):
 
     @property
     def decay_constant(self):
-        if hasattr(self.half_life, 'n'):
-            return log(2.)/self.half_life
-        else:
-            mu, sigma = self.half_life
-            return ufloat(log(2.)/mu, log(2.)/mu**2*sigma)
+        if self.half_life.n == 0.0:
+            name = self.nuclide['name']
+            raise ValueError(f"{name} is listed as unstable but has a zero half-life.")
+        return log(2.)/self.half_life
 
     @property
     def decay_energy(self):
@@ -496,3 +507,117 @@ class Decay(EqualityMixin):
 
         """
         return cls(ev_or_filename)
+
+    @property
+    def sources(self):
+        """Radioactive decay source distributions"""
+        # If property has been computed already, return it
+        # TODO: Replace with functools.cached_property when support is Python 3.9+
+        if self._sources is not None:
+            return self._sources
+
+        sources = {}
+        name = self.nuclide['name']
+        decay_constant = self.decay_constant.n
+        for particle, spectra in self.spectra.items():
+            # Set particle type based on 'particle' above
+            particle_type = {
+                'gamma': 'photon',
+                'beta-': 'electron',
+                'ec/beta+': 'positron',
+                'alpha': 'alpha',
+                'n': 'neutron',
+                'sf': 'fragment',
+                'p': 'proton',
+                'e-': 'electron',
+                'xray': 'photon',
+                'anti-neutrino': 'anti-neutrino',
+                'neutrino': 'neutrino',
+            }[particle]
+
+            if particle_type not in sources:
+                sources[particle_type] = []
+
+            # Create distribution for discrete
+            if spectra['continuous_flag'] in ('discrete', 'both'):
+                energies = []
+                intensities = []
+                for discrete_data in spectra['discrete']:
+                    energies.append(discrete_data['energy'].n)
+                    intensities.append(discrete_data['intensity'].n)
+                energies = np.array(energies)
+                intensity = spectra['discrete_normalization'].n
+                rates = decay_constant * intensity * np.array(intensities)
+                dist_discrete = Discrete(energies, rates)
+                sources[particle_type].append(dist_discrete)
+
+            # Create distribution for continuous
+            if spectra['continuous_flag'] in ('continuous', 'both'):
+                f = spectra['continuous']['probability']
+                if len(f.interpolation) > 1:
+                    raise NotImplementedError("Multiple interpolation regions: {name}, {particle}")
+                interpolation = INTERPOLATION_SCHEME[f.interpolation[0]]
+                if interpolation not in ('histogram', 'linear-linear'):
+                    raise NotImplementedError(
+                        f"Continuous spectra with {interpolation} interpolation "
+                        f"({name}, {particle}) not supported")
+
+                intensity = spectra['continuous_normalization'].n
+                rates = decay_constant * intensity * f.y
+                dist_continuous = Tabular(f.x, rates, interpolation)
+                sources[particle_type].append(dist_continuous)
+
+        # Combine discrete distributions
+        merged_sources = {}
+        for particle_type, dist_list in sources.items():
+            merged_sources[particle_type] = combine_distributions(
+                dist_list, [1.0]*len(dist_list))
+
+        self._sources = merged_sources
+        return self._sources
+
+
+_DECAY_PHOTON_ENERGY = {}
+
+
+def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
+    """Get photon energy distribution resulting from the decay of a nuclide
+
+    This function relies on data stored in a depletion chain. Before calling it
+    for the first time, you need to ensure that a depletion chain has been
+    specified in openmc.config['chain_file'].
+
+    .. versionadded:: 0.13.2
+
+    Parameters
+    ----------
+    nuclide : str
+        Name of nuclide, e.g., 'Co58'
+
+    Returns
+    -------
+    openmc.stats.Univariate or None
+        Distribution of energies in [eV] of photons emitted from decay, or None
+        if no photon source exists. Note that the probabilities represent
+        intensities, given as [decay/sec].
+    """
+    if not _DECAY_PHOTON_ENERGY:
+        chain_file = openmc.config.get('chain_file')
+        if chain_file is None:
+            raise DataError(
+                "A depletion chain file must be specified with "
+                "openmc.config['chain_file'] in order to load decay data."
+            )
+
+        from openmc.deplete import Chain
+        chain = Chain.from_xml(chain_file)
+        for nuc in chain.nuclides:
+            if 'photon' in nuc.sources:
+                _DECAY_PHOTON_ENERGY[nuc.name] = nuc.sources['photon']
+
+        # If the chain file contained no sources at all, warn the user
+        if not _DECAY_PHOTON_ENERGY:
+            warn(f"Chain file '{chain_file}' does not have any decay photon "
+                 "sources listed.")
+
+    return _DECAY_PHOTON_ENERGY.get(nuclide)

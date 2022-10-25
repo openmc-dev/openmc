@@ -7,6 +7,7 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from openmc.exceptions import AllocationError, InvalidIDError
+from openmc.data.function import INTERPOLATION_SCHEME
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
@@ -16,9 +17,9 @@ from .mesh import _get_mesh
 
 __all__ = [
     'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
-    'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter', 
-    'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter', 
-    'MaterialFilter', 'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter', 
+    'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
+    'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
+    'MaterialFilter', 'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter',
     'PolarFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
     'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
@@ -47,6 +48,12 @@ _dll.openmc_energyfunc_filter_get_y.resttpe = c_int
 _dll.openmc_energyfunc_filter_get_y.errcheck = _error_handler
 _dll.openmc_energyfunc_filter_get_y.argtypes = [
     c_int32, POINTER(c_size_t), POINTER(POINTER(c_double))]
+_dll.openmc_energyfunc_filter_get_interpolation.resttpe = c_int
+_dll.openmc_energyfunc_filter_get_interpolation.errcheck = _error_handler
+_dll.openmc_energyfunc_filter_get_interpolation.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_energyfunc_filter_set_interpolation.resttpe = c_int
+_dll.openmc_energyfunc_filter_set_interpolation.errcheck = _error_handler
+_dll.openmc_energyfunc_filter_set_interpolation.argtypes = [c_int32, c_char_p]
 _dll.openmc_filter_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_filter_get_id.restype = c_int
 _dll.openmc_filter_get_id.errcheck = _error_handler
@@ -247,6 +254,8 @@ class EnergyFunctionFilter(Filter):
             Independent variable for the interpolation
         y : numpy.ndarray
             Dependent variable for the interpolation
+        interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log', 'quadratic', 'cubic'}
+            Interpolation scheme
         """
         energy_array = np.asarray(energy)
         y_array = np.asarray(y)
@@ -263,6 +272,17 @@ class EnergyFunctionFilter(Filter):
     @property
     def y(self):
         return self._get_attr(_dll.openmc_energyfunc_filter_get_y)
+
+    @property
+    def interpolation(self) -> str:
+        interp = c_int()
+        _dll.openmc_energyfunc_filter_get_interpolation(self._index, interp)
+        return INTERPOLATION_SCHEME[interp.value]
+
+    @interpolation.setter
+    def interpolation(self, interp: str):
+        interp_ptr = c_char_p(interp.encode())
+        _dll.openmc_energyfunc_filter_set_interpolation(self._index, interp_ptr)
 
     def _get_attr(self, cfunc):
         array_p = POINTER(c_double)()

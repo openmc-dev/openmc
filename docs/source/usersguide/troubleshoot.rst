@@ -81,7 +81,7 @@ it is recommended that data be extracted from statepoint files in a context mana
 .. code-block:: python
 
     with openmc.StatePoint('statepoint.10.h5') as sp:
-        k_eff = sp.k_combined
+        k_eff = sp.keff
 
 or that the :meth:`StatePoint.close` method is called before executing a subsequent
 OpenMC run.

@@ -260,6 +260,7 @@ int parse_command_line(int argc, char* argv[])
 
       } else if (arg == "-v" || arg == "--version") {
         print_version();
+        print_build_info();
         return OPENMC_E_UNASSIGNED;
 
       } else if (arg == "-t" || arg == "--track") {

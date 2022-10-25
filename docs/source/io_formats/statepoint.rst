@@ -79,9 +79,15 @@ The current version of the statepoint file format is 17.0.
            - **width** (*double[]*) -- Width of each mesh cell in each
              dimension.
            - **Unstructured Mesh Only:**
+              - **filename** (*char[]*) -- Name of the mesh file.
+              - **library** (*char[]*) -- Mesh library used to represent the
+                                          mesh ("moab" or "libmesh").
+              - **length_multiplier** (*double*) Scaling factor applied to the mesh.
               - **volumes** (*double[]*) -- Volume of each mesh cell.
-              - **centroids** (*double[]*) -- Location of the mesh cell
-                centroids.
+              - **vertices** (*double[]*) -- x, y, z values of the mesh vertices.
+              - **connectivity** (*int[]*) -- Connectivity array for the mesh
+                cells.
+              - **element_types** (*int[]*) -- Mesh element types.
 
 **/tallies/filters/**
 
@@ -102,6 +108,10 @@ The current version of the statepoint file format is 17.0.
              interpolation. Only used for 'energyfunction' filters.
            - **y** (*double[]*) -- Interpolant values for energyfunction
              interpolation. Only used for 'energyfunction' filters.
+
+             :Attributes:
+                          - **interpolation** (*int*) -- Interpolation type. Only used for
+                            'energyfunction' filters.
 
 **/tallies/derivatives/derivative <id>/**
 

@@ -5,6 +5,7 @@
 #define OPENMC_CONSTANTS_H
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
 #include "openmc/array.h"
@@ -24,9 +25,9 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {17, 0};
+constexpr array<int, 2> VERSION_STATEPOINT {18, 0};
 constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
-constexpr array<int, 2> VERSION_TRACK {2, 0};
+constexpr array<int, 2> VERSION_TRACK {3, 0};
 constexpr array<int, 2> VERSION_SUMMARY {6, 0};
 constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
@@ -318,7 +319,11 @@ enum class Interpolation {
   lin_lin = 2,
   lin_log = 3,
   log_lin = 4,
-  log_log = 5
+  log_log = 5,
+  // skip 6 b/c ENDF-6 reserves this value for
+  // "special one-dimensional interpolation law"
+  quadratic = 7,
+  cubic = 8
 };
 
 enum class RunMode {

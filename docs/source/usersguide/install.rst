@@ -8,39 +8,56 @@ Installation and Configuration
 
 .. _install_conda:
 
-----------------------------------------
-Installing on Linux/Mac with conda-forge
-----------------------------------------
+--------------------------------------------------
+Installing on Linux/Mac with Mamba and conda-forge
+--------------------------------------------------
 
-Conda_ is an open source package management system and environment management
-system for installing multiple versions of software packages and their
-dependencies and switching easily between them. If you have `conda` installed on
-your system, OpenMC can be installed via the `conda-forge` channel. First, add
-the `conda-forge` channel with:
+`Conda <https://conda.io/en/latest/>`_ is an open source package management
+systems and environments management system for installing multiple versions of
+software packages and their dependencies and switching easily between them.
+`Mamba <https://mamba.readthedocs.io/en/latest/>`_ is a cross-platform package
+manager and is compatible with `conda` packages.
+OpenMC can be installed in a `conda` environment with `mamba`.
+First, `conda` should be installed with one of the following installers:
+`Miniconda <https://docs.conda.io/en/latest/miniconda.html>`_,
+`Anaconda <https://www.anaconda.com/>`_, or `Miniforge <https://github.com/conda-forge/miniforge>`_.
+Once you have `conda` installed on your system, OpenMC can be installed via the
+`conda-forge` channel with `mamba`.
+
+First, add the `conda-forge` channel with:
 
 .. code-block:: sh
 
     conda config --add channels conda-forge
+
+Then create and activate a new conda enviroment called `openmc-env` in
+which to install OpenMC.
+
+.. code-block:: sh
+
+    conda create -n openmc-env
+    conda activate openmc-env
+
+Then install `mamba`, which will be used to install OpenMC.
+
+.. code-block:: sh
+
+    conda install mamba
 
 To list the versions of OpenMC that are available on the `conda-forge` channel,
 in your terminal window or an Anaconda Prompt run:
 
 .. code-block:: sh
 
-    conda search openmc
+    mamba search openmc
 
 OpenMC can then be installed with:
 
 .. code-block:: sh
 
-    conda create -n openmc-env openmc
+    mamba install openmc
 
-This will install OpenMC in a conda environment called `openmc-env`. To activate
-the environment, run:
-
-.. code-block:: sh
-
-    conda activate openmc-env
+You are now in a conda environment called `openmc-env` that has OpenMC installed.
 
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker
@@ -252,7 +269,7 @@ Prerequisites
       In addition to turning this option on, the path to the DAGMC installation
       should be specified as part of the ``CMAKE_PREFIX_PATH`` variable::
 
-          cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation
+          cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation ..
 
     * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
@@ -263,7 +280,7 @@ Prerequisites
       installation should be specified as part of the ``CMAKE_PREFIX_PATH``
       variable.::
 
-          cmake -DOPENMC_USE_LIBMESH=on -DOPENMC_USE_MPI=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation
+          cmake -DOPENMC_USE_LIBMESH=on -DOPENMC_USE_MPI=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation ..
 
       Note that libMesh is most commonly compiled with MPI support. If that
       is the case, then OpenMC should be compiled with MPI support as well.
@@ -494,7 +511,7 @@ to install the Python package in :ref:`"editable" mode <devguide_editable>`.
 Prerequisites
 -------------
 
-The Python API works with Python 3.6+. In addition to Python itself, the API
+The Python API works with Python 3.7+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
 distributions.
@@ -528,8 +545,7 @@ distributions.
       Uncertainties are used for decay data in the :mod:`openmc.data` module.
 
    `lxml <https://lxml.de/>`_
-      lxml is used for the :ref:`scripts_validate` script and various other
-      parts of the Python API.
+      lxml is used for various parts of the Python API.
 
 .. admonition:: Optional
    :class: note
@@ -573,31 +589,5 @@ wrapper is used when installing h5py:
 
     CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
 
-.. _usersguide_nxml:
-
------------------------------------------------------
-Configuring Input Validation with GNU Emacs nXML mode
------------------------------------------------------
-
-The `GNU Emacs`_ text editor has a built-in mode that extends functionality for
-editing XML files. One of the features in nXML mode is the ability to perform
-real-time `validation`_ of XML files against a `RELAX NG`_ schema. The OpenMC
-source contains RELAX NG schemas for each type of user input file. In order for
-nXML mode to know about these schemas, you need to tell emacs where to find a
-"locating files" description. Adding the following lines to your ``~/.emacs``
-file will enable real-time validation of XML input files:
-
-.. code-block:: common-lisp
-
-    (require 'rng-loc)
-    (add-to-list 'rng-schema-locating-files "~/openmc/schemas.xml")
-
-Make sure to replace the last string on the second line with the path to the
-schemas.xml file in your own OpenMC source directory.
-
-.. _GNU Emacs: http://www.gnu.org/software/emacs/
-.. _validation: https://en.wikipedia.org/wiki/XML_validation
-.. _RELAX NG: https://relaxng.org/
-.. _ctest: https://cmake.org/cmake/help/latest/manual/ctest.1.html
 .. _Conda: https://conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

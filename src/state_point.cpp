@@ -529,6 +529,7 @@ hid_t h5banktype()
   H5Tinsert(banktype, "r", HOFFSET(SourceSite, r), postype);
   H5Tinsert(banktype, "u", HOFFSET(SourceSite, u), postype);
   H5Tinsert(banktype, "E", HOFFSET(SourceSite, E), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "time", HOFFSET(SourceSite, time), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "wgt", HOFFSET(SourceSite, wgt), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "delayed_group", HOFFSET(SourceSite, delayed_group),
     H5T_NATIVE_INT);
@@ -820,6 +821,16 @@ void write_unstructured_mesh_results()
       if (!umesh->output_)
         continue;
 
+      if (umesh->library() == "moab") {
+        if (mpi::master)
+          warning(fmt::format(
+            "Output for a MOAB mesh (mesh {}) was "
+            "requested but will not be written. Please use the Python "
+            "API to generated the desired VTK tetrahedral mesh.",
+            umesh->id_));
+        continue;
+      }
+
       // if this tally has more than one filter, print
       // warning and skip writing the mesh
       if (tally->filters().size() > 1) {
@@ -891,12 +902,10 @@ void write_unstructured_mesh_results()
       std::string filename = fmt::format("tally_{0}.{1:0{2}}", tally->id_,
         simulation::current_batch, batch_width);
 
-      if (umesh->library() == "moab" && !mpi::master)
-        continue;
-
       // Write the unstructured mesh and data to file
       umesh->write(filename);
 
+      // remove score data added for this mesh write
       umesh->remove_scores();
     }
   }

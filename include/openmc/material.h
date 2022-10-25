@@ -113,6 +113,9 @@ public:
   //! \param[in] units Units of density
   void set_density(double density, gsl::cstring_span units);
 
+  //! Set temperature of the material
+  void set_temperature(double temperature) { temperature_ = temperature; };
+
   //! Get nuclides in material
   //! \return Indices into the global nuclides vector
   gsl::span<const int> nuclides() const

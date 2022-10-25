@@ -61,9 +61,14 @@ Core Functions
 
     atomic_mass
     atomic_weight
+    combine_distributions
+    decay_constant
+    decay_photon_energy
     dose_coefficients
     gnd_name
+    half_life
     isotopes
+    kalbach_slope
     linearize
     thin
     water_density
@@ -114,6 +119,7 @@ Angle-Energy Distributions
     IncoherentElasticAE
     IncoherentElasticAEDiscrete
     IncoherentInelasticAEDiscrete
+    MixedElasticAE
 
 Resonance Data
 --------------

@@ -64,6 +64,8 @@ class CylinderSector(CompositeSurface):
     operators applied to it will produce a half-space. The negative
     side is defined to be the region inside of the cylinder sector.
 
+    .. versionadded:: 0.13.1
+
     Parameters
     ----------
     r1 : float
@@ -212,7 +214,7 @@ class CylinderSector(CompositeSurface):
 
 
 class IsogonalOctagon(CompositeSurface):
-    """Infinite isogonal octagon composite surface
+    r"""Infinite isogonal octagon composite surface
 
     An isogonal octagon is composed of eight planar surfaces. The prism is
     parallel to the x, y, or z axis. The remaining two axes (y and z, z and x,
@@ -224,6 +226,8 @@ class IsogonalOctagon(CompositeSurface):
     This class acts as a proper surface, meaning that unary `+` and `-`
     operators applied to it will produce a half-space. The negative side is
     defined to be the region inside of the octogonal prism.
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------
@@ -451,10 +455,10 @@ class RectangularParallelepiped(CompositeSurface):
         self.zmax = openmc.ZPlane(z0=zmax, **kwargs)
 
     def __neg__(self):
-        return +self.xmin & -self.xmax & +self.ymin & -self.ymax & +self.zmin & -self.zmax
+        return -self.xmax & +self.xmin & -self.ymax & +self.ymin & -self.zmax & +self.zmin
 
     def __pos__(self):
-        return -self.xmin | +self.xmax | -self.ymin | +self.ymax | -self.zmin | +self.zmax
+        return +self.xmax | -self.xmin | +self.ymax | -self.ymin | +self.zmax | -self.zmin
 
 
 class XConeOneSided(CompositeSurface):

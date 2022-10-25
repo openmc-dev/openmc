@@ -46,6 +46,13 @@ class DAGMCUniverseTest(PyAPITestHarness):
         # create the DAGMC universe
         pincell_univ = openmc.DAGMCUniverse(filename='dagmc.h5m', auto_geom_ids=True)
 
+        # creates another DAGMC universe, this time with within a bounded cell
+        bound_pincell_universe = openmc.DAGMCUniverse(filename='dagmc.h5m').bounded_universe()
+        # uses the bound_dag_cell as the root argument to test the type checks in openmc.Geometry
+        bound_pincell_geometry = openmc.Geometry(root=bound_pincell_universe)
+        # assigns the bound_dag_geometry to the model to test the type checks in model.Geometry setter
+        model.Geometry = bound_pincell_geometry
+
         # create a 2 x 2 lattice using the DAGMC pincell
         pitch = np.asarray((24.0, 24.0))
         lattice = openmc.RectLattice()

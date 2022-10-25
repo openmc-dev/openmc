@@ -291,10 +291,10 @@ class WeightWindows(IDManagerMixin):
         subelement.text = ' '.join(str(e) for e in self.energy_bounds)
 
         subelement = ET.SubElement(element, 'lower_ww_bounds')
-        subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds)
+        subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds.ravel('F'))
 
         subelement = ET.SubElement(element, 'upper_ww_bounds')
-        subelement.text = ' '.join(str(b) for b in self.upper_ww_bounds)
+        subelement.text = ' '.join(str(b) for b in self.upper_ww_bounds.ravel('F'))
 
         subelement = ET.SubElement(element, 'survival_ratio')
         subelement.text = str(self.survival_ratio)
@@ -409,7 +409,9 @@ class WeightWindows(IDManagerMixin):
 
 
 def wwinp_to_wws(path):
-    """Creates WeightWindows classes from a wwinp file
+    """Create WeightWindows instances from a wwinp file
+
+    .. versionadded:: 0.13.1
 
     Parameters
     ----------
@@ -558,10 +560,13 @@ def wwinp_to_wws(path):
         end_idx = start_idx + (nfx * nfy * nfz) * nt_i * ne_i
 
         # read values and reshape according to ordering
-        # slowest to fastest: z, y, x, e
-        ww_values = ww_data[start_idx:end_idx].reshape(nfz, nfy, nfx, ne_i)
-        # swap z and x axes for correct shape and (ijk, e) mesh indexing
-        ww_values = np.swapaxes(ww_values, 2, 0)
+        # slowest to fastest: t, e, z, y, x
+        # reorder with transpose since our ordering is x, y, z, e, t
+        ww_shape = (nt_i, ne_i, nfz, nfy, nfx)
+        ww_values = ww_data[start_idx:end_idx].reshape(ww_shape).T
+        # Only use first time bin since we don't support time dependent weight
+        # windows yet.
+        ww_values = ww_values[:, :, :, :, 0]
         start_idx = end_idx
 
         # create a weight window object

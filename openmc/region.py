@@ -106,6 +106,11 @@ class Region(ABC):
                 # If special character appears immediately after a non-operator,
                 # create a token with the appropriate half-space
                 if i_start >= 0:
+                    # When an opening parenthesis appears after a non-operator,
+                    # there's an implicit intersection operator between them
+                    if expression[i] == '(':
+                        tokens.append(' ')
+
                     j = int(expression[i_start:i])
                     if j < 0:
                         tokens.append(-surfaces[abs(j)])
@@ -254,13 +259,18 @@ class Region(ABC):
         clone[:] = [n.clone(memo) for n in self]
         return clone
 
-    def translate(self, vector, memo=None):
+    def translate(self, vector, inplace=False, memo=None):
         """Translate region in given direction
 
         Parameters
         ----------
         vector : iterable of float
             Direction in which region should be translated
+        inplace : bool
+            Whether or not to return a region based on new surfaces or one based
+            on the original surfaces that have been modified.
+
+            .. versionadded:: 0.13.1
         memo : dict or None
             Dictionary used for memoization. This parameter is used internally
             and should not be specified by the user.
@@ -274,7 +284,7 @@ class Region(ABC):
 
         if memo is None:
             memo = {}
-        return type(self)(n.translate(vector, memo) for n in self)
+        return type(self)(n.translate(vector, inplace, memo) for n in self)
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
                memo=None):
@@ -303,7 +313,7 @@ class Region(ABC):
             :math:`\psi` about z. This corresponds to an x-y-z extrinsic
             rotation as well as a z-y'-x'' intrinsic rotation using Tait-Bryan
             angles :math:`(\phi, \theta, \psi)`.
-        inplace : boolean
+        inplace : bool
             Whether or not to return a new instance of Surface or to modify the
             coefficients of this Surface in place. Defaults to False.
         memo : dict or None
@@ -617,10 +627,10 @@ class Complement(Region):
         clone.node = self.node.clone(memo)
         return clone
 
-    def translate(self, vector, memo=None):
+    def translate(self, vector, inplace=False, memo=None):
         if memo is None:
             memo = {}
-        return type(self)(self.node.translate(vector, memo))
+        return type(self)(self.node.translate(vector, inplace, memo))
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
                memo=None):

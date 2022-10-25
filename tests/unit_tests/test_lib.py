@@ -283,6 +283,11 @@ def test_energy_function_filter(lib_init):
     assert len(efunc.y) == 2
     assert (efunc.y == [0.0, 2.0]).all()
 
+    # Default should be lin-lin
+    assert efunc.interpolation == 'linear-linear'
+    efunc.interpolation = 'histogram'
+    assert efunc.interpolation == 'histogram'
+
 
 def test_tally(lib_init):
     t = openmc.lib.tallies[1]
@@ -338,6 +343,20 @@ def test_new_tally(lib_init):
     new_tally_with_id = openmc.lib.Tally(10)
     new_tally_with_id.scores = ['flux']
     assert len(openmc.lib.tallies) == 5
+
+
+def test_delete_tally(lib_init):
+    # delete tally 10 which was added in the above test
+    # check length is one less than before
+    del openmc.lib.tallies[10]
+    assert len(openmc.lib.tallies) == 4
+
+
+def test_invalid_tally_id(lib_init):
+    # attempt to access a tally that is guaranteed not to have a valid index
+    max_id = max(openmc.lib.tallies.keys())
+    with pytest.raises(KeyError):
+        openmc.lib.tallies[max_id+1]
 
 
 def test_tally_activate(lib_simulation_init):
@@ -806,4 +825,47 @@ def test_cell_rotation(pincell_model_w_univ, mpi_intracomm):
     assert cell.rotation == pytest.approx([0., 0., 0.])
     cell.rotation = (180., 0., 0.)
     assert cell.rotation == pytest.approx([180., 0., 0.])
+    openmc.lib.finalize()
+
+
+def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
+    # Define a simple model and export
+    mat = openmc.Material()
+    mat.add_nuclide('U235', 1.0e-2)
+    sph = openmc.Sphere(r=100.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sph)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell])
+    model.settings.source = openmc.Source(
+        space=openmc.stats.Box([-5., -5., -5.], [5., 5., 5.]),
+        angle=openmc.stats.Monodirectional((0., 0., 1.)),
+        energy=openmc.stats.Discrete([1.0e5], [1.0])
+    )
+    model.settings.particles = 1000
+    model.settings.batches = 10
+    model.export_to_xml()
+
+    # Sample some particles and make sure they match specified source
+    openmc.lib.init()
+    particles = openmc.lib.sample_external_source(10, prn_seed=3)
+    assert len(particles) == 10
+    for p in particles:
+        assert -5. < p.r[0] < 5.
+        assert -5. < p.r[1] < 5.
+        assert -5. < p.r[2] < 5.
+        assert p.u[0] == 0.0
+        assert p.u[1] == 0.0
+        assert p.u[2] == 1.0
+        assert p.E == 1.0e5
+
+    # Using the same seed should produce the same particles
+    other_particles = openmc.lib.sample_external_source(10, prn_seed=3)
+    assert len(other_particles) == 10
+    for p1, p2 in zip(particles, other_particles):
+        assert p1.r == p2.r
+        assert p1.u == p2.u
+        assert p1.E == p2.E
+        assert p1.time == p2.time
+        assert p1.wgt == p2.wgt
+
     openmc.lib.finalize()

@@ -60,6 +60,22 @@ double Particle::speed() const
   return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
 }
 
+void Particle::initilze_ghost_particle(Particle& p,Direction u_new, double E_new)
+{
+  type() = p.type();
+  wgt() = p.wgt_last();
+  wgt_last() = p.wgt_last();
+  r() = p.r();
+  r_last() = p.r();
+  u() = u_new;
+  u_last() = u_new;
+  //u_last() = p.u_last();
+  E() = E_new;  //settings::run_CE ? p.E_last() : p.g_last();
+  E_last() = E_new;
+  time() = p.time_last();
+  time_last() = p.time_last();
+}
+
 void Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {

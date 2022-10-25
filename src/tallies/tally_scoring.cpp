@@ -24,6 +24,7 @@
 #include <typeinfo>
 #include <string>
 int ghost_counter=0;
+int col_counter = 0;
 namespace openmc {
 
 
@@ -2425,18 +2426,26 @@ void score_collision_tally(Particle& p)
   for (auto& match : p.filter_matches())
     match.bins_present_ = false;
 }
+Position GetRotVector(double phi ,Position u_lab ,Position k )
+  {
+    return u_lab*std::cos(phi) + k.crossProduct(u_lab) * std::sin(phi) + k * k.dot(u_lab) * (1 - std::cos(phi));
+  }
 
 void score_point_tally(Particle& p)
 {
+  col_counter ++;
   fmt::print("------------------------collison happened------------------------\n");
-  std::cout << "mass in ev  " << p.getMass() << std::endl ;
+  fmt::print("col counter = {}\n",col_counter);
+  //std::cout << "mass in ev  " << p.getMass() << std::endl ;
   // Determine the collision estimate of the flux
-  bool verbose=true;
-  double ReturnArray[4];
+  bool verbose=false;//true;
+  double ReturnArray[4]= {std::nan(""),std::nan(""),std::nan(""),std::nan("")};
   double flux = 0.0;
+  double flux1 = 0.0;
+  double flux2 = 0.0;
   const auto& nuc {data::nuclides[p.event_nuclide()]};
   double awr = nuc->awr_;
-  double dl = 1e-5;
+  double dl = 0;
   getMu_COM(0,0,0,p,awr,ReturnArray , 0, dl);
   const auto& rx {nuc->reactions_[0]};
   auto& d = rx->products_[0].distribution_[0];
@@ -2451,26 +2460,71 @@ void score_point_tally(Particle& p)
   double E1 = ReturnArray[2];
   double mu_COM2 = ReturnArray[1];
   double E2 = ReturnArray[3];
-  //double ReturnArrayPlus[4];
-  //double ReturnArrayMinus[4];
-  //getMu_COM(0,0,0,p,awr,p.getMass(),ReturnArrayPlus ,1 , 1e-5 );
-  //getMu_COM(0,0,0,p,awr,p.getMass(),ReturnArrayMinus ,-1 , 1e-5 );
-  //double MuPlus = ReturnArrayPlus[0]; // not sure about changing mu lab correctly
-  //double MuMinus = ReturnArrayMinus[0];
-  double theta_pdf = d_->angle().get_pdf_value(p.E_last(),mu_COM1,p.current_seed());
+  double ReturnArrayPlus[4] = {std::nan(""),std::nan(""),std::nan(""),std::nan("")};
+  double ReturnArrayMinus[4] = {std::nan(""),std::nan(""),std::nan(""),std::nan("")};
+// calculate new detector place
+  // axis of rotation
+  // cross product of incoming and outgoing secondary - for the plane of the collison
+  Position k = ( p.u_last() ).crossProduct(u_lab);
   
-  //double derivative = std::abs(MuPlus-MuMinus)/(2*dl);
-  double derivative =1;
-  double theta_pdf_lab = theta_pdf * derivative;
+  // santity for cross product 
+  
+ 
+   
+ // normalize k
+  k = k/k.norm();
+  double dphi = 0.00001;
+  Position u_lab_plus = GetRotVector(dphi,u_lab ,k);
+  Position u_lab_minus = GetRotVector(-dphi,u_lab ,k);
+ // now we rotate ulab - which is the vector to the dectctor in the plane of the collision by angle phi
+  /*
+ fmt::print("santity for cross product{0} \n",1);
+  fmt::print("u last= {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  fmt::print("u lab= {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
+  fmt::print("k= {0} , {1} , {2}\n",k.x,k.y,k.z);
+  fmt::print("santity for Rotation{0} \n",1);
+  fmt::print("u last= {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  fmt::print("u lab original = {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
+  fmt::print("u lab plus= {0} , {1} , {2}\n",u_lab_plus.x,u_lab_plus.y,u_lab_plus.z);
+  fmt::print("u lab minus= {0} , {1} , {2}\n",u_lab_minus.x,u_lab_minus.y,u_lab_minus.z);
+  fmt::print("det plus = {0} , {1} , {2}\n",(u_lab_plus + p.r()).x,(u_lab_plus + p.r()).y,(u_lab_plus + p.r()).z);
+  fmt::print("det minus = {0} , {1} , {2}\n",(u_lab_minus + p.r()).x,(u_lab_minus + p.r()).y,(u_lab_minus + p.r()).z);
+  fmt::print("theta original , plus , minus = {0} , {1} , {2}\n",theta_lab, std::acos(u_lab_plus.dot(p.u_last())) ,std::acos(u_lab_minus.dot(p.u_last())));
+*/
+  
+// Rodrigues' Rotation Formula
+
+  getMu_COM((u_lab_plus + p.r()).x,(u_lab_plus + p.r()).y,(u_lab_plus + p.r()).z,p,awr,ReturnArrayPlus ,100 , dl);
+  getMu_COM((u_lab_minus + p.r()).x,(u_lab_minus + p.r()).y,(u_lab_minus + p.r()).z,p,awr,ReturnArrayMinus ,-100 , dl );
+  double MuPlus1 = ReturnArrayPlus[0]; // not sure about changing mu lab correctly
+  double MuPlus2 = ReturnArrayPlus[1];
+  double MuMinus1 = ReturnArrayMinus[0];
+  double MuMinus2 = ReturnArrayMinus[1];
+  double theta_pdf1 = d_->angle().get_pdf_value(p.E_last(),mu_COM1,p.current_seed());
+  double theta_pdf2 = d_->angle().get_pdf_value(p.E_last(),mu_COM2,p.current_seed());
+  double derivative1 = std::abs((MuPlus1-MuMinus1)/(2*dphi)/sin_lab);
+  double derivative2 = std::abs((MuPlus2-MuMinus2)/(2*dphi)/sin_lab);   // divide by zero can cause nan!
+  /*
+  // one sided derivative
+  double derivative1 = std::abs(MuPlus1-mu_COM1)/(dphi);
+  double derivative2 = std::abs(MuPlus2-mu_COM2)/(dphi);
+  */ 
+
+  //double derivative =1;
+  double theta_pdf_lab1 = theta_pdf1 * derivative1;
+  double theta_pdf_lab2 = theta_pdf2 * derivative2;
   //double E_ghost = p.E_last()*(1+awr*awr+2*awr*mu_COM)/(1+awr)/(1+awr);
   
   //double m_incoming =MASS_NEUTRON_EV;
-  double E_ghost = E1;
+  double E_ghost1 = E1;
+  double E_ghost2 = E2;
 
-  if(true)//(!std::isnan(mu_COM1))
+
+// first solution
+  if(!std::isnan(mu_COM1))
   {
   Particle ghost_particle=Particle();
-  ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);
+  ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost1);
   ghost_counter++;
   //fmt::print("---------------------ghost particle created {}---------------------\n",ghost_counter);
 
@@ -2508,10 +2562,14 @@ void score_point_tally(Particle& p)
   //// kill patricle
   //ghost::ghost_particles[0].event_death();
   //ghost::ghost_particles.resize(0);
-
-  flux = 0.5*ghost_particle.wgt()*exp(-total_MFP)/(2*3.14*total_distance*total_distance)*theta_pdf_lab;
-  flux = flux*2;
-  
+  if(!std::isnan(flux1))
+  {
+  flux1 = ghost_particle.wgt()*exp(-total_MFP)/(2*3.14*total_distance*total_distance)*theta_pdf_lab1;
+  }
+  if(std::isnan(flux1))
+  {
+    flux1 = 0;
+  }
   if(verbose)
   {
     fmt::print("------------------------flux contribution------------------------\n");
@@ -2523,14 +2581,134 @@ void score_point_tally(Particle& p)
     fmt::print("ghost particle Mu COM 1 Arik= {}\n",mu_COM1);
     fmt::print("ghost particle Mu COM 2 Arik= {}\n",mu_COM2);
     fmt::print("ghost particle Mu COM Or and Itay = {}\n",mu_COM_or_itay);
-    fmt::print("flux = {}\n",flux);
-    fmt::print("theta cm pdf ={} \n",theta_pdf);
-    fmt::print("derivative ={} \n",derivative);
-    fmt::print("theta lab pdf ={} \n",theta_pdf_lab);
+    fmt::print("flux1 = {}\n",flux1);
+    fmt::print("theta1 cm pdf ={} \n",theta_pdf1);
+    fmt::print("theta2 cm pdf ={} \n",theta_pdf2);
+    fmt::print("MuPlus for sol 0 ={} \n",MuPlus1);
+    fmt::print("MuPlus for sol 1 ={}  \n",MuPlus2);
+    fmt::print("MuMinus for sol 0 ={} \n",MuMinus1);
+    fmt::print("MuMinus for sol 1 ={}  \n",MuMinus2);
+    fmt::print("derivative1 ={} \n",derivative1);
+    fmt::print("derivative2 ={} \n",derivative2);
+    fmt::print("theta1 lab pdf ={} \n",theta_pdf_lab1);
+    fmt::print("theta2 lab pdf ={} \n",theta_pdf_lab2);
+    fmt::print("santity for cross product{0} \n",1);
+  fmt::print("u last= {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  fmt::print("u lab= {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
+  fmt::print("k= {0} , {1} , {2}\n",k.x,k.y,k.z);
+  fmt::print("santity for Rotation{0} \n",1);
+  fmt::print("u last= {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  fmt::print("u lab original = {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
+  fmt::print("u lab plus= {0} , {1} , {2}\n",u_lab_plus.x,u_lab_plus.y,u_lab_plus.z);
+  fmt::print("u lab minus= {0} , {1} , {2}\n",u_lab_minus.x,u_lab_minus.y,u_lab_minus.z);
+  fmt::print("det plus = {0} , {1} , {2}\n",(u_lab_plus + p.r()).x,(u_lab_plus + p.r()).y,(u_lab_plus + p.r()).z);
+  fmt::print("det minus = {0} , {1} , {2}\n",(u_lab_minus + p.r()).x,(u_lab_minus + p.r()).y,(u_lab_minus + p.r()).z);
+  fmt::print("theta original , plus , minus = {0} , {1} , {2}\n",theta_lab, std::acos(u_lab_plus.dot(p.u_last())) ,std::acos(u_lab_minus.dot(p.u_last())));
+
+
     //fmt::print("Mu - ={} \n",MuMinus);
     //fmt::print("Mu + ={} \n",MuPlus);
   }
   }
+
+  // second soultion
+   if(!std::isnan(mu_COM2))
+  {
+  Particle ghost_particle=Particle();
+  ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost2);
+  ghost_counter++;
+  //fmt::print("---------------------ghost particle created {}---------------------\n",ghost_counter);
+
+
+
+  //calculate shilding
+  double total_distance = std::sqrt(p.r().x*p.r().x+p.r().y*p.r().y+p.r().z*p.r().z);
+  double remaining_distance = std::sqrt(p.r().x*p.r().x+p.r().y*p.r().y+p.r().z*p.r().z);
+  double total_MFP = 0;
+  ghost_particle.event_calculate_xs();
+  ghost_particle.boundary() = distance_to_boundary(ghost_particle);
+  double advance_distance = ghost_particle.boundary().distance;
+  while(advance_distance<remaining_distance)
+  {
+    total_MFP += advance_distance*ghost_particle.macro_xs().total;
+      //Advance particle in space and time
+    for (int j = 0; j < ghost_particle.n_coord(); ++j) {
+      ghost_particle.coord(j).r += advance_distance * ghost_particle.coord(j).u;
+    }
+      remaining_distance-=advance_distance;
+      //fmt::print("advane distance 1 ={} \n",advance_distance);
+      //fmt::print("advane XS 1= {}\n",ghost_particle.macro_xs().total);
+      //fmt::print("ghost particle speed= {}\n",ghost_particle.speed());
+      ghost_particle.time() += advance_distance / ghost_particle.speed();
+      ghost_particle.event_cross_surface();
+      //fmt::print("pos = {0} , {1} , {2}\n",ghost_particle.r().x,ghost_particle.r().y,ghost_particle.r().z);
+      ghost_particle.event_calculate_xs();
+      ghost_particle.boundary() = distance_to_boundary(ghost_particle);
+      advance_distance = ghost_particle.boundary().distance;
+      //fmt::print("advane distance 2 ={} \n",advance_distance);
+      //fmt::print("advane XS 2= {}\n",ghost_particle.macro_xs().total);
+
+  }
+  
+  //// kill patricle
+  //ghost::ghost_particles[0].event_death();
+  //ghost::ghost_particles.resize(0);
+if(!std::isnan(flux2))
+  {
+  flux2 = ghost_particle.wgt()*exp(-total_MFP)/(2*3.14*total_distance*total_distance)*theta_pdf_lab2;
+  }
+  if(std::isnan(flux2))
+  {
+    flux2 = 0;
+  }
+  if(verbose)
+  {
+    fmt::print("flux params = {0} {1} {2} {3}\n",ghost_particle.wgt() , exp(-total_MFP) , (2*3.14*total_distance*total_distance) ,theta_pdf_lab2 );
+
+    fmt::print("------------------------flux contribution------------------------\n");
+    fmt::print("parent particle pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
+    fmt::print("parent particle u = {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+    fmt::print("parent particle E = {}\n",p.E_last());
+    fmt::print("ghost particle E = {}\n",ghost_particle.E());
+    fmt::print("ghost particle u = {0} , {1} , {2}\n",ghost_particle.u().x,ghost_particle.u().y,ghost_particle.u().z);
+    fmt::print("ghost particle Mu COM 1 Arik= {}\n",mu_COM1);
+    fmt::print("ghost particle Mu COM 2 Arik= {}\n",mu_COM2);
+    fmt::print("ghost particle Mu COM Or and Itay = {}\n",mu_COM_or_itay);
+    fmt::print("flux2 = {}\n",flux2);
+    fmt::print("theta1 cm pdf ={} \n",theta_pdf1);
+    fmt::print("theta2 cm pdf ={} \n",theta_pdf2);
+    fmt::print("derivative1 ={} \n",derivative1);
+    fmt::print("derivative2 ={} \n",derivative2);
+    fmt::print("theta1 lab pdf ={} \n",theta_pdf_lab1);
+    fmt::print("theta2 lab pdf ={} \n",theta_pdf_lab2);
+
+     fmt::print("MuPlus for sol 0 ={} \n",MuPlus1);
+    fmt::print("MuPlus for sol 1 ={}  \n",MuPlus2);
+
+    fmt::print("MuMinus for sol 0 ={} \n",MuMinus1);
+    fmt::print("MuMinus for sol 1 ={}  \n",MuMinus2);
+
+
+       fmt::print("santity for cross product{0} \n",1);
+  fmt::print("u last= {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  fmt::print("u lab= {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
+  fmt::print("k= {0} , {1} , {2}\n",k.x,k.y,k.z);
+  fmt::print("santity for Rotation{0} \n",1);
+  fmt::print("u last= {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  fmt::print("u lab original = {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
+  fmt::print("u lab plus= {0} , {1} , {2}\n",u_lab_plus.x,u_lab_plus.y,u_lab_plus.z);
+  fmt::print("u lab minus= {0} , {1} , {2}\n",u_lab_minus.x,u_lab_minus.y,u_lab_minus.z);
+  fmt::print("det plus = {0} , {1} , {2}\n",(u_lab_plus + p.r()).x,(u_lab_plus + p.r()).y,(u_lab_plus + p.r()).z);
+  fmt::print("det minus = {0} , {1} , {2}\n",(u_lab_minus + p.r()).x,(u_lab_minus + p.r()).y,(u_lab_minus + p.r()).z);
+  fmt::print("theta original , plus , minus = {0} , {1} , {2}\n",theta_lab, std::acos(u_lab_plus.dot(p.u_last())) ,std::acos(u_lab_minus.dot(p.u_last())));
+  fmt::print("p weight = {0} last ={1}\n",p.wgt(),p.wgt_last());
+//fmt::print("Mu - ={} \n",MuMinus);
+    //fmt::print("Mu + ={} \n",MuPlus);
+  }
+  }
+
+
+  flux = flux1 + flux2;
 
   if (p.type() != ParticleType::neutron) {
     if(p.event_mt() != 2)
@@ -2903,7 +3081,7 @@ void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , doub
   double r2[4]= {0, p_col.r().x, p_col.r().y, p_col.r().z}; // collision position lab {ignor, x, y, z} 
   double r3[4]; // r1-r2 vector from collision to detector
   double m2= m1*awr; // mass of target matirial
-  double m3= m1; // mass of outgoing particle to detector
+  double m3= m1; // mass of outgoing particle to detector  (rest mass?)
   double m4= m2; // mass of recoil target  system
   double p1[3]={p1_tot*p_col.u_last().x,p1_tot* p_col.u_last().y,p1_tot* p_col.u_last().z}; // 3 momentum of incoming particle
   double p2[3]={0, 0, 0}; //3 momentum of target in lab  
@@ -2960,7 +3138,7 @@ void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , doub
   CME3=(mCM*mCM-m4*m4+m3*m3)/(2*mCM); // energy of out going particle  in CM
   CMp3=sqrt(CME3*CME3-m3*m3);
 
-  std::cout<<" mCM= "<<mCM<<" pCM= "<<pCM<<" CME3= "<<CME3<<std::endl;
+  //std::cout<<" mCM= "<<mCM<<" pCM= "<<pCM<<" CME3= "<<CME3<<std::endl;
 
   boostf(CM,Fp1,CMFp1);
   boostf(CM,Fp2,CMFp2);
@@ -2969,8 +3147,12 @@ void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , doub
   Vunit(LAB,ULAB); 
   Vunit(r3,Ur3); 
   cosLAB=Vdot(UCM,Ur3);
+  if (diff_mode == 1 && cosLAB+dl<=1)
+     {cosLAB = cosLAB+dl;}
+  if (diff_mode == -1 && cosLAB-dl>=-1)
+     {cosLAB = cosLAB-dl;} 
 
-  std::cout<<"cosLAB=  "<<cosLAB<<std::endl;
+  //std::cout<<"cosLAB=  "<<cosLAB<<std::endl;
   Vunit(CMFp1,CMUp1);
 
 
@@ -2981,7 +3163,7 @@ void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , doub
    int j=1;
 
    if(bb*bb-4*aa*cc<0) {
-    std::cout<<" detector out of range" <<std::endl;
+    //std::cout<<" detector out of range" <<std::endl;
     return; //continue;
   }
    p3LAB[0]=(-bb+sqrt(bb*bb-4*aa*cc))/2.0/aa;
@@ -2995,11 +3177,11 @@ void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , doub
      if(p3LAB[1]>0) j=j+1;
    }
 
-  std::cout<<" p3LAB1= "<<(-bb+sqrt(bb*bb-4*aa*cc))/2.0/aa<<" p3LAB2= "<<(-bb-sqrt(bb*bb-4*aa*cc))/2.0/aa<<std::endl;
+  //std::cout<<" p3LAB1= "<<(-bb+sqrt(bb*bb-4*aa*cc))/2.0/aa<<" p3LAB2= "<<(-bb-sqrt(bb*bb-4*aa*cc))/2.0/aa<<std::endl;
 
   for (int l=0;l<j;l++){
 
-    std::cout<<"l= "<<l<<std::endl;
+    //std::cout<<"l= "<<l<<std::endl;
 
     Fp3[0]=sqrt(p3LAB[l]*p3LAB[l]+m3*m3);
     for(int i=0; i<3; i++){
@@ -3011,11 +3193,11 @@ void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , doub
     cosCM=Vdot(UCM,CMUp3); // input to openMC Cross section calculation
     ReturnArray[l] = cosCM;
     ReturnArray[l+2] = (Fp3[0]-m3)*1e6;  //retrun Energy in eV
+    /*
     
-    std::cout<<"cosCM= "<<cosCM<<std::endl;
-    
+    std::cout<<" -----------  running diff mode: "<< diff_mode << " with dl = "<< dl <<" -----------------------------------"<<std::endl;
     std::cout<<" -----------  sanity tests for solution "<< l <<" -----------------------------------"<<std::endl;
- 
+    std::cout<<"cosCM= "<<cosCM<<std::endl;
     Vunit(Fp3,UFp3); 
     
     std::cout<<Vdot(UCM,UFp3)<<" = cosLAB =  "<<cosLAB<<std::endl;
@@ -3054,7 +3236,7 @@ void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , doub
     
 
     std::cout<<"cos( atan( tanLab= "<<cos(atan(tanLab))<<std::endl;
-
+    */
   }
   
  }

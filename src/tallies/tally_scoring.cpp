@@ -17,7 +17,9 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
-
+#include "openmc/distribution_multi.h"
+#include "openmc/secondary_uncorrelated.h"
+#include <typeinfo>
 #include <string>
 
 namespace openmc {
@@ -2362,8 +2364,42 @@ void score_collision_tally(Particle& p)
 {
   // Determine the collision estimate of the flux
   double flux = 0.0;
+
+  double distance;
+  distance = p.r().x*p.r().x+p.r().y*p.r().y+p.r().z*p.r().z;
+  //fmt::print("collison happened\n");
+  if(p.E_last()>2e5)
+  {
+  fmt::print("post energy = {0} pre energy = {1}\n",p.E(),p.E_last());
+  fmt::print("event mt = {}\n",p.event_mt());
+  fmt::print("post weight = {0} pre weight = {1}\n",p.wgt(),p.wgt_last());
+  //fmt::print("pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
+
+  fmt::print("distance = {}\n",distance);
+  fmt::print("xs = {}\n",p.macro_xs().total);
+
+  const auto& mat {model::materials[p.material()]};
+  int n = mat->nuclide_.size();
+  const auto& nuc {data::nuclides[0]};
+  const auto& nuc2 {data::nuclides[1]};
+  fmt::print("number of nuclear = {}\n",n);
+  fmt::print("name of 1# nuclicde = {}\n",nuc->name_);
+  fmt::print("name of 2# nuclicde = {}\n",nuc2->name_);
+  int i_nuclide=0;
+  const auto& rx {nuc->reactions_[0]};
+  auto& d = rx->products_[0].distribution_[0];
+  auto d_ = dynamic_cast<UncorrelatedAngleEnergy*>(d.get());
+
+  fmt::print("name of 2# nuclicde = {}\n",d_.energy_[0]);
+  }
+  //fmt::print("post energy = {}\n",p.E);
+  //fmt::print(p.E);
   if (p.type() == ParticleType::neutron || p.type() == ParticleType::photon) {
-    flux = p.wgt_last() / p.macro_xs().total;
+    flux = 0;//p.wgt_last() / p.macro_xs().total;
+    if(p.event_mt() == 2)
+    {
+      flux = 0.5*p.wgt()*exp(-(distance-1)*p.macro_xs().total)/(2*3.14*distance*distance);
+    }
   }
 
   for (auto i_tally : model::active_collision_tallies) {

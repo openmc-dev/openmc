@@ -746,7 +746,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
   }
   //std::cout << "v_n = "<< p.speed() <<std::endl;
   p.v_t() = C_LIGHT*std::sqrt(2/p.getMass())*v_t;
-  std::cout << "v_t = "<< p.v_t().norm() <<std::endl;
+  //std::cout << "v_t = "<< p.v_t().norm() <<std::endl;
   // Velocity of center-of-mass
   Direction v_cm = (v_n + awr * v_t) / (awr + 1.0);
 
@@ -842,12 +842,13 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
   // use appropriate target velocity sampling method
   switch (sampling_method) {
   case ResScatMethod::cxs:
-
+    fmt::print("ResScatMethod = ResScatMethod::cxs\n");
     // sample target velocity with the constant cross section (cxs) approx.
     return sample_cxs_target_velocity(nuc.awr_, E, u, kT, seed);
 
   case ResScatMethod::dbrc:
   case ResScatMethod::rvs: {
+    fmt::print("ResScatMethod = ResScatMethod::rvs\n");
     double E_red = std::sqrt(nuc.awr_ * E / kT);
     double E_low = std::pow(std::max(0.0, E_red - 4.0), 2) * kT / nuc.awr_;
     double E_up = (E_red + 4.0) * (E_red + 4.0) * kT / nuc.awr_;

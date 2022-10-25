@@ -10,7 +10,7 @@ from openmc.checkvalue import check_type, check_value, check_less_than, \
 check_iterable_type, check_length
 from openmc import Materials, Material
 from openmc.search import _SCALAR_BRACKETED_METHODS, search_for_keff
-from openmc.data import atomic_mass, AVOGADRO
+from openmc.data import atomic_mass, AVOGADRO, ELEMENT_SYMBOL
 import openmc.lib
 
 class MsrContinuous:
@@ -36,64 +36,46 @@ class MsrContinuous:
         OrderedDict of depletable material id and OrderedDict to fill
     """
 
-    def __init__(self, local_mats):
+    def __init__(self, operator, model, units='1/s'):
 
-        if not isinstance(local_mats, Materials):
-            raise ValueError(f'{local_mats} is not a valid openmc Material')
-        else:
-            self.local_mats = local_mats
+        self.operator = operator
+        self.materials = model.materials
+        self.burn_mats = operator.burnable_mats
 
-        self.burn_mats = [mat.id for mat in self.local_mats if mat.depletable]
-        self.index_msr = [(i, i) for i in range(self.n_burn)]
-
-        self.ord_burn = self._order_burn_mats()
-        self.removal_rates = self._initialize_removal_rates()
+        #initialize removal rates container
+        self.removal_rates = OrderedDict((mat, OrderedDict()) for mat in \
+                                          self.burn_mats)
+        self.index_transfer = set()
+        self.units = units
 
     @property
-    def n_burn(self):
-        return len(self.burn_mats)
+    def units(self):
+        return self._units
 
-    def _get_mat_index(self, mat):
-        """Helper method for getting material index"""
-        if isinstance(mat, Material):
-            mat = str(mat.id)
-        return self.burn_mats[mat] if isinstance(mat, str) else mat
+    @units.setter
+    def units(self, value):
+        check_value('Units', value, ['1/s', '1/h', '1/d'])
+        self._units = value
 
-    def _order_burn_mats(self):
-        """Order depletable material id
-        Returns
-        ----------
-        OrderedDict of int and int
-            OrderedDict of depletable material id and enuemrated indeces
-        """
-        return OrderedDict((int(id), i) for i, id in enumerate(self.burn_mats))
+    def _get_mat_id(self, val):
+        """Helper method for getting material id from Material obj or name"""
 
-    def _initialize_removal_rates(self):
-        """Initialize removal rates container
-        Returns
-        ----------
-        OrderedDict of str and OrderedDict
-            OrderedDict of depletable material id and OrderedDict to fill
-        """
-        return OrderedDict((id, OrderedDict()) for id in self.burn_mats)
+        if isinstance(val, Material):
+            check_value('Material depletable', str(val.id), self.burn_mats)
+            val = val.id
 
-    def transfer_matrix_index(self):
-        """Get transfer matrices indeces
-        Returns
-        ----------
-        list of tuples :
-            List of tuples pairs to order the transfer matrices
-            when building the coupled matrix
-        """
-        transfer_index = OrderedDict()
-        for id, val in self.removal_rates.items():
-            if val:
-                for elm, [tr, mat] in val.items():
-                    if mat is not None:
-                        j = self.ord_burn[id]
-                        i = self.ord_burn[mat]
-                        transfer_index[(i,j)] = None
-        return list(transfer_index.keys())
+        elif isinstance(val, str):
+            if val.isnumeric():
+                check_value('Material id', str(val), self.burn_mats)
+            else:
+                check_value('Material name', val,
+                        [mat.name for mat in self.materials if mat.depletable])
+                val = [mat.id for mat in self.materials if mat.name == val][0]
+
+        elif isinstance(val, int):
+            check_value('Material id', str(val), self.burn_mats)
+
+        return str(val)
 
     def get_removal_rate(self, mat, element):
         """Extract removal rates
@@ -108,7 +90,7 @@ class MsrContinuous:
         removal_rate : float
             Removal rate value
         """
-        mat = self._get_mat_index(mat)
+        mat = self._get_mat_id(mat)
         return self.removal_rates[mat][element][0]
 
     def get_destination_mat(self, mat, element):
@@ -124,8 +106,9 @@ class MsrContinuous:
         destination_mat : str
             Depletable material id to where elements get transferred
         """
-        mat = self._get_mat_index(mat)
-        return self.removal_rates[mat][element][1]
+        mat = self._get_mat_id(mat)
+        if element in self.removal_rates[mat]:
+            return self.removal_rates[mat][element][1]
 
     def get_elements(self, mat):
         """Extract removing elements for a given material
@@ -138,16 +121,11 @@ class MsrContinuous:
         elements : list
             List of elements
         """
-        mat = self._get_mat_index(mat)
-        elements=[]
-        for k, v in self.removal_rates.items():
-            if k == mat:
-                for elm, _ in v.items():
-                    elements.append(elm)
-        return elements
+        mat = self._get_mat_id(mat)
+        if mat in self.removal_rates.keys():
+            return self.removal_rates[mat].keys()
 
-    def set_removal_rate(self, mat, elements, removal_rate, dest_mat=None,
-                         units='1/s'):
+    def set_removal_rate(self, mat, elements, removal_rate, dest_mat=None):
         """Set removal rates to depletable material
         Parameters
         ----------
@@ -163,11 +141,27 @@ class MsrContinuous:
             Removal rates units (not set yet)
             Default : '1/s'
         """
-        mat = self._get_mat_index(mat)
+        mat = self._get_mat_id(mat)
+
+        check_type('removal_rate', removal_rate, Real)
+
         if dest_mat is not None:
-            dest_mat = self._get_mat_index(dest_mat)
+            #prevent for setting tranfert to material if not set as depletable
+            if len(self.burn_mats) > 1:
+                check_value('transfert to material', str(dest_mat),
+                            self.burn_mats)
+            else:
+                raise ValueError(f'Transfer to material {dest_mat} is set '\
+                        'but there is only one depletable material')
+
+            dest_mat = self._get_mat_id(dest_mat)
+
         for element in elements:
-            self.removal_rates[mat][element] = [removal_rate, dest_mat]
+            check_value('Element', element, ELEMENT_SYMBOL.values())
+            self.removal_rates[mat][element] = removal_rate, dest_mat
+            if dest_mat is not None:
+                self.index_transfer.add((dest_mat, mat))
+
 
 class MsrBatchwise(ABC):
     """Abstract Base Class for implementing msr batchwise classes.

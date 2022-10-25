@@ -276,7 +276,7 @@ enum class TallyResult { VALUE, SUM, SUM_SQ };
 
 enum class TallyType { VOLUME, MESH_SURFACE, SURFACE };
 
-enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
+enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION, POINT };
 
 enum class TallyEvent { SURFACE, LATTICE, KILL, SCATTER, ABSORB };
 

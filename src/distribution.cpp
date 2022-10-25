@@ -14,6 +14,7 @@
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/xml_interface.h"
+#include "openmc/search.h"
 
 namespace openmc {
 
@@ -277,6 +278,42 @@ double Tabular::sample(uint64_t* seed) const
     }
   }
 }
+
+double Tabular::get_pdf_value(double x,uint64_t* seed) const
+{
+  // get PDF value at x 
+
+  int i;
+  std::size_t n = x_.size();
+  if (x < x_[0]) {
+    return 0;
+  } else if (x > x_[n - 1]) {
+    return 0;
+  } else {
+    i = lower_bound_index(x_.begin(), x_.end(), x);
+  }
+
+  // Determine bounding PDF values
+  double x_i = x_[i];
+  double p_i = p_[i];
+
+  if (interp_ == Interpolation::histogram) {
+    // Histogram interpolation
+    return p_i;
+  } else {
+    // Linear-linear interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    double m = (p_i1 - p_i) / (x_i1 - x_i);
+    if (m == 0.0) {
+      return p_i;
+    } else {
+      return p_i + (x-x_i)*m;
+    }
+  }
+}
+
 
 //==============================================================================
 // Equiprobable implementation

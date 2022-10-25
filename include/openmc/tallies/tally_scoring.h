@@ -50,6 +50,7 @@ private:
   void compute_index_weight();
 
   const Tally& tally_;
+  Particle ghost_particle();
 };
 
 //==============================================================================
@@ -67,8 +68,25 @@ private:
 //! \param p The particle being tracked
 void score_collision_tally(Particle& p);
 
+//! Score tallies using the next event estimator.
+//
+//! This is triggered after every collision.
+//
+//! \param p The particle being tracked
+void score_point_tally(Particle& p);
+
+Position GetRotVector(double phi ,Position u_lab ,Position k );
+
 //! Score tallies based on a simple count of events (for continuous energy).
 //
+void boostf( double A[4], double B[4], double X[4]);
+double Vdot(double A[4],double B[4]);
+void Vcros(double A[4],double B[4],double C[4]);
+void Vunit(double A[4] ,double B[4]);
+
+
+void getMu_COM(double x_det , double y_det , double z_det ,Particle p_col , double awr , double ReturnArray[],int diff_mode,double dl );
+
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked

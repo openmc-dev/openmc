@@ -53,6 +53,7 @@ vector<int> active_tallies;
 vector<int> active_analog_tallies;
 vector<int> active_tracklength_tallies;
 vector<int> active_collision_tallies;
+vector<int> active_point_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 } // namespace model
@@ -262,6 +263,7 @@ Tally::Tally(pugi::xml_node node)
   // Check if user specified estimator
   if (check_for_node(node, "estimator")) {
     std::string est = get_node_value(node, "estimator");
+    fmt::print("est = {}\n",est);
     if (est == "analog") {
       estimator_ = TallyEstimator::ANALOG;
     } else if (est == "tracklength" || est == "track-length" ||
@@ -289,6 +291,18 @@ Tally::Tally(pugi::xml_node node)
 
       // Set estimator to collision estimator
       estimator_ = TallyEstimator::COLLISION;
+
+    } else if (est == "point") {
+      // If the estimator was set to an analog estimator, this means the
+      // tally needs post-collision information
+      if (estimator_ == TallyEstimator::ANALOG) {
+        throw std::runtime_error {fmt::format("Cannot use collision estimator "
+                                              "for tally ",
+          id_)};
+      }
+
+      // Set estimator to collision estimator
+      estimator_ = TallyEstimator::POINT;
 
     } else {
       throw std::runtime_error {
@@ -871,8 +885,10 @@ void setup_active_tallies()
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
+  model::active_point_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
+  
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
@@ -888,6 +904,9 @@ void setup_active_tallies()
           break;
         case TallyEstimator::TRACKLENGTH:
           model::active_tracklength_tallies.push_back(i);
+          break;
+        case TallyEstimator::POINT:
+          model::active_point_tallies.push_back(i);
           break;
         case TallyEstimator::COLLISION:
           model::active_collision_tallies.push_back(i);
@@ -919,6 +938,7 @@ void free_memory_tally()
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
+  model::active_point_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
 

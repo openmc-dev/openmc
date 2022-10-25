@@ -153,6 +153,7 @@ extern vector<int> active_tallies;
 extern vector<int> active_analog_tallies;
 extern vector<int> active_tracklength_tallies;
 extern vector<int> active_collision_tallies;
+extern vector<int> active_point_tallies;
 extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;
 } // namespace model

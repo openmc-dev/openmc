@@ -18,6 +18,7 @@
 
 namespace openmc {
 
+
 // Forward declare the Surface class for use in Particle::cross_vacuum_bc, etc.
 class Surface;
 
@@ -34,10 +35,14 @@ public:
   // Constructors
 
   Particle() = default;
-
+  //virtual ~Particle() = default;
   double speed() const;
 
   //! create a secondary particle
+  //
+  //
+  double getMass() const;
+  //
   //
   //! stores the current phase space attributes of the particle in the
   //! secondary bank and increments the number of sites in the secondary bank.
@@ -54,7 +59,7 @@ public:
   //! simply as a secondary particle.
   //! \param src Source site data
   void from_source(const SourceSite* src);
-
+  void initilze_ghost_particle(Particle& p,Direction u, double E);
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();

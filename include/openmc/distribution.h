@@ -186,7 +186,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const;
-
+  double get_pdf_value(double x,uint64_t* seed) const;
   // x property
   vector<double>& x() { return x_; }
   const vector<double>& x() const { return x_; }

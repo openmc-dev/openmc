@@ -692,7 +692,7 @@ std::vector<std::string> Tally::scores() const
 {
   std::vector<std::string> score_names;
   for (int score : scores_)
-    score_names.push_back(score_name(score));
+    score_names.push_back(reaction_name(score));
   return score_names;
 }
 

@@ -5,6 +5,7 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/nuclide.h"
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/physics_common.h"
@@ -111,6 +112,13 @@ void free_memory_weight_windows()
 // WeightWindowSettings implementation
 //==============================================================================
 
+WeightWindows::WeightWindows(int32_t id)
+{
+  index_ = variance_reduction::weight_windows.size();
+  set_id(id);
+  set_defaults();
+}
+
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
   // Make sure required elements are present
@@ -135,7 +143,8 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   mesh_idx_ = model::mesh_map.at(mesh_id);
 
   // energy bounds
-  energy_bounds_ = get_node_array<double>(node, "energy_bounds");
+  if (check_for_node(node, "energy_bounds"))
+    energy_bounds_ = get_node_array<double>(node, "energy_bounds");
 
   // get the survival value - optional
   if (check_for_node(node, "survival_ratio")) {
@@ -172,6 +181,8 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   // read the lower/upper weight bounds
   this->set_weight_windows(get_node_array<double>(node, "lower_ww_bounds"),
     get_node_array<double>(node, "upper_ww_bounds"));
+
+  set_defaults();
 }
 
 WeightWindows::~WeightWindows()
@@ -181,8 +192,19 @@ WeightWindows::~WeightWindows()
 
 WeightWindows* WeightWindows::create(int32_t id)
 {
-  variance_reduction::weight_windows.push_back(make_unique<WeightWindows>(id));
+  variance_reduction::weight_windows.push_back(make_unique<WeightWindows>());
   return variance_reduction::weight_windows.back().get();
+}
+
+void WeightWindows::set_defaults()
+{
+
+  // ensure default values are set
+  if (energy_bounds_.size() == 0) {
+    int p_type = static_cast<int>(particle_type_);
+    energy_bounds_.push_back(data::energy_min[p_type]);
+    energy_bounds_.push_back(data::energy_max[p_type]);
+  }
 }
 
 void WeightWindows::set_id(int32_t id)
@@ -212,8 +234,26 @@ void WeightWindows::set_id(int32_t id)
 
   // Update ID and entry in the mesh map
   id_ = id;
-  variance_reduction::ww_map[id] =
-    variance_reduction::weight_windows.size() - 1;
+  variance_reduction::ww_map[id] = index_;
+}
+
+void WeightWindows::set_mesh(int32_t mesh_idx)
+{
+
+  if (mesh_idx < 0 || mesh_idx_ > model::meshes.size())
+    fatal_error(fmt::format("Failed to find a mesh for index {}", mesh_idx));
+
+  mesh_idx_ = mesh_idx;
+}
+
+void WeightWindows::set_mesh(const std::unique_ptr<Mesh>& mesh)
+{
+  set_mesh(mesh.get());
+}
+
+void WeightWindows::set_mesh(const Mesh* mesh)
+{
+  set_mesh(model::mesh_map[mesh->id_]);
 }
 
 WeightWindow WeightWindows::get_weight_window(const Particle& p) const
@@ -259,7 +299,8 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 double WeightWindows::bounds_size() const
 {
   int num_spatial_bins = this->mesh().n_bins();
-  int num_energy_bins = energy_bounds_.size() - 1;
+  int num_energy_bins =
+    energy_bounds_.size() > 0 ? energy_bounds_.size() - 1 : 1;
   return num_spatial_bins * num_energy_bins;
 }
 
@@ -281,7 +322,8 @@ void WeightWindows::set_weight_windows(
 
   // check that the number of weight window entries is correct
   if (lower_ww_.size() != this->bounds_size()) {
-    int num_energy_bins = energy_bounds_.size() - 1;
+    int num_energy_bins =
+      energy_bounds_.size() > 0 ? energy_bounds_.size() - 1 : 1;
     int num_spatial_bins = this->mesh().n_bins();
     auto err_msg =
       fmt::format("In weight window domain {} the number of spatial "
@@ -324,6 +366,18 @@ void WeightWindows::to_hdf5(hid_t group) const
 //==============================================================================
 // C API
 //==============================================================================
+
+extern "C" int openmc_get_weight_windows_index(int32_t id, int32_t* idx)
+{
+  auto it = variance_reduction::ww_map.find(id);
+  if (it == variance_reduction::ww_map.end()) {
+    set_errmsg(fmt::format("No weight windows exist with ID={}", id));
+    return OPENMC_E_INVALID_ID;
+  }
+
+  *idx = it->second;
+  return 0;
+}
 
 extern "C" int openmc_set_weight_windows(
   int ww_id, size_t n, const double* lower_bounds, const double* upper_bounds)
@@ -377,13 +431,13 @@ extern "C" int openmc_update_weight_windows(int tally_idx, int ww_idx,
   int score_idx = score_it - tally_scores.begin();
   // sum results over all nuclides and select results related to a single score
   auto score_view =
-    xt::view(xt::sum(tally->results(), {2}), score_idx, TallyResult::SUM);
+    xt::view(tally->results(), xt::all(), score_idx, TallyResult::SUM);
 
   // now generate new weight window values
   double score_max = *std::max(score_view.begin(), score_view.end());
 
   // normalize the score by the max value
-  xt::xarray<double> lower_bounds(score_view / score_max);
+  xt::xarray<double> lower_bounds(score_view);
 
   wws->set_weight_windows(lower_bounds, 5.0);
 

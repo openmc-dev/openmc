@@ -75,15 +75,24 @@ struct WeightWindow {
 class WeightWindows {
 public:
   // Constructors
-  WeightWindows(int32_t id = -1) { set_id(id); }
+  WeightWindows(int32_t id = -1);
   WeightWindows(pugi::xml_node node);
   ~WeightWindows();
   static WeightWindows* create(int32_t id = -1);
 
   // Methods
 
+  //! Ready the weight window class for use
+  void set_defaults();
+
   //! Set the weight window ID
   void set_id(int32_t id = -1);
+
+  void set_mesh(const std::unique_ptr<Mesh>& mesh);
+
+  void set_mesh(const Mesh* mesh);
+
+  void set_mesh(int32_t mesh_idx);
 
   // NOTE: This is unused for now but may be used in the future
   //! Write weight window settings to an HDF5 file
@@ -102,22 +111,26 @@ public:
   void set_weight_windows(
     gsl::span<const double> lower_bounds, double bound_ratio);
 
+  void set_energy_bounds(gsl::span<const double> e_bounds);
+
   // Accessors
   int32_t id() const { return id_; }
   const Mesh& mesh() const { return *model::meshes[mesh_idx_]; }
 
 private:
   // Data members
-  int32_t id_;                     //!< Unique ID
-  ParticleType particle_type_;     //!< Particle type to apply weight windows to
-  vector<double> energy_bounds_;   //!< Energy boundaries [eV]
-  vector<double> lower_ww_;        //!< Lower weight window bounds
-  vector<double> upper_ww_;        //!< Upper weight window bounds
-  double survival_ratio_ {3.0};    //!< Survival weight ratio
+  int32_t id_;       //!< Unique ID
+  gsl::index index_; //!< Index into weight windows vector
+  ParticleType particle_type_ {
+    ParticleType::neutron};      //!< Particle type to apply weight windows to
+  vector<double> energy_bounds_; //!< Energy boundaries [eV]
+  vector<double> lower_ww_;      //!< Lower weight window bounds
+  vector<double> upper_ww_;      //!< Upper weight window bounds
+  double survival_ratio_ {3.0};  //!< Survival weight ratio
   double max_lb_ratio_ {1.0}; //!< Maximum lower bound to particle weight ratio
   double weight_cutoff_ {DEFAULT_WEIGHT_CUTOFF}; //!< Weight cutoff
-  int max_split_ {10};             //!< Maximum value for particle splitting
-  int32_t mesh_idx_;               //!< index in meshes vector
+  int max_split_ {10}; //!< Maximum value for particle splitting
+  int32_t mesh_idx_;   //!< Index in meshes vector
 };
 
 } // namespace openmc

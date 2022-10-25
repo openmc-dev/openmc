@@ -59,6 +59,26 @@ double Particle::speed() const
   // Calculate speed via v = c * sqrt(1 - γ^-2)
   return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
 }
+double Particle::getMass() const
+{
+  // Determine mass in eV/c^2
+  double mass;
+  switch (this->type()) {
+  case ParticleType::neutron:
+    mass = MASS_NEUTRON_EV;
+    break;
+  case ParticleType::photon:
+    mass = 0.0;
+    break;
+  case ParticleType::electron:
+  case ParticleType::positron:
+    mass = MASS_ELECTRON_EV;
+    break;
+  }
+
+  return mass;
+}
+
 
 void Particle::initilze_ghost_particle(Particle& p,Direction u_new, double E_new)
 {

@@ -1,14 +1,26 @@
 #include <iostream>
 #include <cmath>
 #include "/home/open_mc/openmc/include/openmc/position.h"
+#include "openmc/boundary_condition.h"
+
+#include <exception>
+
+#include <fmt/core.h>
+
+#include "openmc/constants.h"
+#include "openmc/error.h"
+#include "openmc/surface.h"
 using namespace std;
+
 
 void boostf( double A[4], double B[4], double X[4]);
 double Vdot(double A[4],double B[4]);
 void Vcros(double A[4],double B[4],double C[4]);
 void Vunit(double A[4] ,double B[4]);
 
-int getMu_lab(double x_det , double y_det , double z_det ,Position p_col , double awr , double incoming_mass )
+
+
+int getMu_lab(double x_det , double y_det , double z_det ,openmc::Position p_col , double awr , double incoming_mass )
 {
   cout<<"  p col "<<p_col<<endl;
   double r1[4]= {0, x_det, y_det, z_det};  // detector position lab {ignor, x, y, z}

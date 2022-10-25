@@ -25,6 +25,10 @@
 int ghost_counter=0;
 namespace openmc {
 
+namespace ghost {
+vector<Particle> ghost_particles;
+}
+
 //==============================================================================
 // FilterBinIter implementation
 //==============================================================================
@@ -2383,17 +2387,30 @@ void score_collision_tally(Particle& p)
   double cos_lab = u_lab.dot(p.u_last());
   double theta_lab = std::acos(cos_lab);
   double sin_lab = std::sin(theta_lab);
+  fmt::print("awr = {}\n",awr);
+  fmt::print("sin_lab = {}\n",sin_lab);
+  fmt::print("cos_lab = {}\n",cos_lab);
   double mu_COM = (std::sqrt(awr*awr - sin_lab*sin_lab)*cos_lab - sin_lab*sin_lab)/awr;
   double vel = std::sqrt(p.E_last());
   double theta_pdf = d_->angle().get_pdf_value(p.E_last(),mu_COM,p.current_seed());
+  fmt::print("particle E = {}\n",p.E_last());
+  fmt::print("particle mu_COM = {}\n",mu_COM);
   double E_ghost = p.E_last()*(1+awr*awr+2*awr*mu_COM)/(1+awr)/(1+awr);
-  if(ghost_counter>-1){
-  Particle ghost_particle;//=Particle();
+  fmt::print("u_lab = {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
+  fmt::print("mu_COM is {}\n",std::isnan(mu_COM));
+  if(!std::isnan(mu_COM))
+  {
+  fmt::print("try to create ghost particle\n",ghost_counter);
+  Particle ghost_particle=Particle();
+  ghost::ghost_particles.resize(1);
   ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);
+  fmt::print("---------------------ghost particle created {}---------------------\n",ghost_counter);
+
+  fmt::print("ghost_particle E = {}\n",E_ghost);
+  fmt::print("ghost_particle vector E = {}\n",ghost_particle.E());
+
   ghost_particle.event_calculate_xs();
   ghost_counter++;
-  fmt::print("---------------------ghost particel created {}---------------------\n",ghost_counter);
-  fmt::print("ghost_particle E = {}\n",ghost_particle.E());
 
   fmt::print("pos = {0} , {1} , {2}\n",ghost_particle.r().x,ghost_particle.r().y,ghost_particle.r().z);
   fmt::print("ghost_particle u = {0} , {1} , {2}\n",ghost_particle.u().x,ghost_particle.u().y,ghost_particle.u().z);
@@ -2405,7 +2422,7 @@ void score_collision_tally(Particle& p)
   fmt::print("advane XS 1= {}\n",ghost_particle.macro_xs().total);
   total_MFP += advance_distance*ghost_particle.macro_xs().total;
   
-  // Advance particle in space and time
+  //Advance particle in space and time
   for (int j = 0; j < ghost_particle.n_coord(); ++j) {
     ghost_particle.coord(j).r += advance_distance * ghost_particle.coord(j).u;
   }
@@ -2424,50 +2441,17 @@ void score_collision_tally(Particle& p)
   fmt::print("advane XS 2= {}\n",ghost_particle.macro_xs().total);
 
   // kill patricle
-  ghost_particle.event_death();
-  }
+  ghost::ghost_particles[0].event_death();
+  ghost::ghost_particles.resize(0);
 
-  //ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);
-  //ghost_particle.event_calculate_xs();
-
-
-
-  if(p.E_last()>2e5)
-  {
-  //fmt::print("pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
-  //fmt::print("u_last = {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
-  //fmt::print("u_lab = {0} , {1} , {2}\n",u_lab.x,u_lab.y,u_lab.z);
-
-
-  if(cos_lab > 1)
-  {
-  cos_lab = 1;
-  if(cos_lab>1.0001)
-  fmt::print("-----------------------error cos_lab = {}-----------------------\n",cos_lab);
-  }
-  //fmt::print("cos_lab = {}\n",cos_lab);
-  //fmt::print("awr = {}\n",awr);
-
-
-  //fmt::print("mu_COM = {}\n",mu_COM);
-  
-
-  //fmt::print("theta pdf = {}\n",theta_pdf);
-  
-
-  //fmt::print("ghost_particle E = {}\n",ghost_particle.E());
-  //fmt::print("ghost_particle u = {0} , {1} , {2}\n",ghost_particle.u().x,ghost_particle.u().y,ghost_particle.u().z);
-
-  //fmt::print("ghost_particle XS = {}\n",ghost_particle.macro_xs().total);
-  
+  flux = 0.5*ghost_particle.wgt()*exp(-(distance-1)*ghost_particle.macro_xs().total)/(2*3.14*distance*distance);
   }
 
 
-  if (p.type() == ParticleType::neutron || p.type() == ParticleType::photon) {
-    flux = 0;//p.wgt_last() / p.macro_xs().total;
-    if(p.event_mt() == 2)
+  if (p.type() != ParticleType::neutron) {
+    if(p.event_mt() != 2)
     {
-      flux = 0;//0.5*ghost_particle.wgt()*exp(-(distance-1)*ghost_particle.macro_xs().total)/(2*3.14*distance*distance);
+      flux = 0;
     }
   }
 

@@ -39,13 +39,13 @@ class MsrContinuous:
     def __init__(self, operator, model, units='1/s'):
 
         self.operator = operator
-        self.model = model
+        self.materials = model.materials
         self.burn_mats = operator.burnable_mats
-        self.index_burn = OrderedDict((mat, i) for i, mat in enumerate(self.burn_mats))
-        self.index_msr = [(i, i) for i in self.index_burn.values()]
 
         #initialize removal rates container
-        self.removal_rates = OrderedDict((mat, OrderedDict()) for mat in self.burn_mats)
+        self.removal_rates = OrderedDict((mat, OrderedDict()) for mat in \
+                                          self.burn_mats)
+        self.index_transfer = set()
         self.units = units
 
     @property
@@ -69,33 +69,13 @@ class MsrContinuous:
                 check_value('Material id', str(val), self.burn_mats)
             else:
                 check_value('Material name', val,
-                                [mat.name for mat in self.model.materials \
-                                 if mat.depletable])
-                val = [mat.id for mat in self.model.materials \
-                       if mat.name == val][0]
+                        [mat.name for mat in self.materials if mat.depletable])
+                val = [mat.id for mat in self.materials if mat.name == val][0]
 
         elif isinstance(val, int):
             check_value('Material id', str(val), self.burn_mats)
 
         return str(val)
-
-    def transfer_matrix_index(self):
-        """Get transfer matrices indeces
-        Returns
-        ----------
-        list of tuples :
-            List of tuples pairs to order the transfer matrices
-            when building the coupled matrix
-        """
-        transfer_index = OrderedDict()
-        for mat1, rr in self.removal_rates.items():
-            if rr:
-                for _, mat2 in rr.values():
-                    if mat2 is not None:
-                        j = self.index_burn[mat1]
-                        i = self.index_burn[mat2]
-                        transfer_index[(i,j)] = None
-        return list(transfer_index.keys())
 
     def get_removal_rate(self, mat, element):
         """Extract removal rates
@@ -127,7 +107,8 @@ class MsrContinuous:
             Depletable material id to where elements get transferred
         """
         mat = self._get_mat_id(mat)
-        return self.removal_rates[mat][element][1]
+        if element in self.removal_rates[mat]:
+            return self.removal_rates[mat][element][1]
 
     def get_elements(self, mat):
         """Extract removing elements for a given material
@@ -141,12 +122,8 @@ class MsrContinuous:
             List of elements
         """
         mat = self._get_mat_id(mat)
-        elements=[]
-        for k, v in self.removal_rates.items():
-            if k == mat:
-                for elm, _ in v.items():
-                    elements.append(elm)
-        return elements
+        if mat in self.removal_rates.keys():
+            return self.removal_rates[mat].keys()
 
     def set_removal_rate(self, mat, elements, removal_rate, dest_mat=None):
         """Set removal rates to depletable material
@@ -171,18 +148,19 @@ class MsrContinuous:
         if dest_mat is not None:
             #prevent for setting tranfert to material if not set as depletable
             if len(self.burn_mats) > 1:
-                check_value('transfert to material', dest_mat, self.burn_mats)
+                check_value('transfert to material', str(dest_mat),
+                            self.burn_mats)
             else:
                 raise ValueError(f'Transfer to material {dest_mat} is set '\
                         'but there is only one depletable material')
+
             dest_mat = self._get_mat_id(dest_mat)
 
         for element in elements:
             check_value('Element', element, ELEMENT_SYMBOL.values())
-            self.removal_rates[mat][element] = [removal_rate, dest_mat]
+            self.removal_rates[mat][element] = removal_rate, dest_mat
             if dest_mat is not None:
-                self.index_msr.append((self.index_burn[mat],
-                                       self.index_burn[dest_mat]))
+                self.index_transfer.add((dest_mat, mat))
 
 
 class MsrBatchwise(ABC):

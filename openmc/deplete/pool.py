@@ -76,34 +76,48 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
         matrices = map(matrix_func, repeat(chain), rates, fission_yields)
 
     if msr is not None:
-        rr_matrices = map(chain.form_rr_matrix, repeat(msr),
-                             msr.index_msr)
+        # calculate removal rates terms as diagonal matrices
+        removal = map(chain.form_rr_term, repeat(msr), msr.burn_mats)
+        #subtract removal rates terms from bateman matrices
+        matrices = [mat1 - mat2 for (mat1, mat2) in zip(matrices, removal)]
 
-        matrices = [mat1 - mat2 for (mat1, mat2) in zip(matrices, rr_matrices)]
+        if len(msr.index_transfer) > 0:
+            # calculate transfer rates terms as diagonal matrices
+            transfer = list(map(chain.form_rr_term, repeat(msr),
+                                msr.index_transfer))
 
-
-        if len(msr.index_msr) > len(msr.burn_mats):
-            matrices = dict(zip(msr.index_msr, matrices + rr_matrices))
-            # Order matrices in a 2d-array and build sparse coupled matrix
-            raws = []
-            for i in range(msr.n_burn):
+            # Combine all matrices together in a single matrix of matrices
+            # to be solved in one-go
+            n_rows = n_cols = len(msr.burn_mats)
+            rows = []
+            for row in range(n_rows):
                 cols = []
-                for j in range(msr.n_burn):
-                    if (i,j) in matrices.keys():
-                        cols.append(matrices[(i,j)])
+                for col in range(n_cols):
+                    if row == col:
+                        # Fill the diagonals with the Bateman matrices
+                        cols.append(matrices[row])
+                    elif (msr.burn_mats[row], msr.burn_mats[col]) in \
+                                    msr.index_transfer:
+
+                        index = list(msr.index_transfer).index( \
+                                    (msr.burn_mats[row], msr.burn_mats[col]))
+                        # Fill the off-diagonals with the transfer matrices
+                        print(f'{row,col}: {index}')
+                        cols.append(transfer[index])
                     else:
                         cols.append(None)
-                raws.append(cols)
-            coupled_matrix = bmat(raws)
-            x = np.concatenate([_x for _x in x])
-            x_result = func(coupled_matrix, x, dt)
-            split = np.cumsum([i.shape[0] for i in list(matrices.values())[:msr.n_burn]])
-            x_result = np.split(x_result, split.tolist()[:-1])
+                rows.append(cols)
+            matrix = bmat(rows)
+
+            #concatenate vectors of nuclides in one
+            _x = np.concatenate([xx for xx in x])
+            x_result = func(matrix, _x, dt)
+
+            # Split back the nuclide vector result into the original form
+            x_result = np.split(x_result, np.cumsum([len(i) for i in x])[:-1])
+
             return x_result
 
-    matrices=list(matrices)
-    print(len(matrices))
-    print(matrices)
     inputs = zip(matrices, x, repeat(dt))
     if USE_MULTIPROCESSING:
         with Pool() as pool:

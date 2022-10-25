@@ -306,6 +306,8 @@ void Particle::event_collide()
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
+  if (!model::active_point_tallies.empty())
+    score_point_tally(*this);
   if (!model::active_collision_tallies.empty())
     score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {

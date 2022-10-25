@@ -195,3 +195,19 @@ def test_weightwindows(model):
 
         compare_results('neutron', analog_tally, ww_tally)
         compare_results('photon', analog_tally, ww_tally)
+
+
+def test_lower_ww_bounds_shape():
+    """checks that lower_ww_bounds is reshaped to the mesh dimension when set"""
+    ww_mesh = openmc.RegularMesh()
+    ww_mesh.lower_left = (-10, -10, -10)
+    ww_mesh.upper_right = (10, 10, 10)
+    ww_mesh.dimension = (2, 3, 4)
+
+    ww = openmc.WeightWindows(
+        mesh=ww_mesh,
+        lower_ww_bounds=[1]*24,
+        upper_bound_ratio=5,
+        energy_bounds=(1, 1e40)
+    )
+    assert ww.lower_ww_bounds.shape == (2, 3, 4, 1)

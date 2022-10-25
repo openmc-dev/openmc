@@ -2434,6 +2434,7 @@ void score_point_tally(Particle& p)
 {
   col_counter ++;
   fmt::print("------------------------collison happened------------------------\n");
+
   fmt::print("col counter = {}\n",col_counter);
   std::cout << "mass in ev  " << p.getMass() << std::endl ;
   // Determine the collision estimate of the flux
@@ -2443,6 +2444,10 @@ void score_point_tally(Particle& p)
   double flux1 = 0.0;
   double flux2 = 0.0;
   const auto& nuc {data::nuclides[p.event_nuclide()]};
+  const auto& micro {p.neutron_xs(p.event_nuclide())};
+  int i_temp = micro.index_temp;
+  double kT = nuc->multipole_ ? p.sqrtkT() * p.sqrtkT() : nuc->kTs_[i_temp];
+  fmt::print("kT = {}\n",kT);
   double awr = nuc->awr_;
   double dl = 0;
   getMu_COM(0,0,0,p,awr,ReturnArray , 0, dl);

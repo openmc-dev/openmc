@@ -2387,12 +2387,12 @@ void score_collision_tally(Particle& p)
   double vel = std::sqrt(p.E_last());
   double theta_pdf = d_->angle().get_pdf_value(p.E_last(),mu_COM,p.current_seed());
   double E_ghost = p.E_last()*(1+awr*awr+2*awr*mu_COM)/(1+awr)/(1+awr);
-  if(ghost_counter<5){
-  Particle ghost_particle=Particle();
+  if(ghost_counter>-1){
+  Particle ghost_particle;//=Particle();
   ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);
   ghost_particle.event_calculate_xs();
   ghost_counter++;
-  fmt::print("---------------------ghost particel created---------------------\n");
+  fmt::print("---------------------ghost particel created {}---------------------\n",ghost_counter);
   fmt::print("ghost_particle E = {}\n",ghost_particle.E());
 
   fmt::print("pos = {0} , {1} , {2}\n",ghost_particle.r().x,ghost_particle.r().y,ghost_particle.r().z);
@@ -2422,6 +2422,9 @@ void score_collision_tally(Particle& p)
   advance_distance = ghost_particle.boundary().distance;
   fmt::print("advane distance 2 ={} \n",advance_distance);
   fmt::print("advane XS 2= {}\n",ghost_particle.macro_xs().total);
+
+  // kill patricle
+  ghost_particle.event_death();
   }
 
   //ghost_particle.initilze_ghost_particle(p,u_lab,E_ghost);

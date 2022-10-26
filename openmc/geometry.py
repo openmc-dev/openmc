@@ -37,6 +37,7 @@ class Geometry:
     def __init__(self, root=None):
         self._root_universe = None
         self._offsets = {}
+        self._redundant_surface_map = None
         self.merge_surfaces = False
         self.surface_precision = 10
         if root is not None:
@@ -445,15 +446,21 @@ class Geometry:
             that should replace it.
 
         """
-        tally = defaultdict(list)
-        for surf in self.get_all_surfaces().values():
-            coeffs = tuple(round(surf._coefficients[k], self.surface_precision)
-                           for k in surf._coeff_keys)
-            key = (surf._type,) + coeffs
-            tally[key].append(surf)
-        return {replace.id: keep
-                for keep, *redundant in tally.values()
-                for replace in redundant}
+        # check if redundant surfaces have not been calculated yet
+        if self._redundant_surface_map is None:
+            tally = defaultdict(list)
+            for surf in self.get_all_surfaces().values():
+                coeffs = tuple(round(surf._coefficients[k],
+                                     self.surface_precision)
+                               for k in surf._coeff_keys)
+                key = (surf._type,) + coeffs
+                tally[key].append(surf)
+
+            self._redundant_surface_map = {replace.id: keep
+                                           for keep, *redundant in tally.values()
+                                           for replace in redundant}
+
+        return self._redundant_surface_map
 
     def _get_domains_by_name(self, name, case_sensitive, matching, domain_type):
         if not case_sensitive:
@@ -607,11 +614,14 @@ class Geometry:
         # Get redundant surfaces
         redundant_surfaces = self.get_redundant_surfaces()
 
-        # Iterate through all cells contained in the geometry
-        for cell in self.get_all_cells().values():
-            # Recursively remove redundant surfaces from regions
-            if cell.region:
-                cell.region.remove_redundant_surfaces(redundant_surfaces)
+        if redundant_surfaces:
+            # Iterate through all cells contained in the geometry
+            for cell in self.get_all_cells().values():
+                # Recursively remove redundant surfaces from regions
+                if cell.region:
+                    cell.region.remove_redundant_surfaces(redundant_surfaces)
+
+        self._redundant_surface_map = None
 
     def determine_paths(self, instances_only=False):
         """Determine paths through CSG tree for cells and materials.

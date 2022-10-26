@@ -364,8 +364,8 @@ class SourceParticle:
     """
     def __init__(
         self,
-        r: Tuple[float, float, float] = (0., 0., 0.),
-        u: Tuple[float, float, float] = (0., 0., 1.),
+        r: typing.Iterable[float] = (0., 0., 0.),
+        u: typing.Iterable[float] = (0., 0., 1.),
         E: float = 1.0e6,
         time: float = 0.0,
         wgt: float = 1.0,
@@ -401,7 +401,7 @@ class SourceParticle:
 
 
 def write_source_file(
-    source_particles: 'typing.Iterable[openmc.SourceParticle]',
+    source_particles: typing.Iterable[SourceParticle],
     filename: PathLike, **kwargs
 ):
     """Write a source file using a collection of source particles

@@ -224,7 +224,7 @@ def atomic_mass(isotope):
     if not _ATOMIC_MASS:
 
         # Load data from AME2016 file
-        mass_file = os.path.join(os.path.dirname(__file__), 'mass16.txt')
+        mass_file = os.path.join(os.path.dirname(__file__), 'mass_1.mas20.txt')
         with open(mass_file, 'r') as ame:
             # Read lines in file starting at line 40
             for line in itertools.islice(ame, 39, None):

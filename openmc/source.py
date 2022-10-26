@@ -257,7 +257,7 @@ class Source:
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element) -> openmc.Source:
+    def from_xml_element(cls, elem: ET.Element) -> 'openmc.Source':
         """Generate source from an XML element
 
         Parameters

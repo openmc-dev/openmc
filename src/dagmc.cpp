@@ -486,13 +486,20 @@ void DAGUniverse::legacy_assign_material(
 
   // if no material was set using a name, assign by id
   if (!mat_found_by_name) {
+    bool found_by_id = true;
     try {
       auto id = std::stoi(mat_string);
+      if (model::material_map.find(id) == model::material_map.end())
+        found_by_id = false;
       c->material_.emplace_back(id);
     } catch (const std::invalid_argument&) {
+      found_by_id = false;
+    }
+
+    // report failure for failed int conversion or missing material
+    if (!found_by_id)
       fatal_error(fmt::format(
         "No material '{}' found for volume (cell) {}", mat_string, c->id_));
-    }
   }
 
   if (settings::verbosity >= 10) {

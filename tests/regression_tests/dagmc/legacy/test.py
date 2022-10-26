@@ -11,6 +11,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def model():
+    openmc.reset_auto_ids()
 
     model = openmc.model.Model()
 
@@ -54,6 +55,24 @@ def model():
     model.materials = mats
 
     return model
+
+
+def test_missing_material_id(model):
+    # remove the last material, which is identified by ID in the DAGMC file
+    model.materials = model.materials[:-1]
+    with pytest.raises(RuntimeError) as exec_info:
+        model.run()
+    exp_error_msg = "Material with ID '41' not found for volume (cell) 3"
+    assert exp_error_msg in str(exec_info.value)
+
+
+def test_missing_material_name(model):
+    # remove the first material, which is identified by name in the DAGMC file
+    model.materials = model.materials[1:]
+    with pytest.raises(RuntimeError) as exec_info:
+        model.run()
+    exp_error_msg = "No material 'no-void fuel' found for volume (cell) 1"
+    assert exp_error_msg in str(exec_info.value)
 
 
 def test_dagmc(model):

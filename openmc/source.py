@@ -84,7 +84,7 @@ class Source:
         parameters: Optional[str] = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Optional[Union[openmc.Cell, openmc.Material, 'openmc.Universe']] = None
+        domains: Optional[Union[openmc.Cell, openmc.Material, openmc.Universe]] = None
     ):
         self._space = None
         self._angle = None
@@ -257,7 +257,7 @@ class Source:
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element) -> 'openmc.Source':
+    def from_xml_element(cls, elem: ET.Element) -> openmc.Source:
         """Generate source from an XML element
 
         Parameters

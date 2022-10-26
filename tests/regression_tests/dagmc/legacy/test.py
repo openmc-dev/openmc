@@ -62,7 +62,7 @@ def test_missing_material_id(model):
     model.materials = model.materials[:-1]
     with pytest.raises(RuntimeError) as exec_info:
         model.run()
-    exp_error_msg = "Material with ID '41' not found for volume (cell) 3"
+    exp_error_msg = "Material with name/ID '41' not found for volume (cell) 3"
     assert exp_error_msg in str(exec_info.value)
 
 
@@ -71,7 +71,7 @@ def test_missing_material_name(model):
     model.materials = model.materials[1:]
     with pytest.raises(RuntimeError) as exec_info:
         model.run()
-    exp_error_msg = "No material 'no-void fuel' found for volume (cell) 1"
+    exp_error_msg = "Material with name/ID 'no-void fuel' not found for volume (cell) 1"
     assert exp_error_msg in str(exec_info.value)
 
 

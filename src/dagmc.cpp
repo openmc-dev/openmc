@@ -498,8 +498,9 @@ void DAGUniverse::legacy_assign_material(
 
     // report failure for failed int conversion or missing material
     if (!found_by_id)
-      fatal_error(fmt::format(
-        "No material '{}' found for volume (cell) {}", mat_string, c->id_));
+      fatal_error(
+        fmt::format("Material with name/ID '{}' not found for volume (cell) {}",
+          mat_string, c->id_));
   }
 
   if (settings::verbosity >= 10) {

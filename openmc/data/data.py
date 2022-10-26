@@ -223,19 +223,19 @@ def atomic_mass(isotope):
     """
     if not _ATOMIC_MASS:
 
-        # Load data from AME2016 file
+        # Load data from AME2020 file, Note format change to AME2016
         mass_file = os.path.join(os.path.dirname(__file__), 'mass_1.mas20.txt')
         with open(mass_file, 'r') as ame:
-            # Read lines in file starting at line 40
-            for line in itertools.islice(ame, 39, None):
+            # Read lines in file starting at line 37
+            for line in itertools.islice(ame, 36, None):
                 name = f'{line[20:22].strip()}{int(line[16:19])}'
-                mass = float(line[96:99]) + 1e-6*float(
-                    line[100:106] + '.' + line[107:112])
+                mass = float(line[106:109]) + 1e-6*float(
+                    line[110:116] + '.' + line[117:123])
                 _ATOMIC_MASS[name.lower()] = mass
 
         # For isotopes found in some libraries that represent all natural
         # isotopes of their element (e.g. C0), calculate the atomic mass as
-        # the sum of the atomic mass times the natural abudance of the isotopes
+        # the sum of the atomic mass times the natural abundance of the isotopes
         # that make up the element.
         for element in ['C', 'Zn', 'Pt', 'Os', 'Tl']:
             isotope_zero = element.lower() + '0'

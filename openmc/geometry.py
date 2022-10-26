@@ -18,13 +18,6 @@ class Geometry:
     root : openmc.UniverseBase or Iterable of openmc.Cell, optional
         Root universe which contains all others, or an iterable of cells that
         should be used to create a root universe.
-    cull_surfaces : bool, optional
-        Whether to remove redundant surfaces when the geometry is exported.
-        Defaults to False.
-    surface_precision : int, optional
-        Number of decimal places to round to for comparing the coefficients of
-        surfaces for considering them topologically equivalent. Defaults to 10
-        decimal places.
 
     Attributes
     ----------
@@ -33,7 +26,7 @@ class Geometry:
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
-    cull_surfaces : bool
+    merge_surfaces : bool
         Whether to remove redundant surfaces when the geometry is exported.
     surface_precision : int
         Number of decimal places to round to for comparing the coefficients of
@@ -41,11 +34,11 @@ class Geometry:
 
     """
 
-    def __init__(self, root=None, cull_surfaces=False, surface_precision=10):
+    def __init__(self, root=None):
         self._root_universe = None
         self._offsets = {}
-        self.cull_surfaces = cull_surfaces
-        self.surface_precision = surface_precision
+        self.merge_surfaces = False
+        self.surface_precision = 10
         if root is not None:
             if isinstance(root, openmc.UniverseBase):
                 self.root_universe = root
@@ -64,8 +57,8 @@ class Geometry:
         return self.root_universe.bounding_box
 
     @property
-    def cull_surfaces(self):
-        return self._cull_surfaces
+    def merge_surfaces(self):
+        return self._merge_surfaces
 
     @property
     def surface_precision(self):
@@ -76,10 +69,10 @@ class Geometry:
         check_type('root universe', root_universe, openmc.UniverseBase)
         self._root_universe = root_universe
 
-    @cull_surfaces.setter
-    def cull_surfaces(self, cull_surfaces):
-        check_type('cull surfaces', cull_surfaces, bool)
-        self._cull_surfaces = cull_surfaces
+    @merge_surfaces.setter
+    def merge_surfaces(self, merge_surfaces):
+        check_type('merge surfaces', merge_surfaces, bool)
+        self._merge_surfaces = merge_surfaces
 
     @surface_precision.setter
     def surface_precision(self, surface_precision):
@@ -127,10 +120,10 @@ class Geometry:
         # Find and remove redundant surfaces from the geometry
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
-                          "set the Geometry.cull_surfaces attribute instead.")
-            self.cull_surfaces = True
+                          "set the Geometry.merge_surfaces attribute instead.")
+            self.merge_surfaces = True
 
-        if self.cull_surfaces:
+        if self.merge_surfaces:
             self.remove_redundant_surfaces()
 
         # Create XML representation

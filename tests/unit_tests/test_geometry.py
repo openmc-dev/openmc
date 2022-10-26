@@ -338,7 +338,8 @@ def test_remove_redundant_surfaces(run_in_tmpdir):
     clad = get_cyl_cell(r1, r2, z1, z2, m2)
     water = get_cyl_cell(r2, r3, z1, z2, m3)
     root = openmc.Universe(cells=[fuel, clad, water])
-    geom = openmc.Geometry(root, cull_surfaces=True)
+    geom = openmc.Geometry(root)
+    geom.merge_surfaces=True
     model = openmc.model.Model(geometry=geom,
                                materials=openmc.Materials([m1, m2, m3]))
 

@@ -420,8 +420,8 @@ class Model:
         self.settings.export_to_xml(d)
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
-                          "set the Geometry.cull_surfaces attribute instead.")
-            self.geometry.cull_surfaces = True
+                          "set the Geometry.merge_surfaces attribute instead.")
+            self.geometry.merge_surfaces = True
         self.geometry.export_to_xml(d)
 
         # If a materials collection was specified, export it. Otherwise, look

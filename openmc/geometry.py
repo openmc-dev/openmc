@@ -448,16 +448,16 @@ class Geometry:
         """
         # check if redundant surfaces have not been calculated yet
         if self._redundant_surface_map is None:
-            tally = defaultdict(list)
+            redundancies = defaultdict(list)
             for surf in self.get_all_surfaces().values():
                 coeffs = tuple(round(surf._coefficients[k],
                                      self.surface_precision)
                                for k in surf._coeff_keys)
                 key = (surf._type,) + coeffs
-                tally[key].append(surf)
+                redundancies[key].append(surf)
 
             self._redundant_surface_map = {replace.id: keep
-                                           for keep, *redundant in tally.values()
+                                           for keep, *redundant in redundancies.values()
                                            for replace in redundant}
 
         return self._redundant_surface_map

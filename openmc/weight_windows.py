@@ -166,7 +166,7 @@ class WeightWindows(IDManagerMixin):
 
         # TODO: add ability to check mesh equality
 
-        # check a few more attributes directly
+        # check several attributes directly
         attrs = ('particle_type',
                  'survival_ratio',
                  'max_lower_bound_ratio',

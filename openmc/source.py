@@ -3,6 +3,7 @@ from enum import Enum
 from numbers import Real
 import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
+# also required to prevent typing.Union namespace overwriting Union
 from typing import Optional
 from xml.etree import ElementTree as ET
 

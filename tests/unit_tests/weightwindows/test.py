@@ -16,10 +16,15 @@ def wws():
 
     # weight windows
 
+
+    ww_files = ('ww_n.txt', 'ww_p.txt')
+    cwd = Path(__file__).parent.absolute()
+    ww_n_file, ww_p_file = [cwd / Path(f) for f in ww_files]
+
     # load pre-generated weight windows
     # (created using the same tally as above)
-    ww_n_lower_bnds = np.loadtxt('ww_n.txt')
-    ww_p_lower_bnds = np.loadtxt('ww_p.txt')
+    ww_n_lower_bnds = np.loadtxt(ww_n_file)
+    ww_p_lower_bnds = np.loadtxt(ww_p_file)
 
     # create a mesh matching the one used
     # to generate the weight windows

@@ -8,7 +8,7 @@ import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_less_than, \
 check_iterable_type, check_length
-from openmc import Materials, Material
+from openmc import Materials, Material, Cell
 from openmc.search import _SCALAR_BRACKETED_METHODS, search_for_keff
 from openmc.data import atomic_mass, AVOGADRO, ELEMENT_SYMBOL
 import openmc.lib
@@ -158,7 +158,7 @@ class MsrContinuous:
             check_value('Units', units, ['1/h', '1/d'])
             if units == '1/h':
                 unit_conv = 1/3600
-            elif units = '1/d':
+            elif units == '1/d':
                 unit_conv = 1/86400
         else:
             unit_conv = 1
@@ -183,36 +183,60 @@ class MsrBatchwise(ABC):
     model : openmc.model.Model
         OpenMC model object
     bracket : list of float
-        Bracketing interval to search for the solution as list of float.
+        Bracketing range around the guess value to search for the solution as
+        list of float.
         This is equivalent to the `bracket` parameter of the `search_for_keff`.
+    bracket_limit : list of float
+        Upper and lower limits for the search_for_keff. If search_for_keff root
+        or guesses fall above the range, the closest limit will be taken and
+        set as new result.
     bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
-        Solution method to use; only applies if
-        `bracket` is set, otherwise the Secant method is used.
+        Solution method to use.
+        This is equivalent to the `bracket_method` parameter of the
+        `search_for_keff`.
         Defaults to 'brentq'.
     tol : float
-        Tolerance for search_for_keff method
+        Tolerance for search_for_keff method.
+        This is equivalent to the `tol` parameter of the `search_for_keff`.
         Default to 0.01
     target : Real, optional
-        keff value to search for, defaults to 1.0.
-
+        This is equivalent to the `target` parameter of the `search_for_keff`.
+        Default to 1.0.
+    print_iterations : Bool, Optional
+        Wheter or not to print `search_for_keff` iterations.
+        Default to True
+    search_for_keff_output : Bool, Optional
+        Wheter or not to print transport iterations during  `search_for_keff`.
+        Default to False
     Attributes
     ----------
     operator : openmc.deplete.Operator
         OpenMC operator object
     burn_mats : list of str
         List of burnable materials ids
-    burn_nucs : list of str
-        List of nuclides with available data for burnup
     model : openmc.model.Model
         OpenMC model object
-        bracket : list of float
-        list of floats defining bracketed bracket for `search_for_keff`
-    bracketed_method : string
-        Bracketed method for search_for_keff
+    bracket : list of float
+        Bracketing range around the guess value to search for the solution as
+        list of float.
+        This is equivalent to the `bracket` parameter of the `search_for_keff`.
+    bracket_limit : list of float
+        Upper and lower limits for the search_for_keff. If search_for_keff root
+        or guesses fall above the range, the closest limit will be taken and
+        set as new result.
+    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
+        Solution method to use.
+        This is equivalent to the `bracket_method` parameter of the
+        `search_for_keff`.
     tol : float
-        Tolerance for search_for_keff method
-    target : float
-        Search_for_keff function target
+        Tolerance for search_for_keff method.
+        This is equivalent to the `tol` parameter of the `search_for_keff`.
+    target : Real, optional
+        This is equivalent to the `target` parameter of the `search_for_keff`.
+    print_iterations : Bool, Optional
+        Wheter or not to print `search_for_keff` iterations.
+    search_for_keff_output : Bool, Optional
+        Wheter or not to print transport iterations during  `search_for_keff`.
     """
     def __init__(self, operator, model, bracket, bracket_limit,
                  bracketed_method='brentq', tol=0.01, target=1.0,
@@ -231,6 +255,12 @@ class MsrBatchwise(ABC):
         check_length('bracket_limit', bracket_limit, 2)
         check_less_than('bracket limit values',
                          bracket_limit[0], bracket_limit[1])
+        if bracket_limit[0] > bracket[0]:
+            raise ValueError('Lower bracket limit {} is greater than lower '
+                             'bracket {}'.format(bracket_limit[0], bracket[0]))
+        if bracket_limit[1] < bracket[0]:
+            raise ValueError('Upper bracket limit {} is less than upper '
+                             'bracket {}'.format(bracket_limit[1], bracket[1]))
         self.bracket_limit = bracket_limit
 
         self.bracketed_method = bracketed_method
@@ -402,6 +432,10 @@ class MsrBatchwiseGeom(MsrBatchwise):
 
     Instances of this class can be used to define geometrical based criticality
     actions during a transport-depletion calculation.
+    Currently only translation is supported.
+    In this case a geoemtrical cell translation coefficient will be used as
+    parametric variable.
+    The user should remember to fill the cell with a Universe.
 
     An instance of this class can be passed directly to an instance of the
     integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
@@ -412,78 +446,110 @@ class MsrBatchwiseGeom(MsrBatchwise):
         OpenMC operator object
     model : openmc.model.Model
         OpenMC model object
-    name_or_id : int
-        Parametric goemetrical feature id from the geometry model
-    obj_type : string, optional
-        Parametric goemetrical feature obj_type. Right now only 'cell' is
-        supported
-        Default to 'cell'
+    cell_id_or_name : Openmc.Cell or int or str
+        Identificative of parametric cell
+    axis : int
+        cell translation direction axis, where 0 is 'x', 1 is 'y' and 2 'z'.
     bracket : list of float
-        List of floats defining bracketed bracket for search_for_keff
-    bracketed_method : string
-        Bracketed method for search_for_keff
-        Default to 'brentq' --> more robuts
+        Bracketing range around the guess value to search for the solution as
+        list of float in cm.
+        In this case the guess guess value is the translation coefficient result
+        of the previous depletion step
+    bracket_limit : list of float
+        Upper and lower limits in cm. If search_for_keff root
+        or guesses fall above the range, the closest limit will be taken and
+        set as new result. In this case the limit should coincide with the
+        cell geometrical boundary conditions.
+    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
+        Solution method to use.
+        This is equivalent to the `bracket_method` parameter of the
+        `search_for_keff`.
+        Default to 'brentq'
     tol : float
-        Tolerance for search_for_keff method
+        Tolerance for search_for_keff method.
+        This is equivalent to the `tol` parameter of the `search_for_keff`.
         Default to 0.01
-    target : float
-        Search_for_keff function target
+    target : Real, optional
+        This is equivalent to the `target` parameter of the `search_for_keff`.
         Default to 1.0
-
     Attributes
     ----------
-    name_or_id : int
-        Parametric goemetrical feature id from the geometry model
-    obj_type : string
-        Parametric goemetrical feature obj_type. Right now only 'cell' is
-        supported
+    cell_id : openmc.Cell or int or str
+        Identificative of parametric cell
+    axis : int
+        cell translation direction axis, where 0 is 'x', 1 is 'y' and 2 'z'.
+    vector : numpy.array
+        translation vector
     """
-    def __init__(self, operator, model, name_or_id, axis, bracket,
+    def __init__(self, operator, model, cell_id_or_name, axis, bracket,
                  bracket_limit, print_iterations=True, bracketed_method='brentq',
                  tol=0.01, target=1.0):
 
         super().__init__(operator, model, bracket, bracket_limit,
                          bracketed_method, tol, target, print_iterations)
 
-        if isinstance(name_or_id, int):
-            check_value('id', name_or_id, [cell.id for cell in \
-                                self.model.geometry.get_all_cells().values()])
-        elif isinstance(name_or_id, str):
-            check_value('name', name_or_id, [cell.name for cell in \
-                                self.model.geometry.get_all_cells().values()])
-        else:
-            ValueError(f'{name_or_id} is neither a str nor an int')
-        self.name_or_id = name_or_id
+        self.cell_id = self._get_cell_id(cell_id_or_name)
 
         #index of cell translation direction axis
-        if axis == 'x':
-            self.axis = 0
-        elif axis == 'y':
-            self.axis = 1
-        elif axis == 'z':
-            self.axis = 2
-        else:
-            raise ValueError(f'{axis} value to recognized, should be x, y or z')
+        check_value('axis', axis, [0,1,2])
+        self.axis = axis
 
         # Initialize translation vector
         self.vector = np.zeros(3)
 
+    def _get_cell_id(self, val):
+        """Helper method for getting cell id from Cell obj or name.
+        Parameters
+        ----------
+        val : Openmc.Cell or str or int representing Cell
+        Returns
+        ----------
+        id : str
+            Cell id
+        """
+        if isinstance(val, Cell):
+            check_value('Cell id', val.id, [cell.id for cell in \
+                                self.model.geometry.get_all_cells().values()])
+            val = val.id
+
+        elif isinstance(val, str):
+            if val.isnumeric():
+                check_value('Cell id', val, [str(cell.id) for cell in \
+                                self.model.geometry.get_all_cells().values()])
+                val = int(val)
+            else:
+                check_value('Cell name', val, [cell.name for cell in \
+                                self.model.geometry.get_all_cells().values()])
+
+                val = [cell.id for cell in \
+                    self.model.geometry.get_all_cells().values() \
+                    if cell.name == val][0]
+
+        elif isinstance(val, int):
+            check_value('Cell id', val, [cell.id for cell in \
+                                self.model.geometry.get_all_cells().values()])
+
+        else:
+            ValueError(f'Cell: {val} is not recognized')
+
+        return val
+
     def _get_cell_attrib(self):
         """
-        Extract cell translation array from cell id or cell name and return
-         The translation is only applied to cells filled with a universe
+        Get cell translation coefficient.
+        The translation is only applied to cells filled with a universe
         Returns
         ------------
         coeff : float
             cell coefficient
         """
         for cell in openmc.lib.cells.values():
-            if cell.id == self.name_or_id or cell.name == self.name_or_id:
+            if cell.id == self.cell_id:
                 return cell.translation[self.axis]
 
     def _set_cell_attrib(self, val, attrib_name='translation'):
         """
-        Set translation coeff to the cell.
+        Set translation coeff to the cell in memeory.
         The translation is only applied to cells filled with a universe
         Parameters
         ------------
@@ -491,27 +557,28 @@ class MsrBatchwiseGeom(MsrBatchwise):
             Surface coefficient to set
         geometry : openmc.model.geometry
             OpenMC geometry model
+        attrib_name : str
+            Currently only translation is implemented
+            Default to 'translation'
         """
         self.vector[self.axis] = val
         for cell in openmc.lib.cells.values():
-            if cell.id == self.name_or_id or cell.name == self.name_or_id:
+            if cell.id == self.cell_id or cell.name == self.cell_id:
                 setattr(cell, attrib_name, self.vector)
 
     def _update_materials(self, x):
         """
-        Export a meterial xml to be red by the search_for_keff function
-        based on available crosse section nuclides with data and
-        `atom_density_limit` argument, if defined. This function also calculates
-        the new total volume in [cc] from nuclides atom densities, assuming
-        constant material density as set by the user in the initial material
-        definition.
-        The new volume is then passed to the `openmc.deplete.AtomNumber` class
-        to renormalize the atoms vector in the model in memory before running
-        the next transport iteration.
+        Updates nuclide densities concentration vector coming from
+        Bateman quations solution and assign to the model in memory.
+        By doing so it also calculates the total number of atoms-grams per mol.
+        This quantity divided by the total mass density gives a volume
+        in cc. This can be inteded as the new material volume if we were to fix
+        the total material mass density. If not set, the volume will remain
+        constant and the density will update at the next depletion step.
         Parameters
         ------------
         x : list of numpy.ndarray
-            Total atoms to be used in function.
+            Total atom concentrations
         """
         nucs = super()._conc_dict(x)
 
@@ -537,11 +604,12 @@ class MsrBatchwiseGeom(MsrBatchwise):
 
     def _model_builder(self, param):
         """
-        Builds the parametric model to be passed to `msr_search_for_keff`
+        Builds the parametric model that is passed to the `msr_search_for_keff`
+        function by setting the parametric variable to the geoemetry cell.
         Parameters
         ------------
-        param :
-            model function variable: geometrical coefficient
+        param : model parametricl variable
+            cell translation coefficient
         Returns
         ------------
         _model :  openmc.model.Model
@@ -553,17 +621,20 @@ class MsrBatchwiseGeom(MsrBatchwise):
     def msr_search_for_keff(self, x):
         """
         Perform the criticality search on the parametric geometrical model.
+        Will set the root of the `search_for_keff` function to the cell
+        attribute.
         Parameters
         ------------
         x : list of numpy.ndarray
-            Total atoms to be used in function for normalization
+            Total atoms concentrations
         Returns
         ------------
-        res : float
-            geometrical coefficient root of search_for_keff function
+        x : list of numpy.ndarray
+            Updated total atoms concentrations
         """
         self._update_materials(x)
         val = self._get_cell_attrib()
+        check_type('Cell coeff', val, Real)
         x, res = super()._msr_search_for_keff(x, val)
 
         # set results value in the geometry model abd continue
@@ -575,7 +646,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
 class MsrBatchwiseMat(MsrBatchwise):
     """ MsrBatchwise material class
 
-    Instances of this class can be used to define material-based criticality
+    Instances of this class can be used to define material based criticality
     actions during a transport-depletion calculation.
 
     An instance of this class can be passed directly to an instance of the
@@ -587,54 +658,104 @@ class MsrBatchwiseMat(MsrBatchwise):
         OpenMC operator object
     model : openmc.model.Model
         OpenMC model object
-    mat_id : int
-        Material id to perform actions on
+    mat_id_or_name : openmc.Material or int or str
+        Identificative of parametric material
     refuel_vector : dict
         Refueling material nuclides composition in form of dict, where keys are
-        the nuclides and values the fractions
+        nuclides and values fractions.
+        E.g., refuel_vector = {'U235':0.3,'U238':0.7}
     bracket : list of float
-        List of floats defining bracketed bracket for search_for_keff
-    bracketed_method : string
-        Bracketed method for search_for_keff
-        Default to 'brentq' --> more robuts
+        Bracketing range quantity of material to add in grams.
+    bracket_limit : list of float
+        Upper and lower limits of material to add in grams.
+    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
+        Solution method to use.
+        This is equivalent to the `bracket_method` parameter of the
+        `search_for_keff`.
+        Default to 'brentq'
     tol : float
-        Tolerance for search_for_keff method
+        Tolerance for search_for_keff method.
+        This is equivalent to the `tol` parameter of the `search_for_keff`.
         Default to 0.01
-    target : float
-        Search_for_keff function target
+    target : Real, optional
+        This is equivalent to the `target` parameter of the `search_for_keff`.
         Default to 1.0
-
     Attributes
     ----------
-    mat_id : int
-        Material id to perform actions on
+    mat_id : openmc.Material or int or str
+        Identificative of parametric material
     refuel_vector : dict
         Refueling material nuclides composition in form of dict, where keys are
         the nuclides str and values are the composition fractions.
     """
-    def __init__(self, operator, model, mat_id, refuel_vector, bracket,
+    def __init__(self, operator, model, mat_id_or_name, refuel_vector, bracket,
                  bracket_limit, print_iterations=True, bracketed_method='brentq',
                  tol=0.01, target=1.0):
 
         super().__init__(operator, model, bracket, bracket_limit,
                          bracketed_method, tol, target, print_iterations)
 
-        check_value("mat id", str(mat_id), self.burn_mats)
-        self.mat_id = mat_id
+        self.mat_id = self._get_mat_id(mat_id_or_name)
 
         check_type("refuel vector", refuel_vector, dict, str)
         for nuc in refuel_vector.keys():
-            check_value("refuel vector nuclide", nuc,
+            check_value("check nuclide exists", nuc,
                         self.operator.nuclides_with_data)
+        if sum(refuel_vector.values()) != 1.0:
+            raise ValueError('Refuel vector fractions {} do not sum up to 1.0'
+                             .format(refuel_vector.values()))
         self.refuel_vector = refuel_vector
+
+    def _check_nuclides(self, nucs):
+        """Checks if refueling nuclides exist in the parametric material.
+        Parameters
+        ----------
+        nucs : list of str
+            Refueling nuclides
+        """
+        for nuc in nucs:
+            check_value("check nuclide to refuel exists in mat", nuc,
+                [mat.nuclides for mat_id, mat in openmc.lib.materials.items() \
+                if mat_id == self.mat_id][0])
+
+    def _get_mat_id(self, val):
+        """Helper method for getting material id from Material obj or name.
+        Parameters
+        ----------
+        val : Openmc,Material or str or int representing material name/id
+        Returns
+        ----------
+        id : str
+            Material id
+        """
+        if isinstance(val, Material):
+            check_value('Material id', str(val.id), self.burn_mats)
+            val = val.id
+
+        elif isinstance(val, str):
+            if val.isnumeric():
+                check_value('Material id', val, self.burn_mats)
+                val = int(val)
+            else:
+                check_value('Material name', val,
+                   [mat.name for mat in self.model.materials if mat.depletable])
+                val = [mat.id for mat in self.model.materials \
+                        if mat.name == val][0]
+
+        elif isinstance(val, int):
+            check_value('Material id', str(val), self.burn_mats)
+
+        return val
 
     def _model_builder(self, param):
         """
-        Builds the parametric model to be passed to `msr_search_for_keff`
+        Builds the parametric model that is passed to the `msr_search_for_keff`
+        function by updating the material densities and setting the parametric
+        variable to the material nuclides to add.
         Parameters
         ------------
         param :
-            Model function variable, mass of material to refuel in grams
+            Model function variable, quantity of material to refuel in grams
         Returns
         ------------
         _model :  openmc.model.Model
@@ -667,23 +788,22 @@ class MsrBatchwiseMat(MsrBatchwise):
 
     def _update_x_vector_and_volumes(self, x, res):
         """
-        Updates and returns total atoms with the root from the search_for_keff
-        function. This function also calculates the new total volume
-        in cc from nuclides atom densities, assuming constant material density
-        as set by the user in the initial material definition.
-        The new volume is then passed to the `openmc.deplete.AtomNumber` class
-        to renormalize the atoms vector in the model in memory before running
-        the next transport.
+        Updates and returns the total atoms concentrations vector with the root
+        from the `search_for_keff`. It also calculates the new total volume
+        in cc from the nuclides atom densities, assuming constant material mass
+        density. The volume is then passed to the `openmc.deplete.AtomNumber`
+        class to renormalize the atoms vector in the model in memory before
+        running the next transport.
         Parameters
         ------------
         x : list of numpy.ndarray
-            Total atoms to be used in function
+            Total atoms concentrations
         res : float
             Root of the search_for_keff function
         Returns
         ------------
         x : list of numpy.ndarray
-            Updated total atoms to be used in function
+            Updated total atoms concentrations
         """
 
         for i, mat in enumerate(self.burn_mats):
@@ -707,18 +827,19 @@ class MsrBatchwiseMat(MsrBatchwise):
     def msr_search_for_keff(self, x):
         """
         Perform the criticality search on the parametric material model.
+        Will set the root of the `search_for_keff` function to the atoms
+        concentrations vector.
         Parameters
         ------------
         x : list of numpy.ndarray
-            Total atoms to be used in function for normalization
+            Total atoms concentrations
         Returns
         ------------
-        res : float
-            Material mass root of search_for_keff function
-        diff : float
-            Difference from previous result
+        x : list of numpy.ndarray
+            Updated total atoms concentrations
         """
         self.nucs = super()._conc_dict(x)
+        self._check_nuclides(self.refuel_vector.keys())
         x, res = super()._msr_search_for_keff(x, 0)
 
         print('UPDATE: material addition --> {:.2f} g --> '.format(res))

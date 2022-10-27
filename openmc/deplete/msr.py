@@ -14,26 +14,26 @@ from openmc.data import atomic_mass, AVOGADRO, ELEMENT_SYMBOL
 import openmc.lib
 
 class MsrContinuous:
-    """Class defining Molten salt reactor (msr) elements (fission products)
-    removal, based on removal rates and cycle time concepts.
+    """Class defining Molten salt reactor (msr) elements (e.g. fission products)
+    continuous removal and transfer, based on removal rates and cycle time
+    theory.
 
     An instance of this class can be passed directly to an instance of the
     integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
     Parameters
     ----------
-    local_mats : openmc.Material
-        openmc.Material
-
+    operator : openmc.Operator
+        OpenMC operator object
+    model : openmc.Model
+        OpenMC Model object
     Attributes
     ----------
-    local_mats : openmc.Material
-        All local material defined in the model.
     burn_mats : list of str
-        List of depletable material id
-    ordr_burn : OrderedDict of int and int
-        OrderedDict of depletable material id and enuemerated indeces
+        All burnable material IDs.
     removal_rates : OrderedDict of str and OrderedDict
-        OrderedDict of depletable material id and OrderedDict to fill
+        Container of removal rates, elements and destination material
+    index_transfer : Set of pair of str
+        Pair of strings needed to build final depletion matrix (dest_mat, mat)
     """
 
     def __init__(self, operator, model, units='1/s'):
@@ -42,24 +42,21 @@ class MsrContinuous:
         self.materials = model.materials
         self.burn_mats = operator.burnable_mats
 
-        #initialize removal rates container
+        #initialize removal rates container dict
         self.removal_rates = OrderedDict((mat, OrderedDict()) for mat in \
                                           self.burn_mats)
         self.index_transfer = set()
-        self.units = units
-
-    @property
-    def units(self):
-        return self._units
-
-    @units.setter
-    def units(self, value):
-        check_value('Units', value, ['1/s', '1/h', '1/d'])
-        self._units = value
 
     def _get_mat_id(self, val):
-        """Helper method for getting material id from Material obj or name"""
-
+        """Helper method for getting material id from Material obj or name.
+        Parameters
+        ----------
+        val : Openmc,Material or str or int representing material name/id
+        Returns
+        ----------
+        id : str
+            Material id
+        """
         if isinstance(val, Material):
             check_value('Material depletable', str(val.id), self.burn_mats)
             val = val.id
@@ -78,35 +75,38 @@ class MsrContinuous:
         return str(val)
 
     def get_removal_rate(self, mat, element):
-        """Extract removal rates
+        """Return removal rate for given material and element.
         Parameters
         ----------
-        mat : Openmc,Material or int
+        mat : Openmc,Material or str or int
             Depletable material
         element : str
-            Element to extract removal rate value
+            Element to get removal rate value
         Returns:
         ----------
         removal_rate : float
             Removal rate value
         """
         mat = self._get_mat_id(mat)
+        check_value('Element', element, ELEMENT_SYMBOL.values())
         return self.removal_rates[mat][element][0]
 
     def get_destination_mat(self, mat, element):
-        """Extract destination material
+        """Return destination (or transfer) material for given material and
+        element, if defined.
         Parameters
         ----------
-        mat : Openmc,Material or int
+        mat : Openmc,Material or str or int
             Depletable material
         element : str
-            Element to extract removal rate value
+            Element that get transferred to another material.
         Returns:
         ----------
         destination_mat : str
-            Depletable material id to where elements get transferred
+            Depletable material id to where the aelement get transferred
         """
         mat = self._get_mat_id(mat)
+        check_value('Element', element, ELEMENT_SYMBOL.values())
         if element in self.removal_rates[mat]:
             return self.removal_rates[mat][element][1]
 
@@ -114,37 +114,37 @@ class MsrContinuous:
         """Extract removing elements for a given material
         Parameters
         ----------
-        mat : Openmc,Material or int
+        mat : Openmc,Material or str or int
             Depletable material
         Returns:
         ----------
         elements : list
-            List of elements
+            List of elements where a removal rates exist
         """
         mat = self._get_mat_id(mat)
         if mat in self.removal_rates.keys():
             return self.removal_rates[mat].keys()
 
-    def set_removal_rate(self, mat, elements, removal_rate, dest_mat=None):
-        """Set removal rates to depletable material
+    def set_removal_rate(self, mat, elements, removal_rate, units='1/s',
+                         dest_mat=None):
+        """Set removal rate to elements in a depletable material.
         Parameters
         ----------
-        mat : Openmc,Material or int
-            Depletable material to where add removal rates
+        mat : Openmc,Material or str or int
+            Depletable material
         elements : list[str]
-            List of strings of elements
+            List of strings of elements that share removal rate
         removal_rate : float
-            Removal rate coefficient
-        dest_mat : Openmc,Material or int, Optional
-            Destination material if transfer or elements tracking is wanted
+            Removal rate value in [1/sec]
+        dest_mat : Openmc,Material or str or int, Optional
+            Destination (transfer) material if transfer or elements tracking
+            is enabled.
         units: str, optional
-            Removal rates units (not set yet)
+            Removal rates units
             Default : '1/s'
         """
         mat = self._get_mat_id(mat)
-
         check_type('removal_rate', removal_rate, Real)
-
         if dest_mat is not None:
             #prevent for setting tranfert to material if not set as depletable
             if len(self.burn_mats) > 1:
@@ -153,12 +153,18 @@ class MsrContinuous:
             else:
                 raise ValueError(f'Transfer to material {dest_mat} is set '\
                         'but there is only one depletable material')
-
             dest_mat = self._get_mat_id(dest_mat)
-
+        if units is not '1/s':
+            check_value('Units', units, ['1/h', '1/d'])
+            if units == '1/h':
+                unit_conv = 1/3600
+            elif units = '1/d':
+                unit_conv = 1/86400
+        else:
+            unit_conv = 1
         for element in elements:
             check_value('Element', element, ELEMENT_SYMBOL.values())
-            self.removal_rates[mat][element] = removal_rate, dest_mat
+            self.removal_rates[mat][element] = removal_rate*unit_conv, dest_mat
             if dest_mat is not None:
                 self.index_transfer.add((dest_mat, mat))
 
@@ -166,7 +172,7 @@ class MsrContinuous:
 class MsrBatchwise(ABC):
     """Abstract Base Class for implementing msr batchwise classes.
 
-    Users should instantiate
+    Users should instantiate:
     :class:`openmc.deplete.msr.MsrBatchwiseGeom` or
     :class:`openmc.deplete.msr.MsrBatchwiseMat` rather than this class.
 
@@ -241,7 +247,7 @@ class MsrBatchwise(ABC):
     def bracketed_method(self, value):
         check_value('bracketed_method', value, _SCALAR_BRACKETED_METHODS)
         if value != 'brentq':
-            warn('brentq bracketed method is recomended')
+            warn('brentq bracketed method is recomended here')
         self._bracketed_method = value
 
     @property
@@ -281,15 +287,16 @@ class MsrBatchwise(ABC):
     def _conc_dict(self, x):
         """
         Order concentrations vector into a list of nuclides ordered
-        dictionaries for each depletable material for easier extraction.
+        dictionaries for each depletable material for facilitate extraction.
         Parameters
         ------------
         x : list of numpy.ndarray
             Total atoms to be used in function.
         Returns
         ------------
-        ord_x : list of OrderedDict
-            List of OrderedDict of nuclides for each depletable material
+        conc : list of OrderedDict of str and float
+            List of OrderedDict of nuclides (keys) and concentrations (values)
+            for each depletable material.
         """
         conc = list()
         for i, mat in enumerate(self.burn_mats):
@@ -302,13 +309,15 @@ class MsrBatchwise(ABC):
     def _msr_search_for_keff(self, x, val):
         """
         Perform the criticality search for a given parametric model.
-        It can either be a geometrical or material `search_for_keff`.
+        It supports geometrical or material based `search_for_keff`.
         Parameters
         ------------
         x : list of numpy.ndarray
-            Total atoms to be used in function for normalization
+            Atoms concentration vector
         Returns
         ------------
+        x : list of numpy.ndarray
+            Modified atoms concentration vector
         res : float
             Estimated value of the variable parameter where keff is the
             targeted value
@@ -331,12 +340,14 @@ class MsrBatchwise(ABC):
                     print_iterations = self.print_iterations,
                     run_args = {'output': self.search_for_keff_output})
 
+            # if len(search) is 3 search_for_keff was successful
             if len(search) == 3:
                 _res, _, _ = search
+                #Check if root is within bracket limits
                 if self.bracket_limit[0] < _res <  self.bracket_limit[1]:
                     res = _res
                 else:
-                    # Set res with closest limit and continue
+                    # Set res with the closest limit and continue
                     arg_min = abs(np.array(res.bracket_limit)-_res).argmin()
                     warn('WARNING: Search_for_keff returned root out of '\
                          'bracket limit. Set root to {:.2f} and continue.'
@@ -345,7 +356,7 @@ class MsrBatchwise(ABC):
 
             elif len(search) == 2:
                 guess, k = search
-
+                #Check if all guesses are within bracket limits
                 if self.bracket_limit[0] < np.all(guess) < self.bracket_limit[1]:
                     #Simple method to iteratively adapt the bracket
                     print('INFO: Function returned values below or above ' \
@@ -354,12 +365,14 @@ class MsrBatchwise(ABC):
                     # if the bracket ends up being smaller than the std of the
                     # keff's closer value to target, no need to continue-
                     if np.all(k) <= max(k).s:
-                        res = max(k).n
+                        arg_min = abs(self.target-np.array(guess)).argmin()
+                        res = guess[arg_min]
 
                     # Calculate gradient as ratio of delta bracket and delta k
                     grad = abs(np.diff(_bracket) / np.diff(k))[0].n
 
-                    # Move the bracket closer to presumed keff root
+                    # Move the bracket closer to presumed keff root.
+                    # 2 cases: both k are below or above target
                     if np.mean(k) < self.target:
                         sign = np.sign(guess[np.argmax(k)])
                         _bracket[np.argmin(k)] = _bracket[np.argmax(k)]
@@ -387,7 +400,7 @@ class MsrBatchwise(ABC):
 class MsrBatchwiseGeom(MsrBatchwise):
     """ MsrBatchwise geoemtrical class
 
-    Instances of this class can be used to define geometry-based  criticality
+    Instances of this class can be used to define geometrical based criticality
     actions during a transport-depletion calculation.
 
     An instance of this class can be passed directly to an instance of the
@@ -442,7 +455,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
             ValueError(f'{name_or_id} is neither a str nor an int')
         self.name_or_id = name_or_id
 
-        #index of vector axis
+        #index of cell translation direction axis
         if axis == 'x':
             self.axis = 0
         elif axis == 'y':

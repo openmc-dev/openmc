@@ -324,7 +324,7 @@ class RegularMesh(StructuredMesh):
 
     @property
     def dimension(self):
-        return self._dimension
+        return tuple(self._dimension)
 
     @property
     def n_dimension(self):

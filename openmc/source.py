@@ -3,7 +3,7 @@ from enum import Enum
 from numbers import Real
 import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
-from typing import Optional, Union, Tuple
+from typing import Optional
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -84,7 +84,7 @@ class Source:
         parameters: Optional[str] = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Optional[Union[openmc.Cell, openmc.Material, openmc.Universe]] = None
+        domains: Optional[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]] = None
     ):
         self._space = None
         self._angle = None

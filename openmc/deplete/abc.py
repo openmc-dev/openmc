@@ -26,7 +26,6 @@ from .stepresult import StepResult
 from .chain import Chain
 from .results import Results
 from .pool import deplete
-from .msr import MsrContinuous, MsrBatchwise, MsrBatchwiseGeom, MsrBatchwiseMat
 
 
 __all__ = [

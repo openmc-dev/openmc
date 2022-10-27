@@ -159,6 +159,35 @@ class WeightWindows(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tWeight Cutoff', self._weight_cutoff)
         return string
 
+    def __eq__(self, other):
+        # ensure that `other` is a WeightWindows object
+        if not isinstance(other, WeightWindows):
+            return False
+
+        # TODO: add ability to check mesh equality
+
+        # check a few more attributes directly
+        attrs = ('particle_type',
+                 'survival_ratio',
+                 'max_lower_bound_ratio',
+                 'max_split',
+                 'weight_cutoff')
+        for attr in attrs:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+
+        # save most expensive checks for last
+        if not np.array_equal(self.energy_bounds, other.energy_bounds):
+            return False
+
+        if not np.array_equal(self.lower_ww_bounds, other.lower_ww_bounds):
+            return False
+
+        if not np.array_equal(self.upper_ww_bounds, other.upper_ww_bounds):
+            return False
+
+        return True
+
     @property
     def mesh(self):
         return self._mesh
@@ -341,7 +370,7 @@ class WeightWindows(IDManagerMixin):
         particle_type = get_text(elem, 'particle_type')
         survival_ratio = float(get_text(elem, 'survival_ratio'))
 
-        ww_shape = (len(e_bounds) - 1,) + mesh.dimension[::-1]
+        ww_shape = (len(e_bounds) - 1,) + tuple(mesh.dimension[::-1])
         lower_ww_bounds = np.array(lower_ww_bounds).reshape(ww_shape).T
         upper_ww_bounds = np.array(upper_ww_bounds).reshape(ww_shape).T
 

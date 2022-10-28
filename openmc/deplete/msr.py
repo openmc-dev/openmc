@@ -36,7 +36,7 @@ class MsrContinuous:
         Pair of strings needed to build final depletion matrix (dest_mat, mat)
     """
 
-    def __init__(self, operator, model, units='1/s'):
+    def __init__(self, operator, model):
 
         self.operator = operator
         self.materials = model.materials

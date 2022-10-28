@@ -704,15 +704,26 @@ class Chain:
         return matrix_dok.tocsr()
 
     def form_rr_term(self, msr, index):
-        """Forms removal_rates depletion matrix.
+        """Function to forms the removal_rates matrix to be subtracted to
+        the Depletion Matrix ot to be used for different depletable materials
+        coupling whereas removed nuclides need to be tracked.
 
         Parameters
         ----------
         msr : openmc.msr.MsrContinuous
             Istance of openmc.msr.MsrContinuous.
-        index_msr : list of tuples
-            List of tuples pairs that represent transfer matrix indexing
-            when building the coupled matrix
+        index : list of str or set of paris
+            Case 1: list of str
+                    List of depletable material id as str. In this case
+                    the removal rates terms will be subtracted to the respective
+                    Depletion matrix
+            Case 2: set of pairs
+                    (dest_mat, mat) where dest_mat stainds for destination
+                    material or material to where the nuclides are transferred.
+                    In this case the removal rates terms gets placed in the
+                    coupled matrix with indexing position corresponding to the
+                    set of pairs of materials.
+            materials id and removal rates
         Returns
         -------
         scipy.sparse.csr_matrix
@@ -729,7 +740,7 @@ class Chain:
                     matrix[i, i] = msr.get_removal_rate(mat, elm)
                 else:
                     matrix[i, i] = 0.0
-            #Build trasnfer to terms matrices
+            #Build trasnfer terms matrices
             elif len(index) == 2:
                 dest_mat, mat = index
                 if msr.get_destination_mat(mat, elm) == dest_mat:

@@ -55,6 +55,7 @@ def model():
 
     return model
 
+
 def test_dagmc(model):
     harness = PyAPITestHarness('statepoint.5.h5', model)
     harness.main()

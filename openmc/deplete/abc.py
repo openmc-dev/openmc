@@ -18,7 +18,6 @@ from warnings import warn
 
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
-import pandas as pd
 
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.mpi import comm
@@ -530,16 +529,8 @@ class Integrator(ABC):
     source_rates : float or iterable of float, optional
         Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
         each interval in :attr:`timesteps`
-    msr_continuous : openmc.deplete.msr.MsrContinuous
-        Instance to MsrContinuous class to perform msr continuous removal based
-        on removal rates definitions. Removal rates coefficients are added as
-        extra terms to the Bateman equations.
-    msr_batchwise : openmc.deplete.msr.MsrBatchwise
-        Instance to MsrBatchwise class to perform msr batchwise operations at
-        every timestep as single action in time to control criticality.
-        Instances of this class can either be based on the model geomety and in
-        this case the instance should be to `MsrBatchwiseGeom` or to the the
-        model materials, instance to `MsrBatchwiseMat`.
+
+        .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
@@ -556,7 +547,17 @@ class Integrator(ABC):
         :attr:`solver`.
 
         .. versionadded:: 0.12
-
+    msr_continuous : openmc.deplete.msr.MsrContinuous
+        Instance to MsrContinuous class to perform msr continuous removal based
+        on removal rates definitions.
+    msr_batchwise : openmc.deplete.msr.MsrBatchwise
+        Instance to MsrBatchwise abstract base class to perform msr batchwise
+        operations at every depletion step as single action in time..
+        Two derived classes defined as ``MsrBatchwiseGeom`` and
+        ``MsrBatchwiseMat`` can be used to permodrm geometry-based or material
+        based criticality search, respecively.
+        Users should instantiate one of these two classes.
+        
     Attributes
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -568,16 +569,6 @@ class Integrator(ABC):
     source_rates : iterable of float
         Source rate in [W] or [neutron/sec] for each interval in
         :attr:`timesteps`
-    msr_continuous : openmc.deplete.msr.MsrContinuous
-        Instance to MsrContinuous class to perform msr continuous removal based
-        on removal rates definitions.
-    msr_batchwise : openmc.deplete.msr.MsrBatchwise
-        Instance to MsrBatchwise abstract base class to perform msr batchwise
-        operations at every depletion step as single action in time..
-        Two derived classes defined as ``MsrBatchwiseGeom`` and
-        ``MsrBatchwiseMat`` can be used to permodrm geometry-based or material
-        based criticality search, respecively.
-        Users should instantiate one of these two classes.
     solver : callable
         Function that will solve the Bateman equations
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
@@ -594,12 +585,22 @@ class Integrator(ABC):
               next time step. Expected to be of the same shape as ``n0``
 
         .. versionadded:: 0.12
+    msr_continuous : openmc.deplete.msr.MsrContinuous
+        Instance to MsrContinuous class to perform msr continuous removal based
+        on removal rates definitions.
+    msr_batchwise : openmc.deplete.msr.MsrBatchwise
+        Instance to MsrBatchwise abstract base class to perform msr batchwise
+        operations at every depletion step as single action in time..
+        Two derived classes defined as ``MsrBatchwiseGeom`` and
+        ``MsrBatchwiseMat`` can be used to permodrm geometry-based or material
+        based criticality search, respecively.
+        Users should instantiate one of these two classes.
 
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, msr_continuous=None, msr_batchwise=None,
-                 timestep_units='s', solver="cram48"):
+                 source_rates=None, timestep_units='s', solver="cram48",
+                 msr_continuous=None, msr_batchwise=None):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]

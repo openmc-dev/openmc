@@ -4,8 +4,6 @@ Provided to avoid some circular imports
 """
 from itertools import repeat, starmap
 from multiprocessing import Pool
-import functools
-from copy import deepcopy
 from scipy.sparse import bmat
 import numpy as np
 
@@ -40,7 +38,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
         ``matrix_func(chain, rates, fission_yields)``, where
         ``fission_yields = {parent: {product: yield_frac}}``
         Expected to return the depletion matrix required by
-        ``func``    
+        ``func``
     msr : openmc.deplete.MsrContinuous, Optional
         Introduce removal rate coefficients for selected nuclides as a
         subtractive term to the Bateman equations, defined as

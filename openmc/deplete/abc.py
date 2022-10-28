@@ -570,14 +570,14 @@ class Integrator(ABC):
         :attr:`timesteps`
     msr_continuous : openmc.deplete.msr.MsrContinuous
         Instance to MsrContinuous class to perform msr continuous removal based
-        on removal rates definitions. Removal rates coefficients are added as
-        extra terms to the Bateman equations.
+        on removal rates definitions.
     msr_batchwise : openmc.deplete.msr.MsrBatchwise
-        Instance to MsrBatchwise class to perform msr batchwise operations at
-        every timestep as single action in time to control criticality.
-        Instances of this class can either be based on the model geomety and in
-        this case the instance should be to `MsrBatchwiseGeom` or to the the
-        model materials, instance to `MsrBatchwiseMat`.
+        Instance to MsrBatchwise abstract base class to perform msr batchwise
+        operations at every depletion step as single action in time..
+        Two derived classes defined as ``MsrBatchwiseGeom`` and
+        ``MsrBatchwiseMat`` can be used to permodrm geometry-based or material
+        based criticality search, respecively.
+        Users should instantiate one of these two classes.
     solver : callable
         Function that will solve the Bateman equations
         :math:`\frac{\partial}{\partial t}\vec{n} = A_i\vec{n}_i` with a step
@@ -726,8 +726,8 @@ class Integrator(ABC):
     def _timed_deplete(self, concs, rates, dt, matrix_func=None):
         start = time.time()
         results = deplete(
-            self._solver, self.chain, concs, rates, dt, self.msr_continuous,
-            matrix_func)
+            self._solver, self.chain, concs, rates, dt, matrix_func,
+            self.msr_continuous)
         return time.time() - start, results
 
     @abstractmethod

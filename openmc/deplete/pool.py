@@ -19,7 +19,7 @@ USE_MULTIPROCESSING = True
 NUM_PROCESSES = None
 
 
-def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
+def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -35,24 +35,36 @@ def deplete(func, chain, x, rates, dt, msr=None, matrix_func=None):
         Reaction rates (from transport operator)
     dt : float
         Time in [s] to deplete for
-    msr : openmc.deplete.MsrContinuous, Optional
-        Introduce user-defined removal rates to Bateman equations.
-        In case one wants to keep track of the removing nuclides or define
-        transfer between two depletable materials, the matrices can be coupled
-        together in one by means of scipy library (bmat).
-        For example, in case of 3 depletable materials and one transfer between
-        material 1 and 3, the final coupled matrix assumes the form:
-        [A11   0     0
-         0     A22   0
-         T31   0     A33]
-         where A are the depletion matrices including the removal rates,
-         and T the transfer matrix including only the removal rates.
     maxtrix_func : callable, optional
         Function to form the depletion matrix after calling
         ``matrix_func(chain, rates, fission_yields)``, where
         ``fission_yields = {parent: {product: yield_frac}}``
         Expected to return the depletion matrix required by
-        ``func``
+        ``func``    
+    msr : openmc.deplete.MsrContinuous, Optional
+        Introduce removal rate coefficients for selected nuclides as a
+        subtractive term to the Bateman equations, defined as
+        :math:`\epsilon_i \lambda_i n_i`, where:
+        * :math: `epsilon_i` is the removal efficiency for the nuclide i
+        * :math: `lambda_i` is the removal rate coefficient for the nuclide i,
+            defined as :math: `\lambda_i = \frac{1}{T_{cyc,i}}`, where
+            * :math: `T_{cyc_i}` is the cycle time for the nuclide i
+        * :math: `n_i` is the nuclide i.
+        :math: `epsilon_i` and :math: `lambda_i` are combined together in one
+        single user-defined parameter, simply referred as removal rate with
+        units [1/sec].
+        The function to form the removal rates matrix is:
+        ``map(chain.form_rr_term, repeat(msr), msr.burn_mats)``.
+        If the system contains only one depletable material, removed nuclides
+        cannot be accounted for afterwards.
+        In case one wants to keep track of the removed nuclides, a second
+        depletable material can be defined and the respective Bateman equations
+        can be coupled.
+        The removal rates matrix (or transfer matrix in this case) for the
+        second mateerial can be coupled together with the Bateaman matrix of the
+        fisrt material in one single matrix.
+        The function to form the transfer matrix is:
+        ``map(chain.form_rr_term, repeat(msr), msr.index_transfer)``
 
     Returns
     -------

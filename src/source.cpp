@@ -224,7 +224,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
             auto id = (domain_type_ == DomainType::CELL)
                         ? model::cells[coord.cell]->id_
                         : model::universes[coord.universe]->id_;
-            if (found = contains(domain_ids_, id)) break;
+            if ((found = contains(domain_ids_, id)))
+              break;
           }
         }
       }

@@ -179,7 +179,7 @@ Tabular::Tabular(pugi::xml_node node)
       interp_ = Interpolation::lin_lin;
     } else {
       openmc::fatal_error(
-        "Unknown interpolation type for distribution: " + temp);
+        "Unsupported interpolation type for distribution: " + temp);
     }
   } else {
     interp_ = Interpolation::histogram;

@@ -1,6 +1,9 @@
 #ifndef OPENMC_VOLUME_CALC_H
 #define OPENMC_VOLUME_CALC_H
 
+#include <cstdint>
+#include <string>
+
 #include "openmc/array.h"
 #include "openmc/position.h"
 #include "openmc/tallies/trigger.h"
@@ -10,7 +13,6 @@
 #include "xtensor/xtensor.hpp"
 
 #include <gsl/gsl-lite.hpp>
-#include <string>
 
 namespace openmc {
 
@@ -69,7 +71,8 @@ private:
   //! \param[in] i_material Index in global materials vector
   //! \param[in,out] indices Vector of material indices
   //! \param[in,out] hits Number of hits corresponding to each material
-  void check_hit(int i_material, vector<int>& indices, vector<int>& hits) const;
+  void check_hit(
+    int i_material, vector<uint64_t>& indices, vector<uint64_t>& hits) const;
 };
 
 //==============================================================================

@@ -60,6 +60,7 @@ bool run_CE {true};
 bool source_latest {false};
 bool source_separate {false};
 bool source_write {true};
+bool source_mcpl_write {true};
 bool surf_source_write {false};
 bool surf_mcpl_write {false};
 bool surf_source_read {false};
@@ -652,6 +653,9 @@ void read_settings_xml()
     }
     if (check_for_node(node_sp, "write")) {
       source_write = get_node_value_bool(node_sp, "write");
+    }
+    if (check_for_node(node_sp, "mcpl")) {
+      source_write = get_node_value_bool(node_sp, "mcpl");
     }
     if (check_for_node(node_sp, "overwrite_latest")) {
       source_latest = get_node_value_bool(node_sp, "overwrite_latest");

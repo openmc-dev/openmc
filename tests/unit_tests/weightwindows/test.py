@@ -10,6 +10,50 @@ from openmc.stats import Discrete, Point
 
 from tests import cdtemp
 
+
+@pytest.fixture
+def wws():
+
+    # weight windows
+
+
+    ww_files = ('ww_n.txt', 'ww_p.txt')
+    cwd = Path(__file__).parent.absolute()
+    ww_n_file, ww_p_file = [cwd / Path(f) for f in ww_files]
+
+    # load pre-generated weight windows
+    # (created using the same tally as above)
+    ww_n_lower_bnds = np.loadtxt(ww_n_file)
+    ww_p_lower_bnds = np.loadtxt(ww_p_file)
+
+    # create a mesh matching the one used
+    # to generate the weight windows
+    ww_mesh = openmc.RegularMesh()
+    ww_mesh.lower_left = (-240, -240, -240)
+    ww_mesh.upper_right = (240, 240, 240)
+    ww_mesh.dimension = (5, 6, 7)
+
+    # energy bounds matching those of the
+    # generated weight windows
+    e_bnds = [0.0, 0.5, 2E7]
+
+    ww_n = openmc.WeightWindows(ww_mesh,
+                                ww_n_lower_bnds,
+                                None,
+                                10.0,
+                                e_bnds,
+                                survival_ratio=1.01)
+
+    ww_p = openmc.WeightWindows(ww_mesh,
+                                ww_p_lower_bnds,
+                                None,
+                                10.0,
+                                e_bnds,
+                                survival_ratio=1.01)
+
+    return [ww_n, ww_p]
+
+
 @pytest.fixture
 def model():
     openmc.reset_auto_ids()
@@ -80,7 +124,7 @@ def model():
     return model
 
 
-def test_weightwindows(model):
+def test_weightwindows(model, wws):
 
     ww_files = ('ww_n.txt', 'ww_p.txt')
     cwd = Path(__file__).parent.absolute()
@@ -92,39 +136,7 @@ def test_weightwindows(model):
         analog_sp = model.run()
         os.rename(analog_sp, 'statepoint.analog.h5')
 
-        # weight windows
-
-        # load pre-generated weight windows
-        # (created using the same tally as above)
-        ww_n_lower_bnds = np.loadtxt('ww_n.txt')
-        ww_p_lower_bnds = np.loadtxt('ww_p.txt')
-
-        # create a mesh matching the one used
-        # to generate the weight windows
-        ww_mesh = openmc.RegularMesh()
-        ww_mesh.lower_left = (-240, -240, -240)
-        ww_mesh.upper_right = (240, 240, 240)
-        ww_mesh.dimension = (5, 6, 7)
-
-        # energy bounds matching those of the
-        # generated weight windows
-        e_bnds = [0.0, 0.5, 2E7]
-
-        ww_n = openmc.WeightWindows(ww_mesh,
-                                    ww_n_lower_bnds,
-                                    None,
-                                    10.0,
-                                    e_bnds,
-                                    survival_ratio=1.01)
-
-        ww_p = openmc.WeightWindows(ww_mesh,
-                                    ww_p_lower_bnds,
-                                    None,
-                                    10.0,
-                                    e_bnds,
-                                    survival_ratio=1.01)
-
-        model.settings.weight_windows = [ww_n, ww_p]
+        model.settings.weight_windows = wws
 
         # check that string form of the class can be created
         for ww in model.settings.weight_windows:
@@ -211,3 +223,20 @@ def test_lower_ww_bounds_shape():
         energy_bounds=(1, 1e40)
     )
     assert ww.lower_ww_bounds.shape == (2, 3, 4, 1)
+
+
+def test_roundtrip(model, wws):
+    model.settings.weight_windows = wws
+
+    # write the model with weight windows to XML
+    model.export_to_xml()
+
+    # ensure that they can be read successfully from XML and that they match the input values
+    model_read = openmc.Model.from_xml()
+
+    zipped_wws = zip(model.settings.weight_windows,
+                     model_read.settings.weight_windows)
+
+    # ensure the lower bounds read in from the XML match those of the
+    for ww_out, ww_in in zipped_wws:
+        assert(ww_out == ww_in)

@@ -89,7 +89,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert isinstance(s.entropy_mesh, openmc.RegularMesh)
     assert s.entropy_mesh.lower_left == [-10., -10., -10.]
     assert s.entropy_mesh.upper_right == [10., 10., 10.]
-    assert s.entropy_mesh.dimension == [5, 5, 5]
+    assert s.entropy_mesh.dimension == (5, 5, 5)
     assert s.trigger_active
     assert s.trigger_max_batches == 10000
     assert s.trigger_batch_interval == 50
@@ -102,7 +102,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert isinstance(s.ufs_mesh, openmc.RegularMesh)
     assert s.ufs_mesh.lower_left == [-10., -10., -10.]
     assert s.ufs_mesh.upper_right == [10., 10., 10.]
-    assert s.ufs_mesh.dimension == [5, 5, 5]
+    assert s.ufs_mesh.dimension == (5, 5, 5)
     assert s.resonance_scattering == {'enable': True, 'method': 'rvs',
                                       'energy_min': 1.0, 'energy_max': 1000.0,
                                       'nuclides': ['U235', 'U238', 'Pu239']}

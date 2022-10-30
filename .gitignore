@@ -31,6 +31,7 @@ docs/source/pythonapi/generated/
 
 # Source build
 build
+_skbuild
 
 # build from src/utils/setup.py
 src/utils/build

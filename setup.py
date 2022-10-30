@@ -4,7 +4,8 @@ import glob
 import sys
 import numpy as np
 
-from setuptools import setup, find_packages
+from setuptools import find_packages
+from skbuild import setup
 from Cython.Build import cythonize
 
 
@@ -65,7 +66,7 @@ kwargs = {
     'python_requires': '>=3.7',
     'install_requires': [
         'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
-        'pandas', 'lxml', 'uncertainties'
+        'pandas', 'lxml', 'uncertainties', 'cython'
     ],
     'extras_require': {
         'depletion-mpi': ['mpi4py'],

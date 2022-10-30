@@ -299,106 +299,106 @@ endif()
 #===============================================================================
 
 list(APPEND libopenmc_SOURCES
-  src/bank.cpp
-  src/boundary_condition.cpp
-  src/bremsstrahlung.cpp
-  src/dagmc.cpp
-  src/cell.cpp
-  src/cmfd_solver.cpp
-  src/cross_sections.cpp
-  src/distribution.cpp
-  src/distribution_angle.cpp
-  src/distribution_energy.cpp
-  src/distribution_multi.cpp
-  src/distribution_spatial.cpp
-  src/eigenvalue.cpp
-  src/endf.cpp
-  src/error.cpp
-  src/event.cpp
-  src/initialize.cpp
-  src/finalize.cpp
-  src/geometry.cpp
-  src/geometry_aux.cpp
-  src/hdf5_interface.cpp
-  src/lattice.cpp
-  src/material.cpp
-  src/math_functions.cpp
-  src/mesh.cpp
-  src/message_passing.cpp
-  src/mgxs.cpp
-  src/mgxs_interface.cpp
-  src/nuclide.cpp
-  src/output.cpp
-  src/particle.cpp
-  src/particle_data.cpp
-  src/particle_restart.cpp
-  src/photon.cpp
-  src/physics.cpp
-  src/physics_common.cpp
-  src/physics_mg.cpp
-  src/plot.cpp
-  src/position.cpp
-  src/progress_bar.cpp
-  src/random_dist.cpp
-  src/random_lcg.cpp
-  src/reaction.cpp
-  src/reaction_product.cpp
-  src/scattdata.cpp
-  src/secondary_correlated.cpp
-  src/secondary_kalbach.cpp
-  src/secondary_nbody.cpp
-  src/secondary_thermal.cpp
-  src/secondary_uncorrelated.cpp
-  src/settings.cpp
-  src/simulation.cpp
-  src/source.cpp
-  src/state_point.cpp
-  src/string_utils.cpp
-  src/summary.cpp
-  src/surface.cpp
-  src/tallies/derivative.cpp
-  src/tallies/filter.cpp
-  src/tallies/filter_azimuthal.cpp
-  src/tallies/filter_cellborn.cpp
-  src/tallies/filter_cellfrom.cpp
-  src/tallies/filter_cell.cpp
-  src/tallies/filter_cell_instance.cpp
-  src/tallies/filter_delayedgroup.cpp
-  src/tallies/filter_distribcell.cpp
-  src/tallies/filter_energyfunc.cpp
-  src/tallies/filter_energy.cpp
-  src/tallies/filter_collision.cpp
-  src/tallies/filter_legendre.cpp
-  src/tallies/filter_material.cpp
-  src/tallies/filter_mesh.cpp
-  src/tallies/filter_meshsurface.cpp
-  src/tallies/filter_mu.cpp
-  src/tallies/filter_particle.cpp
-  src/tallies/filter_polar.cpp
-  src/tallies/filter_sph_harm.cpp
-  src/tallies/filter_sptl_legendre.cpp
-  src/tallies/filter_surface.cpp
-  src/tallies/filter_time.cpp
-  src/tallies/filter_universe.cpp
-  src/tallies/filter_zernike.cpp
-  src/tallies/tally.cpp
-  src/tallies/tally_scoring.cpp
-  src/tallies/trigger.cpp
-  src/timer.cpp
-  src/thermal.cpp
-  src/track_output.cpp
-  src/universe.cpp
-  src/urr.cpp
-  src/volume_calc.cpp
-  src/weight_windows.cpp
-  src/wmp.cpp
-  src/xml_interface.cpp
-  src/xsdata.cpp)
+  src_cpp/bank.cpp
+  src_cpp/boundary_condition.cpp
+  src_cpp/bremsstrahlung.cpp
+  src_cpp/dagmc.cpp
+  src_cpp/cell.cpp
+  src_cpp/cmfd_solver.cpp
+  src_cpp/cross_sections.cpp
+  src_cpp/distribution.cpp
+  src_cpp/distribution_angle.cpp
+  src_cpp/distribution_energy.cpp
+  src_cpp/distribution_multi.cpp
+  src_cpp/distribution_spatial.cpp
+  src_cpp/eigenvalue.cpp
+  src_cpp/endf.cpp
+  src_cpp/error.cpp
+  src_cpp/event.cpp
+  src_cpp/initialize.cpp
+  src_cpp/finalize.cpp
+  src_cpp/geometry.cpp
+  src_cpp/geometry_aux.cpp
+  src_cpp/hdf5_interface.cpp
+  src_cpp/lattice.cpp
+  src_cpp/material.cpp
+  src_cpp/math_functions.cpp
+  src_cpp/mesh.cpp
+  src_cpp/message_passing.cpp
+  src_cpp/mgxs.cpp
+  src_cpp/mgxs_interface.cpp
+  src_cpp/nuclide.cpp
+  src_cpp/output.cpp
+  src_cpp/particle.cpp
+  src_cpp/particle_data.cpp
+  src_cpp/particle_restart.cpp
+  src_cpp/photon.cpp
+  src_cpp/physics.cpp
+  src_cpp/physics_common.cpp
+  src_cpp/physics_mg.cpp
+  src_cpp/plot.cpp
+  src_cpp/position.cpp
+  src_cpp/progress_bar.cpp
+  src_cpp/random_dist.cpp
+  src_cpp/random_lcg.cpp
+  src_cpp/reaction.cpp
+  src_cpp/reaction_product.cpp
+  src_cpp/scattdata.cpp
+  src_cpp/secondary_correlated.cpp
+  src_cpp/secondary_kalbach.cpp
+  src_cpp/secondary_nbody.cpp
+  src_cpp/secondary_thermal.cpp
+  src_cpp/secondary_uncorrelated.cpp
+  src_cpp/settings.cpp
+  src_cpp/simulation.cpp
+  src_cpp/source.cpp
+  src_cpp/state_point.cpp
+  src_cpp/string_utils.cpp
+  src_cpp/summary.cpp
+  src_cpp/surface.cpp
+  src_cpp/tallies/derivative.cpp
+  src_cpp/tallies/filter.cpp
+  src_cpp/tallies/filter_azimuthal.cpp
+  src_cpp/tallies/filter_cellborn.cpp
+  src_cpp/tallies/filter_cellfrom.cpp
+  src_cpp/tallies/filter_cell.cpp
+  src_cpp/tallies/filter_cell_instance.cpp
+  src_cpp/tallies/filter_delayedgroup.cpp
+  src_cpp/tallies/filter_distribcell.cpp
+  src_cpp/tallies/filter_energyfunc.cpp
+  src_cpp/tallies/filter_energy.cpp
+  src_cpp/tallies/filter_collision.cpp
+  src_cpp/tallies/filter_legendre.cpp
+  src_cpp/tallies/filter_material.cpp
+  src_cpp/tallies/filter_mesh.cpp
+  src_cpp/tallies/filter_meshsurface.cpp
+  src_cpp/tallies/filter_mu.cpp
+  src_cpp/tallies/filter_particle.cpp
+  src_cpp/tallies/filter_polar.cpp
+  src_cpp/tallies/filter_sph_harm.cpp
+  src_cpp/tallies/filter_sptl_legendre.cpp
+  src_cpp/tallies/filter_surface.cpp
+  src_cpp/tallies/filter_time.cpp
+  src_cpp/tallies/filter_universe.cpp
+  src_cpp/tallies/filter_zernike.cpp
+  src_cpp/tallies/tally.cpp
+  src_cpp/tallies/tally_scoring.cpp
+  src_cpp/tallies/trigger.cpp
+  src_cpp/timer.cpp
+  src_cpp/thermal.cpp
+  src_cpp/track_output.cpp
+  src_cpp/universe.cpp
+  src_cpp/urr.cpp
+  src_cpp/volume_calc.cpp
+  src_cpp/weight_windows.cpp
+  src_cpp/wmp.cpp
+  src_cpp/xml_interface.cpp
+  src_cpp/xsdata.cpp)
 
 # Add bundled external dependencies
 list(APPEND libopenmc_SOURCES
-  src/external/quartic_solver.cpp
-  src/external/Faddeeva.cc)
+  src_cpp/external/quartic_solver.cpp
+  src_cpp/external/Faddeeva.cc)
 
 # For Visual Studio compilers
 if(MSVC)
@@ -498,7 +498,7 @@ endif()
 #===============================================================================
 # openmc executable
 #===============================================================================
-add_executable(openmc src/main.cpp)
+add_executable(openmc src_cpp/main.cpp)
 add_executable(OpenMC::openmc ALIAS openmc)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
@@ -516,7 +516,7 @@ set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 add_custom_command(TARGET libopenmc POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy
   $<TARGET_FILE:libopenmc>
-  ${CMAKE_CURRENT_SOURCE_DIR}/openmc/lib/$<TARGET_FILE_NAME:libopenmc>
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/openmc/lib/$<TARGET_FILE_NAME:libopenmc>
   COMMENT "Copying libopenmc to Python module directory")
 
 #===============================================================================

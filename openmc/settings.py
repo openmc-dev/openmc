@@ -1540,10 +1540,12 @@ class Settings:
 
     def export_to_xml(self, path: PathLike = 'settings.xml'):
         """Export simulation settings to an XML file.
+
         Parameters
         ----------
         path : str
             Path to file to write. Defaults to 'settings.xml'.
+
         """
 
         # Reset xml element tree
@@ -1610,15 +1612,19 @@ class Settings:
     @classmethod
     def from_xml(cls, path: PathLike = 'settings.xml'):
         """Generate settings from XML file
+
         .. versionadded:: 0.13.0
+
         Parameters
         ----------
         path : str, optional
             Path to settings XML file
+
         Returns
         -------
         openmc.Settings
             Settings object
+
         """
         tree = ET.parse(path)
         root = tree.getroot()

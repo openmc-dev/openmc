@@ -1440,11 +1440,23 @@ class Tally(IDManagerMixin):
         data = self.get_values(value=value)
 
         # Build a new array shape with one dimension per filter
-        new_shape = tuple(f.num_bins for f in self.filters)
+        new_shape = tuple()
+        idx0 = None
+        for i, f in enumerate(self.filters):
+            # Mesh filter indices are backwards so we need to flip them
+            if isinstance(f, openmc.MeshFilter):
+                fshape = f.shape[::-1]
+                new_shape += fshape
+                idx0, idx1 = i, i + len(fshape) - 1
+            else:
+                new_shape += f.shape
+
         new_shape += (self.num_nuclides, self.num_scores)
 
         # Reshape the data with one dimension for each filter
         data = np.reshape(data, new_shape)
+        if idx0 is not None:
+            data = np.swapaxes(data, idx0, idx1)
         return data
 
     def hybrid_product(self, other, binary_op, filter_product=None,

@@ -314,28 +314,6 @@ class MsrBatchwise(ABC):
             OpenMC parametric model
         """
 
-    def _conc_dict(self, x):
-        """
-        Order concentrations vector into a list of nuclides ordered
-        dictionaries for each depletable material for facilitate extraction.
-        Parameters
-        ------------
-        x : list of numpy.ndarray
-            Total atoms to be used in function.
-        Returns
-        ------------
-        conc : list of OrderedDict of str and float
-            List of OrderedDict of nuclides (keys) and concentrations (values)
-            for each depletable material.
-        """
-        conc = list()
-        for i, mat in enumerate(self.burn_mats):
-            nucs = OrderedDict()
-            for j, nuc in enumerate(self.operator.number.burnable_nuclides):
-                nucs[nuc] = x[i][j]
-            conc.append(nucs)
-        return conc
-
     def _msr_search_for_keff(self, x, val):
         """
         Perform the criticality search for a given parametric model.
@@ -378,7 +356,7 @@ class MsrBatchwise(ABC):
                     res = _res
                 else:
                     # Set res with the closest limit and continue
-                    arg_min = abs(np.array(res.bracket_limit)-_res).argmin()
+                    arg_min = abs(np.array(self.bracket_limit)-_res).argmin()
                     warn('WARNING: Search_for_keff returned root out of '\
                          'bracket limit. Set root to {:.2f} and continue.'
                          .format(self.bracket_limit[arg_min]))
@@ -387,36 +365,47 @@ class MsrBatchwise(ABC):
             elif len(search) == 2:
                 guess, k = search
                 #Check if all guesses are within bracket limits
-                if self.bracket_limit[0] < np.all(guess) < self.bracket_limit[1]:
+                if all(self.bracket_limit[0] < g < self.bracket_limit[1] \
+                    for g in guess):
                     #Simple method to iteratively adapt the bracket
                     print('INFO: Function returned values below or above ' \
                            'target. Adapt bracket...')
 
                     # if the bracket ends up being smaller than the std of the
                     # keff's closer value to target, no need to continue-
-                    if np.all(k) <= max(k).s:
+                    if all(_k <= max(k).s for _k in k):
                         arg_min = abs(self.target-np.array(guess)).argmin()
                         res = guess[arg_min]
 
                     # Calculate gradient as ratio of delta bracket and delta k
                     grad = abs(np.diff(_bracket) / np.diff(k))[0].n
-
                     # Move the bracket closer to presumed keff root.
                     # 2 cases: both k are below or above target
                     if np.mean(k) < self.target:
-                        sign = np.sign(guess[np.argmax(k)])
+                        # direction of moving bracket: +1 is up, -1 is down
+                        if guess[np.argmax(k)] > guess[np.argmin(k)]:
+                            dir = 1
+                        else:
+                            dir = -1
+                        print(dir)
                         _bracket[np.argmin(k)] = _bracket[np.argmax(k)]
                         _bracket[np.argmax(k)] += grad * (self.target - \
-                                                  max(k).n) * sign
+                                                  max(k).n) * dir
                     else:
-                        sign = np.sign(guess[np.argmin(k)])
+                        if guess[np.argmax(k)] > guess[np.argmin(k)]:
+                            dir = -1
+                        else:
+                            dir = 1
+                        print(dir)
                         _bracket[np.argmax(k)] = _bracket[np.argmin(k)]
+                        print(_bracket[np.argmax(k)])
+                        print((min(k).n))
                         _bracket[np.argmin(k)] += grad * (min(k).n - \
-                                                  self.target) * sign
+                                                  self.target) * dir
 
                 else:
                     # Set res with closest limit and continue
-                    arg_min = abs(np.array(res.bracket_limit)-guess).argmin()
+                    arg_min = abs(np.array(self.bracket_limit)-guess).argmin()
                     warn('WARNING: Adaptive iterative bracket went off '\
                          'bracket limits. Set root to {:.2f} and continue.'
                          .format(self.bracket_limit[arg_min]))
@@ -580,27 +569,28 @@ class MsrBatchwiseGeom(MsrBatchwise):
         x : list of numpy.ndarray
             Total atom concentrations
         """
-        nucs = super()._conc_dict(x)
-
+        self.operator.number.set_density(x)
         for i, mat in enumerate(self.burn_mats):
             nuclides = []
             densities = []
             atoms_gram_per_mol = 0
-            for nuc, val in nucs[i].items():
+            for nuc in self.operator.number.nuclides:
+                # get nuclide density [atoms/b-cm]
+                val = 1.0e-24 * self.operator.number.get_atom_density(mat, nuc)
                 if nuc in self.operator.nuclides_with_data:
                     if val > 0.0:
                         nuclides.append(nuc)
-                        density = 1.0e-24 * val / self.operator.number.volume[i]
-                        densities.append(density)
+                        densities.append(val)
                 atoms_gram_per_mol += val * atomic_mass(nuc)
+            atoms_gram_per_mol /= self.operator.number.volume[i]
 
             openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
 
             #Assign new volume to AtomNumber
-            mass_dens = [m.get_mass_density() for m in self.model.materials if
-                    m.id == int(mat)][0]
-            self.operator.number.volume[i] = atoms_gram_per_mol / AVOGADRO /\
-                                                mass_dens
+            #mass_dens = [m.get_mass_density() for m in self.model.materials if
+            #        m.id == int(mat)][0]
+            #self.operator.number.volume[i] = atoms_gram_per_mol / AVOGADRO /\
+            #                                    mass_dens
 
     def _model_builder(self, param):
         """
@@ -641,6 +631,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
         self._set_cell_attrib(res)
         print('UPDATE: old value: {:.2f} cm --> ' \
               'new value: {:.2f} cm'.format(val, res))
+        print(self._get_cell_attrib())
         return x
 
 class MsrBatchwiseMat(MsrBatchwise):
@@ -765,23 +756,26 @@ class MsrBatchwiseMat(MsrBatchwise):
         for i, mat in enumerate(self.burn_mats):
             nuclides = []
             densities = []
-            for nuc, val in self.nucs[i].items():
+            for nuc in self.operator.number.nuclides:
                 if nuc not in self.refuel_vector.keys():
-                    if nuc in self.operator.nuclides_with_data and val > 0.0:
-                        nuclides.append(nuc)
-                        density = 1.0e-24 * val / self.operator.number.volume[i]
-                        densities.append(density)
+                    if nuc in self.operator.nuclides_with_data:
+                        # get atoms density [atoms/b-cm]
+                        val = 1.0e-24 * \
+                              self.operator.number.get_atom_density(mat, nuc)
+                        if val > 0.0:
+                            nuclides.append(nuc)
+                            densities.append(val)
 
                 else:
                     nuclides.append(nuc)
-                    if openmc.lib.materials[int(mat)].id == self.mat_id:
-                        # convert grams into atoms-b/cm3
-                        density = 1.0e-24 * (val + (param / atomic_mass(nuc) * \
-                                AVOGADRO * self.refuel_vector[nuc])) / \
-                                self.operator.number.volume[i]
-                    else:
-                        density = 1.0e-24 * val / self.operator.number.volume[i]
-                    densities.append(density)
+                    val = 1.0e-24 * self.operator.number.get_atom_density(mat,
+                                                                         nuc)
+                    if int(mat) == self.mat_id:
+                        # convert params [grams] into [atoms/cc]
+                        param *= 1.0e-24 / atomic_mass(nuc) * AVOGADRO * \
+                               self.refuel_vector[nuc] / \
+                               self.operator.number.volume[i]
+                    densities.append(val + param)
 
             openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
         return self.model
@@ -838,7 +832,7 @@ class MsrBatchwiseMat(MsrBatchwise):
         x : list of numpy.ndarray
             Updated total atoms concentrations
         """
-        self.nucs = super()._conc_dict(x)
+        self.operator.number.set_density(x)
         self._check_nuclides(self.refuel_vector.keys())
         x, res = super()._msr_search_for_keff(x, 0)
 

@@ -41,6 +41,12 @@ namespace model {
 std::unordered_map<int32_t, int32_t> material_map;
 Material* materials;
 uint64_t materials_size;
+vector2d<int> materials_nuclide;
+vector2d<int> materials_element;
+vector2d<double> materials_atom_density;
+vector2d<int> materials_p0;
+vector2d<int> materials_mat_nuclide_index;
+vector2d<ThermalTable> materials_thermal_tables;
 
 } // namespace model
 
@@ -1067,24 +1073,11 @@ void Material::add_nuclide(const std::string& name, double density)
 
 void Material::copy_to_device()
 {
-  nuclide_.copy_to_device();
-  element_.copy_to_device();
-  mat_nuclide_index_.copy_to_device();
-  p0_.copy_to_device();
-  device_atom_density_ = atom_density_.data();
-  #pragma omp target enter data map(to: device_atom_density_[:atom_density_.size()])
-  thermal_tables_.copy_to_device();
   ttb_.copy_to_device();
 }
 
 void Material::release_from_device()
 {
-  nuclide_.release_device();
-  element_.release_device();
-  mat_nuclide_index_.release_device();
-  p0_.release_device();
-  #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])
-  thermal_tables_.release_device();
   ttb_.release_from_device();
 }
 

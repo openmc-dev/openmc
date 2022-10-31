@@ -778,7 +778,7 @@ void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
   for (int i = 0; i < nuclide_.size(); ++i) {
 
     // Determine microscopic cross sections for this nuclide
-    int i_nuclide = nuclide_[i];
+    int i_nuclide = nuclide(i);
 
     // Perform microscopic XS lookup
     NuclideMicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
@@ -789,7 +789,7 @@ void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
     #endif
 
     // Get atom density of nuclide in material
-    double atom_density = device_atom_density_[i];
+    double atom_density = this->atom_density(i);
 
     // Accumulate this nuclide's contribution to the local macro XS variable
     macro.total      += atom_density * nuclide_micro.total;
@@ -818,7 +818,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine microscopic cross sections for this nuclide
-    int i_element = element_[i];
+    int i_element = element(i);
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {p.photon_xs_[i_element]};
@@ -830,7 +830,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // ADD TO MACROSCOPIC CROSS SECTION
 
     // Copy atom density of nuclide in material
-    double atom_density = device_atom_density_[i];
+    double atom_density = this->atom_density(i);
 
     // Add contributions to material macroscopic cross sections
     p.macro_xs_.total += atom_density * micro.total;

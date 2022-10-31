@@ -2407,9 +2407,9 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
         NuclideMicroXS micro;
         if (i_nuclide >= 0) {
           if (p.material_ != MATERIAL_VOID) {
-            auto j = model::materials[p.material_].mat_nuclide_index_[i_nuclide];
+            auto j = model::materials[p.material_].mat_nuclide_index(i_nuclide);
             if (j == C_NONE) continue;
-            atom_density = model::materials[p.material_].device_atom_density_[j];
+            atom_density = model::materials[p.material_].atom_density(j);
             #ifdef NO_MICRO_XS_CACHE
             micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
             #else

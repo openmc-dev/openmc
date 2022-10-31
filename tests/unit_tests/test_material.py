@@ -545,6 +545,49 @@ def test_get_activity():
     assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
 
 
+def test_get_decayheat():
+    """Tests the activity of stable, metastable and active materials"""
+    m1 = openmc.Material()
+    m1.add_element("Fe", 0.7)
+    m1.add_element("Li", 0.3)
+    m1.set_density('g/cm3', 1.5)
+    # activity in Bq/cc and Bq/g should not require volume setting
+    assert m1.get_decayheat(units='W/cm3') == 0
+    assert m1.get_decayheat(units='W/g') == 0
+    m1.volume = 1
+    assert m1.get_decayheat(units='W') == 0
+
+    # Checks that 1g of tritium has the correct activity scaling
+    m2 = openmc.Material()
+    m2.add_nuclide("H3", 1)
+    m2.set_density('g/cm3', 1)
+    m2.volume = 1
+    assert pytest.approx(m2.get_decayheat(units='W')) == 0.3245231
+    m2.set_density('g/cm3', 2)
+    assert pytest.approx(m2.get_decayheat(units='W')) == 0.3245231*2
+    m2.volume = 3
+    assert pytest.approx(m2.get_decayheat(units='W')) == 0.3245231*2*3
+
+    # Checks that 1 mol of a metastable nuclides has the correct activity
+    m3 = openmc.Material()
+    m3.add_nuclide("Tc99_m1", 1)
+    m3.set_density('g/cm3', 1)
+    m3.volume = 98.9
+    assert pytest.approx(m3.get_decayheat(units='W'), rel=0.001) == 439770.2
+
+    # Checks that specific and volumetric activity of tritium are correct
+    m4 = openmc.Material()
+    m4.add_nuclide("H3", 1)
+    m4.set_density('g/cm3', 1.5)
+    assert pytest.approx(m4.get_decayheat(units='W/g')) == 0.3245231  # [W/g]
+    assert pytest.approx(m4.get_decayheat(units='W/g', by_nuclide=True)["H3"]) == 0.3245231  # [W/g]
+    assert pytest.approx(m4.get_decayheat(units='W/cm3')) == 0.3245231*3/2 # [W/cc]
+    assert pytest.approx(m4.get_decayheat(units='W/cm3', by_nuclide=True)["H3"]) == 0.3245231*3/2#[W/cc]
+    # volume is required to calculate total activity
+    m4.volume = 10.
+    assert pytest.approx(m4.get_decayheat(units='W')) == 0.3245231*3/2*10 # [W]
+ 
+
 def test_decay_photon_energy():
     # Set chain file for testing
     openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'

@@ -1022,11 +1022,12 @@ class Material(IDManagerMixin):
             multiplier = 1.0 / self.get_mass_density()
         
         ev_to_J = openmc.data.JOULE_PER_EV
-        
         decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             inv_seconds = openmc.data.decay_constant(nuclide)
-            decay_erg = openmc.data.decay_energy(nuclide) * ev_to_J
+            decay_erg = openmc.data.decay_energy(nuclide)
+            if decay_erg is None: decay_erg = 0.
+            decay_erg *= ev_to_J
             decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
 
         return decayheat if by_nuclide else sum(decayheat.values()) 

@@ -989,15 +989,15 @@ class Material(IDManagerMixin):
     
     def get_decayheat(self, units: str = 'W', by_nuclide: bool = False):
         """Returns the decay heat of the material or for each nuclide in the
-        material in units of [Bq], [Bq/g] or [Bq/cm3].
+        material in units of [W], [W/g] or [W/cm3].
 
-        .. versionadded:: 0.13.1
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------
         units : {'W', 'W/g', 'W/cm3'}
             Specifies the type of decay heat to return, options include total
-            heat [W], specific [W/g] or volumetric heat [Bq/cm3].
+            heat [W], specific [W/g] or volumetric heat [W/cm3].
             Default is total heat [W].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
@@ -1007,7 +1007,7 @@ class Material(IDManagerMixin):
         -------
         Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide
-            names and values are activity is returned. Otherwise the activity
+            names and values are decay heat is returned. Otherwise the decay heat
             of the material is returned as a float.
         """
 

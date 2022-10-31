@@ -454,7 +454,7 @@ void print_runtime()
     show_time("XS lookups (Total)", time_event_calculate_xs.elapsed(), 2);
     show_time("XS lookups (Fuel)", time_event_calculate_xs_fuel.elapsed(), 2);
     show_time("XS lookups (Non-Fuel)", time_event_calculate_xs_nonfuel.elapsed(), 2);
-    show_time("Fuel energy sorting", time_event_sort.elapsed(), 2);
+    show_time("XS queue sorting", time_event_sort.elapsed(), 2);
     show_time("Avg. time per sort", time_event_sort.elapsed() / sort_counter, 2);
     show_time("Advancing", time_event_advance_particle.elapsed(), 2);
     show_time("Tallying", time_event_tally.elapsed(), 2);

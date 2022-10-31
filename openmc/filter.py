@@ -102,6 +102,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
+    shape : tuple
+        The shape of the filter
 
     """
 
@@ -204,6 +206,10 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
     @property
     def num_bins(self):
         return len(self.bins)
+
+    @property
+    def shape(self):
+        return (self.num_bins,)
 
     def check_bins(self, bins):
         """Make sure given bins are valid for this filter.
@@ -838,6 +844,10 @@ class MeshFilter(Filter):
                 self.bins = list(range(len(mesh.volumes)))
         else:
             self.bins = list(mesh.indices)
+
+    @property
+    def shape(self):
+        return self.mesh.dimension
 
     @property
     def translation(self):

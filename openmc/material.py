@@ -4,6 +4,7 @@ from copy import deepcopy
 from numbers import Real
 from pathlib import Path
 import re
+import os
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
 from typing import Optional, Union
@@ -1341,9 +1342,6 @@ class Material(IDManagerMixin):
             raise ValueError(msg)
 
         material_to_add = library_data[name]
-
-        # mat = cls()
-        
 
         return material_to_add
 

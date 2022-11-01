@@ -2405,15 +2405,20 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
 
         double atom_density = 0.;
         NuclideMicroXS micro;
+        double reaction[DEPLETION_RX_SIZE];
         if (i_nuclide >= 0) {
           if (p.material_ != MATERIAL_VOID) {
             auto j = model::materials[p.material_].mat_nuclide_index_[i_nuclide];
             if (j == C_NONE) continue;
             atom_density = model::materials[p.material_].device_atom_density_[j];
-            #ifdef NO_MICRO_XS_CACHE
-            micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
-            #else
+            #ifndef NO_MICRO_XS_CACHE
             micro = p.neutron_xs_[i_nuclide];
+            #else
+            if (need_depletion_rx) {
+              data::nuclides[i_nuclide].calculate_xs(i_grid, p, nullptr, reaction, &micro);
+            } else {
+              data::nuclides[i_nuclide].calculate_xs(i_grid, p, nullptr, nullptr, &micro);
+            }
             #endif
           }
         }

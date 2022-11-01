@@ -627,7 +627,7 @@ double Nuclide::elastic_xs_0K(double E) const
   return (1.0 - f)*elastic_0K_[i_grid] + f*elastic_0K_[i_grid + 1];
 }
 
-NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_depletion_rx)
+void Nuclide::calculate_xs(int i_log_union, Particle& p, MicroXS* micro, double* reaction, NuclideMicroXS* cache)
 {
   double E = p.E_;
   double sqrtkT = p.sqrtkT_;
@@ -656,19 +656,32 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
   // ======================================================================
   // CHECK FOR SAB TABLE END
   // ======================================================================
-
+  
   #ifndef NO_MICRO_XS_CACHE
   {
-    auto& micro {p.neutron_xs_[index_]};
-    // Check if a microscopic XS lookup is even required. If all state variables are the same, then we can
-    // just accumulate the micro XS data directly into the macro and skip the rest of this function.
-    if (     E      == micro.last_E
-          && sqrtkT == micro.last_sqrtkT
-          && i_sab     == micro.index_sab
-          && sab_frac  == micro.sab_frac
+    auto& micro_cache {p.neutron_xs_[index_]};
+    // Check if a microscopic XS lookup is even required. If all state variables are the same,
+    // we don't need to perform a lookup at all.
+    if (     E      == micro_cache.last_E
+        && sqrtkT == micro_cache.last_sqrtkT
+        && i_sab     == micro_cache.index_sab
+        && sab_frac  == micro_cache.sab_frac
        )
     {
-      return micro;
+      // If the cache is still valid, then we can pass back any needed values directly
+      // from the cache
+      if (micro) {
+        micro->total         = micro_cache.total;
+        micro->absorption    = micro_cache.absorption;
+        micro->fission       = micro_cache.fission;
+        micro->nu_fission    = micro_cache.nu_fission;
+      }
+      if (reaction) {
+        for ( int r = 0; r < DEPLETION_RX_SIZE; r++) {
+          reaction[r] = micro_cache.reaction[r];
+        }
+      }
+      return;
     }
   }
   #endif
@@ -679,7 +692,11 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
   double fission;
   double nu_fission;
   double photon_prod = 0.0;
-  double reaction[DEPLETION_RX_SIZE] = {0};
+  if (reaction) {
+    for (int i = 0; i < DEPLETION_RX_SIZE; i++) {
+      reaction[i] = 0.0;
+    }
+  }
 
   bool use_mp = false;
   // Check to see if there is multipole data present at this energy
@@ -707,7 +724,7 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
     nu_fission = fissionable_ ?
       sig_f * this->nu(E, EmissionMode::total) : 0.0;
 
-    if (need_depletion_rx) {
+    if (reaction) {
       // Only non-zero reaction is (n,gamma)
       reaction[0] = sig_a - sig_f;
     }
@@ -839,9 +856,8 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
     nu_fission  = f_comp * nu_fission_low  + f * nu_fission_next;
     photon_prod = f_comp * photon_prod_low + f * photon_prod_next;
 
-
     // Depletion-related reactions
-    if (need_depletion_rx) {
+    if (reaction) {
       for (int j = 0; j < DEPLETION_RX.size(); ++j) {
         // If reaction is present and energy is greater than threshold, set the
         // reaction xs appropriately
@@ -1044,7 +1060,7 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
       fission = p_fission;
       total = p_elastic + p_inelastic + p_capture + p_fission;
 
-      if (need_depletion_rx) {
+      if (reaction) {
         reaction[0] = p_capture;
       }
 
@@ -1062,28 +1078,37 @@ NuclideMicroXS Nuclide::calculate_xs(int i_log_union, Particle& p, bool need_dep
   // Return MicroXS
   // ======================================================================
   
-  NuclideMicroXS micro;
-  micro.elastic = elastic;
-  micro.thermal_elastic = thermal_elastic;
-  micro.thermal = thermal;
-  micro.index_sab = index_sab;
-  micro.sab_frac = sab_frac;
-  micro.use_ptable = use_ptable;
-  micro.last_E = E;
-  micro.last_sqrtkT = sqrtkT;
-  micro.index_temp    = i_temp;
-  micro.index_grid    = i_grid;
-  micro.interp_factor = f;
-  micro.total         = total;
-  micro.absorption    = absorption;
-  micro.fission       = fission;
-  micro.nu_fission    = nu_fission;
-  micro.photon_prod   = photon_prod;
-  micro.index_temp_sab = index_temp_sab;
-  for ( int r = 0; r < DEPLETION_RX_SIZE; r++) 
-    micro.reaction[r]       = reaction[r];
+  if (micro) {
+    micro->total         = total;
+    micro->absorption    = absorption;
+    micro->fission       = fission;
+    micro->nu_fission    = nu_fission;
+  }
 
-  return micro;
+  if (cache) {
+    cache->elastic = elastic;
+    cache->thermal_elastic = thermal_elastic;
+    cache->thermal = thermal;
+    cache->index_sab = index_sab;
+    cache->sab_frac = sab_frac;
+    cache->use_ptable = use_ptable;
+    cache->last_E = E;
+    cache->last_sqrtkT = sqrtkT;
+    cache->index_temp    = i_temp;
+    cache->index_grid    = i_grid;
+    cache->interp_factor = f;
+    cache->total         = total;
+    cache->absorption    = absorption;
+    cache->fission       = fission;
+    cache->nu_fission    = nu_fission;
+    cache->photon_prod   = photon_prod;
+    cache->index_temp_sab = index_temp_sab;
+    if (reaction) {
+      for ( int r = 0; r < DEPLETION_RX_SIZE; r++) {
+        cache->reaction[r] = reaction[r];
+      }
+    }
+  }
 }
 
 std::pair<gsl::index, double> Nuclide::find_temperature(double T) const

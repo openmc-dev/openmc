@@ -45,7 +45,7 @@ public:
   void init_grid();
 
   #pragma omp declare target
-  NuclideMicroXS calculate_xs(int i_log_union, Particle& p, bool need_depletion_rx);
+  void calculate_xs(int i_log_union, Particle& p, MicroXS* micro, double* reaction, NuclideMicroXS* cache);
 
   // Methods
   double nu(double E, EmissionMode mode, int group=0) const;

@@ -487,8 +487,8 @@ int sample_nuclide(Particle& p)
     int i_nuclide = mat.nuclide_[i];
 
     // Lookup micro XS (no depletion XS data is needed for collisions)
-    bool need_depletion_rx = false;
-    NuclideMicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
+    NuclideMicroXS xs;
+    data::nuclides[i_nuclide].calculate_xs(i_grid, p, nullptr, nullptr, &xs);
     
     // Get atom density
     double atom_density = mat.device_atom_density_[i];

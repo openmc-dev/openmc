@@ -4,7 +4,7 @@ from numbers import Real
 import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
 # also required to prevent typing.Union namespace overwriting Union
-from typing import Optional
+from typing import Optional, Sequence
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -77,7 +77,7 @@ class Source:
     def __init__(
         self,
         space: Optional[openmc.stats.Spatial] = None,
-        angle: Optional[openmc.stats.Spatial] = None,
+        angle: Optional[openmc.stats.UnitSphere] = None,
         energy: Optional[openmc.stats.Univariate] = None,
         time: Optional[openmc.stats.Univariate] = None,
         filename: Optional[str] = None,
@@ -85,7 +85,7 @@ class Source:
         parameters: Optional[str] = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Optional[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]] = None
+        domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None
     ):
         self._space = None
         self._angle = None

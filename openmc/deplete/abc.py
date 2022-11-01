@@ -842,7 +842,7 @@ class Integrator(ABC):
                     conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
                 else:
                     conc, res = self._get_bos_data_from_restart(i, source_rate, conc)
-                print('Timestep: {} --> keff: {:.5f}'.format(i, res.k.n))
+
                 # Solve Bateman equations over time interval
                 proc_time, conc_list, res_list = self(conc, res.rates, dt, source_rate, i)
 

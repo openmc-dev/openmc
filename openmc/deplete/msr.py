@@ -5,6 +5,7 @@ from warnings import warn
 from numbers import Real
 
 import numpy as np
+import h5py
 
 from openmc.checkvalue import check_type, check_value, check_less_than, \
 check_iterable_type, check_length
@@ -396,7 +397,6 @@ class MsrBatchwise(ABC):
                         else:
                             dir = 1
                         _bracket[np.argmax(k)] = _bracket[np.argmin(k)]
-                        print(_bracket[np.argmax(k)])
                         _bracket[np.argmin(k)] += grad * (min(k).n - \
                                                   self.target) * dir
 
@@ -412,6 +412,12 @@ class MsrBatchwise(ABC):
                 raise ValueError(f'ERROR: Search_for_keff output is not valid')
 
         return x, res
+
+    def _save_res(self, step_index, res):
+        kwargs = {'mode': "w" if step_index == 0 else "a"}
+        with h5py.File('msr_results.h5', **kwargs) as h5:
+            h5.create_dataset(str(step_index), data=res)
+
 
 class MsrBatchwiseGeom(MsrBatchwise):
     """ MsrBatchwise geoemtrical class
@@ -570,7 +576,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
         for i, mat in enumerate(self.burn_mats):
             nuclides = []
             densities = []
-            atoms_gram_per_mol = 0
+            density = 0
             for nuc in self.operator.number.nuclides:
                 # get nuclide density [atoms/b-cm]
                 val = 1.0e-24 * self.operator.number.get_atom_density(mat, nuc)
@@ -578,16 +584,17 @@ class MsrBatchwiseGeom(MsrBatchwise):
                     if val > 0.0:
                         nuclides.append(nuc)
                         densities.append(val)
-                atoms_gram_per_mol += val * atomic_mass(nuc)
-            atoms_gram_per_mol /= self.operator.number.volume[i]
+                # density in [atoms-g/b-cm-mol]
+                density +=  val * atomic_mass(nuc)
 
             openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
 
-            #Assign new volume to AtomNumber
-            #mass_dens = [m.get_mass_density() for m in self.model.materials if
-            #        m.id == int(mat)][0]
-            #self.operator.number.volume[i] = atoms_gram_per_mol / AVOGADRO /\
-            #                                    mass_dens
+            # Mass density in [g/cc] that will be kept constant
+            mass_dens = [m.get_mass_density() for m in self.model.materials if
+                    m.id == int(mat)][0]
+            #In the internal version we assign new volume to AtomNumber
+            self.operator.number.volume[i] *= 1.0e24 * density / AVOGADRO /\
+                                                mass_dens
 
     def _model_builder(self, param):
         """
@@ -605,7 +612,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
         self._set_cell_attrib(param)
         return self.model
 
-    def msr_search_for_keff(self, x):
+    def msr_search_for_keff(self, x, step_index):
         """
         Perform the criticality search on the parametric geometrical model.
         Will set the root of the `search_for_keff` function to the cell
@@ -619,16 +626,22 @@ class MsrBatchwiseGeom(MsrBatchwise):
         x : list of numpy.ndarray
             Updated total atoms concentrations
         """
-        self._update_materials(x)
         val = self._get_cell_attrib()
         check_type('Cell coeff', val, Real)
-        x, res = super()._msr_search_for_keff(x, val)
 
-        # set results value in the geometry model abd continue
-        self._set_cell_attrib(res)
-        print('UPDATE: old value: {:.2f} cm --> ' \
-              'new value: {:.2f} cm'.format(val, res))
-        print(self._get_cell_attrib())
+        if step_index > 0:
+            self._update_materials(x)
+            x, res = super()._msr_search_for_keff(x, val)
+
+            # set results value in the geometry model abd continue
+            self._set_cell_attrib(res)
+            print('UPDATE: old value: {:.2f} cm --> ' \
+                  'new value: {:.2f} cm'.format(val, res))
+
+            #Store results
+            super()._save_res(step_index, res)
+        else:
+            super()._save_res(step_index, val)
         return x
 
 class MsrBatchwiseMat(MsrBatchwise):
@@ -798,24 +811,26 @@ class MsrBatchwiseMat(MsrBatchwise):
         """
 
         for i, mat in enumerate(self.burn_mats):
-            atoms_gram_per_mol = 0
+            density = 0
             for j, nuc in enumerate(self.operator.number.burnable_nuclides):
                 if nuc in self.refuel_vector.keys() and int(mat) == self.mat_id:
                     # Convert res grams into atoms
                     res_atoms = res / atomic_mass(nuc) * AVOGADRO * \
                                 self.refuel_vector[nuc]
                     x[i][j] += res_atoms
-                atoms_gram_per_mol += x[i][j] * atomic_mass(nuc)
+                # Density in [atoms-g/mol]
+                density += x[i][j] * atomic_mass(nuc)
 
-            # Calculate new volume and assign it in memory
+            # Mass density in [g/cc] that will be kept constant
             mass_dens = [m.get_mass_density() for m in self.model.materials if
                     m.id == int(mat)][0]
+            #In the internal version we assign new volume to AtomNumber
             self.operator.number.volume[i] = atoms_gram_per_mol / AVOGADRO / \
                                              mass_dens
 
         return x
 
-    def msr_search_for_keff(self, x):
+    def msr_search_for_keff(self, x, step_index):
         """
         Perform the criticality search on the parametric material model.
         Will set the root of the `search_for_keff` function to the atoms
@@ -829,10 +844,16 @@ class MsrBatchwiseMat(MsrBatchwise):
         x : list of numpy.ndarray
             Updated total atoms concentrations
         """
-        self.operator.number.set_density(x)
-        self._check_nuclides(self.refuel_vector.keys())
-        x, res = super()._msr_search_for_keff(x, 0)
+        if step_index > 0:
+            self.operator.number.set_density(x)
+            self._check_nuclides(self.refuel_vector.keys())
+            x, res = super()._msr_search_for_keff(x, 0)
 
-        print('UPDATE: material addition --> {:.2f} g --> '.format(res))
-        x = self._update_x_vector_and_volumes(x, res)
+            print('UPDATE: material addition --> {:.2f} g --> '.format(res))
+            x = self._update_x_vector_and_volumes(x, res)
+
+            #Store results
+            super()._save_res(step_index, res)
+        else:
+            super()._save_res(step_index, 0)
         return  x

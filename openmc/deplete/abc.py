@@ -557,7 +557,7 @@ class Integrator(ABC):
         ``MsrBatchwiseMat`` can be used to permodrm geometry-based or material
         based criticality search, respecively.
         Users should instantiate one of these two classes.
-        
+
     Attributes
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -807,8 +807,7 @@ class Integrator(ABC):
         """
         x = deepcopy(bos_conc)
         # Get new vector after keff criticality control
-        if step_index > 0:
-            x = self.msr_batchwise.msr_search_for_keff(x)
+        x = self.msr_batchwise.msr_search_for_keff(x, step_index)
         return x
 
     def integrate(self, final_step=True, output=True):

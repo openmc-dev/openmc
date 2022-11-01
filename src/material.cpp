@@ -768,7 +768,6 @@ void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
   // Local macro XS accumulator
   MacroXS macro = {};
 
-
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
 

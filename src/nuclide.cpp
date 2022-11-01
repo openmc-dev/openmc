@@ -659,26 +659,25 @@ void Nuclide::calculate_xs(int i_log_union, Particle& p, MicroXS* micro, double*
   
   #ifndef NO_MICRO_XS_CACHE
   {
-    auto& micro_cache {p.neutron_xs_[index_]};
     // Check if a microscopic XS lookup is even required. If all state variables are the same,
     // we don't need to perform a lookup at all.
-    if (     E      == micro_cache.last_E
-        && sqrtkT == micro_cache.last_sqrtkT
-        && i_sab     == micro_cache.index_sab
-        && sab_frac  == micro_cache.sab_frac
+    if (     E      == cache.last_E
+        && sqrtkT == cache.last_sqrtkT
+        && i_sab     == cache.index_sab
+        && sab_frac  == cache.sab_frac
        )
     {
       // If the cache is still valid, then we can pass back any needed values directly
       // from the cache
       if (micro) {
-        micro->total         = micro_cache.total;
-        micro->absorption    = micro_cache.absorption;
-        micro->fission       = micro_cache.fission;
-        micro->nu_fission    = micro_cache.nu_fission;
+        micro->total      = cache.total;
+        micro->absorption = cache.absorption;
+        micro->fission    = cache.fission;
+        micro->nu_fission = cache.nu_fission;
       }
       if (reaction) {
         for ( int r = 0; r < DEPLETION_RX_SIZE; r++) {
-          reaction[r] = micro_cache.reaction[r];
+          reaction[r] = cache.reaction[r];
         }
       }
       return;

@@ -414,6 +414,15 @@ class MsrBatchwise(ABC):
         return x, res
 
     def _save_res(self, step_index, res):
+        """
+        Save results to msr_results.h5 file.
+        Parameters
+        ------------
+        step_index : int
+            depletion time step index
+        res : float or dict
+             Root of the search_for_keff function
+        """
         kwargs = {'mode': "w" if step_index == 0 else "a"}
         with h5py.File('msr_results.h5', **kwargs) as h5:
             h5.create_dataset(str(step_index), data=res)

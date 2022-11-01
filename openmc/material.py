@@ -1000,7 +1000,7 @@ class Material(IDManagerMixin):
             heat [W], specific [W/g] or volumetric heat [W/cm3].
             Default is total heat [W].
         by_nuclide : bool
-            Specifies if the activity should be returned for the material as a
+            Specifies if the decay heat should be returned for the material as a
             whole or per nuclide. Default is False.
 
         Returns
@@ -1021,14 +1021,15 @@ class Material(IDManagerMixin):
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
         
-        ev_to_J = openmc.data.JOULE_PER_EV
         decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(nuclide)
             decay_erg = openmc.data.decay_energy(nuclide)
-            if decay_erg is None: decay_erg = 0.
-            decay_erg *= ev_to_J
-            decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
+            if decay_erg is None: 
+                decayheat[nuclide] = 0.
+            else:
+                inv_seconds = openmc.data.decay_constant(nuclide)
+                decay_erg *= openmc.data.JOULE_PER_EV
+                decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
 
         return decayheat if by_nuclide else sum(decayheat.values()) 
     

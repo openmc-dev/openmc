@@ -154,7 +154,7 @@ class MsrContinuous:
                 raise ValueError(f'Transfer to material {dest_mat} is set '\
                         'but there is only one depletable material')
             dest_mat = self._get_mat_id(dest_mat)
-        if units is not '1/s':
+        if units != '1/s':
             check_value('Units', units, ['1/h', '1/d'])
             if units == '1/h':
                 unit_conv = 1/3600
@@ -387,7 +387,6 @@ class MsrBatchwise(ABC):
                             dir = 1
                         else:
                             dir = -1
-                        print(dir)
                         _bracket[np.argmin(k)] = _bracket[np.argmax(k)]
                         _bracket[np.argmax(k)] += grad * (self.target - \
                                                   max(k).n) * dir
@@ -396,10 +395,8 @@ class MsrBatchwise(ABC):
                             dir = -1
                         else:
                             dir = 1
-                        print(dir)
                         _bracket[np.argmax(k)] = _bracket[np.argmin(k)]
                         print(_bracket[np.argmax(k)])
-                        print((min(k).n))
                         _bracket[np.argmin(k)] += grad * (min(k).n - \
                                                   self.target) * dir
 

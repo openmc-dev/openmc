@@ -585,7 +585,6 @@ class MsrBatchwiseGeom(MsrBatchwise):
         for i, mat in enumerate(self.burn_mats):
             nuclides = []
             densities = []
-            density = 0
             for nuc in self.operator.number.nuclides:
                 # get nuclide density [atoms/b-cm]
                 val = 1.0e-24 * self.operator.number.get_atom_density(mat, nuc)
@@ -593,17 +592,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
                     if val > 0.0:
                         nuclides.append(nuc)
                         densities.append(val)
-                # density in [atoms-g/b-cm-mol]
-                density +=  val * atomic_mass(nuc)
-
             openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
-
-            # Mass density in [g/cc] that will be kept constant
-            mass_dens = [m.get_mass_density() for m in self.model.materials if
-                    m.id == int(mat)][0]
-            #In the internal version we assign new volume to AtomNumber
-            self.operator.number.volume[i] *= 1.0e24 * density / AVOGADRO /\
-                                                mass_dens
 
     def _model_builder(self, param):
         """
@@ -820,23 +809,12 @@ class MsrBatchwiseMat(MsrBatchwise):
         """
 
         for i, mat in enumerate(self.burn_mats):
-            density = 0
             for j, nuc in enumerate(self.operator.number.burnable_nuclides):
                 if nuc in self.refuel_vector.keys() and int(mat) == self.mat_id:
                     # Convert res grams into atoms
                     res_atoms = res / atomic_mass(nuc) * AVOGADRO * \
                                 self.refuel_vector[nuc]
                     x[i][j] += res_atoms
-                # Density in [atoms-g/mol]
-                density += x[i][j] * atomic_mass(nuc)
-
-            # Mass density in [g/cc] that will be kept constant
-            mass_dens = [m.get_mass_density() for m in self.model.materials if
-                    m.id == int(mat)][0]
-            #In the internal version we assign new volume to AtomNumber
-            self.operator.number.volume[i] = atoms_gram_per_mol / AVOGADRO / \
-                                             mass_dens
-
         return x
 
     def msr_search_for_keff(self, x, step_index):

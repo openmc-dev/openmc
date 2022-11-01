@@ -45,6 +45,13 @@ public:
   void init_grid();
 
   #pragma omp declare target
+  //! \brief Calculate a microscopic cross section
+  //
+  //! \param[in] i_log_union Index on the logarithmic unionized grid
+  //! \param[in] p particle Particle state used to determine cross section
+  //! \param[in] micro Pointer to a struct to return main cross section data in. May be left as nullptr.
+  //! \param[in] reaction Array for returning depletion reaction data to. May be left as nullptr.
+  //! \param[in] cache Pointer to a full micro XS cache entry for the nuclide. May be left as nullptr
   void calculate_xs(int i_log_union, Particle& p, MicroXS* micro, double* reaction, NuclideMicroXS* cache);
 
   // Methods

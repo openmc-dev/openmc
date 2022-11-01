@@ -607,7 +607,6 @@ void Tally::init_results()
 {
   n_scores_ = scores_.size() * nuclides_.size();
   results_size_ = n_filter_bins_ * n_scores_ * 3;
-  std::cout << "Allocating tally " << id_ << " buffer for " << n_filter_bins_ << " bins with " << n_scores_ << " scores each. Total size: " << (double) results_size_ * sizeof(double) / 1.0e6 << " MB" << std::endl;
   results_ = static_cast<double*>(malloc(results_size_ * sizeof(double)));
 }
 

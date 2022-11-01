@@ -25,6 +25,9 @@ _dll.openmc_cell_get_fill.argtypes = [
     c_int32, POINTER(c_int), POINTER(POINTER(c_int32)), POINTER(c_int32)]
 _dll.openmc_cell_get_fill.restype = c_int
 _dll.openmc_cell_get_fill.errcheck = _error_handler
+_dll.openmc_cell_get_num_instances.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_cell_get_num_instances.restype = c_int
+_dll.openmc_cell_get_num_instances.errcheck = _error_handler
 _dll.openmc_cell_get_temperature.argtypes = [
     c_int32, POINTER(c_int32), POINTER(c_double)]
 _dll.openmc_cell_get_temperature.restype = c_int
@@ -78,6 +81,14 @@ class Cell(_FortranObjectWithID):
     ----------
     id : int
         ID of the cell
+    fill : openmc.lib.Material or list of openmc.lib.Material
+        Indicates what the region of space is filled with
+    name : str
+        Name of the cell
+    num_instances : int
+        Number of unique cell instances
+    bounding_box : 2-tuple of numpy.ndarray
+        Lower-left and upper-right coordinates of bounding box
 
     """
     __instances = WeakValueDictionary()
@@ -159,6 +170,12 @@ class Cell(_FortranObjectWithID):
             indices = (c_int32*1)(-1)
             _dll.openmc_cell_set_fill(self._index, 0, 1, indices)
 
+    @property
+    def num_instances(self):
+        n = c_int32()
+        _dll.openmc_cell_get_num_instances(self._index, n)
+        return n.value
+
     def get_temperature(self, instance=None):
         """Get the temperature of a cell
 
@@ -210,6 +227,7 @@ class Cell(_FortranObjectWithID):
         urc[urc == -inf] = -np.inf
 
         return llc, urc
+
 
 class _CellMapping(Mapping):
     def __getitem__(self, key):

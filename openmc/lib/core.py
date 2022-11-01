@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
                     c_char, POINTER, Structure, c_void_p, create_string_buffer)
 import sys
+import os
 
 import numpy as np
 from numpy.ctypeslib import as_array
@@ -62,7 +63,13 @@ _dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
 _dll.openmc_next_batch.errcheck = _error_handler
 _dll.openmc_plot_geometry.restype = c_int
-_dll.openmc_plot_geometry.restype = _error_handler
+_dll.openmc_plot_geometry.errcheck = _error_handler
+_dll.openmc_properties_export.argtypes = [c_char_p]
+_dll.openmc_properties_export.restype = c_int
+_dll.openmc_properties_export.errcheck = _error_handler
+_dll.openmc_properties_import.argtypes = [c_char_p]
+_dll.openmc_properties_import.restype = c_int
+_dll.openmc_properties_import.errcheck = _error_handler
 _dll.openmc_run.restype = c_int
 _dll.openmc_run.errcheck = _error_handler
 _dll.openmc_reset.restype = c_int
@@ -118,6 +125,30 @@ def current_batch():
 
     """
     return c_int.in_dll(_dll, 'current_batch').value
+
+
+def export_properties(filename=None, output=True):
+    """Export physical properties.
+
+    .. versionadded:: 0.13.0
+
+    Parameters
+    ----------
+    filename : str or None
+        Filename to export properties to (defaults to "properties.h5")
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+
+    See Also
+    --------
+    openmc.lib.import_properties
+
+    """
+    if filename is not None:
+        filename = c_char_p(filename.encode())
+
+    with quiet_dll(output):
+        _dll.openmc_properties_export(filename)
 
 
 def finalize():
@@ -176,6 +207,24 @@ def find_material(xyz):
 def hard_reset():
     """Reset tallies, timers, and pseudo-random number generator state."""
     _dll.openmc_hard_reset()
+
+
+def import_properties(filename):
+    """Import physical properties.
+
+    .. versionadded:: 0.13.0
+
+    Parameters
+    ----------
+    filename : str
+        Filename to import properties from
+
+    See Also
+    --------
+    openmc.lib.export_properties
+
+    """
+    _dll.openmc_properties_import(filename.encode())
 
 
 def init(args=None, intracomm=None):
@@ -435,3 +484,46 @@ class _FortranObjectWithID(_FortranObject):
         # assigned. If the array index of the object is out of bounds, an
         # OutOfBoundsError will be raised here by virtue of referencing self.id
         self.id
+
+
+@contextmanager
+def quiet_dll(output=True):
+    """This context manager allows us to suppress standard output from DLLs
+
+    Parameters
+    ----------
+    output : bool
+        Denotes whether the output should be displayed (True) or not (False)
+
+    .. versionadded:: 0.13.0
+
+    """
+
+    # This contextmanager is modified from that provided here:
+    # https://stackoverflow.com/a/14797594
+
+    if output:
+        yield
+    else:
+        sys.stdout.flush()
+        # Save the initial file descriptor states
+        initial_stdout = sys.stdout
+        initial_stdout_fno = os.dup(sys.stdout.fileno())
+        # Get a garbage descriptor so we can throw away output
+        devnull = os.open(os.devnull, os.O_WRONLY)
+
+        # Get the current stdout stream and make a duplicate of it
+        new_stdout = os.dup(1)
+        # Copy the garbage output to the stdout stream
+        os.dup2(devnull, 1)
+        os.close(devnull)
+        # Now point stdout to the re-defined stdout
+        sys.stdout = os.fdopen(new_stdout, 'w')
+
+        try:
+            yield
+        finally:
+            # Now we just clean up after ourselves and reset the streams
+            sys.stdout = initial_stdout
+            sys.stdout.flush()
+            os.dup2(initial_stdout_fno, 1)

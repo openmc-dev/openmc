@@ -226,6 +226,11 @@ file_open(const std::string& filename, char mode, bool parallel)
   return file_open(filename.c_str(), mode, parallel);
 }
 
+hid_t open_group(hid_t group_id, const std::string& name)
+{
+  return open_group(group_id, name.c_str());
+}
+
 void file_close(hid_t file_id)
 {
   H5Fclose(file_id);

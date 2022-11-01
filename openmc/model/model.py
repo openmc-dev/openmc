@@ -2,6 +2,8 @@ from collections.abc import Iterable
 from pathlib import Path
 import time
 
+import h5py
+
 import openmc
 from openmc.checkvalue import check_type, check_value
 
@@ -196,6 +198,62 @@ class Model:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
+
+    def import_properties(self, filename):
+        """Import physical properties
+
+        .. versionchanged:: 0.13.0
+            This method now updates values as loaded in memory with the C API
+
+        Parameters
+        ----------
+        filename : str
+            Path to properties HDF5 file
+
+        See Also
+        --------
+        openmc.lib.export_properties
+
+        """
+        import openmc.lib
+
+        cells = self.geometry.get_all_cells()
+        materials = self.geometry.get_all_materials()
+
+        with h5py.File(filename, 'r') as fh:
+            cells_group = fh['geometry/cells']
+
+            # Make sure number of cells matches
+            n_cells = fh['geometry'].attrs['n_cells']
+            if n_cells != len(cells):
+                raise ValueError("Number of cells in properties file doesn't "
+                                 "match current model.")
+
+            # Update temperatures for cells filled with materials
+            for name, group in cells_group.items():
+                cell_id = int(name.split()[1])
+                cell = cells[cell_id]
+                if cell.fill_type in ('material', 'distribmat'):
+                    cell.temperature = group['temperature'][()]
+                    if self.is_initialized:
+                        lib_cell = openmc.lib.cells[cell_id]
+                        lib_cell.set_temperature(group['temperature'][()])
+
+            # Make sure number of materials matches
+            mats_group = fh['materials']
+            n_cells = mats_group.attrs['n_materials']
+            if n_cells != len(materials):
+                raise ValueError("Number of materials in properties file "
+                                 "doesn't match current model.")
+
+            # Update material densities
+            for name, group in mats_group.items():
+                mat_id = int(name.split()[1])
+                atom_density = group.attrs['atom_density']
+                materials[mat_id].set_density('atom/b-cm', atom_density)
+                if self.is_initialized:
+                    C_mat = openmc.lib.materials[mat_id]
+                    C_mat.set_density(atom_density, 'atom/b-cm')
 
     def run(self, **kwargs):
         """Creates the XML files, runs OpenMC, and returns the path to the last

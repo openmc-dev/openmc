@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
-from typing import Optional, Union
+from typing import Optional
 from xml.etree import ElementTree as ET
 
 import h5py
@@ -968,7 +968,7 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        Union[dict, float]
+        typing.Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide
             names and values are activity is returned. Otherwise the activity
             of the material is returned as a float.

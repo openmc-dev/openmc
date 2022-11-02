@@ -10,7 +10,7 @@ import pytest
 
 
 def make_fake_cross_section():
-    """Create fake U235 nuclide
+    """Create fake U235 nuclide with a fake thermal scattering library attached
 
     This nuclide is designed to have k_inf=1 at 300 K, k_inf=2 at 600 K, and
     k_inf=1 at 900 K. The absorption cross section is also constant with
@@ -81,16 +81,9 @@ def make_fake_cross_section():
     # Export HDF5 file
     u235_fake.export_to_hdf5('U235_fake.h5', 'w')
 
-    lib = openmc.data.DataLibrary()
-    lib.register_file('U235_fake.h5')
-    lib.export_to_xml('cross_sections_fake.xml')
-
-
-def fake_thermal_scattering():
-    """Create a fake thermal scattering library for U-235 at 294K and 600K
-    """
-    fake_tsl = openmc.data.ThermalScattering("c_U_fake", 1.9968, 4.9, [0.0253])
-    fake_tsl.nuclides = ['U235']
+    # Create a fake thermal scattering library attached to the fake U235 data
+    c_U_fake = openmc.data.ThermalScattering("c_U_fake", 1.9968, 4.9, [0.0253])
+    c_U_fake.nuclides = ['U235']
 
     # Create elastic reaction
     bragg_edges = [0.00370672, 0.00494229]
@@ -110,7 +103,7 @@ def fake_thermal_scattering():
         '294K': openmc.data.MixedElasticAE(coherent_dist, incoherent_dist_294),
         '600K': openmc.data.MixedElasticAE(coherent_dist, incoherent_dist_600)
         }
-    fake_tsl.elastic = openmc.data.ThermalScatteringReaction(elastic_xs, elastic_dist)
+    c_U_fake.elastic = openmc.data.ThermalScatteringReaction(elastic_xs, elastic_dist)
 
     # Create inelastic reaction
     inelastic_xs = {
@@ -135,19 +128,16 @@ def fake_thermal_scattering():
         breakpoints, interpolation, energy, energy_out, mu)
     inelastic_dist = {'294K': dist, '600K': dist}
     inelastic = openmc.data.ThermalScatteringReaction(inelastic_xs, inelastic_dist)
-    fake_tsl.inelastic = inelastic
+    c_U_fake.inelastic = inelastic
 
-    return fake_tsl
-
-
-def edit_fake_cross_sections():
-    """Edit the test cross sections xml to include fake thermal scattering data
-    """
-    lib = openmc.data.DataLibrary.from_xml("cross_sections_fake.xml")
-    c_U_fake = fake_thermal_scattering()
+    # Export HDF5 file
     c_U_fake.export_to_hdf5("c_U_fake.h5")
+
+    # Create a data library of the fake nuclide and its thermal scattering data
+    lib = openmc.data.DataLibrary()
+    lib.register_file('U235_fake.h5')
     lib.register_file("c_U_fake.h5")
-    lib.export_to_xml("cross_sections_fake.xml")
+    lib.export_to_xml('cross_sections_fake.xml')
 
 
 @pytest.fixture(scope='module')
@@ -223,7 +213,6 @@ def test_interpolation(model, method, temperature, fission_expected, tolerance):
 def test_temperature_interpolation_tolerance(model):
     """Test applying global and cell temperatures with thermal scattering libraries
     """
-    edit_fake_cross_sections()
     model.materials[0].add_s_alpha_beta("c_U_fake")
 
     # Default k-effective, using the thermal scattering data's minimum available temperature

@@ -171,14 +171,14 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
       if (!found_pair) {
         // If no pairs found, check if the desired temperature falls just
         // outside of data
-        if (T_desired - temps_available.front() <=
-            -settings::temperature_tolerance) {
+        if (std::abs(T_desired - temps_available.front()) <=
+            settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.front())) {
             temps_to_read.push_back(std::round(temps_available.front()));
           }
           break;
         }
-        if (T_desired - temps_available.back() <=
+        if (std::abs(T_desired - temps_available.back()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.back())) {
             temps_to_read.push_back(std::round(temps_available.back()));

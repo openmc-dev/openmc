@@ -119,11 +119,13 @@ ThermalScattering::ThermalScattering(
       if (!found) {
         // If no pairs found, check if the desired temperature falls within
         // bounds' tolerance
-        if (T - temps_available[0] <= -settings::temperature_tolerance) {
+        if (std::abs(T - temps_available[0]) <=
+            settings::temperature_tolerance) {
           temps_to_read.push_back(std::round(temps_available[0]));
           break;
         }
-        if (T - temps_available[n - 1] <= settings::temperature_tolerance) {
+        if (std::abs(T - temps_available[n - 1]) <=
+            settings::temperature_tolerance) {
           temps_to_read.push_back(std::round(temps_available[n - 1]));
           break;
         }

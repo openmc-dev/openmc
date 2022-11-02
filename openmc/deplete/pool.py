@@ -112,7 +112,6 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
                         index = list(msr.index_transfer).index( \
                                     (msr.burn_mats[row], msr.burn_mats[col]))
                         # Fill the off-diagonals with the transfer matrices
-                        print(f'{row,col}: {index}')
                         cols.append(transfer[index])
                     else:
                         cols.append(None)

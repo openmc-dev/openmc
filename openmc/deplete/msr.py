@@ -146,7 +146,9 @@ class MsrContinuous:
         """
         mat = self._get_mat_id(mat)
         check_type('removal_rate', removal_rate, Real)
+
         if dest_mat is not None:
+            dest_mat = self._get_mat_id(dest_mat)
             #prevent for setting tranfert to material if not set as depletable
             if len(self.burn_mats) > 1:
                 check_value('transfert to material', str(dest_mat),
@@ -154,7 +156,7 @@ class MsrContinuous:
             else:
                 raise ValueError(f'Transfer to material {dest_mat} is set '\
                         'but there is only one depletable material')
-            dest_mat = self._get_mat_id(dest_mat)
+
         if units != '1/s':
             check_value('Units', units, ['1/h', '1/d'])
             if units == '1/h':
@@ -700,7 +702,7 @@ class MsrBatchwiseMat(MsrBatchwise):
         for nuc in refuel_vector.keys():
             check_value("check nuclide exists", nuc,
                         self.operator.nuclides_with_data)
-        if sum(refuel_vector.values()) != 1.0:
+        if round(sum(refuel_vector.values()), 2) != 1.0:
             raise ValueError('Refuel vector fractions {} do not sum up to 1.0'
                              .format(refuel_vector.values()))
         self.refuel_vector = refuel_vector

@@ -223,7 +223,7 @@ def atomic_mass(isotope):
     """
     if not _ATOMIC_MASS:
 
-        # Load data from AME2020 file, Note format change to AME2016
+        # Load data from AME2020 file
         mass_file = os.path.join(os.path.dirname(__file__), 'mass_1.mas20.txt')
         with open(mass_file, 'r') as ame:
             # Read lines in file starting at line 37

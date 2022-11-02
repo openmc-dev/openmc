@@ -621,6 +621,8 @@ class MsrBatchwiseGeom(MsrBatchwise):
         ------------
         x : list of numpy.ndarray
             Total atoms concentrations
+        step_index : int
+            Depletion time step index        
         Returns
         ------------
         x : list of numpy.ndarray
@@ -828,6 +830,8 @@ class MsrBatchwiseMat(MsrBatchwise):
         ------------
         x : list of numpy.ndarray
             Total atoms concentrations
+        step_index : int
+            Depletion time step index
         Returns
         ------------
         x : list of numpy.ndarray

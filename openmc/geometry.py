@@ -103,6 +103,38 @@ class Geometry:
                 if universe.id in volume_calc.volumes:
                     universe.add_volume_information(volume_calc)
 
+    def to_xml_element(self, remove_surfs=False):
+        """Creates a 'geometry' element to be written to an XML file.
+
+        Parameters
+        ----------
+        remove_surfs : bool
+            Whether or not to remove redundant surfaces from the geometry when
+            exporting
+
+        """
+        # Find and remove redundant surfaces from the geometry
+        if remove_surfs:
+            warnings.warn("remove_surfs kwarg will be deprecated soon, please "
+                          "set the Geometry.merge_surfaces attribute instead.")
+            self.merge_surfaces = True
+
+        if self.merge_surfaces:
+            self.remove_redundant_surfaces()
+
+        # Create XML representation
+        element = ET.Element("geometry")
+        self.root_universe.create_xml_subelement(element, memo=set())
+
+        # Sort the elements in the file
+        element[:] = sorted(element, key=lambda x: (
+            x.tag, int(x.get('id'))))
+
+        # Clean the indentation in the file to be user-readable
+        xml.clean_indentation(element)
+
+        return element
+
     def export_to_xml(self, path='geometry.xml', remove_surfs=False):
         """Export geometry to an XML file.
 
@@ -117,25 +149,7 @@ class Geometry:
             .. versionadded:: 0.12
 
         """
-        # Find and remove redundant surfaces from the geometry
-        if remove_surfs:
-            warnings.warn("remove_surfs kwarg will be deprecated soon, please "
-                          "set the Geometry.merge_surfaces attribute instead.")
-            self.merge_surfaces = True
-
-        if self.merge_surfaces:
-            self.remove_redundant_surfaces()
-
-        # Create XML representation
-        root_element = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(root_element, memo=set())
-
-        # Sort the elements in the file
-        root_element[:] = sorted(root_element, key=lambda x: (
-            x.tag, int(x.get('id'))))
-
-        # Clean the indentation in the file to be user-readable
-        xml.clean_indentation(root_element)
+        root_element = self.to_xml_element(remove_surfs)
 
         # Check if path is a directory
         p = Path(path)

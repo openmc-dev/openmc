@@ -909,14 +909,8 @@ class Plots(cv.CheckedList):
 
             self._plots_file.append(xml_element)
 
-    def export_to_xml(self, path='plots.xml'):
-        """Export plot specifications to an XML file.
-
-        Parameters
-        ----------
-        path : str
-            Path to file to write. Defaults to 'plots.xml'.
-
+    def to_xml_element(self):
+        """Create a 'plots' element to be written to an XML file.
         """
         # Reset xml element tree
         self._plots_file.clear()
@@ -926,6 +920,17 @@ class Plots(cv.CheckedList):
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
 
+        return self._plots_file
+
+    def export_to_xml(self, path='plots.xml'):
+        """Export plot specifications to an XML file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'plots.xml'.
+
+        """
         # Check if path is a directory
         p = Path(path)
         if p.is_dir():

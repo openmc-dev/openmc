@@ -1539,6 +1539,63 @@ class Settings:
         if text is not None:
             self.max_tracks = int(text)
 
+    def to_xml_element(self):
+        """Create a 'settings' element to be written to an XML file.
+        """
+
+        # Reset xml element tree
+        element = ET.Element("settings")
+
+        self._create_run_mode_subelement(element)
+        self._create_particles_subelement(element)
+        self._create_batches_subelement(element)
+        self._create_inactive_subelement(element)
+        self._create_max_lost_particles_subelement(element)
+        self._create_rel_max_lost_particles_subelement(element)
+        self._create_generations_per_batch_subelement(element)
+        self._create_keff_trigger_subelement(element)
+        self._create_source_subelement(element)
+        self._create_output_subelement(element)
+        self._create_statepoint_subelement(element)
+        self._create_sourcepoint_subelement(element)
+        self._create_surf_source_read_subelement(element)
+        self._create_surf_source_write_subelement(element)
+        self._create_confidence_intervals(element)
+        self._create_electron_treatment_subelement(element)
+        self._create_energy_mode_subelement(element)
+        self._create_max_order_subelement(element)
+        self._create_photon_transport_subelement(element)
+        self._create_ptables_subelement(element)
+        self._create_seed_subelement(element)
+        self._create_survival_biasing_subelement(element)
+        self._create_cutoff_subelement(element)
+        self._create_entropy_mesh_subelement(element)
+        self._create_trigger_subelement(element)
+        self._create_no_reduce_subelement(element)
+        self._create_verbosity_subelement(element)
+        self._create_tabular_legendre_subelements(element)
+        self._create_temperature_subelements(element)
+        self._create_trace_subelement(element)
+        self._create_track_subelement(element)
+        self._create_ufs_mesh_subelement(element)
+        self._create_resonance_scattering_subelement(element)
+        self._create_volume_calcs_subelement(element)
+        self._create_create_fission_neutrons_subelement(element)
+        self._create_delayed_photon_scaling_subelement(element)
+        self._create_event_based_subelement(element)
+        self._create_max_particles_in_flight_subelement(element)
+        self._create_material_cell_offsets_subelement(element)
+        self._create_log_grid_bins_subelement(element)
+        self._create_write_initial_source_subelement(element)
+        self._create_weight_windows_subelement(element)
+        self._create_max_splits_subelement(element)
+        self._create_max_tracks_subelement(element)
+
+        # Clean the indentation in the file to be user-readable
+        clean_indentation(element)
+
+        return element
+
     def export_to_xml(self, path: PathLike = 'settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1548,57 +1605,7 @@ class Settings:
             Path to file to write. Defaults to 'settings.xml'.
 
         """
-
-        # Reset xml element tree
-        root_element = ET.Element("settings")
-
-        self._create_run_mode_subelement(root_element)
-        self._create_particles_subelement(root_element)
-        self._create_batches_subelement(root_element)
-        self._create_inactive_subelement(root_element)
-        self._create_max_lost_particles_subelement(root_element)
-        self._create_rel_max_lost_particles_subelement(root_element)
-        self._create_generations_per_batch_subelement(root_element)
-        self._create_keff_trigger_subelement(root_element)
-        self._create_source_subelement(root_element)
-        self._create_output_subelement(root_element)
-        self._create_statepoint_subelement(root_element)
-        self._create_sourcepoint_subelement(root_element)
-        self._create_surf_source_read_subelement(root_element)
-        self._create_surf_source_write_subelement(root_element)
-        self._create_confidence_intervals(root_element)
-        self._create_electron_treatment_subelement(root_element)
-        self._create_energy_mode_subelement(root_element)
-        self._create_max_order_subelement(root_element)
-        self._create_photon_transport_subelement(root_element)
-        self._create_ptables_subelement(root_element)
-        self._create_seed_subelement(root_element)
-        self._create_survival_biasing_subelement(root_element)
-        self._create_cutoff_subelement(root_element)
-        self._create_entropy_mesh_subelement(root_element)
-        self._create_trigger_subelement(root_element)
-        self._create_no_reduce_subelement(root_element)
-        self._create_verbosity_subelement(root_element)
-        self._create_tabular_legendre_subelements(root_element)
-        self._create_temperature_subelements(root_element)
-        self._create_trace_subelement(root_element)
-        self._create_track_subelement(root_element)
-        self._create_ufs_mesh_subelement(root_element)
-        self._create_resonance_scattering_subelement(root_element)
-        self._create_volume_calcs_subelement(root_element)
-        self._create_create_fission_neutrons_subelement(root_element)
-        self._create_delayed_photon_scaling_subelement(root_element)
-        self._create_event_based_subelement(root_element)
-        self._create_max_particles_in_flight_subelement(root_element)
-        self._create_material_cell_offsets_subelement(root_element)
-        self._create_log_grid_bins_subelement(root_element)
-        self._create_write_initial_source_subelement(root_element)
-        self._create_weight_windows_subelement(root_element)
-        self._create_max_splits_subelement(root_element)
-        self._create_max_tracks_subelement(root_element)
-
-        # Clean the indentation in the file to be user-readable
-        clean_indentation(root_element)
+        root_element = self.to_xml_element()
 
         # Check if path is a directory
         p = Path(path)

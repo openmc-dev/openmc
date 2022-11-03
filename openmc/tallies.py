@@ -3155,6 +3155,21 @@ class Tallies(cv.CheckedList):
         for d in derivs:
             root_element.append(d.to_xml_element())
 
+    def to_xml_element(self):
+        """Creates a 'tallies' element to be written to an XML file.
+        """
+        element = ET.Element("tallies")
+        self._create_mesh_subelements(element)
+        self._create_filter_subelements(element)
+        self._create_tally_subelements(element)
+        self._create_derivative_subelements(element)
+
+        # Clean the indentation in the file to be user-readable
+        clean_indentation(element)
+
+        return element
+
+
     def export_to_xml(self, path='tallies.xml'):
         """Create a tallies.xml file that can be used for a simulation.
 
@@ -3164,15 +3179,7 @@ class Tallies(cv.CheckedList):
             Path to file to write. Defaults to 'tallies.xml'.
 
         """
-
-        root_element = ET.Element("tallies")
-        self._create_mesh_subelements(root_element)
-        self._create_filter_subelements(root_element)
-        self._create_tally_subelements(root_element)
-        self._create_derivative_subelements(root_element)
-
-        # Clean the indentation in the file to be user-readable
-        clean_indentation(root_element)
+        root_element = self.to_xml_element()
 
         # Check if path is a directory
         p = Path(path)

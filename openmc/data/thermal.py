@@ -696,7 +696,7 @@ class ThermalScattering(EqualityMixin):
                     # For this added outgoing energy (of 0 eV) we add a set of
                     # isotropic discrete angles.
                     dmu = 2. / n_mu
-                    mu = np.linsace(-1. + 0.5*dmu, 1. - 0.5*dmu, n_mu)
+                    mu = np.linspace(-1. + 0.5*dmu, 1. - 0.5*dmu, n_mu)
                     p_mu = 1. / n_mu * np.ones(n_mu)
                     mu_0 = Discrete(mu, p_mu)
                     mu_0.c = np.cumsum(p_mu)

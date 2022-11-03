@@ -228,11 +228,11 @@ def id_map(plot):
     Returns
     -------
     id_map : numpy.ndarray
-        A NumPy array with shape (vertical pixels, horizontal pixels, 2) of
+        A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
         OpenMC property ids with dtype int32
 
     """
-    img_data = np.zeros((plot.v_res, plot.h_res, 2),
+    img_data = np.zeros((plot.v_res, plot.h_res, 3),
                         dtype=np.dtype('int32'))
     _dll.openmc_id_map(plot, img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data

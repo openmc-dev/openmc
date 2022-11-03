@@ -776,7 +776,7 @@ void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
 
     // Perform microscopic XS lookup
     NuclideMicroXS nuclide_micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
-    
+
     // If using a micro XS cache, store the result to the particle's cache
     #ifndef NO_MICRO_XS_CACHE
     p.neutron_xs_[i_nuclide] = nuclide_micro;
@@ -790,7 +790,7 @@ void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
     macro.absorption += atom_density * nuclide_micro.absorption;
     macro.fission    += atom_density * nuclide_micro.fission;
     macro.nu_fission += atom_density * nuclide_micro.nu_fission;
-    for (int r = 0; r < DEPLETION_RX_SIZE; r++) 
+    for (int r = 0; r < DEPLETION_RX_SIZE; r++)
       macro.reaction[r] += atom_density * nuclide_micro.reaction[r];
   }
 
@@ -1020,6 +1020,23 @@ void Material::to_hdf5(hid_t group) const
     write_dataset(material_group, "sab_names", sab_names);
   }
 
+  close_group(material_group);
+}
+
+void Material::export_properties_hdf5(hid_t group) const
+{
+  hid_t material_group = create_group(group, "material " + std::to_string(id_));
+  write_attribute(material_group, "atom_density", density_);
+  write_attribute(material_group, "mass_density", density_gpcc_);
+  close_group(material_group);
+}
+
+void Material::import_properties_hdf5(hid_t group)
+{
+  hid_t material_group = open_group(group, "material " + std::to_string(id_));
+  double density;
+  read_attribute(material_group, "atom_density", density);
+  this->set_density(density, "atom/b-cm");
   close_group(material_group);
 }
 

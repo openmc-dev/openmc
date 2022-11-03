@@ -36,7 +36,7 @@ constexpr int32_t NOT_FOUND {-2};
 constexpr int32_t OVERLAP {-3};
 
 IdData::IdData(size_t h_res, size_t v_res)
-  : data_({v_res, h_res, 2}, NOT_FOUND)
+  : data_({v_res, h_res, 3}, NOT_FOUND)
 { }
 
 void
@@ -44,18 +44,20 @@ IdData::set_value(size_t y, size_t x, const Particle& p, int level) {
   // set cell data
   if (p.n_coord_ <= level) {
     data_(y, x, 0) = NOT_FOUND;
+    data_(y, x, 1) = NOT_FOUND;
   } else {
     data_(y, x, 0) = model::cells.at(p.coord_[level].cell).id_;
+    data_(y, x, 1) = p.cell_instance_;
   }
 
   // set material data
   Cell* c = &model::cells.at(p.coord_[p.n_coord_ - 1].cell);
   if (p.material_ == MATERIAL_VOID) {
-    data_(y, x, 1) = MATERIAL_VOID;
+    data_(y, x, 2) = MATERIAL_VOID;
     return;
   } else if (c->type_ == Fill::MATERIAL) {
     Material* m = &model::materials[p.material_];
-    data_(y, x, 1) = m->id_;
+    data_(y, x, 2) = m->id_;
   }
 }
 
@@ -155,7 +157,8 @@ void create_ppm(Plot const& pl)
   // assign colors
   for (size_t y = 0; y < height; y++) {
     for (size_t x = 0; x < width; x++) {
-      auto id = ids.data_(y, x, pl.color_by_);
+      int idx = pl.color_by_ == PlotColorBy::cells ? 0 : 2;
+      auto id = ids.data_(y, x, idx);
       // no setting needed if not found
       if (id == NOT_FOUND) { continue; }
       if (id == OVERLAP) {
@@ -838,7 +841,7 @@ void create_voxel(Plot const& pl)
     IdData ids = pltbase.get_map<IdData>();
 
     // select only cell/material ID data and flip the y-axis
-    int idx = pl.color_by_ == PlotColorBy::cells ? 0 : 1;
+    int idx = pl.color_by_ == PlotColorBy::cells ? 0 : 2;
     xt::xtensor<int32_t, 2> data_slice = xt::view(ids.data_, xt::all(), xt::all(), idx);
     xt::xtensor<int32_t, 2> data_flipped = xt::flip(data_slice, 0);
 

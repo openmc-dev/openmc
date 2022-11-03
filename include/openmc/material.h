@@ -76,6 +76,14 @@ public:
   //! Write material data to HDF5
   void to_hdf5(hid_t group) const;
 
+  //! Export physical properties to HDF5
+  //! \param[in] group  HDF5 group to write to
+  void export_properties_hdf5(hid_t group) const;
+
+  //! Import physical properties from HDF5
+  //! \param[in] group  HDF5 group to read from
+  void import_properties_hdf5(hid_t group);
+
   //! Add nuclide to the material
   //
   //! \param[in] nuclide Name of the nuclide

@@ -99,13 +99,17 @@ void move_read_only_data_to_device()
 
   // Surfaces ////////////////////////////////////////////////////////
 
-  std::cout << "Moving " << model::surfaces.size() << " surfaces to device..." << std::endl;
+  if (mpi::master) {
+    std::cout << " Moving " << model::surfaces.size() << " surfaces to device..." << std::endl;
+  }
   model::device_surfaces = model::surfaces.data();
   #pragma omp target enter data map(to: model::device_surfaces[:model::surfaces.size()])
 
   // Universes ///////////////////////////////////////////////////////
 
-  std::cout << "Moving " << model::universes.size() << " universes to device..." << std::endl;
+  if (mpi::master) {
+    std::cout << " Moving " << model::universes.size() << " universes to device..." << std::endl;
+  }
   model::device_universes = model::universes.data();
   #pragma omp target enter data map(to: model::device_universes[:model::universes.size()])
   for( auto& universe : model::universes ) {
@@ -114,7 +118,9 @@ void move_read_only_data_to_device()
 
   // Cells //////////////////////////////////////////////////////////
 
-  std::cout << "Moving " << model::cells.size() << " cells to device..." << std::endl;
+  if (mpi::master) {
+    std::cout << " Moving " << model::cells.size() << " cells to device..." << std::endl;
+  }
   model::device_cells = model::cells.data();
   #pragma omp target enter data map(to: model::device_cells[0:model::cells.size()])
   for( auto& cell : model::cells ) {
@@ -123,7 +129,9 @@ void move_read_only_data_to_device()
 
   // Lattices /////////////////////////////////////////////////////////
 
-  std::cout << "Moving " << model::lattices.size() << " lattices to device..." << std::endl;
+  if (mpi::master) {
+    std::cout << " Moving " << model::lattices.size() << " lattices to device..." << std::endl;
+  }
   model::device_lattices = model::lattices.data();
   #pragma omp target enter data map(to: model::device_lattices[:model::lattices.size()])
   for( auto& lattice : model::lattices ) {
@@ -153,7 +161,10 @@ void move_read_only_data_to_device()
     nuc.flatten_wmp_data();
   }
 
-  std::cout << "Moving " << data::nuclides_size << " nuclides to device..." << std::endl;
+  if (mpi::master) {
+    std::cout << " Moving " << data::nuclides_size << " nuclides to device..." << std::endl;
+  }
+
   #pragma omp target enter data map(to: data::nuclides[:data::nuclides_size])
   for (int i = 0; i < data::nuclides_size; ++i) {
     auto& nuc = data::nuclides[i];
@@ -167,6 +178,10 @@ void move_read_only_data_to_device()
   }
 
   // Photon data /////////////////////////////////////////////////////
+  
+  if (mpi::master) {
+    std::cout << " Moving " << data::elements_size << " elements to device..." << std::endl;
+  }
 
   #pragma omp target update to(data::compton_profile_pz_size)
   #pragma omp target enter data map(to: data::compton_profile_pz[:data::compton_profile_pz_size])
@@ -175,7 +190,6 @@ void move_read_only_data_to_device()
   #pragma omp target enter data map(to: data::elements[:data::elements_size])
   for (int i = 0; i < data::elements_size; ++i) {
     auto& elm = data::elements[i];
-    std::cout << "Moving " << elm.name_ << " data to device..." << std::endl;
     elm.copy_to_device();
   }
   data::device_ttb_e_grid = data::ttb_e_grid.data();
@@ -230,7 +244,9 @@ void move_read_only_data_to_device()
 
   // Filters ////////////////////////////////////////////////////////////////
 
-  std::cout << "Moving " << model::n_tally_filters << " tally filters to device..." << std::endl;
+  if (mpi::master) {
+    std::cout << " Moving " << model::n_tally_filters << " tally filters to device..." << std::endl;
+  }
   #pragma omp target update to(model::n_tally_filters)
   #pragma omp target enter data map(to: model::tally_filters[:model::n_tally_filters])
   for (int i = 0; i < model::n_tally_filters; i++) {
@@ -239,7 +255,9 @@ void move_read_only_data_to_device()
 
   // Meshes ////////////////////////////////////////////////////////////////
 
-  std::cout << "Moving " << model::meshes_size << " meshes to device..." << std::endl;
+  if (mpi::master) {
+    std::cout << " Moving " << model::meshes_size << " meshes to device..." << std::endl;
+  }
   #pragma omp target update to(model::meshes_size)
   #pragma omp target enter data map(to: model::meshes[:model::meshes_size])
   for (int i = 0; i < model::meshes_size; i++) {
@@ -248,12 +266,16 @@ void move_read_only_data_to_device()
 
   // Tallies ///////////////////////////////////////////////////
 
-  std::cout << "Moving " << model::tallies_size << " tallies to device..." << std::endl;
+  if (mpi::master) {
+    std::cout << " Moving " << model::tallies_size << " tallies to device..." << std::endl;
+  }
   #pragma omp target update to(model::tallies_size)
   #pragma omp target enter data map(to: model::tallies[:model::tallies_size])
   for (int i = 0; i < model::tallies_size; ++i) {
     auto& tally = model::tallies[i];
-    std::cout << "Moving " << tally.name_ << " data to device..." << std::endl;
+    if (mpi::master) {
+      std::cout << "   Moving tally " << tally.id_ << " containing " << tally.n_filter_bins() << " bins with " << tally.n_scores_ << " scores each. Total size: " << (double) tally.results_size_ * sizeof(double) / 1.0e6 << " MB" << std::endl;
+    }
     tally.copy_to_device();
   }
 
@@ -265,7 +287,9 @@ void move_read_only_data_to_device()
 
 void release_data_from_device()
 {
-  std::cout << "Releasing data from device..." << std::endl;
+  if (mpi::master) {
+    std::cout << " Releasing data from device..." << std::endl;
+  }
   for (int i = 0; i < data::nuclides_size; ++i) {
     data::nuclides[i].release_from_device();
   }

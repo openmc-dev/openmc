@@ -53,7 +53,7 @@ inline hid_t create_group(hid_t parent_id, const std::stringstream& name)
 
 
 hid_t file_open(const std::string& filename, char mode, bool parallel=false);
-
+hid_t open_group(hid_t group_id, const std::string& name);
 void write_string(hid_t group_id, const char* name, const std::string& buffer,
                   bool indep);
 

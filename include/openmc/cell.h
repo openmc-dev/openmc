@@ -139,6 +139,14 @@ public:
   //! \param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
 
+  //! Export physical properties to HDF5
+  //! \param[in] group  HDF5 group to read from
+  void export_properties_hdf5(hid_t group) const;
+
+  //! Import physical properties from HDF5
+  //! \param[in] group  HDF5 group to write to
+  void import_properties_hdf5(hid_t group);
+
   //! Get the BoundingBox for this cell.
   BoundingBox bounding_box() const;
 

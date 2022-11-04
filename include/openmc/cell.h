@@ -58,7 +58,7 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
   Region() {}
-  explicit Region(std::string region_expressioni, int32_t cell_id);
+  explicit Region(std::string region_spec, int32_t cell_id);
 
   //----------------------------------------------------------------------------
   // Methods

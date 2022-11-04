@@ -140,6 +140,8 @@ void read_plots_xml() {
   doc.load_file(filename.c_str());
 
   pugi::xml_node root = doc.document_element();
+
+  read_plots_xml(root);
 }
 
 void read_plots_xml(pugi::xml_node root)

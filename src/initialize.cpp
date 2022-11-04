@@ -108,6 +108,9 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // Read XML input files
   read_input_xml();
 
+  // Write some initial output under the header if needed
+  initial_output();
+
   // Check for particle restart run
   if (settings::particle_restart_run)
     settings::run_mode = RunMode::PARTICLE;
@@ -365,22 +368,6 @@ bool read_model_xml() {
   if (check_for_node(root, "plots"))
     read_plots_xml(root.child("plots"));
 
-  if (settings::run_mode == RunMode::PLOTTING) {
-    // Read plots.xml if it exists
-    if (mpi::master && settings::verbosity >= 5)
-      print_plot();
-
-  } else {
-    // Write summary information
-    if (mpi::master && settings::output_summary)
-      write_summary();
-
-    // Warn if overlap checking is on
-    if (mpi::master && settings::check_overlaps) {
-      warning("Cell overlap checking is ON.");
-    }
-  }
-
   return true;
 }
 
@@ -408,7 +395,10 @@ void read_input_xml()
   // Read the plots.xml regardless of plot mode in case plots are requested
   // via the API
   read_plots_xml();
+}
 
+void initial_output() {
+  // handle some final output
   if (settings::run_mode == RunMode::PLOTTING) {
     // Read plots.xml if it exists
     if (mpi::master && settings::verbosity >= 5)

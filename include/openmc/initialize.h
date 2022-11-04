@@ -13,6 +13,7 @@ void initialize_mpi(MPI_Comm intracomm);
 #endif
 bool read_model_xml();
 void read_input_xml();
+void initial_output();
 
 } // namespace openmc
 

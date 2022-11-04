@@ -1595,7 +1595,7 @@ class Settings:
         clean_indentation(element)
 
         return element
-
+    
     def export_to_xml(self, path: PathLike = 'settings.xml'):
         """Export simulation settings to an XML file.
 

@@ -5,11 +5,16 @@ import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
+<<<<<<< HEAD
 import warnings
+=======
+from xml.etree import ElementTree as ET
+>>>>>>> d42935a08 (Writing all main nodes to a single XML file)
 
 import h5py
 
 import openmc
+import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value
@@ -404,7 +409,7 @@ class Model:
         Parameters
         ----------
         directory : str
-            Directory to write XML files to. If it doesn't exist already, it
+            Directory to write the model.xml file to. If it doesn't exist already, it
             will be created.
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
@@ -416,8 +421,8 @@ class Model:
         d = Path(directory)
         if not d.is_dir():
             d.mkdir(parents=True)
+        d /= 'model.xml'
 
-        self.settings.export_to_xml(d)
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
                           "set the Geometry.merge_surfaces attribute instead.")
@@ -425,22 +430,33 @@ class Model:
             # Can be used to modify tallies in case any surfaces are redundant
             redundant_surfaces = self.geometry.remove_redundant_surfaces()
 
-        self.geometry.export_to_xml(d)
+        settings_element = self.settings.to_xml_element()
+        geometry_element = self.geometry.to_xml_element()
 
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build
         # a collection.
         if self.materials:
-            self.materials.export_to_xml(d)
+            materials = self.materials
         else:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
-            materials.export_to_xml(d)
 
-        if self.tallies:
-            self.tallies.export_to_xml(d)
-        if self.plots:
-            self.plots.export_to_xml(d)
+        with open(d, 'w', encoding='utf-8',
+                  errors='xmlcharrefreplace') as fh:
+            # Write the materials collection to the open XML file first.
+            # This will write the XML header also
+            materials._write_xml(fh)
+            # Write remaining elements as a tree
+            ET.ElementTree(geometry_element).write(fh, encoding='unicode')
+            ET.ElementTree(settings_element).write(fh, encoding='unicode')
+
+            if self.tallies:
+                tallies_element = self.tallies.to_xml_element()
+                ET.ElementTree(tallies_element).write(fh, encoding='unicode')
+            if self.plots:
+                plots_element = self.plots.to_xml_element()
+                ET.ElementTree(plots_element).write(fh, encoding='unicode')
 
     def import_properties(self, filename):
         """Import physical properties

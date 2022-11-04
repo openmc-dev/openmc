@@ -298,14 +298,14 @@ void read_input_xml()
   std::string model_filename = settings::path_input + "model.xml";
   bool use_model_file = file_exists(model_filename);
   pugi::xml_node model_root;
+  pugi::xml_document doc;
   if (use_model_file) {
-    write_message("Found model.xml file.");
-    pugi::xml_document doc;
+    write_message("Reading model.xml...");
     auto result = doc.load_file(model_filename.c_str());
     if (!result) {
       fatal_error("Error processing model.xml file.");
     }
-    auto model_root = doc.document_element();
+    model_root = doc.document_element();
 
     auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml", "plots.xml"};
     for (const auto& input : other_inputs) {
@@ -320,12 +320,14 @@ void read_input_xml()
     if (!check_for_node(model_root, "settings")) {
       fatal_error("No <settings> node present in the model.xml file.");
     }
-    read_settings_xml(model_root.child("settings"));
+    auto settings_root = model_root.child("settings");
+    read_settings_xml();
   } else {
     read_settings_xml();
   }
 
   read_cross_sections_xml();
+
   if (use_model_file) {
     if (!check_for_node(model_root, "materials")) {
       fatal_error("No <materials> node present in the model.xml file.");

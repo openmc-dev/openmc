@@ -266,6 +266,7 @@ void read_settings_xml(pugi::xml_node root)
 
   // Find if a multi-group or continuous-energy simulation is desired
   if (check_for_node(root, "energy_mode")) {
+  std::cout << "Here" << std::endl;
     std::string temp_str = get_node_value(root, "energy_mode", true, true);
     if (temp_str == "mg" || temp_str == "multi-group") {
       run_CE = false;
@@ -273,6 +274,7 @@ void read_settings_xml(pugi::xml_node root)
       run_CE = true;
     }
   }
+  std::cout << "Here" << std::endl;
 
   // Look for deprecated cross_sections.xml file in settings.xml
   if (check_for_node(root, "cross_sections")) {

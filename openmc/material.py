@@ -3,11 +3,10 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
-import os
 import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
-from typing import Optional, Union
+from typing import Optional
 from xml.etree import ElementTree as ET
 
 import h5py
@@ -18,6 +17,8 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
+from openmc.checkvalue import PathLike
+from openmc.stats import Univariate
 
 
 # Units for density supported by OpenMC
@@ -34,10 +35,10 @@ class Material(IDManagerMixin):
     To create a material, one should create an instance of this class, add
     nuclides or elements with :meth:`Material.add_nuclide` or
     :meth:`Material.add_element`, respectively, and set the total material
-    density with :meth:`Material.set_density()`. Alternatively, you can
-    use :meth:`Material.add_components()` to pass a dictionary
-    containing all the component information. The material can then be
-    assigned to a cell using the :attr:`Cell.fill` attribute.
+    density with :meth:`Material.set_density()`. Alternatively, you can use
+    :meth:`Material.add_components()` to pass a dictionary containing all the
+    component information. The material can then be assigned to a cell using the
+    :attr:`Cell.fill` attribute.
 
     Parameters
     ----------
@@ -91,6 +92,14 @@ class Material(IDManagerMixin):
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
+    decay_photon_energy : openmc.stats.Univariate or None
+        Energy distribution of photons emitted from decay of unstable nuclides
+        within the material, or None if no photon source exists. The integral of
+        this distribution is the total intensity of the photon source in
+        [decay/sec].
+
+        .. versionadded:: 0.13.2
+
     """
 
     next_id = 1
@@ -254,6 +263,18 @@ class Material(IDManagerMixin):
                 density += 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
                            / openmc.data.AVOGADRO
         return density*self.volume
+
+    @property
+    def decay_photon_energy(self) -> Optional[Univariate]:
+        atoms = self.get_nuclide_atoms()
+        dists = []
+        probs = []
+        for nuc, num_atoms in atoms.items():
+            source_per_atom = openmc.data.decay_photon_energy(nuc)
+            if source_per_atom is not None:
+                dists.append(source_per_atom)
+                probs.append(num_atoms)
+        return openmc.data.combine_distributions(dists, probs) if dists else None
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):
@@ -438,7 +459,7 @@ class Material(IDManagerMixin):
             params['percent_type'] = percent_type
 
             ## check if nuclide
-            if str.isdigit(component[-1]):
+            if not component.isalpha():
                 self.add_nuclide(component, **params)
             else: # is element
                 kwargs = params
@@ -795,16 +816,35 @@ class Material(IDManagerMixin):
 
         return sorted({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
 
-    def get_nuclides(self):
-        """Returns all nuclides in the material
+    def get_nuclides(self, element: Optional[str] = None):
+        """Returns a list of all nuclides in the material, if the element
+        argument is specified then just nuclides of that element are returned.
+
+        Parameters
+        ----------
+        element : str
+            Specifies the element to match when searching through the nuclides
+
+            .. versionadded:: 0.13.2
 
         Returns
         -------
         nuclides : list of str
             List of nuclide names
-
         """
-        return [x.name for x in self._nuclides]
+
+        matching_nuclides = []
+        if element:
+            for nuclide in self._nuclides:
+                if re.split(r'(\d+)', nuclide.name)[0] == element:
+                    if nuclide.name not in matching_nuclides:
+                        matching_nuclides.append(nuclide.name)
+        else:
+            for nuclide in self._nuclides:
+                if nuclide.name not in matching_nuclides:
+                    matching_nuclides.append(nuclide.name)
+
+        return matching_nuclides
 
     def get_nuclide_densities(self):
         """Returns all nuclides in the material and their densities
@@ -825,13 +865,21 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self):
-        """Returns all nuclides in the material and their atomic densities in
-        units of atom/b-cm
+    def get_nuclide_atom_densities(self, nuclide: Optional[str] = None):
+        """Returns one or all nuclides in the material and their atomic
+        densities in units of atom/b-cm
 
         .. versionchanged:: 0.13.1
             The values in the dictionary were changed from a tuple containing
             the nuclide name and the density to just the density.
+
+        Parameters
+        ----------
+        nuclides : str, optional
+            Nuclide for which atom density is desired. If not specified, the
+            atom density for each nuclide in the material is given.
+
+            .. versionadded:: 0.13.2
 
         Returns
         -------
@@ -862,10 +910,10 @@ class Material(IDManagerMixin):
         nuc_densities = []
         nuc_density_types = []
 
-        for nuclide in self.nuclides:
-            nucs.append(nuclide.name)
-            nuc_densities.append(nuclide.percent)
-            nuc_density_types.append(nuclide.percent_type)
+        for nuc in self.nuclides:
+            nucs.append(nuc.name)
+            nuc_densities.append(nuc.percent)
+            nuc_density_types.append(nuc.percent_type)
 
         nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)
@@ -897,7 +945,8 @@ class Material(IDManagerMixin):
 
         nuclides = OrderedDict()
         for n, nuc in enumerate(nucs):
-            nuclides[nuc] = nuc_densities[n]
+            if nuclide is None or nuclide == nuc:
+                nuclides[nuc] = nuc_densities[n]
 
         return nuclides
 
@@ -919,7 +968,7 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        Union[dict, float]
+        typing.Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide
             names and values are activity is returned. Otherwise the activity
             of the material is returned as a float.
@@ -977,11 +1026,10 @@ class Material(IDManagerMixin):
 
         """
         mass_density = 0.0
-        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            if nuclide is None or nuclide == nuc:
-                density_i = 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
-                            / openmc.data.AVOGADRO
-                mass_density += density_i
+        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities(nuclide=nuclide).items():
+            density_i = 1e24 * atoms_per_bcm * openmc.data.atomic_mass(nuc) \
+                        / openmc.data.AVOGADRO
+            mass_density += density_i
         return mass_density
 
     def get_mass(self, nuclide: Optional[str] = None):
@@ -1287,9 +1335,8 @@ class Materials(cv.CheckedList):
     """Collection of Materials used for an OpenMC simulation.
 
     This class corresponds directly to the materials.xml input file. It can be
-    thought of as a normal Python list where each member is a
-    :class:`Material`. It behaves like a list as the following example
-    demonstrates:
+    thought of as a normal Python list where each member is a :class:`Material`.
+    It behaves like a list as the following example demonstrates:
 
     >>> fuel = openmc.Material()
     >>> clad = openmc.Material()
@@ -1309,9 +1356,9 @@ class Materials(cv.CheckedList):
         Indicates the path to an XML cross section listing file (usually named
         cross_sections.xml). If it is not set, the
         :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
-        continuous-energy calculations and
-        :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
-        calculations to find the path to the HDF5 cross section file.
+        continuous-energy calculations and :envvar:`OPENMC_MG_CROSS_SECTIONS`
+        will be used for multi-group calculations to find the path to the HDF5
+        cross section file.
 
     """
 
@@ -1359,7 +1406,7 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def export_to_xml(self, path: Union[str, os.PathLike] = 'materials.xml'):
+    def export_to_xml(self, path: PathLike = 'materials.xml'):
         """Export material collection to an XML file.
 
         Parameters
@@ -1406,7 +1453,7 @@ class Materials(cv.CheckedList):
             fh.write('</materials>\n')
 
     @classmethod
-    def from_xml(cls, path: Union[str, os.PathLike] = 'materials.xml'):
+    def from_xml(cls, path: PathLike = 'materials.xml'):
         """Generate materials collection from XML file
 
         Parameters

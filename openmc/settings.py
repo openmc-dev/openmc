@@ -6,13 +6,15 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
-from typing import Optional, Union
+import typing  # required to prevent typing.Union namespace overwriting Union
+from typing import Optional
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
 
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
+from openmc.checkvalue import PathLike
 
 
 class RunMode(Enum):
@@ -187,7 +189,7 @@ class Settings:
         Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
         If the method is 'nearest', 'tolerance' indicates a range of temperature
         within which cross sections may be used. The value for 'range' should be
-        a pair a minimum and maximum temperatures which are used to indicate
+        a pair of minimum and maximum temperatures which are used to indicate
         that cross sections be loaded at all temperatures within the
         range. 'multipole' is a boolean indicating whether or not the windowed
         multipole method should be used to evaluate resolved resonance cross
@@ -581,7 +583,7 @@ class Settings:
         self._max_order = max_order
 
     @source.setter
-    def source(self, source: Union[Source, typing.Iterable[Source]]):
+    def source(self, source: typing.Union[Source, typing.Iterable[Source]]):
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(Source, 'source distributions', source)
@@ -842,7 +844,7 @@ class Settings:
 
     @volume_calculations.setter
     def volume_calculations(
-        self, vol_calcs: Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
+        self, vol_calcs: typing.Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
     ):
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
@@ -888,7 +890,7 @@ class Settings:
         self._write_initial_source = value
 
     @weight_windows.setter
-    def weight_windows(self, value: Union[WeightWindows, typing.Iterable[WeightWindows]]):
+    def weight_windows(self, value: typing.Union[WeightWindows, typing.Iterable[WeightWindows]]):
         if not isinstance(value, MutableSequence):
             value = [value]
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
@@ -1535,7 +1537,7 @@ class Settings:
         if text is not None:
             self.max_tracks = int(text)
 
-    def export_to_xml(self, path: Union[str, os.PathLike] = 'settings.xml'):
+    def export_to_xml(self, path: PathLike = 'settings.xml'):
         """Export simulation settings to an XML file.
 
         Parameters
@@ -1607,7 +1609,7 @@ class Settings:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml(cls, path: Union[str, os.PathLike] = 'settings.xml'):
+    def from_xml(cls, path: PathLike = 'settings.xml'):
         """Generate settings from XML file
 
         .. versionadded:: 0.13.0

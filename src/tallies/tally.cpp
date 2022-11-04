@@ -374,9 +374,6 @@ void Tally::set_filters(gsl::span<Filter*> filters)
       delayedgroup_filter_ = i;
     }
   }
-
-  // Set the strides.
-  set_strides();
 }
 
 void Tally::set_strides()

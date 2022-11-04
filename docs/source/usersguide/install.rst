@@ -511,7 +511,7 @@ to install the Python package in :ref:`"editable" mode <devguide_editable>`.
 Prerequisites
 -------------
 
-The Python API works with Python 3.6+. In addition to Python itself, the API
+The Python API works with Python 3.7+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
 distributions.
@@ -545,8 +545,7 @@ distributions.
       Uncertainties are used for decay data in the :mod:`openmc.data` module.
 
    `lxml <https://lxml.de/>`_
-      lxml is used for the :ref:`scripts_validate` script and various other
-      parts of the Python API.
+      lxml is used for various parts of the Python API.
 
 .. admonition:: Optional
    :class: note
@@ -590,31 +589,5 @@ wrapper is used when installing h5py:
 
     CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
 
-.. _usersguide_nxml:
-
------------------------------------------------------
-Configuring Input Validation with GNU Emacs nXML mode
------------------------------------------------------
-
-The `GNU Emacs`_ text editor has a built-in mode that extends functionality for
-editing XML files. One of the features in nXML mode is the ability to perform
-real-time `validation`_ of XML files against a `RELAX NG`_ schema. The OpenMC
-source contains RELAX NG schemas for each type of user input file. In order for
-nXML mode to know about these schemas, you need to tell emacs where to find a
-"locating files" description. Adding the following lines to your ``~/.emacs``
-file will enable real-time validation of XML input files:
-
-.. code-block:: common-lisp
-
-    (require 'rng-loc)
-    (add-to-list 'rng-schema-locating-files "~/openmc/schemas.xml")
-
-Make sure to replace the last string on the second line with the path to the
-schemas.xml file in your own OpenMC source directory.
-
-.. _GNU Emacs: http://www.gnu.org/software/emacs/
-.. _validation: https://en.wikipedia.org/wiki/XML_validation
-.. _RELAX NG: https://relaxng.org/
-.. _ctest: https://cmake.org/cmake/help/latest/manual/ctest.1.html
 .. _Conda: https://conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

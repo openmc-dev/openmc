@@ -239,24 +239,6 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     return 'U235'
 
 
-def _find_chain_file(cross_sections=None):
-    # First check deprecated OPENMC_DEPLETE_CHAIN environment variable
-    chain_file = os.environ.get("OPENMC_DEPLETE_CHAIN")
-    if chain_file is not None:
-        warn("Use of OPENMC_DEPLETE_CHAIN is deprecated in favor of adding "
-             "depletion_chain to OPENMC_CROSS_SECTIONS", FutureWarning)
-        return chain_file
-
-    # Check for depletion chain in cross_sections.xml
-    data = DataLibrary.from_xml(cross_sections)
-    for lib in reversed(data.libraries):
-        if lib['type'] == 'depletion_chain':
-            return lib['path']
-
-    raise DataError("No depletion chain specified and could not find depletion "
-                    f"chain in {cross_sections}")
-
-
 class Chain:
     """Full representation of a depletion chain.
 
@@ -265,9 +247,8 @@ class Chain:
     yield sublibrary files. The depletion chain used during a depletion
     simulation is indicated by either an argument to
     :class:`openmc.deplete.CoupledOperator` or
-    :class:`openmc.deplete.IndependentOperator`, or through the
-    ``depletion_chain`` item in the :envvar:`OPENMC_CROSS_SECTIONS`
-    environment variable.
+    :class:`openmc.deplete.IndependentOperator`, or through
+    openmc.config['chain_file'].
 
     Attributes
     ----------
@@ -438,6 +419,8 @@ class Chain:
 
                     # Append decay mode
                     nuclide.add_decay_mode(type_, target, br)
+
+                nuclide.sources = data.sources
 
             fissionable = False
             if parent in reactions:
@@ -1092,6 +1075,7 @@ class Chain:
             new_nuclide = Nuclide(previous.name)
             new_nuclide.half_life = previous.half_life
             new_nuclide.decay_energy = previous.decay_energy
+            new_nuclide.sources = previous.sources.copy()
             if hasattr(previous, '_fpy'):
                 new_nuclide._fpy = previous._fpy
 

@@ -216,8 +216,8 @@ class StructuredMesh(MeshBase):
 
         Raises
         ------
-        RuntimeError
-            When the size of a dataset doesn't match the number of cells
+        ValueError
+            When the size of a dataset doesn't match the number of mesh cells
 
         Returns
         -------
@@ -229,14 +229,17 @@ class StructuredMesh(MeshBase):
         from vtk.util import numpy_support as nps
 
         # check that the data sets are appropriately sized
-        errmsg = "The size of the dataset {} should be equal to the number of cells"
         for label, dataset in datasets.items():
+            errmsg = (
+                f"The size of the dataset '{label}' ({dataset.size}) should be"
+                f" equal to the number of mesh cells ({self.num_mesh_cells})"
+            )
             if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
+                if not dataset.size == self.num_mesh_cells:
+                    raise ValueError(errmsg)
             else:
-                if len(dataset) == self.dimension[0] * self.dimension[1]* self.dimension[2]:
-                    raise RuntimeError(errmsg.format(label))
+                if len(dataset) == self.num_mesh_cells:
+                    raise ValueError(errmsg)
             cv.check_type('label', label, str)
 
         vtk_grid = vtk.vtkStructuredGrid()
@@ -275,6 +278,7 @@ class StructuredMesh(MeshBase):
         writer.Write()
 
         return vtk_grid
+
 
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
@@ -320,7 +324,7 @@ class RegularMesh(StructuredMesh):
 
     @property
     def dimension(self):
-        return self._dimension
+        return tuple(self._dimension)
 
     @property
     def n_dimension(self):
@@ -503,6 +507,49 @@ class RegularMesh(StructuredMesh):
         mesh.lower_left = lattice.lower_left
         mesh.upper_right = lattice.lower_left + width
         mesh.dimension = shape*division
+
+        return mesh
+
+    @classmethod
+    def from_domain(
+        cls,
+        domain,
+        dimension=(10, 10, 10),
+        mesh_id=None,
+        name=''
+    ):
+        """Create mesh from an existing openmc cell, region, universe or
+        geometry by making use of the objects bounding box property.
+
+        Parameters
+        ----------
+        domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
+            The object passed in will be used as a template for this mesh. The
+            bounding box of the property of the object passed will be used to
+            set the lower_left and upper_right of the mesh instance
+        dimension : Iterable of int
+            The number of mesh cells in each direction.
+        mesh_id : int
+            Unique identifier for the mesh
+        name : str
+            Name of the mesh
+
+        Returns
+        -------
+        openmc.RegularMesh
+            RegularMesh instance
+
+        """
+        cv.check_type(
+            "domain",
+            domain,
+            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
+        )
+
+        mesh = cls(mesh_id, name)
+        mesh.lower_left = domain.bounding_box[0]
+        mesh.upper_right = domain.bounding_box[1]
+        mesh.dimension = dimension
 
         return mesh
 
@@ -1087,6 +1134,76 @@ class CylindricalMesh(StructuredMesh):
         mesh.r_grid = group['r_grid'][()]
         mesh.phi_grid = group['phi_grid'][()]
         mesh.z_grid = group['z_grid'][()]
+
+        return mesh
+
+    @classmethod
+    def from_domain(
+        cls,
+        domain,
+        dimension=(10, 10, 10),
+        mesh_id=None,
+        phi_grid_bounds=(0.0, 2*pi),
+        name=''
+    ):
+        """Creates a regular CylindricalMesh from an existing openmc domain.
+
+        Parameters
+        ----------
+        domain : openmc.Cell or openmc.Region or openmc.Universe or openmc.Geometry
+            The object passed in will be used as a template for this mesh. The
+            bounding box of the property of the object passed will be used to
+            set the r_grid, z_grid ranges.
+        dimension : Iterable of int
+            The number of equally spaced mesh cells in each direction (r_grid,
+            phi_grid, z_grid)
+        mesh_id : int
+            Unique identifier for the mesh
+        phi_grid_bounds : numpy.ndarray
+            Mesh bounds points along the phi-axis in radians. The default value
+            is (0, 2π), i.e., the full phi range.
+        name : str
+            Name of the mesh
+
+        Returns
+        -------
+        openmc.RegularMesh
+            RegularMesh instance
+
+        """
+        cv.check_type(
+            "domain",
+            domain,
+            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
+        )
+
+        mesh = cls(mesh_id, name)
+
+        # loaded once to avoid reading h5m file repeatedly
+        cached_bb = domain.bounding_box
+        max_bounding_box_radius = max(
+            [
+                cached_bb[0][0],
+                cached_bb[0][1],
+                cached_bb[1][0],
+                cached_bb[1][1],
+            ]
+        )
+        mesh.r_grid = np.linspace(
+            0,
+            max_bounding_box_radius,
+            num=dimension[0]+1
+        )
+        mesh.phi_grid = np.linspace(
+            phi_grid_bounds[0],
+            phi_grid_bounds[1],
+            num=dimension[1]+1
+        )
+        mesh.z_grid = np.linspace(
+            cached_bb[0][2],
+            cached_bb[1][2],
+            num=dimension[2]+1
+        )
 
         return mesh
 

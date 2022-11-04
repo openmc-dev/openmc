@@ -31,7 +31,9 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         to the number of hardware threads available (or a value set by the
         :envvar:`OMP_NUM_THREADS` environment variable).
     tracks : bool, optional
-        Write tracks for all particles. Defaults to False.
+        Enables the writing of particles tracks. The number of particle
+        tracks written to tracks.h5 is limited to 1000 unless
+        Settings.max_tracks is set. Defaults to False.
     event_based : None or bool, optional
         Turns on event-based parallelism if True. If None, the value in
         the Settings will be used.
@@ -245,7 +247,9 @@ def run(particles=None, threads=None, geometry_debug=False,
     restart_file : str, optional
         Path to restart file to use
     tracks : bool, optional
-        Write tracks for all particles. Defaults to False.
+        Enables the writing of particles tracks. The number of particle
+        tracks written to tracks.h5 is limited to 1000 unless
+        Settings.max_tracks is set. Defaults to False.
     output : bool
         Capture OpenMC output from standard out
     cwd : str, optional

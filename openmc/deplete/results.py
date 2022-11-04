@@ -1,6 +1,8 @@
 import numbers
 import bisect
 import math
+import typing  # required to prevent typing.Union namespace overwriting Union
+from typing import Iterable, Optional, Tuple
 from warnings import warn
 
 import h5py
@@ -11,11 +13,12 @@ import openmc.checkvalue as cv
 from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
 from openmc.exceptions import DataError
+from openmc.checkvalue import PathLike
 
 __all__ = ["Results", "ResultsList"]
 
 
-def _get_time_as(seconds, units):
+def _get_time_as(seconds: float, units: str) -> float:
     """Converts the time in seconds to time in different units
 
     Parameters
@@ -70,7 +73,7 @@ class Results(list):
 
 
     @classmethod
-    def from_hdf5(cls, filename):
+    def from_hdf5(cls, filename: PathLike):
         """Load in depletion results from a previous file
 
         Parameters
@@ -91,7 +94,13 @@ class Results(list):
         )
         return cls(filename)
 
-    def get_atoms(self, mat, nuc, nuc_units="atoms", time_units="s"):
+    def get_atoms(
+        self,
+        mat: typing.Union[Material, str],
+        nuc: str,
+        nuc_units: str = "atoms",
+        time_units: str = "s"
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Get number of nuclides over time from a single material
 
         .. note::
@@ -155,7 +164,12 @@ class Results(list):
 
         return times, concentrations
 
-    def get_reaction_rate(self, mat, nuc, rx):
+    def get_reaction_rate(
+        self,
+        mat: typing.Union[Material, str],
+        nuc: str,
+        rx: str
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Get reaction rate in a single material/nuclide over time
 
         .. note::
@@ -200,7 +214,7 @@ class Results(list):
 
         return times, rates
 
-    def get_keff(self, time_units='s'):
+    def get_keff(self, time_units: str = 's') -> Tuple[np.ndarray, np.ndarray]:
         """Evaluates the eigenvalue from a results list.
 
         .. versionadded:: 0.13.1
@@ -236,12 +250,12 @@ class Results(list):
         times = _get_time_as(times, time_units)
         return times, eigenvalues
 
-    def get_eigenvalue(self, time_units='s'):
+    def get_eigenvalue(self, time_units: str = 's') -> Tuple[np.ndarray, np.ndarray]:
         warn("The get_eigenvalue(...) function has been renamed get_keff and "
              "will be removed in a future version of OpenMC.", FutureWarning)
         return self.get_keff(time_units)
 
-    def get_depletion_time(self):
+    def get_depletion_time(self) -> np.ndarray:
         """Return an array of the average time to deplete a material
 
         .. note::
@@ -269,7 +283,7 @@ class Results(list):
             times[ix] = res.proc_time
         return times
 
-    def get_times(self, time_units="d") -> np.ndarray:
+    def get_times(self, time_units: str = "d") -> np.ndarray:
         """Return the points in time that define the depletion schedule
 
         .. versionadded:: 0.12.1
@@ -298,7 +312,7 @@ class Results(list):
         return _get_time_as(times, time_units)
 
     def get_step_where(
-        self, time, time_units="d", atol=1e-6, rtol=1e-3
+        self, time, time_units: str = "d", atol: float = 1e-6, rtol: float = 1e-3
     ) -> int:
         """Return the index closest to a given point in time
 
@@ -358,7 +372,11 @@ class Results(list):
                 time, time_units, atol, rtol)
         )
 
-    def export_to_materials(self, burnup_index, nuc_with_data=None) -> Materials:
+    def export_to_materials(
+        self,
+        burnup_index: int,
+        nuc_with_data: Optional[Iterable[str]] = None
+    ) -> Materials:
         """Return openmc.Materials object based on results at a given step
 
         .. versionadded:: 0.12.1
@@ -375,7 +393,7 @@ class Results(list):
             as such cannot be used in subsequent transport calculations.
             If not provided, nuclides from the cross_sections element of
             materials.xml will be used. If that element is not present,
-            nuclides from OPENMC_CROSS_SECTIONS will be used.
+            nuclides from openmc.config['cross_sections'] will be used.
 
         Returns
         -------
@@ -395,7 +413,7 @@ class Results(list):
         # the new materials XML file. The precedence of nuclides to select
         # is first ones provided as a kwarg here, then ones specified
         # in the materials.xml file if provided, then finally from
-        # the environment variable OPENMC_CROSS_SECTIONS.
+        # openmc.config['cross_sections'].
         if nuc_with_data:
             cv.check_iterable_type('nuclide names', nuc_with_data, str)
             available_cross_sections = nuc_with_data
@@ -418,7 +436,7 @@ class Results(list):
         # results, and save them to the new depleted xml file.
         for mat in mat_file:
             mat_id = str(mat.id)
-            if mat_id in result.mat_to_ind:
+            if mat_id in result.index_mat:
                 mat.volume = result.volume[mat_id]
 
                 # Change density of all nuclides in material to atom/b-cm
@@ -430,7 +448,7 @@ class Results(list):
 
                 # For nuclides in chain that have cross sections, replace
                 # density in original material with new density from results
-                for nuc in result.nuc_to_ind:
+                for nuc in result.index_nuc:
                     if nuc not in available_cross_sections:
                         continue
                     atoms = result[0, mat_id, nuc]

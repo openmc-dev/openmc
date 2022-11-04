@@ -1,6 +1,5 @@
 import copy
 from numbers import Real, Integral
-import os
 
 import h5py
 import numpy as np
@@ -2536,8 +2535,7 @@ class MGXSLibrary:
         ----------
         filename : str, optional
             Name of HDF5 file containing MGXS data. Default is None.
-            If not provided, the value of the OPENMC_MG_CROSS_SECTIONS
-            environmental variable will be used
+            If not provided, openmc.config['mg_cross_sections'] will be used.
 
         Returns
         -------
@@ -2545,15 +2543,14 @@ class MGXSLibrary:
             Multi-group cross section data object.
 
         """
-        # If filename is None, get the cross sections from the
-        # OPENMC_CROSS_SECTIONS environment variable
+        # If filename is None, get the cross sections from openmc.config
         if filename is None:
-            filename = os.environ.get('OPENMC_MG_CROSS_SECTIONS')
+            filename = openmc.config.get('mg_cross_sections')
 
         # Check to make sure there was an environmental variable.
         if filename is None:
-            raise ValueError("Either path or OPENMC_MG_CROSS_SECTIONS "
-                             "environmental variable must be set")
+            raise ValueError("Either path or openmc.config['mg_cross_sections']"
+                             "must be set")
 
         check_type('filename', filename, str)
         file = h5py.File(filename, 'r')

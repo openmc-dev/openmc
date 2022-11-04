@@ -272,7 +272,7 @@ class Universe(UniverseBase):
 
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', **kwargs):
+             openmc_exec='openmc', axes=None, **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -302,6 +302,8 @@ class Universe(UniverseBase):
             Seed for the random number generator
         openmc_exec : str
             Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
 
             .. versionadded:: 0.13.1
         **kwargs
@@ -356,19 +358,23 @@ class Universe(UniverseBase):
             model.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
 
             # Read image from file
-            img = mpimg.imread(Path(tmpdir) / f'plot_{plot.id}.png')
+            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            if not img_path.is_file():
+                img_path = img_path.with_suffix('.ppm')
+            img = mpimg.imread(img_path)
 
             # Create a figure sized such that the size of the axes within
             # exactly matches the number of pixels specified
-            px = 1/plt.rcParams['figure.dpi']
-            fig, ax = plt.subplots()
-            params = fig.subplotpars
-            width = pixels[0]*px/(params.right - params.left)
-            height = pixels[0]*px/(params.top - params.bottom)
-            fig.set_size_inches(width, height)
+            if axes is None:
+                px = 1/plt.rcParams['figure.dpi']
+                fig, axes = plt.subplots()
+                params = fig.subplotpars
+                width = pixels[0]*px/(params.right - params.left)
+                height = pixels[0]*px/(params.top - params.bottom)
+                fig.set_size_inches(width, height)
 
             # Plot image and return the axes
-            return ax.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+            return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
     def add_cell(self, cell):
         """Add a cell to the universe.
@@ -621,11 +627,11 @@ class DAGMCUniverse(UniverseBase):
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
     auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
+        Set IDs automatically on initialization (True) or report overlaps in ID
+        space between CSG and DAGMC (False)
     auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
+        Set IDs automatically on initialization (True)  or report overlaps in ID
+        space between OpenMC and UWUW materials (False)
 
     Attributes
     ----------
@@ -636,16 +642,34 @@ class DAGMCUniverse(UniverseBase):
     filename : str
         Path to the DAGMC file used to represent this universe.
     auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
+        Set IDs automatically on initialization (True) or report overlaps in ID
+        space between CSG and DAGMC (False)
     auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
+        Set IDs automatically on initialization (True)  or report overlaps in ID
+        space between OpenMC and UWUW materials (False)
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
 
         .. versionadded:: 0.13.1
+    material_names : list of str
+        Return a sorted list of materials names that are contained within the
+        DAGMC h5m file. This is useful when naming openmc.Material() objects
+        as each material name present in the DAGMC h5m file must have a
+        matching openmc.Material() with the same name.
+
+        .. versionadded:: 0.13.2
+    n_cells : int
+        The number of cells in the DAGMC model. This is the number of cells at
+        runtime and accounts for the implicit complement whether or not is it
+        present in the DAGMC file.
+
+        .. versionadded:: 0.13.2
+    n_surfaces : int
+        The number of surfaces in the model.
+
+        .. versionadded:: 0.13.2
+
     """
 
     def __init__(self,
@@ -696,6 +720,21 @@ class DAGMCUniverse(UniverseBase):
     def auto_mat_ids(self):
         return self._auto_mat_ids
 
+    @property
+    def material_names(self):
+        dagmc_file_contents = h5py.File(self.filename)
+        material_tags_hex=dagmc_file_contents['/tstt/tags/NAME'].get('values')
+        material_tags_ascii=[]
+        for tag in material_tags_hex:
+            candidate_tag = tag.tobytes().decode().replace('\x00', '')
+            # tags might be for temperature or reflective surfaces
+            if candidate_tag.startswith('mat:'):
+                # removes first 4 characters as openmc.Material name should be
+                # set without the 'mat:' part of the tag
+                material_tags_ascii.append(candidate_tag[4:])
+
+        return sorted(set(material_tags_ascii))
+
     @auto_mat_ids.setter
     def auto_mat_ids(self, val):
         cv.check_type('DAGMC automatic material ids', val, bool)
@@ -706,6 +745,50 @@ class DAGMCUniverse(UniverseBase):
 
     def get_all_materials(self, memo=None):
         return OrderedDict()
+
+    def _n_geom_elements(self, geom_type):
+        """
+        Helper function for retrieving the number geometric entities in a DAGMC
+        file
+
+        Parameters
+        ----------
+        geom_type : str
+            The type of geometric entity to count. One of {'Volume', 'Surface'}. Returns
+            the runtime number of voumes in the DAGMC model (includes implicit complement).
+
+        Returns
+        -------
+        int
+            Number of geometry elements of the specified type
+        """
+        cv.check_value('geometry type', geom_type, ('volume', 'surface'))
+
+        def decode_str_tag(tag_val):
+            return tag_val.tobytes().decode().replace('\x00', '')
+
+        dagmc_filepath = Path(self.filename).resolve()
+        with h5py.File(dagmc_filepath) as dagmc_file:
+            category_data = dagmc_file['tstt/tags/CATEGORY/values']
+            category_strs = map(decode_str_tag, category_data)
+            n = sum([v == geom_type.capitalize() for v in category_strs])
+
+            # check for presence of an implicit complement in the file and
+            # increment the number of cells if it doesn't exist
+            if geom_type == 'volume':
+                name_data = dagmc_file['tstt/tags/NAME/values']
+                name_strs = map(decode_str_tag, name_data)
+                if not sum(['impl_complement' in n for n in name_strs]):
+                    n += 1
+        return n
+
+    @property
+    def n_cells(self):
+        return self._n_geom_elements('volume')
+
+    @property
+    def n_surfaces(self):
+        return self._n_geom_elements('surface')
 
     def create_xml_subelement(self, xml_element, memo=None):
         if memo and self in memo:

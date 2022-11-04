@@ -2,7 +2,9 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
 from copy import deepcopy
+import math
 from numbers import Real
+from warnings import warn
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -53,7 +55,9 @@ class Univariate(EqualityMixin, ABC):
         elif distribution == 'normal':
             return Normal.from_xml_element(elem)
         elif distribution == 'muir':
-            return Muir.from_xml_element(elem)
+            # Support older files where Muir had its own class
+            params = [float(x) for x in get_text(elem, 'parameters').split()]
+            return muir(*params)
         elif distribution == 'tabular':
             return Tabular.from_xml_element(elem)
         elif distribution == 'legendre':
@@ -717,119 +721,45 @@ class Normal(Univariate):
         return cls(*map(float, params))
 
 
-class Muir(Univariate):
-    """Muir energy spectrum.
+def muir(e0, m_rat, kt):
+    """Generate a Muir energy spectrum
 
-    The Muir energy spectrum is a Gaussian spectrum, but for
-    convenience reasons allows the user 3 parameters to define
-    the distribution, e0 the mean energy of particles, the mass
-    of reactants m_rat, and the ion temperature kt.
+    The Muir energy spectrum is a normal distribution, but for convenience
+    reasons allows the user to specify three parameters to define the
+    distribution: the mean energy of particles ``e0``, the mass of reactants
+    ``m_rat``, and the ion temperature ``kt``.
+
+    .. versionadded:: 0.13.2
 
     Parameters
     ----------
     e0 : float
-        Mean of the Muir distribution in units of eV
+        Mean of the Muir distribution in [eV]
     m_rat : float
-        Ratio of the sum of the masses of the reaction inputs to an
-        AMU
+        Ratio of the sum of the masses of the reaction inputs to 1 amu
     kt : float
-         Ion temperature for the Muir distribution in units of eV
+         Ion temperature for the Muir distribution in [eV]
 
-    Attributes
-    ----------
-    e0 : float
-        Mean of the Muir distribution in units of eV
-    m_rat : float
-        Ratio of the sum of the masses of the reaction inputs to an
-        AMU
-    kt : float
-         Ion temperature for the Muir distribution in units of eV
+    Returns
+    -------
+    openmc.stats.Normal
+        Corresponding normal distribution
 
     """
+    # https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
+    std_dev = math.sqrt(4 * e0 * kt / m_rat)
+    return Normal(e0, std_dev)
 
-    def __init__(self, e0=14.08e6, m_rat = 5., kt = 20000.):
-        self.e0 = e0
-        self.m_rat = m_rat
-        self.kt = kt
 
-    def __len__(self):
-        return 3
-
-    @property
-    def e0(self):
-        return self._e0
-
-    @property
-    def m_rat(self):
-        return self._m_rat
-
-    @property
-    def kt(self):
-        return self._kt
-
-    @e0.setter
-    def e0(self, e0):
-        cv.check_type('Muir e0', e0, Real)
-        cv.check_greater_than('Muir e0', e0, 0.0)
-        self._e0 = e0
-
-    @m_rat.setter
-    def m_rat(self, m_rat):
-        cv.check_type('Muir m_rat', m_rat, Real)
-        cv.check_greater_than('Muir m_rat', m_rat, 0.0)
-        self._m_rat = m_rat
-
-    @kt.setter
-    def kt(self, kt):
-        cv.check_type('Muir kt', kt, Real)
-        cv.check_greater_than('Muir kt', kt, 0.0)
-        self._kt = kt
-
-    @property
-    def std_dev(self):
-        return np.sqrt(4.*self.e0*self.kt/self.m_rat)
-
-    def sample(self, n_samples=1, seed=None):
-        # Based on LANL report LA-05411-MS
-        np.random.seed(seed)
-        return np.random.normal(self.e0, self.std_dev, n_samples)
-
-    def to_xml_element(self, element_name):
-        """Return XML representation of the Watt distribution
-
-        Parameters
-        ----------
-        element_name : str
-            XML element name
-
-        Returns
-        -------
-        element : xml.etree.ElementTree.Element
-            XML element containing Watt distribution data
-
-        """
-        element = ET.Element(element_name)
-        element.set("type", "muir")
-        element.set("parameters", '{} {} {}'.format(self._e0, self._m_rat, self._kt))
-        return element
-
-    @classmethod
-    def from_xml_element(cls, elem):
-        """Generate Muir distribution from an XML element
-
-        Parameters
-        ----------
-        elem : xml.etree.ElementTree.Element
-            XML element
-
-        Returns
-        -------
-        openmc.stats.Muir
-            Muir distribution generated from XML element
-
-        """
-        params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+# Retain deprecated name for the time being
+def Muir(*args, **kwargs):
+    # warn of name change
+    warn(
+        "The Muir(...) class has been replaced by the muir(...) function and "
+        "will be removed in a future version of OpenMC. Use muir(...) instead.",
+        FutureWarning
+    )
+    return muir(*args, **kwargs)
 
 
 class Tabular(Univariate):

@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from openmc.mpi import comm
 from openmc.deplete import Chain, reaction_rates, nuclide, cram, pool
+from openmc.stats import Discrete
 import pytest
 
 from tests import cdtemp
@@ -476,6 +477,15 @@ def gnd_simple_chain():
     return Chain.from_xml(chainfile)
 
 
+def test_chain_sources(gnd_simple_chain):
+    i135 = gnd_simple_chain['I135']
+    assert isinstance(i135.sources, dict)
+    assert list(i135.sources.keys()) == ['photon']
+    photon_src = i135.sources['photon']
+    assert isinstance(photon_src, Discrete)
+    assert photon_src.integral() == pytest.approx(3.920996223799345e-05)
+
+
 def test_reduce(gnd_simple_chain, endf_chain):
     ref_U5 = gnd_simple_chain["U235"]
     ref_iodine = gnd_simple_chain["I135"]
@@ -490,6 +500,7 @@ def test_reduce(gnd_simple_chain, endf_chain):
     assert u5_round0.n_decay_modes == ref_U5.n_decay_modes
     assert u5_round0.half_life == ref_U5.half_life
     assert u5_round0.decay_energy == ref_U5.decay_energy
+    assert u5_round0.sources == ref_U5.sources
     for newmode, refmode in zip(u5_round0.decay_modes, ref_U5.decay_modes):
         assert newmode.target is None
         assert newmode.type == refmode.type
@@ -512,6 +523,7 @@ def test_reduce(gnd_simple_chain, endf_chain):
     assert bareI5.n_decay_modes == ref_iodine.n_decay_modes
     assert bareI5.half_life == ref_iodine.half_life
     assert bareI5.decay_energy == ref_iodine.decay_energy
+    assert bareI5.sources == ref_iodine.sources
     for newmode, refmode in zip(bareI5.decay_modes, ref_iodine.decay_modes):
         assert newmode.target is None
         assert newmode.type == refmode.type

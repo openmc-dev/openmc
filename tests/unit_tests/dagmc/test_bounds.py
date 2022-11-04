@@ -71,3 +71,12 @@ def test_bounded_universe(request):
     surfaces = list(cells[0][1].region.get_surfaces().items())
     assert surfaces[0][1].type == "sphere"
     assert surfaces[0][1].id == 43
+
+
+def test_material_names(request):
+    """Checks that the DAGMCUniverse.material_names() returns a list of the
+    name present in the dagmc.h5m file in the expected order"""
+
+    u = openmc.DAGMCUniverse(Path(request.fspath).parent / "dagmc.h5m")
+
+    assert u.material_names == ['41', 'Graveyard', 'no-void fuel']

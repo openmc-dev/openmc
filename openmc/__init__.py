@@ -10,11 +10,11 @@ from openmc.material import *
 from openmc.plots import *
 from openmc.region import *
 from openmc.volume import *
-from openmc.source import *
 from openmc.weight_windows import *
-from openmc.settings import *
 from openmc.surface import *
 from openmc.universe import *
+from openmc.source import *
+from openmc.settings import *
 from openmc.lattice import *
 from openmc.filter import *
 from openmc.filter_expansion import *
@@ -32,9 +32,10 @@ from openmc.search import *
 from openmc.polynomial import *
 from openmc.tracks import *
 from . import examples
+from .config import *
 
 # Import a few names from the model module
 from openmc.model import rectangular_prism, hexagonal_prism, Model
 
 
-__version__ = '0.14.0-dev'
+__version__ = '0.13.3-dev'

@@ -1,8 +1,10 @@
 from collections import defaultdict
+from pathlib import Path
 
 import pytest
 
 import openmc
+from openmc.data import decay_photon_energy
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -32,6 +34,7 @@ def test_add_components():
                   'O16': 1.0,
                   'Zr': 1.0,
                   'O': 1.0,
+                  'Ag110_m1': 1.0,
                   'U': {'percent': 1.0,
                         'enrichment': 4.5},
                   'Li': {'percent': 1.0,
@@ -299,6 +302,23 @@ def test_isotropic():
     assert m2.isotropic == ['H1']
 
 
+def test_get_nuclides():
+    mat = openmc.Material()
+
+    mat.add_nuclide('Li6', 1.0)
+    assert mat.get_nuclides() == ['Li6']
+    assert mat.get_nuclides(element='Li') == ['Li6']
+    assert mat.get_nuclides(element='Be') == []
+
+    mat.add_element('Li', 1.0)
+    assert mat.get_nuclides() == ['Li6', 'Li7']
+    assert mat.get_nuclides(element='Be') == []
+
+    mat.add_element('Be', 1.0)
+    assert mat.get_nuclides() == ['Li6', 'Li7', 'Be9']
+    assert mat.get_nuclides(element='Be') == ['Be9']
+
+
 def test_get_elements():
     # test that zero elements exist on creation
     m = openmc.Material()
@@ -337,6 +357,15 @@ def test_get_nuclide_atom_densities(uo2):
     for nuc, density in uo2.get_nuclide_atom_densities().items():
         assert nuc in ('U235', 'O16')
         assert density > 0
+
+
+def test_get_nuclide_atom_densities_specific(uo2):
+    one_nuc = uo2.get_nuclide_atom_densities(nuclide='O16')
+    assert list(one_nuc.keys()) == ['O16']
+    assert list(one_nuc.values())[0] > 0
+
+    all_nuc = uo2.get_nuclide_atom_densities()
+    assert all_nuc['O16'] == one_nuc['O16']
 
 
 def test_get_nuclide_atoms():
@@ -514,3 +543,39 @@ def test_get_activity():
     # volume is required to calculate total activity
     m4.volume = 10.
     assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
+
+
+def test_decay_photon_energy():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    # Material representing single atom of I135 and Cs135
+    m = openmc.Material()
+    m.add_nuclide('I135', 1.0e-24)
+    m.add_nuclide('Cs135', 1.0e-24)
+    m.volume = 1.0
+
+    # Get decay photon source and make sure it's the right type
+    src = m.decay_photon_energy
+    assert isinstance(src, openmc.stats.Discrete)
+
+    # If we add Xe135 (which has a tabular distribution), the photon source
+    # should be a mixture distribution
+    m.add_nuclide('Xe135', 1.0e-24)
+    src = m.decay_photon_energy
+    assert isinstance(src, openmc.stats.Mixture)
+
+    # With a single atom of each, the intensity of the photon source should be
+    # equal to the sum of the intensities for each nuclide
+    def intensity(src):
+        return src.integral() if src is not None else 0.0
+
+    assert src.integral() == pytest.approx(sum(
+        intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
+    ))
+
+    # A material with no unstable nuclides should have no decay photon source
+    stable = openmc.Material()
+    stable.add_nuclide('Gd156', 1.0)
+    stable.volume = 1.0
+    assert stable.decay_photon_energy is None

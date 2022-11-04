@@ -8,6 +8,7 @@ import openmc
 import openmc.deplete
 from openmc.deplete import IndependentOperator, MicroXS
 
+
 @pytest.fixture(scope="module")
 def fuel():
     fuel = openmc.Material(name="uo2")
@@ -25,16 +26,18 @@ def micro_xs():
     micro_xs_file = Path(__file__).parents[2] / 'micro_xs_simple.csv'
     return MicroXS.from_csv(micro_xs_file)
 
+
 @pytest.fixture(scope="module")
 def chain_file():
     return Path(__file__).parents[2] / 'chain_simple.xml'
 
+
 @pytest.mark.parametrize("multiproc, from_nuclides, normalization_mode, power, flux", [
-    (True, True,'source-rate', None, 1164719970082145.0),
+    (True, True, 'source-rate', None, 1164719970082145.0),
     (False, True, 'source-rate', None, 1164719970082145.0),
     (True, True, 'fission-q', 174, None),
     (False, True, 'fission-q', 174, None),
-    (True, False,'source-rate', None, 1164719970082145.0),
+    (True, False, 'source-rate', None, 1164719970082145.0),
     (False, False, 'source-rate', None, 1164719970082145.0),
     (True, False, 'fission-q', 174, None),
     (False, False, 'fission-q', 174, None)])
@@ -90,13 +93,14 @@ def test_against_self(run_in_tmpdir,
     _assert_atoms_equal(res_test, res_ref, tol)
     _assert_reaction_rates_equal(res_test, res_ref, tol)
 
+
 @pytest.mark.parametrize("multiproc, dt, time_units, time_type, atom_tol, rx_tol ", [
     (True, 360, 's', 'minutes', 2.0e-3, 3.0e-2),
     (False, 360, 's', 'minutes', 2.0e-3, 3.0e-2),
     (True, 4, 'h', 'hours', 2.0e-3, 6.0e-2),
-    (False,4, 'h', 'hours', 2.0e-3, 6.0e-2),
+    (False, 4, 'h', 'hours', 2.0e-3, 6.0e-2),
     (True, 5, 'd', 'days', 2.0e-3, 5.0e-2),
-    (False,5, 'd', 'days', 2.0e-3, 5.0e-2),
+    (False, 5, 'd', 'days', 2.0e-3, 5.0e-2),
     (True, 100, 'd', 'months', 4.0e-3, 9.0e-2),
     (False, 100, 'd', 'months', 4.0e-3, 9.0e-2)])
 def test_against_coupled(run_in_tmpdir,
@@ -136,6 +140,7 @@ def test_against_coupled(run_in_tmpdir,
     _assert_atoms_equal(res_test, res_ref, atom_tol)
     _assert_reaction_rates_equal(res_test, res_ref, rx_tol)
 
+
 def _create_operator(from_nuclides,
                      fuel,
                      micro_xs,
@@ -160,24 +165,26 @@ def _create_operator(from_nuclides,
 
     return op
 
-def _assert_same_mats(res_ref, res_test):
-    for mat in res_ref[0].mat_to_ind:
-            assert mat in res_test[0].mat_to_ind, \
-                "Material {} not in new results.".format(mat)
-    for nuc in res_ref[0].nuc_to_ind:
-        assert nuc in res_test[0].nuc_to_ind, \
-            "Nuclide {} not in new results.".format(nuc)
 
-    for mat in res_test[0].mat_to_ind:
-        assert mat in res_ref[0].mat_to_ind, \
-            "Material {} not in old results.".format(mat)
-    for nuc in res_test[0].nuc_to_ind:
-        assert nuc in res_ref[0].nuc_to_ind, \
-            "Nuclide {} not in old results.".format(nuc)
+def _assert_same_mats(res_ref, res_test):
+    for mat in res_ref[0].index_mat:
+        assert mat in res_test[0].index_mat, \
+            f"Material {mat} not in new results."
+    for nuc in res_ref[0].index_nuc:
+        assert nuc in res_test[0].index_nuc, \
+            f"Nuclide {nuc} not in new results."
+
+    for mat in res_test[0].index_mat:
+        assert mat in res_ref[0].index_mat, \
+            f"Material {mat} not in old results."
+    for nuc in res_test[0].index_nuc:
+        assert nuc in res_ref[0].index_nuc, \
+            f"Nuclide {nuc} not in old results."
+
 
 def _assert_atoms_equal(res_ref, res_test, tol):
-    for mat in res_test[0].mat_to_ind:
-        for nuc in res_test[0].nuc_to_ind:
+    for mat in res_test[0].index_mat:
+        for nuc in res_test[0].index_nuc:
             _, y_test = res_test.get_atoms(mat, nuc)
             _, y_old = res_ref.get_atoms(mat, nuc)
 
@@ -192,6 +199,7 @@ def _assert_atoms_equal(res_ref, res_test, tol):
 
             assert correct, "Discrepancy in mat {} and nuc {}\n{}\n{}".format(
                 mat, nuc, y_old, y_test)
+
 
 def _assert_reaction_rates_equal(res_ref, res_test, tol):
     for reactions in res_test[0].rates:

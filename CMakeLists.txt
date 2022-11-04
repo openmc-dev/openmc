@@ -3,8 +3,8 @@ project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 14)
-set(OPENMC_VERSION_RELEASE 0)
+set(OPENMC_VERSION_MINOR 13)
+set(OPENMC_VERSION_RELEASE 3)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -483,6 +483,19 @@ if (OPENMC_USE_MPI)
 endif()
 
 #===============================================================================
+# Log build info that this executable can report later
+#===============================================================================
+target_compile_definitions(libopenmc PRIVATE BUILD_TYPE=${CMAKE_BUILD_TYPE})
+target_compile_definitions(libopenmc PRIVATE COMPILER_ID=${CMAKE_CXX_COMPILER_ID})
+target_compile_definitions(libopenmc PRIVATE COMPILER_VERSION=${CMAKE_CXX_COMPILER_VERSION})
+if (OPENMC_ENABLE_PROFILE)
+  target_compile_definitions(libopenmc PRIVATE PROFILINGBUILD)
+endif()
+if (OPENMC_ENABLE_COVERAGE)
+  target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
+endif()
+
+#===============================================================================
 # openmc executable
 #===============================================================================
 add_executable(openmc src/main.cpp)
@@ -525,7 +538,6 @@ install(EXPORT openmc-targets
   NAMESPACE OpenMC::
   DESTINATION ${INSTALL_CONFIGDIR})
 
-install(DIRECTORY src/relaxng DESTINATION ${CMAKE_INSTALL_DATADIR}/openmc)
 install(FILES
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"

@@ -5,7 +5,7 @@ set -ex
 # libMESH install
 pushd $HOME
 mkdir LIBMESH && cd LIBMESH
-git clone https://github.com/libmesh/libmesh -b v1.6.0 --recurse-submodules
+git clone https://github.com/libmesh/libmesh -b v1.7.1 --recurse-submodules
 mkdir build && cd build
 export METHODS="opt"
 

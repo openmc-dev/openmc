@@ -7,9 +7,12 @@ import openmc.stats
 
 
 def assert_sample_mean(samples, expected_mean):
-    std_dev = samples.std() / np.sqrt(samples.size)
-    assert np.abs(expected_mean - samples.mean()) < 3*std_dev
+    # Calculate sample standard deviation
+    std_dev = samples.std() / np.sqrt(samples.size - 1)
 
+    # Means should agree within 4 sigma 99.993% of the time. Note that this is
+    # expected to fail about 1 out of 16,000 times
+    assert np.abs(expected_mean - samples.mean()) < 4*std_dev
 
 
 def test_discrete():
@@ -40,9 +43,9 @@ def test_discrete():
     d3 = openmc.stats.Discrete(vals, probs)
 
     # sample discrete distribution and check that the mean of the samples is
-    # within 3 std. dev. of the expected mean
+    # within 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d3.sample(n_samples, seed=100)
+    samples = d3.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
 
@@ -86,11 +89,11 @@ def test_uniform():
     np.testing.assert_array_equal(t.p, [1/(b-a), 1/(b-a)])
     assert t.interpolation == 'histogram'
 
-    # Sample distribution and check that the mean of the samples is within 3
+    # Sample distribution and check that the mean of the samples is within 4
     # std. dev. of the expected mean
     exp_mean = 0.5 * (a + b)
     n_samples = 1_000_000
-    samples = d.sample(n_samples, seed=100)
+    samples = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
 
@@ -105,12 +108,13 @@ def test_powerlaw():
     assert d.n == n
     assert len(d) == 3
 
-    exp_mean = 100.0 * (n+1) / (n+2)
+    # Determine mean of distribution
+    exp_mean = (n+1)*(b**(n+2) - a**(n+2))/((n+2)*(b**(n+1) - a**(n+1)))
 
     # sample power law distribution and check that the mean of the samples is
-    # within 3 std. dev. of the expected mean
+    # within 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d.sample(n_samples, seed=100)
+    samples = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
 
@@ -126,13 +130,13 @@ def test_maxwell():
     exp_mean = 3/2 * theta
 
     # sample maxwell distribution and check that the mean of the samples is
-    # within 3 std. dev. of the expected mean
+    # within 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d.sample(n_samples, seed=100)
+    samples = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
-    # A second sample with a different seed
-    samples_2 = d.sample(n_samples, seed=200)
+    # A second sample starting from a different seed
+    samples_2 = d.sample(n_samples)
     assert_sample_mean(samples_2, exp_mean)
     assert samples_2.mean() != samples.mean()
 
@@ -154,9 +158,9 @@ def test_watt():
     exp_mean = 3/2 * a + a**2 * b / 4
 
     # sample Watt distribution and check that the mean of the samples is within
-    # 3 std. dev. of the expected mean
+    # 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d.sample(n_samples, seed=100)
+    samples = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
 
@@ -176,28 +180,16 @@ def test_tabular():
     d = openmc.stats.Tabular(x, p)
 
     n_samples = 100_000
-    samples = d.sample(n_samples, seed=100)
-    diff = np.abs(samples - d.mean())
-    # within_1_sigma = np.count_nonzero(diff < samples.std())
-    # assert within_1_sigma / n_samples >= 0.68
-    within_2_sigma = np.count_nonzero(diff < 2*samples.std())
-    assert within_2_sigma / n_samples >= 0.95
-    within_3_sigma = np.count_nonzero(diff < 3*samples.std())
-    assert within_3_sigma / n_samples >= 0.99
+    samples = d.sample(n_samples)
+    assert_sample_mean(samples, d.mean())
 
     # test histogram sampling
     d = openmc.stats.Tabular(x, p, interpolation='histogram')
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
 
-    samples = d.sample(n_samples, seed=100)
-    diff = np.abs(samples - d.mean())
-    # within_1_sigma = np.count_nonzero(diff < samples.std())
-    # assert within_1_sigma / n_samples >= 0.68
-    within_2_sigma = np.count_nonzero(diff < 2*samples.std())
-    assert within_2_sigma / n_samples >= 0.95
-    within_3_sigma = np.count_nonzero(diff < 3*samples.std())
-    assert within_3_sigma / n_samples >= 0.99
+    samples = d.sample(n_samples)
+    assert_sample_mean(samples, d.mean())
 
 
 def test_legendre():
@@ -361,42 +353,28 @@ def test_normal():
     assert len(d) == 2
 
     # sample normal distribution
-    n_samples = 10000
-    samples = d.sample(n_samples, seed=100)
-    samples = np.abs(samples - mean)
-    within_1_sigma = np.count_nonzero(samples < std_dev)
-    assert within_1_sigma / n_samples >= 0.68
-    within_2_sigma = np.count_nonzero(samples < 2*std_dev)
-    assert within_2_sigma / n_samples >= 0.95
-    within_3_sigma = np.count_nonzero(samples < 3*std_dev)
-    assert within_3_sigma / n_samples >= 0.99
+    n_samples = 100_000
+    samples = d.sample(n_samples)
+    assert_sample_mean(samples, mean)
 
 
 def test_muir():
     mean = 10.0
     mass = 5.0
     temp = 20000.
-    d = openmc.stats.Muir(mean,mass,temp)
+    d = openmc.stats.muir(mean, mass, temp)
+    assert isinstance(d, openmc.stats.Normal)
 
     elem = d.to_xml_element('energy')
-    assert elem.attrib['type'] == 'muir'
+    assert elem.attrib['type'] == 'normal'
 
-    d = openmc.stats.Muir.from_xml_element(elem)
-    assert d.e0 == pytest.approx(mean)
-    assert d.m_rat == pytest.approx(mass)
-    assert d.kt == pytest.approx(temp)
-    assert len(d) == 3
+    d = openmc.stats.Univariate.from_xml_element(elem)
+    assert isinstance(d, openmc.stats.Normal)
 
     # sample muir distribution
-    n_samples = 10000
-    samples = d.sample(n_samples, seed=100)
-    samples = np.abs(samples - mean)
-    within_1_sigma = np.count_nonzero(samples < d.std_dev)
-    assert within_1_sigma / n_samples >= 0.68
-    within_2_sigma = np.count_nonzero(samples < 2*d.std_dev)
-    assert within_2_sigma / n_samples >= 0.95
-    within_3_sigma = np.count_nonzero(samples < 3*d.std_dev)
-    assert within_3_sigma / n_samples >= 0.99
+    n_samples = 100_000
+    samples = d.sample(n_samples)
+    assert_sample_mean(samples, mean)
 
 
 def test_combine_distributions():

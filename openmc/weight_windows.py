@@ -159,6 +159,35 @@ class WeightWindows(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tWeight Cutoff', self._weight_cutoff)
         return string
 
+    def __eq__(self, other):
+        # ensure that `other` is a WeightWindows object
+        if not isinstance(other, WeightWindows):
+            return False
+
+        # TODO: add ability to check mesh equality
+
+        # check several attributes directly
+        attrs = ('particle_type',
+                 'survival_ratio',
+                 'max_lower_bound_ratio',
+                 'max_split',
+                 'weight_cutoff')
+        for attr in attrs:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+
+        # save most expensive checks for last
+        if not np.array_equal(self.energy_bounds, other.energy_bounds):
+            return False
+
+        if not np.array_equal(self.lower_ww_bounds, other.lower_ww_bounds):
+            return False
+
+        if not np.array_equal(self.upper_ww_bounds, other.upper_ww_bounds):
+            return False
+
+        return True
+
     @property
     def mesh(self):
         return self._mesh
@@ -206,9 +235,9 @@ class WeightWindows(IDManagerMixin):
         # reshape data according to mesh and energy bins
         bounds = np.asarray(bounds)
         if isinstance(self.mesh, UnstructuredMesh):
-            bounds.reshape(-1, self.num_energy_bins)
+            bounds = bounds.reshape(-1, self.num_energy_bins)
         else:
-            bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
+            bounds = bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
         self._lower_ww_bounds = bounds
 
     @property
@@ -225,9 +254,9 @@ class WeightWindows(IDManagerMixin):
         # reshape data according to mesh and energy bins
         bounds = np.asarray(bounds)
         if isinstance(self.mesh, UnstructuredMesh):
-            bounds.reshape(-1, self.num_energy_bins)
+            bounds = bounds.reshape(-1, self.num_energy_bins)
         else:
-            bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
+            bounds = bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
         self._upper_ww_bounds = bounds
 
     @property
@@ -340,6 +369,10 @@ class WeightWindows(IDManagerMixin):
         e_bounds = [float(b) for b in get_text(elem, 'energy_bounds').split()]
         particle_type = get_text(elem, 'particle_type')
         survival_ratio = float(get_text(elem, 'survival_ratio'))
+
+        ww_shape = (len(e_bounds) - 1,) + mesh.dimension[::-1]
+        lower_ww_bounds = np.array(lower_ww_bounds).reshape(ww_shape).T
+        upper_ww_bounds = np.array(upper_ww_bounds).reshape(ww_shape).T
 
         max_lower_bound_ratio = None
         if get_text(elem, 'max_lower_bound_ratio'):
@@ -560,10 +593,13 @@ def wwinp_to_wws(path):
         end_idx = start_idx + (nfx * nfy * nfz) * nt_i * ne_i
 
         # read values and reshape according to ordering
-        # slowest to fastest: z, y, x, e
-        ww_values = ww_data[start_idx:end_idx].reshape(nfz, nfy, nfx, ne_i)
-        # swap z and x axes for correct shape and (ijk, e) mesh indexing
-        ww_values = np.swapaxes(ww_values, 2, 0)
+        # slowest to fastest: t, e, z, y, x
+        # reorder with transpose since our ordering is x, y, z, e, t
+        ww_shape = (nt_i, ne_i, nfz, nfy, nfx)
+        ww_values = ww_data[start_idx:end_idx].reshape(ww_shape).T
+        # Only use first time bin since we don't support time dependent weight
+        # windows yet.
+        ww_values = ww_values[:, :, :, :, 0]
         start_idx = end_idx
 
         # create a weight window object

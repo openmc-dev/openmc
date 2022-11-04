@@ -171,7 +171,9 @@ def _get_plot_image(plot, cwd):
     stem = plot.filename if plot.filename is not None else f'plot_{plot.id}'
     png_file = Path(cwd) / f'{stem}.png'
     if not png_file.exists():
-        raise FileNotFoundError(f"Could not find .png image for plot {plot.id}")
+        raise FileNotFoundError(
+            f"Could not find .png image for plot {plot.id}. Your version of "
+            "OpenMC may not be built against libpng.")
 
     return Image(str(png_file))
 

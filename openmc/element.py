@@ -1,9 +1,9 @@
 from collections import OrderedDict
-import os
 import re
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
+import openmc
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass, \
     isotopes as natural_isotopes
 
@@ -40,10 +40,10 @@ class Element(str):
                cross_sections=None):
         """Expand natural element into its naturally-occurring isotopes.
 
-        An optional cross_sections argument or the :envvar:`OPENMC_CROSS_SECTIONS`
-        environment variable is used to specify a cross_sections.xml file.
-        If the cross_sections.xml file is found, the element is expanded only
-        into the isotopes/nuclides present in cross_sections.xml. If no
+        An optional cross_sections argument or the ``cross_sections``
+        configuration value is used to specify a cross_sections.xml file. If the
+        cross_sections.xml file is found, the element is expanded only into the
+        isotopes/nuclides present in cross_sections.xml. If no
         cross_sections.xml file is found, the element is expanded based on its
         naturally occurring isotopes.
 
@@ -54,12 +54,13 @@ class Element(str):
         percent_type : {'ao', 'wo'}
             'ao' for atom percent and 'wo' for weight percent
         enrichment : float, optional
-            Enrichment of an enrichment_target nuclide in percent (ao or wo).
-            If enrichment_target is not supplied then it is enrichment for U235
-            in weight percent. For example, input 4.95 for 4.95 weight percent
+            Enrichment of an enrichment_target nuclide in percent (ao or wo). If
+            enrichment_target is not supplied then it is enrichment for U235 in
+            weight percent. For example, input 4.95 for 4.95 weight percent
             enriched U. Default is None (natural composition).
         enrichment_target: str, optional
-            Single nuclide name to enrich from a natural composition (e.g., 'O16')
+            Single nuclide name to enrich from a natural composition (e.g.,
+            'O16')
 
             .. versionadded:: 0.12
         enrichment_type: {'ao', 'wo'}, optional
@@ -82,8 +83,8 @@ class Element(str):
         ValueError
             No data is available for any of natural isotopes of the element
         ValueError
-            If only some natural isotopes are available in the cross-section data
-            library and the element is not O, W, or Ta
+            If only some natural isotopes are available in the cross-section
+            data library and the element is not O, W, or Ta
         ValueError
             If a non-naturally-occurring isotope is requested
         ValueError
@@ -101,8 +102,8 @@ class Element(str):
         `ORNL/CSD/TM-244 <https://doi.org/10.2172/5561567>`_ is used to
         calculate the weight fractions of U234, U235, U236, and U238. Namely,
         the weight fraction of U234 and U236 are taken to be 0.89% and 0.46%,
-        respectively, of the U235 weight fraction. The remainder of the
-        isotopic weight is assigned to U238.
+        respectively, of the U235 weight fraction. The remainder of the isotopic
+        weight is assigned to U238.
 
         When the `enrichment` argument is specified with `enrichment_target`, a
         general enrichment procedure is used for elements composed of exactly
@@ -125,10 +126,10 @@ class Element(str):
         # Create dict to store the expanded nuclides and abundances
         abundances = OrderedDict()
 
-        # If cross_sections is None, get the cross sections from the
-        # OPENMC_CROSS_SECTIONS environment variable
+        # If cross_sections is None, get the cross sections from the global
+        # configuration
         if cross_sections is None:
-            cross_sections = os.environ.get('OPENMC_CROSS_SECTIONS')
+            cross_sections = openmc.config.get('cross_sections')
 
         # If a cross_sections library is present, check natural nuclides
         # against the nuclides in the library

@@ -1,4 +1,3 @@
-import math
 import numpy as np
 import openmc
 from pytest import fixture, approx
@@ -252,6 +251,21 @@ def test_energy():
 def test_lethargy_bin_width():
     f = openmc.EnergyFilter.from_group_structure('VITAMIN-J-175')
     assert len(f.lethargy_bin_width) == 175
-    energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175'] 
-    assert f.lethargy_bin_width[0] == math.log10(energy_bins[1]/energy_bins[0])
-    assert f.lethargy_bin_width[-1] == math.log10(energy_bins[-1]/energy_bins[-2])
+    energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175']
+    assert f.lethargy_bin_width[0] == np.log10(energy_bins[1]/energy_bins[0])
+    assert f.lethargy_bin_width[-1] == np.log10(energy_bins[-1]/energy_bins[-2])
+
+
+def test_energyfunc():
+    f = openmc.EnergyFunctionFilter(
+        [0.0, 10.0, 2.0e3, 1.0e6, 20.0e6],
+        [1.0, 0.9, 0.8, 0.7, 0.6],
+        'histogram'
+    )
+
+    # Make sure XML roundtrip works
+    elem = f.to_xml_element()
+    new_f = openmc.EnergyFunctionFilter.from_xml_element(elem)
+    np.testing.assert_allclose(f.energy, new_f.energy)
+    np.testing.assert_allclose(f.y, new_f.y)
+    assert f.interpolation == new_f.interpolation

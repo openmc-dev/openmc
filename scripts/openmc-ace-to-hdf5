@@ -28,102 +28,129 @@ import openmc.data
 from openmc.data.ace import TableType
 
 
-class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
-                      argparse.RawDescriptionHelpFormatter):
-    pass
+def ace_to_hdf5(destination, xsdir, xsdata, libraries, metastable, libver):
 
+    if not destination.is_dir():
+        destination.mkdir(parents=True, exist_ok=True)
 
-parser = argparse.ArgumentParser(
-    description=__doc__,
-    formatter_class=CustomFormatter
-)
-parser.add_argument('libraries', nargs='*',
-                    help='ACE libraries to convert to HDF5')
-parser.add_argument('-d', '--destination', type=Path, default=Path.cwd(),
-                    help='Directory to create new library in')
-parser.add_argument('-m', '--metastable', choices=['mcnp', 'nndc'],
-                    default='nndc',
-                    help='How to interpret ZAIDs for metastable nuclides')
-parser.add_argument('--xsdir', help='MCNP xsdir file that lists '
-                    'ACE libraries')
-parser.add_argument('--xsdata', help='Serpent xsdata file that lists '
-                    'ACE libraries')
-parser.add_argument('--libver', choices=['earliest', 'latest'],
-                    default='earliest', help="Output HDF5 versioning. Use "
-                    "'earliest' for backwards compatibility or 'latest' for "
-                    "performance")
-args = parser.parse_args()
+    ace_libraries = []
+    if xsdir is not None:
+        ace_libraries.extend(openmc.data.ace.get_libraries_from_xsdir(xsdir))
+    elif xsdata is not None:
+        ace_libraries.extend(openmc.data.ace.get_libraries_from_xsdata(xsdata))
+    else:
+        ace_libraries = [Path(lib) for lib in libraries]
 
-if not args.destination.is_dir():
-    args.destination.mkdir(parents=True, exist_ok=True)
+    converted = {}
+    library = openmc.data.DataLibrary()
 
-ace_libraries = []
-if args.xsdir is not None:
-    ace_libraries.extend(openmc.data.ace.get_libraries_from_xsdir(args.xsdir))
-elif args.xsdata is not None:
-    ace_libraries.extend(openmc.data.ace.get_libraries_from_xsdata(args.xsdata))
-else:
-    ace_libraries = [Path(lib) for lib in args.libraries]
-
-converted = {}
-library = openmc.data.DataLibrary()
-
-for path in ace_libraries:
-    # Check that ACE library exists
-    if not os.path.exists(path):
-        warnings.warn("ACE library '{}' does not exist.".format(path))
-        continue
-
-    lib = openmc.data.ace.Library(path)
-    for table in lib.tables:
-        # Check type of the ACE table and determine appropriate class /
-        # conversion function
-        if table.data_type == TableType.NEUTRON_CONTINUOUS:
-            name = table.zaid
-            cls = openmc.data.IncidentNeutron
-            converter = partial(cls.from_ace, metastable_scheme=args.metastable)
-        elif table.data_type == TableType.THERMAL_SCATTERING:
-            # Adjust name to be the new thermal scattering name
-            name = openmc.data.get_thermal_name(table.zaid)
-            cls = openmc.data.ThermalScattering
-            converter = cls.from_ace
-        else:
-            print("Can't convert ACE table {}".format(table.name))
+    for path in ace_libraries:
+        # Check that ACE library exists
+        if not os.path.exists(path):
+            warnings.warn(f"ACE library '{path}' does not exist.")
             continue
 
-        if name not in converted:
-            try:
-                data = converter(table)
-            except Exception as e:
-                print('Failed to convert {}: {}'.format(table.name, e))
+        lib = openmc.data.ace.Library(path)
+        for table in lib.tables:
+            # Check type of the ACE table and determine appropriate class /
+            # conversion function
+            if table.data_type == TableType.NEUTRON_CONTINUOUS:
+                name = table.zaid
+                cls = openmc.data.IncidentNeutron
+                converter = partial(cls.from_ace, metastable_scheme=metastable)
+            elif table.data_type == TableType.THERMAL_SCATTERING:
+                # Adjust name to be the new thermal scattering name
+                name = openmc.data.get_thermal_name(table.zaid)
+                cls = openmc.data.ThermalScattering
+                converter = cls.from_ace
+            else:
+                print(f"Can't convert ACE table {table.name}")
                 continue
 
-            print('Converting {} (ACE) to {} (HDF5)'.format(table.name, data.name))
+            if name not in converted:
+                try:
+                    data = converter(table)
+                except Exception as e:
+                    print(f"Failed to convert {table.name}: {e}")
+                    continue
 
-            # Determine output filename
-            outfile = args.destination / (data.name.replace('.', '_') + '.h5')
-            data.export_to_hdf5(outfile, 'w', libver=args.libver)
+                print(f"Converting {table.name} (ACE) to {data.name} (HDF5)")
 
-            # Register with library
-            library.register_file(outfile)
+                # Determine output filename
+                outfile = destination / (data.name.replace(".", "_") + ".h5")
+                data.export_to_hdf5(outfile, "w", libver=libver)
 
-            # Add nuclide to list
-            converted[name] = outfile
-        else:
-            # Read existing HDF5 file
-            data = cls.from_hdf5(converted[name])
+                # Register with library
+                library.register_file(outfile)
 
-            # Add data for new temperature
-            try:
-                print('Converting {} (ACE) to {} (HDF5)'
-                      .format(table.name, data.name))
-                data.add_temperature_from_ace(table, args.metastable)
-            except Exception as e:
-                print('Failed to convert {}: {}'.format(table.name, e))
-                continue
+                # Add nuclide to list
+                converted[name] = outfile
+            else:
+                # Read existing HDF5 file
+                data = cls.from_hdf5(converted[name])
 
-            # Re-export
-            data.export_to_hdf5(converted[name], 'w', libver=args.libver)
+                # Add data for new temperature
+                try:
+                    print(f"Converting {table.name} (ACE) to {data.name} (HDF5)")
+                    if table.data_type == TableType.NEUTRON_CONTINUOUS:
+                        data.add_temperature_from_ace(table, metastable)
+                    else:
+                        data.add_temperature_from_ace(table)
+                except Exception as e:
+                    print(f"Failed to convert {table.name}: {e}")
+                    continue
 
-# Write cross_sections.xml
-library.export_to_xml(args.destination / 'cross_sections.xml')
+                # Re-export
+                data.export_to_hdf5(converted[name], "w", libver=libver)
+
+    # Write cross_sections.xml
+    library.export_to_xml(destination / "cross_sections.xml")
+
+
+if __name__ == "__main__":
+
+    class CustomFormatter(
+        argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter
+    ):
+        pass
+
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=CustomFormatter
+    )
+    parser.add_argument("libraries", nargs="*", help="ACE libraries to convert to HDF5")
+    parser.add_argument(
+        "-d",
+        "--destination",
+        type=Path,
+        default=Path.cwd(),
+        help="Directory to create new library in",
+    )
+    parser.add_argument(
+        "-m",
+        "--metastable",
+        choices=["mcnp", "nndc"],
+        default="nndc",
+        help="How to interpret ZAIDs for metastable nuclides",
+    )
+    parser.add_argument("--xsdir", help="MCNP xsdir file that lists " "ACE libraries")
+    parser.add_argument(
+        "--xsdata", help="Serpent xsdata file that lists " "ACE libraries"
+    )
+    parser.add_argument(
+        "--libver",
+        choices=["earliest", "latest"],
+        default="earliest",
+        help="Output HDF5 versioning. Use "
+        "'earliest' for backwards compatibility or 'latest' "
+        "for performance",
+    )
+    args = parser.parse_args()
+
+    ace_to_hdf5(
+        destination=args.destination,
+        xsdir=args.xsdir,
+        xsdata=args.xsdata,
+        libraries=args.libraries,
+        metastable=args.metastable,
+        libver=args.libver,
+    )

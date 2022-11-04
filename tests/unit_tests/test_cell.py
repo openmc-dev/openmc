@@ -294,9 +294,11 @@ def test_to_xml_element(cell_with_lattice):
 
     c = cells[0]
     c.temperature = 900.0
+    c.volume = 1.0
     elem = c.create_xml_subelement(root)
     assert elem.get('region') == str(c.region)
     assert elem.get('temperature') == str(c.temperature)
+    assert elem.get('volume') == str(c.volume)
 
 
 @pytest.mark.parametrize("rotation", [

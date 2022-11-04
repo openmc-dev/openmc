@@ -9,7 +9,6 @@ filesystem.
 """
 
 import copy
-import os
 from warnings import warn
 
 import numpy as np
@@ -22,7 +21,6 @@ from openmc.exceptions import DataError
 import openmc.lib
 from openmc.mpi import comm
 from .abc import OperatorResult
-from .chain import _find_chain_file
 from .openmc_operator import OpenMCOperator, _distribute
 from .results import Results
 from .helpers import (
@@ -48,11 +46,11 @@ def _find_cross_sections(model):
         return model.materials.cross_sections
 
     # otherwise fallback to environment variable
-    cross_sections = os.environ.get("OPENMC_CROSS_SECTIONS")
+    cross_sections = openmc.config.get("cross_sections")
     if cross_sections is None:
         raise DataError(
             "Cross sections were not specified in Model.materials and "
-            "the OPENMC_CROSS_SECTIONS environment variable is not set."
+            "openmc.config['cross_sections'] is not set."
         )
     return cross_sections
 
@@ -103,9 +101,8 @@ class CoupledOperator(OpenMCOperator):
     model : openmc.model.Model
         OpenMC model object
     chain_file : str, optional
-        Path to the depletion chain XML file.  Defaults to the file
-        listed under ``depletion_chain`` in
-        :envvar:`OPENMC_CROSS_SECTIONS` environment variable.
+        Path to the depletion chain XML file. Defaults to
+        ``openmc.config['chain_file']``.
     prev_results : Results, optional
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state
@@ -231,10 +228,8 @@ class CoupledOperator(OpenMCOperator):
                 " model with which to generate the transport Operator."
             raise TypeError(msg)
 
-        # Determine cross sections / depletion chain
+        # Determine cross sections
         cross_sections = _find_cross_sections(model)
-        if chain_file is None:
-            chain_file = _find_chain_file(cross_sections)
 
         check_value('fission yield mode', fission_yield_mode,
                     self._fission_helpers.keys())

@@ -80,7 +80,7 @@ The current version of the statepoint file format is 17.0.
              dimension.
            - **Unstructured Mesh Only:**
               - **filename** (*char[]*) -- Name of the mesh file.
-              - **library** (*char[]*) -- Mesh library used to represent the 
+              - **library** (*char[]*) -- Mesh library used to represent the
                                           mesh ("moab" or "libmesh").
               - **length_multiplier** (*double*) Scaling factor applied to the mesh.
               - **volumes** (*double[]*) -- Volume of each mesh cell.
@@ -108,6 +108,10 @@ The current version of the statepoint file format is 17.0.
              interpolation. Only used for 'energyfunction' filters.
            - **y** (*double[]*) -- Interpolant values for energyfunction
              interpolation. Only used for 'energyfunction' filters.
+
+             :Attributes:
+                          - **interpolation** (*int*) -- Interpolation type. Only used for
+                            'energyfunction' filters.
 
 **/tallies/derivatives/derivative <id>/**
 

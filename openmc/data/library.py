@@ -4,6 +4,7 @@ import pathlib
 
 import h5py
 
+import openmc
 from openmc.mixin import EqualityMixin
 from openmc._xml import clean_indentation, reorder_attributes
 
@@ -124,8 +125,8 @@ class DataLibrary(EqualityMixin):
         Parameters
         ----------
         path : str, optional
-            Path to XML file to read. If not provided, the
-            :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be  used.
+            Path to XML file to read. If not provided,
+            openmc.config['cross_sections'] will be used.
 
         Returns
         -------
@@ -136,15 +137,14 @@ class DataLibrary(EqualityMixin):
 
         data = cls()
 
-        # If path is None, get the cross sections from the
-        # OPENMC_CROSS_SECTIONS environment variable
+        # If path is None, get the cross sections from the global configuration
         if path is None:
-            path = os.environ.get('OPENMC_CROSS_SECTIONS')
+            path = openmc.config.get('cross_sections')
 
-        # Check to make sure there was an environmental variable.
+        # Check to make sure we picked up cross sections
         if path is None:
-            raise ValueError("Either path or OPENMC_CROSS_SECTIONS "
-                             "environmental variable must be set")
+            raise ValueError("Either path or openmc.config['cross_sections'] "
+                             "must be set")
 
         tree = ET.parse(path)
         root = tree.getroot()
@@ -162,7 +162,6 @@ class DataLibrary(EqualityMixin):
             data.libraries.append(library)
 
         # get depletion chain data
-
         dep_node = root.find("depletion_chain")
         if dep_node is not None:
             filename = os.path.join(directory, dep_node.attrib['path'])

@@ -223,19 +223,19 @@ def atomic_mass(isotope):
     """
     if not _ATOMIC_MASS:
 
-        # Load data from AME2016 file
-        mass_file = os.path.join(os.path.dirname(__file__), 'mass16.txt')
+        # Load data from AME2020 file
+        mass_file = os.path.join(os.path.dirname(__file__), 'mass_1.mas20.txt')
         with open(mass_file, 'r') as ame:
-            # Read lines in file starting at line 40
-            for line in itertools.islice(ame, 39, None):
-                name = '{}{}'.format(line[20:22].strip(), int(line[16:19]))
-                mass = float(line[96:99]) + 1e-6*float(
-                    line[100:106] + '.' + line[107:112])
+            # Read lines in file starting at line 37
+            for line in itertools.islice(ame, 36, None):
+                name = f'{line[20:22].strip()}{int(line[16:19])}'
+                mass = float(line[106:109]) + 1e-6*float(
+                    line[110:116] + '.' + line[117:123])
                 _ATOMIC_MASS[name.lower()] = mass
 
         # For isotopes found in some libraries that represent all natural
         # isotopes of their element (e.g. C0), calculate the atomic mass as
-        # the sum of the atomic mass times the natural abudance of the isotopes
+        # the sum of the atomic mass times the natural abundance of the isotopes
         # that make up the element.
         for element in ['C', 'Zn', 'Pt', 'Os', 'Tl']:
             isotope_zero = element.lower() + '0'
@@ -273,8 +273,7 @@ def atomic_weight(element):
     if weight > 0.:
         return weight
     else:
-        raise ValueError("No naturally-occurring isotopes for element '{}'."
-                         .format(element))
+        raise ValueError(f"No naturally-occurring isotopes for element '{element}'.")
 
 
 def half_life(isotope):
@@ -456,9 +455,8 @@ def gnd_name(Z, A, m=0):
 
     """
     if m > 0:
-        return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
-    else:
-        return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+        return f'{ATOMIC_SYMBOL[Z]}{A}_m{m}'
+    return f'{ATOMIC_SYMBOL[Z]}{A}'
 
 
 def isotopes(element):
@@ -486,7 +484,7 @@ def isotopes(element):
     if len(element) > 2:
         symbol = ELEMENT_SYMBOL.get(element.lower())
         if symbol is None:
-            raise ValueError('Element name "{}" not recognised'.format(element))
+            raise ValueError(f'Element name "{element}" not recognised')
         element = symbol
 
     # Get the nuclides present in nature
@@ -515,12 +513,11 @@ def zam(name):
     try:
         symbol, A, state = _GND_NAME_RE.match(name).groups()
     except AttributeError:
-        raise ValueError("'{}' does not appear to be a nuclide name in GND "
-                         "format".format(name))
+        raise ValueError(f"'{name}' does not appear to be a nuclide name in "
+                         "GND format")
 
     if symbol not in ATOMIC_NUMBER:
-        raise ValueError("'{}' is not a recognized element symbol"
-                         .format(symbol))
+        raise ValueError(f"'{symbol}' is not a recognized element symbol")
 
     metastable = int(state[2:]) if state else 0
     return (ATOMIC_NUMBER[symbol], int(A), metastable)

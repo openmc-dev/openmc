@@ -1509,6 +1509,34 @@ class Materials(cv.CheckedList):
             self._write_xml(fh)
 
     @classmethod
+    def from_xml_element(cls, elem):
+        """Generate materials collection from XML file
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Materials
+            Materials collection
+
+        """
+        # Generate each material
+        materials = cls()
+        for material in elem.findall('material'):
+            materials.append(Material.from_xml_element(material))
+
+        # Check for cross sections settings
+        xs = elem.find('cross_sections')
+        if xs is not None:
+            materials.cross_sections = xs.text
+
+        return materials
+
+
+    @classmethod
     def from_xml(cls, path: PathLike = 'materials.xml'):
         """Generate materials collection from XML file
 
@@ -1526,14 +1554,4 @@ class Materials(cv.CheckedList):
         tree = ET.parse(path)
         root = tree.getroot()
 
-        # Generate each material
-        materials = cls()
-        for material in root.findall('material'):
-            materials.append(Material.from_xml_element(material))
-
-        # Check for cross sections settings
-        xs = tree.find('cross_sections')
-        if xs is not None:
-            materials.cross_sections = xs.text
-
-        return materials
+        return cls.from_xml_element(root)

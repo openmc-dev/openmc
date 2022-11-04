@@ -208,7 +208,42 @@ class Model:
                 self._plots.append(plot)
 
     @classmethod
-    def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
+    def from_xml(cls, separate_xmls=True, **kwargs):
+        if separate_xmls:
+            return cls.from_separate_xmls(**kwargs)
+        else:
+            return cls.from_model_xml(**kwargs)
+
+    @classmethod
+    def from_model_xml(cls, path='model.xml'):
+        """Create model from single XML file
+
+        Parameters
+        ----------
+        path : str or Pathlike
+            Path to model.xml file
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        model = cls()
+
+        model.settings = openmc.Settings.from_xml_element(root.find('settings'))
+        model.materials = openmc.Materials.from_xml_element(root.find('materials'))
+        model.geometry = \
+        openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
+
+        if tally_node := root.find('tallies'):
+            print(tally_node)
+            model.tallies = openmc.Tallies.from_xml_element(tally_node)
+
+        if plots_node := root.find('plots'):
+            model.plots = openmc.Plots.from_xml_element(plots_node)
+
+        return model
+
+    @classmethod
+    def from_separate_xmls(cls, geometry='geometry.xml', materials='materials.xml',
                  settings='settings.xml', tallies='tallies.xml',
                  plots='plots.xml'):
         """Create model from existing XML files

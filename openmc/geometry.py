@@ -162,13 +162,13 @@ class Geometry:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml(cls, path='geometry.xml', materials=None):
-        """Generate geometry from XML file
+    def from_xml_element(cls, elem, materials=None):
+        """Generate geometry from an XML element
 
         Parameters
         ----------
-        path : str, optional
-            Path to geometry XML file
+        elem : xml.etree.ElementTree.Element
+            XML element
         materials : openmc.Materials or None
             Materials used to assign to cells. If None, an attempt is made to
             generate it from the materials.xml file.
@@ -187,13 +187,10 @@ class Geometry:
                 universes[univ_id] = univ
             return universes[univ_id]
 
-        tree = ET.parse(path)
-        root = tree.getroot()
-
         # Get surfaces
         surfaces = {}
         periodic = {}
-        for surface in root.findall('surface'):
+        for surface in elem.findall('surface'):
             s = openmc.Surface.from_xml_element(surface)
             surfaces[s.id] = s
 
@@ -207,15 +204,15 @@ class Geometry:
             surfaces[s1].periodic_surface = surfaces[s2]
 
         # Add any DAGMC universes
-        for elem in root.findall('dagmc_universe'):
+        for elem in elem.findall('dagmc_universe'):
             dag_univ = openmc.DAGMCUniverse.from_xml_element(elem)
             universes[dag_univ.id] = dag_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that
-        # contain it (needed to determine which universe is the root)
+        # contain it (needed to determine which universe is the elem)
         child_of = defaultdict(list)
 
-        for elem in root.findall('lattice'):
+        for elem in elem.findall('lattice'):
             lat = openmc.RectLattice.from_xml_element(elem, get_universe)
             universes[lat.id] = lat
             if lat.outer is not None:
@@ -223,7 +220,7 @@ class Geometry:
             for u in lat.universes.ravel():
                 child_of[u].append(lat)
 
-        for elem in root.findall('hex_lattice'):
+        for elem in elem.findall('hex_lattice'):
             lat = openmc.HexLattice.from_xml_element(elem, get_universe)
             universes[lat.id] = lat
             if lat.outer is not None:
@@ -245,7 +242,7 @@ class Geometry:
         mats = {str(m.id): m for m in materials}
         mats['void'] = None
 
-        for elem in root.findall('cell'):
+        for elem in elem.findall('cell'):
             c = openmc.Cell.from_xml_element(elem, surfaces, mats, get_universe)
             if c.fill_type in ('universe', 'lattice'):
                 child_of[c.fill].append(c)
@@ -257,6 +254,29 @@ class Geometry:
                 return cls(u)
         else:
             raise ValueError('Error determining root universe.')
+
+    @classmethod
+    def from_xml(cls, path='geometry.xml', materials=None):
+        """Generate geometry from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to geometry XML file
+        materials : openmc.Materials or None
+            Materials used to assign to cells. If None, an attempt is made to
+            generate it from the materials.xml file.
+
+        Returns
+        -------
+        openmc.Geometry
+            Geometry object
+
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        return cls.from_xml_element(root, materials)
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point

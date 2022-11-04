@@ -3192,6 +3192,49 @@ class Tallies(cv.CheckedList):
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
+    def from_xml_element(cls, elem):
+        """Generate tallies from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Tallies
+            Tallies object
+
+        """
+        # Read mesh elements
+        meshes = {}
+        for elem in elem.findall('mesh'):
+            mesh = MeshBase.from_xml_element(elem)
+            meshes[mesh.id] = mesh
+
+        # Read filter elements
+        filters = {}
+        for elem in elem.findall('filter'):
+            filter = openmc.Filter.from_xml_element(elem, meshes=meshes)
+            filters[filter.id] = filter
+
+        # Read derivative elements
+        derivatives = {}
+        for elem in elem.findall('derivative'):
+            deriv = openmc.TallyDerivative.from_xml_element(elem)
+            derivatives[deriv.id] = deriv
+
+        # Read tally elements
+        tallies = []
+        for elem in elem.findall('tally'):
+            tally = openmc.Tally.from_xml_element(
+                elem, filters=filters, derivatives=derivatives
+            )
+            tallies.append(tally)
+
+        return cls(tallies)
+
+    @classmethod
     def from_xml(cls, path='tallies.xml'):
         """Generate tallies from XML file
 
@@ -3208,31 +3251,4 @@ class Tallies(cv.CheckedList):
         """
         tree = ET.parse(path)
         root = tree.getroot()
-
-        # Read mesh elements
-        meshes = {}
-        for elem in root.findall('mesh'):
-            mesh = MeshBase.from_xml_element(elem)
-            meshes[mesh.id] = mesh
-
-        # Read filter elements
-        filters = {}
-        for elem in root.findall('filter'):
-            filter = openmc.Filter.from_xml_element(elem, meshes=meshes)
-            filters[filter.id] = filter
-
-        # Read derivative elements
-        derivatives = {}
-        for elem in root.findall('derivative'):
-            deriv = openmc.TallyDerivative.from_xml_element(elem)
-            derivatives[deriv.id] = deriv
-
-        # Read tally elements
-        tallies = []
-        for elem in root.findall('tally'):
-            tally = openmc.Tally.from_xml_element(
-                elem, filters=filters, derivatives=derivatives
-            )
-            tallies.append(tally)
-
-        return cls(tallies)
+        return cls.from_xml_element(root)

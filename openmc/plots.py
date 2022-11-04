@@ -942,6 +942,27 @@ class Plots(cv.CheckedList):
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
+    def from_xml_element(cls, elem):
+        """Generate plots collection from XML file
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Plots
+            Plots collection
+
+        """
+        # Generate each plot
+        plots = cls()
+        for elem in elem.findall('plot'):
+            plots.append(Plot.from_xml_element(elem))
+        return plots
+
+    @classmethod
     def from_xml(cls, path='plots.xml'):
         """Generate plots collection from XML file
 
@@ -958,9 +979,6 @@ class Plots(cv.CheckedList):
         """
         tree = ET.parse(path)
         root = tree.getroot()
+        return cls.from_xml_element(root)
 
-        # Generate each plot
-        plots = cls()
-        for elem in root.findall('plot'):
-            plots.append(Plot.from_xml_element(elem))
-        return plots
+

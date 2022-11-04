@@ -1595,7 +1595,7 @@ class Settings:
         clean_indentation(element)
 
         return element
-    
+
     def export_to_xml(self, path: PathLike = 'settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1618,6 +1618,71 @@ class Settings:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
+    def from_xml_element(cls, elem):
+        """Generate settings from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Settings
+            Settings object
+
+        """
+        settings = cls()
+        settings._eigenvalue_from_xml_element(elem)
+        settings._run_mode_from_xml_element(elem)
+        settings._particles_from_xml_element(elem)
+        settings._batches_from_xml_element(elem)
+        settings._inactive_from_xml_element(elem)
+        settings._max_lost_particles_from_xml_element(elem)
+        settings._rel_max_lost_particles_from_xml_element(elem)
+        settings._generations_per_batch_from_xml_element(elem)
+        settings._keff_trigger_from_xml_element(elem)
+        settings._source_from_xml_element(elem)
+        settings._volume_calcs_from_xml_element(elem)
+        settings._output_from_xml_element(elem)
+        settings._statepoint_from_xml_element(elem)
+        settings._sourcepoint_from_xml_element(elem)
+        settings._surf_source_read_from_xml_element(elem)
+        settings._surf_source_write_from_xml_element(elem)
+        settings._confidence_intervals_from_xml_element(elem)
+        settings._electron_treatment_from_xml_element(elem)
+        settings._energy_mode_from_xml_element(elem)
+        settings._max_order_from_xml_element(elem)
+        settings._photon_transport_from_xml_element(elem)
+        settings._ptables_from_xml_element(elem)
+        settings._seed_from_xml_element(elem)
+        settings._survival_biasing_from_xml_element(elem)
+        settings._cutoff_from_xml_element(elem)
+        settings._entropy_mesh_from_xml_element(elem)
+        settings._trigger_from_xml_element(elem)
+        settings._no_reduce_from_xml_element(elem)
+        settings._verbosity_from_xml_element(elem)
+        settings._tabular_legendre_from_xml_element(elem)
+        settings._temperature_from_xml_element(elem)
+        settings._trace_from_xml_element(elem)
+        settings._track_from_xml_element(elem)
+        settings._ufs_mesh_from_xml_element(elem)
+        settings._resonance_scattering_from_xml_element(elem)
+        settings._create_fission_neutrons_from_xml_element(elem)
+        settings._delayed_photon_scaling_from_xml_element(elem)
+        settings._event_based_from_xml_element(elem)
+        settings._max_particles_in_flight_from_xml_element(elem)
+        settings._material_cell_offsets_from_xml_element(elem)
+        settings._log_grid_bins_from_xml_element(elem)
+        settings._write_initial_source_from_xml_element(elem)
+        settings._weight_windows_from_xml_element(elem)
+        settings._max_splits_from_xml_element(elem)
+        settings._max_tracks_from_xml_element(elem)
+
+        # TODO: Get volume calculations
+        return settings
+
+    @classmethod
     def from_xml(cls, path: PathLike = 'settings.xml'):
         """Generate settings from XML file
 
@@ -1636,54 +1701,4 @@ class Settings:
         """
         tree = ET.parse(path)
         root = tree.getroot()
-
-        settings = cls()
-        settings._eigenvalue_from_xml_element(root)
-        settings._run_mode_from_xml_element(root)
-        settings._particles_from_xml_element(root)
-        settings._batches_from_xml_element(root)
-        settings._inactive_from_xml_element(root)
-        settings._max_lost_particles_from_xml_element(root)
-        settings._rel_max_lost_particles_from_xml_element(root)
-        settings._generations_per_batch_from_xml_element(root)
-        settings._keff_trigger_from_xml_element(root)
-        settings._source_from_xml_element(root)
-        settings._volume_calcs_from_xml_element(root)
-        settings._output_from_xml_element(root)
-        settings._statepoint_from_xml_element(root)
-        settings._sourcepoint_from_xml_element(root)
-        settings._surf_source_read_from_xml_element(root)
-        settings._surf_source_write_from_xml_element(root)
-        settings._confidence_intervals_from_xml_element(root)
-        settings._electron_treatment_from_xml_element(root)
-        settings._energy_mode_from_xml_element(root)
-        settings._max_order_from_xml_element(root)
-        settings._photon_transport_from_xml_element(root)
-        settings._ptables_from_xml_element(root)
-        settings._seed_from_xml_element(root)
-        settings._survival_biasing_from_xml_element(root)
-        settings._cutoff_from_xml_element(root)
-        settings._entropy_mesh_from_xml_element(root)
-        settings._trigger_from_xml_element(root)
-        settings._no_reduce_from_xml_element(root)
-        settings._verbosity_from_xml_element(root)
-        settings._tabular_legendre_from_xml_element(root)
-        settings._temperature_from_xml_element(root)
-        settings._trace_from_xml_element(root)
-        settings._track_from_xml_element(root)
-        settings._ufs_mesh_from_xml_element(root)
-        settings._resonance_scattering_from_xml_element(root)
-        settings._create_fission_neutrons_from_xml_element(root)
-        settings._delayed_photon_scaling_from_xml_element(root)
-        settings._event_based_from_xml_element(root)
-        settings._max_particles_in_flight_from_xml_element(root)
-        settings._material_cell_offsets_from_xml_element(root)
-        settings._log_grid_bins_from_xml_element(root)
-        settings._write_initial_source_from_xml_element(root)
-        settings._weight_windows_from_xml_element(root)
-        settings._max_splits_from_xml_element(root)
-        settings._max_tracks_from_xml_element(root)
-
-        # TODO: Get volume calculations
-
-        return settings
+        return cls.from_xml_element(root)

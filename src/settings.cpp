@@ -211,13 +211,11 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 }
 
-void read_settings_xml()
-{
+void read_settings_xml() {
   using namespace settings;
   using namespace pugi;
-
   // Check if settings.xml exists
-  std::string filename = path_input + "settings.xml";
+  std::string filename = settings::path_input + "settings.xml";
   if (!file_exists(filename)) {
     if (run_mode != RunMode::PLOTTING) {
       fatal_error(
@@ -244,6 +242,14 @@ void read_settings_xml()
 
   // Get root element
   xml_node root = doc.document_element();
+
+  read_settings_xml(root);
+}
+
+void read_settings_xml(pugi::xml_node root)
+{
+  using namespace settings;
+  using namespace pugi;
 
   // Verbosity
   if (check_for_node(root, "verbosity")) {

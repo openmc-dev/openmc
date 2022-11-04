@@ -221,6 +221,10 @@ double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
 //! Read material data from materials.xml
 void read_materials_xml();
 
+//! Read material data XML node
+//! \param[in] root node of materials XML element
+void read_materials_xml(pugi::xml_node root);
+
 void free_memory_material();
 
 } // namespace openmc

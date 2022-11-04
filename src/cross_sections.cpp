@@ -91,8 +91,7 @@ Library::Library(pugi::xml_node node, const std::string& directory)
 // Non-member functions
 //==============================================================================
 
-void read_cross_sections_xml()
-{
+void read_cross_sections_xml() {
   pugi::xml_document doc;
   std::string filename = settings::path_input + "materials.xml";
   // Check if materials.xml exists
@@ -104,6 +103,11 @@ void read_cross_sections_xml()
 
   auto root = doc.document_element();
 
+  read_cross_sections_xml(root);
+}
+
+void read_cross_sections_xml(pugi::xml_node root)
+{
   // Find cross_sections.xml file -- the first place to look is the
   // materials.xml file. If no file is found there, then we check the
   // OPENMC_CROSS_SECTIONS environment variable

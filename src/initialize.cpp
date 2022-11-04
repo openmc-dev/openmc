@@ -14,6 +14,7 @@
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
@@ -291,10 +292,53 @@ int parse_command_line(int argc, char* argv[])
 
 void read_input_xml()
 {
-  read_settings_xml();
+
+  // search for a single model.xml file
+    // Check if settings.xml exists
+  std::string model_filename = settings::path_input + "model.xml";
+  bool use_model_file = file_exists(model_filename);
+  pugi::xml_node model_root;
+  if (use_model_file) {
+    write_message("Found model.xml file.");
+    pugi::xml_document doc;
+    auto result = doc.load_file(model_filename.c_str());
+    if (!result) {
+      fatal_error("Error processing model.xml file.");
+    }
+    auto model_root = doc.document_element();
+
+    auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml", "plots.xml"};
+    for (const auto& input : other_inputs) {
+      if (file_exists(settings::path_input + input)) {
+        warning(fmt::format("A '{}' file is also present. This file will be ignored.", input));
+      }
+    }
+  } else {
+    write_message("No model.xml found. Reading separate XML inputs...");
+  }
+  if (use_model_file) {
+    if (!check_for_node(model_root, "settings")) {
+      fatal_error("No <settings> node present in the model.xml file.");
+    }
+    read_settings_xml(model_root.child("settings"));
+  } else {
+    read_settings_xml();
+  }
+
   read_cross_sections_xml();
-  read_materials_xml();
-  read_geometry_xml();
+  if (use_model_file) {
+    if (!check_for_node(model_root, "materials")) {
+      fatal_error("No <materials> node present in the model.xml file.");
+    }
+    read_materials_xml(model_root.child("materials"));
+    if (!check_for_node(model_root, "geometry")) {
+      fatal_error("No <geometry> node present in the model.xml_file.");
+    }
+    read_geometry_xml(model_root.child("geometry"));
+  } else {
+    read_materials_xml();
+    read_geometry_xml();
+  }
 
   // Final geometry setup and assign temperatures
   finalize_geometry();
@@ -302,14 +346,23 @@ void read_input_xml()
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
 
-  read_tallies_xml();
+  if (use_model_file && check_for_node(model_root, "tallies")) {
+    read_tallies_xml(model_root.child("tallies"));
+  } else {
+    read_tallies_xml();
+  }
 
   // Initialize distribcell_filters
   prepare_distribcell();
 
   // Read the plots.xml regardless of plot mode in case plots are requested
   // via the API
-  read_plots_xml();
+  if (use_model_file) {
+    if (check_for_node(model_root, "plots"))
+      read_plots_xml(model_root.child("plots"));
+  } else {
+    read_plots_xml();
+  }
   if (settings::run_mode == RunMode::PLOTTING) {
     // Read plots.xml if it exists
     if (mpi::master && settings::verbosity >= 5)

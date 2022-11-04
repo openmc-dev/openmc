@@ -40,8 +40,7 @@ void update_universe_cell_count(int32_t a, int32_t b)
   }
 }
 
-void read_geometry_xml()
-{
+void read_geometry_xml() {
   // Display output message
   write_message("Reading geometry XML file...", 5);
 
@@ -61,6 +60,11 @@ void read_geometry_xml()
   // Get root element
   pugi::xml_node root = doc.document_element();
 
+  read_geometry_xml(root);
+}
+
+void read_geometry_xml(pugi::xml_node root)
+{
   // Read surfaces, cells, lattice
   read_surfaces(root);
   read_cells(root);

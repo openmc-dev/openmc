@@ -290,57 +290,65 @@ int parse_command_line(int argc, char* argv[])
   return 0;
 }
 
-void read_input_xml()
-{
-
-  // search for a single model.xml file
-    // Check if settings.xml exists
+bool read_model_xml() {
+  // get verbosity from settings node
   std::string model_filename = settings::path_input + "model.xml";
   bool use_model_file = file_exists(model_filename);
-  pugi::xml_node model_root;
+  if (!file_exists(model_filename)) return false;
+
+  // attempt to open the document
   pugi::xml_document doc;
-  if (use_model_file) {
-    write_message("Reading model.xml...");
-    auto result = doc.load_file(model_filename.c_str());
-    if (!result) {
-      fatal_error("Error processing model.xml file.");
-    }
-    model_root = doc.document_element();
-
-    auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml", "plots.xml"};
-    for (const auto& input : other_inputs) {
-      if (file_exists(settings::path_input + input)) {
-        warning(fmt::format("A '{}' file is also present. This file will be ignored.", input));
-      }
-    }
-  } else {
-    write_message("No model.xml found. Reading separate XML inputs...");
+  auto result = doc.load_file(model_filename.c_str());
+  if (!result) {
+    fatal_error("Error processing model.xml file.");
   }
-  if (use_model_file) {
-    if (!check_for_node(model_root, "settings")) {
+  pugi::xml_node root = doc.document_element();
+
+  // Read settings
+  if (!check_for_node(root, "settings")) {
       fatal_error("No <settings> node present in the model.xml file.");
-    }
-    auto settings_root = model_root.child("settings");
-    read_settings_xml();
-  } else {
-    read_settings_xml();
+  }
+  auto settings_root = root.child("settings");
+
+  // Verbosity
+  if (check_for_node(settings_root, "verbosity")) {
+    settings::verbosity = std::stoi(get_node_value(settings_root, "verbosity"));
   }
 
-  read_cross_sections_xml();
-
-  if (use_model_file) {
-    if (!check_for_node(model_root, "materials")) {
-      fatal_error("No <materials> node present in the model.xml file.");
-    }
-    read_materials_xml(model_root.child("materials"));
-    if (!check_for_node(model_root, "geometry")) {
-      fatal_error("No <geometry> node present in the model.xml_file.");
-    }
-    read_geometry_xml(model_root.child("geometry"));
-  } else {
-    read_materials_xml();
-    read_geometry_xml();
+  // To this point, we haven't displayed any output since we didn't know what
+  // the verbosity is. Now that we checked for it, show the title if necessary
+  if (mpi::master) {
+    if (settings::verbosity >= 2)
+      title();
   }
+
+  write_message("Reading model XML file...", 5);
+
+  read_settings_xml(settings_root);
+
+  // If other XML files are present, display warning
+  // that they will be ignored
+  auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml", "plots.xml"};
+  for (const auto& input : other_inputs) {
+    if (file_exists(settings::path_input + input)) {
+      warning(("Other XML file input(s) are present. These file will be ignored in favor of the model.xml file."));
+      break;
+    }
+  }
+
+  // Read materials and cross sections
+  if (!check_for_node(root, "materials")) {
+    fatal_error("No <materials> node present in the model.xml file.");
+  }
+  auto materials_node = root.child("materials");
+  read_cross_sections_xml(materials_node);
+  read_materials_xml(root.child("materials"));
+
+  // Read geometry
+  if (!check_for_node(root, "geometry")) {
+    fatal_error("No <geometry> node present in the model.xml_file.");
+  }
+  read_geometry_xml(root.child("geometry"));
 
   // Final geometry setup and assign temperatures
   finalize_geometry();
@@ -348,23 +356,59 @@ void read_input_xml()
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
 
-  if (use_model_file && check_for_node(model_root, "tallies")) {
-    read_tallies_xml(model_root.child("tallies"));
+  if (check_for_node(root, "tallies"))
+    read_tallies_xml(root.child("tallies"));
+
+ // Initialize distribcell_filters
+  prepare_distribcell();
+
+  if (check_for_node(root, "plots"))
+    read_plots_xml(root.child("plots"));
+
+  if (settings::run_mode == RunMode::PLOTTING) {
+    // Read plots.xml if it exists
+    if (mpi::master && settings::verbosity >= 5)
+      print_plot();
+
   } else {
-    read_tallies_xml();
+    // Write summary information
+    if (mpi::master && settings::output_summary)
+      write_summary();
+
+    // Warn if overlap checking is on
+    if (mpi::master && settings::check_overlaps) {
+      warning("Cell overlap checking is ON.");
+    }
   }
+
+  return true;
+}
+
+void read_input_xml()
+{
+  // attempt to reach the model.xml file if present
+  if (read_model_xml()) return;
+
+  read_settings_xml();
+  read_cross_sections_xml();
+  read_materials_xml();
+  read_geometry_xml();
+
+  // Final geometry setup and assign temperatures
+  finalize_geometry();
+
+  // Finalize cross sections having assigned temperatures
+  finalize_cross_sections();
+
+  read_tallies_xml();
 
   // Initialize distribcell_filters
   prepare_distribcell();
 
   // Read the plots.xml regardless of plot mode in case plots are requested
   // via the API
-  if (use_model_file) {
-    if (check_for_node(model_root, "plots"))
-      read_plots_xml(model_root.child("plots"));
-  } else {
-    read_plots_xml();
-  }
+  read_plots_xml();
+
   if (settings::run_mode == RunMode::PLOTTING) {
     // Read plots.xml if it exists
     if (mpi::master && settings::verbosity >= 5)

@@ -243,14 +243,6 @@ void read_settings_xml() {
   // Get root element
   xml_node root = doc.document_element();
 
-  read_settings_xml(root);
-}
-
-void read_settings_xml(pugi::xml_node root)
-{
-  using namespace settings;
-  using namespace pugi;
-
   // Verbosity
   if (check_for_node(root, "verbosity")) {
     verbosity = std::stoi(get_node_value(root, "verbosity"));
@@ -262,11 +254,19 @@ void read_settings_xml(pugi::xml_node root)
     if (verbosity >= 2)
       title();
   }
+
   write_message("Reading settings XML file...", 5);
+
+  read_settings_xml(root);
+}
+
+void read_settings_xml(pugi::xml_node root)
+{
+  using namespace settings;
+  using namespace pugi;
 
   // Find if a multi-group or continuous-energy simulation is desired
   if (check_for_node(root, "energy_mode")) {
-  std::cout << "Here" << std::endl;
     std::string temp_str = get_node_value(root, "energy_mode", true, true);
     if (temp_str == "mg" || temp_str == "multi-group") {
       run_CE = false;
@@ -274,7 +274,6 @@ void read_settings_xml(pugi::xml_node root)
       run_CE = true;
     }
   }
-  std::cout << "Here" << std::endl;
 
   // Look for deprecated cross_sections.xml file in settings.xml
   if (check_for_node(root, "cross_sections")) {

@@ -11,6 +11,7 @@ int parse_command_line(int argc, char* argv[]);
 #ifdef OPENMC_MPI
 void initialize_mpi(MPI_Comm intracomm);
 #endif
+bool read_model_xml();
 void read_input_xml();
 
 } // namespace openmc

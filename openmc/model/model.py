@@ -233,12 +233,11 @@ class Model:
         model.geometry = \
         openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
 
-        if tally_node := root.find('tallies'):
-            print(tally_node)
-            model.tallies = openmc.Tallies.from_xml_element(tally_node)
+        if root.find('tallies'):
+            model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'))
 
-        if plots_node := root.find('plots'):
-            model.plots = openmc.Plots.from_xml_element(plots_node)
+        if root.find('plots'):
+            model.plots = openmc.Plots.from_xml_element(root.find('plots'))
 
         return model
 

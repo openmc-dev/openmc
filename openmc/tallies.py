@@ -3208,27 +3208,27 @@ class Tallies(cv.CheckedList):
         """
         # Read mesh elements
         meshes = {}
-        for elem in elem.findall('mesh'):
-            mesh = MeshBase.from_xml_element(elem)
+        for e in elem.findall('mesh'):
+            mesh = MeshBase.from_xml_element(e)
             meshes[mesh.id] = mesh
 
         # Read filter elements
         filters = {}
-        for elem in elem.findall('filter'):
-            filter = openmc.Filter.from_xml_element(elem, meshes=meshes)
+        for e in elem.findall('filter'):
+            filter = openmc.Filter.from_xml_element(e, meshes=meshes)
             filters[filter.id] = filter
 
         # Read derivative elements
         derivatives = {}
-        for elem in elem.findall('derivative'):
-            deriv = openmc.TallyDerivative.from_xml_element(elem)
+        for e in elem.findall('derivative'):
+            deriv = openmc.TallyDerivative.from_xml_element(e)
             derivatives[deriv.id] = deriv
 
         # Read tally elements
         tallies = []
-        for elem in elem.findall('tally'):
+        for e in elem.findall('tally'):
             tally = openmc.Tally.from_xml_element(
-                elem, filters=filters, derivatives=derivatives
+                e, filters=filters, derivatives=derivatives
             )
             tallies.append(tally)
 

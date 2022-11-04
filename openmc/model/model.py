@@ -403,7 +403,66 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.', remove_surfs=False):
+    def export_to_xml(self, directory='.', remove_surfs=False, separate_xmls=True):
+        """Export model to separate XML files.
+
+        Parameters
+        ----------
+        directory : str
+            Directory to write XML files to. If it doesn't exist already, it
+            will be created.
+        remove_surfs : bool
+            Whether or not to remove redundant surfaces from the geometry when
+            exporting.
+
+            .. versionadded:: 0.13.1
+
+        separate_xmls : bool
+            Whether or not to write a single model.xml file or many XML files.
+        """
+        if separate_xmls:
+            self.export_to_separate_xmls(directory, remove_surfs)
+        else:
+            self.export_to_single_xml(directory, remove_surfs)
+
+    def export_to_separate_xmls(self, directory='.', remove_surfs=False):
+        """Export model to separate XML files.
+
+        Parameters
+        ----------
+        directory : str
+            Directory to write XML files to. If it doesn't exist already, it
+            will be created.
+        remove_surfs : bool
+            Whether or not to remove redundant surfaces from the geometry when
+            exporting.
+
+            .. versionadded:: 0.13.1
+        """
+        # Create directory if required
+        d = Path(directory)
+        if not d.is_dir():
+            d.mkdir(parents=True)
+
+        self.settings.export_to_xml(d)
+        self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
+
+        # If a materials collection was specified, export it. Otherwise, look
+        # for all materials in the geometry and use that to automatically build
+        # a collection.
+        if self.materials:
+            self.materials.export_to_xml(d)
+        else:
+            materials = openmc.Materials(self.geometry.get_all_materials()
+                                         .values())
+            materials.export_to_xml(d)
+
+        if self.tallies:
+            self.tallies.export_to_xml(d)
+        if self.plots:
+            self.plots.export_to_xml(d)
+
+    def export_to_single_xml(self, directory='.', remove_surfs=False):
         """Export model to XML files.
 
         Parameters

@@ -208,11 +208,11 @@ class Model:
                 self._plots.append(plot)
 
     @classmethod
-    def from_xml(cls, separate_xmls=True, **kwargs):
+    def from_xml(cls, *args, separate_xmls=True, **kwargs):
         if separate_xmls:
-            return cls.from_separate_xmls(**kwargs)
+            return cls.from_separate_xmls(*args, **kwargs)
         else:
-            return cls.from_model_xml(**kwargs)
+            return cls.from_model_xml(*args, **kwargs)
 
     @classmethod
     def from_model_xml(cls, path='model.xml'):

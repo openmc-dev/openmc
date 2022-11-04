@@ -919,6 +919,7 @@ class Plots(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
+        reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
 
         return self._plots_file
 
@@ -936,8 +937,8 @@ class Plots(cv.CheckedList):
         if p.is_dir():
             p /= 'plots.xml'
 
+        self.to_xml_element()
         # Write the XML Tree to the plots.xml file
-        reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(self._plots_file)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
@@ -958,8 +959,8 @@ class Plots(cv.CheckedList):
         """
         # Generate each plot
         plots = cls()
-        for elem in elem.findall('plot'):
-            plots.append(Plot.from_xml_element(elem))
+        for e in elem.findall('plot'):
+            plots.append(Plot.from_xml_element(e))
         return plots
 
     @classmethod

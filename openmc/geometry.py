@@ -204,24 +204,24 @@ class Geometry:
             surfaces[s1].periodic_surface = surfaces[s2]
 
         # Add any DAGMC universes
-        for elem in elem.findall('dagmc_universe'):
-            dag_univ = openmc.DAGMCUniverse.from_xml_element(elem)
+        for e in elem.findall('dagmc_universe'):
+            dag_univ = openmc.DAGMCUniverse.from_xml_element(e)
             universes[dag_univ.id] = dag_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that
         # contain it (needed to determine which universe is the elem)
         child_of = defaultdict(list)
 
-        for elem in elem.findall('lattice'):
-            lat = openmc.RectLattice.from_xml_element(elem, get_universe)
+        for e in elem.findall('lattice'):
+            lat = openmc.RectLattice.from_xml_element(e, get_universe)
             universes[lat.id] = lat
             if lat.outer is not None:
                 child_of[lat.outer].append(lat)
             for u in lat.universes.ravel():
                 child_of[u].append(lat)
 
-        for elem in elem.findall('hex_lattice'):
-            lat = openmc.HexLattice.from_xml_element(elem, get_universe)
+        for e in elem.findall('hex_lattice'):
+            lat = openmc.HexLattice.from_xml_element(e, get_universe)
             universes[lat.id] = lat
             if lat.outer is not None:
                 child_of[lat.outer].append(lat)
@@ -235,15 +235,8 @@ class Geometry:
                         for u in ring:
                             child_of[u].append(lat)
 
-        # Create dictionary to easily look up materials
-        if materials is None:
-            filename = Path(path).parent / 'materials.xml'
-            materials = openmc.Materials.from_xml(str(filename))
-        mats = {str(m.id): m for m in materials}
-        mats['void'] = None
-
-        for elem in elem.findall('cell'):
-            c = openmc.Cell.from_xml_element(elem, surfaces, mats, get_universe)
+        for e in elem.findall('cell'):
+            c = openmc.Cell.from_xml_element(e, surfaces, materials, get_universe)
             if c.fill_type in ('universe', 'lattice'):
                 child_of[c.fill].append(c)
 
@@ -276,7 +269,14 @@ class Geometry:
         tree = ET.parse(path)
         root = tree.getroot()
 
-        return cls.from_xml_element(root, materials)
+         # Create dictionary to easily look up materials
+        if materials is None:
+            filename = Path(path).parent / 'materials.xml'
+            materials = openmc.Materials.from_xml(str(filename))
+        mats = {str(m.id): m for m in materials}
+        mats['void'] = None
+
+        return cls.from_xml_element(root, mats)
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point

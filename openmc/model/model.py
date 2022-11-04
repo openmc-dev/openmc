@@ -444,9 +444,12 @@ class Model:
 
         with open(d, 'w', encoding='utf-8',
                   errors='xmlcharrefreplace') as fh:
+            # write the XML header
+            fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
+            fh.write("<model>\n")
             # Write the materials collection to the open XML file first.
             # This will write the XML header also
-            materials._write_xml(fh)
+            materials._write_xml(fh, False)
             # Write remaining elements as a tree
             ET.ElementTree(geometry_element).write(fh, encoding='unicode')
             ET.ElementTree(settings_element).write(fh, encoding='unicode')
@@ -457,6 +460,7 @@ class Model:
             if self.plots:
                 plots_element = self.plots.to_xml_element()
                 ET.ElementTree(plots_element).write(fh, encoding='unicode')
+            fh.write("</model>\n")
 
     def import_properties(self, filename):
         """Import physical properties

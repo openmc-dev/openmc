@@ -1449,16 +1449,19 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def _write_xml(self, file):
+    def _write_xml(self, file, header=True):
         """Writes XML content of the materials to an open file handle.
 
         Parameters
         ----------
         file : IOTextWrapper
             Open file handle to write content into.
+        header : bool
+            Whether or not to write the XML header
         """
         # Write the header and the opening tag for the root element.
-        file.write("<?xml version='1.0' encoding='utf-8'?>\n")
+        if header:
+            file.write("<?xml version='1.0' encoding='utf-8'?>\n")
         file.write('<materials>\n')
 
         # Write the <cross_sections> element.

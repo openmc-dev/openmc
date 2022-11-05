@@ -106,7 +106,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   openmc::openmc_set_seed(DEFAULT_SEED);
 
   // Read XML input files
-  read_input_xml();
+  if (!read_model_xml()) read_input_xml();
 
   // Write some initial output under the header if needed
   initial_output();
@@ -373,9 +373,6 @@ bool read_model_xml() {
 
 void read_input_xml()
 {
-  // attempt to reach the model.xml file if present
-  if (read_model_xml()) return;
-
   read_settings_xml();
   read_cross_sections_xml();
   read_materials_xml();

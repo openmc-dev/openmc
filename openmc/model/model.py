@@ -230,8 +230,9 @@ class Model:
 
         model.settings = openmc.Settings.from_xml_element(root.find('settings'))
         model.materials = openmc.Materials.from_xml_element(root.find('materials'))
+        materials = {str(m.id): m for m in model.materials}
         model.geometry = \
-        openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
+        openmc.Geometry.from_xml_element(root.find('geometry'), materials)
 
         if root.find('tallies'):
             model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'))

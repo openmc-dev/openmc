@@ -7,6 +7,8 @@ import pytest
 import openmc
 import openmc.lib
 
+from .. import cdtemp
+
 
 @pytest.fixture(scope='function')
 def pin_model_attributes():
@@ -529,3 +531,22 @@ def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert openmc.lib.materials[3].volume == mats[2].volume
 
     test_model.finalize_lib()
+
+def test_model_xml():
+
+    with cdtemp():
+        # load a model from examples
+        pwr_model = openmc.examples.pwr_core()
+
+        # export to separate XMLs manually
+        pwr_model.settings.export_to_xml('settings_ref.xml')
+        pwr_model.materials.export_to_xml('materials_ref.xml')
+        pwr_model.geometry.export_to_xml('geometry_ref.xml')
+
+        # now write and read a model.xml file
+        pwr_model.export_to_xml(separate_xmls=False)
+        new_model = openmc.Model.from_xml(separate_xmls=False)
+
+        # make sure we can also export this again to separate
+        # XML files
+        new_model.export_to_xml(separate_xmls=True)

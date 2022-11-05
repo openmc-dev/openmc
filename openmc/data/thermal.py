@@ -674,7 +674,7 @@ class ThermalScattering(EqualityMixin):
                     # sorted. This is problematic when the smearing algorithm
                     # is applied when sampling the angles. We sort the angles
                     # here, because they are equiprobable, so the order
-                    # doesn't mater.
+                    # doesn't matter.
                     mu.sort()
                     p_mu = 1. / n_mu * np.ones(n_mu)
                     mu_ij = Discrete(mu, p_mu)
@@ -686,7 +686,7 @@ class ThermalScattering(EqualityMixin):
                 # at 0. For NJOY and FRENDY evaluations, this is never the case,
                 # and can very rarely lead to negative energies when sampling
                 # the outgoing energy. From Eq. 7.6 of the ENDF manual, we can
-                # add the outgoing energy 0 eV, which has a PDF of 0 (and of
+                # add an outgoing energy 0 eV that has a PDF of 0 (and of
                 # course, a CDF of 0 as well).
                 if eout_i.c[0] > 0.:
                     eout_i.x = np.insert(eout_i.x, 0, 0.)

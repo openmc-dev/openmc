@@ -546,11 +546,14 @@ def test_get_activity():
 
 
 def test_get_decayheat():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+    
     """Tests the decay heat of stable, metastable and active materials"""
     m1 = openmc.Material()
-    m1.add_element("Fe", 0.7)
-    m1.add_element("Li", 0.3)
-    m1.set_density('g/cm3', 1.5)
+    m1.add_nuclide("U235", 0.2)
+    m1.add_nuclide("U238", 0.8)
+    m1.set_density('g/cm3', 10.5)
     # decay heat in W/cc and W/g should not require volume setting
     assert m1.get_decayheat(units='W/cm3') == 0
     assert m1.get_decayheat(units='W/g') == 0
@@ -559,33 +562,33 @@ def test_get_decayheat():
 
     # Checks that 1g of tritium has the correct decay heat scaling
     m2 = openmc.Material()
-    m2.add_nuclide("H3", 1)
+    m2.add_nuclide("I135", 1)
     m2.set_density('g/cm3', 1)
     m2.volume = 1
-    assert pytest.approx(m2.get_decayheat(units='W')) == 0.3245231
+    assert pytest.approx(m2.get_decayheat(units='W')) == 40175.15720273193
     m2.set_density('g/cm3', 2)
-    assert pytest.approx(m2.get_decayheat(units='W')) == 0.3245231*2
+    assert pytest.approx(m2.get_decayheat(units='W')) == 40175.15720273193*2
     m2.volume = 3
-    assert pytest.approx(m2.get_decayheat(units='W')) == 0.3245231*2*3
+    assert pytest.approx(m2.get_decayheat(units='W')) == 40175.15720273193*2*3
 
     # Checks that 1 mol of a metastable nuclides has the correct decay heat
     m3 = openmc.Material()
-    m3.add_nuclide("Tc99_m1", 1)
+    m3.add_nuclide("Xe135", 1)
     m3.set_density('g/cm3', 1)
     m3.volume = 98.9
-    assert pytest.approx(m3.get_decayheat(units='W'), rel=0.001) == 439770.2
+    assert pytest.approx(m3.get_decayheat(units='W'), rel=0.001) == 846181.2921143445
 
     # Checks that specific and volumetric decay heat of tritium are correct
     m4 = openmc.Material()
-    m4.add_nuclide("H3", 1)
+    m4.add_nuclide("I135", 1)
     m4.set_density('g/cm3', 1.5)
-    assert pytest.approx(m4.get_decayheat(units='W/g')) == 0.3245231  # [W/g]
-    assert pytest.approx(m4.get_decayheat(units='W/g', by_nuclide=True)["H3"]) == 0.3245231  # [W/g]
-    assert pytest.approx(m4.get_decayheat(units='W/cm3')) == 0.3245231*3/2 # [W/cc]
-    assert pytest.approx(m4.get_decayheat(units='W/cm3', by_nuclide=True)["H3"]) == 0.3245231*3/2#[W/cc]
+    assert pytest.approx(m4.get_decayheat(units='W/g')) == 40175.15720273193 # [W/g]
+    assert pytest.approx(m4.get_decayheat(units='W/g', by_nuclide=True)["I135"]) == 40175.15720273193 # [W/g]
+    assert pytest.approx(m4.get_decayheat(units='W/cm3')) == 40175.15720273193*3/2 # [W/cc]
+    assert pytest.approx(m4.get_decayheat(units='W/cm3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2 #[W/cc]
     # volume is required to calculate total decay heat
     m4.volume = 10.
-    assert pytest.approx(m4.get_decayheat(units='W')) == 0.3245231*3/2*10 # [W]
+    assert pytest.approx(m4.get_decayheat(units='W')) == 40175.15720273193*3/2*10 # [W]
  
 
 def test_decay_photon_energy():

@@ -987,8 +987,7 @@ class Material(IDManagerMixin):
 
         return activity if by_nuclide else sum(activity.values())
     
-    def get_decayheat(self, units: str = 'W', by_nuclide: bool = False, 
-                      decay_energy: dict = None):
+    def get_decayheat(self, units: str = 'W', by_nuclide: bool = False):
         """Returns the decay heat of the material or for each nuclide in the
         material in units of [W], [W/g] or [W/cm3].
 
@@ -1003,8 +1002,6 @@ class Material(IDManagerMixin):
         by_nuclide : bool
             Specifies if the decay heat should be returned for the material as a
             whole or per nuclide. Default is False.
-        decay_energy : dict
-            Specifies the decay energy of radioactive nuclides. Default is None.
 
         Returns
         -------
@@ -1024,15 +1021,9 @@ class Material(IDManagerMixin):
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
         
-        if decay_energy: 
-            decay_energy = dict((k.lower(), v) for k, v in decay_energy.items())
-        
         decayheat = {} 
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            if decay_energy is None:
-                decay_erg = openmc.data.decay_energy(nuclide)
-            else:
-                decay_erg = decay_energy.get(nuclide.lower())
+            decay_erg = openmc.data.decay_energy(nuclide)
             if decay_erg is None: 
                 decayheat[nuclide] = 0.
             else:

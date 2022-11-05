@@ -52,6 +52,10 @@ public:
 private:
   vector<double> x_; //!< Possible outcomes
   vector<double> p_; //!< Probability of each outcome
+  
+  //! Alies method tables
+  vector<double> prob_; 
+  vector<double> alias_;
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();

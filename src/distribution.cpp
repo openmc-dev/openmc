@@ -36,20 +36,62 @@ Discrete::Discrete(const double* x, const double* p, int n)
   : x_ {x, x + n}, p_ {p, p + n}
 {
   normalize();
+
+  // Vectors for large and small probabilities based on 1/n
+  vector<int> large;
+  vector<int> small;
+
+  // Set and allocate memory
+  prob_ = p_;
+  alias_.reserve(n);
+
+  // Fill large and small vectors based on 1/n
+  for (int i = 0; i < n; i++) {
+    prob_[i] *= n;
+    if (prob_[i] > 1.0) {
+      large.push_back(i);
+    } else {
+      small.push_back(i);
+    }
+  }
+
+  while (!large.empty() && !small.empty()) {
+    int j = small.back();
+    int k = large.back();
+
+    // Update probability and alias based on Vose's algorithm
+    prob_[k] += prob_[j] - 1;
+    alias_[j] = k;
+
+    // Remove last vector element and or move large index to small vector
+    if (prob_[k] < 1) {
+      small.push_back(k);
+      large.pop_back();
+    } else {
+      small.pop_back();
+    }
+  }
 }
 
 double Discrete::sample(uint64_t* seed) const
 {
-  int n = x_.size();
+  int n = prob_.size();
   if (n > 1) {
-    double xi = prn(seed);
-    double c = 0.0;
-    for (int i = 0; i < n; ++i) {
-      c += p_[i];
-      if (xi < c)
-        return x_[i];
+    int u = prn(seed) * n;
+    if (prn(seed) < prob_[u]) {
+      return x_[u];
+    } else {
+      return x_[alias_[u]];
     }
-    throw std::runtime_error {"Error when sampling probability mass function."};
+
+    // double xi = prn(seed);
+    // double c = 0.0;
+    // for (int i = 0; i < n; ++i) {
+    //   c += p_[i];
+    //   if (xi < c)
+    //     return x_[i];
+    // }
+    // throw std::runtime_error {"Error when sampling probability mass function."};
   } else {
     return x_[0];
   }

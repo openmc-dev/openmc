@@ -17,6 +17,33 @@
 
 namespace openmc {
 
+enum class FilterType {
+  AZIMUTHAL = 0,
+  CELLBORN,
+  CELLFROM,
+  CELL,
+  CELL_INSTANCE,
+  COLLISION,
+  DELAYEDGROUP,
+  DISTRIBCELL,
+  ENERGYFUNC,
+  ENERGY,
+  LEGENDRE,
+  MATCH,
+  MATERIAL,
+  MESH,
+  MESHSURFACE,
+  MU,
+  PARTICLE,
+  POLAR,
+  SPH_HARM,
+  SPTL_LEGENDRE,
+  SURFACE,
+  TIME,
+  UNIVERSE,
+  ZERNIKE,
+};
+
 //==============================================================================
 //! Modifies tally score events.
 //==============================================================================

@@ -11,7 +11,7 @@ namespace openmc {
 //! Specifies which cell the particle was born in.
 //==============================================================================
 
-class CellbornFilter : public CellFilter {
+class CellBornFilter : public CellFilter {
 public:
   //----------------------------------------------------------------------------
   // Methods

@@ -115,7 +115,7 @@ Filter* Filter::create(const std::string& type, int32_t id)
   } else if (type == "cell") {
     return Filter::create<CellFilter>(id);
   } else if (type == "cellborn") {
-    return Filter::create<CellbornFilter>(id);
+    return Filter::create<CellBornFilter>(id);
   } else if (type == "cellfrom") {
     return Filter::create<CellFromFilter>(id);
   } else if (type == "cellinstance") {

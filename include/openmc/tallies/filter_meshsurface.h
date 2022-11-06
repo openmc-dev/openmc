@@ -10,7 +10,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "meshsurface"; }
+  std::string type_str() const override { return "meshsurface"; }
+  FilterType type() const override { return FilterType::MESH_SURFACE; }
 
   void get_all_bins(const Particle& p, TallyEstimator estimator,
     FilterMatch& match) const override;

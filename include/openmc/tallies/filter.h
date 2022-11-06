@@ -24,24 +24,25 @@ enum class FilterType {
   CELL,
   CELL_INSTANCE,
   COLLISION,
-  DELAYEDGROUP,
+  DELAYED_GROUP,
   DISTRIBCELL,
-  ENERGYFUNC,
+  ENERGY_FUNCTION,
   ENERGY,
+  ENERGY_OUT,
   LEGENDRE,
-  MATCH,
   MATERIAL,
   MESH,
-  MESHSURFACE,
+  MESH_SURFACE,
   MU,
   PARTICLE,
   POLAR,
-  SPH_HARM,
-  SPTL_LEGENDRE,
+  SPHERICAL_HARMONICS,
+  SPATIAL_LEGENDRE,
   SURFACE,
   TIME,
   UNIVERSE,
   ZERNIKE,
+  ZERNIKE_RADIAL
 };
 
 //==============================================================================
@@ -85,7 +86,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  virtual std::string type() const = 0;
+  virtual std::string type_str() const = 0;
+  virtual FilterType type() const = 0;
 
   //! Matches a tally event to a set of filter bins and weights.
   //!
@@ -99,7 +101,7 @@ public:
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void to_statepoint(hid_t filter_group) const
   {
-    write_dataset(filter_group, "type", type());
+    write_dataset(filter_group, "type", type_str());
     write_dataset(filter_group, "n_bins", n_bins_);
   }
 

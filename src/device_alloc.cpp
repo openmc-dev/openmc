@@ -32,7 +32,9 @@ void enforce_assumptions()
 
   // Assertions made when initializing particles
   assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
-  assert(model::n_tally_filters <= FILTER_MATCHES_SIZE);
+  for (auto i = 0; i < model::tallies_size; i++) {
+    assert(model::tallies[i].n_filters() <= FILTER_MATCHES_SIZE);
+  }
   assert(model::n_coord_levels <= COORD_SIZE);
   #ifndef NO_MICRO_XS_CACHE
   assert(data::nuclides_size <= NEUTRON_XS_SIZE);

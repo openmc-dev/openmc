@@ -418,12 +418,12 @@ class vector2d : public vector<T> {
   // down the line, but these stretching functions are useful for finding the material
   // with the most nuclides, thermal tables, etc, without having to repeat the logic
   // multiple times elsewhere.
-  void stretch(vector<T>& vect) {
+  void stretch(const vector<T>& vect) {
     if (vect.size() > stride_) {
       stride_ = vect.size();
     }
   }
-  void stretch(xt::xtensor<T,1>& vect) {
+  void stretch(const xt::xtensor<T,1>& vect) {
     if (vect.size() > stride_) {
       stride_ = vect.size();
     }
@@ -448,12 +448,12 @@ class vector2d : public vector<T> {
   }
 
   // Copies a row of data into the 2D matrix at row i
-  void copy_row(size_type i, vector<T>& row) {
+  void copy_row(size_type i, const vector<T>& row) {
     for (int j = 0; j < row.size(); j++) {
       data_[i * stride_ + j] = row[j];
     }
   }
-  void copy_row(size_type i, xt::xtensor<T,1>& row) {
+  void copy_row(size_type i, const xt::xtensor<T,1>& row) {
     for (int j = 0; j < row.size(); j++) {
       data_[i * stride_ + j] = row[j];
     }

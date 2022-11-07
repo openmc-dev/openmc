@@ -213,7 +213,7 @@ void move_read_only_data_to_device()
 
   // Determine size of inner dimension for serialized material vectors
   for (int i = 0; i < model::materials_size; i++) {
-    auto& mat = model::materials[i];
+    const auto& mat = model::materials[i];
     model::materials_nuclide.stretch(mat.nuclide_);
     model::materials_element.stretch(mat.element_);
     model::materials_atom_density.stretch(mat.atom_density_);

@@ -287,6 +287,9 @@ regular pattern such as a rectangular or hexagonal lattice. In such a case, it
 would be cumbersome to have to define the boundaries of each of the cells to be
 filled with a universe. OpenMC provides a means to define lattice structures
 through the :class:`openmc.RectLattice` and :class:`openmc.HexLattice` classes.
+Sometimes a model will have a repeated structure in only one dimension. OpenMC
+provides a means to define such structures through the
+:class:`openmc.StackLattice` class.
 
 Rectangular Lattices
 --------------------
@@ -411,6 +414,28 @@ code would work::
 
 If you need to create a hexagonal boundary (composed of six planar surfaces) for
 a hexagonal lattice, :func:`openmc.model.hexagonal_prism` can be used.
+
+Stack Lattices
+--------------
+A stack lattice defines a one-dimensional array of universes that are filled into stacked layers (lattice elements). These layers can be of uniform or nonuniform thickness. Creating a stack lattice is similar to creating a rectangular lattice with a few differences:
+
+The position of the central axis and coordinate of the base level of the stack
+in must be specified (:attr:`StackLattice.central_axis` and
+:attr:`StackLattice.base_coordinate`, respectively). Additionally,
+:attr:`universes` must be set before :attr:`pitch`. For nonuniform lattices, the :attr:`is_uniform` attribute must be set to ``False`` before setting :attr:`pitch`.
+
+For a uniform stack lattice, a single value for the pitch should be specified.
+It should not be a list. For a nonuniform stack lattice, an iterable of values
+should be given. The length of this iterable should match the length of
+:attr:`StackLattice.universes`.
+
+The lattice orientation is by default in the :math:`z`-direction, but this can
+be changed using the :attr:`StackLattice.orientation` attribute to :attr:`x` or
+:attr:`y`. :attr:`StackLattice.central_axis` assumes that the coordinates are
+in the :math:`(x,y)`, :math:`(x,z)`, or :math:`(y,z)` basis for
+:attr:`orientation` of :attr:`z`, :attr:`y`, or :attr:`x`, respectively.
+
+
 
 .. _usersguide_geom_export:
 

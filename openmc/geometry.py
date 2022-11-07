@@ -110,7 +110,8 @@ class Geometry:
             p /= 'geometry.xml'
 
         # Write the XML Tree to the geometry.xml file
-        xml.reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
+        # TODO: Remove when support is Python 3.8+
+        xml.reorder_attributes(root_element)
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
@@ -134,6 +135,7 @@ class Geometry:
         """
         # Helper function for keeping a cache of Universe instances
         universes = {}
+
         def get_universe(univ_id):
             if univ_id not in universes:
                 univ = openmc.Universe(univ_id)
@@ -191,6 +193,14 @@ class Geometry:
                         for u in ring:
                             child_of[u].append(lat)
 
+        for elem in root.findall('stack_lattice'):
+            lat = openmc.StackLattice.from_xml_element(elem, get_universe)
+            universes[lat.id] = lat
+            if lat.outer is not None:
+                child_of[lat.outer].append(lat)
+            for u in lat.universes.ravel():
+                child_of[u].append(lat)
+
         # Create dictionary to easily look up materials
         if materials is None:
             filename = Path(path).parent / 'materials.xml'
@@ -199,7 +209,8 @@ class Geometry:
         mats['void'] = None
 
         for elem in root.findall('cell'):
-            c = openmc.Cell.from_xml_element(elem, surfaces, mats, get_universe)
+            c = openmc.Cell.from_xml_element(
+                elem, surfaces, mats, get_universe)
             if c.fill_type in ('universe', 'lattice'):
                 child_of[c.fill].append(c)
 
@@ -258,7 +269,7 @@ class Geometry:
         for p in path_list:
             # Extract the cell id from the path
             last_index = p.rfind('>')
-            last_path = p[last_index+1:]
+            last_path = p[last_index + 1:]
             uid = int(last_path[1:])
 
             # Get corresponding cell/material
@@ -418,7 +429,12 @@ class Geometry:
                 for keep, *redundant in tally.values()
                 for replace in redundant}
 
-    def _get_domains_by_name(self, name, case_sensitive, matching, domain_type):
+    def _get_domains_by_name(
+            self,
+            name,
+            case_sensitive,
+            matching,
+            domain_type):
         if not case_sensitive:
             name = name.lower()
 
@@ -435,7 +451,11 @@ class Geometry:
         domains.sort(key=lambda x: x.id)
         return domains
 
-    def get_materials_by_name(self, name, case_sensitive=False, matching=False):
+    def get_materials_by_name(
+            self,
+            name,
+            case_sensitive=False,
+            matching=False):
         """Return a list of materials with matching names.
 
         Parameters
@@ -454,7 +474,8 @@ class Geometry:
             Materials matching the queried name
 
         """
-        return self._get_domains_by_name(name, case_sensitive, matching, 'material')
+        return self._get_domains_by_name(
+            name, case_sensitive, matching, 'material')
 
     def get_cells_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of cells with matching names.
@@ -475,9 +496,14 @@ class Geometry:
             Cells matching the queried name
 
         """
-        return self._get_domains_by_name(name, case_sensitive, matching, 'cell')
+        return self._get_domains_by_name(
+            name, case_sensitive, matching, 'cell')
 
-    def get_cells_by_fill_name(self, name, case_sensitive=False, matching=False):
+    def get_cells_by_fill_name(
+            self,
+            name,
+            case_sensitive=False,
+            matching=False):
         """Return a list of cells with fills with matching names.
 
         Parameters
@@ -522,7 +548,11 @@ class Geometry:
 
         return sorted(cells, key=lambda x: x.id)
 
-    def get_universes_by_name(self, name, case_sensitive=False, matching=False):
+    def get_universes_by_name(
+            self,
+            name,
+            case_sensitive=False,
+            matching=False):
         """Return a list of universes with matching names.
 
         Parameters
@@ -541,7 +571,8 @@ class Geometry:
             Universes matching the queried name
 
         """
-        return self._get_domains_by_name(name, case_sensitive, matching, 'universe')
+        return self._get_domains_by_name(
+            name, case_sensitive, matching, 'universe')
 
     def get_lattices_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of lattices with matching names.
@@ -562,7 +593,8 @@ class Geometry:
             Lattices matching the queried name
 
         """
-        return self._get_domains_by_name(name, case_sensitive, matching, 'lattice')
+        return self._get_domains_by_name(
+            name, case_sensitive, matching, 'lattice')
 
     def remove_redundant_surfaces(self):
         """Remove redundant surfaces from the geometry"""

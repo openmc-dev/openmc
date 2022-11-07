@@ -22,7 +22,7 @@ namespace openmc {
 
 constexpr int32_t NO_OUTER_UNIVERSE {-1};
 
-enum class LatticeType { rect, hex };
+enum class LatticeType { rect, hex, stack };
 
 //==============================================================================
 // Global variables
@@ -283,6 +283,51 @@ private:
   Orientation orientation_; //!< Orientation of lattice
   Position center_;         //!< Global center of lattice
   array<double, 2> pitch_;  //!< Lattice tile width and height
+};
+
+//==============================================================================
+
+class StackLattice : public Lattice {
+public:
+  explicit StackLattice(pugi::xml_node lat_node);
+
+  int32_t const& operator[](array<int, 3> const& i_xyz);
+
+  bool are_valid_indices(array<int, 3> const& i_xyz) const;
+
+  std::pair<double, array<int, 3>> distance(
+    Position r, Direction u, const array<int, 3>& i_xyz) const;
+
+  void get_indices(Position r, Direction u, array<int, 3>& result) const;
+
+  int get_flat_index(const array<int, 3>& i_xyz) const;
+
+  Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
+
+  int32_t& offset(int map, array<int, 3> const& i_xyz);
+
+  int32_t offset(int map, int indx) const;
+
+  std::string index_to_string(int indx) const;
+
+  void to_hdf5_inner(hid_t group_id) const;
+
+private:
+  enum class Orientation {
+    z, //!< Central axis of lattice parallel to z-axis
+    y, //!< Central axis of lattice parallel to y-axis
+    x  //!< Central axis of lattice parallel to x-axis
+  };
+
+  bool is_uniform_; //!< Mark if lattice is uniform or not
+
+  int orientation_idx_;     //!< Index to select x,y, or z based on orientation
+  int n_layers_;            //!< Number of layer positions
+  Orientation orientation_; //!< Orientation of lattice
+  Position central_axis_;   //!< Axial center of lattice
+  double base_coordinate_;  //!< Coordinate of base layer of lattice
+  vector<double> pitch_;    //!< Lattice layer width.
+  vector<double> layer_boundaries_; //!< Coordinates of lattice tile boundaries
 };
 
 //==============================================================================

@@ -390,10 +390,11 @@ BoundaryInfo distance_to_boundary(Particle& p)
       // also means the lat.type attribute can be removed)
       std::pair<double, array<int, 3>> lattice_distance;
       switch (lat.type_) {
-      case LatticeType::rect:
+      case LatticeType::rect: {
         lattice_distance = lat.distance(r, u, coord.lattice_i);
         break;
-      case LatticeType::hex:
+      }
+      case LatticeType::hex: {
         auto& cell_above {model::cells[p.coord(i - 1).cell]};
         Position r_hex {p.coord(i - 1).r};
         r_hex -= cell_above->translation_;
@@ -404,6 +405,12 @@ BoundaryInfo distance_to_boundary(Particle& p)
         lattice_distance = lat.distance(r_hex, u, coord.lattice_i);
         break;
       }
+      case LatticeType::stack: {
+        lattice_distance = lat.distance(r, u, coord.lattice_i);
+        break;
+      }
+      }
+
       d_lat = lattice_distance.first;
       level_lat_trans = lattice_distance.second;
 

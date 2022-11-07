@@ -549,6 +549,45 @@ volumetric units of the lattice will be referred to as "tiles".  Tiles are
 identified by thier indices, and the process of discovering which tile contains
 the particle is referred to as "indexing".
 
+Stack Lattice Indexing
+----------------------
+
+Indices are assigned to tiles in a stack lattice based on the tile's
+position along the axis of orientation (the :math:`x`, :math:`y`, or 
+:math:`z` axis). Figure :num:`fig-stack-lat` maps the indices for a
+stack lattice. The index, (1), maps to the bottom tile. (5) maps to
+the top tile.
+
+
+.. _fig-stack-lat:
+
+.. figure:: ../_images/stack_lat.svg
+   :align: center
+   :figclass: align-center
+   :width: 400px
+
+   Stack lattice tile indices.
+
+In general, a lattice tile is specified by the single index,
+:math:`(i)`.  If a particle's current coordinates are :math:`(x, y, z)` 
+and the lattice is oriented in the :math:`z` direction, then the index
+of a tile in a uniform stack lattice can be determined from this formula:
+
+.. math::
+    :label: stack_indexing
+
+    i = \left \lfloor \frac{z - z_0}{p} \right \rfloor
+
+where :math:`(z_0)` is the coordinate to the base of the lattice, and 
+:math:`p` is the pitch along the :math:`z` axis. Similar equations govern
+uniform stack lattices aligned with the :math:`x` and :math:`y` axes.
+
+
+The index of a tile in a nonuniform stack lattice (i.e. a stack lattice where 
+tiles have differing dimensions) does not have a closed-form equation. It can
+only be found numerically.
+
+
 Rectilinear Lattice Indexing
 ----------------------------
 

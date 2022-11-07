@@ -45,7 +45,7 @@ def rlat2(pincell1, pincell2, uo2, water, zr):
     n = 3
     u1, u2 = pincell1, pincell2
     lattice = openmc.RectLattice()
-    lattice.lower_left = (-pitch*n/2, -pitch*n/2)
+    lattice.lower_left = (-pitch * n / 2, -pitch * n / 2)
     lattice.pitch = (pitch, pitch)
     lattice.outer = openmc.Universe(cells=[all_zr])
     lattice.universes = [
@@ -77,7 +77,7 @@ def rlat3(pincell1, pincell2, uo2, water, zr):
     n = 3
     u1, u2 = pincell1, pincell2
     lattice = openmc.RectLattice()
-    lattice.lower_left = (-pitch*n/2, -pitch*n/2, -10.0)
+    lattice.lower_left = (-pitch * n / 2, -pitch * n / 2, -10.0)
     lattice.pitch = (pitch, pitch, 10.0)
     lattice.outer = openmc.Universe(cells=[all_zr])
     lattice.universes = [
@@ -155,7 +155,53 @@ def hlat3(pincell1, pincell2, uo2, water, zr):
     return lattice
 
 
-def test_get_nuclides(rlat2, rlat3, hlat2, hlat3):
+@pytest.fixture(scope='module')
+def slatU(pincell1, pincell2, uo2, water, zr):
+    """Uniform Stack lattice for testing."""
+
+    all_zr = openmc.Cell(fill=zr)
+    pitch = 1.2
+    u1 = pincell1
+    lattice = openmc.StackLattice()
+    lattice.orientation = 'z'
+    lattice.central_axis = (0., 0.)
+    lattice.base_coordinate = 0.
+    lattice.is_uniform = True
+    lattice.universes = [u1, u1, u1, u1]
+    lattice.pitch = pitch
+    lattice.outer = openmc.Universe(cells=[all_zr])
+
+    # Add extra attributes for comparison purpose
+    lattice.cells = [u1.fuel, u1.moderator, all_zr]
+    lattice.mats = [uo2, water, zr]
+    lattice.univs = [u1, lattice.outer]
+    return lattice
+
+
+@pytest.fixture(scope='module')
+def slatNU(pincell1, pincell2, uo2, water, zr):
+    """Nonuniform Stack lattice for testing."""
+
+    all_zr = openmc.Cell(fill=zr)
+    pitch = 1.2
+    u1, u2 = pincell1, pincell2
+    lattice = openmc.StackLattice()
+    lattice.orientation = 'z'
+    lattice.central_axis = (0., 0.)
+    lattice.base_coordinate = 0.
+    lattice.is_uniform = False
+    lattice.universes = [u1, u2, u1, u2]
+    lattice.pitch = [pitch, 1.5 * pitch, pitch, 1.5 * pitch]
+    lattice.outer = openmc.Universe(cells=[all_zr])
+
+    # Add extra attributes for comparison purpose
+    lattice.cells = [u1.fuel, u1.moderator, u2.fuel, u2.moderator, all_zr]
+    lattice.mats = [uo2, water, zr]
+    lattice.univs = [u1, u2, lattice.outer]
+    return lattice
+
+
+def test_get_nuclides(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     for lat in (rlat2, hlat2):
         nucs = lat.get_nuclides()
         assert sorted(nucs) == ['H1', 'O16', 'U235',
@@ -164,27 +210,31 @@ def test_get_nuclides(rlat2, rlat3, hlat2, hlat3):
         nucs = lat.get_nuclides()
         assert sorted(nucs) == ['H1', 'H2', 'O16', 'U235',
                                 'Zr90', 'Zr91', 'Zr92', 'Zr94', 'Zr96']
+    for lat in (slatU, slatNU):
+        nucs = lat.get_nuclides()
+        assert sorted(nucs) == ['H1', 'O16', 'U235',
+                                'Zr90', 'Zr91', 'Zr92', 'Zr94', 'Zr96']
 
 
-def test_get_all_cells(rlat2, rlat3, hlat2, hlat3):
-    for lat in (rlat2, rlat3, hlat2, hlat3):
+def test_get_all_cells(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
+    for lat in (rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
         cells = set(lat.get_all_cells().values())
         assert not cells ^ set(lat.cells)
 
 
-def test_get_all_materials(rlat2, rlat3, hlat2, hlat3):
-    for lat in (rlat2, rlat3, hlat2, hlat3):
+def test_get_all_materials(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
+    for lat in (rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
         mats = set(lat.get_all_materials().values())
         assert not mats ^ set(lat.mats)
 
 
-def test_get_all_universes(rlat2, rlat3, hlat2, hlat3):
-    for lat in (rlat2, rlat3, hlat2, hlat3):
+def test_get_all_universes(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
+    for lat in (rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
         univs = set(lat.get_all_universes().values())
         assert not univs ^ set(lat.univs)
 
 
-def test_get_universe(rlat2, rlat3, hlat2, hlat3):
+def test_get_universe(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     u1, u2, outer = rlat2.univs
     assert rlat2.get_universe((0, 0)) == u2
     assert rlat2.get_universe((1, 0)) == u1
@@ -217,8 +267,20 @@ def test_get_universe(rlat2, rlat3, hlat2, hlat3):
     assert hlat3.get_universe((0, -2, 0)) == u1
     assert hlat3.get_universe((0, -2, 1)) == u3
 
+    u1, outer = slatU.univs
+    assert slatU.get_universe(0) == u1
+    assert slatU.get_universe(1) == u1
+    assert slatU.get_universe(2) == u1
+    assert slatU.get_universe(3) == u1
 
-def test_find(rlat2, rlat3, hlat2, hlat3):
+    u1, u2, outer = slatNU.univs
+    assert slatNU.get_universe(0) == u1
+    assert slatNU.get_universe(1) == u2
+    assert slatNU.get_universe(2) == u1
+    assert slatNU.get_universe(3) == u2
+
+
+def test_find(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     pitch = rlat2.pitch[0]
     seq = rlat2.find((0., 0., 0.))
     assert seq[-1] == rlat2.cells[0]
@@ -226,7 +288,7 @@ def test_find(rlat2, rlat3, hlat2, hlat3):
     assert seq[-1] == rlat2.cells[2]
     seq = rlat2.find((0., -pitch, 0.))
     assert seq[-1] == rlat2.cells[0]
-    seq = rlat2.find((pitch*100, 0., 0.))
+    seq = rlat2.find((pitch * 100, 0., 0.))
     assert seq[-1] == rlat2.cells[-1]
     seq = rlat3.find((-pitch, pitch, 5.0))
     assert seq[-1] == rlat3.cells[-2]
@@ -236,7 +298,7 @@ def test_find(rlat2, rlat3, hlat2, hlat3):
     assert seq[-1] == hlat2.cells[2]
     seq = hlat2.find((0.5, 0., 0.))
     assert seq[-1] == hlat2.cells[3]
-    seq = hlat2.find((sqrt(3)*pitch, 0., 0.))
+    seq = hlat2.find((sqrt(3) * pitch, 0., 0.))
     assert seq[-1] == hlat2.cells[0]
     seq = hlat2.find((0., pitch, 0.))
     assert seq[-1] == hlat2.cells[2]
@@ -248,7 +310,7 @@ def test_find(rlat2, rlat3, hlat2, hlat3):
     assert seq[-1] == hlat3.cells[2]
     seq = hlat3.find((0., -pitch, -5.))
     assert seq[-1] == hlat3.cells[0]
-    seq = hlat3.find((sqrt(3)*pitch, 0., -5.))
+    seq = hlat3.find((sqrt(3) * pitch, 0., -5.))
     assert seq[-1] == hlat3.cells[0]
 
     # top of 3D lattice
@@ -258,15 +320,46 @@ def test_find(rlat2, rlat3, hlat2, hlat3):
     assert seq[-1] == hlat3.cells[0]
     seq = hlat3.find((0., -pitch, 5.))
     assert seq[-1] == hlat3.cells[-2]
-    seq = hlat3.find((sqrt(3)*pitch, 0., 5.))
+    seq = hlat3.find((sqrt(3) * pitch, 0., 5.))
     assert seq[-1] == hlat3.cells[0]
 
+    pitch = slatU.pitch
+    seq = slatU.find((0., 0., 0.))
+    assert seq[-1] == slatU.cells[0]
+    seq = slatU.find((0., 0., pitch))
+    assert seq[-1] == slatU.cells[0]
+    seq = slatU.find((0., 0., 2 * pitch))
+    assert seq[-1] == slatU.cells[0]
+    seq = slatU.find((0., 0., 3 * pitch))
+    assert seq[-1] == slatU.cells[0]
 
-def test_clone(rlat2, hlat2, hlat3):
+    seq = slatNU.find((0., 0., 0.))
+    assert seq[-1] == slatNU.cells[0]
+    seq = slatNU.find((0., 0., 2.9))
+    assert seq[-1] == slatNU.cells[2]
+    seq = slatNU.find((0., 0., 4.1))
+    assert seq[-1] == slatNU.cells[0]
+    seq = slatNU.find((0., 0., 5.9))
+    assert seq[-1] == slatNU.cells[2]
+
+
+def test_clone(rlat2, hlat2, hlat3, slatU, slatNU):
     rlat_clone = rlat2.clone()
     assert rlat_clone.id != rlat2.id
     assert rlat_clone.lower_left == rlat2.lower_left
     assert rlat_clone.pitch == rlat2.pitch
+
+    slatU_clone = slatU.clone()
+    assert slatU_clone.id != slatU.id
+    assert slatU_clone.central_axis == slatU.central_axis
+    assert slatU_clone.base_coordinate == slatU.base_coordinate
+    assert slatU_clone.pitch == slatU.pitch
+
+    slatNU_clone = slatNU.clone()
+    assert slatU_clone.id != slatU.id
+    assert slatU_clone.central_axis == slatU.central_axis
+    assert slatU_clone.base_coordinate == slatU.base_coordinate
+    assert slatU_clone.pitch == slatU.pitch
 
     hlat_clone = hlat2.clone()
     assert hlat_clone.id != hlat2.id
@@ -289,11 +382,13 @@ def test_clone(rlat2, hlat2, hlat3):
                 assert c1.region == c2.region
 
 
-def test_repr(rlat2, rlat3, hlat2, hlat3):
+def test_repr(rlat2, rlat3, hlat2, hlat3, slatU, slatNU):
     repr(rlat2)
     repr(rlat3)
     repr(hlat2)
     repr(hlat3)
+    repr(slatU)
+    repr(slatNU)
 
 
 def test_indices_rect(rlat2, rlat3):
@@ -331,6 +426,21 @@ def test_indices_hex(hlat2, hlat3):
     )
 
 
+def test_indices_stack(slatU, slatNU):
+    assert slatU.indices == [0, 1, 2, 3]
+    assert slatNU.indices == [0, 1, 2, 3]
+    slatU.orientation = 'x'
+    slatNU.orientation = 'x'
+    assert slatU.indices == [0, 1, 2, 3]
+    assert slatNU.indices == [0, 1, 2, 3]
+    slatU.orientation = 'y'
+    slatNU.orientation = 'y'
+    assert slatU.indices == [0, 1, 2, 3]
+    assert slatNU.indices == [0, 1, 2, 3]
+    slatU.orientation = 'z'
+    slatNU.orientation = 'z'
+
+
 def test_xml_rect(rlat2, rlat3):
     for lat in (rlat2, rlat3):
         geom = ET.Element('geometry')
@@ -355,12 +465,37 @@ def test_xml_hex(hlat2, hlat3):
         assert len(elem.find('universes').text.split()) == len(lat.indices)
 
 
+def test_xml_stack(slatU, slatNU):
+    for lat in (slatU, slatNU):
+        geom = ET.Element('geometry')
+        lat.create_xml_subelement(geom)
+        elem = geom.find('stack_lattice')
+        assert elem.tag == 'stack_lattice'
+        assert elem.get('id') == str(lat.id)
+        if lat.is_uniform:
+            assert len(elem.find('pitch').text.split()) == 1
+        else:
+            assert len(elem.find('pitch').text.split()) == lat.num_layers
+        assert len(elem.find('universes').text.split()) == len(lat.indices)
+
+
 def test_show_indices():
     for i in range(1, 11):
         lines = openmc.HexLattice.show_indices(i).split('\n')
-        assert len(lines) == 4*i - 3
+        assert len(lines) == 4 * i - 3
         lines_x = openmc.HexLattice.show_indices(i, 'x').split('\n')
-        assert len(lines_x) == 4*i - 3
+        assert len(lines_x) == 4 * i - 3
+
+
+def test_unset_pitch():
+    elem = ET.Element("dummy")
+
+    stack_lattice = openmc.StackLattice()
+    stack_lattice.central_axis = (0., 0.)
+    stack_lattice.base_coordinate = 0.
+
+    with pytest.raises(ValueError):
+        stack_lattice.create_xml_subelement(elem)
 
 
 def test_unset_universes():

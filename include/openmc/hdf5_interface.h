@@ -52,6 +52,7 @@ inline hid_t create_group(hid_t parent_id, const std::stringstream& name)
 
 hid_t file_open(const std::string& filename, char mode, bool parallel = false);
 hid_t open_group(hid_t group_id, const std::string& name);
+void write_bool(hid_t group_id, const char* name, bool b, bool indep);
 void write_string(
   hid_t group_id, const char* name, const std::string& buffer, bool indep);
 
@@ -111,6 +112,8 @@ void write_double(hid_t group_id, int ndim, const hsize_t* dims,
   const char* name, const double* buffer, bool indep);
 void write_int(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
   const int* buffer, bool indep);
+void write_bool(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+  const hbool_t* buffer, bool indep);
 void write_llong(hid_t group_id, int ndim, const hsize_t* dims,
   const char* name, const long long* buffer, bool indep);
 void write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,

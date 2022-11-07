@@ -657,6 +657,19 @@ void write_int(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
     group_id, ndim, dims, name, H5T_NATIVE_INT, H5S_ALL, indep, buffer);
 }
 
+void write_bool(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+  const hbool_t* buffer, bool indep)
+{
+  write_dataset_lowlevel(
+    group_id, ndim, dims, name, H5T_NATIVE_HBOOL, H5S_ALL, indep, buffer);
+}
+
+void write_bool(hid_t group_id, const char* name, const bool b, bool indep)
+{
+  const hbool_t hb = (hbool_t)b;
+  write_bool(group_id, 0, nullptr, name, &hb, indep);
+}
+
 void write_llong(hid_t group_id, int ndim, const hsize_t* dims,
   const char* name, const long long* buffer, bool indep)
 {

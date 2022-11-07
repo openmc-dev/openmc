@@ -183,7 +183,6 @@ public:
   vector<ThermalTable> thermal_tables_;
 
   Bremsstrahlung ttb_;
-  gsl::index index_;
 
 private:
   //----------------------------------------------------------------------------
@@ -205,6 +204,7 @@ private:
 
   //----------------------------------------------------------------------------
   // Private data members
+  gsl::index index_;
 
   //! \brief Default temperature for cells containing this material.
   //!

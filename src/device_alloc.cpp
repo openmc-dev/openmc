@@ -243,12 +243,12 @@ void move_read_only_data_to_device()
 
   // Calculate and report memory usage (excluding any ttb_ data)
   int n_bytes = model::materials_size * sizeof(Material);
-  n_bytes += model::materials_nuclide.footprint();
-  n_bytes += model::materials_element.footprint();
-  n_bytes += model::materials_atom_density.footprint();
-  n_bytes += model::materials_p0.footprint();
-  n_bytes += model::materials_mat_nuclide_index.footprint();
-  n_bytes += model::materials_thermal_tables.footprint();
+  n_bytes += model::materials_nuclide.nbytes();
+  n_bytes += model::materials_element.nbytes();
+  n_bytes += model::materials_atom_density.nbytes();
+  n_bytes += model::materials_p0.nbytes();
+  n_bytes += model::materials_mat_nuclide_index.nbytes();
+  n_bytes += model::materials_thermal_tables.nbytes();
   if (mpi::master) {
     std::cout << " Moving " << model::materials_size << " materials to device of total size: " << n_bytes * 1.0e-6 << " MB" << std::endl;
   }

@@ -138,7 +138,7 @@ public:
     size_ = count;
   }
 
-  size_type footprint() { return size_ * sizeof(T); }
+  size_type nbytes() { return size_ * sizeof(T); }
 
   void reserve(size_type n) {
     if (n <= capacity_) return;
@@ -398,9 +398,6 @@ class vector2d : public vector<T> {
   using const_iterator = const T*;
   using reference = T&;
   using const_reference = const T&;
-  using vector<T>::data_;
-  using vector<T>::capacity_;
-  using vector<T>::size_;
   // Constructors, destructors
   vector2d() :  stride_(0), vector<T>() { }
   vector2d(size_type n) : vector2d() { this->resize(n); }
@@ -460,6 +457,9 @@ class vector2d : public vector<T> {
   }
 
   protected:
+  using vector<T>::data_;
+  using vector<T>::capacity_;
+  using vector<T>::size_;
   size_type stride_;
 };
 

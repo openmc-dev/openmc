@@ -622,7 +622,7 @@ class MsrBatchwiseGeom(MsrBatchwise):
         x : list of numpy.ndarray
             Total atoms concentrations
         step_index : int
-            Depletion time step index        
+            Depletion time step index
         Returns
         ------------
         x : list of numpy.ndarray
@@ -779,15 +779,15 @@ class MsrBatchwiseMat(MsrBatchwise):
                             densities.append(val)
 
                 else:
-                    nuclides.append(nuc)
                     val = 1.0e-24 * self.operator.number.get_atom_density(mat,
                                                                          nuc)
                     if int(mat) == self.mat_id:
                         # convert params [grams] into [atoms/cc]
-                        param *= 1.0e-24 / atomic_mass(nuc) * AVOGADRO * \
+                        val += param * 1.0e-24 / atomic_mass(nuc) * AVOGADRO * \
                                self.refuel_vector[nuc] / \
                                self.operator.number.volume[i]
-                    densities.append(val + param)
+                    nuclides.append(nuc)
+                    densities.append(val)
 
             openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
         return self.model

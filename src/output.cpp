@@ -396,7 +396,11 @@ bool is_device()
   int is_initial;
   #pragma omp target map(from:is_initial)
   {
+    #ifdef _OPENMP
     is_initial = omp_is_initial_device();
+    #else
+    is_initial = true;
+    #endif
   }
   return !is_initial;
 }

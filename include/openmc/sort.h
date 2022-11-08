@@ -81,7 +81,11 @@ void quickSort_parallel(T* arr, int lenArray)
 
   // For OpenMC's use case, we do not see performance gains past 32 threads.
   // So, we will limit the number of threads to 32. 
+  #ifdef _OPENMP
   int	numThreads = std::min({32,omp_get_num_procs()});
+  #else
+  int	numThreads = 1;
+  #endif
 
   #pragma omp parallel num_threads(numThreads)
   {

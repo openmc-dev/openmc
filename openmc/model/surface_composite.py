@@ -634,17 +634,17 @@ class Polygon(CompositeSurface):
     ----------
     points : np.ndarray
         An Nx2 array of points defining the vertices of the polygon.
-    basis : str, {'rz', 'xy', 'yz', 'xz'}, optional
+    basis : {'rz', 'xy', 'yz', 'xz'}, optional
         2D basis set for the polygon.
 
     Attributes
     ----------
     points : np.ndarray
         An Nx2 array of points defining the vertices of the polygon.
-    basis : str, {'rz', 'xy', 'yz', 'xz'}
+    basis : {'rz', 'xy', 'yz', 'xz'}
         2D basis set for the polygon.
     regions : list of openmc.Region
-        A list of openmc.Region objects, one for each of the convex polygons
+        A list of :class:`openmc.Region` objects, one for each of the convex polygons
         formed during the decomposition of the input polygon.
     region : openmc.Union
         The union of all the regions comprising the polygon.
@@ -726,7 +726,7 @@ class Polygon(CompositeSurface):
     @property
     def _normals(self):
         """Generate the outward normal unit vectors for the polygon."""
-        rotation = np.array([[0, 1], [-1, 0]])
+        rotation = np.array([[0., 1.], [-1., 0.]])
         tangents = np.diff(self._points, axis=0, append=[self._points[0, :]])
         tangents /= np.linalg.norm(tangents, axis=-1, keepdims=True)
         return rotation.dot(tangents.T).T
@@ -735,7 +735,7 @@ class Polygon(CompositeSurface):
     def _equations(self):
         normals = self._normals
         equations = np.empty((normals.shape[0], 3))
-        equations[:, 0:2] = normals
+        equations[:, :2] = normals
         equations[:, 2] = -np.sum(normals*self.points, axis=-1)
         return equations
 

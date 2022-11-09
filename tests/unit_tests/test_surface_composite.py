@@ -335,6 +335,6 @@ def test_polygon():
         assert points_in[i] not in +star_poly
         assert (0, 0, 0) not in -star_poly
         if basis != 'rz':
-            assert(0, 0, 0) in -star_poly.offset(.6)
+            assert (0, 0, 0) in -star_poly.offset(.6)
 
 

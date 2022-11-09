@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from copy import copy
 from math import sqrt, pi, sin, cos, isclose
+import warnings
+import operator
+
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 from matplotlib.path import Path
-import warnings
 
 import openmc
 from openmc.checkvalue import (check_greater_than, check_value,
@@ -635,7 +637,11 @@ class Polygon(CompositeSurface):
     points : np.ndarray
         An Nx2 array of points defining the vertices of the polygon.
     basis : {'rz', 'xy', 'yz', 'xz'}, optional
-        2D basis set for the polygon.
+        2D basis set for the polygon. The polygon is two dimensional and has
+        infinite extent in the third (unspecified) dimension. For example, the
+        'xy' basis produces a polygon with infinite extent in the +/- z
+        direction. For the 'rz' basis the phi extent is infinite, thus forming
+        an axisymmetric surface.
 
     Attributes
     ----------
@@ -687,7 +693,7 @@ class Polygon(CompositeSurface):
         # Generate a list of regions whose union represents the polygon.
         regions = []
         for surfs_ops in self._surfsets:
-            regions.append([getattr(surf, op)() for surf, op, _ in surfs_ops])
+            regions.append([op(surf) for surf, op, _ in surfs_ops])
         self._regions = [openmc.Intersection(regs) for regs in regions]
 
         # Create the union of all the convex subsets
@@ -842,7 +848,7 @@ class Polygon(CompositeSurface):
                 else:
                     surf = openmc.YPlane(y0=-c/dy)
                 # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
-                op = '__pos__' if dy < 0 else '__neg__'
+                op = operator.pos if dy < 0 else operator.neg
             # Check if the facet is vertical
             elif isclose(dy, 0):
                 if basis in ('xy', 'xz'):
@@ -852,10 +858,10 @@ class Polygon(CompositeSurface):
                 else:
                     surf = openmc.ZCylinder(r=-c/dx)
                 # if (1, 0).(dx, dy) < 0 we want positive halfspace instead
-                op = '__pos__' if dx < 0 else '__neg__'
+                op = operator.pos if dx < 0 else operator.neg
             # Otherwise the facet is at an angle
             else:
-                op = '__neg__'
+                op = operator.neg
                 if basis == 'xy':
                     surf = openmc.Plane(a=dx, b=dy, d=-c)
                 elif basis == 'yz':
@@ -871,10 +877,9 @@ class Polygon(CompositeSurface):
                     surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=up)
                     # if (1, -1).(dx, dy) < 0 for up cones we want positive halfspace
                     # if (1, 1).(dx, dy) < 0 for down cones we want positive halfspace
+                    # otherwise we keep the negative halfspace operator
                     if (up and dx - dy < 0) or (not up and dx + dy < 0):
-                        op = '__pos__'
-                    else:
-                        op = '__neg__'
+                        op = operator.pos
 
             surfs_ops.append((surf, op, on_boundary))
 

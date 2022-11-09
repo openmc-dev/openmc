@@ -533,7 +533,7 @@ class CellFromFilter(WithIDFilter):
     expected_type = Cell
 
 
-class CellbornFilter(WithIDFilter):
+class CellBornFilter(WithIDFilter):
     """Bins tally events based on which cell the particle was born in.
 
     Parameters
@@ -555,6 +555,14 @@ class CellbornFilter(WithIDFilter):
 
     """
     expected_type = Cell
+
+
+# Temporary alias for CellbornFilter
+def CellbornFilter(*args, **kwargs):
+    warnings.warn('The name of "CellbornFilter" has changed to '
+                  '"CellBornFilter". "CellbornFilter" will be '
+                  'removed in the future.')
+    return CellBornFilter(*args, **kwargs)
 
 
 class CellInstanceFilter(Filter):

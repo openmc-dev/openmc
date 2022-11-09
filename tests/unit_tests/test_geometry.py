@@ -302,7 +302,7 @@ def test_rotation_matrix():
     assert geom.find((0.0, -0.5, 0.0))[-1] == c1
     assert geom.find((0.0, -1.5, 0.0))[-1] == c2
 
-def test_remove_redundant_surfaces(run_in_tmpdir):
+def test_remove_redundant_surfaces():
     """Test ability to remove redundant surfaces"""
 
     m1 = openmc.Material()
@@ -344,11 +344,8 @@ def test_remove_redundant_surfaces(run_in_tmpdir):
                                materials=openmc.Materials([m1, m2, m3]))
 
     # There should be 6 redundant surfaces in this geometry
-    n_redundant_surfs = len(geom.get_redundant_surfaces().keys())
+    n_redundant_surfs = len(geom.remove_redundant_surfaces().keys())
     assert n_redundant_surfs == 6
-    # Remove redundant surfaces on export
-    model.export_to_xml()
-    geom = openmc.Geometry.from_xml()
     # There should be 0 remaining redundant surfaces
-    n_redundant_surfs = len(geom.get_redundant_surfaces().keys())
+    n_redundant_surfs = len(geom.remove_redundant_surfaces().keys())
     assert n_redundant_surfs == 0

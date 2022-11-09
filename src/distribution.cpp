@@ -59,23 +59,24 @@ Discrete::Discrete(const double* x, const double* p, int n)
     int j = small.back();
     int k = large.back();
 
+    // Remove last element of small
+    small.pop_back();
+
     // Update probability and alias based on Vose's algorithm
     prob_[k] += prob_[j] - 1;
     alias_[j] = k;
 
     // Remove last vector element and or move large index to small vector
-    if (prob_[k] < 1) {
+    if (prob_[k] < 1.0) {
       small.push_back(k);
       large.pop_back();
-    } else {
-      small.pop_back();
     }
   }
 }
 
 double Discrete::sample(uint64_t* seed) const
 {
-  int n = prob_.size();
+  int n = x_.size();
   if (n > 1) {
     int u = prn(seed) * n;
     if (prn(seed) < prob_[u]) {
@@ -83,17 +84,8 @@ double Discrete::sample(uint64_t* seed) const
     } else {
       return x_[alias_[u]];
     }
-
-    // double xi = prn(seed);
-    // double c = 0.0;
-    // for (int i = 0; i < n; ++i) {
-    //   c += p_[i];
-    //   if (xi < c)
-    //     return x_[i];
-    // }
-    // throw std::runtime_error {"Error when sampling probability mass function."};
   } else {
-    return x_[0];
+    return x_.size();
   }
 }
 

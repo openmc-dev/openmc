@@ -849,7 +849,7 @@ class Polygon(CompositeSurface):
             facet_eq = np.array([dx, dy, c])
             on_boundary = any([np.allclose(facet_eq, eq) for eq in boundary_eqns])
             # Check if the facet is horizontal
-            if isclose(dx, 0):
+            if isclose(dx, 0, abs_tol=1e-8):
                 if basis in ('xz', 'yz', 'rz'):
                     surf = openmc.ZPlane(z0=-c/dy)
                 else:
@@ -857,7 +857,7 @@ class Polygon(CompositeSurface):
                 # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
                 op = operator.pos if dy < 0 else operator.neg
             # Check if the facet is vertical
-            elif isclose(dy, 0):
+            elif isclose(dy, 0, abs_tol=1e-8):
                 if basis in ('xy', 'xz'):
                     surf = openmc.XPlane(x0=-c/dx)
                 elif basis == 'yz':

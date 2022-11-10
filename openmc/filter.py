@@ -561,7 +561,7 @@ class CellBornFilter(WithIDFilter):
 def CellbornFilter(*args, **kwargs):
     warnings.warn('The name of "CellbornFilter" has changed to '
                   '"CellBornFilter". "CellbornFilter" will be '
-                  'removed in the future.')
+                  'removed in the future.', FutureWarning)
     return CellBornFilter(*args, **kwargs)
 
 

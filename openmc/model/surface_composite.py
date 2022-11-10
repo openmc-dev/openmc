@@ -732,9 +732,17 @@ class Polygon(CompositeSurface):
     @property
     def _normals(self):
         """Generate the outward normal unit vectors for the polygon."""
+        # Rotation matrix for 90 degree clockwise rotation (-90 degrees about z
+        # axis for an 'xy' basis).
         rotation = np.array([[0., 1.], [-1., 0.]])
+        # Get the unit vectors that point from one point in the polygon to the
+        # next given that they are ordered counterclockwise and that the final
+        # point is connected to the first point
         tangents = np.diff(self._points, axis=0, append=[self._points[0, :]])
         tangents /= np.linalg.norm(tangents, axis=-1, keepdims=True)
+        # Rotate the tangent vectors clockwise by 90 degrees, which for a
+        # counter-clockwise ordered polygon will produce the outward normal
+        # vectors.
         return rotation.dot(tangents.T).T
 
     @property
@@ -765,13 +773,12 @@ class Polygon(CompositeSurface):
         -------
         ordered_points : the input points ordered counter-clockwise
         """
-        vector = np.empty(points.shape[0])
-        this_x, this_y = points[:-1, 0], points[:-1, 1]
-        next_x, next_y = points[1:, 0], points[1:, 1]
-        vector[:-1] = (next_x - this_x)*(next_y + this_y)
-        vector[-1] = (this_x[0] - next_x[-1])*(this_y[0] + next_y[-1])
+        # Calculates twice the signed area of the polygon using the "Shoelace
+        # Formula" https://en.wikipedia.org/wiki/Shoelace_formula
+        xpts, ypts = points.T
 
-        if np.sum(vector) < 0:
+        # If signed area is positive the curve is oriented counter-clockwise
+        if np.sum(ypts*(np.roll(xpts, 1) - np.roll(xpts, -1))) > 0:
             return points
 
         return points[::-1, :]

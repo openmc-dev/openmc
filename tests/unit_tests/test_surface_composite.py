@@ -332,9 +332,10 @@ def test_polygon():
     for i, basis in enumerate(('xy', 'yz', 'xz', 'rz')):
         star_poly = openmc.model.Polygon(star, basis=basis)
         assert points_in[i] in -star_poly
+        assert any([points_in[i] in reg for reg in star_poly.regions])
         assert points_in[i] not in +star_poly
         assert (0, 0, 0) not in -star_poly
         if basis != 'rz':
-            assert (0, 0, 0) in -star_poly.offset(.6)
-
-
+            offset_star = star_poly.offset(.6)
+            assert (0, 0, 0) in -offset_star
+            assert any([(0, 0, 0) in reg for reg in offset_star.regions])

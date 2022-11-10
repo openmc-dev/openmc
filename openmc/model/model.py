@@ -5,11 +5,8 @@ import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
-<<<<<<< HEAD
 import warnings
-=======
 from xml.etree import ElementTree as ET
->>>>>>> d42935a08 (Writing all main nodes to a single XML file)
 
 import h5py
 
@@ -234,8 +231,16 @@ class Model:
         model.geometry = \
         openmc.Geometry.from_xml_element(root.find('geometry'), materials)
 
+        # gather meshses from other classes before reading the tally node
+        meshes = {}
+        if model.settings.entropy_mesh is not None:
+            meshes[model.settings.entropy_mesh.id] = model.settings.entropy_mesh
+
+        for ww in model.settings.weight_windows:
+            meshes[ww.mesh.id] = ww.mesh
+
         if root.find('tallies'):
-            model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'))
+            model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
 
         if root.find('plots'):
             model.plots = openmc.Plots.from_xml_element(root.find('plots'))
@@ -524,7 +529,8 @@ class Model:
             # Can be used to modify tallies in case any surfaces are redundant
             redundant_surfaces = self.geometry.remove_redundant_surfaces()
 
-        settings_element = self.settings.to_xml_element()
+        memo = set()
+        settings_element = self.settings.to_xml_element(memo)
         geometry_element = self.geometry.to_xml_element()
 
         # If a materials collection was specified, export it. Otherwise, look
@@ -549,7 +555,7 @@ class Model:
             ET.ElementTree(settings_element).write(fh, encoding='unicode')
 
             if self.tallies:
-                tallies_element = self.tallies.to_xml_element()
+                tallies_element = self.tallies.to_xml_element(memo)
                 ET.ElementTree(tallies_element).write(fh, encoding='unicode')
             if self.plots:
                 plots_element = self.plots.to_xml_element()

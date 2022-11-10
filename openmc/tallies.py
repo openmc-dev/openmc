@@ -3119,17 +3119,17 @@ class Tallies(cv.CheckedList):
         for tally in self:
             root_element.append(tally.to_xml_element())
 
-    def _create_mesh_subelements(self, root_element):
-        already_written = set()
+    def _create_mesh_subelements(self, root_element, memo=None):
+        already_written = memo if memo else set()
         for tally in self:
             for f in tally.filters:
                 if isinstance(f, openmc.MeshFilter):
-                    if f.mesh.id not in already_written:
-                        if len(f.mesh.name) > 0:
-                            root_element.append(ET.Comment(f.mesh.name))
-
-                        root_element.append(f.mesh.to_xml_element())
-                        already_written.add(f.mesh.id)
+                    if f.mesh.id in already_written:
+                        continue
+                    if len(f.mesh.name) > 0:
+                        root_element.append(ET.Comment(f.mesh.name))
+                    root_element.append(f.mesh.to_xml_element())
+                    already_written.add(f.mesh.id)
 
     def _create_filter_subelements(self, root_element):
         already_written = dict()
@@ -3155,11 +3155,11 @@ class Tallies(cv.CheckedList):
         for d in derivs:
             root_element.append(d.to_xml_element())
 
-    def to_xml_element(self):
+    def to_xml_element(self, memo=None):
         """Creates a 'tallies' element to be written to an XML file.
         """
         element = ET.Element("tallies")
-        self._create_mesh_subelements(element)
+        self._create_mesh_subelements(element, memo)
         self._create_filter_subelements(element)
         self._create_tally_subelements(element)
         self._create_derivative_subelements(element)
@@ -3192,7 +3192,7 @@ class Tallies(cv.CheckedList):
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem, meshes=None):
         """Generate tallies from an XML element
 
         Parameters
@@ -3207,7 +3207,7 @@ class Tallies(cv.CheckedList):
 
         """
         # Read mesh elements
-        meshes = {}
+        meshes = {} if meshes is None else meshes
         for e in elem.findall('mesh'):
             mesh = MeshBase.from_xml_element(e)
             meshes[mesh.id] = mesh

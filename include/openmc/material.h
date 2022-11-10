@@ -25,12 +25,24 @@ namespace openmc {
 
 class Material;
 
+struct ThermalTable {
+   int index_table; //!< Index of table in data::thermal_scatt
+   int index_nuclide; //!< Index in nuclide_
+   double fraction; //!< How often to use table
+ };
+
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> material_map;
 #pragma omp declare target
 extern Material* materials;
 extern uint64_t materials_size;
+extern vector2d<int> materials_nuclide;
+extern vector2d<int> materials_element;
+extern vector2d<double> materials_atom_density;
+extern vector2d<int> materials_p0;
+extern vector2d<int> materials_mat_nuclide_index;
+extern vector2d<ThermalTable> materials_thermal_tables;
 #pragma omp end declare target
 
 } // namespace model
@@ -42,14 +54,6 @@ extern uint64_t materials_size;
 class Material
 {
 public:
-  //----------------------------------------------------------------------------
-  // Types
-  struct ThermalTable {
-    int index_table; //!< Index of table in data::thermal_scatt
-    int index_nuclide; //!< Index in nuclide_
-    double fraction; //!< How often to use table
-  };
-
   //----------------------------------------------------------------------------
   // Constructors, destructors, factory functions
   Material() {};
@@ -153,6 +157,16 @@ public:
   void copy_to_device();
   void release_from_device();
 
+  // Serialized global array accessor functions
+  #pragma omp declare target
+  int& nuclide(int i) const {                 return model::materials_nuclide(          index_, i);}
+  int& element(int i) const {                 return model::materials_element(          index_, i);}
+  double& atom_density(int i) const {         return model::materials_atom_density(     index_, i);}
+  int& p0(int i) const {                      return model::materials_p0(               index_, i);}
+  int& mat_nuclide_index(int i)const  {       return model::materials_mat_nuclide_index(index_, i);}
+  ThermalTable& thermal_tables(int i) const { return model::materials_thermal_tables(   index_, i);}
+  #pragma omp end declare target
+
   //----------------------------------------------------------------------------
   // Data
   int32_t id_ {C_NONE}; //!< Unique ID
@@ -160,7 +174,6 @@ public:
   vector<int> nuclide_; //!< Indices in nuclides vector
   vector<int> element_; //!< Indices in elements vector
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
-  double* device_atom_density_;
   double density_; //!< Total atom density in [atom/b-cm]
   double density_gpcc_; //!< Total atom density in [g/cm^3]
   double volume_ {-1.0}; //!< Volume in [cm^3]

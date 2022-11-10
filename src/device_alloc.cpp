@@ -32,7 +32,10 @@ void enforce_assumptions()
 
   // Assertions made when initializing particles
   assert(model::tally_derivs.size() <= FLUX_DERIVS_SIZE);
-  assert(model::n_tally_filters <= FILTER_MATCHES_SIZE);
+  for (auto i = 0; i < model::tallies_size; i++) {
+    assert(model::tallies[i].n_filters() <= FILTER_MATCHES_SIZE);
+    assert(model::tallies[i].estimator_ == TallyEstimator::TRACKLENGTH && "Analog and collision tallies not yet supported on device.");
+  }
   assert(model::n_coord_levels <= COORD_SIZE);
   #ifndef NO_MICRO_XS_CACHE
   assert(data::nuclides_size <= NEUTRON_XS_SIZE);
@@ -198,33 +201,99 @@ void move_read_only_data_to_device()
 
   // Materials /////////////////////////////////////////////////////////
 
-  std::cout << "Moving " << model::materials_size << " materials to device..." << std::endl;
-  int min = 99999;
-  int max = 0;
-  int n_over_200 = 0;
-  int n_under_200 = 0;
+  // Analyze fissionable materials
+  if (mpi::master) {
+    int min = 99999;
+    int max = 0;
+    int n_over_200 = 0;
+    int n_under_200 = 0;
+    for (int i = 0; i < model::materials_size; i++) {
+      if(model::materials[i].fissionable())
+      {
+        int num_nucs = model::materials[i].nuclide_.size();
+        if( num_nucs < min )
+          min = num_nucs;
+        if( num_nucs > max )
+          max = num_nucs;
+        if( num_nucs >= 200 )
+          n_over_200++;
+        else
+          n_under_200++;
+      }
+    }
+    std::cout << " Fissionable Material Statistics:" << std::endl <<
+      "   Max Nuclide Count: " << max << std::endl <<
+      "   Min Nuclide Count: " << min << std::endl <<
+      "   # Fissionable Materials with >= 200 Nuclides: " << n_over_200 << std::endl <<
+      "   # Fissionable Materials with  < 200 Nuclides: " << n_under_200 << std::endl;
+  }
+
+  // Determine size of inner dimension for serialized material vectors
+  for (int i = 0; i < model::materials_size; i++) {
+    const auto& mat = model::materials[i];
+    model::materials_nuclide.stretch(mat.nuclide_);
+    model::materials_element.stretch(mat.element_);
+    model::materials_atom_density.stretch(mat.atom_density_);
+    model::materials_p0.stretch(mat.p0_);
+    model::materials_mat_nuclide_index.stretch(mat.mat_nuclide_index_);
+    model::materials_thermal_tables.stretch(mat.thermal_tables_);
+  }
+
+  // Allocate serialized material vectors
+  model::materials_nuclide.resize2d(model::materials_size);
+  model::materials_element.resize2d(model::materials_size);
+  model::materials_atom_density.resize2d(model::materials_size);
+  model::materials_p0.resize2d(model::materials_size);
+  model::materials_mat_nuclide_index.resize2d(model::materials_size);
+  model::materials_thermal_tables.resize2d(model::materials_size);
+
+  // Populate serialized material vectors
+  for (int i = 0; i < model::materials_size; i++) {
+    auto& mat = model::materials[i];
+    model::materials_nuclide.copy_row(i, mat.nuclide_);
+    model::materials_element.copy_row(i, mat.element_);
+    model::materials_atom_density.copy_row(i, mat.atom_density_);
+    model::materials_p0.copy_row(i, mat.p0_);
+    model::materials_mat_nuclide_index.copy_row(i, mat.mat_nuclide_index_);
+    model::materials_thermal_tables.copy_row(i, mat.thermal_tables_);
+  }
+
+  // Calculate and report memory usage (excluding any ttb_ data)
+  int n_bytes = model::materials_size * sizeof(Material);
+  n_bytes += model::materials_nuclide.nbytes();
+  n_bytes += model::materials_element.nbytes();
+  n_bytes += model::materials_atom_density.nbytes();
+  n_bytes += model::materials_p0.nbytes();
+  n_bytes += model::materials_mat_nuclide_index.nbytes();
+  n_bytes += model::materials_thermal_tables.nbytes();
+  if (mpi::master) {
+    std::cout << " Moving " << model::materials_size << " materials to device of total size: " << n_bytes * 1.0e-6 << " MB" << std::endl;
+  }
+
+  // Update top level global scalars to device
   #pragma omp target update to(model::materials_size)
+  #pragma omp target update to(model::materials_nuclide)
+  #pragma omp target update to(model::materials_element)
+  #pragma omp target update to(model::materials_atom_density)
+  #pragma omp target update to(model::materials_p0)
+  #pragma omp target update to(model::materials_mat_nuclide_index)
+  #pragma omp target update to(model::materials_thermal_tables)
+
+  // Map top level material array to device
   #pragma omp target enter data map(to: model::materials[:model::materials_size])
+
+  // Map ttb_ field arrays, if needed
   for (int i = 0; i < model::materials_size; i++) {
     model::materials[i].copy_to_device();
-    if(model::materials[i].fissionable())
-    {
-      int num_nucs = model::materials[i].nuclide_.size();
-      if( num_nucs < min )
-        min = num_nucs;
-      if( num_nucs > max )
-       max = num_nucs;
-     if( num_nucs >= 200 )
-       n_over_200++;
-     else
-       n_under_200++;
-    }
   }
-  std::cout << "Fissionable Material Statistics:" << std::endl <<
-  " Max Nuclide Count: " << max << std::endl <<
-  " Min Nuclide Count: " << min << std::endl <<
-  " # Fissionable Materials with >= 200 Nuclides: " << n_over_200 << std::endl <<
-  " # Fissionable Materials with  < 200 Nuclides: " << n_under_200 << std::endl;
+
+  // Map serialized material vectors to device
+  model::materials_nuclide.copy_to_device();
+  model::materials_element.copy_to_device();
+  model::materials_atom_density.copy_to_device();
+  model::materials_p0.copy_to_device();
+  model::materials_mat_nuclide_index.copy_to_device();
+  model::materials_thermal_tables.copy_to_device();
 
   // Source Bank ///////////////////////////////////////////////////////
 

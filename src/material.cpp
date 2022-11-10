@@ -41,6 +41,12 @@ namespace model {
 std::unordered_map<int32_t, int32_t> material_map;
 Material* materials;
 uint64_t materials_size;
+vector2d<int> materials_nuclide;
+vector2d<int> materials_element;
+vector2d<double> materials_atom_density;
+vector2d<int> materials_p0;
+vector2d<int> materials_mat_nuclide_index;
+vector2d<ThermalTable> materials_thermal_tables;
 
 } // namespace model
 
@@ -772,7 +778,7 @@ void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
   for (int i = 0; i < nuclide_.size(); ++i) {
 
     // Determine microscopic cross sections for this nuclide
-    int i_nuclide = nuclide_[i];
+    int i_nuclide = nuclide(i);
 
     // If a full particle micro XS cache is being used, point to it
     NuclideMicroXS* cache = nullptr;
@@ -791,7 +797,7 @@ void Material::calculate_neutron_xs(Particle& p, bool need_depletion_rx) const
     }
 
     // Get atom density of nuclide in material
-    double atom_density = device_atom_density_[i];
+    double atom_density = this->atom_density(i);
 
     // Accumulate this nuclide's contribution to the local macro XS variable
     macro.total      += atom_density * nuclide_micro.total;
@@ -823,7 +829,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // CALCULATE MICROSCOPIC CROSS SECTION
 
     // Determine microscopic cross sections for this nuclide
-    int i_element = element_[i];
+    int i_element = element(i);
 
     // Calculate microscopic cross section for this nuclide
     const auto& micro {p.photon_xs_[i_element]};
@@ -835,7 +841,7 @@ void Material::calculate_photon_xs(Particle& p) const
     // ADD TO MACROSCOPIC CROSS SECTION
 
     // Copy atom density of nuclide in material
-    double atom_density = device_atom_density_[i];
+    double atom_density = this->atom_density(i);
 
     // Add contributions to material macroscopic cross sections
     p.macro_xs_.total += atom_density * micro.total;
@@ -1095,24 +1101,11 @@ void Material::add_nuclide(const std::string& name, double density)
 
 void Material::copy_to_device()
 {
-  nuclide_.copy_to_device();
-  element_.copy_to_device();
-  mat_nuclide_index_.copy_to_device();
-  p0_.copy_to_device();
-  device_atom_density_ = atom_density_.data();
-  #pragma omp target enter data map(to: device_atom_density_[:atom_density_.size()])
-  thermal_tables_.copy_to_device();
   ttb_.copy_to_device();
 }
 
 void Material::release_from_device()
 {
-  nuclide_.release_device();
-  element_.release_device();
-  mat_nuclide_index_.release_device();
-  p0_.release_device();
-  #pragma omp target exit data map(release: device_atom_density_[:atom_density_.size()])
-  thermal_tables_.release_device();
   ttb_.release_from_device();
 }
 

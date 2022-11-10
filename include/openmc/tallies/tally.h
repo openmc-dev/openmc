@@ -52,6 +52,8 @@ public:
   const vector<int32_t>& filters() const {return filters_;}
 
   int32_t filters(int i) const {return filters_[i];}
+  
+  int32_t n_filters() const {return filters_.size();}
 
   void set_filters(gsl::span<Filter*> filters);
 

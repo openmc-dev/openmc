@@ -29,8 +29,9 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
 {
   // Find all valid bins in each relevant filter if they have not already been
   // found for this event.
-  for (auto i_filt : tally_.filters()) {
-    auto& match {filter_matches_[i_filt]};
+  for (int filt = 0; filt < tally_.n_filters(); filt++) {
+    auto i_filt = tally_.filters(filt);
+    auto& match {filter_matches_[filt]};
     if (!match.bins_present_) {
       match.bins_weights_length_ = 0;
       model::tally_filters[i_filt].get_all_bins(p, tally_.estimator_, match);
@@ -62,8 +63,9 @@ FilterBinIter::FilterBinIter(const Tally& tally, bool end,
     return;
   }
 
-  for (auto i_filt : tally_.filters()) {
-    auto& match {filter_matches_[i_filt]};
+  for (int filt = 0; filt < tally_.n_filters(); filt++) {
+    auto i_filt = tally_.filters(filt);
+    auto& match {filter_matches_[filt]};
     if (!match.bins_present_) {
       match.bins_weights_length_ = 0;
       for (auto i = 0; i < model::tally_filters[i_filt].n_bins(); ++i) {
@@ -173,8 +175,7 @@ FilterBinIter::operator++()
     // can be incremented.
     bool done_looping = true;
     for (int i = tally_.filters().size()-1; i >= 0; --i) {
-      auto i_filt = tally_.filters(i);
-      auto& match {filter_matches_[i_filt]};
+      auto& match {filter_matches_[i]};
       //if (match.i_bin_ < match.bins_.size()-1) {
       if (match.i_bin_ < match.bins_weights_length_-1) {
         // The bin for this filter can be incremented.  Increment it and do not
@@ -221,8 +222,7 @@ FilterBinIter::compute_index_weight()
     index_ = 0;
     weight_ = 1.;
     for (auto i = 0; i < tally_.filters().size(); ++i) {
-      auto i_filt = tally_.filters(i);
-      auto& match {filter_matches_[i_filt]};
+      auto& match {filter_matches_[i]};
       auto i_bin = match.i_bin_;
       index_ += match.bins_[i_bin] * tally_.strides(i);
       weight_ *= match.weights_[i_bin];
@@ -421,8 +421,9 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 {
   auto& tally {model::tallies[i_tally]};
   auto i_eout_filt = tally.filters()[tally.energyout_filter_];
-  auto i_bin = p.filter_matches_[i_eout_filt].i_bin_;
-  auto bin_energyout = p.filter_matches_[i_eout_filt].bins_[i_bin];
+  auto& match = p.filter_matches_[tally.energyout_filter_];
+  auto i_bin = match.i_bin_;
+  auto bin_energyout = match.bins_[i_bin];
 
   const Filter& eo_filt {model::tally_filters[i_eout_filt]};
 
@@ -457,7 +458,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
       g_out = eo_filt.n_bins() - g_out - 1;
 
       // change outgoing energy bin
-      p.filter_matches_[i_eout_filt].bins_[i_bin] = g_out;
+      match.bins_[i_bin] = g_out;
 
     } else {
 
@@ -474,7 +475,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
       } else {
         auto i_match = lower_bound_index(eo_filt.bins().begin(),
           eo_filt.bins().end(), E_out);
-        p.filter_matches_[i_eout_filt].bins_[i_bin] = i_match;
+        match.bins_[i_bin] = i_match;
       }
 
     }
@@ -487,8 +488,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
       int filter_index = 0;
       double filter_weight = 1.0;
       for (auto j = 0; j < tally.filters().size(); ++j) {
-        auto i_filt = tally.filters(j);
-        auto& match {p.filter_matches_[i_filt]};
+        auto& match {p.filter_matches_[j]};
         auto i_bin = match.i_bin_;
         filter_index += match.bins_[i_bin] * tally.strides(j);
         filter_weight *= match.weights_[i_bin];
@@ -515,8 +515,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
             // Find the filter index and weight for this filter combination
             double filter_weight = 1.;
             for (auto j = 0; j < tally.filters().size(); ++j) {
-              auto i_filt = tally.filters(j);
-              auto& match {p.filter_matches_[i_filt]};
+              auto& match {p.filter_matches_[j]};
               auto i_bin = match.i_bin_;
               filter_weight *= match.weights_[i_bin];
             }
@@ -533,8 +532,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
         int filter_index = 0;
         double filter_weight = 1.;
         for (auto j = 0; j < tally.filters().size(); ++j) {
-          auto i_filt = tally.filters(j);
-          auto& match {p.filter_matches_[i_filt]};
+          auto& match {p.filter_matches_[j]};
           auto i_bin = match.i_bin_;
           filter_index += match.bins_[i_bin] * tally.strides(j);
           filter_weight *= match.weights_[i_bin];
@@ -548,7 +546,7 @@ score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
   }
 
   // Reset outgoing energy bin and score index
-  p.filter_matches_[i_eout_filt].bins_[i_bin] = bin_energyout;
+  match.bins_[i_bin] = bin_energyout;
 }
 
 double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin) {
@@ -2408,9 +2406,9 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
         double reaction[DEPLETION_RX_SIZE];
         if (i_nuclide >= 0) {
           if (p.material_ != MATERIAL_VOID) {
-            auto j = model::materials[p.material_].mat_nuclide_index_[i_nuclide];
+            auto j = model::materials[p.material_].mat_nuclide_index(i_nuclide);
             if (j == C_NONE) continue;
-            atom_density = model::materials[p.material_].device_atom_density_[j];
+            atom_density = model::materials[p.material_].atom_density(j);
             #ifndef NO_MICRO_XS_CACHE
             micro = p.neutron_xs_[i_nuclide];
             #else

@@ -641,7 +641,7 @@ void Nuclide::calculate_xs(int i_log_union, Particle& p, MicroXS* micro, double*
 
   const auto& mat = model::materials[p.material_];
   for (int s = 0; s < mat.thermal_tables_.size(); s++) {
-    const auto& sab {mat.thermal_tables_[s]};
+    const auto& sab {mat.thermal_tables(s)};
     if (index_ == sab.index_nuclide) {
       // Get index in sab_tables
       i_sab = sab.index_table;

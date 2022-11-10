@@ -1127,7 +1127,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 
   // evaluate yield
   double yield = (*rx.products_[0].yield_)(E_in);
-  if (std::floor(yield) == yield) {
+  if (std::floor(yield) == yield && yield > 0) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
       p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType::neutron);

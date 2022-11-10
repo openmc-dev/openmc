@@ -3,10 +3,11 @@ from collections.abc import Iterable
 from copy import deepcopy
 from pathlib import Path
 from xml.etree import ElementTree as ET
+import warnings
 
 import openmc
 import openmc._xml as xml
-from .checkvalue import check_type
+from .checkvalue import check_type, check_less_than, check_greater_than
 
 
 class Geometry:
@@ -25,12 +26,19 @@ class Geometry:
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
+    merge_surfaces : bool
+        Whether to remove redundant surfaces when the geometry is exported.
+    surface_precision : int
+        Number of decimal places to round to for comparing the coefficients of
+        surfaces for considering them topologically equivalent.
 
     """
 
     def __init__(self, root=None):
         self._root_universe = None
         self._offsets = {}
+        self.merge_surfaces = False
+        self.surface_precision = 10
         if root is not None:
             if isinstance(root, openmc.UniverseBase):
                 self.root_universe = root
@@ -48,10 +56,30 @@ class Geometry:
     def bounding_box(self):
         return self.root_universe.bounding_box
 
+    @property
+    def merge_surfaces(self):
+        return self._merge_surfaces
+
+    @property
+    def surface_precision(self):
+        return self._surface_precision
+
     @root_universe.setter
     def root_universe(self, root_universe):
         check_type('root universe', root_universe, openmc.UniverseBase)
         self._root_universe = root_universe
+
+    @merge_surfaces.setter
+    def merge_surfaces(self, merge_surfaces):
+        check_type('merge surfaces', merge_surfaces, bool)
+        self._merge_surfaces = merge_surfaces
+
+    @surface_precision.setter
+    def surface_precision(self, surface_precision):
+        check_type('surface precision', surface_precision, int)
+        check_less_than('surface_precision', surface_precision, 16)
+        check_greater_than('surface_precision', surface_precision, 0)
+        self._surface_precision = surface_precision
 
     def add_volume_information(self, volume_calc):
         """Add volume information from a stochastic volume calculation.
@@ -91,6 +119,11 @@ class Geometry:
         """
         # Find and remove redundant surfaces from the geometry
         if remove_surfs:
+            warnings.warn("remove_surfs kwarg will be deprecated soon, please "
+                          "set the Geometry.merge_surfaces attribute instead.")
+            self.merge_surfaces = True
+
+        if self.merge_surfaces:
             self.remove_redundant_surfaces()
 
         # Create XML representation
@@ -396,28 +429,6 @@ class Geometry:
                 surfaces = cell.region.get_surfaces(surfaces)
         return surfaces
 
-    def get_redundant_surfaces(self):
-        """Return all of the topologically redundant surface IDs
-
-        .. versionadded:: 0.12
-
-        Returns
-        -------
-        dict
-            Dictionary whose keys are the ID of a redundant surface and whose
-            values are the topologically equivalent :class:`openmc.Surface`
-            that should replace it.
-
-        """
-        tally = defaultdict(list)
-        for surf in self.get_all_surfaces().values():
-            coeffs = tuple(surf._coefficients[k] for k in surf._coeff_keys)
-            key = (surf._type,) + coeffs
-            tally[key].append(surf)
-        return {replace.id: keep
-                for keep, *redundant in tally.values()
-                for replace in redundant}
-
     def _get_domains_by_name(self, name, case_sensitive, matching, domain_type):
         if not case_sensitive:
             name = name.lower()
@@ -565,16 +576,42 @@ class Geometry:
         return self._get_domains_by_name(name, case_sensitive, matching, 'lattice')
 
     def remove_redundant_surfaces(self):
-        """Remove redundant surfaces from the geometry"""
+        """Remove and return all of the redundant surfaces.
 
+        Uses surface_precision attribute of Geometry instance for rounding and
+        comparing surface coefficients.
+
+        .. versionadded:: 0.12
+
+        Returns
+        -------
+        redundant_surfaces
+            Dictionary whose keys are the ID of a redundant surface and whose
+            values are the topologically equivalent :class:`openmc.Surface`
+            that should replace it.
+
+        """
         # Get redundant surfaces
-        redundant_surfaces = self.get_redundant_surfaces()
+        redundancies = defaultdict(list)
+        for surf in self.get_all_surfaces().values():
+            coeffs = tuple(round(surf._coefficients[k],
+                                 self.surface_precision)
+                           for k in surf._coeff_keys)
+            key = (surf._type,) + coeffs
+            redundancies[key].append(surf)
 
-        # Iterate through all cells contained in the geometry
-        for cell in self.get_all_cells().values():
-            # Recursively remove redundant surfaces from regions
-            if cell.region:
-                cell.region.remove_redundant_surfaces(redundant_surfaces)
+        redundant_surfaces = {replace.id: keep
+                              for keep, *redundant in redundancies.values()
+                              for replace in redundant}
+
+        if redundant_surfaces:
+            # Iterate through all cells contained in the geometry
+            for cell in self.get_all_cells().values():
+                # Recursively remove redundant surfaces from regions
+                if cell.region:
+                    cell.region.remove_redundant_surfaces(redundant_surfaces)
+
+        return redundant_surfaces
 
     def determine_paths(self, instances_only=False):
         """Determine paths through CSG tree for cells and materials.

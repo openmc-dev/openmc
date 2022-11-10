@@ -670,11 +670,40 @@ class ThermalScattering(EqualityMixin):
                 mu_i = []
                 for j in range(n_energy_out[i]):
                     mu = ace.xss[idx + 4:idx + 4 + n_mu]
+                    # The equiprobable angles produced by NJOY are not always
+                    # sorted. This is problematic when the smearing algorithm
+                    # is applied when sampling the angles. We sort the angles
+                    # here, because they are equiprobable, so the order
+                    # doesn't matter.
+                    mu.sort()
                     p_mu = 1. / n_mu * np.ones(n_mu)
                     mu_ij = Discrete(mu, p_mu)
                     mu_ij.c = np.cumsum(p_mu)
                     mu_i.append(mu_ij)
                     idx += 3 + n_mu
+
+                # Check if the CDF for the outgoing energy distribution starts
+                # at 0. For NJOY and FRENDY evaluations, this is never the case,
+                # and can very rarely lead to negative energies when sampling
+                # the outgoing energy. From Eq. 7.6 of the ENDF manual, we can
+                # add an outgoing energy 0 eV that has a PDF of 0 (and of
+                # course, a CDF of 0 as well).
+                if eout_i.c[0] > 0.:
+                    eout_i.x = np.insert(eout_i.x, 0, 0.)
+                    eout_i.p = np.insert(eout_i.p, 0, 0.)
+                    eout_i.c = np.insert(eout_i.c, 0, 0.)
+
+                    # For this added outgoing energy (of 0 eV) we add a set of
+                    # isotropic discrete angles.
+                    dmu = 2. / n_mu
+                    mu = np.linspace(-1. + 0.5*dmu, 1. - 0.5*dmu, n_mu)
+                    p_mu = 1. / n_mu * np.ones(n_mu)
+                    mu_0 = Discrete(mu, p_mu)
+                    mu_0.c = np.cumsum(p_mu)
+                    mu_i.insert(0, mu_0)
+                # We don't worry about renormalizing the outgoing energy PDF/CDF
+                # after this manipulation, because it never seems to be
+                # normalized to begin with (at least with NJOY).
 
                 energy_out.append(eout_i)
                 mu_out.append(mu_i)

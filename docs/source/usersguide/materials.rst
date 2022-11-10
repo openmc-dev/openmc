@@ -102,6 +102,42 @@ you would need to add hydrogen and oxygen to a material and then assign the
 .. _usersguide_naming:
 
 ------------------
+Adding NCrystal materials
+------------------
+
+Additional support for thermal scattering can be added by using NCrystal_.
+The :meth:`Material.from_ncrystal` class method generates a material object from
+an `NCrystal configuration string <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#uniform-material-configuration-syntax>`_.
+Temperature, material composition and density are passed from the configuration string
+and the `NCMAT file <https://github.com/mctools/ncrystal/wiki/NCMAT-format>`_
+that define the material, e.g:
+
+::
+   
+   mat = openmc.Material.from_ncrystal('Al_sg225.ncmat')
+
+defines a material containing polycrystalline alumnium,
+
+::
+
+   mat = openmc.Material.from_ncrystal(""""Ge_sg227.ncmat;dcutoff=0.5;mos=40arcsec;
+                                           dir1=@crys_hkl:5,1,1@lab:0,0,1;
+                                           dir2=@crys_hkl:0,-1,1@lab:0,1,0""")
+
+defines an oriented germanium single crystal with 40 arcsec mosaicity.
+
+NCrystal only handles low energy neutron interactions. Other interaction are
+provided by standard ACE files. NCrystal_ comes with a `predefined library
+https://github.com/mctools/ncrystal/wiki/Data-library`_ but more materials can
+be added by creating NCMAT files or on-the-fly in the configuration string.
+
+.. warning:: Currently, NCrystal_ materials cannot be modified after created. 
+             Density, temperature and composition should be defined in the 
+             configuration string or the NCMAT file.
+
+.. _NCrystal: https://github.com/mctools/ncrystal
+
+------------------
 Naming Conventions
 ------------------
 
@@ -222,3 +258,4 @@ been generated, you can tell OpenMC to use this file either by setting
    materials.cross_sections = '/path/to/cross_sections.xml'
 
 .. _MCNP: https://mcnp.lanl.gov/
+

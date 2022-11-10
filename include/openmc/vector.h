@@ -6,6 +6,7 @@
 #include <initializer_list>
 #include <iterator> // for reverse_iterator
 #include <utility> // for swap
+#include "xtensor/xtensor.hpp"
 
 #include <omp.h>
 
@@ -137,6 +138,8 @@ public:
     size_ = count;
   }
 
+  size_type nbytes() { return size_ * sizeof(T); }
+
   void reserve(size_type n) {
     if (n <= capacity_) return;
 
@@ -209,7 +212,7 @@ public:
 #pragma GCC diagnostic pop
   }
 
-private:
+protected:
   T* data_;
   size_type size_;
   size_type capacity_;
@@ -388,6 +391,77 @@ void vector<T>::assign(InputIt first, InputIt last)
   }
 }
 
+template<typename T>
+class vector2d : public vector<T> {
+  public:
+  using size_type = std::size_t;
+  using const_iterator = const T*;
+  using reference = T&;
+  using const_reference = const T&;
+  // Constructors, destructors
+  vector2d() :  stride_(0), vector<T>() { }
+  vector2d(size_type n) : vector2d() { this->resize(n); }
+  vector2d(const_iterator begin, const_iterator end);
+  vector2d(std::initializer_list<T> init);
+
+  // 2D Element access
+  reference operator()(size_type outer_pos, size_type pos) { return data_[outer_pos * stride_ + pos]; }
+  const_reference operator()(size_type outer_pos, size_type pos) const { return data_[outer_pos * stride_ + pos]; }
+
+  // Stretching functions.
+  // The idea here is that you should call these on every row you want to add to the
+  // matrix first to determine which is longest, which is kept track of in the stride_
+  // field. We could also add a direct way of setting stride_
+  // down the line, but these stretching functions are useful for finding the material
+  // with the most nuclides, thermal tables, etc, without having to repeat the logic
+  // multiple times elsewhere.
+  void stretch(const vector<T>& vect) {
+    if (vect.size() > stride_) {
+      stride_ = vect.size();
+    }
+  }
+  void stretch(const xt::xtensor<T,1>& vect) {
+    if (vect.size() > stride_) {
+      stride_ = vect.size();
+    }
+  }
+
+  // Allocates a 2d matrix of dimension count x stride_
+  void resize2d(size_type count) {
+    count *= stride_;
+    this->reserve(count);
+    if (size_ < count) {
+      // Default insert new elements
+      for (size_type i = size_; i < count; ++i) {
+        new(data_ + i) T();
+      }
+    } else if (count < size_) {
+      // If new size is smaller, call destructor on erased elements
+      for (size_type i = count; i < size_; ++i) {
+        data_[i].~T();
+      }
+    }
+    size_ = count;
+  }
+
+  // Copies a row of data into the 2D matrix at row i
+  void copy_row(size_type i, const vector<T>& row) {
+    for (int j = 0; j < row.size(); j++) {
+      data_[i * stride_ + j] = row[j];
+    }
+  }
+  void copy_row(size_type i, const xt::xtensor<T,1>& row) {
+    for (int j = 0; j < row.size(); j++) {
+      data_[i * stride_ + j] = row[j];
+    }
+  }
+
+  protected:
+  using vector<T>::data_;
+  using vector<T>::capacity_;
+  using vector<T>::size_;
+  size_type stride_;
+};
 
 } // namespace openmc
 

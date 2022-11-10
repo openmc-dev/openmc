@@ -40,7 +40,7 @@ def test_tallies():
 
     cellborn_tally = Tally()
     cellborn_tally.filters = [
-        CellbornFilter((model.geometry.get_all_cells()[10],
+        CellBornFilter((model.geometry.get_all_cells()[10],
                         model.geometry.get_all_cells()[21],
                         22, 23))]  # Test both Cell objects and ids
     cellborn_tally.scores = ['total']

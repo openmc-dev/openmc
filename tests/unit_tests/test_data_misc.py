@@ -76,15 +76,17 @@ def test_thin():
 
 
 def test_atomic_mass():
-    assert openmc.data.atomic_mass('H1') == 1.00782503224
-    assert openmc.data.atomic_mass('U235') == 235.04392819
+    assert openmc.data.atomic_mass('H1') == 1.007825031898
+    assert openmc.data.atomic_mass('U235') == 235.043928117
+    assert openmc.data.atomic_mass('Li6') == 6.01512288742
+    assert openmc.data.atomic_mass('Pb220') == 220.025905
     with pytest.raises(KeyError):
         openmc.data.atomic_mass('U100')
 
 
 def test_atomic_weight():
-    assert openmc.data.atomic_weight('C') == 12.011115164864455
-    assert openmc.data.atomic_weight('carbon') == 12.011115164864455
+    assert openmc.data.atomic_weight('C') == 12.011115164865895
+    assert openmc.data.atomic_weight('carbon') == 12.011115164865895
     with pytest.raises(ValueError):
         openmc.data.atomic_weight('Qt')
 

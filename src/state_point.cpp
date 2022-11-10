@@ -804,7 +804,7 @@ void write_unstructured_mesh_results()
     vector<std::string> tally_scores;
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
-      if (filter->type() != "mesh")
+      if (filter->type() != FilterType::MESH)
         continue;
 
       // check if the filter uses an unstructured mesh

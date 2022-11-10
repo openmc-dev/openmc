@@ -6,7 +6,8 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
-from typing import Optional, Union
+import typing  # required to prevent typing.Union namespace overwriting Union
+from typing import Optional
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
@@ -582,7 +583,7 @@ class Settings:
         self._max_order = max_order
 
     @source.setter
-    def source(self, source: Union[Source, typing.Iterable[Source]]):
+    def source(self, source: typing.Union[Source, typing.Iterable[Source]]):
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(Source, 'source distributions', source)
@@ -843,7 +844,7 @@ class Settings:
 
     @volume_calculations.setter
     def volume_calculations(
-        self, vol_calcs: Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
+        self, vol_calcs: typing.Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
     ):
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
@@ -889,7 +890,7 @@ class Settings:
         self._write_initial_source = value
 
     @weight_windows.setter
-    def weight_windows(self, value: Union[WeightWindows, typing.Iterable[WeightWindows]]):
+    def weight_windows(self, value: typing.Union[WeightWindows, typing.Iterable[WeightWindows]]):
         if not isinstance(value, MutableSequence):
             value = [value]
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)

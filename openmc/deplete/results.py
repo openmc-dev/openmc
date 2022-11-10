@@ -1,7 +1,8 @@
 import numbers
 import bisect
 import math
-from typing import Iterable, Optional, Tuple, Union
+import typing  # required to prevent typing.Union namespace overwriting Union
+from typing import Iterable, Optional, Tuple
 from warnings import warn
 
 import h5py
@@ -95,7 +96,7 @@ class Results(list):
 
     def get_atoms(
         self,
-        mat: Union[Material, str],
+        mat: typing.Union[Material, str],
         nuc: str,
         nuc_units: str = "atoms",
         time_units: str = "s"
@@ -165,7 +166,7 @@ class Results(list):
 
     def get_reaction_rate(
         self,
-        mat: Union[Material, str],
+        mat: typing.Union[Material, str],
         nuc: str,
         rx: str
     ) -> Tuple[np.ndarray, np.ndarray]:

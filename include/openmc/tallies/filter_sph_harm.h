@@ -25,7 +25,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "sphericalharmonics"; }
+  std::string type_str() const override { return "sphericalharmonics"; }
+  FilterType type() const override { return FilterType::SPHERICAL_HARMONICS; }
 
   void from_xml(pugi::xml_node node) override;
 

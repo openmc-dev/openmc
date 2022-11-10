@@ -126,7 +126,7 @@ void dispatch_xs_event(int buffer_idx)
   if (needs_lookup) {
     // If a lookup is needed, dispatch to fuel vs. non-fuel lookup queue
     if (!model::materials[p.material_].fissionable_) {
-      simulation::calculate_nonfuel_xs_queue.thread_safe_append({p.E_, buffer_idx});
+      simulation::calculate_nonfuel_xs_queue.thread_safe_append({p.E_, p.material_, buffer_idx});
     } else {
       simulation::calculate_fuel_xs_queue.thread_safe_append({p.E_, buffer_idx});
     }
@@ -176,6 +176,9 @@ bool depletion_rx_check()
 
 void process_calculate_xs_events_nonfuel()
 {
+  // Sort non fuel lookup queue by material and energy
+  sort_queue(simulation::calculate_nonfuel_xs_queue);
+
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_nonfuel.start();
 

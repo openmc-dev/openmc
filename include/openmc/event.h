@@ -22,17 +22,16 @@ namespace openmc {
 // result in any benefits if not enough particles are present for them to achieve
 // consistent locality improvements. 
 struct EventQueueItem{
-  int idx;         //!< particle index in event-based particle buffer
-  //Particle::Type type; //!< particle type
-  //int64_t material;    //!< material that particle is in
-  //double E;            //!< particle energy
-  float E;            //!< particle energy
-  //int64_t id;
+  int idx;      //!< particle index in event-based particle buffer
+  int material; //!< material that particle is in
+  float E;      //!< particle energy
 
   // Constructors
   EventQueueItem() = default;
   EventQueueItem(double energy, int buffer_idx) :
-    idx(buffer_idx), E(static_cast<float>(energy)) {}
+    idx(buffer_idx), material(0), E(static_cast<float>(energy)) {}
+  EventQueueItem(double energy, int mat, int buffer_idx) :
+    idx(buffer_idx), material(mat), E(static_cast<float>(energy)) {}
 
   // Compare by particle type, then by material type (4.5% fuel/7.0% fuel/cladding/etc),
   // then by energy.
@@ -46,15 +45,21 @@ struct EventQueueItem{
   #endif
   bool operator<(const EventQueueItem& rhs) const
   {
-    //return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
-    return E < rhs.E;
+    if (material == rhs.material) {
+      return E < rhs.E;
+    } else {
+      return material < rhs.material;
+    }
   }
   
   // This is needed by the implementation of parallel quicksort
   bool operator>(const EventQueueItem& rhs) const
   {
-    //return std::tie(type, material, E) < std::tie(rhs.type, rhs.material, rhs.E);
-    return E > rhs.E;
+    if (material == rhs.material) {
+      return E > rhs.E;
+    } else {
+      return material > rhs.material;
+    }
   }
 };
 

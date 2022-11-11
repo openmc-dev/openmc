@@ -1405,7 +1405,7 @@ class Tally(IDManagerMixin):
 
         return df
 
-    def get_reshaped_data(self, value='mean'):
+    def get_reshaped_data(self, value='mean', expand_dims=False):
         """Returns an array of tally data with one dimension per filter.
 
         The tally data in OpenMC is stored as a 3D array with the dimensions
@@ -1417,17 +1417,24 @@ class Tally(IDManagerMixin):
 
         This builds and returns a reshaped version of the tally data array with
         unique dimensions corresponding to each tally filter. For example,
-        suppose this tally has arrays of data with shape (8,5,5) corresponding
-        to two filters (2 and 4 bins, respectively), five nuclides and five
+        suppose this tally has arrays of data with shape (30,5,5) corresponding
+        to two filters (2 and 15 bins, respectively), five nuclides and five
         scores. This method will return a version of the data array with the
-        with a new shape of (2,4,5,5) such that the first two dimensions
-        correspond directly to the two filters with two and four bins.
+        with a new shape of (2,15,5,5) such that the first two dimensions
+        correspond directly to the two filters with two and fifteen bins. If
+        expand_dims is True and our filter above with 15 bins is an instance of
+        :class:`openmc.MeshFilter` with a shape of (3,5,1). The resulting tally
+        data array will have a new shape of (2,3,5,1,5,5).
 
         Parameters
         ----------
         value : str
             A string for the type of value to return  - 'mean' (default),
             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+        expand_dims : bool, optional
+            Whether or not to expand the dimensions of filters with multiple
+            dimensions. This will result in more than one dimension per filter
+            for the returned data array.
 
         Returns
         -------
@@ -1439,24 +1446,32 @@ class Tally(IDManagerMixin):
         # Get the 3D array of data in filters, nuclides and scores
         data = self.get_values(value=value)
 
-        # Build a new array shape with one dimension per filter
+        # Build a new array shape with one dimension per filter or expand
+        # multidimensional filters if desired
         new_shape = tuple()
         idx0 = None
         for i, f in enumerate(self.filters):
-            # Mesh filter indices are backwards so we need to flip them
-            if isinstance(f, openmc.MeshFilter):
-                fshape = f.shape[::-1]
-                new_shape += fshape
-                idx0, idx1 = i, i + len(fshape) - 1
+            if expand_dims:
+                # Mesh filter indices are backwards so we need to flip them
+                if isinstance(f, openmc.MeshFilter):
+                    fshape = f.shape[::-1]
+                    new_shape += fshape
+                    idx0, idx1 = i, i + len(fshape) - 1
+                else:
+                    new_shape += f.shape
             else:
-                new_shape += f.shape
+                new_shape += (np.prod(f.shape),)
 
         new_shape += (self.num_nuclides, self.num_scores)
 
         # Reshape the data with one dimension for each filter
         data = np.reshape(data, new_shape)
+
+        # If we had a MeshFilter we should swap the axes to have the same shape
+        # for the data and the filter
         if idx0 is not None:
             data = np.swapaxes(data, idx0, idx1)
+
         return data
 
     def hybrid_product(self, other, binary_op, filter_product=None,

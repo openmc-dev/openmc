@@ -266,6 +266,14 @@ if (NOT gsl-lite_FOUND)
 endif()
 
 #===============================================================================
+# Catch2 library
+#===============================================================================
+find_package_write_status(Catch2)
+if (NOT Catch2)
+  add_subdirectory(vendor/Catch2)
+endif()
+
+#===============================================================================
 # RPATH information
 #===============================================================================
 
@@ -481,6 +489,10 @@ endif()
 if (OPENMC_USE_MPI)
   target_link_libraries(libopenmc MPI::MPI_CXX)
 endif()
+
+# Add cpp tests directory
+include(CTest)
+add_subdirectory(tests/cpp_unit_tests)
 
 #===============================================================================
 # openmc executable

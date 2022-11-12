@@ -48,14 +48,13 @@ public:
   // Properties
   const vector<double>& x() const { return x_; }
   const vector<double>& p() const { return p_; }
+  const vector<size_t>& alias() const { return alias_; }
 
 private:
   vector<double> x_; //!< Possible outcomes
-  vector<double> p_; //!< Probability of each outcome
-  
-  //! Alies method tables
-  vector<double> prob_; 
-  vector<double> alias_;
+  vector<double>
+    p_; //!< Probability of each outcome, mapped to alias method table
+  vector<size_t> alias_; //!< Alias table
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();

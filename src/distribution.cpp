@@ -38,17 +38,16 @@ Discrete::Discrete(const double* x, const double* p, int n)
   normalize();
 
   // Vectors for large and small probabilities based on 1/n
-  vector<int> large;
-  vector<int> small;
+  vector<size_t> large;
+  vector<size_t> small;
 
   // Set and allocate memory
-  prob_ = p_;
   alias_.reserve(n);
 
   // Fill large and small vectors based on 1/n
   for (int i = 0; i < n; i++) {
-    prob_[i] *= n;
-    if (prob_[i] > 1.0) {
+    p_[i] *= n;
+    if (p_[i] > 1.0) {
       large.push_back(i);
     } else {
       small.push_back(i);
@@ -63,11 +62,11 @@ Discrete::Discrete(const double* x, const double* p, int n)
     small.pop_back();
 
     // Update probability and alias based on Vose's algorithm
-    prob_[k] += prob_[j] - 1;
+    p_[k] += p_[j] - 1.0;
     alias_[j] = k;
 
     // Remove last vector element and or move large index to small vector
-    if (prob_[k] < 1.0) {
+    if (p_[k] < 1.0) {
       small.push_back(k);
       large.pop_back();
     }
@@ -76,10 +75,11 @@ Discrete::Discrete(const double* x, const double* p, int n)
 
 double Discrete::sample(uint64_t* seed) const
 {
+  // Alias sampling of discrete distribution
   int n = x_.size();
   if (n > 1) {
     int u = prn(seed) * n;
-    if (prn(seed) < prob_[u]) {
+    if (prn(seed) < p_[u]) {
       return x_[u];
     } else {
       return x_[alias_[u]];

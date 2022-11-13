@@ -680,6 +680,22 @@ void Tally::accumulate()
   }
 }
 
+int Tally::score_index(const std::string& score) const {
+
+  // call to create a vector of strings for the tally scores
+  auto tally_scores = scores();
+
+  auto score_it = std::find(tally_scores.begin(), tally_scores.end(), score);
+
+  int out = score_it - tally_scores.begin();
+
+  if (score_it == tally_scores.end()) {
+    return -1;
+  }
+
+  return score_it - tally_scores.begin();
+}
+
 std::string Tally::score_name(int score_idx) const
 {
   if (score_idx < 0 || score_idx >= scores_.size()) {

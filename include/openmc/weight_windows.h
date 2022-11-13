@@ -11,6 +11,7 @@
 #include "openmc/memory.h"
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -93,6 +94,12 @@ public:
   void set_mesh(const Mesh* mesh);
 
   void set_mesh(int32_t mesh_idx);
+
+  // ! Update weight window boundaries using tally results
+  void update_weight_windows(const std::unique_ptr<Tally>& tally,
+                             const std::string& score,
+                             const std::string& value,
+                             const std::string& method);
 
   // NOTE: This is unused for now but may be used in the future
   //! Write weight window settings to an HDF5 file

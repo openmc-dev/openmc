@@ -239,9 +239,8 @@ void WeightWindows::set_id(int32_t id)
 
 void WeightWindows::set_mesh(int32_t mesh_idx)
 {
-
-  if (mesh_idx < 0 || mesh_idx_ > model::meshes.size())
-    fatal_error(fmt::format("Failed to find a mesh for index {}", mesh_idx));
+  if (mesh_idx < 0 || mesh_idx > model::meshes.size())
+    fatal_error(fmt::format("Could not find a mesh for index {}", mesh_idx));
 
   mesh_idx_ = mesh_idx;
 }
@@ -345,6 +344,26 @@ void WeightWindows::set_weight_windows(
   }
 }
 
+void WeightWindows::  update_weight_windows(const std::unique_ptr<Tally>& tally,
+                                          const std::string& score,
+                                          const std::string& value,
+                                          const std::string& method) {
+  // gather information from the tally (assume one group for now)
+  int score_index = tally->score_index(score);
+
+  // sum results over all nuclides and select results related to a single score
+  auto score_view =
+    xt::view(tally->results(), xt::all(), score_index, TallyResult::SUM);
+
+  // now generate new weight window values
+  double score_max = *std::max(score_view.begin(), score_view.end());
+
+  // normalize the score by the max value
+  xt::xarray<double> lower_bounds(score_view);
+
+  this->set_weight_windows(lower_bounds, 5.0);
+}
+
 void WeightWindows::to_hdf5(hid_t group) const
 {
   hid_t ww_group = create_group(group, fmt::format("weight_windows {}", id_));
@@ -403,11 +422,10 @@ extern "C" int openmc_set_weight_windows(
 extern "C" int openmc_update_weight_windows(int tally_idx, int ww_idx,
   const char* score, const char* value, const char* method)
 {
-
   // get the requested tally
   const auto& tally = model::tallies.at(tally_idx);
 
-  // check for a
+  // get the WeightWindows object
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
 
   // check the tally filters. We currently require that the tally can only have
@@ -419,27 +437,14 @@ extern "C" int openmc_update_weight_windows(int tally_idx, int ww_idx,
   }
 
   // ensure the provided score is valid
-  auto tally_scores = tally->scores();
-  auto score_it = std::find(tally_scores.begin(), tally_scores.end(), score);
-  if (score_it == tally->scores().end()) {
+  int score_idx = tally->score_index(score);
+  if (score_idx == -1) {
     set_errmsg(fmt::format(
       "The score '{}' could not be found on tally {}", score, tally->id()));
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  // gather information from the tally (assume one group for now)
-  int score_idx = score_it - tally_scores.begin();
-  // sum results over all nuclides and select results related to a single score
-  auto score_view =
-    xt::view(tally->results(), xt::all(), score_idx, TallyResult::SUM);
-
-  // now generate new weight window values
-  double score_max = *std::max(score_view.begin(), score_view.end());
-
-  // normalize the score by the max value
-  xt::xarray<double> lower_bounds(score_view);
-
-  wws->set_weight_windows(lower_bounds, 5.0);
+  wws->update_weight_windows(tally, score, value, method);
 
   return 0;
 }

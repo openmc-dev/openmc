@@ -1,3 +1,4 @@
+
 #ifndef OPENMC_TALLIES_TALLY_H
 #define OPENMC_TALLIES_TALLY_H
 
@@ -82,6 +83,8 @@ public:
   void reset();
 
   void accumulate();
+
+  int score_index(const std::string& score) const;
 
   //! A string representing the i-th score on this tally
   std::string score_name(int score_idx) const;

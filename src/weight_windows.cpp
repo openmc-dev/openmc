@@ -184,7 +184,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
       fmt::format("In weight window domain {} the number of spatial "
                   "energy/spatial bins ({}) does not match the number "
                   "of weight bins ({})",
-        id_, num_energy_bins, num_weight_bins);
+        id_, num_energy_bins * num_spatial_bins, num_weight_bins);
     fatal_error(err_msg);
   }
 }

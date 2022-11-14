@@ -1,5 +1,7 @@
 #include "openmc/weight_windows.h"
 
+#include <set>
+
 #include "xtensor/xview.hpp"
 
 #include "openmc/error.h"
@@ -344,10 +346,20 @@ void WeightWindows::set_weight_windows(
   }
 }
 
-void WeightWindows::  update_weight_windows(const std::unique_ptr<Tally>& tally,
+void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
                                           const std::string& score,
                                           const std::string& value,
                                           const std::string& method) {
+  // set of allowed filters
+  const std::set<FilterType> allowed_filters = {FilterType::MESH, FilterType::ENERGY};
+
+  for (auto f_idx : tally->filters()) {
+    const auto& f = model::tally_filters[f_idx];
+    if (allowed_filters.find(f->type()) == allowed_filters.end()) {
+      fatal_error(fmt::format("Invalid filter type '{}' found on tally used for weight window generation.", f->type_str()));
+    }
+  }
+
   // gather information from the tally (assume one group for now)
   int score_index = tally->score_index(score);
 

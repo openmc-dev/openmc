@@ -239,6 +239,13 @@ void WeightWindows::set_id(int32_t id)
   variance_reduction::ww_map[id] = index_;
 }
 
+
+void WeightWindows::set_energy_bounds(gsl::span<double const> bounds) {
+  energy_bounds_.clear();
+  energy_bounds_.insert(energy_bounds_.begin(), bounds.begin(), bounds.end());
+  // TODO: check that sizes still make sense
+}
+
 void WeightWindows::set_mesh(int32_t mesh_idx)
 {
   if (mesh_idx < 0 || mesh_idx > model::meshes.size())
@@ -353,11 +360,16 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   // set of allowed filters
   const std::set<FilterType> allowed_filters = {FilterType::MESH, FilterType::ENERGY};
 
-  for (auto f_idx : tally->filters()) {
-    const auto& f = model::tally_filters[f_idx];
+  std::map<FilterType, int> filter_indices;
+
+
+  for (int i = 0; i < tally->filters().size(); i ++) {
+    const auto& f = model::tally_filters[tally->filters(i)];
     if (allowed_filters.find(f->type()) == allowed_filters.end()) {
-      fatal_error(fmt::format("Invalid filter type '{}' found on tally used for weight window generation.", f->type_str()));
+      fatal_error(fmt::format("Invalid filter type '{}' found on tally "
+                              "used for weight window generation.", f->type_str()));
     }
+    filter_indices[f->type()] = i;
   }
 
   // gather information from the tally (assume one group for now)
@@ -367,13 +379,37 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   auto score_view =
     xt::view(tally->results(), xt::all(), score_index, TallyResult::SUM);
 
-  // now generate new weight window values
-  double score_max = *std::max(score_view.begin(), score_view.end());
+  // re-shape results into a new xtensor
+  std::array<uint64_t, 2> shape = {1, 1};
+  for (int i = 0; i < filter_indices.size(); i++) {
+    const auto& f = model::tally_filters[tally->filters(i)];
+    shape[i] = f->n_bins();
+  }
 
-  // normalize the score by the max value
-  xt::xarray<double> lower_bounds(score_view);
+  xt::xtensor<double, 2> tt(shape);
 
-  this->set_weight_windows(lower_bounds, 5.0);
+  // apply the score view results to this xtensor
+  // TODO: this is a big copy. Might want to figure out a way to
+  // reduce memory usage here.
+  tt = score_view;
+  tt.reshape(shape);
+
+  // move energy axis to the front
+  auto e_view = xt::roll(tt, filter_indices[FilterType::ENERGY]);
+
+  int e_shape = shape[filter_indices[FilterType::ENERGY]];
+
+  for (int e = 0; e < e_shape; e++) {
+    // select all
+    auto group_view = xt::view(e_view, e, xt::all());
+
+    double score_max = *std::max(group_view.begin(), group_view.end());
+
+    // normalize values in this energy group by the maximum value in the group
+    group_view /= score_max;
+  }
+
+  this->set_weight_windows(tt, 5.0);
 }
 
 void WeightWindows::to_hdf5(hid_t group) const

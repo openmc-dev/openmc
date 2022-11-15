@@ -987,16 +987,16 @@ class Material(IDManagerMixin):
 
         return activity if by_nuclide else sum(activity.values())
     
-    def get_decayheat(self, units: str = 'W', by_nuclide: bool = False):
+    def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False):
         """Returns the decay heat of the material or for each nuclide in the
         material in units of [W], [W/g] or [W/cm3].
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.13.3
 
         Parameters
         ----------
         units : {'W', 'W/g', 'W/cm3'}
-            Specifies the type of decay heat to return, options include total
+            Specifies the units of decay heat to return. Options include total
             heat [W], specific [W/g] or volumetric heat [W/cm3].
             Default is total heat [W].
         by_nuclide : bool
@@ -1006,7 +1006,7 @@ class Material(IDManagerMixin):
         Returns
         -------
         Union[dict, float]
-            If by_nuclide is True then a dictionary whose keys are nuclide
+            If `by_nuclide` is True then a dictionary whose keys are nuclide
             names and values are decay heat is returned. Otherwise the decay heat
             of the material is returned as a float.
         """
@@ -1024,12 +1024,9 @@ class Material(IDManagerMixin):
         decayheat = {} 
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             decay_erg = openmc.data.decay_energy(nuclide)
-            if decay_erg is None: 
-                decayheat[nuclide] = 0.
-            else:
-                inv_seconds = openmc.data.decay_constant(nuclide)
-                decay_erg *= openmc.data.JOULE_PER_EV
-                decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
+            inv_seconds = openmc.data.decay_constant(nuclide)
+            decay_erg *= openmc.data.JOULE_PER_EV
+            decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
 
         return decayheat if by_nuclide else sum(decayheat.values()) 
     

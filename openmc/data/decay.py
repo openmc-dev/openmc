@@ -631,7 +631,7 @@ def decay_energy(nuclide: str):
     for the first time, you need to ensure that a depletion chain has been
     specified in openmc.config['chain_file'].
 
-    .. versionadded:: 0.14.0
+    .. versionadded:: 0.13.3
 
     Parameters
     ----------
@@ -641,7 +641,8 @@ def decay_energy(nuclide: str):
     Returns
     -------
     float
-        Decay energy of isotope in [eV].
+        Decay energy of nuclide in [eV]. If the nuclide is stable, a value of
+        0.0 is returned.
     """
     if not _DECAY_ENERGY:
         chain_file = openmc.config.get('chain_file')
@@ -661,6 +662,6 @@ def decay_energy(nuclide: str):
         if not _DECAY_ENERGY:
             warn(f"Chain file '{chain_file}' does not have any decay energy.")
 
-    return _DECAY_ENERGY.get(nuclide)
+    return _DECAY_ENERGY.get(nuclide, 0.0)
 
 

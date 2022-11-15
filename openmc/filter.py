@@ -847,6 +847,8 @@ class MeshFilter(Filter):
 
     @property
     def shape(self):
+        if isinstance(self, MeshSurfaceFilter):
+            return (self.num_bins,)
         return self.mesh.dimension
 
     @property
@@ -968,8 +970,6 @@ class MeshSurfaceFilter(MeshFilter):
 
     Attributes
     ----------
-    bins : Integral
-        The mesh ID
     mesh : openmc.MeshBase
         The mesh object that events will be tallied onto
     translation : Iterable of float
@@ -978,10 +978,8 @@ class MeshSurfaceFilter(MeshFilter):
     id : int
         Unique identifier for the filter
     bins : list of tuple
-
         A list of mesh indices / surfaces for each filter bin, e.g. [(1, 1,
         'x-min out'), (1, 1, 'x-min in'), ...]
-
     num_bins : Integral
         The number of filter bins
 

@@ -362,7 +362,6 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
 
   std::map<FilterType, int> filter_indices;
 
-
   for (int i = 0; i < tally->filters().size(); i ++) {
     const auto& f = model::tally_filters[tally->filters(i)];
     if (allowed_filters.find(f->type()) == allowed_filters.end()) {
@@ -386,16 +385,16 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
     shape[i] = f->n_bins();
   }
 
-  xt::xtensor<double, 2> tt(shape);
+  xt::xtensor<double, 2> lower_bounds(shape);
 
   // apply the score view results to this xtensor
   // TODO: this is a big copy. Might want to figure out a way to
   // reduce memory usage here.
-  tt = score_view;
-  tt.reshape(shape);
+  lower_bounds = score_view;
+  lower_bounds.reshape(shape);
 
   // move energy axis to the front
-  auto e_view = xt::roll(tt, filter_indices[FilterType::ENERGY]);
+  auto e_view = xt::roll(lower_bounds, filter_indices[FilterType::ENERGY]);
 
   int e_shape = shape[filter_indices[FilterType::ENERGY]];
 
@@ -403,13 +402,13 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
     // select all
     auto group_view = xt::view(e_view, e, xt::all());
 
-    double score_max = *std::max(group_view.begin(), group_view.end());
+    double group_max = *std::max(group_view.begin(), group_view.end());
 
     // normalize values in this energy group by the maximum value in the group
-    group_view /= score_max;
+    group_view /= group_max;
   }
 
-  this->set_weight_windows(tt, 5.0);
+  this->set_weight_windows(lower_bounds, 5.0);
 }
 
 void WeightWindows::to_hdf5(hid_t group) const

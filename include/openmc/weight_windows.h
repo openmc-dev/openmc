@@ -89,7 +89,7 @@ public:
   //! Set the weight window ID
   void set_id(int32_t id = -1);
 
-  void set_energy_bounds(gsl::span<double> bounds);
+  void set_energy_bounds(gsl::span<const double> bounds);
 
   void set_mesh(const std::unique_ptr<Mesh>& mesh);
 
@@ -119,8 +119,6 @@ public:
 
   void set_weight_windows(
     gsl::span<const double> lower_bounds, double bound_ratio);
-
-  void set_energy_bounds(gsl::span<const double> e_bounds);
 
   // Accessors
   int32_t id() const { return id_; }

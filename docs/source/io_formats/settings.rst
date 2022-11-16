@@ -767,6 +767,15 @@ certain surfaces and write out the source bank in a separate file called
 
     *Default*: None
 
+  :mcpl:
+    An optional boolean which indicates if the banked particle should
+    be written to a file in the MCPL-format (documented in mcpl_).
+    instead of the native hdf5-based format.
+
+    *Default*: false
+
+    .. _mcpl: https://mctools.github.io/mcpl/mcpl.pdf
+
 ------------------------------
 ``<survival_biasing>`` Element
 ------------------------------

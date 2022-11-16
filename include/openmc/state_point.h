@@ -26,7 +26,7 @@ void restart_set_keff();
 void write_unstructured_mesh_results();
 
 #ifdef OPENMC_MCPL
-void write_mcpl_source_point(const char *filename_, bool surf_source_bank = false);
+void write_mcpl_source_point(const char* filename, bool surf_source_bank = false);
 void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank);
 #endif
 

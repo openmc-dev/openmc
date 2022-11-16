@@ -150,7 +150,7 @@ class IndependentOperator(OpenMCOperator):
     @classmethod
     def from_nuclides(cls, volume, nuclides,
                       micro_xs,
-                      chain_file,
+                      chain_file=None,
                       nuc_units='atom/b-cm',
                       keff=None,
                       normalization_mode='fission-q',
@@ -170,9 +170,9 @@ class IndependentOperator(OpenMCOperator):
             values.
         micro_xs : MicroXS
             One-group microscopic cross sections.
-        chain_file : str
+        chain_file : str, optional
             Path to the depletion chain XML file.
-        nuc_units : {'atom/cm3', 'atom/b-cm'}
+        nuc_units : {'atom/cm3', 'atom/b-cm'}, optional
             Units for nuclide concentration.
         keff : 2-tuple of float, optional
            keff eigenvalue and uncertainty from transport calculation.

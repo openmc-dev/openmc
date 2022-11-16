@@ -24,7 +24,6 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type_str() const override { return "azimuthal"; }
   FilterType type() const override { return FilterType::AZIMUTHAL; }
 
   void from_xml(pugi::xml_node node) override;

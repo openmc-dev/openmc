@@ -25,7 +25,6 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type_str() const override { return "delayedgroup"; }
   FilterType type() const override { return FilterType::DELAYED_GROUP; }
 
   void from_xml(pugi::xml_node node) override;

@@ -37,6 +37,7 @@
 // explicit template instantiation definition
 template class openmc::vector<openmc::FilterMatch>;
 
+
 namespace openmc {
 
 //==============================================================================
@@ -47,6 +48,34 @@ namespace model {
 std::unordered_map<int, int> filter_map;
 vector<unique_ptr<Filter>> tally_filters;
 } // namespace model
+
+std::unordered_map<FilterType, std::string> filter_type_strings = {
+  {FilterType::AZIMUTHAL, "azimuthal"},
+  {FilterType::CELLBORN, "cellborn"},
+  {FilterType::CELLFROM, "cellfrom"},
+  {FilterType::CELL, "cell"},
+  {FilterType::CELL_INSTANCE, "cellinstance"},
+  {FilterType::COLLISION, "collision"},
+  {FilterType::DELAYED_GROUP, "delayedgroup"},
+  {FilterType::DISTRIBCELL, "distribcell"},
+  {FilterType::ENERGY_FUNCTION, "energyfunction"},
+  {FilterType::ENERGY, "energy"},
+  {FilterType::ENERGY_OUT, "energy_out"},
+  {FilterType::LEGENDRE, "legendre"},
+  {FilterType::MATERIAL, "material"},
+  {FilterType::MESH, "mesh"},
+  {FilterType::MESH_SURFACE, "meshsurface"},
+  {FilterType::MU, "mu"},
+  {FilterType::PARTICLE, "particle"},
+  {FilterType::POLAR, "polar"},
+  {FilterType::SPHERICAL_HARMONICS, "sphericalharmonics"},
+  {FilterType::SPATIAL_LEGENDRE, "spatiallegendre"},
+  {FilterType::SURFACE, "surface"},
+  {FilterType::TIME, "time"},
+  {FilterType::UNIVERSE, "universe"},
+  {FilterType::ZERNIKE, "zernike"},
+  {FilterType::ZERNIKE_RADIAL, "zernikeradial"}
+};
 
 //==============================================================================
 // Non-member functions

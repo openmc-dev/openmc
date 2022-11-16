@@ -24,7 +24,6 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type_str() const override { return "mesh"; }
   FilterType type() const override { return FilterType::MESH; }
 
   void from_xml(pugi::xml_node node) override;

@@ -57,8 +57,17 @@ public:
   //! returns vector of indices corresponding to the tally this is called on
   const vector<int32_t>& filters() const { return filters_; }
 
+  //! returns a vector of filter types for the tally
+  vector<FilterType> filter_types() const;
+
+  //! returns a mapping of filter types to index into the tally's filters
+  std::unordered_map<FilterType, int32_t> filter_indices() const;
+
   //! \brief Returns the tally filter at index i
   int32_t filters(int i) const { return filters_[i]; }
+
+  //! \brief Check if this tally has a specified type of filter
+  bool has_filter(FilterType filter_type) const;
 
   void set_filters(gsl::span<Filter*> filters);
 

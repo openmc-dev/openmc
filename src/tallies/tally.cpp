@@ -354,6 +354,27 @@ void Tally::set_id(int32_t id)
   model::tally_map[id] = index_;
 }
 
+vector<FilterType> Tally::filter_types() const {
+  std::vector<FilterType> filter_types;
+  for (auto f : this->filters()) filter_types.push_back(model::tally_filters[f]->type());
+  return filter_types;
+}
+
+std::unordered_map<FilterType, int32_t> Tally::filter_indices() const {
+  std::unordered_map<FilterType, int> filter_indices;
+  for (int i = 0; i < this->filters().size(); i++) {
+    const auto& f = model::tally_filters[this->filters(i)];
+
+    filter_indices[f->type()] = i;
+  }
+  return filter_indices;
+}
+
+bool Tally::has_filter(FilterType filter_type) const {
+  auto filter_types = this->filter_types();
+  return std::find(filter_types.begin(), filter_types.end(), filter_type) != filter_types.end();
+}
+
 void Tally::set_filters(gsl::span<Filter*> filters)
 {
   // Clear old data.

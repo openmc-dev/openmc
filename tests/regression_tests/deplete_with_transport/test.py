@@ -122,8 +122,18 @@ def test_full(run_in_tmpdir, problem, multiproc):
     n_tallies = np.empty(N + 1, dtype=int)
 
     # Get statepoint files for all BOS points and EOL
+    runtimes = {}
     for n in range(N + 1):
         statepoint = openmc.StatePoint(f"openmc_simulation_n{n}.h5")
+        runtime = statepoint.runtime
+        if n == 0:
+            for measure, time in runtime.items():
+                runtimes.update({measure: np.array([time])})
+        else:
+            for measure, time in runtime.items():
+                current = runtimes[measure]
+                updated = np.append(current, time)
+                runtimes.update({measure: updated})
         k_n = statepoint.keff
         k_state[n] = [k_n.nominal_value, k_n.std_dev]
         n_tallies[n] = len(statepoint.tallies)
@@ -133,6 +143,18 @@ def test_full(run_in_tmpdir, problem, multiproc):
 
     # Check that no additional tallies are loaded from the files
     assert np.all(n_tallies == 0)
+
+    # Check that runtimes are qualitatively correct
+    assert runtimes['reading cross sections'][0] != 0
+    assert runtimes['total initialization'][0] != 0
+    assert np.all(runtimes['reading cross sections'][1:] == 0)
+    assert np.all(runtimes['total initialization'][1:] == 0)
+    assert np.all(runtimes['inactive batches'] == 0)
+    del runtimes['reading cross sections']
+    del runtimes['total initialization']
+    del runtimes['inactive batches']
+    for measure, times in runtimes.items():
+        assert np.all(times != 0)
 
 
 def test_depletion_results_to_material(run_in_tmpdir, problem):

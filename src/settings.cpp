@@ -36,6 +36,13 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+#ifdef NCRYSTAL
+const bool NCRYSTAL_ENABLED = true;
+#else
+const bool NCRYSTAL_ENABLED = false;
+#endif
+
+
 namespace settings {
 
 // Default values for boolean flags

@@ -1,6 +1,13 @@
 import numpy as np
 import openmc
+import openmc.lib
+import pytest
+
 from tests.testing_harness import PyAPITestHarness
+
+pytestmark = pytest.mark.skipif(
+    not openmc.lib._ncrystal_enabled(),
+    reason="NCrystal materials are not enabled.")
 
 def compute_angular_distribution(cfg, E0, N):
     """Return a openmc.model.Model() object for a monoenergetic pencil

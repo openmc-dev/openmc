@@ -20,6 +20,8 @@ namespace openmc {
 // Global variable declarations
 //==============================================================================
 
+extern "C" const bool NCRYSTAL_ENABLED;
+
 namespace settings {
 
 // Boolean flags

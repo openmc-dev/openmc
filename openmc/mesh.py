@@ -165,7 +165,7 @@ class StructuredMesh(MeshBase):
         pass
 
     @property
-    def vertices(self):  # TODO needs changing
+    def vertices(self):
         """Return coordinates of mesh vertices.
 
         Returns
@@ -178,7 +178,7 @@ class StructuredMesh(MeshBase):
         return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
 
     @property
-    def centroids(self):  # TODO needs changing
+    def centroids(self):
         """Return coordinates of mesh element centroids.
 
         Returns

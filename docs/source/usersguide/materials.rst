@@ -127,8 +127,8 @@ defines a material containing polycrystalline alumnium,
 defines an oriented germanium single crystal with 40 arcsec mosaicity.
 
 NCrystal only handles low energy neutron interactions. Other interaction are
-provided by standard ACE files. NCrystal_ comes with a `predefined library
-https://github.com/mctools/ncrystal/wiki/Data-library`_ but more materials can
+provided by standard ACE files. NCrystal_ comes with a `predefined library 
+<https://github.com/mctools/ncrystal/wiki/Data-library>`_ but more materials can
 be added by creating NCMAT files or on-the-fly in the configuration string.
 
 .. warning:: Currently, NCrystal_ materials cannot be modified after created. 

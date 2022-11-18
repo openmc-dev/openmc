@@ -190,8 +190,8 @@ and further extend the physics `using plugins`_. Thermal scattering kernels are 
 the fly from dynamic and structural data, or loaded from :math:`S(\alpha,\beta)` tables converted
 from ENDF6 evaluations. These kernels are sampled in a direct way using a fast `rejection algorithm`_ 
 that does not require previous processing. A `large library` of materials is already included in
-the NCrystal distribution, and new materials can be easily defined from scratch in the `NCMAT format`
-or `combining existing files`.
+the NCrystal distribution, and new materials can be easily defined from scratch in the `NCMAT format`_
+or `combining existing files`_.
 
 The compositions of the materials defined in NCrystal are passed on to OpenMC all other reactions 
 except for thermal neutron scattering are handled by continuous energy ACE libraries.

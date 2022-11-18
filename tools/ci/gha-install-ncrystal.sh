@@ -28,6 +28,7 @@ cmake \
     -DEMBED_DATA=ON \
     -DINSTALL_DATA=OFF \
     -DNO_DIRECT_PYMODINST=ON \
+    -DCMAKE_INSTALL_PREFIX="${INST_DIR}" \
     -DPython3_EXECUTABLE="$PYTHON"
 
 make -j${CPU_COUNT:-1}
@@ -60,3 +61,6 @@ liblocation = pathlib.Path('${TMPNCRYSTALLIBLOCATION}'.strip())
 EOF
 
 $PYTHON -m pip install ./ncrystal_pypkg/ -vv
+
+setup ${INST_DIR}/setup.sh
+

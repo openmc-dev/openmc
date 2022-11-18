@@ -19,7 +19,7 @@ def which(program):
     return None
 
 
-def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
+def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrystal=False):
     # Create build directory and change to it
     shutil.rmtree('build', ignore_errors=True)
     os.mkdir('build')
@@ -54,6 +54,9 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
         libmesh_path = os.environ.get('HOME') + '/LIBMESH'
         cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + libmesh_path)
 
+    if ncrystal:
+        cmake_cmd.append('-DOPENMC_USE_NCRYSTAL=ON')
+
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
 
@@ -70,10 +73,11 @@ def main():
     mpi = (os.environ.get('MPI') == 'y')
     phdf5 = (os.environ.get('PHDF5') == 'y')
     dagmc = (os.environ.get('DAGMC') == 'y')
+    ncrystal = (os.environ.get('NCRYSTAL') == 'y')
     libmesh = (os.environ.get('LIBMESH') == 'y')
 
     # Build and install
-    install(omp, mpi, phdf5, dagmc, libmesh)
+    install(omp, mpi, phdf5, dagmc, libmesh, ncrystal)
 
 if __name__ == '__main__':
     main()

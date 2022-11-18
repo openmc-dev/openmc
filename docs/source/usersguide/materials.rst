@@ -114,13 +114,13 @@ that define the material, e.g:
 
 ::
    
-   mat = openmc.Material.from_ncrystal('Al_sg225.ncmat')
+   mat = openmc.Material.from_ncrystal('Al_sg225.ncmat;temp=300K')
 
 defines a material containing polycrystalline alumnium,
 
 ::
 
-   mat = openmc.Material.from_ncrystal(""""Ge_sg227.ncmat;dcutoff=0.5;mos=40arcsec;
+   mat = openmc.Material.from_ncrystal("""Ge_sg227.ncmat;dcutoff=0.5;mos=40arcsec;
                                            dir1=@crys_hkl:5,1,1@lab:0,0,1;
                                            dir2=@crys_hkl:0,-1,1@lab:0,1,0""")
 

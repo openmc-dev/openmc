@@ -172,10 +172,10 @@ class StructuredMesh(MeshBase):
         -------
         vertices : numpy.ndarray
             Returns a numpy.ndarray representing the coordinates of the mesh
-            vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim).
+            vertices with a shape equal to (ndim, dim1 + 1, ..., dimn + 1).
 
         """
-        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
+        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=0)
 
     @property
     def centroids(self):
@@ -185,13 +185,14 @@ class StructuredMesh(MeshBase):
         -------
         centroids : numpy.ndarray
             Returns a numpy.ndarray representing the mesh element centroid
-            coordinates with a shape equal to (dim1, ..., dimn, ndim).
+            coordinates with a shape equal to (ndim, dim1, ..., dimn). Can be
+            unpacked by the first dimension with xx, yy, zz = mesh.centroids
 
         """
         ndim = self.n_dimension
         vertices = self.vertices
-        s0 = (slice(0, -1),)*ndim + (slice(None),)
-        s1 = (slice(1, None),)*ndim + (slice(None),)
+        s0 = (slice(None),) + (slice(0, -1),)*ndim
+        s1 = (slice(None),) + (slice(1, None),)*ndim
         return (vertices[s0] + vertices[s1]) / 2
 
     @property

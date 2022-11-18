@@ -381,7 +381,6 @@ FileSource::FileSource(mcpl_file_t mcpl_file)
     //mcpl stores time in ms
     site_.time=mcpl_particle->time*1e-3;
     site_.wgt=mcpl_particle->weight;
-    site_.delayed_group=0;
     sites_[i]=site_;
   }
   mcpl_close_file(mcpl_file);

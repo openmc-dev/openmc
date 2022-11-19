@@ -45,7 +45,7 @@ make install
 cat <<EOF > ./findncrystallib.py
 import pathlib
 libname = pathlib.Path('./cfg_ncrystal_libname.txt').read_text().strip()
-libs = list(pathlib.Path("/usr").glob("**/lib*/**/%s"%libname))
+libs = list(pathlib.Path("${INST_DIR}").glob("**/lib*/**/%s"%libname))
 assert len(libs)==1
 pathlib.Path('ncrystal_liblocation.txt').write_text(str(libs[0]))
 EOF

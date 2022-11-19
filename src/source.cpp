@@ -332,8 +332,6 @@ FileSource::FileSource(std::string path)
 #ifdef OPENMC_MCPL
 FileSource::FileSource(mcpl_file_t mcpl_file)
 {
-  //do checks on the mcpl_file to see if particles are many enough.
-  // should model this on the example source shown in the docs.
   size_t n_sites=mcpl_hdr_nparticles(mcpl_file);
 
   sites_.resize(n_sites);
@@ -348,8 +346,6 @@ FileSource::FileSource(mcpl_file_t mcpl_file)
     while ( pdg!=2112 && pdg!=22 && pdg!=11 && pdg!=-11) {
       mcpl_particle=mcpl_read(mcpl_file);
       pdg=mcpl_particle->pdgcode;
-      //should check for file exhaustion. This could happen if particles are other than
-      //neutrons, photons, electrons, or positrons.
     }
 
     switch(pdg){

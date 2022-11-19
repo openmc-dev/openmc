@@ -60,7 +60,7 @@ bool run_CE {true};
 bool source_latest {false};
 bool source_separate {false};
 bool source_write {true};
-bool source_mcpl_write {true};
+bool source_mcpl_write {false};
 bool surf_source_write {false};
 bool surf_mcpl_write {false};
 bool surf_source_read {false};

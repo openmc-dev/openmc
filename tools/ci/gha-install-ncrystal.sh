@@ -62,5 +62,5 @@ EOF
 
 $PYTHON -m pip install ./ncrystal_pypkg/ -vv
 
-setup ${INST_DIR}/setup.sh
+source ${INST_DIR}/setup.sh
 

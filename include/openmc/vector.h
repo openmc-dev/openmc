@@ -45,7 +45,11 @@ public:
   // Figure out a way around this
   ~vector() {
     if (data_) {
+      #ifdef _OPENMP
       if (omp_is_initial_device()) {
+      #else
+      if (true) {
+      #endif
         this->clear();
         std::free(data_);
       } else {

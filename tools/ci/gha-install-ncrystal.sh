@@ -24,7 +24,7 @@ cmake \
     -DMODIFY_RPATH=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_EXAMPLES=OFF \
-    -DINSTALL_SETUPSH=ON \
+    -DINSTALL_SETUPSH=OFF \
     -DEMBED_DATA=ON \
     -DINSTALL_DATA=OFF \
     -DNO_DIRECT_PYMODINST=ON \
@@ -62,5 +62,5 @@ EOF
 
 $PYTHON -m pip install ./ncrystal_pypkg/ -vv
 
-source ${INST_DIR}/setup.sh
+# source ${INST_DIR}/setup.sh
 

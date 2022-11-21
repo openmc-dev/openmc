@@ -1145,6 +1145,7 @@ class CylindricalMesh(StructuredMesh):
         mesh.r_grid = group['r_grid'][()]
         mesh.phi_grid = group['phi_grid'][()]
         mesh.z_grid = group['z_grid'][()]
+        mesh.origin = group['origin'][()]
 
         return mesh
 
@@ -1469,6 +1470,7 @@ class SphericalMesh(StructuredMesh):
         mesh.r_grid = group['r_grid'][()]
         mesh.theta_grid = group['theta_grid'][()]
         mesh.phi_grid = group['phi_grid'][()]
+        mesh.origin = group['origin'][()]
 
         return mesh
 

@@ -1097,6 +1097,7 @@ class CylindricalMesh(StructuredMesh):
     @origin.setter
     def origin(self, coords):
         cv.check_type('mesh origin', coords, Iterable, Real)
+        cv.check_length("mesh origin", coords, 3)
         self._origin = np.asarray(coords)
 
     @r_grid.setter
@@ -1420,6 +1421,7 @@ class SphericalMesh(StructuredMesh):
     @origin.setter
     def origin(self, coords):
         cv.check_type('mesh origin', coords, Iterable, Real)
+        cv.check_length("mesh origin", coords, 3)
         self._origin = np.asarray(coords)
 
     @r_grid.setter

@@ -1145,7 +1145,8 @@ class CylindricalMesh(StructuredMesh):
         mesh.r_grid = group['r_grid'][()]
         mesh.phi_grid = group['phi_grid'][()]
         mesh.z_grid = group['z_grid'][()]
-        mesh.origin = group['origin'][()]
+        if 'origin' in group:
+            mesh.origin = group['origin'][()]
 
         return mesh
 
@@ -1268,7 +1269,8 @@ class CylindricalMesh(StructuredMesh):
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
         mesh.z_grid = [float(x) for x in get_text(elem, "z_grid").split()]
-        mesh.origin = [float(x) for x in get_text(elem, "origin").split()]
+        if "origin" in elem.attrib:
+            mesh.origin = [float(x) for x in get_text(elem, "origin").split()]
 
         return mesh
 
@@ -1470,7 +1472,8 @@ class SphericalMesh(StructuredMesh):
         mesh.r_grid = group['r_grid'][()]
         mesh.theta_grid = group['theta_grid'][()]
         mesh.phi_grid = group['phi_grid'][()]
-        mesh.origin = group['origin'][()]
+        if 'origin' in group:
+            mesh.origin = group['origin'][()]
 
         return mesh
 
@@ -1523,7 +1526,8 @@ class SphericalMesh(StructuredMesh):
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()]
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
-        mesh.origin = [float(x) for x in get_text(elem, "origin").split()]
+        if "origin" in elem.attrib:
+            mesh.origin = [float(x) for x in get_text(elem, "origin").split()]
 
         return mesh
 

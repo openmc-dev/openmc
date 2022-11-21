@@ -3,6 +3,7 @@
 #include <set>
 
 #include "xtensor/xview.hpp"
+#include "xtensor/xstrided_view.hpp"
 
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
@@ -13,6 +14,7 @@
 #include "openmc/physics_common.h"
 #include "openmc/search.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/filter_particle.h"
 #include "openmc/xml_interface.h"
 
 #include <fmt/core.h>
@@ -358,40 +360,106 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
                                           const std::string& value,
                                           const std::string& method) {
   // set of allowed filters
-  const std::set<FilterType> allowed_filters = {FilterType::MESH, FilterType::ENERGY};
+  const std::set<FilterType> allowed_filters = {FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
 
-  std::map<FilterType, int> filter_indices;
+  const auto filters = tally->filters();
+  const auto filter_types = tally->filter_types();
+  auto filter_indices = tally->filter_indices();
 
-  for (int i = 0; i < tally->filters().size(); i ++) {
-    const auto& f = model::tally_filters[tally->filters(i)];
-    if (allowed_filters.find(f->type()) == allowed_filters.end()) {
+  // make sure that all filters are allowed
+  for (auto f_type : filter_types) {
+    if (allowed_filters.find(f_type) == allowed_filters.end()) {
       fatal_error(fmt::format("Invalid filter type '{}' found on tally "
-                              "used for weight window generation.", f->type_str()));
+                              "used for weight window generation.", filter_type_strings[f_type]));
     }
-    filter_indices[f->type()] = i;
   }
 
   // gather information from the tally (assume one group for now)
   int score_index = tally->score_index(score);
 
-  // sum results over all nuclides and select results related to a single score
-  auto score_view =
-    xt::view(tally->results(), xt::all(), score_index, TallyResult::SUM);
+  if (score_index == C_NONE) {
+    fatal_error(fmt::format("Score '{}' specified for weight window generation is not present on tally {}.",
+    score, tally->id()));
+  }
 
+  // check for a particle filter
+  // TODO: Add method checking for filter type (returns index?)
+  int particle_idx = 0;
+  if (tally->has_filter(FilterType::PARTICLE)) {
+    const auto& particle_filter = model::tally_filters[tally->filters(filter_indices[FilterType::PARTICLE])];
+
+    // make sure there is data for the WW particle type available
+    const auto& particles = dynamic_cast<ParticleFilter*>(particle_filter.get())->particles();
+    auto particle_it = std::find(particles.begin(), particles.end(), this->particle_type_);
+    if (particle_it == particles.end()) {
+      warning(fmt::format("Particle type '{}' not present on Filter {} for Tally {} used to update WeightWindows {}",
+      particle_type_to_str(this->particle_type_), particle_filter->id(), tally->id(), this->id()));
+      return;
+    }
+
+    // filter out other particle data
+    int particle_idx = particle_it - particles.begin();
+    int particle_dim = filter_indices[FilterType::PARTICLE];
+  } else {
+    // create an entry in filter_indices for the particle dimension
+    // this will default to the last dimension
+    filter_indices[FilterType::PARTICLE] = 2;
+  }
+
+  ///////////////////////////////////
+  // TODO: Move into Tally class
   // re-shape results into a new xtensor
-  std::array<uint64_t, 2> shape = {1, 1};
-  for (int i = 0; i < filter_indices.size(); i++) {
+  std::array<uint64_t, 3> shape = {1, 1, 1};
+  for (int i = 0; i < filters.size(); i++) {
     const auto& f = model::tally_filters[tally->filters(i)];
     shape[i] = f->n_bins();
   }
 
-  xt::xtensor<double, 2> lower_bounds(shape);
+  std::cout << "Shape: ";
+  for (auto s : shape) { std::cout << s << std::endl; }
+  ///////////////////////////////////
+
+  // sum results over all nuclides and select results related to a single score
+  auto score_view =
+    xt::view(tally->results(), xt::all(), score_index, TallyResult::SUM);
+
+  std::cout << "Score view size: " << score_view.size() << std::endl;
 
   // apply the score view results to this xtensor
   // TODO: this is a big copy. Might want to figure out a way to
   // reduce memory usage here.
-  lower_bounds = score_view;
+
+  std::cout << "Score view shape: ";
+  for (auto i : score_view.shape()) {
+    std::cout << i << ", ";
+  }
+  std::cout << std::endl;
+
+  xt::xarray<double> lower_bounds(score_view);
+  // xt::xtensor<double, 3> lower_bounds(shape);
   lower_bounds.reshape(shape);
+  std::copy(score_view.begin(), score_view.end(), lower_bounds.begin());
+  // lower_bounds = xt::zeros_like(score_view);
+  //lower_bounds = score_view;
+
+  std::cout << "Lower bounds shape: ";
+  for (auto i : lower_bounds.shape()) {
+    std::cout << i << ", ";
+  }
+  std::cout << std::endl;
+
+
+  std::cout << "Lower bound view size: " << lower_bounds.size() << std::endl;
+
+
+  // down-select particle data
+  // auto p_view = xt::view(xt::roll(lower_bounds, filter_indices[FilterType::PARTICLE]), particle_idx);
+
+  // // adjust index of other filters if needed
+  // for (auto filter_type : allowed_filters) {
+  //   if (filter_indices[filter_type] > filter_indices[FilterType::PARTICLE])
+  //     filter_indices[filter_type] -= 1;
+  // }
 
   // move energy axis to the front
   auto e_view = xt::roll(lower_bounds, filter_indices[FilterType::ENERGY]);
@@ -400,7 +468,7 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
 
   for (int e = 0; e < e_shape; e++) {
     // select all
-    auto group_view = xt::view(e_view, e, xt::all());
+    auto group_view = xt::view(e_view, e, xt::all(), xt::all());
 
     double group_max = *std::max(group_view.begin(), group_view.end());
 

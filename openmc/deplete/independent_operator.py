@@ -42,7 +42,7 @@ class IndependentOperator(OpenMCOperator):
         Materials to deplete.
     micro_xs : MicroXS
         One-group microscopic cross sections in [b]. If the
-        :class:`~openmc.deplete.MicroXS` is empty, a decay-only calculation will
+        :class:`~openmc.deplete.MicroXS` object is empty, a decay-only calculation will
         be run.
     chain_file : str
         Path to the depletion chain XML file. Defaults to
@@ -175,7 +175,7 @@ class IndependentOperator(OpenMCOperator):
             values.
         micro_xs : MicroXS
             One-group microscopic cross sections in [b]. If the
-            :class:`~openmc.deplete.MicroXS` is empty, a decay-only calculation
+            :class:`~openmc.deplete.MicroXS` object is empty, a decay-only calculation
             will be run.
         chain_file : str, optional
             Path to the depletion chain XML file. Defaults to

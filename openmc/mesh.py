@@ -1052,7 +1052,7 @@ class CylindricalMesh(StructuredMesh):
         self._r_grid = None
         self._phi_grid = [0.0, 2*pi]
         self._z_grid = None
-        self._origin = [0., 0., 0.]
+        self._origin = (0., 0., 0.)
 
     @property
     def dimension(self):
@@ -1325,7 +1325,7 @@ class CylindricalMesh(StructuredMesh):
         pts_cartesian[:, 1] = r * np.sin(phi)
 
         # offset with origin
-        if any(self.origin != (0.0, 0.0, 0.0)):
+        if any([coord != 0 for coord in self.origin]):
             pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.origin[0]
             pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.origin[1]
             pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.origin[2]
@@ -1583,7 +1583,7 @@ class SphericalMesh(StructuredMesh):
         pts_cartesian[:, 2] = r * np.cos(phi)
 
         # offset with origin
-        if any(self.origin != (0.0, 0.0, 0.0)):
+        if any([coord != 0 for coord in self.origin]):
             pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.origin[0]
             pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.origin[1]
             pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.origin[2]

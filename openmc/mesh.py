@@ -1052,7 +1052,7 @@ class CylindricalMesh(StructuredMesh):
         self._r_grid = None
         self._phi_grid = [0.0, 2*pi]
         self._z_grid = None
-        self._origin = (0., 0., 0.)
+        self.origin = (0., 0., 0.)
 
     @property
     def dimension(self):
@@ -1378,7 +1378,7 @@ class SphericalMesh(StructuredMesh):
         self._r_grid = None
         self._theta_grid = [0, pi]
         self._phi_grid = [0, 2*pi]
-        self._origin = (0., 0., 0.)
+        self.origin = (0., 0., 0.)
 
     @property
     def dimension(self):

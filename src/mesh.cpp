@@ -977,9 +977,7 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   mapped_r[0] = std::hypot(r.x, r.y);
   mapped_r[2] = r[2];
 
-  mapped_r[0] += origin_[0];
-  mapped_r[1] += origin_[1];
-  mapped_r[2] += origin_[2];
+  mapped_r -= origin_;
 
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;

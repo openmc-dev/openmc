@@ -544,7 +544,7 @@ class OpenMCOperator(TransportOperator):
             # Divide by total number of atoms and store
             rates[i] = self._rate_helper.divide_by_atoms(number)
 
-        # Scale reaction rates to obtain units of reactions/sec/atom
+        # Scale reaction rates to obtain units of (reactions/sec)/atom
         rates *= self._normalization_helper.factor(source_rate)
 
         # Store new fission yields on the chain

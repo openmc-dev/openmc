@@ -265,8 +265,8 @@ class ReactionRateHelper(ABC):
             Ordering of reactions
         """
 
-    def divide_by_adens(self, number):
-        """Normalize reaction rates by number of nuclides
+    def divide_by_atoms(self, number):
+        """Normalize reaction rates by number of atoms
 
         Acts on the current material examined by :meth:`get_material_rates`
 

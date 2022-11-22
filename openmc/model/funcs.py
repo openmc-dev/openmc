@@ -6,8 +6,9 @@ from operator import attrgetter
 from warnings import warn
 
 from openmc import (
-    XPlane, YPlane, Plane, ZCylinder, Cylinder, XCylinder,
-    YCylinder, Universe, Cell)
+    XPlane, YPlane, ZPlane, Plane, ZCylinder, Cylinder, XCylinder,
+    YCylinder, ZTorus, XTorus, YTorus,
+    Universe, Cell)
 from ..checkvalue import (
     check_type, check_value, check_length, check_less_than,
     check_iterable_type)
@@ -109,6 +110,140 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     out.set_density('g/cc', solution_density)
     out.add_s_alpha_beta('c_H_in_H2O')
     return out
+
+def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
+                      boundary_type='transmission',
+                      upper_edge_radius=0.,
+                      lower_edge_radius=0.):
+    """Get a finite cylindrical prism.
+
+    Parameters
+    ----------
+    r: float
+        Prism radius in units of cm.
+    height: float
+        Prism height in units of cm. The height is aligned with the x, y,
+        or z axes for prisms parallel to the x, y, or z axis, respectively.
+    axis : {'x', 'y', 'z'}
+        Axis with which the infinite length of the prism should be aligned.
+        Defaults to 'z'.
+    origin: Iterable of three floats
+        Origin of the prism. The three floats correspond to (x,y,z)
+        Defaults to (0., 0., 0.).
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surfaces comprising the rectangular prism (default is 'transmission').
+    upper_edge_radius: float
+        Prism upper edge radius in units of cm. Defaults to 0.
+    lower_edge_radius: float
+        Prism lower edge radius in units of cm. Defaults to 0.
+
+    Returns
+    -------
+    openmc.Region
+        The inside of a rectangular prism
+
+    """
+
+
+    check_type('r', r, Real)
+    check_type('height', height, Real)
+    check_type('upper_edge_radius', upper_edge_radius, Real)
+    check_less_than('upper_edge_radius', upper_edge_radius, r, equality=True)
+    check_type('lower_edge_radius', lower_edge_radius, Real)
+    check_less_than('lower_edge_radius', lower_edge_radius, r, equality=True)
+    check_value('axis', axis, ['x', 'y', 'z'])
+    check_type('origin', origin, Iterable, Real)
+
+    # Define function to create a plane on given axis
+    def plane(axis, name, value):
+        cls = globals()['{}Plane'.format(axis.upper())]
+        return cls(name='{} {}'.format(name, axis),
+                   boundary_type=boundary_type,
+                   **{axis + '0': value})
+    def cylinder(axis, name, ax1, val1, ax2, val2, r):
+        cls = globals()['{}Cylinder'.format(axis.upper())]
+        return cls(name='{} {}'.format(name, axis),
+                   boundary_type=boundary_type,
+                   **{ax1 + '0': val1,
+                      ax2 + '0': val2,
+                      'r': r})
+
+    if axis == 'x':
+        x1, x2 = 'y', 'z'
+        axcoord = 0
+        axcoord1 = 1
+        axcoord2 = 2
+    elif axis == 'y':
+        x1, x2 = 'x', 'z'
+        axcoord = 1
+        axcoord1 = 0
+        axcoord2 = 2
+    else:
+        x1, x2 = 'x', 'y'
+        axcoord = 2
+        axcoord1 = 0
+        axcoord2 = 1
+
+    # Get torus class corresponding to given axis
+    tor = globals()['{}Torus'.format(axis.upper())]
+
+    # Create cylindricalr region
+    min_h = plane(axis, 'minimum', -height/2 + origin[axcoord])
+    max_h = plane(axis, 'maximum', height/2 + origin[axcoord])
+    radial = cylinder(axis, 'outer', x1, origin[axcoord1], x2, origin[axcoord2], r)
+
+    if boundary_type == 'periodic':
+        min_h.periodic_surface = max_h
+        max_h.periodic_surface = min_h
+    prism = +min_h & -max_h & -radial
+
+    # Handle rounded corners if given
+    if upper_edge_radius > 0. or lower_edge_radius > 0.:
+        if boundary_type == 'periodic':
+            raise ValueError('Periodic boundary conditions not permitted when '
+                             'rounded corners are used.')
+
+        corners_upper = None
+        corners_lower = None
+        args = {'boundary_type': boundary_type}
+        args[x1 + '0'] = origin[axcoord1]
+        args[x2 + '0'] = origin[axcoord2]
+        if upper_edge_radius > 0.:
+            args['a'] = r - upper_edge_radius
+            args['b'] = upper_edge_radius
+            args['c'] = upper_edge_radius
+            args[axis + '0'] = origin[axcoord] + height/2 - upper_edge_radius
+            tor_upper_max = tor(name='{} max'.format(axis), **args)
+
+            axis_upper_min = plane(axis, 'upper min', height/2 + origin[axcoord] - upper_edge_radius)
+            cyl_upper_min = cylinder(axis, 'upper min', x1, origin[axcoord1], x2, origin[axcoord2], r - upper_edge_radius)
+
+            corners_upper = (+cyl_upper_min & +tor_upper_max & + axis_upper_min)
+
+        if lower_edge_radius > 0.:
+            args['a'] = r - lower_edge_radius
+            args['b'] = lower_edge_radius
+            args['c'] = lower_edge_radius
+            args[axis + '0'] = origin[axcoord] - height/2 + lower_edge_radius
+            tor_lower_min = tor(name='{} min'.format(axis), **args)
+
+            axis_lower_max = plane(axis, 'lower max', origin[axcoord] - height/2 + lower_edge_radius)
+            cyl_lower_min = cylinder(axis, 'lower min', x1, origin[axcoord1], x2, origin[axcoord2], r - lower_edge_radius)
+
+            corners_lower = (+cyl_lower_min & +tor_lower_min & - axis_lower_max)
+
+        if not(corners_lower is None) and not(corners_upper is None):
+            corners = corners_lower | corners_upper
+        elif corners_lower is None:
+            corners = corners_upper
+        else:
+            corners = corners_lower
+
+        prism = prism & ~corners
+
+    return prism
+
 
 
 def rectangular_prism(width, height, axis='z', origin=(0., 0.),

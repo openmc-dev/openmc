@@ -203,6 +203,50 @@ def test_get_by_name():
     assert not univs
 
 
+def test_cyl_prism():
+    cyl_prism = openmc.model.cylindrical_prism(2,
+                                               5,
+                                               origin=(-1,1,3))
+    # clear checks
+    assert (-1, 1, 3) in cyl_prism # center
+    assert (-1,0.5, 1) in cyl_prism # lower
+    assert (0.5, 1, 5) in cyl_prism # upper
+    assert (-1, 1, 6) not in cyl_prism
+    assert (-1, 1, 0) not in cyl_prism
+    assert (-2, -1, 3) not in cyl_prism
+    # edge checks
+    assert (-1, 3.01, 3) not in cyl_prism
+    assert (-1, 2.99, 3) in cyl_prism
+    assert (1.01, 1, 3) not in cyl_prism
+    assert (0.99, 1, 3) in cyl_prism
+    assert (-2.4, 1, 5.51) not in cyl_prism
+    assert (-2.4, 1, 5.49) in cyl_prism
+    assert (-2.4, 1, 0.49) not in cyl_prism
+    assert (-2.4, 1, 0.51) in cyl_prism
+
+    rounded_cyl_prism = openmc.model.cylindrical_prism(2,
+                                                       5,
+                                                       origin=(-1,1,3),
+                                                       upper_edge_radius=1.6,
+                                                       lower_edge_radius=1.6)
+    # clear checks
+    assert (-1, 1, 3) in rounded_cyl_prism # center
+    assert (-1,0.5, 1) in rounded_cyl_prism # lower
+    assert (0.5, 1, 5) in rounded_cyl_prism # upper
+    assert (-1, 1, 6) not in rounded_cyl_prism
+    assert (-1, 1, 0) not in rounded_cyl_prism
+    assert (-2, -1, 3) not in rounded_cyl_prism
+    # edge checks
+    assert (-1, 3.01, 3) not in rounded_cyl_prism
+    assert (-1, 2.99, 3) in rounded_cyl_prism
+    assert (1.01, 1, 3) not in rounded_cyl_prism
+    assert (0.99, 1, 3) in rounded_cyl_prism
+    assert (-2.4, 1, 5.51) not in rounded_cyl_prism
+    assert (-2.4, 1, 5.49) not in rounded_cyl_prism
+    assert (-2.4, 1, 0.49) not in rounded_cyl_prism
+    assert (-2.4, 1, 0.51) not in rounded_cyl_prism
+
+
 def test_hex_prism():
     hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,
                                              origin=(0.0, 0.0),
@@ -339,7 +383,7 @@ def test_remove_redundant_surfaces():
     water = get_cyl_cell(r2, r3, z1, z2, m3)
     root = openmc.Universe(cells=[fuel, clad, water])
     geom = openmc.Geometry(root)
-    
+
     # There should be 6 redundant surfaces in this geometry
     n_redundant_surfs = len(geom.get_redundant_surfaces().keys())
     assert n_redundant_surfs == 6

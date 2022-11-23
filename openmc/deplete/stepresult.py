@@ -318,10 +318,11 @@ class StepResult:
                               chunks=(1, 1, n_mats, n_nuc_number),
                               dtype='float64')
 
-        handle.create_dataset("reaction rates", (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                              maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                              chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
-                              dtype='float64')
+        if n_nuc_rxn > 0 and n_rxn > 0:
+            handle.create_dataset("reaction rates", (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
+                                maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
+                                chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
+                                dtype='float64')
 
         handle.create_dataset("eigenvalues", (1, n_stages, 2),
                               maxshape=(None, n_stages, 2), dtype='float64')
@@ -358,7 +359,9 @@ class StepResult:
 
         # Grab handles
         number_dset = handle["/number"]
-        rxn_dset = handle["/reaction rates"]
+        has_reactions = ("reaction rates" in handle)
+        if has_reactions:
+            rxn_dset = handle["/reaction rates"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
         source_rate_dset = handle["/source_rate"]
@@ -375,9 +378,10 @@ class StepResult:
             number_shape[0] = new_shape
             number_dset.resize(number_shape)
 
-            rxn_shape = list(rxn_dset.shape)
-            rxn_shape[0] = new_shape
-            rxn_dset.resize(rxn_shape)
+            if has_reactions:
+                rxn_shape = list(rxn_dset.shape)
+                rxn_shape[0] = new_shape
+                rxn_dset.resize(rxn_shape)
 
             eigenvalues_shape = list(eigenvalues_dset.shape)
             eigenvalues_shape[0] = new_shape
@@ -407,7 +411,8 @@ class StepResult:
         high = max(inds)
         for i in range(n_stages):
             number_dset[index, i, low:high+1] = self.data[i]
-            rxn_dset[index, i, low:high+1] = self.rates[i]
+            if has_reactions:
+                rxn_dset[index, i, low:high+1] = self.rates[i]
             if comm.rank == 0:
                 eigenvalues_dset[index, i] = self.k[i]
         if comm.rank == 0:
@@ -483,7 +488,8 @@ class StepResult:
         for i in range(results.n_stages):
             rate = ReactionRates(results.index_mat, rxn_nuc_to_ind, rxn_to_ind, True)
 
-            rate[:] = handle["/reaction rates"][step, i, :, :, :]
+            if "reaction rates" in handle:
+                rate[:] = handle["/reaction rates"][step, i, :, :, :]
             results.rates.append(rate)
 
         return results

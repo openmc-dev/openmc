@@ -37,241 +37,6 @@ vector<unique_ptr<Cell>> cells;
 } // namespace model
 
 //==============================================================================
-//! Convert region specification string to integer tokens.
-//!
-//! The characters (, ), |, and ~ count as separate tokens since they represent
-//! operators.
-//==============================================================================
-
-vector<int32_t> tokenize(const std::string region_spec)
-{
-  // Check for an empty region_spec first.
-  vector<int32_t> tokens;
-  if (region_spec.empty()) {
-    return tokens;
-  }
-
-  // Parse all halfspaces and operators except for intersection (whitespace).
-  for (int i = 0; i < region_spec.size();) {
-    if (region_spec[i] == '(') {
-      tokens.push_back(OP_LEFT_PAREN);
-      i++;
-
-    } else if (region_spec[i] == ')') {
-      tokens.push_back(OP_RIGHT_PAREN);
-      i++;
-
-    } else if (region_spec[i] == '|') {
-      tokens.push_back(OP_UNION);
-      i++;
-
-    } else if (region_spec[i] == '~') {
-      tokens.push_back(OP_COMPLEMENT);
-      i++;
-
-    } else if (region_spec[i] == '-' || region_spec[i] == '+' ||
-               std::isdigit(region_spec[i])) {
-      // This is the start of a halfspace specification.  Iterate j until we
-      // find the end, then push-back everything between i and j.
-      int j = i + 1;
-      while (j < region_spec.size() && std::isdigit(region_spec[j])) {
-        j++;
-      }
-      tokens.push_back(std::stoi(region_spec.substr(i, j - i)));
-      i = j;
-
-    } else if (std::isspace(region_spec[i])) {
-      i++;
-
-    } else {
-      auto err_msg =
-        fmt::format("Region specification contains invalid character, \"{}\"",
-          region_spec[i]);
-      fatal_error(err_msg);
-    }
-  }
-
-  // Add in intersection operators where a missing operator is needed.
-  int i = 0;
-  while (i < tokens.size() - 1) {
-    bool left_compat {(tokens[i] < OP_UNION) || (tokens[i] == OP_RIGHT_PAREN)};
-    bool right_compat {(tokens[i + 1] < OP_UNION) ||
-                       (tokens[i + 1] == OP_LEFT_PAREN) ||
-                       (tokens[i + 1] == OP_COMPLEMENT)};
-    if (left_compat && right_compat) {
-      tokens.insert(tokens.begin() + i + 1, OP_INTERSECTION);
-    }
-    i++;
-  }
-
-  return tokens;
-}
-
-//==============================================================================
-//! Add precedence for infix regions so intersections have higher
-//! precedence than unions using parentheses.
-//==============================================================================
-
-std::vector<int32_t>::iterator add_parentheses(
-  std::vector<int32_t>::iterator start, std::vector<int32_t>& infix)
-{
-  int32_t start_token = *start;
-  // Add left parenthesis
-  if (start_token == OP_INTERSECTION) {
-    start = infix.insert(start - 1, OP_LEFT_PAREN);
-  } else {
-    start = infix.insert(start + 1, OP_LEFT_PAREN);
-  }
-  start++;
-
-  // Initialize return iterator
-  auto return_iterator = infix.begin();
-
-  // Add right parenthesis
-  // While the start iterator is within the bounds of infix
-  while (start < infix.end()) {
-    start++;
-
-    // If the current token is an operator and is different than the start token
-    if (*start >= OP_UNION && *start != start_token) {
-      // Skip wrapped regions but save iterator position to check precedence and
-      // add right parenthesis, right parenthesis position depends on the
-      // operator, when the operator is a union then do not include the operator
-      // in the region, when the operator is an intersection then include the
-      // operato and next surface
-      if (*start == OP_LEFT_PAREN) {
-        return_iterator = start;
-        int depth = 1;
-        do {
-          start++;
-          if (*start > OP_COMPLEMENT) {
-            if (*start == OP_RIGHT_PAREN) {
-              depth--;
-            } else {
-              depth++;
-            }
-          }
-        } while (depth > 0);
-      } else {
-        start = infix.insert(
-          start_token == OP_UNION ? start - 1 : start, OP_RIGHT_PAREN);
-        if (return_iterator == infix.begin()) {
-          return_iterator = start - 1;
-        }
-        return return_iterator;
-      }
-    }
-  }
-  // If we get here a right parenthesis hasn't been placed,
-  // return iterator
-  infix.push_back(OP_RIGHT_PAREN);
-  if (return_iterator == infix.begin()) {
-    return_iterator = start - 1;
-  }
-  return return_iterator;
-}
-
-void add_precedence(std::vector<int32_t>& infix)
-{
-  int32_t current_op = 0;
-
-  for (auto it = infix.begin(); it != infix.end(); it++) {
-    int32_t token = *it;
-
-    if (token == OP_UNION || token == OP_INTERSECTION) {
-      if (current_op == 0) {
-        // Set the current operator if is hasn't been set
-        current_op = token;
-      } else if (token != current_op) {
-        // If the current operator doesn't match the token, add parenthesis to assert precedence
-        it = add_parentheses(it, infix);
-        current_op = 0;
-      }
-    } else if (token > OP_COMPLEMENT) {
-      // If the token is a parenthesis reset the current operator
-      current_op = 0;
-    }
-  }
-}
-
-//==============================================================================
-//! Convert infix region specification to Reverse Polish Notation (RPN)
-//!
-//! This function uses the shunting-yard algorithm.
-//==============================================================================
-
-vector<int32_t> generate_postfix(int32_t cell_id, vector<int32_t> infix)
-{
-  vector<int32_t> rpn;
-  vector<int32_t> stack;
-
-  for (int32_t token : infix) {
-    if (token < OP_UNION) {
-      // If token is not an operator, add it to output
-      rpn.push_back(token);
-    } else if (token < OP_RIGHT_PAREN) {
-      // Regular operators union, intersection, complement
-      while (stack.size() > 0) {
-        int32_t op = stack.back();
-
-        if (op < OP_RIGHT_PAREN && ((token == OP_COMPLEMENT && token < op) ||
-                                     (token != OP_COMPLEMENT && token <= op))) {
-          // While there is an operator, op, on top of the stack, if the token
-          // is left-associative and its precedence is less than or equal to
-          // that of op or if the token is right-associative and its precedence
-          // is less than that of op, move op to the output queue and push the
-          // token on to the stack. Note that only complement is
-          // right-associative.
-          rpn.push_back(op);
-          stack.pop_back();
-        } else {
-          break;
-        }
-      }
-
-      stack.push_back(token);
-
-    } else if (token == OP_LEFT_PAREN) {
-      // If the token is a left parenthesis, push it onto the stack
-      stack.push_back(token);
-
-    } else {
-      // If the token is a right parenthesis, move operators from the stack to
-      // the output queue until reaching the left parenthesis.
-      for (auto it = stack.rbegin(); *it != OP_LEFT_PAREN; it++) {
-        // If we run out of operators without finding a left parenthesis, it
-        // means there are mismatched parentheses.
-        if (it == stack.rend()) {
-          fatal_error(fmt::format(
-            "Mismatched parentheses in region specification for cell {}",
-            cell_id));
-        }
-        rpn.push_back(stack.back());
-        stack.pop_back();
-      }
-
-      // Pop the left parenthesis.
-      stack.pop_back();
-    }
-  }
-
-  while (stack.size() > 0) {
-    int32_t op = stack.back();
-
-    // If the operator is a parenthesis it is mismatched.
-    if (op >= OP_RIGHT_PAREN) {
-      fatal_error(fmt::format(
-        "Mismatched parentheses in region specification for cell {}", cell_id));
-    }
-
-    rpn.push_back(stack.back());
-    stack.pop_back();
-  }
-
-  return rpn;
-}
-
-//==============================================================================
 // Cell implementation
 //==============================================================================
 
@@ -334,12 +99,12 @@ double Cell::temperature(int32_t instance) const
 void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
-    if (T < data::temperature_min) {
-      throw std::runtime_error {"Temperature is below minimum temperature at "
-                                "which data is available."};
-    } else if (T > data::temperature_max) {
-      throw std::runtime_error {"Temperature is above maximum temperature at "
-                                "which data is available."};
+    if (T < (data::temperature_min - settings::temperature_tolerance)) {
+      throw std::runtime_error {fmt::format("Temperature of {} K is below minimum temperature at "
+                                "which data is available of {} K.", T, data::temperature_min)};
+    } else if (T > (data::temperature_max + settings::temperature_tolerance)) {
+      throw std::runtime_error {fmt::format("Temperature of {} K is above maximum temperature at "
+                                "which data is available of {} K.", T, data::temperature_max)};
     }
   }
 
@@ -586,44 +351,8 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   // Get a tokenized representation of the region specification and apply De
   // Morgans law
-  region_ = tokenize(region_spec);
-  remove_complement_ops(region_);
-
-  // Convert user IDs to surface indices.
-  for (auto& r : region_) {
-    if (r < OP_UNION) {
-      const auto& it {model::surface_map.find(abs(r))};
-      if (it == model::surface_map.end()) {
-        throw std::runtime_error {
-          "Invalid surface ID " + std::to_string(abs(r)) +
-          " specified in region for cell " + std::to_string(id_) + "."};
-      }
-      r = (r > 0) ? it->second + 1 : -(it->second + 1);
-    }
-  }
-
-  // Check if this is a simple cell.
-  simple_ = true;
-  for (int32_t token : region_) {
-    if (token == OP_UNION) {
-      simple_ = false;
-      // Ensure intersections have precedence over unions
-      add_precedence(region_);
-      break;
-    }
-  }
-  region_.shrink_to_fit();
-
-  // If this cell is simple, remove all the superfluous operator tokens.
-  if (simple_) {
-    for (auto it = region_.begin(); it != region_.end(); it++) {
-      if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
-        region_.erase(it);
-        it--;
-      }
-    }
-    region_.shrink_to_fit();
-  }
+  Region region(region_spec, id_);
+  region_ = region;
 
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {
@@ -650,98 +379,13 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
 //==============================================================================
 
-bool CSGCell::contains(Position r, Direction u, int32_t on_surface) const
-{
-  if (simple_) {
-    return contains_simple(r, u, on_surface);
-  } else {
-    return contains_complex(r, u, on_surface);
-  }
-}
-
-//==============================================================================
-
-std::pair<double, int32_t> CSGCell::distance(
-  Position r, Direction u, int32_t on_surface, Particle* p) const
-{
-  double min_dist {INFTY};
-  int32_t i_surf {std::numeric_limits<int32_t>::max()};
-
-  for (int32_t token : region_) {
-    // Ignore this token if it corresponds to an operator rather than a region.
-    if (token >= OP_UNION)
-      continue;
-
-    // Calculate the distance to this surface.
-    // Note the off-by-one indexing
-    bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
-
-    // Check if this distance is the new minimum.
-    if (d < min_dist) {
-      if (min_dist - d >= FP_PRECISION * min_dist) {
-        min_dist = d;
-        i_surf = -token;
-      }
-    }
-  }
-
-  return {min_dist, i_surf};
-}
-
-//==============================================================================
-
 void CSGCell::to_hdf5_inner(hid_t group_id) const
 {
-
   write_string(group_id, "geom_type", "csg", false);
-
-  // Write the region specification.
-  if (!region_.empty()) {
-    std::stringstream region_spec {};
-    for (int32_t token : region_) {
-      if (token == OP_LEFT_PAREN) {
-        region_spec << " (";
-      } else if (token == OP_RIGHT_PAREN) {
-        region_spec << " )";
-      } else if (token == OP_COMPLEMENT) {
-        region_spec << " ~";
-      } else if (token == OP_INTERSECTION) {
-      } else if (token == OP_UNION) {
-        region_spec << " |";
-      } else {
-        // Note the off-by-one indexing
-        auto surf_id = model::surfaces[abs(token) - 1]->id_;
-        region_spec << " " << ((token > 0) ? surf_id : -surf_id);
-      }
-    }
-    write_string(group_id, "region", region_spec.str(), false);
-  }
+  write_string(group_id, "region", region_.str(), false);
 }
 
-BoundingBox CSGCell::bounding_box_simple() const
-{
-  BoundingBox bbox;
-  for (int32_t token : region_) {
-    bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
-  }
-  return bbox;
-}
-
-void CSGCell::apply_demorgan(
-  vector<int32_t>::iterator start, vector<int32_t>::iterator stop)
-{
-  do {
-    if (*start < OP_UNION) {
-      *start *= -1;
-    } else if (*start == OP_UNION) {
-      *start = OP_INTERSECTION;
-    } else if (*start == OP_INTERSECTION) {
-      *start = OP_UNION;
-    }
-    start++;
-  } while (start < stop);
-}
+//==============================================================================
 
 vector<int32_t>::iterator CSGCell::find_left_parenthesis(
   vector<int32_t>::iterator start, const vector<int32_t>& infix)
@@ -776,75 +420,395 @@ vector<int32_t>::iterator CSGCell::find_left_parenthesis(
   return it;
 }
 
-void CSGCell::remove_complement_ops(vector<int32_t>& infix)
-{
-  auto it = std::find(infix.begin(), infix.end(), OP_COMPLEMENT);
-  while (it != infix.end()) {
-    // Erase complement
-    infix.erase(it);
+//==============================================================================
+// Region implementation
+//==============================================================================
 
-    // Define stop given left parenthesis or not
-    auto stop = it;
-    if (*it == OP_LEFT_PAREN) {
-      int depth = 1;
-      do {
-        stop++;
-        if (*stop > OP_COMPLEMENT) {
-          if (*stop == OP_RIGHT_PAREN) {
-            depth--;
-          } else {
-            depth++;
-          }
+Region::Region(std::string region_spec, int32_t cell_id)
+{
+  // Check if region_spec is not empty.
+  if (!region_spec.empty()) {
+    // Parse all halfspaces and operators except for intersection (whitespace).
+    for (int i = 0; i < region_spec.size();) {
+      if (region_spec[i] == '(') {
+        expression_.push_back(OP_LEFT_PAREN);
+        i++;
+
+      } else if (region_spec[i] == ')') {
+        expression_.push_back(OP_RIGHT_PAREN);
+        i++;
+
+      } else if (region_spec[i] == '|') {
+        expression_.push_back(OP_UNION);
+        i++;
+
+      } else if (region_spec[i] == '~') {
+        expression_.push_back(OP_COMPLEMENT);
+        i++;
+
+      } else if (region_spec[i] == '-' || region_spec[i] == '+' ||
+                 std::isdigit(region_spec[i])) {
+        // This is the start of a halfspace specification.  Iterate j until we
+        // find the end, then push-back everything between i and j.
+        int j = i + 1;
+        while (j < region_spec.size() && std::isdigit(region_spec[j])) {
+          j++;
         }
-      } while (depth > 0);
-      it++;
+        expression_.push_back(std::stoi(region_spec.substr(i, j - i)));
+        i = j;
+
+      } else if (std::isspace(region_spec[i])) {
+        i++;
+
+      } else {
+        auto err_msg =
+          fmt::format("Region specification contains invalid character, \"{}\"",
+            region_spec[i]);
+        fatal_error(err_msg);
+      }
     }
 
-    // apply DeMorgan's law to any surfaces/operators between these
-    // positions in the RPN
-    apply_demorgan(it, stop);
-    // update iterator position
-    it = std::find(infix.begin(), infix.end(), OP_COMPLEMENT);
-  }
-}
-
-BoundingBox CSGCell::bounding_box_complex(vector<int32_t> postfix)
-{
-  vector<BoundingBox> stack(postfix.size());
-  int i_stack = -1;
-
-  for (auto& token : postfix) {
-    if (token == OP_UNION) {
-      stack[i_stack - 1] = stack[i_stack - 1] | stack[i_stack];
-      i_stack--;
-    } else if (token == OP_INTERSECTION) {
-      stack[i_stack - 1] = stack[i_stack - 1] & stack[i_stack];
-      i_stack--;
-    } else {
-      i_stack++;
-      stack[i_stack] = model::surfaces[abs(token) - 1]->bounding_box(token > 0);
+    // Add in intersection operators where a missing operator is needed.
+    int i = 0;
+    while (i < expression_.size() - 1) {
+      bool left_compat {
+        (expression_[i] < OP_UNION) || (expression_[i] == OP_RIGHT_PAREN)};
+      bool right_compat {(expression_[i + 1] < OP_UNION) ||
+                         (expression_[i + 1] == OP_LEFT_PAREN) ||
+                         (expression_[i + 1] == OP_COMPLEMENT)};
+      if (left_compat && right_compat) {
+        expression_.insert(expression_.begin() + i + 1, OP_INTERSECTION);
+      }
+      i++;
     }
-  }
 
-  Ensures(i_stack == 0);
-  return stack.front();
-}
+    // Remove complement operators using DeMorgan's laws
+    auto it = std::find(expression_.begin(), expression_.end(), OP_COMPLEMENT);
+    while (it != expression_.end()) {
+      // Erase complement
+      expression_.erase(it);
 
-BoundingBox CSGCell::bounding_box() const
-{
-  if (simple_) {
-    return bounding_box_simple();
+      // Define stop given left parenthesis or not
+      auto stop = it;
+      if (*it == OP_LEFT_PAREN) {
+        int depth = 1;
+        do {
+          stop++;
+          if (*stop > OP_COMPLEMENT) {
+            if (*stop == OP_RIGHT_PAREN) {
+              depth--;
+            } else {
+              depth++;
+            }
+          }
+        } while (depth > 0);
+        it++;
+      }
+
+      // apply DeMorgan's law to any surfaces/operators between these
+      // positions in the RPN
+      apply_demorgan(it, stop);
+      // update iterator position
+      it = std::find(expression_.begin(), expression_.end(), OP_COMPLEMENT);
+    }
+
+    // Convert user IDs to surface indices.
+    for (auto& r : expression_) {
+      if (r < OP_UNION) {
+        const auto& it {model::surface_map.find(abs(r))};
+        if (it == model::surface_map.end()) {
+          throw std::runtime_error {
+            "Invalid surface ID " + std::to_string(abs(r)) +
+            " specified in region for cell " + std::to_string(cell_id) + "."};
+        }
+        r = (r > 0) ? it->second + 1 : -(it->second + 1);
+      }
+    }
+
+    // Check if this is a simple cell.
+    simple_ = true;
+    for (int32_t token : expression_) {
+      if (token == OP_UNION) {
+        simple_ = false;
+        // Ensure intersections have precedence over unions
+        add_precedence();
+        break;
+      }
+    }
+
+    // If this cell is simple, remove all the superfluous operator tokens.
+    if (simple_) {
+      for (auto it = expression_.begin(); it != expression_.end(); it++) {
+        if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
+          expression_.erase(it);
+          it--;
+        }
+      }
+    }
+    expression_.shrink_to_fit();
+
   } else {
-    auto postfix = generate_postfix(this->id_, this->region_);
-    return bounding_box_complex(postfix);
+    simple_ = true;
   }
 }
 
 //==============================================================================
 
-bool CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
+void Region::apply_demorgan(
+  vector<int32_t>::iterator start, vector<int32_t>::iterator stop)
 {
-  for (int32_t token : region_) {
+  do {
+    if (*start < OP_UNION) {
+      *start *= -1;
+    } else if (*start == OP_UNION) {
+      *start = OP_INTERSECTION;
+    } else if (*start == OP_INTERSECTION) {
+      *start = OP_UNION;
+    }
+    start++;
+  } while (start < stop);
+}
+
+//==============================================================================
+//! Add precedence for infix regions so intersections have higher
+//! precedence than unions using parentheses.
+//==============================================================================
+
+std::vector<int32_t>::iterator Region::add_parentheses(
+  std::vector<int32_t>::iterator start)
+{
+  int32_t start_token = *start;
+  // Add left parenthesis
+  if (start_token == OP_INTERSECTION) {
+    start = expression_.insert(start - 1, OP_LEFT_PAREN);
+  } else {
+    start = expression_.insert(start + 1, OP_LEFT_PAREN);
+  }
+  start++;
+
+  // Initialize return iterator
+  auto return_iterator = expression_.begin();
+
+  // Add right parenthesis
+  // While the start iterator is within the bounds of infix
+  while (start < expression_.end()) {
+    start++;
+
+    // If the current token is an operator and is different than the start token
+    if (*start >= OP_UNION && *start != start_token) {
+      // Skip wrapped regions but save iterator position to check precedence and
+      // add right parenthesis, right parenthesis position depends on the
+      // operator, when the operator is a union then do not include the operator
+      // in the region, when the operator is an intersection then include the
+      // operato and next surface
+      if (*start == OP_LEFT_PAREN) {
+        return_iterator = start;
+        int depth = 1;
+        do {
+          start++;
+          if (*start > OP_COMPLEMENT) {
+            if (*start == OP_RIGHT_PAREN) {
+              depth--;
+            } else {
+              depth++;
+            }
+          }
+        } while (depth > 0);
+      } else {
+        start = expression_.insert(
+          start_token == OP_UNION ? start - 1 : start, OP_RIGHT_PAREN);
+        if (return_iterator == expression_.begin()) {
+          return_iterator = start - 1;
+        }
+        return return_iterator;
+      }
+    }
+  }
+  // If we get here a right parenthesis hasn't been placed,
+  // return iterator
+  expression_.push_back(OP_RIGHT_PAREN);
+  if (return_iterator == expression_.begin()) {
+    return_iterator = start - 1;
+  }
+  return return_iterator;
+}
+
+//==============================================================================
+
+void Region::add_precedence()
+{
+  int32_t current_op = 0;
+
+  for (auto it = expression_.begin(); it != expression_.end(); it++) {
+    int32_t token = *it;
+
+    if (token == OP_UNION || token == OP_INTERSECTION) {
+      if (current_op == 0) {
+        // Set the current operator if is hasn't been set
+        current_op = token;
+      } else if (token != current_op) {
+        // If the current operator doesn't match the token, add parenthesis to
+        // assert precedence
+        it = add_parentheses(it);
+        current_op = 0;
+      }
+    } else if (token > OP_COMPLEMENT) {
+      // If the token is a parenthesis reset the current operator
+      current_op = 0;
+    }
+  }
+}
+
+//==============================================================================
+//! Convert infix region specification to Reverse Polish Notation (RPN)
+//!
+//! This function uses the shunting-yard algorithm.
+//==============================================================================
+
+vector<int32_t> Region::generate_postfix(int32_t cell_id) const
+{
+  vector<int32_t> rpn;
+  vector<int32_t> stack;
+
+  for (int32_t token : expression_) {
+    if (token < OP_UNION) {
+      // If token is not an operator, add it to output
+      rpn.push_back(token);
+    } else if (token < OP_RIGHT_PAREN) {
+      // Regular operators union, intersection, complement
+      while (stack.size() > 0) {
+        int32_t op = stack.back();
+
+        if (op < OP_RIGHT_PAREN && ((token == OP_COMPLEMENT && token < op) ||
+                                     (token != OP_COMPLEMENT && token <= op))) {
+          // While there is an operator, op, on top of the stack, if the token
+          // is left-associative and its precedence is less than or equal to
+          // that of op or if the token is right-associative and its precedence
+          // is less than that of op, move op to the output queue and push the
+          // token on to the stack. Note that only complement is
+          // right-associative.
+          rpn.push_back(op);
+          stack.pop_back();
+        } else {
+          break;
+        }
+      }
+
+      stack.push_back(token);
+
+    } else if (token == OP_LEFT_PAREN) {
+      // If the token is a left parenthesis, push it onto the stack
+      stack.push_back(token);
+
+    } else {
+      // If the token is a right parenthesis, move operators from the stack to
+      // the output queue until reaching the left parenthesis.
+      for (auto it = stack.rbegin(); *it != OP_LEFT_PAREN; it++) {
+        // If we run out of operators without finding a left parenthesis, it
+        // means there are mismatched parentheses.
+        if (it == stack.rend()) {
+          fatal_error(fmt::format(
+            "Mismatched parentheses in region specification for cell {}",
+            cell_id));
+        }
+        rpn.push_back(stack.back());
+        stack.pop_back();
+      }
+
+      // Pop the left parenthesis.
+      stack.pop_back();
+    }
+  }
+
+  while (stack.size() > 0) {
+    int32_t op = stack.back();
+
+    // If the operator is a parenthesis it is mismatched.
+    if (op >= OP_RIGHT_PAREN) {
+      fatal_error(fmt::format(
+        "Mismatched parentheses in region specification for cell {}", cell_id));
+    }
+
+    rpn.push_back(stack.back());
+    stack.pop_back();
+  }
+
+  return rpn;
+}
+
+//==============================================================================
+
+std::string Region::str() const
+{
+  std::stringstream region_spec {};
+  if (!expression_.empty()) {
+    for (int32_t token : expression_) {
+      if (token == OP_LEFT_PAREN) {
+        region_spec << " (";
+      } else if (token == OP_RIGHT_PAREN) {
+        region_spec << " )";
+      } else if (token == OP_COMPLEMENT) {
+        region_spec << " ~";
+      } else if (token == OP_INTERSECTION) {
+      } else if (token == OP_UNION) {
+        region_spec << " |";
+      } else {
+        // Note the off-by-one indexing
+        auto surf_id = model::surfaces[abs(token) - 1]->id_;
+        region_spec << " " << ((token > 0) ? surf_id : -surf_id);
+      }
+    }
+  }
+  return region_spec.str();
+}
+
+//==============================================================================
+
+std::pair<double, int32_t> Region::distance(
+  Position r, Direction u, int32_t on_surface, Particle* p) const
+{
+  double min_dist {INFTY};
+  int32_t i_surf {std::numeric_limits<int32_t>::max()};
+
+
+  for (int32_t token : expression_) {
+    // Ignore this token if it corresponds to an operator rather than a region.
+    if (token >= OP_UNION)
+      continue;
+
+    // Calculate the distance to this surface.
+    // Note the off-by-one indexing
+    bool coincident {std::abs(token) == std::abs(on_surface)};
+    double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+
+    // Check if this distance is the new minimum.
+    if (d < min_dist) {
+      if (min_dist - d >= FP_PRECISION * min_dist) {
+        min_dist = d;
+        i_surf = -token;
+      }
+    }
+  }
+
+  return {min_dist, i_surf};
+}
+
+//==============================================================================
+
+bool Region::contains(Position r, Direction u, int32_t on_surface) const
+{
+  if (simple_) {
+    return contains_simple(r, u, on_surface);
+  } else {
+    return contains_complex(r, u, on_surface);
+  }
+}
+
+//==============================================================================
+
+bool Region::contains_simple(Position r, Direction u, int32_t on_surface) const
+{
+  for (int32_t token : expression_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
     // respect to the surface and see if the token matches the sense. If the
     // particle's surface attribute is set and matches the token, that
@@ -865,14 +829,13 @@ bool CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 
 //==============================================================================
 
-bool CSGCell::contains_complex(
-  Position r, Direction u, int32_t on_surface) const
+bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   bool in_cell = true;
   int total_depth = 0;
 
   // For each token
-  for (auto it = region_.begin(); it != region_.end(); it++) {
+  for (auto it = expression_.begin(); it != expression_.end(); it++) {
     int32_t token = *it;
 
     // If the token is a surface evaluate the sense
@@ -921,6 +884,76 @@ bool CSGCell::contains_complex(
     }
   }
   return in_cell;
+}
+
+//==============================================================================
+
+BoundingBox Region::bounding_box(int32_t cell_id) const
+{
+  if (simple_) {
+    return bounding_box_simple();
+  } else {
+    auto postfix = generate_postfix(cell_id);
+    return bounding_box_complex(postfix);
+  }
+}
+
+//==============================================================================
+
+BoundingBox Region::bounding_box_simple() const
+{
+  BoundingBox bbox;
+  for (int32_t token : expression_) {
+    bbox &= model::surfaces[abs(token) - 1]->bounding_box(token > 0);
+  }
+  return bbox;
+}
+
+//==============================================================================
+
+BoundingBox Region::bounding_box_complex(vector<int32_t> postfix) const
+{
+  vector<BoundingBox> stack(postfix.size());
+  int i_stack = -1;
+
+  for (auto& token : postfix) {
+    if (token == OP_UNION) {
+      stack[i_stack - 1] = stack[i_stack - 1] | stack[i_stack];
+      i_stack--;
+    } else if (token == OP_INTERSECTION) {
+      stack[i_stack - 1] = stack[i_stack - 1] & stack[i_stack];
+      i_stack--;
+    } else {
+      i_stack++;
+      stack[i_stack] = model::surfaces[abs(token) - 1]->bounding_box(token > 0);
+    }
+  }
+
+  Ensures(i_stack == 0);
+  return stack.front();
+}
+
+//==============================================================================
+
+vector<int32_t> Region::surfaces() const
+{
+  if (simple_) {
+    return expression_;
+  }
+
+  vector<int32_t> surfaces = expression_;
+
+  auto it = std::find_if(surfaces.begin(), surfaces.end(), 
+    [&](const auto& value) { return value >= OP_UNION; });
+
+  while (it != surfaces.end()) {
+    surfaces.erase(it);
+
+    it = std::find_if(surfaces.begin(), surfaces.end(), 
+      [&](const auto& value) { return value >= OP_UNION; });
+  }
+
+  return surfaces;
 }
 
 //==============================================================================

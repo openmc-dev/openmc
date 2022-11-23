@@ -187,13 +187,15 @@ class Settings:
         'default', 'method', 'range', 'tolerance', and 'multipole'. The value
         for 'default' should be a float representing the default temperature in
         Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
-        If the method is 'nearest', 'tolerance' indicates a range of temperature
-        within which cross sections may be used. The value for 'range' should be
-        a pair of minimum and maximum temperatures which are used to indicate
-        that cross sections be loaded at all temperatures within the
-        range. 'multipole' is a boolean indicating whether or not the windowed
-        multipole method should be used to evaluate resolved resonance cross
-        sections.
+        If the method is 'nearest', 'tolerance' indicates a range of
+        temperature within which cross sections may be used. If the method is
+        'interpolation', 'tolerance' indicates the range of temperatures outside
+        of the available cross section temperatures where cross sections will
+        evaluate to the nearer bound. The value for 'range' should be a pair of
+        minimum and maximum temperatures which are used to indicate that cross
+        sections be loaded at all temperatures within the range. 'multipole' is
+        a boolean indicating whether or not the windowed multipole method should
+        be used to evaluate resolved resonance cross sections.
     trace : tuple or list
         Show detailed information about a single particle, indicated by three
         integers: the batch number, generation number, and particle number

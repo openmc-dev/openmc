@@ -661,9 +661,7 @@ class Integrator(ABC):
         self.timesteps = asarray(seconds)
         self.source_rates = asarray(source_rates)
 
-
         self.msr_continuous = msr_continuous
-        self.msr_batchwise = msr_batchwise
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file

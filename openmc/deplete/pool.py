@@ -128,8 +128,9 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
             return x_result
 
     inputs = zip(matrices, x, repeat(dt))
+    
     if USE_MULTIPROCESSING:
-        with Pool() as pool:
+        with Pool(NUM_PROCESSES) as pool:
             x_result = list(pool.starmap(func, inputs))
     else:
         x_result = list(starmap(func, inputs))

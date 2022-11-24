@@ -205,8 +205,24 @@ class Model:
                 self._plots.append(plot)
 
     @classmethod
-    def from_xml(cls, *args, separate_xmls=True, **kwargs):
-        if separate_xmls:
+    def from_xml(cls, *args, path='model.xml', separate_xmls=True, **kwargs):
+        """Generate geometry from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to model XML file
+        separate_xmls : bool
+            Whether or not to read from a single or separate XML files
+
+        Returns
+        -------
+        openmc.Geometry
+            Geometry object
+
+        """
+
+        if separate_xmls or not Path(path).exists():
             return cls.from_separate_xmls(*args, **kwargs)
         else:
             return cls.from_model_xml(*args, **kwargs)
@@ -228,7 +244,7 @@ class Model:
         model.settings = openmc.Settings.from_xml_element(root.find('settings'))
         model.materials = openmc.Materials.from_xml_element(root.find('materials'))
         materials = {str(m.id): m for m in model.materials}
-        model.geometry = .Geometry.from_xml_element(root.find('geometry'), materials)
+        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), materials)
 
         # gather meshses from other classes before reading the tally node
         meshes = {}
@@ -442,8 +458,8 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.', remove_surfs=False, separate_xmls=True):
-        """Export model to separate XML files.
+    def export_to_xml(self, directory='.', remove_surfs=False, separate_xmls=True, filename='model.xml'):
+        """Export model to an XML file(s).
 
         Parameters
         ----------
@@ -453,6 +469,8 @@ class Model:
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
+        filename : str
+            Name of the single XML file to create (only used :math:`separate_xmls` if False)
 
             .. versionadded:: 0.13.1
 
@@ -460,11 +478,15 @@ class Model:
             Whether or not to write a single model.xml file or many XML files.
         """
         if separate_xmls:
-            self.export_to_separate_xmls(directory, remove_surfs)
+            if filename != 'model.xml':
+                warnings.warn('Export filename parameter {filename} is ignored '
+                              'because the model is being written to separate XML files.')
+            self._export_to_separate_xmls(directory, remove_surfs)
         else:
-            self.export_to_single_xml(directory, remove_surfs)
+            filename = Path(directory) / Path(filename)
+            self._export_to_single_xml(filename, remove_surfs)
 
-    def export_to_separate_xmls(self, directory='.', remove_surfs=False):
+    def _export_to_separate_xmls(self, directory='.', remove_surfs=False):
         """Export model to separate XML files.
 
         Parameters
@@ -501,7 +523,7 @@ class Model:
         if self.plots:
             self.plots.export_to_xml(d)
 
-    def export_to_single_xml(self, directory='.', remove_surfs=False):
+    def _export_to_single_xml(self, path='model.xml', remove_surfs=False):
         """Export model to XML files.
 
         Parameters
@@ -516,10 +538,9 @@ class Model:
             .. versionadded:: 0.13.1
         """
         # Create directory if required
-        d = Path(directory)
-        if not d.is_dir():
-            d.mkdir(parents=True)
-        d /= 'model.xml'
+        xml_path = Path(path)
+        if not xml_path.parent.exists:
+            raise RuntimeError(f'The directory "{xml_path}" does not exist.')
 
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
@@ -541,7 +562,7 @@ class Model:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
 
-        with open(d, 'w', encoding='utf-8', errors='xmlcharrefreplace') as fh:
+        with open(xml_path, 'w', encoding='utf-8', errors='xmlcharrefreplace') as fh:
             # write the XML header
             fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
             fh.write("<model>\n")

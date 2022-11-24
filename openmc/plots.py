@@ -911,6 +911,12 @@ class Plots(cv.CheckedList):
 
     def to_xml_element(self):
         """Create a 'plots' element to be written to an XML file.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing all plot elements
+
         """
         # Reset xml element tree
         self._plots_file.clear()

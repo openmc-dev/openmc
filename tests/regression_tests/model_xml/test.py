@@ -55,16 +55,16 @@ class ModelXMLTestHarness(PyAPITestHarness):
 
 
 models = [
-'adj_cell_rotation_model',
-'lattice_mult_model',
-'energy_laws_model',
-'photon_prod_model'
+    'adj_cell_rotation_model',
+    'lattice_mult_model',
+    'energy_laws_model',
+    'photon_prod_model'
 ]
 paths = [
-'../adj_cell_rotation',
-'../lattice_multiple',
-'../energy_laws',
-'../photon_production'
+    '../adj_cell_rotation',
+    '../lattice_multiple',
+    '../energy_laws',
+    '../photon_production'
 ]
 
 

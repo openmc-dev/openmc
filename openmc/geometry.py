@@ -256,7 +256,7 @@ class Geometry:
         ----------
         path : str, optional
             Path to geometry XML file
-         materials : dict
+        materials : dict
             Dictionary mapping material ID strings to :class:`openmc.Material`
             instances (defined in :math:`openmc.Geometry.from_xml`)
 

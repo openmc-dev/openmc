@@ -228,8 +228,7 @@ class Model:
         model.settings = openmc.Settings.from_xml_element(root.find('settings'))
         model.materials = openmc.Materials.from_xml_element(root.find('materials'))
         materials = {str(m.id): m for m in model.materials}
-        model.geometry = \
-        openmc.Geometry.from_xml_element(root.find('geometry'), materials)
+        model.geometry = .Geometry.from_xml_element(root.find('geometry'), materials)
 
         # gather meshses from other classes before reading the tally node
         meshes = {}
@@ -542,8 +541,7 @@ class Model:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
 
-        with open(d, 'w', encoding='utf-8',
-                  errors='xmlcharrefreplace') as fh:
+        with open(d, 'w', encoding='utf-8', errors='xmlcharrefreplace') as fh:
             # write the XML header
             fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
             fh.write("<model>\n")

@@ -7,8 +7,6 @@ import pytest
 import openmc
 import openmc.lib
 
-from .. import cdtemp
-
 
 @pytest.fixture(scope='function')
 def pin_model_attributes():

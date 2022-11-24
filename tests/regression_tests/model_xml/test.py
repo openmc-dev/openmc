@@ -91,6 +91,7 @@ def test_input_arg(run_in_tmpdir):
     # run by specifying that single file
     openmc.run(input_file='pincell.xml')
 
-    # now ensure we get an error for an incorrect filename
+    # now ensure we get an error for an incorrect filename,
+    # even in the presence of other, valid XML files
     with pytest.raises(RuntimeError):
         openmc.run(input_file='ex-em-ell.xml')

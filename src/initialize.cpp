@@ -348,14 +348,15 @@ bool read_model_xml() {
   auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml", "plots.xml"};
   for (const auto& input : other_inputs) {
     if (file_exists(settings::path_input + input)) {
-      warning(("Other XML file input(s) are present. These file will be ignored in favor of the model.xml file."));
+      warning((fmt::format("Other XML file input(s) are present. These file will be ignored in favor of the {} file.", xml_filename));
       break;
     }
   }
 
   // Read materials and cross sections
   if (!check_for_node(root, "materials")) {
-    fatal_error("No <materials> node present in the model.xml file.");
+    fatal_error(
+      fmt::format("No <materials> node present in the {} file.", xml_filename));
   }
   auto materials_node = root.child("materials");
   read_cross_sections_xml(materials_node);
@@ -363,7 +364,8 @@ bool read_model_xml() {
 
   // Read geometry
   if (!check_for_node(root, "geometry")) {
-    fatal_error("No <geometry> node present in the model.xml_file.");
+    fatal_error(fmt::format(
+      "No <geometry> node present in the model.xml_file.", xml_filename));
   }
   read_geometry_xml(root.child("geometry"));
 

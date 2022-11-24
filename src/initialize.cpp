@@ -358,8 +358,12 @@ bool read_model_xml() {
     fatal_error(
       fmt::format("No <materials> node present in the {} file.", xml_filename));
   }
+
+  // find materials node this object cannot be used after being passed to the
+  // cross section reading function below
   auto materials_node = root.child("materials");
   read_cross_sections_xml(materials_node);
+
   read_materials_xml(root.child("materials"));
 
   // Read geometry
@@ -411,7 +415,7 @@ void read_separate_xml_files()
 }
 
 void initial_output() {
-  // handle some final output
+  // write initial output
   if (settings::run_mode == RunMode::PLOTTING) {
     // Read plots.xml if it exists
     if (mpi::master && settings::verbosity >= 5)

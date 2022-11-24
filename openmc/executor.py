@@ -9,7 +9,7 @@ from .plots import _get_plot_image
 def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
                            plot=False, restart_file=None, threads=None,
                            tracks=False, event_based=None,
-                           openmc_exec='openmc', mpi_args=None):
+                           openmc_exec='openmc', mpi_args=None, input_file=None):
     """Converts user-readable flags in to command-line arguments to be run with
     the OpenMC executable via subprocess.
 
@@ -42,6 +42,8 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
     mpi_args : list of str, optional
         MPI execute command and any additional MPI arguments to pass,
         e.g. ['mpiexec', '-n', '8'].
+    input_file : str or Pathlike
+        Name of a single XML input file for the OpenMC executable to read.
 
     .. versionadded:: 0.13.0
 
@@ -82,6 +84,9 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
     if mpi_args is not None:
         args = mpi_args + args
 
+    if input_file is not None:
+        args += ['-i', input_file]
+
     return args
 
 
@@ -118,7 +123,7 @@ def _run(args, output, cwd):
         raise RuntimeError(error_msg)
 
 
-def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
+def plot_geometry(output=True, openmc_exec='openmc', cwd='.', input_file=None):
     """Run OpenMC in plotting mode
 
     Parameters
@@ -129,6 +134,8 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
         Path to OpenMC executable
     cwd : str, optional
         Path to working directory to run in
+    input_file : str
+        Name of a single XML input file for the OpenMC executable to read.
 
     Raises
     ------
@@ -136,10 +143,13 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
         If the `openmc` executable returns a non-zero status
 
     """
+    args = [openmc_exec, '-p']
+    if input_file is not None:
+        args += ['-i', input_file]
     _run([openmc_exec, '-p'], output, cwd)
 
 
-def plot_inline(plots, openmc_exec='openmc', cwd='.'):
+def plot_inline(plots, openmc_exec='openmc', cwd='.', input_file=None):
     """Display plots inline in a Jupyter notebook.
 
     .. versionchanged:: 0.13.0
@@ -155,6 +165,8 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.'):
         Path to OpenMC executable
     cwd : str, optional
         Path to working directory to run in
+    input_file : str
+        Name of a single XML input file for the OpenMC executable to read.
 
     Raises
     ------
@@ -171,7 +183,7 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.'):
     openmc.Plots(plots).export_to_xml(cwd)
 
     # Run OpenMC in geometry plotting mode
-    plot_geometry(False, openmc_exec, cwd)
+    plot_geometry(False, openmc_exec, cwd, input_file)
 
     if plots is not None:
         images = [_get_plot_image(p, cwd) for p in plots]
@@ -179,7 +191,8 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.'):
 
 
 def calculate_volumes(threads=None, output=True, cwd='.',
-                      openmc_exec='openmc', mpi_args=None):
+                      openmc_exec='openmc', mpi_args=None,
+                      input_file=None):
     """Run stochastic volume calculations in OpenMC.
 
     This function runs OpenMC in stochastic volume calculation mode. To specify
@@ -210,6 +223,8 @@ def calculate_volumes(threads=None, output=True, cwd='.',
     cwd : str, optional
         Path to working directory to run in. Defaults to the current working
         directory.
+    input_file : str or Pathlike
+        Name of a single XML input file for the OpenMC executable to read.
 
     Raises
     ------
@@ -223,14 +238,16 @@ def calculate_volumes(threads=None, output=True, cwd='.',
     """
 
     args = _process_CLI_arguments(volume=True, threads=threads,
-                                  openmc_exec=openmc_exec, mpi_args=mpi_args)
+                                  openmc_exec=openmc_exec, mpi_args=mpi_args,
+                                  input_file=input_file)
 
     _run(args, output, cwd)
 
 
 def run(particles=None, threads=None, geometry_debug=False,
         restart_file=None, tracks=False, output=True, cwd='.',
-        openmc_exec='openmc', mpi_args=None, event_based=False):
+        openmc_exec='openmc', mpi_args=None, event_based=False,
+        input_file=None):
     """Run an OpenMC simulation.
 
     Parameters
@@ -265,6 +282,9 @@ def run(particles=None, threads=None, geometry_debug=False,
 
         .. versionadded:: 0.12
 
+    input_file : str or Pathlike
+        Name of a single XML input file for the OpenMC executable to read.
+
     Raises
     ------
     RuntimeError
@@ -275,6 +295,7 @@ def run(particles=None, threads=None, geometry_debug=False,
     args = _process_CLI_arguments(
         volume=False, geometry_debug=geometry_debug, particles=particles,
         restart_file=restart_file, threads=threads, tracks=tracks,
-        event_based=event_based, openmc_exec=openmc_exec, mpi_args=mpi_args)
+        event_based=event_based, openmc_exec=openmc_exec, mpi_args=mpi_args,
+        input_file=input_file)
 
     _run(args, output, cwd)

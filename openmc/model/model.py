@@ -221,7 +221,6 @@ class Model:
             Geometry object
 
         """
-
         if separate_xmls or not Path(path).exists():
             return cls.from_separate_xmls(*args, **kwargs)
         else:

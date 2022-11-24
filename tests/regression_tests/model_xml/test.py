@@ -74,3 +74,23 @@ def test_model_xml(model, path, request):
     results = path + "/results_true.dat"
     harness = ModelXMLTestHarness(request.getfixturevalue(model), inputs, results)
     harness.main()
+
+def test_input_arg(run_in_tmpdir):
+
+    pincell = openmc.examples.pwr_pin_cell()
+
+    pincell.settings.particles = 100
+
+    # export to separate XML files and run
+    pincell.export_to_xml(separate_xmls=True)
+    openmc.run()
+
+    # now export to a single XML file with a custom name
+    pincell.export_to_xml(filename='pincell.xml', separate_xmls=False)
+
+    # run by specifying that single file
+    openmc.run(input_file='pincell.xml')
+
+    # now ensure we get an error for an incorrect filename
+    with pytest.raises(RuntimeError):
+        openmc.run(input_file='ex-em-ell.xml')

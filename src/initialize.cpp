@@ -181,10 +181,11 @@ int parse_command_line(int argc, char* argv[])
 
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
-
+      } else if (arg == "-i" || arg == "--input") {
+        i += 1;
+        args_xml_filename = std::string(argv[i]);
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;
-
         // Check what type of file this is
         hid_t file_id = file_open(argv[i], 'r', true);
         std::string filetype;
@@ -295,9 +296,19 @@ int parse_command_line(int argc, char* argv[])
 
 bool read_model_xml() {
   // get verbosity from settings node
-  std::string model_filename = settings::path_input + "model.xml";
-  bool use_model_file = file_exists(model_filename);
-  if (!file_exists(model_filename)) return false;
+
+  std::string xml_filename = "model.xml";
+  if (!args_xml_filename.empty()) xml_filename = args_xml_filename;
+  std::string model_filename = settings::path_input + xml_filename;
+
+  // check that the model file exists. If it does not and a custom filename was
+  // supplied by the user report an error
+  if (!file_exists(model_filename)) {
+    if (!args_xml_filename.empty()) {
+      fatal_error(fmt::format("The input file '{}' specified on the command line does not exist", args_xml_filename));
+    }
+    return false;
+  }
 
   // attempt to open the document
   pugi::xml_document doc;
@@ -325,6 +336,9 @@ bool read_model_xml() {
       title();
   }
 
+  if (!args_xml_filename.empty())
+  write_message(fmt::format("Reaging user-specified input '{}'...", args_xml_filename), 5);
+  else
   write_message("Reading model XML file...", 5);
 
   read_settings_xml(settings_root);

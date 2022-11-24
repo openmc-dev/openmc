@@ -1,6 +1,8 @@
 #ifndef OPENMC_INITIALIZE_H
 #define OPENMC_INITIALIZE_H
 
+#include <string>
+
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
@@ -19,6 +21,8 @@ void read_separate_xml_files();
 //! Write some output that occurs right after initialization
 void initial_output();
 
+
+std::string args_xml_filename {};
 } // namespace openmc
 
 #endif // OPENMC_INITIALIZE_H

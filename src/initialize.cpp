@@ -348,7 +348,7 @@ bool read_model_xml() {
   auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml", "plots.xml"};
   for (const auto& input : other_inputs) {
     if (file_exists(settings::path_input + input)) {
-      warning((fmt::format("Other XML file input(s) are present. These file will be ignored in favor of the {} file.", xml_filename));
+      warning((fmt::format("Other XML file input(s) are present. These file will be ignored in favor of the {} file.", xml_filename)));
       break;
     }
   }

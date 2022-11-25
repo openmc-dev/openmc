@@ -552,6 +552,9 @@ class Model:
         settings_element = self.settings.to_xml_element(memo)
         geometry_element = self.geometry.to_xml_element()
 
+        xml.clean_indentation(geometry_element, level=1)
+        xml.clean_indentation(settings_element, level=1)
+
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build
         # a collection.
@@ -567,16 +570,18 @@ class Model:
             fh.write("<model>\n")
             # Write the materials collection to the open XML file first.
             # This will write the XML header also
-            materials._write_xml(fh, False)
+            materials._write_xml(fh, False, level=1)
             # Write remaining elements as a tree
             ET.ElementTree(geometry_element).write(fh, encoding='unicode')
             ET.ElementTree(settings_element).write(fh, encoding='unicode')
 
             if self.tallies:
                 tallies_element = self.tallies.to_xml_element(memo)
+                xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
                 ET.ElementTree(tallies_element).write(fh, encoding='unicode')
             if self.plots:
                 plots_element = self.plots.to_xml_element()
+                xml.clean_indentation(plots_element, level=1, trailing_indent=False)
                 ET.ElementTree(plots_element).write(fh, encoding='unicode')
             fh.write("</model>\n")
 

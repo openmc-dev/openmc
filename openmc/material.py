@@ -1449,7 +1449,7 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def _write_xml(self, file, header=True):
+    def _write_xml(self, file, header=True, level=0, spaces_per_level=2, trailing_indent=True):
         """Writes XML content of the materials to an open file handle.
 
         Parameters
@@ -1458,33 +1458,46 @@ class Materials(cv.CheckedList):
             Open file handle to write content into.
         header : bool
             Whether or not to write the XML header
+        level : int
+            Indentation level of materials element
+        spaces_per_level : int
+            Number of spaces per indentation
+        trailing_indentation : bool
+            Whether or not to write a trailing indentation for the materials element
+
         """
+        indentation = level*spaces_per_level*' '
         # Write the header and the opening tag for the root element.
         if header:
             file.write("<?xml version='1.0' encoding='utf-8'?>\n")
-        file.write('<materials>\n')
+        file.write(indentation+'<materials>\n')
 
         # Write the <cross_sections> element.
         if self.cross_sections is not None:
             element = ET.Element('cross_sections')
             element.text = str(self.cross_sections)
-            clean_indentation(element, level=1)
+            clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
-            file.write('  ')
+            file.write((level+1)*spaces_per_level*' ')
             reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
             ET.ElementTree(element).write(file, encoding='unicode')
 
         # Write the <material> elements.
         for material in sorted(self, key=lambda x: x.id):
             element = material.to_xml_element()
-            clean_indentation(element, level=1)
+            clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
-            file.write('  ')
+            file.write((level+1)*spaces_per_level*' ')
             reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
             ET.ElementTree(element).write(file, encoding='unicode')
 
         # Write the closing tag for the root element.
-        file.write('</materials>\n')
+        file.write(indentation+'</materials>\n')
+
+        # Write a trailing indentation for the next element
+        # at this level if needed
+        if trailing_indent:
+            file.write(indentation)
 
 
     def export_to_xml(self, path: PathLike = 'materials.xml'):

@@ -1,22 +1,36 @@
-def clean_indentation(element, level=0, spaces_per_level=2):
-    """
-    copy and paste from https://effbot.org/zone/element-lib.htm#prettyprint
-    it basically walks your tree and adds spaces and newlines so the tree is
-    printed in a nice way
+def clean_indentation(element, level=0, spaces_per_level=2, trailing_indent=True):
+    """Set indentation of XML element and its sub-elements.
+    Copied and pastee from https://effbot.org/zone/element-lib.htm#prettyprint.
+    It walks your tree and adds spaces and newlines so the tree is
+    printed in a nice way.
+
+    Parameters
+    ----------
+    level : int
+        Indentation level for the element passed in (default 0)
+    spaces_per_level : int
+        Number of spaces per indentation level (default 2)
+    trailing_indent : bool
+        Whether or not to include an indentation after closing the element
+
     """
     i = "\n" + level*spaces_per_level*" "
+
+    # ensure there's awlays some tail for the element passed in
+    if not element.tail:
+        element.tail = ""
 
     if len(element):
         if not element.text or not element.text.strip():
             element.text = i + spaces_per_level*" "
-        if not element.tail or not element.tail.strip():
+        if trailing_indent and (not element.tail or not element.tail.strip()):
             element.tail = i
         for sub_element in element:
             clean_indentation(sub_element, level+1, spaces_per_level)
         if not sub_element.tail or not sub_element.tail.strip():
             sub_element.tail = i
     else:
-        if level and (not element.tail or not element.tail.strip()):
+        if trailing_indent and level and (not element.tail or not element.tail.strip()):
             element.tail = i
 
 

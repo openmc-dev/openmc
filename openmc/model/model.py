@@ -469,7 +469,7 @@ class Model:
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
         filename : str
-            Name of the single XML file to create (only used :math:`separate_xmls` if False)
+            Name of the single XML file to create (only used :math:`separate_xmls` is False)
 
             .. versionadded:: 0.13.1
 

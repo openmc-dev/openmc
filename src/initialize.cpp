@@ -359,11 +359,7 @@ bool read_model_xml() {
       fmt::format("No <materials> node present in the {} file.", xml_filename));
   }
 
-  // find materials node this object cannot be used after being passed to the
-  // cross section reading function below
-  auto materials_node = root.child("materials");
-  read_cross_sections_xml(materials_node);
-
+  read_cross_sections_xml(root.child("materials"));
   read_materials_xml(root.child("materials"));
 
   // Read geometry

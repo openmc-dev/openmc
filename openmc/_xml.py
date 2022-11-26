@@ -11,7 +11,7 @@ def clean_indentation(element, level=0, spaces_per_level=2, trailing_indent=True
     spaces_per_level : int
         Number of spaces per indentation level (default 2)
     trailing_indent : bool
-        Whether or not to include an indentation after closing the element
+        Whether or not to add indentation after closing the element
 
     """
     i = "\n" + level*spaces_per_level*" "

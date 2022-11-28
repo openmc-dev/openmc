@@ -35,8 +35,14 @@ make install
 #Note: There is no "make test" or "make ctest" functionality for NCrystal
 #      yet. If it appears in the future, we should add it here.
 
-eval $( "${INST_DIR}/bin/ncrystal-config --setup" )
+# Output the configuration to the log
+
+"${INST_DIR}/bin/ncrystal-config" --setup
+
+# Change environmental variables
+
+eval $( "${INST_DIR}/bin/ncrystal-config" --setup )
 
 # Check installation worked
 
-ncrystal-config --setup
+nctool --test

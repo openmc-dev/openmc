@@ -1,6 +1,6 @@
 def clean_indentation(element, level=0, spaces_per_level=2, trailing_indent=True):
     """Set indentation of XML element and its sub-elements.
-    Copied and pastee from https://effbot.org/zone/element-lib.htm#prettyprint.
+    Copied and pasted from https://effbot.org/zone/element-lib.htm#prettyprint.
     It walks your tree and adds spaces and newlines so the tree is
     printed in a nice way.
 
@@ -26,6 +26,8 @@ def clean_indentation(element, level=0, spaces_per_level=2, trailing_indent=True
         if trailing_indent and (not element.tail or not element.tail.strip()):
             element.tail = i
         for sub_element in element:
+            # `trailing_indent` intentionally not passed to the recursive call.
+            # it only applies to the element for the initial of this function.
             clean_indentation(sub_element, level+1, spaces_per_level)
         if not sub_element.tail or not sub_element.tail.strip():
             sub_element.tail = i

@@ -21,13 +21,12 @@ cmake \
     "${SRC_DIR}" \
     -DBUILD_SHARED_LIBS=ON \
     -DNCRYSTAL_NOTOUCH_CMAKE_BUILD_TYPE=ON \
-    -DMODIFY_RPATH=OFF \
+    -DNCRYSTAL_MODIFY_RPATH=OFF \
     -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_EXAMPLES=OFF \
-    -DINSTALL_SETUPSH=OFF \
-    -DEMBED_DATA=ON \
-    -DINSTALL_DATA=OFF \
-    -DNO_DIRECT_PYMODINST=ON \
+    -DNCRYSTAL_ENABLE_EXAMPLES=OFF \
+    -DNCRYSTAL_ENABLE_SETUPSH=OFF \
+    -DNCRYSTAL_ENABLE_DATA=OFF \
+    -DNCRYSTAL_SKIP_PYMODINST=ON \
     -DCMAKE_INSTALL_PREFIX="${INST_DIR}" \
     -DPython3_EXECUTABLE="$PYTHON"
 
@@ -62,5 +61,5 @@ EOF
 
 $PYTHON -m pip install ./ncrystal_pypkg/ -vv
 
-# source ${INST_DIR}/setup.sh
+eval $( "${INST_DIR}/bin/ncrystal-config --setup" )
 

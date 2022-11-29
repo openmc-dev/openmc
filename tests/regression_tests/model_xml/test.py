@@ -93,6 +93,5 @@ def test_input_arg(run_in_tmpdir):
 
     # now ensure we get an error for an incorrect filename,
     # even in the presence of other, valid XML files
-    with pytest.raises(RuntimeError) as execinfo:
+    with pytest.raises(RuntimeError, match='ex-em-ell.xml'):
         openmc.run(input_file='ex-em-ell.xml')
-        assert 'ex-em-ell.xml' in execinfo.value

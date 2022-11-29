@@ -106,7 +106,7 @@ Adding NCrystal materials
 ------------------
 
 Additional support for thermal scattering can be added by using NCrystal_.
-The :meth:`Material.from_ncrystal` class method generates a material object from
+The :meth:`Material.from_ncrystal` class method generates a :class:`openmc.Material` object from
 an `NCrystal configuration string <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#uniform-material-configuration-syntax>`_.
 Temperature, material composition and density are passed from the configuration string
 and the `NCMAT file <https://github.com/mctools/ncrystal/wiki/NCMAT-format>`_

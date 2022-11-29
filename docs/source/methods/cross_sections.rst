@@ -189,7 +189,7 @@ cannot currently included in ACE files such as oriented single crystals (see the
 and further extend the physics `using plugins`_. Thermal scattering kernels are generated on
 the fly from dynamic and structural data, or loaded from :math:`S(\alpha,\beta)` tables converted
 from ENDF6 evaluations. These kernels are sampled in a direct way using a fast `rejection algorithm`_ 
-that does not require previous processing. A `large library` of materials is already included in
+that does not require previous processing. A `large library`_ of materials is already included in
 the NCrystal distribution, and new materials can be easily defined from scratch in the `NCMAT format`_
 or `combining existing files`_.
 

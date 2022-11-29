@@ -15,8 +15,6 @@ CPU_COUNT=1
 mkdir "$BLD_DIR"
 cd ncrystal_bld
 
-#cmake -Dstatic=on .. && make 2>/dev/null && sudo make install
-
 cmake \
     "${SRC_DIR}" \
     -DBUILD_SHARED_LIBS=ON \

@@ -10,9 +10,9 @@ from tests.testing_harness import PyAPITestHarness, colorize
 # use a few models from other tests to make sure the same results are
 # produced when using a single model.xml file as input
 from ..adj_cell_rotation.test import model as adj_cell_rotation_model
-from ..lattice_multiple.test import model as lattice_mult_model
+from ..lattice_multiple.test import model as lattice_multiple_model
 from ..energy_laws.test import model as energy_laws_model
-from ..photon_production.test import model as photon_prod_model
+from ..photon_production.test import model as photon_production_model
 
 
 class ModelXMLTestHarness(PyAPITestHarness):
@@ -30,10 +30,10 @@ class ModelXMLTestHarness(PyAPITestHarness):
     def _get_inputs(self):
         return open('model.xml').read()
 
-    def _compare_inputs(self):
-        """Skip input comparisons for now
-        """
-        pass
+    # def _compare_inputs(self):
+    #     """Skip input comparisons for now
+    #     """
+    #     pass
 
     def _compare_results(self):
         """Make sure the current results agree with the reference."""
@@ -54,25 +54,23 @@ class ModelXMLTestHarness(PyAPITestHarness):
             os.remove('model.xml')
 
 
-models = [
-    'adj_cell_rotation_model',
-    'lattice_mult_model',
-    'energy_laws_model',
-    'photon_prod_model'
-]
-paths = [
-    '../adj_cell_rotation',
-    '../lattice_multiple',
-    '../energy_laws',
-    '../photon_production'
+test_names = [
+    'adj_cell_rotation',
+    'lattice_multiple',
+    'energy_laws',
+    'photon_production'
 ]
 
 
-@pytest.mark.parametrize("model, path", zip(models, paths))
-def test_model_xml(model, path, request):
-    inputs = path + "/inputs_true.dat"
-    results = path + "/results_true.dat"
-    harness = ModelXMLTestHarness(request.getfixturevalue(model), inputs, results)
+@pytest.mark.parametrize("test_name", test_names, ids=lambda test: test)
+def test_model_xml(test_name, request):
+    openmc.reset_auto_ids()
+
+    test_path = '../' + test_name
+    results = test_path + "/results_true.dat"
+    inputs = test_name + "_inputs_true.dat"
+    model_name = test_name + "_model"
+    harness = ModelXMLTestHarness(request.getfixturevalue(model_name), inputs, results)
     harness.main()
 
 def test_input_arg(run_in_tmpdir):

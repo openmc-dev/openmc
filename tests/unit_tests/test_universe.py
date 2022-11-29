@@ -132,3 +132,14 @@ def test_create_xml(cell_with_lattice):
     assert all(c.get('universe') == str(u.id) for c in cell_elems)
     assert not (set(c.get('id') for c in cell_elems) ^
                 set(str(c.id) for c in cells))
+
+
+def test_get_nuclide_densities():
+    surf = openmc.Sphere()
+    material = openmc.Material()
+    material.add_elements_from_formula("H2O")
+    material.set_density("g/cm3", 1)
+    cell = openmc.Cell(region=-surf,fill=material)
+    universe = openmc.Universe(cells=[cell])
+    with pytest.raises(RuntimeError):
+        universe.get_nuclide_densities()

@@ -469,7 +469,7 @@ class Universe(UniverseBase):
         """
         nuclides = OrderedDict()
 
-        if self._atoms is not None:
+        if len(self._atoms) > 0:
             volume = self.volume
             for name, atoms in self._atoms.items():
                 nuclide = openmc.Nuclide(name)

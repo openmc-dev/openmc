@@ -12,7 +12,7 @@
   </materials>
   <geometry>
     <cell id="1" material="1" region="-1" universe="1" />
-    <surface id="1" type="sphere" boundary="reflective" coeffs="0.0 0.0 0.0 100.0" />
+    <surface boundary="reflective" coeffs="0.0 0.0 0.0 100.0" id="1" type="sphere" />
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

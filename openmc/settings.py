@@ -1598,6 +1598,7 @@ class Settings:
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
+        reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
 
         return element
 
@@ -1618,7 +1619,6 @@ class Settings:
             p /= 'settings.xml'
 
         # Write the XML Tree to the settings.xml file
-        reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 

@@ -23,7 +23,7 @@
       <space type="point">
         <parameters>0 0 0</parameters>
       </space>
-      <angle type="monodirectional" reference_uvw="1.0 0.0 0.0" />
+      <angle reference_uvw="1.0 0.0 0.0" type="monodirectional" />
       <energy type="discrete">
         <parameters>14000000.0 1.0</parameters>
       </energy>

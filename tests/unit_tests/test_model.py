@@ -1,5 +1,6 @@
 from math import pi
 from pathlib import Path
+import os
 
 import numpy as np
 import pytest
@@ -547,3 +548,22 @@ def test_model_xml(run_in_tmpdir):
     # make sure we can also export this again to separate
     # XML files
     new_model.export_to_xml(separate_xmls=True)
+
+def test_model_exec(run_in_tmpdir):
+
+    pincell_model = openmc.examples.pwr_pin_cell()
+
+    pincell_model.export_to_xml(filename='pwr_pincell.xml', separate_xmls=False)
+
+    openmc.run(input_file='pwr_pincell.xml')
+
+    with pytest.raises(RuntimeError, match='ex-em-ell.xml'):
+        openmc.run(input_file='ex-em-ell.xml')
+
+    # test that a file in a different directory can be used
+    os.mkdir('inputs')
+    pincell_model.export_to_xml(directory='./inputs', filename='pincell.xml', separate_xmls=False)
+    openmc.run(input_file='./inputs/pincell.xml')
+
+    with pytest.raises(RuntimeError, match='input_dir'):
+        openmc.run(input_file='input_dir/pincell.xml')

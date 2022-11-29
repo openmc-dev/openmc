@@ -156,8 +156,14 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
     // Read binding energy and number of electrons
     hid_t tgroup = open_group(rgroup, designator.c_str());
-    read_attribute(tgroup, "binding_energy", shell.binding_energy);
-    read_attribute(tgroup, "num_electrons", shell.n_electrons);
+
+    // Read binding energy energy and number of electrons if atomic relaxation
+    // data is present
+    if (attribute_exists(tgroup, "binding_energy")) {
+      has_atomic_relaxation_ = true;
+      read_attribute(tgroup, "binding_energy", shell.binding_energy);
+      read_attribute(tgroup, "num_electrons", shell.n_electrons);
+    }
 
     // Read subshell cross section
     xt::xtensor<double, 1> xs;
@@ -757,6 +763,10 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
 
 void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
+  // Return if no atomic relaxation data is present
+  if (!has_atomic_relaxation_)
+    return;
+
   // Stack for unprocessed holes left by transitioning electrons
   int n_holes = 0;
   array<int, MAX_STACK_SIZE> holes;

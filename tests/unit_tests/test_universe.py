@@ -139,7 +139,7 @@ def test_get_nuclide_densities():
     material = openmc.Material()
     material.add_elements_from_formula("H2O")
     material.set_density("g/cm3", 1)
-    cell = openmc.Cell(region=-surf,fill=material)
+    cell = openmc.Cell(region=-surf, fill=material)
     universe = openmc.Universe(cells=[cell])
     with pytest.raises(RuntimeError):
         universe.get_nuclide_densities()

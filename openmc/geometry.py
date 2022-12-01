@@ -322,6 +322,19 @@ class Geometry:
         else:
             return OrderedDict()
 
+    def get_all_filled_cells(self):
+        """Return all cells that are contained within the universe that are
+        filled with a material
+
+        cells : collections.OrderedDict
+            Dictionary whose keys are cell IDs and values are :class:`Cell`
+            instances
+
+        """
+
+        return {id:cell for id, cell in self.root_universe.get_all_cells().items() if cell.fill is not None}
+
+
     def get_all_universes(self):
         """Return all universes in the geometry.
 

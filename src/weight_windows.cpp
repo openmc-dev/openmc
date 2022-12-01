@@ -534,7 +534,7 @@ extern "C" int openmc_set_weight_windows(
   return 0;
 }
 
-extern "C" int openmc_update_weight_windows(int tally_idx, int ww_idx,
+extern "C" int openmc_update_weight_windows(int32_t tally_idx, int32_t ww_idx,
   const char* score, const char* value, const char* method)
 {
   // get the requested tally
@@ -562,6 +562,24 @@ extern "C" int openmc_update_weight_windows(int tally_idx, int ww_idx,
   wws->update_weight_windows(tally, score, value, method);
 
   return 0;
+}
+
+extern "C" int openmc_extend_weight_windows(
+  int32_t n, int32_t* index_start, int32_t* index_end)
+{
+  if (index_start)
+    *index_start = variance_reduction::weight_windows.size();
+  if (index_end)
+    *index_end = variance_reduction::weight_windows.size() + n - 1;
+  for (int i = 0; i < n; ++i)
+    variance_reduction::weight_windows.push_back(
+      make_unique<WeightWindows>(-1));
+  return 0;
+}
+
+extern "C" size_t openmc_weight_windows_size()
+{
+  return variance_reduction::weight_windows.size();
 }
 
 } // namespace openmc

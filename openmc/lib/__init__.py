@@ -65,6 +65,7 @@ from .tally import *
 from .settings import settings
 from .math import *
 from .plot import *
+from .weight_windows import *
 
 # Flag to denote whether or not openmc.lib.init has been called
 # TODO: Establish and use a flag in the C++ code to represent the status of the

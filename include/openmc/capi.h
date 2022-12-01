@@ -166,9 +166,12 @@ int openmc_tally_set_writable(int32_t index, bool writable);
 int openmc_get_weight_windows_index(int32_t id, int32_t* idx);
 int openmc_set_weight_windows(
   int ww_id, size_t n, const double* lower_bounds, const double* upper_bounds);
-int openmc_update_weight_windows(int tally_idx, int ww_idx,
+int openmc_update_weight_windows(int32_t tally_idx, int32_t ww_idx,
   const char* score = "flux", const char* value = "mean",
   const char* method = "magic");
+int openmc_extend_weight_windows(
+  int32_t n, int32_t* index_start, int32_t* index_end);
+size_t openmc_weight_windows_size();
 int openmc_zernike_filter_get_order(int32_t index, int* order);
 int openmc_zernike_filter_get_params(
   int32_t index, double* x, double* y, double* r);

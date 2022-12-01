@@ -102,7 +102,6 @@ _dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POIN
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
 
-
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
     inf = sys.float_info.max
@@ -520,6 +519,33 @@ def statepoint_write(filename=None, write_source=True):
     _dll.openmc_statepoint_write(filename, c_bool(write_source))
 
 
+def update_weight_windows(tally_idx, ww_idx, score="flux", value='mean', method='magic'):
+    """Update weight windows using tally information
+
+    Parameters
+    ----------
+    tally_idx : int
+        Index of the tally used to update weight window information
+    ww_idx : int
+        Index of the WeightWindows object to update
+    score : str
+        Name of the score data used (default is "flux")
+    value : str
+        Value type used to generate weight windows. One of {'mean', 'rel_err', 'std_dev}.
+        (default is 'mean')
+    method : str
+        Method used for weight window generation. One of {'magic', 'pseudo-source'}
+
+    """
+
+    _dll.openmc_update_weight_windows(tally_idx,
+                                      ww_idx,
+                                      c_char_p(score.encode()),
+                                      c_char_p(value.encode()),
+                                      c_char_p(method.encode()))
+
+
+
 @contextmanager
 def run_in_memory(**kwargs):
     """Provides context manager for calling OpenMC shared library functions.
@@ -616,3 +642,6 @@ def quiet_dll(output=True):
             sys.stdout = initial_stdout
             sys.stdout.flush()
             os.dup2(initial_stdout_fno, 1)
+
+
+

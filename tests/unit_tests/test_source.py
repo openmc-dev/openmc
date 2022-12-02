@@ -1,7 +1,6 @@
 from math import pi
 
 import openmc
-import openmc.deplete
 import openmc.lib
 import openmc.stats
 import numpy as np
@@ -151,5 +150,13 @@ def test_from_cell_with_material():
     assert isinstance(source, openmc.Source)
     assert list(source.space.lower_left) == [26, 50, 94]
     assert list(source.space.upper_right) == [32, 56, 100]
-    assert source.domain.region == -surf
     assert source.particle == 'photon'
+    assert isinstance(source.angle, openmc.stats.multivariate.Isotropic)
+    assert np.allclose(source.energy.x, np.array([7.510021e+02, 8.523381e+02, 8.768900e+02, 8.836421e+02,
+        7.417820e+03, 7.435780e+03, 8.222319e+03, 8.224590e+03,
+        8.287880e+03, 8.288141e+03, 3.471400e+05, 8.261000e+05,
+        1.173228e+06, 1.332492e+06, 2.158570e+06, 2.505692e+06]))
+    assert np.allclose(source.energy.p, np.array([7.09537335e+07, 3.37257459e+07, 5.78906470e+05, 2.37138965e+07,
+        1.33538192e+09, 2.60787767e+09, 1.63310185e+08, 3.20221427e+08,
+        1.39991188e+05, 2.03462105e+05, 3.14020526e+09, 3.18207467e+09,
+        4.18065994e+13, 4.18621182e+13, 5.02432842e+08, 8.37388070e+05]))

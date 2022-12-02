@@ -330,8 +330,10 @@ class Source:
         return source
 
     @classmethod
-    def from_cell_with_material(cls, cell):
-        """Generate an isotropic photon source from an openmc.Cell object.
+    def from_cell_with_material(cls, cell: openmc.Cell) -> Optional[openmc.Source]:
+        """Generate an isotropic photon source from an openmc.Cell object. If
+        the material used to fill the cell has no photon emission then None is
+        returned.
 
         Parameters
         ----------
@@ -340,8 +342,8 @@ class Source:
 
         Returns
         -------
-        openmc.Source
-            Source generated from an openmc.Material
+        Optional[openmc.Source, None]
+            Source generated from an openmc.Material or None
 
         """
 
@@ -358,6 +360,8 @@ class Source:
         source = cls(domains=[cell])
         source.particle = 'photon'
         photon_spec = cell.fill.decay_photon_energy
+        if photon_spec is None:
+            return None
         source.energy = photon_spec
         source.strength = photon_spec.integral()
         source.space = openmc.stats.Box(*cell.bounding_box)

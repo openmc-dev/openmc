@@ -92,11 +92,6 @@ class Material(IDManagerMixin):
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
-    decay_photon_energy : openmc.stats.Univariate or None
-        Energy distribution of photons emitted from decay of unstable nuclides
-        within the material, or None if no photon source exists. The integral of
-        this distribution is the total intensity of the photon source in
-        [decay/sec].
 
         .. versionadded:: 0.13.2
 
@@ -264,8 +259,29 @@ class Material(IDManagerMixin):
                            / openmc.data.AVOGADRO
         return density*self.volume
 
-    @property
-    def decay_photon_energy(self) -> Optional[Univariate]:
+    def decay_photon_energy(
+        self,
+        min_energy_cutoff: Optional[float] = None
+    ) -> Optional[Univariate]:
+        """Energy distribution of photons emitted from decay of unstable
+        nuclides within the material, or None if no photon source exists. The
+        integral of this distribution is the total intensity of the photon
+        source in [decay/sec].
+
+        Parameters
+        ----------
+        min_energy_cutoff : float
+            The energy above which photons energies are included in the
+            returned Univariate. Allow low energy photons that would otherwise
+            cause errors during transport to be removed. Typically set to 1e-3
+
+        Returns
+        -------
+        openmc.stats.Univariate or None
+            Univariate instance
+
+        """
+
         atoms = self.get_nuclide_atoms()
         dists = []
         probs = []
@@ -274,6 +290,12 @@ class Material(IDManagerMixin):
             if source_per_atom is not None:
                 dists.append(source_per_atom)
                 probs.append(num_atoms)
+
+        if min_energy_cutoff and dists:
+            not_cut_energies = dists.x > min_energy_cutoff
+            dists.x = dists.x[not_cut_energies]
+            probs.p = probs.p[not_cut_energies]
+
         return openmc.data.combine_distributions(dists, probs) if dists else None
 
     @classmethod

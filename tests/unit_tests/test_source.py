@@ -143,13 +143,13 @@ def test_from_cell_with_material():
     mat.volume = 1
     mat.set_density('g/cm3', 1)
 
-    surf = openmc.Sphere(r=1)
+    surf = openmc.Sphere(r=3, x0=29, y0=53, z0=97)
     cell = openmc.Cell(region=-surf)
     cell.fill = mat
 
     source = openmc.Source.from_cell_with_material(cell)
-    assert isinstance(source, openmc.Source())
-    assert source.space.lower_left == [-1, -1, -1]
-    assert source.space.upper_right == [1, 1, 1]
+    assert isinstance(source, openmc.Source)
+    assert list(source.space.lower_left) == [26, 50, 94]
+    assert list(source.space.upper_right) == [32, 56, 100]
     assert source.domain.region == -surf
     assert source.particle == 'photon'

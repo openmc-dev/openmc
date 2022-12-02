@@ -329,6 +329,41 @@ class Source:
 
         return source
 
+    @classmethod
+    def from_cell_with_material(cls, cell):
+        """Generate an isotropic photon source from an openmc.Cell object.
+
+        Parameters
+        ----------
+        cell : openmc.Cell
+            OpenMC cell object to use for the source creation
+
+        Returns
+        -------
+        openmc.Source
+            Source generated from an openmc.Material
+
+        """
+
+        if cell.fill is None:
+            msg = ("The cell must be filled with an openmc.Material object "
+                   "as this method make use of the cells material and the " 
+                   "Material.decay_photon_energy method.")
+            raise ValueError(msg)
+        if cell.fill.volume is None:
+            msg = ("The openmc.Material object that the cell is filled with "
+                   "must have the volume property set")
+            raise ValueError(msg)
+
+        source = cls()
+        source.domain=cell
+        source.particle = 'photon'
+        source.energy=cell.fill.decay_photon_energy
+        source.space=openmc.stats.Box(*cell.bounding_box)
+        source.angle=openmc.stats.multivariate.Isotropic()
+        source.strength=cell.fill.decay_photon_energy.integral()
+
+        return source
 
 class ParticleType(Enum):
     NEUTRON = 0

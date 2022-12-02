@@ -134,3 +134,21 @@ def test_rejection(run_in_tmpdir):
         assert p.r not in non_source_region
 
     openmc.lib.finalize()
+
+
+def test_from_cell_with_material():
+    mat=openmc.Material()
+    mat.add_element('U',1)
+    mat.volume=1
+    mat.set_density('g/cm3',1)
+
+    surf = openmc.Sphere(r=1)
+    cell=openmc.Cell(region=-surf)
+    cell.fill=mat
+
+    source=openmc.Source.from_cell_with_material(cell)
+    assert isinstance(source, openmc.Source())
+    assert source.space.lower_left == [-1, -1, -1]
+    assert source.space.upper_right == [1, 1, 1]
+    assert source.domain.region == -surf
+    assert source.particle == 'photon'

@@ -556,13 +556,13 @@ def test_decay_photon_energy():
     m.volume = 1.0
 
     # Get decay photon source and make sure it's the right type
-    src = m.decay_photon_energy
+    src = m.decay_photon_energy()
     assert isinstance(src, openmc.stats.Discrete)
 
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution
     m.add_nuclide('Xe135', 1.0e-24)
-    src = m.decay_photon_energy
+    src = m.decay_photon_energy()
     assert isinstance(src, openmc.stats.Mixture)
 
     # With a single atom of each, the intensity of the photon source should be
@@ -578,4 +578,4 @@ def test_decay_photon_energy():
     stable = openmc.Material()
     stable.add_nuclide('Gd156', 1.0)
     stable.volume = 1.0
-    assert stable.decay_photon_energy is None
+    assert stable.decay_photon_energy() is None

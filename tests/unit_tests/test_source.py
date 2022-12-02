@@ -1,6 +1,7 @@
 from math import pi
 
 import openmc
+import openmc.deplete
 import openmc.lib
 import openmc.stats
 import numpy as np
@@ -137,16 +138,16 @@ def test_rejection(run_in_tmpdir):
 
 
 def test_from_cell_with_material():
-    mat=openmc.Material()
-    mat.add_element('U',1)
-    mat.volume=1
-    mat.set_density('g/cm3',1)
+    mat = openmc.Material()
+    mat.add_nuclide('Co60', 1)
+    mat.volume = 1
+    mat.set_density('g/cm3', 1)
 
     surf = openmc.Sphere(r=1)
-    cell=openmc.Cell(region=-surf)
-    cell.fill=mat
+    cell = openmc.Cell(region=-surf)
+    cell.fill = mat
 
-    source=openmc.Source.from_cell_with_material(cell)
+    source = openmc.Source.from_cell_with_material(cell)
     assert isinstance(source, openmc.Source())
     assert source.space.lower_left == [-1, -1, -1]
     assert source.space.upper_right == [1, 1, 1]

@@ -355,15 +355,16 @@ class Source:
                    "must have the volume property set")
             raise ValueError(msg)
 
-        source = cls()
-        source.domain=cell
+        source = cls(domains=[cell])
         source.particle = 'photon'
-        source.energy=cell.fill.decay_photon_energy
-        source.space=openmc.stats.Box(*cell.bounding_box)
-        source.angle=openmc.stats.multivariate.Isotropic()
-        source.strength=cell.fill.decay_photon_energy.integral()
+        photon_spec = cell.fill.decay_photon_energy
+        source.energy = photon_spec
+        source.strength = photon_spec.integral()
+        source.space = openmc.stats.Box(*cell.bounding_box)
+        source.angle = openmc.stats.multivariate.Isotropic()
 
         return source
+
 
 class ParticleType(Enum):
     NEUTRON = 0

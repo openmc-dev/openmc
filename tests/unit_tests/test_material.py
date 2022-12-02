@@ -558,6 +558,12 @@ def test_decay_photon_energy():
     # Get decay photon source and make sure it's the right type
     src = m.decay_photon_energy()
     assert isinstance(src, openmc.stats.Discrete)
+    assert len(src.x) == 98
+    assert len(src.p) == 98
+    src = m.decay_photon_energy(min_energy_cutoff=4000.)
+    # just one less entry as the cutoff removes a single photon energy
+    assert len(src.x) == 97
+    assert len(src.p) == 97
 
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution

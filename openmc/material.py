@@ -291,12 +291,13 @@ class Material(IDManagerMixin):
                 dists.append(source_per_atom)
                 probs.append(num_atoms)
 
-        if min_energy_cutoff and dists:
-            not_cut_energies = dists.x > min_energy_cutoff
-            dists.x = dists.x[not_cut_energies]
-            probs.p = probs.p[not_cut_energies]
+        combo_dist = openmc.data.combine_distributions(dists, probs) if dists else None
 
-        return openmc.data.combine_distributions(dists, probs) if dists else None
+        if min_energy_cutoff and dists:
+            not_cut_energies = combo_dist.x > min_energy_cutoff
+            combo_dist.x = combo_dist.x[not_cut_energies]
+            combo_dist.p = combo_dist.p[not_cut_energies]
+        return combo_dist
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):

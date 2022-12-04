@@ -147,7 +147,6 @@ def test_from_cell_with_material():
     cell.fill = mat
 
     source = openmc.Source.from_cell_with_material(cell)
-    assert isinstance(source, openmc.source.Source)
     assert list(source.space.lower_left) == [26, 50, 94]
     assert list(source.space.upper_right) == [32, 56, 100]
     assert source.particle == 'photon'

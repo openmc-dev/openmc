@@ -89,15 +89,17 @@ def test_get_all_cells():
     assert not all_cells ^ set(cells + cells2)
 
 def test_get_all_filled_cells():
-    mat1= openmc.Material()
-    cell1 = openmc.Cell(name='1')
-    cell2 = openmc.Cell(name='2')
-    cell1.fill = mat1
-    geom = openmc.Geometry([cell1, cell2])
+    cell1 = openmc.Cell()
+    cell1.id = 1
+    cell2 = openmc.Cell()
+    cell2.id = 2
+    mat1 = openmc.Material()
+    cell2.fill = mat1
+    uni = openmc.Geometry([cell1, cell2])
 
-    all_cells = geom.get_all_filled_cells().values()
-    assert len(all_cells)==1
-    assert list(all_cells)[0].name == '1'
+    all_cells = uni.get_all_filled_cells().values()
+    assert len(all_cells) == 1
+    assert list(all_cells)[0].id == 2
 
 
 def test_get_all_materials():

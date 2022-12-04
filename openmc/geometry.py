@@ -326,13 +326,13 @@ class Geometry:
         """Return all cells that are contained within the universe that are
         filled with a material
 
-        cells : collections.OrderedDict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
         """
 
-        return {id:cell for id, cell in self.root_universe.get_all_cells().items() if cell.fill is not None}
+        return {id:cell for id, cell in self.root_universe.get_all_filled_cells().items()}
 
 
     def get_all_universes(self):
@@ -658,3 +658,9 @@ class Geometry:
         clone = deepcopy(self)
         clone.root_universe = self.root_universe.clone()
         return clone
+
+    def update_cell_materials(self, materials):
+        
+        for cell in self.get_all_cells():
+            if cell.fill is not None:
+                cell.fill.id

@@ -79,6 +79,18 @@ def test_cells():
     all_cells = set(u.get_all_cells().values())
     assert not (all_cells ^ set(cells + cells2))
 
+def test_get_all_filled_cells():
+    mat1 = openmc.Material()
+    cell1 = openmc.Cell()
+    cell1.id = 1
+    cell2 = openmc.Cell()
+    cell2.id = 2
+    cell1.fill = mat1
+    uni = openmc.Universe(cells=[cell1, cell2])
+
+    all_cells = uni.get_all_filled_cells().values()
+    assert len(all_cells) == 1
+    assert list(all_cells)[0].id == 1
 
 def test_get_all_materials(cell_with_lattice):
     cells, mats, univ, lattice = cell_with_lattice

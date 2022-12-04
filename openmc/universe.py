@@ -516,7 +516,7 @@ class Universe(UniverseBase):
         """Return all cells that are contained within the universe that are
         filled with a material
 
-        cells : collections.OrderedDict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 

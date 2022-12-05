@@ -100,11 +100,15 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
     if (T < (data::temperature_min - settings::temperature_tolerance)) {
-      throw std::runtime_error {fmt::format("Temperature of {} K is below minimum temperature at "
-                                "which data is available of {} K.", T, data::temperature_min)};
+      throw std::runtime_error {
+        fmt::format("Temperature of {} K is below minimum temperature at "
+                    "which data is available of {} K.",
+          T, data::temperature_min)};
     } else if (T > (data::temperature_max + settings::temperature_tolerance)) {
-      throw std::runtime_error {fmt::format("Temperature of {} K is above maximum temperature at "
-                                "which data is available of {} K.", T, data::temperature_max)};
+      throw std::runtime_error {
+        fmt::format("Temperature of {} K is above maximum temperature at "
+                    "which data is available of {} K.",
+          T, data::temperature_max)};
     }
   }
 
@@ -586,8 +590,13 @@ std::vector<int32_t>::iterator Region::add_parentheses(
   }
   start++;
 
-  // Initialize return iterator
-  auto return_iterator = expression_.begin();
+  // Keep track of return iterator distance. If we don't encounter a left
+  // parenthesis, we return an iterator corresponding to wherever the right
+  // parenthesis is inserted. If a left parenthesis is encountered, an iterator
+  // corresponding to the left parenthesis is returned. Also note that we keep
+  // track of a *distance* instead of an iterator because the underlying memory
+  // allocation may change.
+  std::size_t return_it_dist = 0;
 
   // Add right parenthesis
   // While the start iterator is within the bounds of infix
@@ -600,9 +609,9 @@ std::vector<int32_t>::iterator Region::add_parentheses(
       // add right parenthesis, right parenthesis position depends on the
       // operator, when the operator is a union then do not include the operator
       // in the region, when the operator is an intersection then include the
-      // operato and next surface
+      // operator and next surface
       if (*start == OP_LEFT_PAREN) {
-        return_iterator = start;
+        return_it_dist = std::distance(expression_.begin(), start);
         int depth = 1;
         do {
           start++;
@@ -617,20 +626,22 @@ std::vector<int32_t>::iterator Region::add_parentheses(
       } else {
         start = expression_.insert(
           start_token == OP_UNION ? start - 1 : start, OP_RIGHT_PAREN);
-        if (return_iterator == expression_.begin()) {
-          return_iterator = start - 1;
+        if (return_it_dist > 0) {
+          return expression_.begin() + return_it_dist;
+        } else {
+          return start - 1;
         }
-        return return_iterator;
       }
     }
   }
   // If we get here a right parenthesis hasn't been placed,
   // return iterator
   expression_.push_back(OP_RIGHT_PAREN);
-  if (return_iterator == expression_.begin()) {
-    return_iterator = start - 1;
+  if (return_it_dist > 0) {
+    return expression_.begin() + return_it_dist;
+  } else {
+    return start - 1;
   }
-  return return_iterator;
 }
 
 //==============================================================================
@@ -638,6 +649,7 @@ std::vector<int32_t>::iterator Region::add_parentheses(
 void Region::add_precedence()
 {
   int32_t current_op = 0;
+  std::size_t current_dist = 0;
 
   for (auto it = expression_.begin(); it != expression_.end(); it++) {
     int32_t token = *it;
@@ -646,15 +658,22 @@ void Region::add_precedence()
       if (current_op == 0) {
         // Set the current operator if is hasn't been set
         current_op = token;
+        current_dist = std::distance(expression_.begin(), it);
       } else if (token != current_op) {
         // If the current operator doesn't match the token, add parenthesis to
         // assert precedence
-        it = add_parentheses(it);
+        if (current_op == OP_INTERSECTION) {
+          it = add_parentheses(expression_.begin() + current_dist);
+        } else {
+          it = add_parentheses(it);
+        }
         current_op = 0;
+        current_dist = 0;
       }
     } else if (token > OP_COMPLEMENT) {
       // If the token is a parenthesis reset the current operator
       current_op = 0;
+      current_dist = 0;
     }
   }
 }
@@ -769,7 +788,6 @@ std::pair<double, int32_t> Region::distance(
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
-
 
   for (int32_t token : expression_) {
     // Ignore this token if it corresponds to an operator rather than a region.
@@ -943,13 +961,13 @@ vector<int32_t> Region::surfaces() const
 
   vector<int32_t> surfaces = expression_;
 
-  auto it = std::find_if(surfaces.begin(), surfaces.end(), 
+  auto it = std::find_if(surfaces.begin(), surfaces.end(),
     [&](const auto& value) { return value >= OP_UNION; });
 
   while (it != surfaces.end()) {
     surfaces.erase(it);
 
-    it = std::find_if(surfaces.begin(), surfaces.end(), 
+    it = std::find_if(surfaces.begin(), surfaces.end(),
       [&](const auto& value) { return value >= OP_UNION; });
   }
 

@@ -21,8 +21,6 @@ void read_separate_xml_files();
 //! Write some output that occurs right after initialization
 void initial_output();
 
-
-std::string args_xml_filename {};
 } // namespace openmc
 
 #endif // OPENMC_INITIALIZE_H

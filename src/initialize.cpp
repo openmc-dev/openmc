@@ -282,7 +282,12 @@ int parse_command_line(int argc, char* argv[])
   if (argc > 1 && last_flag < argc - 1) {
     settings::path_input = std::string(argv[last_flag + 1]);
 
-    // Add slash at end of directory if it isn't there
+    // check that the path is either a valid directory or file
+    if (!is_dir(settings::path_input) && !file_exists(settings::path_input)) {
+      fatal_error(fmt::format("The specified path '{}' does not exist.", settings::path_input));
+    }
+
+    // Add slash at end of directory if it isn't the
     if (!ends_with(settings::path_input, "/")) {
       settings::path_input += "/";
     }
@@ -294,13 +299,17 @@ int parse_command_line(int argc, char* argv[])
 bool read_model_xml() {
   std::string model_filename = settings::path_input;
 
-  // if the path input isn't an existing file, assume its a directory
-  // and append the default model.xml filename
-  if (!file_exists(settings::path_input)) {
-    model_filename += "/model.xml";
-    if (!file_exists(model_filename))
-      return false;
-  }
+  // some string cleanup
+  // a trailing "/" is applied to path_input if it's present,
+  // remove it for the first attempt at reading the input file
+  if (ends_with(model_filename, "/")) model_filename.pop_back();
+  if (model_filename.length() == 0) model_filename = ".";
+
+  // if the current filename is a directory, append the default model filename
+  if (is_dir(model_filename)) model_filename += "/model.xml";
+
+  // if this file doesn't exist, stop here
+  if (!file_exists(model_filename)) return false;
 
   // try to process the path input as an XML file
   pugi::xml_document doc;
@@ -330,10 +339,7 @@ bool read_model_xml() {
       title();
   }
 
-  if (!args_xml_filename.empty())
-  write_message(fmt::format("Reaging user-specified input '{}'...", args_xml_filename), 5);
-  else
-  write_message("Reading model XML file...", 5);
+  write_message(fmt::format("Reading model XML file '{}' ...", model_filename), 5);
 
   read_settings_xml(settings_root);
 

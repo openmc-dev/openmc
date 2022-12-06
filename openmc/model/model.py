@@ -205,15 +205,19 @@ class Model:
                 self._plots.append(plot)
 
     @classmethod
-    def from_xml(cls, *args, path='model.xml', separate_xmls=True, **kwargs):
+    def from_xml(cls, *args, separate_xmls=True, **kwargs):
         """Generate geometry from XML file
 
         Parameters
         ----------
-        path : str, optional
-            Path to model XML file
+        args : list
+            Positional arguments to be forwarded to
+            :func:`Model.from_separate_xmls` or :func:`Model.from_model_xml`.
         separate_xmls : bool
-            Whether or not to read from a single or separate XML files
+            Whether or not to read from a single or separate XML files.
+        kwargs : dict, optional
+            Keyword arguments to be forwarded to
+            :func:`Model.from_separate_xmls` or :func:`Model.from_model_xml`.
 
         Returns
         -------
@@ -221,7 +225,7 @@ class Model:
             Geometry object
 
         """
-        if separate_xmls or not Path(path).exists():
+        if separate_xmls:
             return cls.from_separate_xmls(*args, **kwargs)
         else:
             return cls.from_model_xml(*args, **kwargs)
@@ -457,19 +461,19 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.', remove_surfs=False, separate_xmls=True, filename='model.xml'):
+    def export_to_xml(self, directory='.', remove_surfs=False, separate_xmls=True, path='model.xml'):
         """Export model to an XML file(s).
 
         Parameters
         ----------
         directory : str
             Directory to write XML files to. If it doesn't exist already, it
-            will be created.
+            will be created. Only used if :math:`separate_xmls` is True.
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
-        filename : str
-            Name of the single XML file to create (only used :math:`separate_xmls` is False)
+        path : str
+            Path to an output filename or directory. Only used if :math:`separate_xmls` is False.
 
             .. versionadded:: 0.13.1
 
@@ -477,13 +481,9 @@ class Model:
             Whether or not to write a single model.xml file or many XML files.
         """
         if separate_xmls:
-            if filename != 'model.xml':
-                warnings.warn('Export filename parameter {filename} is ignored '
-                              'because the model is being written to separate XML files.')
             self._export_to_separate_xmls(directory, remove_surfs)
         else:
-            filename = Path(directory) / Path(filename)
-            self._export_to_single_xml(filename, remove_surfs)
+            self._export_to_single_xml(path, remove_surfs)
 
     def _export_to_separate_xmls(self, directory='.', remove_surfs=False):
         """Export model to separate XML files.
@@ -530,16 +530,25 @@ class Model:
         directory : str
             Directory to write the model.xml file to. If it doesn't exist already, it
             will be created.
+        path : str or Pathlike
+            Location of the XML file to write. Can be a directory or file path.
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
 
             .. versionadded:: 0.13.1
         """
-        # Create directory if required
         xml_path = Path(path)
-        if not xml_path.parent.exists:
-            raise RuntimeError(f'The directory "{xml_path}" does not exist.')
+        # if the provided path doesn't end with the XML extension, assume the
+        # input path is meant to be a directory. If the directory does not
+        # exist, create it and place a 'model.xml' file there.
+        if not str(xml_path).endswith('.xml') and not xml_path.exists():
+            os.mkdir(xml_path)
+            xml_path /= 'model.xml'
+        # if this is an XML file location and the file's parent directory does
+        # not exist, create it before continuing
+        elif not xml_path.parent.exists():
+            os.mkdir(xml_path.parent)
 
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "

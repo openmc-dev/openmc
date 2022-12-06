@@ -181,9 +181,6 @@ int parse_command_line(int argc, char* argv[])
 
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
-      } else if (arg == "-i" || arg == "--input") {
-        i += 1;
-        args_xml_filename = std::string(argv[i]);
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;
         // Check what type of file this is
@@ -295,27 +292,24 @@ int parse_command_line(int argc, char* argv[])
 }
 
 bool read_model_xml() {
-  // get verbosity from settings node
+  std::string model_filename = settings::path_input;
 
-  std::string xml_filename = "model.xml";
-  if (!args_xml_filename.empty()) xml_filename = args_xml_filename;
-  std::string model_filename = settings::path_input + xml_filename;
-
-  // check that the model file exists. If it does not and a custom filename was
-  // supplied by the user report an error
-  if (!file_exists(model_filename)) {
-    if (!args_xml_filename.empty()) {
-      fatal_error(fmt::format("The input file '{}' specified on the command line does not exist", args_xml_filename));
-    }
-    return false;
+  // if the path input isn't an existing file, assume its a directory
+  // and append the default model.xml filename
+  if (!file_exists(settings::path_input)) {
+    model_filename += "/model.xml";
+    if (!file_exists(model_filename))
+      return false;
   }
 
-  // attempt to open the document
+  // try to process the path input as an XML file
   pugi::xml_document doc;
-  auto result = doc.load_file(model_filename.c_str());
-  if (!result) {
-    fatal_error("Error processing model.xml file.");
+  // if the input is a file, try to read it
+  if (!doc.load_file(model_filename.c_str())) {
+    fatal_error(fmt::format(
+      "Error reading from single XML input file '{}'", model_filename));
   }
+
   pugi::xml_node root = doc.document_element();
 
   // Read settings
@@ -348,15 +342,17 @@ bool read_model_xml() {
   auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml", "plots.xml"};
   for (const auto& input : other_inputs) {
     if (file_exists(settings::path_input + input)) {
-      warning((fmt::format("Other XML file input(s) are present. These file will be ignored in favor of the {} file.", xml_filename)));
+      warning((fmt::format("Other XML file input(s) are present. These file "
+                           "will be ignored in favor of the {} file.",
+        model_filename)));
       break;
     }
   }
 
   // Read materials and cross sections
   if (!check_for_node(root, "materials")) {
-    fatal_error(
-      fmt::format("No <materials> node present in the {} file.", xml_filename));
+    fatal_error(fmt::format(
+      "No <materials> node present in the {} file.", model_filename));
   }
 
   read_cross_sections_xml(root.child("materials"));
@@ -365,7 +361,7 @@ bool read_model_xml() {
   // Read geometry
   if (!check_for_node(root, "geometry")) {
     fatal_error(fmt::format(
-      "No <geometry> node present in the model.xml_file.", xml_filename));
+      "No <geometry> node present in the model.xml_file.", model_filename));
   }
   read_geometry_xml(root.child("geometry"));
 

@@ -222,7 +222,8 @@ void read_settings_xml() {
         fmt::format("Settings XML file '{}' does not exist! In order "
                     "to run OpenMC, you first need a set of input files; at a "
                     "minimum, this "
-                    "includes settings.xml, geometry.xml, and materials.xml. "
+                    "includes settings.xml, geometry.xml, and materials.xml "
+                    "or a single XML file containing all of these files. "
                     "Please consult "
                     "the user's guide at https://docs.openmc.org for further "
                     "information.",

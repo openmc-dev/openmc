@@ -450,7 +450,6 @@ class Model:
             Path to an output filename or directory. Only used if :math:`separate_xmls` is False.
 
             .. versionadded:: 0.13.1
-
         separate_xmls : bool
             Whether or not to write a single model.xml file or many XML files.
         """

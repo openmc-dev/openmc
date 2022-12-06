@@ -205,30 +205,40 @@ class Model:
                 self._plots.append(plot)
 
     @classmethod
-    def from_xml(cls, *args, separate_xmls=True, **kwargs):
-        """Generate geometry from XML file
+    def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
+                 settings='settings.xml', tallies='tallies.xml',
+                 plots='plots.xml'):
+        """Create model from existing XML files
 
         Parameters
         ----------
-        args : list
-            Positional arguments to be forwarded to
-            :func:`Model.from_separate_xmls` or :func:`Model.from_model_xml`.
-        separate_xmls : bool
-            Whether or not to read from a single or separate XML files.
-        kwargs : dict, optional
-            Keyword arguments to be forwarded to
-            :func:`Model.from_separate_xmls` or :func:`Model.from_model_xml`.
+        geometry : str
+            Path to geometry.xml file
+        materials : str
+            Path to materials.xml file
+        settings : str
+            Path to settings.xml file
+        tallies : str
+            Path to tallies.xml file
+
+            .. versionadded:: 0.13.0
+        plots : str
+            Path to plots.xml file
+
+            .. versionadded:: 0.13.0
 
         Returns
         -------
-        openmc.Geometry
-            Geometry object
+        openmc.model.Model
+            Model created from XML files
 
         """
-        if separate_xmls:
-            return cls.from_separate_xmls(*args, **kwargs)
-        else:
-            return cls.from_model_xml(*args, **kwargs)
+        materials = openmc.Materials.from_xml(materials)
+        geometry = openmc.Geometry.from_xml(geometry, materials)
+        settings = openmc.Settings.from_xml(settings)
+        tallies = openmc.Tallies.from_xml(tallies) if Path(tallies).exists() else None
+        plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
+        return cls(geometry, materials, settings, tallies, plots)
 
     @classmethod
     def from_model_xml(cls, path='model.xml'):
@@ -264,42 +274,6 @@ class Model:
             model.plots = openmc.Plots.from_xml_element(root.find('plots'))
 
         return model
-
-    @classmethod
-    def from_separate_xmls(cls, geometry='geometry.xml', materials='materials.xml',
-                 settings='settings.xml', tallies='tallies.xml',
-                 plots='plots.xml'):
-        """Create model from existing XML files
-
-        Parameters
-        ----------
-        geometry : str
-            Path to geometry.xml file
-        materials : str
-            Path to materials.xml file
-        settings : str
-            Path to settings.xml file
-        tallies : str
-            Path to tallies.xml file
-
-            .. versionadded:: 0.13.0
-        plots : str
-            Path to plots.xml file
-
-            .. versionadded:: 0.13.0
-
-        Returns
-        -------
-        openmc.model.Model
-            Model created from XML files
-
-        """
-        materials = openmc.Materials.from_xml(materials)
-        geometry = openmc.Geometry.from_xml(geometry, materials)
-        settings = openmc.Settings.from_xml(settings)
-        tallies = openmc.Tallies.from_xml(tallies) if Path(tallies).exists() else None
-        plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
-        return cls(geometry, materials, settings, tallies, plots)
 
     def init_lib(self, threads=None, geometry_debug=False, restart_file=None,
                  tracks=False, output=True, event_based=None, intracomm=None):

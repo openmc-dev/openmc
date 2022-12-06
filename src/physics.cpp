@@ -366,7 +366,14 @@ void sample_photon_reaction(Particle& p)
         xs_lower(i_shell) + f * (xs_upper(i_shell) - xs_lower(i_shell)));
 
       if (prob > cutoff) {
-        double E_electron = p.E() - shell.binding_energy;
+        // Determine binding energy based on whether atomic relaxation data is
+        // present (if not, use value from Compton profile data)
+        double binding_energy = element.has_atomic_relaxation_
+                                  ? shell.binding_energy
+                                  : element.binding_energy_[i_shell];
+
+        // Determine energy of secondary electron
+        double E_electron = p.E() - binding_energy;
 
         // Sample mu using non-relativistic Sauter distribution.
         // See Eqns 3.19 and 3.20 in "Implementing a photon physics

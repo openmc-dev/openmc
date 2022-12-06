@@ -154,7 +154,6 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
     // TODO: Move to ElectronSubshell constructor
 
-    // Read binding energy and number of electrons
     hid_t tgroup = open_group(rgroup, designator.c_str());
 
     // Read binding energy energy and number of electrons if atomic relaxation

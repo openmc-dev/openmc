@@ -1,6 +1,8 @@
 from difflib import unified_diff
+import glob
 import filecmp
 import os
+from pathlib import Path
 
 import openmc
 import pytest
@@ -83,13 +85,17 @@ def test_input_arg(run_in_tmpdir):
     pincell.export_to_xml(separate_xmls=True)
     openmc.run()
 
+    # make sure the executable isn't falling back on the separate XMLs
+    [os.remove(f) for f in glob.glob('*.xml')]
     # now export to a single XML file with a custom name
-    pincell.export_to_xml(filename='pincell.xml', separate_xmls=False)
+    pincell.export_to_xml(path='pincell.xml', separate_xmls=False)
+    assert Path('pincell.xml').exists()
 
     # run by specifying that single file
-    openmc.run(input_file='pincell.xml')
+    openmc.run(path_input='pincell.xml')
 
     # now ensure we get an error for an incorrect filename,
     # even in the presence of other, valid XML files
+    pincell.export_to_xml(separate_xmls=True)
     with pytest.raises(RuntimeError, match='ex-em-ell.xml'):
-        openmc.run(input_file='ex-em-ell.xml')
+        openmc.run(path_input='ex-em-ell.xml')

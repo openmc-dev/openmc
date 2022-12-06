@@ -868,9 +868,8 @@ class IncidentNeutron(EqualityMixin):
 
             heatr_evals = get_evaluations(kwargs["heatr"])
             heatr_local_evals = get_evaluations(kwargs["heatr"] + "_local")
-            for ev, ev_local in zip(heatr_evals, heatr_local_evals):
-                temp = "{}K".format(round(ev.target["temperature"]))
 
+            for ev, ev_local, temp in zip(heatr_evals, heatr_local_evals, data.temperatures):
                 # Get total KERMA (originally from ACE file) and energy grid
                 kerma = data.reactions[301].xs[temp]
                 E = kerma.x

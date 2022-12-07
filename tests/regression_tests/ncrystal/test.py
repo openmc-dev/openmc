@@ -9,7 +9,7 @@ pytestmark = pytest.mark.skipif(
     not openmc.lib._ncrystal_enabled(),
     reason="NCrystal materials are not enabled.")
 
-def compute_angular_distribution(cfg, E0, N):
+def pencil_beam_model(cfg, E0, N):
     """Return an openmc.Model() object for a monoenergetic pencil
      beam hitting a 1 mm sphere filled with the material defined by
      the cfg string, and compute the angular distribution"""
@@ -71,6 +71,6 @@ def test_ncrystal():
     T = 293.6 # K
     E0 = 0.012 # eV
     cfg = 'Al_sg225.ncmat'
-    test = compute_angular_distribution(cfg, E0, NParticles)
+    test = pencil_beam_model(cfg, E0, NParticles)
     harness = NCrystalTest('statepoint.10.h5', model=test)
     harness.main()

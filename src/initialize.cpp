@@ -283,7 +283,8 @@ int parse_command_line(int argc, char* argv[])
     settings::path_input = std::string(argv[last_flag + 1]);
 
     // check that the path is either a valid directory or file
-    if (!is_dir(settings::path_input) && !file_exists(settings::path_input)) {
+    if (!dir_exists(settings::path_input) &&
+        !file_exists(settings::path_input)) {
       fatal_error(fmt::format(
         "The path specified to the OpenMC executable '{}' does not exist.",
         settings::path_input));
@@ -309,7 +310,8 @@ bool read_model_xml() {
     model_filename.pop_back();
 
   // if the current filename is a directory, append the default model filename
-  if (is_dir(model_filename)) model_filename += "/model.xml";
+  if (dir_exists(model_filename))
+    model_filename += "/model.xml";
 
   // if this file doesn't exist, stop here
   if (!file_exists(model_filename)) return false;

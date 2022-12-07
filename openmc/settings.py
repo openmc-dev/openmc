@@ -1560,8 +1560,6 @@ class Settings:
         mesh_memo : set of ints
             A set of mesh IDs to keep track of whether a mesh has already been written.
         """
-        # create a memo object if one isn't passed in already
-        mesh_memo = mesh_memo if mesh_memo else set()
         # Reset xml element tree
         element = ET.Element("settings")
 

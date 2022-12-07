@@ -11,7 +11,8 @@ namespace openmc {
 //! Determine if a path is a directory
 //! \param[in] path Path to check
 //! \return Whether the path is a directory
-inline bool is_dir(const std::string& path) {
+inline bool dir_exists(const std::string& path)
+{
   struct stat s;
   if (stat(path.c_str(), &s) != 0) return false;
 
@@ -23,8 +24,9 @@ inline bool is_dir(const std::string& path) {
 //! \return Whether file exists
 inline bool file_exists(const std::string& filename)
 {
-  // rule out file being a directory path
-  if (is_dir(filename)) return false;
+  // rule out file being a path to a directory
+  if (dir_exists(filename))
+    return false;
 
   std::ifstream s {filename};
   return s.good();

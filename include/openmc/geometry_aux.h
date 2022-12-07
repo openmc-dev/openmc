@@ -24,7 +24,7 @@ extern std::unordered_map<int32_t, int32_t> universe_level_counts;
 void read_geometry_xml();
 
 //! Read geometry from XML node
-//! \param[in]  root node of geometry XML element
+//! \param[in] root node of geometry XML element
 void read_geometry_xml(pugi::xml_node root);
 
 //==============================================================================

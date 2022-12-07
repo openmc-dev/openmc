@@ -1073,7 +1073,7 @@ class Settings:
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(value)
 
-    def _create_entropy_mesh_subelement(self, root, memo=None):
+    def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is not None:
             # use default heuristic for entropy mesh if not set by user
             if self.entropy_mesh.dimension is None:
@@ -1085,13 +1085,20 @@ class Settings:
                     d = len(self.entropy_mesh.lower_left)
                     self.entropy_mesh.dimension = (n,)*d
 
+            # add mesh ID to this element
+            subelement = ET.SubElement(root, "entropy_mesh")
+            subelement.text = str(self.entropy_mesh.id)
+
+            # If this mesh has already been written outside the
+            # settings element, skip writing it again
+            if mesh_memo and self.entropy_mesh.id in mesh_memo:
+                return
+
             # See if a <mesh> element already exists -- if not, add it
             path = f"./mesh[@id='{self.entropy_mesh.id}']"
             if root.find(path) is None:
                 root.append(self.entropy_mesh.to_xml_element())
-
-            subelement = ET.SubElement(root, "entropy_mesh")
-            subelement.text = str(self.entropy_mesh.id)
+                if mesh_memo is not None: mesh_memo.add(self.entropy_mesh.id)
 
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
@@ -1207,20 +1214,21 @@ class Settings:
             elem = ET.SubElement(root, "write_initial_source")
             elem.text = str(self._write_initial_source).lower()
 
-    def _create_weight_windows_subelement(self, root, memo=None):
+    def _create_weight_windows_subelement(self, root, mesh_memo=None):
         for ww in self._weight_windows:
             # Add weight window information
             root.append(ww.to_xml_element())
 
-            # check the memo for a mesh
-            if memo and ww.mesh.id in memo:
+            # if this mesh has already been written,
+            # skip writing the mesh element
+            if mesh_memo and ww.mesh.id in mesh_memo:
                 continue
 
             # See if a <mesh> element already exists -- if not, add it
             path = f"./mesh[@id='{ww.mesh.id}']"
             if root.find(path) is None:
                 root.append(ww.mesh.to_xml_element())
-                if memo is not None: memo.add(ww.mesh.id)
+                if mesh_memo is not None: mesh_memo.add(ww.mesh.id)
 
         if self._weight_windows_on is not None:
             elem = ET.SubElement(root, "weight_windows_on")
@@ -1544,10 +1552,16 @@ class Settings:
         if text is not None:
             self.max_tracks = int(text)
 
-    def to_xml_element(self, memo=None):
+    def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
-        """
 
+        Parameters
+        ----------
+        mesh_memo : set of ints
+            A set of mesh IDs to keep track of whether a mesh has already been written.
+        """
+        # create a memo object if one isn't passed in already
+        mesh_memo = mesh_memo if mesh_memo else set()
         # Reset xml element tree
         element = ET.Element("settings")
 
@@ -1574,7 +1588,7 @@ class Settings:
         self._create_seed_subelement(element)
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
-        self._create_entropy_mesh_subelement(element, memo)
+        self._create_entropy_mesh_subelement(element, mesh_memo)
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
@@ -1592,7 +1606,7 @@ class Settings:
         self._create_material_cell_offsets_subelement(element)
         self._create_log_grid_bins_subelement(element)
         self._create_write_initial_source_subelement(element)
-        self._create_weight_windows_subelement(element, memo)
+        self._create_weight_windows_subelement(element, mesh_memo)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)
 

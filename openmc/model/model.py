@@ -496,13 +496,10 @@ class Model:
             self.plots.export_to_xml(d)
 
     def _export_to_single_xml(self, path='model.xml', remove_surfs=False):
-        """Export model to XML files.
+        """Export model to a single XML file.
 
         Parameters
         ----------
-        directory : str
-            Directory to write the model.xml file to. If it doesn't exist already, it
-            will be created.
         path : str or Pathlike
             Location of the XML file to write. Can be a directory or file path.
         remove_surfs : bool
@@ -530,8 +527,7 @@ class Model:
             # Can be used to modify tallies in case any surfaces are redundant
             redundant_surfaces = self.geometry.remove_redundant_surfaces()
 
-        memo = set()
-        settings_element = self.settings.to_xml_element(memo)
+        settings_element = self.settings.to_xml_element()
         geometry_element = self.geometry.to_xml_element()
 
         xml.clean_indentation(geometry_element, level=1)

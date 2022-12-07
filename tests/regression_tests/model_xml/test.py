@@ -32,11 +32,6 @@ class ModelXMLTestHarness(PyAPITestHarness):
     def _get_inputs(self):
         return open('model.xml').read()
 
-    # def _compare_inputs(self):
-    #     """Skip input comparisons for now
-    #     """
-    #     pass
-
     def _compare_results(self):
         """Make sure the current results agree with the reference."""
         compare = filecmp.cmp('results_test.dat', self.results_true)

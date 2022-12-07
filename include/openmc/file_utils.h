@@ -7,7 +7,7 @@
 
 namespace openmc {
 
-// TODO: replace with std::filesysem when switch to C++17 is made
+// TODO: replace with std::filesystem when switch to C++17 is made
 //! Determine if a path is a directory
 //! \param[in] path Path to check
 //! \return Whether the path is a directory
@@ -27,7 +27,6 @@ inline bool file_exists(const std::string& filename)
   if (is_dir(filename)) return false;
 
   std::ifstream s {filename};
-  s.seekg(0, std::ios::beg);
   return s.good();
 }
 

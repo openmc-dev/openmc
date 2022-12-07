@@ -16,9 +16,9 @@ fi
 
 # Check NCrystal installation
 if [[ $NCRYSTAL = 'y' ]]; then
-    # Change environmental variables
-    eval $( "${HOME}/ncrystal_inst/bin/ncrystal-config" --setup )
-    nctool --test
+  # Change environmental variables
+  eval $( "${HOME}/ncrystal_inst/bin/ncrystal-config" --setup )
+  nctool --test
 fi
 
 # Run regression and unit tests

@@ -497,8 +497,6 @@ if(OPENMC_USE_NCRYSTAL)
   target_link_libraries(libopenmc NCrystal::NCrystal)
 endif()
 
-
-
 #===============================================================================
 # openmc executable
 #===============================================================================

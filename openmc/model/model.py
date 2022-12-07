@@ -527,7 +527,9 @@ class Model:
             # Can be used to modify tallies in case any surfaces are redundant
             redundant_surfaces = self.geometry.remove_redundant_surfaces()
 
-        settings_element = self.settings.to_xml_element()
+        # provide a memo to track which meshes have been written
+        mesh_memo = set()
+        settings_element = self.settings.to_xml_element(mesh_memo)
         geometry_element = self.geometry.to_xml_element()
 
         xml.clean_indentation(geometry_element, level=1)
@@ -554,7 +556,7 @@ class Model:
             ET.ElementTree(settings_element).write(fh, encoding='unicode')
 
             if self.tallies:
-                tallies_element = self.tallies.to_xml_element(memo)
+                tallies_element = self.tallies.to_xml_element(mesh_memo)
                 xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
                 ET.ElementTree(tallies_element).write(fh, encoding='unicode')
             if self.plots:

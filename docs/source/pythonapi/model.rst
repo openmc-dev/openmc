@@ -13,6 +13,7 @@ Convenience Functions
    openmc.model.borated_water
    openmc.model.hexagonal_prism
    openmc.model.rectangular_prism
+   openmc.model.cylindrical_prism
    openmc.model.subdivide
    openmc.model.pin
 

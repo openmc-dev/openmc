@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 import openmc
+import openmc.lib
 import pytest
 
 
@@ -207,45 +208,78 @@ def test_cyl_prism():
     cyl_prism = openmc.model.cylindrical_prism(2,
                                                5,
                                                origin=(-1,1,3))
-    # clear checks
-    assert (-1, 1, 3) in cyl_prism # center
-    assert (-1,0.5, 1) in cyl_prism # lower
-    assert (0.5, 1, 5) in cyl_prism # upper
-    assert (-1, 1, 6) not in cyl_prism
-    assert (-1, 1, 0) not in cyl_prism
-    assert (-2, -1, 3) not in cyl_prism
-    # edge checks
-    assert (-1, 3.01, 3) not in cyl_prism
-    assert (-1, 2.99, 3) in cyl_prism
-    assert (1.01, 1, 3) not in cyl_prism
-    assert (0.99, 1, 3) in cyl_prism
-    assert (-2.4, 1, 5.51) not in cyl_prism
-    assert (-2.4, 1, 5.49) in cyl_prism
-    assert (-2.4, 1, 0.49) not in cyl_prism
-    assert (-2.4, 1, 0.51) in cyl_prism
-
     rounded_cyl_prism = openmc.model.cylindrical_prism(2,
                                                        5,
                                                        origin=(-1,1,3),
-                                                       upper_edge_radius=1.6,
-                                                       lower_edge_radius=1.6)
-    # clear checks
-    assert (-1, 1, 3) in rounded_cyl_prism # center
-    assert (-1,0.5, 1) in rounded_cyl_prism # lower
-    assert (0.5, 1, 5) in rounded_cyl_prism # upper
-    assert (-1, 1, 6) not in rounded_cyl_prism
-    assert (-1, 1, 0) not in rounded_cyl_prism
-    assert (-2, -1, 3) not in rounded_cyl_prism
-    # edge checks
-    assert (-1, 3.01, 3) not in rounded_cyl_prism
-    assert (-1, 2.99, 3) in rounded_cyl_prism
-    assert (1.01, 1, 3) not in rounded_cyl_prism
-    assert (0.99, 1, 3) in rounded_cyl_prism
-    assert (-2.4, 1, 5.51) not in rounded_cyl_prism
-    assert (-2.4, 1, 5.49) not in rounded_cyl_prism
-    assert (-2.4, 1, 0.49) not in rounded_cyl_prism
-    assert (-2.4, 1, 0.51) not in rounded_cyl_prism
+                                                       upper_fillet_radius=1.6,
+                                                       lower_fillet_radius=1.6)
+    prisms = [cyl_prism, rounded_cyl_prism]
 
+    def make_geometry(prism):
+        mat = openmc.Material()
+        mat.add_nuclide('H1', 1.0)
+        materials = openmc.Materials(materials=[mat])
+
+        cell = openmc.Cell(region=prism)
+        geo = openmc.Geometry([cell])
+
+        settings = openmc.Settings()
+        settings.particles = 1000
+        settings.inactive = 10
+        settings.batches = 50
+
+        openmc.model.Model(settings=settings,
+                           materials=materials,
+                           geometry=geo).export_to_xml()
+
+    # clear checks
+    inside_points = [[(-1, 1, 3),   #center
+                      (-1, 0.5, 1), # lower
+                      (0.5, 1, 5),  # upper
+                      (-1, 2.99, 3), # edges
+                      (0.99, 1, 3),
+                      (-2.4, 1, 5.49),
+                      (-2.4, 1, 0.51)],
+                     [(-1, 1, 3),   #center
+                      (-1, 0.5, 1), # lower
+                      (0.5, 1, 5),
+                      (-1, 2.99, 3),
+                      (0.99, 1, 3)]]
+
+
+    outside_points = [[(-1, 1, 6),
+                       (-1, 1, 0),
+                       (-2, -1, 3),
+                       (-1, 3.01, 3), # edges
+                       (1.01, 1, 3),
+                       (-2.4, 1, 5.51),
+                       (-2.4, 1, 0.49)],
+                      [(-1, 1, 6),
+                       (-1, 1, 0),
+                       (-2, -1, 3),
+                       (-1, 3.01, 3),
+                       (1.01, 1, 3),
+                       (-2.4, 1, 5.51),
+                       (-2.4, 1, 5.49),
+                       (-2.4, 1, 0.49),
+                       (-2.4, 1, 0.51)]]
+
+    openmc.lib.init()
+    for prism, inside_points, outside_points in zip(prisms, inside_points, outside_points):
+        make_geometry(prism)
+
+        for point in inside_points:
+            assert point in prism
+            test_cell, instance = openmc.lib.find_cell(point)
+            assert test_cell.id == cell.id
+            np.testing.assert_array_equal(test_cell.bounding_box, cell.region.bounding_box)
+
+        for point in outside_points:
+            assert point not in prism
+            with pytest.raises(openmc.exceptions.GeometryError, match=f'Could not find cell at position {point}.'):
+                openmc.lib.find_cell(point)
+
+    openmc.lib.finalize()
 
 def test_hex_prism():
     hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,

@@ -119,24 +119,22 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
 
     Parameters
     ----------
-    r: float
-        Prism radius in units of cm.
-    height: float
-        Prism height in units of cm. The height is aligned with the x, y,
+    r : float
+        Prism radius in [cm].
+    height : float
+        Prism height in [cm]. The height is aligned with the x, y,
         or z axes for prisms parallel to the x, y, or z axis, respectively.
     axis : {'x', 'y', 'z'}
         Axis with which the infinite length of the prism should be aligned.
-        Defaults to 'z'.
-    origin: Iterable of three floats
+    origin : Iterable of three floats
         Origin of the prism. The three floats correspond to (x,y,z)
-        Defaults to (0., 0., 0.).
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
-        surfaces comprising the rectangular prism (default is 'transmission').
-    upper_fillet_radius: float
-        Upper edge fillet radius in units of cm. Defaults to 0.
-    lower_fillet_radius: float
-        Lower edge fillet radius in units of cm. Defaults to 0.
+        surfaces comprising the cylinder.
+    upper_fillet_radius : float
+        Upper edge fillet radius in [cm].
+    lower_fillet_radius : float
+        Lower edge fillet radius in [cm].
 
     Returns
     -------
@@ -157,13 +155,12 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
 
     # Define function to create a plane on given axis
     def plane(axis, name, value):
-        cls = globals()['{}Plane'.format(axis.upper())]
-        return cls(name='{} {}'.format(name, axis),
-                   boundary_type=boundary_type,
-                   **{axis + '0': value})
+        cls = getattr(openmc, f'{axis.upper()}Plane')
+        return cls(value, name=f'{name} {axis}',
+                   boundary_type=boundary_type)
     def cylinder(axis, name, ax1, val1, ax2, val2, r):
-        cls = globals()['{}Cylinder'.format(axis.upper())]
-        return cls(name='{} {}'.format(name, axis),
+        cls = getattr(openmc, f'{axis.upper()}Cylinder')
+        return cls(name=f'{name} {axis}',
                    boundary_type=boundary_type,
                    **{ax1 + '0': val1,
                       ax2 + '0': val2,
@@ -206,34 +203,36 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
 
         corners_upper = None
         corners_lower = None
-        args = {'boundary_type': boundary_type}
-        args[x1 + '0'] = origin[axcoord1]
-        args[x2 + '0'] = origin[axcoord2]
+        args = {
+            'boundary_type': boundary_type,
+            x1 + '0': origin[axcoord1],
+            x2 + '0': origin[axcoord2]
+        }
         if upper_fillet_radius > 0.:
             args['a'] = r - upper_fillet_radius
             args['b'] = upper_fillet_radius
             args['c'] = upper_fillet_radius
             args[axis + '0'] = origin[axcoord] + height/2 - upper_fillet_radius
-            tor_upper_max = tor(name='{} max'.format(axis), **args)
+            tor_upper_max = tor(name=f'{axis} max', **args)
 
             axis_upper_min = plane(axis, 'upper min', height/2 + origin[axcoord] - upper_fillet_radius)
             cyl_upper_min = cylinder(axis, 'upper min', x1, origin[axcoord1], x2, origin[axcoord2], r - upper_fillet_radius)
 
-            corners_upper = (+cyl_upper_min & +tor_upper_max & + axis_upper_min)
+            corners_upper = +cyl_upper_min & +tor_upper_max & +axis_upper_min
 
         if lower_fillet_radius > 0.:
             args['a'] = r - lower_fillet_radius
             args['b'] = lower_fillet_radius
             args['c'] = lower_fillet_radius
             args[axis + '0'] = origin[axcoord] - height/2 + lower_fillet_radius
-            tor_lower_min = tor(name='{} min'.format(axis), **args)
+            tor_lower_min = tor(name=f'{axis} min', **args)
 
             axis_lower_max = plane(axis, 'lower max', origin[axcoord] - height/2 + lower_fillet_radius)
             cyl_lower_min = cylinder(axis, 'lower min', x1, origin[axcoord1], x2, origin[axcoord2], r - lower_fillet_radius)
 
-            corners_lower = (+cyl_lower_min & +tor_lower_min & - axis_lower_max)
+            corners_lower = (+cyl_lower_min & +tor_lower_min & -axis_lower_max)
 
-        if not(corners_lower is None) and not(corners_upper is None):
+        if corners_lower is not None and corners_upper is not None:
             corners = corners_lower | corners_upper
         elif corners_lower is None:
             corners = corners_upper
@@ -243,7 +242,6 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
         prism = prism & ~corners
 
     return prism
-
 
 
 def rectangular_prism(width, height, axis='z', origin=(0., 0.),

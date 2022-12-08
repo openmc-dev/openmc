@@ -113,9 +113,9 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
 
 def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
                       boundary_type='transmission',
-                      upper_edge_radius=0.,
-                      lower_edge_radius=0.):
-    """Get a finite cylindrical prism.
+                      upper_fillet_radius=0.,
+                      lower_fillet_radius=0.):
+    """Get a finite cylindrical prism with sharp or filleted edges.
 
     Parameters
     ----------
@@ -133,10 +133,10 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the rectangular prism (default is 'transmission').
-    upper_edge_radius: float
-        Prism upper edge radius in units of cm. Defaults to 0.
-    lower_edge_radius: float
-        Prism lower edge radius in units of cm. Defaults to 0.
+    upper_fillet_radius: float
+        Upper edge fillet radius in units of cm. Defaults to 0.
+    lower_fillet_radius: float
+        Lower edge fillet radius in units of cm. Defaults to 0.
 
     Returns
     -------
@@ -148,10 +148,10 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
 
     check_type('r', r, Real)
     check_type('height', height, Real)
-    check_type('upper_edge_radius', upper_edge_radius, Real)
-    check_less_than('upper_edge_radius', upper_edge_radius, r, equality=True)
-    check_type('lower_edge_radius', lower_edge_radius, Real)
-    check_less_than('lower_edge_radius', lower_edge_radius, r, equality=True)
+    check_type('upper_fillet_radius', upper_fillet_radius, Real)
+    check_less_than('upper_fillet_radius', upper_fillet_radius, r, equality=True)
+    check_type('lower_fillet_radius', lower_fillet_radius, Real)
+    check_less_than('lower_fillet_radius', lower_fillet_radius, r, equality=True)
     check_value('axis', axis, ['x', 'y', 'z'])
     check_type('origin', origin, Iterable, Real)
 
@@ -199,7 +199,7 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
     prism = +min_h & -max_h & -radial
 
     # Handle rounded corners if given
-    if upper_edge_radius > 0. or lower_edge_radius > 0.:
+    if upper_fillet_radius > 0. or lower_fillet_radius > 0.:
         if boundary_type == 'periodic':
             raise ValueError('Periodic boundary conditions not permitted when '
                              'rounded corners are used.')
@@ -209,27 +209,27 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
         args = {'boundary_type': boundary_type}
         args[x1 + '0'] = origin[axcoord1]
         args[x2 + '0'] = origin[axcoord2]
-        if upper_edge_radius > 0.:
-            args['a'] = r - upper_edge_radius
-            args['b'] = upper_edge_radius
-            args['c'] = upper_edge_radius
-            args[axis + '0'] = origin[axcoord] + height/2 - upper_edge_radius
+        if upper_fillet_radius > 0.:
+            args['a'] = r - upper_fillet_radius
+            args['b'] = upper_fillet_radius
+            args['c'] = upper_fillet_radius
+            args[axis + '0'] = origin[axcoord] + height/2 - upper_fillet_radius
             tor_upper_max = tor(name='{} max'.format(axis), **args)
 
-            axis_upper_min = plane(axis, 'upper min', height/2 + origin[axcoord] - upper_edge_radius)
-            cyl_upper_min = cylinder(axis, 'upper min', x1, origin[axcoord1], x2, origin[axcoord2], r - upper_edge_radius)
+            axis_upper_min = plane(axis, 'upper min', height/2 + origin[axcoord] - upper_fillet_radius)
+            cyl_upper_min = cylinder(axis, 'upper min', x1, origin[axcoord1], x2, origin[axcoord2], r - upper_fillet_radius)
 
             corners_upper = (+cyl_upper_min & +tor_upper_max & + axis_upper_min)
 
-        if lower_edge_radius > 0.:
-            args['a'] = r - lower_edge_radius
-            args['b'] = lower_edge_radius
-            args['c'] = lower_edge_radius
-            args[axis + '0'] = origin[axcoord] - height/2 + lower_edge_radius
+        if lower_fillet_radius > 0.:
+            args['a'] = r - lower_fillet_radius
+            args['b'] = lower_fillet_radius
+            args['c'] = lower_fillet_radius
+            args[axis + '0'] = origin[axcoord] - height/2 + lower_fillet_radius
             tor_lower_min = tor(name='{} min'.format(axis), **args)
 
-            axis_lower_max = plane(axis, 'lower max', origin[axcoord] - height/2 + lower_edge_radius)
-            cyl_lower_min = cylinder(axis, 'lower min', x1, origin[axcoord1], x2, origin[axcoord2], r - lower_edge_radius)
+            axis_lower_max = plane(axis, 'lower max', origin[axcoord] - height/2 + lower_fillet_radius)
+            cyl_lower_min = cylinder(axis, 'lower min', x1, origin[axcoord1], x2, origin[axcoord2], r - lower_fillet_radius)
 
             corners_lower = (+cyl_lower_min & +tor_lower_min & - axis_lower_max)
 

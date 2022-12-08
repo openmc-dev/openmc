@@ -214,48 +214,45 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
             x1 + '0': origin[axcoord1],
             x2 + '0': origin[axcoord2]
         }
+
+        def create_fillet(args, r, fillet_radius, pos):
+            args['a'] = r - fillet_radius
+            args['b'] = fillet_radius
+            args['c'] = fillet_radius
+            if pos:
+                coord = origin[axcoord] + height / 2 - fillet_radius
+                tor_name = f'{axis} max'
+                cyl_name = 'upper_min'
+                axial_bound = +plane(axis, 'upper min', coord)
+            else:
+                coord = origin[axcoord] - height / 2 + lower_fillet_radius
+                tor_name = f'{axis} min'
+                cyl_name = 'lower_min'
+                axial_bound = -plane(axis, 'lower max', coord)
+
+            cyl = cylinder(axis, cyl_name,
+                           x1, origin[axcoord1],
+                           x2, origin[axcoord2],
+                           r - fillet_radius)
+
+            args[axis + '0'] = coord
+            torus = tor(name=tor_name, **args)
+
+            fillet = +cyl & +torus & axial_bound
+            return fillet
+
         if upper_fillet_radius > 0.:
-            args['a'] = r - upper_fillet_radius
-            args['b'] = upper_fillet_radius
-            args['c'] = upper_fillet_radius
-            args[axis + '0'] = origin[axcoord] + \
-                height / 2 - upper_fillet_radius
-            tor_upper_max = tor(name=f'{axis} max', **args)
-
-            coord = height / 2 + origin[axcoord] - upper_fillet_radius
-            axis_upper_min = plane(axis, 'upper min', coord)
-            cyl_upper_min = cylinder(axis, 'upper min',
-                                     x1, origin[axcoord1],
-                                     x2, origin[axcoord2],
-                                     r - upper_fillet_radius)
-
-            corners_upper = +cyl_upper_min & +tor_upper_max & +axis_upper_min
-
+            fillet_upper = create_fillet(args, r, upper_fillet_radius, True)
         if lower_fillet_radius > 0.:
-            args['a'] = r - lower_fillet_radius
-            args['b'] = lower_fillet_radius
-            args['c'] = lower_fillet_radius
-            args[axis + '0'] = origin[axcoord] - \
-                height / 2 + lower_fillet_radius
-            tor_lower_min = tor(name=f'{axis} min', **args)
-
-            coord = origin[axcoord] - height / 2 + lower_fillet_radius
-            axis_lower_max = plane(axis, 'lower max', coord)
-            cyl_lower_min = cylinder(axis, 'lower min',
-                                     x1, origin[axcoord1],
-                                     x2, origin[axcoord2],
-                                     r - lower_fillet_radius)
-
-            corners_lower = (+cyl_lower_min & +tor_lower_min & -axis_lower_max)
-
-        if corners_lower is not None and corners_upper is not None:
-            corners = corners_lower | corners_upper
-        elif corners_lower is None:
-            corners = corners_upper
+            fillet_lower = create_fillet(args, r, lower_fillet_radius, False)
+        if fillet_lower is not None and fillet_upper is not None:
+            fillet = fillet_lower | fillet_upper
+        elif fillet_lower is None:
+            fillet = fillet_upper
         else:
-            corners = corners_lower
+            fillet = fillet_lower
 
-        prism = prism & ~corners
+        prism = prism & ~fillet
 
     return prism
 

@@ -111,6 +111,7 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     out.add_s_alpha_beta('c_H_in_H2O')
     return out
 
+
 def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
                       boundary_type='transmission',
                       upper_fillet_radius=0.,
@@ -143,13 +144,20 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
 
     """
 
-
     check_type('r', r, Real)
     check_type('height', height, Real)
     check_type('upper_fillet_radius', upper_fillet_radius, Real)
-    check_less_than('upper_fillet_radius', upper_fillet_radius, r, equality=True)
+    check_less_than(
+        'upper_fillet_radius',
+        upper_fillet_radius,
+        r,
+        equality=True)
     check_type('lower_fillet_radius', lower_fillet_radius, Real)
-    check_less_than('lower_fillet_radius', lower_fillet_radius, r, equality=True)
+    check_less_than(
+        'lower_fillet_radius',
+        lower_fillet_radius,
+        r,
+        equality=True)
     check_value('axis', axis, ['x', 'y', 'z'])
     check_type('origin', origin, Iterable, Real)
 
@@ -158,6 +166,7 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
         cls = getattr(openmc, f'{axis.upper()}Plane')
         return cls(value, name=f'{name} {axis}',
                    boundary_type=boundary_type)
+
     def cylinder(axis, name, ax1, val1, ax2, val2, r):
         cls = getattr(openmc, f'{axis.upper()}Cylinder')
         return cls(name=f'{name} {axis}',
@@ -168,27 +177,21 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
 
     if axis == 'x':
         x1, x2 = 'y', 'z'
-        axcoord = 0
-        axcoord1 = 1
-        axcoord2 = 2
+        axcoord, axcoord1, axcoord2 = 0, 1, 2
     elif axis == 'y':
         x1, x2 = 'x', 'z'
-        axcoord = 1
-        axcoord1 = 0
-        axcoord2 = 2
+        axcoord, axcoord1, axcoord2 = 1, 0, 2
     else:
         x1, x2 = 'x', 'y'
-        axcoord = 2
-        axcoord1 = 0
-        axcoord2 = 1
-
-    # Get torus class corresponding to given axis
-    tor = globals()['{}Torus'.format(axis.upper())]
+        axcoord, axcoord1, axcoord2 = 2, 0, 1
 
     # Create cylindrical region
-    min_h = plane(axis, 'minimum', -height/2 + origin[axcoord])
-    max_h = plane(axis, 'maximum', height/2 + origin[axcoord])
-    radial = cylinder(axis, 'outer', x1, origin[axcoord1], x2, origin[axcoord2], r)
+    min_h = plane(axis, 'minimum', -height / 2 + origin[axcoord])
+    max_h = plane(axis, 'maximum', height / 2 + origin[axcoord])
+    radial = cylinder(axis, 'outer',
+                      x1, origin[axcoord1],
+                      x2, origin[axcoord2],
+                      r)
 
     if boundary_type == 'periodic':
         min_h.periodic_surface = max_h
@@ -197,6 +200,9 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
 
     # Handle rounded corners if given
     if upper_fillet_radius > 0. or lower_fillet_radius > 0.:
+        # Get torus class corresponding to given axis
+        tor = globals()['{}Torus'.format(axis.upper())]
+
         if boundary_type == 'periodic':
             raise ValueError('Periodic boundary conditions not permitted when '
                              'rounded corners are used.')
@@ -212,11 +218,16 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
             args['a'] = r - upper_fillet_radius
             args['b'] = upper_fillet_radius
             args['c'] = upper_fillet_radius
-            args[axis + '0'] = origin[axcoord] + height/2 - upper_fillet_radius
+            args[axis + '0'] = origin[axcoord] + \
+                height / 2 - upper_fillet_radius
             tor_upper_max = tor(name=f'{axis} max', **args)
 
-            axis_upper_min = plane(axis, 'upper min', height/2 + origin[axcoord] - upper_fillet_radius)
-            cyl_upper_min = cylinder(axis, 'upper min', x1, origin[axcoord1], x2, origin[axcoord2], r - upper_fillet_radius)
+            coord = height / 2 + origin[axcoord] - upper_fillet_radius
+            axis_upper_min = plane(axis, 'upper min', coord)
+            cyl_upper_min = cylinder(axis, 'upper min',
+                                     x1, origin[axcoord1],
+                                     x2, origin[axcoord2],
+                                     r - upper_fillet_radius)
 
             corners_upper = +cyl_upper_min & +tor_upper_max & +axis_upper_min
 
@@ -224,11 +235,16 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
             args['a'] = r - lower_fillet_radius
             args['b'] = lower_fillet_radius
             args['c'] = lower_fillet_radius
-            args[axis + '0'] = origin[axcoord] - height/2 + lower_fillet_radius
+            args[axis + '0'] = origin[axcoord] - \
+                height / 2 + lower_fillet_radius
             tor_lower_min = tor(name=f'{axis} min', **args)
 
-            axis_lower_max = plane(axis, 'lower max', origin[axcoord] - height/2 + lower_fillet_radius)
-            cyl_lower_min = cylinder(axis, 'lower min', x1, origin[axcoord1], x2, origin[axcoord2], r - lower_fillet_radius)
+            coord = origin[axcoord] - height / 2 + lower_fillet_radius
+            axis_lower_max = plane(axis, 'lower max', coord)
+            cyl_lower_min = cylinder(axis, 'lower min',
+                                     x1, origin[axcoord1],
+                                     x2, origin[axcoord2],
+                                     r - lower_fillet_radius)
 
             corners_lower = (+cyl_lower_min & +tor_lower_min & -axis_lower_max)
 

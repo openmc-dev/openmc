@@ -140,7 +140,7 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
     Returns
     -------
     openmc.Region
-        The inside of a rectangular prism
+        The inside of a cylindrical prism with sharp or filleted edges.
 
     """
 

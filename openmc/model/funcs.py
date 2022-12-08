@@ -185,7 +185,7 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
     # Get torus class corresponding to given axis
     tor = globals()['{}Torus'.format(axis.upper())]
 
-    # Create cylindricalr region
+    # Create cylindrical region
     min_h = plane(axis, 'minimum', -height/2 + origin[axcoord])
     max_h = plane(axis, 'maximum', height/2 + origin[axcoord])
     radial = cylinder(axis, 'outer', x1, origin[axcoord1], x2, origin[axcoord2], r)

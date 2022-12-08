@@ -42,7 +42,9 @@ class _Config(MutableMapping):
             # Reset photon source data since it relies on chain file
             _DECAY_PHOTON_ENERGY.clear()
         else:
-            raise KeyError(f'Unrecognized config key: {key}')
+            raise KeyError(f'Unrecognized config key: {key}. Acceptable keys '
+                           'are "cross_sections", "mg_cross_sections" and '
+                           '"chain_file"')
 
     def __iter__(self):
         return iter(self._mapping)

@@ -3,6 +3,7 @@
 from math import floor
 import shutil
 from pathlib import Path
+from collections import defaultdict
 
 from difflib import unified_diff
 import numpy as np
@@ -122,8 +123,11 @@ def test_full(run_in_tmpdir, problem, multiproc):
     n_tallies = np.empty(N + 1, dtype=int)
 
     # Get statepoint files for all BOS points and EOL
+    runtimes = defaultdict(list)
     for n in range(N + 1):
         statepoint = openmc.StatePoint(f"openmc_simulation_n{n}.h5")
+        for measure, time in statepoint.runtime.items():
+            runtimes[measure].append(time)
         k_n = statepoint.keff
         k_state[n] = [k_n.nominal_value, k_n.std_dev]
         n_tallies[n] = len(statepoint.tallies)
@@ -133,6 +137,21 @@ def test_full(run_in_tmpdir, problem, multiproc):
 
     # Check that no additional tallies are loaded from the files
     assert np.all(n_tallies == 0)
+
+    # Convert values in runtimes to arrays
+    runtimes = {k: np.array(v) for k, v in runtimes.items()}
+
+    # Check that runtimes are qualitatively correct
+    assert runtimes['reading cross sections'][0] != 0
+    assert runtimes['total initialization'][0] != 0
+    assert np.all(runtimes['reading cross sections'][1:] == 0)
+    assert np.all(runtimes['total initialization'][1:] == 0)
+    assert np.all(runtimes['inactive batches'] == 0)
+    del runtimes['reading cross sections']
+    del runtimes['total initialization']
+    del runtimes['inactive batches']
+    for measure, times in runtimes.items():
+        assert np.all(times != 0)
 
 
 def test_depletion_results_to_material(run_in_tmpdir, problem):

@@ -541,10 +541,10 @@ class OpenMCOperator(TransportOperator):
                 self._normalization_helper.update(
                     tally_rates[:, fission_ind])
 
-            # Divide by total number and store
-            rates[i] = self._rate_helper.divide_by_adens(number)
+            # Divide by total number of atoms and store
+            rates[i] = self._rate_helper.divide_by_atoms(number)
 
-        # Scale reaction rates to obtain units of reactions/sec
+        # Scale reaction rates to obtain units of (reactions/sec)/atom
         rates *= self._normalization_helper.factor(source_rate)
 
         # Store new fission yields on the chain

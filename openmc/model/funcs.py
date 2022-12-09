@@ -112,6 +112,13 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     return out
 
 
+# Define function to create a plane on given axis
+def _plane(axis, name, value, boundary_type='transmission'):
+        cls = getattr(openmc, f'{axis.upper()}Plane')
+        return cls(value, name=f'{name} {axis}',
+                   boundary_type=boundary_type)
+
+
 def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
                       boundary_type='transmission',
                       upper_fillet_radius=0.,
@@ -161,12 +168,6 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
     check_value('axis', axis, ['x', 'y', 'z'])
     check_type('origin', origin, Iterable, Real)
 
-    # Define function to create a plane on given axis
-    def plane(axis, name, value):
-        cls = getattr(openmc, f'{axis.upper()}Plane')
-        return cls(value, name=f'{name} {axis}',
-                   boundary_type=boundary_type)
-
     def cylinder(axis, name, ax1, val1, ax2, val2, r):
         cls = getattr(openmc, f'{axis.upper()}Cylinder')
         return cls(name=f'{name} {axis}',
@@ -186,8 +187,10 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
         axcoord, axcoord1, axcoord2 = 2, 0, 1
 
     # Create cylindrical region
-    min_h = plane(axis, 'minimum', -height / 2 + origin[axcoord])
-    max_h = plane(axis, 'maximum', height / 2 + origin[axcoord])
+    min_h = _plane(axis, 'minimum', -height / 2 + origin[axcoord],
+                   boundary_type=boundary_type)
+    max_h = _plane(axis, 'maximum', height / 2 + origin[axcoord],
+                   boundary_type=boundary_type)
     radial = cylinder(axis, 'outer',
                       x1, origin[axcoord1],
                       x2, origin[axcoord2],
@@ -201,7 +204,7 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
     # Handle rounded corners if given
     if upper_fillet_radius > 0. or lower_fillet_radius > 0.:
         # Get torus class corresponding to given axis
-        tor = globals()['{}Torus'.format(axis.upper())]
+        tor = getattr(openmc, f'{axis.upper()}Torus')
 
         if boundary_type == 'periodic':
             raise ValueError('Periodic boundary conditions not permitted when '
@@ -226,7 +229,7 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
             if pos == 'lower':
                 sign = (-1, '-')
             coord = origin[axcoord] + sign[0] * fillet_ext
-            p = plane(axis, f'{pos} ext', coord)
+            p = _plane(axis, f'{pos} ext', coord)
             axial_bound = openmc.Region.from_expression(f'{sign[1]}{p.id}',
                                                         {p.id: p})
 
@@ -299,13 +302,6 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
     check_value('axis', axis, ['x', 'y', 'z'])
     check_type('origin', origin, Iterable, Real)
 
-    # Define function to create a plane on given axis
-    def plane(axis, name, value):
-        cls = globals()['{}Plane'.format(axis.upper())]
-        return cls(name='{} {}'.format(name, axis),
-                   boundary_type=boundary_type,
-                   **{axis + '0': value})
-
     if axis == 'x':
         x1, x2 = 'y', 'z'
     elif axis == 'y':
@@ -314,13 +310,17 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
         x1, x2 = 'x', 'y'
 
     # Get cylinder class corresponding to given axis
-    cyl = globals()['{}Cylinder'.format(axis.upper())]
+    cyl = getattr(openmc, f'{axis.upper()}Cylinder')
 
     # Create rectangular region
-    min_x1 = plane(x1, 'minimum', -width/2 + origin[0])
-    max_x1 = plane(x1, 'maximum', width/2 + origin[0])
-    min_x2 = plane(x2, 'minimum', -height/2 + origin[1])
-    max_x2 = plane(x2, 'maximum', height/2 + origin[1])
+    min_x1 = _plane(x1, 'minimum', -width/2 + origin[0],
+                    boundary_type=boundary_type)
+    max_x1 = _plane(x1, 'maximum', width/2 + origin[0],
+                    boundary_type=boundary_type)
+    min_x2 = _plane(x2, 'minimum', -height/2 + origin[1],
+                    boundary_type=boundary_type)
+    max_x2 = _plane(x2, 'maximum', height/2 + origin[1],
+                    boundary_type=boundary_type)
     if boundary_type == 'periodic':
         min_x1.periodic_surface = max_x1
         min_x2.periodic_surface = max_x2
@@ -354,10 +354,10 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
         args[x2 + '0'] = origin[1] + height/2 - corner_radius
         x1_max_x2_max = cyl(name='{} max {} max'.format(x1, x2), **args)
 
-        x1_min = plane(x1, 'min', -width/2 + origin[0] + corner_radius)
-        x1_max = plane(x1, 'max', width/2 + origin[0] - corner_radius)
-        x2_min = plane(x2, 'min', -height/2 + origin[1] + corner_radius)
-        x2_max = plane(x2, 'max', height/2 + origin[1] - corner_radius)
+        x1_min = _plane(x1, 'min', -width/2 + origin[0] + corner_radius)
+        x1_max = _plane(x1, 'max', width/2 + origin[0] - corner_radius)
+        x2_min = _plane(x2, 'min', -height/2 + origin[1] + corner_radius)
+        x2_max = _plane(x2, 'max', height/2 + origin[1] - corner_radius)
 
         corners = (+x1_min_x2_min & -x1_min & -x2_min) | \
                   (+x1_min_x2_max & -x1_min & +x2_max) | \

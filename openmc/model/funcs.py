@@ -5,13 +5,9 @@ from numbers import Real
 from operator import attrgetter
 from warnings import warn
 
-from openmc import (
-    XPlane, YPlane, ZPlane, Plane, ZCylinder, Cylinder, XCylinder,
-    YCylinder, ZTorus, XTorus, YTorus,
-    Universe, Cell)
-from ..checkvalue import (
-    check_type, check_value, check_length, check_less_than,
-    check_iterable_type)
+from openmc import Plane, Cylinder, Universe, Cell
+from ..checkvalue import (check_type, check_value, check_length,
+                          check_less_than, check_iterable_type)
 import openmc.data
 
 
@@ -413,8 +409,8 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
     x, y = origin
 
     if orientation == 'y':
-        right = XPlane(x + sqrt(3.)/2*l, boundary_type=boundary_type)
-        left = XPlane(x - sqrt(3.)/2*l, boundary_type=boundary_type)
+        right = openmc.XPlane(x + sqrt(3.)/2*l, boundary_type=boundary_type)
+        left = openmc.XPlane(x - sqrt(3.)/2*l, boundary_type=boundary_type)
         c = sqrt(3.)/3.
 
         # y = -x/sqrt(3) + a
@@ -438,8 +434,8 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
             lower_right.periodic_surface = upper_left
 
     elif orientation == 'x':
-        top = YPlane(y0=y + sqrt(3.)/2*l, boundary_type=boundary_type)
-        bottom = YPlane(y0=y - sqrt(3.)/2*l, boundary_type=boundary_type)
+        top = openmc.YPlane(y0=y + sqrt(3.)/2*l, boundary_type=boundary_type)
+        bottom = openmc.YPlane(y0=y - sqrt(3.)/2*l, boundary_type=boundary_type)
         c = sqrt(3.)
 
         # y = -sqrt(3)*(x - a)
@@ -473,8 +469,9 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         t = l - corner_radius/c
 
         # Cylinder with corner radius and boundary type pre-applied
-        cyl1 = partial(ZCylinder, r=corner_radius, boundary_type=boundary_type)
-        cyl2 = partial(ZCylinder, r=corner_radius/(2*c),
+        cyl1 = partial(openmc.ZCylinder, r=corner_radius,
+                       boundary_type=boundary_type)
+        cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c),
                        boundary_type=boundary_type)
 
         if orientation == 'x':
@@ -610,11 +607,11 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
     check_iterable_type("surfaces", surfaces[1:], surf_type)
 
     # Check for increasing radii and equal centers
-    if surf_type is ZCylinder:
+    if surf_type is openmc.ZCylinder:
         center_getter = attrgetter("x0", "y0")
-    elif surf_type is YCylinder:
+    elif surf_type is openmc.YCylinder:
         center_getter = attrgetter("x0", "z0")
-    elif surf_type is XCylinder:
+    elif surf_type is openmc.XCylinder:
         center_getter = attrgetter("z0", "y0")
     else:
         raise TypeError(

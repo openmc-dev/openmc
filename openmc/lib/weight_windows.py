@@ -10,10 +10,16 @@ import openmc.lib
 import openmc
 
 _dll.openmc_extend_weight_windows.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
+
 _dll.openmc_update_weight_windows.argtypes = 2*[c_int32] + 3*[c_char_p]
 _dll.openmc_update_weight_windows.restype = c_int
 _dll.openmc_update_weight_windows.errcheck = _error_handler
+
 _dll.openmc_weight_windows_size.restype = c_size_t
+
+_dll.openmc_get_weight_windows_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_get_weight_windows_index.restype = c_int
+_dll.openmc_get_weight_windows_index.errcheck = _error_handler
 
 
 class WeightWindows(_FortranObjectWithID):
@@ -89,7 +95,7 @@ class _WeightWindowsMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
         try:
-            _dll.openmc_get_weight_window_index(key, index)
+            _dll.openmc_get_weight_windows_index(key, index)
         except(AllocationError, InvalidIDError):
             raise KeyError(str(e))
         return WeightWindows(index=index.value)

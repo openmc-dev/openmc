@@ -210,8 +210,8 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
             raise ValueError('Periodic boundary conditions not permitted when '
                              'rounded corners are used.')
 
-        corners_upper = None
-        corners_lower = None
+        upper_fillet = None
+        lower_fillet = None
         args = {
             'boundary_type': boundary_type,
             x1 + '0': origin[axcoord1],
@@ -245,15 +245,15 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
             return fillet
 
         if upper_fillet_radius > 0.:
-            fillet_upper = create_fillet(args, r, upper_fillet_radius)
+            upper_fillet = create_fillet(args, r, upper_fillet_radius)
         if lower_fillet_radius > 0.:
-            fillet_lower = create_fillet(args, r, lower_fillet_radius, pos='lower')
-        if fillet_lower is not None and fillet_upper is not None:
-            fillet = fillet_lower | fillet_upper
-        elif fillet_lower is None:
-            fillet = fillet_upper
+            lower_fillet = create_fillet(args, r, lower_fillet_radius, pos='lower')
+        if lower_fillet is not None and upper_fillet is not None:
+            fillet = lower_fillet | upper_fillet
+        elif lower_fillet is None:
+            fillet = upper_fillet
         else:
-            fillet = fillet_lower
+            fillet = lower_fillet
 
         prism = prism & ~fillet
 

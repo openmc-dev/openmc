@@ -205,15 +205,17 @@ def test_get_by_name():
     assert not univs
 
 
-def test_cyl_prism():
+def test_cyl_prism(run_in_tmpdir):
     cyl_prism = openmc.model.cylindrical_prism(2,
                                                5,
-                                               origin=(-1,1,3))
+                                               origin=(-1,1,3),
+                                               boundary_type='vacuum')
     rounded_cyl_prism = openmc.model.cylindrical_prism(2,
                                                        5,
                                                        origin=(-1,1,3),
                                                        upper_fillet_radius=1.6,
-                                                       lower_fillet_radius=1.6)
+                                                       lower_fillet_radius=1.6,
+                                                       boundary_type='vacuum')
     prisms = [cyl_prism, rounded_cyl_prism]
 
     def make_geometry(prism):
@@ -281,10 +283,10 @@ def test_cyl_prism():
             assert point not in prism
             with pytest.raises(openmc.exceptions.GeometryError,
                                match=re.escape('Could not find cell at position'
-                                               f'{point}.')):
+                                               f' {point}.')):
                 openmc.lib.find_cell(point)
-
         openmc.lib.finalize()
+
 
 def test_hex_prism():
     hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,

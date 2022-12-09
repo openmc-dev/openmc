@@ -318,12 +318,12 @@ class Cell(IDManagerMixin):
     @temperature.setter
     def temperature(self, temperature):
         # Make sure temperatures are positive
-        cv.check_type('cell temperature', temperature, (Iterable, Real))
+        cv.check_type('cell temperature', temperature, (Iterable, Real), none_ok=True)
         if isinstance(temperature, Iterable):
             cv.check_type('cell temperature', temperature, Iterable, Real)
             for T in temperature:
                 cv.check_greater_than('cell temperature', T, 0.0, True)
-        else:
+        elif isinstance(temperature, Real):
             cv.check_greater_than('cell temperature', temperature, 0.0, True)
 
         # If this cell is filled with a universe or lattice, propagate

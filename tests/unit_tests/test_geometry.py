@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import re
 
 import numpy as np
 import openmc
@@ -232,6 +233,8 @@ def test_cyl_prism():
                            materials=materials,
                            geometry=geo).export_to_xml()
 
+        return cell
+
     # clear checks
     inside_points = [[(-1, 1, 3),   #center
                       (-1, 0.5, 1), # lower
@@ -264,22 +267,24 @@ def test_cyl_prism():
                        (-2.4, 1, 0.49),
                        (-2.4, 1, 0.51)]]
 
-    openmc.lib.init()
     for prism, inside_points, outside_points in zip(prisms, inside_points, outside_points):
-        make_geometry(prism)
-
+        ref_cell = make_geometry(prism)
+        openmc.lib.init()
         for point in inside_points:
             assert point in prism
             test_cell, instance = openmc.lib.find_cell(point)
-            assert test_cell.id == cell.id
-            np.testing.assert_array_equal(test_cell.bounding_box, cell.region.bounding_box)
+            assert test_cell.id == ref_cell.id
+            np.testing.assert_array_equal(test_cell.bounding_box,
+                                          ref_cell.region.bounding_box)
 
         for point in outside_points:
             assert point not in prism
-            with pytest.raises(openmc.exceptions.GeometryError, match=f'Could not find cell at position {point}.'):
+            with pytest.raises(openmc.exceptions.GeometryError,
+                               match=re.escape('Could not find cell at position'
+                                               f'{point}.')):
                 openmc.lib.find_cell(point)
 
-    openmc.lib.finalize()
+        openmc.lib.finalize()
 
 def test_hex_prism():
     hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,

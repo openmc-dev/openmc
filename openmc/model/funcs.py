@@ -203,9 +203,6 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
 
     # Handle rounded corners if given
     if upper_fillet_radius > 0. or lower_fillet_radius > 0.:
-        # Get torus class corresponding to given axis
-        tor = getattr(openmc, f'{axis.upper()}Torus')
-
         if boundary_type == 'periodic':
             raise ValueError('Periodic boundary conditions not permitted when '
                              'rounded corners are used.')
@@ -219,27 +216,32 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
         }
 
         def create_fillet(args, r, fillet_radius, pos='upper'):
-            args['a'] = r - fillet_radius
-            args['b'] = fillet_radius
-            args['c'] = fillet_radius
             fillet_ext = height / 2 - fillet_radius
-            tor_name = f'{axis} {pos}'
-            cyl_name = f'{pos}_min'
             sign = (1, '+')
             if pos == 'lower':
                 sign = (-1, '-')
             coord = origin[axcoord] + sign[0] * fillet_ext
-            p = _plane(axis, f'{pos} ext', coord)
-            axial_bound = openmc.Region.from_expression(f'{sign[1]}{p.id}',
-                                                        {p.id: p})
 
+            # cylinder
+            cyl_name = f'{pos}_min'
             cyl = cylinder(axis, cyl_name,
                            x1, origin[axcoord1],
                            x2, origin[axcoord2],
                            r - fillet_radius)
-
+            #torus
+            args['a'] = r - fillet_radius
+            args['b'] = fillet_radius
+            args['c'] = fillet_radius
+            tor_name = f'{axis} {pos}'
             args[axis + '0'] = coord
+            tor = getattr(openmc, f'{axis.upper()}Torus')
             torus = tor(name=tor_name, **args)
+
+            # plane
+            p = _plane(axis, f'{pos} ext', coord)
+            axial_bound = openmc.Region.from_expression(f'{sign[1]}{p.id}',
+                                                        {p.id: p})
+
 
             fillet = +cyl & +torus & axial_bound
             return fillet

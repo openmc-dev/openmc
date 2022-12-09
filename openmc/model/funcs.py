@@ -215,20 +215,20 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
             x2 + '0': origin[axcoord2]
         }
 
-        def create_fillet(args, r, fillet_radius, pos):
+        def create_fillet(args, r, fillet_radius, pos='upper'):
             args['a'] = r - fillet_radius
             args['b'] = fillet_radius
             args['c'] = fillet_radius
-            if pos:
-                coord = origin[axcoord] + height / 2 - fillet_radius
-                tor_name = f'{axis} max'
-                cyl_name = 'upper_min'
-                axial_bound = +plane(axis, 'upper min', coord)
-            else:
-                coord = origin[axcoord] - height / 2 + lower_fillet_radius
-                tor_name = f'{axis} min'
-                cyl_name = 'lower_min'
-                axial_bound = -plane(axis, 'lower max', coord)
+            fillet_ext = height / 2 - fillet_radius
+            tor_name = f'{axis} {pos}'
+            cyl_name = f'{pos}_min'
+            sign = (1, '+')
+            if pos == 'lower':
+                sign = (-1, '-')
+            coord = origin[axcoord] + sign[0] * fillet_ext
+            p = plane(axis, f'{pos} ext', coord)
+            axial_bound = openmc.Region.from_expression(f'{sign[1]}{p.id}',
+                                                        {p.id: p})
 
             cyl = cylinder(axis, cyl_name,
                            x1, origin[axcoord1],
@@ -242,9 +242,9 @@ def cylindrical_prism(r, height, axis='z', origin=(0., 0., 0.),
             return fillet
 
         if upper_fillet_radius > 0.:
-            fillet_upper = create_fillet(args, r, upper_fillet_radius, True)
+            fillet_upper = create_fillet(args, r, upper_fillet_radius)
         if lower_fillet_radius > 0.:
-            fillet_lower = create_fillet(args, r, lower_fillet_radius, False)
+            fillet_lower = create_fillet(args, r, lower_fillet_radius, pos='lower')
         if fillet_lower is not None and fillet_upper is not None:
             fillet = fillet_lower | fillet_upper
         elif fillet_lower is None:

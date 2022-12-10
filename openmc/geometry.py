@@ -1,13 +1,16 @@
+import os
+import typing
+import warnings
 from collections import OrderedDict, defaultdict
 from collections.abc import Iterable
 from copy import deepcopy
 from pathlib import Path
 from xml.etree import ElementTree as ET
-import warnings
 
 import openmc
 import openmc._xml as xml
-from .checkvalue import check_type, check_less_than, check_greater_than
+
+from .checkvalue import check_greater_than, check_less_than, check_type, PathLike
 
 
 class Geometry:
@@ -148,16 +151,20 @@ class Geometry:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml(cls, path='geometry.xml', materials=None):
+    def from_xml(
+        cls,
+        path: PathLike = 'geometry.xml',
+        materials: typing.Optional[typing.Union[PathLike, 'openmc.Materials']] = 'materials.xml'
+    ):
         """Generate geometry from XML file
 
         Parameters
         ----------
-        path : str, optional
+        path : Pathlike, optional
             Path to geometry XML file
-        materials : openmc.Materials or None
-            Materials used to assign to cells. If None, an attempt is made to
-            generate it from the materials.xml file.
+        materials : openmc.Materials or Pathlike
+            Materials used to assign to cells. If Pathlike, an attempt is made
+            to generate it from the provided xml filepath.
 
         Returns
         -------
@@ -165,6 +172,11 @@ class Geometry:
             Geometry object
 
         """
+
+        # Using str and os.Pathlike here to avoid error when using just the imported PathLike
+        # TypeError: Subscripted generics cannot be used with class and instance checks
+        check_type('materials', materials, (str, os.PathLike, openmc.Materials))
+
         # Helper function for keeping a cache of Universe instances
         universes = {}
         def get_universe(univ_id):
@@ -224,10 +236,10 @@ class Geometry:
                         for u in ring:
                             child_of[u].append(lat)
 
+        if isinstance(materials, (str, os.PathLike)):
+            materials = openmc.Materials.from_xml(materials)
+
         # Create dictionary to easily look up materials
-        if materials is None:
-            filename = Path(path).parent / 'materials.xml'
-            materials = openmc.Materials.from_xml(str(filename))
         mats = {str(m.id): m for m in materials}
         mats['void'] = None
 

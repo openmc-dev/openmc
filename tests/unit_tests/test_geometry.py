@@ -278,9 +278,9 @@ def test_from_xml(run_in_tmpdir, mixed_lattice_model):
     mats_from_xml = openmc.Materials.from_xml('materials.xml')
     # checking string a Path are both acceptable
     for path in ['geometry.xml', Path('geometry.xml')]:
-        for materials in [mats_from_xml, 'matreials.xml']:
+        for materials in [mats_from_xml, 'materials.xml']:
             # Import geometry from file
-            geom = openmc.Geometry.from_xml(path=path)
+            geom = openmc.Geometry.from_xml(path=path, materials=materials)
             assert isinstance(geom, openmc.Geometry)
             ll, ur = geom.bounding_box
             assert ll == pytest.approx((-6.0, -6.0, -np.inf))

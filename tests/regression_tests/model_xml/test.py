@@ -27,7 +27,7 @@ class ModelXMLTestHarness(PyAPITestHarness):
         self.results_true = 'results_true.dat' if results_true is None else results_true
 
     def _build_inputs(self):
-        self._model.export_to_xml(separate_xmls=False)
+        self._model.export_to_model_xml()
 
     def _get_inputs(self):
         return open('model.xml').read()
@@ -77,21 +77,24 @@ def test_input_arg(run_in_tmpdir):
     pincell.settings.particles = 100
 
     # export to separate XML files and run
-    pincell.export_to_xml(separate_xmls=True)
+    pincell.export_to_xml()
     openmc.run()
 
     # make sure the executable isn't falling back on the separate XMLs
     for f in glob.glob('*.xml'):
         os.remove(f)
     # now export to a single XML file with a custom name
-    pincell.export_to_xml(path='pincell.xml', separate_xmls=False)
+    pincell.export_to_model_xml('pincell.xml')
     assert Path('pincell.xml').exists()
 
     # run by specifying that single file
     openmc.run(path_input='pincell.xml')
 
+    # check that this works for plotting too
+    openmc.plot_geometry(path_input='pincell.xml')
+
     # now ensure we get an error for an incorrect filename,
     # even in the presence of other, valid XML files
-    pincell.export_to_xml(separate_xmls=True)
+    pincell.export_to_model_xml()
     with pytest.raises(RuntimeError, match='ex-em-ell.xml'):
         openmc.run(path_input='ex-em-ell.xml')

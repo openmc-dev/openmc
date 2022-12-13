@@ -256,8 +256,7 @@ class Model:
 
         model.settings = openmc.Settings.from_xml_element(root.find('settings'))
         model.materials = openmc.Materials.from_xml_element(root.find('materials'))
-        materials = {str(m.id): m for m in model.materials}
-        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), materials)
+        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
 
         # gather meshes from other classes before reading the tally node
         meshes = {}
@@ -435,30 +434,7 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.', remove_surfs=False, separate_xmls=True, path='model.xml'):
-        """Export model to an XML file(s).
-
-        Parameters
-        ----------
-        directory : str
-            Directory to write XML files to. If it doesn't exist already, it
-            will be created. Only used if :math:`separate_xmls` is True.
-        remove_surfs : bool
-            Whether or not to remove redundant surfaces from the geometry when
-            exporting.
-        path : str
-            Path to an output filename or directory. Only used if :math:`separate_xmls` is False.
-
-            .. versionadded:: 0.13.1
-        separate_xmls : bool
-            Whether or not to write a single model.xml file or many XML files.
-        """
-        if separate_xmls:
-            self._export_to_separate_xmls(directory, remove_surfs)
-        else:
-            self._export_to_single_xml(path, remove_surfs)
-
-    def _export_to_separate_xmls(self, directory='.', remove_surfs=False):
+    def export_to_xml(self, directory='.', remove_surfs=False):
         """Export model to separate XML files.
 
         Parameters
@@ -495,13 +471,14 @@ class Model:
         if self.plots:
             self.plots.export_to_xml(d)
 
-    def _export_to_single_xml(self, path='model.xml', remove_surfs=False):
+    def export_to_model_xml(self, path='model.xml', remove_surfs=False):
         """Export model to a single XML file.
 
         Parameters
         ----------
         path : str or Pathlike
-            Location of the XML file to write. Can be a directory or file path.
+            Location of the XML file to write (default is 'model.xml'). Can be a
+            directory or file path.
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.

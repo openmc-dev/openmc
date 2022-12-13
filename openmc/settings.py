@@ -1074,31 +1074,33 @@ class Settings:
                 subelement.text = str(value)
 
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
-        if self.entropy_mesh is not None:
-            # use default heuristic for entropy mesh if not set by user
-            if self.entropy_mesh.dimension is None:
-                if self.particles is None:
-                    raise RuntimeError("Number of particles must be set in order to " \
-                      "use entropy mesh dimension heuristic")
-                else:
-                    n = ceil((self.particles / 20.0)**(1.0 / 3.0))
-                    d = len(self.entropy_mesh.lower_left)
-                    self.entropy_mesh.dimension = (n,)*d
+        if self.entropy_mesh is None:
+            return
 
-            # add mesh ID to this element
-            subelement = ET.SubElement(root, "entropy_mesh")
-            subelement.text = str(self.entropy_mesh.id)
+        # use default heuristic for entropy mesh if not set by user
+        if self.entropy_mesh.dimension is None:
+            if self.particles is None:
+                raise RuntimeError("Number of particles must be set in order to " \
+                    "use entropy mesh dimension heuristic")
+            else:
+                n = ceil((self.particles / 20.0)**(1.0 / 3.0))
+                d = len(self.entropy_mesh.lower_left)
+                self.entropy_mesh.dimension = (n,)*d
 
-            # If this mesh has already been written outside the
-            # settings element, skip writing it again
-            if mesh_memo and self.entropy_mesh.id in mesh_memo:
-                return
+        # add mesh ID to this element
+        subelement = ET.SubElement(root, "entropy_mesh")
+        subelement.text = str(self.entropy_mesh.id)
 
-            # See if a <mesh> element already exists -- if not, add it
-            path = f"./mesh[@id='{self.entropy_mesh.id}']"
-            if root.find(path) is None:
-                root.append(self.entropy_mesh.to_xml_element())
-                if mesh_memo is not None: mesh_memo.add(self.entropy_mesh.id)
+        # If this mesh has already been written outside the
+        # settings element, skip writing it again
+        if mesh_memo and self.entropy_mesh.id in mesh_memo:
+            return
+
+        # See if a <mesh> element already exists -- if not, add it
+        path = f"./mesh[@id='{self.entropy_mesh.id}']"
+        if root.find(path) is None:
+            root.append(self.entropy_mesh.to_xml_element())
+            if mesh_memo is not None: mesh_memo.add(self.entropy_mesh.id)
 
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
@@ -1149,15 +1151,21 @@ class Settings:
             element = ET.SubElement(root, "track")
             element.text = ' '.join(map(str, itertools.chain(*self._track)))
 
-    def _create_ufs_mesh_subelement(self, root):
-        if self.ufs_mesh is not None:
-            # See if a <mesh> element already exists -- if not, add it
-            path = f"./mesh[@id='{self.ufs_mesh.id}']"
-            if root.find(path) is None:
-                root.append(self.ufs_mesh.to_xml_element())
+    def _create_ufs_mesh_subelement(self, root, mesh_memo=None):
+        if self.ufs_mesh is None:
+            return
 
-            subelement = ET.SubElement(root, "ufs_mesh")
-            subelement.text = str(self.ufs_mesh.id)
+        subelement = ET.SubElement(root, "ufs_mesh")
+        subelement.text = str(self.ufs_mesh.id)
+
+        if mesh_memo and self.ufs_mesh.id in mesh_memo:
+            return
+
+        # See if a <mesh> element already exists -- if not, add it
+        path = f"./mesh[@id='{self.ufs_mesh.id}']"
+        if root.find(path) is None:
+            root.append(self.ufs_mesh.to_xml_element())
+            if mesh_memo is not None: mesh_memo.add(self.ufs_mesh.id)
 
     def _create_resonance_scattering_subelement(self, root):
         res = self.resonance_scattering

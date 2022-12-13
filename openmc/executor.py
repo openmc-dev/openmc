@@ -43,7 +43,8 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         MPI execute command and any additional MPI arguments to pass,
         e.g. ['mpiexec', '-n', '8'].
     path_input : str or Pathlike
-        Name of a single XML input file for the OpenMC executable to read.
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
 
     .. versionadded:: 0.13.0
 
@@ -135,7 +136,8 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.', path_input=None):
     cwd : str, optional
         Path to working directory to run in
     path_input : str
-        Name of a single XML input file for the OpenMC executable to read.
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
 
     Raises
     ------
@@ -146,7 +148,7 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.', path_input=None):
     args = [openmc_exec, '-p']
     if path_input is not None:
         args += [path_input]
-    _run([openmc_exec, '-p'], output, cwd)
+    _run(args, output, cwd)
 
 
 def plot_inline(plots, openmc_exec='openmc', cwd='.', path_input=None):
@@ -166,7 +168,8 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', path_input=None):
     cwd : str, optional
         Path to working directory to run in
     path_input : str
-        Name of a single XML input file for the OpenMC executable to read.
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
 
     Raises
     ------
@@ -224,7 +227,9 @@ def calculate_volumes(threads=None, output=True, cwd='.',
         Path to working directory to run in. Defaults to the current working
         directory.
     path_input : str or Pathlike
-        Name of a single XML input file for the OpenMC executable to read.
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
+
 
     Raises
     ------
@@ -256,17 +261,17 @@ def run(particles=None, threads=None, geometry_debug=False,
         Number of particles to simulate per generation.
     threads : int, optional
         Number of OpenMP threads. If OpenMC is compiled with OpenMP threading
-        enabled, the default is implementation-dependent but is usually equal
-        to the number of hardware threads available (or a value set by the
+        enabled, the default is implementation-dependent but is usually equal to
+        the number of hardware threads available (or a value set by the
         :envvar:`OMP_NUM_THREADS` environment variable).
     geometry_debug : bool, optional
         Turn on geometry debugging during simulation. Defaults to False.
     restart_file : str, optional
         Path to restart file to use
     tracks : bool, optional
-        Enables the writing of particles tracks. The number of particle
-        tracks written to tracks.h5 is limited to 1000 unless
-        Settings.max_tracks is set. Defaults to False.
+        Enables the writing of particles tracks. The number of particle tracks
+        written to tracks.h5 is limited to 1000 unless Settings.max_tracks is
+        set. Defaults to False.
     output : bool
         Capture OpenMC output from standard out
     cwd : str, optional
@@ -275,15 +280,16 @@ def run(particles=None, threads=None, geometry_debug=False,
     openmc_exec : str, optional
         Path to OpenMC executable. Defaults to 'openmc'.
     mpi_args : list of str, optional
-        MPI execute command and any additional MPI arguments to pass,
-        e.g. ['mpiexec', '-n', '8'].
+        MPI execute command and any additional MPI arguments to pass, e.g.
+        ['mpiexec', '-n', '8'].
     event_based : bool, optional
         Turns on event-based parallelism, instead of default history-based
 
         .. versionadded:: 0.12
 
     path_input : str or Pathlike
-        Name of a single XML input file for the OpenMC executable to read.
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
 
     Raises
     ------

@@ -542,18 +542,18 @@ def test_model_xml(run_in_tmpdir):
     pwr_model.geometry.export_to_xml('geometry_ref.xml')
 
     # now write and read a model.xml file
-    pwr_model.export_to_xml(separate_xmls=False)
+    pwr_model.export_to_model_xml()
     new_model = openmc.Model.from_model_xml()
 
     # make sure we can also export this again to separate
     # XML files
-    new_model.export_to_xml(separate_xmls=True)
+    new_model.export_to_xml()
 
-def test_model_exec(run_in_tmpdir):
+def test_single_xml_exec(run_in_tmpdir):
 
     pincell_model = openmc.examples.pwr_pin_cell()
 
-    pincell_model.export_to_xml(path='pwr_pincell.xml', separate_xmls=False)
+    pincell_model.export_to_model_xml('pwr_pincell.xml')
 
     openmc.run(path_input='pwr_pincell.xml')
 
@@ -562,7 +562,7 @@ def test_model_exec(run_in_tmpdir):
 
     # test that a file in a different directory can be used
     os.mkdir('inputs')
-    pincell_model.export_to_xml(path='./inputs/pincell.xml', separate_xmls=False)
+    pincell_model.export_to_model_xml('./inputs/pincell.xml')
     openmc.run(path_input='./inputs/pincell.xml')
 
     with pytest.raises(RuntimeError, match='input_dir'):

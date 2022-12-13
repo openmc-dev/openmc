@@ -179,6 +179,11 @@ class Geometry:
             Geometry object
 
         """
+        mats = dict()
+        if materials is not None:
+            mats.update({str(m.id): m for m in materials})
+        mats['void'] = None
+
         # Helper function for keeping a cache of Universe instances
         universes = {}
         def get_universe(univ_id):
@@ -236,7 +241,7 @@ class Geometry:
                             child_of[u].append(lat)
 
         for e in elem.findall('cell'):
-            c = openmc.Cell.from_xml_element(e, surfaces, materials, get_universe)
+            c = openmc.Cell.from_xml_element(e, surfaces, mats, get_universe)
             if c.fill_type in ('universe', 'lattice'):
                 child_of[c.fill].append(c)
 
@@ -266,17 +271,15 @@ class Geometry:
             Geometry object
 
         """
-        tree = ET.parse(path)
-        root = tree.getroot()
-
-         # Create dictionary to easily look up materials
+        # Create dictionary to easily look up materials
         if materials is None:
             filename = Path(path).parent / 'materials.xml'
             materials = openmc.Materials.from_xml(str(filename))
-        mats = {str(m.id): m for m in materials}
-        mats['void'] = None
 
-        return cls.from_xml_element(root, mats)
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        return cls.from_xml_element(root, materials)
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point

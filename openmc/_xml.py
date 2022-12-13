@@ -26,8 +26,10 @@ def clean_indentation(element, level=0, spaces_per_level=2, trailing_indent=True
         if trailing_indent and (not element.tail or not element.tail.strip()):
             element.tail = i
         for sub_element in element:
-            # `trailing_indent` intentionally not passed to the recursive call.
-            # it only applies to the element for the initial of this function.
+            # `trailing_indent` is intentionally not forwarded to the recursive
+            # call. Any child element of the topmost clement should add
+            # indentation at the end to ensure its parent's indentation is
+            # correct.
             clean_indentation(sub_element, level+1, spaces_per_level)
         if not sub_element.tail or not sub_element.tail.strip():
             sub_element.tail = i

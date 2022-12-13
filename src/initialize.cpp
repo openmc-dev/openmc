@@ -352,7 +352,7 @@ bool read_model_xml() {
   auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml", "plots.xml"};
   for (const auto& input : other_inputs) {
     if (file_exists(settings::path_input + input)) {
-      warning((fmt::format("Other XML file input(s) are present. These file "
+      warning((fmt::format("Other XML file input(s) are present. These files "
                            "will be ignored in favor of the {} file.",
         model_filename)));
       break;
@@ -371,7 +371,7 @@ bool read_model_xml() {
   // Read geometry
   if (!check_for_node(root, "geometry")) {
     fatal_error(fmt::format(
-      "No <geometry> node present in the model.xml_file.", model_filename));
+      "No <geometry> node present in the {} file.", model_filename));
   }
   read_geometry_xml(root.child("geometry"));
 

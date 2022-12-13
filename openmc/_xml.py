@@ -16,7 +16,7 @@ def clean_indentation(element, level=0, spaces_per_level=2, trailing_indent=True
     """
     i = "\n" + level*spaces_per_level*" "
 
-    # ensure there's awlays some tail for the element passed in
+    # ensure there's always some tail for the element passed in
     if not element.tail:
         element.tail = ""
 

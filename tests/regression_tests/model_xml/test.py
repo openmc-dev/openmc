@@ -81,7 +81,8 @@ def test_input_arg(run_in_tmpdir):
     openmc.run()
 
     # make sure the executable isn't falling back on the separate XMLs
-    [os.remove(f) for f in glob.glob('*.xml')]
+    for f in glob.glob('*.xml'):
+        os.remove(f)
     # now export to a single XML file with a custom name
     pincell.export_to_xml(path='pincell.xml', separate_xmls=False)
     assert Path('pincell.xml').exists()

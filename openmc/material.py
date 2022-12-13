@@ -1548,7 +1548,6 @@ class Materials(cv.CheckedList):
 
         return materials
 
-
     @classmethod
     def from_xml(cls, path: PathLike = 'materials.xml'):
         """Generate materials collection from XML file

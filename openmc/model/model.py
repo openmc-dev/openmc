@@ -259,7 +259,7 @@ class Model:
         materials = {str(m.id): m for m in model.materials}
         model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), materials)
 
-        # gather meshses from other classes before reading the tally node
+        # gather meshes from other classes before reading the tally node
         meshes = {}
         if model.settings.entropy_mesh is not None:
             meshes[model.settings.entropy_mesh.id] = model.settings.entropy_mesh

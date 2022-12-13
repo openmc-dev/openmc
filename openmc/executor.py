@@ -95,7 +95,6 @@ def _run(args, output, cwd):
     p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, universal_newlines=True)
 
-    print(args)
     # Capture and re-print OpenMC output in real-time
     lines = []
     while True:
@@ -146,7 +145,7 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.', path_input=None):
     """
     args = [openmc_exec, '-p']
     if path_input is not None:
-        args += ['-i', path_input]
+        args += [path_input]
     _run([openmc_exec, '-p'], output, cwd)
 
 

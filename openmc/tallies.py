@@ -3199,6 +3199,10 @@ class Tallies(cv.CheckedList):
         ----------
         elem : xml.etree.ElementTree.Element
             XML element
+        meshes : dict or None
+            A dictionary with mesh IDs as keys and mesh instances as values that
+            have already been read from XML. Pre-existing meshes are used
+            and new meshes are added to when creating tally objects.
 
         Returns
         -------

@@ -1417,13 +1417,15 @@ class Settings:
                 if value is not None:
                     self.cutoff[key] = float(value)
 
-    def _entropy_mesh_from_xml_element(self, root):
+    def _entropy_mesh_from_xml_element(self, root, meshes=None):
         text = get_text(root, 'entropy_mesh')
         if text is not None:
             path = f"./mesh[@id='{int(text)}']"
             elem = root.find(path)
             if elem is not None:
                 self.entropy_mesh = RegularMesh.from_xml_element(elem)
+        if meshes is not None and self.entropy_mesh is not None:
+            meshes[self.entropy_mesh.id] = self.entropy_mesh
 
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
@@ -1483,13 +1485,15 @@ class Settings:
             values = [int(x) for x in text.split()]
             self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
-    def _ufs_mesh_from_xml_element(self, root):
+    def _ufs_mesh_from_xml_element(self, root, meshes=None):
         text = get_text(root, 'ufs_mesh')
         if text is not None:
             path = f"./mesh[@id='{int(text)}']"
             elem = root.find(path)
             if elem is not None:
                 self.ufs_mesh = RegularMesh.from_xml_element(elem)
+        if meshes is not None and self.ufs_mesh is not None:
+            meshes[self.ufs_mesh.id] = self.ufs_mesh
 
     def _resonance_scattering_from_xml_element(self, root):
         elem = root.find('resonance_scattering')
@@ -1541,7 +1545,7 @@ class Settings:
         if text is not None:
             self.write_initial_source = text in ('true', '1')
 
-    def _weight_windows_from_xml_element(self, root):
+    def _weight_windows_from_xml_element(self, root, meshes=None):
         for elem in root.findall('weight_windows'):
             ww = WeightWindows.from_xml_element(elem, root)
             self.weight_windows.append(ww)
@@ -1549,6 +1553,9 @@ class Settings:
         text = get_text(root, 'weight_windows_on')
         if text is not None:
             self.weight_windows_on = text in ('true', '1')
+
+        if meshes is not None and self.weight_windows:
+            meshes.update({ww.mesh.id: ww.mesh for ww in self.weight_windows})
 
     def _max_splits_from_xml_element(self, root):
         text = get_text(root, 'max_splits')
@@ -1643,13 +1650,17 @@ class Settings:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem, meshes=None):
         """Generate settings from XML element
 
         Parameters
         ----------
         elem : xml.etree.ElementTree.Element
             XML element
+        meshes : dict or None
+            A dictionary with mesh IDs as keys and mesh instances as values that
+            have already been read from XML. Pre-existing meshes are used
+            and new meshes are added to when creating tally objects.
 
         Returns
         -------
@@ -1683,7 +1694,7 @@ class Settings:
         settings._seed_from_xml_element(elem)
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
-        settings._entropy_mesh_from_xml_element(elem)
+        settings._entropy_mesh_from_xml_element(elem, meshes)
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)
@@ -1691,7 +1702,7 @@ class Settings:
         settings._temperature_from_xml_element(elem)
         settings._trace_from_xml_element(elem)
         settings._track_from_xml_element(elem)
-        settings._ufs_mesh_from_xml_element(elem)
+        settings._ufs_mesh_from_xml_element(elem, meshes)
         settings._resonance_scattering_from_xml_element(elem)
         settings._create_fission_neutrons_from_xml_element(elem)
         settings._delayed_photon_scaling_from_xml_element(elem)
@@ -1700,7 +1711,7 @@ class Settings:
         settings._material_cell_offsets_from_xml_element(elem)
         settings._log_grid_bins_from_xml_element(elem)
         settings._write_initial_source_from_xml_element(elem)
-        settings._weight_windows_from_xml_element(elem)
+        settings._weight_windows_from_xml_element(elem, meshes)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
 

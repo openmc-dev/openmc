@@ -114,6 +114,8 @@ public:
 
   double bounds_size() const;
 
+  const std::vector<double>& energy_bounds() const { return energy_bounds_; }
+
   void set_weight_windows(
     gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds);
 
@@ -122,7 +124,7 @@ public:
 
   // Accessors
   int32_t id() const { return id_; }
-  const Mesh& mesh() const { return *model::meshes[mesh_idx_]; }
+  const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
 
 private:
   // Data members

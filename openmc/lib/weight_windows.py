@@ -1,13 +1,17 @@
 from collections.abc import Mapping
-from ctypes import c_int, c_int32, c_char_p, c_size_t, POINTER
+from ctypes import c_double, c_int, c_int32, c_char_p, c_size_t, POINTER
 from weakref import WeakValueDictionary
+
+import numpy as np
+from numpy.ctypeslib import as_array
 
 from openmc.exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
-import openmc.lib
-import openmc
+from .mesh import _get_mesh
+from .mesh import meshes
+
 
 _dll.openmc_extend_weight_windows.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 
@@ -20,6 +24,22 @@ _dll.openmc_weight_windows_size.restype = c_size_t
 _dll.openmc_get_weight_windows_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_weight_windows_index.restype = c_int
 _dll.openmc_get_weight_windows_index.errcheck = _error_handler
+
+_dll.openmc_weight_windows_set_mesh.argtypes = [c_int32, c_int32]
+_dll.openmc_weight_windows_set_mesh.restype = c_int
+_dll.openmc_weight_windows_set_mesh.errcheck = _error_handler
+
+_dll.openmc_weight_windows_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_weight_windows_get_mesh.restype = c_int
+_dll.openmc_weight_windows_get_mesh.errcheck = _error_handler
+
+_dll.openmc_weight_windows_set_energy_bounds.arg_types = [c_int32, POINTER(c_double), c_size_t]
+_dll.openmc_weight_windows_set_energy_bounds.restype = c_int
+_dll.openmc_weight_windows_set_energy_bounds.errcheck = _error_handler
+
+_dll.openmc_weight_windows_get_energy_bounds.arg_types = [c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t)]
+_dll.openmc_weight_windows_get_energy_bounds.restype = c_int
+_dll.openmc_weight_windows_get_energy_bounds.errcheck = _error_handler
 
 
 class WeightWindows(_FortranObjectWithID):
@@ -67,7 +87,32 @@ class WeightWindows(_FortranObjectWithID):
 
         return cls.__instances[index]
 
-    def update_weight_windows(self, tally, score, value, method):
+    @property
+    def mesh(self):
+        mesh_idx = c_int32()
+        _dll.openmc_weight_windows_get_mesh(self._index, mesh_idx)
+        return _get_mesh[mesh_idx]
+
+    @mesh.setter
+    def mesh(self, mesh):
+        _dll.openmc_weight_windows_set_mesh(weight_windows[self.id]._index, meshes[mesh.id]._index)
+
+    @property
+    def energy_bounds(self):
+        data = POINTER(c_double)()
+        size = c_size_t()
+        print(size)
+        print(self._index)
+        _dll.openmc_weight_windows_get_energy_bounds(self._index, data, size)
+        return as_array(data, (size,))
+
+    @energy_bounds.setter
+    def energy_bounds(self, e_bounds):
+        e_bounds_arr = np.as_array(e_bounds)
+        e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
+        _dll.openmc_weight_windows_set_energy_bounds(self._index, e_bounds_ptr, e_bounds_arr.size)
+
+    def update_weight_windows(self, tally, score='flux', value='mean', method='magic'):
         """Update weight window values using tally information
 
         Parameters

@@ -171,6 +171,12 @@ int openmc_update_weight_windows(int32_t tally_idx, int32_t ww_idx,
   const char* method = "magic");
 int openmc_extend_weight_windows(
   int32_t n, int32_t* index_start, int32_t* index_end);
+int openmc_weight_windows_get_mesh(int32_t ww_idx, int32_t* mesh_idx);
+int openmc_weight_windows_set_mesh(int32_t ww_idx, int32_t mesh_idx);
+int openmc_weight_windows_set_energy_bounds(
+  int32_t ww_idx, double* e_bounds, size_t e_bounds_size);
+int openmc_weight_windows_get_energy_bounds(
+  int32_t ww_idx, const double** e_bounds, size_t* e_bounds_size);
 size_t openmc_weight_windows_size();
 int openmc_zernike_filter_get_order(int32_t index, int* order);
 int openmc_zernike_filter_get_params(

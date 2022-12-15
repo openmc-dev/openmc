@@ -125,6 +125,8 @@ public:
   //! Get the number of mesh cell surfaces.
   virtual int n_surface_bins() const = 0;
 
+  int32_t id() const { return id_; }
+
   //! Set the mesh ID
   void set_id(int32_t id = -1);
 

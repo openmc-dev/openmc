@@ -275,7 +275,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 
   // Get mesh index for particle's position
   const auto& mesh = this->mesh();
-  int ww_index = mesh.get_bin(p.r());
+  int ww_index = mesh->get_bin(p.r());
 
   // particle is outside the weight window mesh
   if (ww_index < 0)
@@ -293,7 +293,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
     lower_bound_index(energy_bounds_.begin(), energy_bounds_.end(), E);
 
   // indices now points to the correct weight for the given energy
-  ww_index += energy_bin * mesh.n_bins();
+  ww_index += energy_bin * mesh->n_bins();
 
   // Create individual weight window
   WeightWindow ww;
@@ -308,7 +308,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 
 double WeightWindows::bounds_size() const
 {
-  int num_spatial_bins = this->mesh().n_bins();
+  int num_spatial_bins = this->mesh()->n_bins();
   int num_energy_bins =
     energy_bounds_.size() > 0 ? energy_bounds_.size() - 1 : 1;
   return num_spatial_bins * num_energy_bins;
@@ -334,7 +334,7 @@ void WeightWindows::set_weight_windows(
   if (lower_ww_.size() != this->bounds_size()) {
     int num_energy_bins =
       energy_bounds_.size() > 0 ? energy_bounds_.size() - 1 : 1;
-    int num_spatial_bins = this->mesh().n_bins();
+    int num_spatial_bins = this->mesh()->n_bins();
     auto err_msg =
       fmt::format("In weight window domain {} the number of spatial "
                   "energy/spatial bins ({}) does not match the number "
@@ -466,6 +466,8 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
 
   int e_shape = shape[filter_indices[FilterType::ENERGY]];
 
+  // std::cout << "Here" << std::endl;
+
   for (int e = 0; e < e_shape; e++) {
     // select all
     auto group_view = xt::view(e_view, e, xt::all(), xt::all());
@@ -492,7 +494,7 @@ void WeightWindows::to_hdf5(hid_t group) const
   write_dataset(ww_group, "max_lower_bound_ratio", max_lb_ratio_);
   write_dataset(ww_group, "max_split", max_split_);
   write_dataset(ww_group, "weight_cutoff", weight_cutoff_);
-  write_dataset(ww_group, "mesh", this->mesh().id_);
+  write_dataset(ww_group, "mesh", this->mesh()->id());
 
   close_group(ww_group);
 }
@@ -561,6 +563,47 @@ extern "C" int openmc_update_weight_windows(int32_t tally_idx, int32_t ww_idx,
 
   wws->update_weight_windows(tally, score, value, method);
 
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_mesh(int32_t ww_idx, int32_t mesh_idx)
+{
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  wws->set_mesh(mesh_idx);
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_mesh(int32_t ww_idx, int32_t* mesh_idx)
+{
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  *mesh_idx = model::mesh_map.at(wws->mesh()->id());
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_energy_bounds(
+  int32_t ww_idx, double* e_bounds, size_t e_bounds_size)
+{
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  wws->set_energy_bounds({e_bounds, e_bounds_size});
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_energy_bounds(
+  int32_t ww_idx, const double** e_bounds, size_t* e_bounds_size)
+{
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  std::cout << "energy bounds size: " << wws->energy_bounds().size()
+            << std::endl;
+  if (wws->energy_bounds().size() > 0) {
+    std::cout << "Here" << std::endl;
+    *e_bounds = wws->energy_bounds().data();
+    std::cout << "Also here" << std::endl;
+    std::cout << "Size: " << *e_bounds_size << std::endl;
+    *e_bounds_size = wws->energy_bounds().size();
+  } else {
+    *e_bounds = nullptr;
+    *e_bounds_size = 0;
+  }
   return 0;
 }
 

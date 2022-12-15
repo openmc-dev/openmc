@@ -108,7 +108,7 @@ class WeightWindows(_FortranObjectWithID):
 
     @energy_bounds.setter
     def energy_bounds(self, e_bounds):
-        e_bounds_arr = np.as_array(e_bounds)
+        e_bounds_arr = np.asarray(e_bounds)
         e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
         _dll.openmc_weight_windows_set_energy_bounds(self._index, e_bounds_ptr, e_bounds_arr.size)
 

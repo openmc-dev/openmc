@@ -114,7 +114,7 @@ public:
 
   double bounds_size() const;
 
-  const std::vector<double>& energy_bounds() const { return energy_bounds_; }
+  const vector<double>& energy_bounds() const { return energy_bounds_; }
 
   void set_weight_windows(
     gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds);

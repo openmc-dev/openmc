@@ -1,10 +1,11 @@
 from math import pi
 from pathlib import Path
 
+import numpy as np
 import openmc
 import openmc.lib
 import openmc.stats
-import numpy as np
+import pytest
 from pytest import approx
 
 
@@ -144,17 +145,35 @@ def test_from_cell_with_material():
 
     mat = openmc.Material()
     mat.add_nuclide('I135', 1)
-    mat.volume = 1
     mat.set_density('g/cm3', 1)
 
     surf = openmc.Sphere(r=3, x0=29, y0=53, z0=97)
     cell = openmc.Cell(region=-surf)
-    cell.fill = mat
 
+    with pytest.raises(ValueError) as exc:
+        # should raise value error as material is not set and no cell.fill materials
+        openmc.Source.from_cell_with_material(cell)
+    assert "Either a material must be provided or the cell" in str(exc.value)
+
+    with pytest.raises(ValueError) as exc:
+        # should raise value error as material has no volume set
+        openmc.Source.from_cell_with_material(cell, mat)
+    assert "must have the volume property set" in str(exc.value)
+
+    mat.volume = 1
+    source = openmc.Source.from_cell_with_material(cell, mat)
+    assert list(source.space.lower_left) == [26, 50, 94]
+    assert list(source.space.upper_right) == [32, 56, 100]
+    assert source.particle == 'photon'
+    assert isinstance(source.angle, openmc.stats.multivariate.Isotropic)
+    assert isinstance(source.energy.x, np.ndarray)
+    assert isinstance(source.energy.p, np.ndarray)
+
+    cell.fill = mat
     source = openmc.Source.from_cell_with_material(cell)
     assert list(source.space.lower_left) == [26, 50, 94]
     assert list(source.space.upper_right) == [32, 56, 100]
     assert source.particle == 'photon'
     assert isinstance(source.angle, openmc.stats.multivariate.Isotropic)
-    assert isinstance(source.energy.x, np.array)
-    assert isinstance(source.energy.p, np.array)
+    assert isinstance(source.energy.x, np.ndarray)
+    assert isinstance(source.energy.p, np.ndarray)

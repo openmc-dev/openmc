@@ -58,6 +58,9 @@ private:
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();
+
+  //! Initialize alias tables for distribution
+  void init_alias();
 };
 
 //==============================================================================

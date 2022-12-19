@@ -29,12 +29,18 @@ Discrete::Discrete(pugi::xml_node node)
   std::copy(params.begin(), params.begin() + n / 2, std::back_inserter(x_));
   std::copy(params.begin() + n / 2, params.end(), std::back_inserter(p_));
 
-  normalize();
+  // Initialize alias tables
+  init_alias();
 }
 
 Discrete::Discrete(const double* x, const double* p, int n)
   : x_ {x, x + n}, p_ {p, p + n}
 {
+  // Initialize alias tables
+  init_alias();
+}
+
+void Discrete::init_alias() {
   normalize();
 
   // Vectors for large and small probabilities based on 1/n
@@ -42,11 +48,11 @@ Discrete::Discrete(const double* x, const double* p, int n)
   vector<size_t> small;
 
   // Set and allocate memory
-  alias_.reserve(n);
+  alias_.reserve(x_.size());
 
   // Fill large and small vectors based on 1/n
-  for (int i = 0; i < n; i++) {
-    p_[i] *= n;
+  for (int i = 0; i < x_.size(); i++) {
+    p_[i] *= x_.size();
     if (p_[i] > 1.0) {
       large.push_back(i);
     } else {
@@ -85,7 +91,7 @@ double Discrete::sample(uint64_t* seed) const
       return x_[alias_[u]];
     }
   } else {
-    return x_.size();
+    return x_[0];
   }
 }
 

@@ -1,6 +1,7 @@
 #include "openmc/distribution.h"
 #include "openmc/random_lcg.h"
 #include <catch2/catch_test_macros.hpp>
+#include <pugixml.hpp>
 
 TEST_CASE("Test alias method sampling of a discrete distribution")
 {
@@ -37,4 +38,26 @@ TEST_CASE("Test alias method sampling of a discrete distribution")
   // Require sampled distribution mean is within 3 standard deviations of the
   // expected mean
   REQUIRE(std::abs(dist_mean - mean) < 3 * std);
+}
+
+TEST_CASE("Test alias sampling method for pugixml constructor")
+{
+  // XML doc node for Discrete contructor
+  pugi::xml_document doc;
+  pugi::xml_node energy = doc.append_child("energy");
+  pugi::xml_node parameters = energy.append_child("parameters");
+  parameters.append_child(pugi::node_pcdata)
+    .set_value("17140457.745328166 1.0");
+
+  // Initialize discrete distribution and seed
+  openmc::Discrete dist(energy);
+  uint64_t seed = openmc::init_seed(0, 0);
+
+  // Assertions
+  REQUIRE(dist.x().size() == 1);
+  REQUIRE(dist.p().size() == 1);
+  REQUIRE(dist.alias().size() == 0);
+  REQUIRE(dist.x()[0] == 17140457.745328166);
+  REQUIRE(dist.p()[0] == 1.0);
+  REQUIRE(dist.sample(&seed) == 17140457.745328166);
 }

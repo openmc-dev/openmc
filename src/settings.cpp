@@ -431,12 +431,13 @@ void read_settings_xml()
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
-      model::external_sources.push_back(make_unique<FileSource>(path));
 #ifdef OPENMC_MCPL
-    } else if (check_for_node(node, "mcpl")) {
-      auto path = get_node_value(node, "mcpl", false, true);
-      model::external_sources.push_back(make_unique<FileSource>(mcpl_open_file(path.c_str())));
+      if ( (path.size() >= 5 && path.compare(path.size()-5,5,".mcpl")==0 ) ||
+          (path.size() >= 8 && path.compare(path.size()-8,8,".mcpl.gz")==0 ) ) {
+        model::external_sources.push_back(make_unique<FileSource>(mcpl_open_file(path.c_str())));
+      } else
 #endif
+        model::external_sources.push_back(make_unique<FileSource>(path));
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);

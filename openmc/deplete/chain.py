@@ -630,14 +630,26 @@ class Chain:
 
             # Gain from radioactive decay
             if nuc.n_decay_modes != 0:
-                for _, target, branching_ratio in nuc.decay_modes:
-                    # Allow for total annihilation for debug purposes
-                    if target is not None:
-                        branch_val = branching_ratio * decay_constant
+                for decay_type, target, branching_ratio in nuc.decay_modes:
+                    branch_val = branching_ratio * decay_constant
 
-                        if branch_val != 0.0:
+                    # Allow for total annihilation for debug purposes
+                    if branch_val != 0.0:
+                        if target is not None:
                             k = self.nuclide_dict[target]
                             matrix[k, i] += branch_val
+
+                        # Produce alphas and protons from decay
+                        if 'alpha' in decay_type:
+                            k = self.nuclide_dict.get('He4')
+                            if k is not None:
+                                count = decay_type.count('alpha')
+                                matrix[k, i] += count * branch_val
+                        elif 'p' in decay_type:
+                            k = self.nuclide_dict.get('H1')
+                            if k is not None:
+                                count = decay_type.count('p')
+                                matrix[k, i] += count * branch_val
 
             if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
@@ -1025,6 +1037,7 @@ class Chain:
             new_nuclide = Nuclide(previous.name)
             new_nuclide.half_life = previous.half_life
             new_nuclide.decay_energy = previous.decay_energy
+            new_nuclide.sources = previous.sources.copy()
             if hasattr(previous, '_fpy'):
                 new_nuclide._fpy = previous._fpy
 

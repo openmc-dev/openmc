@@ -92,6 +92,9 @@ def test_temperature(cell_with_lattice):
     assert c2.temperature == 400.0
     with pytest.raises(ValueError):
         c.temperature = -100.
+    c.temperature = None
+    assert c1.temperature == None
+    assert c2.temperature == None
 
     # distributed temperature
     cells, _, _, _ = cell_with_lattice
@@ -294,9 +297,11 @@ def test_to_xml_element(cell_with_lattice):
 
     c = cells[0]
     c.temperature = 900.0
+    c.volume = 1.0
     elem = c.create_xml_subelement(root)
     assert elem.get('region') == str(c.region)
     assert elem.get('temperature') == str(c.temperature)
+    assert elem.get('volume') == str(c.volume)
 
 
 @pytest.mark.parametrize("rotation", [

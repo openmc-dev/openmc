@@ -169,6 +169,22 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
       }
 
       if (!found_pair) {
+        // If no pairs found, check if the desired temperature falls just
+        // outside of data
+        if (std::abs(T_desired - temps_available.front()) <=
+            settings::temperature_tolerance) {
+          if (!contains(temps_to_read, temps_available.front())) {
+            temps_to_read.push_back(std::round(temps_available.front()));
+          }
+          break;
+        }
+        if (std::abs(T_desired - temps_available.back()) <=
+            settings::temperature_tolerance) {
+          if (!contains(temps_to_read, temps_available.back())) {
+            temps_to_read.push_back(std::round(temps_available.back()));
+          }
+          break;
+        }
         fatal_error(
           "Nuclear data library does not contain cross sections for " + name_ +
           " at temperatures that bound " + std::to_string(T_desired) + " K.");
@@ -646,6 +662,16 @@ void Nuclide::calculate_xs(
     } break;
 
     case TemperatureMethod::INTERPOLATION:
+      // If current kT outside of the bounds of available, snap to the bound
+      if (kT < kTs_.front()) {
+        i_temp = 0;
+        break;
+      }
+      if (kT > kTs_.back()) {
+        i_temp = kTs_.size() - 1;
+        break;
+      }
+
       // Find temperatures that bound the actual temperature
       for (i_temp = 0; i_temp < kTs_.size() - 1; ++i_temp) {
         if (kTs_[i_temp] <= kT && kT < kTs_[i_temp + 1])
@@ -969,6 +995,15 @@ std::pair<gsl::index, double> Nuclide::find_temperature(double T) const
   } break;
 
   case TemperatureMethod::INTERPOLATION:
+    // If current kT outside of the bounds of available, snap to the bound
+    if (kT < kTs_.front()) {
+      i_temp = 0;
+      break;
+    }
+    if (kT > kTs_.back()) {
+      i_temp = kTs_.size() - 1;
+      break;
+    }
     // Find temperatures that bound the actual temperature
     while (kTs_[i_temp + 1] < kT && i_temp + 1 < n - 1)
       ++i_temp;

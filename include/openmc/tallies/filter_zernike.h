@@ -21,7 +21,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "zernike"; }
+  std::string type_str() const override { return "zernike"; }
+  FilterType type() const override { return FilterType::ZERNIKE; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -72,7 +73,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "zernikeradial"; }
+  std::string type_str() const override { return "zernikeradial"; }
+  FilterType type() const override { return FilterType::ZERNIKE_RADIAL; }
 
   void get_all_bins(const Particle& p, TallyEstimator estimator,
     FilterMatch& match) const override;

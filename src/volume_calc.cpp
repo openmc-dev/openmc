@@ -99,16 +99,16 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 {
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
-  vector<vector<int>> master_indices(
+  vector<vector<uint64_t>> master_indices(
     n); // List of material indices for each domain
-  vector<vector<int>> master_hits(
+  vector<vector<uint64_t>> master_hits(
     n); // Number of hits for each material in each domain
   int iterations = 0;
 
   // Divide work over MPI processes
-  size_t min_samples = n_samples_ / mpi::n_procs;
-  size_t remainder = n_samples_ % mpi::n_procs;
-  size_t i_start, i_end;
+  uint64_t min_samples = n_samples_ / mpi::n_procs;
+  uint64_t remainder = n_samples_ % mpi::n_procs;
+  uint64_t i_start, i_end;
   if (mpi::rank < remainder) {
     i_start = (min_samples + 1) * mpi::rank;
     i_end = i_start + min_samples + 1;
@@ -123,14 +123,14 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 #pragma omp parallel
     {
       // Variables that are private to each thread
-      vector<vector<int>> indices(n);
-      vector<vector<int>> hits(n);
+      vector<vector<uint64_t>> indices(n);
+      vector<vector<uint64_t>> hits(n);
       Particle p;
 
 // Sample locations and count hits
 #pragma omp for
       for (size_t i = i_start; i < i_end; i++) {
-        int64_t id = iterations * n_samples_ + i;
+        uint64_t id = iterations * n_samples_ + i;
         uint64_t seed = init_seed(id, STREAM_VOLUME);
 
         p.n_coord() = 1;
@@ -223,7 +223,14 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
     // bump iteration counter and get total number
     // of samples at this point
     iterations++;
-    size_t total_samples = iterations * n_samples_;
+    uint64_t total_samples = iterations * n_samples_;
+
+    // warn user if total sample size is greater than what the uin64_t type can
+    // represent
+    if (total_samples == std::numeric_limits<uint64_t>::max()) {
+      warning("The number of samples has exceeded the type used to track hits. "
+              "Volume results may be inaccurate.");
+    }
 
     // reset
     double trigger_val = -INFTY;
@@ -238,18 +245,19 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // Create 2D array to store atoms/uncertainty for each nuclide. Later this
       // is compressed into vectors storing only those nuclides that are
       // non-zero
-      auto n_nuc = settings::run_CE ? data::nuclides.size()
-                                    : data::mg.nuclides_.size();
+      auto n_nuc =
+        settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
       xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
 
 #ifdef OPENMC_MPI
       if (mpi::master) {
         for (int j = 1; j < mpi::n_procs; j++) {
           int q;
+          // retrieve results
           MPI_Recv(
-            &q, 1, MPI_INTEGER, j, 2 * j, mpi::intracomm, MPI_STATUS_IGNORE);
-          vector<int> buffer(2 * q);
-          MPI_Recv(buffer.data(), 2 * q, MPI_INTEGER, j, 2 * j + 1,
+            &q, 1, MPI_UINT64_T, j, 2 * j, mpi::intracomm, MPI_STATUS_IGNORE);
+          vector<uint64_t> buffer(2 * q);
+          MPI_Recv(buffer.data(), 2 * q, MPI_UINT64_T, j, 2 * j + 1,
             mpi::intracomm, MPI_STATUS_IGNORE);
           for (int k = 0; k < q; ++k) {
             bool already_added = false;
@@ -268,20 +276,20 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         }
       } else {
         int q = master_indices[i_domain].size();
-        vector<int> buffer(2 * q);
+        vector<uint64_t> buffer(2 * q);
         for (int k = 0; k < q; ++k) {
           buffer[2 * k] = master_indices[i_domain][k];
           buffer[2 * k + 1] = master_hits[i_domain][k];
         }
 
-        MPI_Send(&q, 1, MPI_INTEGER, 0, 2 * mpi::rank, mpi::intracomm);
-        MPI_Send(buffer.data(), 2 * q, MPI_INTEGER, 0, 2 * mpi::rank + 1,
+        MPI_Send(&q, 1, MPI_UINT64_T, 0, 2 * mpi::rank, mpi::intracomm);
+        MPI_Send(buffer.data(), 2 * q, MPI_UINT64_T, 0, 2 * mpi::rank + 1,
           mpi::intracomm);
       }
 #endif
 
       if (mpi::master) {
-        int total_hits = 0;
+        size_t total_hits = 0;
         for (int j = 0; j < master_indices[i_domain].size(); ++j) {
           total_hits += master_hits[i_domain][j];
           double f =
@@ -464,7 +472,7 @@ void VolumeCalculation::to_hdf5(
 }
 
 void VolumeCalculation::check_hit(
-  int i_material, vector<int>& indices, vector<int>& hits) const
+  int i_material, vector<uint64_t>& indices, vector<uint64_t>& hits) const
 {
 
   // Check if this material was previously hit and if so, increment count

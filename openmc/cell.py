@@ -318,12 +318,12 @@ class Cell(IDManagerMixin):
     @temperature.setter
     def temperature(self, temperature):
         # Make sure temperatures are positive
-        cv.check_type('cell temperature', temperature, (Iterable, Real))
+        cv.check_type('cell temperature', temperature, (Iterable, Real), none_ok=True)
         if isinstance(temperature, Iterable):
             cv.check_type('cell temperature', temperature, Iterable, Real)
             for T in temperature:
                 cv.check_greater_than('cell temperature', T, 0.0, True)
-        else:
+        elif isinstance(temperature, Real):
             cv.check_greater_than('cell temperature', temperature, 0.0, True)
 
         # If this cell is filled with a universe or lattice, propagate
@@ -634,6 +634,9 @@ class Cell(IDManagerMixin):
         if self.rotation is not None:
             element.set("rotation", ' '.join(map(str, self.rotation.ravel())))
 
+        if self.volume is not None:
+            element.set("volume", str(self.volume))
+
         return element
 
     @classmethod
@@ -687,6 +690,9 @@ class Cell(IDManagerMixin):
                 c.temperature = [float(t_i) for t_i in t.split()]
             else:
                 c.temperature = float(t)
+        v = get_text(elem, 'volume')
+        if v is not None:
+            c.volume = float(v)
         for key in ('temperature', 'rotation', 'translation'):
             value = get_text(elem, key)
             if value is not None:

@@ -100,6 +100,9 @@ public:
   // Bremsstrahlung scaled DCS
   xt::xtensor<double, 2> dcs_;
 
+  // Whether atomic relaxation data is present
+  bool has_atomic_relaxation_ {false};
+
   // Constant data
   static constexpr int MAX_STACK_SIZE =
     7; //!< maximum possible size of atomic relaxation stack

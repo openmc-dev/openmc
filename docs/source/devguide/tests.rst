@@ -31,9 +31,13 @@ Prerequisites
 
 - The test suite requires a specific set of cross section data in order for
   tests to pass. A download URL for the data that OpenMC expects can be found
-  within ``tools/ci/download-xs.sh``.
+  within ``tools/ci/download-xs.sh``. Once the tarball is downloaded and
+  unpacked, set the :envvar:`OPENMC_CROSS_SECTIONS` environment variable to the
+  path of the ``cross_sections.xml`` file within the unpacked data.
 - In addition to the HDF5 data, some tests rely on ENDF files. A download URL
-  for those can also be found in ``tools/ci/download-xs.sh``.
+  for those can also be found in ``tools/ci/download-xs.sh``. Once the tarball
+  is downloaded and unpacked, set the :envvar:`OPENMC_ENDF_DATA` environment
+  variable to the top-level directory of the unpacked tarball.
 - Some tests require `NJOY <https://www.njoy21.io/NJOY2016>`_ to preprocess
   cross section data. The test suite assumes that you have an ``njoy``
   executable available on your :envvar:`PATH`.

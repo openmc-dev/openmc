@@ -31,6 +31,9 @@ class IndependentOperator(OpenMCOperator):
     passed to an integrator class, such as
     :class:`openmc.deplete.CECMIntegrator`.
 
+    Note that passing an empty :class:`~openmc.deplete.MicroXS` instance to the
+    ``micro_xs`` argument allows a decay-only calculation to be run.
+
     .. versionadded:: 0.13.1
 
     Parameters
@@ -38,9 +41,11 @@ class IndependentOperator(OpenMCOperator):
     materials : openmc.Materials
         Materials to deplete.
     micro_xs : MicroXS
-        One-group microscopic cross sections in [b] .
+        One-group microscopic cross sections in [b]. If the
+        :class:`~openmc.deplete.MicroXS` object is empty, a decay-only calculation will
+        be run.
     chain_file : str
-        Path to the depletion chain XML file.  Defaults to
+        Path to the depletion chain XML file. Defaults to
         ``openmc.config['chain_file']``.
     keff : 2-tuple of float, optional
        keff eigenvalue and uncertainty from transport calculation.
@@ -150,7 +155,7 @@ class IndependentOperator(OpenMCOperator):
     @classmethod
     def from_nuclides(cls, volume, nuclides,
                       micro_xs,
-                      chain_file,
+                      chain_file=None,
                       nuc_units='atom/b-cm',
                       keff=None,
                       normalization_mode='fission-q',
@@ -169,10 +174,13 @@ class IndependentOperator(OpenMCOperator):
             Dictionary with nuclide names as keys and nuclide concentrations as
             values.
         micro_xs : MicroXS
-            One-group microscopic cross sections.
-        chain_file : str
-            Path to the depletion chain XML file.
-        nuc_units : {'atom/cm3', 'atom/b-cm'}
+            One-group microscopic cross sections in [b]. If the
+            :class:`~openmc.deplete.MicroXS` object is empty, a decay-only calculation
+            will be run.
+        chain_file : str, optional
+            Path to the depletion chain XML file. Defaults to
+            ``openmc.config['chain_file']``.
+        nuc_units : {'atom/cm3', 'atom/b-cm'}, optional
             Units for nuclide concentration.
         keff : 2-tuple of float, optional
            keff eigenvalue and uncertainty from transport calculation.

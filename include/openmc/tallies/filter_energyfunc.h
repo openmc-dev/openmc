@@ -24,7 +24,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "energyfunction"; }
+  std::string type_str() const override { return "energyfunction"; }
+  FilterType type() const override { return FilterType::ENERGY_FUNCTION; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -40,8 +41,9 @@ public:
 
   const vector<double>& energy() const { return energy_; }
   const vector<double>& y() const { return y_; }
-  Interpolation interpolation_;
+  Interpolation interpolation() const { return interpolation_; }
   void set_data(gsl::span<const double> energy, gsl::span<const double> y);
+  void set_interpolation(const std::string& interpolation);
 
 private:
   //----------------------------------------------------------------------------
@@ -52,6 +54,9 @@ private:
 
   //! Interpolant values.
   vector<double> y_;
+
+  //! Interpolation scheme
+  Interpolation interpolation_ {Interpolation::lin_lin};
 };
 
 } // namespace openmc

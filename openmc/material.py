@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
-from typing import Optional, Union
+from typing import Optional
 from xml.etree import ElementTree as ET
 
 import h5py
@@ -92,12 +92,13 @@ class Material(IDManagerMixin):
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
-    decay_photon_energy : openmc.stats.Univariate
+    decay_photon_energy : openmc.stats.Univariate or None
         Energy distribution of photons emitted from decay of unstable nuclides
-        within the material. The integral of this distribution is the total
-        intensity of the photon source in [decay/sec].
+        within the material, or None if no photon source exists. The integral of
+        this distribution is the total intensity of the photon source in
+        [decay/sec].
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.13.2
 
     """
 
@@ -264,7 +265,7 @@ class Material(IDManagerMixin):
         return density*self.volume
 
     @property
-    def decay_photon_energy(self) -> Univariate:
+    def decay_photon_energy(self) -> Optional[Univariate]:
         atoms = self.get_nuclide_atoms()
         dists = []
         probs = []
@@ -273,7 +274,7 @@ class Material(IDManagerMixin):
             if source_per_atom is not None:
                 dists.append(source_per_atom)
                 probs.append(num_atoms)
-        return openmc.data.combine_distributions(dists, probs)
+        return openmc.data.combine_distributions(dists, probs) if dists else None
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):
@@ -824,6 +825,8 @@ class Material(IDManagerMixin):
         element : str
             Specifies the element to match when searching through the nuclides
 
+            .. versionadded:: 0.13.2
+
         Returns
         -------
         nuclides : list of str
@@ -875,6 +878,8 @@ class Material(IDManagerMixin):
         nuclides : str, optional
             Nuclide for which atom density is desired. If not specified, the
             atom density for each nuclide in the material is given.
+
+            .. versionadded:: 0.13.2
 
         Returns
         -------
@@ -963,7 +968,7 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        Union[dict, float]
+        typing.Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide
             names and values are activity is returned. Otherwise the activity
             of the material is returned as a float.
@@ -985,7 +990,50 @@ class Material(IDManagerMixin):
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
+    
+    def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False):
+        """Returns the decay heat of the material or for each nuclide in the
+        material in units of [W], [W/g] or [W/cm3].
 
+        .. versionadded:: 0.13.3
+
+        Parameters
+        ----------
+        units : {'W', 'W/g', 'W/cm3'}
+            Specifies the units of decay heat to return. Options include total
+            heat [W], specific [W/g] or volumetric heat [W/cm3].
+            Default is total heat [W].
+        by_nuclide : bool
+            Specifies if the decay heat should be returned for the material as a
+            whole or per nuclide. Default is False.
+
+        Returns
+        -------
+        Union[dict, float]
+            If `by_nuclide` is True then a dictionary whose keys are nuclide
+            names and values are decay heat is returned. Otherwise the decay heat
+            of the material is returned as a float.
+        """
+
+        cv.check_value('units', units, {'W', 'W/g', 'W/cm3'})
+        cv.check_type('by_nuclide', by_nuclide, bool)
+
+        if units == 'W':
+            multiplier = self.volume
+        elif units == 'W/cm3':
+            multiplier = 1
+        elif units == 'W/g':
+            multiplier = 1.0 / self.get_mass_density()
+        
+        decayheat = {} 
+        for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
+            decay_erg = openmc.data.decay_energy(nuclide)
+            inv_seconds = openmc.data.decay_constant(nuclide)
+            decay_erg *= openmc.data.JOULE_PER_EV
+            decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
+
+        return decayheat if by_nuclide else sum(decayheat.values()) 
+    
     def get_nuclide_atoms(self):
         """Return number of atoms of each nuclide in the material
 

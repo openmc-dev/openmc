@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
+import warnings
 
 import h5py
 
@@ -417,7 +418,14 @@ class Model:
             d.mkdir(parents=True)
 
         self.settings.export_to_xml(d)
-        self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
+        if remove_surfs:
+            warnings.warn("remove_surfs kwarg will be deprecated soon, please "
+                          "set the Geometry.merge_surfaces attribute instead.")
+            self.geometry.merge_surfaces = True
+            # Can be used to modify tallies in case any surfaces are redundant
+            redundant_surfaces = self.geometry.remove_redundant_surfaces()
+
+        self.geometry.export_to_xml(d)
 
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build

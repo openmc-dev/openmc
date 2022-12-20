@@ -234,7 +234,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
             auto id = (domain_type_ == DomainType::CELL)
                         ? model::cells[coord.cell]->id_
                         : model::universes[coord.universe]->id_;
-            if (found = contains(domain_ids_, id)) break;
+            if (found = contains(domain_ids_, id))
+              break;
           }
         }
       }
@@ -332,61 +333,57 @@ FileSource::FileSource(std::string path)
 #ifdef OPENMC_MCPL
 FileSource::FileSource(mcpl_file_t mcpl_file)
 {
-  //do checks on the mcpl_file to see if particles are many enough.
-  // should model this on the example source shown in the docs.
-  size_t n_sites=mcpl_hdr_nparticles(mcpl_file);
+  size_t n_sites = mcpl_hdr_nparticles(mcpl_file);
 
   sites_.resize(n_sites);
-  for (int i=0;i<n_sites;i++){
+  for (int i = 0; i < n_sites; i++) {
     SourceSite site_;
 
-    const mcpl_particle_t *mcpl_particle;
-    //extract particle from mcpl-file
-    mcpl_particle=mcpl_read(mcpl_file);
+    const mcpl_particle_t* mcpl_particle;
+    // extract particle from mcpl-file
+    mcpl_particle = mcpl_read(mcpl_file);
     // check if it is a neutron, photon, electron, or positron. Otherwise skip.
-    int pdg=mcpl_particle->pdgcode;
-    while ( pdg!=2112 && pdg!=22 && pdg!=11 && pdg!=-11) {
-      mcpl_particle=mcpl_read(mcpl_file);
-      pdg=mcpl_particle->pdgcode;
-      //should check for file exhaustion. This could happen if particles are other than
-      //neutrons, photons, electrons, or positrons.
+    int pdg = mcpl_particle->pdgcode;
+    while (pdg != 2112 && pdg != 22 && pdg != 11 && pdg != -11) {
+      mcpl_particle = mcpl_read(mcpl_file);
+      pdg = mcpl_particle->pdgcode;
     }
 
-    switch(pdg){
-      case 2112:
-        site_.particle=ParticleType::neutron;
-        break;
-      case 22:
-        site_.particle=ParticleType::photon;
-        break;
-      case 11:
-        site_.particle=ParticleType::electron;
-        break;
-      case -11:
-        site_.particle=ParticleType::positron;
-        break;
+    switch (pdg) {
+    case 2112:
+      site_.particle = ParticleType::neutron;
+      break;
+    case 22:
+      site_.particle = ParticleType::photon;
+      break;
+    case 11:
+      site_.particle = ParticleType::electron;
+      break;
+    case -11:
+      site_.particle = ParticleType::positron;
+      break;
     }
 
-    //particle is good, convert to openmc-formalism
-    site_.r.x=mcpl_particle->position[0];
-    site_.r.y=mcpl_particle->position[1];
-    site_.r.z=mcpl_particle->position[2];
+    // particle is good, convert to openmc-formalism
+    site_.r.x = mcpl_particle->position[0];
+    site_.r.y = mcpl_particle->position[1];
+    site_.r.z = mcpl_particle->position[2];
 
-    site_.u.x=mcpl_particle->direction[0];
-    site_.u.y=mcpl_particle->direction[1];
-    site_.u.z=mcpl_particle->direction[2];
+    site_.u.x = mcpl_particle->direction[0];
+    site_.u.y = mcpl_particle->direction[1];
+    site_.u.z = mcpl_particle->direction[2];
 
-    //mcpl stores kinetic energy in MeV
-    site_.E=mcpl_particle->ekin*1e6;
-    //mcpl stores time in ms
-    site_.time=mcpl_particle->time*1e-3;
-    site_.wgt=mcpl_particle->weight;
-    site_.delayed_group=0;
-    sites_[i]=site_;
+    // mcpl stores kinetic energy in MeV
+    site_.E = mcpl_particle->ekin * 1e6;
+    // mcpl stores time in ms
+    site_.time = mcpl_particle->time * 1e-3;
+    site_.wgt = mcpl_particle->weight;
+    site_.delayed_group = 0;
+    sites_[i] = site_;
   }
   mcpl_close_file(mcpl_file);
 }
-#endif //OPENMC_MCPL
+#endif // OPENMC_MCPL
 
 SourceSite FileSource::sample(uint64_t* seed) const
 {
@@ -446,7 +443,6 @@ CustomSourceWrapper::~CustomSourceWrapper()
               "non-POSIX systems");
 #endif
 }
-
 
 //==============================================================================
 // Non-member functions

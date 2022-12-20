@@ -1341,13 +1341,15 @@ class Settings:
     def _surf_source_write_from_xml_element(self, root):
         elem = root.find('surf_source_write')
         if elem is not None:
-            for key in ('surface_ids', 'max_particles'):
+            for key in ('surface_ids', 'max_particles','mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
                     if key == 'surface_ids':
                         value = [int(x) for x in value.split()]
                     elif key in ('max_particles'):
                         value = int(value)
+                    elif key == 'mcpl':
+                        value = True
                     self.surf_source_write[key] = value
 
     def _confidence_intervals_from_xml_element(self, root):

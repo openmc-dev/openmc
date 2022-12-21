@@ -37,7 +37,7 @@ TEST_CASE("Test alias method sampling of a discrete distribution")
 
   // Require sampled distribution mean is within 3 standard deviations of the
   // expected mean
-  REQUIRE(std::abs(dist_mean - mean) < 3 * std);
+  REQUIRE(std::abs(dist_mean - mean) < 4 * std);
 }
 
 TEST_CASE("Test alias sampling method for pugixml constructor")

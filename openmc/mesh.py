@@ -775,11 +775,6 @@ class RegularMesh(StructuredMesh):
             the 2D array of dataset values
         """
 
-        supported_view_dirs = ['x', 'y', 'z', '-x', '-y', '-z']
-        if view_direction not in supported_view_dirs:
-            msg = 'view_direction is not one of the acceptable options {supported_view_dirs}'
-            raise ValueError(msg)
-
         reshaped_ds = dataset.reshape(self.dimension, order="F")
 
         if view_direction == "x":
@@ -787,28 +782,31 @@ class RegularMesh(StructuredMesh):
             transposed_ds = reshaped_ds.transpose(0, 1, 2)[slice_index]
             rotated_ds = np.rot90(transposed_ds, 1)
             aligned_ds = np.fliplr(rotated_ds)
-        if view_direction == "-x":
+        elif view_direction == "-x":
             # vertical axis is z, horizontal axis is y
             transposed_ds = reshaped_ds.transpose(0, 1, 2)[slice_index]
             aligned_ds = np.rot90(transposed_ds, 1)
-        if view_direction == "y":
+        elif view_direction == "y":
             # vertical axis is z, horizontal axis is x
             transposed_ds = reshaped_ds.transpose(1, 2, 0)[slice_index]
             aligned_ds = np.flipud(transposed_ds)
-        if view_direction == "-y":
+        elif view_direction == "-y":
             # vertical axis is z, horizontal axis is -x
             transposed_ds = reshaped_ds.transpose(1, 2, 0)[slice_index]
             aligned_ds = np.flipud(transposed_ds)
             aligned_ds = np.fliplr(aligned_ds)
-        if view_direction == "z":
+        elif view_direction == "z":
             # vertical axis is y, horizontal axis is -x
             transposed_ds = reshaped_ds.transpose(2, 0, 1)[slice_index]
             aligned_ds = np.rot90(transposed_ds, 1)
             aligned_ds = np.fliplr(aligned_ds)
-        if view_direction == "-z":
+        elif view_direction == "-z":
             # vertical axis is y, horizontal axis is x
             transposed_ds = reshaped_ds.transpose(2, 0, 1)[slice_index]
             aligned_ds = np.rot90(transposed_ds, 1)
+        else:
+            msg = 'view_direction is not one of the acceptable options {supported_view_dirs}'
+            raise ValueError(msg)
 
         return aligned_ds
 

@@ -188,7 +188,6 @@ class StructuredMesh(MeshBase):
             Returns a numpy.ndarray representing the mesh element centroid
             coordinates with a shape equal to (ndim, dim1, ..., dimn). Can be
             unpacked along the first dimension with xx, yy, zz = mesh.centroids.
-            
 
         """
         ndim = self.n_dimension
@@ -749,6 +748,69 @@ class RegularMesh(StructuredMesh):
         root_cell.fill = lattice
 
         return root_cell, cells
+
+    def slice_of_data(
+        self,
+        dataset: np.ndarray,
+        slice_index: int = 0,
+        view_direction: str = 'z',
+    ):
+        """Obtains the dataset values on an axis aligned 2D slice through the
+        mesh. Useful for producing plots of slice data
+
+        Parameters
+        ----------
+        datasets : numpy.ndarray
+            1-D array of data values. Will be reshaped to fill the mesh and
+            should therefore have the same number of entries to fill the mesh
+        slice_index : int
+            The index of the mesh slice to extract.
+        view_direction : str
+            The axis to view the slice from. Supports negative and positive axis
+            values. Acceptable values are 'x', 'y', 'z', '-x', '-y', '-z'.
+
+        Returns
+        -------
+        np.array()
+            the 2D array of dataset values
+        """
+
+        supported_view_dirs = ['x', 'y', 'z', '-x', '-y', '-z']
+        if view_direction not in supported_view_dirs:
+            msg = 'view_direction is not one of the acceptable options {supported_view_dirs}'
+            raise ValueError(msg)
+
+        reshaped_ds = dataset.reshape(self.dimension, order="F")
+
+        if view_direction == "x":
+            # vertical axis is z, horizontal axis is -y
+            transposed_ds = reshaped_ds.transpose(0, 1, 2)[slice_index]
+            rotated_ds = np.rot90(transposed_ds, 1)
+            aligned_ds = np.fliplr(rotated_ds)
+        if view_direction == "-x":
+            # vertical axis is z, horizontal axis is y
+            transposed_ds = reshaped_ds.transpose(0, 1, 2)[slice_index]
+            aligned_ds = np.rot90(transposed_ds, 1)
+        if view_direction == "y":
+            # vertical axis is z, horizontal axis is x
+            transposed_ds = reshaped_ds.transpose(1, 2, 0)[slice_index]
+            aligned_ds = np.flipud(transposed_ds)
+        if view_direction == "-y":
+            # vertical axis is z, horizontal axis is -x
+            transposed_ds = reshaped_ds.transpose(1, 2, 0)[slice_index]
+            aligned_ds = np.flipud(transposed_ds)
+            aligned_ds = np.fliplr(aligned_ds)
+        if view_direction == "z":
+            # vertical axis is y, horizontal axis is -x
+            transposed_ds = reshaped_ds.transpose(2, 0, 1)[slice_index]
+            aligned_ds = np.rot90(transposed_ds, 1)
+            aligned_ds = np.fliplr(aligned_ds)
+        if view_direction == "-z":
+            # vertical axis is y, horizontal axis is x
+            transposed_ds = reshaped_ds.transpose(2, 0, 1)[slice_index]
+            aligned_ds = np.rot90(transposed_ds, 1)
+
+        return aligned_ds
 
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh

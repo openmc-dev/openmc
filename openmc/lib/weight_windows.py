@@ -12,6 +12,7 @@ from .error import _error_handler
 from .mesh import _get_mesh
 from .mesh import meshes
 
+__all__ = ['WeightWindows']
 
 _dll.openmc_extend_weight_windows.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 
@@ -104,7 +105,7 @@ class WeightWindows(_FortranObjectWithID):
         print(size)
         print(self._index)
         _dll.openmc_weight_windows_get_energy_bounds(self._index, data, size)
-        return as_array(data, (size,))
+        return as_array(data, (size.value,))
 
     @energy_bounds.setter
     def energy_bounds(self, e_bounds):

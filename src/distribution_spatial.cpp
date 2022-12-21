@@ -193,7 +193,7 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
   // Get pointer to spatial distribution
   mesh_idx_ = model::mesh_map.at(mesh_id);
-  
+
   // Check whether mesh pointer points to a mesh
   mesh_ptr_ = dynamic_cast<Mesh*>(model::meshes[mesh_idx_].get());
   if (!mesh_ptr_) {fatal_error("Mesh passed to spatial distribution is not a mesh object"); }
@@ -237,14 +237,13 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 }
 
 Position MeshSpatial::sample(uint64_t* seed) const
-{ 
+{
   // Create random variable for sampling element from mesh
   float eta = prn(seed);
   // Sample over the CDF defined in initialization above
-  int32_t tet_bin = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
-  return mesh_ptr_->sample(seed, tet_bin);
+  int32_t elem_bin = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
+  return mesh_ptr_->sample(seed, elem_bin);
 }
-
 
 //==============================================================================
 // SpatialBox implementation

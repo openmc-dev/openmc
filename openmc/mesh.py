@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from math import pi
 from numbers import Real, Integral
 from pathlib import Path
+import typing
 import warnings
 from xml.etree import ElementTree as ET
 
@@ -809,6 +810,86 @@ class RegularMesh(StructuredMesh):
             raise ValueError(msg)
 
         return aligned_ds
+
+    def plot_slice(
+        self,
+        dataset: np.ndarray,
+        slice_index: typing.Optional[int] = None,
+        view_direction: str = 'z',
+        axes: typing.Optional['matplotlib.Axes'] = None,
+        **kwargs
+    ):
+        """Create a slice plot of the dataset on the RegularMesh.
+
+        Parameters
+        ----------
+        datasets : numpy.ndarray
+            1-D array of data values. Will be reshaped to fill the mesh and
+            should therefore have the same number of entries to fill the mesh
+        slice_index : int
+            The index of the mesh slice to extract. If not set then the index
+            that slices through the middle of the mesh will be used
+        view_direction : str
+            The axis to view the slice from. Supports negative and positive axis
+            values. Acceptable values are 'x', 'y', 'z', '-x', '-y', '-z'.
+        axes : matplotlib.Axes, optional
+            Axes to draw to
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+
+        Returns
+        -------
+        matplotlib.image.AxesImage
+            Resulting image
+        """
+
+        import matplotlib.pyplot as plt
+
+        # gets the axis labels and bounding box index
+        if 'x' in view_direction:
+            x_label = 'Y [cm]'
+            y_label = 'Z [cm]'
+            bb_index = 0
+
+        if 'y' in view_direction:
+            x_label = 'X [cm]'
+            y_label = 'Z [cm]'
+            bb_index = 1
+
+        if 'z' in view_direction:
+            x_label = 'X [cm]'
+            y_label = 'Y [cm]'
+            bb_index = 2
+
+        # selecting mid index on the mesh for the slice
+        if slice_index is None:
+            slice_index = int(self.dimension[bb_index]/2)
+
+        # slice_of_data also checks the view_direction is acceptable
+        image_slice = self.slice_of_data(
+            dataset=dataset,
+            slice_index=slice_index,
+            view_direction=view_direction,
+        )
+
+        # gets the extent of the plot
+        x_min = self.lower_left[bb_index]
+        x_max = self.upper_right[bb_index]
+        y_min = self.lower_left[bb_index]
+        y_max = self.upper_right[bb_index]
+
+        if axes is None:
+            fig, axes = plt.subplots()
+            axes.set_xlabel(x_label)
+            axes.set_ylabel(y_label)
+            axes.set_title(f'View direction {view_direction}')
+
+        return axes.imshow(
+            X=image_slice,
+            extent=(x_min, x_max, y_min, y_max),
+            aspect='auto',
+            **kwargs
+        )
 
     def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
         """Creates a VTK object of the mesh

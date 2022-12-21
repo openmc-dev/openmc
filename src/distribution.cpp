@@ -71,7 +71,7 @@ void Discrete::init_alias() {
     p_[k] += p_[j] - 1.0;
     alias_[j] = k;
 
-    // Remove last vector element and or move large index to small vector
+    // Move large index to small vector, if it is no longer large
     if (p_[k] < 1.0) {
       small.push_back(k);
       large.pop_back();

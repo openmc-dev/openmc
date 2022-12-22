@@ -162,6 +162,7 @@ endif()
 #===============================================================================
 # MCPL
 #===============================================================================
+
 if (OPENMC_USE_MCPL)
   find_package(MCPL REQUIRED)
   message(STATUS "Found MCPL: ${MCPL_DIR} (found version \"${MCPL_VERSION}\")")

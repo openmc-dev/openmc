@@ -1026,7 +1026,6 @@ class Settings:
                 subelement = ET.SubElement(element, "mcpl")
                 subelement.text = str(self._sourcepoint['mcpl']).lower()
 
-
     def _create_surf_source_read_subelement(self, root):
         if self._surf_source_read:
             element = ET.SubElement(root, "surf_source_read")

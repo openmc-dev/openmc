@@ -162,8 +162,10 @@ endif()
 #===============================================================================
 # MCPL
 #===============================================================================
+
 if (OPENMC_USE_MCPL)
   find_package(MCPL REQUIRED)
+  message(STATUS "Found MCPL: ${MCPL_DIR} (found version \"${MCPL_VERSION}\")")
 endif()
 
 #===============================================================================
@@ -331,6 +333,7 @@ list(APPEND libopenmc_SOURCES
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
+  src/mcpl_interface.cpp
   src/mesh.cpp
   src/message_passing.cpp
   src/mgxs.cpp

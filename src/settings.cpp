@@ -18,6 +18,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
@@ -431,13 +432,12 @@ void read_settings_xml()
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
-#ifdef OPENMC_MCPL
-      if ( (path.size() >= 5 && path.compare(path.size()-5,5,".mcpl")==0 ) ||
-          (path.size() >= 8 && path.compare(path.size()-8,8,".mcpl.gz")==0 ) ) {
-        model::external_sources.push_back(make_unique<FileSource>(mcpl_open_file(path.c_str())));
-      } else
-#endif
+      if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+        auto sites = mcpl_source_sites(path);
+        model::external_sources.push_back(make_unique<FileSource>(sites));
+      } else {
         model::external_sources.push_back(make_unique<FileSource>(path));
+      }
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);
@@ -657,6 +657,12 @@ void read_settings_xml()
     }
     if (check_for_node(node_sp, "mcpl")) {
       source_mcpl_write = get_node_value_bool(node_sp, "mcpl");
+
+      // Make sure MCPL support is enabled
+      if (source_mcpl_write && !MCPL_ENABLED) {
+        fatal_error(
+          "Your build of OpenMC does not support writing MCPL source files.");
+      }
     }
     if (check_for_node(node_sp, "overwrite_latest")) {
       source_latest = get_node_value_bool(node_sp, "overwrite_latest");
@@ -688,11 +694,15 @@ void read_settings_xml()
       max_surface_particles =
         std::stoll(get_node_value(node_ssw, "max_particles"));
     }
-#ifdef OPENMC_MCPL
-    if(check_for_node(node_ssw, "mcpl")){
-      surf_mcpl_write=true;
+    if (check_for_node(node_ssw, "mcpl")) {
+      surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
+
+      // Make sure MCPL support is enabled
+      if (surf_mcpl_write && !MCPL_ENABLED) {
+        fatal_error("Your build of OpenMC does not support writing MCPL "
+                    "surface source files.");
+      }
     }
-#endif
   }
 
   // If source is not separate and is to be written out in the statepoint file,

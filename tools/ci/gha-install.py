@@ -19,14 +19,14 @@ def which(program):
     return None
 
 
-def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, mcpl=False):
+def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     # Create build directory and change to it
     shutil.rmtree('build', ignore_errors=True)
     os.mkdir('build')
     os.chdir('build')
 
-    # Build in debug mode by default
-    cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug']
+    # Build in debug mode by default with support for MCPL
+    cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
 
     # Turn off OpenMP if specified
     if not omp:
@@ -54,9 +54,6 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, mcpl=
         libmesh_path = os.environ.get('HOME') + '/LIBMESH'
         cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + libmesh_path)
 
-    if mcpl:
-        cmake_cmd.append('-DOPENMC_USE_MCPL=ON')
-
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
 
@@ -74,10 +71,9 @@ def main():
     phdf5 = (os.environ.get('PHDF5') == 'y')
     dagmc = (os.environ.get('DAGMC') == 'y')
     libmesh = (os.environ.get('LIBMESH') == 'y')
-    mcpl = (os.environ.get('MCPL') == 'y')
 
     # Build and install
-    install(omp, mpi, phdf5, dagmc, libmesh, mcpl)
+    install(omp, mpi, phdf5, dagmc, libmesh)
 
 if __name__ == '__main__':
     main()

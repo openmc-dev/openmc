@@ -27,10 +27,8 @@ if [[ $LIBMESH = 'y' ]]; then
     ./tools/ci/gha-install-libmesh.sh
 fi
 
-# Install mcpl if needed
-if [[ $MCPL = 'y' ]]; then
-    ./tools/ci/gha-install-mcpl.sh
-fi
+# Install MCPL
+./tools/ci/gha-install-mcpl.sh
 
 # For MPI configurations, make sure mpi4py and h5py are built against the
 # correct version of MPI

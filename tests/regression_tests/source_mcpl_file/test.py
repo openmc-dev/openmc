@@ -35,7 +35,7 @@ settings2 = """<?xml version="1.0"?>
     <particles>1000</particles>
   </eigenvalue>
   <source>
-    <mcpl> source.10.{0} </mcpl>
+    <filename> source.10.{0} </filename>
   </source>
 </settings>
 """

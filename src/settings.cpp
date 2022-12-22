@@ -432,12 +432,15 @@ void read_settings_xml()
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
 #ifdef OPENMC_MCPL
-      if ( (path.size() >= 5 && path.compare(path.size()-5,5,".mcpl")==0 ) ||
-          (path.size() >= 8 && path.compare(path.size()-8,8,".mcpl.gz")==0 ) ) {
-        model::external_sources.push_back(make_unique<FileSource>(mcpl_open_file(path.c_str())));
-      } else
-#endif
+      if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+        model::external_sources.push_back(
+          make_unique<FileSource>(mcpl_open_file(path.c_str())));
+      } else {
         model::external_sources.push_back(make_unique<FileSource>(path));
+      }
+#else
+      model::external_sources.push_back(make_unique<FileSource>(path));
+#endif
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);
@@ -689,8 +692,8 @@ void read_settings_xml()
         std::stoll(get_node_value(node_ssw, "max_particles"));
     }
 #ifdef OPENMC_MCPL
-    if(check_for_node(node_ssw, "mcpl")){
-      surf_mcpl_write=true;
+    if (check_for_node(node_ssw, "mcpl")) {
+      surf_mcpl_write = true;
     }
 #endif
   }

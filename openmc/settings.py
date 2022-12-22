@@ -1349,7 +1349,7 @@ class Settings:
                     elif key in ('max_particles'):
                         value = int(value)
                     elif key == 'mcpl':
-                        value = True
+                        value = value in ('true', '1')
                     self.surf_source_write[key] = value
 
     def _confidence_intervals_from_xml_element(self, root):

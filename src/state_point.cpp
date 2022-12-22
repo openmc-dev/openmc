@@ -604,7 +604,7 @@ void write_source_point(const char* filename, bool surf_source_bank)
 }
 
 #ifdef OPENMC_MCPL
-void write_mcpl_source_point(const char *filename, bool surf_source_bank)
+void write_mcpl_source_point(const char* filename, bool surf_source_bank)
 {
   std::string filename_;
   if (filename) {
@@ -622,21 +622,21 @@ void write_mcpl_source_point(const char *filename, bool surf_source_bank)
   std::string line;
   if (mpi::master) {
     file_id = mcpl_create_outfile(filename_.c_str());
-    if (VERSION_DEV){
-      line=fmt::format("OpenMC {0}.{1}.{2}-development",VERSION_MAJOR,VERSION_MINOR,VERSION_RELEASE);
+    if (VERSION_DEV) {
+      line = fmt::format("OpenMC {0}.{1}.{2}-development", VERSION_MAJOR,
+        VERSION_MINOR, VERSION_RELEASE);
     } else {
-      line=fmt::format("OpenMC {0}.{1}.{2}",VERSION_MAJOR,VERSION_MINOR,VERSION_RELEASE);
+      line = fmt::format(
+        "OpenMC {0}.{1}.{2}", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE);
     }
-    mcpl_hdr_set_srcname(file_id,line.c_str());
+    mcpl_hdr_set_srcname(file_id, line.c_str());
   }
 
   write_mcpl_source_bank(file_id, surf_source_bank);
 
   if (mpi::master) {
-    //change this - this is h5 specific
     mcpl_close_outfile(file_id);
   }
-
 }
 #endif
 
@@ -768,7 +768,7 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
   vector<int64_t> surf_source_index_vector;
   vector<SourceSite> surf_source_bank_vector;
 
-  if(surf_source_bank) {
+  if (surf_source_bank) {
     surf_source_index_vector = calculate_surf_source_size();
     dims_size = surf_source_index_vector[mpi::n_procs];
     count_size = simulation::surf_source_bank.size();
@@ -790,55 +790,56 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
     vector<SourceSite> temp_source {source_bank->begin(), source_bank->end()};
 #endif
 
-    //loop over the other nodes and receive data - then write those.
+    // loop over the other nodes and receive data - then write those.
     for (int i = 0; i < mpi::n_procs; ++i) {
       // number of particles for node node i
       size_t count[] {
         static_cast<size_t>((*bank_index)[i + 1] - (*bank_index)[i])};
 
 #ifdef OPENMC_MPI
-      if (i>0)
+      if (i > 0)
         MPI_Recv(source_bank->data(), count[0], mpi::source_site, i, i,
           mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
       // now write the source_bank data again.
-      for (vector<SourceSite>::iterator _site=source_bank->begin(); _site!=source_bank->end();_site++){
+      for (vector<SourceSite>::iterator _site = source_bank->begin();
+           _site != source_bank->end(); _site++) {
         // particle is now at the iterator
         // write it to the mcpl-file
         mcpl_particle_t p;
-        p.position[0]=_site->r.x;
-        p.position[1]=_site->r.y;
-        p.position[2]=_site->r.z;
+        p.position[0] = _site->r.x;
+        p.position[1] = _site->r.y;
+        p.position[2] = _site->r.z;
 
         // mcpl requires that the direction vector is unit length
         // which is also the case in openmc
-        p.direction[0]=_site->u.x;
-        p.direction[1]=_site->u.y;
-        p.direction[2]=_site->u.z;
+        p.direction[0] = _site->u.x;
+        p.direction[1] = _site->u.y;
+        p.direction[2] = _site->u.z;
 
         // mcpl stores kinetic energy in MeV
-        p.ekin=_site->E*1e-6;
+        p.ekin = _site->E * 1e-6;
 
-        p.time=_site->time*1e3;
+        p.time = _site->time * 1e3;
 
-        p.weight=_site->wgt;
+        p.weight = _site->wgt;
 
-        switch(_site->particle){
-          case ParticleType::neutron:
-            p.pdgcode=2112;
-            break;
-          case ParticleType::photon:
-            p.pdgcode=22;
-            break;
-          case ParticleType::electron:
-            p.pdgcode=11;
-            break;
-          case ParticleType::positron:
-            p.pdgcode=-11;
-            break;
+        switch (_site->particle) {
+        case ParticleType::neutron:
+          p.pdgcode = 2112;
+          break;
+        case ParticleType::photon:
+          p.pdgcode = 22;
+          break;
+        case ParticleType::electron:
+          p.pdgcode = 11;
+          break;
+        case ParticleType::positron:
+          p.pdgcode = -11;
+          break;
         }
 
-        mcpl_add_particle(file_id,&p);
+        mcpl_add_particle(file_id, &p);
       }
     }
 #ifdef OPENMC_MPI
@@ -851,7 +852,6 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
       mpi::intracomm);
 #endif
   }
-
 }
 #endif
 

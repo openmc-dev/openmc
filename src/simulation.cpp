@@ -390,7 +390,7 @@ void finalize_batch()
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // Write out a separate source point if it's been specified for this batch
 #ifdef OPENMC_MCPL
-    if(! settings::source_mcpl_write) {
+    if (!settings::source_mcpl_write) {
 #endif
       if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
           settings::source_write && settings::source_separate) {
@@ -405,8 +405,8 @@ void finalize_batch()
 #ifdef OPENMC_MCPL
     } else {
       if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
-            settings::source_mcpl_write && settings::source_separate) {
-          write_mcpl_source_point(nullptr);
+          settings::source_mcpl_write && settings::source_separate) {
+        write_mcpl_source_point(nullptr);
       }
 
       // Write a continously-overwritten source point if requested.
@@ -425,12 +425,12 @@ void finalize_batch()
     write_source_point(filename.c_str(), true);
   }
 #ifdef OPENMC_MCPL
-  if(settings::surf_mcpl_write && simulation::current_batch == settings::n_batches){
+  if (settings::surf_mcpl_write &&
+      simulation::current_batch == settings::n_batches) {
     auto filename = settings::path_output + "surface_source.mcpl";
     write_mcpl_source_point(filename.c_str(), true);
   }
 #endif
-
 }
 
 void initialize_generation()

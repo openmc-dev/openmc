@@ -32,6 +32,7 @@ constexpr double EXTSRC_REJECT_FRACTION {0.05};
 //==============================================================================
 // Global variables
 //==============================================================================
+extern "C" const bool MCPL_ENABLED;
 
 class Source;
 

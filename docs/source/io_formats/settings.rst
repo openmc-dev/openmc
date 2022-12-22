@@ -732,6 +732,14 @@ attributes/sub-elements:
 
     *Default*: false
 
+  :mcpl:
+    If this element is set to "true", the source point file containing the
+    source bank will be written as an MCPL_ file name ``source.mcpl`` instead of
+    an HDF5 file. This option is only applicable if the ``<separate>`` element
+    is set to true.
+
+    *Default*: false
+
 ------------------------------
 ``<surf_source_read>`` Element
 ------------------------------
@@ -769,13 +777,13 @@ certain surfaces and write out the source bank in a separate file called
 
   :mcpl:
     An optional boolean which indicates if the banked particles should be
-    written to a file in the MCPL-format (documented in mcpl_). instead of the
-    native HDF5-based format. If activated the output file name is changed to
+    written to a file in the MCPL_-format instead of the native HDF5-based
+    format. If activated the output file name is changed to
     ``surface_source.mcpl``.
 
     *Default*: false
 
-    .. _mcpl: https://mctools.github.io/mcpl/mcpl.pdf
+    .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
 
 ------------------------------
 ``<survival_biasing>`` Element

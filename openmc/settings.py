@@ -156,6 +156,7 @@ class Settings:
         :separate: bool indicating whether the source should be written as a
                    separate file
         :write: bool indicating whether or not to write the source
+        :mcpl: bool indicating whether to write the source as an MCPL file
     statepoint : dict
         Options for writing state points. Acceptable keys are:
 
@@ -620,6 +621,8 @@ class Settings:
                 cv.check_type('sourcepoint write', value, bool)
             elif key == 'overwrite':
                 cv.check_type('sourcepoint overwrite', value, bool)
+            elif key == 'mcpl':
+                cv.check_type('sourcepoint mcpl', value, bool)
             else:
                 raise ValueError(f"Unknown key '{key}' encountered when "
                                  "setting sourcepoint options.")
@@ -1019,6 +1022,11 @@ class Settings:
                 subelement = ET.SubElement(element, "overwrite_latest")
                 subelement.text = str(self._sourcepoint['overwrite']).lower()
 
+            if 'mcpl' in self._sourcepoint:
+                subelement = ET.SubElement(element, "mcpl")
+                subelement.text = str(self._sourcepoint['mcpl']).lower()
+
+
     def _create_surf_source_read_subelement(self, root):
         if self._surf_source_read:
             element = ET.SubElement(root, "surf_source_read")
@@ -1319,10 +1327,10 @@ class Settings:
     def _sourcepoint_from_xml_element(self, root):
         elem = root.find('source_point')
         if elem is not None:
-            for key in ('separate', 'write', 'overwrite_latest', 'batches'):
+            for key in ('separate', 'write', 'overwrite_latest', 'batches', 'mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key in ('separate', 'write'):
+                    if key in ('separate', 'write', 'mcpl'):
                         value = value in ('true', '1')
                     elif key == 'overwrite_latest':
                         value = value in ('true', '1')

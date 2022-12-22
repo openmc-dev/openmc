@@ -6,19 +6,30 @@
 #include <string>
 #include <vector>
 
-#ifdef OPENMC_MCPL
-#include <mcpl.h>
-#endif
-
 namespace openmc {
 
+//==============================================================================
+// Constants
+//==============================================================================
+
 extern "C" const bool MCPL_ENABLED;
+
+//==============================================================================
+// Functions
+//==============================================================================
 
 //! Get a vector of source sites from an MCPL file
 //
 //! \param[in] path  Path to MCPL file
 //! \return  Vector of source sites
 vector<SourceSite> mcpl_source_sites(std::string path);
+
+//! Write an MCPL source file
+//
+//! \param[in] filename  Path to MCPL file
+//! \param[in] surf_source_bank  Whether to use the surface source bank
+void write_mcpl_source_point(
+  const char* filename, bool surf_source_bank = false);
 
 } // namespace openmc
 

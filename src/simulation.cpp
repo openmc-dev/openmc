@@ -390,27 +390,23 @@ void finalize_batch()
 
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // Write out a separate source point if it's been specified for this batch
-    if (!settings::source_mcpl_write) {
-      if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
-          settings::source_write && settings::source_separate) {
+    if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
+        settings::source_write && settings::source_separate) {
+      if (settings::source_mcpl_write) {
+        write_mcpl_source_point(nullptr);
+      } else {
         write_source_point(nullptr);
       }
+    }
 
-      // Write a continously-overwritten source point if requested.
-      if (settings::source_latest) {
-        auto filename = settings::path_output + "source.h5";
-        write_source_point(filename.c_str());
-      }
-    } else {
-      if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
-          settings::source_mcpl_write && settings::source_separate) {
-        write_mcpl_source_point(nullptr);
-      }
-
-      // Write a continously-overwritten source point if requested.
-      if (settings::source_latest && settings::source_mcpl_write) {
+    // Write a continously-overwritten source point if requested.
+    if (settings::source_latest) {
+      if (settings::source_mcpl_write) {
         auto filename = settings::path_output + "source.mcpl";
         write_mcpl_source_point(filename.c_str());
+      } else {
+        auto filename = settings::path_output + "source.h5";
+        write_source_point(filename.c_str());
       }
     }
   }
@@ -418,13 +414,13 @@ void finalize_batch()
   // Write out surface source if requested.
   if (settings::surf_source_write &&
       simulation::current_batch == settings::n_batches) {
-    auto filename = settings::path_output + "surface_source.h5";
-    write_source_point(filename.c_str(), true);
-  }
-  if (settings::surf_mcpl_write &&
-      simulation::current_batch == settings::n_batches) {
-    auto filename = settings::path_output + "surface_source.mcpl";
-    write_mcpl_source_point(filename.c_str(), true);
+    if (settings::surf_mcpl_write) {
+      auto filename = settings::path_output + "surface_source.mcpl";
+      write_mcpl_source_point(filename.c_str(), true);
+    } else {
+      auto filename = settings::path_output + "surface_source.h5";
+      write_source_point(filename.c_str(), true);
+    }
   }
 }
 

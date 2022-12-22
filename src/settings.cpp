@@ -18,6 +18,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
@@ -431,16 +432,14 @@ void read_settings_xml()
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
-#ifdef OPENMC_MCPL
       if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
-        model::external_sources.push_back(
-          make_unique<FileSource>(mcpl_open_file(path.c_str())));
+#ifdef OPENMC_MCPL
+        auto sites = mcpl_source_sites(path);
+        model::external_sources.push_back(make_unique<FileSource>(sites));
+#endif
       } else {
         model::external_sources.push_back(make_unique<FileSource>(path));
       }
-#else
-      model::external_sources.push_back(make_unique<FileSource>(path));
-#endif
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);

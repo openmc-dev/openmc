@@ -14,10 +14,6 @@
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
-#ifdef OPENMC_MCPL
-#include <mcpl.h>
-#endif
-
 namespace openmc {
 
 //==============================================================================
@@ -32,7 +28,6 @@ constexpr double EXTSRC_REJECT_FRACTION {0.05};
 //==============================================================================
 // Global variables
 //==============================================================================
-extern "C" const bool MCPL_ENABLED;
 
 class Source;
 
@@ -107,9 +102,8 @@ class FileSource : public Source {
 public:
   // Constructors
   explicit FileSource(std::string path);
-#ifdef OPENMC_MCPL
-  explicit FileSource(mcpl_file_t mcpl_file);
-#endif
+  explicit FileSource(const vector<SourceSite>& sites) : sites_ {sites} {}
+
   // Methods
   SourceSite sample(uint64_t* seed) const override;
 

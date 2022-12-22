@@ -331,6 +331,7 @@ list(APPEND libopenmc_SOURCES
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
+  src/mcpl_interface.cpp
   src/mesh.cpp
   src/message_passing.cpp
   src/mgxs.cpp

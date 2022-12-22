@@ -335,9 +335,8 @@ FileSource::FileSource(mcpl_file_t mcpl_file)
 {
   size_t n_sites = mcpl_hdr_nparticles(mcpl_file);
 
-  sites_.resize(n_sites);
   for (int i = 0; i < n_sites; i++) {
-    SourceSite site_;
+    SourceSite site;
 
     const mcpl_particle_t* mcpl_particle;
     // extract particle from mcpl-file
@@ -351,36 +350,41 @@ FileSource::FileSource(mcpl_file_t mcpl_file)
 
     switch (pdg) {
     case 2112:
-      site_.particle = ParticleType::neutron;
+      site.particle = ParticleType::neutron;
       break;
     case 22:
-      site_.particle = ParticleType::photon;
+      site.particle = ParticleType::photon;
       break;
     case 11:
-      site_.particle = ParticleType::electron;
+      site.particle = ParticleType::electron;
       break;
     case -11:
-      site_.particle = ParticleType::positron;
+      site.particle = ParticleType::positron;
       break;
     }
 
-    // particle is good, convert to openmc-formalism
-    site_.r.x = mcpl_particle->position[0];
-    site_.r.y = mcpl_particle->position[1];
-    site_.r.z = mcpl_particle->position[2];
-
-    site_.u.x = mcpl_particle->direction[0];
-    site_.u.y = mcpl_particle->direction[1];
-    site_.u.z = mcpl_particle->direction[2];
+    // Copy position and direction
+    site.r.x = mcpl_particle->position[0];
+    site.r.y = mcpl_particle->position[1];
+    site.r.z = mcpl_particle->position[2];
+    site.u.x = mcpl_particle->direction[0];
+    site.u.y = mcpl_particle->direction[1];
+    site.u.z = mcpl_particle->direction[2];
 
     // mcpl stores kinetic energy in MeV
-    site_.E = mcpl_particle->ekin * 1e6;
+    site.E = mcpl_particle->ekin * 1e6;
     // mcpl stores time in ms
-    site_.time = mcpl_particle->time * 1e-3;
-    site_.wgt = mcpl_particle->weight;
-    site_.delayed_group = 0;
-    sites_[i] = site_;
+    site.time = mcpl_particle->time * 1e-3;
+    site.wgt = mcpl_particle->weight;
+    sites_.push_back(site);
   }
+
+  // Check that some sites were read
+  if (sites_.empty()) {
+    fatal_error("MCPL file contained no neutron, photon, electron, or positron "
+                "source particles.");
+  }
+
   mcpl_close_file(mcpl_file);
 }
 #endif // OPENMC_MCPL

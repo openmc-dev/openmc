@@ -93,9 +93,6 @@ class SourceFileTestHarness(TestHarness):
     def _cleanup(self):
         TestHarness._cleanup(self)
         output = glob.glob(os.path.join(os.getcwd(), 'source.*'))
-        #for f in output:
-        #    if os.path.exists(f):
-        #        os.remove(f)
         with open('settings.xml','w') as fh:
             fh.write(settings1)
 

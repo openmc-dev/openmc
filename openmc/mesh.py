@@ -188,7 +188,7 @@ class StructuredMesh(MeshBase):
             Returns a numpy.ndarray representing the mesh element centroid
             coordinates with a shape equal to (ndim, dim1, ..., dimn). Can be
             unpacked along the first dimension with xx, yy, zz = mesh.centroids.
-            
+
 
         """
         ndim = self.n_dimension

@@ -1100,7 +1100,8 @@ class Settings:
         path = f"./mesh[@id='{self.entropy_mesh.id}']"
         if root.find(path) is None:
             root.append(self.entropy_mesh.to_xml_element())
-            if mesh_memo is not None: mesh_memo.add(self.entropy_mesh.id)
+            if mesh_memo is not None:
+                mesh_memo.add(self.entropy_mesh.id)
 
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
@@ -1609,7 +1610,7 @@ class Settings:
         self._create_temperature_subelements(element)
         self._create_trace_subelement(element)
         self._create_track_subelement(element)
-        self._create_ufs_mesh_subelement(element)
+        self._create_ufs_mesh_subelement(element, mesh_memo)
         self._create_resonance_scattering_subelement(element)
         self._create_volume_calcs_subelement(element)
         self._create_create_fission_neutrons_subelement(element)

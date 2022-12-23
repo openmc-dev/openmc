@@ -244,6 +244,8 @@ class Model:
     def from_model_xml(cls, path='model.xml'):
         """Create model from single XML file
 
+        .. vesionadded:: 0.13.3
+
         Parameters
         ----------
         path : str or Pathlike
@@ -258,13 +260,6 @@ class Model:
         model.settings = openmc.Settings.from_xml_element(root.find('settings'), meshes)
         model.materials = openmc.Materials.from_xml_element(root.find('materials'))
         model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
-
-        # gather meshes from other classes before reading the tally node
-        if model.settings.entropy_mesh is not None:
-            meshes[model.settings.entropy_mesh.id] = model.settings.entropy_mesh
-
-        for ww in model.settings.weight_windows:
-            meshes[ww.mesh.id] = ww.mesh
 
         if root.find('tallies'):
             model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
@@ -474,6 +469,8 @@ class Model:
     def export_to_model_xml(self, path='model.xml', remove_surfs=False):
         """Export model to a single XML file.
 
+        .. versionadded:: 0.13.3
+
         Parameters
         ----------
         path : str or Pathlike
@@ -483,7 +480,6 @@ class Model:
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
 
-            .. versionadded:: 0.13.1
         """
         xml_path = Path(path)
         # if the provided path doesn't end with the XML extension, assume the

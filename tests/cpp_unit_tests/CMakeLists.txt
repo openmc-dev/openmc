@@ -1,5 +1,6 @@
 set(TEST_NAMES
   test_distribution
+  # Add additional unit test files here
 )
 
 foreach(test ${TEST_NAMES})

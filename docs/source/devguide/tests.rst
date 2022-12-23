@@ -45,7 +45,7 @@ Prerequisites
 Running Tests
 -------------
 
-To execute the test suite, go to the ``tests/`` directory and run::
+To execute the Python test suite, go to the ``tests/`` directory and run::
 
     pytest
 
@@ -54,6 +54,14 @@ you must have the `pytest-cov <https://pypi.org/project/pytest-cov>`_ plugin
 installed and run::
 
     pytest --cov=../openmc --cov-report=html
+
+To execute the C++ test suite, go to your build directory and run::
+
+    ctest
+
+If you want to view testing output on failure run::
+
+    ctest --output-on-failure
 
 Generating XML Inputs
 ---------------------
@@ -65,6 +73,23 @@ To build the input files for a test without actually running the test, you can
 run::
 
     pytest --build-inputs <name-of-test>
+
+Adding C++ Unit Tests
+---------------------
+
+The C++ test suite uses Catch2 integrated with CTest. Each header file should
+have a corresponding test file in ``tests/cpp_unit_tests/``. If the test file
+does not exist run::
+
+    touch test_<name-of-header-file>.cpp
+
+The file must be added to the CMake build system in 
+``tests/cpp_unit_tests/CMakeLists.txt``. ``test_<name-of-header-file>`` should 
+be added to ``TEST_NAMES``. 
+
+To add a test case to ``test_<name-of-header-file>.cpp`` ensure 
+``catch2/catch_test_macros.hpp`` is included. A unit test can then be added 
+using the ``TEST_CASE`` macro and the ``REQUIRE`` assertion from Catch2. 
 
 Adding Tests to the Regression Suite
 ------------------------------------

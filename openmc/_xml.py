@@ -27,7 +27,7 @@ def clean_indentation(element, level=0, spaces_per_level=2, trailing_indent=True
             element.tail = i
         for sub_element in element:
             # `trailing_indent` is intentionally not forwarded to the recursive
-            # call. Any child element of the topmost clement should add
+            # call. Any child element of the topmost element should add
             # indentation at the end to ensure its parent's indentation is
             # correct.
             clean_indentation(sub_element, level+1, spaces_per_level)

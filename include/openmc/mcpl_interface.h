@@ -2,9 +2,9 @@
 #define OPENMC_MCPL_INTERFACE_H
 
 #include "openmc/particle_data.h"
+#include "openmc/vector.h"
 
 #include <string>
-#include <vector>
 
 namespace openmc {
 

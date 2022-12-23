@@ -11,7 +11,6 @@ pytestmark = pytest.mark.skipif(
 
 settings1="""<?xml version="1.0"?>
 <settings>
-  <seed>1234</seed>
   <state_point batches="10" />
   <source_point mcpl="true" separate="true" />
   <eigenvalue>
@@ -35,7 +34,7 @@ settings2 = """<?xml version="1.0"?>
     <particles>1000</particles>
   </eigenvalue>
   <source>
-    <filename> source.10.{0} </filename>
+    <file>source.10.{}</file>
   </source>
 </settings>
 """

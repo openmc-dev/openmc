@@ -6,6 +6,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
+#include "openmc/vector.h"
 
 #include <fmt/core.h>
 
@@ -57,9 +58,8 @@ SourceSite mcpl_particle_to_site(const mcpl_particle_t* particle)
   site.u.y = particle->direction[1];
   site.u.z = particle->direction[2];
 
-  // mcpl stores kinetic energy in MeV
+  // MCPL stores kinetic energy in [MeV], time in [ms]
   site.E = particle->ekin * 1e6;
-  // mcpl stores time in ms
   site.time = particle->time * 1e-3;
   site.wgt = particle->weight;
 
@@ -155,29 +155,26 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
           mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
       // now write the source_bank data again.
-      for (vector<SourceSite>::iterator _site = source_bank->begin();
-           _site != source_bank->end(); _site++) {
+      for (const auto& site : *source_bank) {
         // particle is now at the iterator
         // write it to the mcpl-file
         mcpl_particle_t p;
-        p.position[0] = _site->r.x;
-        p.position[1] = _site->r.y;
-        p.position[2] = _site->r.z;
+        p.position[0] = site.r.x;
+        p.position[1] = site.r.y;
+        p.position[2] = site.r.z;
 
         // mcpl requires that the direction vector is unit length
         // which is also the case in openmc
-        p.direction[0] = _site->u.x;
-        p.direction[1] = _site->u.y;
-        p.direction[2] = _site->u.z;
+        p.direction[0] = site.u.x;
+        p.direction[1] = site.u.y;
+        p.direction[2] = site.u.z;
 
-        // mcpl stores kinetic energy in MeV
-        p.ekin = _site->E * 1e-6;
+        // MCPL stores kinetic energy in [MeV], time in [ms]
+        p.ekin = site.E * 1e-6;
+        p.time = site.time * 1e3;
+        p.weight = site.wgt;
 
-        p.time = _site->time * 1e3;
-
-        p.weight = _site->wgt;
-
-        switch (_site->particle) {
+        switch (site.particle) {
         case ParticleType::neutron:
           p.pdgcode = 2112;
           break;

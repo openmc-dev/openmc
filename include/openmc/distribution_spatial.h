@@ -108,14 +108,17 @@ public:
   //! \return Sampled position
   Position sample(uint64_t* seed) const;
 
+  const unique_ptr<Mesh>& mesh() const { return model::meshes.at(mesh_idx_); }
+
+  int32_t n_sources() const { return this->mesh()->n_bins(); }
+
 private:
-  Mesh* mesh_ptr_;
-  int32_t mesh_idx_;
+  Mesh* mesh_ptr_ {nullptr};
+  int32_t mesh_idx_ {C_NONE};
   std::string sample_scheme_;
-  double total_strength_;
+  double total_strength_ {0.0};
   std::vector<double> mesh_CDF_;
   std::vector<double> mesh_strengths_;
-  int32_t tot_bins_;
 };
 
 //==============================================================================

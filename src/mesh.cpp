@@ -219,9 +219,9 @@ Position UnstructuredMesh::sample_tet(std::array<Position, 4> coords, uint64_t* 
       u = old_s + t + u - 1;
     }
   }
-  return s*(coords[1]-coords[0]) 
-    + t*(coords[2]-coords[0]) 
-    + u*(coords[3]-coords[0]) 
+  return s*(coords[1]-coords[0])
+    + t*(coords[2]-coords[0])
+    + u*(coords[3]-coords[0])
     + coords[0];
 
 }
@@ -358,12 +358,12 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
   return ijk;
 }
 
-Position StructuredMesh::sample(uint64_t* seed, int32_t bin) const 
+Position StructuredMesh::sample(uint64_t* seed, int32_t bin) const
 {
   fatal_error("Position sampling on structured meshes is not yet implemented");
-} 
+}
 
-double StructuredMesh::volume(int bin) const 
+double StructuredMesh::volume(int bin) const
 {
   fatal_error("Unable to get volume of structured mesh, not yet implemented");
 }
@@ -2111,7 +2111,7 @@ Position MOABMesh::sample(uint64_t* seed, int32_t bin) const {
   for (int i = 0; i < 4; i++) {
     tet_verts[i] = {p[i][0], p[i][1], p[i][2]};
   }
-  // Samples position within tet using Barycentric stuff  
+  // Samples position within tet using Barycentric stuff
   Position r = this->sample_tet(tet_verts, seed);
 
   return r;
@@ -2579,7 +2579,7 @@ Position LibMesh::sample(uint64_t* seed, int32_t bin) const {
     auto node_ref = elem.node_ref(i);
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
-  // Samples position within tet using Barycentric coordinates  
+  // Samples position within tet using Barycentric coordinates
   Position r = this->sample_tet(tet_verts, seed);
 
   return r;
@@ -2766,7 +2766,7 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 
 double LibMesh::volume(int bin) const
 {
-  return m_->elem_ref(bin).volume();
+  return this->get_element_from_bin(bin).volume();
 }
 
 #endif // LIBMESH

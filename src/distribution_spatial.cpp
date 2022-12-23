@@ -198,21 +198,18 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   mesh_ptr_ = dynamic_cast<Mesh*>(model::meshes[mesh_idx_].get());
   if (!mesh_ptr_) {fatal_error("Mesh passed to spatial distribution is not a mesh object"); }
 
-  // Initialize arrays for CDF creation
-  tot_bins_ = mesh_ptr_->n_bins();
-  std::vector<double> strengths = {};
-  strengths.resize(tot_bins_);
-  double temp_total_strength = 0.0;
-  mesh_CDF_.resize(tot_bins_+1);
+  int32_t n_bins = this->n_sources();
+  std::vector<double> strengths(n_bins, 0.0);
+
+  mesh_CDF_.resize(n_bins+1);
   mesh_CDF_[0] = {0.0};
   total_strength_ = 0.0;
-  mesh_strengths_.resize(tot_bins_);
+  mesh_strengths_.resize(n_bins);
 
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet
   // File scheme is weighted by an array given in the xml file
-
-  mesh_strengths_ = std::vector<double>(tot_bins_, 1.0);
+  mesh_strengths_ = std::vector<double>(n_bins, 1.0);
   if (check_for_node(node, "strengths")) {
       strengths = get_node_array<double>(node, "strengths");
       if (strengths.size() != mesh_strengths_.size()){
@@ -222,24 +219,27 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   }
 
   if (get_node_value_bool(node, "volume_normalized")) {
-    for (int i = 0; i < tot_bins_; i++) {
+    for (int i = 0; i < n_bins; i++) {
       mesh_strengths_[i] *= mesh_ptr_->volume(i);
     }
   }
 
-  for (int i = 0; i<tot_bins_; i++){
-    temp_total_strength = temp_total_strength + mesh_strengths_[i];
-  }
-  total_strength_ = temp_total_strength;
-  for (int i = 0; i<tot_bins_; i++){
+  total_strength_ = std::accumulate(mesh_strengths_.begin(), mesh_strengths_.end(), 0.0);
+
+  for (int i = 0; i < n_bins; i++) {
     mesh_CDF_[i+1] = mesh_CDF_[i] + mesh_strengths_[i]/total_strength_;
   }
+
+  if (fabs(mesh_CDF_.back() - 1.0) > FP_COINCIDENT) {
+    fatal_error(fmt::format("Mesh sampling CDF is incorrectly formed. Final value is: {}", mesh_CDF_.back()));
+  }
+  mesh_CDF_.back() = 1.0;
 }
 
 Position MeshSpatial::sample(uint64_t* seed) const
 {
   // Create random variable for sampling element from mesh
-  float eta = prn(seed);
+  double eta = prn(seed);
   // Sample over the CDF defined in initialization above
   int32_t elem_bin = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
   return mesh_ptr_->sample(seed, elem_bin);

@@ -119,8 +119,8 @@ jobs:
       - name: test
         shell: bash
         run: |
+          make CTEST_OUTPUT_ON_FAILURE=1 test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
-          ctest --output-on-failure
 
       - name: after_success
         shell: bash

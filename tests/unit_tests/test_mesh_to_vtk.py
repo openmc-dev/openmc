@@ -77,8 +77,8 @@ def test_write_data_to_vtk_size_mismatch(mesh):
     # by regex. These are needed to make the test string match the error message
     # string when using the match argument as that uses regular expression
     expected_error_msg = (
-        f"The size of the dataset 'label' \({len(data)}\) should be equal to "
-        f"the number of mesh cells \({mesh.num_mesh_cells}\)"
+        f"The size of the dataset 'label' ({len(data)}) should be equal to "
+        f"the number of mesh cells ({mesh.num_mesh_cells})"
     )
     with pytest.raises(ValueError, match=expected_error_msg):
         mesh.write_data_to_vtk(filename="out.vtk", datasets={"label": data})

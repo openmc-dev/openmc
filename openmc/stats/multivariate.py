@@ -9,7 +9,7 @@ import numpy as np
 import openmc.checkvalue as cv
 from .._xml import get_text
 from .univariate import Univariate, Uniform, PowerLaw
-from ..mesh import MeshBase
+from ..mesh import MeshBase, MESHES
 
 
 class UnitSphere(ABC):
@@ -276,6 +276,8 @@ class Spatial(ABC):
             return Box.from_xml_element(elem)
         elif distribution == 'point':
             return Point.from_xml_element(elem)
+        elif distribution == 'mesh':
+            return MeshSpatial.from_xml_element(elem)
 
 
 class CartesianIndependent(Spatial):
@@ -622,29 +624,36 @@ class CylindricalIndependent(Spatial):
 class MeshSpatial(Spatial):
     """Spatial distribution for a mesh.
 
-    This distribution specifies a mesh to sample over, chooses whether it will be volume normalized, and can set the source strengths. 
+    This distribution specifies a mesh to sample over, chooses whether it will
+    be volume normalized, and can set the source strengths.
 
     .. versionadded:: 0.13
 
     Parameters
     ----------
     mesh : openmc.MeshBase
-        The mesh instance used for sampling, mesh is written into settings.xml, mesh.id is written into the source distribution
+        The mesh instance used for sampling, mesh is written into settings.xml,
+        mesh.id is written into the source distribution
     strengths : Iterable of Real, optional
-        A list of values which represent the weights of each element
-
+        A list of values which represent the weights of each element. If no source
+        strengths are specified, they will be equal for all mesh elements.
+    volume_normalized : bool, optional
+        Whether or not the strengths will be normalized by volume. Default is True.
 
     Attributes
     ----------
     mesh : openmc.MeshBase
-        The mesh instance used for sampling, mesh is written into settings.xml, mesh.id is written into the source distribution
+        The mesh instance used for sampling, mesh is written into settings.xml,
+        mesh.id is written into the source distribution
     strengths : Iterable of Real, optional
         A list of values which represent the weights of each element
-
+    volume_normalized : bool
+        Whether or not the strengths will be normalized by volume.
     """
 
-    def __init__(self, mesh, strengths=None, volume_normalized=True):
-        self.mesh = mesh        
+    def __init__(self,
+    mesh, strengths=None, volume_normalized=True):
+        self.mesh = mesh
         self.strengths = strengths
         self.volume_normalized = volume_normalized
 
@@ -684,7 +693,7 @@ class MeshSpatial(Spatial):
         if self.strengths == None:
             raise ValueError('Strengths are not set')
         return self.strengths.size
-                
+
     def to_xml_element(self):
         """Return XML representation of the spatial distribution
 
@@ -722,13 +731,18 @@ class MeshSpatial(Spatial):
         """
 
         mesh_id = int(elem.get('mesh_id'))
+
+        # check if this mesh has been read in from another location already
+        if mesh_id not in MESHES:
+            raise RuntimeError(f'Could not locate mesh with ID "{mesh_id}"')
+
         volume_normalized = elem.get("volume_normalized")
         volume_normalized = get_text(elem, 'volume_normalized').lower() == 'true'
         if elem.get('strengths') is not None:
             strengths = [float(b) for b in get_text(elem, 'strengths').split()]
         else:
             strengths = None
-        return cls(volume_normalized, mesh_id, strengths)
+        return cls(MESHES[mesh_id], strengths, volume_normalized)
 
 
 class Box(Spatial):

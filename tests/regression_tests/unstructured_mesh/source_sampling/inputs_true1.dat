@@ -1060,9 +1060,3 @@
   </mesh>
   <max_tracks>10000</max_tracks>
 </settings>
-<?xml version='1.0' encoding='utf-8'?>
-<tallies>
-  <tally id="1">
-    <scores>scatter total absorption</scores>
-  </tally>
-</tallies>

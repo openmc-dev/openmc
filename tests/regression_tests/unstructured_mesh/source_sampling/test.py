@@ -14,10 +14,13 @@ from subprocess import call
 
 TETS_PER_VOXEL = 12
 
+# This test uses a geometry file that resembles a regular mesh.
+# 12 tets are used to match each voxel in the geometry.
+
 class UnstructuredMeshSourceTest(PyAPITestHarness):
-    def __init__(self, statepoint_name, model, inputs_true, schemes):
+    def __init__(self, statepoint_name, model, inputs_true, source_strengths):
         super().__init__(statepoint_name, model, inputs_true)
-        self.schemes = schemes
+        self.source_strengths = source_strengths
 
     def _run_openmc(self):
         kwargs = {'openmc_exec' : config['exe'],
@@ -30,36 +33,43 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
         openmc.run(**kwargs)
 
     def _compare_results(self):
-        # There are 10000 particles and 1000 hexes, this leads to the average
-        # shown below
+        # This model contains 1000 geometry cells. Each cell is a hex
+        # corresponding to 12 of the tets. This test runs 10000 particles. This
+        #  results in the following average for each cell
+
+        # we can compute this based on the number of particles run in the simulation
         average_in_hex = 10.0
 
         # Load in tracks
         if config['mpi']:
             openmc.Tracks.combine(glob.glob('tracks_p*.h5'))
-        
+
         tracks = openmc.Tracks(filepath='tracks.h5')
         tracks_born = np.empty((len(tracks), 1))
 
-        instances = np.zeros(1000)
+        # create an array with an entry for each geometric cell
+        cell_counts = np.zeros(1000)
 
         # loop over the tracks and get data
         for i in range(0, len(tracks)):
+            # get the initial cell ID of the track, and assign it for the tracks_born array
             tracks_born[i] = tracks[i].particle_tracks[0].states['cell_id'][0]
-            instances[int(tracks_born[i])-1] += 1
+            # increment the cell_counts entry for this cell_id
+            cell_counts[int(tracks_born[i])-1] += 1
 
-        if self.schemes == "file":
-            assert(instances[0] > 0 and instances[1] > 0)
-            assert(instances[0] > instances[1])
+        if self.source_strengths == 'manual':
+            assert(cell_counts[0] > 0 and cell_counts[1] > 0)
+            assert(cell_counts[0] > cell_counts[1])
 
-            for i in range(2, len(instances)):
-                assert(instances[i] == 0)
+            # counts for all other cells should be zero
+            for i in range(2, len(cell_counts)):
+                assert(cell_counts[i] == 0)
 
         else:
-            assert(np.average(instances) == average_in_hex)
-            assert(np.std(instances) < np.average(instances))
-            assert(np.amax(instances) < np.average(instances)+6*np.std(instances))
-
+            # check that the average number of source sites in each cell
+            assert(np.average(cell_counts) == average_in_hex) # this probably shouldn't be exact???
+            assert(np.std(cell_counts) < np.average(cell_counts))
+            assert(np.amax(cell_counts) < np.average(cell_counts)+6*np.std(cell_counts))
 
     def _cleanup(self):
         super()._cleanup()
@@ -70,24 +80,23 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
                 os.remove(f)
 
 param_values = (['libmesh', 'moab'], # mesh libraries
-                ['volume', 'file']) # Element weighting schemes
+                ['uniform', 'manual']) # Element weighting schemes
 
 test_cases = []
 for i, (lib, schemes) in enumerate(product(*param_values)):
     test_cases.append({'library' : lib,
-                       'schemes' : schemes,
+                       'source_strengths' : schemes,
                        'inputs_true' : 'inputs_true{}.dat'.format(i)})
 
-@pytest.mark.parametrize("test_opts", test_cases)
-def test_unstructured_mesh(test_opts):
-
+@pytest.mark.parametrize("test_cases", test_cases)
+def test_unstructured_mesh_sampling(test_cases):
     openmc.reset_auto_ids()
 
     # skip the test if the library is not enabled
-    if test_opts['library'] == 'moab' and not openmc.lib._dagmc_enabled():
+    if test_cases['library'] == 'moab' and not openmc.lib._dagmc_enabled():
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
-    if test_opts['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if test_cases['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
         pytest.skip("LibMesh is not enabled in this build.")
 
     ### Materials ###
@@ -134,38 +143,34 @@ def test_unstructured_mesh(test_opts):
 
     geometry = openmc.Geometry(universe)
 
-    mesh_filename = "test_mesh_tets.e"
-
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_opts['library'])
-
-    ### Tallies ###
-
-    # create tallies
-    tallies = openmc.Tallies()
-
-    tally1 = openmc.Tally(1)
-    tally1.scores = ['scatter', 'total', 'absorption']
-    # Export tallies
-    tallies = openmc.Tallies([tally1])
-    tallies.export_to_xml()
-
     ### Settings ###
     settings = openmc.Settings()
     settings.run_mode = 'fixed source'
     settings.particles = 5000
     settings.batches = 2
 
-    settings.max_tracks = 10000
+    settings.max_tracks = settings.particles * settings.batches
 
-    # source setup
-    if test_opts['schemes'] == 'volume':
-        space = openmc.stats.MeshSpatial(volume_normalized=True, mesh=uscd_mesh)
-    elif test_opts['schemes'] == 'file':
-        array = np.zeros(12000)
-        for i in range(0, 12):
-            array[i] = 10
-            array[i+12] = 2
-        space = openmc.stats.MeshSpatial(volume_normalized=False, strengths=array, mesh=uscd_mesh)
+    ### Source ###
+    mesh_filename = "test_mesh_tets.e"
+
+    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases['library'])
+
+    # set source weights according to test case
+    if test_cases['source_strengths'] == 'uniform':
+        vol_norm = True
+        strengths = None
+
+    elif test_cases['source_strengths'] == 'manual':
+        vol_norm = False
+        strengths = np.zeros(12000)
+        # set non-zero strengths only for the tets corresponding to the
+        # first two geometric hex cells
+        strengths[0:12] = 10
+        strengths[12:24] = 2
+
+    # create the spatial distribution based on the mesh
+    space = openmc.stats.MeshSpatial(uscd_mesh, strengths, vol_norm)
 
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy)
@@ -173,11 +178,9 @@ def test_unstructured_mesh(test_opts):
 
     model = openmc.model.Model(geometry=geometry,
                                materials=materials,
-                               tallies=tallies,
                                settings=settings)
-
     harness = UnstructuredMeshSourceTest('statepoint.2.h5',
                                          model,
-                                         test_opts['inputs_true'],
-                                         test_opts['schemes'])
+                                         test_cases['inputs_true'],
+                                         test_cases['source_strengths'])
     harness.main()

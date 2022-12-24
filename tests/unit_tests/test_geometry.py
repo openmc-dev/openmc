@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import numpy as np
 import openmc
@@ -274,7 +275,23 @@ def test_from_xml(run_in_tmpdir, mixed_lattice_model):
     # Export model
     mixed_lattice_model.export_to_xml()
 
-    # Import geometry
+    mats_from_xml = openmc.Materials.from_xml('materials.xml')
+    # checking string a Path are both acceptable
+    for path in ['geometry.xml', Path('geometry.xml')]:
+        for materials in [mats_from_xml, 'materials.xml']:
+            # Import geometry from file
+            geom = openmc.Geometry.from_xml(path=path, materials=materials)
+            assert isinstance(geom, openmc.Geometry)
+            ll, ur = geom.bounding_box
+            assert ll == pytest.approx((-6.0, -6.0, -np.inf))
+            assert ur == pytest.approx((6.0, 6.0, np.inf))
+
+    with pytest.raises(TypeError) as excinfo:
+        geom = openmc.Geometry.from_xml(path='geometry.xml', materials=None)
+    assert 'Unable to set "materials" to "None"' in str(excinfo.value)
+
+
+    # checking that the default args also work
     geom = openmc.Geometry.from_xml()
     assert isinstance(geom, openmc.Geometry)
     ll, ur = geom.bounding_box

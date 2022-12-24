@@ -18,9 +18,8 @@ TETS_PER_VOXEL = 12
 # 12 tets are used to match each voxel in the geometry.
 
 class UnstructuredMeshSourceTest(PyAPITestHarness):
-    def __init__(self, statepoint_name, model, inputs_true, source_strengths):
+    def __init__(self, statepoint_name, model, inputs_true):
         super().__init__(statepoint_name, model, inputs_true)
-        self.source_strengths = source_strengths
 
     def _run_openmc(self):
         kwargs = {'openmc_exec' : config['exe'],
@@ -57,7 +56,9 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
             # increment the cell_counts entry for this cell_id
             cell_counts[int(tracks_born[i])-1] += 1
 
-        if self.source_strengths == 'manual':
+        source_strengths = self._model.settings.source[0].space.strengths
+
+        if source_strengths is not None:
             assert(cell_counts[0] > 0 and cell_counts[1] > 0)
             assert(cell_counts[0] > cell_counts[1])
 
@@ -67,9 +68,11 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
 
         else:
             # check that the average number of source sites in each cell
+            diff = np.abs(cell_counts - average_in_hex)
+
             assert(np.average(cell_counts) == average_in_hex) # this probably shouldn't be exact???
-            assert(np.std(cell_counts) < np.average(cell_counts))
-            assert(np.amax(cell_counts) < np.average(cell_counts)+6*np.std(cell_counts))
+            assert((diff < 2*cell_counts.std()).sum() / diff.size >= 0.75)
+            assert((diff < 6*cell_counts.std()).sum() / diff.size >= 0.97)
 
     def _cleanup(self):
         super()._cleanup()
@@ -181,6 +184,5 @@ def test_unstructured_mesh_sampling(test_cases):
                                settings=settings)
     harness = UnstructuredMeshSourceTest('statepoint.2.h5',
                                          model,
-                                         test_cases['inputs_true'],
-                                         test_cases['source_strengths'])
+                                         test_cases['inputs_true'])
     harness.main()

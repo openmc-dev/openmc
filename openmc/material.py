@@ -1449,6 +1449,57 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
+    def _write_xml(self, file, header=True, level=0, spaces_per_level=2, trailing_indent=True):
+        """Writes XML content of the materials to an open file handle.
+
+        Parameters
+        ----------
+        file : IOTextWrapper
+            Open file handle to write content into.
+        header : bool
+            Whether or not to write the XML header
+        level : int
+            Indentation level of materials element
+        spaces_per_level : int
+            Number of spaces per indentation
+        trailing_indentation : bool
+            Whether or not to write a trailing indentation for the materials element
+
+        """
+        indentation = level*spaces_per_level*' '
+        # Write the header and the opening tag for the root element.
+        if header:
+            file.write("<?xml version='1.0' encoding='utf-8'?>\n")
+        file.write(indentation+'<materials>\n')
+
+        # Write the <cross_sections> element.
+        if self.cross_sections is not None:
+            element = ET.Element('cross_sections')
+            element.text = str(self.cross_sections)
+            clean_indentation(element, level=level+1)
+            element.tail = element.tail.strip(' ')
+            file.write((level+1)*spaces_per_level*' ')
+            reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
+            ET.ElementTree(element).write(file, encoding='unicode')
+
+        # Write the <material> elements.
+        for material in sorted(self, key=lambda x: x.id):
+            element = material.to_xml_element()
+            clean_indentation(element, level=level+1)
+            element.tail = element.tail.strip(' ')
+            file.write((level+1)*spaces_per_level*' ')
+            reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
+            ET.ElementTree(element).write(file, encoding='unicode')
+
+        # Write the closing tag for the root element.
+        file.write(indentation+'</materials>\n')
+
+        # Write a trailing indentation for the next element
+        # at this level if needed
+        if trailing_indent:
+            file.write(indentation)
+
+
     def export_to_xml(self, path: PathLike = 'materials.xml'):
         """Export material collection to an XML file.
 
@@ -1468,32 +1519,34 @@ class Materials(cv.CheckedList):
         # one go.
         with open(str(p), 'w', encoding='utf-8',
                   errors='xmlcharrefreplace') as fh:
+            self._write_xml(fh)
 
-            # Write the header and the opening tag for the root element.
-            fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
-            fh.write('<materials>\n')
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate materials collection from XML file
 
-            # Write the <cross_sections> element.
-            if self.cross_sections is not None:
-                element = ET.Element('cross_sections')
-                element.text = str(self.cross_sections)
-                clean_indentation(element, level=1)
-                element.tail = element.tail.strip(' ')
-                fh.write('  ')
-                reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
-                ET.ElementTree(element).write(fh, encoding='unicode')
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
 
-            # Write the <material> elements.
-            for material in sorted(self, key=lambda x: x.id):
-                element = material.to_xml_element()
-                clean_indentation(element, level=1)
-                element.tail = element.tail.strip(' ')
-                fh.write('  ')
-                reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
-                ET.ElementTree(element).write(fh, encoding='unicode')
+        Returns
+        -------
+        openmc.Materials
+            Materials collection
 
-            # Write the closing tag for the root element.
-            fh.write('</materials>\n')
+        """
+        # Generate each material
+        materials = cls()
+        for material in elem.findall('material'):
+            materials.append(Material.from_xml_element(material))
+
+        # Check for cross sections settings
+        xs = elem.find('cross_sections')
+        if xs is not None:
+            materials.cross_sections = xs.text
+
+        return materials
 
     @classmethod
     def from_xml(cls, path: PathLike = 'materials.xml'):
@@ -1513,14 +1566,4 @@ class Materials(cv.CheckedList):
         tree = ET.parse(path)
         root = tree.getroot()
 
-        # Generate each material
-        materials = cls()
-        for material in root.findall('material'):
-            materials.append(Material.from_xml_element(material))
-
-        # Check for cross sections settings
-        xs = tree.find('cross_sections')
-        if xs is not None:
-            materials.cross_sections = xs.text
-
-        return materials
+        return cls.from_xml_element(root)

@@ -1264,8 +1264,7 @@ double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
   return delta - w_sq * (1.0 - beta_sq);
 }
 
-void read_materials_xml()
-{
+void read_materials_xml() {
   write_message("Reading materials XML file...", 5);
 
   pugi::xml_document doc;
@@ -1281,6 +1280,12 @@ void read_materials_xml()
 
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
+
+  read_materials_xml(root);
+}
+
+void read_materials_xml(pugi::xml_node root)
+{
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(make_unique<Material>(material_node));
   }

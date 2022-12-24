@@ -705,8 +705,7 @@ std::string Tally::nuclide_name(int nuclide_idx) const
 // Non-member functions
 //==============================================================================
 
-void read_tallies_xml()
-{
+void read_tallies_xml() {
   // Check if tallies.xml exists. If not, just return since it is optional
   std::string filename = settings::path_input + "tallies.xml";
   if (!file_exists(filename))
@@ -719,6 +718,11 @@ void read_tallies_xml()
   doc.load_file(filename.c_str());
   pugi::xml_node root = doc.document_element();
 
+  read_tallies_xml(root);
+}
+
+void read_tallies_xml(pugi::xml_node root)
+{
   // Check for <assume_separate> setting
   if (check_for_node(root, "assume_separate")) {
     settings::assume_separate = get_node_value_bool(root, "assume_separate");

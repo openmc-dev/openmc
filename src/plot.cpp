@@ -124,8 +124,7 @@ extern "C" int openmc_plot_geometry()
   return 0;
 }
 
-void read_plots_xml()
-{
+void read_plots_xml() {
   // Check if plots.xml exists; this is only necessary when the plot runmode is
   // initiated. Otherwise, we want to read plots.xml because it may be called
   // later via the API. In that case, its ok for a plots.xml to not exist
@@ -141,6 +140,12 @@ void read_plots_xml()
   doc.load_file(filename.c_str());
 
   pugi::xml_node root = doc.document_element();
+
+  read_plots_xml(root);
+}
+
+void read_plots_xml(pugi::xml_node root)
+{
   for (auto node : root.children("plot")) {
     model::plots.emplace_back(node);
     model::plot_map[model::plots.back().id_] = model::plots.size() - 1;

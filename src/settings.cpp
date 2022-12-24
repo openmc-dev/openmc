@@ -214,20 +214,19 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 }
 
-void read_settings_xml()
-{
+void read_settings_xml() {
   using namespace settings;
   using namespace pugi;
-
   // Check if settings.xml exists
-  std::string filename = path_input + "settings.xml";
+  std::string filename = settings::path_input + "settings.xml";
   if (!file_exists(filename)) {
     if (run_mode != RunMode::PLOTTING) {
       fatal_error(
         fmt::format("Settings XML file '{}' does not exist! In order "
                     "to run OpenMC, you first need a set of input files; at a "
                     "minimum, this "
-                    "includes settings.xml, geometry.xml, and materials.xml. "
+                    "includes settings.xml, geometry.xml, and materials.xml "
+                    "or a single XML file containing all of these files. "
                     "Please consult "
                     "the user's guide at https://docs.openmc.org for further "
                     "information.",
@@ -259,7 +258,16 @@ void read_settings_xml()
     if (verbosity >= 2)
       title();
   }
+
   write_message("Reading settings XML file...", 5);
+
+  read_settings_xml(root);
+}
+
+void read_settings_xml(pugi::xml_node root)
+{
+  using namespace settings;
+  using namespace pugi;
 
   // Find if a multi-group or continuous-energy simulation is desired
   if (check_for_node(root, "energy_mode")) {

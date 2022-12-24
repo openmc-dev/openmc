@@ -18,6 +18,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
@@ -60,7 +61,9 @@ bool run_CE {true};
 bool source_latest {false};
 bool source_separate {false};
 bool source_write {true};
+bool source_mcpl_write {false};
 bool surf_source_write {false};
+bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
 bool temperature_multipole {false};
@@ -429,7 +432,12 @@ void read_settings_xml()
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
-      model::external_sources.push_back(make_unique<FileSource>(path));
+      if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+        auto sites = mcpl_source_sites(path);
+        model::external_sources.push_back(make_unique<FileSource>(sites));
+      } else {
+        model::external_sources.push_back(make_unique<FileSource>(path));
+      }
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);
@@ -647,6 +655,15 @@ void read_settings_xml()
     if (check_for_node(node_sp, "write")) {
       source_write = get_node_value_bool(node_sp, "write");
     }
+    if (check_for_node(node_sp, "mcpl")) {
+      source_mcpl_write = get_node_value_bool(node_sp, "mcpl");
+
+      // Make sure MCPL support is enabled
+      if (source_mcpl_write && !MCPL_ENABLED) {
+        fatal_error(
+          "Your build of OpenMC does not support writing MCPL source files.");
+      }
+    }
     if (check_for_node(node_sp, "overwrite_latest")) {
       source_latest = get_node_value_bool(node_sp, "overwrite_latest");
       source_separate = source_latest;
@@ -677,9 +694,18 @@ void read_settings_xml()
       max_surface_particles =
         std::stoll(get_node_value(node_ssw, "max_particles"));
     }
+    if (check_for_node(node_ssw, "mcpl")) {
+      surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
+
+      // Make sure MCPL support is enabled
+      if (surf_mcpl_write && !MCPL_ENABLED) {
+        fatal_error("Your build of OpenMC does not support writing MCPL "
+                    "surface source files.");
+      }
+    }
   }
 
-  // If source is not seperate and is to be written out in the statepoint file,
+  // If source is not separate and is to be written out in the statepoint file,
   // make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
   if (!source_separate) {

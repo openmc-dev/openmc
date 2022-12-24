@@ -17,7 +17,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.output = {'summary': True, 'tallies': False, 'path': 'here'}
     s.verbosity = 7
     s.sourcepoint = {'batches': [50, 150, 500, 1000], 'separate': True,
-                     'write': True, 'overwrite': True}
+                     'write': True, 'overwrite': True, 'mcpl': True}
     s.statepoint = {'batches': [50, 150, 500, 1000]}
     s.surf_source_read = {'path': 'surface_source_1.h5'}
     s.surf_source_write = {'surface_ids': [2], 'max_particles': 200}
@@ -75,7 +75,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.output == {'summary': True, 'tallies': False, 'path': 'here'}
     assert s.verbosity == 7
     assert s.sourcepoint == {'batches': [50, 150, 500, 1000], 'separate': True,
-                             'write': True, 'overwrite': True}
+                             'write': True, 'overwrite': True, 'mcpl': True}
     assert s.statepoint == {'batches': [50, 150, 500, 1000]}
     assert s.surf_source_read == {'path': 'surface_source_1.h5'}
     assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}

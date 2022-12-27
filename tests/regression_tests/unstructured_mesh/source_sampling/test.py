@@ -97,6 +97,13 @@ def test_unstructured_mesh_sampling(model, test_cases):
 def test_strengths_size_failure(request, model):
     mesh_source = model.settings.source[0]
 
+    # skip the test if unstructured mesh is not available
+    if not openmc.lib._libmesh_enabled():
+        if openmc.lib._dagmc_enabled():
+            mesh_source.space.mesh.library = 'moab'
+        else:
+            pytest.skip("Unstructured mesh support unavailable.")
+
     # make sure that an incorrrectly sized strengths array causes a failure
     mesh_source.space.strengths = mesh_source.space.strengths[:-1]
 

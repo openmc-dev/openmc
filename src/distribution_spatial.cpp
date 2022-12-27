@@ -204,7 +204,6 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   mesh_CDF_.resize(n_bins+1);
   mesh_CDF_[0] = {0.0};
   total_strength_ = 0.0;
-  mesh_strengths_.resize(n_bins);
 
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet
@@ -212,10 +211,13 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   mesh_strengths_ = std::vector<double>(n_bins, 1.0);
   if (check_for_node(node, "strengths")) {
       strengths = get_node_array<double>(node, "strengths");
-      if (strengths.size() != mesh_strengths_.size()){
-        fatal_error("Number of entries in the strength matrix does not match the number of mesh entities");
+      if (strengths.size() != n_bins) {
+        fatal_error(
+          fmt::format("Number of entries in the source strengths array {} does "
+                      "not match the number of entities in mesh {} ({}).",
+            strengths.size(), mesh_id, n_bins));
       }
-      mesh_strengths_ = strengths;
+      mesh_strengths_ = std::move(strengths);
   }
 
   if (get_node_value_bool(node, "volume_normalized")) {

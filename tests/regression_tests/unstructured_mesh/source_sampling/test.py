@@ -1,5 +1,6 @@
 from itertools import product
 
+from pathlib import Path
 import pytest
 import numpy as np
 
@@ -8,14 +9,11 @@ import openmc.lib
 
 from tests import cdtemp
 from tests.testing_harness import PyAPITestHarness
-from tests.regression_tests import config
-from subprocess import call
 
 TETS_PER_VOXEL = 12
 
-# This test uses a geometry file that resembles a regular mesh.
-
-
+# This test uses a geometry file with cells that match a regular mesh. Each cell
+# in the geometry corresponds to 12 tetrahedra in the unstructured mesh file.
 @pytest.fixture
 def model():
     openmc.reset_auto_ids()
@@ -30,16 +28,13 @@ def model():
     materials.append(water_mat)
 
     ### Geometry ###
-    # This test uses a geometry file that resembles a regular mesh.
-    # 12 tets are used to match each voxel in the geometry.
-
     # create a regular mesh that matches the superimposed mesh
     regular_mesh = openmc.RegularMesh(mesh_id=10)
     regular_mesh.lower_left = (-10, -10, -10)
     regular_mesh.dimension = (10, 10, 10)
     regular_mesh.width = (2, 2, 2)
 
-    root_cell, cells = regular_mesh.build_cells()
+    root_cell, _ = regular_mesh.build_cells()
 
     geometry = openmc.Geometry(root=[root_cell])
 
@@ -59,7 +54,8 @@ def model():
     # subtract one to account for root cell
     n_cells = len(geometry.get_all_cells()) - 1
 
-    # set source weights according to test case
+    # set source weights manually so the C++ that checks the
+    # size of the array is executed
     vol_norm = False
     strengths = np.zeros(n_cells*TETS_PER_VOXEL)
     # set non-zero strengths only for the tets corresponding to the
@@ -77,18 +73,29 @@ def model():
                               materials=materials,
                               settings=settings)
 
+
 test_cases = []
 for i, lib, in enumerate(['libmesh', 'moab']):
     test_cases.append({'library' : lib,
                        'inputs_true' : 'inputs_true{}.dat'.format(i)})
 
-def ids(params):
-    return params['library']
-
-@pytest.mark.parametrize("test_cases", test_cases, ids=ids)
+@pytest.mark.parametrize("test_cases", test_cases, ids=lambda p: p['library'])
 def test_unstructured_mesh_sampling(model, test_cases):
 
     model.settings.source[0].space.mesh.libaray = test_cases['library']
 
     harness = PyAPITestHarness('statepoint.2.h5', model, test_cases['inputs_true'])
     harness.main()
+
+
+def test_strengths_size_failure(request, model):
+    mesh_source = model.settings.source[0]
+
+    # make sure that an incorrrectly sized strengths array causes a failure
+    mesh_source.space.strengths = mesh_source.space.strengths[:-1]
+
+    mesh_filename = Path(request.fspath).parent / mesh_source.space.mesh.filename
+
+    with pytest.raises(RuntimeError, match=r'strengths array'), cdtemp([mesh_filename]):
+        model.export_to_xml()
+        openmc.run()

@@ -13,6 +13,8 @@ from subprocess import call
 
 TETS_PER_VOXEL = 12
 
+# This test uses a geometry file with cells that match a regular mesh. Each cell
+# in the geometry corresponds to 12 tetrahedra in the unstructured mesh file.
 @pytest.fixture
 def model():
     openmc.reset_auto_ids()
@@ -36,7 +38,7 @@ def model():
     regular_mesh.dimension = (10, 10, 10)
     regular_mesh.width = (2, 2, 2)
 
-    root_cell, cells = regular_mesh.build_cells()
+    root_cell, _ = regular_mesh.build_cells()
 
     geometry = openmc.Geometry(root=[root_cell])
 
@@ -142,3 +144,4 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
         diff = np.abs(mean - exp_vals)
         assert((diff < 2*std_dev).sum() / diff[:10].size >= 0.95)
         assert((diff < 6*std_dev).sum() / diff.size >= 0.97)
+

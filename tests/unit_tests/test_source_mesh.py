@@ -102,11 +102,8 @@ def test_unstructured_mesh_sampling(model, test_cases):
         strengths = None
     elif test_cases['source_strengths'] == 'manual':
         vol_norm = False
-        strengths = np.zeros(n_cells*TETS_PER_VOXEL)
-        # set non-zero strengths only for the tets corresponding to the
-        # first two geometric hex cells
-        strengths[0:TETS_PER_VOXEL] = 10
-        strengths[TETS_PER_VOXEL:2*TETS_PER_VOXEL] = 2
+        # assign random weights
+        strengths = np.random.rand(n_cells*TETS_PER_VOXEL)
 
     # create the spatial distribution based on the mesh
     space = openmc.stats.MeshSpatial(uscd_mesh, strengths, vol_norm)
@@ -120,9 +117,10 @@ def test_unstructured_mesh_sampling(model, test_cases):
 
         n_cells = len(model.geometry.get_all_cells())
 
-        n_samples = 50000
+        n_measurements = 100
+        n_samples = 1000
 
-        cell_counts = np.zeros(n_cells)
+        cell_counts = np.zeros((n_cells, n_measurements))
 
         # This model contains 1000 geometry cells. Each cell is a hex
         # corresponding to 12 of the tets. This test runs 10000 particles. This
@@ -130,25 +128,31 @@ def test_unstructured_mesh_sampling(model, test_cases):
         average_in_hex = n_samples / n_cells
 
         openmc.lib.init([])
-        sites = openmc.lib.sample_external_source(n_samples)
-        cells = [openmc.lib.find_cell(s.r) for s in sites]
+
+        # perform many sets of samples and track counts for each cell
+        for m in range(n_measurements):
+            sites = openmc.lib.sample_external_source(n_samples)
+            cells = [openmc.lib.find_cell(s.r) for s in sites]
+
+            for c in cells:
+                cell_counts[c[0]._index, m] += 1
+
         openmc.lib.finalize()
 
-        for c in cells:
-            cell_counts[c[0]._index] += 1
+        # normalize cell counts to get sampling frequency per particle
+        cell_counts /= n_samples
 
-        if strengths is not None:
-            assert(cell_counts[0] > 0 and cell_counts[1] > 0)
-            assert(cell_counts[0] > cell_counts[1])
+        # get the mean and std. dev. of the cell counts
+        mean = cell_counts.mean(axis=1)
+        std_dev = cell_counts.std(axis=1)
 
-            # counts for all other cells should be zero
-            for i in range(2, len(cell_counts)):
-                assert(cell_counts[i] == 0)
+        if test_cases['source_strengths'] == 'uniform':
+            exp_vals = np.ones(n_cells) / n_cells
         else:
-            # check that the average number of source sites in each cell
-            # is within the expected deviation
-            diff = np.abs(cell_counts - average_in_hex)
+            # sum up the source strengths for each tet, these are the expected true mean
+            # of the sampling frequency for that cell
+            exp_vals = strengths.reshape(-1, 12).sum(axis=1) / sum(strengths)
 
-            assert(np.average(cell_counts) == average_in_hex) # this probably shouldn't be exact???
-            assert((diff < 2*cell_counts.std()).sum() / diff.size >= 0.75)
-            assert((diff < 6*cell_counts.std()).sum() / diff.size >= 0.97)
+        diff = np.abs(mean - exp_vals)
+        assert((diff < 2*std_dev).sum() / diff[:10].size >= 0.95)
+        assert((diff < 6*std_dev).sum() / diff.size >= 0.97)

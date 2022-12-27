@@ -1045,7 +1045,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
   <run_mode>fixed source</run_mode>
-  <particles>5000</particles>
+  <particles>100</particles>
   <batches>2</batches>
   <source strength="1.0">
     <space mesh_id="1" type="mesh" volume_normalized="False">
@@ -1058,5 +1058,4 @@
   <mesh id="1" library="libmesh" type="unstructured">
     <filename>test_mesh_tets.e</filename>
   </mesh>
-  <max_tracks>10000</max_tracks>
 </settings>

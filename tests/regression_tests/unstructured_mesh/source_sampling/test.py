@@ -1,6 +1,4 @@
-import glob
 from itertools import product
-import os
 
 import pytest
 import numpy as np
@@ -9,6 +7,7 @@ import openmc
 import openmc.lib
 
 from tests import cdtemp
+from tests.testing_harness import PyAPITestHarness
 from tests.regression_tests import config
 from subprocess import call
 
@@ -17,6 +16,8 @@ TETS_PER_VOXEL = 12
 
 @pytest.fixture
 def model():
+    openmc.reset_auto_ids()
+
     ### Materials ###
     materials = openmc.Materials()
 
@@ -63,100 +64,47 @@ def model():
     ### Settings ###
     settings = openmc.Settings()
     settings.run_mode = 'fixed source'
-    settings.particles = 5000
+    settings.particles = 100
     settings.batches = 2
 
-    return openmc.model.Model(geometry=geometry,
-                              materials=materials,
-                              settings=settings)
-
-
-param_values = (['libmesh', 'moab'], # mesh libraries
-                ['uniform', 'manual']) # Element weighting schemes
-
-test_cases = []
-for i, (lib, schemes) in enumerate(product(*param_values)):
-    test_cases.append({'library' : lib,
-                       'source_strengths' : schemes,
-                       'inputs_true' : 'inputs_true{}.dat'.format(i)})
-
-def ids(params):
-    return f"{params['library']}-{params['source_strengths']}"
-
-@pytest.mark.parametrize("test_cases", test_cases, ids=ids)
-def test_unstructured_mesh_sampling(model, test_cases):
-    # skip the test if the library is not enabled
-    if test_cases['library'] == 'moab' and not openmc.lib._dagmc_enabled():
-        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
-
-    if test_cases['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
-        pytest.skip("LibMesh is not enabled in this build.")
-
-    # setup mesh source ###
     mesh_filename = "test_mesh_tets.e"
 
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases['library'])
+    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, 'libmesh')
 
-    n_cells = len(model.geometry.get_all_cells())
+    n_cells = len(geometry.get_all_cells())
 
     # set source weights according to test case
-    if test_cases['source_strengths'] == 'uniform':
-        vol_norm = True
-        strengths = None
-    elif test_cases['source_strengths'] == 'manual':
-        vol_norm = False
-        strengths = np.zeros(n_cells*TETS_PER_VOXEL)
-        # set non-zero strengths only for the tets corresponding to the
-        # first two geometric hex cells
-        strengths[0:TETS_PER_VOXEL] = 10
-        strengths[TETS_PER_VOXEL:2*TETS_PER_VOXEL] = 2
+    vol_norm = False
+    strengths = np.zeros(n_cells*TETS_PER_VOXEL)
+    # set non-zero strengths only for the tets corresponding to the
+    # first two geometric hex cells
+    strengths[0:TETS_PER_VOXEL] = 10
+    strengths[TETS_PER_VOXEL:2*TETS_PER_VOXEL] = 2
 
     # create the spatial distribution based on the mesh
     space = openmc.stats.MeshSpatial(uscd_mesh, strengths, vol_norm)
 
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy)
-    model.settings.source = source
+    settings.source = source
 
-    with cdtemp(['test_mesh_tets.e', 'test_mesh_tets.exo']):
-        model.export_to_xml()
+    return openmc.model.Model(geometry=geometry,
+                              materials=materials,
+                              settings=settings)
 
-        n_cells = len(model.geometry.get_all_cells())
 
-        n_samples = 100000
+test_cases = []
+for i, lib, in enumerate(['libmesh', 'moab']):
+    test_cases.append({'library' : lib,
+                       'inputs_true' : 'inputs_true{}.dat'.format(i)})
 
-        cell_counts = np.zeros(n_cells)
+def ids(params):
+    return params['library']
 
-        # This model contains 1000 geometry cells. Each cell is a hex
-        # corresponding to 12 of the tets. This test runs 10000 particles. This
-        #  results in the following average for each cell
-        average_in_hex = n_samples / n_cells
+@pytest.mark.parametrize("test_cases", test_cases, ids=ids)
+def test_unstructured_mesh_sampling(model, test_cases):
 
-        openmc.lib.init([])
+    model.settings.source[0].space.mesh.libaray = test_cases['library']
 
-        sites = openmc.lib.sample_external_source(n_samples)
-        cells = [openmc.lib.find_cell(s.r) for s in sites]
-
-        openmc.lib.finalize()
-
-        for c in cells:
-            cell_counts[c[0]._index] += 1
-
-        source_strengths = model.settings.source[0].space.strengths
-
-        if source_strengths is not None:
-            assert(cell_counts[0] > 0 and cell_counts[1] > 0)
-            assert(cell_counts[0] > cell_counts[1])
-
-            # counts for all other cells should be zero
-            for i in range(2, len(cell_counts)):
-                assert(cell_counts[i] == 0)
-
-        else:
-            # check that the average number of source sites in each cell
-            # is within the expected deviation
-            diff = np.abs(cell_counts - average_in_hex)
-
-            assert(np.average(cell_counts) == average_in_hex) # this probably shouldn't be exact???
-            assert((diff < 2*cell_counts.std()).sum() / diff.size >= 0.75)
-            assert((diff < 6*cell_counts.std()).sum() / diff.size >= 0.97)
+    harness = PyAPITestHarness('statepoint.2.h5', model, test_cases['inputs_true'])
+    harness.main()

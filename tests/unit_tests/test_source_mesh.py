@@ -1,5 +1,6 @@
 from itertools import product
 
+from pathlib import Path
 import pytest
 import numpy as np
 
@@ -67,7 +68,7 @@ def ids(params):
     return f"{params['library']}-{params['source_strengths']}"
 
 @pytest.mark.parametrize("test_cases", test_cases, ids=ids)
-def test_unstructured_mesh_sampling(model, test_cases):
+def test_unstructured_mesh_sampling(model, request, test_cases):
     # skip the test if the library is not enabled
     if test_cases['library'] == 'moab' and not openmc.lib._dagmc_enabled():
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
@@ -76,7 +77,7 @@ def test_unstructured_mesh_sampling(model, test_cases):
         pytest.skip("LibMesh is not enabled in this build.")
 
     # setup mesh source ###
-    mesh_filename = "test_mesh_tets.e"
+    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases['library'])
 
     # subtract one to account for root cell produced by RegularMesh.build_cells
@@ -98,7 +99,7 @@ def test_unstructured_mesh_sampling(model, test_cases):
     source = openmc.Source(space=space, energy=energy)
     model.settings.source = source
 
-    with cdtemp(['test_mesh_tets.e']):
+    with cdtemp([mesh_filename]):
         model.export_to_xml()
 
         n_measurements = 100

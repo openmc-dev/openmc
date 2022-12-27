@@ -29,35 +29,19 @@ def model():
     # This test uses a geometry file that resembles a regular mesh.
     # 12 tets are used to match each voxel in the geometry.
 
-    dimen = 10
-    size_hex = 20.0 / dimen
+    # create a regular mesh that matches the superimposed mesh
+    regular_mesh = openmc.RegularMesh(mesh_id=10)
+    regular_mesh.lower_left = (-10, -10, -10)
+    regular_mesh.dimension = (10, 10, 10)
+    regular_mesh.width = (2, 2, 2)
 
-    cells = np.empty((dimen, dimen, dimen), dtype=object)
-    surfaces = np.empty((dimen + 1, 3), dtype=object)
+    root_cell, cells = regular_mesh.build_cells()
 
-    geometry = openmc.Geometry()
-    universe = openmc.Universe(universe_id=1, name="Contains all hexes")
+    geometry = openmc.Geometry(root=[root_cell])
 
-    for i in range(0, dimen+1):
-        coord = -dimen + i * size_hex
-        surfaces[i][0] = openmc.XPlane(coord, name=f"X plane at {coord}")
-        surfaces[i][1] = openmc.YPlane(coord, name=f"Y plane at {coord}")
-        surfaces[i][2] = openmc.ZPlane(coord, name=f"Z plane at {coord}")
-
-        surfaces[i][0].boundary_type = 'vacuum'
-        surfaces[i][1].boundary_type = 'vacuum'
-        surfaces[i][2].boundary_type = 'vacuum'
-
-    for (k, j, i) in np.ndindex(cells.shape):
-        cells[i][j][k] = openmc.Cell(name=("x = {}, y = {}, z = {}".format(i,j,k)))
-        cells[i][j][k].region = +surfaces[i][0] & -surfaces[i+1][0] & \
-                                +surfaces[j][1] & -surfaces[j+1][1] & \
-                                +surfaces[k][2] & -surfaces[k+1][2]
-        cells[i][j][k].fill = None
-
-        universe.add_cell(cells[i][j][k])
-
-    geometry = openmc.Geometry(universe)
+    # set boundary conditions of the root cell
+    for surface in root_cell.region.get_surfaces().values():
+        surface.boundary_type = 'vacuum'
 
     ### Settings ###
     settings = openmc.Settings()
@@ -69,6 +53,7 @@ def model():
                               materials=materials,
                               settings=settings)
 
+### Setup test cases ###
 param_values = (['libmesh', 'moab'], # mesh libraries
                 ['uniform', 'manual']) # Element weighting schemes
 
@@ -78,6 +63,7 @@ for i, (lib, schemes) in enumerate(product(*param_values)):
                        'source_strengths' : schemes})
 
 def ids(params):
+    """Test naming function for clarity"""
     return f"{params['library']}-{params['source_strengths']}"
 
 @pytest.mark.parametrize("test_cases", test_cases, ids=ids)
@@ -91,10 +77,10 @@ def test_unstructured_mesh_sampling(model, test_cases):
 
     # setup mesh source ###
     mesh_filename = "test_mesh_tets.e"
-
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases['library'])
 
-    n_cells = len(model.geometry.get_all_cells())
+    # subtract one to account for root cell produced by RegularMesh.build_cells
+    n_cells = len(model.geometry.get_all_cells()) - 1
 
     # set source weights according to test case
     if test_cases['source_strengths'] == 'uniform':
@@ -115,8 +101,6 @@ def test_unstructured_mesh_sampling(model, test_cases):
     with cdtemp(['test_mesh_tets.e']):
         model.export_to_xml()
 
-        n_cells = len(model.geometry.get_all_cells())
-
         n_measurements = 100
         n_samples = 1000
 
@@ -135,7 +119,8 @@ def test_unstructured_mesh_sampling(model, test_cases):
             cells = [openmc.lib.find_cell(s.r) for s in sites]
 
             for c in cells:
-                cell_counts[c[0]._index, m] += 1
+                # subtract one from index to account for root cell
+                cell_counts[c[0]._index - 1, m] += 1
 
         openmc.lib.finalize()
 

@@ -11,6 +11,7 @@ from tests import cdtemp
 from tests.regression_tests import config
 from subprocess import call
 
+
 TETS_PER_VOXEL = 12
 
 # This test uses a geometry file with cells that match a regular mesh. Each cell

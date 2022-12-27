@@ -81,6 +81,12 @@ for i, lib, in enumerate(['libmesh', 'moab']):
 
 @pytest.mark.parametrize("test_cases", test_cases, ids=lambda p: p['library'])
 def test_unstructured_mesh_sampling(model, test_cases):
+    # skip the test if the library is not enabled
+    if test_cases['library'] == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
+
+    if test_cases['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip("LibMesh is not enabled in this build.")
 
     model.settings.source[0].space.mesh.libaray = test_cases['library']
 

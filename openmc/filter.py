@@ -1741,7 +1741,7 @@ class DistribcellFilter(Filter):
         # Concatenate with DataFrame of distribcell instance IDs
         if level_df is not None:
             level_df = level_df.dropna(axis=1, how='all')
-            level_df = level_df.astype(np.int)
+            level_df = level_df.astype(int)
             df = pd.concat([level_df, df], axis=1)
 
         return df

@@ -19,6 +19,8 @@ public:
 
   //! Sample a position from the distribution
   virtual Position sample(uint64_t* seed) const = 0;
+
+  static unique_ptr<SpatialDistribution> create(pugi::xml_node node);
 };
 
 //==============================================================================
@@ -109,8 +111,15 @@ public:
   Position sample(uint64_t* seed) const override;
 
   const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }
+  //! Sample the mesh for an element and position within that element
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled element index and position within that element
+  std::pair<int32_t, Position> sample_mesh(uint64_t* seed) const;
 
+  // Accessort
+  const unique_ptr<Mesh>& mesh() const { return model::meshes.at(mesh_idx_); }
   int32_t n_sources() const { return this->mesh()->n_bins(); }
+  double total_strength() const { return total_strength_; }
 
 private:
   int32_t mesh_idx_ {C_NONE};

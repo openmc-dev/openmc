@@ -9,6 +9,36 @@
 namespace openmc {
 
 //==============================================================================
+// SpatialDistribution implementation
+//==============================================================================
+
+unique_ptr<SpatialDistribution> SpatialDistribution::create(pugi::xml_node node)
+{
+  // Check for type of spatial distribution and read
+  std::string type;
+  if (check_for_node(node, "type"))
+    type = get_node_value(node, "type", true, true);
+  if (type == "cartesian") {
+    return UPtrSpace {new CartesianIndependent(node)};
+  } else if (type == "cylindrical") {
+    return UPtrSpace {new CylindricalIndependent(node)};
+  } else if (type == "spherical") {
+    return UPtrSpace {new SphericalIndependent(node)};
+  } else if (type == "mesh") {
+    return UPtrSpace {new MeshSpatial(node)};
+  } else if (type == "box") {
+    return UPtrSpace {new SpatialBox(node)};
+  } else if (type == "fission") {
+    return UPtrSpace {new SpatialBox(node, true)};
+  } else if (type == "point") {
+    return UPtrSpace {new SpatialPoint(node)};
+  } else {
+    fatal_error(fmt::format(
+      "Invalid spatial distribution for external source: {}", type));
+  }
+}
+
+//==============================================================================
 // CartesianIndependent implementation
 //==============================================================================
 
@@ -189,8 +219,14 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 
 MeshSpatial::MeshSpatial(pugi::xml_node node)
 {
-  // No in-tet distributions implemented, could include distributions for the
-  // barycentric coords Read in unstructured mesh from mesh_id value
+
+  if (get_node_value(node, "type", true, true) != "mesh") {
+    fatal_error(fmt::format(
+      "Incorrect spatial type '{}' for a MeshSpatial distribution"));
+  }
+
+  // No in-tet distributions implemented, could include distributions for the barycentric coords
+  // Read in unstructured mesh from mesh_id value
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
   // Get pointer to spatial distribution
   mesh_idx_ = model::mesh_map.at(mesh_id);
@@ -234,7 +270,7 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   elem_idx_dist_.assign(strengths.data(), n_bins);
 }
 
-Position MeshSpatial::sample(uint64_t* seed) const
+std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const
 {
   // Sample over the CDF defined in initialization above
   int32_t elem_idx = elem_idx_dist_.sample(seed);

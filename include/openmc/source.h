@@ -50,6 +50,8 @@ public:
 
   // Methods that can be overridden
   virtual double strength() const { return 1.0; }
+
+  static unique_ptr<Source> create(pugi::xml_node node);
 };
 
 //==============================================================================
@@ -135,6 +137,48 @@ private:
 };
 
 typedef unique_ptr<Source> create_compiled_source_t(std::string parameters);
+
+//==============================================================================
+//! Mesh-based source with different distributions for each element
+//==============================================================================
+
+class MeshSource : public Source {
+public:
+  // Constructors
+  explicit MeshSource(pugi::xml_node node);
+
+  //! Sample from the external source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+  // Properties
+  ParticleType particle_type() const { return particle_; }
+  double strength() const override { return strength_; }
+
+  // Accessors
+  UnitSphereDistribution* angle(int32_t i) const
+  {
+    return angle_.size() == 1 ? angle_[0].get() : angle_[i].get();
+  }
+  Distribution* energy(int32_t i) const
+  {
+    return energy_.size() == 1 ? energy_[0].get() : energy_[i].get();
+  }
+  Distribution* time(int32_t i) const
+  {
+    return time_.size() == 1 ? time_[0].get() : time_[i].get();
+  }
+
+private:
+  // Data members
+  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
+  double strength_ {1.0};                         //!< Source strength
+  unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
+  vector<UPtrAngle> angle_;                       //!< Angular distributions
+  vector<UPtrDist> energy_;                       //!< Energy distributions
+  vector<UPtrDist> time_;                         //!< Time distributions
+};
 
 //==============================================================================
 // Functions

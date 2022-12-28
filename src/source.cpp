@@ -45,6 +45,29 @@ vector<unique_ptr<Source>> external_sources;
 }
 
 //==============================================================================
+// Source create implementation
+//==============================================================================
+
+unique_ptr<Source> Source::create(pugi::xml_node node)
+{
+  if (check_for_node(node, "file")) {
+    auto path = get_node_value(node, "file", false, true);
+    return make_unique<FileSource>(path);
+  } else if (check_for_node(node, "library")) {
+    // Get shared library path and parameters
+    auto path = get_node_value(node, "library", false, true);
+    std::string parameters;
+    if (check_for_node(node, "parameters")) {
+      parameters = get_node_value(node, "parameters", false, true);
+    }
+    // Create custom source
+    return make_unique<CustomSourceWrapper>(path, parameters);
+  } else {
+    return make_unique<IndependentSource>(node);
+  }
+}
+
+//==============================================================================
 // IndependentSource implementation
 //==============================================================================
 
@@ -81,32 +104,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
 
     // Spatial distribution for external source
     if (check_for_node(node, "space")) {
-      // Get pointer to spatial distribution
-      pugi::xml_node node_space = node.child("space");
-
-      // Check for type of spatial distribution and read
-      std::string type;
-      if (check_for_node(node_space, "type"))
-        type = get_node_value(node_space, "type", true, true);
-      if (type == "cartesian") {
-        space_ = UPtrSpace {new CartesianIndependent(node_space)};
-      } else if (type == "cylindrical") {
-        space_ = UPtrSpace {new CylindricalIndependent(node_space)};
-      } else if (type == "spherical") {
-        space_ = UPtrSpace {new SphericalIndependent(node_space)};
-      } else if (type == "mesh") {
-        space_ = UPtrSpace {new MeshSpatial(node_space)};
-      } else if (type == "box") {
-        space_ = UPtrSpace {new SpatialBox(node_space)};
-      } else if (type == "fission") {
-        space_ = UPtrSpace {new SpatialBox(node_space, true)};
-      } else if (type == "point") {
-        space_ = UPtrSpace {new SpatialPoint(node_space)};
-      } else {
-        fatal_error(fmt::format(
-          "Invalid spatial distribution for external source: {}", type));
-      }
-
+      space_ = SpatialDistribution::create(node.child("space"));
     } else {
       // If no spatial distribution specified, make it a point source
       space_ = UPtrSpace {new SpatialPoint()};
@@ -376,6 +374,130 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
   fatal_error("Custom source libraries have not yet been implemented for "
               "non-POSIX systems");
 #endif
+}
+
+//==============================================================================
+// MeshSource implementation
+//==============================================================================
+
+MeshSource::MeshSource(pugi::xml_node node)
+{
+  // Check for particle type
+  if (check_for_node(node, "particle")) {
+    auto temp_str = get_node_value(node, "particle", true, true);
+    if (temp_str == "neutron") {
+      particle_ = ParticleType::neutron;
+    } else if (temp_str == "photon") {
+      particle_ = ParticleType::photon;
+      settings::photon_transport = true;
+    } else {
+      fatal_error(std::string("Unknown source particle type: ") + temp_str);
+    }
+  }
+
+  // read mesh distribution
+  if (check_for_node(node, "space")) {
+    space_ = std::make_unique<MeshSpatial>(node.child("space"));
+  } else {
+    fatal_error("No spatial distribution found for mesh source.");
+  }
+
+  MeshSpatial* mesh_spatial = dynamic_cast<MeshSpatial*>(space_.get());
+  if (!mesh_spatial)
+    fatal_error("Failed to recast mesh spatital distribution for mesh source.");
+
+  strength_ = mesh_spatial->total_strength();
+
+  int32_t n_mesh_sources = mesh_spatial->n_sources();
+
+  // read all angular distributions
+  for (auto angle_node : node.children("angle")) {
+    angle_.emplace_back(UnitSphereDistribution::create(angle_node));
+  }
+  // if no angular distributions were present, default to an isotropic
+  // distribution
+  if (angle_.size() == 0)
+    angle_.emplace_back(UPtrAngle {new Isotropic()});
+
+  if (angle_.size() != n_mesh_sources || angle_.size() != 1)
+    fatal_error(fmt::format("Incorrect number of angle distributions ({}) for "
+                            "mesh source with {} elements.",
+      angle_.size(), n_mesh_sources));
+
+  // read all energy distributions
+  for (auto energy_node : node.children("energy")) {
+    energy_.emplace_back(distribution_from_xml(energy_node));
+  }
+  // if no energy distributions are present, TODO: determine appropriate default
+  // energy distribution
+  if (energy_.size() == 0)
+    energy_.emplace_back(UPtrDist {new Watt(0.988e6, 2.249e-6)});
+
+  if (angle_.size() != n_mesh_sources || angle_.size() != 1)
+    fatal_error(fmt::format("Incorrect number of angle distributions ({}) for "
+                            "mesh source with {} elements.",
+      angle_.size(), n_mesh_sources));
+
+  // read all time distributions
+  for (auto time_node : node.children("time")) {
+    time_.emplace_back(distribution_from_xml(time_node));
+  }
+  // if no time distributions are present, default to a constant time T=0
+  if (time_.size() == 0) {
+    vector<double> T = {0.0};
+    vector<double> p = {0.0};
+    time_.emplace_back(UPtrDist {new Discrete(T.data(), p.data(), 1)});
+  }
+
+  if (angle_.size() != n_mesh_sources || angle_.size() != 1)
+    fatal_error(fmt::format("Incorrect number of angle distributions ({}) for "
+                            "mesh source with {} elements.",
+      angle_.size(), n_mesh_sources));
+}
+
+SourceSite MeshSource::sample(uint64_t* seed) const
+{
+  SourceSite site;
+  site.particle = particle_;
+
+  int n_reject = 0;
+  static int n_accept = 0;
+
+  // sample location and element from mesh
+  auto mesh_location = space_->sample_mesh(seed);
+
+  site.r = mesh_location.second;
+
+  int32_t element = mesh_location.first;
+
+  site.u = angle(element)->sample(seed);
+
+  Distribution* e_dist = energy(element);
+  auto p = static_cast<int>(particle_);
+  // TODO: this is copied code from IndependentSource::sample, refactor
+  while (true) {
+    // Sample energy spectrum
+    site.E = e_dist->sample(seed);
+
+    // Resample if energy falls above maximum particle energy
+    if (site.E < data::energy_max[p])
+      break;
+
+    n_reject++;
+    if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
+        static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
+      fatal_error("More than 95% of external source sites sampled were "
+                  "rejected. Please check your external source energy spectrum "
+                  "definition.");
+    }
+  }
+
+  site.time = time(element)->sample(seed);
+
+  // Increment number of accepted samples
+  ++n_accept;
+
+  return site;
 }
 
 //==============================================================================

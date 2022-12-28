@@ -381,7 +381,7 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
   return ijk;
 }
 
-Position StructuredMesh::sample(uint64_t* seed, int32_t bin) const
+Position StructuredMesh::sample_element(uint64_t* seed, int32_t bin) const
 {
   fatal_error("Position sampling on structured meshes is not yet implemented");
 }
@@ -2185,7 +2185,7 @@ std::string MOABMesh::library() const
 }
 
 // Sample position within a tet for MOAB type tets
-Position MOABMesh::sample(uint64_t* seed, int32_t bin) const
+Position MOABMesh::sample_element(uint64_t* seed, int32_t bin) const
 {
 
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
@@ -2672,7 +2672,11 @@ void LibMesh::initialize()
 }
 
 // Sample position within a tet for LibMesh type tets
+<<<<<<< HEAD
 Position LibMesh::sample(uint64_t* seed, int32_t bin) const
+=======
+Position LibMesh::sample_element(uint64_t* seed, int32_t bin) const
+>>>>>>> fa356e60a (Updating name of high-level sampling method)
 {
   const auto& elem = get_element_from_bin(bin);
   // Get tet vertex coordinates from LibMesh

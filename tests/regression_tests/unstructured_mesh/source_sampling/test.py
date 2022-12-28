@@ -88,7 +88,7 @@ def test_unstructured_mesh_sampling(model, test_cases):
     if test_cases['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
         pytest.skip("LibMesh is not enabled in this build.")
 
-    model.settings.source[0].space.mesh.libaray = test_cases['library']
+    model.settings.source[0].space.mesh.library = test_cases['library']
 
     harness = PyAPITestHarness('statepoint.2.h5', model, test_cases['inputs_true'])
     harness.main()

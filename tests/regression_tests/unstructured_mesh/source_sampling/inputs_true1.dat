@@ -1144,7 +1144,7 @@
       <parameters>15000000.0 1.0</parameters>
     </energy>
   </source>
-  <mesh id="1" library="libmesh" type="unstructured">
+  <mesh id="1" library="moab" type="unstructured">
     <filename>test_mesh_tets.e</filename>
   </mesh>
 </settings>

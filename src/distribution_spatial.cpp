@@ -225,8 +225,8 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
       "Incorrect spatial type '{}' for a MeshSpatial distribution"));
   }
 
-  // No in-tet distributions implemented, could include distributions for the barycentric coords
-  // Read in unstructured mesh from mesh_id value
+  // No in-tet distributions implemented, could include distributions for the
+  // barycentric coords Read in unstructured mesh from mesh_id value
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
   // Get pointer to spatial distribution
   mesh_idx_ = model::mesh_map.at(mesh_id);

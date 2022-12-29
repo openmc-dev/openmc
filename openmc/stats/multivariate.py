@@ -627,7 +627,7 @@ class MeshSpatial(Spatial):
     This distribution specifies a mesh to sample over, chooses whether it will
     be volume normalized, and can set the source strengths.
 
-    .. versionadded:: 0.13
+    .. versionadded:: 0.13.3
 
     Parameters
     ----------
@@ -651,8 +651,7 @@ class MeshSpatial(Spatial):
         Whether or not the strengths will be normalized by volume.
     """
 
-    def __init__(self,
-    mesh, strengths=None, volume_normalized=True):
+    def __init__(self, mesh, strengths=None, volume_normalized=True):
         self.mesh = mesh
         self.strengths = strengths
         self.volume_normalized = volume_normalized

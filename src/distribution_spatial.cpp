@@ -243,8 +243,8 @@ Position MeshSpatial::sample(uint64_t* seed) const
   // Create random variable for sampling element from mesh
   double eta = prn(seed);
   // Sample over the CDF defined in initialization above
-  int32_t elem_bin = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
-  return mesh_ptr_->sample(seed, elem_bin);
+  int32_t elem_idx = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
+  return mesh_ptr_->sample(seed, elem_idx);
 }
 
 //==============================================================================

@@ -12,7 +12,7 @@ from .error import _error_handler
 from .mesh import _get_mesh
 from .mesh import meshes
 
-__all__ = ['WeightWindows']
+__all__ = ['WeightWindows', 'weight_windows_map']
 
 _dll.openmc_extend_weight_windows.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 
@@ -34,11 +34,11 @@ _dll.openmc_weight_windows_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_weight_windows_get_mesh.restype = c_int
 _dll.openmc_weight_windows_get_mesh.errcheck = _error_handler
 
-_dll.openmc_weight_windows_set_energy_bounds.arg_types = [c_int32, POINTER(c_double), c_size_t]
+_dll.openmc_weight_windows_set_energy_bounds.argtypes = [c_int32, POINTER(c_double), c_size_t]
 _dll.openmc_weight_windows_set_energy_bounds.restype = c_int
 _dll.openmc_weight_windows_set_energy_bounds.errcheck = _error_handler
 
-_dll.openmc_weight_windows_get_energy_bounds.arg_types = [c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t)]
+_dll.openmc_weight_windows_get_energy_bounds.argtypes = [c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t)]
 _dll.openmc_weight_windows_get_energy_bounds.restype = c_int
 _dll.openmc_weight_windows_get_energy_bounds.errcheck = _error_handler
 
@@ -61,7 +61,7 @@ class WeightWindows(_FortranObjectWithID):
     __instances = WeakValueDictionary()
 
     def __new__(cls, id=None, new=True, index=None):
-        mapping = weight_windows
+        mapping = weight_windows_map
 
         if index is None:
             if new:
@@ -96,20 +96,18 @@ class WeightWindows(_FortranObjectWithID):
 
     @mesh.setter
     def mesh(self, mesh):
-        _dll.openmc_weight_windows_set_mesh(weight_windows[self.id]._index, meshes[mesh.id]._index)
+        _dll.openmc_weight_windows_set_mesh(weight_windows_map[self.id]._index, meshes[mesh.id]._index)
 
     @property
     def energy_bounds(self):
         data = POINTER(c_double)()
-        size = c_size_t()
-        print(size)
-        print(self._index)
-        _dll.openmc_weight_windows_get_energy_bounds(self._index, data, size)
-        return as_array(data, (size.value,))
+        n = c_size_t()
+        _dll.openmc_weight_windows_get_energy_bounds(self._index, data, n)
+        return as_array(data, (n.value,))
 
     @energy_bounds.setter
     def energy_bounds(self, e_bounds):
-        e_bounds_arr = np.asarray(e_bounds)
+        e_bounds_arr = np.asarray(e_bounds, dtype=float)
         e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
         _dll.openmc_weight_windows_set_energy_bounds(self._index, e_bounds_ptr, e_bounds_arr.size)
 
@@ -129,7 +127,6 @@ class WeightWindows(_FortranObjectWithID):
             Method used for weight window generation. One of {'magic', 'pseudo-source'}
 
         """
-
         _dll.openmc_update_weight_windows(tally_idx,
                                           ww_idx,
                                           c_char_p(score.encode()),
@@ -159,4 +156,4 @@ class _WeightWindowsMapping(Mapping):
     def __delitem__(self):
         raise NotImplementedError("WeightWindows object remove not implemented")
 
-weight_windows = _WeightWindowsMapping()
+weight_windows_map = _WeightWindowsMapping()

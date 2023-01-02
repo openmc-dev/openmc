@@ -591,6 +591,7 @@ extern "C" int openmc_weight_windows_set_energy_bounds(
 extern "C" int openmc_weight_windows_get_energy_bounds(
   int32_t ww_idx, const double** e_bounds, size_t* e_bounds_size)
 {
+
   const auto& wws = variance_reduction::weight_windows[ww_idx].get();
   *e_bounds = wws->energy_bounds().data();
   *e_bounds_size = wws->energy_bounds().size();

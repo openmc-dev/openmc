@@ -35,6 +35,7 @@ class _Settings:
     run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
     event_based = _DLLGlobal(c_bool, 'event_based')
+    weight_windows_on = _DLLGlobal(c_bool, 'weight_windows_on')
 
     @property
     def run_mode(self):
@@ -66,6 +67,15 @@ class _Settings:
     @seed.setter
     def seed(self, seed):
         _dll.openmc_set_seed(seed)
+
+    @property
+    def weight_windows_on(self):
+        return c_bool.in_dll(_dll, 'weight_windows_on').value
+
+    @weight_windows_on.setter
+    def weight_windows_on(self, val):
+        ww_on = c_bool.in_dll(_dll, 'weight_windows_on')
+        ww_on.value = c_bool(val)
 
     def set_batches(self, n_batches, set_max_batches=True, add_sp_batch=True):
         """Set number of batches or maximum number of batches

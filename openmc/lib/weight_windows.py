@@ -11,6 +11,7 @@ from .core import _FortranObjectWithID
 from .error import _error_handler
 from .mesh import _get_mesh
 from .mesh import meshes
+from .filter import EnergyFilter, MeshFilter, ParticleFilter
 
 __all__ = ['WeightWindows', 'weight_windows_map']
 
@@ -92,7 +93,7 @@ class WeightWindows(_FortranObjectWithID):
     def mesh(self):
         mesh_idx = c_int32()
         _dll.openmc_weight_windows_get_mesh(self._index, mesh_idx)
-        return _get_mesh[mesh_idx]
+        return _get_mesh(mesh_idx.value)
 
     @mesh.setter
     def mesh(self, mesh):
@@ -127,12 +128,24 @@ class WeightWindows(_FortranObjectWithID):
             Method used for weight window generation. One of {'magic', 'pseudo-source'}
 
         """
-        _dll.openmc_update_weight_windows(tally_idx,
-                                          ww_idx,
+        _dll.openmc_update_weight_windows(tally._index,
+                                          self._index,
                                           c_char_p(score.encode()),
                                           c_char_p(value.encode()),
                                           c_char_p(method.encode()))
 
+    @classmethod
+    def from_tally(cls, tally):
+        out = cls()
+        for f in tally.filters:
+            if isinstance(f, MeshFilter):
+                out.mesh = f.mesh
+            elif isinstance(f, EnergyFilter):
+                out.energy_bounds = f.bins
+            else:
+                raise RuntimeError(f'Filter of type {type(f)} is invalid for weight windows.')
+
+        return out
 
 class _WeightWindowsMapping(Mapping):
     def __getitem__(self, key):

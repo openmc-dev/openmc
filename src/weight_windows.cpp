@@ -414,26 +414,15 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
     const auto& f = model::tally_filters[tally->filters(i)];
     shape[i] = f->n_bins();
   }
-
-  std::cout << "Shape: ";
-  for (auto s : shape) { std::cout << s << std::endl; }
   ///////////////////////////////////
 
   // sum results over all nuclides and select results related to a single score
   auto score_view =
     xt::view(tally->results(), xt::all(), score_index, TallyResult::SUM);
 
-  std::cout << "Score view size: " << score_view.size() << std::endl;
-
   // apply the score view results to this xtensor
   // TODO: this is a big copy. Might want to figure out a way to
   // reduce memory usage here.
-
-  std::cout << "Score view shape: ";
-  for (auto i : score_view.shape()) {
-    std::cout << i << ", ";
-  }
-  std::cout << std::endl;
 
   xt::xarray<double> lower_bounds(score_view);
   // xt::xtensor<double, 3> lower_bounds(shape);
@@ -441,16 +430,6 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   std::copy(score_view.begin(), score_view.end(), lower_bounds.begin());
   // lower_bounds = xt::zeros_like(score_view);
   //lower_bounds = score_view;
-
-  std::cout << "Lower bounds shape: ";
-  for (auto i : lower_bounds.shape()) {
-    std::cout << i << ", ";
-  }
-  std::cout << std::endl;
-
-
-  std::cout << "Lower bound view size: " << lower_bounds.size() << std::endl;
-
 
   // down-select particle data
   // auto p_view = xt::view(xt::roll(lower_bounds, filter_indices[FilterType::PARTICLE]), particle_idx);
@@ -472,7 +451,7 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
     // select all
     auto group_view = xt::view(e_view, e, xt::all(), xt::all());
 
-    double group_max = *std::max(group_view.begin(), group_view.end());
+    double group_max = *std::max_element(group_view.begin(), group_view.end());
 
     // normalize values in this energy group by the maximum value in the group
     group_view /= group_max;

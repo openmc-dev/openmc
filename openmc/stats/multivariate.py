@@ -270,8 +270,6 @@ class Spatial(ABC):
             return CylindricalIndependent.from_xml_element(elem)
         elif distribution == 'spherical':
             return SphericalIndependent.from_xml_element(elem)
-        elif distribution == 'mesh':
-            return MeshSpatial.from_xml_element(elem)
         elif distribution == 'box' or distribution == 'fission':
             return Box.from_xml_element(elem)
         elif distribution == 'point':
@@ -625,7 +623,7 @@ class MeshSpatial(Spatial):
     """Spatial distribution for a mesh.
 
     This distribution specifies a mesh to sample over, chooses whether it will
-    be volume normalized, and can set the source strengths.
+    be adjusted by element volume, and can set the source strengths.
 
     .. versionadded:: 0.13.3
 
@@ -635,10 +633,12 @@ class MeshSpatial(Spatial):
         The mesh instance used for sampling, mesh is written into settings.xml,
         mesh.id is written into the source distribution
     strengths : Iterable of Real, optional
-        A list of values which represent the weights of each element. If no source
-        strengths are specified, they will be equal for all mesh elements.
+        A list of values which represent the weights of each element. If no
+        source strengths are specified, they will be equal for all mesh
+        elements.
     volume_normalized : bool, optional
-        Whether or not the strengths will be normalized by volume. Default is True.
+        Whether or not the strengths will be multiplied by element volumes at
+        runtime. Default is True.
 
     Attributes
     ----------
@@ -648,7 +648,8 @@ class MeshSpatial(Spatial):
     strengths : Iterable of Real, optional
         A list of values which represent the weights of each element
     volume_normalized : bool
-        Whether or not the strengths will be normalized by volume.
+        Whether or not the strengths will be multiplied by element volumes at
+        runtime.
     """
 
     def __init__(self, mesh, strengths=None, volume_normalized=True):
@@ -672,7 +673,7 @@ class MeshSpatial(Spatial):
 
     @volume_normalized.setter
     def volume_normalized(self, volume_normalized):
-        cv.check_type('Normalize (multiply) strengths by volume', volume_normalized, bool)
+        cv.check_type('Multiply strengths by element volumes', volume_normalized, bool)
         self._volume_normalized = volume_normalized
 
     @property

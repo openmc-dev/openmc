@@ -58,24 +58,54 @@ def test_clone():
     cyl = openmc.ZCylinder()
     c = openmc.Cell(fill=m, region=-cyl)
     c.temperature = 650.
+    c.translation = (1,2,3)
+    c.rotation = (4,5,6)
+    c.volume = 100
 
     c2 = c.clone()
     assert c2.id != c.id
     assert c2.fill != c.fill
     assert c2.region != c.region
     assert c2.temperature == c.temperature
+    assert all(c2.translation == c.translation)
+    assert all(c2.rotation == c.rotation)
+    assert c2.volume == c.volume
 
     c3 = c.clone(clone_materials=False)
     assert c3.id != c.id
     assert c3.fill == c.fill
     assert c3.region != c.region
     assert c3.temperature == c.temperature
+    assert all(c2.translation == c.translation)
+    assert all(c2.rotation == c.rotation)
 
     c4 = c.clone(clone_regions=False)
     assert c4.id != c.id
     assert c4.fill != c.fill
     assert c4.region == c.region
     assert c4.temperature == c.temperature
+    assert all(c2.translation == c.translation)
+    assert all(c2.rotation == c.rotation)
+
+    c5 = c.clone(clone_materials=False, clone_regions=False)
+    assert c5.id != c.id
+    assert c5.fill == c.fill
+    assert c5.region == c.region
+    assert c5.temperature == c.temperature
+    assert all(c2.translation == c.translation)
+    assert all(c2.rotation == c.rotation)
+
+    # Mutate the original to ensure the changes are not seen in the clones
+    c.fill = openmc.Material()
+    c.region = +openmc.ZCylinder()
+    c.translation = [-1,-2,-3]
+    c.rotation = [-4,-5,-6]
+    c.temperature = 1
+    assert c5.fill != c.fill
+    assert c5.region != c.region
+    assert c5.temperature != c.temperature
+    assert all(c2.translation != c.translation)
+    assert all(c2.rotation != c.rotation)
 
 
 def test_temperature(cell_with_lattice):

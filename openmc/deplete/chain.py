@@ -15,7 +15,7 @@ from numbers import Real, Integral
 from warnings import warn
 
 from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import gnd_name, zam, DataLibrary
+from openmc.data import gnds_name, zam, DataLibrary
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution
 
@@ -135,14 +135,14 @@ def replace_missing(product, decay_data):
     Parameters
     ----------
     product : str
-        Name of product in GND format, e.g. 'Y86_m1'.
+        Name of product in GNDS format, e.g. 'Y86_m1'.
     decay_data : dict
         Dictionary of decay data
 
     Returns
     -------
     product : str
-        Replacement for missing product in GND format.
+        Replacement for missing product in GNDS format.
 
     """
     # Determine atomic number, mass number, and metastable state
@@ -213,7 +213,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     # Check if metastable state has data (e.g., Am242m)
     Z, A, m = zam(actinide)
     if m == 0:
-        metastable = gnd_name(Z, A, 1)
+        metastable = gnds_name(Z, A, 1)
         if metastable in fpy_data:
             return metastable
 
@@ -222,7 +222,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     while isotone in decay_data:
         Z += 1
         A += 1
-        isotone = gnd_name(Z, A, 0)
+        isotone = gnds_name(Z, A, 0)
         if isotone in fpy_data:
             return isotone
 
@@ -231,7 +231,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     while isotone in decay_data:
         Z -= 1
         A -= 1
-        isotone = gnd_name(Z, A, 0)
+        isotone = gnds_name(Z, A, 0)
         if isotone in fpy_data:
             return isotone
 
@@ -357,7 +357,7 @@ class Chain:
         reactions = {}
         for f in neutron_files:
             evaluation = openmc.data.endf.Evaluation(f)
-            name = evaluation.gnd_name
+            name = evaluation.gnds_name
             reactions[name] = {}
             for mf, mt, nc, mod in evaluation.reaction_list:
                 if mf == 3:
@@ -904,7 +904,7 @@ class Chain:
                 ground_target = grounds.get(parent_name)
                 if ground_target is None:
                     pz, pa, pm = zam(parent_name)
-                    ground_target = gnd_name(pz, pa + 1, 0)
+                    ground_target = gnds_name(pz, pa + 1, 0)
                 new_ratios[ground_target] = ground_br
                 parent.add_reaction(reaction, ground_target, rxn_Q, ground_br)
 

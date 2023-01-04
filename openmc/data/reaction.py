@@ -555,7 +555,7 @@ def _get_activation_products(ev, rx):
             Z, A = divmod(items[2], 1000)
             excited_state = items[3]
 
-            # Get GND name for product
+            # Get GNDS name for product
             symbol = ATOMIC_SYMBOL[Z]
             if excited_state > 0:
                 name = '{}{}_e{}'.format(symbol, A, excited_state)

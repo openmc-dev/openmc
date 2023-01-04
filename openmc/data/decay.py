@@ -144,7 +144,7 @@ class FissionProductYields(EqualityMixin):
 
         # Assign basic nuclide properties
         self.nuclide = {
-            'name': ev.gnd_name,
+            'name': ev.gnds_name,
             'atomic_number': ev.target['atomic_number'],
             'mass_number': ev.target['mass_number'],
             'isomeric_state': ev.target['isomeric_state']

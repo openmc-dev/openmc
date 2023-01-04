@@ -101,7 +101,7 @@ void check_tally_triggers(double& ratio, int& tally_id, int& score)
           // If this is the most uncertain value, set the output variables.
           if (this_ratio > ratio) {
             ratio = this_ratio;
-            score = t.scores_[trigger.score_index];
+            score = t.scores_[score_index];
             tally_id = t.id_;
           }
         }

@@ -617,8 +617,13 @@ extern "C" size_t openmc_weight_windows_size()
   return variance_reduction::weight_windows.size();
 }
 
-extern "C" void openmc_weight_windows_export(const char* filename)
+extern "C" int openmc_weight_windows_export(const char* filename)
 {
+  if (!filename) {
+    set_errmsg("No filename provided for weight window export");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
   hid_t ww_file = file_open(filename, 'w');
 
   hid_t weight_windows_group = create_group(ww_file, "weight_windows");
@@ -629,6 +634,8 @@ extern "C" void openmc_weight_windows_export(const char* filename)
   close_group(weight_windows_group);
 
   file_close(ww_file);
+
+  return 0;
 }
 
 } // namespace openmc

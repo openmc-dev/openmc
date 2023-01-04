@@ -33,6 +33,7 @@ constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 0};
+constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS

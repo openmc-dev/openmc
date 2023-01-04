@@ -103,6 +103,8 @@ public:
                              const std::string& value,
                              const std::string& method);
 
+  void export_to_hdf5(const std::string& filename = "weight_windows.h5") const;
+
   // NOTE: This is unused for now but may be used in the future
   //! Write weight window settings to an HDF5 file
   //! \param[in] group  HDF5 group to write to

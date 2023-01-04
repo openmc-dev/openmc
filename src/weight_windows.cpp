@@ -460,9 +460,31 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   this->set_weight_windows(lower_bounds, 5.0);
 }
 
+void WeightWindows::export_to_hdf5(const std::string& filename) const
+{
+  hid_t file_id = file_open(filename, 'w');
+
+  // Write file type
+  write_attribute(file_id, "filetype", "weight_windows");
+
+  // Write revisiion number for state point file
+  write_attribute(file_id, "version", VERSION_WEIGHT_WINDOWS);
+
+  hid_t weight_windows_group =
+    create_group(file_id, fmt::format("weight_windows", id_));
+
+  // write instance information to file
+  this->to_hdf5(weight_windows_group);
+
+  close_group(weight_windows_group);
+
+  file_close(file_id);
+}
+
 void WeightWindows::to_hdf5(hid_t group) const
 {
-  hid_t ww_group = create_group(group, fmt::format("weight_windows {}", id_));
+
+  hid_t ww_group = create_group(group, fmt::format("weight_windows {}", id()));
 
   write_dataset(
     ww_group, "particle_type", openmc::particle_type_to_str(particle_type_));
@@ -593,6 +615,20 @@ extern "C" int openmc_extend_weight_windows(
 extern "C" size_t openmc_weight_windows_size()
 {
   return variance_reduction::weight_windows.size();
+}
+
+extern "C" void openmc_weight_windows_export(const char* filename)
+{
+  hid_t ww_file = file_open(filename, 'w');
+
+  hid_t weight_windows_group = create_group(ww_file, "weight_windows");
+
+  for (const auto& ww : variance_reduction::weight_windows)
+    ww->to_hdf5(weight_windows_group);
+
+  close_group(weight_windows_group);
+
+  file_close(ww_file);
 }
 
 } // namespace openmc

@@ -520,8 +520,9 @@ class Cell(IDManagerMixin):
 
             clone = openmc.Cell()
             clone.name = self.name
-            clone.temperature = self.temperature
             clone.volume = self.volume
+            if self.temperature is not None:
+                clone.temperature = self.temperature
             if self.translation is not None:
                 clone.translation = self.translation
             if self.rotation is not None:

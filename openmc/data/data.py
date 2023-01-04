@@ -197,8 +197,8 @@ NEUTRON_MASS = 1.00866491595
 # Used in atomic_mass function as a cache
 _ATOMIC_MASS = {}
 
-# Regex for GND nuclide names (used in zam function)
-_GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
+# Regex for GNDS nuclide names (used in zam function)
+_GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 # Used in half_life function as a cache
 _HALF_LIFE = {}
@@ -436,8 +436,11 @@ def water_density(temperature, pressure=0.1013):
     return coeff / pi / gamma1_pi
 
 
-def gnd_name(Z, A, m=0):
-    """Return nuclide name using GND convention
+def gnds_name(Z, A, m=0):
+    """Return nuclide name using GNDS convention
+
+    .. versionchanged:: 0.14.0
+        Function name changed from ``gnd_name`` to ``gnds_name``
 
     Parameters
     ----------
@@ -451,7 +454,7 @@ def gnd_name(Z, A, m=0):
     Returns
     -------
     str
-        Nuclide name in GND convention, e.g., 'Am242_m1'
+        Nuclide name in GNDS convention, e.g., 'Am242_m1'
 
     """
     if m > 0:
@@ -502,7 +505,7 @@ def zam(name):
     Parameters
     ----------
     name : str
-        Name of nuclide using GND convention, e.g., 'Am242_m1'
+        Name of nuclide using GNDS convention, e.g., 'Am242_m1'
 
     Returns
     -------
@@ -511,10 +514,10 @@ def zam(name):
 
     """
     try:
-        symbol, A, state = _GND_NAME_RE.match(name).groups()
+        symbol, A, state = _GNDS_NAME_RE.match(name).groups()
     except AttributeError:
         raise ValueError(f"'{name}' does not appear to be a nuclide name in "
-                         "GND format")
+                         "GNDS format")
 
     if symbol not in ATOMIC_NUMBER:
         raise ValueError(f"'{symbol}' is not a recognized element symbol")

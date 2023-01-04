@@ -24,7 +24,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from .data import ATOMIC_SYMBOL, gnd_name, EV_PER_MEV, K_BOLTZMANN
+from .data import ATOMIC_SYMBOL, gnds_name, EV_PER_MEV, K_BOLTZMANN
 from .endf import ENDF_FLOAT_RE
 
 
@@ -88,7 +88,7 @@ def get_metadata(zaid, metastable_scheme='nndc'):
 
     # Determine name
     element = ATOMIC_SYMBOL[Z]
-    name = gnd_name(Z, mass_number, metastable)
+    name = gnds_name(Z, mass_number, metastable)
 
     return (name, element, Z, mass_number, metastable)
 

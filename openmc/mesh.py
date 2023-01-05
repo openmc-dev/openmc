@@ -755,6 +755,7 @@ class RegularMesh(StructuredMesh):
         dataset: np.ndarray,
         slice_index: int = 0,
         view_direction: str = 'z',
+        volume_normalization: bool = True
     ):
         """Obtains the dataset values on an axis aligned 2D slice through the
         mesh. Useful for producing plots of slice data
@@ -769,6 +770,9 @@ class RegularMesh(StructuredMesh):
         view_direction : str
             The axis to view the slice from. Supports negative and positive axis
             values. Acceptable values are 'x', 'y', 'z', '-x', '-y', '-z'.
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
 
         Returns
         -------
@@ -776,7 +780,11 @@ class RegularMesh(StructuredMesh):
             the 2D array of dataset values
         """
 
+        if volume_normalization:
+            dataset = dataset.flatten() / self.volumes.flatten()
+
         reshaped_ds = dataset.reshape(self.dimension, order="F")
+
 
         if view_direction == "x":
             # vertical axis is z, horizontal axis is -y
@@ -817,6 +825,7 @@ class RegularMesh(StructuredMesh):
         slice_index: typing.Optional[int] = None,
         view_direction: str = 'z',
         axes: typing.Optional['matplotlib.Axes'] = None,
+        volume_normalization: bool = True,
         **kwargs
     ):
         """Create a slice plot of the dataset on the RegularMesh.
@@ -834,6 +843,9 @@ class RegularMesh(StructuredMesh):
             values. Acceptable values are 'x', 'y', 'z', '-x', '-y', '-z'.
         axes : matplotlib.Axes, optional
             Axes to draw to
+        volume_normalization : bool, optional
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -870,6 +882,7 @@ class RegularMesh(StructuredMesh):
             dataset=dataset,
             slice_index=slice_index,
             view_direction=view_direction,
+            volume_normalization=volume_normalization,
         )
 
         # gets the extent of the plot

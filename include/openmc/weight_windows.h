@@ -80,7 +80,8 @@ public:
   WeightWindows(pugi::xml_node node);
   ~WeightWindows();
   static WeightWindows* create(int32_t id = -1);
-
+  static WeightWindows* from_hdf5(
+    hid_t wws_group, const std::string& group_name);
   // Methods
 
   //! Ready the weight window class for use
@@ -126,6 +127,10 @@ public:
 
   // Accessors
   int32_t id() const { return id_; }
+  int32_t& id() { return id_; }
+
+  vector<double>& energy_bounds() { return energy_bounds_; }
+
   const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
 
 private:

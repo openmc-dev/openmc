@@ -2,8 +2,8 @@
 
 #include <set>
 
-#include "xtensor/xview.hpp"
 #include "xtensor/xstrided_view.hpp"
+#include "xtensor/xview.hpp"
 
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
@@ -13,8 +13,8 @@
 #include "openmc/particle_data.h"
 #include "openmc/physics_common.h"
 #include "openmc/search.h"
-#include "openmc/tallies/tally.h"
 #include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/xml_interface.h"
 
 #include <fmt/core.h>
@@ -197,7 +197,45 @@ WeightWindows::~WeightWindows()
 WeightWindows* WeightWindows::create(int32_t id)
 {
   variance_reduction::weight_windows.push_back(make_unique<WeightWindows>());
-  return variance_reduction::weight_windows.back().get();
+  auto wws = variance_reduction::weight_windows.back().get();
+  variance_reduction::ww_map[wws->id()] =
+    variance_reduction::weight_windows.size() - 1;
+  return wws;
+}
+
+WeightWindows* WeightWindows::from_hdf5(
+  hid_t wws_group, const std::string& group_name)
+{
+  // collect ID from the name of this group
+  hid_t ww_group = open_group(wws_group, group_name.c_str());
+
+  auto wws = WeightWindows::create();
+
+  std::string particle_type;
+  read_dataset(ww_group, "particle_type", particle_type);
+  wws->particle_type_ = openmc::str_to_particle_type(particle_type);
+
+  read_dataset<double>(ww_group, "energy_bounds", wws->energy_bounds_);
+
+  int32_t mesh_id;
+  read_dataset(ww_group, "mesh", mesh_id);
+
+  if (model::mesh_map.count(mesh_id) == 0) {
+    fatal_error(
+      fmt::format("Mesh {} used in weight windows does not exist.", mesh_id));
+  }
+  wws->set_mesh(model::mesh_map[mesh_id]);
+
+  read_dataset<double>(ww_group, "lower_ww_bounds", wws->lower_ww_);
+  read_dataset<double>(ww_group, "upper_ww_bounds", wws->upper_ww_);
+  read_dataset(ww_group, "survival_ratio", wws->survival_ratio_);
+  read_dataset(ww_group, "max_lower_bound_ratio", wws->max_lb_ratio_);
+  read_dataset(ww_group, "max_split", wws->max_split_);
+  read_dataset(ww_group, "weight_cutoff", wws->weight_cutoff_);
+
+  close_group(ww_group);
+
+  return wws;
 }
 
 void WeightWindows::set_defaults()
@@ -241,8 +279,8 @@ void WeightWindows::set_id(int32_t id)
   variance_reduction::ww_map[id] = index_;
 }
 
-
-void WeightWindows::set_energy_bounds(gsl::span<double const> bounds) {
+void WeightWindows::set_energy_bounds(gsl::span<double const> bounds)
+{
   energy_bounds_.clear();
   energy_bounds_.insert(energy_bounds_.begin(), bounds.begin(), bounds.end());
   // TODO: check that sizes still make sense
@@ -356,11 +394,11 @@ void WeightWindows::set_weight_windows(
 }
 
 void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
-                                          const std::string& score,
-                                          const std::string& value,
-                                          const std::string& method) {
+  const std::string& score, const std::string& value, const std::string& method)
+{
   // set of allowed filters
-  const std::set<FilterType> allowed_filters = {FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
+  const std::set<FilterType> allowed_filters = {
+    FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
 
   const auto filters = tally->filters();
   const auto filter_types = tally->filter_types();
@@ -370,7 +408,8 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   for (auto f_type : filter_types) {
     if (allowed_filters.find(f_type) == allowed_filters.end()) {
       fatal_error(fmt::format("Invalid filter type '{}' found on tally "
-                              "used for weight window generation.", filter_type_strings[f_type]));
+                              "used for weight window generation.",
+        filter_type_strings[f_type]));
     }
   }
 
@@ -378,22 +417,28 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   int score_index = tally->score_index(score);
 
   if (score_index == C_NONE) {
-    fatal_error(fmt::format("Score '{}' specified for weight window generation is not present on tally {}.",
-    score, tally->id()));
+    fatal_error(fmt::format("Score '{}' specified for weight window generation "
+                            "is not present on tally {}.",
+      score, tally->id()));
   }
 
   // check for a particle filter
   // TODO: Add method checking for filter type (returns index?)
   int particle_idx = 0;
   if (tally->has_filter(FilterType::PARTICLE)) {
-    const auto& particle_filter = model::tally_filters[tally->filters(filter_indices[FilterType::PARTICLE])];
+    const auto& particle_filter = model::tally_filters[tally->filters(
+      filter_indices[FilterType::PARTICLE])];
 
     // make sure there is data for the WW particle type available
-    const auto& particles = dynamic_cast<ParticleFilter*>(particle_filter.get())->particles();
-    auto particle_it = std::find(particles.begin(), particles.end(), this->particle_type_);
+    const auto& particles =
+      dynamic_cast<ParticleFilter*>(particle_filter.get())->particles();
+    auto particle_it =
+      std::find(particles.begin(), particles.end(), this->particle_type_);
     if (particle_it == particles.end()) {
-      warning(fmt::format("Particle type '{}' not present on Filter {} for Tally {} used to update WeightWindows {}",
-      particle_type_to_str(this->particle_type_), particle_filter->id(), tally->id(), this->id()));
+      warning(fmt::format("Particle type '{}' not present on Filter {} for "
+                          "Tally {} used to update WeightWindows {}",
+        particle_type_to_str(this->particle_type_), particle_filter->id(),
+        tally->id(), this->id()));
       return;
     }
 
@@ -429,10 +474,11 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   lower_bounds.reshape(shape);
   std::copy(score_view.begin(), score_view.end(), lower_bounds.begin());
   // lower_bounds = xt::zeros_like(score_view);
-  //lower_bounds = score_view;
+  // lower_bounds = score_view;
 
   // down-select particle data
-  // auto p_view = xt::view(xt::roll(lower_bounds, filter_indices[FilterType::PARTICLE]), particle_idx);
+  // auto p_view = xt::view(xt::roll(lower_bounds,
+  // filter_indices[FilterType::PARTICLE]), particle_idx);
 
   // // adjust index of other filters if needed
   // for (auto filter_type : allowed_filters) {
@@ -486,6 +532,7 @@ void WeightWindows::to_hdf5(hid_t group) const
 
   hid_t ww_group = create_group(group, fmt::format("weight_windows {}", id()));
 
+  write_dataset(ww_group, "mesh", this->mesh()->id());
   write_dataset(
     ww_group, "particle_type", openmc::particle_type_to_str(particle_type_));
   write_dataset(ww_group, "energy_bounds", energy_bounds_);
@@ -495,7 +542,6 @@ void WeightWindows::to_hdf5(hid_t group) const
   write_dataset(ww_group, "max_lower_bound_ratio", max_lb_ratio_);
   write_dataset(ww_group, "max_split", max_split_);
   write_dataset(ww_group, "weight_cutoff", weight_cutoff_);
-  write_dataset(ww_group, "mesh", this->mesh()->id());
 
   close_group(ww_group);
 }
@@ -630,6 +676,30 @@ extern "C" int openmc_weight_windows_export(const char* filename)
 
   for (const auto& ww : variance_reduction::weight_windows)
     ww->to_hdf5(weight_windows_group);
+
+  close_group(weight_windows_group);
+
+  file_close(ww_file);
+
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_import(const char* filename)
+{
+  if (!filename) {
+    set_errmsg("No filename provided for weight window import.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  hid_t ww_file = file_open(filename, 'r');
+
+  hid_t weight_windows_group = open_group(ww_file, "weight_windows");
+
+  std::vector<std::string> names = group_names(weight_windows_group);
+
+  for (const auto& name : names) {
+    WeightWindows::from_hdf5(weight_windows_group, name);
+  }
 
   close_group(weight_windows_group);
 

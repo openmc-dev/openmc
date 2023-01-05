@@ -179,6 +179,7 @@ int openmc_weight_windows_get_energy_bounds(
   int32_t ww_idx, const double** e_bounds, size_t* e_bounds_size);
 size_t openmc_weight_windows_size();
 int openmc_weight_windows_export(const char* filename = "weight_windows.h5");
+int openmc_weight_windows_import(const char* filename = "weight_windows.h5");
 int openmc_zernike_filter_get_order(int32_t index, int* order);
 int openmc_zernike_filter_get_params(
   int32_t index, double* x, double* y, double* r);

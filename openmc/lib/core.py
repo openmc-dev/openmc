@@ -169,6 +169,53 @@ def export_properties(filename=None, output=True):
     with quiet_dll(output):
         _dll.openmc_properties_export(filename)
 
+def export_weight_windows(filename=None, output=True):
+    """Export weight windows.
+
+    .. versionadded:: 0.13.3
+
+    Parameters
+    ----------
+    filename : str or None
+        Filename to export weight windows to (defaults to "weight_windows.h5")
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+
+    See Also
+    --------
+    openmc.lib.import_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(filename.encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_export(filename)
+
+
+def import_weight_windows(filename=None, output=True):
+    """Import weight windows.
+
+    .. versionadded:: 0.13.3
+
+    Parameters
+    ----------
+    filename : str or None
+        Filename to import properties from (defaults to "weight_windows.h5")
+    output : bool, optional
+        Whether or not to show output. Defaults to showing output
+
+    See Also
+    --------
+    openmc.lib.export_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(filename.encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_import(filename)
+
 
 def finalize():
     """Finalize simulation and free memory"""

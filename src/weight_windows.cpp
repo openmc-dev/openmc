@@ -665,12 +665,10 @@ extern "C" size_t openmc_weight_windows_size()
 
 extern "C" int openmc_weight_windows_export(const char* filename)
 {
-  if (!filename) {
-    set_errmsg("No filename provided for weight window export");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
 
-  hid_t ww_file = file_open(filename, 'w');
+  std::string name = filename ? filename : "weight_windows.h5";
+
+  hid_t ww_file = file_open(name, 'w');
 
   hid_t weight_windows_group = create_group(ww_file, "weight_windows");
 
@@ -686,10 +684,8 @@ extern "C" int openmc_weight_windows_export(const char* filename)
 
 extern "C" int openmc_weight_windows_import(const char* filename)
 {
-  if (!filename) {
-    set_errmsg("No filename provided for weight window import.");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
+
+  std::string name = filename ? filename : "weight_windows.h5";
 
   hid_t ww_file = file_open(filename, 'r');
 

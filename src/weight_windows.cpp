@@ -673,13 +673,11 @@ extern "C" int openmc_weight_windows_export(const char* filename)
 
   hid_t ww_file = file_open(name, 'w');
 
-  hid_t file_id = file_open(filename, 'w');
-
   // Write file type
-  write_attribute(file_id, "filetype", "weight_windows");
+  write_attribute(ww_file, "filetype", "weight_windows");
 
   // Write revisiion number for state point file
-  write_attribute(file_id, "version", VERSION_WEIGHT_WINDOWS);
+  write_attribute(ww_file, "version", VERSION_WEIGHT_WINDOWS);
 
   hid_t weight_windows_group = create_group(ww_file, "weight_windows");
 

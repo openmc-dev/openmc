@@ -406,11 +406,11 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   auto filter_indices = tally->filter_indices();
 
   // make sure that all filters are allowed
-  for (auto f_type : filter_types) {
-    if (allowed_filters.find(f_type) == allowed_filters.end()) {
+  for (auto filter_pair : filter_indices) {
+    if (allowed_filters.find(filter_pair.first) == allowed_filters.end()) {
       fatal_error(fmt::format("Invalid filter type '{}' found on tally "
                               "used for weight window generation.",
-        filter_type_strings[f_type]));
+        model::tally_filters[filter_pair.second]->type_str()));
     }
   }
 

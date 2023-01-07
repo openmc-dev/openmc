@@ -23,6 +23,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
+  std::string type_str() const override { return "collision"; }
   FilterType type() const override { return FilterType::COLLISION; }
 
   void from_xml(pugi::xml_node node) override;

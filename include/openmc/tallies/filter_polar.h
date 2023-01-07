@@ -24,6 +24,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
+  std::string type_str() const override { return "polar"; }
   FilterType type() const override { return FilterType::POLAR; }
 
   void from_xml(pugi::xml_node node) override;

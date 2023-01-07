@@ -25,6 +25,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
+  std::string type_str() const override { return "surface"; }
   FilterType type() const override { return FilterType::SURFACE; }
 
   void from_xml(pugi::xml_node node) override;

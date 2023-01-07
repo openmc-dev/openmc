@@ -22,6 +22,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
+  std::string type_str() const override { return "energy"; }
   FilterType type() const override { return FilterType::ENERGY; }
 
   void from_xml(pugi::xml_node node) override;
@@ -63,6 +64,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
+  std::string type_str() const override { return "energyout"; }
   FilterType type() const override { return FilterType::ENERGY_OUT; }
 
   void get_all_bins(const Particle& p, TallyEstimator estimator,

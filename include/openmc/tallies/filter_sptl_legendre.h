@@ -23,6 +23,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
+  std::string type_str() const override { return "spatiallegendre"; }
   FilterType type() const override { return FilterType::SPATIAL_LEGENDRE; }
 
   void from_xml(pugi::xml_node node) override;

@@ -45,8 +45,6 @@ enum class FilterType {
   ZERNIKE_RADIAL
 };
 
-extern std::unordered_map<FilterType, std::string> filter_type_strings;
-
 //==============================================================================
 //! Modifies tally score events.
 //==============================================================================
@@ -88,7 +86,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  virtual std::string type_str() const { return filter_type_strings[this->type()]; };
+  virtual std::string type_str() const = 0;
   virtual FilterType type() const = 0;
 
   //! Matches a tally event to a set of filter bins and weights.

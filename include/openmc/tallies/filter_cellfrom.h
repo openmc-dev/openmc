@@ -16,6 +16,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
+  std::string type_str() const override { return "cellfrom"; }
   FilterType type() const override { return FilterType::CELLFROM; }
 
   void get_all_bins(const Particle& p, TallyEstimator estimator,

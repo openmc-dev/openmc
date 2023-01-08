@@ -287,6 +287,15 @@ void WeightWindows::set_energy_bounds(gsl::span<double const> bounds)
   // TODO: check that sizes still make sense
 }
 
+void WeightWindows::set_particle_type(ParticleType p_type)
+{
+  if (p_type != ParticleType::neutron && p_type != ParticleType::photon)
+    fatal_error(
+      fmt::format("Particle type '{}' cannot be applied to weight windows.",
+        particle_type_to_str(p_type)));
+  particle_type_ = p_type;
+}
+
 void WeightWindows::set_mesh(int32_t mesh_idx)
 {
   if (mesh_idx < 0 || mesh_idx > model::meshes.size())
@@ -643,6 +652,29 @@ extern "C" int openmc_weight_windows_get_energy_bounds(
   const auto& wws = variance_reduction::weight_windows[ww_idx].get();
   *e_bounds = wws->energy_bounds().data();
   *e_bounds_size = wws->energy_bounds().size();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_particle(
+  int32_t ww_idx, const char* particle)
+{
+  if (ww_idx < 0 || ww_idx >= variance_reduction::weight_windows.size()) {
+    set_errmsg(fmt::format("Index '{}' for weight windows is invalid", ww_idx));
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  wws->set_particle_type(str_to_particle_type(particle));
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_particle(int32_t ww_idx, int* particle)
+{
+  if (ww_idx < 0 || ww_idx >= variance_reduction::weight_windows.size()) {
+    set_errmsg(fmt::format("Index '{}' for weight windows is invalid", ww_idx));
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  *particle = static_cast<int>(wws->particle_type());
   return 0;
 }
 

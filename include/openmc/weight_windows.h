@@ -125,6 +125,8 @@ public:
   void set_weight_windows(
     gsl::span<const double> lower_bounds, double bound_ratio);
 
+  void set_particle_type(ParticleType p_type);
+
   // Accessors
   int32_t id() const { return id_; }
   int32_t& id() { return id_; }
@@ -132,6 +134,8 @@ public:
   vector<double>& energy_bounds() { return energy_bounds_; }
 
   const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
+
+  ParticleType particle_type() const { return particle_type_; }
 
 private:
   // Data members

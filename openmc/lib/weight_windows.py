@@ -9,9 +9,11 @@ from openmc.exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
+from .filter import EnergyFilter, MeshFilter, ParticleFilter
 from .mesh import _get_mesh
 from .mesh import meshes
-from .filter import EnergyFilter, MeshFilter, ParticleFilter
+from .particle import ParticleType
+
 
 __all__ = ['WeightWindows', 'weight_windows_map']
 
@@ -42,6 +44,14 @@ _dll.openmc_weight_windows_set_energy_bounds.errcheck = _error_handler
 _dll.openmc_weight_windows_get_energy_bounds.argtypes = [c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t)]
 _dll.openmc_weight_windows_get_energy_bounds.restype = c_int
 _dll.openmc_weight_windows_get_energy_bounds.errcheck = _error_handler
+
+_dll.openmc_weight_windows_set_particle.argtypes = [c_int32, c_char_p]
+_dll.openmc_weight_windows_set_particle.restype = c_int
+_dll.openmc_weight_windows_set_particle.errcheck = _error_handler
+
+_dll.openmc_weight_windows_get_particle.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_weight_windows_get_particle.restype = c_int
+_dll.openmc_weight_windows_get_particle.errcheck = _error_handler
 
 
 class WeightWindows(_FortranObjectWithID):
@@ -112,6 +122,21 @@ class WeightWindows(_FortranObjectWithID):
         e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
         _dll.openmc_weight_windows_set_energy_bounds(self._index, e_bounds_ptr, e_bounds_arr.size)
 
+    @property
+    def particle(self):
+        val = c_int()
+        _dll.openmc_weight_windows_get_particle(self._index, val)
+        return ParticleType(val.value)
+
+    @particle.setter
+    def particle(self, p):
+        if isinstance(p, str):
+            p = ParticleType.from_string(p)
+        else:
+            p = ParticleType(p)
+        val = c_char_p(p.to_string().encode())
+        _dll.openmc_weight_windows_set_particle(self._index, val)
+
     def update_weight_windows(self, tally, score='flux', value='mean', method='magic'):
         """Update weight window values using tally information
 
@@ -135,17 +160,72 @@ class WeightWindows(_FortranObjectWithID):
                                           c_char_p(method.encode()))
 
     @classmethod
-    def from_tally(cls, tally):
+    def from_tally(cls, tally, particle=ParticleType.NEUTRON):
+        """Create an instance of the WeightWindows class based on the specified tally.
+
+        Parameters
+        ----------
+        tally : openmc.lib.Tally
+            The tally used to create the WeightWindows instance.
+        particle : openmc.lib.ParticleType or str, optional
+            The particle type to use for the WeightWindows instance. Should be
+            specified as an instance of ParticleType or as a string with a value of
+            'neutron' or 'photon'. Defaults to ParticleType.NEUTRON.
+
+        Returns
+        -------
+        WeightWindows
+            The WeightWindows instance created from the specified tally.
+
+        Raises
+        ------
+        ValueError
+            If the particle parameter is not an instance of ParticleType or a string.
+        ValueError
+            If the particle parameter is not a valid particle type (i.e., not 'neutron'
+            or 'photon').
+        RuntimeError
+            If the specified particle is not included in the bins of the ParticleFilter
+            of the tally.
+        RuntimeError
+            If the tally does not have a MeshFilter.
+        """
+        # do some checks on particle value
+        if not isinstance(particle, (ParticleType, str)):
+            raise ValueError(f"Parameter 'particle' must be {ParticleType} or one of ('neutron', 'photon').")
+
+        # convert particle type if needed
+        if isinstance(particle, str):
+            particle = ParticleType.from_string(particle)
+
+        if particle not in (ParticleType.NEUTRON, ParticleType.PHOTON):
+            raise ValueError(f'Weight windows can only be applied for neutrons or photons')
+
+        particle_filter = tally.find_filter(ParticleFilter)
+        # ensure that the tally won't filter out the specified particle
+        if particle_filter is not None and particle not in particle_filter.bins:
+            raise RuntimeError(f'Specified tally for weight windows {tally} '
+                               f' does not track the reqeusted particle {particle}')
+
+        # tally has to have a mesh filter
+        mesh_filter = tally.find_filter(MeshFilter)
+        if mesh_filter is None:
+            raise RuntimeError(f'No mesh filter found on tally {tally.id}')
+
+        # create a new weight windows instance
         out = cls()
-        for f in tally.filters:
-            if isinstance(f, MeshFilter):
-                out.mesh = f.mesh
-            elif isinstance(f, EnergyFilter):
-                out.energy_bounds = f.bins
-            else:
-                raise RuntimeError(f'Filter of type {type(f)} is invalid for weight windows.')
+
+        # set mesh and particle
+        out.mesh = mesh_filter.mesh
+        out.particle = particle
+
+        # set energy bounds if needed
+        energy_filter = tally.find_filter(EnergyFilter)
+        if energy_filter is not None:
+            out.energy_bounds = energy_filter.bins
 
         return out
+
 
 class _WeightWindowsMapping(Mapping):
     def __getitem__(self, key):

@@ -270,6 +270,11 @@ class Tally(_FortranObjectWithID):
 
         _dll.openmc_tally_set_filters(self._index, n, indices)
 
+    def find_filter(self, filter_type):
+        for f in self.filters:
+            if isinstance(f, filter_type):
+                return f
+
     @property
     def mean(self):
         n = self.num_realizations

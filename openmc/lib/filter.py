@@ -13,6 +13,7 @@ from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
 from .mesh import _get_mesh
+from .particle import ParticleType
 
 
 __all__ = [
@@ -120,6 +121,9 @@ _dll.openmc_zernike_filter_set_order.restype = c_int
 _dll.openmc_zernike_filter_set_order.errcheck = _error_handler
 _dll.tally_filters_size.restype = c_size_t
 
+_dll.openmc_filter_get_num_bins.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_filter_get_num_bins.restype = c_int
+_dll.openmc_filter_get_num_bins.errchck = _error_handler
 
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
@@ -162,6 +166,12 @@ class Filter(_FortranObjectWithID):
     @id.setter
     def id(self, filter_id):
         _dll.openmc_filter_set_id(self._index, filter_id)
+
+    @property
+    def n_bins(self):
+        n = c_int()
+        _dll.openmc_filter_get_num_bins(self._index, n)
+        return n.value
 
 
 class EnergyFilter(Filter):
@@ -397,6 +407,12 @@ class MuFilter(Filter):
 
 class ParticleFilter(Filter):
     filter_type = 'particle'
+
+    @property
+    def bins(self):
+        particle_i = np.zeros((self.n_bins,), dtype=int)
+        _dll.openmc_particle_filter_get_bins(self._index, particle_i.ctypes.data_as(POINTER(c_int)))
+        return [ParticleType(i) for i in particle_i]
 
 
 class PolarFilter(Filter):

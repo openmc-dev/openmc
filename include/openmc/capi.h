@@ -50,6 +50,7 @@ int openmc_extend_meshes(
 int openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end);
 int openmc_filter_get_id(int32_t index, int32_t* id);
 int openmc_filter_get_type(int32_t index, char* type);
+int openmc_filter_get_num_bins(int32_t index, int* n_bins);
 int openmc_filter_set_id(int32_t index, int32_t id);
 int openmc_finalize();
 int openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance);
@@ -177,15 +178,18 @@ int openmc_weight_windows_set_energy_bounds(
   int32_t ww_idx, double* e_bounds, size_t e_bounds_size);
 int openmc_weight_windows_get_energy_bounds(
   int32_t ww_idx, const double** e_bounds, size_t* e_bounds_size);
+int openmc_weight_window_set_particle(int32_t ww_idx, const char* particle);
 size_t openmc_weight_windows_size();
-int openmc_weight_windows_export(const char* filename);
-int openmc_weight_windows_import(const char* filename);
+int openmc_weight_windows_export(const char* filename = nullptr);
+int openmc_weight_windows_import(const char* filename = nullptr);
 int openmc_zernike_filter_get_order(int32_t index, int* order);
 int openmc_zernike_filter_get_params(
   int32_t index, double* x, double* y, double* r);
 int openmc_zernike_filter_set_order(int32_t index, int order);
 int openmc_zernike_filter_set_params(
   int32_t index, const double* x, const double* y, const double* r);
+
+int openmc_particle_filter_get_bins(int32_t idx, int bins[]);
 
 //! Sets the mesh and energy grid for CMFD reweight
 //! \param[in] meshtyally_id id of CMFD Mesh Tally

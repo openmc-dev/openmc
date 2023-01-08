@@ -58,4 +58,23 @@ std::string ParticleFilter::text_label(int bin) const
   return fmt::format("Particle: {}", particle_type_to_str(p));
 }
 
+extern "C" int openmc_particle_filter_get_bins(int32_t idx, int bins[])
+{
+
+  if (idx < 0 || idx > model::tally_filters.size()) {
+    fatal_error(fmt::format("No filter at index {}"));
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  const auto& f = model::tally_filters[idx];
+  auto pf = dynamic_cast<ParticleFilter*>(f.get());
+
+  const auto& particles = pf->particles();
+  for (int i = 0; i < particles.size(); i++) {
+    bins[i] = static_cast<int>(particles[i]);
+  }
+
+  return 0;
+}
+
 } // namespace openmc

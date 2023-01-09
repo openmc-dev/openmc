@@ -13,7 +13,7 @@ from scipy.interpolate import CubicSpline
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from . import HDF5_VERSION
+from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
 from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
@@ -143,6 +143,8 @@ class AtomicRelaxation(EqualityMixin):
         Dictionary indicating the number of electrons in a subshell when neutral
         (values) for given subshells (keys). The subshells should be given as
         strings, e.g., 'K', 'L1', 'L2', etc.
+    subshells : list
+        List of subshells as strings, e.g. ``['K', 'L1', ...]``
     transitions : pandas.DataFrame
         Dictionary indicating allowed transitions and their probabilities
         (values) for given subshells (keys). The subshells should be given as

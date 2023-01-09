@@ -40,6 +40,9 @@ void print_usage();
 //! Display current version and copright/license information
 void print_version();
 
+//! Display compile flags employed, etc
+void print_build_info();
+
 //! Display header listing what physical values will displayed
 void print_columns();
 

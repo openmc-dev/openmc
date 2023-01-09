@@ -265,8 +265,8 @@ class ReactionRateHelper(ABC):
             Ordering of reactions
         """
 
-    def divide_by_adens(self, number):
-        """Normalize reaction rates by number of nuclides
+    def divide_by_atoms(self, number):
+        """Normalize reaction rates by number of atoms
 
         Acts on the current material examined by :meth:`get_material_rates`
 
@@ -798,7 +798,7 @@ class Integrator(ABC):
             t, self._i_res = self._get_start_data()
 
             for i, (dt, source_rate) in enumerate(self):
-                if output:
+                if output and comm.rank == 0:
                     print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
 
                 # Solve transport equation (or obtain result from restart)
@@ -818,7 +818,7 @@ class Integrator(ABC):
                 conc = conc_list.pop()
 
                 StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
-                             source_rate, self._i_res + i, proc_time)
+                                source_rate, self._i_res + i, proc_time)
 
                 t += dt
 
@@ -826,7 +826,7 @@ class Integrator(ABC):
             # source rate is passed to the transport operator (which knows to
             # just return zero reaction rates without actually doing a transport
             # solve)
-            if output and final_step:
+            if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             res_list = [self.operator(conc, source_rate if final_step else 0.0)]
             StepResult.save(self.operator, [conc], res_list, [t, t],

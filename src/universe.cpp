@@ -98,13 +98,11 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   // Find all of the z-planes in this universe.  A set is used here for the
   // O(log(n)) insertions that will ensure entries are not repeated.
   for (auto i_cell : univ.cells_) {
-    for (auto token : model::cells[i_cell]->region_) {
-      if (token < OP_UNION) {
-        auto i_surf = std::abs(token) - 1;
-        const auto* surf = model::surfaces[i_surf].get();
-        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
-          surf_set.insert(i_surf);
-      }
+    for (auto token : model::cells[i_cell]->surfaces()) {
+      auto i_surf = std::abs(token) - 1;
+      const auto* surf = model::surfaces[i_surf].get();
+      if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
+        surf_set.insert(i_surf);
     }
   }
 
@@ -116,7 +114,7 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   for (auto i_cell : univ.cells_) {
     // It is difficult to determine the bounds of a complex cell, so add complex
     // cells to all partitions.
-    if (!model::cells[i_cell]->simple_) {
+    if (!model::cells[i_cell]->is_simple()) {
       for (auto& p : partitions_)
         p.push_back(i_cell);
       continue;
@@ -125,18 +123,16 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
     // Find the tokens for bounding z-planes.
     int32_t lower_token = 0, upper_token = 0;
     double min_z, max_z;
-    for (auto token : model::cells[i_cell]->region_) {
-      if (token < OP_UNION) {
-        const auto* surf = model::surfaces[std::abs(token) - 1].get();
-        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
-          if (lower_token == 0 || zplane->z0_ < min_z) {
-            lower_token = token;
-            min_z = zplane->z0_;
-          }
-          if (upper_token == 0 || zplane->z0_ > max_z) {
-            upper_token = token;
-            max_z = zplane->z0_;
-          }
+    for (auto token : model::cells[i_cell]->surfaces()) {
+      const auto* surf = model::surfaces[std::abs(token) - 1].get();
+      if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
+        if (lower_token == 0 || zplane->z0_ < min_z) {
+          lower_token = token;
+          min_z = zplane->z0_;
+        }
+        if (upper_token == 0 || zplane->z0_ > max_z) {
+          upper_token = token;
+          max_z = zplane->z0_;
         }
       }
     }

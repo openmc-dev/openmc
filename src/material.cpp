@@ -1319,6 +1319,12 @@ void read_materials_xml()
 
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
+
+  read_materials_xml(root);
+}
+
+void read_materials_xml(pugi::xml_node root)
+{
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(make_unique<Material>(material_node));
   }

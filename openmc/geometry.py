@@ -3,10 +3,11 @@ from collections.abc import Iterable
 from copy import deepcopy
 from pathlib import Path
 from xml.etree import ElementTree as ET
+import warnings
 
 import openmc
 import openmc._xml as xml
-from .checkvalue import check_type
+from .checkvalue import check_type, check_less_than, check_greater_than
 
 
 class Geometry:
@@ -25,12 +26,19 @@ class Geometry:
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
+    merge_surfaces : bool
+        Whether to remove redundant surfaces when the geometry is exported.
+    surface_precision : int
+        Number of decimal places to round to for comparing the coefficients of
+        surfaces for considering them topologically equivalent.
 
     """
 
     def __init__(self, root=None):
         self._root_universe = None
         self._offsets = {}
+        self.merge_surfaces = False
+        self.surface_precision = 10
         if root is not None:
             if isinstance(root, openmc.UniverseBase):
                 self.root_universe = root
@@ -48,10 +56,30 @@ class Geometry:
     def bounding_box(self):
         return self.root_universe.bounding_box
 
+    @property
+    def merge_surfaces(self):
+        return self._merge_surfaces
+
+    @property
+    def surface_precision(self):
+        return self._surface_precision
+
     @root_universe.setter
     def root_universe(self, root_universe):
         check_type('root universe', root_universe, openmc.UniverseBase)
         self._root_universe = root_universe
+
+    @merge_surfaces.setter
+    def merge_surfaces(self, merge_surfaces):
+        check_type('merge surfaces', merge_surfaces, bool)
+        self._merge_surfaces = merge_surfaces
+
+    @surface_precision.setter
+    def surface_precision(self, surface_precision):
+        check_type('surface precision', surface_precision, int)
+        check_less_than('surface_precision', surface_precision, 16)
+        check_greater_than('surface_precision', surface_precision, 0)
+        self._surface_precision = surface_precision
 
     def add_volume_information(self, volume_calc):
         """Add volume information from a stochastic volume calculation.
@@ -75,6 +103,39 @@ class Geometry:
                 if universe.id in volume_calc.volumes:
                     universe.add_volume_information(volume_calc)
 
+    def to_xml_element(self, remove_surfs=False):
+        """Creates a 'geometry' element to be written to an XML file.
+
+        Parameters
+        ----------
+        remove_surfs : bool
+            Whether or not to remove redundant surfaces from the geometry when
+            exporting
+
+        """
+        # Find and remove redundant surfaces from the geometry
+        if remove_surfs:
+            warnings.warn("remove_surfs kwarg will be deprecated soon, please "
+                          "set the Geometry.merge_surfaces attribute instead.")
+            self.merge_surfaces = True
+
+        if self.merge_surfaces:
+            self.remove_redundant_surfaces()
+
+        # Create XML representation
+        element = ET.Element("geometry")
+        self.root_universe.create_xml_subelement(element, memo=set())
+
+        # Sort the elements in the file
+        element[:] = sorted(element, key=lambda x: (
+            x.tag, int(x.get('id'))))
+
+        # Clean the indentation in the file to be user-readable
+        xml.clean_indentation(element)
+        xml.reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
+
+        return element
+
     def export_to_xml(self, path='geometry.xml', remove_surfs=False):
         """Export geometry to an XML file.
 
@@ -89,20 +150,7 @@ class Geometry:
             .. versionadded:: 0.12
 
         """
-        # Find and remove redundant surfaces from the geometry
-        if remove_surfs:
-            self.remove_redundant_surfaces()
-
-        # Create XML representation
-        root_element = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(root_element, memo=set())
-
-        # Sort the elements in the file
-        root_element[:] = sorted(root_element, key=lambda x: (
-            x.tag, int(x.get('id'))))
-
-        # Clean the indentation in the file to be user-readable
-        xml.clean_indentation(root_element)
+        root_element = self.to_xml_element(remove_surfs)
 
         # Check if path is a directory
         p = Path(path)
@@ -110,9 +158,100 @@ class Geometry:
             p /= 'geometry.xml'
 
         # Write the XML Tree to the geometry.xml file
-        xml.reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml_element(cls, elem, materials=None):
+        """Generate geometry from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+        materials : openmc.Materials or None
+            Materials used to assign to cells. If None, an attempt is made to
+            generate it from the materials.xml file.
+
+        Returns
+        -------
+        openmc.Geometry
+            Geometry object
+
+        """
+        mats = dict()
+        if materials is not None:
+            mats.update({str(m.id): m for m in materials})
+        mats['void'] = None
+
+        # Helper function for keeping a cache of Universe instances
+        universes = {}
+        def get_universe(univ_id):
+            if univ_id not in universes:
+                univ = openmc.Universe(univ_id)
+                universes[univ_id] = univ
+            return universes[univ_id]
+
+        # Get surfaces
+        surfaces = {}
+        periodic = {}
+        for surface in elem.findall('surface'):
+            s = openmc.Surface.from_xml_element(surface)
+            surfaces[s.id] = s
+
+            # Check for periodic surface
+            other_id = xml.get_text(surface, 'periodic_surface_id')
+            if other_id is not None:
+                periodic[s.id] = int(other_id)
+
+        # Apply periodic surfaces
+        for s1, s2 in periodic.items():
+            surfaces[s1].periodic_surface = surfaces[s2]
+
+        # Add any DAGMC universes
+        for e in elem.findall('dagmc_universe'):
+            dag_univ = openmc.DAGMCUniverse.from_xml_element(e)
+            universes[dag_univ.id] = dag_univ
+
+        # Dictionary that maps each universe to a list of cells/lattices that
+        # contain it (needed to determine which universe is the elem)
+        child_of = defaultdict(list)
+
+        for e in elem.findall('lattice'):
+            lat = openmc.RectLattice.from_xml_element(e, get_universe)
+            universes[lat.id] = lat
+            if lat.outer is not None:
+                child_of[lat.outer].append(lat)
+            for u in lat.universes.ravel():
+                child_of[u].append(lat)
+
+        for e in elem.findall('hex_lattice'):
+            lat = openmc.HexLattice.from_xml_element(e, get_universe)
+            universes[lat.id] = lat
+            if lat.outer is not None:
+                child_of[lat.outer].append(lat)
+            if lat.ndim == 2:
+                for ring in lat.universes:
+                    for u in ring:
+                        child_of[u].append(lat)
+            else:
+                for axial_slice in lat.universes:
+                    for ring in axial_slice:
+                        for u in ring:
+                            child_of[u].append(lat)
+
+        for e in elem.findall('cell'):
+            c = openmc.Cell.from_xml_element(e, surfaces, mats, get_universe)
+            if c.fill_type in ('universe', 'lattice'):
+                child_of[c.fill].append(c)
+
+        # Determine which universe is the root by finding one which is not a
+        # child of any other object
+        for u in universes.values():
+            if not child_of[u]:
+                return cls(u)
+        else:
+            raise ValueError('Error determining root universe.')
 
     @classmethod
     def from_xml(cls, path='geometry.xml', materials=None):
@@ -132,84 +271,15 @@ class Geometry:
             Geometry object
 
         """
-        # Helper function for keeping a cache of Universe instances
-        universes = {}
-        def get_universe(univ_id):
-            if univ_id not in universes:
-                univ = openmc.Universe(univ_id)
-                universes[univ_id] = univ
-            return universes[univ_id]
-
-        tree = ET.parse(path)
-        root = tree.getroot()
-
-        # Get surfaces
-        surfaces = {}
-        periodic = {}
-        for surface in root.findall('surface'):
-            s = openmc.Surface.from_xml_element(surface)
-            surfaces[s.id] = s
-
-            # Check for periodic surface
-            other_id = xml.get_text(surface, 'periodic_surface_id')
-            if other_id is not None:
-                periodic[s.id] = int(other_id)
-
-        # Apply periodic surfaces
-        for s1, s2 in periodic.items():
-            surfaces[s1].periodic_surface = surfaces[s2]
-
-        # Add any DAGMC universes
-        for elem in root.findall('dagmc_universe'):
-            dag_univ = openmc.DAGMCUniverse.from_xml_element(elem)
-            universes[dag_univ.id] = dag_univ
-
-        # Dictionary that maps each universe to a list of cells/lattices that
-        # contain it (needed to determine which universe is the root)
-        child_of = defaultdict(list)
-
-        for elem in root.findall('lattice'):
-            lat = openmc.RectLattice.from_xml_element(elem, get_universe)
-            universes[lat.id] = lat
-            if lat.outer is not None:
-                child_of[lat.outer].append(lat)
-            for u in lat.universes.ravel():
-                child_of[u].append(lat)
-
-        for elem in root.findall('hex_lattice'):
-            lat = openmc.HexLattice.from_xml_element(elem, get_universe)
-            universes[lat.id] = lat
-            if lat.outer is not None:
-                child_of[lat.outer].append(lat)
-            if lat.ndim == 2:
-                for ring in lat.universes:
-                    for u in ring:
-                        child_of[u].append(lat)
-            else:
-                for axial_slice in lat.universes:
-                    for ring in axial_slice:
-                        for u in ring:
-                            child_of[u].append(lat)
-
         # Create dictionary to easily look up materials
         if materials is None:
             filename = Path(path).parent / 'materials.xml'
             materials = openmc.Materials.from_xml(str(filename))
-        mats = {str(m.id): m for m in materials}
-        mats['void'] = None
 
-        for elem in root.findall('cell'):
-            c = openmc.Cell.from_xml_element(elem, surfaces, mats, get_universe)
-            if c.fill_type in ('universe', 'lattice'):
-                child_of[c.fill].append(c)
+        tree = ET.parse(path)
+        root = tree.getroot()
 
-        # Determine which universe is the root by finding one which is not a
-        # child of any other object
-        for u in universes.values():
-            if not child_of[u]:
-                return cls(u)
-        else:
-            raise ValueError('Error determining root universe.')
+        return cls.from_xml_element(root, materials)
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point
@@ -396,28 +466,6 @@ class Geometry:
                 surfaces = cell.region.get_surfaces(surfaces)
         return surfaces
 
-    def get_redundant_surfaces(self):
-        """Return all of the topologically redundant surface IDs
-
-        .. versionadded:: 0.12
-
-        Returns
-        -------
-        dict
-            Dictionary whose keys are the ID of a redundant surface and whose
-            values are the topologically equivalent :class:`openmc.Surface`
-            that should replace it.
-
-        """
-        tally = defaultdict(list)
-        for surf in self.get_all_surfaces().values():
-            coeffs = tuple(surf._coefficients[k] for k in surf._coeff_keys)
-            key = (surf._type,) + coeffs
-            tally[key].append(surf)
-        return {replace.id: keep
-                for keep, *redundant in tally.values()
-                for replace in redundant}
-
     def _get_domains_by_name(self, name, case_sensitive, matching, domain_type):
         if not case_sensitive:
             name = name.lower()
@@ -565,16 +613,42 @@ class Geometry:
         return self._get_domains_by_name(name, case_sensitive, matching, 'lattice')
 
     def remove_redundant_surfaces(self):
-        """Remove redundant surfaces from the geometry"""
+        """Remove and return all of the redundant surfaces.
 
+        Uses surface_precision attribute of Geometry instance for rounding and
+        comparing surface coefficients.
+
+        .. versionadded:: 0.12
+
+        Returns
+        -------
+        redundant_surfaces
+            Dictionary whose keys are the ID of a redundant surface and whose
+            values are the topologically equivalent :class:`openmc.Surface`
+            that should replace it.
+
+        """
         # Get redundant surfaces
-        redundant_surfaces = self.get_redundant_surfaces()
+        redundancies = defaultdict(list)
+        for surf in self.get_all_surfaces().values():
+            coeffs = tuple(round(surf._coefficients[k],
+                                 self.surface_precision)
+                           for k in surf._coeff_keys)
+            key = (surf._type,) + coeffs
+            redundancies[key].append(surf)
 
-        # Iterate through all cells contained in the geometry
-        for cell in self.get_all_cells().values():
-            # Recursively remove redundant surfaces from regions
-            if cell.region:
-                cell.region.remove_redundant_surfaces(redundant_surfaces)
+        redundant_surfaces = {replace.id: keep
+                              for keep, *redundant in redundancies.values()
+                              for replace in redundant}
+
+        if redundant_surfaces:
+            # Iterate through all cells contained in the geometry
+            for cell in self.get_all_cells().values():
+                # Recursively remove redundant surfaces from regions
+                if cell.region:
+                    cell.region.remove_redundant_surfaces(redundant_surfaces)
+
+        return redundant_surfaces
 
     def determine_paths(self, instances_only=False):
         """Determine paths through CSG tree for cells and materials.

@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
-from typing import Optional, Union
+from typing import Optional
 from xml.etree import ElementTree as ET
 
 import h5py
@@ -98,7 +98,7 @@ class Material(IDManagerMixin):
         this distribution is the total intensity of the photon source in
         [decay/sec].
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.13.2
 
     """
 
@@ -902,6 +902,8 @@ class Material(IDManagerMixin):
         element : str
             Specifies the element to match when searching through the nuclides
 
+            .. versionadded:: 0.13.2
+
         Returns
         -------
         nuclides : list of str
@@ -953,6 +955,8 @@ class Material(IDManagerMixin):
         nuclides : str, optional
             Nuclide for which atom density is desired. If not specified, the
             atom density for each nuclide in the material is given.
+
+            .. versionadded:: 0.13.2
 
         Returns
         -------
@@ -1041,7 +1045,7 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        Union[dict, float]
+        typing.Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide
             names and values are activity is returned. Otherwise the activity
             of the material is returned as a float.
@@ -1063,7 +1067,50 @@ class Material(IDManagerMixin):
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
+    
+    def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False):
+        """Returns the decay heat of the material or for each nuclide in the
+        material in units of [W], [W/g] or [W/cm3].
 
+        .. versionadded:: 0.13.3
+
+        Parameters
+        ----------
+        units : {'W', 'W/g', 'W/cm3'}
+            Specifies the units of decay heat to return. Options include total
+            heat [W], specific [W/g] or volumetric heat [W/cm3].
+            Default is total heat [W].
+        by_nuclide : bool
+            Specifies if the decay heat should be returned for the material as a
+            whole or per nuclide. Default is False.
+
+        Returns
+        -------
+        Union[dict, float]
+            If `by_nuclide` is True then a dictionary whose keys are nuclide
+            names and values are decay heat is returned. Otherwise the decay heat
+            of the material is returned as a float.
+        """
+
+        cv.check_value('units', units, {'W', 'W/g', 'W/cm3'})
+        cv.check_type('by_nuclide', by_nuclide, bool)
+
+        if units == 'W':
+            multiplier = self.volume
+        elif units == 'W/cm3':
+            multiplier = 1
+        elif units == 'W/g':
+            multiplier = 1.0 / self.get_mass_density()
+        
+        decayheat = {} 
+        for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
+            decay_erg = openmc.data.decay_energy(nuclide)
+            inv_seconds = openmc.data.decay_constant(nuclide)
+            decay_erg *= openmc.data.JOULE_PER_EV
+            decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
+
+        return decayheat if by_nuclide else sum(decayheat.values()) 
+    
     def get_nuclide_atoms(self):
         """Return number of atoms of each nuclide in the material
 
@@ -1487,6 +1534,57 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
+    def _write_xml(self, file, header=True, level=0, spaces_per_level=2, trailing_indent=True):
+        """Writes XML content of the materials to an open file handle.
+
+        Parameters
+        ----------
+        file : IOTextWrapper
+            Open file handle to write content into.
+        header : bool
+            Whether or not to write the XML header
+        level : int
+            Indentation level of materials element
+        spaces_per_level : int
+            Number of spaces per indentation
+        trailing_indentation : bool
+            Whether or not to write a trailing indentation for the materials element
+
+        """
+        indentation = level*spaces_per_level*' '
+        # Write the header and the opening tag for the root element.
+        if header:
+            file.write("<?xml version='1.0' encoding='utf-8'?>\n")
+        file.write(indentation+'<materials>\n')
+
+        # Write the <cross_sections> element.
+        if self.cross_sections is not None:
+            element = ET.Element('cross_sections')
+            element.text = str(self.cross_sections)
+            clean_indentation(element, level=level+1)
+            element.tail = element.tail.strip(' ')
+            file.write((level+1)*spaces_per_level*' ')
+            reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
+            ET.ElementTree(element).write(file, encoding='unicode')
+
+        # Write the <material> elements.
+        for material in sorted(self, key=lambda x: x.id):
+            element = material.to_xml_element()
+            clean_indentation(element, level=level+1)
+            element.tail = element.tail.strip(' ')
+            file.write((level+1)*spaces_per_level*' ')
+            reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
+            ET.ElementTree(element).write(file, encoding='unicode')
+
+        # Write the closing tag for the root element.
+        file.write(indentation+'</materials>\n')
+
+        # Write a trailing indentation for the next element
+        # at this level if needed
+        if trailing_indent:
+            file.write(indentation)
+
+
     def export_to_xml(self, path: PathLike = 'materials.xml'):
         """Export material collection to an XML file.
 
@@ -1506,32 +1604,34 @@ class Materials(cv.CheckedList):
         # one go.
         with open(str(p), 'w', encoding='utf-8',
                   errors='xmlcharrefreplace') as fh:
+            self._write_xml(fh)
 
-            # Write the header and the opening tag for the root element.
-            fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
-            fh.write('<materials>\n')
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate materials collection from XML file
 
-            # Write the <cross_sections> element.
-            if self.cross_sections is not None:
-                element = ET.Element('cross_sections')
-                element.text = str(self.cross_sections)
-                clean_indentation(element, level=1)
-                element.tail = element.tail.strip(' ')
-                fh.write('  ')
-                reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
-                ET.ElementTree(element).write(fh, encoding='unicode')
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
 
-            # Write the <material> elements.
-            for material in sorted(self, key=lambda x: x.id):
-                element = material.to_xml_element()
-                clean_indentation(element, level=1)
-                element.tail = element.tail.strip(' ')
-                fh.write('  ')
-                reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
-                ET.ElementTree(element).write(fh, encoding='unicode')
+        Returns
+        -------
+        openmc.Materials
+            Materials collection
 
-            # Write the closing tag for the root element.
-            fh.write('</materials>\n')
+        """
+        # Generate each material
+        materials = cls()
+        for material in elem.findall('material'):
+            materials.append(Material.from_xml_element(material))
+
+        # Check for cross sections settings
+        xs = elem.find('cross_sections')
+        if xs is not None:
+            materials.cross_sections = xs.text
+
+        return materials
 
     @classmethod
     def from_xml(cls, path: PathLike = 'materials.xml'):
@@ -1551,14 +1651,4 @@ class Materials(cv.CheckedList):
         tree = ET.parse(path)
         root = tree.getroot()
 
-        # Generate each material
-        materials = cls()
-        for material in root.findall('material'):
-            materials.append(Material.from_xml_element(material))
-
-        # Check for cross sections settings
-        xs = tree.find('cross_sections')
-        if xs is not None:
-            materials.cross_sections = xs.text
-
-        return materials
+        return cls.from_xml_element(root)

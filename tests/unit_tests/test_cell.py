@@ -92,6 +92,9 @@ def test_temperature(cell_with_lattice):
     assert c2.temperature == 400.0
     with pytest.raises(ValueError):
         c.temperature = -100.
+    c.temperature = None
+    assert c1.temperature == None
+    assert c2.temperature == None
 
     # distributed temperature
     cells, _, _, _ = cell_with_lattice

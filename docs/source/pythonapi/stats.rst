@@ -22,6 +22,12 @@ Univariate Probability Distributions
    openmc.stats.Legendre
    openmc.stats.Mixture
    openmc.stats.Normal
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
    openmc.stats.muir
 
 Angular Distributions

@@ -5,10 +5,13 @@ import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
+import warnings
+from xml.etree import ElementTree as ET
 
 import h5py
 
 import openmc
+import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value
@@ -237,6 +240,35 @@ class Model:
         plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
         return cls(geometry, materials, settings, tallies, plots)
 
+    @classmethod
+    def from_model_xml(cls, path='model.xml'):
+        """Create model from single XML file
+
+        .. vesionadded:: 0.13.3
+
+        Parameters
+        ----------
+        path : str or Pathlike
+            Path to model.xml file
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        model = cls()
+
+        meshes = {}
+        model.settings = openmc.Settings.from_xml_element(root.find('settings'), meshes)
+        model.materials = openmc.Materials.from_xml_element(root.find('materials'))
+        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
+
+        if root.find('tallies'):
+            model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
+
+        if root.find('plots'):
+            model.plots = openmc.Plots.from_xml_element(root.find('plots'))
+
+        return model
+
     def init_lib(self, threads=None, geometry_debug=False, restart_file=None,
                  tracks=False, output=True, event_based=None, intracomm=None):
         """Initializes the model in memory via the C API
@@ -398,7 +430,7 @@ class Model:
                 depletion_operator.finalize()
 
     def export_to_xml(self, directory='.', remove_surfs=False):
-        """Export model to XML files.
+        """Export model to separate XML files.
 
         Parameters
         ----------
@@ -433,6 +465,78 @@ class Model:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
+
+    def export_to_model_xml(self, path='model.xml', remove_surfs=False):
+        """Export model to a single XML file.
+
+        .. versionadded:: 0.13.3
+
+        Parameters
+        ----------
+        path : str or Pathlike
+            Location of the XML file to write (default is 'model.xml'). Can be a
+            directory or file path.
+        remove_surfs : bool
+            Whether or not to remove redundant surfaces from the geometry when
+            exporting.
+
+        """
+        xml_path = Path(path)
+        # if the provided path doesn't end with the XML extension, assume the
+        # input path is meant to be a directory. If the directory does not
+        # exist, create it and place a 'model.xml' file there.
+        if not str(xml_path).endswith('.xml') and not xml_path.exists():
+            os.mkdir(xml_path)
+            xml_path /= 'model.xml'
+        # if this is an XML file location and the file's parent directory does
+        # not exist, create it before continuing
+        elif not xml_path.parent.exists():
+            os.mkdir(xml_path.parent)
+
+        if remove_surfs:
+            warnings.warn("remove_surfs kwarg will be deprecated soon, please "
+                          "set the Geometry.merge_surfaces attribute instead.")
+            self.geometry.merge_surfaces = True
+            # Can be used to modify tallies in case any surfaces are redundant
+            redundant_surfaces = self.geometry.remove_redundant_surfaces()
+
+        # provide a memo to track which meshes have been written
+        mesh_memo = set()
+        settings_element = self.settings.to_xml_element(mesh_memo)
+        geometry_element = self.geometry.to_xml_element()
+
+        xml.clean_indentation(geometry_element, level=1)
+        xml.clean_indentation(settings_element, level=1)
+
+        # If a materials collection was specified, export it. Otherwise, look
+        # for all materials in the geometry and use that to automatically build
+        # a collection.
+        if self.materials:
+            materials = self.materials
+        else:
+            materials = openmc.Materials(self.geometry.get_all_materials()
+                                         .values())
+
+        with open(xml_path, 'w', encoding='utf-8', errors='xmlcharrefreplace') as fh:
+            # write the XML header
+            fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
+            fh.write("<model>\n")
+            # Write the materials collection to the open XML file first.
+            # This will write the XML header also
+            materials._write_xml(fh, False, level=1)
+            # Write remaining elements as a tree
+            ET.ElementTree(geometry_element).write(fh, encoding='unicode')
+            ET.ElementTree(settings_element).write(fh, encoding='unicode')
+
+            if self.tallies:
+                tallies_element = self.tallies.to_xml_element(mesh_memo)
+                xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
+                ET.ElementTree(tallies_element).write(fh, encoding='unicode')
+            if self.plots:
+                plots_element = self.plots.to_xml_element()
+                xml.clean_indentation(plots_element, level=1, trailing_indent=False)
+                ET.ElementTree(plots_element).write(fh, encoding='unicode')
+            fh.write("</model>\n")
 
     def import_properties(self, filename):
         """Import physical properties

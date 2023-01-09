@@ -134,7 +134,7 @@ class WeightWindows(_FortranObjectWithID):
             p = ParticleType.from_string(p)
         else:
             p = ParticleType(p)
-        val = c_char_p(p.to_string().encode())
+        val = c_char_p(str(p).encode())
         _dll.openmc_weight_windows_set_particle(self._index, val)
 
     def update_weight_windows(self, tally, score='flux', value='mean', method='magic'):
@@ -204,8 +204,8 @@ class WeightWindows(_FortranObjectWithID):
         particle_filter = tally.find_filter(ParticleFilter)
         # ensure that the tally won't filter out the specified particle
         if particle_filter is not None and particle not in particle_filter.bins:
-            raise RuntimeError(f'Specified tally for weight windows {tally} '
-                               f' does not track the reqeusted particle {particle}')
+            raise RuntimeError(f'Specified tally for weight windows (Tally {tally.id})'
+                               f' does not track the reqeusted particle: "{particle}"')
 
         # tally has to have a mesh filter
         mesh_filter = tally.find_filter(MeshFilter)

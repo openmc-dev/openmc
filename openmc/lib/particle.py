@@ -28,7 +28,7 @@ class ParticleType(IntEnum):
         except KeyError:
             raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
 
-    def to_string(self):
+    def __repr__(self) -> str:
         """
         Returns a string representation of the ParticleType instance.
 
@@ -36,3 +36,7 @@ class ParticleType(IntEnum):
             str: The lowercase name of the ParticleType instance.
         """
         return self.name.lower()
+
+    def __str__(self) -> str:
+        return self.__repr__()
+

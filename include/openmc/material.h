@@ -12,12 +12,9 @@
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/ncrystal_interface.h"
 #include "openmc/particle.h"
 #include "openmc/vector.h"
-
-#ifdef NCRYSTAL
-#include "NCrystal/NCrystal.hh"
-#endif
 
 namespace openmc {
 
@@ -155,25 +152,17 @@ public:
   //! \return Temperature in [K]
   double temperature() const;
 
-#ifdef NCRYSTAL
   //! Get pointer to NCrystal material object
   //! \return Pointer to NCrystal material object
-  std::shared_ptr<const NCrystal::ProcImpl::Process> ncrystal_mat() const
-  {
-    return ncrystal_mat_;
-  };
-#endif
+  const NCrystalMat& ncrystal_mat() const { return ncrystal_mat_; };
 
   //----------------------------------------------------------------------------
   // Data
-  int32_t id_ {C_NONE}; //!< Unique ID
-  std::string name_;    //!< Name of material
-  vector<int> nuclide_; //!< Indices in nuclides vector
-  vector<int> element_; //!< Indices in elements vector
-#ifdef NCRYSTAL
-  std::string ncrystal_cfg_; //!< NCrystal configuration string
-  std::shared_ptr<const NCrystal::ProcImpl::Process> ncrystal_mat_;
-#endif
+  int32_t id_ {C_NONE};                 //!< Unique ID
+  std::string name_;                    //!< Name of material
+  vector<int> nuclide_;                 //!< Indices in nuclides vector
+  vector<int> element_;                 //!< Indices in elements vector
+  NCrystalMat ncrystal_mat_;            //!< NCrystal material object
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_;                      //!< Total atom density in [atom/b-cm]
   double density_gpcc_;                 //!< Total atom density in [g/cm^3]

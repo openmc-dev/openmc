@@ -10,6 +10,7 @@
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
+#include "openmc/ncrystal_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/physics_common.h"
@@ -138,32 +139,15 @@ void sample_neutron_reaction(Particle& p)
   if (!p.alive())
     return;
 
-    // Sample a scattering reaction and determine the secondary energy of the
-    // exiting neutron
-
-#ifdef NCRYSTAL
-  if (model::materials[p.material()]->ncrystal_mat() &&
-      p.E() < settings::ncrystal_max_energy) {
-    NCrystalRNGWrapper rng(p.current_seed()); // Initialize RNG
-    // create a cache pointer for multi thread physics
-    NCrystal::CachePtr dummy_cache;
-    auto nc_energy = NCrystal::NeutronEnergy {p.E()};
-    auto outcome =
-      model::materials[p.material()]->ncrystal_mat()->sampleScatter(
-        dummy_cache, rng, nc_energy, {p.u().x, p.u().y, p.u().z});
-    p.E_last() = p.E();
-    p.E() = outcome.ekin.get();
-    Direction u_old {p.u()};
-    p.u() = Direction(
-      outcome.direction[0], outcome.direction[1], outcome.direction[2]);
-    p.mu() = u_old.dot(p.u());
-    p.event_mt() = ELASTIC;
+  // Sample a scattering reaction and determine the secondary energy of the
+  // exiting neutron
+  const auto& ncrystal_mat = model::materials[p.material()]->ncrystal_mat();
+  if (ncrystal_mat && p.E() < settings::ncrystal_max_energy) {
+    ncrystal_mat.scatter(p);
   } else {
     scatter(p, i_nuclide);
   }
-#else
-  scatter(p, i_nuclide);
-#endif
+
   // Advance URR seed stream 'N' times after energy changes
   if (p.E() != p.E_last()) {
     p.stream() = STREAM_URR_PTABLE;

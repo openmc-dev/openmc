@@ -348,6 +348,7 @@ list(APPEND libopenmc_SOURCES
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp
+  src/ncrystal_interface.cpp
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp

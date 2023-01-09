@@ -37,13 +37,6 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-#ifdef NCRYSTAL
-const bool NCRYSTAL_ENABLED = true;
-#else
-const bool NCRYSTAL_ENABLED = false;
-#endif
-
-
 namespace settings {
 
 // Default values for boolean flags
@@ -106,6 +99,7 @@ int n_batches;
 int n_max_batches;
 int max_splits {1000};
 int max_tracks {1000};
+double ncrystal_max_energy {5.0};
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
@@ -127,10 +121,6 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
-
-#ifdef NCRYSTAL
-double ncrystal_max_energy {5.0};
-#endif
 
 } // namespace settings
 

@@ -560,7 +560,16 @@ void WeightWindows::to_hdf5(hid_t group) const
 // C API
 //==============================================================================
 
-extern "C" int openmc_get_weight_windows_index(int32_t id, int32_t* idx)
+int verify_ww_index(int32_t index)
+{
+  if (index < 0 || index >= variance_reduction::weight_windows.size()) {
+    set_errmsg(fmt::format("Index '{}' for weight windows is invalid", index));
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_index(int32_t id, int32_t* idx)
 {
   auto it = variance_reduction::ww_map.find(id);
   if (it == variance_reduction::ww_map.end()) {
@@ -569,6 +578,27 @@ extern "C" int openmc_get_weight_windows_index(int32_t id, int32_t* idx)
   }
 
   *idx = it->second;
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_id(int32_t index, int32_t* id)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows.at(index);
+  *id = wws->id();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_id(int32_t index, int32_t id)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows.at(index);
+  wws->id() = id;
+  variance_reduction::ww_map[id] = index;
   return 0;
 }
 
@@ -656,24 +686,22 @@ extern "C" int openmc_weight_windows_get_energy_bounds(
 }
 
 extern "C" int openmc_weight_windows_set_particle(
-  int32_t ww_idx, const char* particle)
+  int32_t index, const char* particle)
 {
-  if (ww_idx < 0 || ww_idx >= variance_reduction::weight_windows.size()) {
-    set_errmsg(fmt::format("Index '{}' for weight windows is invalid", ww_idx));
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
-  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows.at(index);
   wws->set_particle_type(str_to_particle_type(particle));
   return 0;
 }
 
-extern "C" int openmc_weight_windows_get_particle(int32_t ww_idx, int* particle)
+extern "C" int openmc_weight_windows_get_particle(int32_t index, int* particle)
 {
-  if (ww_idx < 0 || ww_idx >= variance_reduction::weight_windows.size()) {
-    set_errmsg(fmt::format("Index '{}' for weight windows is invalid", ww_idx));
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
-  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows.at(index);
   *particle = static_cast<int>(wws->particle_type());
   return 0;
 }
@@ -726,27 +754,22 @@ extern "C" int openmc_weight_windows_export(const char* filename)
 extern "C" int openmc_weight_windows_import(const char* filename)
 {
 
-  if (!filename) {
-    set_errmsg("No filename provided to import");
-    return OPENMC_E_INVALID_ARGUMENT;
+  std::string name = filename ? filename : "weight_windows.h5";
+
+  write_message(fmt::format("Importing weight windows from {}...", name), 5);
+
+  if (!file_exists(name)) {
+    set_errmsg(fmt::format("File '{}' does not exist", name));
   }
 
-  write_message(
-    fmt::format("Importing weight windows from {}...", filename), 5);
-
-  if (!file_exists(filename)) {
-    set_errmsg(fmt::format("File '{}' does not exist", filename));
-  }
-
-  hid_t ww_file = file_open(filename, 'r');
+  hid_t ww_file = file_open(name, 'r');
 
   // Check that filetype is correct
   std::string filetype;
   read_attribute(ww_file, "filetype", filetype);
   if (filetype != "weight_windows") {
     file_close(ww_file);
-    set_errmsg(
-      fmt::format("File '{}' is not a weight windows file.", filename));
+    set_errmsg(fmt::format("File '{}' is not a weight windows file.", name));
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
@@ -757,7 +780,7 @@ extern "C" int openmc_weight_windows_import(const char* filename)
     std::string err_msg =
       fmt::format("File '{}' has version {} which is incompatible with the "
                   "expected version ({}).",
-        filename, file_version, VERSION_WEIGHT_WINDOWS);
+        name, file_version, VERSION_WEIGHT_WINDOWS);
     set_errmsg(err_msg);
     return OPENMC_E_INVALID_ARGUMENT;
   }

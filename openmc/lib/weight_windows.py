@@ -25,9 +25,17 @@ _dll.openmc_update_weight_windows.errcheck = _error_handler
 
 _dll.openmc_weight_windows_size.restype = c_size_t
 
-_dll.openmc_get_weight_windows_index.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_get_weight_windows_index.restype = c_int
-_dll.openmc_get_weight_windows_index.errcheck = _error_handler
+_dll.openmc_weight_windows_get_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_weight_windows_get_index.restype = c_int
+_dll.openmc_weight_windows_get_index.errcheck = _error_handler
+
+_dll.openmc_weight_windows_get_id.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_weight_windows_get_id.restype = c_int
+_dll.openmc_weight_windows_get_id.errcheck = _error_handler
+
+_dll.openmc_weight_windows_set_id.argtypes = [c_int32, c_int32]
+_dll.openmc_weight_windows_set_id.restype = c_int
+_dll.openmc_weight_windows_set_id.errcheck = _error_handler
 
 _dll.openmc_weight_windows_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_weight_windows_set_mesh.restype = c_int
@@ -98,6 +106,16 @@ class WeightWindows(_FortranObjectWithID):
             cls.__instances[index] = instance
 
         return cls.__instances[index]
+
+    @property
+    def id(self):
+        ww_id = c_int32()
+        _dll.openmc_weight_windows_get_id(self._index, ww_id)
+        return ww_id.value
+
+    @id.setter
+    def id(self, ww_id):
+        _dll.openmc_weight_windows_set_id(self._index, ww_id)
 
     @property
     def mesh(self):
@@ -231,8 +249,8 @@ class _WeightWindowsMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
         try:
-            _dll.openmc_get_weight_windows_index(key, index)
-        except(AllocationError, InvalidIDError):
+            _dll.openmc_weight_windows_get_index(key, index)
+        except (AllocationError, InvalidIDError) as e:
             raise KeyError(str(e))
         return WeightWindows(index=index.value)
 

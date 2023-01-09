@@ -164,7 +164,9 @@ int openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides);
 int openmc_tally_set_scores(int32_t index, int n, const char** scores);
 int openmc_tally_set_type(int32_t index, const char* type);
 int openmc_tally_set_writable(int32_t index, bool writable);
-int openmc_get_weight_windows_index(int32_t id, int32_t* idx);
+int openmc_weight_windows_get_index(int32_t id, int32_t* idx);
+int openmc_weight_windows_get_id(int32_t index, int32_t* id);
+int openmc_weight_windows_set_id(int32_t index, int32_t id);
 int openmc_set_weight_windows(
   int ww_id, size_t n, const double* lower_bounds, const double* upper_bounds);
 int openmc_update_weight_windows(int32_t tally_idx, int32_t ww_idx,
@@ -172,13 +174,13 @@ int openmc_update_weight_windows(int32_t tally_idx, int32_t ww_idx,
   const char* method = "magic");
 int openmc_extend_weight_windows(
   int32_t n, int32_t* index_start, int32_t* index_end);
-int openmc_weight_windows_get_mesh(int32_t ww_idx, int32_t* mesh_idx);
-int openmc_weight_windows_set_mesh(int32_t ww_idx, int32_t mesh_idx);
+int openmc_weight_windows_get_mesh(int32_t index, int32_t* mesh_idx);
+int openmc_weight_windows_set_mesh(int32_t index, int32_t mesh_idx);
 int openmc_weight_windows_set_energy_bounds(
-  int32_t ww_idx, double* e_bounds, size_t e_bounds_size);
+  int32_t index, double* e_bounds, size_t e_bounds_size);
 int openmc_weight_windows_get_energy_bounds(
-  int32_t ww_idx, const double** e_bounds, size_t* e_bounds_size);
-int openmc_weight_window_set_particle(int32_t ww_idx, const char* particle);
+  int32_t index, const double** e_bounds, size_t* e_bounds_size);
+int openmc_weight_window_set_particle(int32_t index, const char* particle);
 size_t openmc_weight_windows_size();
 int openmc_weight_windows_export(const char* filename = nullptr);
 int openmc_weight_windows_import(const char* filename = nullptr);

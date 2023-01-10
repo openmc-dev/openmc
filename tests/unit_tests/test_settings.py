@@ -17,7 +17,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.output = {'summary': True, 'tallies': False, 'path': 'here'}
     s.verbosity = 7
     s.sourcepoint = {'batches': [50, 150, 500, 1000], 'separate': True,
-                     'write': True, 'overwrite': True}
+                     'write': True, 'overwrite': True, 'mcpl': True}
     s.statepoint = {'batches': [50, 150, 500, 1000]}
     s.surf_source_read = {'path': 'surface_source_1.h5'}
     s.surf_source_write = {'surface_ids': [2], 'max_particles': 200}
@@ -75,7 +75,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.output == {'summary': True, 'tallies': False, 'path': 'here'}
     assert s.verbosity == 7
     assert s.sourcepoint == {'batches': [50, 150, 500, 1000], 'separate': True,
-                             'write': True, 'overwrite': True}
+                             'write': True, 'overwrite': True, 'mcpl': True}
     assert s.statepoint == {'batches': [50, 150, 500, 1000]}
     assert s.surf_source_read == {'path': 'surface_source_1.h5'}
     assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
@@ -89,7 +89,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert isinstance(s.entropy_mesh, openmc.RegularMesh)
     assert s.entropy_mesh.lower_left == [-10., -10., -10.]
     assert s.entropy_mesh.upper_right == [10., 10., 10.]
-    assert s.entropy_mesh.dimension == [5, 5, 5]
+    assert s.entropy_mesh.dimension == (5, 5, 5)
     assert s.trigger_active
     assert s.trigger_max_batches == 10000
     assert s.trigger_batch_interval == 50
@@ -102,7 +102,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert isinstance(s.ufs_mesh, openmc.RegularMesh)
     assert s.ufs_mesh.lower_left == [-10., -10., -10.]
     assert s.ufs_mesh.upper_right == [10., 10., 10.]
-    assert s.ufs_mesh.dimension == [5, 5, 5]
+    assert s.ufs_mesh.dimension == (5, 5, 5)
     assert s.resonance_scattering == {'enable': True, 'method': 'rvs',
                                       'energy_min': 1.0, 'energy_max': 1000.0,
                                       'nuclides': ['U235', 'U238', 'Pu239']}

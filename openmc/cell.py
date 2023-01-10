@@ -318,12 +318,12 @@ class Cell(IDManagerMixin):
     @temperature.setter
     def temperature(self, temperature):
         # Make sure temperatures are positive
-        cv.check_type('cell temperature', temperature, (Iterable, Real))
+        cv.check_type('cell temperature', temperature, (Iterable, Real), none_ok=True)
         if isinstance(temperature, Iterable):
             cv.check_type('cell temperature', temperature, Iterable, Real)
             for T in temperature:
                 cv.check_greater_than('cell temperature', T, 0.0, True)
-        else:
+        elif isinstance(temperature, Real):
             cv.check_greater_than('cell temperature', temperature, 0.0, True)
 
         # If this cell is filled with a universe or lattice, propagate
@@ -650,7 +650,7 @@ class Cell(IDManagerMixin):
         surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
         materials : dict
-            Dictionary mapping material IDs to :class:`openmc.Material`
+            Dictionary mapping material ID strings to :class:`openmc.Material`
             instances (defined in :math:`openmc.Geometry.from_xml`)
         get_universe : function
             Function returning universe (defined in

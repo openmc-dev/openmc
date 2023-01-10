@@ -49,7 +49,9 @@ extern "C" bool run_CE;            //!< run with continuous-energy data?
 extern bool source_latest;         //!< write latest source at each batch?
 extern bool source_separate;       //!< write source to separate file?
 extern bool source_write;          //!< write source in HDF5 files?
+extern bool source_mcpl_write;     //!< write source in mcpl files?
 extern bool surf_source_write;     //!< write surface source file?
+extern bool surf_mcpl_write;       //!< write surface mcpl file?
 extern bool surf_source_read;      //!< read surface source file?
 extern bool survival_biasing;      //!< use survival biasing?
 extern bool temperature_multipole; //!< use multipole data?
@@ -133,8 +135,11 @@ extern double
 //==============================================================================
 
 //! Read settings from XML file
-//! \param[in] root XML node for <settings>
 void read_settings_xml();
+
+//! Read settings from XML node
+//! \param[in] root XML node for <settings>
+void read_settings_xml(pugi::xml_node root);
 
 void free_memory_settings();
 

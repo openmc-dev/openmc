@@ -21,7 +21,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "distribcell"; }
+  std::string type_str() const override { return "distribcell"; }
+  FilterType type() const override { return FilterType::DISTRIBCELL; }
 
   void from_xml(pugi::xml_node node) override;
 

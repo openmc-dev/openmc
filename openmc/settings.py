@@ -6,7 +6,8 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
-from typing import Optional, Union
+import typing  # required to prevent typing.Union namespace overwriting Union
+from typing import Optional
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
@@ -156,6 +157,7 @@ class Settings:
         :separate: bool indicating whether the source should be written as a
                    separate file
         :write: bool indicating whether or not to write the source
+        :mcpl: bool indicating whether to write the source as an MCPL file
     statepoint : dict
         Options for writing state points. Acceptable keys are:
 
@@ -171,6 +173,7 @@ class Settings:
                    banked (int)
         :max_particles: Maximum number of particles to be banked on
                    surfaces per process (int)
+        :mcpl: Output in the form of an MCPL-file (bool)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -186,13 +189,15 @@ class Settings:
         'default', 'method', 'range', 'tolerance', and 'multipole'. The value
         for 'default' should be a float representing the default temperature in
         Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
-        If the method is 'nearest', 'tolerance' indicates a range of temperature
-        within which cross sections may be used. The value for 'range' should be
-        a pair a minimum and maximum temperatures which are used to indicate
-        that cross sections be loaded at all temperatures within the
-        range. 'multipole' is a boolean indicating whether or not the windowed
-        multipole method should be used to evaluate resolved resonance cross
-        sections.
+        If the method is 'nearest', 'tolerance' indicates a range of
+        temperature within which cross sections may be used. If the method is
+        'interpolation', 'tolerance' indicates the range of temperatures outside
+        of the available cross section temperatures where cross sections will
+        evaluate to the nearer bound. The value for 'range' should be a pair of
+        minimum and maximum temperatures which are used to indicate that cross
+        sections be loaded at all temperatures within the range. 'multipole' is
+        a boolean indicating whether or not the windowed multipole method should
+        be used to evaluate resolved resonance cross sections.
     trace : tuple or list
         Show detailed information about a single particle, indicated by three
         integers: the batch number, generation number, and particle number
@@ -582,7 +587,7 @@ class Settings:
         self._max_order = max_order
 
     @source.setter
-    def source(self, source: Union[Source, typing.Iterable[Source]]):
+    def source(self, source: typing.Union[Source, typing.Iterable[Source]]):
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(Source, 'source distributions', source)
@@ -619,6 +624,8 @@ class Settings:
                 cv.check_type('sourcepoint write', value, bool)
             elif key == 'overwrite':
                 cv.check_type('sourcepoint overwrite', value, bool)
+            elif key == 'mcpl':
+                cv.check_type('sourcepoint mcpl', value, bool)
             else:
                 raise ValueError(f"Unknown key '{key}' encountered when "
                                  "setting sourcepoint options.")
@@ -652,7 +659,7 @@ class Settings:
         cv.check_type('surface source writing options', surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value('surface source writing key', key,
-                           ('surface_ids', 'max_particles'))
+                           ('surface_ids', 'max_particles', 'mcpl'))
             if key == 'surface_ids':
                 cv.check_type('surface ids for source banking', value,
                               Iterable, Integral)
@@ -664,6 +671,9 @@ class Settings:
                               value, Integral)
                 cv.check_greater_than('maximum particle banks on surfaces per process',
                                       value, 0)
+            elif key == 'mcpl':
+                cv.check_type('write to an MCPL-format file', value, bool)
+
         self._surf_source_write = surf_source_write
 
     @confidence_intervals.setter
@@ -843,7 +853,7 @@ class Settings:
 
     @volume_calculations.setter
     def volume_calculations(
-        self, vol_calcs: Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
+        self, vol_calcs: typing.Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
     ):
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
@@ -889,7 +899,7 @@ class Settings:
         self._write_initial_source = value
 
     @weight_windows.setter
-    def weight_windows(self, value: Union[WeightWindows, typing.Iterable[WeightWindows]]):
+    def weight_windows(self, value: typing.Union[WeightWindows, typing.Iterable[WeightWindows]]):
         if not isinstance(value, MutableSequence):
             value = [value]
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
@@ -1015,6 +1025,10 @@ class Settings:
                 subelement = ET.SubElement(element, "overwrite_latest")
                 subelement.text = str(self._sourcepoint['overwrite']).lower()
 
+            if 'mcpl' in self._sourcepoint:
+                subelement = ET.SubElement(element, "mcpl")
+                subelement.text = str(self._sourcepoint['mcpl']).lower()
+
     def _create_surf_source_read_subelement(self, root):
         if self._surf_source_read:
             element = ET.SubElement(root, "surf_source_read")
@@ -1032,6 +1046,9 @@ class Settings:
             if 'max_particles' in self._surf_source_write:
                 subelement = ET.SubElement(element, "max_particles")
                 subelement.text = str(self._surf_source_write['max_particles'])
+            if 'mcpl' in self._surf_source_write:
+                subelement = ET.SubElement(element, "mcpl")
+                subelement.text = str(self._surf_source_write['mcpl']).lower()
 
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:
@@ -1070,25 +1087,35 @@ class Settings:
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(value)
 
-    def _create_entropy_mesh_subelement(self, root):
-        if self.entropy_mesh is not None:
-            # use default heuristic for entropy mesh if not set by user
-            if self.entropy_mesh.dimension is None:
-                if self.particles is None:
-                    raise RuntimeError("Number of particles must be set in order to " \
-                      "use entropy mesh dimension heuristic")
-                else:
-                    n = ceil((self.particles / 20.0)**(1.0 / 3.0))
-                    d = len(self.entropy_mesh.lower_left)
-                    self.entropy_mesh.dimension = (n,)*d
+    def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
+        if self.entropy_mesh is None:
+            return
 
-            # See if a <mesh> element already exists -- if not, add it
-            path = f"./mesh[@id='{self.entropy_mesh.id}']"
-            if root.find(path) is None:
-                root.append(self.entropy_mesh.to_xml_element())
+        # use default heuristic for entropy mesh if not set by user
+        if self.entropy_mesh.dimension is None:
+            if self.particles is None:
+                raise RuntimeError("Number of particles must be set in order to " \
+                    "use entropy mesh dimension heuristic")
+            else:
+                n = ceil((self.particles / 20.0)**(1.0 / 3.0))
+                d = len(self.entropy_mesh.lower_left)
+                self.entropy_mesh.dimension = (n,)*d
 
-            subelement = ET.SubElement(root, "entropy_mesh")
-            subelement.text = str(self.entropy_mesh.id)
+        # add mesh ID to this element
+        subelement = ET.SubElement(root, "entropy_mesh")
+        subelement.text = str(self.entropy_mesh.id)
+
+        # If this mesh has already been written outside the
+        # settings element, skip writing it again
+        if mesh_memo and self.entropy_mesh.id in mesh_memo:
+            return
+
+        # See if a <mesh> element already exists -- if not, add it
+        path = f"./mesh[@id='{self.entropy_mesh.id}']"
+        if root.find(path) is None:
+            root.append(self.entropy_mesh.to_xml_element())
+            if mesh_memo is not None:
+                mesh_memo.add(self.entropy_mesh.id)
 
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
@@ -1139,15 +1166,21 @@ class Settings:
             element = ET.SubElement(root, "track")
             element.text = ' '.join(map(str, itertools.chain(*self._track)))
 
-    def _create_ufs_mesh_subelement(self, root):
-        if self.ufs_mesh is not None:
-            # See if a <mesh> element already exists -- if not, add it
-            path = f"./mesh[@id='{self.ufs_mesh.id}']"
-            if root.find(path) is None:
-                root.append(self.ufs_mesh.to_xml_element())
+    def _create_ufs_mesh_subelement(self, root, mesh_memo=None):
+        if self.ufs_mesh is None:
+            return
 
-            subelement = ET.SubElement(root, "ufs_mesh")
-            subelement.text = str(self.ufs_mesh.id)
+        subelement = ET.SubElement(root, "ufs_mesh")
+        subelement.text = str(self.ufs_mesh.id)
+
+        if mesh_memo and self.ufs_mesh.id in mesh_memo:
+            return
+
+        # See if a <mesh> element already exists -- if not, add it
+        path = f"./mesh[@id='{self.ufs_mesh.id}']"
+        if root.find(path) is None:
+            root.append(self.ufs_mesh.to_xml_element())
+            if mesh_memo is not None: mesh_memo.add(self.ufs_mesh.id)
 
     def _create_resonance_scattering_subelement(self, root):
         res = self.resonance_scattering
@@ -1204,15 +1237,21 @@ class Settings:
             elem = ET.SubElement(root, "write_initial_source")
             elem.text = str(self._write_initial_source).lower()
 
-    def _create_weight_windows_subelement(self, root):
+    def _create_weight_windows_subelement(self, root, mesh_memo=None):
         for ww in self._weight_windows:
             # Add weight window information
             root.append(ww.to_xml_element())
+
+            # if this mesh has already been written,
+            # skip writing the mesh element
+            if mesh_memo and ww.mesh.id in mesh_memo:
+                continue
 
             # See if a <mesh> element already exists -- if not, add it
             path = f"./mesh[@id='{ww.mesh.id}']"
             if root.find(path) is None:
                 root.append(ww.mesh.to_xml_element())
+                if mesh_memo is not None: mesh_memo.add(ww.mesh.id)
 
         if self._weight_windows_on is not None:
             elem = ET.SubElement(root, "weight_windows_on")
@@ -1312,10 +1351,10 @@ class Settings:
     def _sourcepoint_from_xml_element(self, root):
         elem = root.find('source_point')
         if elem is not None:
-            for key in ('separate', 'write', 'overwrite_latest', 'batches'):
+            for key in ('separate', 'write', 'overwrite_latest', 'batches', 'mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key in ('separate', 'write'):
+                    if key in ('separate', 'write', 'mcpl'):
                         value = value in ('true', '1')
                     elif key == 'overwrite_latest':
                         value = value in ('true', '1')
@@ -1334,13 +1373,15 @@ class Settings:
     def _surf_source_write_from_xml_element(self, root):
         elem = root.find('surf_source_write')
         if elem is not None:
-            for key in ('surface_ids', 'max_particles'):
+            for key in ('surface_ids', 'max_particles','mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
                     if key == 'surface_ids':
                         value = [int(x) for x in value.split()]
                     elif key in ('max_particles'):
                         value = int(value)
+                    elif key == 'mcpl':
+                        value = value in ('true', '1')
                     self.surf_source_write[key] = value
 
     def _confidence_intervals_from_xml_element(self, root):
@@ -1393,13 +1434,15 @@ class Settings:
                 if value is not None:
                     self.cutoff[key] = float(value)
 
-    def _entropy_mesh_from_xml_element(self, root):
+    def _entropy_mesh_from_xml_element(self, root, meshes=None):
         text = get_text(root, 'entropy_mesh')
         if text is not None:
             path = f"./mesh[@id='{int(text)}']"
             elem = root.find(path)
             if elem is not None:
                 self.entropy_mesh = RegularMesh.from_xml_element(elem)
+        if meshes is not None and self.entropy_mesh is not None:
+            meshes[self.entropy_mesh.id] = self.entropy_mesh
 
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
@@ -1459,13 +1502,15 @@ class Settings:
             values = [int(x) for x in text.split()]
             self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
-    def _ufs_mesh_from_xml_element(self, root):
+    def _ufs_mesh_from_xml_element(self, root, meshes=None):
         text = get_text(root, 'ufs_mesh')
         if text is not None:
             path = f"./mesh[@id='{int(text)}']"
             elem = root.find(path)
             if elem is not None:
                 self.ufs_mesh = RegularMesh.from_xml_element(elem)
+        if meshes is not None and self.ufs_mesh is not None:
+            meshes[self.ufs_mesh.id] = self.ufs_mesh
 
     def _resonance_scattering_from_xml_element(self, root):
         elem = root.find('resonance_scattering')
@@ -1517,7 +1562,7 @@ class Settings:
         if text is not None:
             self.write_initial_source = text in ('true', '1')
 
-    def _weight_windows_from_xml_element(self, root):
+    def _weight_windows_from_xml_element(self, root, meshes=None):
         for elem in root.findall('weight_windows'):
             ww = WeightWindows.from_xml_element(elem, root)
             self.weight_windows.append(ww)
@@ -1525,6 +1570,9 @@ class Settings:
         text = get_text(root, 'weight_windows_on')
         if text is not None:
             self.weight_windows_on = text in ('true', '1')
+
+        if meshes is not None and self.weight_windows:
+            meshes.update({ww.mesh.id: ww.mesh for ww in self.weight_windows})
 
     def _max_splits_from_xml_element(self, root):
         text = get_text(root, 'max_splits')
@@ -1536,6 +1584,68 @@ class Settings:
         if text is not None:
             self.max_tracks = int(text)
 
+    def to_xml_element(self, mesh_memo=None):
+        """Create a 'settings' element to be written to an XML file.
+
+        Parameters
+        ----------
+        mesh_memo : set of ints
+            A set of mesh IDs to keep track of whether a mesh has already been written.
+        """
+        # Reset xml element tree
+        element = ET.Element("settings")
+
+        self._create_run_mode_subelement(element)
+        self._create_particles_subelement(element)
+        self._create_batches_subelement(element)
+        self._create_inactive_subelement(element)
+        self._create_max_lost_particles_subelement(element)
+        self._create_rel_max_lost_particles_subelement(element)
+        self._create_generations_per_batch_subelement(element)
+        self._create_keff_trigger_subelement(element)
+        self._create_source_subelement(element)
+        self._create_output_subelement(element)
+        self._create_statepoint_subelement(element)
+        self._create_sourcepoint_subelement(element)
+        self._create_surf_source_read_subelement(element)
+        self._create_surf_source_write_subelement(element)
+        self._create_confidence_intervals(element)
+        self._create_electron_treatment_subelement(element)
+        self._create_energy_mode_subelement(element)
+        self._create_max_order_subelement(element)
+        self._create_photon_transport_subelement(element)
+        self._create_ptables_subelement(element)
+        self._create_seed_subelement(element)
+        self._create_survival_biasing_subelement(element)
+        self._create_cutoff_subelement(element)
+        self._create_entropy_mesh_subelement(element, mesh_memo)
+        self._create_trigger_subelement(element)
+        self._create_no_reduce_subelement(element)
+        self._create_verbosity_subelement(element)
+        self._create_tabular_legendre_subelements(element)
+        self._create_temperature_subelements(element)
+        self._create_trace_subelement(element)
+        self._create_track_subelement(element)
+        self._create_ufs_mesh_subelement(element, mesh_memo)
+        self._create_resonance_scattering_subelement(element)
+        self._create_volume_calcs_subelement(element)
+        self._create_create_fission_neutrons_subelement(element)
+        self._create_delayed_photon_scaling_subelement(element)
+        self._create_event_based_subelement(element)
+        self._create_max_particles_in_flight_subelement(element)
+        self._create_material_cell_offsets_subelement(element)
+        self._create_log_grid_bins_subelement(element)
+        self._create_write_initial_source_subelement(element)
+        self._create_weight_windows_subelement(element, mesh_memo)
+        self._create_max_splits_subelement(element)
+        self._create_max_tracks_subelement(element)
+
+        # Clean the indentation in the file to be user-readable
+        clean_indentation(element)
+        reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
+
+        return element
+
     def export_to_xml(self, path: PathLike = 'settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1545,57 +1655,7 @@ class Settings:
             Path to file to write. Defaults to 'settings.xml'.
 
         """
-
-        # Reset xml element tree
-        root_element = ET.Element("settings")
-
-        self._create_run_mode_subelement(root_element)
-        self._create_particles_subelement(root_element)
-        self._create_batches_subelement(root_element)
-        self._create_inactive_subelement(root_element)
-        self._create_max_lost_particles_subelement(root_element)
-        self._create_rel_max_lost_particles_subelement(root_element)
-        self._create_generations_per_batch_subelement(root_element)
-        self._create_keff_trigger_subelement(root_element)
-        self._create_source_subelement(root_element)
-        self._create_output_subelement(root_element)
-        self._create_statepoint_subelement(root_element)
-        self._create_sourcepoint_subelement(root_element)
-        self._create_surf_source_read_subelement(root_element)
-        self._create_surf_source_write_subelement(root_element)
-        self._create_confidence_intervals(root_element)
-        self._create_electron_treatment_subelement(root_element)
-        self._create_energy_mode_subelement(root_element)
-        self._create_max_order_subelement(root_element)
-        self._create_photon_transport_subelement(root_element)
-        self._create_ptables_subelement(root_element)
-        self._create_seed_subelement(root_element)
-        self._create_survival_biasing_subelement(root_element)
-        self._create_cutoff_subelement(root_element)
-        self._create_entropy_mesh_subelement(root_element)
-        self._create_trigger_subelement(root_element)
-        self._create_no_reduce_subelement(root_element)
-        self._create_verbosity_subelement(root_element)
-        self._create_tabular_legendre_subelements(root_element)
-        self._create_temperature_subelements(root_element)
-        self._create_trace_subelement(root_element)
-        self._create_track_subelement(root_element)
-        self._create_ufs_mesh_subelement(root_element)
-        self._create_resonance_scattering_subelement(root_element)
-        self._create_volume_calcs_subelement(root_element)
-        self._create_create_fission_neutrons_subelement(root_element)
-        self._create_delayed_photon_scaling_subelement(root_element)
-        self._create_event_based_subelement(root_element)
-        self._create_max_particles_in_flight_subelement(root_element)
-        self._create_material_cell_offsets_subelement(root_element)
-        self._create_log_grid_bins_subelement(root_element)
-        self._create_write_initial_source_subelement(root_element)
-        self._create_weight_windows_subelement(root_element)
-        self._create_max_splits_subelement(root_element)
-        self._create_max_tracks_subelement(root_element)
-
-        # Clean the indentation in the file to be user-readable
-        clean_indentation(root_element)
+        root_element = self.to_xml_element()
 
         # Check if path is a directory
         p = Path(path)
@@ -1603,9 +1663,77 @@ class Settings:
             p /= 'settings.xml'
 
         # Write the XML Tree to the settings.xml file
-        reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml_element(cls, elem, meshes=None):
+        """Generate settings from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+        meshes : dict or None
+            A dictionary with mesh IDs as keys and mesh instances as values that
+            have already been read from XML. Pre-existing meshes are used
+            and new meshes are added to when creating tally objects.
+
+        Returns
+        -------
+        openmc.Settings
+            Settings object
+
+        """
+        settings = cls()
+        settings._eigenvalue_from_xml_element(elem)
+        settings._run_mode_from_xml_element(elem)
+        settings._particles_from_xml_element(elem)
+        settings._batches_from_xml_element(elem)
+        settings._inactive_from_xml_element(elem)
+        settings._max_lost_particles_from_xml_element(elem)
+        settings._rel_max_lost_particles_from_xml_element(elem)
+        settings._generations_per_batch_from_xml_element(elem)
+        settings._keff_trigger_from_xml_element(elem)
+        settings._source_from_xml_element(elem)
+        settings._volume_calcs_from_xml_element(elem)
+        settings._output_from_xml_element(elem)
+        settings._statepoint_from_xml_element(elem)
+        settings._sourcepoint_from_xml_element(elem)
+        settings._surf_source_read_from_xml_element(elem)
+        settings._surf_source_write_from_xml_element(elem)
+        settings._confidence_intervals_from_xml_element(elem)
+        settings._electron_treatment_from_xml_element(elem)
+        settings._energy_mode_from_xml_element(elem)
+        settings._max_order_from_xml_element(elem)
+        settings._photon_transport_from_xml_element(elem)
+        settings._ptables_from_xml_element(elem)
+        settings._seed_from_xml_element(elem)
+        settings._survival_biasing_from_xml_element(elem)
+        settings._cutoff_from_xml_element(elem)
+        settings._entropy_mesh_from_xml_element(elem, meshes)
+        settings._trigger_from_xml_element(elem)
+        settings._no_reduce_from_xml_element(elem)
+        settings._verbosity_from_xml_element(elem)
+        settings._tabular_legendre_from_xml_element(elem)
+        settings._temperature_from_xml_element(elem)
+        settings._trace_from_xml_element(elem)
+        settings._track_from_xml_element(elem)
+        settings._ufs_mesh_from_xml_element(elem, meshes)
+        settings._resonance_scattering_from_xml_element(elem)
+        settings._create_fission_neutrons_from_xml_element(elem)
+        settings._delayed_photon_scaling_from_xml_element(elem)
+        settings._event_based_from_xml_element(elem)
+        settings._max_particles_in_flight_from_xml_element(elem)
+        settings._material_cell_offsets_from_xml_element(elem)
+        settings._log_grid_bins_from_xml_element(elem)
+        settings._write_initial_source_from_xml_element(elem)
+        settings._weight_windows_from_xml_element(elem, meshes)
+        settings._max_splits_from_xml_element(elem)
+        settings._max_tracks_from_xml_element(elem)
+
+        # TODO: Get volume calculations
+        return settings
 
     @classmethod
     def from_xml(cls, path: PathLike = 'settings.xml'):
@@ -1626,54 +1754,4 @@ class Settings:
         """
         tree = ET.parse(path)
         root = tree.getroot()
-
-        settings = cls()
-        settings._eigenvalue_from_xml_element(root)
-        settings._run_mode_from_xml_element(root)
-        settings._particles_from_xml_element(root)
-        settings._batches_from_xml_element(root)
-        settings._inactive_from_xml_element(root)
-        settings._max_lost_particles_from_xml_element(root)
-        settings._rel_max_lost_particles_from_xml_element(root)
-        settings._generations_per_batch_from_xml_element(root)
-        settings._keff_trigger_from_xml_element(root)
-        settings._source_from_xml_element(root)
-        settings._volume_calcs_from_xml_element(root)
-        settings._output_from_xml_element(root)
-        settings._statepoint_from_xml_element(root)
-        settings._sourcepoint_from_xml_element(root)
-        settings._surf_source_read_from_xml_element(root)
-        settings._surf_source_write_from_xml_element(root)
-        settings._confidence_intervals_from_xml_element(root)
-        settings._electron_treatment_from_xml_element(root)
-        settings._energy_mode_from_xml_element(root)
-        settings._max_order_from_xml_element(root)
-        settings._photon_transport_from_xml_element(root)
-        settings._ptables_from_xml_element(root)
-        settings._seed_from_xml_element(root)
-        settings._survival_biasing_from_xml_element(root)
-        settings._cutoff_from_xml_element(root)
-        settings._entropy_mesh_from_xml_element(root)
-        settings._trigger_from_xml_element(root)
-        settings._no_reduce_from_xml_element(root)
-        settings._verbosity_from_xml_element(root)
-        settings._tabular_legendre_from_xml_element(root)
-        settings._temperature_from_xml_element(root)
-        settings._trace_from_xml_element(root)
-        settings._track_from_xml_element(root)
-        settings._ufs_mesh_from_xml_element(root)
-        settings._resonance_scattering_from_xml_element(root)
-        settings._create_fission_neutrons_from_xml_element(root)
-        settings._delayed_photon_scaling_from_xml_element(root)
-        settings._event_based_from_xml_element(root)
-        settings._max_particles_in_flight_from_xml_element(root)
-        settings._material_cell_offsets_from_xml_element(root)
-        settings._log_grid_bins_from_xml_element(root)
-        settings._write_initial_source_from_xml_element(root)
-        settings._weight_windows_from_xml_element(root)
-        settings._max_splits_from_xml_element(root)
-        settings._max_tracks_from_xml_element(root)
-
-        # TODO: Get volume calculations
-
-        return settings
+        return cls.from_xml_element(root)

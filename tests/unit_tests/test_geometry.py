@@ -339,12 +339,13 @@ def test_remove_redundant_surfaces():
     water = get_cyl_cell(r2, r3, z1, z2, m3)
     root = openmc.Universe(cells=[fuel, clad, water])
     geom = openmc.Geometry(root)
-    
+    geom.merge_surfaces=True
+    model = openmc.model.Model(geometry=geom,
+                               materials=openmc.Materials([m1, m2, m3]))
+
     # There should be 6 redundant surfaces in this geometry
-    n_redundant_surfs = len(geom.get_redundant_surfaces().keys())
+    n_redundant_surfs = len(geom.remove_redundant_surfaces().keys())
     assert n_redundant_surfs == 6
-    # Remove redundant surfaces
-    geom.remove_redundant_surfaces()
     # There should be 0 remaining redundant surfaces
-    n_redundant_surfs = len(geom.get_redundant_surfaces().keys())
+    n_redundant_surfs = len(geom.remove_redundant_surfaces().keys())
     assert n_redundant_surfs == 0

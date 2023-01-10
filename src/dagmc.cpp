@@ -486,13 +486,21 @@ void DAGUniverse::legacy_assign_material(
 
   // if no material was set using a name, assign by id
   if (!mat_found_by_name) {
+    bool found_by_id = true;
     try {
       auto id = std::stoi(mat_string);
+      if (model::material_map.find(id) == model::material_map.end())
+        found_by_id = false;
       c->material_.emplace_back(id);
     } catch (const std::invalid_argument&) {
-      fatal_error(fmt::format(
-        "No material '{}' found for volume (cell) {}", mat_string, c->id_));
+      found_by_id = false;
     }
+
+    // report failure for failed int conversion or missing material
+    if (!found_by_id)
+      fatal_error(
+        fmt::format("Material with name/ID '{}' not found for volume (cell) {}",
+          mat_string, c->id_));
   }
 
   if (settings::verbosity >= 10) {
@@ -557,7 +565,6 @@ DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
 {
   geom_type_ = GeometryType::DAG;
-  simple_ = true;
 };
 
 std::pair<double, int32_t> DAGCell::distance(

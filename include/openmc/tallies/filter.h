@@ -17,6 +17,34 @@
 
 namespace openmc {
 
+enum class FilterType {
+  AZIMUTHAL,
+  CELLBORN,
+  CELLFROM,
+  CELL,
+  CELL_INSTANCE,
+  COLLISION,
+  DELAYED_GROUP,
+  DISTRIBCELL,
+  ENERGY_FUNCTION,
+  ENERGY,
+  ENERGY_OUT,
+  LEGENDRE,
+  MATERIAL,
+  MESH,
+  MESH_SURFACE,
+  MU,
+  PARTICLE,
+  POLAR,
+  SPHERICAL_HARMONICS,
+  SPATIAL_LEGENDRE,
+  SURFACE,
+  TIME,
+  UNIVERSE,
+  ZERNIKE,
+  ZERNIKE_RADIAL
+};
+
 //==============================================================================
 //! Modifies tally score events.
 //==============================================================================
@@ -58,7 +86,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  virtual std::string type() const = 0;
+  virtual std::string type_str() const = 0;
+  virtual FilterType type() const = 0;
 
   //! Matches a tally event to a set of filter bins and weights.
   //!
@@ -72,7 +101,7 @@ public:
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void to_statepoint(hid_t filter_group) const
   {
-    write_dataset(filter_group, "type", type());
+    write_dataset(filter_group, "type", type_str());
     write_dataset(filter_group, "n_bins", n_bins_);
   }
 

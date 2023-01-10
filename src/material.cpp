@@ -60,13 +60,12 @@ Material::Material(pugi::xml_node node)
     name_ = get_node_value(node, "name");
   }
 
-#ifdef NCRYSTAL
   if (check_for_node(node, "cfg")) {
-    ncrystal_cfg_ = get_node_value(node, "cfg");
-    write_message(5, "NCrystal config string for material #{}: '{}'", this->id(), ncrystal_cfg_);
-    ncrystal_mat_ = NCrystal::FactImpl::createScatter(ncrystal_cfg_);
+    auto cfg = get_node_value(node, "cfg");
+    write_message(
+      5, "NCrystal config string for material #{}: '{}'", this->id(), cfg);
+    ncrystal_mat_ = NCrystalMat(cfg);
   }
-#endif
 
   if (check_for_node(node, "depletable")) {
     depletable_ = get_node_value_bool(node, "depletable");
@@ -800,19 +799,11 @@ void Material::calculate_neutron_xs(Particle& p) const
   // Initialize position in i_sab_nuclides
   int j = 0;
 
-#ifdef NCRYSTAL
-  double ncrystal_xs = -1;
-
+  // Calculate NCrystal cross section
+  double ncrystal_xs = -1.0;
   if (ncrystal_mat_ && p.E() < settings::ncrystal_max_energy) {
-    // Calculate scattering XS per atom with NCrystal, only once per material
-    NCrystal::CachePtr dummy_cache;
-    auto nc_energy = NCrystal::NeutronEnergy {p.E()};
-    ncrystal_xs =
-      ncrystal_mat_
-        ->crossSection(dummy_cache, nc_energy, {p.u().x, p.u().y, p.u().z})
-        .get();
+    ncrystal_xs = ncrystal_mat_.xs(p);
   }
-#endif
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -852,26 +843,16 @@ void Material::calculate_neutron_xs(Particle& p) const
     int i_nuclide = nuclide_[i];
 
     // Calculate microscopic cross section for this nuclide
-#ifdef NCRYSTAL
     auto& micro {p.neutron_xs(i_nuclide)};
-#else
-    const auto& micro {p.neutron_xs(i_nuclide)};
-#endif
     if (p.E() != micro.last_E || p.sqrtkT() != micro.last_sqrtkT ||
         i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
       data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);
-#ifdef NCRYSTAL
+
+      // If NCrystal is being used, update micro cross section cache
       if (ncrystal_xs >= 0.0) {
-        if (micro.thermal > 0 || micro.thermal_elastic > 0) {
-          fatal_error("S(a,b) treatment and NCrystal are not compatible.");
-        }
         data::nuclides[i_nuclide]->calculate_elastic_xs(p);
-        // remove free atom cross section
-        // and replace it by scattering cross section per atom from NCrystal
-        micro.total = micro.total - micro.elastic + ncrystal_xs;
-        micro.elastic = ncrystal_xs;
+        ncrystal_update_micro(ncrystal_xs, micro);
       }
-#endif
     }
 
     // ======================================================================

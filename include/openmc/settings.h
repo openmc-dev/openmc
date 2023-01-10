@@ -20,8 +20,6 @@ namespace openmc {
 // Global variable declarations
 //==============================================================================
 
-extern "C" const bool NCRYSTAL_ENABLED;
-
 namespace settings {
 
 // Boolean flags
@@ -93,6 +91,8 @@ extern int n_log_bins;        //!< number of bins for logarithmic energy grid
 extern int n_batches;         //!< number of (inactive+active) batches
 extern int n_max_batches;     //!< Maximum number of batches
 extern int max_tracks; //!< Maximum number of particle tracks written to file
+extern double
+  ncrystal_max_energy; //!< Energy in eV to switch between NCrystal and ENDF
 extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min; //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max; //!< Max energy in [eV] for res. upscattering
@@ -124,10 +124,6 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
-#ifdef NCRYSTAL
-extern double
-  ncrystal_max_energy; //!< Energy in eV to switch between NCrystal and ENDF
-#endif
 } // namespace settings
 
 //==============================================================================

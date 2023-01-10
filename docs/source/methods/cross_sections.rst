@@ -182,19 +182,22 @@ been selected. There are three methods available:
 NCrystal materials
 ------------------
 
-As an alternative of the standard thermal scattering treatment using :math:`S(\alpha,\beta)`
-tables, OpenMC allows to create materials using NCrystal_. In addition to the regular thermal elastic,
-and thermal inelastic processes, NCrystal allows the generation of models for materials that 
-cannot currently included in ACE files such as oriented single crystals (see the `NCrystal paper`_),
-and further extend the physics `using plugins`_. Thermal scattering kernels are generated on
-the fly from dynamic and structural data, or loaded from :math:`S(\alpha,\beta)` tables converted
-from ENDF6 evaluations. These kernels are sampled in a direct way using a fast `rejection algorithm`_ 
-that does not require previous processing. A `large library`_ of materials is already included in
-the NCrystal distribution, and new materials can be easily defined from scratch in the `NCMAT format`_
-or `combining existing files`_.
+As an alternative of the standard thermal scattering treatment using
+:math:`S(\alpha,\beta)` tables, OpenMC allows to create materials using
+NCrystal_. In addition to the regular thermal elastic, and thermal inelastic
+processes, NCrystal allows the generation of models for materials that cannot
+currently included in ACE files such as oriented single crystals (see the
+`NCrystal paper`_), and further extend the physics `using plugins`_. Thermal
+scattering kernels are generated on the fly from dynamic and structural data, or
+loaded from :math:`S(\alpha,\beta)` tables converted from ENDF6 evaluations.
+These kernels are sampled in a direct way using a fast `rejection algorithm`_
+that does not require previous processing. A `large library`_ of materials is
+already included in the NCrystal distribution, and new materials can be easily
+defined from scratch in the `NCMAT format`_ or `combining existing files`_.
 
-The compositions of the materials defined in NCrystal are passed on to OpenMC all other reactions 
-except for thermal neutron scattering are handled by continuous energy ACE libraries.
+The compositions of the materials defined in NCrystal are passed on to OpenMC
+all other reactions except for thermal neutron scattering are handled by
+continuous energy ACE libraries.
 
 ----------------
 Multi-Group Data

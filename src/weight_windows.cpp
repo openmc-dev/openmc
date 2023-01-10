@@ -410,6 +410,7 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   const std::set<FilterType> allowed_filters = {
     FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
 
+
   const auto filters = tally->filters();
   const auto filter_types = tally->filter_types();
   auto filter_indices = tally->filter_indices();
@@ -423,20 +424,19 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
     }
   }
 
-  // gather information from the tally (assume one group for now)
+  // determine the index of the specified score
   int score_index = tally->score_index(score);
-
   if (score_index == C_NONE) {
     fatal_error(fmt::format("Score '{}' specified for weight window generation "
                             "is not present on tally {}.",
       score, tally->id()));
   }
 
-  /// Proposed method - reshape score_view according to the filter sizes
+  /// Proposed method - reshape tally_data according to the filter sizes
   ///////////////////////////////////
   // TODO: Move into Tally class
   // re-shape results into a new xtensor
-  std::array<uint64_t, 3> shape = {1, 1, 1};
+  std::vector<uint64_t> shape(filters.size());
   for (int i = 0; i < filters.size(); i++) {
     const auto& f = model::tally_filters[tally->filters(i)];
     shape[i] = f->n_bins();
@@ -444,21 +444,35 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   ///////////////////////////////////
 
   // sum results over all nuclides and select results related to a single score
-  xt::xarray<double> score_view =
+  xt::xarray<double> tally_data =
     xt::view(tally->results(), xt::all(), score_index, TallyResult::SUM);
+  tally_data.reshape(shape);
 
-  if (filters.size() == 2) {
-    score_view.reshape({shape[0], shape[1]});
-  } else {
-    score_view.reshape(shape);
+  // build the transpose information to re-order data by filter type
+  std::vector<int> transpose;
+
+  if (filter_indices.count(FilterType::PARTICLE)) {
+    transpose.push_back(filter_indices[FilterType::PARTICLE]);
   }
 
-  // transpose the scorew_view so that the order is: particle (optional),
-  // energy, mesh
+  if (filter_indices.count(FilterType::ENERGY)) {
+    transpose.push_back(filter_indices[FilterType::ENERGY]);
+  }
 
-  xt::xarray<double> e_view;
+  if (filter_indices.count(FilterType::MESH)) {
+    transpose.push_back(filter_indices[FilterType::MESH]);
+  } else {
+    fatal_error("A mesh filter is required for a tally to update weight window bounds");
+  }
+
+  // transpose the scorew_view so that the order is:
+  // particle (optional), energy, mesh
+  tally_data = xt::transpose(tally_data, transpose);
+
+  // determine the index of the correct particle type in the particle filter
+  // (if it exists) and down-select data
   if (filter_indices.count(FilterType::PARTICLE)) {
-    // transpose the score view and select the particle index of interest
+    // get the particle filter
     auto pf = dynamic_cast<ParticleFilter*>(
       model::tally_filters[tally->filters(filter_indices[FilterType::PARTICLE])]
         .get());
@@ -467,6 +481,8 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
     // find the index of the particle that matches these weight windows
     auto p_it =
       std::find(particles.begin(), particles.end(), this->particle_type_);
+    // if the particle filter doesn't have particle data for the particle
+    // used on this weight windows instance, report an error
     if (p_it == particles.end()) {
       auto msg = fmt::format("Particle type '{}' not present on Filter {} for "
                              "Tally {} used to update WeightWindows {}",
@@ -474,28 +490,21 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
         this->id());
       fatal_error(msg);
     }
-    int particle_idx = p_it - particles.begin();
 
-    // transpose score_view and down-select for particle data
-    e_view =
-      xt::view(xt::transpose(score_view, {filter_indices[FilterType::PARTICLE],
-                                           filter_indices[FilterType::ENERGY],
-                                           filter_indices[FilterType::MESH]}),
-        particle_idx);
-  } else {
-    // if no particle filter is present, then just reorder the data so energy is
-    // first
-    e_view = xt::transpose(score_view,
-      {filter_indices[FilterType::ENERGY], filter_indices[FilterType::MESH]});
+    // use the index of the particle in the filter to down-select data
+    int particle_idx = p_it - particles.begin();
+    tally_data = xt::view(tally_data, particle_idx);
   }
 
-  xt::xarray<double> lower_bounds(e_view);
+  // create data to be used to update weight windows
+  xt::xarray<double> lower_bounds(tally_data);
 
+  // for each energy group (if they exist), normalize
+  // data using the max flux value and generate weight windows
   int e_shape = shape[filter_indices[FilterType::ENERGY]];
-
   for (int e = 0; e < e_shape; e++) {
     // select all
-    auto group_view = xt::view(e_view, e, xt::all(), xt::all());
+    auto group_view = xt::view(tally_data, e, xt::all(), xt::all());
 
     double group_max = *std::max_element(group_view.begin(), group_view.end());
 
@@ -503,6 +512,7 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
     group_view /= group_max;
   }
 
+  // set new weight window bounds
   this->set_weight_windows(lower_bounds, 5.0);
 }
 

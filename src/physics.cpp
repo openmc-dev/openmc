@@ -142,7 +142,7 @@ void sample_neutron_reaction(Particle& p)
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
   const auto& ncrystal_mat = model::materials[p.material()]->ncrystal_mat();
-  if (ncrystal_mat && p.E() < settings::ncrystal_max_energy) {
+  if (ncrystal_mat && p.E() < NCRYSTAL_MAX_ENERGY) {
     ncrystal_mat.scatter(p);
   } else {
     scatter(p, i_nuclide);

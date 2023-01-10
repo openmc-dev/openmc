@@ -99,6 +99,10 @@ class Material(IDManagerMixin):
         [decay/sec].
 
         .. versionadded:: 0.13.2
+    ncrystal_cfg : str
+        NCrystal configuration string
+
+        .. versionadded:: 0.13.3
 
     """
 
@@ -141,7 +145,8 @@ class Material(IDManagerMixin):
 
         string += '{: <16}\n'.format('\tS(a,b) Tables')
 
-        string += '{: <16}=\t{}\n'.format('\tNCrystal conf', self._ncrystal_cfg)
+        if self._ncrystal_cfg:
+            string += '{: <16}=\t{}\n'.format('\tNCrystal conf', self._ncrystal_cfg)
 
         for sab in self._sab:
             string += '{: <16}=\t{}\n'.format('\tS(a,b)', sab)
@@ -221,6 +226,10 @@ class Material(IDManagerMixin):
     @property
     def volume(self):
         return self._volume
+
+    @property
+    def ncrystal_cfg(self):
+        return self._ncrystal_cfg
 
     @name.setter
     def name(self, name: Optional[str]):
@@ -335,9 +344,9 @@ class Material(IDManagerMixin):
         return material
 
     @classmethod
-    def from_ncrystal(cls, cfg, material_id=None, name=''):
+    def from_ncrystal(cls, cfg, **kwargs):
         """Create material from NCrystal configuration string.
-        
+
         Density, temperature, and material composition, and (ultimately) thermal
         neutron scattering will be automatically be provided by NCrystal based
         on this string. The name and material_id parameters are simply passed on
@@ -347,12 +356,8 @@ class Material(IDManagerMixin):
         ----------
         cfg : str
             NCrystal configuration string
-        material_id : int, optional
-            Unique identifier for the material. If not specified, an identifier will
-            automatically be assigned.
-        name : str, optional
-            Name of the material. If not specified, the name will be the empty
-            string.
+        **kwargs
+            Keyword arguments passed to :class:`openmc.Material`
 
         Returns
         -------
@@ -371,26 +376,20 @@ class Material(IDManagerMixin):
             #only get invoked in the unlikely case where a material is specified
             #by referring both to natural elements and specific isotopes of the
             #same element.
-            elem_name = openmc.data.ATOMIC_SYMBOL.get(Z)
-            if not elem_name:
-                raise ValueError( f'Element with Z={Z} is not known' )
+            elem_name = openmc.data.ATOMIC_SYMBOL[Z]
             return [
                 (int(iso_name[len(elem_name):]), abund)
                 for iso_name, abund in openmc.data.isotopes(elem_name)
             ]
 
-        flat_compos = nc_mat.getFlattenedComposition(preferNaturalElements = True,
-                                                      naturalAbundProvider=openmc_natabund)
+        flat_compos = nc_mat.getFlattenedComposition(
+            preferNaturalElements=True, naturalAbundProvider=openmc_natabund)
 
         # Create the Material
-        material = cls(material_id=material_id,
-                       name=name,
-                       temperature=nc_mat.getTemperature())
+        material = cls(temperature=nc_mat.getTemperature(), **kwargs)
 
         for Z, A_vals in flat_compos:
-            elemname = openmc.data.ATOMIC_SYMBOL.get(Z)
-            if not elemname:
-                raise ValueError(f'Element with Z={Z} is not known')
+            elemname = openmc.data.ATOMIC_SYMBOL[Z]
             for A, frac in A_vals:
                 if A:
                     material.add_nuclide(f'{elemname}{A}', frac)
@@ -1067,7 +1066,7 @@ class Material(IDManagerMixin):
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
-    
+
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False):
         """Returns the decay heat of the material or for each nuclide in the
         material in units of [W], [W/g] or [W/cm3].
@@ -1101,16 +1100,16 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
-        
-        decayheat = {} 
+
+        decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             decay_erg = openmc.data.decay_energy(nuclide)
             inv_seconds = openmc.data.decay_constant(nuclide)
             decay_erg *= openmc.data.JOULE_PER_EV
             decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
 
-        return decayheat if by_nuclide else sum(decayheat.values()) 
-    
+        return decayheat if by_nuclide else sum(decayheat.values())
+
     def get_nuclide_atoms(self):
         """Return number of atoms of each nuclide in the material
 

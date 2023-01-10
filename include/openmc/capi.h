@@ -181,6 +181,10 @@ int openmc_weight_windows_set_energy_bounds(
 int openmc_weight_windows_get_energy_bounds(
   int32_t index, const double** e_bounds, size_t* e_bounds_size);
 int openmc_weight_window_set_particle(int32_t index, const char* particle);
+int openmc_weight_windows_get_bounds(int32_t index, const double* lower_bounds,
+  const double* upper_bounds, size_t* size);
+int openmc_weight_windows_set_bounds(int32_t index, const double* lower_bounds,
+  const double* upper_bounds, size_t size);
 size_t openmc_weight_windows_size();
 int openmc_weight_windows_export(const char* filename = nullptr);
 int openmc_weight_windows_import(const char* filename = nullptr);

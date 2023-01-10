@@ -135,6 +135,10 @@ public:
 
   const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
 
+  const vector<double>& lower_bounds() { return lower_ww_; }
+
+  const vector<double>& upper_bounds() { return upper_ww_; }
+
   ParticleType particle_type() const { return particle_type_; }
 
 private:

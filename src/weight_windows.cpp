@@ -446,7 +446,12 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   // sum results over all nuclides and select results related to a single score
   xt::xarray<double> score_view =
     xt::view(tally->results(), xt::all(), score_index, TallyResult::SUM);
-  score_view.reshape(shape);
+
+  if (filters.size() == 2) {
+    score_view.reshape({shape[0], shape[1]});
+  } else {
+    score_view.reshape(shape);
+  }
 
   // transpose the scorew_view so that the order is: particle (optional),
   // energy, mesh
@@ -670,6 +675,30 @@ extern "C" int openmc_weight_windows_set_particle(
 
   const auto& wws = variance_reduction::weight_windows.at(index);
   wws->set_particle_type(str_to_particle_type(particle));
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_bounds(int32_t index,
+  const double** lower_bounds, const double** upper_bounds, size_t* size)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows[index];
+  *size = wws->lower_bounds().size();
+  *lower_bounds = wws->lower_bounds().data();
+  *upper_bounds = wws->upper_bounds().data();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_bounds(int32_t index,
+  const double* lower_bounds, const double* upper_bounds, size_t size)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows[index];
+  wws->set_weight_windows({lower_bounds, size}, {upper_bounds, size});
   return 0;
 }
 

@@ -61,6 +61,14 @@ _dll.openmc_weight_windows_get_particle.argtypes = [c_int32, POINTER(c_int)]
 _dll.openmc_weight_windows_get_particle.restype = c_int
 _dll.openmc_weight_windows_get_particle.errcheck = _error_handler
 
+_dll.openmc_weight_windows_set_bounds.argtypes = [c_int32, POINTER(c_double), POINTER(c_double), c_size_t]
+_dll.openmc_weight_windows_set_bounds.restype = c_int
+_dll.openmc_weight_windows_set_bounds.errcheck = _error_handler
+
+_dll.openmc_weight_windows_get_bounds.argtypes = [c_int32, POINTER(POINTER(c_double)), POINTER(POINTER(c_double)), POINTER(c_size_t)]
+_dll.openmc_weight_windows_get_bounds.restype = c_int
+_dll.openmc_weight_windows_get_bounds.errcheck = _error_handler
+
 
 class WeightWindows(_FortranObjectWithID):
     """WeightWindows stored internally.
@@ -154,6 +162,28 @@ class WeightWindows(_FortranObjectWithID):
             p = ParticleType(p)
         val = c_char_p(str(p).encode())
         _dll.openmc_weight_windows_set_particle(self._index, val)
+
+    @property
+    def bounds(self):
+        upper = POINTER(c_double)()
+        lower = POINTER(c_double)()
+        size = c_size_t()
+        print(lower)
+        _dll.openmc_weight_windows_get_bounds(self._index, lower, upper, size)
+        print(size.value)
+        lower_arr = as_array(lower, (size.value,))
+        upper_arr = as_array(upper, (size.value,))
+        return (lower_arr, upper_arr)
+
+    @bounds.setter
+    def bounds(self, bounds):
+        lower = np.asarray(bounds[0])
+        upper = np.asarray(bounds[1])
+
+        lower_p = lower.ctypes.data_as(POINTER(c_double))
+        upper_p = upper.ctypes.data_as(POINTER(c_double))
+
+        _dll.openmc_weight_windows_set_bounds(self._index, lower_p, upper_p, lower_p.size)
 
     def update_weight_windows(self, tally, score='flux', value='mean', method='magic'):
         """Update weight window values using tally information

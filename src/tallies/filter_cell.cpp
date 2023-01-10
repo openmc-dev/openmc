@@ -44,7 +44,7 @@ void CellFilter::set_cells(gsl::span<int32_t> cells)
 }
 
 void CellFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   for (int i = 0; i < p.n_coord(); i++) {
     auto search = map_.find(p.coord(i).cell);

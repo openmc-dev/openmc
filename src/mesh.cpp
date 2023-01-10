@@ -203,7 +203,7 @@ std::string UnstructuredMesh::get_mesh_type() const
 }
 
 void UnstructuredMesh::surface_bins_crossed(
-  Position r0, Position r1, const Direction& u, vector<int>& bins) const
+  Position /* r0 */, Position /* r1 */, const Direction& /* u */, vector<int>& /* bins */) const
 {
   fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
@@ -530,7 +530,7 @@ void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
       const StructuredMesh* _mesh, vector<int>& _bins, vector<double>& _lengths)
       : mesh(_mesh), bins(_bins), lengths(_lengths)
     {}
-    void surface(const MeshIndex& ijk, int k, bool max, bool inward) const {}
+    void surface(const MeshIndex& /* ijk */, int /* k */, bool /* max */, bool /* inward */) const {}
     void track(const MeshIndex& ijk, double l) const
     {
       bins.push_back(mesh->get_bin_from_indices(ijk));
@@ -567,7 +567,7 @@ void StructuredMesh::surface_bins_crossed(
         i_bin += 1;
       bins.push_back(i_bin);
     }
-    void track(const MeshIndex& idx, double l) const {}
+    void track(const MeshIndex& /* idx */, double /* l */) const {}
 
     const StructuredMesh* mesh;
     vector<int>& bins;
@@ -688,7 +688,7 @@ double RegularMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
 
 StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
-  double l) const
+  double /* l */) const
 {
   MeshDistance d;
   d.next_index = ijk[i];
@@ -827,7 +827,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[1] = get_node_array<double>(node, "y_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(openmc_err_msg);
   }
 }
@@ -853,7 +853,7 @@ double RectilinearMesh::negative_grid_boundary(
 
 StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
-  double l) const
+  double /* l */) const
 {
   MeshDistance d;
   d.next_index = ijk[i];
@@ -956,7 +956,7 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(openmc_err_msg);
   }
 }
@@ -1062,7 +1062,7 @@ double CylindricalMesh::find_phi_crossing(
 }
 
 StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(
-  const Position& r, const Direction& u, double l, int shell) const
+  const Position& r, const Direction& u, double /* l */, int shell) const
 {
   MeshDistance d;
   d.next_index = shell;
@@ -1155,7 +1155,7 @@ int CylindricalMesh::get_index_in_direction(double r, int i) const
 }
 
 std::pair<vector<double>, vector<double>> CylindricalMesh::plot(
-  Position plot_ll, Position plot_ur) const
+  Position /* plot_ll */, Position /* plot_ur */) const
 {
   fatal_error("Plot of cylindrical Mesh not implemented");
 
@@ -1188,7 +1188,7 @@ SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[1] = get_node_array<double>(node, "theta_grid");
   grid_[2] = get_node_array<double>(node, "phi_grid");
 
-  if (int err = set_grid()) {
+  if (set_grid()) {
     fatal_error(openmc_err_msg);
   }
 }
@@ -1418,7 +1418,7 @@ int SphericalMesh::get_index_in_direction(double r, int i) const
 }
 
 std::pair<vector<double>, vector<double>> SphericalMesh::plot(
-  Position plot_ll, Position plot_ur) const
+  Position /* plot_ll */, Position /* plot_ur */) const
 {
   fatal_error("Plot of spherical Mesh not implemented");
 

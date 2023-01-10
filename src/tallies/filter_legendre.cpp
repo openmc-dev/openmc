@@ -22,7 +22,7 @@ void LegendreFilter::set_order(int order)
 }
 
 void LegendreFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   vector<double> wgt(n_bins_);
   calc_pn_c(order_, p.mu(), wgt.data());

@@ -36,7 +36,7 @@ void CollisionFilter::set_bins(gsl::span<const int> bins)
 }
 
 void CollisionFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   // Get the number of collisions for the particle
   auto n = p.n_collision();

@@ -45,7 +45,7 @@ void SurfaceFilter::set_surfaces(gsl::span<int32_t> surfaces)
 }
 
 void SurfaceFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   auto search = map_.find(std::abs(p.surface()) - 1);
   if (search != map_.end()) {

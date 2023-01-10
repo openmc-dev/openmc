@@ -412,7 +412,7 @@ void Particle::cross_surface()
     site.particle = type();
     site.parent_id = id();
     site.progeny_id = n_progeny();
-    int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+    simulation::surf_source_bank.thread_safe_append(site);
   }
 
 // if we're crossing a CSG surface, make sure the DAG history is reset

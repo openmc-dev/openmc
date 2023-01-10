@@ -70,7 +70,7 @@ void CellInstanceFilter::set_cell_instances(gsl::span<CellInstance> instances)
 }
 
 void CellInstanceFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   gsl::index index_cell = p.coord(p.n_coord() - 1).cell;
   gsl::index instance = p.cell_instance();

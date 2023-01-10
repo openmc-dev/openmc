@@ -743,7 +743,7 @@ void read_tallies_xml(pugi::xml_node root)
 
   // Check for user filters and allocate
   for (auto node_filt : root.children("filter")) {
-    auto f = Filter::create(node_filt);
+    Filter::create(node_filt);
   }
 
   // ==========================================================================
@@ -1282,8 +1282,6 @@ extern "C" int openmc_remove_tally(int32_t index)
   if (index < 0 || index > model::tallies.size()) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  // grab tally so it's ID can be obtained to remove the (ID,index) pair from tally_map
-  auto& tally = model::tallies[index];
   // delete the tally via iterator pointing to correct position
   // this calls the Tally destructor, removing the tally from the map as well
   model::tallies.erase(model::tallies.begin() + index);

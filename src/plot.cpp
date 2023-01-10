@@ -75,7 +75,7 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 {}
 
-void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level)
+void PropertyData::set_value(size_t y, size_t x, const Particle& p, int /* level */)
 {
   Cell* c = model::cells.at(p.coord(p.n_coord() - 1).cell).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;

@@ -91,7 +91,7 @@ void EnergyFunctionFilter::set_interpolation(const std::string& interpolation)
 }
 
 void EnergyFunctionFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   if (p.E_last() >= energy_.front() && p.E_last() <= energy_.back()) {
 
@@ -114,7 +114,7 @@ void EnergyFunctionFilter::to_statepoint(hid_t filter_group) const
   close_dataset(y_dataset);
 }
 
-std::string EnergyFunctionFilter::text_label(int bin) const
+std::string EnergyFunctionFilter::text_label(int /* bin */) const
 {
   return fmt::format(
     "Energy Function f([{:.1e}, ..., {:.1e}]) = [{:.1e}, ..., {:.1e}]",

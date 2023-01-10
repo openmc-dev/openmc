@@ -784,7 +784,7 @@ std::string Region::str() const
 //==============================================================================
 
 std::pair<double, int32_t> Region::distance(
-  Position r, Direction u, int32_t on_surface, Particle* p) const
+  Position r, Direction u, int32_t on_surface, Particle* /* p */) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -1336,7 +1336,6 @@ vector<ParentCell> Cell::exhaustive_find_parent_cells(int32_t instance) const
   int32_t univ_idx = this->universe_;
 
   while (true) {
-    const auto& univ = model::universes[univ_idx];
     prev_univ_idx = univ_idx;
 
     // search for a cell that is filled w/ this universe

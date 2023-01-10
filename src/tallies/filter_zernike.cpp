@@ -27,7 +27,7 @@ void ZernikeFilter::from_xml(pugi::xml_node node)
 }
 
 void ZernikeFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   // Determine the normalized (r,theta) coordinates.
   double x = p.r().x - x_;
@@ -83,7 +83,7 @@ void ZernikeFilter::set_order(int order)
 //==============================================================================
 
 void ZernikeRadialFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   // Determine the normalized radius coordinate.
   double x = p.r().x - x_;

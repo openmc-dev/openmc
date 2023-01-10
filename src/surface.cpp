@@ -190,7 +190,7 @@ bool Surface::sense(Position r, Direction u) const
   return f > 0.0;
 }
 
-Direction Surface::reflect(Position r, Direction u, Particle* p) const
+Direction Surface::reflect(Position r, Direction u, Particle* /* p */) const
 {
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
@@ -292,7 +292,7 @@ double SurfaceXPlane::distance(Position r, Direction u, bool coincident) const
   return axis_aligned_plane_distance<0>(r, u, coincident, x0_);
 }
 
-Direction SurfaceXPlane::normal(Position r) const
+Direction SurfaceXPlane::normal(Position /* r */) const
 {
   return {1., 0., 0.};
 }
@@ -332,7 +332,7 @@ double SurfaceYPlane::distance(Position r, Direction u, bool coincident) const
   return axis_aligned_plane_distance<1>(r, u, coincident, y0_);
 }
 
-Direction SurfaceYPlane::normal(Position r) const
+Direction SurfaceYPlane::normal(Position /* r */) const
 {
   return {0., 1., 0.};
 }
@@ -372,7 +372,7 @@ double SurfaceZPlane::distance(Position r, Direction u, bool coincident) const
   return axis_aligned_plane_distance<2>(r, u, coincident, z0_);
 }
 
-Direction SurfaceZPlane::normal(Position r) const
+Direction SurfaceZPlane::normal(Position /* r */) const
 {
   return {0., 0., 1.};
 }
@@ -421,7 +421,7 @@ double SurfacePlane::distance(Position r, Direction u, bool coincident) const
   }
 }
 
-Direction SurfacePlane::normal(Position r) const
+Direction SurfacePlane::normal(Position /* r */) const
 {
   return {A_, B_, C_};
 }

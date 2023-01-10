@@ -195,6 +195,9 @@ if(OPENMC_ENABLE_COVERAGE)
   list(APPEND ldflags --coverage)
 endif()
 
+list(APPEND cxxflags -Wunused-parameter)
+list(APPEND cxxflags -Wunused-variable)
+
 # Show flags being used
 message(STATUS "OpenMC C++ flags: ${cxxflags}")
 message(STATUS "OpenMC Linker flags: ${ldflags}")

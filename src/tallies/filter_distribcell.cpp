@@ -36,7 +36,7 @@ void DistribcellFilter::set_cell(int32_t cell)
 }
 
 void DistribcellFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   int offset = 0;
   auto distribcell_index = model::cells[cell_]->distribcell_index_;

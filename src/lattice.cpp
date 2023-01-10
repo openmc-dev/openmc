@@ -242,7 +242,7 @@ bool RectLattice::are_valid_indices(array<int, 3> const& i_xyz) const
 //==============================================================================
 
 std::pair<double, array<int, 3>> RectLattice::distance(
-  Position r, Direction u, const array<int, 3>& i_xyz) const
+  Position r, Direction u, const array<int, 3>& /* i_xyz */) const
 {
   // Get short aliases to the coordinates.
   double x = r.x;

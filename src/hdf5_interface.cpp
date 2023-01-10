@@ -157,7 +157,7 @@ void ensure_exists(hid_t obj_id, const char* name, bool attribute)
   }
 }
 
-hid_t file_open(const char* filename, char mode, bool parallel)
+hid_t file_open(const char* filename, char mode, bool /* parallel */)
 {
   bool create;
   unsigned int flags;
@@ -439,7 +439,7 @@ void read_attr_string(hid_t obj_id, const char* name, size_t slen, char* buffer)
 }
 
 void read_dataset_lowlevel(hid_t obj_id, const char* name, hid_t mem_type_id,
-  hid_t mem_space_id, bool indep, void* buffer)
+  hid_t mem_space_id, bool /* indep */, void* buffer)
 {
   hid_t dset = obj_id;
   if (name)
@@ -606,7 +606,7 @@ void write_attr_string(hid_t obj_id, const char* name, const char* buffer)
 }
 
 void write_dataset_lowlevel(hid_t group_id, int ndim, const hsize_t* dims,
-  const char* name, hid_t mem_type_id, hid_t mem_space_id, bool indep,
+  const char* name, hid_t mem_type_id, hid_t mem_space_id, bool /* indep */,
   const void* buffer)
 {
   // If array is given, create a simple dataspace. Otherwise, create a scalar

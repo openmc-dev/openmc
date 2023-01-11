@@ -300,6 +300,7 @@ class Settings:
             VolumeCalculation, 'volume calculations')
 
         self._create_fission_neutrons = None
+        self._create_delayed_neutrons = None
         self._delayed_photon_scaling = None
         self._material_cell_offsets = None
         self._log_grid_bins = None
@@ -462,6 +463,10 @@ class Settings:
     @property
     def create_fission_neutrons(self) -> bool:
         return self._create_fission_neutrons
+
+    @property
+    def create_delayed_neutrons(self) -> bool:        
+        return self._create_delayed_neutrons
 
     @property
     def delayed_photon_scaling(self) -> bool:
@@ -870,6 +875,12 @@ class Settings:
                       create_fission_neutrons, bool)
         self._create_fission_neutrons = create_fission_neutrons
 
+    @create_delayed_neutrons.setter                                   
+    def create_delayed_neutrons(self, create_delayed_neutrons: bool):
+        cv.check_type('Whether create only prompt neutrons',
+                      create_delayed_neutrons, bool)
+        self._create_delayed_neutrons = create_delayed_neutrons
+
     @delayed_photon_scaling.setter
     def delayed_photon_scaling(self, value: bool):
         cv.check_type('delayed photon scaling', value, bool)
@@ -1211,6 +1222,11 @@ class Settings:
             elem = ET.SubElement(root, "create_fission_neutrons")
             elem.text = str(self._create_fission_neutrons).lower()
 
+   def _create_create_delayed_neutrons_subelement(self, root):            
+       if self._create_delayed_neutrons is not None:
+           elem = ET.SubElement(root, "create_delayed_neutrons")
+           elem.text = str(self._create_delayed_neutrons).lower()
+
     def _create_delayed_photon_scaling_subelement(self, root):
         if self._delayed_photon_scaling is not None:
             elem = ET.SubElement(root, "delayed_photon_scaling")
@@ -1536,6 +1552,11 @@ class Settings:
         if text is not None:
             self.create_fission_neutrons = text in ('true', '1')
 
+    def _create_delayed_neutrons_from_xml_element(self, root):         
+        text = get_text(root, 'create_delayed_neutrons')
+        if text is not None:
+            self.create_delayed_neutrons = text in ('true', '1')
+
     def _delayed_photon_scaling_from_xml_element(self, root):
         text = get_text(root, 'delayed_photon_scaling')
         if text is not None:
@@ -1634,6 +1655,7 @@ class Settings:
         self._create_resonance_scattering_subelement(element)
         self._create_volume_calcs_subelement(element)
         self._create_create_fission_neutrons_subelement(element)
+        self._create_create_delayed_neutrons_subelement(root_element)
         self._create_delayed_photon_scaling_subelement(element)
         self._create_event_based_subelement(element)
         self._create_max_particles_in_flight_subelement(element)
@@ -1726,6 +1748,7 @@ class Settings:
         settings._ufs_mesh_from_xml_element(elem, meshes)
         settings._resonance_scattering_from_xml_element(elem)
         settings._create_fission_neutrons_from_xml_element(elem)
+        settings._create_delayed_neutrons_from_xml_element(root)
         settings._delayed_photon_scaling_from_xml_element(elem)
         settings._event_based_from_xml_element(elem)
         settings._max_particles_in_flight_from_xml_element(elem)

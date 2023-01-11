@@ -1222,7 +1222,7 @@ class Settings:
             elem = ET.SubElement(root, "create_fission_neutrons")
             elem.text = str(self._create_fission_neutrons).lower()
 
-   def _create_create_delayed_neutrons_subelement(self, root):
+    def _create_create_delayed_neutrons_subelement(self, root):
        if self._create_delayed_neutrons is not None:
            elem = ET.SubElement(root, "create_delayed_neutrons")
            elem.text = str(self._create_delayed_neutrons).lower()

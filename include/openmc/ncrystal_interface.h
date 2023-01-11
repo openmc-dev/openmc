@@ -20,6 +20,9 @@ namespace openmc {
 
 extern "C" const bool NCRYSTAL_ENABLED;
 
+//! Energy in [eV] to switch between NCrystal and ENDF
+constexpr double NCRYSTAL_MAX_ENERGY {5.0};
+
 //==============================================================================
 // Wrapper class an NCrystal material
 //==============================================================================

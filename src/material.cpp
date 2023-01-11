@@ -801,7 +801,7 @@ void Material::calculate_neutron_xs(Particle& p) const
 
   // Calculate NCrystal cross section
   double ncrystal_xs = -1.0;
-  if (ncrystal_mat_ && p.E() < settings::ncrystal_max_energy) {
+  if (ncrystal_mat_ && p.E() < NCRYSTAL_MAX_ENERGY) {
     ncrystal_xs = ncrystal_mat_.xs(p);
   }
 

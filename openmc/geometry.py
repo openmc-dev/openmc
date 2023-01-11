@@ -1,3 +1,5 @@
+import os
+import typing
 from collections import OrderedDict, defaultdict
 from collections.abc import Iterable
 from copy import deepcopy
@@ -7,7 +9,7 @@ import warnings
 
 import openmc
 import openmc._xml as xml
-from .checkvalue import check_type, check_less_than, check_greater_than
+from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
 
 
 class Geometry:
@@ -254,16 +256,20 @@ class Geometry:
             raise ValueError('Error determining root universe.')
 
     @classmethod
-    def from_xml(cls, path='geometry.xml', materials=None):
+    def from_xml(
+        cls,
+        path: PathLike = 'geometry.xml',
+        materials: typing.Optional[typing.Union[PathLike, 'openmc.Materials']] = 'materials.xml'
+    ):
         """Generate geometry from XML file
 
         Parameters
         ----------
-        path : str, optional
+        path : PathLike, optional
             Path to geometry XML file
-        materials : openmc.Materials or None
-            Materials used to assign to cells. If None, an attempt is made to
-            generate it from the materials.xml file.
+        materials : openmc.Materials or PathLike
+            Materials used to assign to cells. If PathLike, an attempt is made
+            to generate materials from the provided xml file.
 
         Returns
         -------
@@ -271,10 +277,13 @@ class Geometry:
             Geometry object
 
         """
-        # Create dictionary to easily look up materials
-        if materials is None:
-            filename = Path(path).parent / 'materials.xml'
-            materials = openmc.Materials.from_xml(str(filename))
+
+        # Using str and os.Pathlike here to avoid error when using just the imported PathLike
+        # TypeError: Subscripted generics cannot be used with class and instance checks
+        check_type('materials', materials, (str, os.PathLike, openmc.Materials))
+
+        if isinstance(materials, (str, os.PathLike)):
+            materials = openmc.Materials.from_xml(materials)
 
         tree = ET.parse(path)
         root = tree.getroot()

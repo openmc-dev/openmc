@@ -465,7 +465,7 @@ class Settings:
         return self._create_fission_neutrons
 
     @property
-    def create_delayed_neutrons(self) -> bool:        
+    def create_delayed_neutrons(self) -> bool:
         return self._create_delayed_neutrons
 
     @property
@@ -875,7 +875,7 @@ class Settings:
                       create_fission_neutrons, bool)
         self._create_fission_neutrons = create_fission_neutrons
 
-    @create_delayed_neutrons.setter                                   
+    @create_delayed_neutrons.setter
     def create_delayed_neutrons(self, create_delayed_neutrons: bool):
         cv.check_type('Whether create only prompt neutrons',
                       create_delayed_neutrons, bool)
@@ -1222,7 +1222,7 @@ class Settings:
             elem = ET.SubElement(root, "create_fission_neutrons")
             elem.text = str(self._create_fission_neutrons).lower()
 
-   def _create_create_delayed_neutrons_subelement(self, root):            
+   def _create_create_delayed_neutrons_subelement(self, root):
        if self._create_delayed_neutrons is not None:
            elem = ET.SubElement(root, "create_delayed_neutrons")
            elem.text = str(self._create_delayed_neutrons).lower()
@@ -1552,7 +1552,7 @@ class Settings:
         if text is not None:
             self.create_fission_neutrons = text in ('true', '1')
 
-    def _create_delayed_neutrons_from_xml_element(self, root):         
+    def _create_delayed_neutrons_from_xml_element(self, root):
         text = get_text(root, 'create_delayed_neutrons')
         if text is not None:
             self.create_delayed_neutrons = text in ('true', '1')

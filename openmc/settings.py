@@ -1655,7 +1655,7 @@ class Settings:
         self._create_resonance_scattering_subelement(element)
         self._create_volume_calcs_subelement(element)
         self._create_create_fission_neutrons_subelement(element)
-        self._create_create_delayed_neutrons_subelement(root_element)
+        self._create_create_delayed_neutrons_subelement(element)
         self._create_delayed_photon_scaling_subelement(element)
         self._create_event_based_subelement(element)
         self._create_max_particles_in_flight_subelement(element)

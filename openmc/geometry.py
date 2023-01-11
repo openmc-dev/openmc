@@ -267,7 +267,7 @@ class Geometry:
         ----------
         path : PathLike, optional
             Path to geometry XML file
-        materials : openmc.Materials or or PathLike
+        materials : openmc.Materials or PathLike
             Materials used to assign to cells. If PathLike, an attempt is made
             to generate materials from the provided xml file.
 

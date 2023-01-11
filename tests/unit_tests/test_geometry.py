@@ -290,7 +290,6 @@ def test_from_xml(run_in_tmpdir, mixed_lattice_model):
         geom = openmc.Geometry.from_xml(path='geometry.xml', materials=None)
     assert 'Unable to set "materials" to "None"' in str(excinfo.value)
 
-
     # checking that the default args also work
     geom = openmc.Geometry.from_xml()
     assert isinstance(geom, openmc.Geometry)

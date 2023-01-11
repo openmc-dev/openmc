@@ -76,8 +76,8 @@ def test_clone():
 
     # Add optional properties to the original cell to ensure they're cloned successfully
     c.temperature = 650.
-    c.translation = [1,2,3]
-    c.rotation = [4,5,6]
+    c.translation = (1., 2., 3.)
+    c.rotation = (4., 5., 6.)
     c.volume = 100
 
     c5 = c.clone(clone_materials=False, clone_regions=False)
@@ -92,8 +92,8 @@ def test_clone():
     # Mutate the original to ensure the changes are not seen in the clones
     c.fill = openmc.Material()
     c.region = +openmc.ZCylinder()
-    c.translation = [-1,-2,-3]
-    c.rotation = [-4,-5,-6]
+    c.translation = (-1., -2., -3.)
+    c.rotation = (-4., -5., -6.)
     c.temperature = 1
     c.volume = 1
     assert c5.fill != c.fill

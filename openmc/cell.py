@@ -518,8 +518,7 @@ class Cell(IDManagerMixin):
             paths = self._paths
             self._paths = None
 
-            clone = openmc.Cell()
-            clone.name = self.name
+            clone = openmc.Cell(name=self.name)
             clone.volume = self.volume
             if self.temperature is not None:
                 clone.temperature = self.temperature

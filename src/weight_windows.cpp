@@ -499,6 +499,9 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   // create data to be used to update weight windows
   xt::xarray<double> lower_bounds(tally_data);
 
+  // get mesh volumes
+  auto mesh_vols = this->mesh()->volumes();
+
   // for each energy group (if they exist), normalize
   // data using the max flux value and generate weight windows
   int e_shape = shape[filter_indices[FilterType::ENERGY]];
@@ -510,6 +513,11 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
 
     // normalize values in this energy group by the maximum value in the group
     group_view /= group_max;
+
+    // divide by volume of mesh elements
+    for (int i = 0; i < group_view.size(); i++) {
+      group_view[i] /= mesh_vols[i];
+    }
   }
 
   // set new weight window bounds

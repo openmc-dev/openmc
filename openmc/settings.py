@@ -224,11 +224,11 @@ class Settings:
     weight_windows : WeightWindows iterable of WeightWindows
         Weight windows to use for variance reduction
 
-        .. versionadded:: 0.13.3
+        .. versionadded:: 0.13
     create_delayed_neutrons : bool
         Whether delayed neutrons are created in fission.
 
-        .. versionadded:: 0.13
+        .. versionadded:: 0.13.3
     weight_windows_on : bool
         Whether weight windows are enabled
 

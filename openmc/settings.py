@@ -1748,7 +1748,7 @@ class Settings:
         settings._ufs_mesh_from_xml_element(elem, meshes)
         settings._resonance_scattering_from_xml_element(elem)
         settings._create_fission_neutrons_from_xml_element(elem)
-        settings._create_delayed_neutrons_from_xml_element(root)
+        settings._create_delayed_neutrons_from_xml_element(elem)
         settings._delayed_photon_scaling_from_xml_element(elem)
         settings._event_based_from_xml_element(elem)
         settings._max_particles_in_flight_from_xml_element(elem)

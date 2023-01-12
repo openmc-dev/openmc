@@ -61,6 +61,11 @@ void read_geometry_xml()
   // Get root element
   pugi::xml_node root = doc.document_element();
 
+  read_geometry_xml(root);
+}
+
+void read_geometry_xml(pugi::xml_node root)
+{
   // Read surfaces, cells, lattice
   read_surfaces(root);
   read_cells(root);

@@ -748,12 +748,12 @@ class WindowedMultipole(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
 
     Attributes
     ----------
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
     spacing : float
         The width of each window in sqrt(E)-space.  For example, the frst window
         will end at (sqrt(E_min) + spacing)**2 and the second window at

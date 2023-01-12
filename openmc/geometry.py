@@ -534,6 +534,27 @@ class Geometry:
         """
         return self._get_domains_by_name(name, case_sensitive, matching, 'cell')
 
+    def get_surfaces_by_name(self, name, case_sensitive=False, matching=False):
+        """Return a list of surfaces with matching names.
+
+        Parameters
+        ----------
+        name : str
+            The name to search match
+        case_sensitive : bool
+            Whether to distinguish upper and lower case letters in each
+            surface's name (default is False)
+        matching : bool
+            Whether the names must match completely (default is False)
+
+        Returns
+        -------
+        list of openmc.Surface
+            Surfaces matching the queried name
+
+        """
+        return self._get_domains_by_name(name, case_sensitive, matching, 'surface')
+
     def get_cells_by_fill_name(self, name, case_sensitive=False, matching=False):
         """Return a list of cells with fills with matching names.
 

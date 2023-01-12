@@ -1,6 +1,5 @@
 from collections import OrderedDict
 from collections.abc import Iterable
-from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real
 from xml.etree import ElementTree as ET
@@ -519,8 +518,14 @@ class Cell(IDManagerMixin):
             paths = self._paths
             self._paths = None
 
-            clone = deepcopy(self)
-            clone.id = None
+            clone = openmc.Cell(name=self.name)
+            clone.volume = self.volume
+            if self.temperature is not None:
+                clone.temperature = self.temperature
+            if self.translation is not None:
+                clone.translation = self.translation
+            if self.rotation is not None:
+                clone.rotation = self.rotation
             clone._num_instances = None
 
             # Restore paths on original instance

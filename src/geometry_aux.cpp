@@ -40,7 +40,8 @@ void update_universe_cell_count(int32_t a, int32_t b)
   }
 }
 
-void read_geometry_xml() {
+void read_geometry_xml()
+{
   // Display output message
   write_message("Reading geometry XML file...", 5);
 

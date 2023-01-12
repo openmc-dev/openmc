@@ -119,22 +119,24 @@ ThermalScattering::ThermalScattering(
       if (!found) {
         // If no pairs found, check if the desired temperature falls within
         // bounds' tolerance
-        if (std::abs(T - temps_available[0]) <= settings::temperature_tolerance){
-          if (std::find(temps_to_read.begin(), temps_to_read.end(), std::round(temps_available[0])) ==
-              temps_to_read.end()) {
-          temps_to_read.push_back(std::round(temps_available[0]));
-        }}
-        else if (std::abs(T - temps_available[n - 1]) <= settings::temperature_tolerance){
-          if (std::find(temps_to_read.begin(), temps_to_read.end(), std::round(temps_available[n - 1])) ==
-              temps_to_read.end()){
-          temps_to_read.push_back(std::round(temps_available[n - 1]));
-        }}
-        else {
+        if (std::abs(T - temps_available[0]) <=
+            settings::temperature_tolerance) {
+          if (std::find(temps_to_read.begin(), temps_to_read.end(),
+                std::round(temps_available[0])) == temps_to_read.end()) {
+            temps_to_read.push_back(std::round(temps_available[0]));
+          }
+        } else if (std::abs(T - temps_available[n - 1]) <=
+                   settings::temperature_tolerance) {
+          if (std::find(temps_to_read.begin(), temps_to_read.end(),
+                std::round(temps_available[n - 1])) == temps_to_read.end()) {
+            temps_to_read.push_back(std::round(temps_available[n - 1]));
+          }
+        } else {
           fatal_error(
-          fmt::format("Nuclear data library does not contain cross "
-                      "sections for {} at temperatures that bound {} K.",
-            name_, std::round(T)));
-            }
+            fmt::format("Nuclear data library does not contain cross "
+                        "sections for {} at temperatures that bound {} K.",
+              name_, std::round(T)));
+        }
       }
     }
   }

@@ -14,7 +14,8 @@ namespace openmc {
 inline bool dir_exists(const std::string& path)
 {
   struct stat s;
-  if (stat(path.c_str(), &s) != 0) return false;
+  if (stat(path.c_str(), &s) != 0)
+    return false;
 
   return s.st_mode & S_IFDIR;
 }

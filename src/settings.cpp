@@ -214,7 +214,8 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 }
 
-void read_settings_xml() {
+void read_settings_xml()
+{
   using namespace settings;
   using namespace pugi;
   // Check if settings.xml exists

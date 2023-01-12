@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
-from copy import deepcopy
 from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -138,8 +137,14 @@ class UniverseBase(ABC, IDManagerMixin):
 
         # If no memoize'd clone exists, instantiate one
         if self not in memo:
-            clone = deepcopy(self)
-            clone.id = None
+            clone = openmc.Universe(name=self.name)
+            clone.volume = self.volume
+            # Try to set DAGMCUniverse-specific attributes on the clone
+            try:
+                clone.auto_geom_ids = self.auto_geom_ids
+                clone.auto_mat_ids = self.auto_mat_ids
+            except AttributeError:
+                pass
 
             # Clone all cells for the universe clone
             clone._cells = OrderedDict()

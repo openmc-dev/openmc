@@ -120,6 +120,14 @@ def test_clone():
     assert next(iter(u3.cells.values())).region ==\
          next(iter(u1.cells.values())).region
 
+    dagmc_u = openmc.DAGMCUniverse(filename="")
+    dagmc_u.auto_geom_ids = True
+    dagmc_u.auto_mat_ids = True
+    dagmc_u1 = dagmc_u.clone()
+    assert dagmc_u1.name == dagmc_u.name
+    assert dagmc_u1.auto_geom_ids == dagmc_u.auto_geom_ids
+    assert dagmc_u1.auto_mat_ids == dagmc_u.auto_mat_ids
+
 
 def test_create_xml(cell_with_lattice):
     cells = [openmc.Cell() for i in range(5)]

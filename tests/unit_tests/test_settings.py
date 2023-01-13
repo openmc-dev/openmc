@@ -49,6 +49,7 @@ def test_export_to_xml(run_in_tmpdir):
         domains=[openmc.Cell()], samples=1000, lower_left=(-10., -10., -10.),
         upper_right = (10., 10., 10.))
     s.create_fission_neutrons = True
+    s.create_delayed_neutrons = False
     s.log_grid_bins = 2000
     s.photon_transport = False
     s.electron_treatment = 'led'
@@ -107,6 +108,7 @@ def test_export_to_xml(run_in_tmpdir):
                                       'energy_min': 1.0, 'energy_max': 1000.0,
                                       'nuclides': ['U235', 'U238', 'Pu239']}
     assert s.create_fission_neutrons
+    assert not s.create_delayed_neutrons 
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'

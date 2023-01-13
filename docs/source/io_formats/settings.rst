@@ -33,6 +33,17 @@ standard deviation.
   *Default*: false
 
 -------------------------------------
+``<create_delayed_neutrons>`` Element
+-------------------------------------
+
+The ``<create_delayed_neutrons>`` element indicates whether delayed neutrons
+are created in fission. If this element is set to "true", delayed neutrons
+will be created in fission events; otherwise only prompt neutrons will be
+created.
+
+  *Default*: true
+
+-------------------------------------
 ``<create_fission_neutrons>`` Element
 -------------------------------------
 

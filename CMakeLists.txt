@@ -31,6 +31,7 @@ endif()
 #===============================================================================
 
 option(OPENMC_USE_OPENMP      "Enable shared-memory parallelism with OpenMP"         ON)
+option(OPENMC_BUILD_TESTS     "Build tests"                                          ON)
 option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
@@ -288,9 +289,12 @@ endif()
 #===============================================================================
 # Catch2 library
 #===============================================================================
-find_package_write_status(Catch2)
-if (NOT Catch2)
-  add_subdirectory(vendor/Catch2)
+
+if(OPENMC_BUILD_TESTS)
+  find_package_write_status(Catch2)
+  if (NOT Catch2)
+    add_subdirectory(vendor/Catch2)
+  endif()
 endif()
 
 #===============================================================================

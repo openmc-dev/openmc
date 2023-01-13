@@ -1,14 +1,14 @@
 #include "openmc/distribution.h"
 #include "openmc/random_lcg.h"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <pugixml.hpp>
 
 TEST_CASE("Test alias method sampling of a discrete distribution")
 {
-  int n_samples = 1e6;
+  constexpr int n_samples = 1000000;
   double x[5] = {-1.6, 1.1, 20.3, 4.7, 0.9};
-  double p[5] = {0.2, 0.1, 0.5, 0.05, 0.15};
-  double samples[n_samples];
+  double p[5] = {0.2, 0.1, 0.65, 0.02, 0.03};
 
   // Initialize distribution
   openmc::Discrete dist(x, p, 5);
@@ -20,24 +20,31 @@ TEST_CASE("Test alias method sampling of a discrete distribution")
     mean += x[i] * p[i];
   }
 
-  // Sample distribution and calculate mean
+  // Sample distribution and calculate mean, standard deviation, and number of
+  // x[0] sampled
   double dist_mean = 0.0;
-  for (size_t i = 0; i < n_samples; i++) {
-    samples[i] = dist.sample(&seed);
-    dist_mean += samples[i];
-  }
-  dist_mean /= n_samples;
-
-  // Calculate standard deviation
   double std = 0.0;
-  for (size_t i = 0; i < n_samples; i++) {
-    std += (samples[i] - dist_mean) * (samples[i] - dist_mean);
-  }
-  std /= n_samples;
+  int counter = 0;
 
-  // Require sampled distribution mean is within 3 standard deviations of the
+  for (size_t i = 0; i < n_samples; i++) {
+    auto sample = dist.sample(&seed);
+    std += sample * sample / n_samples;
+    dist_mean += sample;
+
+    if (sample == x[0])
+      counter++;
+  }
+
+  dist_mean /= n_samples;
+  std -= dist_mean * dist_mean;
+
+  // Require sampled distribution mean is within 4 standard deviations of the
   // expected mean
   REQUIRE(std::abs(dist_mean - mean) < 4 * std);
+
+  // Require counter of number of x[0] is within 4 standard deviations of
+  // 200,000
+  REQUIRE(std::abs(counter - n_samples * p[0]) < 4 * std);
 }
 
 TEST_CASE("Test alias sampling method for pugixml constructor")
@@ -47,17 +54,25 @@ TEST_CASE("Test alias sampling method for pugixml constructor")
   pugi::xml_node energy = doc.append_child("energy");
   pugi::xml_node parameters = energy.append_child("parameters");
   parameters.append_child(pugi::node_pcdata)
-    .set_value("17140457.745328166 1.0");
+    .set_value("800 500000 30000 0.1 0.6 0.3");
 
   // Initialize discrete distribution and seed
   openmc::Discrete dist(energy);
   uint64_t seed = openmc::init_seed(0, 0);
+  auto sample = dist.sample(&seed);
 
   // Assertions
-  REQUIRE(dist.x().size() == 1);
-  REQUIRE(dist.p().size() == 1);
-  REQUIRE(dist.alias().size() == 0);
-  REQUIRE(dist.x()[0] == 17140457.745328166);
-  REQUIRE(dist.p()[0] == 1.0);
-  REQUIRE(dist.sample(&seed) == 17140457.745328166);
+  REQUIRE(dist.x().size() == 3);
+  REQUIRE(dist.prob().size() == 3);
+  REQUIRE(dist.alias().size() == 3);
+
+  openmc::vector<double> correct_x = {800, 500000, 30000};
+  openmc::vector<double> correct_prob = {0.3, 1.0, 0.9};
+  openmc::vector<size_t> correct_alias = {1, 0, 1};
+
+  for (size_t i = 0; i < 3; i++) {
+    REQUIRE(dist.x()[i] == correct_x[i]);
+    REQUIRE(dist.prob()[i] == Catch::Approx(correct_prob[i]).epsilon(1e-12));
+    REQUIRE(dist.alias()[i] == correct_alias[i]);
+  }
 }

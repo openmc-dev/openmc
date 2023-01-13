@@ -38,6 +38,14 @@ def model():
 
     geometry = openmc.Geometry([root_cell])
 
+    ### Tallies ###
+
+    # create a mesh flux tally
+    tally = openmc.Tally()
+    tally.filters.append(openmc.MeshFilter(regular_mesh))
+    tally.scores = ['flux']
+    tallies = openmc.Tallies([tally])
+
     ### Settings ###
     settings = openmc.Settings()
     settings.run_mode = 'fixed source'
@@ -68,7 +76,8 @@ def model():
     settings.source = source
     return openmc.model.Model(geometry=geometry,
                               materials=materials,
-                              settings=settings)
+                              settings=settings,
+                              tallies=tallies)
 
 
 test_cases = [

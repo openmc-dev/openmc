@@ -36,7 +36,7 @@ def model():
 
     root_cell, _ = regular_mesh.build_cells()
 
-    geometry = openmc.Geometry(root=[root_cell])
+    geometry = openmc.Geometry([root_cell])
 
     # set boundary conditions of the root cell
     for surface in root_cell.region.get_surfaces().values():

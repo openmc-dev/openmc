@@ -41,7 +41,7 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         Path to OpenMC executable. Defaults to 'openmc'.
     mpi_args : list of str, optional
         MPI execute command and any additional MPI arguments to pass,
-        e.g. ['mpiexec', '-n', '8'].
+        e.g., ['mpiexec', '-n', '8'].
     path_input : str or Pathlike
         Path to a single XML file or a directory containing XML files for the
         OpenMC executable to read.
@@ -139,6 +139,8 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.', path_input=None):
         Path to a single XML file or a directory containing XML files for the
         OpenMC executable to read.
 
+        .. versionadded:: 0.13.3
+
     Raises
     ------
     RuntimeError
@@ -170,6 +172,8 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', path_input=None):
     path_input : str
         Path to a single XML file or a directory containing XML files for the
         OpenMC executable to read.
+
+        .. versionadded:: 0.13.3
 
     Raises
     ------
@@ -222,7 +226,7 @@ def calculate_volumes(threads=None, output=True, cwd='.',
         Path to OpenMC executable. Defaults to 'openmc'.
     mpi_args : list of str, optional
         MPI execute command and any additional MPI arguments to pass,
-        e.g. ['mpiexec', '-n', '8'].
+        e.g., ['mpiexec', '-n', '8'].
     cwd : str, optional
         Path to working directory to run in. Defaults to the current working
         directory.
@@ -280,7 +284,7 @@ def run(particles=None, threads=None, geometry_debug=False,
     openmc_exec : str, optional
         Path to OpenMC executable. Defaults to 'openmc'.
     mpi_args : list of str, optional
-        MPI execute command and any additional MPI arguments to pass, e.g.
+        MPI execute command and any additional MPI arguments to pass, e.g.,
         ['mpiexec', '-n', '8'].
     event_based : bool, optional
         Turns on event-based parallelism, instead of default history-based
@@ -290,6 +294,8 @@ def run(particles=None, threads=None, geometry_debug=False,
     path_input : str or Pathlike
         Path to a single XML file or a directory containing XML files for the
         OpenMC executable to read.
+
+        .. versionadded:: 0.13.3
 
     Raises
     ------

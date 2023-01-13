@@ -352,6 +352,8 @@ class Material(IDManagerMixin):
         on this string. The name and material_id parameters are simply passed on
         to the Material constructor.
 
+        .. versionadded:: 0.13.3
+
         Parameters
         ----------
         cfg : str

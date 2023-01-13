@@ -2109,17 +2109,17 @@ Position MOABMesh::sample(uint64_t* seed, int32_t bin) const {
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
 
   // Get vertex coordinates for MOAB tet
-  std::array<moab::EntityHandle, 4> conn1;
+  const moab::EntityHandle* conn1;
   int conn1_size;
   moab::ErrorCode rval =
-    mbi_->get_connectivity(&tet_ent, 1, conn1.data(), conn1_size);
+    mbi_->get_connectivity(tet_ent, conn1, conn1_size);
   if (rval != moab::MB_SUCCESS || conn1_size != 4) {
     fatal_error(fmt::format(
-      "Failed to get tet connectivity or connectivity size () is invalid.",
+      "Failed to get tet connectivity or connectivity size ({}) is invalid.",
       conn1_size));
   }
   moab::CartVect p[4];
-  rval = mbi_->get_coords(conn1.data(), conn1.size(), p[0].array());
+  rval = mbi_->get_coords(conn1, conn1_size, p[0].array());
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to get tet coords");
   }

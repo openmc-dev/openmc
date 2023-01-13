@@ -4,8 +4,8 @@
 #include "pugixml.hpp"
 
 #include "openmc/distribution.h"
-#include "openmc/position.h"
 #include "openmc/mesh.h"
+#include "openmc/position.h"
 
 namespace openmc {
 

@@ -94,7 +94,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
         space_ = UPtrSpace {new CylindricalIndependent(node_space)};
       } else if (type == "spherical") {
         space_ = UPtrSpace {new SphericalIndependent(node_space)};
-      } else if (type =="mesh"){
+      } else if (type == "mesh") {
         space_ = UPtrSpace {new MeshSpatial(node_space)};
       } else if (type == "box") {
         space_ = UPtrSpace {new SpatialBox(node_space)};

@@ -207,24 +207,22 @@ Position UnstructuredMesh::sample_tet(
   // (2000) Generating Random Points in a Tetrahedron, Journal of Graphics
   // Tools, 5:4, 9-12, DOI: 10.1080/10867651.2000.10487528
   if (s + t > 1) {
-      s = 1.0 - s;
-      t = 1.0 - t;
+    s = 1.0 - s;
+    t = 1.0 - t;
   }
   if (s + t + u > 1) {
     if (t + u > 1) {
       double old_t = t;
       t = 1.0 - u;
       u = 1.0 - s - old_t;
-    }else if (t + u <= 1) {
+    } else if (t + u <= 1) {
       double old_s = s;
       s = 1.0 - t - u;
       u = old_s + t + u - 1;
     }
   }
-  return s*(coords[1]-coords[0])
-    + t*(coords[2]-coords[0])
-    + u*(coords[3]-coords[0])
-    + coords[0];
+  return s * (coords[1] - coords[0]) + t * (coords[2] - coords[0]) +
+         u * (coords[3] - coords[0]) + coords[0];
 }
 
 const std::string UnstructuredMesh::mesh_type = "unstructured";
@@ -268,8 +266,8 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 
   // write element types and connectivity
   vector<double> volumes;
-  xt::xtensor<int, 2> connectivity ({static_cast<size_t>(this->n_bins()), 8});
-  xt::xtensor<int, 2> elem_types ({static_cast<size_t>(this->n_bins()), 1});
+  xt::xtensor<int, 2> connectivity({static_cast<size_t>(this->n_bins()), 8});
+  xt::xtensor<int, 2> elem_types({static_cast<size_t>(this->n_bins()), 1});
   for (int i = 0; i < this->n_bins(); i++) {
     auto conn = this->connectivity(i);
 
@@ -277,17 +275,20 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 
     // write linear tet element
     if (conn.size() == 4) {
-      xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::LINEAR_TET);
-      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1], conn[2], conn[3],
-                                                              -1, -1, -1, -1});
-    // write linear hex element
+      xt::view(elem_types, i, xt::all()) =
+        static_cast<int>(ElementType::LINEAR_TET);
+      xt::view(connectivity, i, xt::all()) =
+        xt::xarray<int>({conn[0], conn[1], conn[2], conn[3], -1, -1, -1, -1});
+      // write linear hex element
     } else if (conn.size() == 8) {
-      xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::LINEAR_HEX);
-      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1], conn[2], conn[3],
-                                                              conn[4], conn[5], conn[6], conn[7]});
+      xt::view(elem_types, i, xt::all()) =
+        static_cast<int>(ElementType::LINEAR_HEX);
+      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1],
+        conn[2], conn[3], conn[4], conn[5], conn[6], conn[7]});
     } else {
       num_elem_skipped++;
-      xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::UNSUPPORTED);
+      xt::view(elem_types, i, xt::all()) =
+        static_cast<int>(ElementType::UNSUPPORTED);
       xt::view(connectivity, i, xt::all()) = -1;
     }
   }
@@ -1873,7 +1874,6 @@ void MOABMesh::initialize()
     fatal_error("Failed to get all vertex handles");
   }
 
-
   // make an entity set for all tetrahedra
   // this is used for convenience later in output
   rval = mbi_->create_meshset(moab::MESHSET_SET, tetset_);
@@ -2104,15 +2104,15 @@ std::string MOABMesh::library() const
 }
 
 // Sample position within a tet for MOAB type tets
-Position MOABMesh::sample(uint64_t* seed, int32_t bin) const {
+Position MOABMesh::sample(uint64_t* seed, int32_t bin) const
+{
 
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
 
   // Get vertex coordinates for MOAB tet
   const moab::EntityHandle* conn1;
   int conn1_size;
-  moab::ErrorCode rval =
-    mbi_->get_connectivity(tet_ent, conn1, conn1_size);
+  moab::ErrorCode rval = mbi_->get_connectivity(tet_ent, conn1, conn1_size);
   if (rval != moab::MB_SUCCESS || conn1_size != 4) {
     fatal_error(fmt::format(
       "Failed to get tet connectivity or connectivity size ({}) is invalid.",
@@ -2131,7 +2131,6 @@ Position MOABMesh::sample(uint64_t* seed, int32_t bin) const {
   // Samples position within tet using Barycentric stuff
   return this->sample_tet(tet_verts, seed);
 }
-
 
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
 {
@@ -2253,10 +2252,12 @@ std::pair<vector<double>, vector<double>> MOABMesh::plot(
   return {};
 }
 
-int MOABMesh::get_vert_idx_from_handle(moab::EntityHandle vert) const {
+int MOABMesh::get_vert_idx_from_handle(moab::EntityHandle vert) const
+{
   int idx = vert - verts_[0];
   if (idx >= n_vertices()) {
-    fatal_error(fmt::format("Invalid vertex idx {} (# vertices {})", idx, n_vertices()));
+    fatal_error(
+      fmt::format("Invalid vertex idx {} (# vertices {})", idx, n_vertices()));
   }
   return idx;
 }
@@ -2328,11 +2329,13 @@ Position MOABMesh::centroid(int bin) const
   return {centroid[0], centroid[1], centroid[2]};
 }
 
-int MOABMesh::n_vertices() const {
+int MOABMesh::n_vertices() const
+{
   return verts_.size();
 }
 
-Position MOABMesh::vertex(int id) const {
+Position MOABMesh::vertex(int id) const
+{
 
   moab::ErrorCode rval;
 
@@ -2347,7 +2350,8 @@ Position MOABMesh::vertex(int id) const {
   return {coords[0], coords[1], coords[2]};
 }
 
-std::vector<int> MOABMesh::connectivity(int bin) const {
+std::vector<int> MOABMesh::connectivity(int bin) const
+{
   moab::ErrorCode rval;
 
   auto tet = get_ent_handle_from_bin(bin);
@@ -2501,14 +2505,15 @@ const std::string LibMesh::mesh_lib_type = "libmesh";
 
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
-  // filename_ and length_multiplier_ will already be set by the UnstructuredMesh constructor
+  // filename_ and length_multiplier_ will already be set by the
+  // UnstructuredMesh constructor
   set_mesh_pointer_from_filename(filename_);
   set_length_multiplier(length_multiplier_);
   initialize();
 }
 
 // create the mesh from a pointer to a libMesh Mesh
-LibMesh::LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier)
+LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 {
   m_ = &input_mesh;
   set_length_multiplier(length_multiplier);
@@ -2586,7 +2591,8 @@ void LibMesh::initialize()
 }
 
 // Sample position within a tet for LibMesh type tets
-Position LibMesh::sample(uint64_t* seed, int32_t bin) const {
+Position LibMesh::sample(uint64_t* seed, int32_t bin) const
+{
   const auto& elem = get_element_from_bin(bin);
   // Get tet vertex coordinates from LibMesh
   std::array<Position, 4> tet_verts;

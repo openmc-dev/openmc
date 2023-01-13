@@ -106,7 +106,8 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   openmc::openmc_set_seed(DEFAULT_SEED);
 
   // Read XML input files
-  if (!read_model_xml()) read_separate_xml_files();
+  if (!read_model_xml())
+    read_separate_xml_files();
 
   // Write some initial output under the header if needed
   initial_output();
@@ -299,7 +300,8 @@ int parse_command_line(int argc, char* argv[])
   return 0;
 }
 
-bool read_model_xml() {
+bool read_model_xml()
+{
   std::string model_filename =
     settings::path_input.empty() ? "." : settings::path_input;
 
@@ -314,7 +316,8 @@ bool read_model_xml() {
     model_filename += "/model.xml";
 
   // if this file doesn't exist, stop here
-  if (!file_exists(model_filename)) return false;
+  if (!file_exists(model_filename))
+    return false;
 
   // try to process the path input as an XML file
   pugi::xml_document doc;
@@ -327,7 +330,7 @@ bool read_model_xml() {
 
   // Read settings
   if (!check_for_node(root, "settings")) {
-      fatal_error("No <settings> node present in the model.xml file.");
+    fatal_error("No <settings> node present in the model.xml file.");
   }
   auto settings_root = root.child("settings");
 
@@ -343,13 +346,15 @@ bool read_model_xml() {
       title();
   }
 
-  write_message(fmt::format("Reading model XML file '{}' ...", model_filename), 5);
+  write_message(
+    fmt::format("Reading model XML file '{}' ...", model_filename), 5);
 
   read_settings_xml(settings_root);
 
   // If other XML files are present, display warning
   // that they will be ignored
-  auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml", "tallies.xml", "plots.xml"};
+  auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml",
+    "tallies.xml", "plots.xml"};
   for (const auto& input : other_inputs) {
     if (file_exists(settings::path_input + input)) {
       warning((fmt::format("Other XML file input(s) are present. These files "
@@ -384,7 +389,7 @@ bool read_model_xml() {
   if (check_for_node(root, "tallies"))
     read_tallies_xml(root.child("tallies"));
 
- // Initialize distribcell_filters
+  // Initialize distribcell_filters
   prepare_distribcell();
 
   if (check_for_node(root, "plots"))
@@ -415,7 +420,8 @@ void read_separate_xml_files()
   read_plots_xml();
 }
 
-void initial_output() {
+void initial_output()
+{
   // write initial output
   if (settings::run_mode == RunMode::PLOTTING) {
     // Read plots.xml if it exists

@@ -7,8 +7,8 @@
 #include <unordered_map>
 
 #include "hdf5.h"
-#include "xtensor/xtensor.hpp"
 #include "pugixml.hpp"
+#include "xtensor/xtensor.hpp"
 
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
@@ -41,7 +41,7 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-enum class ElementType { UNSUPPORTED=-1, LINEAR_TET, LINEAR_HEX };
+enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 
 //==============================================================================
 // Global variables
@@ -80,7 +80,7 @@ public:
   //! \param[in] seed Seed to use for random sampling
   //! \param[in] bin Bin value of the tet sampled
   //! \return sampled position within tet
-  virtual Position sample(uint64_t* seed, int32_t bin) const=0;
+  virtual Position sample(uint64_t* seed, int32_t bin) const = 0;
 
   //! Get the volume of a mesh bin
   //
@@ -713,7 +713,7 @@ private:
   std::pair<moab::Tag, moab::Tag> get_score_tags(std::string score) const;
 
   // Data members
-  moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
+  moab::Range ehs_;   //!< Range of tetrahedra EntityHandle's in the mesh
   moab::Range verts_; //!< Range of vertex EntityHandle's in the mesh
   moab::EntityHandle tetset_;      //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
@@ -731,8 +731,8 @@ class LibMesh : public UnstructuredMesh {
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
-  LibMesh(const std::string & filename, double length_multiplier = 1.0);
-  LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier = 1.0);
+  LibMesh(const std::string& filename, double length_multiplier = 1.0);
+  LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
   static const std::string mesh_lib_type;
 
@@ -787,8 +787,11 @@ private:
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
-  unique_ptr<libMesh::MeshBase> unique_m_ = nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is created inside OpenMC
-  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set during intialization
+  unique_ptr<libMesh::MeshBase> unique_m_ =
+    nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is
+             //!< created inside OpenMC
+  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
+                         //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>

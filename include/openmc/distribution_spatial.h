@@ -108,7 +108,7 @@ public:
   //! \return Sampled position
   Position sample(uint64_t* seed) const;
 
-  const unique_ptr<Mesh>& mesh() const { return model::meshes.at(mesh_idx_); }
+  const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }
 
   int32_t n_sources() const { return this->mesh()->n_bins(); }
 

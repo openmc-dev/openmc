@@ -1,14 +1,14 @@
 from itertools import product
-
 from pathlib import Path
+
 import pytest
 import numpy as np
-
 import openmc
 import openmc.lib
 
 from tests import cdtemp
 from tests.testing_harness import PyAPITestHarness
+
 
 TETS_PER_VOXEL = 12
 
@@ -60,7 +60,8 @@ def model():
     strengths = np.zeros(n_cells*TETS_PER_VOXEL)
     # set non-zero strengths only for the tets corresponding to the
     # first two geometric hex cells
-    strengths[0:TETS_PER_VOXEL] = 10
+    strengths[:TETS_PER_VOXEL] = 10
+
     strengths[TETS_PER_VOXEL:2*TETS_PER_VOXEL] = 2
 
     # create the spatial distribution based on the mesh
@@ -74,10 +75,11 @@ def model():
                               settings=settings)
 
 
-test_cases = []
-for i, lib, in enumerate(['libmesh', 'moab']):
-    test_cases.append({'library' : lib,
-                       'inputs_true' : 'inputs_true{}.dat'.format(i)})
+test_cases = [
+    {'library': lib, 'inputs_true': f'inputs_true{i}.dat'}
+    for i, lib in enumerate(('libmesh', 'moab'))
+]
+
 
 @pytest.mark.parametrize("test_cases", test_cases, ids=lambda p: p['library'])
 def test_unstructured_mesh_sampling(model, test_cases):

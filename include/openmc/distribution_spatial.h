@@ -115,7 +115,6 @@ public:
 private:
   Mesh* mesh_ptr_ {nullptr};
   int32_t mesh_idx_ {C_NONE};
-  std::string sample_scheme_;
   double total_strength_ {0.0};
   std::vector<double> mesh_CDF_;
   std::vector<double> mesh_strengths_;

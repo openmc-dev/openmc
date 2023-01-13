@@ -195,7 +195,6 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   }
 }
 
-// Sample barycentric coordinates given a seed and the vertex positions and return the sampled position
 Position UnstructuredMesh::sample_tet(std::array<Position, 4> coords, uint64_t* seed) const {
   // Uniform distribution
   double s = prn(seed);
@@ -2112,9 +2111,7 @@ Position MOABMesh::sample(uint64_t* seed, int32_t bin) const {
     tet_verts[i] = {p[i][0], p[i][1], p[i][2]};
   }
   // Samples position within tet using Barycentric stuff
-  Position r = this->sample_tet(tet_verts, seed);
-
-  return r;
+  return this->sample_tet(tet_verts, seed);
 }
 
 
@@ -2580,9 +2577,7 @@ Position LibMesh::sample(uint64_t* seed, int32_t bin) const {
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
-  Position r = this->sample_tet(tet_verts, seed);
-
-  return r;
+  return this->sample_tet(tet_verts, seed);
 }
 
 Position LibMesh::centroid(int bin) const

@@ -619,21 +619,21 @@ class CylindricalIndependent(Spatial):
         origin = [float(x) for x in elem.get('origin').split()]
         return cls(r, phi, z, origin=origin)
 
+
 class MeshSpatial(Spatial):
     """Spatial distribution for a mesh.
 
-    This distribution specifies a mesh to sample over, chooses whether it will
-    be adjusted by element volume, and can set the source strengths.
+    This distribution specifies a mesh to sample over with source strengths
+    specified for each mesh element.
 
     .. versionadded:: 0.13.3
 
     Parameters
     ----------
     mesh : openmc.MeshBase
-        The mesh instance used for sampling, mesh is written into settings.xml,
-        mesh.id is written into the source distribution
-    strengths : Iterable of Real, optional
-        A list of values which represent the weights of each element. If no
+        The mesh instance used for sampling
+    strengths : iterable of float, optional
+        An iterable of values that represents the weights of each element. If no
         source strengths are specified, they will be equal for all mesh
         elements.
     volume_normalized : bool, optional
@@ -643,10 +643,9 @@ class MeshSpatial(Spatial):
     Attributes
     ----------
     mesh : openmc.MeshBase
-        The mesh instance used for sampling, mesh is written into settings.xml,
-        mesh.id is written into the source distribution
-    strengths : Iterable of Real, optional
-        A list of values which represent the weights of each element
+        The mesh instance used for sampling
+    strengths : numpy.ndarray or None
+        An array of source strengths for each mesh element
     volume_normalized : bool
         Whether or not the strengths will be multiplied by element volumes at
         runtime.
@@ -663,8 +662,8 @@ class MeshSpatial(Spatial):
 
     @mesh.setter
     def mesh(self, mesh):
-        if mesh != None:
-            cv.check_type('Unstructured Mesh instance', mesh, MeshBase)
+        if mesh is not None:
+            cv.check_type('mesh instance', mesh, MeshBase)
         self._mesh = mesh
 
     @property
@@ -684,13 +683,13 @@ class MeshSpatial(Spatial):
     def strengths(self, given_strengths):
         if given_strengths is not None:
             cv.check_type('strengths array passed in', given_strengths, Iterable, Real)
-            self._strengths = np.array(given_strengths, dtype=float).flatten()
+            self._strengths = np.asarray(given_strengths, dtype=float).flatten()
         else:
             self._strengths = None
 
     @property
     def num_strength_bins(self):
-        if self.strengths == None:
+        if self.strengths is None:
             raise ValueError('Strengths are not set')
         return self.strengths.size
 

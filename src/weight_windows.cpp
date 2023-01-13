@@ -410,9 +410,6 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   const std::set<FilterType> allowed_filters = {
     FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
 
-
-  const auto filters = tally->filters();
-  const auto filter_types = tally->filter_types();
   auto filter_indices = tally->filter_indices();
 
   // make sure that all filters are allowed
@@ -432,21 +429,9 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
       score, tally->id()));
   }
 
-  /// Proposed method - reshape tally_data according to the filter sizes
-  ///////////////////////////////////
-  // TODO: Move into Tally class
-  // re-shape results into a new xtensor
-  std::vector<uint64_t> shape(filters.size());
-  for (int i = 0; i < filters.size(); i++) {
-    const auto& f = model::tally_filters[tally->filters(i)];
-    shape[i] = f->n_bins();
-  }
-  ///////////////////////////////////
-
   // sum results over all nuclides and select results related to a single score
-  xt::xarray<double> tally_data =
-    xt::view(tally->results(), xt::all(), score_index, TallyResult::SUM);
-  tally_data.reshape(shape);
+  xt::xarray<double> tally_data = xt::strided_view(tally->get_reshaped_data(),
+    {xt::ellipsis(), score_index, static_cast<int>(TallyResult::SUM)});
 
   // build the transpose information to re-order data by filter type
   std::vector<int> transpose;
@@ -496,25 +481,24 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
     tally_data = xt::view(tally_data, particle_idx);
   }
 
-  // create data to be used to update weight windows
-  xt::xarray<double> lower_bounds(tally_data);
-
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
 
-  if (filter_indices.count(FilterType::ENERGY) == 0) {
+  if (tally->has_filter(FilterType::ENERGY)) {
     double tally_max = *std::max_element(tally_data.begin(), tally_data.end());
 
-    lower_bounds /= tally_max;
-     // set new weight window bounds
-    this->set_weight_windows(lower_bounds, 5.0);
+    tally_data /= tally_max;
+    // set new weight window bounds
+    this->set_weight_windows(tally_data, 5.0);
   } else {
     // for each energy group (if they exist), normalize
     // data using the max flux value and generate weight windows
-    int e_shape = shape[filter_indices[FilterType::ENERGY]];
-    for (int e = 0; e < e_shape; e++) {
+    const auto& e_filter =
+      model::tally_filters[tally->filters(filter_indices[FilterType::ENERGY])];
+    int e_bins = e_filter->n_bins();
+    for (int e = 0; e < e_bins; e++) {
       // select all
-      auto group_view = xt::view(lower_bounds, e, xt::all(), xt::all());
+      auto group_view = xt::view(tally_data, e, xt::all(), xt::all());
 
       double group_max = *std::max_element(group_view.begin(), group_view.end());
 
@@ -529,7 +513,7 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   }
 
   // set new weight window bounds
-  this->set_weight_windows(lower_bounds, 5.0);
+  this->set_weight_windows(tally_data, 5.0);
 }
 
 void WeightWindows::export_to_hdf5(const std::string& filename) const

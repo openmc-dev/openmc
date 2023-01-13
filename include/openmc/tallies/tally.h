@@ -93,7 +93,11 @@ public:
 
   void accumulate();
 
+  //! return the index of a score specified by name
   int score_index(const std::string& score) const;
+
+  // //! return the tally results reshaped according to filter sizes
+  xt::xarray<double> get_reshaped_data() const;
 
   //! A string representing the i-th score on this tally
   std::string score_name(int score_idx) const;

@@ -23,7 +23,7 @@ def model():
     ### Materials ###
     materials = openmc.Materials()
 
-    water_mat = openmc.Material(material_id=3, name="water")
+    water_mat = openmc.Material(name="water")
     water_mat.add_nuclide("H1", 2.0)
     water_mat.add_nuclide("O16", 1.0)
     water_mat.set_density("atom/b-cm", 0.07416)
@@ -39,13 +39,9 @@ def model():
     regular_mesh.dimension = (10, 10, 10)
     regular_mesh.width = (2, 2, 2)
 
-    root_cell, _ = regular_mesh.build_cells()
+    root_cell, _ = regular_mesh.build_cells(bc=['vacuum']*6)
 
     geometry = openmc.Geometry(root=[root_cell])
-
-    # set boundary conditions of the root cell
-    for surface in root_cell.region.get_surfaces().values():
-        surface.boundary_type = 'vacuum'
 
     ### Settings ###
     settings = openmc.Settings()

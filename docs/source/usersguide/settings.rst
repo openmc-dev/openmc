@@ -474,7 +474,6 @@ selected::
    Some features related to photon transport are not currently implemented,
    including:
 
-     * Tallying photon energy deposition.
      * Generating a photon source from a neutron calculation that can be used
        for a later fixed source photon calculation.
      * Photoneutron reactions.

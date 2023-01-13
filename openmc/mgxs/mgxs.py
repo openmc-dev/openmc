@@ -925,7 +925,7 @@ class MGXS:
         # Tabulate the atomic number densities for all nuclides
         elif nuclides == 'all':
             nuclides = self.get_nuclides()
-            densities = np.zeros(self.num_nuclides, dtype=np.float)
+            densities = np.zeros(self.num_nuclides, dtype=float)
             for i, nuclide in enumerate(nuclides):
                 densities[i] += self.get_nuclide_density(nuclide)
 
@@ -3019,7 +3019,7 @@ class DiffusionCoefficient(TransportXS):
                 new_filt = openmc.EnergyFilter(old_filt.values)
                 p1_tally.filters[-2] = new_filt
 
-                p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter], 
+                p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
                     filter_bins=[('P1',)],squeeze=True)
                 p1_tally._scores = ['scatter-1']
                 total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']

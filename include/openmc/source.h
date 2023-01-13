@@ -102,6 +102,7 @@ class FileSource : public Source {
 public:
   // Constructors
   explicit FileSource(std::string path);
+  explicit FileSource(const vector<SourceSite>& sites) : sites_ {sites} {}
 
   // Methods
   SourceSite sample(uint64_t* seed) const override;

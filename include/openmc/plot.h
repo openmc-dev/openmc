@@ -279,6 +279,10 @@ void voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace);
 //! Read plot specifications from a plots.xml file
 void read_plots_xml();
 
+//! Read plot specifications from an XML Node
+//! \param[in] XML node containing plot info
+void read_plots_xml(pugi::xml_node root);
+
 //! Clear memory
 void free_memory_plot();
 

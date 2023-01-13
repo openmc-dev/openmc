@@ -271,6 +271,16 @@ Prerequisites
 
           cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation ..
 
+    * MCPL_ library for reading and writing .mcpl files
+
+      This option allows OpenMC to read and write MCPL (Monte Carlo Particle
+      Lists) files instead of .h5 files for sources (external source
+      distribution, k-eigenvalue source distribution, and surface sources). To
+      turn this option on in the CMake configuration step, add the following
+      option:
+
+          cmake -DOPENMC_USE_MCPL=on ..
+
     * NCrystal_ library for defining materials with enhanced thermal neutron transport
 
       Adding this option allows the creation of materials from NCrystal, which
@@ -305,6 +315,7 @@ Prerequisites
 .. _MOAB: https://bitbucket.org/fathomteam/moab
 .. _libMesh: https://libmesh.github.io/
 .. _libpng: http://www.libpng.org/pub/png/libpng.html
+.. _MCPL: https://github.com/mctools/mcpl
 .. _NCrystal: https://github.com/mctools/ncrystal
 
 Obtaining the Source

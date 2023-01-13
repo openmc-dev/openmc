@@ -195,14 +195,17 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   }
 }
 
-Position UnstructuredMesh::sample_tet(std::array<Position, 4> coords, uint64_t* seed) const {
+Position UnstructuredMesh::sample_tet(
+  std::array<Position, 4> coords, uint64_t* seed) const
+{
   // Uniform distribution
   double s = prn(seed);
   double t = prn(seed);
   double u = prn(seed);
 
-  // From PyNE implementation of moab tet sampling
-  // C. Rocchini and P. Cignoni, “Generating Random Points in a Tetrahedron,”
+  // From PyNE implementation of moab tet sampling C. Rocchini & P. Cignoni
+  // (2000) Generating Random Points in a Tetrahedron, Journal of Graphics
+  // Tools, 5:4, 9-12, DOI: 10.1080/10867651.2000.10487528
   if (s + t > 1) {
       s = 1.0 - s;
       t = 1.0 - t;
@@ -222,7 +225,6 @@ Position UnstructuredMesh::sample_tet(std::array<Position, 4> coords, uint64_t* 
     + t*(coords[2]-coords[0])
     + u*(coords[3]-coords[0])
     + coords[0];
-
 }
 
 const std::string UnstructuredMesh::mesh_type = "unstructured";
@@ -311,6 +313,18 @@ void UnstructuredMesh::set_length_multiplier(double length_multiplier)
 
   if (length_multiplier_ != 1.0)
     specified_length_multiplier_ = true;
+}
+
+ElementType UnstructuredMesh::element_type(int bin) const
+{
+  auto conn = connectivity(bin);
+
+  if (conn.size() == 4)
+    return ElementType::LINEAR_TET;
+  else if (conn.size() == 8)
+    return ElementType::LINEAR_HEX;
+  else
+    return ElementType::UNSUPPORTED;
 }
 
 StructuredMesh::MeshIndex StructuredMesh::get_indices(
@@ -2095,10 +2109,14 @@ Position MOABMesh::sample(uint64_t* seed, int32_t bin) const {
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
 
   // Get vertex coordinates for MOAB tet
-  vector<moab::EntityHandle> conn1;
-  moab::ErrorCode rval = mbi_->get_connectivity(&tet_ent, 1, conn1);
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to get tet connectivity");
+  std::array<moab::EntityHandle, 4> conn1;
+  int conn1_size;
+  moab::ErrorCode rval =
+    mbi_->get_connectivity(&tet_ent, 1, conn1.data(), conn1_size);
+  if (rval != moab::MB_SUCCESS || conn1_size != 4) {
+    fatal_error(fmt::format(
+      "Failed to get tet connectivity or connectivity size () is invalid.",
+      conn1_size));
   }
   moab::CartVect p[4];
   rval = mbi_->get_coords(conn1.data(), conn1.size(), p[0].array());

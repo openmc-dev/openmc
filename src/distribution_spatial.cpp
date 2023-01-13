@@ -194,9 +194,19 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   // Get pointer to spatial distribution
   mesh_idx_ = model::mesh_map.at(mesh_id);
 
-  // Check whether mesh pointer points to a mesh
-  mesh_ptr_ = dynamic_cast<Mesh*>(model::meshes[mesh_idx_].get());
-  if (!mesh_ptr_) {fatal_error("Mesh passed to spatial distribution is not a mesh object"); }
+  auto mesh_ptr =
+    dynamic_cast<UnstructuredMesh*>(model::meshes.at(mesh_idx_).get());
+  if (!mesh_ptr) {
+    fatal_error("Only unstructured mesh is supported for source sampling.");
+  }
+
+  // ensure that the unstructured mesh contains only linear tets
+  for (int bin = 0; bin < mesh_ptr->n_bins(); bin++) {
+    if (mesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
+      fatal_error(
+        "Mesh specified for source must contain only linear tetrahedra.");
+    }
+  }
 
   int32_t n_bins = this->n_sources();
   std::vector<double> strengths(n_bins, 0.0);
@@ -222,7 +232,7 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 
   if (get_node_value_bool(node, "volume_normalized")) {
     for (int i = 0; i < n_bins; i++) {
-      mesh_strengths_[i] *= mesh_ptr_->volume(i);
+      mesh_strengths_[i] *= mesh()->volume(i);
     }
   }
 
@@ -244,7 +254,7 @@ Position MeshSpatial::sample(uint64_t* seed) const
   double eta = prn(seed);
   // Sample over the CDF defined in initialization above
   int32_t elem_idx = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
-  return mesh_ptr_->sample(seed, elem_idx);
+  return mesh()->sample(seed, elem_idx);
 }
 
 //==============================================================================

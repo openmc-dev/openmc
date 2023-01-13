@@ -113,7 +113,6 @@ public:
   int32_t n_sources() const { return this->mesh()->n_bins(); }
 
 private:
-  Mesh* mesh_ptr_ {nullptr};
   int32_t mesh_idx_ {C_NONE};
   double total_strength_ {0.0};
   std::vector<double> mesh_CDF_;

@@ -78,7 +78,8 @@ public:
   //! Sample a mesh volume using a certain seed
   //
   //! \param[in] seed Seed to use for random sampling
-  //! \param[out] r Position within tet
+  //! \param[in] bin Bin value of the tet sampled
+  //! \return sampled position within tet
   virtual Position sample(uint64_t* seed, int32_t bin) const=0;
 
   //! Get the volume of a mesh bin
@@ -536,6 +537,8 @@ public:
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
 
+  ElementType element_type(int bin) const;
+
 protected:
   //! Set the length multiplier to apply to each point in the mesh
   void set_length_multiplier(const double length_multiplier);
@@ -545,7 +548,12 @@ protected:
     1.0}; //!< Constant multiplication factor to apply to mesh coordinates
   bool specified_length_multiplier_ {false};
 
-  //! Sample a tetrahedron for an unstructured mesh
+  //! Sample barycentric coordinates given a seed and the vertex positions and
+  //! return the sampled position
+  //
+  //! \param[in] coords Coordinates of the tetrahedron
+  //! \param[in] seed Random number generation seed
+  //! \return Sampled position within the tetrahedron
   Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
 
 private:

@@ -978,8 +978,8 @@ class Settings:
         for source in self.source:
             root.append(source.to_xml_element())
             if isinstance(source.space, MeshSpatial):
-                path = f"./mesh[@id='{source.space.mesh.id}']" 
-                if root.find(path) is None: 
+                path = f"./mesh[@id='{source.space.mesh.id}']"
+                if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())
 
     def _create_volume_calcs_subelement(self, root):
@@ -1326,17 +1326,22 @@ class Settings:
             threshold = float(get_text(elem, 'threshold'))
             self.keff_trigger = {'type': trigger, 'threshold': threshold}
 
-    def _source_from_xml_element(self, root):
+    def _source_from_xml_element(self, root, meshes=None):
         for elem in root.findall('source'):
             src = Source.from_xml_element(elem)
             if isinstance(src.space, MeshSpatial):
                 mesh_id = int(get_text(elem, 'mesh'))
-                path = f"./mesh[@id='{mesh_id}']"
-                mesh_elem = root.find(path)
-                if mesh_elem is not None:
-                    src.space.mesh = MeshBase.from_xml_element(mesh_elem)
-                else:
-                    raise RuntimeError('No mesh was specified for the mesh source')
+                if mesh_id not in meshes:
+                    path = f"./mesh[@id='{mesh_id}']"
+                    mesh_elem = root.find(path)
+                    if mesh_elem is not None:
+                        mesh = MeshBase.from_xml_element(mesh_elem)
+                    meshes[mesh.id] = mesh
+                try:
+                    src.space.mesh = meshes[mesh_id]
+                except KeyError as e:
+                    raise e(f'Mesh with ID {mesh_id} was not found.')
+            # add newly constructed source object to the list
             self.source.append(src)
 
     def _volume_calcs_from_xml_element(self, root):
@@ -1710,7 +1715,7 @@ class Settings:
         settings._rel_max_lost_particles_from_xml_element(elem)
         settings._generations_per_batch_from_xml_element(elem)
         settings._keff_trigger_from_xml_element(elem)
-        settings._source_from_xml_element(elem)
+        settings._source_from_xml_element(elem, meshes)
         settings._volume_calcs_from_xml_element(elem)
         settings._output_from_xml_element(elem)
         settings._statepoint_from_xml_element(elem)

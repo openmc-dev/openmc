@@ -371,6 +371,7 @@ void read_settings_xml(pugi::xml_node root)
       }
     }
   }
+
   if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {
     // Read run parameters
     get_run_parameters(node_mode);
@@ -434,6 +435,7 @@ void read_settings_xml(pugi::xml_node root)
               "the OMP_NUM_THREADS environment variable to set the number of "
               "threads.");
   }
+
   // ==========================================================================
   // EXTERNAL SOURCE
 
@@ -462,6 +464,7 @@ void read_settings_xml(pugi::xml_node root)
       model::external_sources.push_back(make_unique<IndependentSource>(node));
     }
   }
+
   // Check if the user has specified to read surface source
   if (check_for_node(root, "surf_source_read")) {
     surf_source_read = true;
@@ -532,6 +535,7 @@ void read_settings_xml(pugi::xml_node root)
         std::stod(get_node_value(node_cutoff, "energy_positron"));
     }
   }
+
   // Particle trace
   if (check_for_node(root, "trace")) {
     auto temp = get_node_array<int64_t>(root, "trace");

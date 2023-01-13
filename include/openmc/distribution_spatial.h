@@ -115,6 +115,8 @@ public:
 private:
   int32_t mesh_idx_ {C_NONE};
   double total_strength_ {0.0};
+  // TODO: move to an independent class in the future that's similar
+  // to a discrete distribution without outcomes
   std::vector<double> mesh_CDF_;
   std::vector<double> mesh_strengths_;
 };

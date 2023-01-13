@@ -139,6 +139,6 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
             exp_vals = strengths.reshape(-1, 12).sum(axis=1) / sum(strengths)
 
         diff = np.abs(mean - exp_vals)
-        assert((diff < 2*std_dev).sum() / diff[:10].size >= 0.95)
-        assert((diff < 6*std_dev).sum() / diff.size >= 0.97)
+        assert((diff < 2*std_dev).sum() / diff.size >= 0.95)
+        assert((diff < 6*std_dev).sum() / diff.size >= 0.997)
 

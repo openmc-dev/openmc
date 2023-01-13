@@ -516,9 +516,11 @@ if (OPENMC_USE_MPI)
   target_link_libraries(libopenmc MPI::MPI_CXX)
 endif()
 
-# Add cpp tests directory
-include(CTest)
-add_subdirectory(tests/cpp_unit_tests)
+if (OPENMC_BUILD_TESTS)
+  # Add cpp tests directory
+  include(CTest)
+  add_subdirectory(tests/cpp_unit_tests)
+endif()
 
 if (OPENMC_USE_MCPL)
   target_compile_definitions(libopenmc PUBLIC OPENMC_MCPL)

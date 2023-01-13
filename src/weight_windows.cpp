@@ -502,21 +502,29 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
 
-  // for each energy group (if they exist), normalize
-  // data using the max flux value and generate weight windows
-  int e_shape = shape[filter_indices[FilterType::ENERGY]];
-  for (int e = 0; e < e_shape; e++) {
-    // select all
-    auto group_view = xt::view(tally_data, e, xt::all(), xt::all());
+  if (filter_indices.count(FilterType::ENERGY) == 0) {
+    double tally_max = *std::max_element(tally_data.begin(), tally_data.end());
 
-    double group_max = *std::max_element(group_view.begin(), group_view.end());
+    lower_bounds /= tally_max;
+     // set new weight window bounds
+    this->set_weight_windows(lower_bounds, 5.0);
+  } else {
+    // for each energy group (if they exist), normalize
+    // data using the max flux value and generate weight windows
+    int e_shape = shape[filter_indices[FilterType::ENERGY]];
+    for (int e = 0; e < e_shape; e++) {
+      // select all
+      auto group_view = xt::view(lower_bounds, e, xt::all(), xt::all());
 
-    // normalize values in this energy group by the maximum value in the group
-    group_view /= group_max;
+      double group_max = *std::max_element(group_view.begin(), group_view.end());
 
-    // divide by volume of mesh elements
-    for (int i = 0; i < group_view.size(); i++) {
-      group_view[i] /= mesh_vols[i];
+      // normalize values in this energy group by the maximum value in the group
+      if (group_max > 0.0) group_view /= group_max;
+
+      // divide by volume of mesh elements
+      for (int i = 0; i < group_view.size(); i++) {
+        group_view[i] /= mesh_vols[i];
+      }
     }
   }
 

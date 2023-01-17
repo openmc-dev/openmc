@@ -170,7 +170,14 @@ def test_ww_import_export(run_in_tmpdir, model):
     openmc.lib.run()
 
     ww = openmc.lib.WeightWindows.from_tally(tally)
+
+    mean_before = np.array(tally.mean)
+
     ww.update_weight_windows(tally)
+
+    mean_after = np.array(tally.mean)
+
+    assert (mean_before == mean_after).all()
 
     lb_before, up_before = ww.bounds
 
@@ -184,7 +191,7 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     lb_after, up_after = ww.bounds
 
-    openmc.lib.finalize()
-
     assert np.allclose(lb_before, lb_after)
     assert np.allclose(up_before, up_after)
+
+    openmc.lib.finalize()

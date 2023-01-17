@@ -170,7 +170,6 @@ class WeightWindows(_FortranObjectWithID):
         size = c_size_t()
         print(lower)
         _dll.openmc_weight_windows_get_bounds(self._index, lower, upper, size)
-        print(size.value)
         lower_arr = as_array(lower, (size.value,))
         upper_arr = as_array(upper, (size.value,))
         return (lower_arr, upper_arr)

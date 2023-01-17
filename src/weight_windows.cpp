@@ -241,7 +241,6 @@ WeightWindows* WeightWindows::from_hdf5(
 
 void WeightWindows::set_defaults()
 {
-
   // ensure default values are set
   if (energy_bounds_.size() == 0) {
     int p_type = static_cast<int>(particle_type_);
@@ -298,7 +297,7 @@ void WeightWindows::set_particle_type(ParticleType p_type)
 
 void WeightWindows::set_mesh(int32_t mesh_idx)
 {
-  if (mesh_idx < 0 || mesh_idx > model::meshes.size())
+  if (mesh_idx < 0 || mesh_idx >= model::meshes.size())
     fatal_error(fmt::format("Could not find a mesh for index {}", mesh_idx));
 
   mesh_idx_ = mesh_idx;
@@ -365,13 +364,10 @@ double WeightWindows::bounds_size() const
 void WeightWindows::set_weight_windows(
   gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
 {
-  // clear out old memory
-  lower_ww_.clear();
-  upper_ww_.clear();
-
   // set new weight window values
-  lower_ww_.insert(lower_ww_.begin(), lower_bounds.begin(), lower_bounds.end());
-  upper_ww_.insert(upper_ww_.begin(), upper_bounds.begin(), upper_bounds.end());
+  std::vector<size_t> shape = {lower_bounds.size()};
+  lower_ww_ = xt::adapt(lower_bounds.data(), shape);
+  upper_ww_ = xt::adapt(upper_bounds.data(), shape);
 
   // make sure that the upper and lower bounds have the same size
   if (upper_ww_.size() != lower_ww_.size()) {
@@ -421,6 +417,12 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
     }
   }
 
+  const std::set<std::string> allowed_values = {"mean", "rel_err"};
+  if (allowed_values.count(value) == 0) {
+    fatal_error(fmt::format("Invalid value '{}' specified for weight window "
+                            "generation. Must be one of: 'mean' or 'rel_err'"));
+  }
+
   // determine the index of the specified score
   int score_index = tally->score_index(score);
   if (score_index == C_NONE) {
@@ -430,8 +432,20 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   }
 
   // sum results over all nuclides and select results related to a single score
-  xt::xarray<double> tally_data = xt::strided_view(tally->get_reshaped_data(),
+  xt::xarray<double>& tally_data = this->lower_bounds();
+
+  tally_data = xt::strided_view(tally->get_reshaped_data(),
     {xt::ellipsis(), score_index, static_cast<int>(TallyResult::SUM)});
+
+  if (value == "rel_err") {
+    std::cout << "Updating using relative error" << std::endl;
+    xt::xarray<double> sum_sq = xt::strided_view(tally->get_reshaped_data(),
+      {xt::ellipsis(), score_index, static_cast<int>(TallyResult::SUM_SQ)});
+
+    int n = tally->n_realizations_;
+    tally_data =
+      xt::sqrt((sum_sq / n - (tally_data * tally_data) / (n * n)) / (n - 1));
+  }
 
   // build the transpose information to re-order data by filter type
   std::vector<int> transpose;
@@ -539,7 +553,6 @@ void WeightWindows::export_to_hdf5(const std::string& filename) const
 
 void WeightWindows::to_hdf5(hid_t group) const
 {
-
   hid_t ww_group = create_group(group, fmt::format("weight_windows {}", id()));
 
   write_dataset(ww_group, "mesh", this->mesh()->id());

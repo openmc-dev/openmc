@@ -26,8 +26,6 @@ def model():
 
     model.settings.source = source
 
-    model.settings.dagmc = True
-
     # geometry
     dag_univ = openmc.DAGMCUniverse(Path("dagmc.h5m"))
     model.geometry = openmc.Geometry(dag_univ)

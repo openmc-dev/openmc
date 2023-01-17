@@ -10,6 +10,7 @@
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
+#include "openmc/ncrystal_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/physics_common.h"
@@ -140,7 +141,12 @@ void sample_neutron_reaction(Particle& p)
 
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
-  scatter(p, i_nuclide);
+  const auto& ncrystal_mat = model::materials[p.material()]->ncrystal_mat();
+  if (ncrystal_mat && p.E() < NCRYSTAL_MAX_ENERGY) {
+    ncrystal_mat.scatter(p);
+  } else {
+    scatter(p, i_nuclide);
+  }
 
   // Advance URR seed stream 'N' times after energy changes
   if (p.E() != p.E_last()) {

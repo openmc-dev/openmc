@@ -104,7 +104,7 @@ def get_thermal_name(name):
     Returns
     -------
     str
-        GND-format thermal scattering name
+        GNDS-format thermal scattering name
 
     """
     if name in _THERMAL_NAMES:
@@ -396,7 +396,7 @@ class ThermalScattering(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the material using GND convention, e.g. c_H_in_H2O
+        Name of the material using GNDS convention, e.g. c_H_in_H2O
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
     kTs : Iterable of float
@@ -415,7 +415,7 @@ class ThermalScattering(EqualityMixin):
         Inelastic scattering cross section derived in the incoherent
         approximation
     name : str
-        Name of the material using GND convention, e.g. c_H_in_H2O
+        Name of the material using GNDS convention, e.g. c_H_in_H2O
     temperatures : Iterable of str
         List of string representations the temperatures of the target nuclide
         in the data set.  The temperatures are strings of the temperature,
@@ -491,7 +491,7 @@ class ThermalScattering(EqualityMixin):
             ACE table to read from. If given as a string, it is assumed to be
             the filename for the ACE file.
         name : str
-            GND-conforming name of the material, e.g. c_H_in_H2O. If none is
+            GNDS-conforming name of the material, e.g. c_H_in_H2O. If none is
             passed, the appropriate name is guessed based on the name of the ACE
             table.
 
@@ -596,7 +596,7 @@ class ThermalScattering(EqualityMixin):
             ACE table to read from. If given as a string, it is assumed to be
             the filename for the ACE file.
         name : str
-            GND-conforming name of the material, e.g. c_H_in_H2O. If none is
+            GNDS-conforming name of the material, e.g. c_H_in_H2O. If none is
             passed, the appropriate name is guessed based on the name of the ACE
             table.
 

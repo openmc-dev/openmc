@@ -705,7 +705,8 @@ std::string Tally::nuclide_name(int nuclide_idx) const
 // Non-member functions
 //==============================================================================
 
-void read_tallies_xml() {
+void read_tallies_xml()
+{
   // Check if tallies.xml exists. If not, just return since it is optional
   std::string filename = settings::path_input + "tallies.xml";
   if (!file_exists(filename))

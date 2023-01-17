@@ -44,6 +44,7 @@ bool assume_separate {false};
 bool check_overlaps {false};
 bool cmfd_run {false};
 bool confidence_intervals {false};
+bool create_delayed_neutrons {true};
 bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
@@ -214,7 +215,8 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 }
 
-void read_settings_xml() {
+void read_settings_xml()
+{
   using namespace settings;
   using namespace pugi;
   // Check if settings.xml exists
@@ -870,6 +872,12 @@ void read_settings_xml(pugi::xml_node root)
           "<tabular_legendre> element must contain a value greater than 1");
       }
     }
+  }
+
+  // Check whether create delayed neutrons in fission
+  if (check_for_node(root, "create_delayed_neutrons")) {
+    create_delayed_neutrons =
+      get_node_value_bool(root, "create_delayed_neutrons");
   }
 
   // Check whether create fission sites

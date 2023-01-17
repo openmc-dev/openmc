@@ -37,6 +37,7 @@ option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"         
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
+option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -98,6 +99,15 @@ macro(find_package_write_status pkg)
     message(STATUS "Did not find ${pkg}, will use submodule instead")
   endif()
 endmacro()
+
+#===============================================================================
+# NCrystal Scattering Support
+#===============================================================================
+
+if(OPENMC_USE_NCRYSTAL)
+  find_package(NCrystal REQUIRED)
+  message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
+endif()
 
 #===============================================================================
 # DAGMC Geometry Support - need DAGMC/MOAB
@@ -338,6 +348,7 @@ list(APPEND libopenmc_SOURCES
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp
+  src/ncrystal_interface.cpp
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
@@ -496,6 +507,11 @@ endif()
 if (OPENMC_USE_MCPL)
   target_compile_definitions(libopenmc PUBLIC OPENMC_MCPL)
   target_link_libraries(libopenmc MCPL::mcpl)
+endif()
+
+if(OPENMC_USE_NCRYSTAL)
+  target_compile_definitions(libopenmc PRIVATE NCRYSTAL)
+  target_link_libraries(libopenmc NCrystal::NCrystal)
 endif()
 
 #===============================================================================

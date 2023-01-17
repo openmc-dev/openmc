@@ -44,7 +44,7 @@ class IncidentNeutron(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
     atomic_number : int
         Number of protons in the target nucleus
     mass_number : int
@@ -75,7 +75,7 @@ class IncidentNeutron(EqualityMixin):
         Metastable state of the target nucleus. A value of zero indicates ground
         state.
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
     reactions : collections.OrderedDict
         Contains the cross sections, secondary angle and energy distributions,
         and other associated data for each reaction. The keys are the MT values

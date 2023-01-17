@@ -91,7 +91,8 @@ Library::Library(pugi::xml_node node, const std::string& directory)
 // Non-member functions
 //==============================================================================
 
-void read_cross_sections_xml() {
+void read_cross_sections_xml()
+{
   pugi::xml_document doc;
   std::string filename = settings::path_input + "materials.xml";
   // Check if materials.xml exists

@@ -1242,6 +1242,11 @@ class Settings:
            elem = ET.SubElement(root, "create_delayed_neutrons")
            elem.text = str(self._create_delayed_neutrons).lower()
 
+    def _create_reset_time_for_particle_production(self, root):
+       if self._reset_time_for_particle_production is not None:
+           elem = ET.SubElement(root, "reset_time_for_particle_production")
+           elem.text = str(self._reset_time_for_particle_production).lower()
+
     def _create_delayed_photon_scaling_subelement(self, root):
         if self._delayed_photon_scaling is not None:
             elem = ET.SubElement(root, "delayed_photon_scaling")

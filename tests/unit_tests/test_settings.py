@@ -50,6 +50,7 @@ def test_export_to_xml(run_in_tmpdir):
         upper_right = (10., 10., 10.))
     s.create_fission_neutrons = True
     s.create_delayed_neutrons = False
+    s.reset_time_for_particle_production = True
     s.log_grid_bins = 2000
     s.photon_transport = False
     s.electron_treatment = 'led'
@@ -109,6 +110,7 @@ def test_export_to_xml(run_in_tmpdir):
                                       'nuclides': ['U235', 'U238', 'Pu239']}
     assert s.create_fission_neutrons
     assert not s.create_delayed_neutrons 
+    assert s.reset_time_for_particle_production
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'

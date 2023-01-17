@@ -357,6 +357,16 @@ or sub-elements and can be set to either "false" or "true".
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
+---------------------
+``<reset_time_for_particle_production>`` Element
+---------------------
+
+The ``<reset_time_for_particle_production>`` element determines whether the time
+variable of the particle is reset or runs through for neutrons that are created
+during inelastic scattering or fission.
+
+  *Default*: false
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------

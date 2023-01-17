@@ -205,7 +205,11 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     SourceSite site;
     site.r = p.r();
     site.particle = ParticleType::neutron;
-    site.time = p.time();
+    if (settings::reset_time_for_particle_production == true) {
+      site.time = 0.0;
+    } else {
+      site.time = p.time();
+    }
     site.wgt = 1. / weight;
     site.parent_id = p.id();
     site.progeny_id = p.n_progeny()++;

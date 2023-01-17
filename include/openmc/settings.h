@@ -44,6 +44,8 @@ extern "C" bool photon_transport;  //!< photon transport turned on?
 extern "C" bool reduce_tallies;    //!< reduce tallies at end of batch?
 extern bool res_scat_on;           //!< use resonance upscattering method?
 extern "C" bool restart_run;       //!< restart run?
+extern bool reset_time_for_particle_production; //!< whether created particles
+                                                //!< start with time=0?
 extern "C" bool run_CE;            //!< run with continuous-energy data?
 extern bool source_latest;         //!< write latest source at each batch?
 extern bool source_separate;       //!< write source to separate file?

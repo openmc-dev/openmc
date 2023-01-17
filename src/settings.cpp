@@ -56,6 +56,7 @@ bool output_tallies {true};
 bool particle_restart_run {false};
 bool photon_transport {false};
 bool reduce_tallies {true};
+bool reset_time_for_particle_production {false};
 bool res_scat_on {false};
 bool restart_run {false};
 bool run_CE {true};
@@ -897,6 +898,12 @@ void read_settings_xml(pugi::xml_node root)
   // Check whether to use event-based parallelism
   if (check_for_node(root, "event_based")) {
     event_based = get_node_value_bool(root, "event_based");
+  }
+
+  // Check whether created particles start with time=0
+  if (check_for_node(root, "reset_time_for_particle_production")) {
+    reset_time_for_particle_production =
+      get_node_value_bool(root, "reset_time_for_particle_production");
   }
 
   // Check whether material cell offsets should be generated

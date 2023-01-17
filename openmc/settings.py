@@ -228,6 +228,10 @@ class Settings:
     create_delayed_neutrons : bool
         Whether delayed neutrons are created in fission.
 
+        .. versionadded:: 0.13
+    reset_time_for_particle_production : bool
+        Whether the time variable is reset for created neutrons.
+
         .. versionadded:: 0.13.3
     weight_windows_on : bool
         Whether weight windows are enabled
@@ -301,6 +305,7 @@ class Settings:
 
         self._create_fission_neutrons = None
         self._create_delayed_neutrons = None
+        self._reset_time_for_particle_production = None
         self._delayed_photon_scaling = None
         self._material_cell_offsets = None
         self._log_grid_bins = None
@@ -467,6 +472,10 @@ class Settings:
     @property
     def create_delayed_neutrons(self) -> bool:
         return self._create_delayed_neutrons
+
+    @property
+    def reset_time_for_particle_production(self) -> bool:
+        return self._reset_time_for_particle_production
 
     @property
     def delayed_photon_scaling(self) -> bool:
@@ -880,6 +889,12 @@ class Settings:
         cv.check_type('Whether create only prompt neutrons',
                       create_delayed_neutrons, bool)
         self._create_delayed_neutrons = create_delayed_neutrons
+
+    @reset_time_for_particle_production.setter
+    def reset_time_for_particle_production(self, reset_time_for_particle_production: bool):
+        cv.check_type('Whether created particles start with time=0',
+                      reset_time_for_particle_production, bool)
+        self._reset_time_for_particle_production = reset_time_for_particle_production
 
     @delayed_photon_scaling.setter
     def delayed_photon_scaling(self, value: bool):
@@ -1557,6 +1572,11 @@ class Settings:
         if text is not None:
             self.create_delayed_neutrons = text in ('true', '1')
 
+    def _reset_time_for_particle_production_from_xml_element(self, root):
+        text = get_text(root, 'reset_time_for_particle_production')
+        if text is not None:
+            self.reset_time_for_particle_production = text in ('true', '1')
+
     def _delayed_photon_scaling_from_xml_element(self, root):
         text = get_text(root, 'delayed_photon_scaling')
         if text is not None:
@@ -1656,6 +1676,7 @@ class Settings:
         self._create_volume_calcs_subelement(element)
         self._create_create_fission_neutrons_subelement(element)
         self._create_create_delayed_neutrons_subelement(element)
+        self._create_reset_time_for_particle_production(element)
         self._create_delayed_photon_scaling_subelement(element)
         self._create_event_based_subelement(element)
         self._create_max_particles_in_flight_subelement(element)
@@ -1685,6 +1706,7 @@ class Settings:
 
         # Check if path is a directory
         p = Path(path)
+
         if p.is_dir():
             p /= 'settings.xml'
 
@@ -1749,6 +1771,7 @@ class Settings:
         settings._resonance_scattering_from_xml_element(elem)
         settings._create_fission_neutrons_from_xml_element(elem)
         settings._create_delayed_neutrons_from_xml_element(elem)
+        settings._reset_time_for_particle_production_from_xml_element(elem)
         settings._delayed_photon_scaling_from_xml_element(elem)
         settings._event_based_from_xml_element(elem)
         settings._max_particles_in_flight_from_xml_element(elem)

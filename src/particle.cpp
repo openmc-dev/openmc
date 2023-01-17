@@ -78,6 +78,7 @@ void Particle::create_secondary(
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
+  std::cout << "time in the bank  " << bank.time << std::endl;
 
   n_bank_second() += 1;
 }

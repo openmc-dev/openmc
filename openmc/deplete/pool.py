@@ -38,7 +38,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, **func_args):
         Expected to return the depletion matrix required by
         ``func``
     func_args : dict
-        Remaining keyword arguments passed to the matrix_func
+        Remaining keyword arguments passed to matrix_func when used
 
     Returns
     -------

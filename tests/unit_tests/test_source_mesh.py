@@ -122,6 +122,8 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
                 # subtract one from index to account for root cell
                 cell_counts[c[0]._index - 1, m] += 1
 
+        # make sure particle transport is successful
+        openmc.lib.run()
         openmc.lib.finalize()
 
         # normalize cell counts to get sampling frequency per particle
@@ -142,3 +144,35 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
         assert((diff < 2*std_dev).sum() / diff.size >= 0.95)
         assert((diff < 6*std_dev).sum() / diff.size >= 0.997)
 
+
+def test_strengths_size_failure(request, model):
+    # setup mesh source ###
+    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
+    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, 'libmesh')
+
+    # intentionally incorrectly sized to trigger an error
+    n_cells = len(model.geometry.get_all_cells())
+    strengths = np.random.rand(n_cells*TETS_PER_VOXEL)
+
+    # create the spatial distribution based on the mesh
+    space = openmc.stats.MeshSpatial(uscd_mesh, strengths)
+
+    energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
+    source = openmc.Source(space=space, energy=energy)
+    model.settings.source = source
+
+    # skip the test if unstructured mesh is not available
+    if not openmc.lib._libmesh_enabled():
+        if openmc.lib._dagmc_enabled():
+            source.space.mesh.library = 'moab'
+        else:
+            pytest.skip("Unstructured mesh support unavailable.")
+
+    # make sure that an incorrrectly sized strengths array causes a failure
+    source.space.strengths = source.space.strengths[:-1]
+
+    mesh_filename = Path(request.fspath).parent / source.space.mesh.filename
+
+    with pytest.raises(RuntimeError, match=r'strengths array'), cdtemp([mesh_filename]):
+        model.export_to_xml()
+        openmc.run()

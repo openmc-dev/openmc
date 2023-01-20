@@ -364,10 +364,16 @@ double WeightWindows::bounds_size() const
 void WeightWindows::set_weight_windows(
   gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
 {
+
+  lower_ww_ = xt::empty<double>({bounds_size()});
+  upper_ww_ = xt::empty<double>({bounds_size()});
+
   // set new weight window values
   std::vector<size_t> shape = {lower_bounds.size()};
-  lower_ww_ = xt::adapt(lower_bounds.data(), shape);
-  upper_ww_ = xt::adapt(upper_bounds.data(), shape);
+  // lower_ww_.resize(lower_bounds.size());
+  // upper_ww_.resize(upper_bounds.size());
+  xt::view(lower_ww_, xt::all()) = xt::adapt(lower_bounds.data(), shape);
+  xt::view(upper_ww_, xt::all()) = xt::adapt(upper_bounds.data(), shape);
 
   // make sure that the upper and lower bounds have the same size
   if (upper_ww_.size() != lower_ww_.size()) {
@@ -399,8 +405,8 @@ void WeightWindows::set_weight_windows(
   }
 }
 
-void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
-  const std::string& score, const std::string& value, const std::string& method)
+void WeightWindows::update_weight_windows_magic(
+  const Tally* tally, const std::string& value, double threshold)
 {
   // set of allowed filters
   const std::set<FilterType> allowed_filters = {
@@ -420,20 +426,24 @@ void WeightWindows::update_weight_windows(const std::unique_ptr<Tally>& tally,
   const std::set<std::string> allowed_values = {"mean", "rel_err"};
   if (allowed_values.count(value) == 0) {
     fatal_error(fmt::format("Invalid value '{}' specified for weight window "
-                            "generation. Must be one of: 'mean' or 'rel_err'"));
+                            "generation. Must be one of: 'mean' or 'rel_err'",
+      value));
   }
 
   // determine the index of the specified score
-  int score_index = tally->score_index(score);
+  int score_index = tally->score_index("flux");
   if (score_index == C_NONE) {
-    fatal_error(fmt::format("Score '{}' specified for weight window generation "
-                            "is not present on tally {}.",
-      score, tally->id()));
+    fatal_error(
+      fmt::format("A 'flux' score required for weight window generation "
+                  "is not present on tally {}.",
+        tally->id()));
   }
 
-  // sum results over all nuclides and select results related to a single score
-  xt::xarray<double>& tally_data = this->lower_bounds();
+  // use a reference to the lower bounds of the weight windows to avoid extra
+  // memory consumption
+  xt::xtensor<double, 1>& tally_data = this->lower_bounds();
 
+  // sum results over all nuclides and select results related to a single score
   tally_data = xt::strided_view(tally->get_reshaped_data(),
     {xt::ellipsis(), score_index, static_cast<int>(TallyResult::SUM)});
 
@@ -636,24 +646,16 @@ extern "C" int openmc_set_weight_windows(
   return 0;
 }
 
-extern "C" int openmc_update_weight_windows(int32_t tally_idx, int32_t ww_idx,
-  const char* score, const char* value, const char* method)
+extern "C" int openmc_update_weight_windows_magic(
+  int32_t tally_idx, int32_t ww_idx, const char* value, double threshold)
 {
   // get the requested tally
-  const auto& tally = model::tallies.at(tally_idx);
+  const Tally* tally = model::tallies.at(tally_idx).get();
 
   // get the WeightWindows object
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
 
-  // ensure the provided score is valid
-  int score_idx = tally->score_index(score);
-  if (score_idx == -1) {
-    set_errmsg(fmt::format(
-      "The score '{}' could not be found on tally {}", score, tally->id()));
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  wws->update_weight_windows(tally, score, value, method);
+  wws->update_weight_windows_magic(tally, value, threshold);
 
   return 0;
 }

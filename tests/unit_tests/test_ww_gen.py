@@ -122,7 +122,7 @@ def test_ww_gen(run_in_tmpdir, filters, model):
         ww = openmc.lib.WeightWindows.from_tally(lib_tally)
 
         # update the weight window values using tally results
-        ww.update_weight_windows(lib_tally)
+        ww.update_weight_windows_magic(lib_tally)
 
         # turn on weight windows for the subsequent run
         openmc.lib.settings.weight_windows_on = True
@@ -173,7 +173,7 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     mean_before = np.array(tally.mean)
 
-    ww.update_weight_windows(tally)
+    ww.update_weight_windows_magic(tally)
 
     mean_after = np.array(tally.mean)
 

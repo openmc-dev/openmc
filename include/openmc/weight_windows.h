@@ -104,8 +104,9 @@ public:
   //! use for weight window generation (one of "mean" or "rel_err") \param[in]
   //! threshold Relative error threshold. Results over this threshold will be
   //! ignored
-  void update_weight_windows_magic(
-    const Tally* tally, const std::string& value, double threshold);
+  void update_weight_windows_magic(const Tally* tally,
+    const std::string& value = "mean", double threshold = 1.0,
+    double ratio = 5.0);
 
   void export_to_hdf5(const std::string& filename = "weight_windows.h5") const;
 
@@ -125,14 +126,18 @@ public:
   template<class T>
   void check_bounds(const T& lower, const T& upper) const;
 
+  template<class T>
+  void check_bounds(const T& lower) const;
+
   void set_weight_windows(const xt::xarray<double>& lower_bounds,
     const xt::xarray<double>& upper_bounds);
+
+  void set_weight_windows(const xt::xarray<double>& lower_bounds, double ratio);
 
   void set_weight_windows(
     gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds);
 
-  void set_weight_windows(
-    gsl::span<const double> lower_bounds, double bound_ratio);
+  void set_weight_windows(gsl::span<const double> lower_bounds, double ratio);
 
   void set_particle_type(ParticleType p_type);
 

@@ -170,7 +170,7 @@ int openmc_weight_windows_set_id(int32_t index, int32_t id);
 int openmc_set_weight_windows(
   int ww_id, size_t n, const double* lower_bounds, const double* upper_bounds);
 int openmc_update_weight_windows_magic(int32_t tally_idx, int32_t ww_idx,
-  const char* value = "mean", double threshold = 1.0);
+  const char* value = "mean", double threshold = 1.0, double ratio = 5.0);
 int openmc_extend_weight_windows(
   int32_t n, int32_t* index_start, int32_t* index_end);
 int openmc_weight_windows_get_mesh(int32_t index, int32_t* mesh_idx);

@@ -19,7 +19,7 @@ __all__ = ['WeightWindows', 'weight_windows_map']
 
 _dll.openmc_extend_weight_windows.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 
-_dll.openmc_update_weight_windows_magic.argtypes = 2*[c_int32] + [c_char_p, c_double]
+_dll.openmc_update_weight_windows_magic.argtypes = 2*[c_int32] + [c_char_p] + 2*[c_double]
 _dll.openmc_update_weight_windows_magic.restype = c_int
 _dll.openmc_update_weight_windows_magic.errcheck = _error_handler
 
@@ -184,7 +184,7 @@ class WeightWindows(_FortranObjectWithID):
 
         _dll.openmc_weight_windows_set_bounds(self._index, lower_p, upper_p, lower_p.size)
 
-    def update_weight_windows_magic(self, tally, value='mean', threshold=1.0):
+    def update_weight_windows_magic(self, tally, value='mean', threshold=1.0, ratio=5.0):
         """Update weight window values using tally information
 
         Parameters
@@ -196,12 +196,15 @@ class WeightWindows(_FortranObjectWithID):
             (default is 'mean')
         threshold : float
             Threshold for relative error of results used to generate weight window bounds
+        ratio : float
+            Ratio of the lower to upper weight window bounds
 
         """
         _dll.openmc_update_weight_windows_magic(tally._index,
                                                 self._index,
                                                 c_char_p(value.encode()),
-                                                threshold)
+                                                threshold,
+                                                ratio)
 
     @classmethod
     def from_tally(cls, tally, particle=ParticleType.NEUTRON):

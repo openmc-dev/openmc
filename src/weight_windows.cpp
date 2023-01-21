@@ -372,13 +372,19 @@ void WeightWindows::check_bounds(const T& lower, const T& upper) const
       lower.size(), upper.size());
     fatal_error(msg);
   }
+  check_bounds(lower);
+}
+
+template<class T>
+void WeightWindows::check_bounds(const T& bounds) const
+{
   // check that the number of weight window entries is correct
-  if (lower.size() != this->bounds_size()) {
+  if (bounds.size() != this->bounds_size()) {
     auto err_msg =
       fmt::format("In weight window domain {} the number of spatial "
                   "energy/spatial bins ({}) does not match the number "
                   "of weight bins ({})",
-        id_, this->bounds_size(), lower_ww_.size());
+        id_, this->bounds_size(), bounds.size());
     fatal_error(err_msg);
   }
 }
@@ -395,8 +401,20 @@ void WeightWindows::set_weight_windows(const xt::xarray<double>& lower_bounds,
 }
 
 void WeightWindows::set_weight_windows(
+  const xt::xarray<double>& lower_bounds, double ratio)
+{
+  check_bounds(lower_bounds);
+
+  // set new weight window values
+  lower_ww_ = lower_bounds;
+  upper_ww_ = lower_bounds;
+  upper_ww_ *= ratio;
+}
+
+void WeightWindows::set_weight_windows(
   gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
 {
+  check_bounds(lower_bounds, upper_bounds);
   lower_ww_ = xt::empty<double>({bounds_size()});
   upper_ww_ = xt::empty<double>({bounds_size()});
 
@@ -408,17 +426,22 @@ void WeightWindows::set_weight_windows(
 }
 
 void WeightWindows::set_weight_windows(
-  gsl::span<const double> lower_bounds, double bounds_ratio)
+  gsl::span<const double> lower_bounds, double ratio)
 {
-  this->set_weight_windows(lower_bounds, lower_bounds);
+  check_bounds(lower_bounds);
 
-  for (auto& e : upper_ww_) {
-    e *= bounds_ratio;
-  }
+  lower_ww_ = xt::empty<double>({bounds_size()});
+  upper_ww_ = xt::empty<double>({bounds_size()});
+
+  // set new weight window values
+  std::vector<size_t> shape = {lower_bounds.size()};
+  xt::view(lower_ww_, xt::all()) = xt::adapt(lower_bounds.data(), shape);
+  xt::view(upper_ww_, xt::all()) = xt::adapt(lower_bounds.data(), shape);
+  upper_ww_ *= ratio;
 }
 
 void WeightWindows::update_weight_windows_magic(
-  const Tally* tally, const std::string& value, double threshold)
+  const Tally* tally, const std::string& value, double threshold, double ratio)
 {
   // set of allowed filters
   const std::set<FilterType> allowed_filters = {
@@ -551,7 +574,7 @@ void WeightWindows::update_weight_windows_magic(
   }
 
   // set new weight window bounds
-  this->set_weight_windows(tally_data, 5.0 * tally_data);
+  this->set_weight_windows(tally_data, ratio);
 }
 
 void WeightWindows::export_to_hdf5(const std::string& filename) const
@@ -660,8 +683,8 @@ extern "C" int openmc_set_weight_windows(
   return 0;
 }
 
-extern "C" int openmc_update_weight_windows_magic(
-  int32_t tally_idx, int32_t ww_idx, const char* value, double threshold)
+extern "C" int openmc_update_weight_windows_magic(int32_t tally_idx,
+  int32_t ww_idx, const char* value, double threshold, double ratio)
 {
   // get the requested tally
   const Tally* tally = model::tallies.at(tally_idx).get();
@@ -669,7 +692,7 @@ extern "C" int openmc_update_weight_windows_magic(
   // get the WeightWindows object
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
 
-  wws->update_weight_windows_magic(tally, value, threshold);
+  wws->update_weight_windows_magic(tally, value, threshold, ratio);
 
   return 0;
 }

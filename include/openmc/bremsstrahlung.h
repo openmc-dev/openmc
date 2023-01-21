@@ -23,9 +23,9 @@ public:
   xt::xtensor<double, 2> cdf_; //!< Bremsstrahlung energy CDF
   xt::xtensor<double, 1> yield_; //!< Photon yield
 
-  double* device_pdf_;
-  double* device_cdf_;
-  double* device_yield_;
+  double* device_pdf_ {nullptr};
+  double* device_cdf_ {nullptr};
+  double* device_yield_ {nullptr};
   double pdf(gsl::index i, gsl::index j) const;
   double cdf(gsl::index i, gsl::index j) const;
 };

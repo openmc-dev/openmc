@@ -81,10 +81,10 @@ public:
   xt::xtensor<double, 1> pair_production_nuclear_;
   xt::xtensor<double, 1> heating_;
 
-  double* device_energy_;
-  double* device_coherent_;
-  double* device_incoherent_;
-  double* device_pair_production_total_;
+  double* device_energy_ {nullptr};
+  double* device_coherent_ {nullptr};
+  double* device_incoherent_ {nullptr};
+  double* device_pair_production_total_ {nullptr};
 
   // Form factors
   Tabulated1D incoherent_form_factor_;
@@ -105,10 +105,10 @@ public:
   xt::xtensor<double, 1> electron_pdf_;
 
   size_t n_profile_;
-  double* device_profile_pdf_;
-  double* device_profile_cdf_;
-  double* device_binding_energy_;
-  double* device_electron_pdf_;
+  double* device_profile_pdf_ {nullptr};
+  double* device_profile_cdf_ {nullptr};
+  double* device_binding_energy_ {nullptr};
+  double* device_electron_pdf_ {nullptr};
   double profile_pdf(gsl::index i, gsl::index j) const;
   double profile_cdf(gsl::index i, gsl::index j) const;
 

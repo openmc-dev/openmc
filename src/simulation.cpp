@@ -308,10 +308,10 @@ const Mesh* ufs_mesh {nullptr};
 
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
-int64_t* device_work_index;
+int64_t* device_work_index {nullptr};
 
 std::vector<Particle>  particles;
-Particle*  device_particles;
+Particle*  device_particles {nullptr};
 
 
 } // namespace simulation

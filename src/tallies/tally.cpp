@@ -36,7 +36,7 @@ namespace openmc {
 
 namespace model {
   std::unordered_map<int, int> tally_map;
-  Tally* tallies;
+  Tally* tallies {nullptr};
   size_t tallies_size;
   std::vector<int> active_tallies;
   std::vector<int> active_analog_tallies;
@@ -44,11 +44,11 @@ namespace model {
   std::vector<int> active_collision_tallies;
   std::vector<int> active_meshsurf_tallies;
   std::vector<int> active_surface_tallies;
-  int* device_active_tallies;
+  int* device_active_tallies {nullptr};
   size_t active_tallies_size;
-  int* device_active_collision_tallies;
+  int* device_active_collision_tallies {nullptr};
   size_t active_collision_tallies_size;
-  int* device_active_tracklength_tallies;
+  int* device_active_tracklength_tallies {nullptr};
   size_t active_tracklength_tallies_size;
 }
 

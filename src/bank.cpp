@@ -16,7 +16,7 @@ namespace openmc {
 namespace simulation {
 
 std::vector<Particle::Bank> source_bank;
-Particle::Bank* device_source_bank;
+Particle::Bank* device_source_bank {nullptr};
 
 SharedArray<Particle::Bank> surf_source_bank;
 
@@ -30,7 +30,7 @@ SharedArray<Particle::Bank> fission_bank;
 // this generation for the particle located at that index. This vector is
 // used to efficiently sort the fission bank after each iteration.
 std::vector<int64_t> progeny_per_particle;
-int64_t* device_progeny_per_particle;
+int64_t* device_progeny_per_particle {nullptr};
 
 } // namespace simulation
 

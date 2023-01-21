@@ -19,7 +19,7 @@ __all__ = ['WeightWindows', 'weight_windows_map']
 
 _dll.openmc_extend_weight_windows.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 
-_dll.openmc_update_weight_windows_magic.argtypes = 2*[c_int32] + 3*[c_char_p]
+_dll.openmc_update_weight_windows_magic.argtypes = 2*[c_int32] + [c_char_p, c_double]
 _dll.openmc_update_weight_windows_magic.restype = c_int
 _dll.openmc_update_weight_windows_magic.errcheck = _error_handler
 
@@ -184,27 +184,24 @@ class WeightWindows(_FortranObjectWithID):
 
         _dll.openmc_weight_windows_set_bounds(self._index, lower_p, upper_p, lower_p.size)
 
-    def update_weight_windows_magic(self, tally, score='flux', value='mean', method='magic'):
+    def update_weight_windows_magic(self, tally, value='mean', threshold=1.0):
         """Update weight window values using tally information
 
         Parameters
         ----------
         tally : openmc.lib.Tally object
             The tally used to update weight window information
-        score : str
-            Name of the score data used (default is "flux")
         value : str
             Value type used to generate weight windows. One of {'mean', 'rel_err', 'std_dev}.
             (default is 'mean')
-        method : str
-            Method used for weight window generation. One of {'magic', 'pseudo-source'}
+        threshold : float
+            Threshold for relative error of results used to generate weight window bounds
 
         """
         _dll.openmc_update_weight_windows_magic(tally._index,
                                                 self._index,
-                                                c_char_p(score.encode()),
                                                 c_char_p(value.encode()),
-                                                c_char_p(method.encode()))
+                                                threshold)
 
     @classmethod
     def from_tally(cls, tally, particle=ParticleType.NEUTRON):

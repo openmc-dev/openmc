@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include "xtensor/xmasked_view.hpp"
 #include "xtensor/xstrided_view.hpp"
 #include "xtensor/xview.hpp"
 
@@ -361,43 +362,54 @@ double WeightWindows::bounds_size() const
   return num_spatial_bins * num_energy_bins;
 }
 
+template<class T>
+void WeightWindows::check_bounds(const T& lower, const T& upper) const
+{
+  // make sure that the upper and lower bounds have the same size
+  if (lower.size() != upper.size()) {
+    auto msg = fmt::format("The upper and lower weight window lengths do not "
+                           "match.\n Lower size: {}\n Upper size: {}",
+      lower.size(), upper.size());
+    fatal_error(msg);
+  }
+  // check that the number of weight window entries is correct
+  if (lower.size() != this->bounds_size()) {
+    auto err_msg =
+      fmt::format("In weight window domain {} the number of spatial "
+                  "energy/spatial bins ({}) does not match the number "
+                  "of weight bins ({})",
+        id_, this->bounds_size(), lower_ww_.size());
+    fatal_error(err_msg);
+  }
+}
+
+void WeightWindows::set_weight_windows(const xt::xarray<double>& lower_bounds,
+  const xt::xarray<double>& upper_bounds)
+{
+
+  check_bounds(lower_bounds, upper_bounds);
+
+  // set new weight window values
+  lower_ww_ = lower_bounds;
+  upper_ww_ = upper_bounds;
+}
+
 void WeightWindows::set_weight_windows(
   gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
 {
-
   lower_ww_ = xt::empty<double>({bounds_size()});
   upper_ww_ = xt::empty<double>({bounds_size()});
 
   // set new weight window values
   std::vector<size_t> shape = {lower_bounds.size()};
-  // lower_ww_.resize(lower_bounds.size());
-  // upper_ww_.resize(upper_bounds.size());
+
   xt::view(lower_ww_, xt::all()) = xt::adapt(lower_bounds.data(), shape);
   xt::view(upper_ww_, xt::all()) = xt::adapt(upper_bounds.data(), shape);
-
-  // make sure that the upper and lower bounds have the same size
-  if (upper_ww_.size() != lower_ww_.size()) {
-    fatal_error("The upper and lower weight window lengths do not match.");
-  }
-
-  // check that the number of weight window entries is correct
-  if (lower_ww_.size() != this->bounds_size()) {
-    int num_energy_bins =
-      energy_bounds_.size() > 0 ? energy_bounds_.size() - 1 : 1;
-    int num_spatial_bins = this->mesh()->n_bins();
-    auto err_msg =
-      fmt::format("In weight window domain {} the number of spatial "
-                  "energy/spatial bins ({}) does not match the number "
-                  "of weight bins ({})",
-        id_, num_energy_bins * num_spatial_bins, lower_ww_.size());
-    fatal_error(err_msg);
-  }
 }
 
 void WeightWindows::set_weight_windows(
   gsl::span<const double> lower_bounds, double bounds_ratio)
 {
-
   this->set_weight_windows(lower_bounds, lower_bounds);
 
   for (auto& e : upper_ww_) {
@@ -441,21 +453,25 @@ void WeightWindows::update_weight_windows_magic(
 
   // use a reference to the lower bounds of the weight windows to avoid extra
   // memory consumption
-  xt::xtensor<double, 1>& tally_data = this->lower_bounds();
+  auto& tally_data = this->lower_bounds();
 
   // sum results over all nuclides and select results related to a single score
   tally_data = xt::strided_view(tally->get_reshaped_data(),
     {xt::ellipsis(), score_index, static_cast<int>(TallyResult::SUM)});
 
-  if (value == "rel_err") {
-    std::cout << "Updating using relative error" << std::endl;
-    xt::xarray<double> sum_sq = xt::strided_view(tally->get_reshaped_data(),
-      {xt::ellipsis(), score_index, static_cast<int>(TallyResult::SUM_SQ)});
+  // compute relative error
+  auto sum_sq = xt::strided_view(tally->get_reshaped_data(),
+    {xt::ellipsis(), score_index, static_cast<int>(TallyResult::SUM_SQ)});
 
-    int n = tally->n_realizations_;
-    tally_data =
-      xt::sqrt((sum_sq / n - (tally_data * tally_data) / (n * n)) / (n - 1));
-  }
+  int n = tally->n_realizations_;
+
+  xt::xarray<double> rel_err =
+    xt::sqrt((sum_sq / n - (tally_data * tally_data) / (n * n)) / (n - 1));
+
+  // if ww generation is based on relative error, replace tally data with
+  // relative error values
+  if (value == "rel_err")
+    tally_data = 1.0 / rel_err;
 
   // build the transpose information to re-order data by filter type
   std::vector<int> transpose;
@@ -508,12 +524,10 @@ void WeightWindows::update_weight_windows_magic(
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
 
-  if (tally->has_filter(FilterType::ENERGY)) {
+  if (!tally->has_filter(FilterType::ENERGY)) {
     double tally_max = *std::max_element(tally_data.begin(), tally_data.end());
 
     tally_data /= tally_max;
-    // set new weight window bounds
-    this->set_weight_windows(tally_data, 5.0);
   } else {
     // for each energy group (if they exist), normalize
     // data using the max flux value and generate weight windows
@@ -537,7 +551,7 @@ void WeightWindows::update_weight_windows_magic(
   }
 
   // set new weight window bounds
-  this->set_weight_windows(tally_data, 5.0);
+  this->set_weight_windows(tally_data, 5.0 * tally_data);
 }
 
 void WeightWindows::export_to_hdf5(const std::string& filename) const

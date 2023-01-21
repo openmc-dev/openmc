@@ -371,8 +371,7 @@ std::unordered_map<FilterType, int32_t> Tally::filter_indices() const {
 }
 
 bool Tally::has_filter(FilterType filter_type) const {
-  auto filter_types = this->filter_types();
-  return std::find(filter_types.begin(), filter_types.end(), filter_type) != filter_types.end();
+  return filter_indices().count(filter_type) > 0;
 }
 
 void Tally::set_filters(gsl::span<Filter*> filters)

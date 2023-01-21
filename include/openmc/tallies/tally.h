@@ -48,6 +48,8 @@ public:
 
   std::vector<std::string> scores() const;
 
+  int32_t n_scores() const { return scores_.size(); }
+
   void set_nuclides(pugi::xml_node node);
 
   void set_nuclides(const vector<std::string>& nuclides);
@@ -65,6 +67,24 @@ public:
 
   //! \brief Returns the tally filter at index i
   int32_t filters(int i) const { return filters_[i]; }
+
+  //! \brief Return a const pointer to a filter instance based on type. Always returns the first matching filter type
+  template<class T>
+  const T* get_filter() const
+  {
+    const T* out;
+    for (auto filter_idx : filters_) {
+      if(out = dynamic_cast<T*>(model::tally_filters[filter_idx].get())) return out;
+    }
+    return nullptr;
+  }
+
+  template<class T>
+  const T* get_filter(int idx) const
+  {
+    if (const T* out = dynamic_cast<T*>(model::tally_filters[filters_.at(idx)])) return out;
+    return nullptr;
+  }
 
   //! \brief Check if this tally has a specified type of filter
   bool has_filter(FilterType filter_type) const;
@@ -96,7 +116,7 @@ public:
   //! return the index of a score specified by name
   int score_index(const std::string& score) const;
 
-  // //! return the tally results reshaped according to filter sizes
+  //! Tally results reshaped according to filter sizes
   xt::xarray<double> get_reshaped_data() const;
 
   //! A string representing the i-th score on this tally

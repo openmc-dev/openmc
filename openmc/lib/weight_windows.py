@@ -168,7 +168,6 @@ class WeightWindows(_FortranObjectWithID):
         upper = POINTER(c_double)()
         lower = POINTER(c_double)()
         size = c_size_t()
-        print(lower)
         _dll.openmc_weight_windows_get_bounds(self._index, lower, upper, size)
         lower_arr = as_array(lower, (size.value,))
         upper_arr = as_array(upper, (size.value,))
@@ -192,7 +191,7 @@ class WeightWindows(_FortranObjectWithID):
         tally : openmc.lib.Tally object
             The tally used to update weight window information
         value : str
-            Value type used to generate weight windows. One of {'mean', 'rel_err', 'std_dev}.
+            Value type used to generate weight windows. One of {'mean', 'rel_err', 'std_dev'}.
             (default is 'mean')
         threshold : float
             Threshold for relative error of results used to generate weight window bounds
@@ -248,14 +247,21 @@ class WeightWindows(_FortranObjectWithID):
         if particle not in (ParticleType.NEUTRON, ParticleType.PHOTON):
             raise ValueError(f'Weight windows can only be applied for neutrons or photons')
 
-        particle_filter = tally.find_filter(ParticleFilter)
+        try:
+            particle_filter = tally.find_filter(ParticleFilter)
+        except ValueError:
+            particle_filter = None
+
         # ensure that the tally won't filter out the specified particle
         if particle_filter is not None and particle not in particle_filter.bins:
             raise RuntimeError(f'Specified tally for weight windows (Tally {tally.id})'
                                f' does not track the reqeusted particle: "{particle}"')
 
         # tally has to have a mesh filter
-        mesh_filter = tally.find_filter(MeshFilter)
+        try:
+            mesh_filter = tally.find_filter(MeshFilter)
+        except ValueError:
+            mesh_filter = None
         if mesh_filter is None:
             raise RuntimeError(f'No mesh filter found on tally {tally.id}')
 

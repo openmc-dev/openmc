@@ -100,10 +100,12 @@ public:
 
   //! Update weight window boundaries using tally results
   //! \param[in] tally Pointer to the tally whose results will be used to update
-  //! weight windows \param[in] value String representing the type of value to
-  //! use for weight window generation (one of "mean" or "rel_err") \param[in]
-  //! threshold Relative error threshold. Results over this threshold will be
-  //! ignored
+  //! weight windows
+  //! \param[in] value String representing the type of value to
+  //! use for weight window generation (one of "mean" or "rel_err")
+  //! \param[in] threshold Relative error threshold. Results over this threshold
+  //! will be ignored \param[in] ratio Ratio of upper to lower weight window
+  //! bounds
   void update_weight_windows_magic(const Tally* tally,
     const std::string& value = "mean", double threshold = 1.0,
     double ratio = 5.0);
@@ -119,7 +121,7 @@ public:
   //! \param[in] p  Particle to get weight window for
   WeightWindow get_weight_window(const Particle& p) const;
 
-  double bounds_size() const;
+  std::array<int, 2> bounds_size() const;
 
   const vector<double>& energy_bounds() const { return energy_bounds_; }
 
@@ -129,10 +131,10 @@ public:
   template<class T>
   void check_bounds(const T& lower) const;
 
-  void set_weight_windows(const xt::xarray<double>& lower_bounds,
-    const xt::xarray<double>& upper_bounds);
+  void set_weight_windows(const xt::xtensor<double, 2>& lower_bounds,
+    const xt::xtensor<double, 2>& upper_bounds);
 
-  void set_weight_windows(const xt::xarray<double>& lower_bounds, double ratio);
+  void set_weight_windows(const xt::xtensor<double, 2>& lower_bounds, double ratio);
 
   void set_weight_windows(
     gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds);
@@ -149,11 +151,11 @@ public:
 
   const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
 
-  const xt::xarray<double>& lower_bounds() const { return lower_ww_; }
-  xt::xarray<double>& lower_bounds() { return lower_ww_; }
+  const xt::xtensor<double, 2>& lower_bounds() const { return lower_ww_; }
+  xt::xtensor<double, 2>& lower_bounds() { return lower_ww_; }
 
-  const xt::xarray<double>& upper_bounds() const { return upper_ww_; }
-  xt::xarray<double>& upper_bounds() { return upper_ww_; }
+  const xt::xtensor<double, 2>& upper_bounds() const { return upper_ww_; }
+  xt::xtensor<double, 2>& upper_bounds() { return upper_ww_; }
 
   ParticleType particle_type() const { return particle_type_; }
 
@@ -164,8 +166,8 @@ private:
   ParticleType particle_type_ {
     ParticleType::neutron};      //!< Particle type to apply weight windows to
   vector<double> energy_bounds_; //!< Energy boundaries [eV]
-  xt::xarray<double> lower_ww_;  //!< Lower weight window bounds
-  xt::xarray<double> upper_ww_;  //!< Upper weight window bounds
+  xt::xtensor<double, 2> lower_ww_;  //!< Lower weight window bounds (mesh_bins, energy_bins)
+  xt::xtensor<double, 2> upper_ww_;  //!< Upper weight window bounds (mesh_bins, energy_bins)
   double survival_ratio_ {3.0};  //!< Survival weight ratio
   double max_lb_ratio_ {1.0}; //!< Maximum lower bound to particle weight ratio
   double weight_cutoff_ {DEFAULT_WEIGHT_CUTOFF}; //!< Weight cutoff

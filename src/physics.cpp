@@ -976,16 +976,17 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     } else if (sampling_method == ResScatMethod::rvs) {
       // interpolate xs CDF since we're not exactly at the energy indices
       // cdf value at lower bound attainable energy
-      double m = (nuc.xs_cdf_[i_E_low] - nuc.xs_cdf_[i_E_low - 1])
-        / (nuc.energy_0K_[i_E_low + 1] - nuc.energy_0K_[i_E_low]);
-      double cdf_low = nuc.xs_cdf_[i_E_low - 1]
-            + m * (E_low - nuc.energy_0K_[i_E_low]);
-      if (E_low <= nuc.energy_0K_[0]) cdf_low = 0.0;
+      double cdf_low = 0.0;
+      if (E_low > nuc.energy_0K_.front()) {
+        double m = (nuc.xs_cdf_[i_E_low + 1] - nuc.xs_cdf_[i_E_low]) /
+                   (nuc.energy_0K_[i_E_low + 1] - nuc.energy_0K_[i_E_low]);
+        cdf_low = nuc.xs_cdf_[i_E_low] + m * (E_low - nuc.energy_0K_[i_E_low]);
+      }
 
       // cdf value at upper bound attainable energy
-      m = (nuc.xs_cdf_[i_E_up] - nuc.xs_cdf_[i_E_up - 1])
+      double m = (nuc.xs_cdf_[i_E_up + 1] - nuc.xs_cdf_[i_E_up])
         / (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
-      double cdf_up = nuc.xs_cdf_[i_E_up - 1]
+      double cdf_up = nuc.xs_cdf_[i_E_up]
         + m*(E_up - nuc.energy_0K_[i_E_up]);
 
       while (true) {
@@ -994,14 +995,15 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
         // sample a relative energy using the xs cdf
         double cdf_rel = cdf_low + prn(seed)*(cdf_up - cdf_low);
-        int i_E_rel = lower_bound_index(&nuc.xs_cdf_[i_E_low-1],
-          &nuc.xs_cdf_[i_E_up+1], cdf_rel);
+        int i_E_rel = lower_bound_index(nuc.xs_cdf_.begin() + i_E_low,
+                                        nuc.xs_cdf_.begin() + i_E_up+2,
+                                        cdf_rel);
         double E_rel = nuc.energy_0K_[i_E_low + i_E_rel];
-        double m = (nuc.xs_cdf_[i_E_low + i_E_rel]
-              - nuc.xs_cdf_[i_E_low + i_E_rel - 1])
-              / (nuc.energy_0K_[i_E_low + i_E_rel + 1]
-              -  nuc.energy_0K_[i_E_low + i_E_rel]);
-        E_rel += (cdf_rel - nuc.xs_cdf_[i_E_low + i_E_rel - 1]) / m;
+        double m = (nuc.xs_cdf_[i_E_low + i_E_rel + 1] -
+            nuc.xs_cdf_[i_E_low + i_E_rel]) /
+          (nuc.energy_0K_[i_E_low + i_E_rel + 1] -
+           nuc.energy_0K_[i_E_low + i_E_rel]);
+        E_rel += (cdf_rel - nuc.xs_cdf_[i_E_low + i_E_rel]) / m;
 
         // perform rejection sampling on cosine between
         // neutron and target velocities

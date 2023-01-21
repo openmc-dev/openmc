@@ -248,7 +248,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   // Create Compton profile CDF
   n_profile_ = data::compton_profile_pz_size;
   profile_cdf_ = xt::empty<double>({n_shell, n_profile_});
-  for (int i = 0; i < n_shell; ++i) {
+  for (int i = 0; i < profile_pdf_.shape(0); ++i) {
     double c = 0.0;
     profile_cdf_(i,0) = 0.0;
     for (int j = 0; j < n_profile_ - 1; ++j) {

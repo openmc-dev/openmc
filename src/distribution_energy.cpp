@@ -257,23 +257,9 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
     l = r > prn(seed) ? i + 1 : i;
   }
 
-  // Interpolation for energy E1 and EK
-  int n_energy_out = distribution_[i].e_out.size();
-  int n_discrete = distribution_[i].n_discrete;
-  double E_i_1 = distribution_[i].e_out[n_discrete];
-  double E_i_K = distribution_[i].e_out[n_energy_out - 1];
-
-  n_energy_out = distribution_[i+1].e_out.size();
-  n_discrete = distribution_[i+1].n_discrete;
-  double E_i1_1 = distribution_[i+1].e_out[n_discrete];
-  double E_i1_K = distribution_[i+1].e_out[n_energy_out - 1];
-
-  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
-  double E_K = E_i_K + r * (E_i1_K - E_i_K);
-
   // Determine outgoing energy bin
-  n_energy_out = distribution_[l].e_out.size();
-  n_discrete = distribution_[l].n_discrete;
+  int n_energy_out = distribution_[l].e_out.size();
+  int n_discrete = distribution_[l].n_discrete;
   double r1 = prn(seed);
   double c_k = distribution_[l].c[0];
   int k = 0;
@@ -329,6 +315,20 @@ double ContinuousTabular::sample(double E, uint64_t* seed) const
 
   // Now interpolate between incident energy bins i and i + 1
   if (!histogram_interp && n_energy_out > 1 && k >= n_discrete) {
+    // Interpolation for energy E1 and EK
+    n_energy_out = distribution_[i].e_out.size();
+    n_discrete = distribution_[i].n_discrete;
+    const double E_i_1 = distribution_[i].e_out[n_discrete];
+    const double E_i_K = distribution_[i].e_out[n_energy_out - 1];
+
+    n_energy_out = distribution_[i + 1].e_out.size();
+    n_discrete = distribution_[i + 1].n_discrete;
+    const double E_i1_1 = distribution_[i + 1].e_out[n_discrete];
+    const double E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
+
+    const double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
+    const double E_K = E_i_K + r * (E_i1_K - E_i_K);
+
     if (l == i) {
       return E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1);
     } else {

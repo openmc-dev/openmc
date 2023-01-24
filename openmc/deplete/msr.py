@@ -108,6 +108,7 @@ class MsrContinuous:
             Depletable material
         element : str
             Element that get transferred to another material.
+
         Returns:
         ----------
         destination_mat : str

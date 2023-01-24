@@ -52,6 +52,7 @@ class MsrContinuous:
 
     def _get_mat_id(self, val):
         """Helper method for getting material id from Material obj or name.
+
         Parameters
         ----------
         val : Openmc,Material or str or int representing material name/id

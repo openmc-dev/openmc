@@ -21,6 +21,7 @@ class MsrContinuous:
 
     An instance of this class can be passed directly to an instance of the
     integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
+
     Parameters
     ----------
     operator : openmc.Operator

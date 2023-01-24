@@ -28,6 +28,7 @@ class MsrContinuous:
         OpenMC operator object
     model : openmc.Model
         OpenMC Model object
+
     Attributes
     ----------
     burn_mats : list of str

@@ -56,6 +56,7 @@ class MsrContinuous:
         Parameters
         ----------
         val : Openmc,Material or str or int representing material name/id
+
         Returns
         ----------
         id : str

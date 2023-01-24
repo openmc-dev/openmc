@@ -101,6 +101,7 @@ class MsrContinuous:
     def get_destination_mat(self, mat, element):
         """Return destination (or transfer) material for given material and
         element, if defined.
+
         Parameters
         ----------
         mat : Openmc,Material or str or int

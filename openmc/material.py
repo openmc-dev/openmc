@@ -352,6 +352,8 @@ class Material(IDManagerMixin):
         on this string. The name and material_id parameters are simply passed on
         to the Material constructor.
 
+        .. versionadded:: 0.13.3
+
         Parameters
         ----------
         cfg : str
@@ -416,10 +418,10 @@ class Material(IDManagerMixin):
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for material ID={}.'
-                    .format(self.id))
+                                 .format(self.id))
         else:
             raise ValueError('No volume information found for material ID={}.'
-                .format(self.id))
+                             .format(self.id))
 
     def set_density(self, units: str, density: Optional[float] = None):
         """Set the density of the material
@@ -531,11 +533,10 @@ class Material(IDManagerMixin):
 
             params['percent_type'] = percent_type
 
-            ## check if nuclide
+            # check if nuclide
             if not component.isalpha():
                 self.add_nuclide(component, **params)
-            else: # is element
-                kwargs = params
+            else:
                 self.add_element(component, **params)
 
     def remove_nuclide(self, nuclide: str):
@@ -1582,7 +1583,6 @@ class Materials(cv.CheckedList):
         # at this level if needed
         if trailing_indent:
             file.write(indentation)
-
 
     def export_to_xml(self, path: PathLike = 'materials.xml'):
         """Export material collection to an XML file.

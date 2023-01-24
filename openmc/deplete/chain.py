@@ -723,7 +723,7 @@ class Chain:
                     matrix[i, i] = msr.get_removal_rate(mat, elm)
                 else:
                     matrix[i, i] = 0.0
-            #Build trasnfer terms matrices
+            #Build transfer terms matrices
             elif len(index) == 2:
                 dest_mat, mat = index
                 if msr.get_destination_mat(mat, elm) == dest_mat:

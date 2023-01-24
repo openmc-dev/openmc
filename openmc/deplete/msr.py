@@ -126,6 +126,7 @@ class MsrContinuous:
         ----------
         mat : Openmc,Material or str or int
             Depletable material
+
         Returns:
         ----------
         elements : list

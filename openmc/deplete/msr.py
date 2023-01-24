@@ -81,6 +81,7 @@ class MsrContinuous:
 
     def get_removal_rate(self, mat, element):
         """Return removal rate for given material and element.
+
         Parameters
         ----------
         mat : Openmc,Material or str or int

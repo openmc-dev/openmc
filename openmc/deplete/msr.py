@@ -88,8 +88,9 @@ class MsrContinuous:
             Depletable material
         element : str
             Element to get removal rate value
-        Returns:
-        ----------
+
+        Returns
+        -------
         removal_rate : float
             Removal rate value
         """

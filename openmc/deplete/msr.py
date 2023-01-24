@@ -121,6 +121,7 @@ class MsrContinuous:
 
     def get_elements(self, mat):
         """Extract removing elements for a given material
+
         Parameters
         ----------
         mat : Openmc,Material or str or int

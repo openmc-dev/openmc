@@ -8,11 +8,7 @@ if(NOT DEFINED HIP_PATH)
     endif()
 endif()
 set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
-#find_package(hip)
 enable_language(HIP)
-#set(CMAKE_CXX_COMPILER_BACKUP ${CMAKE_CXX_COMPILER})
-#set(CMAKE_CXX_COMPILER /soft/compilers/rocm/rocm-5.4.0/bin/hipcc)
-set(HIP_COMPILER /soft/compilers/rocm/rocm-5.4.0/bin/hipcc)
 
 project(openmc_thrust_sort
   DESCRIPTION "Sort EventQueueItem arrays in OpenMC on AMD devices with Thrust"
@@ -35,10 +31,3 @@ set_target_properties(
     CXX_EXTENSIONS NO
     COMPILE_FLAGS -O3
 )
-# Link with HIP
-#target_link_libraries(openmc_thrust_sort hip::device)
-
-#set_target_properties(openmc_thrust_sort PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-#set_target_properties(openmc_thrust_sort PROPERTIES GPU_TARGETS "gfx90a")
-
-#set(CMAKE_CXX_COMPILER ${CMAKE_CXX_COMPILER_BACKUP})

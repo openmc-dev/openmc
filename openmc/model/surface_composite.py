@@ -659,22 +659,10 @@ class Polygon(CompositeSurface):
     def __init__(self, points, basis='rz'):
         check_value('basis', basis, ('xy', 'yz', 'xz', 'rz'))
         self._basis = basis
-        points = np.asarray(points, dtype=float)
-        check_iterable_type('points', points, float, min_depth=2, max_depth=2)
-        check_length('points', points[0, :], 2, 2)
 
-        # If the last point is the same as the first, remove it and make sure
-        # there are still at least 3 points for a valid polygon.
-        if np.allclose(points[0, :], points[-1, :]):
-            points = points[:-1, :]
-        check_length('points', points, 3)
-
-        # Order the points counter-clockwise (necessary for offset method)
-        points = self._make_ccw(points)
-
-        # Create a constrained triangulation of the points.
-        # The constrained triangulation is set to _tri attribute
-        self._constrain_triangulation(points)
+        # Create a constrained triangulation of the validated points.
+        # The constrained triangulation is set to the _tri attribute
+        self._constrain_triangulation(self._validate_points(points))
 
         # Decompose the polygon into groups of simplices forming convex subsets
         # and get the sets of (surface, operator) pairs defining the polygon
@@ -762,8 +750,9 @@ class Polygon(CompositeSurface):
     def region(self):
         return self._region
 
-    def _make_ccw(self, points):
-        """Order a set of points counter-clockwise.
+    def _validate_points(self, points):
+        """Ensure the closed path defined by points does not intersect and is
+        oriented counter-clockwise.
 
         Parameters
         ----------
@@ -774,18 +763,40 @@ class Polygon(CompositeSurface):
         -------
         ordered_points : the input points ordered counter-clockwise
         """
+        points = np.asarray(points, dtype=float)
+        check_iterable_type('points', points, float, min_depth=2, max_depth=2)
+        check_length('points', points[0, :], 2, 2)
+
+        # If the last point is the same as the first, remove it and make sure
+        # there are still at least 3 points for a valid polygon.
+        if np.allclose(points[0, :], points[-1, :]):
+            points = points[:-1, :]
+        check_length('points', points, 3)
+
+        # Check if polygon is self-intersecting by comparing edges pairwise
+        n = len(points)
+        is_self_intersecting = False
+        for i in range(n):
+            p1x, p1y = points[i, :]
+            p2x, p2y = points[(i + 1) % n, :]
+            for j in range(i, n):
+                p3x, p3y = points[j, :]
+                p4x, p4y = points[(j + 1) % n, :]
+
+
+        # Order the points counter-clockwise (necessary for offset method)
         # Calculates twice the signed area of the polygon using the "Shoelace
         # Formula" https://en.wikipedia.org/wiki/Shoelace_formula
-        xpts, ypts = points.T
-
         # If signed area is positive the curve is oriented counter-clockwise
+        xpts, ypts = points.T
         if np.sum(ypts*(np.roll(xpts, 1) - np.roll(xpts, -1))) > 0:
             return points
 
         return points[::-1, :]
 
-    def _constrain_triangulation(self, points):
-        """Generate a constrained triangulation.
+    def _constrain_triangulation(self, points, depth=0):
+        """Generate a constrained triangulation by ensuring all edges of the
+        Polygon are contained within the simplices.
 
         Parameters
         ----------
@@ -797,6 +808,10 @@ class Polygon(CompositeSurface):
         -------
         None
         """
+        # Only attempt the triangulation up to 3 times.
+        if depth > 2:
+            raise RuntimeError('Could not create a valid triangulation after 3'
+                               ' attempts')
 
         tri = Delaunay(points, qhull_options='QJ')
         # Loop through the boundary edges of the polygon. If an edge is not
@@ -805,19 +820,19 @@ class Polygon(CompositeSurface):
         new_pts = []
         for i, j in zip(range(n), range(1, n +1)):
             # If both vertices of any edge are not found in any simplex, insert
-            # a new point between them
+            # a new point between them.
             if not any([i in s and j % n in s for s in tri.simplices]):
                 newpt = (points[i, :] + points[j % n, :]) / 2
                 new_pts.append((j, newpt))
 
         # If all the edges are included in the triangulation set it, otherwise
-        # try again with additional points inserted on offending edges
+        # try again with additional points inserted on offending edges.
         if not new_pts:
             self._tri = tri
         else:
             for i, pt in new_pts[::-1]:
                 points = np.insert(points, i, pt, axis=0)
-            self._constrain_triangulation(points)
+            self._constrain_triangulation(points, depth=depth + 1)
 
     def _group_simplices(self, neighbor_map, group=None):
         """Generate a convex grouping of simplices.

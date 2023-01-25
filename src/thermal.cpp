@@ -29,7 +29,7 @@ namespace openmc {
 namespace data {
 std::unordered_map<std::string, int> thermal_scatt_map;
 std::vector<ThermalScattering> thermal_scatt;
-ThermalScattering* device_thermal_scatt;
+ThermalScattering* device_thermal_scatt {nullptr};
 }
 
 //==============================================================================

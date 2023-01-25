@@ -670,10 +670,11 @@ class Polygon(CompositeSurface):
         check_length('points', points, 3)
 
         # Order the points counter-clockwise (necessary for offset method)
-        self._points = self._make_ccw(points)
+        points = self._make_ccw(points)
 
-        # Create a triangulation of the points.
-        self._tri = Delaunay(self._points, qhull_options='QJ')
+        # Create a constrained triangulation of the points.
+        # The constrained triangulation is set to _tri attribute
+        self._constrain_triangulation(points)
 
         # Decompose the polygon into groups of simplices forming convex subsets
         # and get the sets of (surface, operator) pairs defining the polygon
@@ -723,7 +724,7 @@ class Polygon(CompositeSurface):
 
     @property
     def points(self):
-        return self._points
+        return self._tri.points
 
     @property
     def basis(self):
@@ -738,7 +739,7 @@ class Polygon(CompositeSurface):
         # Get the unit vectors that point from one point in the polygon to the
         # next given that they are ordered counterclockwise and that the final
         # point is connected to the first point
-        tangents = np.diff(self._points, axis=0, append=[self._points[0, :]])
+        tangents = np.diff(self.points, axis=0, append=[self.points[0, :]])
         tangents /= np.linalg.norm(tangents, axis=-1, keepdims=True)
         # Rotate the tangent vectors clockwise by 90 degrees, which for a
         # counter-clockwise ordered polygon will produce the outward normal
@@ -783,6 +784,41 @@ class Polygon(CompositeSurface):
 
         return points[::-1, :]
 
+    def _constrain_triangulation(self, points):
+        """Generate a constrained triangulation.
+
+        Parameters
+        ----------
+        points : np.ndarray (Nx2)
+            An Nx2 array of coordinate pairs describing the vertices. These
+            points represent a planar straight line graph.
+
+        Returns
+        -------
+        None
+        """
+
+        tri = Delaunay(points, qhull_options='QJ')
+        # Loop through the boundary edges of the polygon. If an edge is not
+        # included in the triangulation, break it into two line segments.
+        n = len(points)
+        new_pts = []
+        for i, j in zip(range(n), range(1, n +1)):
+            # If both vertices of any edge are not found in any simplex, insert
+            # a new point between them
+            if not any([i in s and j % n in s for s in tri.simplices]):
+                newpt = (points[i, :] + points[j % n, :]) / 2
+                new_pts.append((j, newpt))
+
+        # If all the edges are included in the triangulation set it, otherwise
+        # try again with additional points inserted on offending edges
+        if not new_pts:
+            self._tri = tri
+        else:
+            for i, pt in new_pts[::-1]:
+                points = np.insert(points, i, pt, axis=0)
+            self._constrain_triangulation(points)
+
     def _group_simplices(self, neighbor_map, group=None):
         """Generate a convex grouping of simplices.
 
@@ -819,7 +855,7 @@ class Polygon(CompositeSurface):
                     continue
                 test_group = group + [n]
                 test_point_idx = np.unique(self._tri.simplices[test_group, :])
-                test_points = self._tri.points[test_point_idx]
+                test_points = self.points[test_point_idx]
                 # If test_points are convex keep adding to this group
                 if len(test_points) == len(ConvexHull(test_points).vertices):
                     group = self._group_simplices(neighbor_map, group=test_group)
@@ -902,8 +938,8 @@ class Polygon(CompositeSurface):
 
         # Get centroids of all the simplices and determine if they are inside
         # the polygon defined by input vertices or not.
-        centroids = np.mean(self._points[self._tri.simplices], axis=1)
-        in_polygon = Path(self._points).contains_points(centroids)
+        centroids = np.mean(self.points[self._tri.simplices], axis=1)
+        in_polygon = Path(self.points).contains_points(centroids)
         self._in_polygon = in_polygon
 
         # Build a map with keys of simplex indices inside the polygon whose
@@ -931,7 +967,7 @@ class Polygon(CompositeSurface):
             # generate the convex hull and find the resulting surfaces and
             # unary operators that represent this convex subset of the polygon.
             idx = np.unique(self._tri.simplices[group, :])
-            qhull = ConvexHull(self._tri.points[idx, :])
+            qhull = ConvexHull(self.points[idx, :])
             surf_ops = self._get_convex_hull_surfs(qhull)
             surfsets.append(surf_ops)
         return surfsets

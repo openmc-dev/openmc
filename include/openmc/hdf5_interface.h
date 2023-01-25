@@ -248,11 +248,11 @@ read_dataset(hid_t obj_id, const char* name, std::string& str, bool indep=false)
 {
   // Create buffer to read data into
   auto n = dataset_typesize(obj_id, name);
-  char* buffer = new char[n];
+  std::vector<std::string::value_type> buffer(n, '\0');
 
   // Read attribute and set string
-  read_string(obj_id, name, n, buffer, indep);
-  str = std::string{buffer, n};
+  read_string(obj_id, name, n, buffer.data(), indep);
+  str = std::string {buffer.begin(), buffer.end()};
 }
 
 // array version

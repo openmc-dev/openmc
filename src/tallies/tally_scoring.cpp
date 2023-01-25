@@ -1685,7 +1685,7 @@ score_general_mg(Particle& p, int i_tally, int start_index, int filter_index,
   }
 
   // For shorthand, assign pointers to the material and nuclide xs set
-  auto& nuc_xs = data::mg.nuclides_[i_nuclide];
+  auto& nuc_xs = (i_nuclide >= 0) ? data::mg.nuclides_[i_nuclide] : data::mg.macro_xs_[p.material_];
   auto& macro_xs = data::mg.macro_xs_[p.material_];
 
   // Find the temperature and angle indices of interest

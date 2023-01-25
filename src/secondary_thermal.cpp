@@ -4,6 +4,8 @@
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
+#include <gsl/gsl-lite.hpp>
+
 #include "xtensor/xview.hpp"
 
 #include <cmath> // for log, exp
@@ -19,7 +21,8 @@ get_energy_index(gsl::span<const double> energies, double E, int& i, double& f)
   f = 0.0;
   if (E >= energies.front()) {
     i = lower_bound_index(energies.begin(), energies.end(), E);
-    f = (E - energies[i]) / (energies[i+1] - energies[i]);
+    if (i + 1 < energies.size())
+      f = (E - energies[i]) / (energies[i + 1] - energies[i]);
   }
 }
 
@@ -35,25 +38,25 @@ void
 CoherentElasticAE::sample(double E_in, double& E_out, double& mu,
   uint64_t* seed) const
 {
-  // Get index and interpolation factor for elastic grid
-  int i;
-  double f;
+  // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
+  E_out = E_in;
+
   const auto& energies {xs_.bragg_edges()};
-  get_energy_index(energies, E_in, i, f);
+
+  Expects(E_in >= energies.front());
+
+  const int i = lower_bound_index(energies.begin(), energies.end(), E_in);
 
   // Sample a Bragg edge between 1 and i
+  // E[0] < E_in < E[i+1] -> can scatter in bragg edges 0..i
   const auto& factors = xs_.factors();
-  double prob = prn(seed) * factors[i+1];
-  int k = 0;
-  if (prob >= factors.front()) {
-    k = lower_bound_index(factors.begin(), factors.begin() + (i+1), prob);
-  }
+  const double prob = prn(seed) * factors[i];
+
+  const int k = std::lower_bound(factors.begin(), factors.begin() + i, prob) -
+                 factors.begin();
 
   // Characteristic scattering cosine for this Bragg edge (ENDF-102, Eq. 7-2)
   mu = 1.0 - 2.0*energies[k] / E_in;
-
-  // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
-  E_out = E_in;
 }
 
 void CoherentElasticAE::serialize(DataBuffer& buffer) const

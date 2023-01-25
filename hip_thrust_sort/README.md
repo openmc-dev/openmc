@@ -1,5 +1,5 @@
 This subdirectory contains code and build routines for
-performing on-device sorting via the CUDA Thrust library.
+performing on-device sorting via the HIP Thrust library.
 The use of a separate subdirectory is necessary as OpenMP
 compilers do not know how to link link to Thrust. To avoid
 polluting the main CMakeLists.txt for OpenMC, we have used

@@ -17,10 +17,12 @@ import openmc.lib
 class MsrContinuous:
     """Class defining Molten salt reactor (msr) elements (e.g. fission products)
     continuous removal and transfer, based on removal rates and cycle time
-    theory.
+    theory, heavily inspired by:
+    https://www.sciencedirect.com/science/article/pii/S0306454920302024?via%3Dihu
 
     An instance of this class can be passed directly to an instance of the
     integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
+
     Parameters
     ----------
     operator : openmc.Operator
@@ -52,7 +54,7 @@ class MsrContinuous:
         """Helper method for getting material id from Material obj or name.
         Parameters
         ----------
-        val : Openmc,Material or str or int representing material name/id
+        val : Openmc.Material or str or int representing material name/id
         Returns
         ----------
         id : str
@@ -79,7 +81,7 @@ class MsrContinuous:
         """Return removal rate for given material and element.
         Parameters
         ----------
-        mat : Openmc,Material or str or int
+        mat : Openmc.Material or str or int
             Depletable material
         element : str
             Element to get removal rate value
@@ -97,14 +99,14 @@ class MsrContinuous:
         element, if defined.
         Parameters
         ----------
-        mat : Openmc,Material or str or int
+        mat : Openmc.Material or str or int
             Depletable material
         element : str
             Element that get transferred to another material.
         Returns:
         ----------
         destination_mat : str
-            Depletable material id to where the aelement get transferred
+            Depletable material id to where the element get transferred
         """
         mat = self._get_mat_id(mat)
         check_value('Element', element, ELEMENT_SYMBOL.values())
@@ -115,7 +117,7 @@ class MsrContinuous:
         """Extract removing elements for a given material
         Parameters
         ----------
-        mat : Openmc,Material or str or int
+        mat : Openmc.Material or str or int
             Depletable material
         Returns:
         ----------
@@ -131,7 +133,7 @@ class MsrContinuous:
         """Set removal rate to elements in a depletable material.
         Parameters
         ----------
-        mat : Openmc,Material or str or int
+        mat : Openmc.Material or str or int
             Depletable material
         elements : list[str]
             List of strings of elements that share removal rate

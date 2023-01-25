@@ -687,21 +687,21 @@ class Chain:
         return matrix_dok.tocsr()
 
     def form_rr_term(self, msr, index):
-        """Function to forms the removal_rates matrix to be subtracted to
-        the Depletion Matrix ot to be used for different depletable materials
+        """Function to form the removal_rates matrix to be subtracted to
+        the depletion matrix to be used for different depletable materials
         coupling whereas removed nuclides need to be tracked.
 
         Parameters
         ----------
         msr : openmc.msr.MsrContinuous
             Istance of openmc.msr.MsrContinuous.
-        index : list of str or set of paris
+        index : list of str or set of pairs
             Case 1: list of str
                     List of depletable material id as str. In this case
-                    the removal rates terms will be subtracted to the respective
-                    Depletion matrix
+                    the removal rate terms will be subtracted to the respective
+                    depletion matrix
             Case 2: set of pairs
-                    (dest_mat, mat) where dest_mat stainds for destination
+                    (dest_mat, mat) where dest_mat stands for destination
                     material or material to where the nuclides are transferred.
                     In this case the removal rates terms gets placed in the
                     coupled matrix with indexing position corresponding to the
@@ -717,20 +717,20 @@ class Chain:
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
             # Build removal terms matrices
-            if len(index) == 1:
+            if isinstance(index, str):
                 mat = index
                 if elm in msr.get_elements(mat):
                     matrix[i, i] = msr.get_removal_rate(mat, elm)
                 else:
                     matrix[i, i] = 0.0
             #Build trasnfer terms matrices
-            elif len(index) == 2:
+            elif isinstance(index, tuple):
                 dest_mat, mat = index
                 if msr.get_destination_mat(mat, elm) == dest_mat:
                     matrix [i, i] = msr.get_removal_rate(mat, elm)
                 else:
                     matrix[i, i] = 0.0
-
+            #Nothing else is allowed
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))
         dict.update(matrix_dok, matrix)

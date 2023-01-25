@@ -247,8 +247,9 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
   // Create Compton profile CDF
   n_profile_ = data::compton_profile_pz_size;
-  profile_cdf_ = xt::empty<double>({n_shell, n_profile_});
-  for (int i = 0; i < profile_pdf_.shape(0); ++i) {
+  auto n_shell_compton = profile_pdf_.shape(0);
+  profile_cdf_ = xt::empty<double>({n_shell_compton, n_profile_});
+  for (int i = 0; i < n_shell_compton; ++i) {
     double c = 0.0;
     profile_cdf_(i,0) = 0.0;
     for (int j = 0; j < n_profile_ - 1; ++j) {
@@ -426,6 +427,13 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
         double E_out;
         this->compton_doppler(alpha, *mu, &E_out, i_shell, seed);
         *alpha_out = E_out/MASS_ELECTRON_EV;
+
+         // It's possible for the Compton profile data to have more shells than
+         // there are in the ENDF data. Make sure the shell index doesn't end up
+         // out of bounds.
+         if (*i_shell >= shells_.size()) {
+           *i_shell = -1;
+         }
       } else {
         *i_shell = -1;
       }

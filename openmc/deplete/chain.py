@@ -707,6 +707,7 @@ class Chain:
                     coupled matrix with indexing position corresponding to the
                     set of pairs of materials.
             materials id and removal rates
+
         Returns
         -------
         scipy.sparse.csr_matrix

@@ -29,6 +29,7 @@ class MsrContinuous:
         OpenMC operator object
     model : openmc.Model
         OpenMC Model object
+
     Attributes
     ----------
     burn_mats : list of str
@@ -52,6 +53,7 @@ class MsrContinuous:
 
     def _get_mat_id(self, val):
         """Helper method for getting material id from Material obj or name.
+
         Parameters
         ----------
         val : Openmc.Material or str or int representing material name/id
@@ -79,14 +81,16 @@ class MsrContinuous:
 
     def get_removal_rate(self, mat, element):
         """Return removal rate for given material and element.
+
         Parameters
         ----------
         mat : Openmc.Material or str or int
             Depletable material
         element : str
             Element to get removal rate value
-        Returns:
-        ----------
+
+        Returns
+        -------
         removal_rate : float
             Removal rate value
         """
@@ -97,12 +101,14 @@ class MsrContinuous:
     def get_destination_mat(self, mat, element):
         """Return destination (or transfer) material for given material and
         element, if defined.
+
         Parameters
         ----------
         mat : Openmc.Material or str or int
             Depletable material
         element : str
             Element that get transferred to another material.
+
         Returns:
         ----------
         destination_mat : str
@@ -115,10 +121,12 @@ class MsrContinuous:
 
     def get_elements(self, mat):
         """Extract removing elements for a given material
+
         Parameters
         ----------
         mat : Openmc.Material or str or int
             Depletable material
+
         Returns:
         ----------
         elements : list
@@ -131,6 +139,7 @@ class MsrContinuous:
     def set_removal_rate(self, mat, elements, removal_rate, units='1/s',
                          dest_mat=None):
         """Set removal rate to elements in a depletable material.
+
         Parameters
         ----------
         mat : Openmc.Material or str or int

@@ -3796,7 +3796,7 @@ class ScatterMatrixXS(MatrixMGXS):
        \langle \sigma_{s,\ell,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; P_\ell (\Omega \cdot \Omega') \sigma_s (r, E'
-       \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
+       \rightarrow E) \psi(r, E', \Omega')\\
        \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \sigma_{s,\ell,g'\rightarrow g} &= \frac{\langle

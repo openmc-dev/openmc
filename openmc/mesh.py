@@ -433,6 +433,9 @@ class RegularMesh(StructuredMesh):
         cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
 
+        if self.is_flat():
+            raise ValueError("mesh cannot be flat")
+
     @upper_right.setter
     def upper_right(self, upper_right):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
@@ -442,6 +445,9 @@ class RegularMesh(StructuredMesh):
         if self._width is not None:
             self._width = None
             warnings.warn("Unsetting width attribute.")
+        
+        if self.is_flat():
+            raise ValueError("mesh cannot be flat")
 
     @width.setter
     def width(self, width):
@@ -785,6 +791,16 @@ class RegularMesh(StructuredMesh):
             datasets=datasets,
             volume_normalization=volume_normalization
         )
+
+    def is_flat(self):
+        """Returns True if the mesh is flat
+        """
+        if None in [self.lower_left, self.upper_right]:
+            return False
+
+        for val1, val2 in zip(self.lower_left, self.upper_right):
+            if val1 == val2:
+                return True
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "

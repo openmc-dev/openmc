@@ -1119,6 +1119,7 @@ class CylindricalMesh(StructuredMesh):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
         string += fmt.format('\tDimensions', '=\t', self.n_dimension)
+        string += fmt.format('\tOrigin', '=\t', self.origin)
         r_grid_str = str(self._r_grid) if self._r_grid is None else len(self._r_grid)
         string += fmt.format('\tN R pnts:', '=\t', r_grid_str)
         if self._r_grid is not None:
@@ -1445,6 +1446,7 @@ class SphericalMesh(StructuredMesh):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
         string += fmt.format('\tDimensions', '=\t', self.n_dimension)
+        string += fmt.format('\tOrigin', '=\t', self.origin)
         r_grid_str = str(self._r_grid) if self._r_grid is None else len(self._r_grid)
         string += fmt.format('\tN R pnts:', '=\t', r_grid_str)
         if self._r_grid is not None:

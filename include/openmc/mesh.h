@@ -241,6 +241,7 @@ public:
   xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
+  Position origin_ {0.0, 0.0, 0.0};
 
 protected:
 };
@@ -359,7 +360,6 @@ public:
   void to_hdf5(hid_t group) const override;
 
   array<vector<double>, 3> grid_;
-  Position origin_;
 
   int set_grid();
 
@@ -414,7 +414,6 @@ public:
   void to_hdf5(hid_t group) const override;
 
   array<vector<double>, 3> grid_;
-  Position origin_;
 
   int set_grid();
 

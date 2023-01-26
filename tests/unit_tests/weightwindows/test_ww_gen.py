@@ -37,9 +37,9 @@ def model():
     boron.add_nuclide("C0", 0.2)
 
     ### Geometry ###
-    radii = [5.0, 10.0, 30.0, 31.0]
+    radii = [5.0, 10.0, 30.0, 31.0, 50.0]
 
-    surfs = [openmc.Sphere() for r in radii]
+    surfs = [openmc.Sphere(r=r) for r in radii]
 
     surfs[-1].boundary_type = 'vacuum'
 

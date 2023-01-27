@@ -433,8 +433,8 @@ class RegularMesh(StructuredMesh):
         cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
 
-        if self.is_flat():
-            raise ValueError("mesh cannot be flat")
+        if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
+            raise ValueError("mesh cannot have zero thickness is any dimension")
 
     @upper_right.setter
     def upper_right(self, upper_right):
@@ -446,8 +446,8 @@ class RegularMesh(StructuredMesh):
             self._width = None
             warnings.warn("Unsetting width attribute.")
         
-        if self.is_flat():
-            raise ValueError("mesh cannot be flat")
+        if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
+            raise ValueError("mesh cannot have zero thickness is any dimension")
 
     @width.setter
     def width(self, width):
@@ -791,16 +791,6 @@ class RegularMesh(StructuredMesh):
             datasets=datasets,
             volume_normalization=volume_normalization
         )
-
-    def is_flat(self):
-        """Returns True if the mesh is flat
-        """
-        if self.lower_left is None or self.upper_right is None:
-            return False
-
-        for val1, val2 in zip(self.lower_left, self.upper_right):
-            if val1 == val2:
-                return True
 
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "

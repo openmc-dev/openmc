@@ -1,7 +1,8 @@
 #include "openmc/distribution.h"
 #include "openmc/random_lcg.h"
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_approx.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <cmath>
 #include <pugixml.hpp>
 
 TEST_CASE("Test alias method sampling of a discrete distribution")
@@ -42,9 +43,10 @@ TEST_CASE("Test alias method sampling of a discrete distribution")
   // expected mean
   REQUIRE(std::abs(dist_mean - mean) < 4 * std);
 
-  // Require counter of number of x[0] is within 4 standard deviations of
-  // 200,000
-  REQUIRE(std::abs(counter - n_samples * p[0]) < 4 * std);
+  // Require counter of number of x[0] is within the 95% confidence interval
+  // assuming a Poisson distribution of 200,000
+  REQUIRE(std::abs((double)counter / n_samples - p[0]) <
+          1.96 * std::sqrt(p[0] / n_samples));
 }
 
 TEST_CASE("Test alias sampling method for pugixml constructor")
@@ -72,7 +74,8 @@ TEST_CASE("Test alias sampling method for pugixml constructor")
 
   for (size_t i = 0; i < 3; i++) {
     REQUIRE(dist.x()[i] == correct_x[i]);
-    REQUIRE(dist.prob()[i] == Catch::Approx(correct_prob[i]).epsilon(1e-12));
+    REQUIRE_THAT(
+      dist.prob()[i], Catch::Matchers::WithinAbs(correct_prob[i], 1e-12));
     REQUIRE(dist.alias()[i] == correct_alias[i]);
   }
 }

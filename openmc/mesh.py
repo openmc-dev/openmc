@@ -795,7 +795,7 @@ class RegularMesh(StructuredMesh):
     def is_flat(self):
         """Returns True if the mesh is flat
         """
-        if None in [self.lower_left, self.upper_right]:
+        if self.lower_left is None or self.upper_right is None:
             return False
 
         for val1, val2 in zip(self.lower_left, self.upper_right):

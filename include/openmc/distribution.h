@@ -60,7 +60,7 @@ private:
   void normalize();
 
   //! Initialize alias tables for distribution
-  void init_alias();
+  void init_alias(vector<double>& x, vector<double>& p);
 };
 
 //==============================================================================

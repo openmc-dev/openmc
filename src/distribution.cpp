@@ -27,20 +27,27 @@ Discrete::Discrete(pugi::xml_node node)
   auto params = get_node_array<double>(node, "parameters");
 
   std::size_t n = params.size();
-  double x[n / 2], p[n / 2];
+  std::vector<double> x_vec(params.begin(), params.begin() + n / 2);
+  std::vector<double> p_vec(params.begin() + n / 2, params.end());
 
-  std::copy(params.begin(), params.begin() + n / 2, x);
-  std::copy(params.begin() + n / 2, params.end(), p);
-
-  new (this) Discrete(x, p, n / 2);
+  this->init_alias(x_vec, p_vec);
 }
 
 Discrete::Discrete(const double* x, const double* p, int n)
-  : x_ {x, x + n}, prob_ {p, p + n}
 {
+  std::vector<double> x_vec(x, x + n);
+  std::vector<double> p_vec(p, p + n);
+
+  this->init_alias(x_vec, p_vec);
+}
+
+void Discrete::init_alias(vector<double>& x, vector<double>& p)
+{
+  x_ = x;
+  prob_ = p;
   normalize();
 
-  // The initialization and sampling method is base on Vose
+  // The initialization and sampling method is based on Vose
   // (DOI: 10.1109/32.92917)
   // Vectors for large and small probabilities based on 1/n
   vector<size_t> large;

@@ -447,7 +447,7 @@ class RegularMesh(StructuredMesh):
             warnings.warn("Unsetting width attribute.")
         
         if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
-            raise ValueError("mesh cannot have zero thickness is any dimension")
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
 
     @width.setter
     def width(self, width):

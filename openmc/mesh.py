@@ -434,7 +434,7 @@ class RegularMesh(StructuredMesh):
         self._lower_left = lower_left
 
         if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
-            raise ValueError("mesh cannot have zero thickness is any dimension")
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
 
     @upper_right.setter
     def upper_right(self, upper_right):

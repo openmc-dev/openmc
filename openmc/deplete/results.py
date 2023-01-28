@@ -396,7 +396,7 @@ class Results(list):
             materials.xml will be used. If that element is not present,
             nuclides from openmc.config['cross_sections'] will be used.
         path : PathLike
-            Path to file to write. Defaults to 'materials.xml'.
+            Path to materials XML file to read. Defaults to 'materials.xml'.
 
         Returns
         -------

@@ -59,6 +59,10 @@ class UniverseBase(ABC, IDManagerMixin):
     def volume(self):
         return self._volume
 
+    @property
+    def volume_std(self):
+        return self._volume_std
+
     @name.setter
     def name(self, name):
         if name is not None:
@@ -85,6 +89,7 @@ class UniverseBase(ABC, IDManagerMixin):
         if volume_calc.domain_type == 'universe':
             if self.id in volume_calc.volumes:
                 self._volume = volume_calc.volumes[self.id].n
+                self._volume_std = volume_calc.volumes[self.id].s
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this universe.')
@@ -179,6 +184,9 @@ class Universe(UniverseBase):
         Volume of the universe in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Universe.add_volume_information` method.
+    volume_std : float
+        Standard deviation in cm^3 of the stochastic volume calculation, added
+        via :meth:`Universe.add_volume_information` method.
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.

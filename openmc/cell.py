@@ -85,6 +85,9 @@ class Cell(IDManagerMixin):
         calculated in a stochastic volume calculation and added via the
         :meth:`Cell.add_volume_information` method. For 'distribmat' cells
         it is the total volume of all instances.
+    volume_std : float
+        Standard deviation in cm^3 of the stochastic volume calculation, added
+        via :meth:`Cell.add_volume_information` method.
     atoms : collections.OrderedDict
         Mapping of nuclides to the total number of atoms for each nuclide
         present in the cell, or in all of its instances for a 'distribmat'
@@ -110,6 +113,7 @@ class Cell(IDManagerMixin):
         self._paths = None
         self._num_instances = None
         self._volume = None
+        self._volume_std = None
         self._atoms = None
 
     def __contains__(self, point):
@@ -187,6 +191,10 @@ class Cell(IDManagerMixin):
     @property
     def volume(self):
         return self._volume
+
+    @property
+    def volume_std(self):
+        return self._volume_std
 
     @property
     def atoms(self):
@@ -364,6 +372,7 @@ class Cell(IDManagerMixin):
         if volume_calc.domain_type == 'cell':
             if self.id in volume_calc.volumes:
                 self._volume = volume_calc.volumes[self.id].n
+                self._volume_std = volume_calc.volumes[self.id].s
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this cell.')
@@ -520,6 +529,7 @@ class Cell(IDManagerMixin):
 
             clone = openmc.Cell(name=self.name)
             clone.volume = self.volume
+            clone.volume_std = self.volume_std
             if self.temperature is not None:
                 clone.temperature = self.temperature
             if self.translation is not None:

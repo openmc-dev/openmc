@@ -81,6 +81,9 @@ class Material(IDManagerMixin):
         Volume of the material in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Material.add_volume_information` method.
+    volume_std : float
+        Standard deviation in cm^3 of the stochastic volume calculation, added
+        via :meth:`Material.add_volume_information` method.
     paths : list of str
         The paths traversed through the CSG tree to reach each material
         instance. This property is initialized by calling the
@@ -120,6 +123,7 @@ class Material(IDManagerMixin):
         self._paths = None
         self._num_instances = None
         self._volume = None
+        self._volume_std = None
         self._atoms = {}
         self._isotropic = []
         self._ncrystal_cfg = None
@@ -226,6 +230,11 @@ class Material(IDManagerMixin):
     @property
     def volume(self):
         return self._volume
+
+    @property
+    def volume_std(self):
+        return self._volume_std
+
 
     @property
     def ncrystal_cfg(self):
@@ -415,6 +424,7 @@ class Material(IDManagerMixin):
         if volume_calc.domain_type == 'material':
             if self.id in volume_calc.volumes:
                 self._volume = volume_calc.volumes[self.id].n
+                self._volume_std = volume_calc.volumes[self.id].s
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for material ID={}.'

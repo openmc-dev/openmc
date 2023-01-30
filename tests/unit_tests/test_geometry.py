@@ -43,6 +43,9 @@ def test_volume(run_in_tmpdir, uo2):
         nucs = set(domain.get_nuclide_densities())
         assert not nucs ^ {'U235', 'O16'}
 
+        # make sure standard deviation is also set from the calculation
+        assert domain.volume_std is not None
+
 
 def test_export_xml(run_in_tmpdir, uo2):
     s1 = openmc.Sphere(r=1.)

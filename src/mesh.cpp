@@ -412,7 +412,6 @@ template<class T>
 void StructuredMesh::raytrace_mesh(
   Position r0, Position r1, const Direction& u, T tally) const
 {
-
   // TODO: when c++-17 is available, use "if constexpr ()" to compile-time
   // enable/disable tally calls for now, T template type needs to provide both
   // surface and track methods, which might be empty. modern optimizing
@@ -444,6 +443,11 @@ void StructuredMesh::raytrace_mesh(
     }
     return;
   }
+
+  // translate start and end positions,
+  // this needs to come after the get_indices call because it does its own translation
+  r0 -= origin_;
+  r1 -= origin_;
 
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<MeshDistance, 3> distances;
@@ -972,12 +976,11 @@ std::string CylindricalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  Position mapped_r;
+  r -= origin_;
 
+  Position mapped_r;
   mapped_r[0] = std::hypot(r.x, r.y);
   mapped_r[2] = r[2];
-
-  mapped_r -= origin_;
 
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;
@@ -1090,22 +1093,23 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
   double l) const
 {
+  Position r = r0 - origin_;
 
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
+                      find_phi_crossing(r, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
+        find_phi_crossing(r, u, l, ijk[i] - 1)));
 
   } else {
-    return find_z_crossing(r0, u, l, ijk[i]);
+    return find_z_crossing(r, u, l, ijk[i]);
   }
 }
 
@@ -1209,11 +1213,10 @@ std::string SphericalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
+  r -= origin_;
+
   Position mapped_r;
-
   mapped_r[0] = r.norm();
-
-  mapped_r -= origin_;
 
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;

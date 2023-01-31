@@ -43,7 +43,8 @@ if [[ $MPI == 'y' ]]; then
     export CC=mpicc
     export HDF5_MPI=ON
     export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/mpich
-    pip install --no-binary=h5py h5py
+    pip install wheel cython
+    pip install --no-binary=h5py --no-build-isolation h5py
 fi
 
 # Build and install OpenMC executable

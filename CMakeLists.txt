@@ -31,6 +31,7 @@ endif()
 #===============================================================================
 
 option(OPENMC_USE_OPENMP      "Enable shared-memory parallelism with OpenMP"         ON)
+option(OPENMC_BUILD_TESTS     "Build tests"                                          ON)
 option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
@@ -286,6 +287,17 @@ if (NOT gsl-lite_FOUND)
 endif()
 
 #===============================================================================
+# Catch2 library
+#===============================================================================
+
+if(OPENMC_BUILD_TESTS)
+  find_package_write_status(Catch2)
+  if (NOT Catch2)
+    add_subdirectory(vendor/Catch2)
+  endif()
+endif()
+
+#===============================================================================
 # RPATH information
 #===============================================================================
 
@@ -502,6 +514,12 @@ endif()
 
 if (OPENMC_USE_MPI)
   target_link_libraries(libopenmc MPI::MPI_CXX)
+endif()
+
+if (OPENMC_BUILD_TESTS)
+  # Add cpp tests directory
+  include(CTest)
+  add_subdirectory(tests/cpp_unit_tests)
 endif()
 
 if (OPENMC_USE_MCPL)

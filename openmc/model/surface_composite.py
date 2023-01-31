@@ -773,13 +773,16 @@ class Polygon(CompositeSurface):
             points = points[:-1, :]
         check_length('points', points, 3)
 
+        if len(points) != len(np.unique(points, axis=0)):
+            raise ValueError('Duplicate points were detected in the Polygon input')
+
         # Check if polygon is self-intersecting by comparing edges pairwise
         n = len(points)
         is_self_intersecting = False
         for i in range(n):
             p1x, p1y = points[i, :]
             p2x, p2y = points[(i + 1) % n, :]
-            for j in range(i, n):
+            for j in range(i + 1, n):
                 p3x, p3y = points[j, :]
                 p4x, p4y = points[(j + 1) % n, :]
 

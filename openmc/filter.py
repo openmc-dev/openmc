@@ -1332,6 +1332,35 @@ class EnergyFilter(RealFilter):
             cv.check_greater_than('filter value', v0, 0., equality=True)
             cv.check_greater_than('filter value', v1, 0., equality=True)
 
+    def get_tabular(self, values, interpolation='histogram'):
+        """Creates a openmc.stats.Tabular distribution using the EnergyFilter
+        bins and the provided values. Intended use is to help convert a
+        spectrum tally into a source energy.
+
+        Parameters
+        ----------
+        values : np.array
+            Array of numeric values, typically a tally.mean from a spectrum tally
+        interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}
+            Indicate whether the density function is constant between tabulated
+            points or linearly-interpolated. Defaults to 'histogram'.         
+
+        Returns
+        -------
+        openmc.stats.Tabular
+            Tabular distribution with histogram interpolation
+        """
+
+        probabilities = values / sum(values)
+
+        probability_per_ev = probabilities / np.diff(self.bins).flatten()
+
+        return openmc.stats.Tabular(
+            x=self.bins,
+            p=probability_per_ev,
+            interpolation=interpolation
+        )
+
     @property
     def lethargy_bin_width(self):
         """Calculates the base 10 log width of energy bins which is useful when

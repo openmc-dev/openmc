@@ -36,7 +36,7 @@ option(device_history "Enable history-based transport on device" OFF)
 option(device_printf  "Enable printf statements on device"       ON)
 option(disable_xs_cache "Disable Micro XS cache"       ON)
 option(cuda_thrust_sort "Enable on-device sorting via CUDA Thrust (NVIDIA devices only)"       OFF)
-option(hip_thrust_sort "Enable on-device sorting via HIP Thrust (AMDdevices only)"       OFF)
+option(hip_thrust_sort "Enable on-device sorting via HIP Thrust (AMD devices only)"       OFF)
 option(sycl_sort "Enable on-device sorting via SYCL OneAPI DPL (Intel devices only)"       OFF)
 
 #===============================================================================

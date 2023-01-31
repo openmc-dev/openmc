@@ -36,6 +36,7 @@ option(device_history "Enable history-based transport on device" OFF)
 option(device_printf  "Enable printf statements on device"       ON)
 option(disable_xs_cache "Disable Micro XS cache"       ON)
 option(cuda_thrust_sort "Enable on-device sorting via CUDA Thrust (NVIDIA devices only)"       OFF)
+option(hip_thrust_sort "Enable on-device sorting via HIP Thrust (AMD devices only)"       OFF)
 option(sycl_sort "Enable on-device sorting via SYCL OneAPI DPL (Intel devices only)"       OFF)
 
 #===============================================================================
@@ -220,6 +221,9 @@ target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPA
 set(OPENMC_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include )
 if(cuda_thrust_sort)
   add_subdirectory(cuda_thrust_sort)
+endif()
+if(hip_thrust_sort)
+  add_subdirectory(hip_thrust_sort)
 endif()
 
 
@@ -431,7 +435,7 @@ if(dagmc)
   target_link_libraries(libopenmc dagmc-shared uwuw-shared)
 endif()
 
-if(cuda_thrust_sort)
+if(cuda_thrust_sort OR hip_thrust_sort)
   target_compile_definitions(libopenmc PRIVATE CUDA_THRUST_SORT)
   target_link_libraries(libopenmc openmc_thrust_sort)
 endif()
@@ -489,7 +493,7 @@ configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FI
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
 #install(TARGETS openmc libopenmc faddeeva
-if(cuda_thrust_sort)
+if(cuda_thrust_sort OR hip_thrust_sort)
 install(TARGETS openmc libopenmc openmc_thrust_sort
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

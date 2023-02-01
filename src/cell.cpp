@@ -34,11 +34,11 @@ namespace openmc {
 
 namespace model {
   std::vector<Cell> cells;
-  Cell* device_cells;
+  Cell* device_cells {nullptr};
   std::unordered_map<int32_t, int32_t> cell_map;
 
   std::vector<Universe> universes;
-  Universe* device_universes;
+  Universe* device_universes {nullptr};
   std::unordered_map<int32_t, int32_t> universe_map;
 } // namespace model
 

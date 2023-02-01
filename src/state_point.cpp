@@ -709,7 +709,9 @@ std::string dtype_member_names(hid_t dtype_id)
   int nmembers = H5Tget_nmembers(dtype_id);
   std::string names;
   for (int i = 0; i < nmembers; i++) {
-    names = names.append(H5Tget_member_name(dtype_id, i));
+    char* name = H5Tget_member_name(dtype_id, i);
+    names = names.append(name);
+    H5free_memory(name);
     if (i < nmembers - 1) names += ", ";
   }
   return names;

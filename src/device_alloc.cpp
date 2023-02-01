@@ -96,8 +96,13 @@ void move_read_only_data_to_device()
   // Copy all global settings into device globals
   move_settings_to_device();
 
+  #ifdef _OPENMP
   int host_id = omp_get_initial_device();
   int device_id = omp_get_default_device();
+  #else
+  int host_id = 0;
+  int device_id = 0;
+  #endif
   size_t sz;
 
   // Surfaces ////////////////////////////////////////////////////////

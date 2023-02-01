@@ -570,7 +570,7 @@ public:
 
   // Multipole data
   std::unique_ptr<WindowedMultipole> multipole_;
-  WindowedMultipole* device_multipole_;
+  WindowedMultipole* device_multipole_ {nullptr};
   const WindowedMultipole* multipole() const { return device_multipole_; }
 
   // Fission data
@@ -585,7 +585,7 @@ public:
   std::unique_ptr<Function1DFlatContainer> delayed_photons_; //!< Delayed photon energy release
   std::unique_ptr<Function1DFlatContainer> fragments_; //!< Fission fragment energy release
   std::unique_ptr<Function1DFlatContainer> betas_; //!< Delayed beta energy release
-  Function1DFlatContainer* device_total_nu_;
+  Function1DFlatContainer* device_total_nu_ {nullptr};
 
   // Resonance scattering information
   bool resonant_ {false};
@@ -602,7 +602,7 @@ public:
   std::array<size_t, 902> reaction_index_; //!< Index of each reaction
   vector<int> index_inelastic_scatter_;
 
-  ReactionFlatContainer** device_fission_rx_;
+  ReactionFlatContainer** device_fission_rx_ {nullptr};
 private:
   void create_derived(const Function1DFlatContainer* prompt_photons, const Function1DFlatContainer* delayed_photons);
 

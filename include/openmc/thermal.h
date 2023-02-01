@@ -71,8 +71,8 @@ private:
     // Data members
     std::unique_ptr<Function1DFlatContainer> xs; //!< Cross section
     std::unique_ptr<AngleEnergyFlatContainer> distribution; //!< Secondary angle-energy distribution
-    Function1DFlatContainer* device_xs;
-    AngleEnergyFlatContainer* device_distribution;
+    Function1DFlatContainer* device_xs {nullptr};
+    AngleEnergyFlatContainer* device_distribution {nullptr};
   };
 
   // Inelastic scattering data

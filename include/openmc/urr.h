@@ -23,9 +23,9 @@ public:
   bool multiply_smooth_;          //!< multiply by smooth cross section?
   int n_energy_;                  //!< number of energy points
   xt::xtensor<double, 1> energy_; //!< incident energies
-  double* device_energy_;
+  double* device_energy_ {nullptr};
   xt::xtensor<double, 3> prob_;   //!< Actual probability tables
-  double* device_prob_;
+  double* device_prob_ {nullptr};
   int n_bands_;
   int n_total_prob_;
 

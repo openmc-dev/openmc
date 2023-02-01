@@ -19,7 +19,7 @@ namespace data {
 xt::xtensor<double, 1> ttb_e_grid;
 xt::xtensor<double, 1> ttb_k_grid;
 
-double* device_ttb_e_grid;
+double* device_ttb_e_grid {nullptr};
 size_t ttb_e_grid_size {0};
 
 } // namespace data

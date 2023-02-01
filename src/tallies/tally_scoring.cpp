@@ -2406,7 +2406,6 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
 
         double atom_density = 0.;
         NuclideMicroXS micro;
-        double reaction[DEPLETION_RX_SIZE];
         if (i_nuclide >= 0) {
           if (p.material_ != MATERIAL_VOID) {
             auto j = model::materials[p.material_].mat_nuclide_index(i_nuclide);

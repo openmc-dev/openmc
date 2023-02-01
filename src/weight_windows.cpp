@@ -3,6 +3,7 @@
 #include <set>
 
 #include "xtensor/xindex_view.hpp"
+#include "xtensor/xio.hpp"
 #include "xtensor/xmasked_view.hpp"
 #include "xtensor/xstrided_view.hpp"
 #include "xtensor/xview.hpp"
@@ -346,7 +347,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   int energy_bin =
     lower_bound_index(energy_bounds_.begin(), energy_bounds_.end(), E);
 
-  mesh_bin += energy_bin * mesh->n_bins();
+  // mesh_bin += energy_bin * mesh->n_bins();
   // Create individual weight window
   WeightWindow ww;
   ww.lower_weight = lower_ww_[energy_bin, mesh_bin];
@@ -555,49 +556,49 @@ void WeightWindows::update_weight_windows_magic(
   auto transposed_view = xt::transpose(tally_values, transpose);
 
   // down-select data based on particle and score
-  auto mean = xt::view(transposed_view, particle_idx, xt::all(), xt::all(), score_index, static_cast<int>(TallyResult::SUM));
+  auto sum = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
+    score_index, static_cast<int>(TallyResult::SUM));
   auto sum_sq = xt::view(transposed_view, particle_idx, xt::all(), xt::all(), score_index, static_cast<int>(TallyResult::SUM_SQ));
-
-  ////
-  // at this point, the view of the mean and sum_sq is always 2D and matches the
-  // size of the bound data for this weight window class
-  ////
-
-  // transpose the scorew_view so that the order is:
-  // mesh bins, energy groups (same as the structure of the bounds on the class'
-  // data member) mean = xt::transpose(mean, transpose);
+  int n = tally->n_realizations_;
 
   // up to this point the data arrays are views into the tally results (no
   // computation has been performed) now we'll switch references to the tally's
   // bounds to avoid allocating additional memory
   auto& new_bounds  = this->lower_ww_;
-  // xtensor<double, 2> new_rel_err = this->upper_ww_;
+  new_bounds = sum / n;
 
-  // atleast_2d always inserts new axes at the front. We want that to be the
-  // energy axis for now
-  new_bounds = mean;
-  // new_rel_err = xt::transpose(rel_err, transpose);
+  auto& rel_err = this->upper_ww_;
+  rel_err =
+    xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
+  xt::filter(rel_err, sum <= 0.0).fill(INFTY);
 
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
 
-    int e_bins = new_bounds.shape()[0];
-    for (int e = 0; e < e_bins; e++) {
-      // select all
-      auto group_view = xt::view(new_bounds, e);
+  int e_bins = new_bounds.shape()[0];
+  for (int e = 0; e < e_bins; e++) {
+    // select all
+    auto group_view = xt::view(new_bounds, e);
 
-      double group_max =
-        *std::max_element(group_view.begin(), group_view.end());
-      // normalize values in this energy group by the maximum value for this
-      // group
-      if (group_max > 0.0)
-        group_view /= group_max;
+    double group_max = *std::max_element(group_view.begin(), group_view.end());
+    // normalize values in this energy group by the maximum value for this
+    // group
+    if (group_max > 0.0)
+      group_view /= group_max;
 
-      // divide by volume of mesh elements
-      for (int i = 0; i < group_view.size(); i++) {
-        group_view[i] /= mesh_vols[i];
-      }
+    // divide by volume of mesh elements
+    for (int i = 0; i < group_view.size(); i++) {
+      group_view[i] /= mesh_vols[i];
     }
+  }
+
+  // make sure that values where the mean is zero are set s.t. the weight window
+  // is ignored
+  xt::filter(new_bounds, sum <= 0.0) = -1.0;
+
+  // make sure the weight windows are ignored for any locations where the
+  // relative error is higher than the threshold
+  xt::filter(new_bounds, rel_err > threshold).fill(-1.0);
 
   // update the bounds of this weight window class
   lower_ww_ = new_bounds;

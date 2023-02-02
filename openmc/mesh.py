@@ -433,6 +433,9 @@ class RegularMesh(StructuredMesh):
         cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
 
+        if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
+
     @upper_right.setter
     def upper_right(self, upper_right):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
@@ -442,6 +445,9 @@ class RegularMesh(StructuredMesh):
         if self._width is not None:
             self._width = None
             warnings.warn("Unsetting width attribute.")
+        
+        if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
 
     @width.setter
     def width(self, width):

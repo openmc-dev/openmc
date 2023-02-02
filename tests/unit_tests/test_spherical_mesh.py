@@ -35,7 +35,7 @@ def model():
     # build
     mesh = openmc.SphericalMesh()
     mesh.phi_grid = np.linspace(0, 2*np.pi, 21)
-    mesh.theta_grid = np.linspace(0, 2*np.pi, 11)
+    mesh.theta_grid = np.linspace(0, np.pi, 11)
     mesh.r_grid = np.linspace(0, geom_size, geom_size)
 
     tally = openmc.Tally()

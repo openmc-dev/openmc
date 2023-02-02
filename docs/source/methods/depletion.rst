@@ -257,3 +257,67 @@ choose one of two methods for estimating the heating rate, including:
 
 The method for normalization can be chosen through the ``normalization_mode``
 argument to the :class:`openmc.deplete.CoupledOperator` class.
+
+----------------
+MSR Capabilities
+----------------
+
+A nice feature of Molten Salt Reactors (MSR), but more in general of
+any liquid fuel reactor, is the capability to continuously reprocess the fuel
+salt to remove fission products or to feed fresh fuel into the system.
+
+Removal rate
+------------
+
+A removal rate is defined here as the rate at which nuclides are
+continuously removed or added from one material to another. Mathematically, it
+can be thought as an additional proportional term :math:`\mathbf{T}`
+to the depletion equation, that can be rearranged as:
+
+.. math::
+
+  \begin{aligned} \frac{dn_i(t)}{dt} = \underbrace{\sum_j \gamma_{j\rightarrow i}
+  n_j\overline{\sigma_j\phi} - n_i \overline{\sigma_i \phi}}_\textbf{R}  +
+  \underbrace{\sum_j \gamma_{j\rightarrow i} n_j\lambda_{i\rightarrow j} +
+  \lambda_{j\rightarrow i}n_i}_\textbf{D} -
+  \underbrace{\epsilon_i \lambda_i n_i}_\textbf{T} \end{aligned}
+
+where the reaction rate :math:`\mathbf{R}` and the decay :math:`\mathbf{D}` terms
+have been grouped together so that
+:math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
+
+:math:`\lambda_i` is the removal rate coefficient defining
+the continuous removal of nuclide :math:`i`.
+The behaviour of nuclide removal is similar to radioactive decay.
+
+Note that this formulation assumes first order removal and
+homogeneous distribution of nuclide :math:`i` throughout the material.
+
+A more rigorous description of removal rate and its implementation can be found
+in the paper by `Hombourger
+<https://www.sciencedirect.com/science/article/pii/S0306454920302024?via%3Dihub>`_.
+
+The resulting burnup matrix can be solved with the same integration algorithms,
+as we've seen before.
+
+Note that if no ``dest_mat`` argument is passed to the
+:meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method of the
+:class:`~openmc.deplete.MsrContinuous` class, nuclides that are removed will not
+be tracked afterwards.
+
+Feeding rate
+------------
+To keep track of removed nuclides or to feed nuclides from one depletable material
+to another, the respective depletion equations have to be coupled. This can be
+achieved by defining one multidimensional square matrix with dimensions equal to
+the number of depletable materials that transfer nuclides.
+The diagonal positions are filled with the usual depletion matrices
+:math:`\mathbf{A_{ii}}`, where the index :math:`i` indicates the depletable
+material id, and the off-diagonal positions are filled with the removal matrices
+:math:`\mathbf{T_{ij}}`, positioned so that that the indeces :math:`i` and
+:math:`j` indicate the nuclides receiving and loosing materials, respectively.
+The nuclide vectors are assembled together in one single vector and the resulting
+system is solved with the same integration algorithms seen before.
+
+Note that mass conservation in this case is assured by transferring the number of
+atoms directly and not the nuclide densities.

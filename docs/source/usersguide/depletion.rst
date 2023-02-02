@@ -262,7 +262,7 @@ Loading and Generating Microscopic Cross Sections
 -------------------------------------------------
 
 As mentioned earlier, any transport code could be used to calculate one-group
-microscopic cross sections. The :mod:`openmc.deplete` module provides the 
+microscopic cross sections. The :mod:`openmc.deplete` module provides the
 :class:`~openmc.deplete.MicroXS` class, which contains methods to read in
 pre-calculated cross sections from a ``.csv`` file or from data arrays::
 
@@ -355,9 +355,9 @@ Multiple Materials
 
 A transport-independent depletion simulation using ``source-rate`` normalization
 will calculate reaction rates for each material independently. This can be
-useful for running many different cases of a particular scenario. A 
+useful for running many different cases of a particular scenario. A
 transport-independent depletion simulation using ``fission-q`` normalization
-will sum the fission energy values across all materials into :math:`Q_i` in 
+will sum the fission energy values across all materials into :math:`Q_i` in
 Equation :math:numref:`fission-q`, and Equation :math:numref:`fission-q`
 provides the flux we use to calculate the reaction rates in each material.
 This can be useful for running a scenario with multiple depletable materials
@@ -370,3 +370,57 @@ The values of the one-group microscopic cross sections passed to
 :class:`openmc.deplete.IndependentOperator` are fixed for the entire depletion
 simulation. This implicit assumption may produce inaccurate results for certain
 scenarios.
+
+MSR-Continuous depletion
+===============================
+The :class:`~openmc.deplete.MsrContinuous` class adds the capability to add
+nuclide removal rates to a depletable material.
+
+An instance of this class requires
+:class:`~openmc.deplete.abc.TransportOperator` and :class:`~openmc.Model`
+instances, and can be passed directly to one of the Integrator classes::
+
+    ...
+    msr = openmc.deplete.msr.MsrContinuous(op, model)
+    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power,
+                msr_continuous=msr)
+
+Defining removal rates
+----------------------
+
+Removal rates can be added to a :class:`~openmc.deplete.MsrContinuous` instance
+with the :meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method.
+Depletable materials from which nuclides are removed can be specified using the
+:class:`~openmc.Material` instance previously defined. Material id or
+name are also accepted entries.
+Removal rate default units are `1/s`, but `1/h` or `1/d` can also be used.
+For example, to set a Xenon removal from `mat1` with a cycle time of `10 sec`
+(removal rate of 0.1 `1/s`), you'd use::
+
+    mat1 = openmc.Material(material_id=1, name='fuel')
+
+    ...
+
+    # by openmc.Material object
+    msr.set_removal_rate(mat1, ['Xe'] 0.1)
+    # or by material id
+    msr.set_removal_rate(1, ['Xe'] 0.1)
+    # or by material name
+    msr.set_removal_rate('fuel', ['Xe'] 0.1)
+
+Note that in this case the nuclides that are removed will not be tracked.
+
+Defining destination material
+-----------------------------
+
+To keep track of the nuclides that are removed or to define a feed from one
+depletable material to another, a `dest_mat` argument needs to be passed to the
+:meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method. For example,
+to remove nuclides from `mat1` and feed to `mat2`, you'd use::
+
+    ...
+    mat2 = openmc.Material(name='storage')
+
+    ...
+
+    msr.set_removal_rate(mat1, ['Xe'] 0.1, dest_mat=mat2)

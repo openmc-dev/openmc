@@ -1,6 +1,7 @@
 #include "openmc/distribution.h"
 
 #include <algorithm> // for copy
+#include <array>
 #include <cmath>     // for sqrt, floor, max
 #include <iterator>  // for back_inserter
 #include <numeric>   // for accumulate
@@ -26,30 +27,76 @@ Discrete::Discrete(pugi::xml_node node)
   auto params = get_node_array<double>(node, "parameters");
 
   std::size_t n = params.size();
-  std::copy(params.begin(), params.begin() + n / 2, std::back_inserter(x_));
-  std::copy(params.begin() + n / 2, params.end(), std::back_inserter(p_));
+  std::vector<double> x_vec(params.begin(), params.begin() + n / 2);
+  std::vector<double> p_vec(params.begin() + n / 2, params.end());
 
-  normalize();
+  this->init_alias(x_vec, p_vec);
 }
 
 Discrete::Discrete(const double* x, const double* p, int n)
-  : x_ {x, x + n}, p_ {p, p + n}
 {
+  std::vector<double> x_vec(x, x + n);
+  std::vector<double> p_vec(p, p + n);
+
+  this->init_alias(x_vec, p_vec);
+}
+
+void Discrete::init_alias(vector<double>& x, vector<double>& p)
+{
+  x_ = x;
+  prob_ = p;
   normalize();
+
+  // The initialization and sampling method is based on Vose
+  // (DOI: 10.1109/32.92917)
+  // Vectors for large and small probabilities based on 1/n
+  vector<size_t> large;
+  vector<size_t> small;
+
+  // Set and allocate memory
+  vector<size_t> alias(x_.size(), 0);
+  alias_ = alias;
+
+  // Fill large and small vectors based on 1/n
+  for (size_t i = 0; i < x_.size(); i++) {
+    prob_[i] *= x_.size();
+    if (prob_[i] > 1.0) {
+      large.push_back(i);
+    } else {
+      small.push_back(i);
+    }
+  }
+
+  while (!large.empty() && !small.empty()) {
+    int j = small.back();
+    int k = large.back();
+
+    // Remove last element of small
+    small.pop_back();
+
+    // Update probability and alias based on Vose's algorithm
+    prob_[k] += prob_[j] - 1.0;
+    alias_[j] = k;
+
+    // Move large index to small vector, if it is no longer large
+    if (prob_[k] < 1.0) {
+      small.push_back(k);
+      large.pop_back();
+    }
+  }
 }
 
 double Discrete::sample(uint64_t* seed) const
 {
+  // Alias sampling of discrete distribution
   int n = x_.size();
   if (n > 1) {
-    double xi = prn(seed);
-    double c = 0.0;
-    for (int i = 0; i < n; ++i) {
-      c += p_[i];
-      if (xi < c)
-        return x_[i];
+    int u = prn(seed) * n;
+    if (prn(seed) < prob_[u]) {
+      return x_[u];
+    } else {
+      return x_[alias_[u]];
     }
-    throw std::runtime_error {"Error when sampling probability mass function."};
   } else {
     return x_[0];
   }
@@ -58,8 +105,8 @@ double Discrete::sample(uint64_t* seed) const
 void Discrete::normalize()
 {
   // Renormalize density function so that it sums to unity
-  double norm = std::accumulate(p_.begin(), p_.end(), 0.0);
-  for (auto& p_i : p_) {
+  double norm = std::accumulate(prob_.begin(), prob_.end(), 0.0);
+  for (auto& p_i : prob_) {
     p_i /= norm;
   }
 }
@@ -179,7 +226,7 @@ Tabular::Tabular(pugi::xml_node node)
       interp_ = Interpolation::lin_lin;
     } else {
       openmc::fatal_error(
-        "Unknown interpolation type for distribution: " + temp);
+        "Unsupported interpolation type for distribution: " + temp);
     }
   } else {
     interp_ = Interpolation::histogram;

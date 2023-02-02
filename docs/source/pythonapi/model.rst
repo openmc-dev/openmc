@@ -11,7 +11,6 @@ Convenience Functions
    :template: myfunction.rst
 
    openmc.model.borated_water
-   openmc.model.cylinder_from_points
    openmc.model.hexagonal_prism
    openmc.model.rectangular_prism
    openmc.model.subdivide
@@ -32,6 +31,7 @@ Composite Surfaces
    openmc.model.XConeOneSided
    openmc.model.YConeOneSided
    openmc.model.ZConeOneSided
+   openmc.model.Polygon
 
 TRISO Fuel Modeling
 -------------------

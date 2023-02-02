@@ -224,7 +224,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
             auto id = (domain_type_ == DomainType::CELL)
                         ? model::cells[coord.cell]->id_
                         : model::universes[coord.universe]->id_;
-            if (found = contains(domain_ids_, id)) break;
+            if ((found = contains(domain_ids_, id)))
+              break;
           }
         }
       }
@@ -255,9 +256,6 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     if (xt::any(energies > data::energy_max[p])) {
       fatal_error("Source energy above range of energies of at least "
                   "one cross section table");
-    } else if (xt::any(energies < data::energy_min[p])) {
-      fatal_error("Source energy below range of energies of at least "
-                  "one cross section table");
     }
   }
 
@@ -265,8 +263,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Sample energy spectrum
     site.E = energy_->sample(seed);
 
-    // Resample if energy falls outside minimum or maximum particle energy
-    if (site.E < data::energy_max[p] && site.E > data::energy_min[p])
+    // Resample if energy falls above maximum particle energy
+    if (site.E < data::energy_max[p])
       break;
 
     n_reject++;

@@ -358,7 +358,10 @@ class Universe(UniverseBase):
             model.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
 
             # Read image from file
-            img = mpimg.imread(Path(tmpdir) / f'plot_{plot.id}.png')
+            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            if not img_path.is_file():
+                img_path = img_path.with_suffix('.ppm')
+            img = mpimg.imread(str(img_path))
 
             # Create a figure sized such that the size of the axes within
             # exactly matches the number of pixels specified
@@ -466,7 +469,7 @@ class Universe(UniverseBase):
         """
         nuclides = OrderedDict()
 
-        if self._atoms is not None:
+        if self._atoms:
             volume = self.volume
             for name, atoms in self._atoms.items():
                 nuclide = openmc.Nuclide(name)
@@ -647,19 +650,26 @@ class DAGMCUniverse(UniverseBase):
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
+
+        .. versionadded:: 0.13.1
     material_names : list of str
         Return a sorted list of materials names that are contained within the
         DAGMC h5m file. This is useful when naming openmc.Material() objects
         as each material name present in the DAGMC h5m file must have a
         matching openmc.Material() with the same name.
+
+        .. versionadded:: 0.13.2
     n_cells : int
         The number of cells in the DAGMC model. This is the number of cells at
         runtime and accounts for the implicit complement whether or not is it
         present in the DAGMC file.
+
+        .. versionadded:: 0.13.2
     n_surfaces : int
         The number of surfaces in the model.
 
-        .. versionadded:: 0.13.1
+        .. versionadded:: 0.13.2
+
     """
 
     def __init__(self,

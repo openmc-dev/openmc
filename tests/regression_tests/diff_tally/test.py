@@ -103,9 +103,8 @@ class DiffTallyTestHarness(PyAPITestHarness):
         sp = openmc.StatePoint(statepoint)
 
         # Extract the tally data as a Pandas DataFrame.
-        df = pd.DataFrame()
-        for t in sp.tallies.values():
-            df = df.append(t.get_pandas_dataframe(), ignore_index=True)
+        tally_dfs = [t.get_pandas_dataframe() for t in sp.tallies.values()]
+        df = pd.concat(tally_dfs, ignore_index=True)
 
         # Extract the relevant data as a CSV string.
         cols = ('d_material', 'd_nuclide', 'd_variable', 'score', 'mean',

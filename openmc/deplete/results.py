@@ -1,7 +1,8 @@
 import numbers
 import bisect
 import math
-from typing import Iterable, Optional, Tuple, Union
+import typing  # required to prevent typing.Union namespace overwriting Union
+from typing import Iterable, Optional, Tuple
 from warnings import warn
 
 import h5py
@@ -95,7 +96,7 @@ class Results(list):
 
     def get_atoms(
         self,
-        mat: Union[Material, str],
+        mat: typing.Union[Material, str],
         nuc: str,
         nuc_units: str = "atoms",
         time_units: str = "s"
@@ -165,7 +166,7 @@ class Results(list):
 
     def get_reaction_rate(
         self,
-        mat: Union[Material, str],
+        mat: typing.Union[Material, str],
         nuc: str,
         rx: str
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -374,7 +375,8 @@ class Results(list):
     def export_to_materials(
         self,
         burnup_index: int,
-        nuc_with_data: Optional[Iterable[str]] = None
+        nuc_with_data: Optional[Iterable[str]] = None,
+        path: PathLike = 'materials.xml'
     ) -> Materials:
         """Return openmc.Materials object based on results at a given step
 
@@ -393,6 +395,8 @@ class Results(list):
             If not provided, nuclides from the cross_sections element of
             materials.xml will be used. If that element is not present,
             nuclides from openmc.config['cross_sections'] will be used.
+        path : PathLike
+            Path to materials XML file to read. Defaults to 'materials.xml'.
 
         Returns
         -------
@@ -406,7 +410,7 @@ class Results(list):
         # updated. If for some reason you have modified OpenMC to produce
         # new materials as depletion takes place, this method will not
         # work as expected and leave out that material.
-        mat_file = Materials.from_xml("materials.xml")
+        mat_file = Materials.from_xml(path)
 
         # Only nuclides with valid transport data will be written to
         # the new materials XML file. The precedence of nuclides to select

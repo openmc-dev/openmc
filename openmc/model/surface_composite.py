@@ -1,10 +1,16 @@
 from abc import ABC, abstractmethod
 from copy import copy
-from math import sqrt, pi, sin, cos
+from math import sqrt, pi, sin, cos, isclose
+import warnings
+import operator
+
 import numpy as np
+from scipy.spatial import ConvexHull, Delaunay
+from matplotlib.path import Path
 
 import openmc
-from openmc.checkvalue import check_greater_than, check_value
+from openmc.checkvalue import (check_greater_than, check_value,
+                               check_iterable_type, check_length)
 
 
 class CompositeSurface(ABC):
@@ -621,3 +627,333 @@ class ZConeOneSided(CompositeSurface):
 
     __neg__ = XConeOneSided.__neg__
     __pos__ = XConeOneSided.__pos__
+
+
+class Polygon(CompositeSurface):
+    """Create a polygon composite surface from a path of closed points.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        An Nx2 array of points defining the vertices of the polygon.
+    basis : {'rz', 'xy', 'yz', 'xz'}, optional
+        2D basis set for the polygon. The polygon is two dimensional and has
+        infinite extent in the third (unspecified) dimension. For example, the
+        'xy' basis produces a polygon with infinite extent in the +/- z
+        direction. For the 'rz' basis the phi extent is infinite, thus forming
+        an axisymmetric surface.
+
+    Attributes
+    ----------
+    points : np.ndarray
+        An Nx2 array of points defining the vertices of the polygon.
+    basis : {'rz', 'xy', 'yz', 'xz'}
+        2D basis set for the polygon.
+    regions : list of openmc.Region
+        A list of :class:`openmc.Region` objects, one for each of the convex polygons
+        formed during the decomposition of the input polygon.
+    region : openmc.Union
+        The union of all the regions comprising the polygon.
+    """
+
+    def __init__(self, points, basis='rz'):
+        check_value('basis', basis, ('xy', 'yz', 'xz', 'rz'))
+        self._basis = basis
+        points = np.asarray(points, dtype=float)
+        check_iterable_type('points', points, float, min_depth=2, max_depth=2)
+        check_length('points', points[0, :], 2, 2)
+
+        # If the last point is the same as the first, remove it and make sure
+        # there are still at least 3 points for a valid polygon.
+        if np.allclose(points[0, :], points[-1, :]):
+            points = points[:-1, :]
+        check_length('points', points, 3)
+
+        # Order the points counter-clockwise (necessary for offset method)
+        self._points = self._make_ccw(points)
+
+        # Create a triangulation of the points.
+        self._tri = Delaunay(self._points, qhull_options='QJ')
+
+        # Decompose the polygon into groups of simplices forming convex subsets
+        # and get the sets of (surface, operator) pairs defining the polygon
+        self._surfsets = self._decompose_polygon_into_convex_sets()
+
+        # Set surface names as required by CompositeSurface protocol
+        surfnames = []
+        i = 0
+        for surfset in self._surfsets:
+            for surf, op, on_boundary in surfset:
+                if on_boundary:
+                    setattr(self, f'surface_{i}', surf)
+                    surfnames.append(f'surface_{i}')
+                    i += 1
+        self._surfnames = tuple(surfnames)
+
+        # Generate a list of regions whose union represents the polygon.
+        regions = []
+        for surfs_ops in self._surfsets:
+            regions.append([op(surf) for surf, op, _ in surfs_ops])
+        self._regions = [openmc.Intersection(regs) for regs in regions]
+
+        # Create the union of all the convex subsets
+        self._region = openmc.Union(self._regions)
+
+    def __neg__(self):
+        return self._region
+
+    def __pos__(self):
+        return ~self._region
+
+    @property
+    def _surface_names(self):
+        return self._surfnames
+
+    @CompositeSurface.boundary_type.setter
+    def boundary_type(self, boundary_type):
+        if boundary_type != 'transmission':
+            warnings.warn("Setting boundary_type to a value other than "
+                          "'transmission' on Polygon composite surfaces can "
+                          "result in unintended behavior. Please use the "
+                          "regions property of the Polygon to generate "
+                          "individual openmc.Cell objects to avoid unwanted "
+                          "behavior.")
+        for name in self._surface_names:
+            getattr(self, name).boundary_type = boundary_type
+
+    @property
+    def points(self):
+        return self._points
+
+    @property
+    def basis(self):
+        return self._basis
+
+    @property
+    def _normals(self):
+        """Generate the outward normal unit vectors for the polygon."""
+        # Rotation matrix for 90 degree clockwise rotation (-90 degrees about z
+        # axis for an 'xy' basis).
+        rotation = np.array([[0., 1.], [-1., 0.]])
+        # Get the unit vectors that point from one point in the polygon to the
+        # next given that they are ordered counterclockwise and that the final
+        # point is connected to the first point
+        tangents = np.diff(self._points, axis=0, append=[self._points[0, :]])
+        tangents /= np.linalg.norm(tangents, axis=-1, keepdims=True)
+        # Rotate the tangent vectors clockwise by 90 degrees, which for a
+        # counter-clockwise ordered polygon will produce the outward normal
+        # vectors.
+        return rotation.dot(tangents.T).T
+
+    @property
+    def _equations(self):
+        normals = self._normals
+        equations = np.empty((normals.shape[0], 3))
+        equations[:, :2] = normals
+        equations[:, 2] = -np.sum(normals*self.points, axis=-1)
+        return equations
+
+    @property
+    def regions(self):
+        return self._regions
+
+    @property
+    def region(self):
+        return self._region
+
+    def _make_ccw(self, points):
+        """Order a set of points counter-clockwise.
+
+        Parameters
+        ----------
+        points : np.ndarray (Nx2)
+            An Nx2 array of coordinate pairs describing the vertices.
+
+        Returns
+        -------
+        ordered_points : the input points ordered counter-clockwise
+        """
+        # Calculates twice the signed area of the polygon using the "Shoelace
+        # Formula" https://en.wikipedia.org/wiki/Shoelace_formula
+        xpts, ypts = points.T
+
+        # If signed area is positive the curve is oriented counter-clockwise
+        if np.sum(ypts*(np.roll(xpts, 1) - np.roll(xpts, -1))) > 0:
+            return points
+
+        return points[::-1, :]
+
+    def _group_simplices(self, neighbor_map, group=None):
+        """Generate a convex grouping of simplices.
+
+        Parameters
+        ----------
+        neighbor_map : dict
+            A map whose keys are simplex indices for simplices inside the polygon
+            and whose values are a list of simplex indices that neighbor this
+            simplex and are also inside the polygon.
+        group : list
+            A list of simplex indices that comprise the current convex group.
+
+        Returns
+        -------
+        group : list
+            The list of simplex indices that comprise the complete convex group.
+        """
+        # If neighbor_map is empty there's nothing left to do
+        if not neighbor_map:
+            return group
+        # If group is empty, grab the next simplex in the dictionary and recurse
+        if group is None:
+            sidx = next(iter(neighbor_map))
+            return self._group_simplices(neighbor_map, group=[sidx])
+        # Otherwise use the last simplex in the group 
+        else:
+            sidx = group[-1]
+            # Remove current simplex from dictionary since it is in a group
+            neighbors = neighbor_map.pop(sidx, [])
+            # For each neighbor check if it is part of the same convex
+            # hull as the rest of the group. If yes, recurse. If no, continue on.
+            for n in neighbors:
+                if n in group or neighbor_map.get(n, None) is None:
+                    continue
+                test_group = group + [n]
+                test_point_idx = np.unique(self._tri.simplices[test_group, :])
+                test_points = self._tri.points[test_point_idx]
+                # If test_points are convex keep adding to this group
+                if len(test_points) == len(ConvexHull(test_points).vertices):
+                    group = self._group_simplices(neighbor_map, group=test_group)
+            return group
+
+    def _get_convex_hull_surfs(self, qhull):
+        """Generate a list of surfaces given by a set of linear equations
+
+        Parameters
+        ----------
+        qhull : scipy.spatial.ConvexHull
+            A ConvexHull object representing the sub-region of the polygon.
+
+        Returns
+        -------
+        surfs_ops : list of (surface, operator) tuples
+
+        """
+        basis = self.basis
+        boundary_eqns = self._equations
+        # Collect surface/operator pairs such that the intersection of the
+        # regions defined by these pairs is the inside of the polygon.
+        surfs_ops = []
+        # hull facet equation: dx*x + dy*y + c = 0
+        for dx, dy, c in qhull.equations:
+            # check if this facet is on the boundary of the polygon
+            facet_eq = np.array([dx, dy, c])
+            on_boundary = any([np.allclose(facet_eq, eq) for eq in boundary_eqns])
+            # Check if the facet is horizontal
+            if isclose(dx, 0, abs_tol=1e-8):
+                if basis in ('xz', 'yz', 'rz'):
+                    surf = openmc.ZPlane(z0=-c/dy)
+                else:
+                    surf = openmc.YPlane(y0=-c/dy)
+                # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
+                op = operator.pos if dy < 0 else operator.neg
+            # Check if the facet is vertical
+            elif isclose(dy, 0, abs_tol=1e-8):
+                if basis in ('xy', 'xz'):
+                    surf = openmc.XPlane(x0=-c/dx)
+                elif basis == 'yz':
+                    surf = openmc.YPlane(y0=-c/dx)
+                else:
+                    surf = openmc.ZCylinder(r=-c/dx)
+                # if (1, 0).(dx, dy) < 0 we want positive halfspace instead
+                op = operator.pos if dx < 0 else operator.neg
+            # Otherwise the facet is at an angle
+            else:
+                op = operator.neg
+                if basis == 'xy':
+                    surf = openmc.Plane(a=dx, b=dy, d=-c)
+                elif basis == 'yz':
+                    surf = openmc.Plane(b=dx, c=dy, d=-c)
+                elif basis == 'xz':
+                    surf = openmc.Plane(a=dx, c=dy, d=-c)
+                else:
+                    y0 = -c/dy
+                    r2 = dy**2 / dx**2
+                    # Check if the *slope* of the facet is positive. If dy/dx < 0
+                    # then we want up to be True for the one-sided cones.
+                    up = dy / dx < 0
+                    surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=up)
+                    # if (1, -1).(dx, dy) < 0 for up cones we want positive halfspace
+                    # if (1, 1).(dx, dy) < 0 for down cones we want positive halfspace
+                    # otherwise we keep the negative halfspace operator
+                    if (up and dx - dy < 0) or (not up and dx + dy < 0):
+                        op = operator.pos
+
+            surfs_ops.append((surf, op, on_boundary))
+
+        return surfs_ops
+
+    def _decompose_polygon_into_convex_sets(self):
+        """Decompose the Polygon into a set of convex polygons.
+
+        Returns
+        -------
+        surfsets : a list of lists of surface, operator pairs
+        """
+
+        # Get centroids of all the simplices and determine if they are inside
+        # the polygon defined by input vertices or not.
+        centroids = np.mean(self._points[self._tri.simplices], axis=1)
+        in_polygon = Path(self._points).contains_points(centroids)
+        self._in_polygon = in_polygon
+
+        # Build a map with keys of simplex indices inside the polygon whose
+        # values are lists of that simplex's neighbors also inside the
+        # polygon
+        neighbor_map = {}
+        for i, nlist in enumerate(self._tri.neighbors):
+            if not in_polygon[i]:
+                continue
+            neighbor_map[i] = [n for n in nlist if in_polygon[n] and n >=0]
+
+        # Get the groups of simplices forming convex polygons whose union
+        # comprises the full input polygon. While there are still simplices
+        # left in the neighbor map, group them together into convex sets.
+        groups = []
+        while neighbor_map:
+            groups.append(self._group_simplices(neighbor_map))
+        self._groups = groups
+
+        # Generate lists of (surface, operator) pairs for each convex
+        # sub-region.
+        surfsets = []
+        for group in groups:
+            # Find all the unique points in the convex group of simplices,
+            # generate the convex hull and find the resulting surfaces and
+            # unary operators that represent this convex subset of the polygon.
+            idx = np.unique(self._tri.simplices[group, :])
+            qhull = ConvexHull(self._tri.points[idx, :])
+            surf_ops = self._get_convex_hull_surfs(qhull)
+            surfsets.append(surf_ops)
+        return surfsets
+
+    def offset(self, distance):
+        """Offset this polygon by a set distance
+
+        Parameters
+        ----------
+        distance : float
+            The distance to offset the polygon by. Positive is outward
+            (expanding) and negative is inward (shrinking).
+
+        Returns
+        -------
+        offset_polygon : openmc.model.Polygon
+        """
+        normals = np.insert(self._normals, 0, self._normals[-1, :], axis=0)
+        cos2theta = np.sum(normals[1:, :]*normals[:-1, :], axis=-1, keepdims=True)
+        costheta = np.cos(np.arccos(cos2theta) / 2)
+        nvec = (normals[1:, :] + normals[:-1, :])
+        unit_nvec = nvec / np.linalg.norm(nvec, axis=-1, keepdims=True)
+        disp_vec = distance / costheta * unit_nvec
+
+        return type(self)(self.points + disp_vec, basis=self.basis)

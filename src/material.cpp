@@ -60,6 +60,13 @@ Material::Material(pugi::xml_node node)
     name_ = get_node_value(node, "name");
   }
 
+  if (check_for_node(node, "cfg")) {
+    auto cfg = get_node_value(node, "cfg");
+    write_message(
+      5, "NCrystal config string for material #{}: '{}'", this->id(), cfg);
+    ncrystal_mat_ = NCrystalMat(cfg);
+  }
+
   if (check_for_node(node, "depletable")) {
     depletable_ = get_node_value_bool(node, "depletable");
   }
@@ -367,8 +374,8 @@ void Material::finalize()
     this->init_thermal();
   }
 
-// Normalize density
-this->normalize_density();
+  // Normalize density
+  this->normalize_density();
 }
 
 void Material::normalize_density()
@@ -792,6 +799,12 @@ void Material::calculate_neutron_xs(Particle& p) const
   // Initialize position in i_sab_nuclides
   int j = 0;
 
+  // Calculate NCrystal cross section
+  double ncrystal_xs = -1.0;
+  if (ncrystal_mat_ && p.E() < NCRYSTAL_MAX_ENERGY) {
+    ncrystal_xs = ncrystal_mat_.xs(p);
+  }
+
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
     // ======================================================================
@@ -830,10 +843,16 @@ void Material::calculate_neutron_xs(Particle& p) const
     int i_nuclide = nuclide_[i];
 
     // Calculate microscopic cross section for this nuclide
-    const auto& micro {p.neutron_xs(i_nuclide)};
+    auto& micro {p.neutron_xs(i_nuclide)};
     if (p.E() != micro.last_E || p.sqrtkT() != micro.last_sqrtkT ||
         i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
       data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);
+
+      // If NCrystal is being used, update micro cross section cache
+      if (ncrystal_xs >= 0.0) {
+        data::nuclides[i_nuclide]->calculate_elastic_xs(p);
+        ncrystal_update_micro(ncrystal_xs, micro);
+      }
     }
 
     // ======================================================================
@@ -1281,6 +1300,12 @@ void read_materials_xml()
 
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
+
+  read_materials_xml(root);
+}
+
+void read_materials_xml(pugi::xml_node root)
+{
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(make_unique<Material>(material_node));
   }

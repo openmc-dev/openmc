@@ -47,14 +47,20 @@ public:
 
   // Properties
   const vector<double>& x() const { return x_; }
-  const vector<double>& p() const { return p_; }
+  const vector<double>& prob() const { return prob_; }
+  const vector<size_t>& alias() const { return alias_; }
 
 private:
-  vector<double> x_; //!< Possible outcomes
-  vector<double> p_; //!< Probability of each outcome
+  vector<double> x_;    //!< Possible outcomes
+  vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
+                        //!< mapped to alias method table
+  vector<size_t> alias_; //!< Alias table
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();
+
+  //! Initialize alias tables for distribution
+  void init_alias(vector<double>& x, vector<double>& p);
 };
 
 //==============================================================================

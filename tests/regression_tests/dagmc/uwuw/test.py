@@ -23,8 +23,6 @@ class UWUWTest(PyAPITestHarness):
                                          [ 4,  4,  4]))
         model.settings.source = source
 
-        model.settings.dagmc = True
-
         model.settings.export_to_xml()
 
         # geometry

@@ -115,7 +115,7 @@ Filter* Filter::create(const std::string& type, int32_t id)
   } else if (type == "cell") {
     return Filter::create<CellFilter>(id);
   } else if (type == "cellborn") {
-    return Filter::create<CellbornFilter>(id);
+    return Filter::create<CellBornFilter>(id);
   } else if (type == "cellfrom") {
     return Filter::create<CellFromFilter>(id);
   } else if (type == "cellinstance") {
@@ -232,7 +232,7 @@ extern "C" int openmc_filter_get_type(int32_t index, char* type)
   if (int err = verify_filter(index))
     return err;
 
-  std::strcpy(type, model::tally_filters[index]->type().c_str());
+  std::strcpy(type, model::tally_filters[index]->type_str().c_str());
   return 0;
 }
 

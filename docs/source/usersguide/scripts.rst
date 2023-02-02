@@ -157,9 +157,9 @@ geometry.xml
   added. Any 'surfaces' attributes/elements on a cell will be renamed 'region'.
 
 materials.xml
-  Nuclide names will be changed from ACE aliases (e.g., Am-242m) to HDF5/GND
+  Nuclide names will be changed from ACE aliases (e.g., Am-242m) to HDF5/GNDS
   names (e.g., Am242_m1). Thermal scattering table names will be changed from
-  ACE aliases (e.g., HH2O) to HDF5/GND names (e.g., c_H_in_H2O).
+  ACE aliases (e.g., HH2O) to HDF5/GNDS names (e.g., c_H_in_H2O).
 
 ----------------------
 ``openmc-update-mgxs``

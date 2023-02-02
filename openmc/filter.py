@@ -533,7 +533,7 @@ class CellFromFilter(WithIDFilter):
     expected_type = Cell
 
 
-class CellbornFilter(WithIDFilter):
+class CellBornFilter(WithIDFilter):
     """Bins tally events based on which cell the particle was born in.
 
     Parameters
@@ -555,6 +555,14 @@ class CellbornFilter(WithIDFilter):
 
     """
     expected_type = Cell
+
+
+# Temporary alias for CellbornFilter
+def CellbornFilter(*args, **kwargs):
+    warnings.warn('The name of "CellbornFilter" has changed to '
+                  '"CellBornFilter". "CellbornFilter" will be '
+                  'removed in the future.', FutureWarning)
+    return CellBornFilter(*args, **kwargs)
 
 
 class CellInstanceFilter(Filter):
@@ -2095,7 +2103,7 @@ class EnergyFunctionFilter(Filter):
         y = [float(x) for x in get_text(elem, 'y').split()]
         out = cls(energy, y, filter_id=filter_id)
         if elem.find('interpolation') is not None:
-            out.interpolation = elem.find('interpolation')
+            out.interpolation = elem.find('interpolation').text
         return out
 
     def can_merge(self, other):

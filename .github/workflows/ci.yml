@@ -25,10 +25,11 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: ['3.10']
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
+        ncrystal: [n]
         libmesh: [n]
         event: [n]
         vectfit: [n]
@@ -37,28 +38,38 @@ jobs:
           - python-version: 3.7
             omp: n
             mpi: n
+          - python-version: 3.8
+            omp: n
+            mpi: n
+          - python-version: 3.9
+            omp: n
+            mpi: n
           - dagmc: y
-            python-version: 3.8
+            python-version: '3.10'
+            mpi: y
+            omp: y
+          - ncrystal: y
+            python-version: '3.10'
+            mpi: n
+            omp: n
+          - libmesh: y
+            python-version: '3.10'
             mpi: y
             omp: y
           - libmesh: y
-            python-version: 3.8
-            mpi: y
-            omp: y
-          - libmesh: y
-            python-version: 3.8
+            python-version: '3.10'
             mpi: n
             omp: y
           - event: y
-            python-version: 3.8
+            python-version: '3.10'
             omp: y
             mpi: n
           - vectfit: y
-            python-version: 3.8
+            python-version: '3.10'
             omp: n
             mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
-      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
+      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }}, ncrystal=${{ matrix.ncrystal }},
       libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
       vectfit=${{ matrix.vectfit }})"
 
@@ -67,15 +78,16 @@ jobs:
       PHDF5: ${{ matrix.mpi }}
       OMP: ${{ matrix.omp }}
       DAGMC: ${{ matrix.dagmc }}
+      NCRYSTAL: ${{ matrix.ncrystal }}
       EVENT: ${{ matrix.event }}
       VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -112,7 +124,9 @@ jobs:
 
       - name: test
         shell: bash
-        run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+        run: |
+          CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
+          $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: after_success
         shell: bash

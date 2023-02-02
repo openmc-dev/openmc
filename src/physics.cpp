@@ -10,6 +10,7 @@
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
+#include "openmc/ncrystal_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/physics_common.h"
@@ -140,7 +141,12 @@ void sample_neutron_reaction(Particle& p)
 
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
-  scatter(p, i_nuclide);
+  const auto& ncrystal_mat = model::materials[p.material()]->ncrystal_mat();
+  if (ncrystal_mat && p.E() < NCRYSTAL_MAX_ENERGY) {
+    ncrystal_mat.scatter(p);
+  } else {
+    scatter(p, i_nuclide);
+  }
 
   // Advance URR seed stream 'N' times after energy changes
   if (p.E() != p.E_last()) {
@@ -366,7 +372,14 @@ void sample_photon_reaction(Particle& p)
         xs_lower(i_shell) + f * (xs_upper(i_shell) - xs_lower(i_shell)));
 
       if (prob > cutoff) {
-        double E_electron = p.E() - shell.binding_energy;
+        // Determine binding energy based on whether atomic relaxation data is
+        // present (if not, use value from Compton profile data)
+        double binding_energy = element.has_atomic_relaxation_
+                                  ? shell.binding_energy
+                                  : element.binding_energy_[i_shell];
+
+        // Determine energy of secondary electron
+        double E_electron = p.E() - binding_energy;
 
         // Sample mu using non-relativistic Sauter distribution.
         // See Eqns 3.19 and 3.20 in "Implementing a photon physics
@@ -1127,7 +1140,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 
   // evaluate yield
   double yield = (*rx.products_[0].yield_)(E_in);
-  if (std::floor(yield) == yield) {
+  if (std::floor(yield) == yield && yield > 0) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
       p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType::neutron);

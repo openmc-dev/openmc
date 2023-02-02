@@ -271,6 +271,27 @@ Prerequisites
 
           cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation ..
 
+    * MCPL_ library for reading and writing .mcpl files
+
+      This option allows OpenMC to read and write MCPL (Monte Carlo Particle
+      Lists) files instead of .h5 files for sources (external source
+      distribution, k-eigenvalue source distribution, and surface sources). To
+      turn this option on in the CMake configuration step, add the following
+      option:
+
+          cmake -DOPENMC_USE_MCPL=on ..
+
+    * NCrystal_ library for defining materials with enhanced thermal neutron transport
+
+      Adding this option allows the creation of materials from NCrystal, which
+      replaces the scattering kernel treatment of ACE files with a modular,
+      on-the-fly approach. To use it `install
+      <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialize
+      <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_
+      NCrystal and turn on the option in the CMake configuration step:
+
+          cmake -DOPENMC_USE_NCRYSTAL=on ..
+
     * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
       This optional dependency enables support for unstructured mesh tally
@@ -294,6 +315,8 @@ Prerequisites
 .. _MOAB: https://bitbucket.org/fathomteam/moab
 .. _libMesh: https://libmesh.github.io/
 .. _libpng: http://www.libpng.org/pub/png/libpng.html
+.. _MCPL: https://github.com/mctools/mcpl
+.. _NCrystal: https://github.com/mctools/ncrystal
 
 Obtaining the Source
 --------------------
@@ -360,6 +383,12 @@ OPENMC_USE_DAGMC
   tallies. Please see the note about DAGMC in the optional dependencies list
   for more information on this feature. The installation directory for DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
+  (Default: off)
+
+OPENMC_USE_NCRYSTAL
+  Turns on support for NCrystal materials. NCrystal must be
+  `installed <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and
+  `initialized <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
   (Default: off)
 
 OPENMC_USE_LIBMESH

@@ -3,8 +3,8 @@ project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 14)
-set(OPENMC_VERSION_RELEASE 0)
+set(OPENMC_VERSION_MINOR 13)
+set(OPENMC_VERSION_RELEASE 3)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -31,11 +31,14 @@ endif()
 #===============================================================================
 
 option(OPENMC_USE_OPENMP      "Enable shared-memory parallelism with OpenMP"         ON)
+option(OPENMC_BUILD_TESTS     "Build tests"                                          ON)
 option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
+option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
+option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -99,6 +102,15 @@ macro(find_package_write_status pkg)
 endmacro()
 
 #===============================================================================
+# NCrystal Scattering Support
+#===============================================================================
+
+if(OPENMC_USE_NCRYSTAL)
+  find_package(NCrystal REQUIRED)
+  message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
+endif()
+
+#===============================================================================
 # DAGMC Geometry Support - need DAGMC/MOAB
 #===============================================================================
 
@@ -156,6 +168,15 @@ endif()
 # versions of HDF5.
 if(${HDF5_VERSION} VERSION_GREATER_EQUAL 1.12.0)
   list(APPEND cxxflags -DH5Oget_info_by_idx_vers=1 -DH5O_info_t_vers=1)
+endif()
+
+#===============================================================================
+# MCPL
+#===============================================================================
+
+if (OPENMC_USE_MCPL)
+  find_package(MCPL REQUIRED)
+  message(STATUS "Found MCPL: ${MCPL_DIR} (found version \"${MCPL_VERSION}\")")
 endif()
 
 #===============================================================================
@@ -266,6 +287,17 @@ if (NOT gsl-lite_FOUND)
 endif()
 
 #===============================================================================
+# Catch2 library
+#===============================================================================
+
+if(OPENMC_BUILD_TESTS)
+  find_package_write_status(Catch2)
+  if (NOT Catch2)
+    add_subdirectory(vendor/Catch2)
+  endif()
+endif()
+
+#===============================================================================
 # RPATH information
 #===============================================================================
 
@@ -323,10 +355,12 @@ list(APPEND libopenmc_SOURCES
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
+  src/mcpl_interface.cpp
   src/mesh.cpp
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp
+  src/ncrystal_interface.cpp
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
@@ -480,6 +514,35 @@ endif()
 
 if (OPENMC_USE_MPI)
   target_link_libraries(libopenmc MPI::MPI_CXX)
+endif()
+
+if (OPENMC_BUILD_TESTS)
+  # Add cpp tests directory
+  include(CTest)
+  add_subdirectory(tests/cpp_unit_tests)
+endif()
+
+if (OPENMC_USE_MCPL)
+  target_compile_definitions(libopenmc PUBLIC OPENMC_MCPL)
+  target_link_libraries(libopenmc MCPL::mcpl)
+endif()
+
+if(OPENMC_USE_NCRYSTAL)
+  target_compile_definitions(libopenmc PRIVATE NCRYSTAL)
+  target_link_libraries(libopenmc NCrystal::NCrystal)
+endif()
+
+#===============================================================================
+# Log build info that this executable can report later
+#===============================================================================
+target_compile_definitions(libopenmc PRIVATE BUILD_TYPE=${CMAKE_BUILD_TYPE})
+target_compile_definitions(libopenmc PRIVATE COMPILER_ID=${CMAKE_CXX_COMPILER_ID})
+target_compile_definitions(libopenmc PRIVATE COMPILER_VERSION=${CMAKE_CXX_COMPILER_VERSION})
+if (OPENMC_ENABLE_PROFILE)
+  target_compile_definitions(libopenmc PRIVATE PROFILINGBUILD)
+endif()
+if (OPENMC_ENABLE_COVERAGE)
+  target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
 endif()
 
 #===============================================================================

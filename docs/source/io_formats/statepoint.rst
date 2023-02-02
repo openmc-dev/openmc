@@ -109,7 +109,8 @@ The current version of the statepoint file format is 17.0.
            - **y** (*double[]*) -- Interpolant values for energyfunction
              interpolation. Only used for 'energyfunction' filters.
 
-             :Attributes: - **interpolation** (*int*) -- Interpolation type. Only used for
+             :Attributes:
+                          - **interpolation** (*int*) -- Interpolation type. Only used for
                             'energyfunction' filters.
 
 **/tallies/derivatives/derivative <id>/**

@@ -172,10 +172,11 @@ class StructuredMesh(MeshBase):
         -------
         vertices : numpy.ndarray
             Returns a numpy.ndarray representing the coordinates of the mesh
-            vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim).
+            vertices with a shape equal to (ndim, dim1 + 1, ..., dimn + 1).  Can be
+            unpacked along the first dimension with xx, yy, zz = mesh.vertices.
 
         """
-        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=-1)
+        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=0)
 
     @property
     def centroids(self):
@@ -185,13 +186,15 @@ class StructuredMesh(MeshBase):
         -------
         centroids : numpy.ndarray
             Returns a numpy.ndarray representing the mesh element centroid
-            coordinates with a shape equal to (dim1, ..., dimn, ndim).
+            coordinates with a shape equal to (ndim, dim1, ..., dimn). Can be
+            unpacked along the first dimension with xx, yy, zz = mesh.centroids.
+            
 
         """
         ndim = self.n_dimension
         vertices = self.vertices
-        s0 = (slice(0, -1),)*ndim + (slice(None),)
-        s1 = (slice(1, None),)*ndim + (slice(None),)
+        s0 = (slice(None),) + (slice(0, -1),)*ndim
+        s1 = (slice(None),) + (slice(1, None),)*ndim
         return (vertices[s0] + vertices[s1]) / 2
 
     @property
@@ -324,7 +327,7 @@ class RegularMesh(StructuredMesh):
 
     @property
     def dimension(self):
-        return self._dimension
+        return tuple(self._dimension)
 
     @property
     def n_dimension(self):
@@ -430,6 +433,9 @@ class RegularMesh(StructuredMesh):
         cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
 
+        if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
+
     @upper_right.setter
     def upper_right(self, upper_right):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
@@ -439,6 +445,9 @@ class RegularMesh(StructuredMesh):
         if self._width is not None:
             self._width = None
             warnings.warn("Unsetting width attribute.")
+        
+        if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
 
     @width.setter
     def width(self, width):

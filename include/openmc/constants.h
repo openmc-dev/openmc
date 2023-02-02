@@ -5,6 +5,7 @@
 #define OPENMC_CONSTANTS_H
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
 #include "openmc/array.h"

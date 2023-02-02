@@ -16,7 +16,7 @@ void MeshFilter::from_xml(pugi::xml_node node)
   auto bins_ = get_node_array<int32_t>(node, "bins");
   if (bins_.size() != 1) {
     fatal_error(
-      "Only one mesh can be specified per " + type() + " mesh filter.");
+      "Only one mesh can be specified per " + type_str() + " mesh filter.");
   }
 
   auto id = bins_[0];
@@ -158,7 +158,8 @@ extern "C" int openmc_mesh_filter_get_translation(
 
   // Check the filter type
   const auto& filter = model::tally_filters[index];
-  if (filter->type() != "mesh" && filter->type() != "meshsurface") {
+  if (filter->type() != FilterType::MESH &&
+      filter->type() != FilterType::MESH_SURFACE) {
     set_errmsg("Tried to get a translation from a non-mesh-based filter.");
     return OPENMC_E_INVALID_TYPE;
   }
@@ -182,7 +183,8 @@ extern "C" int openmc_mesh_filter_set_translation(
 
   const auto& filter = model::tally_filters[index];
   // Check the filter type
-  if (filter->type() != "mesh" && filter->type() != "meshsurface") {
+  if (filter->type() != FilterType::MESH &&
+      filter->type() != FilterType::MESH_SURFACE) {
     set_errmsg("Tried to set mesh on a non-mesh-based filter.");
     return OPENMC_E_INVALID_TYPE;
   }

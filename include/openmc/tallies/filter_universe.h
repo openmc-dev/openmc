@@ -25,7 +25,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "universe"; }
+  std::string type_str() const override { return "universe"; }
+  FilterType type() const override { return FilterType::UNIVERSE; }
 
   void from_xml(pugi::xml_node node) override;
 

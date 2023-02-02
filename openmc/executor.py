@@ -9,7 +9,7 @@ from .plots import _get_plot_image
 def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
                            plot=False, restart_file=None, threads=None,
                            tracks=False, event_based=None,
-                           openmc_exec='openmc', mpi_args=None):
+                           openmc_exec='openmc', mpi_args=None, path_input=None):
     """Converts user-readable flags in to command-line arguments to be run with
     the OpenMC executable via subprocess.
 
@@ -41,7 +41,10 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         Path to OpenMC executable. Defaults to 'openmc'.
     mpi_args : list of str, optional
         MPI execute command and any additional MPI arguments to pass,
-        e.g. ['mpiexec', '-n', '8'].
+        e.g., ['mpiexec', '-n', '8'].
+    path_input : str or Pathlike
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
 
     .. versionadded:: 0.13.0
 
@@ -82,6 +85,9 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
     if mpi_args is not None:
         args = mpi_args + args
 
+    if path_input is not None:
+        args += [path_input]
+
     return args
 
 
@@ -118,7 +124,7 @@ def _run(args, output, cwd):
         raise RuntimeError(error_msg)
 
 
-def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
+def plot_geometry(output=True, openmc_exec='openmc', cwd='.', path_input=None):
     """Run OpenMC in plotting mode
 
     Parameters
@@ -129,6 +135,11 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
         Path to OpenMC executable
     cwd : str, optional
         Path to working directory to run in
+    path_input : str
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
+
+        .. versionadded:: 0.13.3
 
     Raises
     ------
@@ -136,10 +147,13 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
         If the `openmc` executable returns a non-zero status
 
     """
-    _run([openmc_exec, '-p'], output, cwd)
+    args = [openmc_exec, '-p']
+    if path_input is not None:
+        args += [path_input]
+    _run(args, output, cwd)
 
 
-def plot_inline(plots, openmc_exec='openmc', cwd='.'):
+def plot_inline(plots, openmc_exec='openmc', cwd='.', path_input=None):
     """Display plots inline in a Jupyter notebook.
 
     .. versionchanged:: 0.13.0
@@ -155,6 +169,11 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.'):
         Path to OpenMC executable
     cwd : str, optional
         Path to working directory to run in
+    path_input : str
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
+
+        .. versionadded:: 0.13.3
 
     Raises
     ------
@@ -171,7 +190,7 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.'):
     openmc.Plots(plots).export_to_xml(cwd)
 
     # Run OpenMC in geometry plotting mode
-    plot_geometry(False, openmc_exec, cwd)
+    plot_geometry(False, openmc_exec, cwd, path_input)
 
     if plots is not None:
         images = [_get_plot_image(p, cwd) for p in plots]
@@ -179,7 +198,8 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.'):
 
 
 def calculate_volumes(threads=None, output=True, cwd='.',
-                      openmc_exec='openmc', mpi_args=None):
+                      openmc_exec='openmc', mpi_args=None,
+                      path_input=None):
     """Run stochastic volume calculations in OpenMC.
 
     This function runs OpenMC in stochastic volume calculation mode. To specify
@@ -206,10 +226,14 @@ def calculate_volumes(threads=None, output=True, cwd='.',
         Path to OpenMC executable. Defaults to 'openmc'.
     mpi_args : list of str, optional
         MPI execute command and any additional MPI arguments to pass,
-        e.g. ['mpiexec', '-n', '8'].
+        e.g., ['mpiexec', '-n', '8'].
     cwd : str, optional
         Path to working directory to run in. Defaults to the current working
         directory.
+    path_input : str or Pathlike
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
+
 
     Raises
     ------
@@ -223,14 +247,16 @@ def calculate_volumes(threads=None, output=True, cwd='.',
     """
 
     args = _process_CLI_arguments(volume=True, threads=threads,
-                                  openmc_exec=openmc_exec, mpi_args=mpi_args)
+                                  openmc_exec=openmc_exec, mpi_args=mpi_args,
+                                  path_input=path_input)
 
     _run(args, output, cwd)
 
 
 def run(particles=None, threads=None, geometry_debug=False,
         restart_file=None, tracks=False, output=True, cwd='.',
-        openmc_exec='openmc', mpi_args=None, event_based=False):
+        openmc_exec='openmc', mpi_args=None, event_based=False,
+        path_input=None):
     """Run an OpenMC simulation.
 
     Parameters
@@ -239,17 +265,17 @@ def run(particles=None, threads=None, geometry_debug=False,
         Number of particles to simulate per generation.
     threads : int, optional
         Number of OpenMP threads. If OpenMC is compiled with OpenMP threading
-        enabled, the default is implementation-dependent but is usually equal
-        to the number of hardware threads available (or a value set by the
+        enabled, the default is implementation-dependent but is usually equal to
+        the number of hardware threads available (or a value set by the
         :envvar:`OMP_NUM_THREADS` environment variable).
     geometry_debug : bool, optional
         Turn on geometry debugging during simulation. Defaults to False.
     restart_file : str, optional
         Path to restart file to use
     tracks : bool, optional
-        Enables the writing of particles tracks. The number of particle
-        tracks written to tracks.h5 is limited to 1000 unless
-        Settings.max_tracks is set. Defaults to False.
+        Enables the writing of particles tracks. The number of particle tracks
+        written to tracks.h5 is limited to 1000 unless Settings.max_tracks is
+        set. Defaults to False.
     output : bool
         Capture OpenMC output from standard out
     cwd : str, optional
@@ -258,12 +284,18 @@ def run(particles=None, threads=None, geometry_debug=False,
     openmc_exec : str, optional
         Path to OpenMC executable. Defaults to 'openmc'.
     mpi_args : list of str, optional
-        MPI execute command and any additional MPI arguments to pass,
-        e.g. ['mpiexec', '-n', '8'].
+        MPI execute command and any additional MPI arguments to pass, e.g.,
+        ['mpiexec', '-n', '8'].
     event_based : bool, optional
         Turns on event-based parallelism, instead of default history-based
 
         .. versionadded:: 0.12
+
+    path_input : str or Pathlike
+        Path to a single XML file or a directory containing XML files for the
+        OpenMC executable to read.
+
+        .. versionadded:: 0.13.3
 
     Raises
     ------
@@ -275,6 +307,7 @@ def run(particles=None, threads=None, geometry_debug=False,
     args = _process_CLI_arguments(
         volume=False, geometry_debug=geometry_debug, particles=particles,
         restart_file=restart_file, threads=threads, tracks=tracks,
-        event_based=event_based, openmc_exec=openmc_exec, mpi_args=mpi_args)
+        event_based=event_based, openmc_exec=openmc_exec, mpi_args=mpi_args,
+        path_input=path_input)
 
     _run(args, output, cwd)

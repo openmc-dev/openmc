@@ -1,8 +1,8 @@
 #include "openmc/output.h"
 
 #include <algorithm> // for transform, max
-#include <cstring>   // for strlen
 #include <cstdio>    // for stdout
+#include <cstring>   // for strlen
 #include <ctime>     // for time, localtime
 #include <fstream>
 #include <iomanip> // for setw, setprecision, put_time
@@ -74,7 +74,7 @@ void title()
   // Write version information
   fmt::print(
     "                 | The OpenMC Monte Carlo Code\n"
-    "       Copyright | 2011-2022 MIT, UChicago Argonne LLC, and contributors\n"
+    "       Copyright | 2011-2023 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
     "         Version | {}.{}.{}{}\n",
     VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
@@ -134,9 +134,10 @@ void header(const char* msg, int level)
   auto out = header(msg);
 
   // Print header based on verbosity level.
-  if (settings::verbosity >= level)
+  if (settings::verbosity >= level) {
     fmt::print("\n{}\n\n", out);
     std::fflush(stdout);
+  }
 }
 
 //==============================================================================
@@ -339,9 +340,64 @@ void print_version()
 #ifdef GIT_SHA1
     fmt::print("Git SHA1: {}\n", GIT_SHA1);
 #endif
-    fmt::print("Copyright (c) 2011-2022 MIT, UChicago Argonne LLC, and "
+    fmt::print("Copyright (c) 2011-2023 MIT, UChicago Argonne LLC, and "
                "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
+  }
+}
+
+//==============================================================================
+
+void print_build_info()
+{
+  const std::string n("no");
+  const std::string y("yes");
+
+  std::string mpi(n);
+  std::string phdf5(n);
+  std::string dagmc(n);
+  std::string libmesh(n);
+  std::string png(n);
+  std::string profiling(n);
+  std::string coverage(n);
+
+#ifdef PHDF5
+  phdf5 = y;
+#endif
+#ifdef OPENMC_MPI
+  mpi = y;
+#endif
+#ifdef DAGMC
+  dagmc = y;
+#endif
+#ifdef LIBMESH
+  libmesh = y;
+#endif
+#ifdef USE_LIBPNG
+  png = y;
+#endif
+#ifdef PROFILINGBUILD
+  profiling = y;
+#endif
+#ifdef COVERAGEBUILD
+  coverage = y;
+#endif
+
+  // Wraps macro variables in quotes
+#define STRINGIFY(x) STRINGIFY2(x)
+#define STRINGIFY2(x) #x
+
+  if (mpi::master) {
+    fmt::print("Build type:            {}\n", STRINGIFY(BUILD_TYPE));
+    fmt::print("Compiler ID:           {} {}\n", STRINGIFY(COMPILER_ID),
+      STRINGIFY(COMPILER_VERSION));
+    fmt::print("MPI enabled:           {}\n", mpi);
+    fmt::print("Parallel HDF5 enabled: {}\n", phdf5);
+    fmt::print("PNG support:           {}\n", png);
+    fmt::print("DAGMC support:         {}\n", dagmc);
+    fmt::print("libMesh support:       {}\n", libmesh);
+    fmt::print("Coverage testing:      {}\n", coverage);
+    fmt::print("Profiling flags:       {}\n", profiling);
   }
 }
 

@@ -460,7 +460,6 @@ class CoupledOperator(OpenMCOperator):
 
         # Run OpenMC
         openmc.lib.run()
-        openmc.lib.reset_timers()
 
         # Extract results
         rates = self._calculate_reaction_rates(source_rate)
@@ -528,6 +527,8 @@ class CoupledOperator(OpenMCOperator):
         openmc.lib.statepoint_write(
             "openmc_simulation_n{}.h5".format(step),
             write_source=False)
+
+        openmc.lib.reset_timers()
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""

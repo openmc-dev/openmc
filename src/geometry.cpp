@@ -425,7 +425,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
         // positive half-space were given in the region specification. Thus, we
         // have to explicitly check which half-space the particle would be
         // traveling into if the surface is crossed
-        if (c.simple_) {
+        if (c.is_simple()) {
           info.surface_index = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;

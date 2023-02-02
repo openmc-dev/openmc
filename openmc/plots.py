@@ -171,7 +171,9 @@ def _get_plot_image(plot, cwd):
     stem = plot.filename if plot.filename is not None else f'plot_{plot.id}'
     png_file = Path(cwd) / f'{stem}.png'
     if not png_file.exists():
-        raise FileNotFoundError(f"Could not find .png image for plot {plot.id}")
+        raise FileNotFoundError(
+            f"Could not find .png image for plot {plot.id}. Your version of "
+            "OpenMC may not be built against libpng.")
 
     return Image(str(png_file))
 
@@ -907,13 +909,13 @@ class Plots(cv.CheckedList):
 
             self._plots_file.append(xml_element)
 
-    def export_to_xml(self, path='plots.xml'):
-        """Export plot specifications to an XML file.
+    def to_xml_element(self):
+        """Create a 'plots' element to be written to an XML file.
 
-        Parameters
-        ----------
-        path : str
-            Path to file to write. Defaults to 'plots.xml'.
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing all plot elements
 
         """
         # Reset xml element tree
@@ -923,16 +925,49 @@ class Plots(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
+        reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
 
+        return self._plots_file
+
+    def export_to_xml(self, path='plots.xml'):
+        """Export plot specifications to an XML file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'plots.xml'.
+
+        """
         # Check if path is a directory
         p = Path(path)
         if p.is_dir():
             p /= 'plots.xml'
 
+        self.to_xml_element()
         # Write the XML Tree to the plots.xml file
-        reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(self._plots_file)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate plots collection from XML file
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Plots
+            Plots collection
+
+        """
+        # Generate each plot
+        plots = cls()
+        for e in elem.findall('plot'):
+            plots.append(Plot.from_xml_element(e))
+        return plots
 
     @classmethod
     def from_xml(cls, path='plots.xml'):
@@ -951,9 +986,6 @@ class Plots(cv.CheckedList):
         """
         tree = ET.parse(path)
         root = tree.getroot()
+        return cls.from_xml_element(root)
 
-        # Generate each plot
-        plots = cls()
-        for elem in root.findall('plot'):
-            plots.append(Plot.from_xml_element(elem))
-        return plots
+

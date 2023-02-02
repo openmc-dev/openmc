@@ -1,6 +1,5 @@
 from collections import OrderedDict
 from collections.abc import Iterable
-from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real
 from xml.etree import ElementTree as ET
@@ -318,12 +317,12 @@ class Cell(IDManagerMixin):
     @temperature.setter
     def temperature(self, temperature):
         # Make sure temperatures are positive
-        cv.check_type('cell temperature', temperature, (Iterable, Real))
+        cv.check_type('cell temperature', temperature, (Iterable, Real), none_ok=True)
         if isinstance(temperature, Iterable):
             cv.check_type('cell temperature', temperature, Iterable, Real)
             for T in temperature:
                 cv.check_greater_than('cell temperature', T, 0.0, True)
-        else:
+        elif isinstance(temperature, Real):
             cv.check_greater_than('cell temperature', temperature, 0.0, True)
 
         # If this cell is filled with a universe or lattice, propagate
@@ -519,8 +518,14 @@ class Cell(IDManagerMixin):
             paths = self._paths
             self._paths = None
 
-            clone = deepcopy(self)
-            clone.id = None
+            clone = openmc.Cell(name=self.name)
+            clone.volume = self.volume
+            if self.temperature is not None:
+                clone.temperature = self.temperature
+            if self.translation is not None:
+                clone.translation = self.translation
+            if self.rotation is not None:
+                clone.rotation = self.rotation
             clone._num_instances = None
 
             # Restore paths on original instance
@@ -634,6 +639,9 @@ class Cell(IDManagerMixin):
         if self.rotation is not None:
             element.set("rotation", ' '.join(map(str, self.rotation.ravel())))
 
+        if self.volume is not None:
+            element.set("volume", str(self.volume))
+
         return element
 
     @classmethod
@@ -647,7 +655,7 @@ class Cell(IDManagerMixin):
         surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
         materials : dict
-            Dictionary mapping material IDs to :class:`openmc.Material`
+            Dictionary mapping material ID strings to :class:`openmc.Material`
             instances (defined in :math:`openmc.Geometry.from_xml`)
         get_universe : function
             Function returning universe (defined in
@@ -687,6 +695,9 @@ class Cell(IDManagerMixin):
                 c.temperature = [float(t_i) for t_i in t.split()]
             else:
                 c.temperature = float(t)
+        v = get_text(elem, 'volume')
+        if v is not None:
+            c.volume = float(v)
         for key in ('temperature', 'rotation', 'translation'):
             value = get_text(elem, key)
             if value is not None:

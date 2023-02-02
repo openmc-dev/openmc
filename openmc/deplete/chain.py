@@ -687,30 +687,30 @@ class Chain:
         return matrix_dok.tocsr()
 
     def form_rr_term(self, msr, index):
-        """Function to form the removal_rates matrix to be subtracted to
-        the depletion matrix to be used for different depletable materials
-        coupling whereas removed nuclides need to be tracked.
+        """Function to form the removal rate term matrices.
 
         Parameters
         ----------
         msr : openmc.msr.MsrContinuous
-            Istance of openmc.msr.MsrContinuous.
+            Instance of openmc.msr.MsrContinuous
         index : list of str or set of pairs
-            Case 1: list of str
-                    List of depletable material id as str. In this case
-                    the removal rate terms will be subtracted to the respective
-                    depletion matrix
-            Case 2: set of pairs
-                    (dest_mat, mat) where dest_mat stands for destination
-                    material or material to where the nuclides are transferred.
-                    In this case the removal rates terms gets placed in the
-                    coupled matrix with indexing position corresponding to the
-                    set of pairs of materials.
-            materials id and removal rates
+            Two cases are possible:
+
+            1) Nuclide removal rate withouth tracking.
+            List of depletable material id as strings. In this case
+            the removal rate terms will be subtracted to the respective
+            depletion matrix and no transfer terms get formed.
+
+            2) Nuclide removal from one material and feed into another.
+            Set of pairs: ``(dest_mat, mat)``, where ``dest_mat`` and ``mat``
+            are the nuclide receiving and loosing materials, respectively.
+            The removal rate terms get placed in the final matrix with indexing
+            position corresponding to the id of the materials set.
 
         Returns
         -------
         scipy.sparse.csr_matrix
+            Sparse matrix representing removal term.
 
         """
         matrix = defaultdict(float)

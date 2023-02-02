@@ -15,18 +15,18 @@ from openmc.data import atomic_mass, AVOGADRO, ELEMENT_SYMBOL
 import openmc.lib
 
 class MsrContinuous:
-    """Class defining Molten salt reactor (msr) elements (e.g. fission products)
-    continuous removal and transfer, based on removal rates and cycle time
-    theory, heavily inspired by:
-    https://www.sciencedirect.com/science/article/pii/S0306454920302024?via%3Dihu
+    """Class defining removal rates for continuous nuclides removal or feed.
 
-    An instance of this class can be passed directly to an instance of the
-    integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
+    Molten Salt Reactor (MSR) benefits from continuously reprocessing the fuel
+    salt to remove fission products or to feed fresh fuel into the system. This
+    reactor category inspired the development of this class.
+    An instance of this class can be passed directly to an instance of one of the
+    integrator classes, such as :class:`openmc.deplete.CECMIntegrator`.
 
     Parameters
     ----------
     operator : openmc.Operator
-        OpenMC operator object
+        Operator to perform transport simulations
     model : openmc.Model
         OpenMC Model object
 
@@ -57,10 +57,12 @@ class MsrContinuous:
         Parameters
         ----------
         val : Openmc.Material or str or int representing material name/id
+
         Returns
-        ----------
+        -------
         id : str
             Material id
+
         """
         if isinstance(val, Material):
             check_value('Material depletable', str(val.id), self.burn_mats)
@@ -93,6 +95,7 @@ class MsrContinuous:
         -------
         removal_rate : float
             Removal rate value
+
         """
         mat = self._get_mat_id(mat)
         check_value('Element', element, ELEMENT_SYMBOL.values())
@@ -107,12 +110,13 @@ class MsrContinuous:
         mat : Openmc.Material or str or int
             Depletable material
         element : str
-            Element that get transferred to another material.
+            Element that gets transferred to another material.
 
-        Returns:
-        ----------
+        Returns
+        -------
         destination_mat : str
-            Depletable material id to where the element get transferred
+            Depletable material id to where the element gets transferred
+
         """
         mat = self._get_mat_id(mat)
         check_value('Element', element, ELEMENT_SYMBOL.values())
@@ -127,10 +131,11 @@ class MsrContinuous:
         mat : Openmc.Material or str or int
             Depletable material
 
-        Returns:
-        ----------
+        Returns
+        -------
         elements : list
-            List of elements where a removal rates exist
+            List of elements where removal rates exist
+
         """
         mat = self._get_mat_id(mat)
         if mat in self.removal_rates.keys():
@@ -148,12 +153,12 @@ class MsrContinuous:
             List of strings of elements that share removal rate
         removal_rate : float
             Removal rate value in [1/sec]
-        dest_mat : Openmc,Material or str or int, Optional
-            Destination (transfer) material if transfer or elements tracking
-            is enabled.
+        dest_mat : Openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed.
         units: str, optional
             Removal rates units
             Default : '1/s'
+
         """
         mat = self._get_mat_id(mat)
         check_type('removal_rate', removal_rate, Real)

@@ -548,7 +548,7 @@ class Integrator(ABC):
 
         .. versionadded:: 0.12
     msr_continuous : openmc.deplete.msr.MsrContinuous
-        Instance to MsrContinuous class to perform msr continuous removal based
+        Instance of MsrContinuous class to perform msr continuous removal based
         on removal rates definitions.
 
     Attributes
@@ -577,9 +577,9 @@ class Integrator(ABC):
             * ``n1`` is a :class:`numpy.ndarray` of compositions at the
               next time step. Expected to be of the same shape as ``n0``
 
-        .. versionadded:: 0.12
+        .. versionadded:: 0.13.3
     msr_continuous : openmc.deplete.msr.MsrContinuous
-        Instance to MsrContinuous class to perform msr continuous removal based
+        Instance of MsrContinuous class to perform msr continuous removal based
         on removal rates definitions.
 
     """

@@ -1762,5 +1762,5 @@ class Settings:
         """
         tree = ET.parse(path)
         root = tree.getroot()
-        meshes = read_meshes(tree)
+        meshes = read_meshes(root)
         return cls.from_xml_element(root, meshes)

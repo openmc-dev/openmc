@@ -1940,12 +1940,22 @@ class UnstructuredMesh(MeshBase):
         return cls(filename, library, mesh_id, '', length_multiplier)
 
 
-def read_meshes(tree):
-    """Reads all mesh nodes under an XML tree
+def read_meshes(elem):
+    """Reads all mesh nodes under a a given XML node
+
+    Parameters
+    ----------
+    elem : xml.etree.ElementTree.Element
+        XML element
+
+    Returns
+    -------
+    OrderedDict
+        An ordered dictionary with mesh IDs as keys and openmc.MeshBase
+        instanaces as values
     """
     out = OrderedDict()
-    root = tree.getroot()
-    for mesh_elem in root.iter('mesh'):
+    for mesh_elem in elem.findall('mesh'):
         mesh = MeshBase.from_xml_element(mesh_elem)
         out[mesh.id] = mesh
 

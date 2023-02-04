@@ -106,10 +106,8 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
         cell_counts = np.zeros((n_cells, n_measurements))
 
         # This model contains 1000 geometry cells. Each cell is a hex
-        # corresponding to 12 of the tets. This test runs 10000 particles. This
+        # corresponding to 12 of the tets. This test runs 1000 samples. This
         #  results in the following average for each cell
-        average_in_hex = n_samples / n_cells
-
         openmc.lib.init([])
 
         # perform many sets of samples and track counts for each cell
@@ -175,3 +173,31 @@ def test_strengths_size_failure(request, model):
     with pytest.raises(RuntimeError, match=r'strengths array'), cdtemp([mesh_filename]):
         model.export_to_xml()
         openmc.run()
+
+def test_roundtrip(run_in_tmpdir, model, request):
+    if not openmc.lib._libmesh_enabled() and not openmc.lib._dagmc_enabled():
+        pytest.skip("Unstructured mesh is not enabled in this build.")
+
+    mesh_filename = Path(request.fspath).parent / 'test_mesh_tets.e'
+    ucd_mesh = openmc.UnstructuredMesh(mesh_filename, library='libmesh')
+
+    if not openmc.lib._libmesh_enabled():
+        ucd_mesh.library = 'moab'
+
+    n_cells = len(model.geometry.get_all_cells())
+
+    space_out = openmc.MeshSpatial(ucd_mesh)
+    space_out.strengths = np.random.rand(n_cells*TETS_PER_VOXEL)
+    model.settings.source = openmc.Source(space=space_out)
+
+    # write out the model
+    model.export_to_xml()
+
+    model_in = openmc.Model.from_xml()
+
+    space_in = model_in.settings.source[0].space
+
+    np.testing.assert_equal(space_out.strengths, space_in.strengths)
+
+    assert space_in.mesh.id == space_out.mesh.id
+    assert space_in.volume_normalized == space_out.volume_normalized

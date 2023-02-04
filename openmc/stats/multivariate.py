@@ -262,7 +262,7 @@ class Spatial(ABC):
 
     @classmethod
     @abstractmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem, meshes=None):
         distribution = get_text(elem, 'type')
         if distribution == 'cartesian':
             return CartesianIndependent.from_xml_element(elem)
@@ -275,7 +275,7 @@ class Spatial(ABC):
         elif distribution == 'point':
             return Point.from_xml_element(elem)
         elif distribution == 'mesh':
-            return MeshSpatial.from_xml_element(elem)
+            return MeshSpatial.from_xml_element(elem, meshes)
 
 
 class CartesianIndependent(Spatial):
@@ -714,13 +714,16 @@ class MeshSpatial(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem, meshes):
         """Generate spatial distribution from an XML element
 
         Parameters
         ----------
         elem : xml.etree.ElementTree.Element
             XML element
+        meshes : dict
+            A dictionary with mesh IDs as keys and openmc.MeshBase instances as
+            values
 
         Returns
         -------
@@ -732,16 +735,16 @@ class MeshSpatial(Spatial):
         mesh_id = int(elem.get('mesh_id'))
 
         # check if this mesh has been read in from another location already
-        if mesh_id not in MESHES:
+        if mesh_id not in meshes:
             raise RuntimeError(f'Could not locate mesh with ID "{mesh_id}"')
 
         volume_normalized = elem.get("volume_normalized")
         volume_normalized = get_text(elem, 'volume_normalized').lower() == 'true'
-        if elem.get('strengths') is not None:
+        strengths = get_text(elem, 'strengths')
+        if strengths is not None:
             strengths = [float(b) for b in get_text(elem, 'strengths').split()]
-        else:
-            strengths = None
-        return cls(MESHES[mesh_id], strengths, volume_normalized)
+
+        return cls(meshes[mesh_id], strengths, volume_normalized)
 
 
 class Box(Spatial):

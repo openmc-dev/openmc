@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from collections import OrderedDict
 from math import pi
 from numbers import Real, Integral
 from pathlib import Path
@@ -1937,3 +1938,15 @@ class UnstructuredMesh(MeshBase):
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
         return cls(filename, library, mesh_id, '', length_multiplier)
+
+
+def read_meshes(tree):
+    """Reads all mesh nodes under an XML tree
+    """
+    out = OrderedDict()
+    root = tree.getroot()
+    for mesh_elem in root.iter('mesh'):
+        mesh = MeshBase.from_xml_element(mesh_elem)
+        out[mesh.id] = mesh
+
+    return out

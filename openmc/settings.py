@@ -16,7 +16,7 @@ from openmc.stats.multivariate import MeshSpatial
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
-from .mesh import MeshBase
+from .mesh import MeshBase, read_meshes
 
 
 class RunMode(Enum):
@@ -1328,19 +1328,7 @@ class Settings:
 
     def _source_from_xml_element(self, root, meshes=None):
         for elem in root.findall('source'):
-            src = Source.from_xml_element(elem)
-            if isinstance(src.space, MeshSpatial):
-                mesh_id = int(get_text(elem, 'mesh'))
-                if mesh_id not in meshes:
-                    path = f"./mesh[@id='{mesh_id}']"
-                    mesh_elem = root.find(path)
-                    if mesh_elem is not None:
-                        mesh = MeshBase.from_xml_element(mesh_elem)
-                    meshes[mesh.id] = mesh
-                try:
-                    src.space.mesh = meshes[mesh_id]
-                except KeyError as e:
-                    raise e(f'Mesh with ID {mesh_id} was not found.')
+            src = Source.from_xml_element(elem, meshes)
             # add newly constructed source object to the list
             self.source.append(src)
 
@@ -1774,4 +1762,5 @@ class Settings:
         """
         tree = ET.parse(path)
         root = tree.getroot()
-        return cls.from_xml_element(root)
+        meshes = read_meshes(tree)
+        return cls.from_xml_element(root, meshes)

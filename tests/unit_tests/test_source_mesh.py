@@ -1,15 +1,14 @@
 from itertools import product
-
 from pathlib import Path
+from subprocess import call
+
 import pytest
 import numpy as np
-
 import openmc
 import openmc.lib
 
 from tests import cdtemp
 from tests.regression_tests import config
-from subprocess import call
 
 
 TETS_PER_VOXEL = 12

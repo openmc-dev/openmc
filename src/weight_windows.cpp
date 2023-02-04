@@ -350,8 +350,8 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   // mesh_bin += energy_bin * mesh->n_bins();
   // Create individual weight window
   WeightWindow ww;
-  ww.lower_weight = lower_ww_[energy_bin, mesh_bin];
-  ww.upper_weight = upper_ww_[energy_bin, mesh_bin];
+  ww.lower_weight = lower_ww_(energy_bin, mesh_bin);
+  ww.upper_weight = upper_ww_(energy_bin, mesh_bin);
   ww.survival_weight = ww.lower_weight * survival_ratio_;
   ww.max_lb_ratio = max_lb_ratio_;
   ww.max_split = max_split_;
@@ -427,6 +427,7 @@ void WeightWindows::set_weight_windows(
 
   // set new weight window values
   auto shape = bounds_size();
+  std::cout << "SHAPE:" << shape[0] << " " << shape[1] << std::endl;
   xt::view(lower_ww_, xt::all()) = xt::adapt(lower_bounds.data(), lower_ww_.shape());
   xt::view(upper_ww_, xt::all()) = xt::adapt(upper_bounds.data(), upper_ww_.shape());
 }
@@ -450,22 +451,28 @@ void WeightWindows::update_weight_windows_magic(
   const Tally* tally, const std::string& value, double threshold, double ratio)
 {
 
+  ///////////////////////////
+  // Setup and checks
+  ///////////////////////////
+
+  // empty out previous results for weight window bounds
   lower_ww_ = xt::empty<double>(bounds_size());
   upper_ww_ = xt::empty<double>(bounds_size());
 
-  // set of allowed filters
+  // define the set of allowed filters for the tally
   const std::set<FilterType> allowed_filters = {
     FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
 
+  // retrieve a mapping of filter type to filter index for the tally
   auto filter_indices = tally->filter_indices();
 
+  // a mesh filter is required for a tally used to update weight windows
   if (!filter_indices.count(FilterType::MESH)) {
     fatal_error(
       "A mesh filter is required for a tally to update weight window bounds");
   }
 
-
-  // make sure that all filters are allowed
+  // make sure that all of the filters present on the tally are allowed
   for (auto filter_pair : filter_indices) {
     if (allowed_filters.find(filter_pair.first) == allowed_filters.end()) {
       fatal_error(fmt::format("Invalid filter type '{}' found on tally "
@@ -489,6 +496,7 @@ void WeightWindows::update_weight_windows_magic(
     if (pair.second > 3) pair.second -= 3;
   }
 
+  // determine which value to use
   const std::set<std::string> allowed_values = {"mean", "rel_err"};
   if (allowed_values.count(value) == 0) {
     fatal_error(fmt::format("Invalid value '{}' specified for weight window "
@@ -505,13 +513,21 @@ void WeightWindows::update_weight_windows_magic(
         tally->id()));
   }
 
-  // build a shape for a view of the tally results, this will always be dimension 3
+  ///////////////////////////
+  // Extract tally data
+  //
+  // At the end of this section, the mean and rel_err array
+  // is a 2D view of tally data (n_mesh_bins, n_e_groups)
+  //
+  ///////////////////////////
+
+  // build a shape for a view of the tally results, this will always be
+  // dimension 5 (3 filter dimensions, 1 score dimension, 1 results dimension)
   std::array<int, 5> shape = {1, 1, 1, tally->n_scores(), static_cast<int>(TallyResult::TALLY_RESULT_SIZE)};
-  // build the transpose information to re-order data by filter type
+  // build the transpose information to re-order data according to filter type
   std::array<int, 5> transpose = {0, 1, 2, 3, 4};
 
-  // determine the index of the correct particle type in the particle filter
-  // (if it exists) and down-select data
+  // determine the dimension and index of the particle data
   int particle_idx = 0;
   if (filter_indices.count(FilterType::PARTICLE)) {
     // get the particle filter
@@ -561,6 +577,15 @@ void WeightWindows::update_weight_windows_magic(
   auto sum_sq = xt::view(transposed_view, particle_idx, xt::all(), xt::all(), score_index, static_cast<int>(TallyResult::SUM_SQ));
   int n = tally->n_realizations_;
 
+  //////////////////////////////////////////////
+  //
+  // Assign new weight windows
+  //
+  // Use references to the existing weight window data
+  // to store and update the values
+  //
+  //////////////////////////////////////////////
+
   // up to this point the data arrays are views into the tally results (no
   // computation has been performed) now we'll switch references to the tally's
   // bounds to avoid allocating additional memory
@@ -571,6 +596,10 @@ void WeightWindows::update_weight_windows_magic(
   rel_err =
     xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
   xt::filter(rel_err, sum <= 0.0).fill(INFTY);
+
+  if (value == "rel_err") {
+    new_bounds = 1 / rel_err;
+  }
 
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
@@ -593,15 +622,14 @@ void WeightWindows::update_weight_windows_magic(
   }
 
   // make sure that values where the mean is zero are set s.t. the weight window
-  // is ignored
+  // value will be ignored
   xt::filter(new_bounds, sum <= 0.0) = -1.0;
 
   // make sure the weight windows are ignored for any locations where the
-  // relative error is higher than the threshold
+  // relative error is higher than the specified relative error threshold
   xt::filter(new_bounds, rel_err > threshold).fill(-1.0);
 
   // update the bounds of this weight window class
-  lower_ww_ = new_bounds;
   upper_ww_ = ratio * lower_ww_;
 }
 

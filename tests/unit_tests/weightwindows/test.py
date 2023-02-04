@@ -15,8 +15,6 @@ from tests import cdtemp
 def wws():
 
     # weight windows
-
-
     ww_files = ('ww_n.txt', 'ww_p.txt')
     cwd = Path(__file__).parent.absolute()
     ww_n_file, ww_p_file = [cwd / Path(f) for f in ww_files]

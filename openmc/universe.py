@@ -994,6 +994,9 @@ class DAGMCUniverse(UniverseBase):
             fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 
+    def get_all_universes(self):
+        return OrderedDict()
+
     @classmethod
     def from_hdf5(cls, group):
         """Create DAGMC universe from HDF5 group

@@ -100,7 +100,7 @@ int openmc_simulation_init()
       std::cout << " Moving particle buffer to device of size: " << simulation::particles.size() * sizeof(Particle) /1.0e6 << " MB. Particle size = " << sizeof(Particle) / 1.0e3 << " KB" << std::endl;
     }
     simulation::device_particles = simulation::particles.data();
-    #pragma omp target enter data map(alloc: simulation::device_particles[:event_buffer_length])
+    #pragma omp target enter data map(to: simulation::device_particles[:event_buffer_length])
   }
 
 

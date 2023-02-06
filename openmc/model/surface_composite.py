@@ -816,9 +816,14 @@ class Polygon(CompositeSurface):
                 # segment, but is not coincident with either of the points
                 # 2: 2 points are coincident, but the line segments are not
                 # collinear which guarantees no intersection
-                # 3: not possible
+                # 3: not possible, except maybe floating point issues?
                 # 4: Both line segments are collinear, simply need to check if
                 # they overlap or not
+                # adapted from algorithm linked below and modified to only
+                # consider intersections on the interior of line segments as
+                # proper intersections: i.e. segments sharing end points do not
+                # count as intersections.
+                # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
 
                 if num_zeros == 0:
                     # If the orientations of p0 and p1 have opposite signs
@@ -839,7 +844,12 @@ class Polygon(CompositeSurface):
                 elif num_zeros == 2:
                     continue
 
-                elif num_zeros == 4:
+                elif num_zeros == 3:
+                    warnings.warn('Unclear if Polygon is self-intersecting')
+                    continue
+
+                else:
+                    # All 4 cross products are zero
                     # Determine number of unique points, x span and y span for
                     # both line segments
                     #unique_pts = np.unique(np.vstack((p0, p1, p2, p3)), axis=0)
@@ -852,9 +862,6 @@ class Polygon(CompositeSurface):
                     if xlap or ylap:
                         raise ValueError('Polygon cannot be self-intersecting')
                     continue
-
-                else:
-                    warnings.warn('Unclear if Polygon is self-intersecting')
 
         return points
 

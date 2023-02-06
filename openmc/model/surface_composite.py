@@ -776,26 +776,87 @@ class Polygon(CompositeSurface):
         if len(points) != len(np.unique(points, axis=0)):
             raise ValueError('Duplicate points were detected in the Polygon input')
 
-        # Check if polygon is self-intersecting by comparing edges pairwise
-        n = len(points)
-        is_self_intersecting = False
-        for i in range(n):
-            p1x, p1y = points[i, :]
-            p2x, p2y = points[(i + 1) % n, :]
-            for j in range(i + 1, n):
-                p3x, p3y = points[j, :]
-                p4x, p4y = points[(j + 1) % n, :]
-
-
         # Order the points counter-clockwise (necessary for offset method)
         # Calculates twice the signed area of the polygon using the "Shoelace
         # Formula" https://en.wikipedia.org/wiki/Shoelace_formula
-        # If signed area is positive the curve is oriented counter-clockwise
+        # If signed area is positive the curve is oriented counter-clockwise.
+        # If the signed area is negative the curve is oriented clockwise.
         xpts, ypts = points.T
-        if np.sum(ypts*(np.roll(xpts, 1) - np.roll(xpts, -1))) > 0:
-            return points
+        if np.sum(ypts*(np.roll(xpts, 1) - np.roll(xpts, -1))) < 0:
+            points = points[::-1, :]
 
-        return points[::-1, :]
+
+        # Check if polygon is self-intersecting by comparing edges pairwise
+        n = len(points)
+        for i in range(n):
+            p0 = points[i, :]
+            p1 = points[(i + 1) % n, :]
+            for j in range(i + 1, n):
+                p2 = points[j, :]
+                p3 = points[(j + 1) % n, :]
+                # Compute orientation of p0 wrt p2->p3 line segment
+                cp0 = np.cross(p3-p0, p2-p0)
+                # Compute orientation of p1 wrt p2->p3 line segment
+                cp1 = np.cross(p3-p1, p2-p1)
+                # Compute orientation of p2 wrt p0->p1 line segment
+                cp2 = np.cross(p1-p2, p0-p2)
+                # Compute orientation of p3 wrt p0->p1 line segment
+                cp3 = np.cross(p1-p3, p0-p3)
+
+                # Group cross products in an array and find out how many are 0
+                cross_products = np.array([[cp0, cp1], [cp2, cp3]])
+                cps_near_zero = np.isclose(cross_products, 0).astype(int)
+                num_zeros = np.sum(cps_near_zero)
+
+                # Topologies of 2 finite line segments categorized by the number
+                # of zero-valued cross products:
+                #
+                # 0: No 3 points lie on the same line
+                # 1: 1 point lies on the same line defined by the other line
+                # segment, but is not coincident with either of the points
+                # 2: 2 points are coincident, but the line segments are not
+                # collinear which guarantees no intersection
+                # 3: not possible
+                # 4: Both line segments are collinear, simply need to check if
+                # they overlap or not
+
+                if num_zeros == 0:
+                    # If the orientations of p0 and p1 have opposite signs
+                    # and the orientations of p2 and p3 have opposite signs
+                    # then there is an intersection.
+                    if all(np.prod(cross_products, axis=-1) < 0):
+                        raise ValueError('Polygon cannot be self-intersecting')
+                    continue
+
+                elif num_zeros == 1:
+                    # determine which line segment has 2 out of the 3 collinear
+                    # points
+                    idx = np.argwhere(np.sum(cps_near_zero, axis=-1) == 0)
+                    if np.prod(cross_products[idx, :]) < 0:
+                        raise ValueError('Polygon cannot be self-intersecting')
+                    continue
+
+                elif num_zeros == 2:
+                    continue
+
+                elif num_zeros == 4:
+                    # Determine number of unique points, x span and y span for
+                    # both line segments
+                    #unique_pts = np.unique(np.vstack((p0, p1, p2, p3)), axis=0)
+                    xmin1, xmax1 = min(p0[0], p1[0]), max(p0[0], p1[0])
+                    ymin1, ymax1 = min(p0[1], p1[1]), max(p0[1], p1[1])
+                    xmin2, xmax2 = min(p2[0], p3[0]), max(p2[0], p3[0])
+                    ymin2, ymax2 = min(p2[1], p3[1]), max(p2[1], p3[1])
+                    xlap = xmin1 < xmax2 and xmin2 < xmax1
+                    ylap = ymin1 < ymax2 and ymin2 < ymax1
+                    if xlap or ylap:
+                        raise ValueError('Polygon cannot be self-intersecting')
+                    continue
+
+                else:
+                    warnings.warn('Unclear if Polygon is self-intersecting')
+
+        return points
 
     def _constrain_triangulation(self, points, depth=0):
         """Generate a constrained triangulation by ensuring all edges of the

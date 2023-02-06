@@ -111,11 +111,16 @@ class UniverseBase(ABC, IDManagerMixin):
 
         """
 
-    def _deepcopy_universe_for_clone(self):
-        """Deepcopy an openmc.UniverseBase object. This is a paceholder for any future classes inherited from this one.
-        This should only to be used within the openmc.UniverseBase.clone() context.
+    @abstractmethod
+    def _partial_deepcopy(self):
+        """Deepcopy all parameters of an openmc.UniverseBase object except its cells.
+        This should only be used from the openmc.UniverseBase.clone() context.
+
+        Returns
+        -------
+        None
+
         """
-        return deepcopy(self)
 
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
         """Create a copy of this universe with a new unique ID, and clones
@@ -144,7 +149,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         # If no memoize'd clone exists, instantiate one
         if self not in memo:
-            clone = self._deepcopy_universe_for_clone()
+            clone = self._partial_deepcopy()
 
             # Clone all cells for the universe clone
             clone._cells = OrderedDict()
@@ -616,9 +621,10 @@ class Universe(UniverseBase):
             if not instances_only:
                 cell._paths.append(cell_path)
 
-    def _deepcopy_universe_for_clone(self):
-        """Clone all of the openmc.Universe object's attributes except for its cells, as they will be handled within the clone function.
-        This should only to be used within the openmc.UniverseBase.clone() context and is more performant than a deepcopy.
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.Universe object's attributes except for its cells,
+        as they are copied within the clone function. This should only to be
+        used within the openmc.UniverseBase.clone() context.
         """
         clone = openmc.Universe(name=self.name)
         clone.volume = self.volume
@@ -961,9 +967,10 @@ class DAGMCUniverse(UniverseBase):
 
         return out
 
-    def _deepcopy_universe_for_clone(self):
-        """Clone all of the openmc.DAGMCUniverse object's attributes except for its cells, as they will be handled within the clone function.
-        This should only to be used within the openmc.UniverseBase.clone() context and is more performant than a deepcopy.
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.DAGMCUniverse object's attributes except for
+        its cells, as they are copied within the clone function. This should
+        only to be used within the openmc.UniverseBase.clone() context.
         """
         clone = openmc.DAGMCUniverse(name=self.name, filename=self.filename)
         clone.volume = self.volume

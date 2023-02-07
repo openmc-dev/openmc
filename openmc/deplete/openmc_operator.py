@@ -224,7 +224,7 @@ class OpenMCOperator(TransportOperator):
                 burnable_mats.add(str(mat.id))
                 if mat.volume is None:
                     msh = ("Volume not specified for depletable material with "
-                           f"ID={mat.id}. Name={mat.name}")
+                           f"ID={mat.id} Name={mat.name}.")
                     raise RuntimeError(msh)
                 volume[str(mat.id)] = mat.volume
                 self.heavy_metal += mat.fissionable_mass

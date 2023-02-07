@@ -145,9 +145,9 @@ class Material(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tTemperature', self._temperature)
 
         if self._volume_std is not None:
-            string += '{: <16}=\t{} +/- {} [cm]\n'.format('\tVolume', self.volume, self.volume_std)
+            string += '{: <16}=\t{} +/- {} [cm^3]\n'.format('\tVolume', self.volume, self.volume_std)
         else:
-            string += '{: <16}=\t{} [cm]\n'.format('\tVolume', self.volume)
+            string += '{: <16}=\t{} [cm^3]\n'.format('\tVolume', self.volume)
             
         string += '{: <16}=\t{}'.format('\tDensity', self._density)
         string += f' [{self._density_units}]\n'

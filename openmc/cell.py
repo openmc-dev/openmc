@@ -144,9 +144,9 @@ class Cell(IDManagerMixin):
                                                   self.temperature)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
         if self._volume_std is not None:
-            string += '{: <16}=\t{} +/- {}\n'.format('\tVolume', self.volume, self.volume_std)
+            string += '{: <16}=\t{} +/- {} [cm^3]\n'.format('\tVolume', self.volume, self.volume_std)
         else:
-            string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
+            string += '{: <16}=\t{} [cm^3]\n'.format('\tVolume', self.volume)
 
         return string
 

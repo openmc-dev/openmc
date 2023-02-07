@@ -44,7 +44,7 @@ def test_volume(run_in_tmpdir, uo2):
         assert not nucs ^ {'U235', 'O16'}
 
         # make sure standard deviation is also set from the calculation
-        assert domain.volume_std is not None
+        assert isinstance(domain.volume_std, float)
 
 
 def test_export_xml(run_in_tmpdir, uo2):

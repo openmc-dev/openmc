@@ -39,4 +39,4 @@ Cell
 	Rotation       =	None
 	Temperature    =	[500. 700.   0. 800.]
 	Translation    =	None
-	Volume         =	None
+	Volume         =	None [cm^3]

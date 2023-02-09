@@ -116,10 +116,6 @@ class UniverseBase(ABC, IDManagerMixin):
         """Deepcopy all parameters of an openmc.UniverseBase object except its cells.
         This should only be used from the openmc.UniverseBase.clone() context.
 
-        Returns
-        -------
-        None
-
         """
 
     def clone(self, clone_materials=True, clone_regions=True, memo=None):

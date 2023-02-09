@@ -1352,8 +1352,7 @@ class EnergyFilter(RealFilter):
             Tabular distribution with histogram interpolation
         """
 
-        probabilities = np.array(values)
-        probabilities /= probabilities.sum()
+        probabilities = np.array(values) / sum(values)
 
         probability_per_ev = probabilities / np.diff(self.values)
 

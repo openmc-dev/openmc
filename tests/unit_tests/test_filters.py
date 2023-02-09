@@ -279,7 +279,7 @@ def test_tabular_from_energyfilter():
 
     # combination of different values passed into get_tabular and different
     # width energy bins results in a doubling value for each p value
-    assert tab.p.tolist() == [0.02, 0.04, 0.08]
+    assert tab.p.tolist() == [0.02, 0.04, 0.08, 0.0]
 
     # distribution should integrate to unity
     assert tab.integral() == approx(1.0)

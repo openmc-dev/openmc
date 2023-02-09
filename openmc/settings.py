@@ -936,6 +936,17 @@ class Settings:
         cv.check_greater_than('maximum particle tracks', value, 0, True)
         self._max_tracks = value
 
+    @property
+    def get_sum_of_source_strengths(self):
+        """Gets the total source strength of all sources. Useful when
+        normalizing the tally result from model with sources that comprise of
+        multiple openmc.Source objects"""
+
+        total_strength = 0
+        for source in self.source:
+            total_strength += source.strength
+        return total_strength
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value

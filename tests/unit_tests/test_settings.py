@@ -120,3 +120,13 @@ def test_export_to_xml(run_in_tmpdir):
     assert vol.samples == 1000
     assert vol.lower_left == (-10., -10., -10.)
     assert vol.upper_right == (10., 10., 10.)
+
+
+def test_get_sum_of_source_strengths(run_in_tmpdir):
+    settings = openmc.Settings()
+    source_1 = openmc.Source(space=openmc.stats.Point(), strength=10)
+    source_2 = openmc.Source(space=openmc.stats.Point(), strength=5.5)
+    settings.source = source_1
+    assert settings.get_sum_of_source_strengths == 10
+    settings.source = [source_1, source_2]
+    assert settings.get_sum_of_source_strengths == 15.5

@@ -111,6 +111,13 @@ class UniverseBase(ABC, IDManagerMixin):
 
         """
 
+    @abstractmethod
+    def _partial_deepcopy(self):
+        """Deepcopy all parameters of an openmc.UniverseBase object except its cells.
+        This should only be used from the openmc.UniverseBase.clone() context.
+
+        """
+
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
         """Create a copy of this universe with a new unique ID, and clones
         all cells within this universe.
@@ -138,8 +145,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         # If no memoize'd clone exists, instantiate one
         if self not in memo:
-            clone = deepcopy(self)
-            clone.id = None
+            clone = self._partial_deepcopy()
 
             # Clone all cells for the universe clone
             clone._cells = OrderedDict()
@@ -611,6 +617,15 @@ class Universe(UniverseBase):
             if not instances_only:
                 cell._paths.append(cell_path)
 
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.Universe object's attributes except for its cells,
+        as they are copied within the clone function. This should only to be
+        used within the openmc.UniverseBase.clone() context.
+        """
+        clone = openmc.Universe(name=self.name)
+        clone.volume = self.volume
+        return clone
+
 
 class DAGMCUniverse(UniverseBase):
     """A reference to a DAGMC file to be used in the model.
@@ -947,3 +962,14 @@ class DAGMCUniverse(UniverseBase):
         out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
 
         return out
+
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.DAGMCUniverse object's attributes except for
+        its cells, as they are copied within the clone function. This should
+        only to be used within the openmc.UniverseBase.clone() context.
+        """
+        clone = openmc.DAGMCUniverse(name=self.name, filename=self.filename)
+        clone.volume = self.volume
+        clone.auto_geom_ids = self.auto_geom_ids
+        clone.auto_mat_ids = self.auto_mat_ids
+        return clone

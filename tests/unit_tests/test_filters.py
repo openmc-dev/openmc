@@ -275,11 +275,14 @@ def test_tabular_from_energyfilter():
     efilter = openmc.EnergyFilter([0.0, 10.0, 20.0, 25.0])
     tab = efilter.get_tabular(values=[5, 10, 10])
 
-    assert tab.x.tolist() == [[0.0, 10.0], [10.0, 20.0], [20.0, 25.0]]
+    assert tab.x.tolist() == [0.0, 10.0, 20.0, 25.0]
 
     # combination of different values passed into get_tabular and different
     # width energy bins results in a doubling value for each p value
     assert tab.p.tolist() == [0.02, 0.04, 0.08]
+
+    # distribution should integrate to unity
+    assert tab.integral() == approx(1.0)
 
     # 'histogram' is the default
     assert tab.interpolation == 'histogram'

@@ -1352,12 +1352,15 @@ class EnergyFilter(RealFilter):
             Tabular distribution with histogram interpolation
         """
 
-        probabilities = np.array(values) / sum(values)
+        probabilities = np.array(values, dtype=float)
+        probabilities /= probabilities.sum()
 
+        # Determine probability per eV, adding extra 0 at the end since it is a histogram
         probability_per_ev = probabilities / np.diff(self.values)
+        probability_per_ev = np.append(probability_per_ev, 0.0)
 
         kwargs.setdefault('interpolation', 'histogram')
-        return openmc.stats.Tabular(self.bins, probability_per_ev, **kwargs)
+        return openmc.stats.Tabular(self.values, probability_per_ev, **kwargs)
 
     @property
     def lethargy_bin_width(self):

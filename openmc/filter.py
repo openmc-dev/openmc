@@ -1332,18 +1332,19 @@ class EnergyFilter(RealFilter):
             cv.check_greater_than('filter value', v0, 0., equality=True)
             cv.check_greater_than('filter value', v1, 0., equality=True)
 
-    def get_tabular(self, values, interpolation='histogram'):
-        """Creates a openmc.stats.Tabular distribution using the EnergyFilter
-        bins and the provided values. Intended use is to help convert a
-        spectrum tally into a source energy.
+    def get_tabular(self, values, **kwargs):
+        """Create a tabulated distribution based on tally results with an energy filter
+
+        This method provides an easy way to create a distribution in energy
+        (e.g., a source spectrum) based on tally results that were obtained from
+        using an :class:`~openmc.EnergyFilter`.
 
         Parameters
         ----------
-        values : np.array
-            Array of numeric values, typically a tally.mean from a spectrum tally
-        interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}
-            Indicate whether the density function is constant between tabulated
-            points or linearly-interpolated. Defaults to 'histogram'.         
+        values : iterable of float
+            Array of numeric values, typically from a tally result
+        **kwargs
+            Keyword arguments passed to :class:`openmc.stats.Tabular`
 
         Returns
         -------
@@ -1351,15 +1352,13 @@ class EnergyFilter(RealFilter):
             Tabular distribution with histogram interpolation
         """
 
-        probabilities = values / sum(values)
+        probabilities = np.array(values)
+        probabilities /= probabilities.sum()
 
-        probability_per_ev = probabilities / np.diff(self.bins).flatten()
+        probability_per_ev = probabilities / np.diff(self.values)
 
-        return openmc.stats.Tabular(
-            x=self.bins,
-            p=probability_per_ev,
-            interpolation=interpolation
-        )
+        kwargs.setdefault('interpolation', 'histogram')
+        return openmc.stats.Tabular(self.bins, probability_per_ev, **kwargs)
 
     @property
     def lethargy_bin_width(self):

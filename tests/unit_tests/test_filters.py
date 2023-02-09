@@ -273,7 +273,7 @@ def test_energyfunc():
 
 def test_tabular_from_energyfilter():
     efilter = openmc.EnergyFilter([0.0, 10.0, 20.0, 25.0])
-    tab = efilter.get_tabular(values=np.array([5, 10, 10]))
+    tab = efilter.get_tabular(values=[5, 10, 10])
 
     assert tab.x.tolist() == [[0.0, 10.0], [10.0, 20.0], [20.0, 25.0]]
 

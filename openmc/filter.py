@@ -1340,6 +1340,36 @@ class EnergyFilter(RealFilter):
             cv.check_greater_than('filter value', v0, 0., equality=True)
             cv.check_greater_than('filter value', v1, 0., equality=True)
 
+    def get_tabular(self, values, **kwargs):
+        """Create a tabulated distribution based on tally results with an energy filter
+
+        This method provides an easy way to create a distribution in energy
+        (e.g., a source spectrum) based on tally results that were obtained from
+        using an :class:`~openmc.EnergyFilter`.
+
+        Parameters
+        ----------
+        values : iterable of float
+            Array of numeric values, typically from a tally result
+        **kwargs
+            Keyword arguments passed to :class:`openmc.stats.Tabular`
+
+        Returns
+        -------
+        openmc.stats.Tabular
+            Tabular distribution with histogram interpolation
+        """
+
+        probabilities = np.array(values, dtype=float)
+        probabilities /= probabilities.sum()
+
+        # Determine probability per eV, adding extra 0 at the end since it is a histogram
+        probability_per_ev = probabilities / np.diff(self.values)
+        probability_per_ev = np.append(probability_per_ev, 0.0)
+
+        kwargs.setdefault('interpolation', 'histogram')
+        return openmc.stats.Tabular(self.values, probability_per_ev, **kwargs)
+
     @property
     def lethargy_bin_width(self):
         """Calculates the base 10 log width of energy bins which is useful when

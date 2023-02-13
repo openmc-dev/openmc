@@ -16,7 +16,7 @@ from openmc.stats.multivariate import MeshSpatial
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
-from .mesh import MeshBase, read_meshes
+from .mesh import _read_meshes
 
 
 class RunMode(Enum):
@@ -1762,5 +1762,5 @@ class Settings:
         """
         tree = ET.parse(path)
         root = tree.getroot()
-        meshes = read_meshes(root)
+        meshes = _read_meshes(root)
         return cls.from_xml_element(root, meshes)

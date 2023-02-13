@@ -1940,7 +1940,7 @@ class UnstructuredMesh(MeshBase):
         return cls(filename, library, mesh_id, '', length_multiplier)
 
 
-def read_meshes(elem):
+def _read_meshes(elem):
     """Generate dictionary of meshes from a given XML node
 
     Parameters
@@ -1950,11 +1950,11 @@ def read_meshes(elem):
 
     Returns
     -------
-    OrderedDict
-        An ordered dictionary with mesh IDs as keys and openmc.MeshBase
+    dict
+        A dictionary with mesh IDs as keys and openmc.MeshBase
         instanaces as values
     """
-    out = OrderedDict()
+    out = dict()
     for mesh_elem in elem.findall('mesh'):
         mesh = MeshBase.from_xml_element(mesh_elem)
         out[mesh.id] = mesh

@@ -762,7 +762,7 @@ class ParticleFilter(Filter):
 
 
 class MeshFilter(Filter):
-    """Bins tally event locations onto a regular, rectangular mesh.
+    """Bins tally event locations by mesh elements.
 
     Parameters
     ----------
@@ -959,7 +959,7 @@ class MeshFilter(Filter):
 
 
 class MeshSurfaceFilter(MeshFilter):
-    """Filter events by surface crossings on a regular, rectangular mesh.
+    """Filter events by surface crossings on a mesh.
 
     Parameters
     ----------

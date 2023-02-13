@@ -427,7 +427,6 @@ void WeightWindows::set_weight_windows(
 
   // set new weight window values
   auto shape = bounds_size();
-  std::cout << "SHAPE:" << shape[0] << " " << shape[1] << std::endl;
   xt::view(lower_ww_, xt::all()) = xt::adapt(lower_bounds.data(), lower_ww_.shape());
   xt::view(upper_ww_, xt::all()) = xt::adapt(upper_bounds.data(), upper_ww_.shape());
 }
@@ -597,9 +596,8 @@ void WeightWindows::update_weight_windows_magic(
     xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
   xt::filter(rel_err, sum <= 0.0).fill(INFTY);
 
-  if (value == "rel_err") {
+  if (value == "rel_err")
     new_bounds = 1 / rel_err;
-  }
 
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();

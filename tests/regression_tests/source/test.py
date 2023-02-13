@@ -39,15 +39,15 @@ class SourceTestHarness(PyAPITestHarness):
         spatial2 = openmc.stats.Box([-4., -4., -4.], [4., 4., 4.])
         spatial3 = openmc.stats.Point([1.2, -2.3, 0.781])
         spatial4 = openmc.stats.SphericalIndependent(r_dist, cos_theta_dist,
-                                                     phi_dist, 
+                                                     phi_dist,
                                                      origin=(1., 1., 0.))
-        spatial5 = openmc.stats.CylindricalIndependent(r_dist, phi_dist, 
+        spatial5 = openmc.stats.CylindricalIndependent(r_dist, phi_dist,
                                                        z_dist,
                                                        origin=(1., 1., 0.))
         spatial6 = openmc.stats.SphericalIndependent(r_dist2, cos_theta_dist,
-                                                     phi_dist, 
+                                                     phi_dist,
                                                      origin=(1., 1., 0.))
-        spatial7 = openmc.stats.CylindricalIndependent(r_dist1, phi_dist, 
+        spatial7 = openmc.stats.CylindricalIndependent(r_dist1, phi_dist,
                                                        z_dist,
                                                        origin=(1., 1., 0.))
 
@@ -57,7 +57,10 @@ class SourceTestHarness(PyAPITestHarness):
         angle2 = openmc.stats.Monodirectional(reference_uvw=[0., 1., 0.])
         angle3 = openmc.stats.Isotropic()
 
-        E = np.logspace(0, 7)
+        # Note that the definition for E is equivalent to logspace(0, 7) but we
+        # manually take powers because of last-digit differences that may cause
+        # test failures with different versions of numpy
+        E = np.array([10**x for x in np.linspace(0, 7)])
         p = np.sin(np.linspace(0., pi))
         p /= sum(np.diff(E)*p[:-1])
         energy1 = openmc.stats.Maxwell(1.2895e6)

@@ -1941,7 +1941,7 @@ class UnstructuredMesh(MeshBase):
 
 
 def read_meshes(elem):
-    """Reads all mesh nodes under a a given XML node
+    """Generate dictionary of meshes from a given XML node
 
     Parameters
     ----------

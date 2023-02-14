@@ -124,10 +124,11 @@ class Model:
     @lru_cache(maxsize=None)
     def _materials_by_id(self):
         """Dictionary mapping material ID --> material"""
-        if self.materials is None:
-            mats = self.geometry.get_all_materials().values()
-        else:
+        if self.materials:
             mats = self.materials
+        else:
+            mats = self.geometry.get_all_materials().values()
+
         return {mat.id: mat for mat in mats}
 
     @property
@@ -236,7 +237,8 @@ class Model:
         materials = openmc.Materials.from_xml(materials)
         geometry = openmc.Geometry.from_xml(geometry, materials)
         settings = openmc.Settings.from_xml(settings)
-        tallies = openmc.Tallies.from_xml(tallies) if Path(tallies).exists() else None
+        tallies = openmc.Tallies.from_xml(
+            tallies) if Path(tallies).exists() else None
         plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
         return cls(geometry, materials, settings, tallies, plots)
 
@@ -257,12 +259,16 @@ class Model:
         model = cls()
 
         meshes = {}
-        model.settings = openmc.Settings.from_xml_element(root.find('settings'), meshes)
-        model.materials = openmc.Materials.from_xml_element(root.find('materials'))
-        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
+        model.settings = openmc.Settings.from_xml_element(
+            root.find('settings'), meshes)
+        model.materials = openmc.Materials.from_xml_element(
+            root.find('materials'))
+        model.geometry = openmc.Geometry.from_xml_element(
+            root.find('geometry'), model.materials)
 
         if root.find('tallies'):
-            model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
+            model.tallies = openmc.Tallies.from_xml_element(
+                root.find('tallies'), meshes)
 
         if root.find('plots'):
             model.plots = openmc.Plots.from_xml_element(root.find('plots'))
@@ -530,11 +536,13 @@ class Model:
 
             if self.tallies:
                 tallies_element = self.tallies.to_xml_element(mesh_memo)
-                xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
+                xml.clean_indentation(
+                    tallies_element, level=1, trailing_indent=self.plots)
                 ET.ElementTree(tallies_element).write(fh, encoding='unicode')
             if self.plots:
                 plots_element = self.plots.to_xml_element()
-                xml.clean_indentation(plots_element, level=1, trailing_indent=False)
+                xml.clean_indentation(
+                    plots_element, level=1, trailing_indent=False)
                 ET.ElementTree(plots_element).write(fh, encoding='unicode')
             fh.write("</model>\n")
 
@@ -765,7 +773,8 @@ class Model:
             # Now we apply the volumes
             if apply_volumes:
                 # Load the results and add them to the model
-                for i, vol_calc in enumerate(self.settings.volume_calculations):
+                for i, vol_calc in enumerate(
+                        self.settings.volume_calculations):
                     vol_calc.load_results(f"volume_{i + 1}.h5")
                     # First add them to the Python side
                     self.geometry.add_volume_information(vol_calc)
@@ -933,7 +942,11 @@ class Model:
         self._change_py_lib_attribs(names_or_ids, vector, 'cell',
                                     'translation')
 
-    def update_densities(self, names_or_ids, density, density_units='atom/b-cm'):
+    def update_densities(
+            self,
+            names_or_ids,
+            density,
+            density_units='atom/b-cm'):
         """Update the density of a given set of materials to a new value
 
         .. note:: If applying this change to a name that is not unique, then

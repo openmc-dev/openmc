@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
+from uncertainties import UFloat
 import openmc
 import pytest
 
@@ -44,7 +45,7 @@ def test_volume(run_in_tmpdir, uo2):
         assert not nucs ^ {'U235', 'O16'}
 
         # make sure standard deviation is also set from the calculation
-        assert isinstance(domain.volume_std, float)
+        assert isinstance(domain.volume, UFloat)
 
 
 def test_export_xml(run_in_tmpdir, uo2):

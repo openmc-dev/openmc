@@ -9,6 +9,7 @@ from xml.etree import ElementTree as ET
 
 import h5py
 import numpy as np
+from uncertainties import UFloat, ufloat
 
 import openmc
 import openmc.checkvalue as cv
@@ -59,10 +60,6 @@ class UniverseBase(ABC, IDManagerMixin):
     def volume(self):
         return self._volume
 
-    @property
-    def volume_std(self):
-        return self._volume_std
-
     @name.setter
     def name(self, name):
         if name is not None:
@@ -74,7 +71,7 @@ class UniverseBase(ABC, IDManagerMixin):
     @volume.setter
     def volume(self, volume):
         if volume is not None:
-            cv.check_type('universe volume', volume, Real)
+            cv.check_type('universe volume', volume, (Real, UFloat))
         self._volume = volume
 
     def add_volume_information(self, volume_calc):
@@ -88,8 +85,8 @@ class UniverseBase(ABC, IDManagerMixin):
         """
         if volume_calc.domain_type == 'universe':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id].n
-                self._volume_std = volume_calc.volumes[self.id].s
+                self._volume = ufloat(volume_calc.volumes[self.id].n,
+                                      volume_calc.volumes[self.id].s)
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this universe.')
@@ -180,13 +177,10 @@ class Universe(UniverseBase):
     cells : collections.OrderedDict
         Dictionary whose keys are cell IDs and values are :class:`Cell`
         instances
-    volume : float
+    volume : float or uncertainties.ufloat
         Volume of the universe in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Universe.add_volume_information` method.
-    volume_std : float
-        Standard deviation in cm^3 of the stochastic volume calculation, added
-        via :meth:`Universe.add_volume_information` method.
     bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.

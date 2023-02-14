@@ -11,6 +11,7 @@ from xml.etree import ElementTree as ET
 
 import h5py
 import numpy as np
+from uncertainties import UFloat, ufloat
 
 import openmc
 import openmc.data
@@ -77,13 +78,10 @@ class Material(IDManagerMixin):
         The average molar mass of nuclides in the material in units of grams per
         mol.  For example, UO2 with 3 nuclides will have an average molar mass
         of 270 / 3 = 90 g / mol.
-    volume : float
+    volume : float or uncertainties.ufloat
         Volume of the material in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Material.add_volume_information` method.
-    volume_std : float
-        Standard deviation in cm^3 of the stochastic volume calculation, added
-        via :meth:`Material.add_volume_information` method.
     paths : list of str
         The paths traversed through the CSG tree to reach each material
         instance. This property is initialized by calling the
@@ -123,7 +121,6 @@ class Material(IDManagerMixin):
         self._paths = None
         self._num_instances = None
         self._volume = None
-        self._volume_std = None
         self._atoms = {}
         self._isotropic = []
         self._ncrystal_cfg = None
@@ -144,11 +141,8 @@ class Material(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tName', self._name)
         string += '{: <16}=\t{}\n'.format('\tTemperature', self._temperature)
 
-        if self._volume_std is not None:
-            string += '{: <16}=\t{} +/- {} [cm^3]\n'.format('\tVolume', self.volume, self.volume_std)
-        else:
-            string += '{: <16}=\t{} [cm^3]\n'.format('\tVolume', self.volume)
-            
+        string += '{: <16}=\t{} [cm^3]\n'.format('\tVolume', self.volume)
+
         string += '{: <16}=\t{}'.format('\tDensity', self._density)
         string += f' [{self._density_units}]\n'
 
@@ -237,11 +231,6 @@ class Material(IDManagerMixin):
         return self._volume
 
     @property
-    def volume_std(self):
-        return self._volume_std
-
-
-    @property
     def ncrystal_cfg(self):
         return self._ncrystal_cfg
 
@@ -269,7 +258,7 @@ class Material(IDManagerMixin):
     @volume.setter
     def volume(self, volume: Real):
         if volume is not None:
-            cv.check_type('material volume', volume, Real)
+            cv.check_type('material volume', volume, (Real, UFloat))
         self._volume = volume
 
     @isotropic.setter
@@ -428,8 +417,8 @@ class Material(IDManagerMixin):
         """
         if volume_calc.domain_type == 'material':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id].n
-                self._volume_std = volume_calc.volumes[self.id].s
+                self._volume = ufloat(volume_calc.volumes[self.id].n,
+                                      volume_calc.volumes[self.id].s)
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for material ID={}.'

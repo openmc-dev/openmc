@@ -11,15 +11,16 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/mesh.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/physics_common.h"
 #include "openmc/search.h"
-#include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/xml_interface.h"
 
@@ -802,9 +803,9 @@ extern "C" int openmc_weight_windows_get_bounds(int32_t index,
     return err;
 
   const auto& wws = variance_reduction::weight_windows[index];
-  *size = wws->lower_bounds().size();
-  *lower_bounds = wws->lower_bounds().data();
-  *upper_bounds = wws->upper_bounds().data();
+  *size = wws->lower_ww_bounds().size();
+  *lower_bounds = wws->lower_ww_bounds().data();
+  *upper_bounds = wws->upper_ww_bounds().data();
   return 0;
 }
 
@@ -864,8 +865,12 @@ extern "C" int openmc_weight_windows_export(const char* filename)
 
   hid_t weight_windows_group = create_group(ww_file, "weight_windows");
 
-  for (const auto& ww : variance_reduction::weight_windows)
+  hid_t mesh_group = create_group(ww_file, "meshes");
+
+  for (const auto& ww : variance_reduction::weight_windows) {
     ww->to_hdf5(weight_windows_group);
+    ww->mesh()->to_hdf5(mesh_group);
+  }
 
   close_group(weight_windows_group);
 

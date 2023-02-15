@@ -11,6 +11,7 @@ from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+from openmc.checkvalue import PathLike
 import openmc.lib
 import openmc
 
@@ -568,6 +569,8 @@ def statepoint_write(filename=None, write_source=True):
 
 def update_weight_windows(tally_idx, ww_idx, score="flux", value='mean', method='magic'):
     """Update weight windows using tally information
+
+    .. versionadded:: 0.13.3
 
     Parameters
     ----------

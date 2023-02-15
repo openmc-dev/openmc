@@ -131,7 +131,7 @@ public:
   template<class T>
   void check_bounds(const T& lower) const;
 
-  void set_weight_windows(const xt::xtensor<double, 2>& lower_bounds,
+  void set_weight_windows(const xt::xtensor<double, 2>& lower_ww_bounds,
     const xt::xtensor<double, 2>& upper_bounds);
 
   void set_weight_windows(const xt::xtensor<double, 2>& lower_bounds, double ratio);
@@ -151,11 +151,11 @@ public:
 
   const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
 
-  const xt::xtensor<double, 2>& lower_bounds() const { return lower_ww_; }
-  xt::xtensor<double, 2>& lower_bounds() { return lower_ww_; }
+  const xt::xtensor<double, 2>& lower_ww_bounds() const { return lower_ww_; }
+  xt::xtensor<double, 2>& lower_ww_bounds() { return lower_ww_; }
 
-  const xt::xtensor<double, 2>& upper_bounds() const { return upper_ww_; }
-  xt::xtensor<double, 2>& upper_bounds() { return upper_ww_; }
+  const xt::xtensor<double, 2>& upper_ww_bounds() const { return upper_ww_; }
+  xt::xtensor<double, 2>& upper_ww_bounds() { return upper_ww_; }
 
   ParticleType particle_type() const { return particle_type_; }
 

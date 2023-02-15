@@ -73,6 +73,8 @@ _dll.openmc_weight_windows_get_bounds.errcheck = _error_handler
 class WeightWindows(_FortranObjectWithID):
     """WeightWindows stored internally.
 
+    .. versionadded:: 0.13.3
+
     Parameters
     ----------
     id : int or None

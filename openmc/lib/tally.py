@@ -275,6 +275,8 @@ class Tally(_FortranObjectWithID):
             if isinstance(f, filter_type):
                 return f
 
+        raise RuntimeError(f'No filter of type {filter_type} on  tally {self.id}')
+
     @property
     def mean(self):
         n = self.num_realizations

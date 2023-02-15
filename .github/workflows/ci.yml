@@ -82,6 +82,7 @@ jobs:
       EVENT: ${{ matrix.event }}
       VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}
+      NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
 
     steps:
       - uses: actions/checkout@v3

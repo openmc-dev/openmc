@@ -454,32 +454,13 @@ void WeightWindows::update_weight_windows_magic(
   ///////////////////////////
   // Setup and checks
   ///////////////////////////
+  check_tally_update_compatibility(tally);
+
+  auto filter_indices = tally->filter_indices();
 
   // empty out previous results for weight window bounds
   lower_ww_ = xt::empty<double>(bounds_size());
   upper_ww_ = xt::empty<double>(bounds_size());
-
-  // define the set of allowed filters for the tally
-  const std::set<FilterType> allowed_filters = {
-    FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
-
-  // retrieve a mapping of filter type to filter index for the tally
-  auto filter_indices = tally->filter_indices();
-
-  // a mesh filter is required for a tally used to update weight windows
-  if (!filter_indices.count(FilterType::MESH)) {
-    fatal_error(
-      "A mesh filter is required for a tally to update weight window bounds");
-  }
-
-  // make sure that all of the filters present on the tally are allowed
-  for (auto filter_pair : filter_indices) {
-    if (allowed_filters.find(filter_pair.first) == allowed_filters.end()) {
-      fatal_error(fmt::format("Invalid filter type '{}' found on tally "
-                              "used for weight window generation.",
-        model::tally_filters[filter_pair.second]->type_str()));
-    }
-  }
 
   // adjust filter indices for dummy axes we may introduce when reshaping tally data
   if (!filter_indices.count(FilterType::PARTICLE)) {
@@ -630,6 +611,65 @@ void WeightWindows::update_weight_windows_magic(
 
   // update the bounds of this weight window class
   upper_ww_ = ratio * lower_ww_;
+}
+
+void WeightWindows::check_tally_update_compatibility(const Tally* tally)
+{
+  // define the set of allowed filters for the tally
+  const std::set<FilterType> allowed_filters = {
+    FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
+
+  // retrieve a mapping of filter type to filter index for the tally
+  auto filter_indices = tally->filter_indices();
+
+  // a mesh filter is required for a tally used to update weight windows
+  if (!filter_indices.count(FilterType::MESH)) {
+    fatal_error(
+      "A mesh filter is required for a tally to update weight window bounds");
+  }
+
+  // ensure the mesh filter is using the same mesh as this weight window object
+  auto mesh_filter = tally->get_filter<MeshFilter>();
+
+  // make sure that all of the filters present on the tally are allowed
+  for (auto filter_pair : filter_indices) {
+    if (allowed_filters.find(filter_pair.first) == allowed_filters.end()) {
+      fatal_error(fmt::format("Invalid filter type '{}' found on tally "
+                              "used for weight window generation.",
+        model::tally_filters[filter_pair.second]->type_str()));
+    }
+  }
+
+  if (mesh_filter->mesh() != mesh_idx_) {
+    int32_t mesh_filter_id = model::meshes[mesh_filter->mesh()]->id();
+    int32_t ww_mesh_id = model::meshes[this->mesh_idx_]->id();
+    fatal_error(fmt::format("Mesh filter {} uses a different mesh ({}) than "
+                            "weight window {} mesh ({})",
+      mesh_filter->id(), mesh_filter_id, id_, ww_mesh_id));
+  }
+
+  // if an energy filter exists, make sure the energy grid matches that of this
+  // weight window object
+  if (auto energy_filter = tally->get_filter<EnergyFilter>()) {
+    std::vector<double> filter_bins = energy_filter->bins();
+    std::set<double> filter_e_bounds(
+      energy_filter->bins().begin(), energy_filter->bins().end());
+    if (filter_e_bounds.size() != energy_bounds().size()) {
+      fatal_error(
+        fmt::format("Energy filter {} does not have the same number of energy "
+                    "bounds ({}) as weight window object {} ({})",
+          energy_filter->id(), filter_e_bounds.size(), id_,
+          energy_bounds().size()));
+    }
+
+    for (auto e : energy_bounds()) {
+      if (filter_e_bounds.count(e) == 0) {
+        fatal_error(fmt::format(
+          "Energy bounds of filter {} and weight windows {} do not match",
+          energy_filter->id(), id_));
+      }
+    }
+  }
 }
 
 void WeightWindows::export_to_hdf5(const std::string& filename) const

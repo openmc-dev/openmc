@@ -143,6 +143,8 @@ public:
 
   void set_particle_type(ParticleType p_type);
 
+  void check_tally_update_compatibility(const Tally* tally);
+
   // Accessors
   int32_t id() const { return id_; }
   int32_t& id() { return id_; }

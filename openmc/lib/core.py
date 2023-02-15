@@ -567,35 +567,6 @@ def statepoint_write(filename=None, write_source=True):
     _dll.openmc_statepoint_write(filename, c_bool(write_source))
 
 
-def update_weight_windows(tally_idx, ww_idx, score="flux", value='mean', method='magic'):
-    """Update weight windows using tally information
-
-    .. versionadded:: 0.13.3
-
-    Parameters
-    ----------
-    tally_idx : int
-        Index of the tally used to update weight window information
-    ww_idx : int
-        Index of the WeightWindows object to update
-    score : str
-        Name of the score data used (default is "flux")
-    value : str
-        Value type used to generate weight windows. One of {'mean', 'rel_err', 'std_dev}.
-        (default is 'mean')
-    method : str
-        Method used for weight window generation. One of {'magic', 'pseudo-source'}
-
-    """
-
-    _dll.openmc_update_weight_windows(tally_idx,
-                                      ww_idx,
-                                      c_char_p(score.encode()),
-                                      c_char_p(value.encode()),
-                                      c_char_p(method.encode()))
-
-
-
 @contextmanager
 def run_in_memory(**kwargs):
     """Provides context manager for calling OpenMC shared library functions.

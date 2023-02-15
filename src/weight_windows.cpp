@@ -603,7 +603,7 @@ void WeightWindows::update_weight_windows_magic(
 
   // make sure that values where the mean is zero are set s.t. the weight window
   // value will be ignored
-  xt::filter(new_bounds, sum <= 0.0) = -1.0;
+  xt::filter(new_bounds, sum <= 0.0).fill(-1.0);
 
   // make sure the weight windows are ignored for any locations where the
   // relative error is higher than the specified relative error threshold

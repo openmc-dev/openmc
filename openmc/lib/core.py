@@ -177,7 +177,7 @@ def export_weight_windows(filename=None, output=True):
 
     Parameters
     ----------
-    filename : str or None
+    filename : PathLike or None
         Filename to export weight windows to (defaults to "weight_windows.h5")
     output : bool, optional
         Whether or not to show output. Defaults to showing output
@@ -201,7 +201,7 @@ def import_weight_windows(filename=None, output=True):
 
     Parameters
     ----------
-    filename : str or None
+    filename : PathLike or None
         Filename to import properties from (defaults to "weight_windows.h5")
     output : bool, optional
         Whether or not to show output. Defaults to showing output

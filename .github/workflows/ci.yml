@@ -83,6 +83,7 @@ jobs:
       VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}
       NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
+      OPENBLAS_NUM_THREADS: 1
 
     steps:
       - uses: actions/checkout@v3

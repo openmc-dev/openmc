@@ -15,7 +15,7 @@ USE_MULTIPROCESSING = True
 NUM_PROCESSES = None
 
 
-def deplete(func, chain, x, rates, dt, matrix_func=None, **func_args):
+def deplete(func, chain, x, rates, dt, matrix_func=None, *func_args):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -60,7 +60,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, **func_args):
         matrices = map(chain.form_matrix, rates, fission_yields)
     else:
         matrices = map(matrix_func, repeat(chain), rates, fission_yields,
-                       **func_args)
+                       *func_args)
 
     inputs = zip(matrices, x, repeat(dt))
 

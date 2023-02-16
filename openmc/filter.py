@@ -258,6 +258,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         """
         filter_type = elem.get('type')
+        if filter_type is None:
+            filter_type = elem.find('type').text
 
         # If the filter type matches this class's short_name, then
         # there is no overridden from_xml_element method

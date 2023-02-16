@@ -43,7 +43,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   // Properties
   const vector<double>& x() const { return x_; }
@@ -75,7 +75,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -99,7 +99,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double a() const { return std::pow(offset_, ninv_); }
   double b() const { return std::pow(offset_ + span_, ninv_); }
@@ -124,7 +124,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double theta() const { return theta_; }
 
@@ -144,7 +144,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -168,7 +168,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
@@ -191,7 +191,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   // x property
   vector<double>& x() { return x_; }
@@ -225,7 +225,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   const vector<double>& x() const { return x_; }
 
@@ -244,7 +244,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
 private:
   // Storrage for probability + distribution

@@ -527,8 +527,6 @@ public:
   //! \return element connectivity as IDs of the vertices
   virtual std::vector<int> connectivity(int id) const = 0;
 
-  virtual double volume(int bin) const = 0;
-
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;
 

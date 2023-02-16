@@ -32,7 +32,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   // Observer pointers
   Distribution* x() const { return x_.get(); }
@@ -56,7 +56,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* phi() const { return phi_.get(); }
@@ -81,7 +81,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* cos_theta() const { return cos_theta_.get(); }
@@ -106,7 +106,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }
 
@@ -132,7 +132,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   // Properties
   bool only_fissionable() const { return only_fissionable_; }
@@ -158,7 +158,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   Position r() const { return r_; }
 

@@ -93,10 +93,12 @@ def test_get_all_universes():
     u2 = openmc.Universe(cells=[c2])
     c3 = openmc.Cell(fill=u1)
     c4 = openmc.Cell(fill=u2)
-    u3 = openmc.Universe(cells=[c3, c4])
+    u3 = openmc.DAGMCUniverse(filename="")
+    c5 = openmc.Cell(fill=u3)
+    u4 = openmc.Universe(cells=[c3, c4, c5])
 
-    univs = set(u3.get_all_universes().values())
-    assert not (univs ^ {u1, u2})
+    univs = set(u4.get_all_universes().values())
+    assert not (univs ^ {u1, u2, u3})
 
 
 def test_clone():

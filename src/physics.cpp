@@ -705,17 +705,10 @@ void scatter(Particle& p, int i_nuclide)
     // =======================================================================
     // INELASTIC SCATTERING
 
-    int j = 0;
+    int n = nuc->index_inelastic_scatter_.size();
     int i = 0;
-    while (prob < cutoff) {
+    for (int j = 0; j < n && prob < cutoff; ++j) {
       i = nuc->index_inelastic_scatter_[j];
-      ++j;
-
-      // Check to make sure inelastic scattering reaction sampled
-      if (i >= nuc->reactions_.size()) {
-        p.write_restart();
-        fatal_error("Did not sample any reaction for nuclide " + nuc->name_);
-      }
 
       // add to cumulative probability
       prob += nuc->reactions_[i]->xs(micro);

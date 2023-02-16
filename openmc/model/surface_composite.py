@@ -785,7 +785,6 @@ class Polygon(CompositeSurface):
         if np.sum(ypts*(np.roll(xpts, 1) - np.roll(xpts, -1))) < 0:
             points = points[::-1, :]
 
-
         # Check if polygon is self-intersecting by comparing edges pairwise
         n = len(points)
         for i in range(n):

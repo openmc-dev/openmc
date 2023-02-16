@@ -3,6 +3,7 @@ from numbers import Integral
 import subprocess
 
 import openmc
+from openmc.checkvalue import PathLike
 from .plots import _get_plot_image
 
 
@@ -73,8 +74,8 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         if event_based:
             args.append('-e')
 
-    if isinstance(restart_file, str):
-        args += ['-r', restart_file]
+    if isinstance(restart_file, PathLike.__args__):
+        args += ['-r', str(restart_file)]
 
     if tracks:
         args.append('-t')

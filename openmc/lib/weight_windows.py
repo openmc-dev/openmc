@@ -251,7 +251,7 @@ class WeightWindows(_FortranObjectWithID):
 
         try:
             particle_filter = tally.find_filter(ParticleFilter)
-        except ValueError:
+        except RuntimeError:
             particle_filter = None
 
         # ensure that the tally won't filter out the specified particle
@@ -262,7 +262,7 @@ class WeightWindows(_FortranObjectWithID):
         # tally has to have a mesh filter
         try:
             mesh_filter = tally.find_filter(MeshFilter)
-        except ValueError:
+        except RuntimeError:
             mesh_filter = None
         if mesh_filter is None:
             raise RuntimeError(f'No mesh filter found on tally {tally.id}')
@@ -275,7 +275,11 @@ class WeightWindows(_FortranObjectWithID):
         out.particle = particle
 
         # set energy bounds if needed
-        energy_filter = tally.find_filter(EnergyFilter)
+        try:
+            energy_filter = tally.find_filter(EnergyFilter)
+        except RuntimeError:
+            energy_filter = None
+
         if energy_filter is not None:
             out.energy_bounds = energy_filter.bins
 

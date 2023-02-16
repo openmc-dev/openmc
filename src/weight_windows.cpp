@@ -5,6 +5,7 @@
 #include "xtensor/xindex_view.hpp"
 #include "xtensor/xio.hpp"
 #include "xtensor/xmasked_view.hpp"
+#include "xtensor/xnoalias.hpp"
 #include "xtensor/xstrided_view.hpp"
 #include "xtensor/xview.hpp"
 
@@ -459,8 +460,10 @@ void WeightWindows::update_weight_windows_magic(
   auto filter_indices = tally->filter_indices();
 
   // empty out previous results for weight window bounds
-  lower_ww_ = xt::empty<double>(bounds_size());
-  upper_ww_ = xt::empty<double>(bounds_size());
+  if (lower_ww_.size() == 0 || upper_ww_.size() == 0) {
+    lower_ww_ = xt::empty<double>(bounds_size());
+    upper_ww_ = xt::empty<double>(bounds_size());
+  }
 
   // adjust filter indices for dummy axes we may introduce when reshaping tally data
   if (!filter_indices.count(FilterType::PARTICLE)) {
@@ -472,7 +475,7 @@ void WeightWindows::update_weight_windows_magic(
     }
   }
 
-  // sanitize filter_indices
+  // sanitize filter indices
   for (auto& pair : filter_indices) {
     if (pair.second > 3) pair.second -= 3;
   }
@@ -571,7 +574,8 @@ void WeightWindows::update_weight_windows_magic(
   // computation has been performed) now we'll switch references to the tally's
   // bounds to avoid allocating additional memory
   auto& new_bounds  = this->lower_ww_;
-  new_bounds = sum / n;
+  // noalias avoids memory allocation here
+  xt::noalias(new_bounds) = sum / n;
 
   auto& rel_err = this->upper_ww_;
   rel_err =
@@ -610,7 +614,8 @@ void WeightWindows::update_weight_windows_magic(
   xt::filter(new_bounds, rel_err > threshold).fill(-1.0);
 
   // update the bounds of this weight window class
-  upper_ww_ = ratio * lower_ww_;
+  // noalias avoids additional memory allocation
+  xt::noalias(upper_ww_) = ratio * lower_ww_;
 }
 
 void WeightWindows::check_tally_update_compatibility(const Tally* tally)

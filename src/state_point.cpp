@@ -403,9 +403,10 @@ void load_state_point()
   // Read batch number to restart at
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
-  if (simulation::restart_batch > settings::n_batches) {
-    fatal_error("The number batches specified in settings.xml is fewer "
-                " than the number of batches in the given statepoint file.");
+  if (simulation::restart_batch >= settings::n_batches) {
+    fatal_error(fmt::format("The number of batches specified for simiulation ({}) is smaller"
+                " than the number of batches in the restart statepoint file ({})",
+                settings::n_batches, simulation::restart_batch));
   }
 
   // Logical flag for source present in statepoint file

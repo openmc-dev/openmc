@@ -124,10 +124,10 @@ class Model:
     @lru_cache(maxsize=None)
     def _materials_by_id(self):
         """Dictionary mapping material ID --> material"""
-        if self.materials is None:
-            mats = self.geometry.get_all_materials().values()
-        else:
+        if self.materials:
             mats = self.materials
+        else:
+            mats = self.geometry.get_all_materials().values()
         return {mat.id: mat for mat in mats}
 
     @property

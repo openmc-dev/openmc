@@ -157,5 +157,24 @@ extern vector<unique_ptr<Filter>> tally_filters;
 //! Make sure index corresponds to a valid filter
 int verify_filter(int32_t index);
 
+//==============================================================================
+// Filter implementation
+//==============================================================================
+
+template<typename T>
+T* Filter::create(int32_t id)
+{
+  static_assert(std::is_base_of<Filter, T>::value,
+    "Type specified is not derived from openmc::Filter");
+  // Create filter and add to filters vector
+  auto filter = make_unique<T>();
+  auto ptr_out = filter.get();
+  model::tally_filters.emplace_back(std::move(filter));
+  // Assign ID
+  model::tally_filters.back()->set_id(id);
+
+  return ptr_out;
+}
+
 } // namespace openmc
 #endif // OPENMC_TALLIES_FILTER_H

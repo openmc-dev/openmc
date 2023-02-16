@@ -4,6 +4,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/distribution.h"
+#include "openmc/mesh.h"
 #include "openmc/position.h"
 
 namespace openmc {
@@ -92,6 +93,32 @@ private:
   UPtrDist cos_theta_; //!< Distribution of cos_theta coordinates
   UPtrDist phi_;       //!< Distribution of phi coordinates
   Position origin_;    //!< Cartesian coordinates of the sphere center
+};
+
+//==============================================================================
+//! Distribution of points within a mesh
+//==============================================================================
+
+class MeshSpatial : public SpatialDistribution {
+public:
+  explicit MeshSpatial(pugi::xml_node node);
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const;
+
+  const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }
+
+  int32_t n_sources() const { return this->mesh()->n_bins(); }
+
+private:
+  int32_t mesh_idx_ {C_NONE};
+  double total_strength_ {0.0};
+  // TODO: move to an independent class in the future that's similar
+  // to a discrete distribution without outcomes
+  std::vector<double> mesh_CDF_;
+  std::vector<double> mesh_strengths_;
 };
 
 //==============================================================================

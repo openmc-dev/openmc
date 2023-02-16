@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from collections import OrderedDict
 from math import pi
 from numbers import Real, Integral
 from pathlib import Path
@@ -188,7 +189,7 @@ class StructuredMesh(MeshBase):
             Returns a numpy.ndarray representing the mesh element centroid
             coordinates with a shape equal to (ndim, dim1, ..., dimn). Can be
             unpacked along the first dimension with xx, yy, zz = mesh.centroids.
-            
+
 
         """
         ndim = self.n_dimension
@@ -1943,3 +1944,25 @@ class UnstructuredMesh(MeshBase):
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
         return cls(filename, library, mesh_id, '', length_multiplier)
+
+
+def _read_meshes(elem):
+    """Generate dictionary of meshes from a given XML node
+
+    Parameters
+    ----------
+    elem : xml.etree.ElementTree.Element
+        XML element
+
+    Returns
+    -------
+    dict
+        A dictionary with mesh IDs as keys and openmc.MeshBase
+        instanaces as values
+    """
+    out = dict()
+    for mesh_elem in elem.findall('mesh'):
+        mesh = MeshBase.from_xml_element(mesh_elem)
+        out[mesh.id] = mesh
+
+    return out

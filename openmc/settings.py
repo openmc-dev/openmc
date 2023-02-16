@@ -11,10 +11,12 @@ from typing import Optional
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
+from openmc.stats.multivariate import MeshSpatial
 
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
+from .mesh import _read_meshes
 
 
 class RunMode(Enum):
@@ -990,6 +992,10 @@ class Settings:
     def _create_source_subelement(self, root):
         for source in self.source:
             root.append(source.to_xml_element())
+            if isinstance(source.space, MeshSpatial):
+                path = f"./mesh[@id='{source.space.mesh.id}']"
+                if root.find(path) is None:
+                    root.append(source.space.mesh.to_xml_element())
 
     def _create_volume_calcs_subelement(self, root):
         for calc in self.volume_calculations:
@@ -1340,9 +1346,11 @@ class Settings:
             threshold = float(get_text(elem, 'threshold'))
             self.keff_trigger = {'type': trigger, 'threshold': threshold}
 
-    def _source_from_xml_element(self, root):
+    def _source_from_xml_element(self, root, meshes=None):
         for elem in root.findall('source'):
-            self.source.append(Source.from_xml_element(elem))
+            src = Source.from_xml_element(elem, meshes)
+            # add newly constructed source object to the list
+            self.source.append(src)
 
     def _volume_calcs_from_xml_element(self, root):
         volume_elems = root.findall("volume_calc")
@@ -1721,7 +1729,7 @@ class Settings:
         settings._rel_max_lost_particles_from_xml_element(elem)
         settings._generations_per_batch_from_xml_element(elem)
         settings._keff_trigger_from_xml_element(elem)
-        settings._source_from_xml_element(elem)
+        settings._source_from_xml_element(elem, meshes)
         settings._volume_calcs_from_xml_element(elem)
         settings._output_from_xml_element(elem)
         settings._statepoint_from_xml_element(elem)
@@ -1781,4 +1789,5 @@ class Settings:
         """
         tree = ET.parse(path)
         root = tree.getroot()
-        return cls.from_xml_element(root)
+        meshes = _read_meshes(root)
+        return cls.from_xml_element(root, meshes)

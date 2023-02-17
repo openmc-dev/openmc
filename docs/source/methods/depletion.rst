@@ -299,10 +299,12 @@ in the paper by `Hombourger
 The resulting burnup matrix can be solved with the same integration algorithms,
 as we've seen before.
 
-Note that if no ``dest_mat`` argument is passed to the
-:meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method of the
-:class:`~openmc.deplete.MsrContinuous` class, nuclides that are removed will not
-be tracked afterwards.
+.. note::
+
+    if no ``dest_mat`` argument is passed to the
+    :meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method of the
+    :class:`~openmc.deplete.MsrContinuous` class, nuclides that are removed will not
+    be tracked afterwards.
 
 Feeding rate
 ------------

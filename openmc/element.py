@@ -195,7 +195,7 @@ class Element(str):
         # If a cross_section library is not present, expand the element into
         # its natural nuclides
         else:
-            for nuclide in natural_nuclides:
+            for nuclide in sorted(list(natural_nuclides)):
                 abundances[nuclide] = NATURAL_ABUNDANCE[nuclide]
 
         # Modify mole fractions if enrichment provided

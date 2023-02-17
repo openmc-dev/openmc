@@ -56,9 +56,9 @@ def test_get_set(model):
     for i in [mat, mat.name, mat.id]:
         for j in [dest_mat, dest_mat.name, dest_mat.id]:
             for key, value in removal_rates.items():
-                msr.set_removal_rate(i, [key], value, dest_mat=j)
+                msr.set_removal_rate(i, [key], value, destination_material=j)
                 assert msr.get_removal_rate(i, key) == value
-                assert msr.get_destination_mat(i, key) == str(dest_mat.id)
+                assert msr.get_destination_material(i, key) == str(dest_mat.id)
             assert msr.get_elements(i) == removal_rates.keys()
 
 def test_msr(run_in_tmpdir, model):

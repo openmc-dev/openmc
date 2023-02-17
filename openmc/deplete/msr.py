@@ -37,7 +37,7 @@ class MsrContinuous:
     removal_rates : OrderedDict of str and OrderedDict
         Container of removal rates, elements and destination material
     index_transfer : Set of pair of str
-        Pair of strings needed to build final depletion matrix (dest_mat, mat)
+        Pair of strings needed to build final matrix (destination_material, mat)
     """
 
     def __init__(self, operator, model):
@@ -101,7 +101,7 @@ class MsrContinuous:
         check_value('Element', element, ELEMENT_SYMBOL.values())
         return self.removal_rates[mat][element][0]
 
-    def get_destination_mat(self, mat, element):
+    def get_destination_material(self, mat, element):
         """Return destination (or transfer) material for given material and
         element, if defined.
 
@@ -142,7 +142,7 @@ class MsrContinuous:
             return self.removal_rates[mat].keys()
 
     def set_removal_rate(self, mat, elements, removal_rate, units='1/s',
-                         dest_mat=None):
+                         destination_material=None):
         """Set removal rate to elements in a depletable material.
 
         Parameters
@@ -153,7 +153,7 @@ class MsrContinuous:
             List of strings of elements that share removal rate
         removal_rate : float
             Removal rate value in [1/sec]
-        dest_mat : Openmc.Material or str or int, Optional
+        destination_material : Openmc.Material or str or int, Optional
             Destination material to where nuclides get fed.
         units: str, optional
             Removal rates units
@@ -163,15 +163,15 @@ class MsrContinuous:
         mat = self._get_mat_id(mat)
         check_type('removal_rate', removal_rate, Real)
 
-        if dest_mat is not None:
-            dest_mat = self._get_mat_id(dest_mat)
+        if destination_material is not None:
+            destination_material = self._get_mat_id(destination_material)
             #prevent for setting tranfert to material if not set as depletable
             if len(self.burn_mats) > 1:
-                check_value('transfert to material', str(dest_mat),
+                check_value('transfert to material', str(destination_material),
                             self.burn_mats)
             else:
-                raise ValueError(f'Transfer to material {dest_mat} is set '\
-                        'but there is only one depletable material')
+                raise ValueError(f'Transfer to material {destination_material} '\
+                        'is set, but there is only one depletable material')
 
         if units != '1/s':
             check_value('Units', units, ['1/h', '1/d'])
@@ -183,6 +183,6 @@ class MsrContinuous:
             unit_conv = 1
         for element in elements:
             check_value('Element', element, ELEMENT_SYMBOL.values())
-            self.removal_rates[mat][element] = removal_rate*unit_conv, dest_mat
-            if dest_mat is not None:
-                self.index_transfer.add((dest_mat, mat))
+            self.removal_rates[mat][element] = removal_rate * unit_conv, destination_material
+            if destination_material is not None:
+                self.index_transfer.add((destination_material, mat))

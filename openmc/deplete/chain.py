@@ -702,8 +702,9 @@ class Chain:
             depletion matrix and no transfer terms get formed.
 
             2) Nuclide removal from one material and feed into another.
-            Set of pairs: ``(dest_mat, mat)``, where ``dest_mat`` and ``mat``
-            are the nuclide receiving and loosing materials, respectively.
+            Set of pairs: ``(destination_material, mat)``, where
+            ``destination_material`` and ``mat`` are the nuclide receiving and
+            loosing materials, respectively.
             The removal rate terms get placed in the final matrix with indexing
             position corresponding to the id of the materials set.
 
@@ -726,8 +727,8 @@ class Chain:
                     matrix[i, i] = 0.0
             #Build trasnfer terms matrices
             elif isinstance(index, tuple):
-                dest_mat, mat = index
-                if msr.get_destination_mat(mat, elm) == dest_mat:
+                destination_material, mat = index
+                if msr.get_destination_material(mat, elm) == destination_material:
                     matrix [i, i] = msr.get_removal_rate(mat, elm)
                 else:
                     matrix[i, i] = 0.0

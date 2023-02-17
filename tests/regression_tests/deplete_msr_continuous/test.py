@@ -53,7 +53,7 @@ def test_msr(run_in_tmpdir, model):
     removal_rate = 1e-5
     op = CoupledOperator(model, chain_file)
     msr = MsrContinuous(op, model)
-    msr.set_removal_rate('f', element, removal_rate, dest_mat='w')
+    msr.set_removal_rate('f', element, removal_rate, destination_material='w')
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], 0.0, msr_continuous = msr, timestep_units = 'd')
     integrator.integrate()

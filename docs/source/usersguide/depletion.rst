@@ -413,7 +413,7 @@ Defining a destination material
 -----------------------------
 
 To keep track of the nuclides that are removed or to define a feed from one
-depletable material to another, a `dest_mat` argument needs to be passed to the
+depletable material to another, a `destination_material` argument needs to be passed to the
 :meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method. For example,
 to remove nuclides from `mat1` and feed to `mat2`, you'd use::
 
@@ -422,4 +422,4 @@ to remove nuclides from `mat1` and feed to `mat2`, you'd use::
 
     ...
 
-    msr.set_removal_rate(mat1, ['Xe'] 0.1, dest_mat=mat2)
+    msr.set_removal_rate(mat1, ['Xe'] 0.1, destination_material=mat2)

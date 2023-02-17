@@ -578,12 +578,12 @@ void WeightWindows::update_weight_windows_magic(
   xt::noalias(new_bounds) = sum / n;
 
   auto& rel_err = this->upper_ww_;
-  rel_err =
+  xt::noalias(rel_err) =
     xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
   xt::filter(rel_err, sum <= 0.0).fill(INFTY);
 
   if (value == "rel_err")
-    new_bounds = 1 / rel_err;
+    xt::noalias(new_bounds) = 1 / rel_err;
 
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();

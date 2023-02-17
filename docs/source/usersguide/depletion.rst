@@ -409,7 +409,7 @@ For example, to set a Xenon removal from `mat1` with a cycle time of `10 sec`
 
 Note that in this case the nuclides that are removed will not be tracked.
 
-Defining destination material
+Defining a destination material
 -----------------------------
 
 To keep track of the nuclides that are removed or to define a feed from one

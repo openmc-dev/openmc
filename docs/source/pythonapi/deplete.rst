@@ -198,8 +198,7 @@ total system energy.
 The :class:`openmc.deplete.IndependentOperator` uses inner classes subclassed
 from those listed above to perform similar calculations.
 
-The following classes are used to define Molten Salt Reactor (MSR) capabilities,
-such as nuclides continuous removal or feed.
+The following classes are used to define continuous removal or feed rates in molten salt reactors (MSRs)
 
 .. autosummary::
    :toctree: generated

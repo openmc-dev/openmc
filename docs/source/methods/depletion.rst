@@ -262,9 +262,9 @@ argument to the :class:`openmc.deplete.CoupledOperator` class.
 MSR Capabilities
 ----------------
 
-A nice feature of Molten Salt Reactors (MSR), but more in general of
-any liquid fuel reactor, is the capability to continuously reprocess the fuel
-salt to remove fission products or to feed fresh fuel into the system.
+A nice feature of Molten Salt Reactors (MSRs), and in general of
+*any*  liquid fuel reactor, is the capability to continuously reprocess the fuel
+to remove fission products or to feed fresh fuel into the system.
 
 Removal rate
 ------------

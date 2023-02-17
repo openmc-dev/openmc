@@ -390,9 +390,8 @@ Defining removal rates
 
 Removal rates can be added to a :class:`~openmc.deplete.MsrContinuous` instance
 with the :meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method.
-Depletable materials from which nuclides are removed can be specified using the
-:class:`~openmc.Material` instance previously defined. Material id or
-name are also accepted entries.
+A :class:`~openmc.Material` instance, material id, or
+material name can specify the depletable material from which nuclides are removed.
 Removal rate default units are `1/s`, but `1/h` or `1/d` can also be used.
 For example, to set a Xenon removal from `mat1` with a cycle time of `10 sec`
 (removal rate of 0.1 `1/s`), you'd use::

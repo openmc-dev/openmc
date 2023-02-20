@@ -137,22 +137,23 @@ protected:
 public:
   void init(const xt::xtensor<int, 1>& in_gmin,
     const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
-    const double_3dvec& coeffs);
+    const double_3dvec& coeffs) override;
 
-  void combine(
-    const vector<ScattData*>& those_scatts, const vector<double>& scalars);
+  void combine(const vector<ScattData*>& those_scatts,
+    const vector<double>& scalars) override;
 
   //! \brief Find the maximal value of the angular distribution to use as a
   // bounding box with rejection sampling.
   void update_max_val();
 
-  double calc_f(int gin, int gout, double mu);
+  double calc_f(int gin, int gout, double mu) override;
 
-  void sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
+  void sample(
+    int gin, int& gout, double& mu, double& wgt, uint64_t* seed) override;
 
-  size_t get_order() { return dist[0][0].size() - 1; };
+  size_t get_order() override { return dist[0][0].size() - 1; };
 
-  xt::xtensor<double, 3> get_matrix(size_t max_order);
+  xt::xtensor<double, 3> get_matrix(size_t max_order) override;
 };
 
 //==============================================================================
@@ -170,18 +171,19 @@ protected:
 public:
   void init(const xt::xtensor<int, 1>& in_gmin,
     const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
-    const double_3dvec& coeffs);
+    const double_3dvec& coeffs) override;
 
-  void combine(
-    const vector<ScattData*>& those_scatts, const vector<double>& scalars);
+  void combine(const vector<ScattData*>& those_scatts,
+    const vector<double>& scalars) override;
 
-  double calc_f(int gin, int gout, double mu);
+  double calc_f(int gin, int gout, double mu) override;
 
-  void sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
+  void sample(
+    int gin, int& gout, double& mu, double& wgt, uint64_t* seed) override;
 
-  size_t get_order() { return dist[0][0].size(); };
+  size_t get_order() override { return dist[0][0].size(); };
 
-  xt::xtensor<double, 3> get_matrix(size_t max_order);
+  xt::xtensor<double, 3> get_matrix(size_t max_order) override;
 };
 
 //==============================================================================
@@ -204,18 +206,19 @@ protected:
 public:
   void init(const xt::xtensor<int, 1>& in_gmin,
     const xt::xtensor<int, 1>& in_gmax, const double_2dvec& in_mult,
-    const double_3dvec& coeffs);
+    const double_3dvec& coeffs) override;
 
-  void combine(
-    const vector<ScattData*>& those_scatts, const vector<double>& scalars);
+  void combine(const vector<ScattData*>& those_scatts,
+    const vector<double>& scalars) override;
 
-  double calc_f(int gin, int gout, double mu);
+  double calc_f(int gin, int gout, double mu) override;
 
-  void sample(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
+  void sample(
+    int gin, int& gout, double& mu, double& wgt, uint64_t* seed) override;
 
-  size_t get_order() { return dist[0][0].size(); };
+  size_t get_order() override { return dist[0][0].size(); };
 
-  xt::xtensor<double, 3> get_matrix(size_t max_order);
+  xt::xtensor<double, 3> get_matrix(size_t max_order) override;
 };
 
 //==============================================================================

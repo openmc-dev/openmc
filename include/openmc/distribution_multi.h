@@ -42,7 +42,7 @@ public:
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled
-  Direction sample(uint64_t* seed) const;
+  Direction sample(uint64_t* seed) const override;
 
   // Observing pointers
   Distribution* mu() const { return mu_.get(); }
@@ -66,7 +66,7 @@ public:
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled direction
-  Direction sample(uint64_t* seed) const;
+  Direction sample(uint64_t* seed) const override;
 };
 
 //==============================================================================
@@ -82,7 +82,7 @@ public:
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled direction
-  Direction sample(uint64_t* seed) const;
+  Direction sample(uint64_t* seed) const override;
 };
 
 using UPtrAngle = unique_ptr<UnitSphereDistribution>;

@@ -212,7 +212,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     site.surf_id = 0;
 
     // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, rx, p.E(), &site, p.current_seed());
+    sample_fission_neutron(i_nuclide, rx, &site, p);
 
     // Store fission site in bank
     if (use_fission_bank) {
@@ -1024,9 +1024,13 @@ Direction sample_cxs_target_velocity(
   return vt * rotate_angle(u, mu, nullptr, seed);
 }
 
-void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
-  SourceSite* site, uint64_t* seed)
+void sample_fission_neutron(
+  int i_nuclide, const Reaction& rx, SourceSite* site, Particle& p)
 {
+  // Get attributes of particle
+  double E_in = p.E();
+  uint64_t* seed = p.current_seed();
+
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
   double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
@@ -1089,9 +1093,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
   }
 
   // Sample azimuthal angle uniformly in [0, 2*pi) and assign angle
-  // TODO: account for dependence on incident neutron?
-  Direction ref(1., 0., 0.);
-  site->u = rotate_angle(ref, mu, nullptr, seed);
+  site->u = rotate_angle(p.u(), mu, nullptr, seed);
 }
 
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)

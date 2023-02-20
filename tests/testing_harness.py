@@ -276,6 +276,13 @@ class ParticleRestartTestHarness(TestHarness):
 
         return outstr
 
+    def _cleanup(self):
+        """Delete particle restart files."""
+        super()._cleanup()
+        output = glob.glob('particle*.h5')
+        for f in output:
+            os.remove(f)
+
 
 class PyAPITestHarness(TestHarness):
     def __init__(self, statepoint_name, model=None, inputs_true=None):

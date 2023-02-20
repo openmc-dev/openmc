@@ -277,18 +277,19 @@ to the depletion equation, which can be written as:
 .. math::
 
   \begin{aligned}\frac{dN_i(t)}{dt} = &\underbrace{\sum\limits_j f_{j\rightarrow i}
-  \int_0^\infty dE  \; \sigma_j (E,t) \phi(E,t) N_j(t)  - \int_0^\infty dE \; \sigma_i(E,t) 
-  \phi(E,t) N_i(t)}_\textbf{R} \\ 
+  \int_0^\infty dE  \; \sigma_j (E,t) \phi(E,t) N_j(t)  - \int_0^\infty dE \; \sigma_i(E,t)
+  \phi(E,t) N_i(t)}_\textbf{R} \\
   &+ \underbrace{\sum_j \lambda_{j\rightarrow i} N_j(t) + \lambda_{i\rightarrow j} N_i(t)}_\textbf{D} \\
   &- \underbrace{\epsilon_i \lambda_i N_i(t)}_\textbf{T} \end{aligned}
 
-where :math:`\epsilon_i` is the removal rate of nuclide :math:`i`. Here the transmutation terms :math:`\mathbf{R}` and the decay terms :math:`\mathbf{D}`
+where the transmutation term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}` and the new removal term :math:`\mathbf{T}`
 have been grouped together so that
 :math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
 
-:math:`\lambda_i` is the removal rate coefficient defining
-the continuous removal of nuclide :math:`i`.
-The behaviour of nuclide removal is similar to radioactive decay.
+the removal efficiency :math:`\epsilon_i` and the removal rate coefficient :math:`\lambda_i`
+define the continuous removal of the nuclide :math:`i`, which behaviour is similar to radioactive decay.
+For simplicity, :math:`\epsilon_i` and :math:`\lambda_i`
+can be combined together in one single user-defined parameter that is defined again as :math:`\lambda_i`.
 
 Note that this formulation assumes first order removal and
 homogeneous distribution of nuclide :math:`i` throughout the material.

@@ -270,18 +270,19 @@ Removal rate
 ------------
 
 A removal rate as defined here is the rate at which nuclides are
-continuously removed from a material. T Mathematically, it
+continuously removed from a material. Mathematically, it
 can be thought as an additional proportional term :math:`\mathbf{T}`
-to the depletion equation, that can be rearranged as:
+to the depletion equation, which can be written as:
 
 .. math::
 
-  \begin{aligned} \frac{dN_i(t)}{dt} = \underbrace{\sum_j \int_0^\infty dE;
-  \f_{j\rightarrow i} N_j(t) \sigma_j (E,t) \phi(E,t)} - N_i(t) \sigma_i(E,t) \phi(E,t)}_\textbf{R}  +
-  \underbrace{\sum_j \lambda_{i\rightarrow j}  N_j(t) + \lambda_{j\rightarrow i}  N_i(t)}_\textbf{D} -
-  \underbrace{\epsilon_i \lambda_i N_i(t)}_\textbf{T} \end{aligned}
+  \begin{aligned}\frac{dN_i(t)}{dt} = &\underbrace{\sum\limits_j f_{j\rightarrow i}
+  \int_0^\infty dE  \; \sigma_j (E,t) \phi(E,t) N_j(t)  - \int_0^\infty dE \; \sigma_i(E,t) 
+  \phi(E,t) N_i(t)}_\textbf{R} \\ 
+  &+ \underbrace{\sum_j \lambda_{j\rightarrow i} N_j(t) + \lambda_{i\rightarrow j} N_i(t)}_\textbf{D} \\
+  &- \underbrace{\epsilon_i \lambda_i N_i(t)}_\textbf{T} \end{aligned}
 
-where $\epsilon_i$ is the removal rate of nuclide $i$. Here the transmutation terms :math:`\mathbf{R}` and the decay terms :math:`\mathbf{D}`
+where :math:`\epsilon_i` is the removal rate of nuclide :math:`i`. Here the transmutation terms :math:`\mathbf{R}` and the decay terms :math:`\mathbf{D}`
 have been grouped together so that
 :math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
 

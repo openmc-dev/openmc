@@ -91,6 +91,23 @@ class UniverseBase(ABC, IDManagerMixin):
         else:
             raise ValueError('No volume information found for this universe.')
 
+    def get_all_universes(self):
+        """Return all universes that are contained within this one.
+
+        Returns
+        -------
+        universes : collections.OrderedDict
+            Dictionary whose keys are universe IDs and values are
+            :class:`Universe` instances
+
+        """
+        # Append all Universes within each Cell to the dictionary
+        universes = OrderedDict()
+        for cell in self.get_all_cells().values():
+            universes.update(cell.get_all_universes())
+
+        return universes
+
     @abstractmethod
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the universe xml representation to an incoming xml element
@@ -537,23 +554,6 @@ class Universe(UniverseBase):
             materials.update(cell.get_all_materials(memo))
 
         return materials
-
-    def get_all_universes(self):
-        """Return all universes that are contained within this one.
-
-        Returns
-        -------
-        universes : collections.OrderedDict
-            Dictionary whose keys are universe IDs and values are
-            :class:`Universe` instances
-
-        """
-        # Append all Universes within each Cell to the dictionary
-        universes = OrderedDict()
-        for cell in self.get_all_cells().values():
-            universes.update(cell.get_all_universes())
-
-        return universes
 
     def create_xml_subelement(self, xml_element, memo=None):
         # Iterate over all Cells

@@ -1,4 +1,3 @@
-import glob
 import os
 from pathlib import Path
 
@@ -44,7 +43,7 @@ class StatepointRestartTestHarness(TestHarness):
 
     def _run_openmc_restart(self):
         # Get the name of the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._restart_sp))
+        statepoint = list(Path(os.getcwd()).glob(self._restart_sp))
         assert len(statepoint) == 1
         statepoint = statepoint[0]
 

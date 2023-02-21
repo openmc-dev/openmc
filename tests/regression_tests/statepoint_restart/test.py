@@ -3,12 +3,11 @@ import os
 from pathlib import Path
 
 import openmc
+import pytest
 
 from tests.testing_harness import TestHarness
 from tests.regression_tests import config
 from tests import cdtemp
-
-import pytest
 
 class StatepointRestartTestHarness(TestHarness):
     def __init__(self, final_sp, restart_sp):
@@ -65,8 +64,7 @@ def test_statepoint_restart():
 
 
 def test_batch_check(request):
-    xmls = glob.glob('*.xml')
-    xmls = [request.fspath.dirpath() / Path(f) for f in xmls]
+    xmls = list(request.path.parent.glob('*.xml'))
 
     with cdtemp(xmls):
         model = openmc.Model.from_xml()

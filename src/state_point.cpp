@@ -405,7 +405,7 @@ void load_state_point()
 
   if (simulation::restart_batch >= settings::n_max_batches) {
     fatal_error(fmt::format(
-      "The number of batches specified for simiulation ({}) is smaller"
+      "The number of batches specified for simulation ({}) is smaller"
       " than the number of batches in the restart statepoint file ({})",
       settings::n_max_batches, simulation::restart_batch));
   }

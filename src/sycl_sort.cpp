@@ -1,7 +1,6 @@
 #ifdef SYCL_SORT
 #include <oneapi/dpl/execution>
 #include <oneapi/dpl/algorithm>
-#include <omp.h>
 
 #include "openmc/event.h"
 

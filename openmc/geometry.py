@@ -278,7 +278,7 @@ class Geometry:
 
         """
 
-        # Using str and os.Pathlike here to avoid error when using just the imported PathLike
+        # Using str and os.PathLike here to avoid error when using just the imported PathLike
         # TypeError: Subscripted generics cannot be used with class and instance checks
         check_type('materials', materials, (str, os.PathLike, openmc.Materials))
 

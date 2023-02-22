@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
 import openmc
-from openmc.data import NATURAL_ABUNDANCE, atomic_mass, \
+from openmc.data import NATURAL_ABUNDANCE, atomic_mass, zam, \
     isotopes as natural_isotopes
 
 
@@ -147,8 +147,8 @@ class Element(str):
             # and sort to avoid different ordering between Python 2 and 3.
             mutual_nuclides = natural_nuclides.intersection(library_nuclides)
             absent_nuclides = natural_nuclides.difference(mutual_nuclides)
-            mutual_nuclides = sorted(list(mutual_nuclides))
-            absent_nuclides = sorted(list(absent_nuclides))
+            mutual_nuclides = sorted(mutual_nuclides, key=zam)
+            absent_nuclides = sorted(absent_nuclides, key=zam)
 
             # If all naturally occurring isotopes are present in the library,
             # add them based on their abundance
@@ -195,7 +195,7 @@ class Element(str):
         # If a cross_section library is not present, expand the element into
         # its natural nuclides
         else:
-            for nuclide in sorted(list(natural_nuclides)):
+            for nuclide in sorted(natural_nuclides, key=zam):
                 abundances[nuclide] = NATURAL_ABUNDANCE[nuclide]
 
         # Modify mole fractions if enrichment provided

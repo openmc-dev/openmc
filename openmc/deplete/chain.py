@@ -696,7 +696,7 @@ class Chain:
         index : list of str or set of pairs
             Two cases are possible:
 
-            1) Nuclide removal rate withouth tracking.
+            1) Nuclide removal rate without tracking.
             List of depletable material id as strings. In this case
             the removal rate terms will be subtracted to the respective
             depletion matrix and no transfer terms get formed.

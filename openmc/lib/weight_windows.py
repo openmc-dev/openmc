@@ -6,13 +6,13 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from openmc.exceptions import AllocationError, InvalidIDError
+from openmc import ParticleType
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .filter import EnergyFilter, MeshFilter, ParticleFilter
 from .mesh import _get_mesh
 from .mesh import meshes
-from .particle import ParticleType
 
 
 __all__ = ['WeightWindows', 'weight_windows_map']

@@ -38,6 +38,3 @@ class ParticleType(IntEnum):
         """
         return self.name.lower()
 
-    def __str__(self) -> str:
-        return self.__repr__()
-

@@ -371,8 +371,14 @@ class ParticleType(IntEnum):
         """
         return self.name.lower()
 
+    # needed for < 3.11
     def __str__(self) -> str:
         return self.__repr__()
+
+    # needed for <= 3.7, IntEnum will use the mixed-in type's `__format__` method otherwise
+    # this forces it to default to the standard object format, relying on __str__ under the hood
+    def __format__(self, spec):
+        return object.__format__(self, spec)
 
 
 class SourceParticle:

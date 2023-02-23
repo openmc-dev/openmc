@@ -412,7 +412,6 @@ class ParticleFilter(Filter):
     def bins(self):
         particle_i = np.zeros((self.n_bins,), dtype=c_int)
         _dll.openmc_particle_filter_get_bins(self._index, particle_i.ctypes.data_as(POINTER(c_int)))
-        print(particle_i)
         return [ParticleType(i) for i in particle_i]
 
 

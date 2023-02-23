@@ -170,6 +170,7 @@ def export_properties(filename=None, output=True):
     with quiet_dll(output):
         _dll.openmc_properties_export(filename)
 
+
 def export_weight_windows(filename=None, output=True):
     """Export weight windows.
 
@@ -663,6 +664,3 @@ def quiet_dll(output=True):
             sys.stdout = initial_stdout
             sys.stdout.flush()
             os.dup2(initial_stdout_fno, 1)
-
-
-

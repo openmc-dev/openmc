@@ -75,6 +75,6 @@ struct fmt::formatter<std::array<int, 2>> {
   template<typename FormatContext>
   auto format(const std::array<int, 2>& arr, FormatContext& ctx)
   {
-    return fmt::format_to(ctx.out(), "({0}, {1})", arr[0], arr[1]);
+    return fmt::format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
   }
 };

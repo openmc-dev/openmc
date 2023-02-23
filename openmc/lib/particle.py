@@ -17,11 +17,12 @@ class ParticleType(IntEnum):
 
         Parameters
         ----------
-            value (str): The string representation of the particle type.
+        value : str
+            The string representation of the particle type.
 
         Returns
         -------
-            ParticleType: The corresponding ParticleType instance.
+        The corresponding ParticleType instance.
         """
         try:
             return cls[value.upper()]

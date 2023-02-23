@@ -1,4 +1,3 @@
-
 #ifndef OPENMC_TALLIES_TALLY_H
 #define OPENMC_TALLIES_TALLY_H
 

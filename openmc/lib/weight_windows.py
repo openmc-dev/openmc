@@ -247,7 +247,7 @@ class WeightWindows(_FortranObjectWithID):
             particle = ParticleType.from_string(particle)
 
         if particle not in (ParticleType.NEUTRON, ParticleType.PHOTON):
-            raise ValueError(f'Weight windows can only be applied for neutrons or photons')
+            raise ValueError('Weight windows can only be applied for neutrons or photons')
 
         try:
             particle_filter = tally.find_filter(ParticleFilter)
@@ -259,7 +259,7 @@ class WeightWindows(_FortranObjectWithID):
             raise RuntimeError(f'Specified tally for weight windows (Tally {tally.id})'
                                f' does not track the reqeusted particle: "{particle}"')
 
-        # tally has to have a mesh filter
+        # tally must have a mesh filter
         try:
             mesh_filter = tally.find_filter(MeshFilter)
         except RuntimeError:

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <unordered_map>
 
+#include <hdf5.h>
 #include <gsl/gsl-lite.hpp>
 #include <pugixml.hpp>
 
@@ -75,6 +76,7 @@ struct WeightWindow {
 
 class WeightWindows {
 public:
+  //----------------------------------------------------------------------------
   // Constructors
   WeightWindows(int32_t id = -1);
   WeightWindows(pugi::xml_node node);
@@ -82,11 +84,22 @@ public:
   static WeightWindows* create(int32_t id = -1);
   static WeightWindows* from_hdf5(
     hid_t wws_group, const std::string& group_name);
-  // Methods
 
+  //----------------------------------------------------------------------------
+  // Methods
+private:
   //! Ready the weight window class for use
   void set_defaults();
 
+  template<class T>
+  void check_bounds(const T& lower, const T& upper) const;
+
+  template<class T>
+  void check_bounds(const T& lower) const;
+
+  void check_tally_update_compatibility(const Tally* tally);
+
+public:
   //! Set the weight window ID
   void set_id(int32_t id = -1);
 
@@ -124,26 +137,19 @@ public:
 
   const vector<double>& energy_bounds() const { return energy_bounds_; }
 
-  template<class T>
-  void check_bounds(const T& lower, const T& upper) const;
-
-  template<class T>
-  void check_bounds(const T& lower) const;
-
-  void set_weight_windows(const xt::xtensor<double, 2>& lower_ww_bounds,
+  void set_bounds(const xt::xtensor<double, 2>& lower_ww_bounds,
     const xt::xtensor<double, 2>& upper_bounds);
 
-  void set_weight_windows(const xt::xtensor<double, 2>& lower_bounds, double ratio);
+  void set_bounds(const xt::xtensor<double, 2>& lower_bounds, double ratio);
 
-  void set_weight_windows(
+  void set_bounds(
     gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds);
 
-  void set_weight_windows(gsl::span<const double> lower_bounds, double ratio);
+  void set_bounds(gsl::span<const double> lower_bounds, double ratio);
 
   void set_particle_type(ParticleType p_type);
 
-  void check_tally_update_compatibility(const Tally* tally);
-
+  //----------------------------------------------------------------------------
   // Accessors
   int32_t id() const { return id_; }
   int32_t& id() { return id_; }
@@ -161,6 +167,7 @@ public:
   ParticleType particle_type() const { return particle_type_; }
 
 private:
+  //----------------------------------------------------------------------------
   // Data members
   int32_t id_;       //!< Unique ID
   gsl::index index_; //!< Index into weight windows vector

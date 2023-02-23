@@ -191,7 +191,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   }
 
   // read the lower/upper weight bounds
-  this->set_weight_windows(get_node_array<double>(node, "lower_ww_bounds"),
+  this->set_bounds(get_node_array<double>(node, "lower_ww_bounds"),
     get_node_array<double>(node, "upper_ww_bounds"));
 
   set_defaults();
@@ -397,7 +397,7 @@ void WeightWindows::check_bounds(const T& bounds) const
   }
 }
 
-void WeightWindows::set_weight_windows(
+void WeightWindows::set_bounds(
   const xt::xtensor<double, 2>& lower_bounds,
   const xt::xtensor<double, 2>& upper_bounds)
 {
@@ -409,7 +409,7 @@ void WeightWindows::set_weight_windows(
   upper_ww_ = upper_bounds;
 }
 
-void WeightWindows::set_weight_windows(
+void WeightWindows::set_bounds(
   const xt::xtensor<double, 2>& lower_bounds, double ratio)
 {
   check_bounds(lower_bounds);
@@ -420,7 +420,7 @@ void WeightWindows::set_weight_windows(
   upper_ww_ *= ratio;
 }
 
-void WeightWindows::set_weight_windows(
+void WeightWindows::set_bounds(
   gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
 {
   check_bounds(lower_bounds, upper_bounds);
@@ -433,7 +433,7 @@ void WeightWindows::set_weight_windows(
   xt::view(upper_ww_, xt::all()) = xt::adapt(upper_bounds.data(), upper_ww_.shape());
 }
 
-void WeightWindows::set_weight_windows(
+void WeightWindows::set_bounds(
   gsl::span<const double> lower_bounds, double ratio)
 {
   check_bounds(lower_bounds);
@@ -839,7 +839,7 @@ extern "C" int openmc_weight_windows_set_bounds(int32_t index,
     return err;
 
   const auto& wws = variance_reduction::weight_windows[index];
-  wws->set_weight_windows({lower_bounds, size}, {upper_bounds, size});
+  wws->set_bounds({lower_bounds, size}, {upper_bounds, size});
   return 0;
 }
 

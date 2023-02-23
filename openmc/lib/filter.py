@@ -8,12 +8,12 @@ from numpy.ctypeslib import as_array
 
 from openmc.exceptions import AllocationError, InvalidIDError
 from openmc.data.function import INTERPOLATION_SCHEME
+from openmc import ParticleType
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
 from .mesh import _get_mesh
-from .particle import ParticleType
 
 
 __all__ = [

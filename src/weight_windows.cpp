@@ -448,7 +448,7 @@ void WeightWindows::set_weight_windows(
   upper_ww_ *= ratio;
 }
 
-void WeightWindows::update_weight_windows_magic(
+void WeightWindows::update_magic(
   const Tally* tally, const std::string& value, double threshold, double ratio)
 {
 
@@ -729,7 +729,7 @@ int verify_ww_index(int32_t index)
   return 0;
 }
 
-extern "C" int openmc_weight_windows_get_index(int32_t id, int32_t* idx)
+extern "C" int openmc_get_weight_windows_index(int32_t id, int32_t* idx)
 {
   auto it = variance_reduction::ww_map.find(id);
   if (it == variance_reduction::ww_map.end()) {
@@ -762,29 +762,7 @@ extern "C" int openmc_weight_windows_set_id(int32_t index, int32_t id)
   return 0;
 }
 
-extern "C" int openmc_set_weight_windows(
-  int ww_id, size_t n, const double* lower_bounds, const double* upper_bounds)
-{
-
-  // look up the weight windows object
-  const auto& wws =
-    variance_reduction::weight_windows.at(variance_reduction::ww_map.at(ww_id));
-
-  // check length of arrays
-  auto dims = wws->bounds_size();
-  if (n != dims[0] * dims[1]) {
-    set_errmsg(fmt::format(
-      "Incorrect size for weight window bounds for domain {}", wws->id()));
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  // set bounds
-  wws->set_weight_windows({lower_bounds, n}, {upper_bounds, n});
-
-  return 0;
-}
-
-extern "C" int openmc_update_weight_windows_magic(int32_t tally_idx,
+extern "C" int openmc_weight_windows_update_magic(int32_t tally_idx,
   int32_t ww_idx, const char* value, double threshold, double ratio)
 {
   // get the requested tally
@@ -793,7 +771,7 @@ extern "C" int openmc_update_weight_windows_magic(int32_t tally_idx,
   // get the WeightWindows object
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
 
-  wws->update_weight_windows_magic(tally, value, threshold, ratio);
+  wws->update_magic(tally, value, threshold, ratio);
 
   return 0;
 }

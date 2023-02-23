@@ -127,7 +127,7 @@ def test_ww_gen(run_in_tmpdir, filters, model):
         analog_mean = np.copy(lib_tally.mean)
 
         # update the weight window values using tally results
-        ww.update_weight_windows_magic(lib_tally)
+        ww.update_magic(lib_tally)
 
         # make sure that the weight window update doesn't change tally values
         np.testing.assert_equal(lib_tally.mean, analog_mean)
@@ -193,7 +193,7 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     mean_before = np.array(tally.mean)
 
-    ww.update_weight_windows_magic(tally)
+    ww.update_magic(tally)
 
     mean_after = np.array(tally.mean)
 

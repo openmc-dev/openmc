@@ -19,15 +19,15 @@ __all__ = ['WeightWindows', 'weight_windows_map']
 
 _dll.openmc_extend_weight_windows.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 
-_dll.openmc_update_weight_windows_magic.argtypes = 2*[c_int32] + [c_char_p] + 2*[c_double]
-_dll.openmc_update_weight_windows_magic.restype = c_int
-_dll.openmc_update_weight_windows_magic.errcheck = _error_handler
+_dll.openmc_weight_windows_update_magic.argtypes = 2*[c_int32] + [c_char_p] + 2*[c_double]
+_dll.openmc_weight_windows_update_magic.restype = c_int
+_dll.openmc_weight_windows_update_magic.errcheck = _error_handler
 
 _dll.openmc_weight_windows_size.restype = c_size_t
 
-_dll.openmc_weight_windows_get_index.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_weight_windows_get_index.restype = c_int
-_dll.openmc_weight_windows_get_index.errcheck = _error_handler
+_dll.openmc_get_weight_windows_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_get_weight_windows_index.restype = c_int
+_dll.openmc_get_weight_windows_index.errcheck = _error_handler
 
 _dll.openmc_weight_windows_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_weight_windows_get_id.restype = c_int
@@ -185,8 +185,8 @@ class WeightWindows(_FortranObjectWithID):
 
         _dll.openmc_weight_windows_set_bounds(self._index, lower_p, upper_p, lower_p.size)
 
-    def update_weight_windows_magic(self, tally, value='mean', threshold=1.0, ratio=5.0):
-        """Update weight window values using tally information
+    def update_magic(self, tally, value='mean', threshold=1.0, ratio=5.0):
+        """Update weight window values using the MAGIC method (ISBN 978-85-63688-00-2)
 
         Parameters
         ----------
@@ -201,7 +201,7 @@ class WeightWindows(_FortranObjectWithID):
             Ratio of the lower to upper weight window bounds
 
         """
-        _dll.openmc_update_weight_windows_magic(tally._index,
+        _dll.openmc_weight_windows_update_magic(tally._index,
                                                 self._index,
                                                 c_char_p(value.encode()),
                                                 threshold,
@@ -290,7 +290,7 @@ class _WeightWindowsMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
         try:
-            _dll.openmc_weight_windows_get_index(key, index)
+            _dll.openmc_get_weight_windows_index(key, index)
         except (AllocationError, InvalidIDError) as e:
             raise KeyError(str(e))
         return WeightWindows(index=index.value)

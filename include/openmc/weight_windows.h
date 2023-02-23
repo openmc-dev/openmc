@@ -106,9 +106,8 @@ public:
   //! \param[in] threshold Relative error threshold. Results over this threshold
   //! will be ignored \param[in] ratio Ratio of upper to lower weight window
   //! bounds
-  void update_weight_windows_magic(const Tally* tally,
-    const std::string& value = "mean", double threshold = 1.0,
-    double ratio = 5.0);
+  void update_magic(const Tally* tally, const std::string& value = "mean",
+    double threshold = 1.0, double ratio = 5.0);
 
   void export_to_hdf5(const std::string& filename = "weight_windows.h5") const;
 

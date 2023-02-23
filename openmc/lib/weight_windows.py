@@ -318,4 +318,4 @@ class _WeightWindowsMapping(Mapping):
     def __delitem__(self):
         raise NotImplementedError("WeightWindows object remove not implemented")
 
-weight_windows_map = _WeightWindowsMapping()
+weight_windows = _WeightWindowsMapping()

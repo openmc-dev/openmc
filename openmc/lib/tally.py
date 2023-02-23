@@ -283,12 +283,16 @@ class Tally(_FortranObjectWithID):
         -------
         filter : openmc.lib.Filter
             The filter instance matching the input filter type
+
+        Raises
+        ------
+        ValueError if a filter instance matching the input filter type cannot be found.
         """
         for filter in self.filters:
             if isinstance(filter, filter_type):
                 return filter
 
-        raise RuntimeError(f'No filter of type {filter_type} on tally {self.id}')
+        raise ValueError(f'No filter of type {filter_type} on tally {self.id}')
 
     @property
     def mean(self):

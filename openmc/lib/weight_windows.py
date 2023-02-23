@@ -232,10 +232,10 @@ class WeightWindows(_FortranObjectWithID):
         ValueError
             If the particle parameter is not a valid particle type (i.e., not 'neutron'
             or 'photon').
-        RuntimeError
+        ValueError
             If the specified particle is not included in the bins of the ParticleFilter
             of the tally.
-        RuntimeError
+        ValueError
             If the tally does not have a MeshFilter.
         """
         # do some checks on particle value
@@ -251,21 +251,21 @@ class WeightWindows(_FortranObjectWithID):
 
         try:
             particle_filter = tally.find_filter(ParticleFilter)
-        except RuntimeError:
+        except ValueError:
             particle_filter = None
 
         # ensure that the tally won't filter out the specified particle
         if particle_filter is not None and particle not in particle_filter.bins:
-            raise RuntimeError(f'Specified tally for weight windows (Tally {tally.id})'
+            raise ValueError(f'Specified tally for weight windows (Tally {tally.id})'
                                f' does not track the reqeusted particle: "{particle}"')
 
         # tally must have a mesh filter
         try:
             mesh_filter = tally.find_filter(MeshFilter)
-        except RuntimeError:
+        except ValueError:
             mesh_filter = None
         if mesh_filter is None:
-            raise RuntimeError(f'No mesh filter found on tally {tally.id}')
+            raise ValueError(f'No mesh filter found on tally {tally.id}')
 
         # create a new weight windows instance
         out = cls()
@@ -277,7 +277,7 @@ class WeightWindows(_FortranObjectWithID):
         # set energy bounds if needed
         try:
             energy_filter = tally.find_filter(EnergyFilter)
-        except RuntimeError:
+        except ValueError:
             energy_filter = None
 
         if energy_filter is not None:

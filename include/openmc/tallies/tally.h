@@ -59,7 +59,7 @@ public:
   const vector<int32_t>& filters() const { return filters_; }
 
   //! returns a vector of filter types for the tally
-  vector<FilterType> filter_types() const;
+  std::vector<FilterType> filter_types() const;
 
   //! returns a mapping of filter types to index into the tally's filters
   std::unordered_map<FilterType, int32_t> filter_indices() const;
@@ -73,7 +73,8 @@ public:
   {
     const T* out;
     for (auto filter_idx : filters_) {
-      if(out = dynamic_cast<T*>(model::tally_filters[filter_idx].get())) return out;
+      if ((out = dynamic_cast<T*>(model::tally_filters[filter_idx].get())))
+        return out;
     }
     return nullptr;
   }

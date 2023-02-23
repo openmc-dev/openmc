@@ -15,7 +15,7 @@ from .mesh import _get_mesh
 from .mesh import meshes
 
 
-__all__ = ['WeightWindows', 'weight_windows_map']
+__all__ = ['WeightWindows', 'weight_windows']
 
 _dll.openmc_extend_weight_windows.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 
@@ -101,7 +101,7 @@ class WeightWindows(_FortranObjectWithID):
     __instances = WeakValueDictionary()
 
     def __new__(cls, id=None, new=True, index=None):
-        mapping = weight_windows_map
+        mapping = weight_windows
 
         if index is None:
             if new:
@@ -146,7 +146,7 @@ class WeightWindows(_FortranObjectWithID):
 
     @mesh.setter
     def mesh(self, mesh):
-        _dll.openmc_weight_windows_set_mesh(weight_windows_map[self.id]._index, meshes[mesh.id]._index)
+        _dll.openmc_weight_windows_set_mesh(weight_windows[self.id]._index, meshes[mesh.id]._index)
 
     @property
     def energy_bounds(self):

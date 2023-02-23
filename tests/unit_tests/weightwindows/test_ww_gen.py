@@ -207,7 +207,7 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     openmc.lib.import_weight_windows('weight_windows.h5')
 
-    ww = openmc.lib.weight_windows_map[2]
+    ww = openmc.lib.weight_windows[2]
 
     lb_after, up_after = ww.bounds
 

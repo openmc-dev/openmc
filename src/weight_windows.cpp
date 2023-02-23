@@ -257,6 +257,15 @@ void WeightWindows::set_defaults()
     energy_bounds_.push_back(data::energy_min[p_type]);
     energy_bounds_.push_back(data::energy_max[p_type]);
   }
+
+  // some constructors won't allocate space for the bounds
+  // do that here to the object is valid
+  if (lower_ww_.size() == 0 || upper_ww_.size() == 0) {
+    lower_ww_ = xt::empty<double>(bounds_size());
+    lower_ww_.fill(-1);
+    upper_ww_ = xt::empty<double>(bounds_size());
+    upper_ww_.fill(-1);
+  }
 }
 
 void WeightWindows::set_id(int32_t id)
@@ -459,11 +468,8 @@ void WeightWindows::update_magic(
 
   auto filter_indices = tally->filter_indices();
 
-  // empty out previous results for weight window bounds
-  if (lower_ww_.size() == 0 || upper_ww_.size() == 0) {
-    lower_ww_ = xt::empty<double>(bounds_size());
-    upper_ww_ = xt::empty<double>(bounds_size());
-  }
+  lower_ww_.fill(-1);
+  upper_ww_.fill(-1);
 
   // adjust filter indices for dummy axes we may introduce when reshaping tally data
   if (!filter_indices.count(FilterType::PARTICLE)) {
@@ -809,14 +815,23 @@ extern "C" int openmc_weight_windows_get_energy_bounds(
   return 0;
 }
 
-extern "C" int openmc_weight_windows_set_particle(
-  int32_t index, const char* particle)
+extern "C" int openmc_weight_windows_set_particle(int32_t index, int particle)
 {
   if (int err = verify_ww_index(index))
     return err;
 
   const auto& wws = variance_reduction::weight_windows.at(index);
-  wws->set_particle_type(str_to_particle_type(particle));
+  wws->set_particle_type(static_cast<ParticleType>(particle));
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_particle(int32_t index, int* particle)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows.at(index);
+  *particle = static_cast<int>(wws->particle_type());
   return 0;
 }
 
@@ -841,16 +856,6 @@ extern "C" int openmc_weight_windows_set_bounds(int32_t index,
 
   const auto& wws = variance_reduction::weight_windows[index];
   wws->set_bounds({lower_bounds, size}, {upper_bounds, size});
-  return 0;
-}
-
-extern "C" int openmc_weight_windows_get_particle(int32_t index, int* particle)
-{
-  if (int err = verify_ww_index(index))
-    return err;
-
-  const auto& wws = variance_reduction::weight_windows.at(index);
-  *particle = static_cast<int>(wws->particle_type());
   return 0;
 }
 

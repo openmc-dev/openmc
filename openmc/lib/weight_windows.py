@@ -6,7 +6,7 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from openmc.exceptions import AllocationError, InvalidIDError
-from openmc import ParticleType
+from . import ParticleType
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
@@ -53,7 +53,7 @@ _dll.openmc_weight_windows_get_energy_bounds.argtypes = [c_int32, POINTER(POINTE
 _dll.openmc_weight_windows_get_energy_bounds.restype = c_int
 _dll.openmc_weight_windows_get_energy_bounds.errcheck = _error_handler
 
-_dll.openmc_weight_windows_set_particle.argtypes = [c_int32, c_char_p]
+_dll.openmc_weight_windows_set_particle.argtypes = [c_int32, c_int]
 _dll.openmc_weight_windows_set_particle.restype = c_int
 _dll.openmc_weight_windows_set_particle.errcheck = _error_handler
 
@@ -85,8 +85,19 @@ class WeightWindows(_FortranObjectWithID):
     index : int or None
         Index in the `weight_windows` array.
 
+    Attributes
+    ----------
+    id : int
+        ID of the weight windows object
+    mesh : openmc.lib.Mesh
+        Mesh used for the weight windows
+    particle : openmc.lib.ParticleType
+        The particle type to which these weight windows apply
+    energy_bounds : numpy.ndarray
+        The energy bounds for the weight windows
+    bounds : numpy.ndarray
+        The weight window bounds
     """
-
     __instances = WeakValueDictionary()
 
     def __new__(cls, id=None, new=True, index=None):
@@ -162,8 +173,7 @@ class WeightWindows(_FortranObjectWithID):
             p = ParticleType.from_string(p)
         else:
             p = ParticleType(p)
-        val = c_char_p(str(p).encode())
-        _dll.openmc_weight_windows_set_particle(self._index, val)
+        _dll.openmc_weight_windows_set_particle(self._index, int(p))
 
     @property
     def bounds(self):

@@ -6,6 +6,7 @@ import pytest
 from uncertainties import ufloat
 
 import openmc
+import openmc.lib
 from openmc.stats import Discrete, Point
 
 from tests import cdtemp
@@ -238,3 +239,46 @@ def test_roundtrip(run_in_tmpdir, model, wws):
     # ensure the lower bounds read in from the XML match those of the
     for ww_out, ww_in in zipped_wws:
         assert(ww_out == ww_in)
+
+def test_ww_attrs(run_in_tmpdir, model):
+    model.export_to_xml()
+
+    openmc.lib.init()
+
+    tally = openmc.lib.tallies[model.tallies[0].id]
+
+    wws = openmc.lib.WeightWindows.from_tally(tally)
+
+    # this is the first weight window object created
+    assert wws.id == 1
+
+    with pytest.raises(ValueError):
+        tally.find_filter(openmc.lib.AzimuthalFilter)
+
+    mesh_filter = tally.find_filter(openmc.lib.MeshFilter)
+    mesh = mesh_filter.mesh
+
+    assert wws.mesh.id == mesh.id
+
+    assert wws.particle == openmc.lib.ParticleType.NEUTRON
+
+    wws.particle = 1
+    assert wws.particle == openmc.lib.ParticleType.PHOTON
+    wws.particle = 'photon'
+    assert wws.particle == openmc.lib.ParticleType.PHOTON
+
+    with pytest.raises(ValueError):
+        wws.particle = '🌠'
+
+    energy_filter = tally.find_filter(openmc.lib.EnergyFilter)
+    np.testing.assert_allclose(np.unique(energy_filter.bins), np.unique(wws.energy_bounds))
+
+    # at this point the weight window bounds are uninitialized
+    assert all(wws.bounds[0] == -1)
+    assert all(wws.bounds[1] == -1)
+
+    wws = openmc.lib.WeightWindows.from_tally(tally, particle='photon')
+    assert wws.id == 2
+    assert wws.particle == openmc.lib.ParticleType.PHOTON
+
+    openmc.lib.finalize()

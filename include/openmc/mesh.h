@@ -88,12 +88,6 @@ public:
   //! \return sampled position within tet
   virtual Position sample(uint64_t* seed, int32_t bin) const = 0;
 
-  //! Get the volume of a mesh bin
-  //
-  //! \param[in] bin Bin to return the volume for
-  //! \return Volume of the bin
-  virtual double volume(int bin) const = 0;
-
   //! Determine which bins were crossed by a particle
   //
   //! \param[in] r0 Previous position of the particle
@@ -190,8 +184,6 @@ public:
   };
 
   Position sample(uint64_t* seed, int32_t bin) const override;
-
-  double volume(int bin) const override;
 
   int get_bin(Position r) const override;
 

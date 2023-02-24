@@ -73,6 +73,10 @@ _dll.openmc_weight_windows_get_bounds.errcheck = _error_handler
 class WeightWindows(_FortranObjectWithID):
     """WeightWindows stored internally.
 
+    This class exposes a weight windows object that is stored internally in the
+    OpenMC library. To obtain a view of a weight windows object with a given ID,
+    use the :data:`openmc.lib.weight_windows` mapping.
+
     .. versionadded:: 0.13.3
 
     Parameters

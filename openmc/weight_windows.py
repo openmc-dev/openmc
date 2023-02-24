@@ -625,13 +625,13 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
 
 
 def hdf5_to_wws(path):
-    """Create WeightWindows instances from a weight windows hdf5 file
+    """Create WeightWindows instances from a weight windows HDF5 file
 
-    .. versionadded:: 0.13.1
+    .. versionadded:: 0.13.3
 
     Parameters
     ----------
-    path : str or pathlib.Path
+    path : cv.PathLike
         Path to the weight windows hdf5 file
 
     Returns

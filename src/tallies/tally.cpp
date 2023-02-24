@@ -362,7 +362,7 @@ std::vector<FilterType> Tally::filter_types() const
 }
 
 std::unordered_map<FilterType, int32_t> Tally::filter_indices() const {
-  std::unordered_map<FilterType, int> filter_indices;
+  std::unordered_map<FilterType, int32_t> filter_indices;
   for (int i = 0; i < this->filters().size(); i++) {
     const auto& f = model::tally_filters[this->filters(i)];
 
@@ -372,7 +372,11 @@ std::unordered_map<FilterType, int32_t> Tally::filter_indices() const {
 }
 
 bool Tally::has_filter(FilterType filter_type) const {
-  return filter_indices().count(filter_type) > 0;
+  for (auto idx : this->filters()) {
+    if (model::tally_filters[idx]->type() == filter_type)
+      return true;
+  }
+  return false;
 }
 
 void Tally::set_filters(gsl::span<Filter*> filters)
@@ -702,19 +706,11 @@ void Tally::accumulate()
 }
 
 int Tally::score_index(const std::string& score) const {
-
-  // call to create a vector of strings for the tally scores
-  auto tally_scores = scores();
-
-  auto score_it = std::find(tally_scores.begin(), tally_scores.end(), score);
-
-  int out = score_it - tally_scores.begin();
-
-  if (score_it == tally_scores.end()) {
-    return -1;
+  for (int i = 0; i < scores_.size(); i++) {
+    if (this->score_name(i) == score)
+      return i;
   }
-
-  return score_it - tally_scores.begin();
+  return -1;
 }
 
 xt::xarray<double> Tally::get_reshaped_data() const

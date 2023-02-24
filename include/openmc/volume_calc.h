@@ -35,7 +35,7 @@ public:
   // Constructors
   VolumeCalculation(pugi::xml_node node);
 
-  VolumeCalculation() {}
+  VolumeCalculation() = default;
 
   // Methods
 

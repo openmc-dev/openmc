@@ -22,6 +22,8 @@ class MsrContinuous:
     reactor category inspired the development of this class.
     An instance of this class can be passed directly to an instance of one of the
     integrator classes, such as :class:`openmc.deplete.CECMIntegrator`.
+    
+    .. versionadded:: 0.13.3
 
     Parameters
     ----------

@@ -143,8 +143,7 @@ class Material(IDManagerMixin):
         string += '{: <16}=\t{}'.format('\tDensity', self._density)
         string += f' [{self._density_units}]\n'
 
-        string += '{: <16}=\t{}'.format('\tVolume', self._volume)
-        string += ' [cm^3]\n'
+        string += '{: <16}=\t{} [cm^3]\n'.format('\tVolume', self._volume)
 
         string += '{: <16}\n'.format('\tS(a,b) Tables')
 

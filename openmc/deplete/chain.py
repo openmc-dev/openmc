@@ -689,6 +689,7 @@ class Chain:
     def form_rr_term(self, msr, index):
         """Function to form the removal rate term matrices.
 
+        .. versionadded:: 0.13.3
         Parameters
         ----------
         msr : openmc.msr.MsrContinuous

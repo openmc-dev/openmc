@@ -279,7 +279,7 @@ to the depletion equation, which can be written as:
   \begin{aligned}\frac{dN_i(t)}{dt} = &\underbrace{\sum\limits_j f_{j\rightarrow i}
   \int_0^\infty dE  \; \sigma_j (E,t) \phi(E,t) N_j(t)  - \int_0^\infty dE \; \sigma_i(E,t)
   \phi(E,t) N_i(t)}_\textbf{R} \\
-  &+ \underbrace{\sum_j \lambda_{j\rightarrow i} N_j(t) + \lambda_{i\rightarrow j} N_i(t)}_\textbf{D} \\
+  &+ \underbrace{\sum_j \left [ \lambda_{j\rightarrow i} N_j(t) - \lambda_{i\rightarrow j} N_i(t) \right ]}_\textbf{D} \\
   &- \underbrace{\epsilon_i \lambda_i N_i(t)}_\textbf{T} \end{aligned}
 
 where the transmutation term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}` and the new removal term :math:`\mathbf{T}`
@@ -303,7 +303,7 @@ as we've seen before.
 
 .. note::
 
-    if no ``destination_material`` argument is passed to the
+    If no ``destination_material`` argument is passed to the
     :meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method of the
     :class:`~openmc.deplete.MsrContinuous` class, nuclides that are removed will not
     be tracked afterwards.

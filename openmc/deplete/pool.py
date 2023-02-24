@@ -59,6 +59,9 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
         that equals the number of depletable materials that transfer nuclides.
         The function to form the removal rates matrices is:
         :meth:`chain.form_rr_term()`.
+        
+        .. versionadded:: 0.13.3
+        
     Returns
     -------
     x_result : list of numpy.ndarray

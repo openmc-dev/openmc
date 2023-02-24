@@ -230,6 +230,17 @@ Various classes may be created when performing tally slicing and/or arithmetic:
    openmc.arithmetic.AggregateNuclide
    openmc.arithmetic.AggregateFilter
 
+Variance Reduction
+------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass
+
+   openmc.weight_windows.WeightWindows
+   openmc.weight_windows.hdf5_to_wws
+
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------
 

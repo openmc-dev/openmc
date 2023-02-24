@@ -430,6 +430,8 @@ class WeightWindows(IDManagerMixin):
         upper_ww_bounds = group['upper_ww_bounds'][()]
         survival_ratio = group['survival_ratio'][()]
 
+        mesh = meshes[mesh_id]
+
         max_lower_bound_ratio = None
         if group.get('max_lower_bound_ratio') is not None:
             max_lower_bound_ratio = group['max_lower_bound_ratio'][()]
@@ -438,7 +440,7 @@ class WeightWindows(IDManagerMixin):
         weight_cutoff = group['weight_cutoff'][()]
 
         return cls(
-            mesh=meshes[mesh_id],
+            mesh=mesh,
             lower_ww_bounds=lower_ww_bounds,
             upper_ww_bounds=upper_ww_bounds,
             energy_bounds=e_bounds,
@@ -624,7 +626,7 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
     return wws
 
 
-def hdf5_to_wws(path):
+def hdf5_to_wws(path, meshes):
     """Create WeightWindows instances from a weight windows HDF5 file
 
     .. versionadded:: 0.13.3
@@ -633,10 +635,12 @@ def hdf5_to_wws(path):
     ----------
     path : cv.PathLike
         Path to the weight windows hdf5 file
+    meshes : dict
+        A dictionary with IDs as keys and openmc.MeshBase instances as values
 
     Returns
     -------
     list of openmc.WeightWindows
     """
     with h5py.File(path) as h5_file:
-        return [WeightWindows.from_hdf5(ww) for ww in h5_file['weight_windows']]
+        return [WeightWindows.from_hdf5(ww, meshes) for ww in h5_file['weight_windows']]

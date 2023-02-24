@@ -282,14 +282,20 @@ to the depletion equation, which can be written as:
   &+ \underbrace{\sum_j \left [ \lambda_{j\rightarrow i} N_j(t) - \lambda_{i\rightarrow j} N_i(t) \right ]}_\textbf{D} \\
   &- \underbrace{\epsilon_i \lambda_i N_i(t)}_\textbf{T} \end{aligned}
 
-where the transmutation term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}` and the new removal term :math:`\mathbf{T}`
-have been grouped together so that
+where the transmutation term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}`
+and the new removal term :math:`\mathbf{T}` have been grouped together so that
 :math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
+The removal efficiency :math:`\epsilon_i` and the removal rate coefficient
+:math:`\lambda_i` define the continuous removal of the nuclide :math:`i`, which
+behaviour is similar to radioactive decay.
+:math:`\lambda_i` can also be defined as the reciprocal of a cycle time
+:math:`T_{cyc}`, intended as the time needed to process the whole inventory.
 
-the removal efficiency :math:`\epsilon_i` and the removal rate coefficient :math:`\lambda_i`
-define the continuous removal of the nuclide :math:`i`, which behaviour is similar to radioactive decay.
 For simplicity, :math:`\epsilon_i` and :math:`\lambda_i`
-can be combined together in one single user-defined parameter that is defined again as :math:`\lambda_i`.
+can be combined together in one single user-defined parameter that is defined
+again as :math:`\lambda_i`.
+Thus, setting a removal rate coefficient of :math:`1 s^{-1}` at :math:`100\%`
+efficiency, would be the same as setting :math:`10 s^{-1}` at :math:`10\%`.
 
 Note that this formulation assumes first order removal and
 homogeneous distribution of nuclide :math:`i` throughout the material.
@@ -305,8 +311,8 @@ as we've seen before.
 
     If no ``destination_material`` argument is passed to the
     :meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method of the
-    :class:`~openmc.deplete.MsrContinuous` class, nuclides that are removed will not
-    be tracked afterwards.
+    :class:`~openmc.deplete.MsrContinuous` class, nuclides that are removed will
+    not be tracked afterwards.
 
 Feeding rate
 ------------
@@ -322,5 +328,20 @@ material id, and the off-diagonal positions are filled with the removal matrices
 The nuclide vectors are assembled together in one single vector and the resulting
 system is solved with the same integration algorithms seen before.
 
-Note that mass conservation in this case is assured by transferring the number of
-atoms directly and not the nuclide densities.
+For sake of example, let's consider the  case of two depletable materials and one
+feed defined from material 1 to material 2. The final system will look like:
+
+.. math::
+
+  \frac{d}{dt}[\vec{n_1},\vec{n_2}] &=
+  \begin{pmatrix}\mathbf{A_{11}} & 0\\ \mathbf{T_{21}} & \mathbf{A_{22 }}
+  \end{pmatrix} \begin{pmatrix}\vec{n_1}\\ \vec{n_2}\end{pmatrix}
+
+where:
+
+:math:`\mathbf{A_{11}} = \mathbf{R_{11}}+\mathbf{D_{11}}-\mathbf{T_{21}}`, and
+
+:math:`\mathbf{A_{22}} = \mathbf{R_{22}}+\mathbf{D_{22}}`.
+
+Note that mass conservation during feeding is assured by transferring the number
+of atoms directly.

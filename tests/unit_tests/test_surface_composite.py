@@ -65,42 +65,46 @@ def test_right_circular_cylinder(axis, indices):
     x, y, z = 1.0, -2.5, 3.0
     h, r = 5.0, 3.0
     s = openmc.model.RightCircularCylinder((x, y, z), h, r, axis=axis.lower())
-    assert isinstance(s.cyl, getattr(openmc, axis + "Cylinder"))
-    assert isinstance(s.top, getattr(openmc, axis + "Plane"))
-    assert isinstance(s.bottom, getattr(openmc, axis + "Plane"))
+    s_r = openmc.model.RightCircularCylinder((x, y, z), h, r, axis=axis.lower(),
+                                             upper_fillet_radius=1.6,
+                                             lower_fillet_radius=1.6)
+    for s in (s, s_r):
+        assert isinstance(s.cyl, getattr(openmc, axis + "Cylinder"))
+        assert isinstance(s.top, getattr(openmc, axis + "Plane"))
+        assert isinstance(s.bottom, getattr(openmc, axis + "Plane"))
 
-    # Make sure boundary condition propagates
-    s.boundary_type = 'reflective'
-    assert s.boundary_type == 'reflective'
-    assert s.cyl.boundary_type == 'reflective'
-    assert s.bottom.boundary_type == 'reflective'
-    assert s.top.boundary_type == 'reflective'
+        # Make sure boundary condition propagates
+        s.boundary_type = 'reflective'
+        assert s.boundary_type == 'reflective'
+        assert s.cyl.boundary_type == 'reflective'
+        assert s.bottom.boundary_type == 'reflective'
+        assert s.top.boundary_type == 'reflective'
 
-    # Check bounding box
-    ll, ur = (+s).bounding_box
-    assert np.all(np.isinf(ll))
-    assert np.all(np.isinf(ur))
-    ll, ur = (-s).bounding_box
-    assert ll == pytest.approx((x, y, z) + np.roll([0, -r, -r], indices[0]))
-    assert ur == pytest.approx((x, y, z) + np.roll([h, r, r], indices[0]))
+        # Check bounding box
+        ll, ur = (+s).bounding_box
+        assert np.all(np.isinf(ll))
+        assert np.all(np.isinf(ur))
+        ll, ur = (-s).bounding_box
+        assert ll == pytest.approx((x, y, z) + np.roll([0, -r, -r], indices[0]))
+        assert ur == pytest.approx((x, y, z) + np.roll([h, r, r], indices[0]))
 
-    # __contains__ on associated half-spaces
-    point_pos = (x, y, z) + np.roll([h/2, r+1, r+1], indices[0])
-    assert point_pos in +s
-    assert point_pos not in -s
-    point_neg = (x, y, z) + np.roll([h/2, 0, 0], indices[0])
-    assert point_neg in -s
-    assert point_neg not in +s
+        # __contains__ on associated half-spaces
+        point_pos = (x, y, z) + np.roll([h/2, r+1, r+1], indices[0])
+        assert point_pos in +s
+        assert point_pos not in -s
+        point_neg = (x, y, z) + np.roll([h/2, 0, 0], indices[0])
+        assert point_neg in -s
+        assert point_neg not in +s
 
-    # translate method
-    t = uniform(-5.0, 5.0)
-    s_t = s.translate((t, t, t))
-    ll_t, ur_t = (-s_t).bounding_box
-    assert ur_t == pytest.approx(ur + t)
-    assert ll_t == pytest.approx(ll + t)
+        # translate method
+        t = uniform(-5.0, 5.0)
+        s_t = s.translate((t, t, t))
+        ll_t, ur_t = (-s_t).bounding_box
+        assert ur_t == pytest.approx(ur + t)
+        assert ll_t == pytest.approx(ll + t)
 
-    # Make sure repr works
-    repr(s)
+        # Make sure repr works
+        repr(s)
 
 
 @pytest.mark.parametrize(

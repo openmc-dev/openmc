@@ -1,6 +1,9 @@
 #include "openmc/weight_windows.h"
 
+#include <algorithm>
+#include <cmath>
 #include <set>
+#include <string>
 
 #include "xtensor/xindex_view.hpp"
 #include "xtensor/xio.hpp"

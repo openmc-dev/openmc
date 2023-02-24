@@ -357,7 +357,7 @@ void Tally::set_id(int32_t id)
 std::vector<FilterType> Tally::filter_types() const
 {
   std::vector<FilterType> filter_types;
-  for (auto f : this->filters()) filter_types.push_back(model::tally_filters[f]->type());
+  for (auto idx : this->filters()) filter_types.push_back(model::tally_filters[idx]->type());
   return filter_types;
 }
 

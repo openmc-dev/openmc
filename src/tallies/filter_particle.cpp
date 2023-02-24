@@ -60,11 +60,8 @@ std::string ParticleFilter::text_label(int bin) const
 
 extern "C" int openmc_particle_filter_get_bins(int32_t idx, int bins[])
 {
-
-  if (idx < 0 || idx > model::tally_filters.size()) {
-    fatal_error(fmt::format("No filter at index {}"));
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
+  if (int err = verify_filter(idx))
+    return err;
 
   const auto& f = model::tally_filters[idx];
   auto pf = dynamic_cast<ParticleFilter*>(f.get());

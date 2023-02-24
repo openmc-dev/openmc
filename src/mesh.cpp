@@ -1569,7 +1569,7 @@ double SphericalMesh::volume(const MeshIndex& ijk) const {
   double phi_i = grid_[2][ijk[2] - 1];
   double phi_o = grid_[2][ijk[2]];
 
-  return (1.0 / 3.0) * (std::pow(r_o, 3) - std::pow(r_i, 3)) *
+  return (1.0 / 3.0) * (r_o*r_o*r_o - r_i*r_i*r_i) *
          (std::cos(theta_i) - std::cos(theta_o)) * (phi_o - phi_i);
 }
 

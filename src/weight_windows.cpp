@@ -215,7 +215,7 @@ WeightWindows* WeightWindows::from_hdf5(
   hid_t wws_group, const std::string& group_name)
 {
   // collect ID from the name of this group
-  hid_t ww_group = open_group(wws_group, group_name.c_str());
+  hid_t ww_group = open_group(wws_group, group_name);
 
   auto wws = WeightWindows::create();
 
@@ -298,7 +298,7 @@ void WeightWindows::set_id(int32_t id)
   variance_reduction::ww_map[id] = index_;
 }
 
-void WeightWindows::set_energy_bounds(gsl::span<double const> bounds)
+void WeightWindows::set_energy_bounds(gsl::span<const double> bounds)
 {
   energy_bounds_.clear();
   energy_bounds_.insert(energy_bounds_.begin(), bounds.begin(), bounds.end());
@@ -388,7 +388,7 @@ void WeightWindows::check_bounds(const T& lower, const T& upper) const
       lower.size(), upper.size());
     fatal_error(msg);
   }
-  check_bounds(lower);
+  this->check_bounds(lower);
 }
 
 template<class T>
@@ -411,7 +411,7 @@ void WeightWindows::set_bounds(
   const xt::xtensor<double, 2>& upper_bounds)
 {
 
-  check_bounds(lower_bounds, upper_bounds);
+  this->check_bounds(lower_bounds, upper_bounds);
 
   // set new weight window values
   lower_ww_ = lower_bounds;
@@ -421,7 +421,7 @@ void WeightWindows::set_bounds(
 void WeightWindows::set_bounds(
   const xt::xtensor<double, 2>& lower_bounds, double ratio)
 {
-  check_bounds(lower_bounds);
+  this->check_bounds(lower_bounds);
 
   // set new weight window values
   lower_ww_ = lower_bounds;
@@ -433,11 +433,11 @@ void WeightWindows::set_bounds(
   gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
 {
   check_bounds(lower_bounds, upper_bounds);
-  lower_ww_ = xt::empty<double>(bounds_size());
-  upper_ww_ = xt::empty<double>(bounds_size());
+  auto shape = this->bounds_size();
+  lower_ww_ = xt::empty<double>(shape);
+  upper_ww_ = xt::empty<double>(shape);
 
   // set new weight window values
-  auto shape = bounds_size();
   xt::view(lower_ww_, xt::all()) = xt::adapt(lower_bounds.data(), lower_ww_.shape());
   xt::view(upper_ww_, xt::all()) = xt::adapt(upper_bounds.data(), upper_ww_.shape());
 }
@@ -445,13 +445,13 @@ void WeightWindows::set_bounds(
 void WeightWindows::set_bounds(
   gsl::span<const double> lower_bounds, double ratio)
 {
-  check_bounds(lower_bounds);
+  this->check_bounds(lower_bounds);
 
-  lower_ww_ = xt::empty<double>(bounds_size());
-  upper_ww_ = xt::empty<double>(bounds_size());
+  auto shape = this->bounds_size();
+  lower_ww_ = xt::empty<double>(shape);
+  upper_ww_ = xt::empty<double>(shape);
 
   // set new weight window values
-  auto shape = bounds_size();
   xt::view(lower_ww_, xt::all()) = xt::adapt(lower_bounds.data(), lower_ww_.shape());
   xt::view(upper_ww_, xt::all()) = xt::adapt(lower_bounds.data(), upper_ww_.shape());
   upper_ww_ *= ratio;
@@ -464,7 +464,7 @@ void WeightWindows::update_magic(
   ///////////////////////////
   // Setup and checks
   ///////////////////////////
-  check_tally_update_compatibility(tally);
+  this->check_tally_update_compatibility(tally);
 
   auto filter_indices = tally->filter_indices();
 
@@ -764,8 +764,7 @@ extern "C" int openmc_weight_windows_set_id(int32_t index, int32_t id)
     return err;
 
   const auto& wws = variance_reduction::weight_windows.at(index);
-  wws->id() = id;
-  variance_reduction::ww_map[id] = index;
+  wws->set_id(id);
   return 0;
 }
 
@@ -868,7 +867,7 @@ extern "C" int openmc_extend_weight_windows(
     *index_end = variance_reduction::weight_windows.size() + n - 1;
   for (int i = 0; i < n; ++i)
     variance_reduction::weight_windows.push_back(
-      make_unique<WeightWindows>(-1));
+      make_unique<WeightWindows>());
   return 0;
 }
 

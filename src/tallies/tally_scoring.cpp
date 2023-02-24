@@ -2369,6 +2369,9 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
 {
   // Determine the tracklength estimate of the flux
   double flux = p.wgt_ * distance;
+  
+  double E = p.E_;
+  double sqrtkT = p.sqrtkT_;
 
   for (int i = 0; i < model::active_tracklength_tallies_size; ++i) {
     int i_tally = model::device_active_tracklength_tallies[i];
@@ -2394,7 +2397,7 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
       #ifdef NO_MICRO_XS_CACHE
       // Find energy index on energy grid
       int neutron = static_cast<int>(Particle::Type::neutron);
-      int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
+      int i_grid = std::log(E/data::energy_min[neutron])/simulation::log_spacing;
       #endif
 
       // Loop over nuclide bins.
@@ -2408,10 +2411,10 @@ score_tracklength_tally(Particle& p, double distance, bool need_depletion_rx)
             auto j = model::materials[p.material_].mat_nuclide_index(i_nuclide);
             if (j == C_NONE) continue;
             atom_density = model::materials[p.material_].atom_density(j);
-            #ifdef NO_MICRO_XS_CACHE
-            micro = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
-            #else
+            #ifndef NO_MICRO_XS_CACHE
             micro = p.neutron_xs_[i_nuclide];
+            #else
+            micro = data::nuclides[i_nuclide].calculate_xs<NuclideMicroXS>(i_grid, p, need_depletion_rx, E, sqrtkT);
             #endif
           }
         }

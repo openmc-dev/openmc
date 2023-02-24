@@ -132,6 +132,51 @@ struct NuclideMicroXS {
   double last_E {0.0};      //!< Last evaluated energy
   double last_sqrtkT {0.0}; //!< Last temperature in sqrt(Boltzmann constant
                             //!< * temperature (eV))
+                            
+  NuclideMicroXS() = default;
+
+  NuclideMicroXS(
+      double total,
+      double absorption,
+      double fission,
+      double nu_fission,
+      double elastic,
+      double thermal,
+      double thermal_elastic,
+      double photon_prod,
+      double reaction_in[DEPLETION_RX_SIZE],
+      int index_grid,
+      int index_temp,
+      double interp_factor,
+      int index_sab,
+      int index_temp_sab,
+      double sab_frac,
+      bool use_ptable,
+      double last_E,
+      double las_sqrtkT
+      ) :
+    total(total),
+    absorption(absorption),
+    fission(fission),
+    nu_fission(nu_fission),
+    elastic( elastic),
+    thermal(thermal),
+    thermal_elastic(thermal_elastic),
+    photon_prod(photon_prod),
+    index_grid(index_grid),
+    index_temp(index_temp),
+    interp_factor(interp_factor),
+    index_sab(index_sab),
+    index_temp_sab(index_temp_sab),
+    sab_frac(sab_frac),
+    use_ptable(use_ptable),
+    last_E(last_E),
+    last_sqrtkT(las_sqrtkT)
+  {
+    for (int r = 0; r < DEPLETION_RX_SIZE; r++) {
+      reaction[r] = reaction_in[r];
+    }
+  }
 };
 
 class NuclideMicroXSCache {
@@ -210,6 +255,40 @@ struct MicroXS {
   double absorption;    //!< macroscopic absorption xs
   double fission;       //!< macroscopic fission xs
   double nu_fission;    //!< macroscopic production xs
+  double reaction[DEPLETION_RX_SIZE];
+
+  MicroXS() = default;
+
+  MicroXS(
+      double total,
+      double absorption,
+      double fission,
+      double nu_fission,
+      double elastic,
+      double thermal,
+      double thermal_elastic,
+      double photon_prod,
+      double reaction_in[DEPLETION_RX_SIZE],
+      int index_grid,
+      int index_temp,
+      double interp_factor,
+      int index_sab,
+      int index_temp_sab,
+      double sab_frac,
+      bool use_ptable,
+      double last_E,
+      double last_sqrtkT
+      ) :
+    total(total),
+    absorption(absorption),
+    fission(fission),
+    nu_fission(nu_fission)
+  {
+    for (int r = 0; r < DEPLETION_RX_SIZE; r++) {
+      reaction[r] = reaction_in[r];
+    }
+  }
+
 };
 
 //==============================================================================

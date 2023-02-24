@@ -477,18 +477,20 @@ int sample_nuclide(Particle& p)
   // Get pointers to nuclide/density arrays
   const auto& mat = model::materials[p.material_];
   int n = mat.nuclide_.size();
+  
+  double E = p.E_;
+  double sqrtkT = p.sqrtkT_;
 
   // Find energy index on energy grid
   int neutron = static_cast<int>(Particle::Type::neutron);
-  int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
+  int i_grid = std::log(E/data::energy_min[neutron])/simulation::log_spacing;
 
   double prob = 0.0;
   for (int i = 0; i < n; ++i) {
     int i_nuclide = mat.nuclide(i);
 
     // Lookup micro XS (no depletion XS data is needed for collisions)
-    bool need_depletion_rx = false;
-    NuclideMicroXS xs = data::nuclides[i_nuclide].calculate_xs(i_grid, p, need_depletion_rx);
+    NuclideMicroXS xs = data::nuclides[i_nuclide].calculate_xs<NuclideMicroXS>(i_grid, p, false, E, sqrtkT);
     
     // Get atom density
     double atom_density = mat.atom_density(i);

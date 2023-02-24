@@ -40,25 +40,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
         Expected to return the depletion matrix required by
         ``func``
     msr : openmc.deplete.MsrContinuous, Optional
-        Introduce removal rate coefficients for selected nuclides as a
-        subtractive term to the Bateman equations, defined as
-        :math:`\epsilon_i \lambda_i n_i`, where:
-        :math:`i` denotes the nuclide,
-        :math:`\epsilon` is the removal efficiency,
-        :math:`\lambda` is the removal rate coefficient, and can be defined in terms
-        of cycle time :math:`T_{cyc}` as: :math:`\lambda = \frac{1}{T_{cyc}}`.
-        For simplicity, :math:`\epsilon_i` and :math:`\lambda_i` are combined
-        together in one single parameter, referred again as removal rate with
-        units ``1/sec``.
-        If the system contains only one depletable material, removed nuclides
-        cannot be accounted for afterwards.
-        In case one wants to keep track of the removed nuclides, a second
-        depletable material must be defined and the respective depletion equations
-        coupled.
-        The resulting matrix is a multidimensional square array with dimension
-        that equals the number of depletable materials that transfer nuclides.
-        The function to form the removal rates matrices is:
-        :meth:`chain.form_rr_term()`.
+        Object to perform continuous reprocessing.
         
         .. versionadded:: 0.13.3
         

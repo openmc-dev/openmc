@@ -34,7 +34,11 @@ def test_write_data_to_vtk(mesh, tmpdir):
     # BUILD
     filename = Path(tmpdir) / "out.vtk"
 
-    data = np.random.random(mesh.num_mesh_cells)
+    # use mesh element volumes as data to check volume-normalization ordering
+    # kji (i changing fastest) orering is expected for input data
+    # by using the volumes transposed as the data here, we can ensure the
+    # normalization is happening correctly
+    data = mesh.volumes.T
 
     # RUN
     mesh.write_data_to_vtk(filename=filename, datasets={"label1": data, "label2": data})
@@ -56,8 +60,13 @@ def test_write_data_to_vtk(mesh, tmpdir):
     assert array2.GetName() == "label2"
 
     # check size of datasets
-    assert nps.vtk_to_numpy(array1).size == data.size
-    assert nps.vtk_to_numpy(array2).size == data.size
+    data1 = nps.vtk_to_numpy(array1)
+    data2 = nps.vtk_to_numpy(array2)
+    assert data1.size == data.size
+    assert data2.size == data.size
+
+    assert all(data1 == data2)
+    assert all(data1 == 1.0)
 
 
 @pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])

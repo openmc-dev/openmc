@@ -726,7 +726,7 @@ class Chain:
                     matrix[i, i] = msr.get_removal_rate(mat, elm)
                 else:
                     matrix[i, i] = 0.0
-            #Build trasnfer terms matrices
+            #Build transfer terms matrices
             elif isinstance(index, tuple):
                 destination_material, mat = index
                 if msr.get_destination_material(mat, elm) == destination_material:

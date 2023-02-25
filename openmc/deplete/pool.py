@@ -66,13 +66,13 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
         matrices = map(matrix_func, repeat(chain), rates, fission_yields)
 
     if msr is not None:
-        # calculate removal rates terms as diagonal matrices
+        # calculate removal rate terms as diagonal matrices
         removal = map(chain.form_rr_term, repeat(msr), msr.burn_mats)
-        #subtract removal rates terms from bateman matrices
+        #subtract removal rate terms from Bateman matrices
         matrices = [mat1 - mat2 for (mat1, mat2) in zip(matrices, removal)]
 
         if len(msr.index_transfer) > 0:
-            # calculate transfer rates terms as diagonal matrices
+            # calculate transfer rate terms as diagonal matrices
             transfer = list(map(chain.form_rr_term, repeat(msr),
                                 msr.index_transfer))
 

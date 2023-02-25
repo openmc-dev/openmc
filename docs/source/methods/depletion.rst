@@ -333,9 +333,9 @@ feed defined from material 1 to material 2. The final system will look like:
 
 .. math::
 
-  \frac{d}{dt}[\vec{n_1},\vec{n_2}] &=
-  \begin{pmatrix}\mathbf{A_{11}} & 0\\ \mathbf{T_{21}} & \mathbf{A_{22 }}
-  \end{pmatrix} \begin{pmatrix}\vec{n_1}\\ \vec{n_2}\end{pmatrix}
+  \begin{aligned}\frac{d}{dt}\begin{pmatrix}\vec{N_1}\\ \vec{N_2}\end{pmatrix} &=
+  \begin{pmatrix}\mathbf{A_{11}} & \mathbf{0}\\ \mathbf{T_{21}} & \mathbf{A_{22 }}
+  \end{pmatrix} \begin{pmatrix}\vec{N_1}\\ \vec{N_2}\end{pmatrix} \end{aligned}
 
 where:
 

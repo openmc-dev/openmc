@@ -1,18 +1,13 @@
-from abc import ABC, abstractmethod
 from collections import OrderedDict
-from copy import deepcopy
-from warnings import warn
 from numbers import Real
 
 import numpy as np
 import h5py
 
-from openmc.checkvalue import check_type, check_value, check_less_than, \
-check_iterable_type, check_length
-from openmc import Materials, Material, Cell
-from openmc.search import _SCALAR_BRACKETED_METHODS, search_for_keff
-from openmc.data import atomic_mass, AVOGADRO, ELEMENT_SYMBOL
-import openmc.lib
+from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
+                                _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR)
+from openmc.checkvalue import check_type, check_value
+from openmc import Materials, Material
 
 class MsrContinuous:
     """Class defining removal rates for continuous nuclides removal or feed.
@@ -143,23 +138,23 @@ class MsrContinuous:
         if mat in self.removal_rates.keys():
             return self.removal_rates[mat].keys()
 
-    def set_removal_rate(self, mat, elements, removal_rate, units='1/s',
+    def set_removal_rate(self, mat, elements, removal_rate, removal_rate_units='1/s',
                          destination_material=None):
         """Set removal rate to elements in a depletable material.
 
         Parameters
         ----------
-        mat : Openmc.Material or str or int
+        mat : openmc.Material or str or int
             Depletable material
-        elements : list[str]
+        elements : list of str
             List of strings of elements that share removal rate
         removal_rate : float
-            Removal rate value in [1/sec]
+            Removal rate
         destination_material : Openmc.Material or str or int, Optional
             Destination material to where nuclides get fed.
-        units: str, optional
-            Removal rates units
-            Default : '1/s'
+        removal_rate_units: {'1/s', '1/min', '1/h', '1/d', '1/a'}
+            Units for values specified in the removal_rate argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years.
 
         """
         mat = self._get_mat_id(mat)
@@ -167,24 +162,29 @@ class MsrContinuous:
 
         if destination_material is not None:
             destination_material = self._get_mat_id(destination_material)
-            #prevent for setting tranfert to material if not set as depletable
             if len(self.burn_mats) > 1:
-                check_value('transfert to material', str(destination_material),
+                check_value('destination_material', str(destination_material),
                             self.burn_mats)
             else:
                 raise ValueError(f'Transfer to material {destination_material} '\
                         'is set, but there is only one depletable material')
 
-        if units != '1/s':
-            check_value('Units', units, ['1/h', '1/d'])
-            if units == '1/h':
-                unit_conv = 1/3600
-            elif units == '1/d':
-                unit_conv = 1/86400
-        else:
-            unit_conv = 1
+
+	if removal_rate_units in ('1/s', '1/sec'): 
+	    unit_conv = 1 
+    	elif removal_rate_units in ('1/min', '1/minute'): 
+	    unit_conv = _SECONDS_PER_MINUTE 
+	elif removal_rate_units in ('1/h', '1/hr', '1/hour'): 
+	    unit_conv = _SECONDS_PER_HOUR 
+	elif removal_rate_units in ('1/d', '1/day'): 
+	    unit_conv = _SECONDS_PER_DAY 
+	elif removal_rate_units in ('1/a', '1/year'): 
+	    unit_conv = _SECONDS_PER_JULIAN_YEAR 
+	else: 
+	    raise ValueError("Invalid removal rate unit '{}'".format(removal_rate_units)) 
+
         for element in elements:
             check_value('Element', element, ELEMENT_SYMBOL.values())
-            self.removal_rates[mat][element] = removal_rate * unit_conv, destination_material
+            self.removal_rates[mat][element] = removal_rate / unit_conv, destination_material
             if destination_material is not None:
                 self.index_transfer.add((destination_material, mat))

@@ -17,7 +17,7 @@ class MsrContinuous:
     reactor category inspired the development of this class.
     An instance of this class can be passed directly to an instance of one of the
     integrator classes, such as :class:`openmc.deplete.CECMIntegrator`.
-    
+
     .. versionadded:: 0.13.3
 
     Parameters
@@ -169,19 +169,18 @@ class MsrContinuous:
                 raise ValueError(f'Transfer to material {destination_material} '\
                         'is set, but there is only one depletable material')
 
-
-	if removal_rate_units in ('1/s', '1/sec'): 
-	    unit_conv = 1 
-    	elif removal_rate_units in ('1/min', '1/minute'): 
-	    unit_conv = _SECONDS_PER_MINUTE 
-	elif removal_rate_units in ('1/h', '1/hr', '1/hour'): 
-	    unit_conv = _SECONDS_PER_HOUR 
-	elif removal_rate_units in ('1/d', '1/day'): 
-	    unit_conv = _SECONDS_PER_DAY 
-	elif removal_rate_units in ('1/a', '1/year'): 
-	    unit_conv = _SECONDS_PER_JULIAN_YEAR 
-	else: 
-	    raise ValueError("Invalid removal rate unit '{}'".format(removal_rate_units)) 
+    	if removal_rate_units in ('1/s', '1/sec'):
+    	    unit_conv = 1
+        elif removal_rate_units in ('1/min', '1/minute'):
+    	    unit_conv = _SECONDS_PER_MINUTE
+    	elif removal_rate_units in ('1/h', '1/hr', '1/hour'):
+    	    unit_conv = _SECONDS_PER_HOUR
+    	elif removal_rate_units in ('1/d', '1/day'):
+    	    unit_conv = _SECONDS_PER_DAY
+    	elif removal_rate_units in ('1/a', '1/year'):
+    	    unit_conv = _SECONDS_PER_JULIAN_YEAR
+    	else:
+    	    raise ValueError("Invalid removal rate unit '{}'".format(removal_rate_units))
 
         for element in elements:
             check_value('Element', element, ELEMENT_SYMBOL.values())

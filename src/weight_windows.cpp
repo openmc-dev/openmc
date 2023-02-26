@@ -463,31 +463,13 @@ void WeightWindows::set_bounds(
 void WeightWindows::update_magic(
   const Tally* tally, const std::string& value, double threshold, double ratio)
 {
-
   ///////////////////////////
   // Setup and checks
   ///////////////////////////
   this->check_tally_update_compatibility(tally);
 
-  auto filter_indices = tally->filter_indices();
-
   lower_ww_.fill(-1);
   upper_ww_.fill(-1);
-
-  // adjust filter indices for dummy axes we may introduce when reshaping tally data
-  if (!filter_indices.count(FilterType::PARTICLE)) {
-    if (!filter_indices.count(FilterType::ENERGY)) {
-      filter_indices[FilterType::MESH] += 2;
-    } else {
-      filter_indices[FilterType::MESH] += 1;
-      filter_indices[FilterType::ENERGY] += 1;
-    }
-  }
-
-  // sanitize filter indices
-  for (auto& pair : filter_indices) {
-    if (pair.second > 3) pair.second -= 3;
-  }
 
   // determine which value to use
   const std::set<std::string> allowed_values = {"mean", "rel_err"};
@@ -510,7 +492,7 @@ void WeightWindows::update_magic(
   // Extract tally data
   //
   // At the end of this section, the mean and rel_err array
-  // is a 2D view of tally data (n_mesh_bins, n_e_groups)
+  // is a 2D view of tally data (n_e_groups, n_mesh_bins)
   //
   ///////////////////////////
 
@@ -518,12 +500,51 @@ void WeightWindows::update_magic(
   // dimension 5 (3 filter dimensions, 1 score dimension, 1 results dimension)
   std::array<int, 5> shape = {
     1, 1, 1, tally->n_scores(), static_cast<int>(TallyResult::SIZE)};
+
+  // set the shape for the filters applied on the tally
+  for (int i = 0; i < tally->filters().size(); i++) {
+    const auto& filter = model::tally_filters[tally->filters(i)];
+    shape[i] = filter->n_bins();
+  }
+
   // build the transpose information to re-order data according to filter type
   std::array<int, 5> transpose = {0, 1, 2, 3, 4};
 
+  // track our filter types and where we've added new ones
+  std::vector<FilterType> filter_types = tally->filter_types();
+
+  // assign other filter types to dummy positions if needed
+  if (!tally->has_filter(FilterType::PARTICLE))
+    filter_types.push_back(FilterType::PARTICLE);
+
+  if (!tally->has_filter(FilterType::ENERGY))
+    filter_types.push_back(FilterType::ENERGY);
+
+  // particle axis mapping
+  transpose[0] =
+    std::find(filter_types.begin(), filter_types.end(), FilterType::PARTICLE) -
+    filter_types.begin();
+
+  // energy axis mapping
+  transpose[1] =
+    std::find(filter_types.begin(), filter_types.end(), FilterType::ENERGY) -
+    filter_types.begin();
+
+  // mesh axis mapping
+  transpose[2] =
+    std::find(filter_types.begin(), filter_types.end(), FilterType::MESH) -
+    filter_types.begin();
+
+  // get a fully reshaped view of the tally according to tally ordering of
+  // filters
+  auto tally_values = xt::reshape_view(tally->results(), shape);
+
+  // get a that is (particle, energy, mesh, scores, values)
+  auto transposed_view = xt::transpose(tally_values, transpose);
+
   // determine the dimension and index of the particle data
   int particle_idx = 0;
-  if (filter_indices.count(FilterType::PARTICLE)) {
+  if (tally->has_filter(FilterType::PARTICLE)) {
     // get the particle filter
     auto pf = tally->get_filter<ParticleFilter>();
     const auto& particles = pf->particles();
@@ -543,27 +564,7 @@ void WeightWindows::update_magic(
 
     // use the index of the particle in the filter to down-select data later
     particle_idx = p_it - particles.begin();
-    shape[filter_indices[FilterType::PARTICLE]] = pf->n_bins();
-    transpose[0] = filter_indices[FilterType::PARTICLE];
   }
-
-  if (filter_indices.count(FilterType::ENERGY)) {
-    auto ef = tally->get_filter<EnergyFilter>();
-    shape[filter_indices[FilterType::ENERGY]] = ef->n_bins();
-    transpose[1] = filter_indices[FilterType::ENERGY];
-  }
-
-  if (filter_indices.count(FilterType::MESH)) {
-    auto mf = tally->get_filter<MeshFilter>();
-    shape[filter_indices[FilterType::MESH]] = mf->n_bins();
-    transpose[2] = filter_indices[FilterType::MESH];
-  }
-
-  // get a fully reshaped view of the tally according to tally ordering of filters
-  auto tally_values = xt::reshape_view(tally->results(), shape);
-
-  // get a that is (particle, energy, mesh, scores, values)
-  auto transposed_view = xt::transpose(tally_values, transpose);
 
   // down-select data based on particle and score
   auto sum = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
@@ -584,10 +585,11 @@ void WeightWindows::update_magic(
   // computation has been performed) now we'll switch references to the tally's
   // bounds to avoid allocating additional memory
   auto& new_bounds  = this->lower_ww_;
+  auto& rel_err = this->upper_ww_;
+
   // noalias avoids memory allocation here
   xt::noalias(new_bounds) = sum / n;
 
-  auto& rel_err = this->upper_ww_;
   xt::noalias(rel_err) =
     xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
   xt::filter(rel_err, sum <= 0.0).fill(INFTY);

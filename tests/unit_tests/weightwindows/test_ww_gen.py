@@ -86,6 +86,10 @@ pf = openmc.ParticleFilter(['neutron', 'photon'])
 
 filters = [mf, ef, pf]
 
+test_cases = list(permutations(filters))
+test_cases += list(permutations(filters[:-1]))
+test_cases += list(permutations(filters[::2]))
+
 
 def labels(params):
     out = []
@@ -99,8 +103,8 @@ def labels(params):
     return "filters:" + '-'.join(out)
 
 
-@pytest.mark.parametrize("filters", permutations(filters), ids=labels)
-def test_ww_gen(run_in_tmpdir, filters, model):
+@pytest.mark.parametrize("filters", test_cases, ids=labels)
+def test_ww_gen(filters, model):
 
     tally = openmc.Tally()
     tally.filters = list(filters)
@@ -129,6 +133,11 @@ def test_ww_gen(run_in_tmpdir, filters, model):
         # update the weight window values using tally results
         ww.update_magic(lib_tally)
 
+        print(ww.bounds[0].max())
+        print(ww.bounds[0].min())
+        assert any(ww.bounds[0] != -1)
+        assert any(ww.bounds[1] != -1)
+
         # make sure that the weight window update doesn't change tally values
         np.testing.assert_equal(lib_tally.mean, analog_mean)
 
@@ -151,10 +160,11 @@ def test_ww_gen(run_in_tmpdir, filters, model):
 
         openmc.lib.run()
 
-        ww_mean = lib_tally.mean
+        ww_mean = np.copy(lib_tally.mean)
 
         # we expect that the application of weight windows will populate more tally
         # bins than the analog run for the meshes in this test model
+        assert any(ww_mean != analog_mean)
         assert np.count_nonzero(ww_mean) > np.count_nonzero(analog_mean)
 
 

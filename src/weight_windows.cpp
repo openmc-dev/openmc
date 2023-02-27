@@ -16,6 +16,7 @@
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/mesh.h"
+#include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"

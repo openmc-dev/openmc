@@ -1331,7 +1331,7 @@ class CylindricalMesh(StructuredMesh):
                 for r in self.r_grid
             ]
         )
-        pts_cartesian = np.copy(pts_cylindrical)
+        pts_cartesian = np.empty_like(pts_cylindrical)
         r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
         pts_cartesian[:, 0] = r * np.cos(phi)
         pts_cartesian[:, 1] = r * np.sin(phi)
@@ -1590,7 +1590,7 @@ class SphericalMesh(StructuredMesh):
                 for r in self.r_grid
             ]
         )
-        pts_cartesian = np.copy(pts_spherical)
+        pts_cartesian = np.empty_like(pts_spherical)
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
         pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
         pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)

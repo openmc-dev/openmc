@@ -1334,14 +1334,10 @@ class CylindricalMesh(StructuredMesh):
         )
         pts_cartesian = np.empty_like(pts_cylindrical)
         r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
-        pts_cartesian[:, 0] = r * np.cos(phi)
-        pts_cartesian[:, 1] = r * np.sin(phi)
-
-        # offset with origin
-        pts_cartesian[:, 0] += pts_cartesian[:, 0]
-        pts_cartesian[:, 1] += pts_cartesian[:, 1]
-        pts_cartesian[:, 2] += pts_cartesian[:, 2]
-
+        pts_cartesian[:, 0] = r * np.cos(phi) + self.origin[0]
+        pts_cartesian[:, 1] = r * np.sin(phi) + self.origin[1]
+        pts_cartesian[:, 2] += self.origin[2]
+        
         return super().write_data_to_vtk(
             points=pts_cartesian,
             filename=filename,

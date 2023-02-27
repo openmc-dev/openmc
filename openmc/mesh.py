@@ -1049,8 +1049,9 @@ class CylindricalMesh(StructuredMesh):
         The default value is [0, 2π], i.e. the full phi range.
     z_grid : numpy.ndarray
         1-D array of mesh boundary points along the z-axis.
-    origin : tuple
-        The (x,y,z) origin of the mesh in cartesian coordinates
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -1377,8 +1378,9 @@ class SphericalMesh(StructuredMesh):
     phi_grid : numpy.ndarray
         1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
-    origin : tuple
-        The (x,y,z) origin of the mesh in cartesian coordinates
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]

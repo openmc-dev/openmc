@@ -696,7 +696,7 @@ void WeightWindows::export_to_hdf5(const std::string& filename) const
   // Write file type
   write_attribute(file_id, "filetype", "weight_windows");
 
-  // Write revisiion number for state point file
+  // Write revision number for the weight windows file
   write_attribute(file_id, "version", VERSION_WEIGHT_WINDOWS);
 
   hid_t weight_windows_group =
@@ -883,6 +883,9 @@ extern "C" size_t openmc_weight_windows_size()
 
 extern "C" int openmc_weight_windows_export(const char* filename)
 {
+
+  if (!mpi::master)
+    return 0;
 
   std::string name = filename ? filename : "weight_windows.h5";
 

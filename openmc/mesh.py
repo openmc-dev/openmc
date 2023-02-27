@@ -1337,10 +1337,9 @@ class CylindricalMesh(StructuredMesh):
         pts_cartesian[:, 1] = r * np.sin(phi)
 
         # offset with origin
-        if any([coord != 0 for coord in self.origin]):
-            pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.origin[0]
-            pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.origin[1]
-            pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.origin[2]
+        pts_cartesian[:, 0] += pts_cartesian[:, 0]
+        pts_cartesian[:, 1] += pts_cartesian[:, 1]
+        pts_cartesian[:, 2] += pts_cartesian[:, 2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,
@@ -1598,10 +1597,9 @@ class SphericalMesh(StructuredMesh):
         pts_cartesian[:, 2] = r * np.cos(phi)
 
         # offset with origin
-        if any([coord != 0 for coord in self.origin]):
-            pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.origin[0]
-            pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.origin[1]
-            pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.origin[2]
+        pts_cartesian[:, 0] += self.origin[0]
+        pts_cartesian[:, 1] += self.origin[1]
+        pts_cartesian[:, 2] += self.origin[2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,

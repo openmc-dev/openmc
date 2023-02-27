@@ -1594,14 +1594,9 @@ class SphericalMesh(StructuredMesh):
         )
         pts_cartesian = np.empty_like(pts_spherical)
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
-        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
-        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)
-        pts_cartesian[:, 2] = r * np.cos(phi)
-
-        # offset with origin
-        pts_cartesian[:, 0] += self.origin[0]
-        pts_cartesian[:, 1] += self.origin[1]
-        pts_cartesian[:, 2] += self.origin[2]
+        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta) + self.origin[0]
+        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta) + self.origin[1]
+        pts_cartesian[:, 2] = r * np.cos(phi) + self.origin[2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,

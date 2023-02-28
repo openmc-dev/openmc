@@ -7,12 +7,12 @@ from tests.testing_harness import PyAPITestHarness
 
 
 class SourceTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         mat1 = openmc.Material(material_id=1, temperature=294)
         mat1.set_density('g/cm3', 4.5)
         mat1.add_nuclide(openmc.Nuclide('U235'), 1.0)
-        materials = openmc.Materials([mat1])
-        materials.export_to_xml()
+        self._model.materials = openmc.Materials([mat1])
 
         sphere = openmc.Sphere(surface_id=1, r=10.0, boundary_type='vacuum')
         inside_sphere = openmc.Cell(cell_id=1)
@@ -21,9 +21,7 @@ class SourceTestHarness(PyAPITestHarness):
 
         root = openmc.Universe(universe_id=0)
         root.add_cell(inside_sphere)
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
-        geometry.export_to_xml()
+        self._model.geometry = openmc.Geometry(root)
 
         # Create an array of different sources
         x_dist = openmc.stats.Uniform(-3., 3.)
@@ -84,9 +82,9 @@ class SourceTestHarness(PyAPITestHarness):
         settings.inactive = 5
         settings.particles = 1000
         settings.source = [source1, source2, source3, source4, source5, source6, source7, source8]
-        settings.export_to_xml()
+        self._model.settings = settings
 
 
 def test_source():
-    harness = SourceTestHarness('statepoint.10.h5')
+    harness = SourceTestHarness('statepoint.10.h5', model=openmc.Model())
     harness.main()

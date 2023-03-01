@@ -24,8 +24,8 @@
             "name": "intel",
             "inherits": ["unity"],
             "cacheVariables": {
-                "CMAKE_C_COMPILER": "icx",
-                "CMAKE_CXX_COMPILER": "icpx"
+                "CMAKE_C_COMPILER": "mpicc",
+                "CMAKE_CXX_COMPILER": "mpic++"
             },
             "environment": {
                 "INTEL_CXX_FLAGS": "-fiopenmp"

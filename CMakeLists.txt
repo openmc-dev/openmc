@@ -336,6 +336,7 @@ list(APPEND libopenmc_SOURCES
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/cell.cpp
+  src/chain.cpp
   src/cmfd_solver.cpp
   src/cross_sections.cpp
   src/dagmc.cpp

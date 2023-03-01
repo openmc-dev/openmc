@@ -12,6 +12,7 @@
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/error.h"
@@ -371,6 +372,9 @@ bool read_model_xml()
     }
   }
 
+  // Read data from chain file
+  read_chain_file_xml();
+
   // Read materials and cross sections
   if (!check_for_node(root, "materials")) {
     fatal_error(fmt::format(
@@ -423,6 +427,10 @@ void read_separate_xml_files()
   if (settings::run_mode != RunMode::PLOTTING) {
     read_cross_sections_xml();
   }
+
+  // Read data from chain file
+  read_chain_file_xml();
+
   read_materials_xml();
   read_geometry_xml();
 

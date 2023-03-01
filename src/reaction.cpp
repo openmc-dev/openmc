@@ -6,6 +6,7 @@
 
 #include <fmt/core.h>
 
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
@@ -71,7 +72,12 @@ Reaction::Reaction(hid_t group, const vector<int>& temperatures, int Z, int A)
   if (dZ != 0 || dA != 0) {
     int new_Z = Z + dZ;
     int new_A = A + dA;
-    decay_product_ = fmt::format("{}{}", ATOMIC_SYMBOL[new_Z], new_A);
+    auto decay_product = fmt::format("{}{}", ATOMIC_SYMBOL[new_Z], new_A);
+    if (data::chain_nuclide_map.find(decay_product) !=
+        data::chain_nuclide_map.end()) {
+      // TODO: Implement replace_missing
+      decay_product_ = decay_product;
+    }
   }
 }
 

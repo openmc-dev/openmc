@@ -8,6 +8,7 @@ from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
                                 _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR)
 from openmc.checkvalue import check_type, check_value
 from openmc import Materials, Material
+from openmc.data import ELEMENT_SYMBOL
 
 class MsrContinuous:
     """Class defining removal rates for continuous nuclides removal or feed.

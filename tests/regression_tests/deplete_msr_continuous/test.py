@@ -41,7 +41,12 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-def test_msr(run_in_tmpdir, model):
+@pytest.mark.parametrize("destination_material, power, ref_result", [
+    (None, 0.0, 'ref_msr_no_depletion_only_removal.h5'),
+    ('w', 0.0, 'ref_msr_no_depletion_feed.h5'),
+    (None, 1.0, 'ref_msr_depletion_only_removal.h5'),
+    ('w', 1.0, 'ref_msr_depletion_feed.h5')])
+def test_msr(run_in_tmpdir, model, destination_material, power, ref_result):
 
     """Tests msr depletion class without neither reaction rates nor decay
     but only removal rates"""
@@ -53,14 +58,15 @@ def test_msr(run_in_tmpdir, model):
     removal_rate = 1e-5
     op = CoupledOperator(model, chain_file)
     msr = MsrContinuous(op, model)
-    msr.set_removal_rate('f', element, removal_rate, destination_material='w')
+    msr.set_removal_rate('f', element, removal_rate,
+                        destination_material=destination_material)
     integrator = openmc.deplete.PredictorIntegrator(
-        op, [1], 0.0, msr_continuous = msr, timestep_units = 'd')
+        op, [1], power, msr_continuous = msr, timestep_units = 'd')
     integrator.integrate()
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
-    path_reference = Path(__file__).with_name('depletion_ref_results.h5')
+    path_reference = Path(__file__).with_name(ref_result)
 
     # Load the reference/test results
     res_ref = openmc.deplete.Results(path_reference)

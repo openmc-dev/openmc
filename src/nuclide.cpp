@@ -1,6 +1,7 @@
 #include "openmc/nuclide.h"
 
 #include "openmc/capi.h"
+#include "openmc/chain.h"
 #include "openmc/container_util.h"
 #include "openmc/cross_sections.h"
 #include "openmc/endf.h"
@@ -375,27 +376,41 @@ void Nuclide::create_derived(
       int j = rx->xs_[t].threshold;
       int n = rx->xs_[t].value.size();
       auto xs = xt::adapt(rx->xs_[t].value);
+      auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
 
-      for (const auto& p : rx->products_) {
-        if (p.particle_ == ParticleType::photon) {
-          auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
-          for (int k = 0; k < n; ++k) {
-            double E = grid_[t].energy[k + j];
+      if (settings::use_decay_photons) {
+        const auto& target = rx->decay_product_;
+        if (!target.empty()) {
+          int idx = data::chain_nuclide_map.at(target);
+          const auto& energy_dist = data::chain_nuclides[idx]->photon_energy();
+          if (energy_dist) {
+            double photon_strength = energy_dist->integral();
+            for (int k = 0; k < n; ++k) {
+              pprod[k] += xs[k] * photon_strength;
+            }
+          }
+        }
+      } else {
+        for (const auto& p : rx->products_) {
+          if (p.particle_ == ParticleType::photon) {
+            for (int k = 0; k < n; ++k) {
+              double E = grid_[t].energy[k + j];
 
-            // For fission, artificially increase the photon yield to account
-            // for delayed photons
-            double f = 1.0;
-            if (settings::delayed_photon_scaling) {
-              if (is_fission(rx->mt_)) {
-                if (prompt_photons && delayed_photons) {
-                  double energy_prompt = (*prompt_photons)(E);
-                  double energy_delayed = (*delayed_photons)(E);
-                  f = (energy_prompt + energy_delayed) / (energy_prompt);
+              // For fission, artificially increase the photon yield to
+              // account for delayed photons
+              double f = 1.0;
+              if (settings::delayed_photon_scaling) {
+                if (is_fission(rx->mt_)) {
+                  if (prompt_photons && delayed_photons) {
+                    double energy_prompt = (*prompt_photons)(E);
+                    double energy_delayed = (*delayed_photons)(E);
+                    f = (energy_prompt + energy_delayed) / (energy_prompt);
+                  }
                 }
               }
-            }
 
-            pprod[k] += f * xs[k] * (*p.yield_)(E);
+              pprod[k] += f * xs[k] * (*p.yield_)(E);
+            }
           }
         }
       }
@@ -469,8 +484,8 @@ void Nuclide::create_derived(
         }
       }
     } else {
-      // Otherwise, assume that any that have 0 K elastic scattering data are
-      // resonant
+      // Otherwise, assume that any that have 0 K elastic scattering data
+      // are resonant
       resonant_ = !energy_0K_.empty();
     }
 
@@ -781,8 +796,8 @@ void Nuclide::calculate_xs(
       }
 
       for (int j = 0; j < DEPLETION_RX.size(); ++j) {
-        // If reaction is present and energy is greater than threshold, set the
-        // reaction xs appropriately
+        // If reaction is present and energy is greater than threshold, set
+        // the reaction xs appropriately
         int i_rx = reaction_index_[DEPLETION_RX[j]];
         if (i_rx >= 0) {
           const auto& rx = reactions_[i_rx];
@@ -819,9 +834,9 @@ void Nuclide::calculate_xs(
   // Initialize URR probability table treatment to false
   micro.use_ptable = false;
 
-  // If there is S(a,b) data for this nuclide, we need to set the sab_scatter
-  // and sab_elastic cross sections and correct the total and elastic cross
-  // sections.
+  // If there is S(a,b) data for this nuclide, we need to set the
+  // sab_scatter and sab_elastic cross sections and correct the total and
+  // elastic cross sections.
 
   if (i_sab >= 0)
     this->calculate_sab_xs(i_sab, sab_frac, p);
@@ -984,8 +999,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   }
 
   // Set elastic, absorption, fission, total, and capture x/s. Note that the
-  // total x/s is calculated as a sum of partials instead of the table-provided
-  // value
+  // total x/s is calculated as a sum of partials instead of the
+  // table-provided value
   micro.elastic = elastic;
   micro.absorption = capture + fission;
   micro.fission = fission;

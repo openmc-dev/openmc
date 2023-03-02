@@ -41,3 +41,17 @@ def test_calculate_cexs_with_element(this, data_type):
     assert len(energy_grid) > 1
     assert len(data) == 1
     assert len(data[0]) == len(energy_grid)
+
+    # two types (reaction)
+    energy_grid, data = openmc.plotter.calculate_cexs(
+        this=this, data_type=data_type, types=[2, "elastic"]
+    )
+
+    assert isinstance(energy_grid, np.ndarray)
+    assert isinstance(data, np.ndarray)
+    assert len(energy_grid) > 1
+    assert len(data) == 2
+    assert len(data[0]) == len(energy_grid)
+    assert len(data[0]) == len(energy_grid)
+    # reactions are both the same MT number 2 is elastic
+    assert np.array_equal(data[0], data[1])

@@ -142,7 +142,7 @@ class MsrContinuous:
 
     def set_removal_rate(self, material, elements, removal_rate, removal_rate_units='1/s',
                          destination_material=None):
-        """Set removal rate to elements in a depletable material.
+        """Set element removal rates in a depletable material.
 
         Parameters
         ----------

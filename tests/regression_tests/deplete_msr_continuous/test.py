@@ -42,10 +42,10 @@ def model():
     return openmc.Model(geometry, materials, settings)
 
 @pytest.mark.parametrize("destination_material, power, ref_result", [
-    (None, 0.0, 'ref_msr_no_depletion_only_removal.h5'),
-    ('w', 0.0, 'ref_msr_no_depletion_feed.h5'),
-    (None, 1.0, 'ref_msr_depletion_only_removal.h5'),
-    ('w', 1.0, 'ref_msr_depletion_feed.h5')])
+    (None, 0.0, 'no_depletion_only_removal'),
+    ('w', 0.0, 'no_depletion_feed'),
+    (None, 1.0, 'depletion_only_removal'),
+    ('w', 1.0, 'depletion_feed')])
 def test_msr(run_in_tmpdir, model, destination_material, power, ref_result):
 
     """Tests msr depletion class without neither reaction rates nor decay
@@ -66,7 +66,7 @@ def test_msr(run_in_tmpdir, model, destination_material, power, ref_result):
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
-    path_reference = Path(__file__).with_name(ref_result)
+    path_reference = Path(__file__).with_name(f'ref_msr_{ref_result}.h5')
 
     # Load the reference/test results
     res_ref = openmc.deplete.Results(path_reference)

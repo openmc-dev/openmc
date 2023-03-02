@@ -1,5 +1,6 @@
-import openmc
 import numpy as np
+import openmc
+import pytest
 
 
 def test_calculate_cexs_elem_mat_sab():
@@ -18,6 +19,21 @@ def test_calculate_cexs_elem_mat_sab():
         mat_1,
         ["inelastic"],
         sab_name="c_C6H6",
+    )
+
+    assert isinstance(energy_grid, np.ndarray)
+    assert isinstance(data, np.ndarray)
+    assert len(energy_grid) > 1
+    assert len(data) == 1
+    assert len(data[0]) == len(energy_grid)
+
+
+@pytest.mark.parametrize("this, data_type", [("Li", "element"), ("Li6", "nuclide")])
+def test_calculate_cexs_with_element(this, data_type):
+
+    # single type (reaction)
+    energy_grid, data = openmc.plotter.calculate_cexs(
+        this=this, data_type=data_type, types=[205]
     )
 
     assert isinstance(energy_grid, np.ndarray)

@@ -834,10 +834,6 @@ class Tabular(Univariate):
         self._interpolation = interpolation
 
     def cdf(self):
-        if not self.interpolation in ('histogram', 'linear-linear'):
-            raise NotImplementedError('Can only generate CDFs for tabular '
-                                      'distributions using histogram or '
-                                      'linear-linear interpolation')
         c = np.zeros_like(self.x)
         x = self.x
         p = self.p
@@ -846,15 +842,16 @@ class Tabular(Univariate):
             c[1:] = p[:-1] * np.diff(x)
         elif self.interpolation == 'linear-linear':
             c[1:] = 0.5 * (p[:-1] + p[1:]) * np.diff(x)
+        else:
+            raise NotImplementedError('Can only generate CDFs for tabular '
+                                      'distributions using histogram or '
+                                      'linear-linear interpolation')
+
 
         return np.cumsum(c)
 
     def mean(self):
         """Compute the mean of the tabular distribution"""
-        if not self.interpolation in ('histogram', 'linear-linear'):
-            raise NotImplementedError('Can only compute mean for tabular '
-                                      'distributions using histogram '
-                                      'or linear-linear interpolation.')
         if self.interpolation == 'linear-linear':
             mean = 0.0
             for i in range(1, len(self.x)):
@@ -875,6 +872,10 @@ class Tabular(Univariate):
             x_r = self.x[1:]
             p_l = self.p[:-1]
             mean = (0.5 * (x_l + x_r) * (x_r - x_l) * p_l).sum()
+        else:
+            raise NotImplementedError('Can only compute mean for tabular '
+                                      'distributions using histogram '
+                                      'or linear-linear interpolation.')
 
         # Normalize for when integral of distribution is not 1
         mean /= self.integral()
@@ -886,10 +887,6 @@ class Tabular(Univariate):
         self.p /= self.cdf().max()
 
     def sample(self, n_samples=1, seed=None):
-        if not self.interpolation in ('histogram', 'linear-linear'):
-            raise NotImplementedError('Can only sample tabular distributions '
-                                      'using histogram or '
-                                      'linear-linear interpolation')
         np.random.seed(seed)
         xi = np.random.rand(n_samples)
 
@@ -941,6 +938,11 @@ class Tabular(Univariate):
             quad[quad < 0.0] = 0.0
             m[non_zero] = x_i[non_zero] + (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
             samples_out = m
+
+        else:
+            raise NotImplementedError('Can only sample tabular distributions '
+                                      'using histogram or '
+                                      'linear-linear interpolation')
 
         assert all(samples_out < self.x[-1])
         return samples_out

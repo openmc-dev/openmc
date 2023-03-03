@@ -377,6 +377,9 @@ def test_get_nuclide_atoms():
     atoms = mat.get_nuclide_atoms()
     assert atoms['Li6'] == pytest.approx(mat.density * mat.volume)
 
+    atoms = mat.get_nuclide_atoms(volume=10.0)
+    assert atoms['Li6'] == pytest.approx(mat.density * 10.0)
+
 
 def test_mass():
     m = openmc.Material()
@@ -393,6 +396,9 @@ def test_mass():
     assert m.get_mass('U235') == pytest.approx(10.0)
     assert m.get_mass() == pytest.approx(20.0)
     assert m.fissionable_mass == pytest.approx(10.0)
+
+    # Test with volume specified as argument
+    assert m.get_mass('Zr90', volume=1.0) == pytest.approx(1.0)
 
 
 def test_materials(run_in_tmpdir):
@@ -544,11 +550,14 @@ def test_get_activity():
     m4.volume = 10.
     assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
 
+    # Test with volume specified as argument
+    assert pytest.approx(m4.get_activity(units='Bq', volume=1.0)) == 355978108155965.94*3/2
+
 
 def test_get_decay_heat():
     # Set chain file for testing
     openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
-    
+
     """Tests the decay heat of stable, metastable and active materials"""
     m1 = openmc.Material()
     m1.add_nuclide("U235", 0.2)
@@ -589,7 +598,10 @@ def test_get_decay_heat():
     # volume is required to calculate total decay heat
     m4.volume = 10.
     assert pytest.approx(m4.get_decay_heat(units='W')) == 40175.15720273193*3/2*10 # [W]
- 
+
+    # Test with volume specified as argument
+    assert pytest.approx(m4.get_decay_heat(units='W', volume=1.0)) == 40175.15720273193*3/2
+
 
 def test_decay_photon_energy():
     # Set chain file for testing

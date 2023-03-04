@@ -75,6 +75,12 @@ public:
 
   // Methods
 
+  //! Update a position to the local coordinates of the mesh
+  virtual void to_local_coords(Position& r) const {};
+
+  //! Return a position in the local coordinates of the mesh
+  virtual Position local_coords(const Position& r) const { return r; };
+
   //! Determine which bins were crossed by a particle
   //
   //! \param[in] r0 Previous position of the particle
@@ -160,7 +166,7 @@ public:
     }
   };
 
-  int get_bin(Position r) const override;
+  virtual int get_bin(Position r) const;
 
   int n_bins() const override;
 
@@ -241,9 +247,25 @@ public:
   xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
-  Position origin_ {0.0, 0.0, 0.0};
 
 protected:
+};
+
+class PeriodicStructuredMesh : public StructuredMesh {
+
+public:
+  PeriodicStructuredMesh() = default;
+  PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
+
+  void to_local_coords(Position& r) const override { r -= origin_; };
+
+  Position local_coords(const Position& r) const override
+  {
+    return r - origin_;
+  };
+
+  // Data members
+  Position origin_ {0.0, 0.0, 0.0};
 };
 
 //==============================================================================
@@ -336,7 +358,7 @@ public:
   int set_grid();
 };
 
-class CylindricalMesh : public StructuredMesh {
+class CylindricalMesh : public PeriodicStructuredMesh {
 public:
   // Constructors
   CylindricalMesh() = default;
@@ -390,7 +412,7 @@ private:
   }
 };
 
-class SphericalMesh : public StructuredMesh {
+class SphericalMesh : public PeriodicStructuredMesh {
 public:
   // Constructors
   SphericalMesh() = default;

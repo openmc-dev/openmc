@@ -446,8 +446,8 @@ void StructuredMesh::raytrace_mesh(
 
   // translate start and end positions,
   // this needs to come after the get_indices call because it does its own translation
-  r0 -= origin_;
-  r1 -= origin_;
+  to_local_coords(r0);
+  to_local_coords(r1);
 
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<MeshDistance, 3> distances;
@@ -952,7 +952,8 @@ void RectilinearMesh::to_hdf5(hid_t group) const
 // CylindricalMesh implementation
 //==============================================================================
 
-CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
+CylindricalMesh::CylindricalMesh(pugi::xml_node node)
+  : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
 
@@ -976,7 +977,7 @@ std::string CylindricalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  r -= origin_;
+  to_local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = std::hypot(r.x, r.y);
@@ -1189,7 +1190,8 @@ void CylindricalMesh::to_hdf5(hid_t group) const
 // SphericalMesh implementation
 //==============================================================================
 
-SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
+SphericalMesh::SphericalMesh(pugi::xml_node node)
+  : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
 
@@ -1213,7 +1215,7 @@ std::string SphericalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  r -= origin_;
+  to_local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = r.norm();

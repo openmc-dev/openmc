@@ -76,7 +76,7 @@ public:
   // Methods
 
   //! Update a position to the local coordinates of the mesh
-  virtual void to_local_coords(Position& r) const {};
+  virtual void local_coords(Position& r) const {};
 
   //! Return a position in the local coordinates of the mesh
   virtual Position local_coords(const Position& r) const { return r; };
@@ -257,7 +257,7 @@ public:
   PeriodicStructuredMesh() = default;
   PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
 
-  void to_local_coords(Position& r) const override { r -= origin_; };
+  void local_coords(Position& r) const override { r -= origin_; };
 
   Position local_coords(const Position& r) const override
   {
@@ -265,7 +265,7 @@ public:
   };
 
   // Data members
-  Position origin_ {0.0, 0.0, 0.0};
+  Position origin_ {0.0, 0.0, 0.0}; //!< Origin of the mesh
 };
 
 //==============================================================================

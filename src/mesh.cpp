@@ -446,8 +446,8 @@ void StructuredMesh::raytrace_mesh(
 
   // translate start and end positions,
   // this needs to come after the get_indices call because it does its own translation
-  to_local_coords(r0);
-  to_local_coords(r1);
+  local_coords(r0);
+  local_coords(r1);
 
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<MeshDistance, 3> distances;
@@ -977,7 +977,7 @@ std::string CylindricalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  to_local_coords(r);
+  local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = std::hypot(r.x, r.y);
@@ -1215,7 +1215,7 @@ std::string SphericalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  to_local_coords(r);
+  local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = r.norm();

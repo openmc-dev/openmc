@@ -53,16 +53,15 @@ _MIN_E = 1.e-5
 _MAX_E = 20.e6
 
 
-def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
-            axis=None, sab_name=None, ce_cross_sections=None,
-            mg_cross_sections=None, enrichment=None, plot_CE=True, orders=None,
-            divisor_orders=None, **kwargs):
+def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
+            sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
+            enrichment=None, plot_CE=True, orders=None, divisor_orders=None):
     """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters
     ----------
-    this : str or openmc.Material
-        Object to source data from
+    this : {str, openmc.Nuclide, openmc.Element, openmc.Macroscopic, openmc.Material}
+        Object to source data from. Nuclides and Elements can be input as a str
     types : Iterable of values of PLOT_TYPES
         The type of cross sections to include in the plot.
     divisor_types : Iterable of values of PLOT_TYPES, optional
@@ -74,9 +73,6 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
         temperature of 294K will be plotted. Note that the nearest
         temperature in the library for each nuclide will be used as opposed
         to using any interpolation.
-    data_type : {'nuclide', 'element', 'material', 'macroscopic'}, optional
-        Type of object to plot. If not specified, a guess is made based on the
-        `this` argument.
     axis : matplotlib.axes, optional
         A previously generated axis to use for plotting. If not specified,
         a new axis and figure will be generated.
@@ -101,9 +97,6 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
         multi-group data.
     divisor_orders : Iterable of Integral, optional
         Same as orders, but for divisor_types
-    **kwargs
-        All keyword arguments are passed to
-        :func:`matplotlib.pyplot.figure`.
 
     Returns
     -------
@@ -117,27 +110,11 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
     import matplotlib.pyplot as plt
 
     cv.check_type("plot_CE", plot_CE, bool)
-
-    if data_type is None:
-        if isinstance(this, openmc.Nuclide):
-            data_type = 'nuclide'
-        elif isinstance(this, openmc.Element):
-            data_type = 'element'
-        elif isinstance(this, openmc.Material):
-            data_type = 'material'
-        elif isinstance(this, openmc.Macroscopic):
-            data_type = 'macroscopic'
-        elif isinstance(this, str):
-            if this[-1] in string.digits:
-                data_type = 'nuclide'
-            else:
-                data_type = 'element'
-        else:
-            raise TypeError("Invalid type for plotting")
+    cv.check_type("this", this, (str, openmc.Nuclide, openmc.Element, openmc.Material))
 
     if plot_CE:
         # Calculate for the CE cross sections
-        E, data = calculate_cexs(this, data_type, types, temperature, sab_name,
+        E, data = calculate_cexs(this, types, temperature, sab_name,
                                  ce_cross_sections, enrichment)
         if divisor_types:
             cv.check_length('divisor types', divisor_types, len(types))
@@ -160,13 +137,13 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
             data = data_new
     else:
         # Calculate for MG cross sections
-        E, data = calculate_mgxs(this, data_type, types, orders, temperature,
+        E, data = calculate_mgxs(this, types, orders, temperature,
                                  mg_cross_sections, ce_cross_sections,
                                  enrichment)
 
         if divisor_types:
             cv.check_length('divisor types', divisor_types, len(types))
-            Ediv, data_div = calculate_mgxs(this, data_type, divisor_types,
+            Ediv, data_div = calculate_mgxs(this, divisor_types,
                                             divisor_orders, temperature,
                                             mg_cross_sections,
                                             ce_cross_sections, enrichment)
@@ -201,23 +178,35 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
         ax.set_xlim(_MIN_E, _MAX_E)
     else:
         ax.set_xlim(E[-1], E[0])
+
+    if isinstance(this, str):
+        # first entry in ELEMENT_SYMBOL is a neutron, the 1 removes this entry
+        if this in list(openmc.data.ELEMENT_SYMBOL.values())[1:]:
+            this = openmc.Element(this)
+        else:
+            this = openmc.Nuclide(this)
+
     if divisor_types:
-        if data_type == 'nuclide':
+        if isinstance(this, openmc.Nuclide):
             ylabel = 'Nuclidic Microscopic Data'
-        elif data_type == 'element':
+        elif isinstance(this, openmc.Element):
             ylabel = 'Elemental Microscopic Data'
-        elif data_type == 'material' or data_type == 'macroscopic':
+        elif isinstance(this, openmc.Material) or isinstance(this, openmc.Macroscopic):
             ylabel = 'Macroscopic Data'
+        else:
+            raise TypeError("Invalid type for plotting")
     else:
-        if data_type == 'nuclide':
+        if isinstance(this, openmc.Nuclide):
             ylabel = 'Microscopic Cross Section [b]'
-        elif data_type == 'element':
+        elif isinstance(this, openmc.Element):
             ylabel = 'Elemental Cross Section [b]'
-        elif data_type == 'material' or data_type == 'macroscopic':
+        elif isinstance(this, openmc.Material) or isinstance(this, openmc.Macroscopic):
             ylabel = 'Macroscopic Cross Section [1/cm]'
+        else:
+            raise TypeError("Invalid type for plotting")
     ax.set_ylabel(ylabel)
     ax.legend(loc='best')
-    name = this.name if data_type == 'material' else this
+    name = this.name if isinstance(this, openmc.Material) else this
     if len(types) > 1:
         ax.set_title('Cross Sections for ' + name)
     else:
@@ -226,16 +215,14 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
     return fig
 
 
-def calculate_cexs(this, data_type, types, temperature=294., sab_name=None,
+def calculate_cexs(this, types, temperature=294., sab_name=None,
                    cross_sections=None, enrichment=None):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
     ----------
     this : {str, openmc.Nuclide, openmc.Element, openmc.Material}
-        Object to source data from
-    data_type : {'nuclide', 'element', 'material'}
-        Type of object to plot
+        Object to source data from. Nuclides and Elements can be input as a str
     types : Iterable of values of PLOT_TYPES
         The type of cross sections to calculate
     temperature : float, optional
@@ -262,39 +249,46 @@ def calculate_cexs(this, data_type, types, temperature=294., sab_name=None,
     """
 
     # Check types
+    cv.check_type('this', this, (str, openmc.Nuclide, openmc.Element, openmc.Material))
     cv.check_type('temperature', temperature, Real)
     if sab_name:
         cv.check_type('sab_name', sab_name, str)
     if enrichment:
         cv.check_type('enrichment', enrichment, Real)
 
-    if data_type == 'nuclide':
-        if isinstance(this, str):
-            nuc = openmc.Nuclide(this)
+    # this is a nuclide or element if it is a string
+    if isinstance(this, str):
+        # first entry in ELEMENT_SYMBOL is a neutron, the 1 removes this entry
+        if this in list(openmc.data.ELEMENT_SYMBOL.values())[1:]:
+            this = openmc.Element(this)
         else:
-            nuc = this
-        energy_grid, xs = _calculate_cexs_nuclide(nuc, types, temperature,
+            this = openmc.Nuclide(this)
+
+    if isinstance(this, openmc.Nuclide):
+        energy_grid, xs = _calculate_cexs_nuclide(this, types, temperature,
                                                   sab_name, cross_sections)
+
         # Convert xs (Iterable of Callable) to a grid of cross section values
         # calculated on the points in energy_grid for consistency with the
         # element and material functions.
         data = np.zeros((len(types), len(energy_grid)))
         for line in range(len(types)):
             data[line, :] = xs[line](energy_grid)
-    elif data_type == 'element':
-        if isinstance(this, str):
-            elem = openmc.Element(this)
-        else:
-            elem = this
-        energy_grid, data = _calculate_cexs_elem_mat(elem, types, temperature,
+
+    elif isinstance(this, openmc.Element):
+        energy_grid, data = _calculate_cexs_elem_mat(this, types, temperature,
                                                      cross_sections, sab_name,
                                                      enrichment)
-    elif data_type == 'material':
-        cv.check_type('this', this, openmc.Material)
+
+    elif isinstance(this, openmc.Material):
         energy_grid, data = _calculate_cexs_elem_mat(this, types, temperature,
                                                      cross_sections)
     else:
-        raise TypeError("Invalid type")
+        msg = (
+            f"{this} is an invalid type, acceptable types are str, "
+            "openmc.Nuclide, openmc.Element, openmc.Material."
+        )
+        raise TypeError(msg)
 
     return energy_grid, data
 
@@ -583,8 +577,7 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
         name = nuclide[0]
         nuc = nuclide[1]
         sab_tab = sabs[name]
-        temp_E, temp_xs = calculate_cexs(nuc, 'nuclide', types, T, sab_tab,
-                                         cross_sections)
+        temp_E, temp_xs = calculate_cexs(nuc, types, T, sab_tab, cross_sections)
         E.append(temp_E)
         # Since the energy grids are different, store the cross sections as
         # a tabulated function so they can be calculated on any grid needed.
@@ -611,7 +604,7 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
     return energy_grid, data
 
 
-def calculate_mgxs(this, data_type, types, orders=None, temperature=294.,
+def calculate_mgxs(this, types, orders=None, temperature=294.,
                    cross_sections=None, ce_cross_sections=None,
                    enrichment=None):
     """Calculates multi-group cross sections of a requested type.
@@ -622,10 +615,8 @@ def calculate_mgxs(this, data_type, types, orders=None, temperature=294.,
 
     Parameters
     ----------
-    this : str or openmc.Material
-        Object to source data from
-    data_type : {'nuclide', 'element', 'material', 'macroscopic'}
-        Type of object to plot
+    this : {str, openmc.Nuclide, openmc.Element, openmc.Macroscopic, openmc.Material}
+        Object to source data from. Nuclides and Elements can be input as a str
     types : Iterable of values of PLOT_TYPES_MGXS
         The type of cross sections to calculate
     orders : Iterable of Integral, optional
@@ -665,10 +656,18 @@ def calculate_mgxs(this, data_type, types, orders=None, temperature=294.,
     cv.check_type("cross_sections", cross_sections, str)
     library = openmc.MGXSLibrary.from_hdf5(cross_sections)
 
-    if data_type in ('nuclide', 'macroscopic'):
+    # this is a nuclide or element if it is a string
+    if isinstance(this, str):
+        # first entry in ELEMENT_SYMBOL is a neutron, the 1 removes this entry
+        if this in list(openmc.data.ELEMENT_SYMBOL.values())[1:]:
+            this = openmc.Element(this)
+        else:
+            this = openmc.Nuclide(this)
+
+    if isinstance(this, openmc.Nuclide) or isinstance(this, openmc.Macroscopic):
         mgxs = _calculate_mgxs_nuc_macro(this, types, library, orders,
                                          temperature)
-    elif data_type in ('element', 'material'):
+    elif isinstance(this, openmc.Element) or isinstance(this, openmc.Material):
         mgxs = _calculate_mgxs_elem_mat(this, types, library, orders,
                                         temperature, ce_cross_sections,
                                         enrichment)

@@ -4,14 +4,13 @@ import pytest
 from matplotlib.figure import Figure
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope='module')
 def test_mat():
     mat_1 = openmc.Material()
     mat_1.add_element("H", 4.0, "ao")
     mat_1.add_element("O", 4.0, "ao")
     mat_1.add_element("C", 4.0, "ao")
     return mat_1
-
 
 def test_calculate_cexs_elem_mat_sab(test_mat):
     """Checks that sab cross sections are included in the
@@ -33,12 +32,11 @@ def test_calculate_cexs_elem_mat_sab(test_mat):
     assert len(data[0]) == len(energy_grid)
 
 
-@pytest.mark.parametrize("this,data_type", [("Li", "element"), ("Li6", "nuclide")])
-def test_calculate_cexs_with_element(this, data_type):
-
+@pytest.mark.parametrize("this", ["Li", "Li6", openmc.Nuclide('Li6'), openmc.Element('Li')])
+def test_calculate_cexs_with_nuclide_and_element(this):
     # single type (reaction)
     energy_grid, data = openmc.plotter.calculate_cexs(
-        this=this, data_type=data_type, types=[205]
+        this=this, types=[205]
     )
 
     assert isinstance(energy_grid, np.ndarray)
@@ -47,9 +45,9 @@ def test_calculate_cexs_with_element(this, data_type):
     assert len(data) == 1
     assert len(data[0]) == len(energy_grid)
 
-    # two types (reaction)
+    # two types (reactions)
     energy_grid, data = openmc.plotter.calculate_cexs(
-        this=this, data_type=data_type, types=[2, "elastic"]
+        this=this, types=[2, "elastic"]
     )
 
     assert isinstance(energy_grid, np.ndarray)
@@ -64,7 +62,7 @@ def test_calculate_cexs_with_element(this, data_type):
 
 def test_calculate_cexs_with_materials(test_mat):
     energy_grid, data = openmc.plotter.calculate_cexs(
-        this=test_mat, types=[205], data_type="material"
+        this=test_mat, types=[205]
     )
 
     assert isinstance(energy_grid, np.ndarray)
@@ -74,14 +72,10 @@ def test_calculate_cexs_with_materials(test_mat):
     assert len(data[0]) == len(energy_grid)
 
 
-@pytest.mark.parametrize(("this,data_type"), [("Be", "element"), ("Be9", "nuclide")])
-def test_plot_xs(this, data_type):
-    assert isinstance(
-        openmc.plotter.plot_xs(this, data_type=data_type, types=["total"]), Figure
-    )
+@pytest.mark.parametrize("this", ["Be", "Be9", openmc.Nuclide('Be9'), openmc.Element('Be')])
+def test_plot_xs(this):
+    assert isinstance(openmc.plotter.plot_xs(this, types=['total']), Figure)
 
 
 def test_plot_xs_mat(test_mat):
-    assert isinstance(
-        openmc.plotter.plot_xs(test_mat, data_type="material", types=["total"]), Figure
-    )
+    assert isinstance(openmc.plotter.plot_xs(test_mat, types=['total']), Figure)

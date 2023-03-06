@@ -66,7 +66,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
 
     if msr is not None:
         # Calculate removal rate terms as diagonal matrices
-        removals = map(chain.form_rr_term, repeat(msr), msr.burn_mats)
+        removals = map(chain.form_rr_term, repeat(msr), msr.burnable_mats)
         # Subtract removal rate terms from Bateman matrices
         matrices = [matrix - removal for (matrix, removal) in zip(matrices, removals)]
 
@@ -77,7 +77,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
 
             # Combine all matrices together in a single matrix of matrices
             # to be solved in one-go
-            n_rows = n_cols = len(msr.burn_mats)
+            n_rows = n_cols = len(msr.burnable_mats)
             rows = []
             rows_cols = \
                 np.array(np.meshgrid(range(n_rows),
@@ -92,11 +92,11 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
                 if row == col:
                     # Fill the diagonals with the Bateman matrices
                     cols.append(matrices[row])
-                elif (msr.burn_mats[row], msr.burn_mats[col]) in \
+                elif (msr.burnable_mats[row], msr.burnable_mats[col]) in \
                                 msr.index_transfer:
 
                     index = list(msr.index_transfer).index( \
-                                (msr.burn_mats[row], msr.burn_mats[col]))
+                                (msr.burnable_mats[row], msr.burnable_mats[col]))
                     # Fill the off-diagonals with the transfer matrices
                     cols.append(transfers[index])
                 else:

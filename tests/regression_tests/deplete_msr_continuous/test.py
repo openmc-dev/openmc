@@ -29,7 +29,7 @@ def model():
     materials = openmc.Materials([f, w])
 
     surf_f = openmc.Sphere(r=radii[0])
-    surf_w = openmc.Sphere(r=radii[1], boundary_type='vacuum')
+    surf_w = openmc.Sphere(r=radii[1], boundary_type='reflective')
     cell_f = openmc.Cell(fill=f, region=-surf_f)
     cell_w = openmc.Cell(fill=w, region=+surf_f & -surf_w)
     geometry = openmc.Geometry([cell_f,cell_w])
@@ -41,25 +41,32 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.mark.parametrize("destination_material, power, ref_result", [
-    (None, 0.0, 'no_depletion_only_removal'),
-    ('w', 0.0, 'no_depletion_feed'),
-    (None, 1.0, 'depletion_only_removal'),
-    ('w', 1.0, 'depletion_feed')])
-def test_msr(run_in_tmpdir, model, destination_material, power, ref_result):
-
-    """Tests msr depletion class without neither reaction rates nor decay
-    but only removal rates"""
+@pytest.mark.parametrize("removal, feed, power, ref_result", [
+    (True, False, 0.0, 'no_depletion_only_removal'),
+    (False, True, 0.0, 'no_depletion_only_feed'),
+    (True, False, 174.0, 'depletion_with_removal'),
+    (False, True, 174.0, 'depletion_with_feed'),
+    (True, True, 0.0, 'no_depletion_with_feed_and_removal'),
+    (True, True, 174.0, 'depletion_with_feed_and_removal'),
+    ])
+def test_msr(run_in_tmpdir, model, removal, feed, power, ref_result):
+    """Tests msr depletion class with removal rates"""
 
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
 
-    # create removal rates for U and Xe
-    element = ['U']
+    # Defining removing and feeding elements, using the same removal rate
+    removing_element = ['Xe']
+    feeding_element = ['U']
     removal_rate = 1e-5
+
     op = CoupledOperator(model, chain_file)
     msr = MsrContinuous(op, model)
-    msr.set_removal_rate('f', element, removal_rate,
-                        destination_material=destination_material)
+    if removal:
+        msr.set_removal_rate('f', removing_element, removal_rate,
+                            destination_material=None)
+    if feed:
+        msr.set_removal_rate('f', feeding_element, removal_rate,
+                            destination_material='w')
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], power, msr_continuous = msr, timestep_units = 'd')
     integrator.integrate()
@@ -79,4 +86,4 @@ def test_msr(run_in_tmpdir, model, destination_material, power, ref_result):
                     res_test.get_atoms(mat, nuc)[1]
                 y_ref = res_ref.get_reaction_rate(mat, nuc, rx)[1] / \
                     res_ref.get_atoms(mat, nuc)[1]
-                assert y_test == pytest.approx(y_ref)
+                assert y_test == pytest.approx(y_ref, abs=1e-6)

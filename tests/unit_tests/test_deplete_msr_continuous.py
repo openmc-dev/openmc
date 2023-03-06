@@ -1,13 +1,15 @@
 """ Tests for Msr continuos class """
 
 from pathlib import Path
-
+import numpy as np
+from math import exp
 import pytest
+
 from openmc.deplete import CoupledOperator
 import openmc
 from openmc.deplete import MsrContinuous
-import numpy as np
-from math import exp
+from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
+                                _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR)
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 
@@ -27,7 +29,6 @@ def model():
     radii = [0.42, 0.45]
     f.volume = np.pi * radii[0] ** 2
     w.volume = np.pi * (radii[1]**2 - radii[0]**2)
-
     materials = openmc.Materials([f, w])
 
     surf_f = openmc.Sphere(r=radii[0])
@@ -61,12 +62,38 @@ def test_get_set(model):
                 assert msr.get_destination_material(i, key) == str(dest_mat.id)
             assert msr.get_elements(i) == removal_rates.keys()
 
+@pytest.mark.parametrize("removal_rate_units, units_per_seconds", [
+    ('1/s', 1),
+    ('1/sec', 1),
+    ('1/min', 60),
+    ('1/minute', 60),
+    ('1/h', 3600),
+    ('1/hr', 3600),
+    ('1/hour', 3600),
+    ('1/d', 86400),
+    ('1/day', 86400),
+    ('1/a', 31557600.0),
+    ('1/year', 31557600.0),
+    ])
+def test_units(removal_rate_units, units_per_seconds, model):
+    """ Units testing"""
+    # create removal rate Xe
+    element = 'Xe'
+    removal_rate = 1e-5
+    op = CoupledOperator(model, CHAIN_PATH)
+    msr = MsrContinuous(op, model)
+
+    msr.set_removal_rate('f', [element], removal_rate*units_per_seconds,
+                         removal_rate_units=removal_rate_units)
+    assert msr.get_removal_rate('f', element) == removal_rate
+
+
 def test_msr(run_in_tmpdir, model):
 
     """Tests msr depletion class without neither reaction rates nor decay
     but only removal rates"""
 
-    # create removal rates for U and Xe
+    # create removal rate for U
     element = ['U']
     removal_rate = 1e-5
     op = CoupledOperator(model, CHAIN_PATH)

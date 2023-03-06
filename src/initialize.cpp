@@ -410,7 +410,6 @@ void read_separate_xml_files()
 
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
-
   read_tallies_xml();
 
   // Initialize distribcell_filters

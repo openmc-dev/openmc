@@ -8,7 +8,7 @@ args=" "
 if [[ $MPI == 'y' ]]; then
   args="${args} --mpi "
 fi
-  
+
 # Check for event-based
 if [[ $EVENT == 'y' ]]; then
   args="${args} --event "

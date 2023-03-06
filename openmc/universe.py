@@ -91,6 +91,23 @@ class UniverseBase(ABC, IDManagerMixin):
         else:
             raise ValueError('No volume information found for this universe.')
 
+    def get_all_universes(self):
+        """Return all universes that are contained within this one.
+
+        Returns
+        -------
+        universes : collections.OrderedDict
+            Dictionary whose keys are universe IDs and values are
+            :class:`Universe` instances
+
+        """
+        # Append all Universes within each Cell to the dictionary
+        universes = OrderedDict()
+        for cell in self.get_all_cells().values():
+            universes.update(cell.get_all_universes())
+
+        return universes
+
     @abstractmethod
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the universe xml representation to an incoming xml element
@@ -108,6 +125,13 @@ class UniverseBase(ABC, IDManagerMixin):
         Returns
         -------
         None
+
+        """
+
+    @abstractmethod
+    def _partial_deepcopy(self):
+        """Deepcopy all parameters of an openmc.UniverseBase object except its cells.
+        This should only be used from the openmc.UniverseBase.clone() context.
 
         """
 
@@ -138,8 +162,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         # If no memoize'd clone exists, instantiate one
         if self not in memo:
-            clone = deepcopy(self)
-            clone.id = None
+            clone = self._partial_deepcopy()
 
             # Clone all cells for the universe clone
             clone._cells = OrderedDict()
@@ -532,23 +555,6 @@ class Universe(UniverseBase):
 
         return materials
 
-    def get_all_universes(self):
-        """Return all universes that are contained within this one.
-
-        Returns
-        -------
-        universes : collections.OrderedDict
-            Dictionary whose keys are universe IDs and values are
-            :class:`Universe` instances
-
-        """
-        # Append all Universes within each Cell to the dictionary
-        universes = OrderedDict()
-        for cell in self.get_all_cells().values():
-            universes.update(cell.get_all_universes())
-
-        return universes
-
     def create_xml_subelement(self, xml_element, memo=None):
         # Iterate over all Cells
         for cell in self._cells.values():
@@ -610,6 +616,15 @@ class Universe(UniverseBase):
             cell._num_instances += 1
             if not instances_only:
                 cell._paths.append(cell_path)
+
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.Universe object's attributes except for its cells,
+        as they are copied within the clone function. This should only to be
+        used within the openmc.UniverseBase.clone() context.
+        """
+        clone = openmc.Universe(name=self.name)
+        clone.volume = self.volume
+        return clone
 
 
 class DAGMCUniverse(UniverseBase):
@@ -947,3 +962,14 @@ class DAGMCUniverse(UniverseBase):
         out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
 
         return out
+
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.DAGMCUniverse object's attributes except for
+        its cells, as they are copied within the clone function. This should
+        only to be used within the openmc.UniverseBase.clone() context.
+        """
+        clone = openmc.DAGMCUniverse(name=self.name, filename=self.filename)
+        clone.volume = self.volume
+        clone.auto_geom_ids = self.auto_geom_ids
+        clone.auto_mat_ids = self.auto_mat_ids
+        return clone

@@ -504,7 +504,10 @@ attributes/sub-elements:
       independent distributions of r-, cos_theta-, and phi-coordinates where
       cos_theta is the cosine of the angle with respect to the z-axis, phi is
       the azimuthal angle, and the sphere is centered on the coordinate
-      (x0,y0,z0).
+      (x0,y0,z0). A "mesh" spatial distribution samples source sites from a mesh element
+      based on the relative strengths provided in the node. Source locations
+      within an element are sampled isotropically. If no strengths are provided,
+      the space within the mesh is uniformly sampled.
 
       *Default*: None
 

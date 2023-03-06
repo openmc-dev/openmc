@@ -206,26 +206,28 @@ class RectLattice : public Lattice {
 public:
   explicit RectLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz);
+  int32_t const& operator[](array<int, 3> const& i_xyz) override;
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const;
+  bool are_valid_indices(array<int, 3> const& i_xyz) const override;
 
   std::pair<double, array<int, 3>> distance(
-    Position r, Direction u, const array<int, 3>& i_xyz) const;
+    Position r, Direction u, const array<int, 3>& i_xyz) const override;
 
-  void get_indices(Position r, Direction u, array<int, 3>& result) const;
+  void get_indices(
+    Position r, Direction u, array<int, 3>& result) const override;
 
-  int get_flat_index(const array<int, 3>& i_xyz) const;
+  int get_flat_index(const array<int, 3>& i_xyz) const override;
 
-  Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
+  Position get_local_position(
+    Position r, const array<int, 3>& i_xyz) const override;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz);
+  int32_t& offset(int map, array<int, 3> const& i_xyz) override;
 
-  int32_t offset(int map, int indx) const;
+  int32_t offset(int map, int indx) const override;
 
-  std::string index_to_string(int indx) const;
+  std::string index_to_string(int indx) const override;
 
-  void to_hdf5_inner(hid_t group_id) const;
+  void to_hdf5_inner(hid_t group_id) const override;
 
 private:
   array<int, 3> n_cells_; //!< Number of cells along each axis
@@ -239,32 +241,34 @@ class HexLattice : public Lattice {
 public:
   explicit HexLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz);
+  int32_t const& operator[](array<int, 3> const& i_xyz) override;
 
-  LatticeIter begin();
+  LatticeIter begin() override;
 
-  ReverseLatticeIter rbegin();
+  ReverseLatticeIter rbegin() override;
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const;
+  bool are_valid_indices(array<int, 3> const& i_xyz) const override;
 
   std::pair<double, array<int, 3>> distance(
-    Position r, Direction u, const array<int, 3>& i_xyz) const;
+    Position r, Direction u, const array<int, 3>& i_xyz) const override;
 
-  void get_indices(Position r, Direction u, array<int, 3>& result) const;
+  void get_indices(
+    Position r, Direction u, array<int, 3>& result) const override;
 
-  int get_flat_index(const array<int, 3>& i_xyz) const;
+  int get_flat_index(const array<int, 3>& i_xyz) const override;
 
-  Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
+  Position get_local_position(
+    Position r, const array<int, 3>& i_xyz) const override;
 
-  bool is_valid_index(int indx) const;
+  bool is_valid_index(int indx) const override;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz);
+  int32_t& offset(int map, array<int, 3> const& i_xyz) override;
 
-  int32_t offset(int map, int indx) const;
+  int32_t offset(int map, int indx) const override;
 
-  std::string index_to_string(int indx) const;
+  std::string index_to_string(int indx) const override;
 
-  void to_hdf5_inner(hid_t group_id) const;
+  void to_hdf5_inner(hid_t group_id) const override;
 
 private:
   enum class Orientation {

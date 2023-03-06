@@ -22,10 +22,10 @@ env:
 
 jobs:
   main:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ['3.10']
+        python-version: ["3.10"]
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
@@ -45,27 +45,27 @@ jobs:
             omp: n
             mpi: n
           - dagmc: y
-            python-version: '3.10'
+            python-version: "3.10"
             mpi: y
             omp: y
           - ncrystal: y
-            python-version: '3.10'
+            python-version: "3.10"
             mpi: n
             omp: n
           - libmesh: y
-            python-version: '3.10'
+            python-version: "3.10"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: '3.10'
+            python-version: "3.10"
             mpi: n
             omp: y
           - event: y
-            python-version: '3.10'
+            python-version: "3.10"
             omp: y
             mpi: n
           - vectfit: y
-            python-version: '3.10'
+            python-version: "3.10"
             omp: n
             mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
@@ -82,6 +82,12 @@ jobs:
       EVENT: ${{ matrix.event }}
       VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}
+      NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
+      OPENBLAS_NUM_THREADS: 1
+      # libfabric complains about fork() as a result of using Python multiprocessing.
+      # We can work around it with RDMAV_FORK_SAFE=1 in libfabric < 1.13 and with
+      # FI_EFA_FORK_SAFE=1 in more recent versions.
+      RDMAV_FORK_SAFE: 1
 
     steps:
       - uses: actions/checkout@v3

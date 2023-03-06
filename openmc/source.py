@@ -258,13 +258,16 @@ class Source:
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element) -> 'openmc.Source':
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.Source':
         """Generate source from an XML element
 
         Parameters
         ----------
         elem : xml.etree.ElementTree.Element
             XML element
+        meshes : dict
+            Dictionary with mesh IDs as keys and openmc.MeshBase instaces as
+            values
 
         Returns
         -------
@@ -313,7 +316,7 @@ class Source:
 
         space = elem.find('space')
         if space is not None:
-            source.space = Spatial.from_xml_element(space)
+            source.space = Spatial.from_xml_element(space, meshes)
 
         angle = elem.find('angle')
         if angle is not None:

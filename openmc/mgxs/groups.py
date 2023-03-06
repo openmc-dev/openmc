@@ -164,7 +164,7 @@ class EnergyGroups:
         if groups == 'all':
             return np.arange(self.num_groups)
         else:
-            indices = np.zeros(len(groups), dtype=np.int)
+            indices = np.zeros(len(groups), dtype=int)
 
         for i, group in enumerate(groups):
             cv.check_greater_than('group', group, 0)

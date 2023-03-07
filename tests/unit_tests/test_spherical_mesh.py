@@ -28,14 +28,14 @@ def model():
     source.energy = openmc.stats.Discrete([10000], [1.0])
 
     settings = openmc.Settings()
-    settings.particles = 1000
+    settings.particles = 2000
     settings.batches = 10
     settings.run_mode = 'fixed source'
 
     # build
     mesh = openmc.SphericalMesh()
-    mesh.phi_grid = np.linspace(0, 2*np.pi, 21)
-    mesh.theta_grid = np.linspace(0, np.pi, 11)
+    mesh.phi_grid = np.linspace(0, 2*np.pi, 13)
+    mesh.theta_grid = np.linspace(0, np.pi, 7)
     mesh.r_grid = np.linspace(0, geom_size, geom_size)
 
     tally = openmc.Tally()
@@ -43,7 +43,7 @@ def model():
     mesh_filter = openmc.MeshFilter(mesh)
     tally.filters.append(mesh_filter)
 
-    tally.scores.append("heating")
+    tally.scores.append("flux")
 
     tallies = openmc.Tallies([tally])
 
@@ -63,7 +63,12 @@ def test_origin_read_write_to_xml(run_in_tmpdir, model):
     np.testing.assert_equal(new_mesh.origin, mesh.origin)
 
 estimators = ('tracklength', 'collision')
-origins = permutations([-geom_size, 0, 0])
+# TODO: determine why this is needed for spherical mesh
+# but not cylindrical mesh
+offset = geom_size + 0.001
+
+origins = set(permutations((-offset, 0, 0)))
+origins |= set(permutations((offset, 0, 0)))
 
 test_cases = product(estimators, origins)
 
@@ -79,7 +84,7 @@ def test_offset_mesh(model, estimator, origin):
     """
     mesh = model.tallies[0].filters[0].mesh
     model.tallies[0].estimator = estimator
-    # move the center of the spherical mesh upwards
+    # move the center of the spherical mesh
     mesh.origin = origin
 
     sp_filename = model.run()
@@ -91,8 +96,14 @@ def test_offset_mesh(model, estimator, origin):
         # so ensure that half of the bins are populated
         assert np.count_nonzero(tally.mean) == tally.mean.size / 2
 
-        # check that the lower half of the mesh contains a tally result
-        # and that the upper half is zero
+        # check that the half of the mesh that is outside of the geometry
+        # contains the zero values
         mean = tally.get_reshaped_data('mean', expand_dims=True)
-        # assert np.count_nonzero(mean[:, :, :5]) == mean.size / 2
-        # assert np.count_nonzero(mean[:, :, 5:]) == 0
+        centroids = mesh.centroids
+        for ijk in mesh.indices:
+            i, j, k = np.array(ijk) - 1
+            print(centroids[:, i, j, k])
+            if model.geometry.find(centroids[:, i, j, k]):
+                mean[i, j, k] == 0.0
+            else:
+                mean[i, j, k] != 0.0

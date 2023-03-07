@@ -604,6 +604,10 @@ class AggregateFilter:
     def num_bins(self):
         return len(self.bins) if self.aggregate_filter else 0
 
+    @property
+    def shape(self):
+        return (self.num_bins,)
+
     @type.setter
     def type(self, filter_type):
         if filter_type not in _FILTER_TYPES:

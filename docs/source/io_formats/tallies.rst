@@ -351,6 +351,9 @@ attributes/sub-elements:
   :theta_grid:
     The mesh divisions along the theta-axis. (For spherical mesh only.)
 
+  :origin:
+    The origin in cartesian coordinates. (For cylindrical and spherical meshes only.)
+
   :library:
     The mesh library used to represent an unstructured mesh. This can be either
     "moab" or "libmesh". (For unstructured mesh only.)

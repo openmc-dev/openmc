@@ -124,10 +124,10 @@ class Model:
     @lru_cache(maxsize=None)
     def _materials_by_id(self):
         """Dictionary mapping material ID --> material"""
-        if self.materials is None:
-            mats = self.geometry.get_all_materials().values()
-        else:
+        if self.materials:
             mats = self.materials
+        else:
+            mats = self.geometry.get_all_materials().values()
         return {mat.id: mat for mat in mats}
 
     @property
@@ -248,7 +248,7 @@ class Model:
 
         Parameters
         ----------
-        path : str or Pathlike
+        path : str or PathLike
             Path to model.xml file
         """
         tree = ET.parse(path)
@@ -473,7 +473,7 @@ class Model:
 
         Parameters
         ----------
-        path : str or Pathlike
+        path : str or PathLike
             Location of the XML file to write (default is 'model.xml'). Can be a
             directory or file path.
         remove_surfs : bool
@@ -620,7 +620,7 @@ class Model:
             value set by the :envvar:`OMP_NUM_THREADS` environment variable).
         geometry_debug : bool, optional
             Turn on geometry debugging during simulation. Defaults to False.
-        restart_file : str, optional
+        restart_file : str or PathLike
             Path to restart file to use
         tracks : bool, optional
             Enables the writing of particles tracks. The number of particle

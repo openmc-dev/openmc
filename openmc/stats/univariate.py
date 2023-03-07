@@ -857,7 +857,6 @@ class Tabular(Univariate):
                                       'or linear-linear interpolation.')
         if self.interpolation == 'linear-linear':
             mean = 0.0
-            self.normalize()
             for i in range(1, len(self.x)):
                 y_min = self.p[i-1]
                 y_max = self.p[i]
@@ -872,9 +871,13 @@ class Tabular(Univariate):
                 mean += exp_val
 
         elif self.interpolation == 'histogram':
-            mean = 0.5 * (self.x[:-1] + self.x[1:])
-            mean *= np.diff(self.cdf())
-            mean = sum(mean)
+            x_l = self.x[:-1]
+            x_r = self.x[1:]
+            p_l = self.p[:-1]
+            mean = (0.5 * (x_l + x_r) * (x_r - x_l) * p_l).sum()
+
+        # Normalize for when integral of distribution is not 1
+        mean /= self.integral()
 
         return mean
 

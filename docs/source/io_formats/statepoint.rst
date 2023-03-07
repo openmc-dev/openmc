@@ -78,6 +78,12 @@ The current version of the statepoint file format is 17.0.
              of mesh.
            - **width** (*double[]*) -- Width of each mesh cell in each
              dimension.
+           - **Cylindrical & Spherical Mesh Only:**
+              - **r_grid** (*double[]*) -- The mesh divisions along the r-axis.
+              - **phi_grid** (*double[]*) -- The mesh divisions along the phi-axis.
+              - **origin** (*double[]*) -- The origin in cartesian coordinates.
+           - **Spherical Mesh Only:**
+              - **theta_grid** (*double[]*) -- The mesh divisions along the theta-axis.
            - **Unstructured Mesh Only:**
               - **filename** (*char[]*) -- Name of the mesh file.
               - **library** (*char[]*) -- Mesh library used to represent the

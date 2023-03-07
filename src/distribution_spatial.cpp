@@ -1,7 +1,9 @@
 #include "openmc/distribution_spatial.h"
 
 #include "openmc/error.h"
+#include "openmc/mesh.h"
 #include "openmc/random_lcg.h"
+#include "openmc/search.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -137,7 +139,8 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
     pugi::xml_node node_dist = node.child("cos_theta");
     cos_theta_ = distribution_from_xml(node_dist);
   } else {
-    // If no distribution was specified, default to a single point at cos_theta=0
+    // If no distribution was specified, default to a single point at
+    // cos_theta=0
     double x[] {0.0};
     double p[] {1.0};
     cos_theta_ = make_unique<Discrete>(x, p, 1);
@@ -178,6 +181,84 @@ Position SphericalIndependent::sample(uint64_t* seed) const
   double y = r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y;
   double z = r * cos_theta + origin_.z;
   return {x, y, z};
+}
+
+//==============================================================================
+// MeshSpatial implementation
+//==============================================================================
+
+MeshSpatial::MeshSpatial(pugi::xml_node node)
+{
+  // No in-tet distributions implemented, could include distributions for the
+  // barycentric coords Read in unstructured mesh from mesh_id value
+  int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
+  // Get pointer to spatial distribution
+  mesh_idx_ = model::mesh_map.at(mesh_id);
+
+  auto mesh_ptr =
+    dynamic_cast<UnstructuredMesh*>(model::meshes.at(mesh_idx_).get());
+  if (!mesh_ptr) {
+    fatal_error("Only unstructured mesh is supported for source sampling.");
+  }
+
+  // ensure that the unstructured mesh contains only linear tets
+  for (int bin = 0; bin < mesh_ptr->n_bins(); bin++) {
+    if (mesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
+      fatal_error(
+        "Mesh specified for source must contain only linear tetrahedra.");
+    }
+  }
+
+  int32_t n_bins = this->n_sources();
+  std::vector<double> strengths(n_bins, 0.0);
+
+  mesh_CDF_.resize(n_bins + 1);
+  mesh_CDF_[0] = {0.0};
+  total_strength_ = 0.0;
+
+  // Create cdfs for sampling for an element over a mesh
+  // Volume scheme is weighted by the volume of each tet
+  // File scheme is weighted by an array given in the xml file
+  mesh_strengths_ = std::vector<double>(n_bins, 1.0);
+  if (check_for_node(node, "strengths")) {
+    strengths = get_node_array<double>(node, "strengths");
+    if (strengths.size() != n_bins) {
+      fatal_error(
+        fmt::format("Number of entries in the source strengths array {} does "
+                    "not match the number of entities in mesh {} ({}).",
+          strengths.size(), mesh_id, n_bins));
+    }
+    mesh_strengths_ = std::move(strengths);
+  }
+
+  if (get_node_value_bool(node, "volume_normalized")) {
+    for (int i = 0; i < n_bins; i++) {
+      mesh_strengths_[i] *= mesh()->volume(i);
+    }
+  }
+
+  total_strength_ =
+    std::accumulate(mesh_strengths_.begin(), mesh_strengths_.end(), 0.0);
+
+  for (int i = 0; i < n_bins; i++) {
+    mesh_CDF_[i + 1] = mesh_CDF_[i] + mesh_strengths_[i] / total_strength_;
+  }
+
+  if (fabs(mesh_CDF_.back() - 1.0) > FP_COINCIDENT) {
+    fatal_error(
+      fmt::format("Mesh sampling CDF is incorrectly formed. Final value is: {}",
+        mesh_CDF_.back()));
+  }
+  mesh_CDF_.back() = 1.0;
+}
+
+Position MeshSpatial::sample(uint64_t* seed) const
+{
+  // Create random variable for sampling element from mesh
+  double eta = prn(seed);
+  // Sample over the CDF defined in initialization above
+  int32_t elem_idx = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
+  return mesh()->sample(seed, elem_idx);
 }
 
 //==============================================================================

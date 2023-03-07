@@ -57,6 +57,7 @@ Spatial Distributions
    openmc.stats.SphericalIndependent
    openmc.stats.Box
    openmc.stats.Point
+   openmc.stats.MeshSpatial
 
 .. autosummary::
    :toctree: generated

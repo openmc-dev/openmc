@@ -281,6 +281,9 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
+  // Check for user meshes and allocate
+  read_meshes(root);
+
   // Look for deprecated cross_sections.xml file in settings.xml
   if (check_for_node(root, "cross_sections")) {
     warning(
@@ -565,9 +568,6 @@ void read_settings_xml(pugi::xml_node root)
         {temp[3 * i], temp[3 * i + 1], temp[3 * i + 2]});
     }
   }
-
-  // Read meshes
-  read_meshes(root);
 
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {

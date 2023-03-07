@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from numbers import Integral
+import os
 import subprocess
 
 import openmc
@@ -23,7 +24,7 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         Number of particles to simulate per generation.
     plot : bool, optional
         Run in plotting mode. Defaults to False.
-    restart_file : str, optional
+    restart_file : str or PathLike
         Path to restart file to use
     threads : int, optional
         Number of OpenMP threads. If OpenMC is compiled with OpenMP threading
@@ -42,7 +43,7 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
     mpi_args : list of str, optional
         MPI execute command and any additional MPI arguments to pass,
         e.g., ['mpiexec', '-n', '8'].
-    path_input : str or Pathlike
+    path_input : str or PathLike
         Path to a single XML file or a directory containing XML files for the
         OpenMC executable to read.
 
@@ -73,8 +74,8 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         if event_based:
             args.append('-e')
 
-    if isinstance(restart_file, str):
-        args += ['-r', restart_file]
+    if isinstance(restart_file, (str, os.PathLike)):
+        args += ['-r', str(restart_file)]
 
     if tracks:
         args.append('-t')
@@ -230,7 +231,7 @@ def calculate_volumes(threads=None, output=True, cwd='.',
     cwd : str, optional
         Path to working directory to run in. Defaults to the current working
         directory.
-    path_input : str or Pathlike
+    path_input : str or PathLike
         Path to a single XML file or a directory containing XML files for the
         OpenMC executable to read.
 
@@ -270,7 +271,7 @@ def run(particles=None, threads=None, geometry_debug=False,
         :envvar:`OMP_NUM_THREADS` environment variable).
     geometry_debug : bool, optional
         Turn on geometry debugging during simulation. Defaults to False.
-    restart_file : str, optional
+    restart_file : str or PathLike
         Path to restart file to use
     tracks : bool, optional
         Enables the writing of particles tracks. The number of particle tracks
@@ -291,7 +292,7 @@ def run(particles=None, threads=None, geometry_debug=False,
 
         .. versionadded:: 0.12
 
-    path_input : str or Pathlike
+    path_input : str or PathLike
         Path to a single XML file or a directory containing XML files for the
         OpenMC executable to read.
 

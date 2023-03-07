@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from collections import OrderedDict
 from math import pi
 from numbers import Real, Integral
 from pathlib import Path
@@ -188,7 +189,7 @@ class StructuredMesh(MeshBase):
             Returns a numpy.ndarray representing the mesh element centroid
             coordinates with a shape equal to (ndim, dim1, ..., dimn). Can be
             unpacked along the first dimension with xx, yy, zz = mesh.centroids.
-            
+
 
         """
         ndim = self.n_dimension
@@ -1049,6 +1050,9 @@ class CylindricalMesh(StructuredMesh):
         The default value is [0, 2π], i.e. the full phi range.
     z_grid : numpy.ndarray
         1-D array of mesh boundary points along the z-axis.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -1329,17 +1333,12 @@ class CylindricalMesh(StructuredMesh):
                 for r in self.r_grid
             ]
         )
-        pts_cartesian = np.copy(pts_cylindrical)
+        pts_cartesian = np.empty_like(pts_cylindrical)
         r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
-        pts_cartesian[:, 0] = r * np.cos(phi)
-        pts_cartesian[:, 1] = r * np.sin(phi)
-
-        # offset with origin
-        if any([coord != 0 for coord in self.origin]):
-            pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.origin[0]
-            pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.origin[1]
-            pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.origin[2]
-
+        pts_cartesian[:, 0] = r * np.cos(phi) + self.origin[0]
+        pts_cartesian[:, 1] = r * np.sin(phi) + self.origin[1]
+        pts_cartesian[:, 2] += self.origin[2]
+        
         return super().write_data_to_vtk(
             points=pts_cartesian,
             filename=filename,
@@ -1376,6 +1375,9 @@ class SphericalMesh(StructuredMesh):
     phi_grid : numpy.ndarray
         1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -1587,17 +1589,11 @@ class SphericalMesh(StructuredMesh):
                 for r in self.r_grid
             ]
         )
-        pts_cartesian = np.copy(pts_spherical)
+        pts_cartesian = np.empty_like(pts_spherical)
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
-        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
-        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)
-        pts_cartesian[:, 2] = r * np.cos(phi)
-
-        # offset with origin
-        if any([coord != 0 for coord in self.origin]):
-            pts_cartesian[:, 0] = pts_cartesian[:, 0] + self.origin[0]
-            pts_cartesian[:, 1] = pts_cartesian[:, 1] + self.origin[1]
-            pts_cartesian[:, 2] = pts_cartesian[:, 2] + self.origin[2]
+        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta) + self.origin[0]
+        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta) + self.origin[1]
+        pts_cartesian[:, 2] = r * np.cos(phi) + self.origin[2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,
@@ -1993,3 +1989,25 @@ class UnstructuredMesh(MeshBase):
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
         return cls(filename, library, mesh_id, '', length_multiplier)
+
+
+def _read_meshes(elem):
+    """Generate dictionary of meshes from a given XML node
+
+    Parameters
+    ----------
+    elem : xml.etree.ElementTree.Element
+        XML element
+
+    Returns
+    -------
+    dict
+        A dictionary with mesh IDs as keys and openmc.MeshBase
+        instanaces as values
+    """
+    out = dict()
+    for mesh_elem in elem.findall('mesh'):
+        mesh = MeshBase.from_xml_element(mesh_elem)
+        out[mesh.id] = mesh
+
+    return out

@@ -225,7 +225,7 @@ def test_lower_ww_bounds_shape():
     assert ww.lower_ww_bounds.shape == (2, 3, 4, 1)
 
 
-def test_roundtrip(model, wws):
+def test_roundtrip(run_in_tmpdir, model, wws):
     model.settings.weight_windows = wws
 
     # write the model with weight windows to XML

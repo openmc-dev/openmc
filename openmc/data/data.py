@@ -492,7 +492,7 @@ def isotopes(element):
 
     # Get the nuclides present in nature
     result = []
-    for kv in sorted(NATURAL_ABUNDANCE.items()):
+    for kv in NATURAL_ABUNDANCE.items():
         if re.match(r'{}\d+'.format(element), kv[0]):
             result.append(kv)
 

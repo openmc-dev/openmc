@@ -166,7 +166,7 @@ def test_watt():
 
 def test_tabular():
     x = np.array([0.0, 5.0, 7.0])
-    p = np.array([0.1, 0.2, 0.05])
+    p = np.array([10.0, 20.0, 5.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     elem = d.to_xml_element('distribution')
 
@@ -178,18 +178,21 @@ def test_tabular():
 
     # test linear-linear sampling
     d = openmc.stats.Tabular(x, p)
-
     n_samples = 100_000
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
 
-    # test histogram sampling
-    d = openmc.stats.Tabular(x, p, interpolation='histogram')
+    # test linear-linear normalization
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
 
+    # test histogram sampling
+    d = openmc.stats.Tabular(x, p, interpolation='histogram')
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
+
+    d.normalize()
+    assert d.integral() == pytest.approx(1.0)
 
 
 def test_legendre():

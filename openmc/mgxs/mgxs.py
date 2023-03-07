@@ -918,7 +918,7 @@ class MGXS:
         # Sum the atomic number densities for all nuclides
         if nuclides == 'sum':
             nuclides = self.get_nuclides()
-            densities = np.zeros(1, dtype=np.float)
+            densities = np.zeros(1, dtype=float)
             for nuclide in nuclides:
                 densities[0] += self.get_nuclide_density(nuclide)
 
@@ -931,7 +931,7 @@ class MGXS:
 
         # Tabulate the atomic number densities for each specified nuclide
         else:
-            densities = np.zeros(len(nuclides), dtype=np.float)
+            densities = np.zeros(len(nuclides), dtype=float)
             for i, nuclide in enumerate(nuclides):
                 densities[i] = self.get_nuclide_density(nuclide)
 
@@ -1720,7 +1720,7 @@ class MGXS:
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             subdomains = list(self.domain.indices)
         else:
@@ -1887,7 +1887,7 @@ class MGXS:
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'sum(distribcell)':
             domain_filter = self.xs_tally.find_filter('sum(distribcell)')
             subdomains = domain_filter.bins
@@ -1900,7 +1900,7 @@ class MGXS:
         if self.by_nuclide:
             if nuclides == 'all':
                 nuclides = self.get_nuclides()
-                densities = np.zeros(len(nuclides), dtype=np.float)
+                densities = np.zeros(len(nuclides), dtype=float)
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
@@ -2447,7 +2447,7 @@ class MatrixMGXS(MGXS):
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             subdomains = list(self.domain.indices)
         else:
@@ -4785,7 +4785,7 @@ class ScatterMatrixXS(MatrixMGXS):
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             subdomains = list(self.domain.indices)
         else:

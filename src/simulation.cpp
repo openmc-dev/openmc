@@ -236,7 +236,7 @@ int openmc_next_batch(int* status)
 
   // Check simulation ending criteria
   if (status) {
-    if (simulation::current_batch == settings::n_max_batches) {
+    if (simulation::current_batch >= settings::n_max_batches) {
       *status = STATUS_EXIT_MAX_BATCH;
     } else if (simulation::satisfy_triggers) {
       *status = STATUS_EXIT_ON_TRIGGER;

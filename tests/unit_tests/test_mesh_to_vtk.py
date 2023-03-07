@@ -56,7 +56,7 @@ cylinder_mesh.z_grid = np.linspace(0, 1, 15)
 
 spherical_mesh = openmc.SphericalMesh()
 spherical_mesh.r_grid = np.linspace(1, 10, 30)
-spherical_mesh.phi_grid = np.linspace(0, np.pi, 25)
+spherical_mesh.phi_grid = np.linspace(0, 0.8*np.pi, 25)
 spherical_mesh.theta_grid = np.linspace(0, np.pi / 2, 15)
 
 MESHES =  [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh]

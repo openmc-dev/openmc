@@ -266,7 +266,7 @@ class StructuredMesh(MeshBase):
             datasets_out.append(dataset)
 
             if volume_normalization:
-                dataset /= self.volumes.flatten()
+                dataset /= self.volumes.T.flatten()
 
             dataset_array = vtk.vtkDoubleArray()
             dataset_array.SetName(label)
@@ -1012,7 +1012,7 @@ class RectilinearMesh(StructuredMesh):
             the VTK object
         """
         # create points
-        pts_cartesian = np.array([[x, y, z] for z in self.z_grid for y in self.y_grid for x in self.x_grid])
+        pts_cartesian = self.vertices.T.reshape(-1, 3)
 
         return super().write_data_to_vtk(
             points=pts_cartesian,
@@ -1303,14 +1303,8 @@ class CylindricalMesh(StructuredMesh):
             the VTK object
         """
         # create points
-        pts_cylindrical = np.array(
-            [
-                [r, phi, z]
-                for z in self.z_grid
-                for phi in self.phi_grid
-                for r in self.r_grid
-            ]
-        )
+        pts_cylindrical = self.vertices.T.reshape(-1, 3)
+
         pts_cartesian = np.copy(pts_cylindrical)
         r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
         pts_cartesian[:, 0] = r * np.cos(phi)
@@ -1534,16 +1528,9 @@ class SphericalMesh(StructuredMesh):
         vtk.vtkStructuredGrid
             the VTK object
         """
-
         # create points
-        pts_spherical = np.array(
-            [
-                [r, theta, phi]
-                for phi in self.phi_grid
-                for theta in self.theta_grid
-                for r in self.r_grid
-            ]
-        )
+        pts_spherical = self.vertices.T.reshape(-1, 3)
+
         pts_cartesian = np.copy(pts_spherical)
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
         pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)

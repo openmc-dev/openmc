@@ -55,10 +55,10 @@ def test_get_set(model):
 
     # Test by Openmc material, material name and material id
     material, dest_material = [m for m in model.materials if m.depletable]
-    material_inputs = [material, material.name, material.id]:
+    material_inputs = [material, material.name, material.id]
     dest_material_inputs = [dest_material,
                             dest_material.name,
-                            dest_material.id]:
+                            dest_material.id]
     material_inputs = np.array(np.meshgrid(material_inputs
                                      dest_material_inputs)).T.reshape(-1, 2)
     for material_input, dest_material_input in material_inputs:

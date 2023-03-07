@@ -93,6 +93,6 @@ def test_offset_mesh(model, estimator, origin):
 
         # check that the lower half of the mesh contains a tally result
         # and that the upper half is zero
-        mean = tally.mean.reshape(mesh.dimension[::-1]).T
+        mean = tally.get_reshaped_data('mean', expand_dims=True)
         # assert np.count_nonzero(mean[:, :, :5]) == mean.size / 2
         # assert np.count_nonzero(mean[:, :, 5:]) == 0

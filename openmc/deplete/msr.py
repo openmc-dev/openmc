@@ -117,7 +117,7 @@ class MsrContinuous:
             Depletable material ID to where the element gets transferred
 
         """
-        material_id = self._get_material_id(mat)
+        material_id = self._get_material_id(material)
         check_value('element', element, ELEMENT_SYMBOL.values())
         if element in self.removal_rates[material_id]:
             return self.removal_rates[material_id][element][1]
@@ -170,6 +170,8 @@ class MsrContinuous:
             else:
                 raise ValueError(f'Transfer to material {destination_material_id} '\
                         'is set, but there is only one depletable material')
+        else:
+            destination_material_id = None
 
         if removal_rate_units in ('1/s', '1/sec'):
             unit_conv = 1

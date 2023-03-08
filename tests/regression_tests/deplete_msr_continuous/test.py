@@ -42,15 +42,14 @@ def model():
     return openmc.Model(geometry, materials, settings)
 
 @pytest.mark.parametrize("removal, feed, power, ref_result", [
-    (True, False, 0.0, 'ref_msr_no_depletion_only_removal.h5'),
-    (False, True, 0.0, 'ref_msr_no_depletion_only_feed.h5'),
-    (True, False, 174.0, 'ref_msr_depletion_with_removal.h5'),
-    (False, True, 174.0, 'ref_msr_depletion_with_feed.h5'),
-    (True, True, 0.0, 'ref_msr_no_depletion_with_feed_and_removal.h5'),
-    (True, True, 174.0, 'ref_msr_depletion_with_feed_and_removal.h5'),
+    (True, False, 0.0, 'no_depletion_only_removal'),
+    (False, True, 0.0, 'no_depletion_only_feed'),
+    (True, False, 174.0, 'depletion_with_removal'),
+    (False, True, 174.0, 'depletion_with_feed'),
+    (True, True, 0.0, 'no_depletion_with_feed_and_removal'),
+    (True, True, 174.0, 'depletion_with_feed_and_removal'),
     ])
 def test_msr(run_in_tmpdir, model, removal, feed, power, ref_result):
-
     """Tests msr depletion class with removal rates"""
 
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
@@ -74,7 +73,7 @@ def test_msr(run_in_tmpdir, model, removal, feed, power, ref_result):
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
-    path_reference = Path(__file__).with_name(ref_result)
+    path_reference = Path(__file__).with_name(f'ref_msr_{ref_result}.h5')
 
     # Load the reference/test results
     res_ref = openmc.deplete.Results(path_reference)

@@ -41,9 +41,8 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
         ``func``
     msr : openmc.deplete.MsrContinuous, Optional
         Object to perform continuous reprocessing.
-        
+
         .. versionadded:: 0.13.3
-        
     Returns
     -------
     x_result : list of numpy.ndarray
@@ -66,39 +65,45 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
         matrices = map(matrix_func, repeat(chain), rates, fission_yields)
 
     if msr is not None:
-        # calculate removal rate terms as diagonal matrices
-        removal = map(chain.form_rr_term, repeat(msr), msr.burn_mats)
-        #subtract removal rate terms from Bateman matrices
-        matrices = [mat1 - mat2 for (mat1, mat2) in zip(matrices, removal)]
+        # Calculate removal rate terms as diagonal matrices
+        removals = map(chain.form_rr_term, repeat(msr), msr.burnable_mats)
+        # Subtract removal rate terms from Bateman matrices
+        matrices = [matrix - removal for (matrix, removal) in zip(matrices, removals)]
 
         if len(msr.index_transfer) > 0:
-            # calculate transfer rate terms as diagonal matrices
-            transfer = list(map(chain.form_rr_term, repeat(msr),
+            # Calculate transfer rate terms as diagonal matrices
+            transfers = list(map(chain.form_rr_term, repeat(msr),
                                 msr.index_transfer))
 
             # Combine all matrices together in a single matrix of matrices
             # to be solved in one-go
-            n_rows = n_cols = len(msr.burn_mats)
+            n_rows = n_cols = len(msr.burnable_mats)
             rows = []
-            for row in range(n_rows):
-                cols = []
-                for col in range(n_cols):
-                    if row == col:
-                        # Fill the diagonals with the Bateman matrices
-                        cols.append(matrices[row])
-                    elif (msr.burn_mats[row], msr.burn_mats[col]) in \
-                                    msr.index_transfer:
+            rows_cols = \
+                np.array(np.meshgrid(range(n_rows),
+                                     range(n_cols))).T.reshape(-1, 2)
+            prev_row = 0
+            cols = []
+            for (row, col) in rows_cols
+                if row != prev_row:
+                    rows.append(cols)
+                    cols = []
+                    prev_row = row
+                if row == col:
+                    # Fill the diagonals with the Bateman matrices
+                    cols.append(matrices[row])
+                elif (msr.burnable_mats[row], msr.burnable_mats[col]) in \
+                                msr.index_transfer:
 
-                        index = list(msr.index_transfer).index( \
-                                    (msr.burn_mats[row], msr.burn_mats[col]))
-                        # Fill the off-diagonals with the transfer matrices
-                        cols.append(transfer[index])
-                    else:
-                        cols.append(None)
-                rows.append(cols)
+                    index = list(msr.index_transfer).index( \
+                                (msr.burnable_mats[row], msr.burnable_mats[col]))
+                    # Fill the off-diagonals with the transfer matrices
+                    cols.append(transfers[index])
+                else:
+                    cols.append(None)
             matrix = bmat(rows)
 
-            #concatenate vectors of nuclides in one
+            # Concatenate vectors of nuclides in one
             _x = np.concatenate([xx for xx in x])
             x_result = func(matrix, _x, dt)
 

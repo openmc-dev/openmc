@@ -1,12 +1,13 @@
 """ Tests for Msr continuos class """
 
 from pathlib import Path
-import numpy as np
 from math import exp
-import pytest
 
-from openmc.deplete import CoupledOperator
+import pytest
+import numpy as np
+
 import openmc
+from openmc.deplete import CoupledOperator
 from openmc.deplete import MsrContinuous
 from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
                                 _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR)
@@ -53,27 +54,33 @@ def test_get_set(model):
     msr = MsrContinuous(op, model)
 
     # Test by Openmc material, material name and material id
-    mat, dest_mat = [m for m in model.materials if m.depletable]
-    for i in [mat, mat.name, mat.id]:
-        for j in [dest_mat, dest_mat.name, dest_mat.id]:
-            for key, value in removal_rates.items():
-                msr.set_removal_rate(i, [key], value, destination_material=j)
-                assert msr.get_removal_rate(i, key) == value
-                assert msr.get_destination_material(i, key) == str(dest_mat.id)
-            assert msr.get_elements(i) == removal_rates.keys()
+    material, dest_material = [m for m in model.materials if m.depletable]
+    material_inputs = [material, material.name, material.id]
+    dest_material_inputs = [dest_material,
+                            dest_material.name,
+                            dest_material.id]
+    material_inputs = np.array(np.meshgrid(material_inputs
+                                     dest_material_inputs)).T.reshape(-1, 2)
+    for material_input, dest_material_input in material_inputs:
+        for element, removal_rate in removal_rates.items():
+            msr.set_removal_rate(material_input, [element], removal_rate,
+                                 destination_material=dest_material_input)
+            assert msr.get_removal_rate(material_input, element) == removal_rate
+            assert msr.get_destination_material(material_input, element) == str(dest_mat.id)
+        assert msr.get_elements(material_input) == removal_rates.keys()
 
 @pytest.mark.parametrize("removal_rate_units, units_per_seconds", [
     ('1/s', 1),
     ('1/sec', 1),
-    ('1/min', 60),
-    ('1/minute', 60),
-    ('1/h', 3600),
-    ('1/hr', 3600),
-    ('1/hour', 3600),
-    ('1/d', 86400),
-    ('1/day', 86400),
-    ('1/a', 31557600.0),
-    ('1/year', 31557600.0),
+    ('1/min', 1/_SECONDS_PER_MINUTE),
+    ('1/minute', 1/_SECONDS_PER_MINUTE),
+    ('1/h', 1/_SECONDS_PER_HOUR),
+    ('1/hr', 1/_SECONDS_PER_HOUR),
+    ('1/hour', 1/_SECONDS_PER_HOUR),
+    ('1/d', 1/_SECONDS_PER_DAY),
+    ('1/day', 1/_SECONDS_PER_DAY),
+    ('1/a', 1/_SECONDS_PER_JULIAN_YEAR),
+    ('1/year', 1/_SECONDS_PER_JULIAN_YEAR),
     ])
 def test_units(removal_rate_units, units_per_seconds, model):
     """ Units testing"""

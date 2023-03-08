@@ -686,7 +686,7 @@ class Chain:
         dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
 
-    def form_rr_term(self, msr, index):
+    def form_rr_term(self, msr, materials):
         """Function to form the removal rate term matrices.
 
         .. versionadded:: 0.13.3
@@ -694,20 +694,21 @@ class Chain:
         ----------
         msr : openmc.msr.MsrContinuous
             Instance of openmc.msr.MsrContinuous
-        index : list of str or set of pairs
+        materials : list of str or set of pairs
             Two cases are possible:
 
-            1) Nuclide removal rate without tracking.
-            List of depletable material id as strings. In this case
-            the removal rate terms will be subtracted to the respective
-            depletion matrix and no transfer terms get formed.
+            1) List of depletable material IDs as strings:
+            Nuclide removal only. In this case the removal rate terms will be
+            subtracted from the respective depletion matrix
 
-            2) Nuclide removal from one material and feed into another.
-            Set of pairs: ``(destination_material, mat)``, where
-            ``destination_material`` and ``mat`` are the nuclide receiving and
-            loosing materials, respectively.
+            2) Set of pairs of material IDs as strings:
+            Nuclide removal and feed from one material into another.
+            The pairs are assumed to be
+            ``(destination_material, source_material)``, where
+            ``destination_material`` and ``source_material`` are the nuclide
+            receiving and losing materials, respectively.
             The removal rate terms get placed in the final matrix with indexing
-            position corresponding to the id of the materials set.
+            position corresponding to the ID of the materials set.
 
         Returns
         -------
@@ -717,21 +718,24 @@ class Chain:
         """
         matrix = defaultdict(float)
 
-        for i, nuc in enumerate(self.nuclides):
-            elm = re.split(r'\d+', nuc.name)[0]
+        for i, nuclide in enumerate(self.nuclides):
+            element = re.split(r'\d+', nuclide.name)[0]
             # Build removal terms matrices
-            if isinstance(index, str):
-                mat = index
-                if elm in msr.get_elements(mat):
+            if isinstance(materials, str):
+                material = materials
+                if element in msr.get_elements(mat):
                     matrix[i, i] = msr.get_removal_rate(mat, elm)
                 else:
                     matrix[i, i] = 0.0
             #Build transfer terms matrices
-            elif isinstance(index, tuple):
-                destination_material, mat = index
-                if msr.get_destination_material(mat, elm) == destination_material:
-                    matrix [i, i] = msr.get_removal_rate(mat, elm)
+            elif isinstance(materials, tuple):
+                destination_material, material = materials
+                if msr.get_destination_material(material, element) == destination_material:
+                    matrix[i, i] = msr.get_removal_rate(material, element)
                 else:
+                    warn(f'Material {desination_material} is not defined '
+                         f'as a destination material for Material {material}. '
+                         'Setting removal rate to 0.0')
                     matrix[i, i] = 0.0
             #Nothing else is allowed
         n = len(self)

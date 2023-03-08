@@ -551,6 +551,7 @@ class Integrator(ABC):
         Instance of MsrContinuous class to perform msr continuous removal based
         on removal rates definitions.
 
+        .. versionadded:: 0.13.3
     Attributes
     ----------
     operator : openmc.deplete.abc.TransportOperator

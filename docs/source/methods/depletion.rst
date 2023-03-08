@@ -282,7 +282,7 @@ to the depletion equation, which can be written as:
   &+ \underbrace{\sum_j \left [ \lambda_{j\rightarrow i} N_j(t) - \lambda_{i\rightarrow j} N_i(t) \right ]}_\textbf{D} \\
   &- \underbrace{\epsilon_i \lambda_i N_i(t)}_\textbf{T} \end{aligned}
 
-where the transmutation term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}`
+where the reaction term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}`
 and the new removal term :math:`\mathbf{T}` have been grouped together so that
 :math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
 The removal efficiency :math:`\epsilon_i` and the removal rate coefficient

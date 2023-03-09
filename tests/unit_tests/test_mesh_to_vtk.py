@@ -142,7 +142,6 @@ def test_write_data_to_vtk_size_mismatch(mesh):
     with pytest.raises(ValueError, match=expected_error_msg):
         mesh.write_data_to_vtk(filename="out.vtk", datasets={"label": data})
 
-<<<<<<< HEAD
 def test_write_data_to_vtk_round_trip(run_in_tmpdir):
     cmesh = openmc.CylindricalMesh()
     cmesh.r_grid = (0.0, 1.0, 2.0)
@@ -200,7 +199,6 @@ def test_write_data_to_vtk_round_trip(run_in_tmpdir):
 
         # checks that the vtk cell values are equal to the data
         assert np.array_equal(vtk_values, data)
-=======
 
 def mesh_surf_id(param):
 
@@ -277,5 +275,3 @@ def test_vtk_write_ordering(model, mesh, surface):
             # need to get flat index with axes reversed due to ordering passed into the VTK file
             flat_idx = np.ravel_multi_index(tuple(ijk[::-1]), mesh.dimension[::-1])
             assert vtk_data[flat_idx] == 0.0, err_msg
-
->>>>>>> 641319115 (Correcting spherical to cartesian coordinate conversion)

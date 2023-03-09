@@ -82,25 +82,23 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
             rows_cols = \
                 np.array(np.meshgrid(range(n_rows),
                                      range(n_cols))).T.reshape(-1, 2)
-            prev_row = 0
+            last_col = n_cols - 1
             cols = []
-            for (row, col) in rows_cols
-                if row != prev_row:
-                    rows.append(cols)
-                    cols = []
-                    prev_row = row
+            for (row, col) in rows_cols:
                 if row == col:
                     # Fill the diagonals with the Bateman matrices
                     cols.append(matrices[row])
                 elif (msr.burnable_mats[row], msr.burnable_mats[col]) in \
                                 msr.index_transfer:
-
                     index = list(msr.index_transfer).index( \
                                 (msr.burnable_mats[row], msr.burnable_mats[col]))
                     # Fill the off-diagonals with the transfer matrices
                     cols.append(transfers[index])
                 else:
                     cols.append(None)
+                if col == last_col:
+                    rows.append(cols)
+                    cols = []
             matrix = bmat(rows)
 
             # Concatenate vectors of nuclides in one

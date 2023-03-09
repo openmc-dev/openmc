@@ -578,10 +578,11 @@ class Integrator(ABC):
             * ``n1`` is a :class:`numpy.ndarray` of compositions at the
               next time step. Expected to be of the same shape as ``n0``
 
-        .. versionadded:: 0.13.3
     msr_continuous : openmc.deplete.msr.MsrContinuous
         Instance of MsrContinuous class to perform msr continuous removal based
         on removal rates definitions.
+
+        .. versionadded:: 0.13.3
 
     """
 

@@ -723,8 +723,8 @@ class Chain:
             # Build removal terms matrices
             if isinstance(materials, str):
                 material = materials
-                if element in msr.get_elements(mat):
-                    matrix[i, i] = msr.get_removal_rate(mat, elm)
+                if element in msr.get_elements(material):
+                    matrix[i, i] = msr.get_removal_rate(material, element)
                 else:
                     matrix[i, i] = 0.0
             #Build transfer terms matrices
@@ -733,7 +733,7 @@ class Chain:
                 if msr.get_destination_material(material, element) == destination_material:
                     matrix[i, i] = msr.get_removal_rate(material, element)
                 else:
-                    warn(f'Material {desination_material} is not defined '
+                    warn(f'Material {destination_material} is not defined '
                          f'as a destination material for Material {material}. '
                          'Setting removal rate to 0.0')
                     matrix[i, i] = 0.0

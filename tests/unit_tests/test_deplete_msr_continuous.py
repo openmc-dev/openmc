@@ -59,30 +59,30 @@ def test_get_set(model):
     dest_material_inputs = [dest_material,
                             dest_material.name,
                             dest_material.id]
-    material_inputs = np.array(np.meshgrid(material_inputs
+    material_inputs = np.array(np.meshgrid(material_inputs,
                                      dest_material_inputs)).T.reshape(-1, 2)
     for material_input, dest_material_input in material_inputs:
         for element, removal_rate in removal_rates.items():
             msr.set_removal_rate(material_input, [element], removal_rate,
                                  destination_material=dest_material_input)
             assert msr.get_removal_rate(material_input, element) == removal_rate
-            assert msr.get_destination_material(material_input, element) == str(dest_mat.id)
+            assert msr.get_destination_material(material_input, element) == str(dest_material.id)
         assert msr.get_elements(material_input) == removal_rates.keys()
 
-@pytest.mark.parametrize("removal_rate_units, units_per_seconds", [
+@pytest.mark.parametrize("removal_rate_units, unit_conv", [
     ('1/s', 1),
     ('1/sec', 1),
-    ('1/min', 1/_SECONDS_PER_MINUTE),
-    ('1/minute', 1/_SECONDS_PER_MINUTE),
-    ('1/h', 1/_SECONDS_PER_HOUR),
-    ('1/hr', 1/_SECONDS_PER_HOUR),
-    ('1/hour', 1/_SECONDS_PER_HOUR),
-    ('1/d', 1/_SECONDS_PER_DAY),
-    ('1/day', 1/_SECONDS_PER_DAY),
-    ('1/a', 1/_SECONDS_PER_JULIAN_YEAR),
-    ('1/year', 1/_SECONDS_PER_JULIAN_YEAR),
+    ('1/min', _SECONDS_PER_MINUTE),
+    ('1/minute', _SECONDS_PER_MINUTE),
+    ('1/h', _SECONDS_PER_HOUR),
+    ('1/hr', _SECONDS_PER_HOUR),
+    ('1/hour', _SECONDS_PER_HOUR),
+    ('1/d', _SECONDS_PER_DAY),
+    ('1/day', _SECONDS_PER_DAY),
+    ('1/a', _SECONDS_PER_JULIAN_YEAR),
+    ('1/year', _SECONDS_PER_JULIAN_YEAR),
     ])
-def test_units(removal_rate_units, units_per_seconds, model):
+def test_units(removal_rate_units, unit_conv, model):
     """ Units testing"""
     # create removal rate Xe
     element = 'Xe'
@@ -90,7 +90,7 @@ def test_units(removal_rate_units, units_per_seconds, model):
     op = CoupledOperator(model, CHAIN_PATH)
     msr = MsrContinuous(op, model)
 
-    msr.set_removal_rate('f', [element], removal_rate*units_per_seconds,
+    msr.set_removal_rate('f', [element], removal_rate * unit_conv,
                          removal_rate_units=removal_rate_units)
     assert msr.get_removal_rate('f', element) == removal_rate
 

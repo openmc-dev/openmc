@@ -214,7 +214,6 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 
   mesh_CDF_.resize(n_bins + 1);
   mesh_CDF_[0] = {0.0};
-  total_strength_ = 0.0;
 
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet
@@ -237,11 +236,14 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
     }
   }
 
-  total_strength_ =
-    std::accumulate(mesh_strengths_.begin(), mesh_strengths_.end(), 0.0);
+  for (int i = 0; i < n_bins; i++) {
+    mesh_CDF_[i + 1] = mesh_CDF_[i] + mesh_strengths_[i];
+  }
+
+  double normalization = 1.0/mesh_CDF_.back();
 
   for (int i = 0; i < n_bins; i++) {
-    mesh_CDF_[i + 1] = mesh_CDF_[i] + mesh_strengths_[i] / total_strength_;
+    mesh_CDF_[i] *= normalization;
   }
 
   if (fabs(mesh_CDF_.back() - 1.0) > FP_COINCIDENT) {

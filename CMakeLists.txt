@@ -156,9 +156,9 @@ endif()
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 if(HDF5_IS_PARALLEL)
   if(NOT OPENMC_USE_MPI)
-    message(FATAL_ERROR "Parallel HDF5 was detected, but the detected compiler,\
-     ${CMAKE_CXX_COMPILER}, does not support MPI. An MPI-capable compiler must \
-     be used with parallel HDF5.")
+    message(FATAL_ERROR "Parallel HDF5 was detected, but MPI was not enabled.\
+      To use parallel HDF5, OpenMC needs to be built with MPI support by passing\
+      -DOPENMC_USE_MPI=ON when calling cmake.")
   endif()
   message(STATUS "Using parallel HDF5")
 endif()

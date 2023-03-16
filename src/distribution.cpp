@@ -41,6 +41,19 @@ Discrete::Discrete(const double* x, const double* p, int n)
   this->init_alias(x_vec, p_vec);
 }
 
+Discrete::Discrete(const double* p, int n)
+{
+  std::vector<double> p_vec(p, p + n);
+  std::vector<double> x_vec(n);
+
+  for (int i=0; i<n; i++) 
+  {
+    x_vec[i] = i;
+  }
+
+  this->init_alias(x_vec, p_vec);
+}
+
 void Discrete::init_alias(vector<double>& x, vector<double>& p)
 {
   x_ = x;

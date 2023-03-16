@@ -39,6 +39,7 @@ class Discrete : public Distribution {
 public:
   explicit Discrete(pugi::xml_node node);
   Discrete(const double* x, const double* p, int n);
+  Discrete(const double* p, int n);
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer

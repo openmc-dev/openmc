@@ -1046,7 +1046,8 @@ class Material(IDManagerMixin):
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
         volume : float, optional
-            Volume of the material if not assigned directly
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
 
             .. versionadded:: 0.13.3
 
@@ -1092,7 +1093,8 @@ class Material(IDManagerMixin):
             Specifies if the decay heat should be returned for the material as a
             whole or per nuclide. Default is False.
         volume : float, optional
-            Volume of the material if not assigned directly
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
 
             .. versionadded:: 0.13.3
 
@@ -1131,7 +1133,8 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         volume : float, optional
-            Volume of the material if not assigned directly
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
 
             .. versionadded:: 0.13.3
 
@@ -1185,7 +1188,8 @@ class Material(IDManagerMixin):
             Nuclide for which mass is desired. If not specified, the density
             for the entire material is given.
         volume : float, optional
-            Volume of the material if not assigned directly
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
 
             .. versionadded:: 0.13.3
 

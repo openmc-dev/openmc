@@ -244,7 +244,7 @@ class Model:
     def from_model_xml(cls, path='model.xml'):
         """Create model from single XML file
 
-        .. vesionadded:: 0.13.3
+        .. versionadded:: 0.13.3
 
         Parameters
         ----------

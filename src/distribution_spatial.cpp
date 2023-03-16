@@ -224,8 +224,15 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
                     "not match the number of entities in mesh {} ({}).",
           strengths.size(), mesh_id, n_bins));
     }
-    elem_idx_ = UPtrDist {new Discrete {strengths, n_bins}};
   }
+ 
+ if (get_node_value_bool(node, "volume_normalized")) {
+    for (int i = 0; i < n_bins; i++) {
+      strengths[i] *= mesh()->volume(i);
+    }
+  }
+
+  elem_idx_dist_ = UPtrDist {new Discrete {strengths, n_bins}};
 
 }
 
@@ -234,7 +241,7 @@ Position MeshSpatial::sample(uint64_t* seed) const
   // Create random variable for sampling element from mesh
   double eta = prn(seed);
   // Sample over the CDF defined in initialization above
-  int32_t elem_idx = elem_idx_->sample(eta);
+  int32_t elem_idx = elem_idx_dist_->sample(eta);
   return mesh()->sample(seed, elem_idx);
 }
 

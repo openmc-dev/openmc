@@ -34,7 +34,11 @@ def test_write_data_to_vtk(mesh, tmpdir):
     # BUILD
     filename = Path(tmpdir) / "out.vtk"
 
-    data = np.random.random(mesh.num_mesh_cells)
+    # use mesh element volumes as data to check volume-normalization ordering
+    # kji (i changing fastest) orering is expected for input data
+    # by using the volumes transposed as the data here, we can ensure the
+    # normalization is happening correctly
+    data = mesh.volumes.T
 
     # RUN
     mesh.write_data_to_vtk(filename=filename, datasets={"label1": data, "label2": data})
@@ -56,8 +60,13 @@ def test_write_data_to_vtk(mesh, tmpdir):
     assert array2.GetName() == "label2"
 
     # check size of datasets
-    assert nps.vtk_to_numpy(array1).size == data.size
-    assert nps.vtk_to_numpy(array2).size == data.size
+    data1 = nps.vtk_to_numpy(array1)
+    data2 = nps.vtk_to_numpy(array2)
+    assert data1.size == data.size
+    assert data2.size == data.size
+
+    assert all(data1 == data2)
+    assert all(data1 == 1.0)
 
 
 @pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
@@ -82,3 +91,61 @@ def test_write_data_to_vtk_size_mismatch(mesh):
     )
     with pytest.raises(ValueError, match=expected_error_msg):
         mesh.write_data_to_vtk(filename="out.vtk", datasets={"label": data})
+
+def test_write_data_to_vtk_round_trip(run_in_tmpdir):
+    cmesh = openmc.CylindricalMesh()
+    cmesh.r_grid = (0.0, 1.0, 2.0)
+    cmesh.z_grid = (0.0, 2.0, 4.0, 5.0)
+    cmesh.phi_grid = (0.0, 3.0, 6.0)
+
+    smesh = openmc.SphericalMesh()
+    smesh.r_grid = (0.0, 1.0, 2.0)
+    smesh.theta_grid = (0.0, 2.0, 4.0, 5.0)
+    smesh.phi_grid = (0.0, 3.0, 6.0)
+
+    rmesh = openmc.RegularMesh()
+    rmesh.lower_left = (0.0, 0.0, 0.0)
+    rmesh.upper_right = (1.0, 3.0, 5.0)
+    rmesh.dimension = (2, 1, 6)
+
+    for mesh in [smesh, cmesh, rmesh]:
+
+        filename = "mesh.vtk"
+        data = np.array([1.0] * 12)  # there are 12 voxels in each mesh
+        mesh.write_data_to_vtk(
+            filename=filename,
+            datasets={"normalized": data},
+            volume_normalization=True
+        )
+
+        reader = vtk.vtkStructuredGridReader()
+        reader.SetFileName(filename)
+        reader.ReadAllFieldsOn()
+        reader.Update()
+
+        cell_data = reader.GetOutput().GetCellData()
+        uniform_array = cell_data.GetArray("normalized")
+        num_tuples = uniform_array.GetNumberOfTuples()
+        vtk_values = [uniform_array.GetValue(i) for i in range(num_tuples)]
+
+        # checks that the vtk cell values are equal to the data / mesh volumes
+        assert np.allclose(vtk_values, data / mesh.volumes.T.flatten())
+
+        mesh.write_data_to_vtk(
+            filename=filename,
+            datasets={"not_normalized": data},
+            volume_normalization=False,
+        )
+
+        reader = vtk.vtkStructuredGridReader()
+        reader.SetFileName(filename)
+        reader.ReadAllFieldsOn()
+        reader.Update()
+
+        cell_data = reader.GetOutput().GetCellData()
+        uniform_array = cell_data.GetArray("not_normalized")
+        num_tuples = uniform_array.GetNumberOfTuples()
+        vtk_values = [uniform_array.GetValue(i) for i in range(num_tuples)]
+
+        # checks that the vtk cell values are equal to the data
+        assert np.array_equal(vtk_values, data)

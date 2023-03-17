@@ -7,7 +7,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes
+from ._xml import clean_indentation, reorder_attributes, get_elem_tuple
 from .mixin import IDManagerMixin
 
 
@@ -176,27 +176,6 @@ def _get_plot_image(plot, cwd):
             "OpenMC may not be built against libpng.")
 
     return Image(str(png_file))
-
-def get_tuple(elem, name, dtype=int):
-    '''Helper function to get a tuple of values
-
-    Parameters
-    ----------
-    elem : xml.etree.ElementTree.Element
-        XML element that should contain a tuple
-    name : str
-        Name of the subelement to obtain tuple from
-    dtype : data-type
-        The type of each element in the tuple
-
-    Returns
-    -------
-    tuple of dtype
-        Data read from the tuple
-    '''
-    subelem = elem.find(name)
-    if subelem is not None:
-        return tuple([dtype(x) for x in subelem.text.split()])
 
 
 class PlotBase(IDManagerMixin):
@@ -410,6 +389,49 @@ class PlotBase(IDManagerMixin):
         # Generate random colors for each feature
         for domain in domains:
             self.colors[domain] = np.random.randint(0, 256, (3,))
+
+    def to_xml_element(self):
+        """Save common plot attributes to XML element
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing plot data
+
+        """
+
+        element = ET.Element("plot")
+        element.set("id", str(self._id))
+        if self._filename is not None:
+            element.set("filename", self._filename)
+        element.set("color_by", self._color_by)
+
+        subelement = ET.SubElement(element, "pixels")
+        subelement.text = ' '.join(map(str, self._pixels))
+
+        if self._background is not None:
+            subelement = ET.SubElement(element, "background")
+            color = self._background
+            if isinstance(color, str):
+                color = _SVG_COLORS[color.lower()]
+            subelement.text = ' '.join(str(x) for x in color)
+
+        if self._mask_components is not None:
+            subelement = ET.SubElement(element, "mask")
+            subelement.set("components", ' '.join(
+                str(get_id(d)) for d in self._mask_components))
+            color = self._mask_background
+            if color is not None:
+                if isinstance(color, str):
+                    color = _SVG_COLORS[color.lower()]
+                subelement.set("background", ' '.join(
+                    str(x) for x in color))
+
+        if self._level is not None:
+            subelement = ET.SubElement(element, "level")
+            subelement.text = str(self._level)
+
+        return element
 
 class Plot(PlotBase):
     '''Definition of a finite region of space to be plotted.
@@ -651,11 +673,7 @@ class Plot(PlotBase):
 
         """
 
-        element = ET.Element("plot")
-        element.set("id", str(self._id))
-        if self._filename is not None:
-            element.set("filename", self._filename)
-        element.set("color_by", self._color_by)
+        element = super().to_xml_element()
         element.set("type", self._type)
 
         if self._type == 'slice':
@@ -666,16 +684,6 @@ class Plot(PlotBase):
 
         subelement = ET.SubElement(element, "width")
         subelement.text = ' '.join(map(str, self._width))
-
-        subelement = ET.SubElement(element, "pixels")
-        subelement.text = ' '.join(map(str, self._pixels))
-
-        if self._background is not None:
-            subelement = ET.SubElement(element, "background")
-            color = self._background
-            if isinstance(color, str):
-                color = _SVG_COLORS[color.lower()]
-            subelement.text = ' '.join(str(x) for x in color)
 
         # Helper function that returns the domain ID given either a
         # Cell/Material object or the domain ID itself
@@ -691,17 +699,6 @@ class Plot(PlotBase):
                     color = _SVG_COLORS[color.lower()]
                 subelement.set("rgb", ' '.join(str(x) for x in color))
 
-        if self._mask_components is not None:
-            subelement = ET.SubElement(element, "mask")
-            subelement.set("components", ' '.join(
-                str(get_id(d)) for d in self._mask_components))
-            color = self._mask_background
-            if color is not None:
-                if isinstance(color, str):
-                    color = _SVG_COLORS[color.lower()]
-                subelement.set("background", ' '.join(
-                    str(x) for x in color))
-
         if self._show_overlaps:
             subelement = ET.SubElement(element, "show_overlaps")
             subelement.text = "true"
@@ -713,10 +710,6 @@ class Plot(PlotBase):
                 subelement = ET.SubElement(element, "overlap_color")
                 subelement.text = ' '.join(str(x) for x in color)
 
-
-        if self._level is not None:
-            subelement = ET.SubElement(element, "level")
-            subelement.text = str(self._level)
 
         if self._meshlines is not None:
             subelement = ET.SubElement(element, "meshlines")
@@ -754,10 +747,10 @@ class Plot(PlotBase):
         plot.type = elem.get("type")
         plot.basis = elem.get("basis")
 
-        plot.origin = get_tuple(elem, "origin", float)
-        plot.width = get_tuple(elem, "width", float)
-        plot.pixels = get_tuple(elem, "pixels")
-        plot._background = get_tuple(elem, "background")
+        plot.origin = get_elem_tuple(elem, "origin", float)
+        plot.width = get_elem_tuple(elem, "width", float)
+        plot.pixels = get_elem_tuple(elem, "pixels")
+        plot._background = get_elem_tuple(elem, "background")
 
         # Set plot colors
         colors = {}
@@ -778,7 +771,7 @@ class Plot(PlotBase):
         overlap_elem = elem.find("show_overlaps")
         if overlap_elem is not None:
             plot.show_overlaps = (overlap_elem.text in ('true', '1'))
-        overlap_color = get_tuple(elem, "overlap_color")
+        overlap_color = get_elem_tuple(elem, "overlap_color")
         if overlap_color is not None:
             plot.overlap_color = overlap_color
 
@@ -857,35 +850,37 @@ class ProjectionPlot(PlotBase):
     Attributes
     ----------
     horizontal_field_of_view : float
-        Field of view horizontally, in units of degrees.
+        Field of view horizontally, in units of degrees, defaults to 70.
     camera_position : tuple or list of ndarray
-        Position of the camera in 3D space
+        Position of the camera in 3D space. Defaults to (1, 0, 0).
     look_at : tuple or list of ndarray
-        The center of the camera's image points to this place in 3D space
+        The center of the camera's image points to this place in 3D space.
+        Set to (0, 0, 0) by default.
     up : tuple or list of ndarray
         Which way is up for the camera. Must not be parallel to the
-        line between look_at and camera_position
+        line between look_at and camera_position. Set to (0, 0, 1) by default.
     orthographic_width : float
         If set to a nonzero value, an orthographic projection is used.
         All rays traced from the orthographic pixel array travel in the
         same direction. The width of the starting array must be specified,
         unlike with the default perspective projection. The height of the
         array is deduced from the ratio of pixel dimensions for the image.
-
+        Defaults to zero, i.e. using perspective projection.
     wireframe_thickness : int
         Line thickness employed for drawing wireframes around cells or
-        material regions. Can be set to zero for no wireframes
+        material regions. Can be set to zero for no wireframes at all.
+        Defaults to one pixel.
     wireframe_color : tuple of ints
-        RGB color of the wireframe lines
-    wireframe_regions : iterable of either Material or Cells
+        RGB color of the wireframe lines. Defaults to black.
+    wireframe_domains : iterable of either Material or Cells
         If provided, the wireframe is only drawn around these.
         If color_by is by material, it must be a list of materials, else cells.
-
     xs : dict 
         A mapping from cell/material IDs to floats. The floating point values
         are macroscopic cross sections influencing the volume rendering opacity
         of each geometric region. Zero corresponds to perfect transparency, and
-        infinity equivalent to opaque.
+        infinity equivalent to opaque. These must be set by the user, but default
+        values can be obtained using the set_transparent method.
     """
 
     def __init__(self, plot_id=None, name=''):
@@ -898,7 +893,7 @@ class ProjectionPlot(PlotBase):
         self._orthographic_width = 0.0
         self._wireframe_thickness = 1
         self._wireframe_color = _SVG_COLORS['black']
-        self._wireframe_regions = []
+        self._wireframe_domains = []
         self._xs = {}
 
     @property
@@ -930,8 +925,8 @@ class ProjectionPlot(PlotBase):
         return self._wireframe_color
 
     @property
-    def wireframe_regions(self):
-        return self._wireframe_regions
+    def wireframe_domains(self):
+        return self._wireframe_domains
 
     @property
     def xs(self):
@@ -966,6 +961,7 @@ class ProjectionPlot(PlotBase):
     @orthographic_width.setter
     def orthographic_width(self, orthographic_width):
         cv.check_type('plot orthographic width', orthographic_width, Real)
+        assert orthographic_width >= 0.0
         self._orthographic_width = orthographic_width
 
     @wireframe_thickness.setter
@@ -979,9 +975,9 @@ class ProjectionPlot(PlotBase):
         self._check_color('plot wireframe color', wireframe_color)
         self._wireframe_color = wireframe_color
 
-    @wireframe_regions.setter
-    def wireframe_regions(self, wireframe_regions):
-        for region in wireframe_regions:
+    @wireframe_domains.setter
+    def wireframe_domains(self, wireframe_domains):
+        for region in wireframe_domains:
             if self._color_by == 'material':
                 if not isinstance(region, openmc.Material):
                     raise Exception('Must provide a list of materials for \
@@ -990,7 +986,7 @@ class ProjectionPlot(PlotBase):
                 if not isinstance(region, openmc.Cell):
                     raise Exception('Must provide a list of cells for \
                             wireframe_region if color_by=cell')
-        self._wireframe_regions = wireframe_regions
+        self._wireframe_domains = wireframe_domains
 
     @xs.setter
     def xs(self, xs):
@@ -1032,15 +1028,8 @@ class ProjectionPlot(PlotBase):
 
         """
 
-        element = ET.Element("plot")
-        element.set("id", str(self._id))
-        if self._filename is not None:
-            element.set("filename", self._filename)
-        element.set("color_by", self._color_by)
+        element = super().to_xml_element()
         element.set("type", "projection")
-
-        subelement = ET.SubElement(element, "pixels")
-        subelement.text = ' '.join(map(str, self._pixels))
 
         subelement = ET.SubElement(element, "camera_position")
         subelement.text = ' '.join(map(str, self._camera_position))
@@ -1057,29 +1046,13 @@ class ProjectionPlot(PlotBase):
             color = _SVG_COLORS[color.lower()]
         subelement.text = ' '.join(str(x) for x in color)
 
-        if self._wireframe_regions:
-            id_list = [x.id for x in self._wireframe_regions]
+        if self._wireframe_domains:
+            id_list = [x.id for x in self._wireframe_domains]
             subelement = ET.SubElement(element, "wireframe_ids")
             subelement.text = ' '.join([str(x) for x in id_list])
 
-        if self._background is not None:
-            subelement = ET.SubElement(element, "background")
-            color = self._background
-            if isinstance(color, str):
-                color = _SVG_COLORS[color.lower()]
-            subelement.text = ' '.join(str(x) for x in color)
-
-        if self._mask_components is not None:
-            subelement = ET.SubElement(element, "mask")
-            subelement.set("components", ' '.join(
-                str(d.id) for d in self._mask_components))
-            color = self._mask_background
-            if color is not None:
-                if isinstance(color, str):
-                    color = _SVG_COLORS[color.lower()]
-                subelement.set("background", ' '.join(
-                    str(x) for x in color))
-
+        # note that this differs from the slice plot colors
+        # in that "xs" must also be specified
         if self._colors:
             for domain, color in sorted(self._colors.items(),
                                         key=lambda x: x[0].id):
@@ -1090,9 +1063,13 @@ class ProjectionPlot(PlotBase):
                 subelement.set("rgb", ' '.join(str(x) for x in color))
                 subelement.set("xs", str(self._xs[domain]))
 
-        if self._level is not None:
-            subelement = ET.SubElement(element, "level")
-            subelement.text = str(self._level)
+        subelement = ET.SubElement(element, "horizontal_field_of_view")
+        subelement.text = str(self._horizontal_field_of_view)
+
+        # do not need to write if orthographic_width == 0.0
+        if self._orthographic_width > 0.0:
+            subelement = ET.SubElement(element, "orthographic_width")
+            subelement.text = str(self._orthographic_width)
 
         return element
 
@@ -1117,10 +1094,15 @@ class ProjectionPlot(PlotBase):
             plot.filename = elem.get("filename")
         plot.color_by = elem.get("color_by")
         plot.type = "projection"
+        plot.horizontal_field_of_view = elem.get("horizontal_field_of_view")
 
-        plot.pixels = get_tuple(elem, "pixels")
-        plot.camera_position = get_tuple(elem, "camera_position", float)
-        plot.look_at = get_tuple(elem, "look_at", float)
+        tmp = elem.get("horizontal_field_of_view")
+        if tmp is not None:
+            self.orthographic_width = float(tmp)
+
+        plot.pixels = get_elem_tuple(elem, "pixels")
+        plot.camera_position = get_elem_tuple(elem, "camera_position", float)
+        plot.look_at = get_elem_tuple(elem, "look_at", float)
 
         # Attempt to get wireframe thickness. May not be present
         wireframe_thickness = elem.get("wireframe_thickness")
@@ -1135,7 +1117,7 @@ class ProjectionPlot(PlotBase):
         xs = {}
         for color_elem in elem.findall("color"):
             uid = color_elem.get("id")
-            colors[uid] = get_tuple(color_elem, "rgb")
+            colors[uid] = get_elem_tuple(color_elem, "rgb")
             xs[uid] = float(color_elem.get("xs"))
 
         # Set masking information

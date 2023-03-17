@@ -160,7 +160,7 @@ with OpenMC, before exporting to plots.xml.
       thisp.set_transparent(geometry)
       thisp.xs[fuel] = 1.0
       thisp.xs[iron] = 1.0
-      thisp.wireframe_regions = [fuel]
+      thisp.wireframe_domains = [fuel]
       thisp.wireframe_thickness = 2
   
       plot_file.append(thisp)
@@ -182,17 +182,30 @@ can be used to make all materials in the geometry transparent. From there,
 individual material or cell opacities can be tuned to produce the
 desired result.
 
+Two camera projections are available when using these plots, perspective
+and orthographic. The default, perspective projection,
+is a cone of rays passing through each pixel which radiate from the camera
+position and span the field of view in the x and y positions. The horizontal
+field of view can be set with the :attr: `ProjectionPlot.horizontal_field_of_view` attribute,
+which is to be specified in units of degrees. The field of view only influences
+behavior in perspective projection mode.
+
+In the orthographic projection, rays follow the same angle but originate from
+different points. The horizontal width of this plane of ray starting points
+may be set with the :attr: `ProjectionPlot.orthographic_width` element. If this element
+is nonzero, the orthographic projection is employed. Left to its default value
+of zero, the perspective projection is employed.
+
 Lastly, projection plots come packaged with wireframe generation that
 can target either all surface/cell/material boundaries in the geometry,
 or only wireframing around specific regions. In the above example, we
 have set only the fuel region from the hexagonal lattice example to have
-a wireframe drawn around it. The :attr:`ProjectionPlot.wireframe_thickness`
+a wireframe drawn around it. This is accomplished by setting the
+:attr: `ProjectionPlot.wireframe_domains`, which may be set to either material
+IDs or cell IDs. The :attr:`ProjectionPlot.wireframe_thickness`
 attribute sets the wireframe thickness in units of pixels.
 
 .. note:: When setting specific material or cell regions to have wireframes
           drawn around them, the plot must be colored by materials if wireframing
           around specific materials and similarly colored by cell instance if
           wireframing around specific cells.
-          
-          
-          

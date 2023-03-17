@@ -97,7 +97,7 @@ void PropertyData::set_overlap(size_t y, size_t x)
 namespace model {
 
 std::unordered_map<int, int> plot_map;
-std::vector<std::unique_ptr<PlottableInterface>> plots;
+vector<std::unique_ptr<PlottableInterface>> plots;
 uint64_t plotter_seed = 1;
 
 } // namespace model
@@ -1293,7 +1293,6 @@ void ProjectionPlot::create_output() const
           bool hitsomething = false;
           bool intersection_found = true;
           int loop_counter = 0;
-          const int max_intersections = 1000000;
 
           this_line_segments[tid][horiz].clear();
 
@@ -1342,7 +1341,7 @@ void ProjectionPlot::create_output() const
                 first_surface != -1; // -1 if no surface found
             }
             loop_counter++;
-            if (loop_counter > max_intersections)
+            if (loop_counter > MAX_INTERSECTIONS)
               fatal_error("Infinite loop in projection plot");
           }
 
@@ -1421,6 +1420,8 @@ void ProjectionPlot::create_output() const
           for (int j = -wireframe_thickness_ / 2; j < wireframe_thickness_ / 2;
                ++j)
             if (i * i + j * j < wireframe_thickness_ * wireframe_thickness_) {
+
+              // Check if wireframe pixel is out of bounds
               if (horiz + i >= 0 && horiz + i < pixels_[0] && vert + j >= 0 &&
                   vert + j < pixels_[1])
                 data(horiz + i, vert + j) = wireframe_color_;

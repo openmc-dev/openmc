@@ -28,7 +28,7 @@ class PlottableInterface;
 namespace model {
 
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
-extern std::vector<std::unique_ptr<PlottableInterface>>
+extern vector<std::unique_ptr<PlottableInterface>>
   plots; //!< Plot instance container
 
 extern uint64_t plotter_seed; // Stream index used by the plotter
@@ -285,6 +285,19 @@ private:
   void set_wireframe_ids(pugi::xml_node node);
   void set_wireframe_color(pugi::xml_node node);
 
+  /* If starting the particle from outside the geometry, we have to
+   * find a distance to the boundary in a non-standard surface intersection
+   * check. It's an exhaustive search over surfaces in the top-level universe.
+   */
+  static int advance_to_boundary_from_void(Particle& p);
+
+  /* Checks if a vector of two TrackSegments is equivalent. We define this
+   * to mean not having matching intersection lengths, but rather having
+   * a matching sequence of surface/cell/material intersections.
+   */
+  bool trackstack_equivalent(const vector<TrackSegment>& track1,
+    const vector<TrackSegment>& track2) const;
+
   /* Used for drawing wireframe and colors. We record the list of
    * surface/cell/material intersections and the corresponding lengths as a ray
    * traverses the geometry, then color by iterating in reverse.
@@ -303,13 +316,18 @@ private:
     {}
   };
 
+  // Max intersections before we assume ray tracing is caught in an infinite
+  // loop:
+  static const int MAX_INTERSECTIONS = 1000000;
+
   std::array<int, 2> pixels_;       // pixel dimension of resulting image
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
   Position camera_position_;        // where camera is
   Position look_at_;                // point camera is centered looking at
   Direction up_ {0.0, 0.0, 1.0};    // which way is up
-  std::vector<int>
-    wireframe_ids_; // which color IDs should be wireframed. If empty, all
+
+  // which color IDs should be wireframed. If empty, all cells are wireframed.
+  vector<int> wireframe_ids_;
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.
@@ -320,24 +338,7 @@ private:
   int wireframe_thickness_ {1};
 
   RGBColor wireframe_color_ {BLACK}; // wireframe color
-  std::vector<double>
-    xs_; // macro cross section values for cell volume rendering
-
-  /* If starting the particle from outside the geometry, we have to
-   * find a distance to the boundary in a non-standard surface intersection
-   * check. It's an exhaustive search over surfaces in the top-level universe.
-   */
-  static int advance_to_boundary_from_void(Particle& p);
-
-  /* Checks if a vector of two TrackSegments is equivalent. We define this
-   * to mean not having matching intersection lengths, but rather having
-   * a matching sequence of surface/cell/material intersections.
-   */
-  bool trackstack_equivalent(const std::vector<TrackSegment>& track1,
-    const std::vector<TrackSegment>& track2) const;
-
-  // Closed form 3x3 matrix inversion
-  static std::vector<double> invert_matrix(const std::vector<double>& input);
+  vector<double> xs_; // macro cross section values for cell volume rendering
 };
 
 //===============================================================================

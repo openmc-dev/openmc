@@ -215,7 +215,6 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet
   // File scheme is weighted by an array given in the xml file
-  mesh_strengths_ = std::vector<double>(n_bins, 1.0);
   if (check_for_node(node, "strengths")) {
     strengths = get_node_array<double>(node, "strengths");
     if (strengths.size() != n_bins) {
@@ -232,16 +231,14 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
     }
   }
 
-  elem_idx_dist_ = UPtrDist {new Discrete {strengths, n_bins}};
+  elem_idx_dist_ = UPtrDist {new Discrete {strengths.data(), n_bins}};
 
 }
 
 Position MeshSpatial::sample(uint64_t* seed) const
 {
-  // Create random variable for sampling element from mesh
-  double eta = prn(seed);
   // Sample over the CDF defined in initialization above
-  int32_t elem_idx = elem_idx_dist_->sample(eta);
+  int32_t elem_idx = elem_idx_dist_->sample(seed);
   return mesh()->sample(seed, elem_idx);
 }
 

@@ -26,38 +26,38 @@ Discrete::Discrete(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
 
-  std::size_t n = params.size();
-  std::vector<double> x_vec(params.begin(), params.begin() + n / 2);
-  std::vector<double> p_vec(params.begin() + n / 2, params.end());
+  std::size_t n = params.size()/2;
 
-  this->init_alias(x_vec, p_vec);
+  x_.assign(params.begin(), params.begin() + n);
+  prob_.assign(params.begin() + n, params.end());
+
+  this->init_alias();
 }
 
 Discrete::Discrete(const double* x, const double* p, int n)
 {
-  std::vector<double> x_vec(x, x + n);
-  std::vector<double> p_vec(p, p + n);
+  
+  x_.assign(x, x + n);
+  prob_.assign(p, p + n);
 
-  this->init_alias(x_vec, p_vec);
+  this->init_alias();
 }
 
 Discrete::Discrete(const double* p, int n)
 {
-  std::vector<double> p_vec(p, p + n);
-  std::vector<double> x_vec(n);
+  prob_.assign(p, p + n);
+  x_.resize(n);
 
   for (int i=0; i<n; i++) 
   {
-    x_vec[i] = i;
+    x_[i] = i;
   }
 
-  this->init_alias(x_vec, p_vec);
+  this->init_alias();
 }
 
-void Discrete::init_alias(vector<double>& x, vector<double>& p)
+void Discrete::init_alias()
 {
-  x_ = x;
-  prob_ = p;
   normalize();
 
   // The initialization and sampling method is based on Vose

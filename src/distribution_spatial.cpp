@@ -210,7 +210,7 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   }
 
   int32_t n_bins = this->n_sources();
-  std::vector<double> strengths(n_bins, 0.0);
+  std::vector<double> strengths(n_bins, 1.0);
 
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet

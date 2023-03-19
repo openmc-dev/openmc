@@ -295,6 +295,7 @@ private:
    * to mean not having matching intersection lengths, but rather having
    * a matching sequence of surface/cell/material intersections.
    */
+  struct TrackSegment;
   bool trackstack_equivalent(const vector<TrackSegment>& track1,
     const vector<TrackSegment>& track2) const;
 

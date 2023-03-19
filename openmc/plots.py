@@ -194,7 +194,7 @@ class PlotBase(IDManagerMixin):
     name : str
         Name of the plot
     pixels : Iterable of int
-        Number of pixels to use in each basis direction
+        Number of pixels to use in each direction
     filename :
         Path to write the plot to
     color_by : {'cell', 'material'}
@@ -358,6 +358,12 @@ class PlotBase(IDManagerMixin):
                 cv.check_greater_than('RGB component', rgb, 0, True)
                 cv.check_less_than('RGB component', rgb, 256)
 
+    # Helper function that returns the domain ID given either a
+    # Cell/Material object or the domain ID itself
+    @staticmethod
+    def _get_id(domain):
+        return domain if isinstance(domain, Integral) else domain.id
+
     def colorize(self, geometry, seed=1):
         """Generate a color scheme for each domain in the plot.
 
@@ -401,7 +407,6 @@ class PlotBase(IDManagerMixin):
         """
 
         element = ET.Element("plot")
-        element.set("id", str(self._id))
         if self._filename is not None:
             element.set("filename", self._filename)
         element.set("color_by", self._color_by)
@@ -419,7 +424,7 @@ class PlotBase(IDManagerMixin):
         if self._mask_components is not None:
             subelement = ET.SubElement(element, "mask")
             subelement.set("components", ' '.join(
-                str(get_id(d)) for d in self._mask_components))
+                str(PlotBase._get_id(d)) for d in self._mask_components))
             color = self._mask_background
             if color is not None:
                 if isinstance(color, str):
@@ -505,7 +510,7 @@ class Plot(PlotBase):
 
     @type.setter
     def type(self, plottype):
-        cv.check_value('plot type', plottype, ['slice', 'voxel'])
+        cv.check_value('plot type', plottype, ['slice', 'voxel', 'projection'])
         self._type = plottype
 
     @basis.setter
@@ -674,6 +679,7 @@ class Plot(PlotBase):
         """
 
         element = super().to_xml_element()
+        element.set("id", str(self._id))
         element.set("type", self._type)
 
         if self._type == 'slice':
@@ -685,16 +691,11 @@ class Plot(PlotBase):
         subelement = ET.SubElement(element, "width")
         subelement.text = ' '.join(map(str, self._width))
 
-        # Helper function that returns the domain ID given either a
-        # Cell/Material object or the domain ID itself
-        def get_id(domain):
-            return domain if isinstance(domain, Integral) else domain.id
-
         if self._colors:
             for domain, color in sorted(self._colors.items(),
-                                        key=lambda x: get_id(x[0])):
+                                        key=lambda x: PlotBase._get_id(x[0])):
                 subelement = ET.SubElement(element, "color")
-                subelement.set("id", str(get_id(domain)))
+                subelement.set("id", str(PlotBase._get_id(domain)))
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
                 subelement.set("rgb", ' '.join(str(x) for x in color))
@@ -1029,6 +1030,7 @@ class ProjectionPlot(PlotBase):
         """
 
         element = super().to_xml_element()
+        element.set("id", str(self._id))
         element.set("type", "projection")
 
         subelement = ET.SubElement(element, "camera_position")
@@ -1094,9 +1096,12 @@ class ProjectionPlot(PlotBase):
             plot.filename = elem.get("filename")
         plot.color_by = elem.get("color_by")
         plot.type = "projection"
-        plot.horizontal_field_of_view = elem.get("horizontal_field_of_view")
 
-        tmp = elem.get("horizontal_field_of_view")
+        horizontal_fov = elem.find("horizontal_field_of_view")
+        if horizontal_fov is not None:
+            plot.horizontal_field_of_view = float(horizontal_fov.text)
+
+        tmp = elem.find("orthographic_width")
         if tmp is not None:
             self.orthographic_width = float(tmp)
 
@@ -1300,11 +1305,11 @@ class Plots(cv.CheckedList):
         # Generate each plot
         plots = cls()
         for e in elem.findall('plot'):
-            plot_type = elem.get('type')
+            plot_type = e.get('type')
             if plot_type == 'projection':
-                plots.append(ProjectionPlot.from_xml_element(elem))
+                plots.append(ProjectionPlot.from_xml_element(e))
             else:
-                plots.append(Plot.from_xml_element(elem))
+                plots.append(Plot.from_xml_element(e))
         return plots
 
     @classmethod

@@ -690,6 +690,7 @@ class Chain:
         """Function to form the removal rate term matrices.
 
         .. versionadded:: 0.13.3
+
         Parameters
         ----------
         msr : openmc.msr.MsrContinuous

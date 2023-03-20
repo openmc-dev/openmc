@@ -372,7 +372,8 @@ simulation. This implicit assumption may produce inaccurate results for certain
 scenarios.
 
 MSR-Continuous depletion
-===============================
+========================
+
 The :class:`~openmc.deplete.MsrContinuous` class adds the capability to add
 nuclide removal rates to a depletable material.
 
@@ -401,16 +402,16 @@ For example, to set a Xenon removal from `mat1` with a cycle time of `10 sec`
     ...
 
     # by openmc.Material object
-    msr.set_removal_rate(mat1, ['Xe'] 0.1)
+    msr.set_removal_rate(mat1, ['Xe'], 0.1)
     # or by material id
-    msr.set_removal_rate(1, ['Xe'] 0.1)
+    msr.set_removal_rate(1, ['Xe'], 0.1)
     # or by material name
-    msr.set_removal_rate('fuel', ['Xe'] 0.1)
+    msr.set_removal_rate('fuel', ['Xe'], 0.1)
 
 Note that in this case the nuclides that are removed will not be tracked.
 
 Defining a destination material
------------------------------
+-------------------------------
 
 To keep track of the nuclides that are removed or to define a feed from one
 depletable material to another, the ``destination_material`` parameter needs to be passed to the
@@ -422,4 +423,4 @@ to remove nuclides from `mat1` and feed to `mat2`, you'd use::
 
     ...
 
-    msr.set_removal_rate(mat1, ['Xe'] 0.1, destination_material=mat2)
+    msr.set_removal_rate(mat1, ['Xe'], 0.1, destination_material=mat2)

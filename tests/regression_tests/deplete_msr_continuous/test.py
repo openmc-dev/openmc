@@ -32,7 +32,7 @@ def model():
     surf_w = openmc.Sphere(r=radii[1], boundary_type='reflective')
     cell_f = openmc.Cell(fill=f, region=-surf_f)
     cell_w = openmc.Cell(fill=w, region=+surf_f & -surf_w)
-    geometry = openmc.Geometry([cell_f,cell_w])
+    geometry = openmc.Geometry([cell_f, cell_w])
 
     settings = openmc.Settings()
     settings.particles = 1000

@@ -18,7 +18,7 @@ NUM_PROCESSES = None
 
 
 def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
-    r"""Deplete materials using given reaction rates for a specified time
+    """Deplete materials using given reaction rates for a specified time
 
     Parameters
     ----------
@@ -32,7 +32,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
     rates : openmc.deplete.ReactionRates
         Reaction rates (from transport operator)
     dt : float
-        Time in seconds to deplete for
+        Time in [s] to deplete for
     maxtrix_func : callable, optional
         Function to form the depletion matrix after calling
         ``matrix_func(chain, rates, fission_yields)``, where
@@ -72,8 +72,10 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
 
         if len(msr.index_transfer) > 0:
             # Calculate transfer rate terms as diagonal matrices
-            transfers = list(map(chain.form_rr_term, repeat(msr),
-                                msr.index_transfer))
+            transfers = {
+                mat_pair: chain.form_rr_term(msr, mat_pair)
+                for mat_pair in msr.index_transfer
+            }
 
             # Combine all matrices together in a single matrix of matrices
             # to be solved in one-go
@@ -85,15 +87,13 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
             last_col = n_cols - 1
             cols = []
             for (row, col) in rows_cols:
+                mat_pair = (msr.burnable_mats[row], msr.burnable_mats[col])
                 if row == col:
                     # Fill the diagonals with the Bateman matrices
                     cols.append(matrices[row])
-                elif (msr.burnable_mats[row], msr.burnable_mats[col]) in \
-                                msr.index_transfer:
-                    index = list(msr.index_transfer).index( \
-                                (msr.burnable_mats[row], msr.burnable_mats[col]))
+                elif mat_pair in msr.index_transfer:
                     # Fill the off-diagonals with the transfer matrices
-                    cols.append(transfers[index])
+                    cols.append(transfers[mat_pair])
                 else:
                     cols.append(None)
                 if col == last_col:

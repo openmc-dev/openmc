@@ -298,11 +298,11 @@ Thus, setting a removal rate coefficient of :math:`1 s^{-1}` at :math:`100\%`
 efficiency, would be the same as setting :math:`10 s^{-1}` at :math:`10\%`.
 
 Note that this formulation assumes first order removal and
-homogeneous distribution of nuclide :math:`i` throughout the material.
+a homogeneous distribution of nuclide :math:`i` throughout the material.
 
 A more rigorous description of removal rate and its implementation can be found
 in the paper by `Hombourger
-<https://www.sciencedirect.com/science/article/pii/S0306454920302024?via%3Dihub>`_.
+<https://doi.org/10.1016/j.anucene.2020.107504>`_.
 
 The resulting burnup matrix can be solved with the same integration algorithms,
 as we've seen before.
@@ -328,7 +328,7 @@ material id, and the off-diagonal positions are filled with the removal matrices
 The nuclide vectors are assembled together in one single vector and the resulting
 system is solved with the same integration algorithms seen before.
 
-For sake of example, let's consider the  case of two depletable materials and one
+As an example, consider the case of two depletable materials and one
 feed defined from material 1 to material 2. The final system will look like:
 
 .. math::
@@ -343,5 +343,5 @@ where:
 
 :math:`\mathbf{A_{22}} = \mathbf{R_{22}}+\mathbf{D_{22}}`.
 
-Note that mass conservation during feeding is assured by transferring the number
+Note that mass conservation is guaranteed by transferring the number
 of atoms directly.

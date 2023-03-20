@@ -1,14 +1,12 @@
 from collections import OrderedDict
 from numbers import Real
 
-import numpy as np
-import h5py
-
 from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
                                 _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR)
 from openmc.checkvalue import check_type, check_value
-from openmc import Materials, Material
+from openmc import Material
 from openmc.data import ELEMENT_SYMBOL
+
 
 class MsrContinuous:
     """Class for defining continuous removals and feeds.
@@ -21,6 +19,7 @@ class MsrContinuous:
     the :class:`openmc.deplete.Integrator` classes.
 
     .. versionadded:: 0.13.3
+
     Parameters
     ----------
     operator : openmc.TransportOperator
@@ -42,13 +41,11 @@ class MsrContinuous:
 
     def __init__(self, operator, model):
 
-        self.operator = operator
         self.materials = model.materials
         self.burnable_mats = operator.burnable_mats
 
         #initialize removal rates container dict
-        self.removal_rates = OrderedDict((mat, OrderedDict()) for mat in \
-                                          self.burnable_mats)
+        self.removal_rates = {mat: {} for mat in burnable_mats}
         self.index_transfer = set()
 
     def _get_material_id(self, val):
@@ -137,7 +134,7 @@ class MsrContinuous:
 
         """
         material_id = self._get_material_id(material)
-        if material_id in self.removal_rates.keys():
+        if material_id in self.removal_rates:
             return self.removal_rates[material_id].keys()
 
     def set_removal_rate(self, material, elements, removal_rate, removal_rate_units='1/s',
@@ -152,9 +149,9 @@ class MsrContinuous:
             List of strings of elements that share removal rate
         removal_rate : float
             Removal rate
-        destination_material : Openmc.Material or str or int, Optional
+        destination_material : openmc.Material or str or int, Optional
             Destination material to where nuclides get fed.
-        removal_rate_units: {'1/s', '1/min', '1/h', '1/d', '1/a'}
+        removal_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
             Units for values specified in the removal_rate argument. 's' means
             seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years.
 

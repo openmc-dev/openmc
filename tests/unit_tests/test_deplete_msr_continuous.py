@@ -36,7 +36,7 @@ def model():
     surf_w = openmc.Sphere(r=radii[1], boundary_type='vacuum')
     cell_f = openmc.Cell(fill=f, region=-surf_f)
     cell_w = openmc.Cell(fill=w, region=+surf_f & -surf_w)
-    geometry = openmc.Geometry([cell_f,cell_w])
+    geometry = openmc.Geometry([cell_f, cell_w])
 
     settings = openmc.Settings()
     settings.particles = 1000
@@ -44,6 +44,7 @@ def model():
     settings.batches = 50
 
     return openmc.Model(geometry, materials, settings)
+
 
 def test_get_set(model):
     """Tests the get/set methods"""
@@ -68,6 +69,7 @@ def test_get_set(model):
             assert msr.get_removal_rate(material_input, element) == removal_rate
             assert msr.get_destination_material(material_input, element) == str(dest_material.id)
         assert msr.get_elements(material_input) == removal_rates.keys()
+
 
 @pytest.mark.parametrize("removal_rate_units, unit_conv", [
     ('1/s', 1),

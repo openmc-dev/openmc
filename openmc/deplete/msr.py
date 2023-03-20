@@ -45,7 +45,7 @@ class MsrContinuous:
         self.burnable_mats = operator.burnable_mats
 
         #initialize removal rates container dict
-        self.removal_rates = {mat: {} for mat in burnable_mats}
+        self.removal_rates = {mat: {} for mat in self.burnable_mats}
         self.index_transfer = set()
 
     def _get_material_id(self, val):

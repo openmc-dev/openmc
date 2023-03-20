@@ -695,16 +695,16 @@ class Chain:
         ----------
         msr : openmc.msr.MsrContinuous
             Instance of openmc.msr.MsrContinuous
-        materials : list of str or set of pairs
+        materials : string or two-tuple of strings
             Two cases are possible:
 
-            1) List of depletable material IDs as strings:
+            1) Material ID as string:
             Nuclide removal only. In this case the removal rate terms will be
             subtracted from the respective depletion matrix
 
-            2) Set of pairs of material IDs as strings:
+            2) Two-tuple of material IDs as strings:
             Nuclide removal and feed from one material into another.
-            The pairs are assumed to be
+            The pair is assumed to be
             ``(destination_material, source_material)``, where
             ``destination_material`` and ``source_material`` are the nuclide
             receiving and losing materials, respectively.

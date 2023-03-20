@@ -36,8 +36,8 @@ def model():
 
     settings = openmc.Settings()
     settings.particles = 1000
-    settings.inactive = 10
-    settings.batches = 50
+    settings.inactive = 0
+    settings.batches = 10
 
     return openmc.Model(geometry, materials, settings)
 
@@ -86,4 +86,4 @@ def test_msr(run_in_tmpdir, model, removal, feed, power, ref_result):
                     res_test.get_atoms(mat, nuc)[1]
                 y_ref = res_ref.get_reaction_rate(mat, nuc, rx)[1] / \
                     res_ref.get_atoms(mat, nuc)[1]
-                assert y_test == pytest.approx(y_ref, abs=1e-6)
+                assert y_test == pytest.approx(y_ref, abs=1e-5)

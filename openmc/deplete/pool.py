@@ -98,8 +98,8 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
             matrix = bmat(rows)
 
             # Concatenate vectors of nuclides in one
-            _x = np.concatenate([xx for xx in x])
-            x_result = func(matrix, _x, dt)
+            x_multi = np.concatenate([xx for xx in x])
+            x_result = func(matrix, x_multi, dt)
 
             # Split back the nuclide vector result into the original form
             x_result = np.split(x_result, np.cumsum([len(i) for i in x])[:-1])

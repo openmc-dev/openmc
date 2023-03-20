@@ -46,6 +46,7 @@ def model():
     return openmc.Model(geometry, materials, settings)
 
 
+
 def test_get_set(model):
     """Tests the get/set methods"""
 
@@ -69,6 +70,7 @@ def test_get_set(model):
             assert msr.get_removal_rate(material_input, element) == removal_rate
             assert msr.get_destination_material(material_input, element) == str(dest_material.id)
         assert msr.get_elements(material_input) == removal_rates.keys()
+
 
 
 @pytest.mark.parametrize("removal_rate_units, unit_conv", [

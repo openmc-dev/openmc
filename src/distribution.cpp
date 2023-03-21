@@ -26,7 +26,7 @@ Discrete::Discrete(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
 
-  std::size_t n = params.size()/2;
+  std::size_t n = params.size() / 2;
 
   x_.assign(params.begin(), params.begin() + n);
   prob_.assign(params.begin() + n, params.end());
@@ -36,7 +36,7 @@ Discrete::Discrete(pugi::xml_node node)
 
 Discrete::Discrete(const double* x, const double* p, int n)
 {
-  
+
   x_.assign(x, x + n);
   prob_.assign(p, p + n);
 
@@ -48,8 +48,7 @@ Discrete::Discrete(const double* p, int n)
   prob_.assign(p, p + n);
   x_.resize(n);
 
-  for (int i=0; i<n; i++) 
-  {
+  for (int i = 0; i < n; i++) {
     x_[i] = i;
   }
 

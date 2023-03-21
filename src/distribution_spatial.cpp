@@ -224,15 +224,14 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
           strengths.size(), mesh_id, n_bins));
     }
   }
- 
- if (get_node_value_bool(node, "volume_normalized")) {
+
+  if (get_node_value_bool(node, "volume_normalized")) {
     for (int i = 0; i < n_bins; i++) {
       strengths[i] *= mesh()->volume(i);
     }
   }
 
   elem_idx_dist_ = UPtrDist {new Discrete {strengths.data(), n_bins}};
-
 }
 
 Position MeshSpatial::sample(uint64_t* seed) const

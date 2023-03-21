@@ -371,56 +371,64 @@ The values of the one-group microscopic cross sections passed to
 simulation. This implicit assumption may produce inaccurate results for certain
 scenarios.
 
-MSR-Continuous depletion
-========================
+Transfer Rates
+==============
 
-The :class:`~openmc.deplete.MsrContinuous` class adds the capability to add
-nuclide removal rates to a depletable material.
+The :class:`~openmc.deplete.TransferRates` class adds the capability to set
+continuous transfer rates of nuclides to a depletable material.
 
 An instance of this class requires
 :class:`~openmc.deplete.abc.TransportOperator` and :class:`~openmc.Model`
 instances, and can be passed directly to one of the Integrator classes::
 
     ...
-    msr = openmc.deplete.msr.MsrContinuous(op, model)
+    transfer = openmc.deplete.TransferRates(op, model)
     integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power,
-                msr_continuous=msr)
+                transfer_rates=transfer)
 
-Defining removal rates
+Defining transfer rates
 ----------------------
 
-Removal rates can be added to a :class:`~openmc.deplete.MsrContinuous` instance
-with the :meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method.
+Transfer rates can be added to a :class:`~openmc.deplete.TransferRates` instance
+with the :meth:`~openmc.deplete.TransferRates.set_transfer_rate()` method.
 A :class:`~openmc.Material` instance, material id, or
-material name can specify the depletable material from which nuclides are removed.
-The removal rate units are `1/s` by default, but `1/h` or `1/d` can also be used.
-For example, to set a Xenon removal from `mat1` with a cycle time of `10 sec`
-(removal rate of 0.1 `1/s`), you'd use::
+material name can specify the depletable material from which nuclides are processed.
+
+.. important::
+
+   Make sure you set the transfer rate value with the right sign.
+   A positive transfer rate assumes removal, while a negative one assumes feed.
+
+The transfer rate units can be specified by assigning '1/s', '1/min', '1/h', '1/d'
+or '1/a' to the `transfer_rate_units` argument.
+
+For example, to define continuous removal of Xenon from one material with a cycle
+time of 10 s (or a removal rate value of 0.1 s^-1), you'd use::
 
     mat1 = openmc.Material(material_id=1, name='fuel')
 
     ...
 
     # by openmc.Material object
-    msr.set_removal_rate(mat1, ['Xe'], 0.1)
+    transfer.set_transfer_rate(mat1, ['Xe'], 0.1)
     # or by material id
-    msr.set_removal_rate(1, ['Xe'], 0.1)
+    transfer.set_transfer_rate(1, ['Xe'], 0.1)
     # or by material name
-    msr.set_removal_rate('fuel', ['Xe'], 0.1)
+    transfer.set_transfer_rate('fuel', ['Xe'], 0.1)
 
-Note that in this case the nuclides that are removed will not be tracked.
+Note that in this case the Xenon nuclides that are removed will not be tracked.
 
 Defining a destination material
 -------------------------------
 
-To keep track of the nuclides that are removed or to define a feed from one
-depletable material to another, the ``destination_material`` parameter needs to be passed to the
-:meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method. For example,
-to remove nuclides from `mat1` and feed to `mat2`, you'd use::
+To transfer elements from one depletable material to another, the
+``destination_material`` parameter needs to be passed to the
+:meth:`~openmc.deplete.TransferRates.set_transfer_rate()` method. For example,
+to transfer Xenon from one material to another, you'd use::
 
     ...
     mat2 = openmc.Material(name='storage')
 
     ...
 
-    msr.set_removal_rate(mat1, ['Xe'], 0.1, destination_material=mat2)
+    transfer.set_transfer_rate(mat1, ['Xe'], 0.1, destination_material=mat2)

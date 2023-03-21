@@ -258,21 +258,25 @@ choose one of two methods for estimating the heating rate, including:
 The method for normalization can be chosen through the ``normalization_mode``
 argument to the :class:`openmc.deplete.CoupledOperator` class.
 
-----------------
-MSR Capabilities
-----------------
+--------------
+Transfer Rates
+--------------
 
-A nice feature of Molten Salt Reactors (MSRs), and in general of
-*any*  liquid fuel reactor, is the capability to continuously reprocess the fuel
-to remove fission products or to feed fresh fuel into the system.
+OpenMC allows continuous removal or feed of isotopes by adding an
+extra transfer rate term to the depletion matrix. An application of this feature
+is the chemical processing of Molten Salt Reactors (MSRs), and can be used to
+model fission products removal or feed fresh fuel into the system.
 
-Removal rate
-------------
+A transfer rate as defined here is the rate at which nuclides are
+continuously removed/feed from/to a material.
 
-A removal rate as defined here is the rate at which nuclides are
-continuously removed from a material. Mathematically, it
-can be thought as an additional proportional term :math:`\mathbf{T}`
-to the depletion equation, which can be written as:
+.. note::
+
+    A transfer rate can be positive or negative, indicating removal or feed
+    respectively.
+
+Mathematically, it can be thought as an additional proportional
+term :math:`\mathbf{T}` to the depletion equation, which can be written as:
 
 .. math::
 
@@ -280,24 +284,25 @@ to the depletion equation, which can be written as:
   \int_0^\infty dE  \; \sigma_j (E,t) \phi(E,t) N_j(t)  - \int_0^\infty dE \; \sigma_i(E,t)
   \phi(E,t) N_i(t)}_\textbf{R} \\
   &+ \underbrace{\sum_j \left [ \lambda_{j\rightarrow i} N_j(t) - \lambda_{i\rightarrow j} N_i(t) \right ]}_\textbf{D} \\
-  &- \underbrace{\epsilon_i \lambda_i N_i(t)}_\textbf{T} \end{aligned}
+  &- \underbrace{\epsilon_i t_i N_i(t)}_\textbf{T} \end{aligned}
 
 where the reaction term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}`
-and the new removal term :math:`\mathbf{T}` have been grouped together so that
+and the new transfer term :math:`\mathbf{T}` have been grouped together so that
 :math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
-The removal efficiency :math:`\epsilon_i` and the removal rate coefficient
-:math:`\lambda_i` define the continuous removal of the nuclide :math:`i`, which
+The transfer efficiency :math:`\epsilon_i` and the transfer rate coefficient
+:math:`t_i` define the continuous transfer of the nuclide :math:`i`, which
 behaviour is similar to radioactive decay.
-:math:`\lambda_i` can also be defined as the reciprocal of a cycle time
+:math:`t_i` can also be defined as the reciprocal of a cycle time
 :math:`T_{cyc}`, intended as the time needed to process the whole inventory.
 
-For simplicity, :math:`\epsilon_i` and :math:`\lambda_i`
+For simplicity, :math:`\epsilon_i` and :math:`t_i`
 can be combined together in one single user-defined parameter that is defined
-again as :math:`\lambda_i`.
-Thus, setting a removal rate coefficient of :math:`1 s^{-1}` at :math:`100\%`
-efficiency, would be the same as setting :math:`10 s^{-1}` at :math:`10\%`.
+again as :math:`t_i`.
+Thus, setting a transfer rate coefficient of 1 s^-1 at 100% efficiency, would be
+the same as setting 10 s^-1 at 10%.
 
-Note that this formulation assumes first order removal and
+
+Note that this formulation assumes first order transfer and
 a homogeneous distribution of nuclide :math:`i` throughout the material.
 
 A more rigorous description of removal rate and its implementation can be found
@@ -309,27 +314,25 @@ as we've seen before.
 
 .. note::
 
-    If no ``destination_material`` argument is passed to the
-    :meth:`~openmc.deplete.MsrContinuous.set_removal_rate()` method of the
-    :class:`~openmc.deplete.MsrContinuous` class, nuclides that are removed will
-    not be tracked afterwards.
+    If no ``destination_material`` is specified, nuclides that are removed
+    or fed will not be tracked afterwards.
 
-Feeding rate
-------------
+Coupling materials
+------------------
 To keep track of removed nuclides or to feed nuclides from one depletable material
 to another, the respective depletion equations have to be coupled. This can be
 achieved by defining one multidimensional square matrix with dimensions equal to
 the number of depletable materials that transfer nuclides.
 The diagonal positions are filled with the usual depletion matrices
 :math:`\mathbf{A_{ii}}`, where the index :math:`i` indicates the depletable
-material id, and the off-diagonal positions are filled with the removal matrices
+material id, and the off-diagonal positions are filled with the transfer matrices
 :math:`\mathbf{T_{ij}}`, positioned so that that the indices :math:`i` and
 :math:`j` indicate the nuclides receiving and loosing materials, respectively.
 The nuclide vectors are assembled together in one single vector and the resulting
 system is solved with the same integration algorithms seen before.
 
 As an example, consider the case of two depletable materials and one
-feed defined from material 1 to material 2. The final system will look like:
+transfer defined from material 1 to material 2. The final system will look like:
 
 .. math::
 

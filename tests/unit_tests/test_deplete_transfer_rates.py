@@ -1,4 +1,4 @@
-""" Tests for Msr continuos class """
+""" Tests for TransferRates class """
 
 from pathlib import Path
 from math import exp
@@ -8,7 +8,7 @@ import numpy as np
 
 import openmc
 from openmc.deplete import CoupledOperator
-from openmc.deplete import MsrContinuous
+from openmc.deplete import TransferRates
 from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
                                 _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR)
 
@@ -50,10 +50,10 @@ def model():
 def test_get_set(model):
     """Tests the get/set methods"""
 
-    # create removal rates for U and Xe
-    removal_rates = {'U': 0.01, 'Xe': 0.1}
+    # create transfer rates for U and Xe
+    transfer_rates = {'U': 0.01, 'Xe': 0.1}
     op = CoupledOperator(model, CHAIN_PATH)
-    msr = MsrContinuous(op, model)
+    transfer = TransferRates(op, model)
 
     # Test by Openmc material, material name and material id
     material, dest_material = [m for m in model.materials if m.depletable]
@@ -61,18 +61,18 @@ def test_get_set(model):
     for material_input in [material, material.name, material.id]:
         for dest_material_input in [dest_material, dest_material.name,
                                     dest_material.id]:
-            for element, removal_rate in removal_rates.items():
-                msr.set_removal_rate(material_input, [element], removal_rate,
+            for element, transfer_rate in transfer_rates.items():
+                transfer.set_transfer_rate(material_input, [element], transfer_rate,
                                  destination_material=dest_material_input)
-                assert msr.get_removal_rate(material_input,
-                                            element) == removal_rate
-                assert msr.get_destination_material(material_input,
+                assert transfer.get_transfer_rate(material_input,
+                                            element) == transfer_rate
+                assert transfer.get_destination_material(material_input,
                                                     element) == str(dest_material.id)
-            assert msr.get_elements(material_input) == removal_rates.keys()
+            assert transfer.get_elements(material_input) == transfer_rates.keys()
 
 
 
-@pytest.mark.parametrize("removal_rate_units, unit_conv", [
+@pytest.mark.parametrize("transfer_rate_units, unit_conv", [
     ('1/s', 1),
     ('1/sec', 1),
     ('1/min', _SECONDS_PER_MINUTE),
@@ -85,38 +85,38 @@ def test_get_set(model):
     ('1/a', _SECONDS_PER_JULIAN_YEAR),
     ('1/year', _SECONDS_PER_JULIAN_YEAR),
     ])
-def test_units(removal_rate_units, unit_conv, model):
+def test_units(transfer_rate_units, unit_conv, model):
     """ Units testing"""
-    # create removal rate Xe
+    # create transfer rate Xe
     element = 'Xe'
-    removal_rate = 1e-5
+    transfer_rate = 1e-5
     op = CoupledOperator(model, CHAIN_PATH)
-    msr = MsrContinuous(op, model)
+    transfer = TransferRates(op, model)
 
-    msr.set_removal_rate('f', [element], removal_rate * unit_conv,
-                         removal_rate_units=removal_rate_units)
-    assert msr.get_removal_rate('f', element) == removal_rate
+    transfer.set_transfer_rate('f', [element], transfer_rate * unit_conv,
+                         transfer_rate_units=transfer_rate_units)
+    assert transfer.get_transfer_rate('f', element) == transfer_rate
 
 
-def test_msr(run_in_tmpdir, model):
+def test_transfer(run_in_tmpdir, model):
 
-    """Tests msr depletion class without neither reaction rates nor decay
-    but only removal rates"""
+    """Tests transfer depletion class without neither reaction rates nor decay
+    but only transfer rates"""
 
-    # create removal rate for U
+    # create transfer rate for U
     element = ['U']
-    removal_rate = 1e-5
+    transfer_rate = 1e-5
     op = CoupledOperator(model, CHAIN_PATH)
-    msr = MsrContinuous(op, model)
-    msr.set_removal_rate('f', element, removal_rate)
+    transfer = TransferRates(op, model)
+    transfer.set_transfer_rate('f', element, transfer_rate)
     integrator = openmc.deplete.PredictorIntegrator(
-        op, [1,1], 0.0, msr_continuous = msr, timestep_units = 'd')
+        op, [1,1], 0.0, transfer_rates = transfer, timestep_units = 'd')
     integrator.integrate()
 
     # Get number of U238 atoms from results
     results = openmc.deplete.Results('depletion_results.h5')
     _, atoms = results.get_atoms(model.materials[0], "U238")
 
-    # Ensure number of atoms equal removal decay
-    assert atoms[1] == pytest.approx(atoms[0]*exp(-removal_rate*3600*24))
-    assert atoms[2] == pytest.approx(atoms[1]*exp(-removal_rate*3600*24))
+    # Ensure number of atoms equal transfer decay
+    assert atoms[1] == pytest.approx(atoms[0]*exp(-transfer_rate*3600*24))
+    assert atoms[2] == pytest.approx(atoms[1]*exp(-transfer_rate*3600*24))

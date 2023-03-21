@@ -547,9 +547,9 @@ class Integrator(ABC):
         :attr:`solver`.
 
         .. versionadded:: 0.12
-    msr_continuous : openmc.deplete.msr.MsrContinuous
-        Instance of MsrContinuous class to perform msr continuous removal based
-        on removal rates definitions.
+    transfer_rates : openmc.deplete.TransferRates
+        Instance of TransferRates class to perform continuous transfer based
+        on transfer rates definitions.
 
         .. versionadded:: 0.13.3
     Attributes
@@ -578,9 +578,9 @@ class Integrator(ABC):
             * ``n1`` is a :class:`numpy.ndarray` of compositions at the
               next time step. Expected to be of the same shape as ``n0``
 
-    msr_continuous : openmc.deplete.msr.MsrContinuous
-        Instance of MsrContinuous class to perform msr continuous removal based
-        on removal rates definitions.
+    transfer_rates : openmc.deplete.TransferRates
+        Instance of TransferRates class to perform continuous transfer based
+        on transfer rates definitions.
 
         .. versionadded:: 0.13.3
 
@@ -588,7 +588,7 @@ class Integrator(ABC):
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
                  source_rates=None, timestep_units='s', solver="cram48",
-                 msr_continuous=None):
+                 transfer_rates=None):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -663,7 +663,7 @@ class Integrator(ABC):
         self.timesteps = asarray(seconds)
         self.source_rates = asarray(source_rates)
 
-        self.msr_continuous = msr_continuous
+        self.transfer_rates = transfer_rates
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -716,7 +716,7 @@ class Integrator(ABC):
         start = time.time()
         results = deplete(
             self._solver, self.chain, concs, rates, dt, matrix_func,
-            self.msr_continuous)
+            self.transfer_rates)
         return time.time() - start, results
 
     @abstractmethod

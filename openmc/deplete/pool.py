@@ -17,7 +17,7 @@ USE_MULTIPROCESSING = True
 NUM_PROCESSES = None
 
 
-def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
+def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -39,7 +39,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
         ``fission_yields = {parent: {product: yield_frac}}``
         Expected to return the depletion matrix required by
         ``func``
-    msr : openmc.deplete.MsrContinuous, Optional
+    transfer_rates : openmc.deplete.TransferRates, Optional
         Object to perform continuous reprocessing.
 
         .. versionadded:: 0.13.3
@@ -64,33 +64,36 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, msr=None):
     else:
         matrices = map(matrix_func, repeat(chain), rates, fission_yields)
 
-    if msr is not None:
-        # Calculate removal rate terms as diagonal matrices
-        removals = map(chain.form_rr_term, repeat(msr), msr.burnable_mats)
-        # Subtract removal rate terms from Bateman matrices
-        matrices = [matrix - removal for (matrix, removal) in zip(matrices, removals)]
+    if transfer_rates is not None:
+        # Calculate transfer rate terms as diagonal matrices
+        transfers = map(chain.form_rr_term, repeat(transfer_rates),
+                        transfer_rates.burnable_mats)
+        # Subtract transfer rate terms from Bateman matrices
+        matrices = [matrix - transfer for (matrix, transfer) in zip(matrices,
+                                                                    transfers)]
 
-        if len(msr.index_transfer) > 0:
+        if len(transfer_rates.index_transfer) > 0:
             # Calculate transfer rate terms as diagonal matrices
-            transfers = {
-                mat_pair: chain.form_rr_term(msr, mat_pair)
-                for mat_pair in msr.index_transfer
+            transfer_pair = {
+                mat_pair: chain.form_rr_term(transfer_rates, mat_pair)
+                for mat_pair in transfer_rates.index_transfer
             }
 
             # Combine all matrices together in a single matrix of matrices
             # to be solved in one-go
-            n_rows = n_cols = len(msr.burnable_mats)
+            n_rows = n_cols = len(transfer_rates.burnable_mats)
             rows = []
             for row in range(n_rows):
                 cols = []
                 for col in range(n_cols):
-                    mat_pair = (msr.burnable_mats[row], msr.burnable_mats[col])
+                    mat_pair = (transfer_rates.burnable_mats[row],
+                                transfer_rates.burnable_mats[col])
                     if row == col:
                         # Fill the diagonals with the Bateman matrices
                         cols.append(matrices[row])
-                    elif mat_pair in msr.index_transfer:
-                        # Fill the off-diagonals with the transfer matrices
-                        cols.append(transfers[mat_pair])
+                    elif mat_pair in transfer_rates.index_transfer:
+                        # Fill the off-diagonals with the transfer pair matrices
+                        cols.append(transfer_pair[mat_pair])
                     else:
                         cols.append(None)
 

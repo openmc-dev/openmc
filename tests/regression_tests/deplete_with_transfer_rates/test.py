@@ -1,4 +1,4 @@
-""" MSR depletion test suite """
+""" TransferRates depletion test suite """
 
 from pathlib import Path
 
@@ -7,7 +7,7 @@ import pytest
 import openmc
 import openmc.deplete
 from openmc.deplete import CoupledOperator
-from openmc.deplete import MsrContinuous
+from openmc.deplete import TransferRates
 
 @pytest.fixture
 def model():
@@ -41,39 +41,32 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.mark.parametrize("removal, feed, power, ref_result", [
-    (True, False, 0.0, 'no_depletion_only_removal'),
-    (False, True, 0.0, 'no_depletion_only_feed'),
-    (True, False, 174.0, 'depletion_with_removal'),
-    (False, True, 174.0, 'depletion_with_feed'),
-    (True, True, 0.0, 'no_depletion_with_feed_and_removal'),
-    (True, True, 174.0, 'depletion_with_feed_and_removal'),
+@pytest.mark.parametrize("rate, dest_mat, power, ref_result", [
+    (1e-5, None, 0.0, 'no_depletion_only_removal'),
+    (-1e-5, None, 0.0, 'no_depletion_only_feed'),
+    (1e-5, None, 174.0, 'depletion_with_removal'),
+    (-1e-5, None, 174.0, 'depletion_with_feed'),
+    (-1e-5, 'w', 0.0, 'no_depletion_with_transfer'),
+    (1e-5, 'w', 174.0, 'depletion_with_transfer'),
     ])
-def test_msr(run_in_tmpdir, model, removal, feed, power, ref_result):
-    """Tests msr depletion class with removal rates"""
+def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result):
+    """Tests transfer_rates depletion class with transfer rates"""
 
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
 
-    # Defining removing and feeding elements, using the same removal rate
-    removing_element = ['Xe']
-    feeding_element = ['U']
-    removal_rate = 1e-5
+    transfer_elements = ['Xe']
 
     op = CoupledOperator(model, chain_file)
-    msr = MsrContinuous(op, model)
-    if removal:
-        msr.set_removal_rate('f', removing_element, removal_rate,
-                            destination_material=None)
-    if feed:
-        msr.set_removal_rate('f', feeding_element, removal_rate,
-                            destination_material='w')
+    transfer = TransferRates(op, model)
+    transfer.set_transfer_rate('f', transfer_elements, rate,
+                                destination_material=dest_mat)
     integrator = openmc.deplete.PredictorIntegrator(
-        op, [1], power, msr_continuous = msr, timestep_units = 'd')
+        op, [1], power, transfer_rates = transfer, timestep_units = 'd')
     integrator.integrate()
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
-    path_reference = Path(__file__).with_name(f'ref_msr_{ref_result}.h5')
+    path_reference = Path(__file__).with_name(f'ref_{ref_result}.h5')
 
     # Load the reference/test results
     res_ref = openmc.deplete.Results(path_reference)

@@ -198,14 +198,15 @@ total system energy.
 The :class:`openmc.deplete.IndependentOperator` uses inner classes subclassed
 from those listed above to perform similar calculations.
 
-The following classes are used to define continuous removal or feed rates in molten salt reactors (MSRs)
+The following classes are used to define transfer rates to model continuous
+removal or feed of isotopes during a depletion analysis.
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: myclass.rst
 
-   MsrContinuous
+   TransferRates
 
 Intermediate Classes
 --------------------

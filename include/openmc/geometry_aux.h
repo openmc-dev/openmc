@@ -127,6 +127,14 @@ std::string distribcell_path(
 int maximum_levels(int32_t univ);
 
 //==============================================================================
+//! Check whether or not a universe is the root universe using its ID.
+//! \param univ_id The ID of the universe to check.
+//! \return Whether or not it is the root universe.
+//==============================================================================
+
+bool is_root_universe(int32_t univ_id);
+
+//==============================================================================
 //! Deallocates global vectors and maps for cells, universes, and lattices.
 //==============================================================================
 

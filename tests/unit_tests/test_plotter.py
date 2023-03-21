@@ -32,7 +32,7 @@ def test_calculate_cexs_elem_mat_sab(test_mat):
     assert len(data[0]) == len(energy_grid)
 
 
-@pytest.mark.parametrize("this", ["Li", "Li6", openmc.Nuclide('Li6'), openmc.Element('Li')])
+@pytest.mark.parametrize("this", ["Li", "Li6"])
 def test_calculate_cexs_with_nuclide_and_element(this):
     # single type (reaction)
     energy_grid, data = openmc.plotter.calculate_cexs(
@@ -72,7 +72,7 @@ def test_calculate_cexs_with_materials(test_mat):
     assert len(data[0]) == len(energy_grid)
 
 
-@pytest.mark.parametrize("this", ["Be", "Be9", openmc.Nuclide('Be9'), openmc.Element('Be')])
+@pytest.mark.parametrize("this", ["Be", "Be9"])
 def test_plot_xs(this):
     assert isinstance(openmc.plotter.plot_xs(this, types=['total']), Figure)
 

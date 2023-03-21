@@ -59,7 +59,7 @@ spherical_mesh.r_grid = np.linspace(1, 10, 30)
 spherical_mesh.phi_grid = np.linspace(0, 0.8*np.pi, 25)
 spherical_mesh.theta_grid = np.linspace(0, np.pi / 2, 15)
 
-MESHES =  [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh]
+MESHES = [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh]
 
 x_plane = openmc.XPlane(x0=-0.001, boundary_type='vacuum')
 y_plane = openmc.YPlane(y0=-0.001, boundary_type='vacuum')
@@ -201,11 +201,9 @@ def test_write_data_to_vtk_round_trip(run_in_tmpdir):
         assert np.array_equal(vtk_values, data)
 
 def mesh_surf_id(param):
-
     if isinstance(param, openmc.MeshBase):
         return ids(param)
-
-    if isinstance(param, openmc.XPlane):
+    elif isinstance(param, openmc.XPlane):
         return 'XPlane'
     elif isinstance(param, openmc.YPlane):
         return 'YPlane'

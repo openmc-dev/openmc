@@ -32,27 +32,24 @@ using UPtrDist = unique_ptr<Distribution>;
 UPtrDist distribution_from_xml(pugi::xml_node node);
 
 //==============================================================================
-//! A discrete distribution (probability mass function)
+//! A discrete distribution index (probability mass function)
 //==============================================================================
 
-class Discrete : public Distribution {
+class DiscreteIndex {
 public:
   explicit Discrete(pugi::xml_node node);
-  Discrete(const double* x, const double* p, int n);
   Discrete(const double* p, int n);
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  size_t sample(uint64_t* seed) const override;
 
   // Properties
-  const vector<double>& x() const { return x_; }
   const vector<double>& prob() const { return prob_; }
   const vector<size_t>& alias() const { return alias_; }
 
 private:
-  vector<double> x_;    //!< Possible outcomes
   vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
                         //!< mapped to alias method table
   vector<size_t> alias_; //!< Alias table
@@ -62,6 +59,31 @@ private:
 
   //! Initialize alias tables for distribution
   void init_alias();
+};
+
+//==============================================================================
+//! A discrete distribution (probability mass function)
+//==============================================================================
+
+class Discrete : public Distribution {
+public:
+  explicit Discrete(pugi::xml_node node);
+  Discrete(const double* x, const double* p, int n);
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  double sample(uint64_t* seed) const override;
+
+  // Properties
+  const vector<double>& x() const { return x_; }
+  const vector<double>& prob() const { return di_->prob(); }
+  const vector<size_t>& alias() const { return di_->alias(); }
+
+private:
+  vector<double> x_;             //!< Possible outcomes
+  unique_ptr<DiscreteIndex> di_; //!< discrete probability distribution of
+                                 //!< outcome indices
 };
 
 //==============================================================================

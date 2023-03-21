@@ -114,7 +114,8 @@ public:
 
 private:
   int32_t mesh_idx_ {C_NONE};
-  UPtrDist elem_idx_dist_; //!< Distribution of mesh element indices
+  unique_ptr<DiscreteIndex> elem_idx_dist_; //!< Distribution of
+                                            //!< mesh element indices
 };
 
 //==============================================================================

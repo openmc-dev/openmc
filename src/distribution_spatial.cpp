@@ -231,7 +231,7 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
     }
   }
 
-  elem_idx_dist_ = UPtrDist {new Discrete {strengths.data(), n_bins}};
+  elem_idx_dist_ = make_unique<DiscreteIndex>(strengths.data(), n_bins);
 }
 
 Position MeshSpatial::sample(uint64_t* seed) const

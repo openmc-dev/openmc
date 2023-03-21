@@ -48,12 +48,14 @@ void DiscreteIndex::init_alias()
   vector<size_t> large;
   vector<size_t> small;
 
+  size_t n = prob_.size();
+
   // Set and allocate memory
-  alias_.assign(prob_.size(), 0);
+  alias_.assign(n, 0);
 
   // Fill large and small vectors based on 1/n
-  for (size_t i = 0; i < prob_.size(); i++) {
-    prob_[i] *= prob_.size();
+  for (size_t i = 0; i < n; i++) {
+    prob_[i] *= n;
     if (prob_[i] > 1.0) {
       large.push_back(i);
     } else {
@@ -83,9 +85,9 @@ void DiscreteIndex::init_alias()
 size_t DiscreteIndex::sample(uint64_t* seed) const
 {
   // Alias sampling of discrete distribution
-  int n = prob_.size();
+  size_t n = prob_.size();
   if (n > 1) {
-    int u = prn(seed) * n;
+    size_t u = prn(seed) * n;
     if (prn(seed) < prob_[u]) {
       return u;
     } else {

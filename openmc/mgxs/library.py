@@ -214,12 +214,8 @@ class Library:
 
     @property
     def nuclides(self):
-        if self.by_nuclide and self._nuclides:
-            return self._nuclides
-        elif self.by_nuclide:
-            raise ValueError("Nuclides weren't defined")
-        else:
-            return 'sum'
+        return self._nuclides
+
     @property
     def energy_groups(self):
         return self._energy_groups
@@ -292,7 +288,7 @@ class Library:
 
     @nuclides.setter
     def nuclides(self, nuclides):
-        cv.check_type('nuclides', nuclides, str)
+        cv.check_iterable_type('nuclides', nuclides, str)
         self._nuclides = nuclides
 
     @mgxs_types.setter
@@ -549,12 +545,12 @@ class Library:
                         domain_nuclides = domain.get_nuclides()
                     except AttributeError:
                         domain_nuclides = None
-                    if self._nuclides:
+                    if self.nuclides:
                         if domain_nuclides:
                             mgxs.nuclides = [nuclide for nuclide in self.nuclides if nuclide in domain_nuclides] + [
                                 "total"]
                         else:
-                            mgxs.nuclides = self._nuclides
+                            mgxs.nuclides = self.nuclides
 
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 
@@ -622,7 +618,7 @@ class Library:
 
         self._sp_filename = statepoint._f.filename
         self._geometry = statepoint.summary.geometry
-        self._nuclides = statepoint.summary.nuclides
+        self._atomic_weight_ratios = statepoint.summary.nuclides
 
         if statepoint.run_mode == 'eigenvalue':
             self._keff = statepoint.keff.n
@@ -1037,7 +1033,7 @@ class Library:
             xsdata.num_azimuthal = self.num_azimuthal
 
         if nuclide != 'total':
-            xsdata.atomic_weight_ratio = self._nuclides[nuclide]
+            xsdata.atomic_weight_ratio = self._atomic_weight_ratios[nuclide]
 
         if subdomain is None:
             subdomain = 'all'

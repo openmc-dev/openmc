@@ -37,13 +37,15 @@ UPtrDist distribution_from_xml(pugi::xml_node node);
 
 class DiscreteIndex {
 public:
-  explicit Discrete(pugi::xml_node node);
-  Discrete(const double* p, int n);
+  explicit DiscreteIndex(pugi::xml_node node);
+  DiscreteIndex(const double* p, int n);
+
+  void assign(const double* p, int n);
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  size_t sample(uint64_t* seed) const override;
+  size_t sample(uint64_t* seed) const;
 
   // Properties
   const vector<double>& prob() const { return prob_; }
@@ -81,9 +83,9 @@ public:
   const vector<size_t>& alias() const { return di_->alias(); }
 
 private:
-  vector<double> x_;             //!< Possible outcomes
-  unique_ptr<DiscreteIndex> di_; //!< discrete probability distribution of
-                                 //!< outcome indices
+  vector<double> x_; //!< Possible outcomes
+  DiscreteIndex di_; //!< discrete probability distribution of
+                     //!< outcome indices
 };
 
 //==============================================================================

@@ -25,13 +25,21 @@ namespace openmc {
 DiscreteIndex::DiscreteIndex(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
+  std::size_t n = params.size() / 2;
 
-  prob_.assign(params.begin(), params.end());
+  prob_.assign(params.begin() + n, params.end());
 
   this->init_alias();
 }
 
 DiscreteIndex::DiscreteIndex(const double* p, int n)
+{
+  prob_.assign(p, p + n);
+
+  this->init_alias();
+}
+
+void DiscreteIndex::assign(const double* p, int n)
 {
   prob_.assign(p, p + n);
 
@@ -111,21 +119,19 @@ void DiscreteIndex::normalize()
 // Discrete implementation
 //==============================================================================
 
-Discrete::Discrete(pugi::xml_node node)
+Discrete::Discrete(pugi::xml_node node) : di_(node)
 {
   auto params = get_node_array<double>(node, "parameters");
 
   std::size_t n = params.size() / 2;
 
   x_.assign(params.begin(), params.begin() + n);
-  di_ = new DiscreteIndex(params.begin() + n, n)
 }
 
-Discrete::Discrete(const double* x, const double* p, int n)
+Discrete::Discrete(const double* x, const double* p, int n) : di_(p, n)
 {
 
   x_.assign(x, x + n);
-  di_ = new DiscreteIndex(params.begin() + n, n)
 }
 
 double Discrete::sample(uint64_t* seed) const

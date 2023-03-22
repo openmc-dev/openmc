@@ -27,7 +27,7 @@ DiscreteIndex::DiscreteIndex(pugi::xml_node node)
   auto params = get_node_array<double>(node, "parameters");
   std::size_t n = params.size() / 2;
 
-  assign(params.begin(), n);
+  assign(&(*params.begin()), n);
 }
 
 DiscreteIndex::DiscreteIndex(const double* p, int n)

@@ -63,8 +63,8 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
 
     Parameters
     ----------
-    this : {str, openmc.Material}
-        Object to source data from. Nuclides and Elements can be input as a str
+    this : str or openmc.Material
+        Object to source data from. Nuclides and elements can be input as a str
     types : Iterable of values of PLOT_TYPES
         The type of cross sections to include in the plot.
     divisor_types : Iterable of values of PLOT_TYPES, optional
@@ -217,8 +217,8 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
 
     Parameters
     ----------
-    this : {str, openmc.Material}
-        Object to source data from. Nuclides and Elements should be input as a
+    this : str or openmc.Material
+        Object to source data from. Nuclides and elements should be input as a
         str
     types : Iterable of values of PLOT_TYPES
         The type of cross sections to calculate
@@ -603,8 +603,8 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
 
     Parameters
     ----------
-    this : {str, openmc.Material}
-        Object to source data from. Nuclides and Elements can be input as a str
+    this : str or openmc.Material
+        Object to source data from. Nuclides and elements can be input as a str
     types : Iterable of values of PLOT_TYPES_MGXS
         The type of cross sections to calculate
     orders : Iterable of Integral, optional

@@ -237,7 +237,7 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 Position MeshSpatial::sample(uint64_t* seed) const
 {
   // Sample over the CDF defined in initialization above
-  int32_t elem_idx = elem_idx_dist_->sample(seed);
+  int32_t elem_idx = elem_idx_dist_.sample(seed);
   return mesh()->sample(seed, elem_idx);
 }
 

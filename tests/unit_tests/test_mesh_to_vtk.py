@@ -1,3 +1,5 @@
+from itertools import product
+
 import numpy as np
 from pathlib import Path
 import pytest
@@ -7,29 +9,77 @@ from vtk.util import numpy_support as nps
 
 import openmc
 
+@pytest.fixture
+def model():
+    openmc.reset_auto_ids()
+
+    surf1 = openmc.Sphere(r=10, boundary_type='vacuum')
+    surf2 = openmc.XPlane(x0=-0.001, boundary_type='vacuum')
+
+    cell = openmc.Cell(region=-surf1 & -surf2)
+
+    geometry = openmc.Geometry([cell])
+
+    settings = openmc.Settings()
+    settings.batches = 2
+    settings.particles = 100
+    settings.run_mode = 'fixed source'
+
+    source = openmc.Source()
+    source.angle = openmc.stats.Isotropic()
+    source.energy = openmc.stats.Discrete([1.0e6], [1.0])
+    source.space = openmc.stats.Point((-0.01, -0.01, -0.01))
+
+    settings.source = source
+
+    model = openmc.Model(geometry=geometry, settings=settings)
+
+    return model
+
 
 regular_mesh = openmc.RegularMesh()
-regular_mesh.lower_left = (0, 0, 0)
-regular_mesh.upper_right = (1, 1, 1)
+regular_mesh.lower_left = (-10, -10, -10)
+regular_mesh.upper_right = (10, 10, 10)
 regular_mesh.dimension = [30, 20, 10]
 
 rectilinear_mesh = openmc.RectilinearMesh()
-rectilinear_mesh.x_grid = np.linspace(1, 2, num=30)
-rectilinear_mesh.y_grid = np.linspace(1, 2, num=30)
-rectilinear_mesh.z_grid = np.linspace(1, 2, num=30)
+rectilinear_mesh.x_grid = np.linspace(-10, 10, 6)
+rectilinear_mesh.y_grid = np.logspace(0, 1, 7)
+rectilinear_mesh.y_grid = \
+    np.concatenate((-rectilinear_mesh.y_grid[::-1], rectilinear_mesh.y_grid))
+rectilinear_mesh.z_grid = np.linspace(-10, 10, 11)
 
 cylinder_mesh = openmc.CylindricalMesh()
-cylinder_mesh.r_grid = np.linspace(1, 2, num=30)
-cylinder_mesh.phi_grid = np.linspace(0, np.pi, num=50)
-cylinder_mesh.z_grid = np.linspace(0, 1, num=30)
+cylinder_mesh.r_grid = np.linspace(0, 10, 23)
+cylinder_mesh.phi_grid = np.linspace(0, np.pi, 21)
+cylinder_mesh.z_grid = np.linspace(0, 1, 15)
 
 spherical_mesh = openmc.SphericalMesh()
-spherical_mesh.r_grid = np.linspace(1, 2, num=30)
-spherical_mesh.phi_grid = np.linspace(0, np.pi, num=50)
-spherical_mesh.theta_grid = np.linspace(0, np.pi / 2, num=30)
+spherical_mesh.r_grid = np.linspace(1, 10, 30)
+spherical_mesh.phi_grid = np.linspace(0, 0.8*np.pi, 25)
+spherical_mesh.theta_grid = np.linspace(0, np.pi / 2, 15)
+
+MESHES = [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh]
+
+x_plane = openmc.XPlane(x0=-0.001, boundary_type='vacuum')
+y_plane = openmc.YPlane(y0=-0.001, boundary_type='vacuum')
+z_plane = openmc.ZPlane(z0=-0.001, boundary_type='vacuum')
+
+SURFS = [x_plane, y_plane, z_plane]
 
 
-@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
+def ids(mesh):
+    if isinstance(mesh, openmc.CylindricalMesh):
+        return 'cylindrical_mesh'
+    elif isinstance(mesh, openmc.RegularMesh):
+        return 'regular_mesh'
+    elif isinstance(mesh, openmc.RectilinearMesh):
+        return 'rectilinear_mesh'
+    elif isinstance(mesh, openmc.SphericalMesh):
+        return 'spherical_mesh'
+
+
+@pytest.mark.parametrize("mesh", MESHES, ids=ids)
 def test_write_data_to_vtk(mesh, tmpdir):
     # BUILD
     filename = Path(tmpdir) / "out.vtk"
@@ -69,7 +119,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
     assert all(data1 == 1.0)
 
 
-@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
+@pytest.mark.parametrize("mesh", MESHES, ids=ids)
 def test_write_data_to_vtk_size_mismatch(mesh):
     """Checks that an error is raised when the size of the dataset
     doesn't match the mesh number of cells
@@ -149,3 +199,77 @@ def test_write_data_to_vtk_round_trip(run_in_tmpdir):
 
         # checks that the vtk cell values are equal to the data
         assert np.array_equal(vtk_values, data)
+
+def mesh_surf_id(param):
+    if isinstance(param, openmc.MeshBase):
+        return ids(param)
+    elif isinstance(param, openmc.XPlane):
+        return 'XPlane'
+    elif isinstance(param, openmc.YPlane):
+        return 'YPlane'
+    elif isinstance(param, openmc.ZPlane):
+        return 'ZPlane'
+
+
+@pytest.mark.parametrize("mesh,surface", product(MESHES, SURFS), ids=mesh_surf_id)
+def test_vtk_write_ordering(model, mesh, surface):
+
+    tally = openmc.Tally()
+    tally.scores = ['flux']
+    # use the mesh on the specified tally
+    mesh_filter = openmc.MeshFilter(mesh)
+    tally.filters = [mesh_filter]
+
+    model.tallies = openmc.Tallies([tally])
+
+    # run the problem
+    sp_filename = model.run()
+
+    with openmc.StatePoint(sp_filename) as sp:
+        mean = sp.tallies[tally.id].mean
+
+    # write the data to a VTK file
+    vtk_filename = 'test.vtk'
+    mesh.write_data_to_vtk(vtk_filename, datasets={'mean': mean})
+
+     # read file
+    reader = vtk.vtkStructuredGridReader()
+    reader.SetFileName(str(vtk_filename))
+    reader.Update()
+
+    # check name of datasets
+    vtk_grid = reader.GetOutput()
+    array = vtk_grid.GetCellData().GetArray(0)
+    vtk_data = nps.vtk_to_numpy(array)
+
+    # convenience function for determining if a mesh
+    # element has vertices in the geometry. This
+    # particular geometry allows us to assume that tally results
+    # in the element should be zero if none of its vertices lie in the geometry
+    def in_geom(cell):
+        point_ids = cell.GetPointIds()
+
+        for i in range(point_ids.GetNumberOfIds()):
+            p = vtk_grid.GetPoint(point_ids.GetId(i))
+            if model.geometry.find(p):
+                return True
+
+        return False
+
+    # reshape mean according to mesh dimensions
+    mean = mean.reshape(mesh.dimension[::-1]).T
+    centroid = [0.0, 0.0, 0.0]
+
+    # check that tally and vtk array results are zero where expected
+    for ijk in mesh.indices:
+        ijk = tuple(n - 1 for n in ijk)
+        # get the cell from the stuctured mesh object
+        cell = vtk_grid.GetCell(*ijk)
+        if not in_geom(cell):
+            cell.GetCentroid(centroid)
+            err_msg = f'IJK: {ijk} should be zero but is not. Centroid: {centroid}'
+            assert mean[ijk] == 0.0, err_msg
+
+            # need to get flat index with axes reversed due to ordering passed into the VTK file
+            flat_idx = np.ravel_multi_index(tuple(ijk[::-1]), mesh.dimension[::-1])
+            assert vtk_data[flat_idx] == 0.0, err_msg

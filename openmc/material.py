@@ -1029,7 +1029,8 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False):
+    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
+                     volume: Optional[float] = None):
         """Returns the activity of the material or for each nuclide in the
         material in units of [Bq], [Bq/g] or [Bq/cm3].
 
@@ -1044,6 +1045,11 @@ class Material(IDManagerMixin):
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+            .. versionadded:: 0.13.3
 
         Returns
         -------
@@ -1057,7 +1063,7 @@ class Material(IDManagerMixin):
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'Bq':
-            multiplier = self.volume
+            multiplier = volume if volume is not None else self.volume
         elif units == 'Bq/cm3':
             multiplier = 1
         elif units == 'Bq/g':
@@ -1070,7 +1076,8 @@ class Material(IDManagerMixin):
 
         return activity if by_nuclide else sum(activity.values())
 
-    def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False):
+    def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
+                       volume: Optional[float] = None):
         """Returns the decay heat of the material or for each nuclide in the
         material in units of [W], [W/g] or [W/cm3].
 
@@ -1085,6 +1092,11 @@ class Material(IDManagerMixin):
         by_nuclide : bool
             Specifies if the decay heat should be returned for the material as a
             whole or per nuclide. Default is False.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+            .. versionadded:: 0.13.3
 
         Returns
         -------
@@ -1098,7 +1110,7 @@ class Material(IDManagerMixin):
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'W':
-            multiplier = self.volume
+            multiplier = volume if volume is not None else self.volume
         elif units == 'W/cm3':
             multiplier = 1
         elif units == 'W/g':
@@ -1113,10 +1125,18 @@ class Material(IDManagerMixin):
 
         return decayheat if by_nuclide else sum(decayheat.values())
 
-    def get_nuclide_atoms(self):
+    def get_nuclide_atoms(self, volume: Optional[float] = None):
         """Return number of atoms of each nuclide in the material
 
         .. versionadded:: 0.13.1
+
+        Parameters
+        ----------
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+            .. versionadded:: 0.13.3
 
         Returns
         -------
@@ -1125,11 +1145,13 @@ class Material(IDManagerMixin):
             atoms present in the material.
 
         """
-        if self.volume is None:
+        if volume is None:
+            volume = self.volume
+        if volume is None:
             raise ValueError("Volume must be set in order to determine atoms.")
         atoms = {}
         for nuclide, atom_per_bcm in self.get_nuclide_atom_densities().items():
-            atoms[nuclide] = 1.0e24 * atom_per_bcm * self.volume
+            atoms[nuclide] = 1.0e24 * atom_per_bcm * volume
         return atoms
 
     def get_mass_density(self, nuclide: Optional[str] = None):
@@ -1154,7 +1176,7 @@ class Material(IDManagerMixin):
             mass_density += density_i
         return mass_density
 
-    def get_mass(self, nuclide: Optional[str] = None):
+    def get_mass(self, nuclide: Optional[str] = None, volume: Optional[float] = None):
         """Return mass of one or all nuclides.
 
         Note that this method requires that the :attr:`Material.volume` has
@@ -1165,6 +1187,12 @@ class Material(IDManagerMixin):
         nuclides : str, optional
             Nuclide for which mass is desired. If not specified, the density
             for the entire material is given.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+            .. versionadded:: 0.13.3
+
 
         Returns
         -------
@@ -1172,9 +1200,11 @@ class Material(IDManagerMixin):
             Mass of the nuclide/material in [g]
 
         """
-        if self.volume is None:
+        if volume is None:
+            volume = self.volume
+        if volume is None:
             raise ValueError("Volume must be set in order to determine mass.")
-        return self.volume*self.get_mass_density(nuclide)
+        return volume*self.get_mass_density(nuclide)
 
     def clone(self, memo: Optional[dict] = None):
         """Create a copy of this material with a new unique ID.

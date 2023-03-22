@@ -446,7 +446,7 @@ class RegularMesh(StructuredMesh):
         if self._width is not None:
             self._width = None
             warnings.warn("Unsetting width attribute.")
-        
+
         if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
             raise ValueError("Mesh cannot have zero thickness in any dimension")
 
@@ -1578,6 +1578,7 @@ class SphericalMesh(StructuredMesh):
         pts_cartesian = np.copy(pts_spherical)
 
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
+
         pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta) + self.origin[0]
         pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta) + self.origin[1]
         pts_cartesian[:, 2] = r * np.cos(phi) + self.origin[2]

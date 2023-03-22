@@ -244,7 +244,7 @@ class Model:
     def from_model_xml(cls, path='model.xml'):
         """Create model from single XML file
 
-        .. vesionadded:: 0.13.3
+        .. versionadded:: 0.13.3
 
         Parameters
         ----------
@@ -740,7 +740,7 @@ class Model:
 
         if len(self.settings.volume_calculations) == 0:
             # Then there is no volume calculation specified
-            raise ValueError("The Settings.volume_calculation attribute must"
+            raise ValueError("The Settings.volume_calculations attribute must"
                              " be specified before executing this method!")
 
         with _change_directory(Path(cwd)):

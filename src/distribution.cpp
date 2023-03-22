@@ -136,7 +136,7 @@ Discrete::Discrete(const double* x, const double* p, int n) : di_(p, n)
 
 double Discrete::sample(uint64_t* seed) const
 {
-  return x_[di_->sample(seed)];
+  return x_[di_.sample(seed)];
 }
 
 //==============================================================================

@@ -79,8 +79,8 @@ public:
 
   // Properties
   const vector<double>& x() const { return x_; }
-  const vector<double>& prob() const { return di_->prob(); }
-  const vector<size_t>& alias() const { return di_->alias(); }
+  const vector<double>& prob() const { return di_.prob(); }
+  const vector<size_t>& alias() const { return di_.alias(); }
 
 private:
   vector<double> x_; //!< Possible outcomes

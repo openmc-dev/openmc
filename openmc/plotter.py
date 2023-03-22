@@ -58,7 +58,8 @@ ELEMENT_NAMES = list(openmc.data.ELEMENT_SYMBOL.values())[1:]
 
 def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
             sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
-            enrichment=None, plot_CE=True, orders=None, divisor_orders=None):
+            enrichment=None, plot_CE=True, orders=None, divisor_orders=None,
+            **kwargs):
     """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters
@@ -98,6 +99,9 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
         multi-group data.
     divisor_orders : Iterable of Integral, optional
         Same as orders, but for divisor_types
+    **kwargs :
+        All keyword arguments are passed to
+        :func:`matplotlib.pyplot.figure`.
 
     Returns
     -------
@@ -157,7 +161,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
 
     # Generate the plot
     if axis is None:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(**kwargs)
     else:
         fig = None
         ax = axis
@@ -270,15 +274,9 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
             data = np.zeros((len(types), len(energy_grid)))
             for line in range(len(types)):
                 data[line, :] = xs[line](energy_grid)
-
-    elif isinstance(this, openmc.Material):
+    else:
         energy_grid, data = _calculate_cexs_elem_mat(this, types, temperature,
                                                      cross_sections)
-    else:
-        msg = (
-            f"{this} is an invalid type, acceptable types are str, openmc.Material."
-        )
-        raise TypeError(msg)
 
     return energy_grid, data
 

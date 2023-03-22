@@ -148,7 +148,8 @@ class TransferRates:
         elements : list of str
             List of strings of elements that share transfer rate
         transfer_rate : float
-            Transfer rate
+            Rate at which elements are transferred. A positive or negative values
+            set removal of feed rates, respectively.  
         destination_material : openmc.Material or str or int, Optional
             Destination material to where nuclides get fed.
         transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}

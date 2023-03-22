@@ -37,7 +37,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node);
 
 class DiscreteIndex {
 public:
-  explicit DiscreteIndex(pugi::xml_node node);
+  DiscreteIndex() {};
+  DiscreteIndex(pugi::xml_node node);
   DiscreteIndex(const double* p, int n);
 
   void assign(const double* p, int n);

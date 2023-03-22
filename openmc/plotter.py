@@ -227,7 +227,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
 
 
 def calculate_cexs(this, data_type, types, temperature=294., sab_name=None,
-                   cross_sections=None, enrichment=None):
+                   cross_sections=None, enrichment=None, ncrystal_cfg=None):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -274,7 +274,8 @@ def calculate_cexs(this, data_type, types, temperature=294., sab_name=None,
         else:
             nuc = this
         energy_grid, xs = _calculate_cexs_nuclide(nuc, types, temperature,
-                                                  sab_name, cross_sections)
+                                                  sab_name, cross_sections,
+                                                  ncrystal_cfg)
         # Convert xs (Iterable of Callable) to a grid of cross section values
         # calculated on the points in energy_grid for consistency with the
         # element and material functions.
@@ -300,7 +301,7 @@ def calculate_cexs(this, data_type, types, temperature=294., sab_name=None,
 
 
 def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
-                            cross_sections=None):
+                            cross_sections=None, ncrystal_cfg=None):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -438,6 +439,19 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                             [sab_sum, nuc[mt].xs[nucT]],
                             [sab_Emax])
                         funcs.append(pw_funcs)
+                    elif ncrystal_cfg:
+                        import NCrystal
+                        nc_scatter = NCrystal.createScatter(ncrystal_cfg)
+                        nc_func = nc_scatter.crossSectionNonOriented
+                        nc_emax = 5 # eV # this should be obtained from NCRYSTAL_MAX_ENERGY
+                        energy_grid = np.union1d(np.geomspace(min(energy_grid),
+                                                              1.1*nc_emax,
+                                                              1000),energy_grid) # NCrystal does not have
+                                                                                 # an intrinsic energy grid
+                        pw_funcs = openmc.data.Regions1D(
+                            [nc_func, nuc[mt].xs[nucT]],
+                            [nc_emax])
+                        funcs.append(pw_funcs)
                     else:
                         funcs.append(nuc[mt].xs[nucT])
                 elif mt in nuc:
@@ -540,6 +554,7 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
     # Load the library
     library = openmc.data.DataLibrary.from_xml(cross_sections)
 
+    ncrystal_cfg = None
     if isinstance(this, openmc.Material):
         # Expand elements in to nuclides with atomic densities
         nuc_fractions = this.get_nuclide_atom_densities()
@@ -547,6 +562,8 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
         # with a common nuclides format between openmc.Material and
         # openmc.Element objects
         nuclides = {nuclide: nuclide for nuclide in nuc_fractions}
+        # Add NCrystal cfg string if it exists
+        ncrystal_cfg = this.ncrystal_cfg
     else:
         # Expand elements in to nuclides with atomic densities
         nuclides = this.expand(1., 'ao', enrichment=enrichment,
@@ -584,7 +601,7 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
         nuc = nuclide[1]
         sab_tab = sabs[name]
         temp_E, temp_xs = calculate_cexs(nuc, 'nuclide', types, T, sab_tab,
-                                         cross_sections)
+                                         cross_sections, ncrystal_cfg=ncrystal_cfg)
         E.append(temp_E)
         # Since the energy grids are different, store the cross sections as
         # a tabulated function so they can be calculated on any grid needed.

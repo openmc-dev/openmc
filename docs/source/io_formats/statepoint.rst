@@ -72,12 +72,23 @@ The current version of the statepoint file format is 17.0.
 
 :Datasets: - **type** (*char[]*) -- Type of mesh.
            - **dimension** (*int*) -- Number of mesh cells in each dimension.
-           - **lower_left** (*double[]*) -- Coordinates of lower-left corner of
-             mesh.
-           - **upper_right** (*double[]*) -- Coordinates of upper-right corner
-             of mesh.
-           - **width** (*double[]*) -- Width of each mesh cell in each
-             dimension.
+           - **Regular Mesh Only:**
+              - **lower_left** (*double[]*) -- Coordinates of lower-left corner of
+                mesh.
+              - **upper_right** (*double[]*) -- Coordinates of upper-right corner
+                of mesh.
+              - **width** (*double[]*) -- Width of each mesh cell in each
+                dimension.
+           - **Rectilinear Mesh Only:**
+              - **x_grid** (*double[]*) -- Mesh divisions along the x-axis.
+              - **y_grid** (*double[]*) -- Mesh divisions along the y-axis.
+              - **z_grid** (*double[]*) -- Mesh divisions along the z-axis.
+           - **Cylindrical & Spherical Mesh Only:**
+              - **r_grid** (*double[]*) -- The mesh divisions along the r-axis.
+              - **phi_grid** (*double[]*) -- The mesh divisions along the phi-axis.
+              - **origin** (*double[]*) -- The origin in cartesian coordinates.
+           - **Spherical Mesh Only:**
+              - **theta_grid** (*double[]*) -- The mesh divisions along the theta-axis.
            - **Unstructured Mesh Only:**
               - **filename** (*char[]*) -- Name of the mesh file.
               - **library** (*char[]*) -- Mesh library used to represent the

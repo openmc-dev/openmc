@@ -308,8 +308,8 @@ class FluxCollapseHelper(ReactionRateHelper):
             if self._nuclides_direct is not None:
                 # check if any direct tally nuclides are requested that are not
                 # already loaded with the materials. Load separately if so.
-                mat_nuclides = [n for mat in materials for n in mat.nuclides]
-                extra_nuclides = set(self._nuclides_direct) - set(mat_nuclides)
+                mat_nuclides = {n for mat in materials for n in mat.nuclides}
+                extra_nuclides = set(self._nuclides_direct) - mat_nuclides
                 for nuc in extra_nuclides:
                     load_nuclide(nuc)
                 self._rate_tally.nuclides = self._nuclides_direct

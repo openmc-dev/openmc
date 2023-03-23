@@ -210,16 +210,11 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   }
 
   int32_t n_bins = this->n_sources();
-  std::vector<double> strengths(n_bins, 0.0);
-
-  mesh_CDF_.resize(n_bins + 1);
-  mesh_CDF_[0] = {0.0};
-  total_strength_ = 0.0;
+  std::vector<double> strengths(n_bins, 1.0);
 
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet
   // File scheme is weighted by an array given in the xml file
-  mesh_strengths_ = std::vector<double>(n_bins, 1.0);
   if (check_for_node(node, "strengths")) {
     strengths = get_node_array<double>(node, "strengths");
     if (strengths.size() != n_bins) {
@@ -228,36 +223,21 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
                     "not match the number of entities in mesh {} ({}).",
           strengths.size(), mesh_id, n_bins));
     }
-    mesh_strengths_ = std::move(strengths);
   }
 
   if (get_node_value_bool(node, "volume_normalized")) {
     for (int i = 0; i < n_bins; i++) {
-      mesh_strengths_[i] *= mesh()->volume(i);
+      strengths[i] *= mesh()->volume(i);
     }
   }
 
-  total_strength_ =
-    std::accumulate(mesh_strengths_.begin(), mesh_strengths_.end(), 0.0);
-
-  for (int i = 0; i < n_bins; i++) {
-    mesh_CDF_[i + 1] = mesh_CDF_[i] + mesh_strengths_[i] / total_strength_;
-  }
-
-  if (fabs(mesh_CDF_.back() - 1.0) > FP_COINCIDENT) {
-    fatal_error(
-      fmt::format("Mesh sampling CDF is incorrectly formed. Final value is: {}",
-        mesh_CDF_.back()));
-  }
-  mesh_CDF_.back() = 1.0;
+  elem_idx_dist_.assign(strengths.data(), n_bins);
 }
 
 Position MeshSpatial::sample(uint64_t* seed) const
 {
-  // Create random variable for sampling element from mesh
-  double eta = prn(seed);
   // Sample over the CDF defined in initialization above
-  int32_t elem_idx = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
+  int32_t elem_idx = elem_idx_dist_.sample(seed);
   return mesh()->sample(seed, elem_idx);
 }
 

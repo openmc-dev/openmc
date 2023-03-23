@@ -547,8 +547,10 @@ class Library:
                         domain_nuclides = None
                     if self.nuclides:
                         if domain_nuclides:
-                            mgxs.nuclides = [nuclide for nuclide in self.nuclides if nuclide in domain_nuclides] + [
-                                "total"]
+                            mgxs.nuclides = [
+                                                nuclide for nuclide in self.nuclides
+                                                if nuclide in domain_nuclides
+                                            ] + ["total"]
                         else:
                             mgxs.nuclides = self.nuclides
 

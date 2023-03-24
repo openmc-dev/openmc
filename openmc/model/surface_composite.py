@@ -851,7 +851,6 @@ class Polygon(CompositeSurface):
                     # All 4 cross products are zero
                     # Determine number of unique points, x span and y span for
                     # both line segments
-                    #unique_pts = np.unique(np.vstack((p0, p1, p2, p3)), axis=0)
                     xmin1, xmax1 = min(p0[0], p1[0]), max(p0[0], p1[0])
                     ymin1, ymax1 = min(p0[1], p1[1]), max(p0[1], p1[1])
                     xmin2, xmax2 = min(p2[0], p3[0]), max(p2[0], p3[0])

@@ -548,9 +548,9 @@ class Library:
                     if self.nuclides:
                         if domain_nuclides:
                             mgxs.nuclides = [
-                                                nuclide for nuclide in self.nuclides
-                                                if nuclide in domain_nuclides
-                                            ] + ["total"]
+                                nuclide for nuclide in self.nuclides
+                                if nuclide in domain_nuclides
+                            ] + ["total"]
                         else:
                             mgxs.nuclides = self.nuclides
 

@@ -33,7 +33,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'
-        self.mgxs_lib.nuclides=['U235','Zr90','H1']
+        self.mgxs_lib.nuclides = ['U235', 'Zr90', 'H1']
         self.mgxs_lib.build_library()
 
         # Add tallies

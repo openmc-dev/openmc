@@ -500,7 +500,8 @@ void StructuredMesh::raytrace_mesh(
   }
 
   // translate start and end positions,
-  // this needs to come after the get_indices call because it does its own translation
+  // this needs to come after the get_indices call because it does its own
+  // translation
   local_coords(r0);
   local_coords(r1);
 
@@ -1084,7 +1085,7 @@ double CylindricalMesh::find_r_crossing(
   D = std::sqrt(D);
 
   // the solution -p - D is always smaller as -p + D : Check this one first
-  if (-p - D > l && std::abs(c) > FP_COINCIDENT)
+  if (-p - D > l && std::abs(c) > 1e-10)
     return -p - D;
   if (-p + D > l)
     return -p + D;
@@ -1310,7 +1311,7 @@ double SphericalMesh::find_r_crossing(
   if (D >= 0.0) {
     D = std::sqrt(D);
     // the solution -p - D is always smaller as -p + D : Check this one first
-    if (-p - D > l && std::abs(c) > FP_COINCIDENT)
+    if (-p - D > l && std::abs(c) > 1e-10)
       return -p - D;
     if (-p + D > l)
       return -p + D;

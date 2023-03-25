@@ -114,15 +114,16 @@ def test_cylindrical_mesh_estimators(run_in_tmpdir):
     assert np.all(diff < 3*std_dev)
 
 
-def test_cylindrical_mesh_coincident(run_in_tmpdir):
+@pytest.mark.parametrize("scale", [1.0, 1e2, 1e4, 1e5])
+def test_cylindrical_mesh_coincident(scale, run_in_tmpdir):
     """Test for cylindrical mesh boundary being coincident with a cell boundary"""
 
     fuel = openmc.Material()
     fuel.add_nuclide('U235', 1.)
     fuel.set_density('g/cm3', 4.5)
 
-    zcyl = openmc.ZCylinder(r=1.25)
-    box = openmc.rectangular_prism(4.0, 4.0, boundary_type='reflective')
+    zcyl = openmc.ZCylinder(r=1.25*scale)
+    box = openmc.rectangular_prism(4*scale, 4*scale, boundary_type='reflective')
     cell1 = openmc.Cell(fill=fuel, region=-zcyl)
     cell2 = openmc.Cell(fill=None, region=+zcyl & box)
     model = openmc.Model()
@@ -133,7 +134,7 @@ def test_cylindrical_mesh_coincident(run_in_tmpdir):
     model.settings.inactive = 0
 
     cyl_mesh = openmc.CylindricalMesh()
-    cyl_mesh.r_grid = [0., 1.25]
+    cyl_mesh.r_grid = [0., 1.25*scale]
     cyl_mesh.phi_grid = [0., 2*math.pi]
     cyl_mesh.z_grid = [-1e10, 1e10]
     cyl_mesh_filter = openmc.MeshFilter(cyl_mesh)
@@ -161,16 +162,18 @@ def test_cylindrical_mesh_coincident(run_in_tmpdir):
     assert mean1 == pytest.approx(mean2)
 
 
-def test_spherical_mesh_coincident(run_in_tmpdir):
+@pytest.mark.parametrize("scale", [1.0, 1e2, 1e4, 1e5])
+def test_spherical_mesh_coincident(scale, run_in_tmpdir):
     """Test for spherical mesh boundary being coincident with a cell boundary"""
 
     fuel = openmc.Material()
     fuel.add_nuclide('U235', 1.)
     fuel.set_density('g/cm3', 4.5)
 
-    sph = openmc.Sphere(r=1.25)
+    sph = openmc.Sphere(r=1.25*scale)
     rcc = openmc.model.RectangularParallelepiped(
-        -2.0, 2.0, -2.0, 2.0, -2.0, 2.0, boundary_type='reflective')
+        -2*scale, 2*scale, -2*scale, 2*scale, -2*scale, 2*scale,
+        boundary_type='reflective')
     cell1 = openmc.Cell(fill=fuel, region=-sph)
     cell2 = openmc.Cell(fill=None, region=+sph & -rcc)
     model = openmc.Model()
@@ -181,7 +184,7 @@ def test_spherical_mesh_coincident(run_in_tmpdir):
     model.settings.inactive = 0
 
     sph_mesh = openmc.SphericalMesh()
-    sph_mesh.r_grid = [0., 1.25]
+    sph_mesh.r_grid = [0., 1.25*scale]
     sph_mesh.phi_grid = [0., 2*math.pi]
     sph_mesh.theta_grid = [0., math.pi]
     sph_mesh_filter = openmc.MeshFilter(sph_mesh)

@@ -162,8 +162,6 @@ def test_external_mesh(cpp_driver):
     water_mat.set_density("atom/b-cm", 0.07416)
     materials.append(water_mat)
 
-    materials.export_to_xml()
-
     # Geometry
     fuel_min_x = openmc.XPlane(-5.0, name="minimum x")
     fuel_max_x = openmc.XPlane(5.0, name="maximum x")

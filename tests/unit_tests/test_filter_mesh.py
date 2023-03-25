@@ -114,7 +114,7 @@ def test_cylindrical_mesh_estimators(run_in_tmpdir):
     assert np.all(diff < 3*std_dev)
 
 
-@pytest.mark.parametrize("scale", [1.0, 1e2, 1e4, 1e5])
+@pytest.mark.parametrize("scale", [0.1, 1.0, 1e2, 1e4, 1e5])
 def test_cylindrical_mesh_coincident(scale, run_in_tmpdir):
     """Test for cylindrical mesh boundary being coincident with a cell boundary"""
 
@@ -162,7 +162,7 @@ def test_cylindrical_mesh_coincident(scale, run_in_tmpdir):
     assert mean1 == pytest.approx(mean2)
 
 
-@pytest.mark.parametrize("scale", [1.0, 1e2, 1e4, 1e5])
+@pytest.mark.parametrize("scale", [0.1, 1.0, 1e2, 1e4, 1e5])
 def test_spherical_mesh_coincident(scale, run_in_tmpdir):
     """Test for spherical mesh boundary being coincident with a cell boundary"""
 

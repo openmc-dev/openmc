@@ -277,7 +277,7 @@ Prerequisites
       Lists) files instead of .h5 files for sources (external source
       distribution, k-eigenvalue source distribution, and surface sources). To
       turn this option on in the CMake configuration step, add the following
-      option:
+      option::
 
           cmake -DOPENMC_USE_MCPL=on ..
 
@@ -288,7 +288,7 @@ Prerequisites
       on-the-fly approach. To use it `install
       <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialize
       <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_
-      NCrystal and turn on the option in the CMake configuration step:
+      NCrystal and turn on the option in the CMake configuration step::
 
           cmake -DOPENMC_USE_NCRYSTAL=on ..
 
@@ -299,7 +299,7 @@ Prerequisites
       be used, but the implementation is currently restricted to collision
       estimators. In addition to turning this option on, the path to the libMesh
       installation should be specified as part of the ``CMAKE_PREFIX_PATH``
-      variable.::
+      variable::
 
           cmake -DOPENMC_USE_LIBMESH=on -DOPENMC_USE_MPI=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation ..
 
@@ -371,6 +371,10 @@ CMakeLists.txt Options
 
 The following options are available in the CMakeLists.txt file:
 
+OPENMC_ENABLE_COVERAGE
+  Compile and link code instrumented for coverage analysis. This is typically
+  used in conjunction with gcov_. (Default: off)
+
 OPENMC_ENABLE_PROFILE
   Enables profiling using the GNU profiler, gprof. (Default: off)
 
@@ -385,22 +389,23 @@ OPENMC_USE_DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
   (Default: off)
 
+OPENMC_USE_MCPL
+  Turns on support for reading MCPL_ source files and writing MCPL source points
+  and surface sources. (Default: off)
+
 OPENMC_USE_NCRYSTAL
-  Turns on support for NCrystal materials. NCrystal must be
-  `installed <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and
-  `initialized <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
+  Turns on support for NCrystal materials. NCrystal must be `installed
+  <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialized
+  <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
   (Default: off)
 
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
-OPENMC_ENABLE_COVERAGE
-  Compile and link code instrumented for coverage analysis. This is typically
-  used in conjunction with gcov_. (Default: off)
-
 OPENMC_USE_MPI
-  Turns on compiling with MPI (default: off). For further information on MPI options,
-  please see the `FindMPI.cmake documentation <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
+  Turns on compiling with MPI (Default: off). For further information on MPI
+  options, please see the `FindMPI.cmake documentation
+  <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
 To set any of these options (e.g., turning on profiling), the following form
 should be used:

@@ -1349,6 +1349,8 @@ class EnergyFilter(RealFilter):
         (e.g., a source spectrum) based on tally results that were obtained from
         using an :class:`~openmc.EnergyFilter`.
 
+        .. versionadded:: 0.13.3
+
         Parameters
         ----------
         values : iterable of float

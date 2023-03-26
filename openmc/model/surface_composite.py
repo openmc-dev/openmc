@@ -632,6 +632,8 @@ class ZConeOneSided(CompositeSurface):
 class Polygon(CompositeSurface):
     """Create a polygon composite surface from a path of closed points.
 
+    .. versionadded:: 0.13.3
+
     Parameters
     ----------
     points : np.ndarray
@@ -927,7 +929,7 @@ class Polygon(CompositeSurface):
         if group is None:
             sidx = next(iter(neighbor_map))
             return self._group_simplices(neighbor_map, group=[sidx])
-        # Otherwise use the last simplex in the group 
+        # Otherwise use the last simplex in the group
         else:
             sidx = group[-1]
             # Remove current simplex from dictionary since it is in a group

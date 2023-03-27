@@ -774,8 +774,8 @@ extern "C" int openmc_weight_windows_set_id(int32_t index, int32_t id)
   return 0;
 }
 
-extern "C" int openmc_weight_windows_update_magic(int32_t tally_idx,
-  int32_t ww_idx, const char* value, double threshold, double ratio)
+extern "C" int openmc_weight_windows_update_magic(int32_t ww_idx,
+  int32_t tally_idx, const char* value, double threshold, double ratio)
 {
   // get the requested tally
   const Tally* tally = model::tallies.at(tally_idx).get();

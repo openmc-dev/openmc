@@ -200,7 +200,8 @@ class WeightWindows(_FortranObjectWithID):
         _dll.openmc_weight_windows_set_bounds(self._index, lower_p, upper_p, lower_p.size)
 
     def update_magic(self, tally, value='mean', threshold=1.0, ratio=5.0):
-        """Update weight window values using the MAGIC method (ISBN 978-85-63688-00-2)
+        """Update weight window values using the MAGIC method
+        Reference: https://inis.iaea.org/search/search.aspx?orig_q=reportnumber:%22INIS-BR--17072%22
 
         Parameters
         ----------
@@ -215,8 +216,8 @@ class WeightWindows(_FortranObjectWithID):
             Ratio of the lower to upper weight window bounds
 
         """
-        _dll.openmc_weight_windows_update_magic(tally._index,
-                                                self._index,
+        _dll.openmc_weight_windows_update_magic(self._index,
+                                                tally._index,
                                                 c_char_p(value.encode()),
                                                 threshold,
                                                 ratio)

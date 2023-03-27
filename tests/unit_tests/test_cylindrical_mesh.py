@@ -103,3 +103,92 @@ def test_offset_mesh(model, estimator, origin):
                 mean[i, j, k] == 0.0
             else:
                 mean[i, j, k] != 0.0
+
+@pytest.fixture()
+def void_coincident_geom_model():
+    """A model with many geometric boundaries coincident with mesh boundaries
+       across many scales
+    """
+    openmc.reset_auto_ids()
+    model = openmc.model.Model()
+
+    model.materials = openmc.Materials()
+    radii = [0.1,1, 5, 50, 100, 150, 250]
+    spheres = [openmc.Sphere(r=ri) for ri in radii]
+    spheres[-1].boundary_type = 'vacuum'
+
+    regions = openmc.model.subdivide(spheres)[:-1]
+    cells = [openmc.Cell(region=r, fill=None) for r in regions]
+    geom = openmc.Geometry(cells)
+
+    model.geometry = geom
+
+    settings = openmc.Settings(run_mode='fixed source')
+    settings.batches = 2
+    settings.particles = 1000
+    model.settings = settings
+
+    mesh = openmc.CylindricalMesh()
+    mesh.r_grid = np.linspace(0, 250, 501)
+    mesh.z_grid = [-250, 250]
+    mesh.phi_grid = np.linspace(0, 2*np.pi, 2)
+    mesh_filter = openmc.MeshFilter(mesh)
+
+    tally = openmc.Tally()
+    tally.scores = ['flux']
+    tally.filters = [mesh_filter]
+
+    model.tallies = openmc.Tallies([tally])
+
+    return model
+
+
+# convenience function for checking tally results
+# in the following tests
+def _check_void_cylindrical_tally(statepoint_filename):
+    with openmc.StatePoint(statepoint_filename) as sp:
+        flux_tally = sp.tallies[1]
+        mesh = flux_tally.find_filter(openmc.MeshFilter).mesh
+        neutron_flux = flux_tally.get_reshaped_data().squeeze() / mesh.volumes.flatten()
+        flux_diff = np.diff(neutron_flux)
+        # ensure flux values are monotonically decreasing due to
+        # geometric attenuation
+        assert (flux_diff < 0.0).all()
+
+
+def test_void_geom_pnt_src(run_in_tmpdir, void_coincident_geom_model):
+    src = openmc.Source()
+    src.space = openmc.stats.Point()
+    src.angle = openmc.stats.PolarAzimuthal(mu=openmc.stats.Discrete([0.0], [1.0]))
+    src.energy = openmc.stats.Discrete([14.06e6], [1])
+    void_coincident_geom_model.settings.source = src
+
+    sp_filename = void_coincident_geom_model.run()
+    _check_void_cylindrical_tally(sp_filename)
+
+
+def test_void_geom_boundary_src(run_in_tmpdir, void_coincident_geom_model):
+    bbox = void_coincident_geom_model.geometry.bounding_box
+
+    outer_r = bbox[1][0] - 0.0001
+
+    radial_vals = np.linspace(0.0, 2.0*np.pi, 100)
+
+    sources = []
+
+    energy = openmc.stats.Discrete([14.06e6], [1])
+    for val in radial_vals:
+        src = openmc.Source()
+        src.energy = energy
+
+        pnt = np.array([np.cos(val), np.sin(val), 0.0])
+        u = -pnt
+        src.space = openmc.stats.Point(outer_r*pnt)
+        src.angle = openmc.stats.Monodirectional(u)
+
+        sources.append(src)
+
+    void_coincident_geom_model.settings.source = sources
+    sp_filename = void_coincident_geom_model.run()
+
+    _check_void_cylindrical_tally(sp_filename)

@@ -777,6 +777,14 @@ extern "C" int openmc_weight_windows_set_id(int32_t index, int32_t id)
 extern "C" int openmc_weight_windows_update_magic(int32_t ww_idx,
   int32_t tally_idx, const char* value, double threshold, double ratio)
 {
+  if (int err = verify_ww_index(ww_idx))
+    return err;
+
+  if (tally_idx < 0 || tally_idx >= model::tallies.size()) {
+    set_errmsg(fmt::format("Index '{}' for tally is invalid", tally_idx));
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
   // get the requested tally
   const Tally* tally = model::tallies.at(tally_idx).get();
 
@@ -790,6 +798,8 @@ extern "C" int openmc_weight_windows_update_magic(int32_t ww_idx,
 
 extern "C" int openmc_weight_windows_set_mesh(int32_t ww_idx, int32_t mesh_idx)
 {
+  if (int err = verify_ww_index(ww_idx))
+    return err;
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
   wws->set_mesh(mesh_idx);
   return 0;
@@ -797,6 +807,8 @@ extern "C" int openmc_weight_windows_set_mesh(int32_t ww_idx, int32_t mesh_idx)
 
 extern "C" int openmc_weight_windows_get_mesh(int32_t ww_idx, int32_t* mesh_idx)
 {
+  if (int err = verify_ww_index(ww_idx))
+    return err;
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
   *mesh_idx = model::mesh_map.at(wws->mesh()->id());
   return 0;
@@ -805,6 +817,8 @@ extern "C" int openmc_weight_windows_get_mesh(int32_t ww_idx, int32_t* mesh_idx)
 extern "C" int openmc_weight_windows_set_energy_bounds(
   int32_t ww_idx, double* e_bounds, size_t e_bounds_size)
 {
+  if (int err = verify_ww_index(ww_idx))
+    return err;
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
   wws->set_energy_bounds({e_bounds, e_bounds_size});
   return 0;
@@ -813,7 +827,8 @@ extern "C" int openmc_weight_windows_set_energy_bounds(
 extern "C" int openmc_weight_windows_get_energy_bounds(
   int32_t ww_idx, const double** e_bounds, size_t* e_bounds_size)
 {
-
+  if (int err = verify_ww_index(ww_idx))
+    return err;
   const auto& wws = variance_reduction::weight_windows[ww_idx].get();
   *e_bounds = wws->energy_bounds().data();
   *e_bounds_size = wws->energy_bounds().size();

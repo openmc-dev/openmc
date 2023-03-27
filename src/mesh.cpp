@@ -1091,7 +1091,7 @@ double CylindricalMesh::find_r_crossing(
   if (std::abs(c) <= 1e-10)
     return INFTY;
 
-  if (-p - D > l && std::abs(c) > 1e-10)
+  if (-p - D > l)
     return -p - D;
   if (-p + D > l)
     return -p + D;

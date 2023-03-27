@@ -75,7 +75,7 @@ def label(p):
         return f'estimator:{p}'
 
 @pytest.mark.parametrize('estimator,origin', test_cases, ids=label)
-def test_offset_mesh(model, estimator, origin):
+def test_offset_mesh(run_in_tmpdir, model, estimator, origin):
     """Tests that the mesh has been moved based on tally results
     """
     mesh = model.tallies[0].filters[0].mesh

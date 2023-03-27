@@ -98,7 +98,6 @@ def test_offset_mesh(model, estimator, origin):
         centroids = mesh.centroids
         for ijk in mesh.indices:
             i, j, k = np.array(ijk) - 1
-            print(centroids[:, i, j, k])
             if model.geometry.find(centroids[:, i, j, k]):
                 mean[i, j, k] == 0.0
             else:
@@ -152,7 +151,6 @@ def _check_void_cylindrical_tally(statepoint_filename):
         neutron_flux = flux_tally.get_reshaped_data().squeeze()
         # we expect the tally results to be the same as the mesh grid width
         # for these cases
-        print(neutron_flux)
         d_r = mesh.r_grid[1] - mesh.r_grid[0]
         assert neutron_flux == pytest.approx(d_r)
 

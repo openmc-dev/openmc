@@ -919,11 +919,27 @@ extern "C" int openmc_weight_windows_export(const char* filename)
 
   hid_t mesh_group = create_group(ww_file, "meshes");
 
+  std::vector<int32_t> mesh_ids;
+  std::vector<int32_t> ww_ids;
   for (const auto& ww : variance_reduction::weight_windows) {
+
     ww->to_hdf5(weight_windows_group);
+    ww_ids.push_back(ww->id());
+
+    // if the mesh has already been written, move on
+    int32_t mesh_id = ww->mesh()->id();
+    if (std::find(mesh_ids.begin(), mesh_ids.end(), mesh_id) != mesh_ids.end()) continue;
+
+    mesh_ids.push_back(mesh_id);
     ww->mesh()->to_hdf5(mesh_group);
   }
 
+  write_attribute(mesh_group, "n_meshes", mesh_ids.size());
+  write_attribute(mesh_group, "ids", mesh_ids);
+  close_group(mesh_group);
+
+  write_attribute(weight_windows_group, "n_weight_windows", ww_ids.size());
+  write_attribute(weight_windows_group, "ids", ww_ids);
   close_group(weight_windows_group);
 
   file_close(ww_file);

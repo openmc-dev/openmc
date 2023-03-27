@@ -75,6 +75,9 @@ extern std::string path_statepoint;       //!< path to a statepoint file
 // on some computers, like the intel Mac.
 extern "C" const char* path_statepoint_c; //!< C pointer to statepoint file name
 
+extern std::string weight_windows_file;   //!< Location of weight window file to
+                                          //!< load on simulation initialization
+
 extern "C" int32_t n_inactive;         //!< number of inactive batches
 extern "C" int32_t max_lost_particles; //!< maximum number of lost particles
 extern double

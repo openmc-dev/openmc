@@ -235,6 +235,11 @@ class Settings:
         Whether weight windows are enabled
 
         .. versionadded:: 0.13
+
+    weight_windows_file: Pathlike
+        Path to a weight window file to load during simulation initialization
+
+        .. versionadded::0.13.3
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
     """
@@ -312,6 +317,7 @@ class Settings:
         self._write_initial_source = None
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
         self._weight_windows_on = None
+        self._weight_windows_file = None
         self._max_splits = None
         self._max_tracks = None
 
@@ -501,6 +507,10 @@ class Settings:
     @property
     def weight_windows_on(self) -> bool:
         return self._weight_windows_on
+
+    @property
+    def weight_windows_file(self) -> PathLike:
+        return self._weight_windows_file
 
     @property
     def max_splits(self) -> int:
@@ -922,9 +932,14 @@ class Settings:
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
 
     @weight_windows_on.setter
-    def weight_windows_on(self, value):
+    def weight_windows_on(self, value: bool):
         cv.check_type('weight windows on', value, bool)
         self._weight_windows_on = value
+
+    @weight_windows_file.setter
+    def weight_windows_file(self, value: PathLike):
+        cv.check_type('weight windows file', value, (str, Path))
+        self._weight_windows_file = value
 
     @max_splits.setter
     def max_splits(self, value: int):
@@ -1282,6 +1297,12 @@ class Settings:
         if self._weight_windows_on is not None:
             elem = ET.SubElement(root, "weight_windows_on")
             elem.text = str(self._weight_windows_on).lower()
+
+    def _create_weight_windows_file_element(self, root):
+        if self.weight_windows_file is not None:
+            element = ET.Element("weight_windows_file")
+            element.text = self.weight_windows_file
+            root.append(element)
 
     def _create_max_splits_subelement(self, root):
         if self._max_splits is not None:
@@ -1671,6 +1692,7 @@ class Settings:
         self._create_log_grid_bins_subelement(element)
         self._create_write_initial_source_subelement(element)
         self._create_weight_windows_subelement(element, mesh_memo)
+        self._create_weight_windows_file_element(element)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)
 

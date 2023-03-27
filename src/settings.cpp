@@ -83,6 +83,7 @@ std::string path_particle_restart;
 std::string path_sourcepoint;
 std::string path_statepoint;
 const char* path_statepoint_c {path_statepoint.c_str()};
+std::string weight_windows_file;
 
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
@@ -904,11 +905,19 @@ void read_settings_xml(pugi::xml_node root)
   for (pugi::xml_node node_ww : root.children("weight_windows")) {
     variance_reduction::weight_windows.emplace_back(
       std::make_unique<WeightWindows>(node_ww));
-
-    // Enable weight windows by default if one or more are present
-    settings::weight_windows_on = true;
   }
 
+  // Enable weight windows by default if one or more are present
+  if (variance_reduction::weight_windows.size() > 0)
+    settings::weight_windows_on = true;
+
+  // read weight windows from file
+  if (check_for_node(root, "weight_windows_file")) {
+    weight_windows_file = get_node_value(root, "weight_windows_file");
+  }
+
+  // read settings for weight windows value, this will override
+  // the automatic setting even if weight windows are present
   if (check_for_node(root, "weight_windows_on")) {
     weight_windows_on = get_node_value_bool(root, "weight_windows_on");
   }

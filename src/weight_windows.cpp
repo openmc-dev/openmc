@@ -949,10 +949,10 @@ extern "C" int openmc_weight_windows_export(const char* filename)
 
 extern "C" int openmc_weight_windows_import(const char* filename)
 {
-
   std::string name = filename ? filename : "weight_windows.h5";
 
-  write_message(fmt::format("Importing weight windows from {}...", name), 5);
+  if (mpi::master)
+    write_message(fmt::format("Importing weight windows from {}...", name), 5);
 
   if (!file_exists(name)) {
     set_errmsg(fmt::format("File '{}' does not exist", name));

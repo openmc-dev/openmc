@@ -137,6 +137,11 @@ int openmc_simulation_init()
     }
   }
 
+  // load weight windows from file
+  if (!settings::weight_windows_file.empty()) {
+    openmc_weight_windows_import(settings::weight_windows_file.c_str());
+  }
+
   // Set flag indicating initialization is done
   simulation::initialized = true;
   return 0;

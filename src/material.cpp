@@ -353,6 +353,37 @@ Material::~Material()
   model::material_map.erase(id_);
 }
 
+void Material::clone()
+{
+  std::unique_ptr<Material> mat = std::make_unique<Material>();
+  mat->index_ = model::materials.size();
+  mat->set_id(C_NONE);
+
+  // set all other parameters to whatever the calling Material has
+  mat->name_ = name_;
+  mat->nuclide_ = nuclide_;
+  mat->element_ = element_;
+  mat->ncrystal_mat_ = ncrystal_mat_;
+  mat->atom_density_ = atom_density_;
+  mat->density_ = density_;
+  mat->density_gpcc_ = density_gpcc_;
+  mat->volume_ = volume_;
+  mat->fissionable_ = fissionable_;
+  mat->depletable_ = depletable_;
+  mat->p0_ = p0_;
+  mat->mat_nuclide_index_ = mat_nuclide_index_;
+  mat->thermal_tables_ = thermal_tables_;
+  mat->temperature_ = temperature_;
+
+  if (ttb_)
+  {
+    std::unique_ptr<Bremsstrahlung> ptr2{new Bremsstrahlung{*ttb_}};
+    mat->ttb_ = std::move(ptr2);
+  }
+
+  model::materials.push_back(std::move(mat));
+}
+
 void Material::finalize()
 {
   // Set fissionable if any nuclide is fissionable

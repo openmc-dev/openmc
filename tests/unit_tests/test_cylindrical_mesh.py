@@ -149,12 +149,12 @@ def _check_void_cylindrical_tally(statepoint_filename):
     with openmc.StatePoint(statepoint_filename) as sp:
         flux_tally = sp.tallies[1]
         mesh = flux_tally.find_filter(openmc.MeshFilter).mesh
-        neutron_flux = flux_tally.get_reshaped_data().squeeze() / mesh.volumes.flatten()
-        flux_diff = np.diff(neutron_flux)
-        # ensure flux values are monotonically decreasing due to
-        # geometric attenuation
-        assert (flux_diff < 0.0).all()
-
+        neutron_flux = flux_tally.get_reshaped_data().squeeze()
+        # we expect the tally results to be the same as the mesh grid width
+        # for these cases
+        print(neutron_flux)
+        d_r = mesh.r_grid[1] - mesh.r_grid[0]
+        assert neutron_flux == pytest.approx(d_r)
 
 def test_void_geom_pnt_src(run_in_tmpdir, void_coincident_geom_model):
     src = openmc.Source()
@@ -168,11 +168,15 @@ def test_void_geom_pnt_src(run_in_tmpdir, void_coincident_geom_model):
 
 
 def test_void_geom_boundary_src(run_in_tmpdir, void_coincident_geom_model):
+    # update source to a number of points on the outside of the cylinder
+    # with directions pointing toward the origin
     bbox = void_coincident_geom_model.geometry.bounding_box
 
-    outer_r = bbox[1][0] - 0.0001
+    # can't source particle directly on the geometry boundary
+    outer_r = bbox[1][0] - 1e-08
 
-    radial_vals = np.linspace(0.0, 2.0*np.pi, 100)
+    n_sources = 100
+    radial_vals = np.linspace(0.0, 2.0*np.pi, n_sources)
 
     sources = []
 
@@ -185,7 +189,7 @@ def test_void_geom_boundary_src(run_in_tmpdir, void_coincident_geom_model):
         u = -pnt
         src.space = openmc.stats.Point(outer_r*pnt)
         src.angle = openmc.stats.Monodirectional(u)
-
+        src.strength = 0.5/n_sources
         sources.append(src)
 
     void_coincident_geom_model.settings.source = sources

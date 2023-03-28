@@ -1088,7 +1088,7 @@ double CylindricalMesh::find_r_crossing(
   D = std::sqrt(D);
 
   // the solution -p - D is always smaller as -p + D : Check this one first
-  if (std::abs(c) <= 1e-10)
+  if (std::abs(c) <= RADIAL_MESH_TOL)
     return INFTY;
 
   if (-p - D > l)
@@ -1316,7 +1316,7 @@ double SphericalMesh::find_r_crossing(
   double c = r.dot(r) - r0 * r0;
   double D = p * p - c;
 
-  if (std::abs(c) <= 1e-10)
+  if (std::abs(c) <= RADIAL_MESH_TOL)
     return INFTY;
 
   if (D >= 0.0) {

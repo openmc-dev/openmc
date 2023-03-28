@@ -105,9 +105,9 @@ other information use:
 
 .. note::
 
-    It should be noted that by default OpenMC builds with ``-O2 -g`` flags which
-    are equivalent to a CMake build type of `RelwithDebInfo`. In addition, MPI
-    is OFF while OpenMP is ON.
+    It should be noted that by default OpenMC is built with
+    `-DCMAKE_BUILD_TYPE=RelwithDebInfo`. In addition, MPI is OFF while OpenMP is
+    ON.
 
 It is recommended to install OpenMC with the Python API. Information about this
 Spack recipe can be found with the following command:
@@ -133,17 +133,18 @@ following command:
     configured defaults unless otherwise specfied in the specification on the
     command line. In the above example, assuming the default options weren't
     changed in Spack's package configuration, py-openmc will link against a
-    non-optimized non-MPI openmc. Even if an optimized openmc was built
-    separately, it will rebuild openmc with optimization OFF. Thus, if you are
-    trying to link against dependencies that were configured different than
-    defaults, ``^openmc[variants]`` will have to be present in the command.
+    non-MPI non-release build of openmc. Even if a release build of openmc was
+    built separately, it will rebuild openmc with the default build type. Thus,
+    if you are trying to link against dependencies that were configured
+    different than defaults, ``^openmc[variants]`` will have to be present in
+    the command.
 
-For a more performant build of OpenMC with optimization turned ON and MPI
-provided by OpenMPI, the following command can be used:
+For a release build of OpenMC with MPI support on (provided by OpenMPI), the
+following command can be used:
 
 .. code-block:: sh
 
-    spack install py-openmc+mpi ^openmc+optimize ^openmpi
+    spack install py-openmc +mpi ^openmpi ^openmc build_type=Release
 
 .. note::
 
@@ -163,7 +164,7 @@ This can be observed using Spack's ``spec`` tool:
 
 .. code-block::
 
-    spack spec py-openmc+mpi ^openmc+optimize
+    spack spec py-openmc +mpi ^openmc build_type=Release
 
 Once installed, environment/lmod modules can be generated or Spack's ``load``
 feature can be used to access the installed packages.
@@ -526,13 +527,7 @@ distribution/repository, run:
 pip will first check that all :ref:`required third-party packages
 <usersguide_python_prereqs>` have been installed, and if they are not present,
 they will be installed by downloading the appropriate packages from the Python
-Package Index (`PyPI <https://pypi.org/>`_). However, do note that since pip
-runs the ``setup.py`` script which requires NumPy, you will have to first
-install NumPy:
-
-.. code-block:: sh
-
-    pip install numpy
+Package Index (`PyPI <https://pypi.org/>`_).
 
 Installing in "Development" Mode
 --------------------------------

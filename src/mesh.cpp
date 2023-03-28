@@ -1066,6 +1066,9 @@ double CylindricalMesh::find_r_crossing(
   // s^2 * (u^2 + v^2) + 2*s*(u*x+v*y) + x^2+y^2-r0^2 = 0
 
   const double r0 = grid_[0][shell];
+  if (r0 == 0.0)
+    return INFTY;
+
   const double denominator = u.x * u.x + u.y * u.y;
 
   // Direction of flight is in z-direction. Will never intersect r.
@@ -1085,7 +1088,10 @@ double CylindricalMesh::find_r_crossing(
   D = std::sqrt(D);
 
   // the solution -p - D is always smaller as -p + D : Check this one first
-  if (-p - D > l && std::abs(c) > 1e-10)
+  if (std::abs(c) <= RADIAL_MESH_TOL)
+    return INFTY;
+
+  if (-p - D > l)
     return -p - D;
   if (-p + D > l)
     return -p + D;
@@ -1304,14 +1310,19 @@ double SphericalMesh::find_r_crossing(
   // solve |r+s*u| = r0
   // |r+s*u| = |r| + 2*s*r*u + s^2 (|u|==1 !)
   const double r0 = grid_[0][shell];
+  if (r0 == 0.0)
+    return INFTY;
   const double p = r.dot(u);
   double c = r.dot(r) - r0 * r0;
   double D = p * p - c;
 
+  if (std::abs(c) <= RADIAL_MESH_TOL)
+    return INFTY;
+
   if (D >= 0.0) {
     D = std::sqrt(D);
     // the solution -p - D is always smaller as -p + D : Check this one first
-    if (-p - D > l && std::abs(c) > 1e-10)
+    if (-p - D > l)
       return -p - D;
     if (-p + D > l)
       return -p + D;

@@ -51,6 +51,10 @@ constexpr double FP_PRECISION {1e-14};
 constexpr double FP_REL_PRECISION {1e-5};
 constexpr double FP_COINCIDENT {1e-12};
 
+// Coincidence tolerances
+constexpr double TORUS_TOL {1e-10};
+constexpr double RADIAL_MESH_TOL {1e-10};
+
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
 

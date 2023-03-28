@@ -353,7 +353,7 @@ Material::~Material()
   model::material_map.erase(id_);
 }
 
-void Material::clone()
+Material & Material::clone()
 {
   std::unique_ptr<Material> mat = std::make_unique<Material>();
   mat->index_ = model::materials.size();
@@ -376,12 +376,10 @@ void Material::clone()
   mat->temperature_ = temperature_;
 
   if (ttb_)
-  {
-    std::unique_ptr<Bremsstrahlung> ptr2{new Bremsstrahlung{*ttb_}};
-    mat->ttb_ = std::move(ptr2);
-  }
+    mat->ttb_ = std::make_unique<Bremsstrahlung>(*ttb_);
 
   model::materials.push_back(std::move(mat));
+  return *mat;
 }
 
 void Material::finalize()

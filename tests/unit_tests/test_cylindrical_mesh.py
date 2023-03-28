@@ -113,7 +113,7 @@ def void_coincident_geom_model():
 
     model.materials = openmc.Materials()
     radii = [0.1,1, 5, 50, 100, 150, 250]
-    cylinders = [openmc.Sphere(r=ri) for ri in radii]
+    cylinders = [openmc.ZCylinder(r=ri) for ri in radii]
     cylinders[-1].boundary_type = 'vacuum'
 
     regions = openmc.model.subdivide(cylinders)[:-1]

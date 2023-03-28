@@ -9,12 +9,13 @@ import h5py
 import numpy as np
 from xml.etree import ElementTree as ET
 
+import openmc
 from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, UnstructuredMesh
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 
-from ._xml import get_text
+from ._xml import get_text, clean_indentation
 from .mixin import IDManagerMixin
 
 
@@ -624,6 +625,182 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
         wws.append(ww)
 
     return wws
+
+
+class WeightWindowGenerator():
+    """Class passed to setting to govern weight window generation
+    using the OpenMC executable
+
+    Parameters
+    ----------
+    tally : openmc.Tally
+        Tally used to generate weight windows. The filters and scores must meet
+        the requirements for weight window generation outlined below
+
+        Filters: MeshFilter (required), EnergyFilter, ParticleFilter Scores:
+        flux (required)
+    max_realizations : int
+        The upper limit for number of tally realizations when generating weight
+        windows.
+
+    Attributes
+    ----------
+    tally : openmc.Tally
+        Tally used to generate weight windows.
+    method : str
+        The weight window generation methodology applied during an update. Only
+        'magic' is currently supported.
+    max_realizations : int
+        The upper limit for number of tally realizations when generating weight
+        windows.
+    update_interval : int
+        The number of tally realizations between updates. (default: 1)
+    update_params : dict
+        A set of parameters related to the update.
+    on_the_fly : bool
+        Whether or not to apply weight windows on the fly. (default: True)
+    """
+
+    _MAGIC_PARAMS = {'value': str, 'threshold': Real, 'ratio': Real}
+
+    def __init__(self, tally, max_realizations):
+        self.tally = tally
+        self.max_realizations = max_realizations
+        self.method = 'magic'
+        self.particle_type = 'neutron'
+        self.update_interval = 1
+        self.on_the_fly = True
+
+        self._update_params = None
+
+    @property
+    def tally(self):
+        return self._tally
+
+    @tally.setter
+    def tally(self, t):
+        cv.check_type('weight window generation tally', t, openmc.Tally)
+        self._tally = t
+
+    @property
+    def method(self):
+        return self._method
+
+    @method.setter
+    def method(self, m):
+        cv.check_type('generation method', m, str)
+        cv.check_value('generation method', m, ('magic'))
+        self._method = m
+
+    @property
+    def particle_type(self):
+        return self._particle_type
+
+    @particle_type.setter
+    def particle_type(self, pt):
+        cv.check_value('particle type', pt, ('neutron', 'photon'))
+        self._particle_type = pt
+
+    @property
+    def max_realizations(self):
+        return self._max_realizations
+
+    @max_realizations.setter
+    def max_realizations(self, m):
+        cv.check_type('max tally realizations', m, Integral)
+        cv.check_greater_than('max tally realizations', m, 0)
+        self._max_realizations = m
+
+    @property
+    def update_interval(self):
+        return self._update_interval
+
+    @update_interval.setter
+    def update_interval(self, ui):
+        cv.check_type('update interval', ui, Integral)
+        cv.check_greater_than('update interval', ui , 0)
+        self._update_interval = ui
+
+    @property
+    def update_params(self):
+        return self._update_params
+
+    def _check_magic_params(self, params):
+        for key, val in params.items():
+            if key not in self._MAGIC_PARAMS:
+                raise ValueError(f'Invalid param "{key}" for {self.method} '
+                                  'weight window generation')
+            cv.check_type(f'generation param: {key}', val, self._MAGIC_PARAMS[key])
+
+    @update_params.setter
+    def update_params(self, params):
+        if self.method == 'magic':
+            self._check_magic_params(params)
+
+        self._update_params = params
+
+    @property
+    def on_the_fly(self):
+        return self._on_the_fly
+
+    @on_the_fly.setter
+    def on_the_fly(self, otf):
+        cv.check_type('on the fly generation', otf, bool)
+        self._on_the_fly = otf
+
+    def _update_params_subelement(self, element):
+        pass
+
+    def to_xml_element(self):
+        """Creates a 'weight_window_generator' element to be written to an XML file.
+        """
+
+        element = ET.Element('weight_window_generator')
+
+        tally_elem = ET.SubElement(element, 'tally')
+        tally_elem.text = str(self.tally.id)
+        particle_elem = ET.SubElement(element, 'particle_type')
+        particle_elem.text = self.particle_type
+        realizations_elem = ET.SubElement(element, 'max_realizations')
+        realizations_elem.text = str(self.max_realizations)
+        update_interval_elem = ET.SubElement(element, 'update_interval')
+        update_interval_elem.text = str(self.update_interval)
+        otf_elem = ET.SubElement(element, 'on_th_fly')
+        otf_elem.text = str(self.on_the_fly).lower()
+        method_elem = ET.SubElement(element, 'method')
+        method_elem.text = self.method
+        if self.update_params is not None:
+            self._update_params_subelement(element)
+
+        clean_indentation(element)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """
+        Create a weight window generation object from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+        tallies : dict
+            A dictionary with IDs as keys and openmc.Tally instances as values
+
+        Returns
+        -------
+        openmc.WeightWindowGenerator
+        """
+
+        tally_id = int(get_text(elem, 'tally'))
+
+        tally = tally[tally_id]
+
+        max_realizations = int(get_text(elem, 'max_realizations'))
+
+        wwg = cls(tally, wwg)
+
 
 
 def hdf5_to_wws(path, meshes):

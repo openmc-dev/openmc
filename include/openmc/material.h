@@ -91,7 +91,7 @@ public:
     const vector<std::string>& name, const vector<double>& density);
 
   //! Clone the material by deep-copying all members
-  void clone();
+  Material & clone();
 
   //----------------------------------------------------------------------------
   // Accessors

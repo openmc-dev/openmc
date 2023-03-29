@@ -467,7 +467,6 @@ template<class T>
 void StructuredMesh::raytrace_mesh(
   Position r0, Position r1, const Direction& u, T tally) const
 {
-
   // TODO: when c++-17 is available, use "if constexpr ()" to compile-time
   // enable/disable tally calls for now, T template type needs to provide both
   // surface and track methods, which might be empty. modern optimizing
@@ -499,6 +498,12 @@ void StructuredMesh::raytrace_mesh(
     }
     return;
   }
+
+  // translate start and end positions,
+  // this needs to come after the get_indices call because it does its own
+  // translation
+  local_coords(r0);
+  local_coords(r1);
 
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<MeshDistance, 3> distances;
@@ -1003,13 +1008,15 @@ void RectilinearMesh::to_hdf5(hid_t group) const
 // CylindricalMesh implementation
 //==============================================================================
 
-CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
+CylindricalMesh::CylindricalMesh(pugi::xml_node node)
+  : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
 
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
+  origin_ = get_node_position(node, "origin");
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -1026,10 +1033,12 @@ std::string CylindricalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  Position mapped_r;
+  local_coords(r);
 
+  Position mapped_r;
   mapped_r[0] = std::hypot(r.x, r.y);
   mapped_r[2] = r[2];
+
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;
   } else {
@@ -1057,6 +1066,9 @@ double CylindricalMesh::find_r_crossing(
   // s^2 * (u^2 + v^2) + 2*s*(u*x+v*y) + x^2+y^2-r0^2 = 0
 
   const double r0 = grid_[0][shell];
+  if (r0 == 0.0)
+    return INFTY;
+
   const double denominator = u.x * u.x + u.y * u.y;
 
   // Direction of flight is in z-direction. Will never intersect r.
@@ -1067,7 +1079,8 @@ double CylindricalMesh::find_r_crossing(
   const double inv_denominator = 1.0 / denominator;
 
   const double p = (u.x * r.x + u.y * r.y) * inv_denominator;
-  double D = p * p + (r0 * r0 - r.x * r.x - r.y * r.y) * inv_denominator;
+  double c = r.x * r.x + r.y * r.y - r0 * r0;
+  double D = p * p - c * inv_denominator;
 
   if (D < 0.0)
     return INFTY;
@@ -1075,6 +1088,9 @@ double CylindricalMesh::find_r_crossing(
   D = std::sqrt(D);
 
   // the solution -p - D is always smaller as -p + D : Check this one first
+  if (std::abs(c) <= RADIAL_MESH_TOL)
+    return INFTY;
+
   if (-p - D > l)
     return -p - D;
   if (-p + D > l)
@@ -1141,22 +1157,23 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
   double l) const
 {
+  Position r = r0 - origin_;
 
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
+                      find_phi_crossing(r, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
+        find_phi_crossing(r, u, l, ijk[i] - 1)));
 
   } else {
-    return find_z_crossing(r0, u, l, ijk[i]);
+    return find_z_crossing(r, u, l, ijk[i]);
   }
 }
 
@@ -1227,6 +1244,7 @@ void CylindricalMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "phi_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
+  write_dataset(mesh_group, "origin", origin_);
 
   close_group(mesh_group);
 }
@@ -1235,13 +1253,15 @@ void CylindricalMesh::to_hdf5(hid_t group) const
 // SphericalMesh implementation
 //==============================================================================
 
-SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
+SphericalMesh::SphericalMesh(pugi::xml_node node)
+  : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
 
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "theta_grid");
   grid_[2] = get_node_array<double>(node, "phi_grid");
+  origin_ = get_node_position(node, "origin");
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -1258,9 +1278,11 @@ std::string SphericalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  Position mapped_r;
+  local_coords(r);
 
+  Position mapped_r;
   mapped_r[0] = r.norm();
+
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;
     mapped_r[2] = 0.0;
@@ -1288,8 +1310,14 @@ double SphericalMesh::find_r_crossing(
   // solve |r+s*u| = r0
   // |r+s*u| = |r| + 2*s*r*u + s^2 (|u|==1 !)
   const double r0 = grid_[0][shell];
+  if (r0 == 0.0)
+    return INFTY;
   const double p = r.dot(u);
-  double D = p * p - r.dot(r) + r0 * r0;
+  double c = r.dot(r) - r0 * r0;
+  double D = p * p - c;
+
+  if (std::abs(c) <= RADIAL_MESH_TOL)
+    return INFTY;
 
   if (D >= 0.0) {
     D = std::sqrt(D);
@@ -1490,6 +1518,7 @@ void SphericalMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "theta_grid", grid_[1]);
   write_dataset(mesh_group, "phi_grid", grid_[2]);
+  write_dataset(mesh_group, "origin", origin_);
 
   close_group(mesh_group);
 }

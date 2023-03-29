@@ -6,7 +6,8 @@ from tests.testing_harness import PyAPITestHarness
 
 
 class SurfaceTallyTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Instantiate some Materials and register the appropriate Nuclides
         uo2 = openmc.Material(name='UO2 fuel at 2.4% wt enrichment')
         uo2.set_density('g/cc', 10.0)
@@ -21,8 +22,7 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         borated_water.add_nuclide('O16', 1.0)
 
         # Instantiate a Materials collection and export to XML
-        materials_file = openmc.Materials([uo2, borated_water])
-        materials_file.export_to_xml()
+        self._model.materials = openmc.Materials([uo2, borated_water])
 
         # Instantiate ZCylinder surfaces
         fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, r=1,
@@ -61,8 +61,7 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         root_univ.add_cell(root_cell)
 
         # Instantiate a Geometry, register the root Universe
-        geometry = openmc.Geometry(root_univ)
-        geometry.export_to_xml()
+        self._model.geometry = openmc.Geometry(root_univ)
 
         # Instantiate a Settings object, set all runtime parameters
         settings_file = openmc.Settings()
@@ -76,7 +75,7 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:],\
              only_fissionable=True)
         settings_file.source = openmc.source.Source(space=uniform_dist)
-        settings_file.export_to_xml()
+        self._model.settings = settings_file
 
         # Tallies file
         tallies_file = openmc.Tallies()
@@ -156,7 +155,7 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         surf_tally3.scores = ['current']
         tallies_file.append(surf_tally3)
 
-        tallies_file.export_to_xml()
+        self._model.tallies = tallies_file
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
@@ -174,5 +173,5 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
 
 
 def test_surface_tally():
-    harness = SurfaceTallyTestHarness('statepoint.10.h5')
+    harness = SurfaceTallyTestHarness('statepoint.10.h5', model=openmc.Model())
     harness.main()

@@ -19,32 +19,31 @@
 namespace openmc {
 
 //==============================================================================
-// Discrete implementation
+// DiscreteIndex implementation
 //==============================================================================
 
-Discrete::Discrete(pugi::xml_node node)
+DiscreteIndex::DiscreteIndex(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
+  std::size_t n = params.size() / 2;
 
-  std::size_t n = params.size();
-  std::vector<double> x_vec(params.begin(), params.begin() + n / 2);
-  std::vector<double> p_vec(params.begin() + n / 2, params.end());
-
-  this->init_alias(x_vec, p_vec);
+  assign(params.data() + n, n);
 }
 
-Discrete::Discrete(const double* x, const double* p, int n)
+DiscreteIndex::DiscreteIndex(const double* p, int n)
 {
-  std::vector<double> x_vec(x, x + n);
-  std::vector<double> p_vec(p, p + n);
-
-  this->init_alias(x_vec, p_vec);
+  assign(p, n);
 }
 
-void Discrete::init_alias(vector<double>& x, vector<double>& p)
+void DiscreteIndex::assign(const double* p, int n)
 {
-  x_ = x;
-  prob_ = p;
+  prob_.assign(p, p + n);
+
+  this->init_alias();
+}
+
+void DiscreteIndex::init_alias()
+{
   normalize();
 
   // The initialization and sampling method is based on Vose
@@ -53,13 +52,14 @@ void Discrete::init_alias(vector<double>& x, vector<double>& p)
   vector<size_t> large;
   vector<size_t> small;
 
+  size_t n = prob_.size();
+
   // Set and allocate memory
-  vector<size_t> alias(x_.size(), 0);
-  alias_ = alias;
+  alias_.assign(n, 0);
 
   // Fill large and small vectors based on 1/n
-  for (size_t i = 0; i < x_.size(); i++) {
-    prob_[i] *= x_.size();
+  for (size_t i = 0; i < n; i++) {
+    prob_[i] *= n;
     if (prob_[i] > 1.0) {
       large.push_back(i);
     } else {
@@ -86,29 +86,53 @@ void Discrete::init_alias(vector<double>& x, vector<double>& p)
   }
 }
 
-double Discrete::sample(uint64_t* seed) const
+size_t DiscreteIndex::sample(uint64_t* seed) const
 {
   // Alias sampling of discrete distribution
-  int n = x_.size();
+  size_t n = prob_.size();
   if (n > 1) {
-    int u = prn(seed) * n;
+    size_t u = prn(seed) * n;
     if (prn(seed) < prob_[u]) {
-      return x_[u];
+      return u;
     } else {
-      return x_[alias_[u]];
+      return alias_[u];
     }
   } else {
-    return x_[0];
+    return 0;
   }
 }
 
-void Discrete::normalize()
+void DiscreteIndex::normalize()
 {
   // Renormalize density function so that it sums to unity
   double norm = std::accumulate(prob_.begin(), prob_.end(), 0.0);
   for (auto& p_i : prob_) {
     p_i /= norm;
   }
+}
+
+//==============================================================================
+// Discrete implementation
+//==============================================================================
+
+Discrete::Discrete(pugi::xml_node node) : di_(node)
+{
+  auto params = get_node_array<double>(node, "parameters");
+
+  std::size_t n = params.size() / 2;
+
+  x_.assign(params.begin(), params.begin() + n);
+}
+
+Discrete::Discrete(const double* x, const double* p, int n) : di_(p, n)
+{
+
+  x_.assign(x, x + n);
+}
+
+double Discrete::sample(uint64_t* seed) const
+{
+  return x_[di_.sample(seed)];
 }
 
 //==============================================================================

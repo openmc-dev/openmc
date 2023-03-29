@@ -339,3 +339,57 @@ def test_polygon():
             offset_star = star_poly.offset(.6)
             assert (0, 0, 0) in -offset_star
             assert any([(0, 0, 0) in reg for reg in offset_star.regions])
+
+    # check invalid Polygon input points
+    # duplicate points not just at start and end
+    rz_points = np.array([[6.88, 3.02],
+                          [6.88, 2.72],
+                          [6.88, 3.02],
+                          [7.63, 0.0],
+                          [5.75, 0.0],
+                          [5.75, 1.22],
+                          [7.63, 0.0],
+                          [6.30, 1.22],
+                          [6.30, 3.02],
+                          [6.88, 3.02]])
+    with pytest.raises(ValueError):
+        openmc.model.Polygon(rz_points)
+
+    # segment traces back on previous segment
+    rz_points = np.array([[6.88, 3.02],
+                          [6.88, 2.72],
+                          [6.88, 2.32],
+                          [6.88, 2.52],
+                          [7.63, 0.0],
+                          [5.75, 0.0],
+                          [6.75, 0.0],
+                          [5.75, 1.22],
+                          [6.30, 1.22],
+                          [6.30, 3.02],
+                          [6.88, 3.02]])
+    with pytest.raises(ValueError):
+        openmc.model.Polygon(rz_points)
+
+    # segments intersect (line-line)
+    rz_points = np.array([[6.88, 3.02],
+                          [5.88, 2.32],
+                          [7.63, 0.0],
+                          [5.75, 0.0],
+                          [5.75, 1.22],
+                          [6.30, 1.22],
+                          [6.30, 3.02],
+                          [6.88, 3.02]])
+    with pytest.raises(ValueError):
+        openmc.model.Polygon(rz_points)
+
+    # segments intersect (line-point)
+    rz_points = np.array([[6.88, 3.02],
+                          [6.3, 2.32],
+                          [7.63, 0.0],
+                          [5.75, 0.0],
+                          [5.75, 1.22],
+                          [6.30, 1.22],
+                          [6.30, 3.02],
+                          [6.88, 3.02]])
+    with pytest.raises(ValueError):
+        openmc.model.Polygon(rz_points)

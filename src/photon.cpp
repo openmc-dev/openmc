@@ -91,9 +91,13 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   close_group(rgroup);
 
   // Read pair production
-  rgroup = open_group(group, "pair_production_electron");
-  read_dataset(rgroup, "xs", pair_production_electron_);
-  close_group(rgroup);
+  if (object_exists(group, "pair_production_electron")) {
+    rgroup = open_group(group, "pair_production_electron");
+    read_dataset(rgroup, "xs", pair_production_electron_);
+    close_group(rgroup);
+  } else {
+    pair_production_electron_ = xt::zeros_like(energy_);
+  }
 
   // Read pair production
   if (object_exists(group, "pair_production_nuclear")) {

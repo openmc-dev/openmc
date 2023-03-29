@@ -1436,6 +1436,8 @@ class Tally(IDManagerMixin):
             dimensions. This will result in more than one dimension per filter
             for the returned data array.
 
+            .. versionadded:: 0.13.3
+
         Returns
         -------
         numpy.ndarray

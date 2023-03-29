@@ -683,11 +683,11 @@ class Plot(IDManagerMixin):
         if self._meshlines is not None:
             subelement = ET.SubElement(element, "meshlines")
             subelement.set("meshtype", self._meshlines['type'])
-            if self._meshlines['id'] is not None:
+            if 'id' in self._meshlines:
                 subelement.set("id", str(self._meshlines['id']))
-            if self._meshlines['linewidth'] is not None:
+            if 'linewidth' in self._meshlines:
                 subelement.set("linewidth", str(self._meshlines['linewidth']))
-            if self._meshlines['color'] is not None:
+            if 'color' in self._meshlines:
                 subelement.set("color", ' '.join(map(
                     str, self._meshlines['color'])))
 

@@ -14,7 +14,7 @@ Notably, a capability has been added to compute the photon spectra from decay of
 unstable nuclides. Alongside that, a new :data:`openmc.config` configuration
 variable has been introduced that allows easier configuration of data sources.
 Additionally, users can now perform cell or material rejection when sampling
-external source distributions. Finally,
+external source distributions.
 
 ------------------------------------
 Compatibility Notes and Deprecations

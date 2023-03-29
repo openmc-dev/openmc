@@ -322,6 +322,7 @@ class Settings:
         self._max_particles_in_flight = None
         self._write_initial_source = None
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
+        self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
         self._weight_windows_file = None
         self._max_splits = None
@@ -1315,6 +1316,8 @@ class Settings:
             elem.text = str(self._weight_windows_on).lower()
 
     def _create_weight_window_generators_subelement(self, root):
+        if not self.weight_window_generators:
+            return
         elem = ET.SubElement(root, 'weight_window_generators')
         for wwg in self.weight_window_generators:
          elem.append(wwg.to_xml_element())
@@ -1808,7 +1811,6 @@ class Settings:
         settings._log_grid_bins_from_xml_element(elem)
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
-        settings._weight_window_generators_from_xml_element(elem)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
 

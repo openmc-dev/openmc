@@ -356,8 +356,6 @@ Material::~Material()
 Material & Material::clone()
 {
   std::unique_ptr<Material> mat = std::make_unique<Material>();
-  mat->index_ = model::materials.size();
-  mat->set_id(C_NONE);
 
   // set all other parameters to whatever the calling Material has
   mat->name_ = name_;
@@ -378,6 +376,8 @@ Material & Material::clone()
   if (ttb_)
     mat->ttb_ = std::make_unique<Bremsstrahlung>(*ttb_);
 
+  mat->index_ = model::materials.size();
+  mat->set_id(C_NONE);
   model::materials.push_back(std::move(mat));
   return *model::materials.back();
 }

@@ -379,7 +379,7 @@ Material & Material::clone()
     mat->ttb_ = std::make_unique<Bremsstrahlung>(*ttb_);
 
   model::materials.push_back(std::move(mat));
-  return *mat;
+  return *model::materials.back();
 }
 
 void Material::finalize()

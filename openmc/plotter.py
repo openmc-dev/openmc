@@ -240,6 +240,8 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
         Enrichment for U235 in weight percent. For example, input 4.95 for
         4.95 weight percent enriched U. Default is None
         (natural composition).
+    ncrystal_cfg : str, optional
+        Configuration string for NCrystal material.
 
     Returns
     -------
@@ -304,6 +306,8 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
         Name of S(a,b) library to apply to MT=2 data when applicable.
     cross_sections : str, optional
         Location of cross_sections.xml file. Default is None.
+    ncrystal_cfg : str, optional
+        Configuration string for NCrystal material.
 
     Returns
     -------

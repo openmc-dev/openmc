@@ -360,6 +360,8 @@ void print_build_info()
   std::string png(n);
   std::string profiling(n);
   std::string coverage(n);
+  std::string mcpl(n);
+  std::string ncrystal(n);
 
 #ifdef PHDF5
   phdf5 = y;
@@ -372,6 +374,12 @@ void print_build_info()
 #endif
 #ifdef LIBMESH
   libmesh = y;
+#endif
+#ifdef OPENMC_MCPL
+  mcpl = y;
+#endif
+#ifdef NCRYSTAL
+  ncrystal = y;
 #endif
 #ifdef USE_LIBPNG
   png = y;
@@ -396,6 +404,8 @@ void print_build_info()
     fmt::print("PNG support:           {}\n", png);
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
+    fmt::print("MCPL support:          {}\n", mcpl);
+    fmt::print("NCrystal support:      {}\n", ncrystal);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
   }

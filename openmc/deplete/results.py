@@ -398,6 +398,8 @@ class Results(list):
         path : PathLike
             Path to materials XML file to read. Defaults to 'materials.xml'.
 
+            .. versionadded:: 0.13.3
+
         Returns
         -------
         mat_file : Materials

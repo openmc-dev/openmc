@@ -105,9 +105,9 @@ other information use:
 
 .. note::
 
-    It should be noted that by default OpenMC builds with ``-O2 -g`` flags which
-    are equivalent to a CMake build type of `RelwithDebInfo`. In addition, MPI
-    is OFF while OpenMP is ON.
+    It should be noted that by default OpenMC is built with
+    `-DCMAKE_BUILD_TYPE=RelwithDebInfo`. In addition, MPI is OFF while OpenMP is
+    ON.
 
 It is recommended to install OpenMC with the Python API. Information about this
 Spack recipe can be found with the following command:
@@ -133,17 +133,18 @@ following command:
     configured defaults unless otherwise specfied in the specification on the
     command line. In the above example, assuming the default options weren't
     changed in Spack's package configuration, py-openmc will link against a
-    non-optimized non-MPI openmc. Even if an optimized openmc was built
-    separately, it will rebuild openmc with optimization OFF. Thus, if you are
-    trying to link against dependencies that were configured different than
-    defaults, ``^openmc[variants]`` will have to be present in the command.
+    non-MPI non-release build of openmc. Even if a release build of openmc was
+    built separately, it will rebuild openmc with the default build type. Thus,
+    if you are trying to link against dependencies that were configured
+    different than defaults, ``^openmc[variants]`` will have to be present in
+    the command.
 
-For a more performant build of OpenMC with optimization turned ON and MPI
-provided by OpenMPI, the following command can be used:
+For a release build of OpenMC with MPI support on (provided by OpenMPI), the
+following command can be used:
 
 .. code-block:: sh
 
-    spack install py-openmc+mpi ^openmc+optimize ^openmpi
+    spack install py-openmc +mpi ^openmpi ^openmc build_type=Release
 
 .. note::
 
@@ -163,7 +164,7 @@ This can be observed using Spack's ``spec`` tool:
 
 .. code-block::
 
-    spack spec py-openmc+mpi ^openmc+optimize
+    spack spec py-openmc +mpi ^openmc build_type=Release
 
 Once installed, environment/lmod modules can be generated or Spack's ``load``
 feature can be used to access the installed packages.
@@ -277,7 +278,7 @@ Prerequisites
       Lists) files instead of .h5 files for sources (external source
       distribution, k-eigenvalue source distribution, and surface sources). To
       turn this option on in the CMake configuration step, add the following
-      option:
+      option::
 
           cmake -DOPENMC_USE_MCPL=on ..
 
@@ -288,7 +289,7 @@ Prerequisites
       on-the-fly approach. To use it `install
       <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialize
       <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_
-      NCrystal and turn on the option in the CMake configuration step:
+      NCrystal and turn on the option in the CMake configuration step::
 
           cmake -DOPENMC_USE_NCRYSTAL=on ..
 
@@ -299,7 +300,7 @@ Prerequisites
       be used, but the implementation is currently restricted to collision
       estimators. In addition to turning this option on, the path to the libMesh
       installation should be specified as part of the ``CMAKE_PREFIX_PATH``
-      variable.::
+      variable::
 
           cmake -DOPENMC_USE_LIBMESH=on -DOPENMC_USE_MPI=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation ..
 
@@ -371,6 +372,10 @@ CMakeLists.txt Options
 
 The following options are available in the CMakeLists.txt file:
 
+OPENMC_ENABLE_COVERAGE
+  Compile and link code instrumented for coverage analysis. This is typically
+  used in conjunction with gcov_. (Default: off)
+
 OPENMC_ENABLE_PROFILE
   Enables profiling using the GNU profiler, gprof. (Default: off)
 
@@ -385,22 +390,23 @@ OPENMC_USE_DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
   (Default: off)
 
+OPENMC_USE_MCPL
+  Turns on support for reading MCPL_ source files and writing MCPL source points
+  and surface sources. (Default: off)
+
 OPENMC_USE_NCRYSTAL
-  Turns on support for NCrystal materials. NCrystal must be
-  `installed <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and
-  `initialized <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
+  Turns on support for NCrystal materials. NCrystal must be `installed
+  <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialized
+  <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
   (Default: off)
 
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
-OPENMC_ENABLE_COVERAGE
-  Compile and link code instrumented for coverage analysis. This is typically
-  used in conjunction with gcov_. (Default: off)
-
 OPENMC_USE_MPI
-  Turns on compiling with MPI (default: off). For further information on MPI options,
-  please see the `FindMPI.cmake documentation <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
+  Turns on compiling with MPI (Default: off). For further information on MPI
+  options, please see the `FindMPI.cmake documentation
+  <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
 To set any of these options (e.g., turning on profiling), the following form
 should be used:
@@ -521,13 +527,7 @@ distribution/repository, run:
 pip will first check that all :ref:`required third-party packages
 <usersguide_python_prereqs>` have been installed, and if they are not present,
 they will be installed by downloading the appropriate packages from the Python
-Package Index (`PyPI <https://pypi.org/>`_). However, do note that since pip
-runs the ``setup.py`` script which requires NumPy, you will have to first
-install NumPy:
-
-.. code-block:: sh
-
-    pip install numpy
+Package Index (`PyPI <https://pypi.org/>`_).
 
 Installing in "Development" Mode
 --------------------------------

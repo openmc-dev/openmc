@@ -537,6 +537,8 @@ class Geometry:
     def get_surfaces_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of surfaces with matching names.
 
+        .. versionadded:: 0.13.3
+
         Parameters
         ----------
         name : str

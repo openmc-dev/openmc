@@ -38,4 +38,4 @@ from .config import *
 from openmc.model import rectangular_prism, hexagonal_prism, Model
 
 
-__version__ = '0.13.3-dev'
+__version__ = '0.13.3'

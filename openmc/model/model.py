@@ -644,6 +644,8 @@ class Model:
             Exports a single model.xml file rather than separate files.
             Defaults to True.
 
+            .. versionadded:: 0.13.3
+
         Returns
         -------
         Path

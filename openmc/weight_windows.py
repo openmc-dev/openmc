@@ -160,7 +160,7 @@ class WeightWindows(IDManagerMixin):
     def __repr__(self) -> str:
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tID', self._id)
-        string += '{: <16}=\t{}\n'.format('\tMesh:', self.mesh)
+        string += '{: <16}=\t{}\n'.format('\tMesh', self.mesh)
         string += '{: <16}=\t{}\n'.format('\tParticle Type', self._particle_type)
         string += '{: <16}=\t{}\n'.format('\tEnergy Bounds', self._energy_bounds)
         string += '{: <16}=\t{}\n'.format('\tLower WW Bounds', self._lower_ww_bounds)
@@ -673,6 +673,18 @@ class WeightWindowGenerator():
 
         self._update_params = None
 
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += f'\t{"Tally":<20}=\t{self.tally.id}\n'
+        string += f'\t{"Method":<20}=\t{self.method}\n'
+        string += f'\t{"Max Realizations":<20}=\t{self.max_realizations}\n'
+        string += f'\t{"Update Interval":<20}=\t{self.update_interval}\n'
+        string += f'\t{"On The Fly":<20}=\t{self.on_the_fly}\n'
+        if self.update_params is not None:
+            string += f'\t{"Update Parameters:":<20}\n\t\t\t{self.update_params}\n'
+        string
+
+        return string
     @property
     def tally(self):
         return self._tally

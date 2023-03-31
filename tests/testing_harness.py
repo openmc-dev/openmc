@@ -336,12 +336,11 @@ class PyAPITestHarness(TestHarness):
 
     def _build_inputs(self):
         """Write input XML files."""
-        self._model.export_to_xml()
+        self._model.export_to_model_xml()
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
-        xmls = ['geometry.xml', 'materials.xml', 'settings.xml',
-                'tallies.xml', 'plots.xml']
+        xmls = ['model.xml', 'plots.xml']
         return ''.join([open(fname).read() for fname in xmls
                         if os.path.exists(fname)])
 
@@ -371,7 +370,7 @@ class PyAPITestHarness(TestHarness):
         """Delete XMLs, statepoints, tally, and test files."""
         super()._cleanup()
         output = ['materials.xml', 'geometry.xml', 'settings.xml',
-                  'tallies.xml', 'plots.xml', 'inputs_test.dat']
+                  'tallies.xml', 'plots.xml', 'inputs_test.dat', 'model.xml']
         for f in output:
             if os.path.exists(f):
                 os.remove(f)

@@ -48,4 +48,11 @@ bool get_node_value_bool(pugi::xml_node node, const char* name)
   return false;
 }
 
+Position get_node_position(
+  pugi::xml_node node, const char* name, bool lowercase)
+{
+  vector<double> arr = get_node_array<double>(node, name, lowercase);
+  return Position(arr);
+}
+
 } // namespace openmc

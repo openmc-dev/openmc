@@ -90,6 +90,12 @@ public:
   void set_densities(
     const vector<std::string>& name, const vector<double>& density);
 
+  //! Clone the material by deep-copying all members, except for the ID,
+  //  which will get auto-assigned to the next available ID. After creating
+  //  the new material, it is added to openmc::model::materials.
+  //! \return reference to the cloned material
+  Material & clone();
+
   //----------------------------------------------------------------------------
   // Accessors
 

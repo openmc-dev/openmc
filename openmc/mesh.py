@@ -446,7 +446,7 @@ class RegularMesh(StructuredMesh):
         if self._width is not None:
             self._width = None
             warnings.warn("Unsetting width attribute.")
-        
+
         if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
             raise ValueError("Mesh cannot have zero thickness in any dimension")
 
@@ -1050,6 +1050,9 @@ class CylindricalMesh(StructuredMesh):
         The default value is [0, 2π], i.e. the full phi range.
     z_grid : numpy.ndarray
         1-D array of mesh boundary points along the z-axis.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -1062,6 +1065,7 @@ class CylindricalMesh(StructuredMesh):
         self._r_grid = None
         self._phi_grid = [0.0, 2*pi]
         self._z_grid = None
+        self.origin = (0., 0., 0.)
 
     @property
     def dimension(self):
@@ -1072,6 +1076,10 @@ class CylindricalMesh(StructuredMesh):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def origin(self):
+        return self._origin
 
     @property
     def r_grid(self):
@@ -1099,6 +1107,12 @@ class CylindricalMesh(StructuredMesh):
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
 
+    @origin.setter
+    def origin(self, coords):
+        cv.check_type('mesh origin', coords, Iterable, Real)
+        cv.check_length("mesh origin", coords, 3)
+        self._origin = np.asarray(coords)
+
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
@@ -1118,6 +1132,7 @@ class CylindricalMesh(StructuredMesh):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
         string += fmt.format('\tDimensions', '=\t', self.n_dimension)
+        string += fmt.format('\tOrigin', '=\t', self.origin)
         r_grid_str = str(self._r_grid) if self._r_grid is None else len(self._r_grid)
         string += fmt.format('\tN R pnts:', '=\t', r_grid_str)
         if self._r_grid is not None:
@@ -1144,6 +1159,8 @@ class CylindricalMesh(StructuredMesh):
         mesh.r_grid = group['r_grid'][()]
         mesh.phi_grid = group['phi_grid'][()]
         mesh.z_grid = group['z_grid'][()]
+        if 'origin' in group:
+            mesh.origin = group['origin'][()]
 
         return mesh
 
@@ -1240,6 +1257,9 @@ class CylindricalMesh(StructuredMesh):
         subelement = ET.SubElement(element, "z_grid")
         subelement.text = ' '.join(map(str, self.z_grid))
 
+        subelement = ET.SubElement(element, "origin")
+        subelement.text = ' '.join(map(str, self.origin))
+
         return element
 
     @classmethod
@@ -1263,6 +1283,8 @@ class CylindricalMesh(StructuredMesh):
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
         mesh.z_grid = [float(x) for x in get_text(elem, "z_grid").split()]
+        mesh.origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()]
+
         return mesh
 
     @property
@@ -1304,12 +1326,13 @@ class CylindricalMesh(StructuredMesh):
         """
         # create points
         pts_cylindrical = self.vertices.T.reshape(-1, 3)
-
         pts_cartesian = np.copy(pts_cylindrical)
-        r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
-        pts_cartesian[:, 0] = r * np.cos(phi)
-        pts_cartesian[:, 1] = r * np.sin(phi)
 
+        r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
+        pts_cartesian[:, 0] = r * np.cos(phi) + self.origin[0]
+        pts_cartesian[:, 1] = r * np.sin(phi) + self.origin[1]
+        pts_cartesian[:, 2] += self.origin[2]
+        
         return super().write_data_to_vtk(
             points=pts_cartesian,
             filename=filename,
@@ -1346,6 +1369,9 @@ class SphericalMesh(StructuredMesh):
     phi_grid : numpy.ndarray
         1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -1358,6 +1384,7 @@ class SphericalMesh(StructuredMesh):
         self._r_grid = None
         self._theta_grid = [0, pi]
         self._phi_grid = [0, 2*pi]
+        self.origin = (0., 0., 0.)
 
     @property
     def dimension(self):
@@ -1368,6 +1395,10 @@ class SphericalMesh(StructuredMesh):
     @property
     def n_dimension(self):
         return 3
+
+    @property
+    def origin(self):
+        return self._origin
 
     @property
     def r_grid(self):
@@ -1395,6 +1426,12 @@ class SphericalMesh(StructuredMesh):
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
 
+    @origin.setter
+    def origin(self, coords):
+        cv.check_type('mesh origin', coords, Iterable, Real)
+        cv.check_length("mesh origin", coords, 3)
+        self._origin = np.asarray(coords)
+
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
@@ -1414,6 +1451,7 @@ class SphericalMesh(StructuredMesh):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
         string += fmt.format('\tDimensions', '=\t', self.n_dimension)
+        string += fmt.format('\tOrigin', '=\t', self.origin)
         r_grid_str = str(self._r_grid) if self._r_grid is None else len(self._r_grid)
         string += fmt.format('\tN R pnts:', '=\t', r_grid_str)
         if self._r_grid is not None:
@@ -1440,6 +1478,8 @@ class SphericalMesh(StructuredMesh):
         mesh.r_grid = group['r_grid'][()]
         mesh.theta_grid = group['theta_grid'][()]
         mesh.phi_grid = group['phi_grid'][()]
+        if 'origin' in group:
+            mesh.origin = group['origin'][()]
 
         return mesh
 
@@ -1466,6 +1506,9 @@ class SphericalMesh(StructuredMesh):
         subelement = ET.SubElement(element, "phi_grid")
         subelement.text = ' '.join(map(str, self.phi_grid))
 
+        subelement = ET.SubElement(element, "origin")
+        subelement.text = ' '.join(map(str, self.origin))
+
         return element
 
     @classmethod
@@ -1489,6 +1532,8 @@ class SphericalMesh(StructuredMesh):
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
         mesh.theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()]
         mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
+        mesh.origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()]
+
         return mesh
 
     @property
@@ -1530,12 +1575,13 @@ class SphericalMesh(StructuredMesh):
         """
         # create points
         pts_spherical = self.vertices.T.reshape(-1, 3)
-
         pts_cartesian = np.copy(pts_spherical)
+
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
-        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
-        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta)
-        pts_cartesian[:, 2] = r * np.cos(phi)
+
+        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta) + self.origin[0]
+        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta) + self.origin[1]
+        pts_cartesian[:, 2] = r * np.cos(phi) + self.origin[2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,

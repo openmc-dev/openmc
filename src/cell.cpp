@@ -291,7 +291,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   if (fill_present) {
     fill_ = std::stoi(get_node_value(cell_node, "fill"));
     if (fill_ == universe_) {
-      fatal_error(fmt::format("Cell {} is filled with the same universe that"
+      fatal_error(fmt::format("Cell {} is filled with the same universe that "
                               "it is contained in.",
         id_));
     }

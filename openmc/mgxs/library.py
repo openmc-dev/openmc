@@ -72,6 +72,11 @@ class Library:
         Number of equi-width polar angle bins for angle discretization
     num_azimuthal : Integral
         Number of equi-width azimuthal angle bins for angle discretization
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the domain
+        are included.
     estimator : str or None
         The tally estimator used to compute multi-group cross sections.
         If None, the default for each MGXS type is used.
@@ -107,6 +112,7 @@ class Library:
         self._energy_groups = None
         self._num_polar = 1
         self._num_azimuthal = 1
+        self._nuclides = None
         self._num_delayed_groups = 0
         self._correction = 'P0'
         self._scatter_format = 'legendre'
@@ -145,6 +151,7 @@ class Library:
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._num_polar = self.num_polar
             clone._num_azimuthal = self.num_azimuthal
+            clone._nuclides = self._nuclides
             clone._num_delayed_groups = self.num_delayed_groups
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = copy.deepcopy(self.all_mgxs)
@@ -204,6 +211,10 @@ class Library:
                 raise ValueError('Unable to get domains without a domain type')
         else:
             return self._domains
+
+    @property
+    def nuclides(self):
+        return self._nuclides
 
     @property
     def energy_groups(self):
@@ -274,6 +285,11 @@ class Library:
     def name(self, name):
         cv.check_type('name', name, str)
         self._name = name
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_iterable_type('nuclides', nuclides, str)
+        self._nuclides = nuclides
 
     @mgxs_types.setter
     def mgxs_types(self, mgxs_types):
@@ -524,6 +540,20 @@ class Library:
                     mgxs.legendre_order = self.legendre_order
                     mgxs.histogram_bins = self.histogram_bins
 
+                if self.by_nuclide:
+                    try:
+                        domain_nuclides = domain.get_nuclides()
+                    except AttributeError:
+                        domain_nuclides = None
+                    if self.nuclides:
+                        if domain_nuclides:
+                            mgxs.nuclides = [
+                                nuclide for nuclide in self.nuclides
+                                if nuclide in domain_nuclides
+                            ] + ["total"]
+                        else:
+                            mgxs.nuclides = self.nuclides
+
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 
     def add_to_tallies_file(self, tallies_file, merge=True):
@@ -590,7 +620,7 @@ class Library:
 
         self._sp_filename = statepoint._f.filename
         self._geometry = statepoint.summary.geometry
-        self._nuclides = statepoint.summary.nuclides
+        self._atomic_weight_ratios = statepoint.summary.nuclides
 
         if statepoint.run_mode == 'eigenvalue':
             self._keff = statepoint.keff.n
@@ -1005,7 +1035,7 @@ class Library:
             xsdata.num_azimuthal = self.num_azimuthal
 
         if nuclide != 'total':
-            xsdata.atomic_weight_ratio = self._nuclides[nuclide]
+            xsdata.atomic_weight_ratio = self._atomic_weight_ratios[nuclide]
 
         if subdomain is None:
             subdomain = 'all'

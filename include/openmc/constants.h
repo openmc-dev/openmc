@@ -25,7 +25,7 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {18, 0};
+constexpr array<int, 2> VERSION_STATEPOINT {18, 1};
 constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
 constexpr array<int, 2> VERSION_TRACK {3, 0};
 constexpr array<int, 2> VERSION_SUMMARY {6, 0};
@@ -50,6 +50,10 @@ constexpr double TINY_BIT {1e-8};
 constexpr double FP_PRECISION {1e-14};
 constexpr double FP_REL_PRECISION {1e-5};
 constexpr double FP_COINCIDENT {1e-12};
+
+// Coincidence tolerances
+constexpr double TORUS_TOL {1e-10};
+constexpr double RADIAL_MESH_TOL {1e-10};
 
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};

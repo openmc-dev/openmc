@@ -596,7 +596,8 @@ class Model:
 
     def run(self, particles=None, threads=None, geometry_debug=False,
             restart_file=None, tracks=False, output=True, cwd='.',
-            openmc_exec='openmc', mpi_args=None, event_based=None):
+            openmc_exec='openmc', mpi_args=None, event_based=None,
+            export_model_xml=True):
         """Runs OpenMC. If the C API has been initialized, then the C API is
         used, otherwise, this method creates the XML files and runs OpenMC via
         a system call. In both cases this method returns the path to the last
@@ -639,6 +640,11 @@ class Model:
         event_based : None or bool, optional
             Turns on event-based parallelism if True. If None, the value in
             the Settings will be used.
+        export_model_xml : bool, optional
+            Exports a single model.xml file rather than separate files.
+            Defaults to True.
+
+            .. versionadded:: 0.13.3
 
         Returns
         -------
@@ -688,7 +694,10 @@ class Model:
 
             else:
                 # Then run via the command line
-                self.export_to_xml()
+                if export_model_xml:
+                    self.export_to_model_xml()
+                else:
+                    self.export_to_xml()
                 openmc.run(particles, threads, geometry_debug, restart_file,
                            tracks, output, Path('.'), openmc_exec, mpi_args,
                            event_based)

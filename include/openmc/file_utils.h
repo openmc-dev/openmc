@@ -1,6 +1,8 @@
 #ifndef OPENMC_FILE_UTILS_H
 #define OPENMC_FILE_UTILS_H
 
+#include <algorithm> // any_of
+#include <cctype>    // for isalpha
 #include <fstream> // for ifstream
 #include <string>
 #include <sys/stat.h>
@@ -31,6 +33,30 @@ inline bool file_exists(const std::string& filename)
 
   std::ifstream s {filename};
   return s.good();
+}
+
+// Gets the file extension of whatever string is passed in. This is defined as
+// a sequence of strictly alphanumeric characters which follow the last period,
+// i.e. at least one alphabet character is present, and zero or more numbers.
+// If such a sequence of characters is not found, an empty string is returned.
+inline std::string get_file_extension(const std::string& filename)
+{
+  // check that at least one letter is present
+  const std::string::size_type last_period_pos = filename.find_last_of('.');
+
+  // no file extension
+  if (last_period_pos == std::string::npos)
+    return "";
+
+  const std::string ending = filename.substr(last_period_pos + 1);
+
+  // check that at least one character is present.
+  const bool has_alpha = std::any_of(ending.begin(), ending.end(),
+    [](char x) { return static_cast<bool>(std::isalpha(x)); });
+  if (has_alpha)
+    return ending;
+  else
+    return "";
 }
 
 } // namespace openmc

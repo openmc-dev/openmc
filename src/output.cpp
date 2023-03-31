@@ -360,6 +360,8 @@ void print_build_info()
   std::string png(n);
   std::string profiling(n);
   std::string coverage(n);
+  std::string mcpl(n);
+  std::string ncrystal(n);
 
 #ifdef PHDF5
   phdf5 = y;
@@ -382,6 +384,12 @@ void print_build_info()
 #ifdef COVERAGEBUILD
   coverage = y;
 #endif
+#ifdef NCRYSTAL
+  ncrystal = y;
+#endif
+#ifdef OPENMC_MCPL
+  mcpl = y;
+#endif
 
   // Wraps macro variables in quotes
 #define STRINGIFY(x) STRINGIFY2(x)
@@ -396,6 +404,8 @@ void print_build_info()
     fmt::print("PNG support:           {}\n", png);
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
+    fmt::print("NCrystal support:      {}\n", profiling);
+    fmt::print("MCPL support:          {}\n", profiling);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
   }

@@ -128,8 +128,7 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id,
     // loop over the other nodes and receive data - then write those.
     for (int i = 0; i < mpi::n_procs; ++i) {
       // number of particles for node node i
-      size_t count[] {
-        static_cast<size_t>((*bank_index)[i + 1] - (*bank_index)[i])};
+      size_t count[] {static_cast<size_t>(bank_index[i + 1] - bank_index[i])};
 
 #ifdef OPENMC_MPI
       if (i > 0)

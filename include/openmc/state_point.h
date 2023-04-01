@@ -28,6 +28,11 @@ void load_state_point();
 // This function ends up calling write_source_bank, and is responsible
 // for opening the file to be written to and controlling whether the
 // write is done in parallel (if compiled with parallel HDF5).
+//
+// bank_index is an exclusive parallel scan of the source_bank.size()
+// values on each rank, used to create global indexing. This vector
+// can be created by calling calculate_parallel_index_vector on
+// source_bank.size() if such a vector is not already available.
 void write_source_point(const char* filename, gsl::span<SourceSite> source_bank,
   vector<int64_t> const& bank_index);
 
